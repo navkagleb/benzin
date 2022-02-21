@@ -55,6 +55,11 @@ namespace Spieler
         ::UnregisterClass(m_Name.c_str(), ::GetModuleHandle(nullptr));
     }
 
+    void Window::SetTitle(const std::string& title)
+    {
+        ::SetWindowText(m_Handle, title.c_str());
+    }
+
     bool Window::Init(const WindowsRegisterClass& windowsRegisterClass, const std::string& title, std::uint32_t width, std::uint32_t height)
     {
         m_Title     = title;

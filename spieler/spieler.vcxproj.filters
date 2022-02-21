@@ -4,10 +4,12 @@
     <ClCompile Include="src\application.cpp" />
     <ClCompile Include="src\entry_point.cpp" />
     <ClCompile Include="src\window.cpp" />
+    <ClCompile Include="src\timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\application.h" />
     <ClInclude Include="src\common.h" />
     <ClInclude Include="src\window.h" />
+    <ClInclude Include="src\timer.h" />
   </ItemGroup>
 </Project>

@@ -32,6 +32,11 @@ namespace Spieler
         inline std::uint32_t GetWidth() const { return m_Width; }
         inline std::uint32_t GetHeight() const { return m_Height; }
 
+        inline float GetAspectRatio() const { return static_cast<float>(m_Height) / m_Width; }
+
+    public:
+        void SetTitle(const std::string& title);
+
     public:
         bool Init(const WindowsRegisterClass& windowsRegisterClass, const std::string& title, std::uint32_t width, std::uint32_t height);
         void Shutdown();
