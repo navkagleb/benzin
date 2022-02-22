@@ -11,10 +11,13 @@ namespace Spieler
     class WindowsRegisterClass
     {
     public:
+        typedef LRESULT(*EventCallbackFunction)(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+    public:
         inline const std::string& GetName() const { return m_Name; }
 
     public:
-        bool Init();
+        bool Init(EventCallbackFunction eventCallbackFunction);
         void Shutdown();
 
     private:

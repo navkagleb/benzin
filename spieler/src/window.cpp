@@ -3,10 +3,10 @@
 namespace Spieler
 {
 
-    bool WindowsRegisterClass::Init()
+    bool WindowsRegisterClass::Init(EventCallbackFunction eventCallbackFunction)
     {
         m_Info.cbSize          = sizeof(WNDCLASSEX);
-        m_Info.style           = CS_VREDRAW | CS_HREDRAW;
+        m_Info.style           = CS_VREDRAW | CS_HREDRAW | CS_OWNDC;
         m_Info.cbClsExtra      = 0;
         m_Info.cbWndExtra      = 0;
         m_Info.hInstance       = ::GetModuleHandle(nullptr);
@@ -16,34 +16,12 @@ namespace Spieler
         m_Info.lpszClassName   = m_Name.c_str();
         m_Info.hIconSm         = ::LoadIcon(nullptr, IDI_APPLICATION);
         m_Info.lpszMenuName    = nullptr;
-        m_Info.lpfnWndProc     = [](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT
-        {
-            switch (uMsg)
-            {
-                case WM_CLOSE:
-                {
-                    DestroyWindow(hWnd);
-                    break;
-                }
-
-                case WM_DESTROY:
-                {
-                    PostQuitMessage(0);
-                    break;
-                }
-
-                default:
-                {
-                    break;
-                }
-            }
-
-            return ::DefWindowProc(hWnd, uMsg, wParam, lParam);
-        };
+        m_Info.lpfnWndProc     = eventCallbackFunction;
 
         const auto status = ::RegisterClassEx(&m_Info);
 
-        if (!status) {
+        if (!status)
+        {
             return false;
         }
 
@@ -66,7 +44,7 @@ namespace Spieler
         m_Width     = width;
         m_Height    = height;
 
-        const auto  style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+        const auto  style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
         RECT        windowBounds = { 0, 0, static_cast<std::int32_t>(m_Width), static_cast<std::int32_t>(m_Height) };
 
         auto status = ::AdjustWindowRect(&windowBounds, style, false);
