@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "window_event.h"
+#include "mouse_event.h"
 
 namespace Spieler
 {
@@ -48,6 +49,7 @@ namespace Spieler
             {
                 switch (msg)
                 {
+                    // Window events
                     case WM_CLOSE:
                     {
                         WindowCloseEvent event;
@@ -117,11 +119,9 @@ namespace Spieler
                             }
                         }
 
-                       
+                        WindowResizingEvent event(window->m_Width, window->m_Height);
 
-                        //WindowExitEvent event(window->m_Width, window->m_Height);
-
-                        //window->m_EventCallback(event);
+                        window->m_EventCallback(event);
 
                         return 0;
                     }
@@ -148,6 +148,79 @@ namespace Spieler
                     {
                         reinterpret_cast<MINMAXINFO*>(lparam)->ptMinTrackSize.x = 200;
                         reinterpret_cast<MINMAXINFO*>(lparam)->ptMinTrackSize.y = 200;
+
+                        return 0;
+                    }
+
+                    // Mouse events
+                    case WM_LBUTTONDOWN:
+                    {
+                        MouseButtonPressedEvent event(MouseButton_Left, LOWORD(lparam), HIWORD(lparam));
+
+                        window->m_EventCallback(event);
+
+                        return 0;
+                    }
+
+                    case WM_RBUTTONDOWN:
+                    {
+                        MouseButtonPressedEvent event(MouseButton_Right, LOWORD(lparam), HIWORD(lparam));
+
+                        window->m_EventCallback(event);
+
+                        return 0;
+                    }
+
+                    case WM_MBUTTONDOWN:
+                    {
+                        MouseButtonPressedEvent event(MouseButton_Middle, LOWORD(lparam), HIWORD(lparam));
+
+                        window->m_EventCallback(event);
+
+                        return 0;
+                    }
+
+                    case WM_LBUTTONUP:
+                    {
+                        MouseButtonReleasedEvent event(MouseButton_Left, LOWORD(lparam), HIWORD(lparam));
+
+                        window->m_EventCallback(event);
+
+                        return 0;
+                    }
+
+                    case WM_RBUTTONUP:
+                    {
+                        MouseButtonReleasedEvent event(MouseButton_Right, LOWORD(lparam), HIWORD(lparam));
+
+                        window->m_EventCallback(event);
+
+                        return 0;
+                    }
+
+                    case WM_MBUTTONUP:
+                    {
+                        MouseButtonReleasedEvent event(MouseButton_Middle, LOWORD(lparam), HIWORD(lparam));
+
+                        window->m_EventCallback(event);
+
+                        return 0;
+                    }
+
+                    case WM_MOUSEMOVE:
+                    {
+                        MouseMovedEvent event(LOWORD(lparam), HIWORD(lparam));
+
+                        window->m_EventCallback(event);
+
+                        return 0;
+                    }
+
+                    case WM_MOUSEWHEEL:
+                    {
+                        MouseScrolledEvent event(GET_WHEEL_DELTA_WPARAM(wparam) > 0 ? 1 : -1);
+
+                        window->m_EventCallback(event);
 
                         return 0;
                     }

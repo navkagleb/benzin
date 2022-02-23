@@ -12,7 +12,7 @@ namespace Spieler
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
     public:
-        inline std::string ToString() const override { return GetName(); }
+        std::string ToString() const override { return GetName(); }
     };
 
     class WindowResizingEvent : public Event
@@ -27,8 +27,11 @@ namespace Spieler
             , m_Height(height)
         {}
 
-        inline int GetWidth() const { return m_Width; }
-        inline int GetHeight() const { return m_Height; }
+    public:
+
+        int GetWidth() const { return m_Width; }
+        int GetHeight() const { return m_Height; }
+
         std::string ToString() const override
         {
             return GetName() + ": " + std::to_string(m_Width) + ", " + std::to_string(m_Height);
@@ -46,7 +49,7 @@ namespace Spieler
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
     public:
-        inline std::string ToString() const override { return GetName(); }
+        std::string ToString() const override { return GetName(); }
     };
 
     class WindowExitResizingEvent : public Event
@@ -61,8 +64,10 @@ namespace Spieler
             , m_Height(height)
         {}
 
-        inline int GetWidth() const { return m_Width; }
-        inline int GetHeight() const { return m_Height; }
+    public:
+        int GetWidth() const { return m_Width; }
+        int GetHeight() const { return m_Height; }
+
         std::string ToString() const override
         {
             return GetName() + ": " + std::to_string(m_Width) + ", " + std::to_string(m_Height);
@@ -80,7 +85,7 @@ namespace Spieler
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
     public:
-        inline std::string ToString() const override { return GetName(); }
+        std::string ToString() const override { return GetName(); }
     };
 
     class WindowMinimizedEvent : public Event
@@ -90,7 +95,7 @@ namespace Spieler
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
     public:
-        inline std::string ToString() const override { return GetName(); }
+        std::string ToString() const override { return GetName(); }
     };
 
     class WindowRestoredEvent : public Event
@@ -100,7 +105,7 @@ namespace Spieler
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
     public:
-        inline std::string ToString() const override { return GetName(); }
+        std::string ToString() const override { return GetName(); }
     };
 
     class WindowFocusedEvent : public Event
@@ -110,10 +115,7 @@ namespace Spieler
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
     public:
-        WindowFocusedEvent() = default;
-        ~WindowFocusedEvent() override = default;
-
-        inline std::string ToString() const override { return GetName(); }
+        std::string ToString() const override { return GetName(); }
     };
 
     class WindowUnfocusedEvent : public Event
@@ -123,7 +125,7 @@ namespace Spieler
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
     public:
-        inline std::string ToString() const override { return GetName(); }
+        std::string ToString() const override { return GetName(); }
     };
 
 } // namespace Spieler

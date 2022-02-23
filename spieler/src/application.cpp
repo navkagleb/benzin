@@ -493,6 +493,11 @@ namespace Spieler
 
             return true;
         });
+
+        if (event.IsInCategory(EventCategory_Input))
+        {
+            OutputDebugString((event.ToString() + "\n").c_str());
+        }
     }
 
     void Application::OnResize()
