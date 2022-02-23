@@ -1,5 +1,6 @@
 #include "window.h"
 
+#include "common.h"
 #include "window_event.h"
 
 namespace Spieler
@@ -173,16 +174,9 @@ namespace Spieler
         return true;
     }
 
-    bool WindowRegisterClass::Shutdown()
+    WindowRegisterClass::~WindowRegisterClass()
     {
-        const auto status = ::UnregisterClass(m_Name.c_str(), ::GetModuleHandle(nullptr));
-
-        if (!status)
-        {
-            return false;
-        }
-
-        return true;
+        ::UnregisterClass(m_Name.c_str(), ::GetModuleHandle(nullptr));
     }
 
     WindowRegisterClass& Window::GetWindowRegisterClass()
@@ -213,20 +207,14 @@ namespace Spieler
         m_Width     = width;
         m_Height    = height;
 
-        const auto  style = WS_OVERLAPPEDWINDOW;
-        RECT        windowBounds = { 0, 0, static_cast<std::int32_t>(m_Width), static_cast<std::int32_t>(m_Height) };
+        RECT windowBounds = { 0, 0, static_cast<std::int32_t>(m_Width), static_cast<std::int32_t>(m_Height) };
 
-        auto status = ::AdjustWindowRect(&windowBounds, style, false);
-
-        if (!status)
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(::AdjustWindowRect(&windowBounds, m_Style, false));
 
         m_Handle = ::CreateWindow(
             GetWindowRegisterClass().GetName().c_str(),
             m_Title.c_str(),
-            style,
+            m_Style,
             (::GetSystemMetrics(SM_CXSCREEN) - windowBounds.right) / 2,
             (::GetSystemMetrics(SM_CYSCREEN) - windowBounds.bottom) / 2,
             windowBounds.right - windowBounds.left,
@@ -242,21 +230,15 @@ namespace Spieler
             return false;
         }
 
-        ::ShowWindow(m_Handle, SW_SHOWDEFAULT);
-
-        status = ::UpdateWindow(m_Handle);
-
-        if (!status)
-        {
-            return false;
-        }
-
         return true;
     }
 
-    void Window::Shutdown()
+    bool Window::Show()
     {
+        ::ShowWindow(m_Handle, SW_SHOWDEFAULT);
+        SPIELER_CHECK_STATUS(::UpdateWindow(m_Handle));
 
+        return true;
     }
 
 } // namespace Spieler

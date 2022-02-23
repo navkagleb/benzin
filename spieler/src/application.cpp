@@ -6,41 +6,32 @@
 namespace Spieler
 {
 
-#define ERROR_CHECK(result)         \
-{                                   \
-    if (!result)                    \
-    {                               \
-        return false;               \
-    }                               \
-}
-
     bool Application::Init(const std::string& title, std::uint32_t width, std::uint32_t height)
     {
 #if defined(SPIELER_DEBUG)
         _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
-        if (!m_Window.Init(title, width, height))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(m_Window.Init(title, width, height));
 
         m_Window.SetEventCallbackFunction([&](Event& event) { WindowEventCallback(event); });
 
-        ERROR_CHECK(InitDevice());
-        ERROR_CHECK(InitFence());
-        ERROR_CHECK(InitDescriptorSizes());
-        ERROR_CHECK(InitMSAAQualitySupport());
-        ERROR_CHECK(InitCommandQueue());
-        ERROR_CHECK(InitCommandAllocator());
-        ERROR_CHECK(InitCommandList());
-        ERROR_CHECK(InitDXGIFactory());
-        ERROR_CHECK(InitSwapChain());
-        ERROR_CHECK(InitDescriptorHeaps());
-        ERROR_CHECK(InitBackBufferRTV());
-        ERROR_CHECK(InitDepthStencilTexture());
-        ERROR_CHECK(InitViewport());
-        ERROR_CHECK(InitScissor());
+        SPIELER_CHECK_STATUS(InitDevice());
+        SPIELER_CHECK_STATUS(InitFence());
+        SPIELER_CHECK_STATUS(InitDescriptorSizes());
+        SPIELER_CHECK_STATUS(InitMSAAQualitySupport());
+        SPIELER_CHECK_STATUS(InitCommandQueue());
+        SPIELER_CHECK_STATUS(InitCommandAllocator());
+        SPIELER_CHECK_STATUS(InitCommandList());
+        SPIELER_CHECK_STATUS(InitDXGIFactory());
+        SPIELER_CHECK_STATUS(InitSwapChain());
+        SPIELER_CHECK_STATUS(InitDescriptorHeaps());
+        SPIELER_CHECK_STATUS(InitBackBufferRTV());
+        SPIELER_CHECK_STATUS(InitDepthStencilTexture());
+        SPIELER_CHECK_STATUS(InitViewport());
+        SPIELER_CHECK_STATUS(InitScissor());
+
+        m_Window.Show();
 
         return true;
     }
@@ -82,7 +73,11 @@ namespace Spieler
 
                     CalcStats();
                     OnUpdate(dt);
-                    OnRender(dt);
+
+                    if (!OnRender(dt))
+                    {
+                        break;
+                    }
                 }
             }
         }
@@ -97,33 +92,18 @@ namespace Spieler
 #if defined(SPIELER_DEBUG)
         ComPtr<ID3D12Debug> debugController;
 
-        const auto result = D3D12GetDebugInterface(__uuidof(ID3D12Debug), &debugController);
-
-        if (FAILED(result))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(D3D12GetDebugInterface(__uuidof(ID3D12Debug), &debugController));
 
         debugController->EnableDebugLayer();
 #endif
-        const auto hr = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), &m_Device);
-
-        if (FAILED(hr))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), &m_Device));
 
         return true;
     }
 
     bool Application::InitFence()
     {
-        const auto result = m_Device->CreateFence(m_FenceValue, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), &m_Fence);
-
-        if (FAILED(result))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(m_Device->CreateFence(m_FenceValue, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), &m_Fence));
 
         return true;
     }
@@ -145,12 +125,7 @@ namespace Spieler
         qualityLevels.Flags             = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
         qualityLevels.NumQualityLevels  = 0;
 
-        const auto result = m_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &qualityLevels, sizeof(qualityLevels));
-
-        if (FAILED(result))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(m_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &qualityLevels, sizeof(qualityLevels)));
 
         m_4xMSAAQuality = qualityLevels.NumQualityLevels;
         SPIELER_ASSERT(m_4xMSAAQuality > 0);
@@ -166,36 +141,21 @@ namespace Spieler
         desc.Flags      = D3D12_COMMAND_QUEUE_FLAG_NONE;
         desc.NodeMask   = 0;
 
-        const auto result = m_Device->CreateCommandQueue(&desc, __uuidof(ID3D12CommandQueue), &m_CommandQueue);
-
-        if (FAILED(result))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(m_Device->CreateCommandQueue(&desc, __uuidof(ID3D12CommandQueue), &m_CommandQueue));
 
         return true;
     }
 
     bool Application::InitCommandAllocator()
     {
-        const auto result = m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), &m_CommandAllocator);
-
-        if (FAILED(result))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), &m_CommandAllocator));
 
         return true;
     }
 
     bool Application::InitCommandList()
     {
-        const auto result = m_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_CommandAllocator.Get(), nullptr, __uuidof(ID3D12CommandList), &m_CommandList);
-
-        if (FAILED(result))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(m_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_CommandAllocator.Get(), nullptr, __uuidof(ID3D12CommandList), &m_CommandList));
 
         m_CommandList->Close();
 
@@ -204,12 +164,7 @@ namespace Spieler
 
     bool Application::InitDXGIFactory()
     {
-        const auto result = CreateDXGIFactory(__uuidof(IDXGIFactory), &m_DXGIFactory);
-
-        if (FAILED(result))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(CreateDXGIFactory(__uuidof(IDXGIFactory), &m_DXGIFactory));
 
         return true;
     }
@@ -233,12 +188,7 @@ namespace Spieler
         desc.SwapEffect                         = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         desc.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
-        const auto result = m_DXGIFactory->CreateSwapChain(m_CommandQueue.Get(), &desc, &m_SwapChain);
-
-        if (FAILED(result))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(m_DXGIFactory->CreateSwapChain(m_CommandQueue.Get(), &desc, &m_SwapChain));
 
         return true;
     }
@@ -251,12 +201,7 @@ namespace Spieler
         desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         desc.NodeMask       = 0;
 
-        const auto result = m_Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), &m_RTVDescriptorHeap);
-
-        if (FAILED(result))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(m_Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), &m_RTVDescriptorHeap));
 
         return true;
     }
@@ -269,12 +214,7 @@ namespace Spieler
         desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         desc.NodeMask       = 0;
 
-        const auto result = m_Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), &m_DSVDescriptorHeap);
-
-        if (FAILED(result))
-        {
-            return false;
-        }
+        SPIELER_CHECK_STATUS(m_Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), &m_DSVDescriptorHeap));
 
         return true;
     }
@@ -287,12 +227,7 @@ namespace Spieler
 
         for (std::size_t bufferIndex = 0; bufferIndex < m_SwapChainBuffers.size(); ++bufferIndex)
         {
-            const auto result = m_SwapChain->GetBuffer(static_cast<UINT>(bufferIndex), __uuidof(ID3D12Resource), &m_SwapChainBuffers[bufferIndex]);
-
-            if (FAILED(result))
-            {
-                return false;
-            }
+            SPIELER_CHECK_STATUS(m_SwapChain->GetBuffer(static_cast<UINT>(bufferIndex), __uuidof(ID3D12Resource), &m_SwapChainBuffers[bufferIndex]));
 
             m_Device->CreateRenderTargetView(
                 m_SwapChainBuffers[bufferIndex].Get(), 
@@ -331,22 +266,15 @@ namespace Spieler
         heapProps.CreationNodeMask      = 1;
         heapProps.VisibleNodeMask       = 1;
 
-        {
-            const auto result = m_Device->CreateCommittedResource(
-                &heapProps,
-                D3D12_HEAP_FLAG_NONE,
-                &desc,
-                D3D12_RESOURCE_STATE_COMMON,
-                &clearValueDesc,
-                __uuidof(ID3D12Resource),
-                &m_DepthStencilBuffer
-            );
-
-            if (FAILED(result))
-            {
-                return false;
-            }
-        }
+        SPIELER_CHECK_STATUS(m_Device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &desc,
+            D3D12_RESOURCE_STATE_COMMON,
+            &clearValueDesc,
+            __uuidof(ID3D12Resource),
+            &m_DepthStencilBuffer
+        ));
 
         m_Device->CreateDepthStencilView(m_DepthStencilBuffer.Get(), nullptr, m_DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
         
@@ -422,10 +350,10 @@ namespace Spieler
 
     }
 
-    void Application::OnRender(float dt)
+    bool Application::OnRender(float dt)
     {
-        m_CommandAllocator->Reset();
-        m_CommandList->Reset(m_CommandAllocator.Get(), nullptr);
+        SPIELER_CHECK_STATUS(m_CommandAllocator->Reset());
+        SPIELER_CHECK_STATUS(m_CommandList->Reset(m_CommandAllocator.Get(), nullptr));
 
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -459,23 +387,18 @@ namespace Spieler
 
         m_CommandList->ResourceBarrier(1, &barrier);
 
-        m_CommandList->Close();
+        SPIELER_CHECK_STATUS(m_CommandList->Close());
 
         ID3D12CommandList* cmdsLists[] = { m_CommandList.Get() };
         m_CommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
         m_CurrentBackBuffer = (m_CurrentBackBuffer + 1) % m_SwapChainBufferCount;
 
-        {
-            const auto result = m_SwapChain->Present(0, 0);
-
-            if (FAILED(result))
-            {
-                return;
-            }
-        }
+        SPIELER_CHECK_STATUS(m_SwapChain->Present(0, 0));
 
         FlushCommandQueue();
+
+        return true;
     }
 
     void Application::WindowEventCallback(Event& event)

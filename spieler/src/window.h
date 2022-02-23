@@ -14,12 +14,14 @@ namespace Spieler
     class WindowRegisterClass
     {
     public:
+        ~WindowRegisterClass();
+
+    public:
         const std::string& GetName() const { return m_Name; }
         bool IsInitialized() const { return m_IsInitialized; }
 
     public:
         bool Init();
-        bool Shutdown();
 
     private:
         const std::string m_Name = "SPIELER_WINDOW";
@@ -54,9 +56,11 @@ namespace Spieler
 
     public:
         bool Init(const std::string& title, std::uint32_t width, std::uint32_t height);
-        void Shutdown();
+        
+        bool Show();
 
     private:
+        LONG                    m_Style         = WS_OVERLAPPEDWINDOW;
         HWND                    m_Handle        = nullptr;
         std::string             m_Title         = "Default title";
         std::uint32_t           m_Width         = 0;

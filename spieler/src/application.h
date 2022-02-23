@@ -48,7 +48,7 @@ namespace Spieler
         void FlushCommandQueue();
 
         void OnUpdate(float dt);
-        void OnRender(float dt);
+        bool OnRender(float dt);
 
         void WindowEventCallback(Event& event);
 
@@ -98,6 +98,7 @@ namespace Spieler
         bool                                m_IsResizing            = false;
         bool                                m_IsMinimized           = false;
         bool                                m_IsMaximized           = false;
+        bool                                m_IsFullscreen          = false;
     };
 
 } // namespace Spieler
