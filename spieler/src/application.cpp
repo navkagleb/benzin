@@ -1,5 +1,8 @@
 #include "application.h"
 
+#include "event_dispatcher.h"
+#include "window_event.h"
+
 namespace Spieler
 {
 
@@ -11,98 +14,18 @@ namespace Spieler
     }                               \
 }
 
-    LRESULT EventCallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
-    {
-        auto& application = Application::GetInstance();
-
-        switch (msg)
-        {
-            case WM_ACTIVATE:
-            {
-                if (LOWORD(wparam) == WA_INACTIVE)
-                {
-                    application.m_IsPaused = true;
-                    application.m_Timer.Stop();
-                }
-                else
-                {
-                    application.m_IsPaused = false;
-                    application.m_Timer.Start();
-                }
-
-                return 0;
-            }
-
-            case WM_ENTERSIZEMOVE:
-            {
-                application.m_IsPaused      = true;
-                application.m_IsResizing    = true;
-
-                application.m_Timer.Stop();
-
-                return 0;
-            }
-
-            case WM_EXITSIZEMOVE:
-            {
-                application.m_IsPaused      = false;
-                application.m_IsResizing    = false;
-                
-                application.m_Timer.Start();
-
-                application.OnResize();
-
-                return 0;
-            }
-
-            case WM_CLOSE:
-            {
-                DestroyWindow(hwnd);
-                return 0;
-            }
-
-            case WM_DESTROY:
-            {
-                // PostQuitMessage(0);
-                return 0;
-            }
-
-            case WM_GETMINMAXINFO:
-            {
-                reinterpret_cast<MINMAXINFO*>(lparam)->ptMinTrackSize.x = 200;
-                reinterpret_cast<MINMAXINFO*>(lparam)->ptMinTrackSize.y = 200;
-                return 0;
-            }
-
-            default:
-            {
-                break;
-            }
-        }
-
-        return ::DefWindowProc(hwnd, msg, wparam, lparam);
-    }
-
     bool Application::Init(const std::string& title, std::uint32_t width, std::uint32_t height)
     {
 #if defined(SPIELER_DEBUG)
         _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
-        if (!m_WindowsRegisterClass.Init(EventCallback))
+        if (!m_Window.Init(title, width, height))
         {
             return false;
         }
 
-        if (!m_Window.Init(m_WindowsRegisterClass, title, width, height))
-        {
-            return false;
-        }
-
-        if (!m_Window1.Init(m_WindowsRegisterClass, title + "Fuck", width, height))
-        {
-            return false;
-        }
+        m_Window.SetEventCallbackFunction([&](Event& event) { WindowEventCallback(event); });
 
         ERROR_CHECK(InitDevice());
         ERROR_CHECK(InitFence());
@@ -128,8 +51,6 @@ namespace Spieler
         {
             FlushCommandQueue();
         }
-
-        m_WindowsRegisterClass.Shutdown();
     }
 
     int Application::Run()
@@ -138,7 +59,9 @@ namespace Spieler
 
         m_Timer.Reset();
 
-        while (message.message != WM_QUIT)
+        m_IsRunning = true;
+
+        while (m_IsRunning && message.message != WM_QUIT)
         {
             if (::PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
             {
@@ -147,13 +70,20 @@ namespace Spieler
             }
             else
             {
-                // TODO: Add m_IsPaused flag (if m_IsPaused -> ::Sleep(100))
-                m_Timer.Tick();
+                if (m_IsPaused)
+                {
+                    ::Sleep(100);
+                }
+                else
+                {
+                    m_Timer.Tick();
 
-                const float dt = m_Timer.GetDeltaTime();
+                    const float dt = m_Timer.GetDeltaTime();
 
-                OnUpdate(dt);
-                OnRender(dt);
+                    CalcStats();
+                    OnUpdate(dt);
+                    OnRender(dt);
+                }
             }
         }
 
@@ -489,7 +419,7 @@ namespace Spieler
 
     void Application::OnUpdate(float dt)
     {
-        CalcStats();
+
     }
 
     void Application::OnRender(float dt)
@@ -501,9 +431,9 @@ namespace Spieler
         barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags                   = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.Transition.pResource    = m_SwapChainBuffers[m_CurrentBackBuffer].Get();
+        barrier.Transition.Subresource  = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_PRESENT;
         barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        barrier.Transition.Subresource  = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
         m_CommandList->ResourceBarrier(1, &barrier);
 
@@ -546,6 +476,100 @@ namespace Spieler
         }
 
         FlushCommandQueue();
+    }
+
+    void Application::WindowEventCallback(Event& event)
+    {
+        EventDispatcher dispatcher(event);
+
+        dispatcher.Dispatch<WindowCloseEvent>([&](WindowCloseEvent& event)
+        {
+            m_IsRunning = false;
+
+            return true;
+        });
+
+        dispatcher.Dispatch<WindowMinimizedEvent>([&](WindowMinimizedEvent& event)
+        {
+            m_IsPaused      = true;
+            m_IsMinimized   = true;
+            m_IsMaximized   = false;
+
+            return true;
+        });
+
+        dispatcher.Dispatch<WindowMaximizedEvent>([&](WindowMaximizedEvent& event)
+        {
+            m_IsPaused      = false;
+            m_IsMinimized   = false;
+            m_IsMaximized   = true;
+
+            return true;
+        });
+
+        dispatcher.Dispatch<WindowRestoredEvent>([&](WindowRestoredEvent& event)
+        {
+            if (m_IsMinimized)
+            {
+                m_IsPaused      = false;
+                m_IsMinimized   = false;
+
+                OnResize();
+            }
+            else if (m_IsMaximized)
+            {
+                m_IsPaused      = false;
+                m_IsMaximized   = false;
+
+                OnResize();
+            }
+            else if (!m_IsResizing)
+            {
+                OnResize();
+            }
+
+            return true;
+        });
+
+        dispatcher.Dispatch<WindowEnterResizingEvent>([&](WindowEnterResizingEvent& event)
+        {
+            m_IsPaused      = true;
+            m_IsResizing    = true;
+
+            m_Timer.Stop();
+
+            return true;
+        });
+
+        dispatcher.Dispatch<WindowExitResizingEvent>([&](WindowExitResizingEvent& event)
+        {
+            m_IsPaused      = false;
+            m_IsResizing    = false;
+
+            m_Timer.Start();
+            
+            OnResize();
+
+            return true;
+        });
+
+        dispatcher.Dispatch<WindowFocusedEvent>([&](WindowFocusedEvent& event)
+        {
+            m_IsPaused = false;
+
+            m_Timer.Start();
+
+            return true;
+        });
+
+        dispatcher.Dispatch<WindowUnfocusedEvent>([&](WindowUnfocusedEvent& event)
+        {
+            m_IsPaused = true;
+
+            m_Timer.Stop();
+
+            return true;
+        });
     }
 
     void Application::OnResize()

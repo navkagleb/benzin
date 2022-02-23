@@ -13,5 +13,6 @@
     <ClInclude Include="src\timer.h" />
     <ClInclude Include="src\event.h" />
     <ClInclude Include="src\window_event.h" />
+    <ClInclude Include="src\event_dispatcher.h" />
   </ItemGroup>
 </Project>

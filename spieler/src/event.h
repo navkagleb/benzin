@@ -17,14 +17,15 @@ namespace Spieler
     {
         EventType_None = 0,
 
-        EventType_WindowResizeEvent,
         EventType_WindowCloseEvent,
+        EventType_WindowResizingEvent,
+        EventType_WindowEnterResizingEvent,
+        EventType_WindowExitResizingEvent,
         EventType_WindowMaximizedEvent,
         EventType_WindowMinimizedEvent,
+        EventType_WindowRestoredEvent,
         EventType_WindowFocusedEvent,
         EventType_WindowUnfocusedEvent,
-        EventType_WindowCursorEnteredEvent,
-        EventType_WindowCursorLeftEvent,
 
         EventType_MouseMovedEvent,
         EventType_MouseScrolledEvent,

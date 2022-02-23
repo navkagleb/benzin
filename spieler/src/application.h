@@ -18,9 +18,6 @@ namespace Spieler
     {
         SINGLETON_IMPL(Application)
 
-    private:
-        friend static LRESULT CALLBACK EventCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
     public:
         bool Init(const std::string& title, std::uint32_t width, std::uint32_t height);
         void Shutdown();
@@ -52,14 +49,15 @@ namespace Spieler
 
         void OnUpdate(float dt);
         void OnRender(float dt);
+
+        void WindowEventCallback(Event& event);
+
         void OnResize();
 
         void CalcStats();
 
     private:
-        WindowsRegisterClass                m_WindowsRegisterClass;
         Window                              m_Window;
-        Window                              m_Window1;
         Timer                               m_Timer;
 
         ComPtr<ID3D12Device>                m_Device;
@@ -95,8 +93,11 @@ namespace Spieler
 
         std::string                         m_WindowTitle;
 
+        bool                                m_IsRunning             = false;
         bool                                m_IsPaused              = false;
         bool                                m_IsResizing            = false;
+        bool                                m_IsMinimized           = false;
+        bool                                m_IsMaximized           = false;
     };
 
 } // namespace Spieler

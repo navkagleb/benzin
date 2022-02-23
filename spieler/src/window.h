@@ -2,33 +2,44 @@
 
 #include <cstdint>
 #include <string>
+#include <functional>
 
 #include <Windows.h>
+
+#include "event.h"
 
 namespace Spieler
 {
 
-    class WindowsRegisterClass
+    class WindowRegisterClass
     {
     public:
-        typedef LRESULT(*EventCallbackFunction)(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+        const std::string& GetName() const { return m_Name; }
+        bool IsInitialized() const { return m_IsInitialized; }
 
     public:
-        inline const std::string& GetName() const { return m_Name; }
-
-    public:
-        bool Init(EventCallbackFunction eventCallbackFunction);
-        void Shutdown();
+        bool Init();
+        bool Shutdown();
 
     private:
         const std::string m_Name = "SPIELER_WINDOW";
 
     private:
-        WNDCLASSEX m_Info{};
+        WNDCLASSEX  m_Info{};
+        bool        m_IsInitialized = false;
     };
 
     class Window
     {
+    public:
+        friend class WindowRegisterClass;
+
+    public:
+        using EventCallbackFunction = std::function<void(Event& event)>;
+
+    private:
+        static WindowRegisterClass& GetWindowRegisterClass();
+
     public:
         inline HWND GetHandle() const { return m_Handle; }
         inline const std::string& GetTitle() const { return m_Title; }
@@ -39,16 +50,18 @@ namespace Spieler
 
     public:
         void SetTitle(const std::string& title);
+        void SetEventCallbackFunction(const EventCallbackFunction& callback);
 
     public:
-        bool Init(const WindowsRegisterClass& windowsRegisterClass, const std::string& title, std::uint32_t width, std::uint32_t height);
+        bool Init(const std::string& title, std::uint32_t width, std::uint32_t height);
         void Shutdown();
 
     private:
-        HWND            m_Handle    = nullptr;
-        std::string     m_Title     = "Default title";
-        std::uint32_t   m_Width     = 0;
-        std::uint32_t   m_Height    = 0;
+        HWND                    m_Handle        = nullptr;
+        std::string             m_Title         = "Default title";
+        std::uint32_t           m_Width         = 0;
+        std::uint32_t           m_Height        = 0;
+        EventCallbackFunction   m_EventCallback;
     };
 
 } // namespace Spieler
