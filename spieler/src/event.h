@@ -6,12 +6,15 @@ namespace Spieler
 {
 
 #define EVENT_CLASS_TYPE(ClassName)                                                                     \
+public:                                                                                                 \
     static EventType GetStaticEventType() { return EventType_##ClassName; }                             \
-    inline EventType GetEventType() const override { return GetStaticEventType(); }                     \
-    inline std::string GetName() const override { return #ClassName; }
+                                                                                                        \
+public:                                                                                                 \
+    EventType GetEventType() const override { return GetStaticEventType(); }                            \
+    std::string GetName() const override { return #ClassName; }                                         \
 
 #define EVENT_CLASS_CATEGORY(category)                                                                  \
-    inline int GetCategoryFlags() const override { return category; }
+    std::int32_t GetCategoryFlags() const override { return category; }
 
     enum EventType : std::uint32_t
     {
@@ -37,7 +40,7 @@ namespace Spieler
         EventType_KeyTypedEvent,
     };
 
-    enum EventCategory : std::uint32_t
+    enum EventCategory : std::int32_t
     {
         EventCategory_None          = 0,
 

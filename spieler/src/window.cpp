@@ -1,8 +1,13 @@
 #include "window.h"
 
+#include <imgui/backends/imgui_impl_win32.h>
+
 #include "common.h"
 #include "window_event.h"
 #include "mouse_event.h"
+#include "key_event.h"
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 namespace Spieler
 {
@@ -43,6 +48,11 @@ namespace Spieler
             else
             {
                 window = reinterpret_cast<Window*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+            }
+
+            if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
+            {
+                return true;
             }
 
             if (window && window->m_EventCallback)
@@ -223,6 +233,37 @@ namespace Spieler
                         window->m_EventCallback(event);
 
                         return 0;
+                    }
+
+                    // Key event
+                    case WM_KEYDOWN:
+                    case WM_SYSKEYDOWN:
+                    {
+                        KeyPressedEvent event(static_cast<KeyCode>(wparam), static_cast<bool>(HIWORD(lparam) & KF_REPEAT));
+
+                        window->m_EventCallback(event);
+
+                        break;
+                    }
+
+                    case WM_KEYUP:
+                    case WM_SYSKEYUP:
+                    {
+                        KeyReleasedEvent event(static_cast<KeyCode>(wparam));
+
+                        window->m_EventCallback(event);
+
+                        break;
+                    }
+
+                    case WM_CHAR:
+                    case WM_SYSCHAR:
+                    {
+                        KeyTypedEvent event(wparam);
+
+                        window->m_EventCallback(event);
+
+                        break;
                     }
 
                     default:

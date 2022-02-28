@@ -1,7 +1,14 @@
 #include "application.h"
 
+#include <fstream>
+
+#include <imgui/imgui.h>
+#include <imgui/backends/imgui_impl_dx12.h>
+#include <imgui/backends/imgui_impl_win32.h>
+
 #include "event_dispatcher.h"
 #include "window_event.h"
+#include "key_event.h"
 
 namespace Spieler
 {
@@ -30,6 +37,7 @@ namespace Spieler
         SPIELER_CHECK_STATUS(InitDepthStencilTexture());
         SPIELER_CHECK_STATUS(InitViewport());
         SPIELER_CHECK_STATUS(InitScissor());
+        SPIELER_CHECK_STATUS(InitImGui());
 
         m_Window.Show();
 
@@ -71,8 +79,17 @@ namespace Spieler
 
                     const float dt = m_Timer.GetDeltaTime();
 
+                    // Start the Dear ImGui frame
+                    ImGui_ImplDX12_NewFrame();
+                    ImGui_ImplWin32_NewFrame();
+                    ImGui::NewFrame();
+
                     CalcStats();
                     OnUpdate(dt);
+                    OnImGuiRender(dt);
+
+                    // Rendering
+                    ImGui::Render();
 
                     if (!OnRender(dt))
                     {
@@ -113,6 +130,7 @@ namespace Spieler
         m_RTVDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         m_DSVDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
         m_CBVDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        m_SRVDescriptorSize = m_CBVDescriptorSize;
 
         return true;
     }
@@ -189,6 +207,7 @@ namespace Spieler
         desc.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
         SPIELER_CHECK_STATUS(m_DXGIFactory->CreateSwapChain(m_CommandQueue.Get(), &desc, &m_SwapChain));
+        SPIELER_CHECK_STATUS(m_SwapChain->QueryInterface(__uuidof(IDXGISwapChain3), &m_SwapChain3));
 
         return true;
     }
@@ -215,6 +234,19 @@ namespace Spieler
         desc.NodeMask       = 0;
 
         SPIELER_CHECK_STATUS(m_Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), &m_DSVDescriptorHeap));
+
+        return true;
+    }
+
+    bool Application::InitSRVDescriptorHeap()
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC desc{};
+        desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        desc.NumDescriptors = 1;
+        desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        desc.NodeMask       = 0;
+
+        SPIELER_CHECK_STATUS(m_Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), &m_SRVDescriptorHeap));
 
         return true;
     }
@@ -313,9 +345,36 @@ namespace Spieler
         return true;
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE Application::GetCurrentBackBufferRTV()
+    bool Application::InitImGui()
     {
-        return { m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + m_CurrentBackBuffer * m_RTVDescriptorSize };
+        // Setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+        // Setup Dear ImGui style
+        ImGui::StyleColorsDark();
+
+        // Setup Platform/Renderer backends
+        ImGui_ImplWin32_Init(m_Window.GetHandle());
+        ImGui_ImplDX12_Init(
+            m_Device.Get(),
+            1,
+            m_BackBufferFormat, 
+            m_SRVDescriptorHeap.Get(),
+            m_SRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+            m_SRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
+        );
+
+        return true;
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE Application::GetCurrentBackBufferRTV(std::uint32_t currentBackBuffer)
+    {
+        return { m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + currentBackBuffer * m_RTVDescriptorSize };
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE Application::GetDepthStencilView()
@@ -325,7 +384,7 @@ namespace Spieler
 
     bool Application::InitDescriptorHeaps()
     {
-        return InitRTVDescriptorHeap() && InitDSVDescriptorHeap();
+        return InitRTVDescriptorHeap() && InitDSVDescriptorHeap() && InitSRVDescriptorHeap();
     }
 
     void Application::FlushCommandQueue()
@@ -355,10 +414,12 @@ namespace Spieler
         SPIELER_CHECK_STATUS(m_CommandAllocator->Reset());
         SPIELER_CHECK_STATUS(m_CommandList->Reset(m_CommandAllocator.Get(), nullptr));
 
+        const std::uint32_t currentBackBuffer = m_SwapChain3->GetCurrentBackBufferIndex();
+
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags                   = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.pResource    = m_SwapChainBuffers[m_CurrentBackBuffer].Get();
+        barrier.Transition.pResource    = m_SwapChainBuffers[currentBackBuffer].Get();
         barrier.Transition.Subresource  = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_PRESENT;
         barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -368,31 +429,30 @@ namespace Spieler
         m_CommandList->RSSetViewports(1, &m_ScreenViewport);
         m_CommandList->RSSetScissorRects(1, &m_ScissorRect);
 
-        const float clearColor[4] = { 0.5f, 0.3f, 0.7f, 1.0f };
-        m_CommandList->ClearRenderTargetView(GetCurrentBackBufferRTV(), clearColor, 0, nullptr);
+        m_CommandList->ClearRenderTargetView(GetCurrentBackBufferRTV(currentBackBuffer), reinterpret_cast<float*>(&m_ClearColor), 0, nullptr);
 
         m_CommandList->ClearDepthStencilView(GetDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-        auto a = GetCurrentBackBufferRTV();
+        auto a = GetCurrentBackBufferRTV(currentBackBuffer);
         auto b = GetDepthStencilView();
 
         m_CommandList->OMSetRenderTargets(1, &a, true, &b);
 
+        m_CommandList->SetDescriptorHeaps(1, m_SRVDescriptorHeap.GetAddressOf());
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_CommandList.Get());
+
         barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags                   = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.pResource    = m_SwapChainBuffers[m_CurrentBackBuffer].Get();
+        barrier.Transition.pResource    = m_SwapChainBuffers[currentBackBuffer].Get();
+        barrier.Transition.Subresource  = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_PRESENT;
-        barrier.Transition.Subresource  = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
         m_CommandList->ResourceBarrier(1, &barrier);
 
         SPIELER_CHECK_STATUS(m_CommandList->Close());
 
-        ID3D12CommandList* cmdsLists[] = { m_CommandList.Get() };
-        m_CommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
-
-        m_CurrentBackBuffer = (m_CurrentBackBuffer + 1) % m_SwapChainBufferCount;
+        m_CommandQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList* const*>(m_CommandList.GetAddressOf()));
 
         SPIELER_CHECK_STATUS(m_SwapChain->Present(0, 0));
 
@@ -401,106 +461,155 @@ namespace Spieler
         return true;
     }
 
-    void Application::WindowEventCallback(Event& event)
+    void Application::OnImGuiRender(float dt)
     {
-        EventDispatcher dispatcher(event);
-
-        dispatcher.Dispatch<WindowCloseEvent>([&](WindowCloseEvent& event)
+        if (m_IsShowDemoWindow)
         {
-            m_IsRunning = false;
+            ImGui::ShowDemoWindow(&m_IsShowDemoWindow);
+        }
 
-            return true;
-        });
-
-        dispatcher.Dispatch<WindowMinimizedEvent>([&](WindowMinimizedEvent& event)
         {
-            m_IsPaused      = true;
-            m_IsMinimized   = true;
-            m_IsMaximized   = false;
+            ImGui::Begin("Settings");
 
-            return true;
-        });
+            ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&m_ClearColor));
+            ImGui::Text("Running: %s", m_IsRunning ? "true" : "false");
+            ImGui::Text("Paused: %i", m_IsPaused);
+            ImGui::Text("Resizing: %i", m_IsResizing);
+            ImGui::Text("Minimized: %i", m_IsMinimized);
+            ImGui::Text("Maximized: %i", m_IsMaximized);
 
-        dispatcher.Dispatch<WindowMaximizedEvent>([&](WindowMaximizedEvent& event)
-        {
-            m_IsPaused      = false;
-            m_IsMinimized   = false;
-            m_IsMaximized   = true;
-
-            return true;
-        });
-
-        dispatcher.Dispatch<WindowRestoredEvent>([&](WindowRestoredEvent& event)
-        {
-            if (m_IsMinimized)
-            {
-                m_IsPaused      = false;
-                m_IsMinimized   = false;
-
-                OnResize();
-            }
-            else if (m_IsMaximized)
-            {
-                m_IsPaused      = false;
-                m_IsMaximized   = false;
-
-                OnResize();
-            }
-            else if (!m_IsResizing)
-            {
-                OnResize();
-            }
-
-            return true;
-        });
-
-        dispatcher.Dispatch<WindowEnterResizingEvent>([&](WindowEnterResizingEvent& event)
-        {
-            m_IsPaused      = true;
-            m_IsResizing    = true;
-
-            m_Timer.Stop();
-
-            return true;
-        });
-
-        dispatcher.Dispatch<WindowExitResizingEvent>([&](WindowExitResizingEvent& event)
-        {
-            m_IsPaused      = false;
-            m_IsResizing    = false;
-
-            m_Timer.Start();
-            
-            OnResize();
-
-            return true;
-        });
-
-        dispatcher.Dispatch<WindowFocusedEvent>([&](WindowFocusedEvent& event)
-        {
-            m_IsPaused = false;
-
-            m_Timer.Start();
-
-            return true;
-        });
-
-        dispatcher.Dispatch<WindowUnfocusedEvent>([&](WindowUnfocusedEvent& event)
-        {
-            m_IsPaused = true;
-
-            m_Timer.Stop();
-
-            return true;
-        });
-
-        if (event.IsInCategory(EventCategory_Input))
-        {
-            OutputDebugString((event.ToString() + "\n").c_str());
+            ImGui::End();
         }
     }
 
-    void Application::OnResize()
+    void Application::WindowEventCallback(Event& event)
+    {
+        EventDispatcher dispatcher(event);
+        dispatcher.Dispatch<WindowCloseEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowClose));
+        dispatcher.Dispatch<WindowMinimizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowMinimized));
+        dispatcher.Dispatch<WindowMaximizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowMaximized));
+        dispatcher.Dispatch<WindowRestoredEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowRestored));
+        dispatcher.Dispatch<WindowEnterResizingEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowEnterResizing));
+        dispatcher.Dispatch<WindowExitResizingEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowExitResizing));
+        dispatcher.Dispatch<WindowFocusedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowFocused));
+        dispatcher.Dispatch<WindowUnfocusedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowUnfocused));
+        dispatcher.Dispatch<KeyPressedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnKeyPressed));
+    }
+
+    bool Application::OnWindowClose(WindowCloseEvent& event)
+    {
+        Close();
+
+        return true;
+    }
+
+    bool Application::OnWindowMinimized(WindowMinimizedEvent& event)
+    {
+        m_IsPaused      = true;
+        m_IsMinimized   = true;
+        m_IsMaximized   = false;
+
+        return true;
+    }
+
+    bool Application::OnWindowMaximized(WindowMaximizedEvent& event)
+    {
+        m_IsPaused      = false;
+        m_IsMinimized   = false;
+        m_IsMaximized   = true;
+
+        return true;
+    }
+
+    bool Application::OnWindowRestored(WindowRestoredEvent& event)
+    {
+        if (m_IsMinimized)
+        {
+            m_IsPaused      = false;
+            m_IsMinimized   = false;
+
+            Resize();
+        }
+        else if (m_IsMaximized)
+        {
+            m_IsPaused      = false;
+            m_IsMaximized   = false;
+
+            Resize();
+        }
+        else if (!m_IsResizing)
+        {
+            Resize();
+        }
+
+        return true;
+    }
+
+    bool Application::OnWindowEnterResizing(WindowEnterResizingEvent& event)
+    {
+        m_IsPaused      = true;
+        m_IsResizing    = true;
+
+        m_Timer.Stop();
+
+        return true;
+    }
+
+    bool Application::OnWindowExitResizing(WindowExitResizingEvent& event)
+    {
+        m_IsPaused      = false;
+        m_IsResizing    = false;
+
+        m_Timer.Start();
+
+        Resize();
+
+        return true;
+    }
+
+    bool Application::OnWindowFocused(WindowFocusedEvent& event)
+    {
+        m_IsPaused = false;
+
+        m_Timer.Start();
+
+        return true;
+    }
+
+    bool Application::OnWindowUnfocused(WindowUnfocusedEvent& event)
+    {
+        m_IsPaused = true;
+
+        m_Timer.Stop();
+
+        return true;
+    }
+
+    bool Application::OnKeyPressed(KeyPressedEvent& event)
+    {
+        if (event.GetKeyCode() == KeyCode_Escape)
+        {
+            Close();
+        }
+
+        if (event.GetKeyCode() == KeyCode_F1)
+        {
+            m_IsShowDemoWindow = !m_IsShowDemoWindow;
+        }
+
+        return true;
+    }
+
+    void Application::Close()
+    {
+        m_IsRunning = false;
+
+        ImGui_ImplDX12_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
+    }
+
+    void Application::Resize()
     {
 
     }

@@ -5,6 +5,13 @@
     <ClCompile Include="src\entry_point.cpp" />
     <ClCompile Include="src\window.cpp" />
     <ClCompile Include="src\timer.cpp" />
+    <ClCompile Include="third_party\imgui\backends\imgui_impl_dx12.cpp" />
+    <ClCompile Include="third_party\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="third_party\imgui\imgui_tables.cpp" />
+    <ClCompile Include="third_party\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="third_party\imgui\imgui_draw.cpp" />
+    <ClCompile Include="third_party\imgui\imgui_demo.cpp" />
+    <ClCompile Include="third_party\imgui\imgui.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\application.h" />
@@ -15,5 +22,7 @@
     <ClInclude Include="src\window_event.h" />
     <ClInclude Include="src\event_dispatcher.h" />
     <ClInclude Include="src\mouse_event.h" />
+    <ClInclude Include="src\key_event.h" />
+    <ClInclude Include="third_party\imgui\backends\imgui_impl_win32.h" />
   </ItemGroup>
 </Project>

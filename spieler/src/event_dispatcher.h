@@ -15,10 +15,11 @@ namespace Spieler
 
     }
 
+#define SPIELER_BIND_EVENT_CALLBACK(callback) [this]<typename T>(T& event) { return this->callback(event); }
+
     class EventDispatcher
     {
     public:
-        
         template <EventChild T>
         using EventCallbackFunction = std::function<bool(T&)>;
 
@@ -29,7 +30,7 @@ namespace Spieler
     
     public:
         template <EventChild T>
-        bool Dispatch(const EventCallbackFunction<T>& callback)
+        bool Dispatch(EventCallbackFunction<T> callback)
         {
             if (m_Event.GetEventType() == T::GetStaticEventType())
             {

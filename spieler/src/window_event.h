@@ -7,7 +7,6 @@ namespace Spieler
 
     class WindowCloseEvent : public Event
     {
-    public:
         EVENT_CLASS_TYPE(WindowCloseEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
@@ -17,7 +16,6 @@ namespace Spieler
 
     class WindowResizingEvent : public Event
     {
-    public:
         EVENT_CLASS_TYPE(WindowResizingEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
@@ -28,9 +26,8 @@ namespace Spieler
         {}
 
     public:
-
-        int GetWidth() const { return m_Width; }
-        int GetHeight() const { return m_Height; }
+        std::uint32_t GetWidth() const { return m_Width; }
+        std::uint32_t GetHeight() const { return m_Height; }
 
         std::string ToString() const override
         {
@@ -44,7 +41,6 @@ namespace Spieler
 
     class WindowEnterResizingEvent : public Event
     {
-    public:
         EVENT_CLASS_TYPE(WindowEnterResizingEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
@@ -54,7 +50,6 @@ namespace Spieler
 
     class WindowExitResizingEvent : public Event
     {
-    public:
         EVENT_CLASS_TYPE(WindowExitResizingEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
@@ -65,8 +60,8 @@ namespace Spieler
         {}
 
     public:
-        int GetWidth() const { return m_Width; }
-        int GetHeight() const { return m_Height; }
+        std::uint32_t GetWidth() const { return m_Width; }
+        std::uint32_t GetHeight() const { return m_Height; }
 
         std::string ToString() const override
         {
@@ -80,7 +75,6 @@ namespace Spieler
 
     class WindowMaximizedEvent : public Event
     {
-    public:
         EVENT_CLASS_TYPE(WindowMaximizedEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
@@ -90,7 +84,6 @@ namespace Spieler
 
     class WindowMinimizedEvent : public Event
     {
-    public:
         EVENT_CLASS_TYPE(WindowMinimizedEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
@@ -100,7 +93,6 @@ namespace Spieler
 
     class WindowRestoredEvent : public Event
     {
-    public:
         EVENT_CLASS_TYPE(WindowRestoredEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
@@ -110,7 +102,6 @@ namespace Spieler
 
     class WindowFocusedEvent : public Event
     {
-    public:
         EVENT_CLASS_TYPE(WindowFocusedEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 
@@ -120,7 +111,6 @@ namespace Spieler
 
     class WindowUnfocusedEvent : public Event
     {
-    public:
         EVENT_CLASS_TYPE(WindowUnfocusedEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Window)
 

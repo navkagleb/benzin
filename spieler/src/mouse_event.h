@@ -9,9 +9,9 @@ namespace Spieler
     {
         MouseButton_Unknown = -1,
 
-        MouseButton_Left    = 0,
-        MouseButton_Right   = 1,
-        MouseButton_Middle  = 2
+        MouseButton_Left    = VK_LBUTTON,
+        MouseButton_Right   = VK_RBUTTON,
+        MouseButton_Middle  = VK_MBUTTON
     };
 
     class MousePosition
@@ -33,7 +33,6 @@ namespace Spieler
 
     class MouseMovedEvent : public Event, private MousePosition
     {
-    public:
         EVENT_CLASS_TYPE(MouseMovedEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Input | EventCategory_Mouse)
 
@@ -51,7 +50,6 @@ namespace Spieler
 
     class MouseScrolledEvent : public Event
     {
-    public:
         EVENT_CLASS_TYPE(MouseScrolledEvent)
         EVENT_CLASS_CATEGORY(EventCategory_Input | EventCategory_Mouse)
 
@@ -74,7 +72,6 @@ namespace Spieler
 
     class MouseButtonEvent : public Event, public MousePosition
     {
-    public:
         EVENT_CLASS_CATEGORY(EventCategory_Input | EventCategory_Mouse | EventCategory_MouseButton)
 
     public:
@@ -92,7 +89,6 @@ namespace Spieler
 
     class MouseButtonPressedEvent : public MouseButtonEvent
     {
-    public:
         EVENT_CLASS_TYPE(MouseButtonPressedEvent)
 
     public:
@@ -109,7 +105,6 @@ namespace Spieler
 
     class MouseButtonReleasedEvent : public MouseButtonEvent
     {
-    public:
         EVENT_CLASS_TYPE(MouseButtonReleasedEvent);
 
     public:
