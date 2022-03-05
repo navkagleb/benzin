@@ -1,6 +1,7 @@
 #include "application.h"
 
 #include <fstream>
+#include <numbers>
 
 #include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_dx12.h>
@@ -23,30 +24,93 @@ namespace Spieler
 
         m_Window.SetEventCallbackFunction([&](Event& event) { WindowEventCallback(event); });
 
-        SPIELER_CHECK_STATUS(InitDevice());
+        SPIELER_CHECK_STATUS(m_Renderer.Init(m_Window));
+
         SPIELER_CHECK_STATUS(InitFence());
-        SPIELER_CHECK_STATUS(InitDescriptorSizes());
         SPIELER_CHECK_STATUS(InitMSAAQualitySupport());
-        SPIELER_CHECK_STATUS(InitCommandQueue());
-        SPIELER_CHECK_STATUS(InitCommandAllocator());
-        SPIELER_CHECK_STATUS(InitCommandList());
-        SPIELER_CHECK_STATUS(InitDXGIFactory());
-        SPIELER_CHECK_STATUS(InitSwapChain());
-        SPIELER_CHECK_STATUS(InitDescriptorHeaps());
         SPIELER_CHECK_STATUS(InitBackBufferRTV());
         SPIELER_CHECK_STATUS(InitDepthStencilTexture());
         SPIELER_CHECK_STATUS(InitViewport());
         SPIELER_CHECK_STATUS(InitScissor());
+
+#if SPIELER_USE_IMGUI
         SPIELER_CHECK_STATUS(InitImGui());
+#endif
 
         m_Window.Show();
+
+        BoxGeometryProps boxProps;
+        boxProps.Width = 20.0f;
+        boxProps.Height = 10.0f;
+        boxProps.Depth = 15.0f;
+
+        CylinderGeometryProps cylinderProps;
+        cylinderProps.TopRadius     = 0;
+        cylinderProps.BottomRadius  = 20.0f;
+        cylinderProps.Height        = std::sqrt(200.0f) * 2;
+        cylinderProps.SliceCount    = 40;
+        cylinderProps.StackCount    = 1;
+
+        SphereGeometryProps sphereProps;
+        sphereProps.Radius      = 20.0f;
+        sphereProps.SliceCount  = 30;
+        sphereProps.StackCount  = 10;
+
+        GeosphereGeometryProps geosphereProps;
+        geosphereProps.Radius           = 20.0f;
+        geosphereProps.SubdivisionCount = 6;
+
+        const MeshData meshData = GeometryGenerator::GenerateBox<BasicVertex, std::uint32_t>(boxProps);
+
+        SPIELER_CHECK_STATUS(m_VertexBuffer.Init(meshData.Vertices.data(), meshData.Vertices.size()));
+
+        m_VertexBuffer.SetName(L"Cylinder Vertex Buffer");
+
+        SPIELER_CHECK_STATUS(m_IndexBuffer.Init(meshData.Indices.data(), meshData.Indices.size()));
+
+        m_IndexCount = meshData.Indices.size();
+
+        SPIELER_CHECK_STATUS(m_ConstantBuffer.Init());
+        SPIELER_CHECK_STATUS(m_RootSignature.Init());
+
+        // Projection matrix
+        DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveFovLH(
+            0.25f * static_cast<float>(std::numbers::pi),
+            m_Window.GetAspectRatio(),
+            0.1f,
+            1000.0f
+        );
+
+        // View matrix
+        DirectX::XMVECTOR position  = DirectX::XMVectorSet(0.0f, 0.0f, 0.1f, 1.0f);
+        DirectX::XMVECTOR target    = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+        DirectX::XMVECTOR up        = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(position, target, up);
+        //XMStoreFloat4x4(&mView, view);
+
+        DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
+
+        DirectX::XMMATRIX worldViewProjection = world * view * projection;
+
+        PerObject perObject;
+        perObject.WorldViewProjectionMatrix = DirectX::XMMatrixTranspose(worldViewProjection);
+
+        m_ConstantBuffer.Update(perObject);
+
+        SPIELER_CHECK_STATUS(InitPipelineState());
+
+        m_Renderer.m_CommandList->Close();
+        m_Renderer.m_CommandQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList* const*>(m_Renderer.m_CommandList.GetAddressOf()));
+
+        FlushCommandQueue();
 
         return true;
     }
 
     void Application::Shutdown()
     {
-        if (m_Device)
+        if (m_Renderer.m_Device)
         {
             FlushCommandQueue();
         }
@@ -79,17 +143,22 @@ namespace Spieler
 
                     const float dt = m_Timer.GetDeltaTime();
 
+#if SPIELER_USE_IMGUI
                     // Start the Dear ImGui frame
                     ImGui_ImplDX12_NewFrame();
                     ImGui_ImplWin32_NewFrame();
                     ImGui::NewFrame();
+#endif
 
                     CalcStats();
                     OnUpdate(dt);
+
+#if SPIELER_USE_IMGUI
                     OnImGuiRender(dt);
 
                     // Rendering
                     ImGui::Render();
+#endif
 
                     if (!OnRender(dt))
                     {
@@ -104,33 +173,9 @@ namespace Spieler
         return static_cast<int>(message.lParam);
     }
 
-    bool Application::InitDevice()
-    {
-#if defined(SPIELER_DEBUG)
-        ComPtr<ID3D12Debug> debugController;
-
-        SPIELER_CHECK_STATUS(D3D12GetDebugInterface(__uuidof(ID3D12Debug), &debugController));
-
-        debugController->EnableDebugLayer();
-#endif
-        SPIELER_CHECK_STATUS(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), &m_Device));
-
-        return true;
-    }
-
     bool Application::InitFence()
     {
-        SPIELER_CHECK_STATUS(m_Device->CreateFence(m_FenceValue, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), &m_Fence));
-
-        return true;
-    }
-
-    bool Application::InitDescriptorSizes()
-    {
-        m_RTVDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        m_DSVDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-        m_CBVDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        m_SRVDescriptorSize = m_CBVDescriptorSize;
+        SPIELER_CHECK_STATUS(m_Renderer.m_Device->CreateFence(m_FenceValue, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), &m_Fence));
 
         return true;
     }
@@ -143,110 +188,10 @@ namespace Spieler
         qualityLevels.Flags             = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
         qualityLevels.NumQualityLevels  = 0;
 
-        SPIELER_CHECK_STATUS(m_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &qualityLevels, sizeof(qualityLevels)));
+        SPIELER_CHECK_STATUS(m_Renderer.m_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &qualityLevels, sizeof(qualityLevels)));
 
         m_4xMSAAQuality = qualityLevels.NumQualityLevels;
         SPIELER_ASSERT(m_4xMSAAQuality > 0);
-
-        return true;
-    }
-
-    bool Application::InitCommandQueue()
-    {
-        D3D12_COMMAND_QUEUE_DESC desc{};
-        desc.Type       = D3D12_COMMAND_LIST_TYPE_DIRECT;
-        desc.Priority   = 0;
-        desc.Flags      = D3D12_COMMAND_QUEUE_FLAG_NONE;
-        desc.NodeMask   = 0;
-
-        SPIELER_CHECK_STATUS(m_Device->CreateCommandQueue(&desc, __uuidof(ID3D12CommandQueue), &m_CommandQueue));
-
-        return true;
-    }
-
-    bool Application::InitCommandAllocator()
-    {
-        SPIELER_CHECK_STATUS(m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), &m_CommandAllocator));
-
-        return true;
-    }
-
-    bool Application::InitCommandList()
-    {
-        SPIELER_CHECK_STATUS(m_Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_CommandAllocator.Get(), nullptr, __uuidof(ID3D12CommandList), &m_CommandList));
-
-        m_CommandList->Close();
-
-        return true;
-    }
-
-    bool Application::InitDXGIFactory()
-    {
-        SPIELER_CHECK_STATUS(CreateDXGIFactory(__uuidof(IDXGIFactory), &m_DXGIFactory));
-
-        return true;
-    }
-
-    bool Application::InitSwapChain()
-    {
-        DXGI_SWAP_CHAIN_DESC desc{};
-        desc.BufferDesc.Width                   = m_Window.GetWidth();
-        desc.BufferDesc.Height                  = m_Window.GetHeight();
-        desc.BufferDesc.RefreshRate.Numerator   = 60;
-        desc.BufferDesc.RefreshRate.Denominator = 1;
-        desc.BufferDesc.Format                  = m_BackBufferFormat;
-        desc.BufferDesc.ScanlineOrdering        = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-        desc.BufferDesc.Scaling                 = DXGI_MODE_SCALING_UNSPECIFIED;
-        desc.SampleDesc.Count                   = m_Use4xMSAA ? 4 : 1;
-        desc.SampleDesc.Quality                 = m_Use4xMSAA ? (m_4xMSAAQuality - 1) : 0;
-        desc.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        desc.BufferCount                        = m_SwapChainBufferCount;
-        desc.OutputWindow                       = m_Window.GetHandle();
-        desc.Windowed                           = true;
-        desc.SwapEffect                         = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-        desc.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-
-        SPIELER_CHECK_STATUS(m_DXGIFactory->CreateSwapChain(m_CommandQueue.Get(), &desc, &m_SwapChain));
-        SPIELER_CHECK_STATUS(m_SwapChain->QueryInterface(__uuidof(IDXGISwapChain3), &m_SwapChain3));
-
-        return true;
-    }
-
-    bool Application::InitRTVDescriptorHeap()
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC desc{};
-        desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        desc.NumDescriptors = m_SwapChainBufferCount;
-        desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        desc.NodeMask       = 0;
-
-        SPIELER_CHECK_STATUS(m_Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), &m_RTVDescriptorHeap));
-
-        return true;
-    }
-
-    bool Application::InitDSVDescriptorHeap()
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC desc{};
-        desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-        desc.NumDescriptors = 1;
-        desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        desc.NodeMask       = 0;
-
-        SPIELER_CHECK_STATUS(m_Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), &m_DSVDescriptorHeap));
-
-        return true;
-    }
-
-    bool Application::InitSRVDescriptorHeap()
-    {
-        D3D12_DESCRIPTOR_HEAP_DESC desc{};
-        desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        desc.NumDescriptors = 1;
-        desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        desc.NodeMask       = 0;
-
-        SPIELER_CHECK_STATUS(m_Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), &m_SRVDescriptorHeap));
 
         return true;
     }
@@ -255,16 +200,14 @@ namespace Spieler
     {
         m_SwapChainBuffers.resize(m_SwapChainBufferCount);
 
-        auto heapHandle = m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-
         for (std::size_t bufferIndex = 0; bufferIndex < m_SwapChainBuffers.size(); ++bufferIndex)
         {
-            SPIELER_CHECK_STATUS(m_SwapChain->GetBuffer(static_cast<UINT>(bufferIndex), __uuidof(ID3D12Resource), &m_SwapChainBuffers[bufferIndex]));
+            SPIELER_CHECK_STATUS(m_Renderer.m_SwapChain->GetBuffer(static_cast<UINT>(bufferIndex), __uuidof(ID3D12Resource), &m_SwapChainBuffers[bufferIndex]));
 
-            m_Device->CreateRenderTargetView(
+            m_Renderer.m_Device->CreateRenderTargetView(
                 m_SwapChainBuffers[bufferIndex].Get(), 
-                nullptr, 
-                D3D12_CPU_DESCRIPTOR_HANDLE{ m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + bufferIndex * m_RTVDescriptorSize }
+                nullptr,
+                m_Renderer.m_RTVDescriptorHeap.GetCPUHandle(static_cast<std::uint32_t>(bufferIndex))
             );
         }
 
@@ -298,7 +241,7 @@ namespace Spieler
         heapProps.CreationNodeMask      = 1;
         heapProps.VisibleNodeMask       = 1;
 
-        SPIELER_CHECK_STATUS(m_Device->CreateCommittedResource(
+        SPIELER_CHECK_STATUS(m_Renderer.m_Device->CreateCommittedResource(
             &heapProps,
             D3D12_HEAP_FLAG_NONE,
             &desc,
@@ -308,17 +251,17 @@ namespace Spieler
             &m_DepthStencilBuffer
         ));
 
-        m_Device->CreateDepthStencilView(m_DepthStencilBuffer.Get(), nullptr, m_DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+        m_Renderer.m_Device->CreateDepthStencilView(m_DepthStencilBuffer.Get(), nullptr, m_Renderer.m_DSVDescriptorHeap.GetCPUHandle(0));
         
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags                   = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.Transition.pResource    = m_DepthStencilBuffer.Get();
-        barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_DEPTH_WRITE;
-        barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_COMMON;
+        barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_COMMON;
+        barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_DEPTH_WRITE;
         barrier.Transition.Subresource  = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-        m_CommandList->ResourceBarrier(1, &barrier);
+        m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
 
         return true;
     }
@@ -339,8 +282,8 @@ namespace Spieler
     {
         m_ScissorRect.left      = 0;
         m_ScissorRect.top       = 0;
-        m_ScissorRect.right     = m_Window.GetWidth() / 2;
-        m_ScissorRect.bottom    = m_Window.GetHeight() / 2;
+        m_ScissorRect.right     = m_Window.GetWidth();
+        m_ScissorRect.bottom    = m_Window.GetHeight();
 
         return true;
     }
@@ -361,37 +304,143 @@ namespace Spieler
         // Setup Platform/Renderer backends
         ImGui_ImplWin32_Init(m_Window.GetHandle());
         ImGui_ImplDX12_Init(
-            m_Device.Get(),
+            m_Renderer.m_Device.Get(),
             1,
             m_BackBufferFormat, 
-            m_SRVDescriptorHeap.Get(),
-            m_SRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-            m_SRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
+            m_Renderer.m_MixtureDescriptorHeap.GetRaw(),
+            m_Renderer.m_MixtureDescriptorHeap.GetCPUHandle(0),
+            m_Renderer.m_MixtureDescriptorHeap.GetGPUHandle(0)
         );
 
         return true;
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE Application::GetCurrentBackBufferRTV(std::uint32_t currentBackBuffer)
+    bool Application::InitPipelineState()
     {
-        return { m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + currentBackBuffer * m_RTVDescriptorSize };
-    }
+        // Vertex shader
+        SPIELER_CHECK_STATUS(m_VertexShader.LoadFromFile(L"assets/shaders/basic_vertex.fx", "VS_Main"));
 
-    D3D12_CPU_DESCRIPTOR_HANDLE Application::GetDepthStencilView()
-    {
-        return m_DSVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-    }
+        D3D12_SHADER_BYTECODE vsDesc{};
+        vsDesc.pShaderBytecode  = m_VertexShader.GetData();
+        vsDesc.BytecodeLength   = m_VertexShader.GetSize();
 
-    bool Application::InitDescriptorHeaps()
-    {
-        return InitRTVDescriptorHeap() && InitDSVDescriptorHeap() && InitSRVDescriptorHeap();
+        // Pixel shader
+        SPIELER_CHECK_STATUS(m_PixelShader.LoadFromFile(L"assets/shaders/basic_vertex.fx", "PS_Main"));
+
+        D3D12_SHADER_BYTECODE psDesc{};
+        psDesc.pShaderBytecode  = m_PixelShader.GetData();
+        psDesc.BytecodeLength   = m_PixelShader.GetSize();
+
+        // Stream output
+        D3D12_STREAM_OUTPUT_DESC streamOutputDesc{};
+        streamOutputDesc.pSODeclaration     = nullptr;
+        streamOutputDesc.NumEntries         = 0;
+        streamOutputDesc.pBufferStrides     = nullptr;
+        streamOutputDesc.NumStrides         = 0;
+        streamOutputDesc.RasterizedStream   = 0;
+
+        // Blend state
+        D3D12_BLEND_DESC blendDesc{};
+        blendDesc.AlphaToCoverageEnable                 = false;
+        blendDesc.IndependentBlendEnable                = false;
+        blendDesc.RenderTarget[0].BlendEnable           = false;
+        blendDesc.RenderTarget[0].LogicOpEnable         = false;
+        blendDesc.RenderTarget[0].SrcBlend              = D3D12_BLEND_ONE;
+        blendDesc.RenderTarget[0].DestBlend             = D3D12_BLEND_ZERO;
+        blendDesc.RenderTarget[0].BlendOp               = D3D12_BLEND_OP_ADD;
+        blendDesc.RenderTarget[0].SrcBlendAlpha         = D3D12_BLEND_ONE;
+        blendDesc.RenderTarget[0].DestBlendAlpha        = D3D12_BLEND_ZERO;
+        blendDesc.RenderTarget[0].BlendOpAlpha          = D3D12_BLEND_OP_ADD;
+        blendDesc.RenderTarget[0].LogicOp               = D3D12_LOGIC_OP_NOOP;
+        blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+        // Rasterizer state
+        D3D12_RASTERIZER_DESC rasterizerDesc{};
+        rasterizerDesc.FillMode               = D3D12_FILL_MODE_SOLID;
+        rasterizerDesc.CullMode               = D3D12_CULL_MODE_BACK;
+        rasterizerDesc.FrontCounterClockwise  = false;
+        rasterizerDesc.DepthBias              = D3D12_DEFAULT_DEPTH_BIAS;
+        rasterizerDesc.DepthBiasClamp         = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+        rasterizerDesc.SlopeScaledDepthBias   = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+        rasterizerDesc.DepthClipEnable        = true;
+        rasterizerDesc.MultisampleEnable      = false;
+        rasterizerDesc.AntialiasedLineEnable  = false;
+        rasterizerDesc.ForcedSampleCount      = 0;
+        rasterizerDesc.ConservativeRaster     = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+        // Depth stencil state
+        D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+        depthStencilDesc.DepthEnable        = true;
+        depthStencilDesc.DepthWriteMask     = D3D12_DEPTH_WRITE_MASK_ALL;
+        depthStencilDesc.DepthFunc          = D3D12_COMPARISON_FUNC_LESS;
+        depthStencilDesc.StencilEnable      = false;
+        depthStencilDesc.StencilReadMask    = D3D12_DEFAULT_STENCIL_READ_MASK;
+        depthStencilDesc.StencilWriteMask   = D3D12_DEFAULT_STENCIL_WRITE_MASK;
+        depthStencilDesc.FrontFace          = { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
+        depthStencilDesc.BackFace           = { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
+
+        // Input layout
+        std::vector<InputLayoutElement> inputLayoutData =
+        {
+            { "Position",   DXGI_FORMAT_R32G32B32_FLOAT,    sizeof(float) * 3 },
+            { "Normal",     DXGI_FORMAT_R32G32B32_FLOAT,    sizeof(float) * 3 },
+            { "Tangent",    DXGI_FORMAT_R32G32B32_FLOAT,    sizeof(float) * 3 },
+            { "TexCoord",   DXGI_FORMAT_R32G32_FLOAT,       sizeof(float) * 2 }
+        };
+
+        InputLayout inputLayout;
+        inputLayout.Init(m_Renderer, inputLayoutData.data(), inputLayoutData.size());
+
+        D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
+        inputLayoutDesc.pInputElementDescs  = inputLayout.GetData();
+        inputLayoutDesc.NumElements         = inputLayout.GetCount();
+
+        // Cached PSO
+        D3D12_CACHED_PIPELINE_STATE cachedPipelineState{};
+        cachedPipelineState.pCachedBlob             = nullptr;
+        cachedPipelineState.CachedBlobSizeInBytes   = 0;
+
+        // Flags
+#if defined(SPIELER_DEBUG)
+        const D3D12_PIPELINE_STATE_FLAGS flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+#else
+        const D3D12_PIPELINE_STATE_FLAGS flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+#endif
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{};
+        desc.pRootSignature         = m_RootSignature.GetRaw();
+        desc.VS                     = vsDesc;
+        desc.PS                     = psDesc;
+        desc.DS                     = {};
+        desc.HS                     = {};
+        desc.GS                     = {};
+        desc.StreamOutput           = streamOutputDesc;
+        desc.BlendState             = blendDesc;
+        desc.SampleMask             = 0xffffffff;
+        desc.RasterizerState        = rasterizerDesc;
+        desc.DepthStencilState      = depthStencilDesc;
+        desc.InputLayout            = inputLayoutDesc;
+        desc.IBStripCutValue        = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+        desc.PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        desc.NumRenderTargets       = 1;
+        desc.RTVFormats[0]          = DXGI_FORMAT_R8G8B8A8_UNORM;
+        desc.DSVFormat              = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        desc.SampleDesc.Count       = 1; // Use 4xMSAA
+        desc.SampleDesc.Quality     = 0; // Use 4xMSAA
+        desc.NodeMask               = 0;
+        desc.CachedPSO              = cachedPipelineState;
+        desc.Flags                  = flags;
+
+        SPIELER_CHECK_STATUS(m_Renderer.m_Device->CreateGraphicsPipelineState(&desc, __uuidof(ID3D12PipelineState), &m_PipelineState));
+
+        return true;
     }
 
     void Application::FlushCommandQueue()
     {
         m_FenceValue++;
 
-        m_CommandQueue->Signal(m_Fence.Get(), m_FenceValue);
+        m_Renderer.m_CommandQueue->Signal(m_Fence.Get(), m_FenceValue);
 
         if (m_Fence->GetCompletedValue() < m_FenceValue)
         {
@@ -406,15 +455,54 @@ namespace Spieler
 
     void Application::OnUpdate(float dt)
     {
+        static float angle = 0.0f;
 
+        angle += 0.0001f;
+
+        if (angle >= 360.0f)
+        {
+            angle = 0.0f;
+        }
+
+        // Projection matrix
+        DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveFovLH(
+            0.25f * static_cast<float>(std::numbers::pi),
+            m_Window.GetAspectRatio(),
+            0.1f,
+            1000.0f
+        );
+
+        // View matrix
+        DirectX::XMVECTOR position = DirectX::XMVectorSet(0.0f, 0.0f, 0.1f, 1.0f);
+        DirectX::XMVECTOR target = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+        DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(position, target, up);
+        //XMStoreFloat4x4(&mView, view);
+
+        DirectX::XMMATRIX world = DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) *
+            DirectX::XMMatrixRotationX(angle) *
+            DirectX::XMMatrixRotationY(angle) *
+            DirectX::XMMatrixRotationZ(angle) *
+            DirectX::XMMatrixTranslation(0.0f, 0.0f, -100.0f);
+
+        DirectX::XMMATRIX worldViewProjection = world * view * projection;
+
+        PerObject perObject;
+        perObject.WorldViewProjectionMatrix = DirectX::XMMatrixTranspose(worldViewProjection);
+
+        m_ConstantBuffer.Update(perObject);
     }
 
     bool Application::OnRender(float dt)
     {
-        SPIELER_CHECK_STATUS(m_CommandAllocator->Reset());
-        SPIELER_CHECK_STATUS(m_CommandList->Reset(m_CommandAllocator.Get(), nullptr));
+        SPIELER_CHECK_STATUS(m_Renderer.m_CommandAllocator->Reset());
+        SPIELER_CHECK_STATUS(m_Renderer.m_CommandList->Reset(m_Renderer.m_CommandAllocator.Get(), m_PipelineState.Get()));
 
-        const std::uint32_t currentBackBuffer = m_SwapChain3->GetCurrentBackBufferIndex();
+        m_Renderer.m_CommandList->RSSetViewports(1, &m_ScreenViewport);
+        m_Renderer.m_CommandList->RSSetScissorRects(1, &m_ScissorRect);
+
+        const std::uint32_t currentBackBuffer = m_Renderer.m_SwapChain3->GetCurrentBackBufferIndex();
 
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -424,22 +512,45 @@ namespace Spieler
         barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_PRESENT;
         barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-        m_CommandList->ResourceBarrier(1, &barrier);
+        m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
 
-        m_CommandList->RSSetViewports(1, &m_ScreenViewport);
-        m_CommandList->RSSetScissorRects(1, &m_ScissorRect);
+        m_Renderer.m_CommandList->ClearRenderTargetView(
+            m_Renderer.m_RTVDescriptorHeap.GetCPUHandle(currentBackBuffer), 
+            reinterpret_cast<float*>(&m_ClearColor), 
+            0, 
+            nullptr
+        );
 
-        m_CommandList->ClearRenderTargetView(GetCurrentBackBufferRTV(currentBackBuffer), reinterpret_cast<float*>(&m_ClearColor), 0, nullptr);
+        m_Renderer.m_CommandList->ClearDepthStencilView(
+            m_Renderer.m_DSVDescriptorHeap.GetCPUHandle(0), 
+            D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 
+            1.0f, 
+            0, 
+            0, 
+            nullptr
+        );
 
-        m_CommandList->ClearDepthStencilView(GetDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+        auto a = m_Renderer.m_RTVDescriptorHeap.GetCPUHandle(currentBackBuffer);
+        auto b = m_Renderer.m_DSVDescriptorHeap.GetCPUHandle(0);
 
-        auto a = GetCurrentBackBufferRTV(currentBackBuffer);
-        auto b = GetDepthStencilView();
+        m_Renderer.m_CommandList->OMSetRenderTargets(
+            1, 
+            &a, 
+            true, 
+            &b
+        );
 
-        m_CommandList->OMSetRenderTargets(1, &a, true, &b);
+        m_Renderer.m_MixtureDescriptorHeap.Bind();
 
-        m_CommandList->SetDescriptorHeaps(1, m_SRVDescriptorHeap.GetAddressOf());
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_CommandList.Get());
+        m_Renderer.m_CommandList->SetGraphicsRootSignature(m_RootSignature.GetRaw());
+
+        m_VertexBuffer.Bind();
+        m_IndexBuffer.Bind();
+        m_Renderer.m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        m_Renderer.m_CommandList->SetGraphicsRootDescriptorTable(0, m_Renderer.m_MixtureDescriptorHeap.GetGPUHandle(0));
+
+        m_Renderer.m_CommandList->DrawIndexedInstanced(m_IndexCount, 1, 0, 0, 0);
 
         barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags                   = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -448,13 +559,17 @@ namespace Spieler
         barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_PRESENT;
 
-        m_CommandList->ResourceBarrier(1, &barrier);
+        m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
 
-        SPIELER_CHECK_STATUS(m_CommandList->Close());
+        SPIELER_CHECK_STATUS(m_Renderer.m_CommandList->Close());
 
-        m_CommandQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList* const*>(m_CommandList.GetAddressOf()));
+        m_Renderer.m_CommandQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList* const*>(m_Renderer.m_CommandList.GetAddressOf()));
 
-        SPIELER_CHECK_STATUS(m_SwapChain->Present(0, 0));
+#if SPIELER_USE_IMGUI
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_Renderer.m_CommandList.Get());
+#endif
+
+        SPIELER_CHECK_STATUS(m_Renderer.m_SwapChain->Present(0, 0));
 
         FlushCommandQueue();
 
@@ -604,9 +719,11 @@ namespace Spieler
     {
         m_IsRunning = false;
 
+#if SPIELER_USE_IMGUI
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
+#endif
     }
 
     void Application::Resize()

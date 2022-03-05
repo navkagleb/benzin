@@ -50,10 +50,12 @@ namespace Spieler
                 window = reinterpret_cast<Window*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
             }
 
+#if SPIELER_USE_IMGUI
             if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
             {
                 return true;
             }
+#endif
 
             if (window && window->m_EventCallback)
             {

@@ -4,6 +4,7 @@
 #include <string>
 #include <functional>
 
+#define NOMINMAX
 #include <Windows.h>
 
 #include "event.h"
@@ -43,12 +44,12 @@ namespace Spieler
         static WindowRegisterClass& GetWindowRegisterClass();
 
     public:
-        inline HWND GetHandle() const { return m_Handle; }
-        inline const std::string& GetTitle() const { return m_Title; }
-        inline std::uint32_t GetWidth() const { return m_Width; }
-        inline std::uint32_t GetHeight() const { return m_Height; }
+        HWND GetHandle() const { return m_Handle; }
+        const std::string& GetTitle() const { return m_Title; }
+        std::uint32_t GetWidth() const { return m_Width; }
+        std::uint32_t GetHeight() const { return m_Height; }
 
-        inline float GetAspectRatio() const { return static_cast<float>(m_Height) / m_Width; }
+        float GetAspectRatio() const { return static_cast<float>(m_Width) / m_Height; }
 
     public:
         void SetTitle(const std::string& title);

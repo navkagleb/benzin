@@ -20,6 +20,8 @@ namespace Spieler
     #define SPIELER_ASSERT(expession)
 #endif
 
+#define SPIELER_USE_IMGUI 0
+
 #define NON_COPYABLE_IMPL(ClassName)                            \
 private:                                                        \
     ClassName(const ClassName& other) = delete;                 \
