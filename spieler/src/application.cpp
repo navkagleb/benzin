@@ -29,7 +29,7 @@ namespace Spieler
         m_Renderer.ResetCommandList();
 
         SPIELER_RETURN_IF_FAILED(m_CBVDescriptorHeap.Init(DescriptorHeapType_CBV, 2));
-
+        SPIELER_RETURN_IF_FAILED(m_ImGuiDescriptorHeap.Init(DescriptorHeapType_CBV, 1));
         SPIELER_RETURN_IF_FAILED(InitMSAAQualitySupport());
 
         InitViewport();
@@ -176,16 +176,14 @@ namespace Spieler
 
         // Setup Platform/Renderer backends
         ImGui_ImplWin32_Init(m_Window.GetHandle());
-#if 0
         ImGui_ImplDX12_Init(
             m_Renderer.m_Device.Get(),
             1,
-            m_Renderer.GetBackBufferFormat(), 
-            m_Renderer.m_MixtureDescriptorHeap.GetRaw(),
-            m_Renderer.m_MixtureDescriptorHeap.GetCPUHandle(0),
-            m_Renderer.m_MixtureDescriptorHeap.GetGPUHandle(0)
+            m_Renderer.GetSwapChainProps().BufferFormat, 
+            reinterpret_cast<ID3D12DescriptorHeap*>(&m_CBVDescriptorHeap),
+            m_ImGuiDescriptorHeap.GetCPUHandle(0),
+            m_ImGuiDescriptorHeap.GetGPUHandle(0)
         );
-#endif
 
         return true;
     }
@@ -366,64 +364,101 @@ namespace Spieler
     bool Application::OnRender(float dt)
     {
         SPIELER_RETURN_IF_FAILED(m_Renderer.m_CommandAllocator->Reset());
-        SPIELER_RETURN_IF_FAILED(m_Renderer.m_CommandList->Reset(m_Renderer.m_CommandAllocator.Get(), m_PipelineState.Get()));
+        SPIELER_RETURN_IF_FAILED(m_Renderer.ResetCommandList(m_PipelineState.Get()));
+        {
+            m_Renderer.SetViewport(m_Viewport);
+            m_Renderer.SetScissorRect(m_ScissorRect);
 
-        m_Renderer.SetViewport(m_Viewport);
-        m_Renderer.SetScissorRect(m_ScissorRect);
+            const std::uint32_t currentBackBuffer = m_Renderer.m_SwapChain3->GetCurrentBackBufferIndex();
 
-        const std::uint32_t currentBackBuffer = m_Renderer.m_SwapChain3->GetCurrentBackBufferIndex();
+            D3D12_RESOURCE_BARRIER barrier{};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-        D3D12_RESOURCE_BARRIER barrier{};
-        barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Flags                   = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.pResource    = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
-        barrier.Transition.Subresource  = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_PRESENT;
-        barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
 
-        m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
+            m_Renderer.ClearRenderTarget(m_ClearColor);
+            m_Renderer.ClearDepthStencil(1.0f, 0);
 
-        m_Renderer.ClearRenderTarget(m_ClearColor);
-        m_Renderer.ClearDepthStencil(1.0f, 0);
+            auto a = m_Renderer.m_SwapChainBufferRTVDescriptorHeap.GetCPUHandle(currentBackBuffer);
+            auto b = m_Renderer.m_DSVDescriptorHeap.GetCPUHandle(0);
 
-        auto a = m_Renderer.m_SwapChainBufferRTVDescriptorHeap.GetCPUHandle(currentBackBuffer);
-        auto b = m_Renderer.m_DSVDescriptorHeap.GetCPUHandle(0);
+            m_Renderer.m_CommandList->OMSetRenderTargets(
+                1,
+                &a,
+                true,
+                &b
+            );
 
-        m_Renderer.m_CommandList->OMSetRenderTargets(
-            1, 
-            &a, 
-            true, 
-            &b
-        );
+            m_CBVDescriptorHeap.Bind();
 
-        m_CBVDescriptorHeap.Bind();
+            m_Renderer.m_CommandList->SetGraphicsRootSignature(m_RootSignature.GetRaw());
+            m_Renderer.m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            m_Renderer.m_CommandList->SetGraphicsRootDescriptorTable(0, m_CBVDescriptorHeap.GetGPUHandle(0));
 
-        m_Renderer.m_CommandList->SetGraphicsRootSignature(m_RootSignature.GetRaw());
+            m_Renderer.DrawIndexed(m_VertexBuffer, m_IndexBuffer);
 
-        m_Renderer.m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 
-        m_Renderer.m_CommandList->SetGraphicsRootDescriptorTable(0, m_CBVDescriptorHeap.GetGPUHandle(0));
+            m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
 
-        m_Renderer.DrawIndexed(m_VertexBuffer, m_IndexBuffer);
-
-        barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Flags                   = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.pResource    = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
-        barrier.Transition.Subresource  = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_PRESENT;
-
-        m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
-
-        m_Renderer.ExexuteCommandList(false);
+            SPIELER_RETURN_IF_FAILED(m_Renderer.ExexuteCommandList(false));
+        }
 
 #if SPIELER_USE_IMGUI
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_Renderer.m_CommandList.Get());
+        SPIELER_RETURN_IF_FAILED(m_Renderer.ResetCommandList());
+        {
+            m_Renderer.SetViewport(m_Viewport);
+            m_Renderer.SetScissorRect(m_ScissorRect);
+
+            const std::uint32_t currentBackBuffer = m_Renderer.m_SwapChain3->GetCurrentBackBufferIndex();
+
+            D3D12_RESOURCE_BARRIER barrier{};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+            m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
+
+            auto a = m_Renderer.m_SwapChainBufferRTVDescriptorHeap.GetCPUHandle(currentBackBuffer);
+            auto b = m_Renderer.m_DSVDescriptorHeap.GetCPUHandle(0);
+
+            m_Renderer.m_CommandList->OMSetRenderTargets(
+                1,
+                &a,
+                true,
+                &b
+            );
+
+            m_ImGuiDescriptorHeap.Bind();
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_Renderer.m_CommandList.Get());
+
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+
+            m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
+        }
+        SPIELER_RETURN_IF_FAILED(m_Renderer.ExexuteCommandList(false));
 #endif
 
-        SPIELER_RETURN_IF_FAILED(m_Renderer.SwapBuffers(VSyncState_Enable));
-
-        m_Renderer.FlushCommandQueue();
+        SPIELER_RETURN_IF_FAILED(m_Renderer.SwapBuffers(m_VSyncState));
+        SPIELER_RETURN_IF_FAILED(m_Renderer.FlushCommandQueue());
 
         return true;
     }
@@ -439,11 +474,9 @@ namespace Spieler
             ImGui::Begin("Settings");
 
             ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&m_ClearColor));
-            ImGui::Text("Running: %s", m_IsRunning ? "true" : "false");
-            ImGui::Text("Paused: %i", m_IsPaused);
-            ImGui::Text("Resizing: %i", m_IsResizing);
-            ImGui::Text("Minimized: %i", m_IsMinimized);
-            ImGui::Text("Maximized: %i", m_IsMaximized);
+            ImGui::Separator();
+            ImGui::Text("FPS: %.1f, ms: %.3f", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+            ImGui::Checkbox("VSync", reinterpret_cast<bool*>(&m_VSyncState));
 
             ImGui::End();
         }
@@ -593,14 +626,17 @@ namespace Spieler
 
     void Application::CalcStats()
     {
+        static const float limit        = 1.0f;
+        static const float coefficient  = 1.0f / limit;
+
         static std::uint32_t    fps         = 0;
         static float            timeElapsed = 0.0f;
 
         fps++;
 
-        if (float delta = m_Timer.GetTotalTime() - timeElapsed; delta >= 1.0f)
+        if (float delta = m_Timer.GetTotalTime() - timeElapsed; delta >= limit)
         {
-            m_Window.SetTitle("FPS: " + std::to_string(fps) + " ms: " + std::to_string(1000.0f / fps));
+            m_Window.SetTitle("FPS: " + std::to_string(fps * coefficient) + " ms: " + std::to_string(1000.0f / coefficient / fps));
 
             fps          = 0;
             timeElapsed += delta;

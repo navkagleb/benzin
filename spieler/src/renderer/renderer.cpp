@@ -166,9 +166,9 @@ namespace Spieler
         return true;
     }
 
-    bool Renderer::ResetCommandList()
+    bool Renderer::ResetCommandList(ID3D12PipelineState* pso)
     {
-        SPIELER_RETURN_IF_FAILED(m_CommandList->Reset(m_CommandAllocator.Get(), nullptr));
+        SPIELER_RETURN_IF_FAILED(m_CommandList->Reset(m_CommandAllocator.Get(), pso));
 
         return true;
     }
@@ -183,6 +183,8 @@ namespace Spieler
         {
             FlushCommandQueue();
         }
+
+        return true;
     }
 
     bool Renderer::FlushCommandQueue()

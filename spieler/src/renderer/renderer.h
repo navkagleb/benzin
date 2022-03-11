@@ -77,7 +77,7 @@ namespace Spieler
 
         bool ResizeBuffers(std::uint32_t width, std::uint32_t height);
 
-        bool ResetCommandList();
+        bool ResetCommandList(ID3D12PipelineState* pso = nullptr);
         bool ExexuteCommandList(bool isNeedToFlushCommandQueue = true);
         bool FlushCommandQueue();
 

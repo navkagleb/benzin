@@ -87,6 +87,7 @@ namespace Spieler
         Renderer                            m_Renderer;
 
         DescriptorHeap                      m_CBVDescriptorHeap;
+        DescriptorHeap                      m_ImGuiDescriptorHeap;
 
         VertexBuffer                        m_VertexBuffer;
         IndexBuffer                         m_IndexBuffer;
@@ -111,11 +112,13 @@ namespace Spieler
         bool                                m_IsMaximized           = false;
         bool                                m_IsFullscreen          = false;
 
-        DirectX::XMFLOAT4                   m_ClearColor            = { 0.1f, 0.0f, 0.3f, 1.0f };
+        DirectX::XMFLOAT4                   m_ClearColor            = { 0.1f, 0.1f, 0.15f, 1.0f };
 
         bool                                m_IsShowDemoWindow      = false;
 
         std::uint32_t                       m_IndexCount           = 0;
+
+        VSyncState                          m_VSyncState            = VSyncState_Enable;
 
         // View
         DirectX::XMVECTOR                   m_CameraPosition{};
