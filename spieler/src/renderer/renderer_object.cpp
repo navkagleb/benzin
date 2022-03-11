@@ -15,9 +15,4 @@ namespace Spieler
         return Application::GetInstance().GetRenderer().m_CommandList;
     }
 
-    DescriptorHeap& RendererObject::GetMixtureDescriptorHeap()
-    {
-        return Application::GetInstance().GetRenderer().m_MixtureDescriptorHeap;
-    }
-
 } // namespace Spieler

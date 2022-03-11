@@ -2,13 +2,13 @@
 
 #include <d3d12.h>
 
-#include "bindable.h"
+#include "renderer_object.h"
 #include "descriptor_heap.h"
 
 namespace Spieler
 {
 
-    class RootSignature : public Bindable
+    class RootSignature : public RendererObject
     {
     public:
         ID3D12RootSignature* GetRaw()
@@ -42,7 +42,7 @@ namespace Spieler
             ComPtr<ID3DBlob> serializedRootSignature;
             ComPtr<ID3DBlob> error;
 
-            SPIELER_CHECK_STATUS(D3D12SerializeRootSignature(
+            SPIELER_RETURN_IF_FAILED(D3D12SerializeRootSignature(
                 &rootSignatureDesc, 
                 D3D_ROOT_SIGNATURE_VERSION_1, 
                 &serializedRootSignature, 
@@ -55,7 +55,7 @@ namespace Spieler
                 return false;
             }
 
-            SPIELER_CHECK_STATUS(GetDevice()->CreateRootSignature(
+            SPIELER_RETURN_IF_FAILED(GetDevice()->CreateRootSignature(
                 0,
                 serializedRootSignature->GetBufferPointer(),
                 serializedRootSignature->GetBufferSize(),
@@ -66,10 +66,10 @@ namespace Spieler
             return true;
         }
 
-        void Bind() override
+        void Bind(const D3D12_GPU_DESCRIPTOR_HANDLE& handle)
         {
             GetCommandList()->SetGraphicsRootSignature(m_RootSignature.Get());
-            GetCommandList()->SetGraphicsRootDescriptorTable(0, GetMixtureDescriptorHeap().GetGPUHandle(0));
+            GetCommandList()->SetGraphicsRootDescriptorTable(0, handle);
         }
 
     private:

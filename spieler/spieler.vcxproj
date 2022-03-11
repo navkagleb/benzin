@@ -19,6 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\renderer\descriptor_heap.cpp" />
+    <ClCompile Include="src\renderer\fence.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\application.cpp" />
     <ClCompile Include="src\entry_point.cpp" />
@@ -38,9 +40,11 @@
     <ClCompile Include="third_party\imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\renderer\constant_buffer.h" />
+    <ClInclude Include="src\renderer\fence.h" />
+    <ClInclude Include="src\renderer\resources\constant_buffer.h" />
     <ClInclude Include="src\renderer\descriptor_heap.h" />
     <ClInclude Include="src\renderer\geometry_generator.h" />
+    <ClInclude Include="src\renderer\mesh.h" />
     <ClInclude Include="src\renderer\resources\index_buffer.h" />
     <ClInclude Include="src\renderer\input_layout.h" />
     <ClInclude Include="src\renderer\pipeline_state.h" />
@@ -66,6 +70,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="src\renderer\geometry_generator.inl" />
+    <None Include="src\renderer\resources\constant_buffer.inl" />
     <None Include="src\renderer\resources\index_buffer.inl" />
     <None Include="src\renderer\resources\resource.inl" />
     <None Include="src\renderer\resources\vertex_buffer.inl" />

@@ -4,6 +4,8 @@ namespace Spieler
     template <IndexType T>
     bool IndexBuffer::Init(const T* indices, std::uint32_t count)
     {
+        m_IndexCount = count;
+
         D3D12_RESOURCE_DESC resourceDesc{};
         resourceDesc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
         resourceDesc.Alignment          = 0;

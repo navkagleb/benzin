@@ -91,7 +91,7 @@ public:                                                         \
         return true;
     }
 
-#define SPIELER_CHECK_STATUS(status)                                            \
+#define SPIELER_RETURN_IF_FAILED(status)                                        \
 {                                                                               \
     if (!CheckStatus(status, __FUNCTION__, __FILE__, __LINE__))                 \
     {                                                                           \

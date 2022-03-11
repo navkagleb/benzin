@@ -4,6 +4,8 @@ namespace Spieler
     template <typename Vertex>
     bool VertexBuffer::Init(const Vertex* vertices, const std::uint32_t count)
     {
+        m_VertexCount = count;
+
         D3D12_RESOURCE_DESC resourceDesc{};
         resourceDesc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
         resourceDesc.Alignment          = 0;

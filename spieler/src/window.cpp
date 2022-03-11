@@ -101,7 +101,6 @@ namespace Spieler
                             case SIZE_MINIMIZED:
                             {
                                 WindowMinimizedEvent event;
-
                                 window->m_EventCallback(event);
 
                                 break;
@@ -110,7 +109,6 @@ namespace Spieler
                             case SIZE_MAXIMIZED:
                             {
                                 WindowMaximizedEvent event;
-
                                 window->m_EventCallback(event);
 
                                 break;
@@ -119,7 +117,6 @@ namespace Spieler
                             case SIZE_RESTORED:
                             {
                                 WindowRestoredEvent event;
-
                                 window->m_EventCallback(event);
 
                                 break;
@@ -127,13 +124,12 @@ namespace Spieler
 
                             default:
                             {
+                                WindowResizingEvent event(window->m_Width, window->m_Height);
+                                window->m_EventCallback(event);
+
                                 break;
                             }
                         }
-
-                        WindowResizingEvent event(window->m_Width, window->m_Height);
-
-                        window->m_EventCallback(event);
 
                         return 0;
                     }
@@ -325,7 +321,7 @@ namespace Spieler
 
         RECT windowBounds = { 0, 0, static_cast<std::int32_t>(m_Width), static_cast<std::int32_t>(m_Height) };
 
-        SPIELER_CHECK_STATUS(::AdjustWindowRect(&windowBounds, m_Style, false));
+        SPIELER_RETURN_IF_FAILED(::AdjustWindowRect(&windowBounds, m_Style, false));
 
         m_Handle = ::CreateWindow(
             GetWindowRegisterClass().GetName().c_str(),
@@ -346,13 +342,13 @@ namespace Spieler
             return false;
         }
 
-        return true;
+        return Show();
     }
 
     bool Window::Show()
     {
         ::ShowWindow(m_Handle, SW_SHOWDEFAULT);
-        SPIELER_CHECK_STATUS(::UpdateWindow(m_Handle));
+        SPIELER_RETURN_IF_FAILED(::UpdateWindow(m_Handle));
 
         return true;
     }

@@ -30,6 +30,14 @@ namespace Spieler
         std::uint32_t   SubdivisionCount    = 0;
     };
 
+    struct GridGeometryProps
+    {
+        float           Width       = 0.0f;
+        float           Depth       = 0.0f;
+        std::uint32_t   RowCount    = 0;
+        std::uint32_t   ColumnCount = 0;
+    };
+
     struct CylinderGeometryProps
     {
         float           TopRadius       = 0.0f;
@@ -57,6 +65,9 @@ namespace Spieler
     public:
         template <typename Vertex = BasicVertex, typename Index = std::uint16_t>
         static MeshData<Vertex, Index> GenerateBox(const BoxGeometryProps& props);
+
+        template <typename Vertex = BasicVertex, typename Index = std::uint16_t>
+        static MeshData<Vertex, Index> GenerateGrid(const GridGeometryProps& props);
 
         template <typename Vertex = BasicVertex, typename Index = std::uint16_t>
         static MeshData<Vertex, Index> GenerateCylinder(const CylinderGeometryProps& props);

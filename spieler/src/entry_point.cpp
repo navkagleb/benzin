@@ -8,11 +8,10 @@ int __stdcall WinMain(
 {
     auto& application = Spieler::Application::GetInstance();
     
-    const auto status = application.Init("Spieler", 1280, 720);
+    const bool status = application.Init("Spieler", 1280, 720);
 
     if (!status)
     {
-        application.Shutdown();
         return -1;
     }
 

@@ -90,6 +90,67 @@ namespace Spieler
     }
 
     template <typename Vertex, typename Index>
+    MeshData<Vertex, Index> GeometryGenerator::GenerateGrid(const GridGeometryProps& props)
+    {
+        MeshData<Vertex, Index> meshData;
+
+        const std::uint32_t vertexCount = props.RowCount * props.ColumnCount;
+        const std::uint32_t faceCount   = (props.RowCount - 1) * (props.ColumnCount - 1) * 2;
+
+        // Vertices
+        const float halfWidth = 0.5f * props.Width;
+        const float halfDepth = 0.5f * props.Depth;
+
+        const float dx = props.Width / (props.RowCount - 1);
+        const float dz = props.Depth / (props.ColumnCount - 1);
+
+        const float du = 1.0f / (props.RowCount - 1);
+        const float dv = 1.0f / (props.ColumnCount - 1);
+
+        auto& vertices = meshData.Vertices;
+        vertices.resize(vertexCount);
+
+        for (std::uint32_t i = 0; i < props.RowCount; ++i)
+        {
+            const float z = halfDepth - i * dz;
+
+            for (std::uint32_t j = 0; j < props.ColumnCount; ++j)
+            {
+                const float x = -halfWidth + j * dx;
+
+                vertices[i * props.ColumnCount + j].Position    = DirectX::XMFLOAT3{ x,      0.0f,  z    };
+                vertices[i * props.ColumnCount + j].Normal      = DirectX::XMFLOAT3{ 0.0f,   1.0f,  0.0f };
+                vertices[i * props.ColumnCount + j].Tangent     = DirectX::XMFLOAT3{ 1.0f,   0.0f,  0.0f };
+                vertices[i * props.ColumnCount + j].TexCoord    = DirectX::XMFLOAT2{ j * du, i * dv };
+            }
+        }
+
+        // Indices
+        auto& indices = meshData.Indices;
+        indices.resize(faceCount * 3);
+
+        std::uint32_t baseIndex = 0;
+
+        for (std::uint32_t i = 0; i < props.RowCount - 1; ++i)
+        {
+            for (std::uint32_t j = 0; j < props.ColumnCount - 1; ++j)
+            {
+                indices[baseIndex + 0] = i * props.ColumnCount + j;
+                indices[baseIndex + 1] = i * props.ColumnCount + j + 1;
+                indices[baseIndex + 2] = (i + 1) * props.ColumnCount + j;
+
+                indices[baseIndex + 3] = (i + 1) * props.ColumnCount + j;
+                indices[baseIndex + 4] = i * props.ColumnCount + j + 1;
+                indices[baseIndex + 5] = (i + 1) * props.ColumnCount + j + 1;
+
+                baseIndex += 6;
+            }
+        }
+
+        return meshData;
+    }
+
+    template <typename Vertex, typename Index>
     MeshData<Vertex, Index> GeometryGenerator::GenerateCylinder(const CylinderGeometryProps& props)
     {
         MeshData<Vertex, Index> meshData;

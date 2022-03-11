@@ -3,7 +3,7 @@
 namespace Spieler
 {
 
-    void IndexBuffer::Bind()
+    void IndexBuffer::Bind() const
     {
         GetCommandList()->IASetIndexBuffer(&m_View);
     }

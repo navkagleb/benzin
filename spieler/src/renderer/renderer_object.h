@@ -15,8 +15,6 @@ namespace Spieler
     protected:
         static ComPtr<ID3D12Device>& GetDevice();
         static ComPtr<ID3D12GraphicsCommandList>& GetCommandList();
-
-        static DescriptorHeap& GetMixtureDescriptorHeap();
     };
 
 } // namespace Spieler

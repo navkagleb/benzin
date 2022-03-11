@@ -18,6 +18,8 @@
     <ClCompile Include="src\renderer\resources\vertex_buffer.cpp" />
     <ClCompile Include="src\renderer\resources\resource.cpp" />
     <ClCompile Include="src\renderer\resources\index_buffer.cpp" />
+    <ClCompile Include="src\renderer\descriptor_heap.cpp" />
+    <ClCompile Include="src\renderer\fence.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\application.h" />
@@ -35,7 +37,7 @@
     <ClInclude Include="src\renderer\renderer_object.h" />
     <ClInclude Include="src\renderer\resources\vertex_buffer.h" />
     <ClInclude Include="src\renderer\resources\index_buffer.h" />
-    <ClInclude Include="src\renderer\constant_buffer.h" />
+    <ClInclude Include="src\renderer\resources\constant_buffer.h" />
     <ClInclude Include="src\renderer\root_signature.h" />
     <ClInclude Include="src\renderer\shaders\shader.h" />
     <ClInclude Include="src\renderer\rasterizer_state.h" />
@@ -45,11 +47,14 @@
     <ClInclude Include="third_party\directx\d3dx12.h" />
     <ClInclude Include="src\renderer\resources\resource.h" />
     <ClInclude Include="src\renderer\geometry_generator.h" />
+    <ClInclude Include="src\renderer\mesh.h" />
+    <ClInclude Include="src\renderer\fence.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\renderer\resources\vertex_buffer.inl" />
     <None Include="src\renderer\resources\index_buffer.inl" />
     <None Include="src\renderer\resources\resource.inl" />
     <None Include="src\renderer\geometry_generator.inl" />
+    <None Include="src\renderer\resources\constant_buffer.inl" />
   </ItemGroup>
 </Project>

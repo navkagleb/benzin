@@ -9,7 +9,7 @@ namespace Spieler
 
     class Resource : public Bindable
     {
-    protected:
+    public:
         static ComPtr<ID3D12Resource> CreateUploadBuffer(const D3D12_RESOURCE_DESC& resourceDesc);
         static ComPtr<ID3D12Resource> CreateDefaultBuffer(const D3D12_RESOURCE_DESC& resourceDesc);
 

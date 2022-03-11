@@ -40,7 +40,7 @@ namespace Spieler
             desc.CachedPSO              = ;
             desc.Flags                  = ;
 
-            SPIELER_CHECK_STATUS(GetDevice(renderer)->CreateGraphicsPipelineState(&desc, __uuidof(ID3D12PipelineState), &m_PipelineState));
+            SPIELER_RETURN_IF_FAILED(GetDevice(renderer)->CreateGraphicsPipelineState(&desc, __uuidof(ID3D12PipelineState), &m_PipelineState));
 
             return true;
         }

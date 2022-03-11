@@ -8,7 +8,7 @@ namespace Spieler
     class Bindable : public RendererObject
     {
     public:
-        virtual void Bind() = 0;
+        virtual void Bind() const = 0;
     };
 
 } // namespace Spieler
