@@ -496,18 +496,18 @@ namespace Spieler
 
             Vertex vertex;
             vertex.Position = DirectX::XMFLOAT3{ x, y, z };
-            vertex.Normal = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
-            vertex.Tangent = DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f };
+            vertex.Normal   = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
+            vertex.Tangent  = DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f };
             vertex.TexCoord = DirectX::XMFLOAT2{ u, v };
 
             meshData.Vertices.push_back(vertex);
         }
 
         Vertex centerVertex;
-        centerVertex.Position = DirectX::XMFLOAT3{ 0.0f, y, 0.0f };
-        centerVertex.Normal = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
-        centerVertex.Tangent = DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f };
-        centerVertex.TexCoord = DirectX::XMFLOAT2{ 0.5f, 0.5f };
+        centerVertex.Position   = DirectX::XMFLOAT3{ 0.0f, y, 0.0f };
+        centerVertex.Normal     = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
+        centerVertex.Tangent    = DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f };
+        centerVertex.TexCoord   = DirectX::XMFLOAT2{ 0.5f, 0.5f };
 
         meshData.Vertices.push_back(centerVertex);
 
@@ -540,18 +540,20 @@ namespace Spieler
 
             Vertex vertex;
             vertex.Position = DirectX::XMFLOAT3{ x, y, z };
-            vertex.Normal = DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f };
-            vertex.Tangent = DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f };
+            vertex.Normal   = DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f };
+            vertex.Tangent  = DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f };
             vertex.TexCoord = DirectX::XMFLOAT2{ u, v };
 
             meshData.Vertices.push_back(vertex);
         }
 
         Vertex centerVertex;
-        centerVertex.Position = DirectX::XMFLOAT3{ 0.0f, y, 0.0f };
-        centerVertex.Normal = DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f };
-        centerVertex.Tangent = DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f };
-        centerVertex.TexCoord = DirectX::XMFLOAT2{ 0.5f, 0.5f };
+        centerVertex.Position   = DirectX::XMFLOAT3{ 0.0f, y, 0.0f };
+        centerVertex.Normal     = DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f };
+        centerVertex.Tangent    = DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f };
+        centerVertex.TexCoord   = DirectX::XMFLOAT2{ 0.5f, 0.5f };
+
+        meshData.Vertices.push_back(centerVertex);
 
         // Indices
         const std::uint32_t centerIndex = static_cast<std::uint32_t>(meshData.Vertices.size() - 1);

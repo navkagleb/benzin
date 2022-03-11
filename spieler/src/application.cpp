@@ -3,6 +3,8 @@
 #include <fstream>
 #include <numbers>
 
+#include <DirectXColors.h>
+
 #include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_dx12.h>
 #include <imgui/backends/imgui_impl_win32.h>
@@ -25,60 +27,23 @@ namespace Spieler
         m_Window.SetEventCallbackFunction([&](Event& event) { WindowEventCallback(event); });
 
         SPIELER_RETURN_IF_FAILED(m_Renderer.Init(m_Window));
-
-        m_Renderer.ResetCommandList();
-
         SPIELER_RETURN_IF_FAILED(m_CBVDescriptorHeap.Init(DescriptorHeapType_CBV, 2));
         SPIELER_RETURN_IF_FAILED(m_ImGuiDescriptorHeap.Init(DescriptorHeapType_CBV, 1));
-        SPIELER_RETURN_IF_FAILED(InitMSAAQualitySupport());
-
-        InitViewport();
-        InitScissorRect();
 
 #if SPIELER_USE_IMGUI
         SPIELER_RETURN_IF_FAILED(InitImGui());
 #endif
 
-        BoxGeometryProps boxProps;
-        boxProps.Width              = 30.0f;
-        boxProps.Height             = 20.0f;
-        boxProps.Depth              = 25.0f;
-        boxProps.SubdivisionCount   = 2;
+        m_Renderer.ResetCommandList();
 
-        GridGeometryProps gridProps;
-        gridProps.Width         = 100.0f;
-        gridProps.Depth         = 100.0f;
-        gridProps.RowCount      = 10;
-        gridProps.ColumnCount   = 10;
+        SPIELER_RETURN_IF_FAILED(InitMSAAQualitySupport());
 
-        CylinderGeometryProps cylinderProps;
-        cylinderProps.TopRadius     = 0;
-        cylinderProps.BottomRadius  = 20.0f;
-        cylinderProps.Height        = std::sqrt(200.0f) * 2;
-        cylinderProps.SliceCount    = 40;
-        cylinderProps.StackCount    = 1;
-
-        SphereGeometryProps sphereProps;
-        sphereProps.Radius      = 20.0f;
-        sphereProps.SliceCount  = 30;
-        sphereProps.StackCount  = 10;
-
-        GeosphereGeometryProps geosphereProps;
-        geosphereProps.Radius           = 20.0f;
-        geosphereProps.SubdivisionCount = 1;
-
-        const MeshData meshData = GeometryGenerator::GenerateGrid<BasicVertex, std::uint32_t>(gridProps);
-
-        SPIELER_RETURN_IF_FAILED(m_VertexBuffer.Init(meshData.Vertices.data(), meshData.Vertices.size()));
-
-        m_VertexBuffer.SetName(L"Cylinder Vertex Buffer");
-
-        SPIELER_RETURN_IF_FAILED(m_IndexBuffer.Init(meshData.Indices.data(), meshData.Indices.size()));
-
-        m_IndexCount = meshData.Indices.size();
+        InitViewport();
+        InitScissorRect();
 
         SPIELER_RETURN_IF_FAILED(m_ConstantBuffer.Init(m_CBVDescriptorHeap.GetCPUHandle(0)));
         SPIELER_RETURN_IF_FAILED(m_RootSignature.Init());
+        SPIELER_RETURN_IF_FAILED(InitMeshGeometry());
 
         InitViewMatrix();
         InitProjectionMatrix();
@@ -129,8 +94,6 @@ namespace Spieler
 
 #if SPIELER_USE_IMGUI
                     OnImGuiRender(dt);
-
-                    // Rendering
                     ImGui::Render();
 #endif
 
@@ -161,6 +124,7 @@ namespace Spieler
         return true;
     }
 
+#if SPIELER_USE_IMGUI
     bool Application::InitImGui()
     {
         // Setup Dear ImGui context
@@ -187,18 +151,19 @@ namespace Spieler
 
         return true;
     }
+#endif
 
     bool Application::InitPipelineState()
     {
         // Vertex shader
-        SPIELER_RETURN_IF_FAILED(m_VertexShader.LoadFromFile(L"assets/shaders/basic_vertex.fx", "VS_Main"));
+        SPIELER_RETURN_IF_FAILED(m_VertexShader.LoadFromFile(L"assets/shaders/basic_vertex_color.fx", "VS_Main"));
 
         D3D12_SHADER_BYTECODE vsDesc{};
         vsDesc.pShaderBytecode  = m_VertexShader.GetData();
         vsDesc.BytecodeLength   = m_VertexShader.GetSize();
 
         // Pixel shader
-        SPIELER_RETURN_IF_FAILED(m_PixelShader.LoadFromFile(L"assets/shaders/basic_vertex.fx", "PS_Main"));
+        SPIELER_RETURN_IF_FAILED(m_PixelShader.LoadFromFile(L"assets/shaders/basic_vertex_color.fx", "PS_Main"));
 
         D3D12_SHADER_BYTECODE psDesc{};
         psDesc.pShaderBytecode  = m_PixelShader.GetData();
@@ -253,12 +218,20 @@ namespace Spieler
         depthStencilDesc.BackFace           = { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
 
         // Input layout
+#if 0
         std::vector<InputLayoutElement> inputLayoutData =
         {
             { "Position",   DXGI_FORMAT_R32G32B32_FLOAT,    sizeof(float) * 3 },
             { "Normal",     DXGI_FORMAT_R32G32B32_FLOAT,    sizeof(float) * 3 },
             { "Tangent",    DXGI_FORMAT_R32G32B32_FLOAT,    sizeof(float) * 3 },
             { "TexCoord",   DXGI_FORMAT_R32G32_FLOAT,       sizeof(float) * 2 }
+        };
+#endif
+
+        std::vector<InputLayoutElement> inputLayoutData =
+        {
+            { "Position",   DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(DirectX::XMFLOAT4)    },
+            { "Color",      DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(DirectX::XMVECTORF32) }
         };
 
         InputLayout inputLayout;
@@ -340,6 +313,120 @@ namespace Spieler
         m_ScissorRect.Height    = m_Window.GetHeight();
     }
 
+    bool Application::InitMeshGeometry()
+    {
+        BoxGeometryProps boxProps;
+        boxProps.Width              = 30.0f;
+        boxProps.Height             = 20.0f;
+        boxProps.Depth              = 25.0f;
+        boxProps.SubdivisionCount   = 2;
+
+        GridGeometryProps gridProps;
+        gridProps.Width         = 100.0f;
+        gridProps.Depth         = 100.0f;
+        gridProps.RowCount      = 10;
+        gridProps.ColumnCount   = 10;
+
+        CylinderGeometryProps cylinderProps;
+        cylinderProps.TopRadius     = 10.0f;
+        cylinderProps.BottomRadius  = 20.0f;
+        cylinderProps.Height        = 40.0f;
+        cylinderProps.SliceCount    = 20;
+        cylinderProps.StackCount    = 3;
+
+        SphereGeometryProps sphereProps;
+        sphereProps.Radius      = 20.0f;
+        sphereProps.SliceCount  = 30;
+        sphereProps.StackCount  = 10;
+
+        GeosphereGeometryProps geosphereProps;
+        geosphereProps.Radius           = 20.0f;
+        geosphereProps.SubdivisionCount = 1;
+
+        const MeshData boxMeshData          = GeometryGenerator::GenerateBox<BasicVertex, std::uint32_t>(boxProps);
+        const MeshData gridMeshData         = GeometryGenerator::GenerateGrid<BasicVertex, std::uint32_t>(gridProps);
+        const MeshData cylinderMeshData     = GeometryGenerator::GenerateCylinder<BasicVertex, std::uint32_t>(cylinderProps);
+        const MeshData sphereMeshData       = GeometryGenerator::GenerateSphere<BasicVertex, std::uint32_t>(sphereProps);
+        const MeshData geosphereMeshData    = GeometryGenerator::GenerateGeosphere<BasicVertex, std::uint32_t>(geosphereProps);
+
+        SubmeshGeometry& boxSubmesh     = m_Mesh.Submeshes["box"];
+        boxSubmesh.IndexCount           = boxMeshData.Indices.size();
+        boxSubmesh.StartIndexLocation   = 0;
+        boxSubmesh.BaseVertexLocation   = 0;
+
+        SubmeshGeometry& gridSubmesh    = m_Mesh.Submeshes["grid"];
+        gridSubmesh.IndexCount          = gridMeshData.Indices.size();
+        gridSubmesh.BaseVertexLocation  = boxSubmesh.BaseVertexLocation + boxMeshData.Vertices.size();
+        gridSubmesh.StartIndexLocation  = boxSubmesh.StartIndexLocation + boxMeshData.Indices.size();
+
+        SubmeshGeometry& cylinderSubmesh    = m_Mesh.Submeshes["cylinder"];
+        cylinderSubmesh.IndexCount          = cylinderMeshData.Indices.size();
+        cylinderSubmesh.BaseVertexLocation  = gridSubmesh.BaseVertexLocation + gridMeshData.Vertices.size();
+        cylinderSubmesh.StartIndexLocation  = gridSubmesh.StartIndexLocation + gridMeshData.Indices.size();
+
+        SubmeshGeometry& sphereSubmesh  = m_Mesh.Submeshes["sphere"];
+        sphereSubmesh.IndexCount          = sphereMeshData.Indices.size();
+        sphereSubmesh.BaseVertexLocation  = cylinderSubmesh.BaseVertexLocation + cylinderMeshData.Vertices.size();
+        sphereSubmesh.StartIndexLocation  = cylinderSubmesh.StartIndexLocation + cylinderMeshData.Indices.size();
+
+        SubmeshGeometry& geosphereSubmesh   = m_Mesh.Submeshes["geosphere"];
+        geosphereSubmesh.IndexCount              = geosphereMeshData.Indices.size();
+        geosphereSubmesh.BaseVertexLocation      = sphereSubmesh.BaseVertexLocation + sphereMeshData.Vertices.size();
+        geosphereSubmesh.StartIndexLocation      = sphereSubmesh.StartIndexLocation + sphereMeshData.Indices.size();
+
+        const std::uint32_t vertexCount = boxMeshData.Vertices.size() + gridMeshData.Vertices.size() + cylinderMeshData.Vertices.size() +  sphereMeshData.Vertices.size() + geosphereMeshData.Vertices.size();
+        const std::uint32_t indexCount  = boxMeshData.Indices.size() + gridMeshData.Indices.size() + cylinderMeshData.Indices.size() + sphereMeshData.Indices.size() + geosphereMeshData.Indices.size();
+
+        // Vertices
+        struct Vertex
+        {
+            DirectX::XMFLOAT3       Position;
+            DirectX::XMVECTORF32    Color;
+        };
+
+        std::vector<Vertex> vertices;
+        vertices.reserve(vertexCount);
+
+        for (const auto& vertex : boxMeshData.Vertices)
+        {
+            vertices.emplace_back(vertex.Position, DirectX::Colors::OrangeRed);
+        }
+
+        for (const auto& vertex : gridMeshData.Vertices)
+        {
+            vertices.emplace_back(vertex.Position, DirectX::Colors::Bisque);
+        }
+
+        for (const auto& vertex : cylinderMeshData.Vertices)
+        {
+            vertices.emplace_back(vertex.Position, DirectX::Colors::Coral);
+        }
+
+        for (const auto& vertex : sphereMeshData.Vertices)
+        {
+            vertices.emplace_back(vertex.Position, DirectX::Colors::LawnGreen);
+        }
+
+        for (const auto& vertex : geosphereMeshData.Vertices)
+        {
+            vertices.emplace_back(vertex.Position, DirectX::Colors::LimeGreen);
+        }
+
+        // Indices
+        std::vector<std::uint32_t> indices;
+        indices.reserve(indexCount);
+        indices.insert(indices.end(), boxMeshData.Indices.begin(),       boxMeshData.Indices.end());
+        indices.insert(indices.end(), gridMeshData.Indices.begin(),      gridMeshData.Indices.end());
+        indices.insert(indices.end(), cylinderMeshData.Indices.begin(),  cylinderMeshData.Indices.end());
+        indices.insert(indices.end(), sphereMeshData.Indices.begin(),    sphereMeshData.Indices.end());
+        indices.insert(indices.end(), geosphereMeshData.Indices.begin(), geosphereMeshData.Indices.end());
+
+        SPIELER_RETURN_IF_FAILED(m_Mesh.VertexBuffer.Init(vertices.data(), vertices.size()));
+        SPIELER_RETURN_IF_FAILED(m_Mesh.IndexBuffer.Init(indices.data(), indices.size()));
+
+        return true;
+    }
+
     void Application::OnUpdate(float dt)
     {
         static float angle = 0.0f;
@@ -356,7 +443,7 @@ namespace Spieler
             DirectX::XMMatrixRotationX(angle) *
             DirectX::XMMatrixRotationY(angle) *
             DirectX::XMMatrixRotationZ(angle) *
-            DirectX::XMMatrixTranslation(0.0f, 0.0f, -100.0f);
+            DirectX::XMMatrixTranslation(0.0f, 0.0f, -50.0f);
 
         m_ConstantBuffer.GetData().WorldViewProjectionMatrix = DirectX::XMMatrixTranspose(world * m_View * m_Projection);
     }
@@ -372,12 +459,12 @@ namespace Spieler
             const std::uint32_t currentBackBuffer = m_Renderer.m_SwapChain3->GetCurrentBackBufferIndex();
 
             D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags                   = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource    = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
+            barrier.Transition.Subresource  = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_PRESENT;
+            barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
             m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
 
@@ -400,19 +487,23 @@ namespace Spieler
             m_Renderer.m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             m_Renderer.m_CommandList->SetGraphicsRootDescriptorTable(0, m_CBVDescriptorHeap.GetGPUHandle(0));
 
-            m_Renderer.DrawIndexed(m_VertexBuffer, m_IndexBuffer);
+            //m_Renderer.DrawIndexed(m_Mesh.VertexBuffer, m_Mesh.IndexBuffer);
+            m_Mesh.VertexBuffer.Bind();
+            m_Mesh.IndexBuffer.Bind();
 
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+            const auto& mesh = m_Mesh.Submeshes["cylinder"];
+            m_Renderer.m_CommandList->DrawIndexedInstanced(mesh.IndexCount, 1, mesh.StartIndexLocation, mesh.BaseVertexLocation, 0);
+
+            barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags                   = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource    = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
+            barrier.Transition.Subresource  = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barrier.Transition.StateBefore  = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            barrier.Transition.StateAfter   = D3D12_RESOURCE_STATE_PRESENT;
 
             m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
-
-            SPIELER_RETURN_IF_FAILED(m_Renderer.ExexuteCommandList(false));
         }
+        SPIELER_RETURN_IF_FAILED(m_Renderer.ExexuteCommandList(false));
 
 #if SPIELER_USE_IMGUI
         SPIELER_RETURN_IF_FAILED(m_Renderer.ResetCommandList());
@@ -463,6 +554,7 @@ namespace Spieler
         return true;
     }
 
+#if SPIELER_USE_IMGUI
     void Application::OnImGuiRender(float dt)
     {
         if (m_IsShowDemoWindow)
@@ -481,6 +573,7 @@ namespace Spieler
             ImGui::End();
         }
     }
+#endif
 
     void Application::OnResize()
     {

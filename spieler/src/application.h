@@ -27,6 +27,7 @@
 #include "renderer/shaders/shader.h"
 #include "renderer/input_layout.h"
 #include "renderer/geometry_generator.h"
+#include "renderer/mesh.h"
 
 namespace Spieler
 {
@@ -46,7 +47,9 @@ namespace Spieler
 
     private:
         bool InitMSAAQualitySupport();
+#if SPIELER_USE_IMGUI
         bool InitImGui();
+#endif
         bool InitPipelineState();
 
         void InitViewMatrix();
@@ -54,9 +57,13 @@ namespace Spieler
         void InitViewport();
         void InitScissorRect();
 
+        bool InitMeshGeometry();
+
         void OnUpdate(float dt);
         bool OnRender(float dt);
+#if SPIELER_USE_IMGUI
         void OnImGuiRender(float dt);
+#endif
         void OnResize();
         void OnClose();
 
@@ -89,8 +96,6 @@ namespace Spieler
         DescriptorHeap                      m_CBVDescriptorHeap;
         DescriptorHeap                      m_ImGuiDescriptorHeap;
 
-        VertexBuffer                        m_VertexBuffer;
-        IndexBuffer                         m_IndexBuffer;
         VertexShader                        m_VertexShader;
         PixelShader                         m_PixelShader;
         ConstantBuffer<PerObject>           m_ConstantBuffer;
@@ -112,7 +117,7 @@ namespace Spieler
         bool                                m_IsMaximized           = false;
         bool                                m_IsFullscreen          = false;
 
-        DirectX::XMFLOAT4                   m_ClearColor            = { 0.1f, 0.1f, 0.15f, 1.0f };
+        DirectX::XMFLOAT4                   m_ClearColor            = { 0.1f, 0.1f, 0.1f, 1.0f };
 
         bool                                m_IsShowDemoWindow      = false;
 
@@ -128,6 +133,9 @@ namespace Spieler
 
         // Projection
         DirectX::XMMATRIX                   m_Projection{};
+
+        // Mesh
+        MeshGeometry                        m_Mesh;
     };
 
 } // namespace Spieler
