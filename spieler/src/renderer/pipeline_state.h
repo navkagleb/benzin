@@ -1,57 +1,39 @@
 #pragma once
 
-#include <d3d12.h>
+#include <d3dx12.h>
 
-#include "bindable.h"
+#include "renderer_object.h"
+#include "root_signature.h"
+#include "shaders/shader.h"
+#include "rasterizer_state.h"
+#include "input_layout.h"
+#include "primitive_topology.h"
 
 namespace Spieler
 {
 
-    class PipelineState : public Bindable
+    struct PipelineStateProps
+    {
+        RootSignature*              RootSignature{ nullptr };
+        VertexShader*               VertexShader{ nullptr };
+        PixelShader*                PixelShader{ nullptr };
+        RasterizerState*            RasterizerState{ nullptr };
+        InputLayout*                InputLayout{ nullptr };
+        PrimitiveTopologyType       PrimitiveTopologyType{ PrimitiveTopologyType_Undefined };
+        DXGI_FORMAT                 RTVFormat{ DXGI_FORMAT_R8G8B8A8_UNORM };
+        DXGI_FORMAT                 DSVFormat{ DXGI_FORMAT_D24_UNORM_S8_UINT };
+    };
+
+    class PipelineState : public RendererObject
     {
     public:
-        bool Init(Renderer& renderer)
-        {
-            D3D12_BLEND_DESC blendDesc{};
-            blendDesc.AlphaToCoverageEnable     = false;
-            blendDesc.IndependentBlendEnable    = false;
+        bool Init(const PipelineStateProps& props);
 
-            D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{};
-            desc.pRootSignature         = ;
-            desc.VS                     = ;
-            desc.PS                     = ;
-            desc.DS                     = ;
-            desc.HS                     = ;
-            desc.GS                     = ;
-            desc.StreamOutput           = ;
-            desc.BlendState             = blendDesc;
-            desc.SampleMask             = 0xffffffff;
-            desc.RasterizerState        = ;
-            desc.DepthStencilState      = ;
-            desc.InputLayout            = ;
-            desc.IBStripCutValue        = ;
-            desc.PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-            desc.NumRenderTargets       = 1;
-            desc.RTVFormats[0]          = DXGI_FORMAT_R8G8B8A8_UNORM;
-            desc.DSVFormat              = DXGI_FORMAT_D24_UNORM_S8_UINT;
-            desc.SampleDesc.Count       = 1; // Use 4xMSAA
-            desc.SampleDesc.Quality     = 0; // Use 4xMSAA
-            desc.NodeMask               = ;
-            desc.CachedPSO              = ;
-            desc.Flags                  = ;
-
-            SPIELER_RETURN_IF_FAILED(GetDevice(renderer)->CreateGraphicsPipelineState(&desc, __uuidof(ID3D12PipelineState), &m_PipelineState));
-
-            return true;
-        }
-
-        void Bind(Renderer& renderer) override
-        {
-
-        }
+    public:
+        explicit operator ID3D12PipelineState* () const { return m_Handle.Get(); }
 
     private:
-        ComPtr<ID3D12PipelineState> m_PipelineState;
+        ComPtr<ID3D12PipelineState> m_Handle;
     };
 
 } // namespace Spieler

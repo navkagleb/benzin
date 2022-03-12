@@ -3,6 +3,7 @@
 #include "window.h"
 #include "resources/vertex_buffer.h"
 #include "resources/index_buffer.h"
+#include "pipeline_state.h"
 
 namespace Spieler
 {
@@ -166,9 +167,9 @@ namespace Spieler
         return true;
     }
 
-    bool Renderer::ResetCommandList(ID3D12PipelineState* pso)
+    bool Renderer::ResetCommandList(PipelineState pso)
     {
-        SPIELER_RETURN_IF_FAILED(m_CommandList->Reset(m_CommandAllocator.Get(), pso));
+        SPIELER_RETURN_IF_FAILED(m_CommandList->Reset(m_CommandAllocator.Get(), static_cast<ID3D12PipelineState*>(pso)));
 
         return true;
     }
@@ -193,7 +194,7 @@ namespace Spieler
 
         if (m_Fence.Handle->GetCompletedValue() < m_Fence.Value)
         {
-            HANDLE eventHandle = ::CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
+            const HANDLE eventHandle = ::CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
 
             m_Fence.Handle->SetEventOnCompletion(m_Fence.Value, eventHandle);
 

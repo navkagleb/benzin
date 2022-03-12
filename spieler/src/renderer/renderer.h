@@ -10,6 +10,7 @@
 #include "common.h"
 #include "descriptor_heap.h"
 #include "fence.h"
+#include "pipeline_state.h"
 
 namespace Spieler
 {
@@ -61,8 +62,10 @@ namespace Spieler
 
     public:
         const SwapChainProps& GetSwapChainProps() const { return m_SwapChainProps; }
-
+       
         ComPtr<ID3D12Resource> GetSwapChainBuffer(std::uint32_t index) { return m_SwapChainBuffers[index]; }
+
+        DXGI_FORMAT GetDepthStencilFormat() const { return m_DepthStencilFormat; }
 
     public:
         bool Init(const Window& window);
@@ -77,7 +80,7 @@ namespace Spieler
 
         bool ResizeBuffers(std::uint32_t width, std::uint32_t height);
 
-        bool ResetCommandList(ID3D12PipelineState* pso = nullptr);
+        bool ResetCommandList(PipelineState pso = {});
         bool ExexuteCommandList(bool isNeedToFlushCommandQueue = true);
         bool FlushCommandQueue();
 

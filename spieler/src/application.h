@@ -26,6 +26,7 @@
 #include "renderer/root_signature.h"
 #include "renderer/shaders/shader.h"
 #include "renderer/input_layout.h"
+#include "renderer/pipeline_state.h"
 #include "renderer/geometry_generator.h"
 #include "renderer/mesh.h"
 
@@ -58,6 +59,7 @@ namespace Spieler
         void InitScissorRect();
 
         bool InitMeshGeometry();
+        bool InitRenderItems();
 
         void OnUpdate(float dt);
         bool OnRender(float dt);
@@ -98,9 +100,8 @@ namespace Spieler
 
         VertexShader                        m_VertexShader;
         PixelShader                         m_PixelShader;
-        ConstantBuffer<PerObject>           m_ConstantBuffer;
         RootSignature                       m_RootSignature;
-        ComPtr<ID3D12PipelineState>         m_PipelineState;
+        std::unordered_map<std::string, PipelineState> m_PipelineStates;
 
         Viewport                            m_Viewport;
         ScissorRect                         m_ScissorRect;
@@ -116,6 +117,8 @@ namespace Spieler
         bool                                m_IsMinimized           = false;
         bool                                m_IsMaximized           = false;
         bool                                m_IsFullscreen          = false;
+        
+        bool                                m_IsSolidRasterizerState{ true };
 
         DirectX::XMFLOAT4                   m_ClearColor            = { 0.1f, 0.1f, 0.1f, 1.0f };
 
@@ -136,6 +139,9 @@ namespace Spieler
 
         // Mesh
         MeshGeometry                        m_Mesh;
+
+        std::vector<RenderItem>                 m_RenderItems;
+        std::vector<ConstantBuffer<PerObject>>  m_ConstantBuffers;
     };
 
 } // namespace Spieler

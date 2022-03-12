@@ -13,13 +13,15 @@
     <ClCompile Include="third_party\imgui\imgui_demo.cpp" />
     <ClCompile Include="third_party\imgui\imgui.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
-    <ClCompile Include="src\renderer\renderer_object.cpp" />
     <ClCompile Include="src\renderer\shaders\shader.cpp" />
     <ClCompile Include="src\renderer\resources\vertex_buffer.cpp" />
     <ClCompile Include="src\renderer\resources\resource.cpp" />
     <ClCompile Include="src\renderer\resources\index_buffer.cpp" />
     <ClCompile Include="src\renderer\descriptor_heap.cpp" />
     <ClCompile Include="src\renderer\fence.cpp" />
+    <ClCompile Include="src\renderer\renderer_object.cpp" />
+    <ClCompile Include="src\renderer\pipeline_state.cpp" />
+    <ClCompile Include="src\renderer\root_signature.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\application.h" />
@@ -49,6 +51,7 @@
     <ClInclude Include="src\renderer\geometry_generator.h" />
     <ClInclude Include="src\renderer\mesh.h" />
     <ClInclude Include="src\renderer\fence.h" />
+    <ClInclude Include="src\renderer\primitive_topology.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\renderer\resources\vertex_buffer.inl" />

@@ -40,9 +40,21 @@ namespace Spieler
 
         InitViewport();
         InitScissorRect();
+        InitRenderItems();
 
-        SPIELER_RETURN_IF_FAILED(m_ConstantBuffer.Init(m_CBVDescriptorHeap.GetCPUHandle(0)));
-        SPIELER_RETURN_IF_FAILED(m_RootSignature.Init());
+        RootDescriptor rootDescriptor;
+        rootDescriptor.ShaderRegister   = 0;
+        rootDescriptor.RegisterSpace    = 0;
+
+        RootDescriptorTable rootDescriptorTable;
+        rootDescriptorTable.DescriptorRanges = { DescriptorRange{ DescriptorRangeType_CBV, 1 } };
+
+        RootParameter rootParameter;
+        rootParameter.Type              = RootParameterType_DescriptorTable;
+        rootParameter.ShaderVisibility  = ShaderVisibility_All;
+        rootParameter.Child             = rootDescriptorTable;
+
+        SPIELER_RETURN_IF_FAILED(m_RootSignature.Init({ rootParameter }));
         SPIELER_RETURN_IF_FAILED(InitMeshGeometry());
 
         InitViewMatrix();
@@ -157,67 +169,12 @@ namespace Spieler
     {
         // Vertex shader
         SPIELER_RETURN_IF_FAILED(m_VertexShader.LoadFromFile(L"assets/shaders/basic_vertex_color.fx", "VS_Main"));
-
-        D3D12_SHADER_BYTECODE vsDesc{};
-        vsDesc.pShaderBytecode  = m_VertexShader.GetData();
-        vsDesc.BytecodeLength   = m_VertexShader.GetSize();
-
-        // Pixel shader
         SPIELER_RETURN_IF_FAILED(m_PixelShader.LoadFromFile(L"assets/shaders/basic_vertex_color.fx", "PS_Main"));
+        
+        RasterizerState rasterzerState;
+        rasterzerState.FillMode = FillMode_Solid;
+        rasterzerState.CullMode = CullMode_Back;
 
-        D3D12_SHADER_BYTECODE psDesc{};
-        psDesc.pShaderBytecode  = m_PixelShader.GetData();
-        psDesc.BytecodeLength   = m_PixelShader.GetSize();
-
-        // Stream output
-        D3D12_STREAM_OUTPUT_DESC streamOutputDesc{};
-        streamOutputDesc.pSODeclaration     = nullptr;
-        streamOutputDesc.NumEntries         = 0;
-        streamOutputDesc.pBufferStrides     = nullptr;
-        streamOutputDesc.NumStrides         = 0;
-        streamOutputDesc.RasterizedStream   = 0;
-
-        // Blend state
-        D3D12_BLEND_DESC blendDesc{};
-        blendDesc.AlphaToCoverageEnable                 = false;
-        blendDesc.IndependentBlendEnable                = false;
-        blendDesc.RenderTarget[0].BlendEnable           = false;
-        blendDesc.RenderTarget[0].LogicOpEnable         = false;
-        blendDesc.RenderTarget[0].SrcBlend              = D3D12_BLEND_ONE;
-        blendDesc.RenderTarget[0].DestBlend             = D3D12_BLEND_ZERO;
-        blendDesc.RenderTarget[0].BlendOp               = D3D12_BLEND_OP_ADD;
-        blendDesc.RenderTarget[0].SrcBlendAlpha         = D3D12_BLEND_ONE;
-        blendDesc.RenderTarget[0].DestBlendAlpha        = D3D12_BLEND_ZERO;
-        blendDesc.RenderTarget[0].BlendOpAlpha          = D3D12_BLEND_OP_ADD;
-        blendDesc.RenderTarget[0].LogicOp               = D3D12_LOGIC_OP_NOOP;
-        blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-        // Rasterizer state
-        D3D12_RASTERIZER_DESC rasterizerDesc{};
-        rasterizerDesc.FillMode               = D3D12_FILL_MODE_WIREFRAME;
-        rasterizerDesc.CullMode               = D3D12_CULL_MODE_NONE;
-        rasterizerDesc.FrontCounterClockwise  = false;
-        rasterizerDesc.DepthBias              = D3D12_DEFAULT_DEPTH_BIAS;
-        rasterizerDesc.DepthBiasClamp         = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-        rasterizerDesc.SlopeScaledDepthBias   = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-        rasterizerDesc.DepthClipEnable        = true;
-        rasterizerDesc.MultisampleEnable      = false;
-        rasterizerDesc.AntialiasedLineEnable  = false;
-        rasterizerDesc.ForcedSampleCount      = 0;
-        rasterizerDesc.ConservativeRaster     = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-
-        // Depth stencil state
-        D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
-        depthStencilDesc.DepthEnable        = true;
-        depthStencilDesc.DepthWriteMask     = D3D12_DEPTH_WRITE_MASK_ALL;
-        depthStencilDesc.DepthFunc          = D3D12_COMPARISON_FUNC_LESS;
-        depthStencilDesc.StencilEnable      = false;
-        depthStencilDesc.StencilReadMask    = D3D12_DEFAULT_STENCIL_READ_MASK;
-        depthStencilDesc.StencilWriteMask   = D3D12_DEFAULT_STENCIL_WRITE_MASK;
-        depthStencilDesc.FrontFace          = { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
-        depthStencilDesc.BackFace           = { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
-
-        // Input layout
 #if 0
         std::vector<InputLayoutElement> inputLayoutData =
         {
@@ -237,47 +194,25 @@ namespace Spieler
         InputLayout inputLayout;
         inputLayout.Init(m_Renderer, inputLayoutData.data(), inputLayoutData.size());
 
-        D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
-        inputLayoutDesc.pInputElementDescs  = inputLayout.GetData();
-        inputLayoutDesc.NumElements         = inputLayout.GetCount();
+        PipelineStateProps pipelineStateProps;
+        pipelineStateProps.RootSignature            = &m_RootSignature;
+        pipelineStateProps.VertexShader             = &m_VertexShader;
+        pipelineStateProps.PixelShader              = &m_PixelShader;
+        pipelineStateProps.RasterizerState          = &rasterzerState;
+        pipelineStateProps.InputLayout              = &inputLayout;
+        pipelineStateProps.PrimitiveTopologyType    = PrimitiveTopologyType_Triangle;
+        pipelineStateProps.RTVFormat                = m_Renderer.GetSwapChainProps().BufferFormat;
+        pipelineStateProps.DSVFormat                = m_Renderer.GetDepthStencilFormat();
+        
+        SPIELER_RETURN_IF_FAILED(m_PipelineStates["solid"].Init(pipelineStateProps));
 
-        // Cached PSO
-        D3D12_CACHED_PIPELINE_STATE cachedPipelineState{};
-        cachedPipelineState.pCachedBlob             = nullptr;
-        cachedPipelineState.CachedBlobSizeInBytes   = 0;
+        RasterizerState rasterzerState1;
+        rasterzerState1.FillMode = FillMode_Wireframe;
+        rasterzerState1.CullMode = CullMode_None;
 
-        // Flags
-#if defined(SPIELER_DEBUG)
-        const D3D12_PIPELINE_STATE_FLAGS flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-#else
-        const D3D12_PIPELINE_STATE_FLAGS flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-#endif
+        pipelineStateProps.RasterizerState = &rasterzerState1;
 
-        D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{};
-        desc.pRootSignature         = m_RootSignature.GetRaw();
-        desc.VS                     = vsDesc;
-        desc.PS                     = psDesc;
-        desc.DS                     = {};
-        desc.HS                     = {};
-        desc.GS                     = {};
-        desc.StreamOutput           = streamOutputDesc;
-        desc.BlendState             = blendDesc;
-        desc.SampleMask             = 0xffffffff;
-        desc.RasterizerState        = rasterizerDesc;
-        desc.DepthStencilState      = depthStencilDesc;
-        desc.InputLayout            = inputLayoutDesc;
-        desc.IBStripCutValue        = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
-        desc.PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-        desc.NumRenderTargets       = 1;
-        desc.RTVFormats[0]          = DXGI_FORMAT_R8G8B8A8_UNORM;
-        desc.DSVFormat              = DXGI_FORMAT_D24_UNORM_S8_UINT;
-        desc.SampleDesc.Count       = 1; // Use 4xMSAA
-        desc.SampleDesc.Quality     = 0; // Use 4xMSAA
-        desc.NodeMask               = 0;
-        desc.CachedPSO              = cachedPipelineState;
-        desc.Flags                  = flags;
-
-        SPIELER_RETURN_IF_FAILED(m_Renderer.m_Device->CreateGraphicsPipelineState(&desc, __uuidof(ID3D12PipelineState), &m_PipelineState));
+        SPIELER_RETURN_IF_FAILED(m_PipelineStates["wireframe"].Init(pipelineStateProps));
 
         return true;
     }
@@ -424,6 +359,31 @@ namespace Spieler
         SPIELER_RETURN_IF_FAILED(m_Mesh.VertexBuffer.Init(vertices.data(), vertices.size()));
         SPIELER_RETURN_IF_FAILED(m_Mesh.IndexBuffer.Init(indices.data(), indices.size()));
 
+        m_Mesh.PrimitiveTopology = PrimitiveTopology_TriangleList;
+
+        return true;
+    }
+
+    bool Application::InitRenderItems()
+    {
+        m_ConstantBuffers.resize(2);
+
+        RenderItem box;
+        box.MeshGeometry        = &m_Mesh;
+        box.SubmeshGeometry     = &m_Mesh.Submeshes["box"];
+        box.ConstantBufferIndex = 0;
+        
+        SPIELER_RETURN_IF_FAILED(m_ConstantBuffers[0].Init(m_CBVDescriptorHeap.GetCPUHandle(0)));
+        m_RenderItems.push_back(std::move(box));
+
+        RenderItem cylinder;
+        cylinder.MeshGeometry           = &m_Mesh;
+        cylinder.SubmeshGeometry        = &m_Mesh.Submeshes["cylinder"];
+        cylinder.ConstantBufferIndex    = 1;
+
+        SPIELER_RETURN_IF_FAILED(m_ConstantBuffers[1].Init(m_CBVDescriptorHeap.GetCPUHandle(1)));
+        m_RenderItems.push_back(std::move(cylinder));
+
         return true;
     }
 
@@ -438,20 +398,28 @@ namespace Spieler
             angle = 0.0f;
         }
 
-        DirectX::XMMATRIX world = 
+        m_RenderItems[0].World = 
             DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) *
             DirectX::XMMatrixRotationX(angle) *
             DirectX::XMMatrixRotationY(angle) *
             DirectX::XMMatrixRotationZ(angle) *
-            DirectX::XMMatrixTranslation(0.0f, 0.0f, -50.0f);
+            DirectX::XMMatrixTranslation(30.0f, 0.0f, -50.0f);
 
-        m_ConstantBuffer.GetData().WorldViewProjectionMatrix = DirectX::XMMatrixTranspose(world * m_View * m_Projection);
+        m_RenderItems[1].World = 
+            DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) *
+            DirectX::XMMatrixRotationX(angle) *
+            DirectX::XMMatrixRotationY(angle) *
+            DirectX::XMMatrixRotationZ(angle) *
+            DirectX::XMMatrixTranslation(-30.0f, 0.0f, -50.0f);
+
+        m_ConstantBuffers[0].GetData().WorldViewProjectionMatrix = DirectX::XMMatrixTranspose(m_RenderItems[0].World * m_View * m_Projection);
+        m_ConstantBuffers[1].GetData().WorldViewProjectionMatrix = DirectX::XMMatrixTranspose(m_RenderItems[1].World * m_View * m_Projection);
     }
 
     bool Application::OnRender(float dt)
     {
         SPIELER_RETURN_IF_FAILED(m_Renderer.m_CommandAllocator->Reset());
-        SPIELER_RETURN_IF_FAILED(m_Renderer.ResetCommandList(m_PipelineState.Get()));
+        SPIELER_RETURN_IF_FAILED(m_Renderer.ResetCommandList(m_IsSolidRasterizerState ? m_PipelineStates["solid"] : m_PipelineStates["wireframe"]));
         {
             m_Renderer.SetViewport(m_Viewport);
             m_Renderer.SetScissorRect(m_ScissorRect);
@@ -481,19 +449,20 @@ namespace Spieler
                 &b
             );
 
+            m_RootSignature.Bind();
             m_CBVDescriptorHeap.Bind();
-
-            m_Renderer.m_CommandList->SetGraphicsRootSignature(m_RootSignature.GetRaw());
-            m_Renderer.m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            m_Renderer.m_CommandList->SetGraphicsRootDescriptorTable(0, m_CBVDescriptorHeap.GetGPUHandle(0));
-
-            //m_Renderer.DrawIndexed(m_Mesh.VertexBuffer, m_Mesh.IndexBuffer);
             m_Mesh.VertexBuffer.Bind();
             m_Mesh.IndexBuffer.Bind();
+            m_Renderer.m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(m_Mesh.PrimitiveTopology));
 
-            const auto& mesh = m_Mesh.Submeshes["cylinder"];
-            m_Renderer.m_CommandList->DrawIndexedInstanced(mesh.IndexCount, 1, mesh.StartIndexLocation, mesh.BaseVertexLocation, 0);
+            for (const auto& renderItem : m_RenderItems)
+            {
+                const auto& submeshGeometry = *renderItem.SubmeshGeometry;
 
+                m_Renderer.m_CommandList->SetGraphicsRootDescriptorTable(0, m_CBVDescriptorHeap.GetGPUHandle(renderItem.ConstantBufferIndex));
+                m_Renderer.m_CommandList->DrawIndexedInstanced(submeshGeometry.IndexCount, 1, submeshGeometry.StartIndexLocation, submeshGeometry.BaseVertexLocation, 0);
+            }
+            
             barrier.Type                    = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             barrier.Flags                   = D3D12_RESOURCE_BARRIER_FLAG_NONE;
             barrier.Transition.pResource    = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
@@ -566,6 +535,7 @@ namespace Spieler
             ImGui::Begin("Settings");
 
             ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&m_ClearColor));
+            ImGui::Checkbox("Solid rasterizer state", &m_IsSolidRasterizerState);
             ImGui::Separator();
             ImGui::Text("FPS: %.1f, ms: %.3f", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
             ImGui::Checkbox("VSync", reinterpret_cast<bool*>(&m_VSyncState));
@@ -630,6 +600,8 @@ namespace Spieler
         m_IsPaused      = false;
         m_IsMinimized   = false;
         m_IsMaximized   = true;
+
+        OnResize();
 
         return true;
     }

@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="src\renderer\descriptor_heap.cpp" />
     <ClCompile Include="src\renderer\fence.cpp" />
+    <ClCompile Include="src\renderer\pipeline_state.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\application.cpp" />
     <ClCompile Include="src\entry_point.cpp" />
@@ -28,6 +29,7 @@
     <ClCompile Include="src\renderer\resources\index_buffer.cpp" />
     <ClCompile Include="src\renderer\resources\resource.cpp" />
     <ClCompile Include="src\renderer\resources\vertex_buffer.cpp" />
+    <ClCompile Include="src\renderer\root_signature.cpp" />
     <ClCompile Include="src\renderer\shaders\shader.cpp" />
     <ClCompile Include="src\window.cpp" />
     <ClCompile Include="src\timer.cpp" />
@@ -41,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\renderer\fence.h" />
+    <ClInclude Include="src\renderer\primitive_topology.h" />
     <ClInclude Include="src\renderer\resources\constant_buffer.h" />
     <ClInclude Include="src\renderer\descriptor_heap.h" />
     <ClInclude Include="src\renderer\geometry_generator.h" />

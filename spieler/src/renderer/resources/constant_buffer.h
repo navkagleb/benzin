@@ -19,7 +19,7 @@ namespace Spieler
 
         T& GetData() { return *m_MappedData; }
 
-    private:
+    public:
         ComPtr<ID3D12Resource>  m_UploadBuffer;
         T*                      m_MappedData = nullptr;
     };
