@@ -6,11 +6,9 @@ int __stdcall WinMain(
     LPSTR     lpCmdLine,
     int       nShowCmd)
 {
-    auto& application = Spieler::Application::GetInstance();
+    auto& application = *Spieler::CreateApplication();
     
-    const bool status = application.Init("Spieler", 1280, 720);
-
-    if (!status)
+    if (!application.InitInternal("Spieler", 1280, 720))
     {
         return -1;
     }

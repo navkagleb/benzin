@@ -1,9 +1,9 @@
-#include "renderer.h"
+#include "renderer/renderer.h"
 
-#include "window.h"
-#include "resources/vertex_buffer.h"
-#include "resources/index_buffer.h"
-#include "pipeline_state.h"
+#include <d3dx12.h>
+
+#include "window/window.h"
+#include "renderer/pipeline_state.h"
 
 namespace Spieler
 {
@@ -40,10 +40,10 @@ namespace Spieler
     void Renderer::SetScissorRect(const ScissorRect& rect)
     {
         RECT d3d12Rect{};
-        d3d12Rect.left      = rect.X;
-        d3d12Rect.top       = rect.Y;
-        d3d12Rect.right     = rect.X + rect.Width;
-        d3d12Rect.bottom    = rect.Y + rect.Height;
+        d3d12Rect.left      = static_cast<LONG>(rect.X);
+        d3d12Rect.top       = static_cast<LONG>(rect.Y);
+        d3d12Rect.right     = static_cast<LONG>(rect.X + rect.Width);
+        d3d12Rect.bottom    = static_cast<LONG>(rect.Y + rect.Height);
 
         m_CommandList->RSSetScissorRects(1, &d3d12Rect);
     }
@@ -210,14 +210,6 @@ namespace Spieler
         SPIELER_RETURN_IF_FAILED(m_SwapChain->Present(static_cast<UINT>(vsync), 0));
 
         return true;
-    }
-
-    void Renderer::DrawIndexed(const VertexBuffer& vertexBuffer, const IndexBuffer& indexBuffer)
-    {
-        vertexBuffer.Bind();
-        indexBuffer.Bind();
-
-        m_CommandList->DrawIndexedInstanced(indexBuffer.GetIndexCount(), 1, 0, 0, 0);
     }
 
     bool Renderer::InitDevice()

@@ -1,6 +1,4 @@
-#include "root_signature.h"
-
-#include <d3dx12.h>
+#include "renderer/root_signature.h"
 
 namespace Spieler
 {
