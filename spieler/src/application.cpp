@@ -33,17 +33,12 @@ namespace Spieler
 #endif
 
         SPIELER_RETURN_IF_FAILED(InitWindow(title, width, height));
-        SPIELER_RETURN_IF_FAILED(m_Renderer.Init(m_Window));
-        SPIELER_RETURN_IF_FAILED(m_ImGuiDescriptorHeap.Init(DescriptorHeapType_CBVSRVUAV, 1));
-
-#if SPIELER_USE_IMGUI
+        SPIELER_RETURN_IF_FAILED(InitRenderer());
         SPIELER_RETURN_IF_FAILED(InitImGui());
-#endif
+        SPIELER_RETURN_IF_FAILED(InitExternal());
 
         UpdateScreenViewport();
         UpdateScreenScissorRect();
-
-        SPIELER_RETURN_IF_FAILED(InitExternal());
 
         return true;
     }
@@ -75,19 +70,13 @@ namespace Spieler
 
                     const float dt = m_Timer.GetDeltaTime();
 
-#if SPIELER_USE_IMGUI
-                    // Start the Dear ImGui frame
                     ImGui_ImplDX12_NewFrame();
                     ImGui_ImplWin32_NewFrame();
                     ImGui::NewFrame();
-#endif
 
                     OnUpdate(dt);
-
-#if SPIELER_USE_IMGUI
                     OnImGuiRender(dt);
                     ImGui::Render();
-#endif
 
                     if (!OnRender(dt))
                     {
@@ -109,7 +98,13 @@ namespace Spieler
         return true;
     }
 
-#if SPIELER_USE_IMGUI
+    bool Application::InitRenderer()
+    {
+        SPIELER_RETURN_IF_FAILED(m_Renderer.Init(m_Window));
+
+        return true;
+    }
+
     bool Application::InitImGui()
     {
         // Setup Dear ImGui context
@@ -123,20 +118,21 @@ namespace Spieler
         // Setup Dear ImGui style
         ImGui::StyleColorsDark();
 
+        SPIELER_RETURN_IF_FAILED(m_ImGuiDescriptorHeap.Init(DescriptorHeapType_CBVSRVUAV, 1));
+
         // Setup Platform/Renderer backends
-        ImGui_ImplWin32_Init(m_Window.GetHandle());
-        ImGui_ImplDX12_Init(
+        SPIELER_RETURN_IF_FAILED(ImGui_ImplWin32_Init(m_Window.GetHandle()));
+        SPIELER_RETURN_IF_FAILED(ImGui_ImplDX12_Init(
             m_Renderer.m_Device.Get(),
             1,
             m_Renderer.GetSwapChainProps().BufferFormat, 
             static_cast<ID3D12DescriptorHeap*>(m_ImGuiDescriptorHeap),
             m_ImGuiDescriptorHeap.GetCPUHandle(0),
             m_ImGuiDescriptorHeap.GetGPUHandle(0)
-        );
+        ));
 
         return true;
     }
-#endif
 
     void Application::OnUpdate(float dt)
     {
@@ -196,22 +192,9 @@ namespace Spieler
         return true;
     }
 
-#if SPIELER_USE_IMGUI
     void Application::OnImGuiRender(float dt)
     {
         m_LayerStack.OnImGuiRender(dt);
-    }
-#endif
-
-    void Application::OnClose()
-    {
-        m_ApplicationProps.IsRunning = false;
-
-#if SPIELER_USE_IMGUI
-        ImGui_ImplDX12_Shutdown();
-        ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
-#endif
     }
 
     void Application::WindowEventCallback(Event& event)
@@ -232,7 +215,11 @@ namespace Spieler
 
     bool Application::OnWindowClose(WindowCloseEvent& event)
     {
-        OnClose();
+        m_ApplicationProps.IsRunning = false;
+
+        ImGui_ImplDX12_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
 
         return false;
     }

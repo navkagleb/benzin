@@ -5,6 +5,8 @@
 namespace Spieler
 {
 
+    class UploadBuffer;
+
     class VertexBuffer : public Resource
     {
     public:
@@ -13,6 +15,8 @@ namespace Spieler
     public:
         template <typename Vertex>
         bool Init(const Vertex* vertices, std::uint32_t count);
+
+        bool Init(const UploadBuffer& uploadBuffer);
 
         void Bind() const override;
 

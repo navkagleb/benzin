@@ -13,11 +13,19 @@
 #include <spieler/renderer/mesh.h>
 
 #include "projection_camera_controller.h"
+#include "waves.h"
 
 namespace Sandbox
 {
 
-    using PipelineStateContainer = std::unordered_map<std::string, Spieler::PipelineState>;
+    using PipelineStateContainer    = std::unordered_map<std::string, Spieler::PipelineState>;
+    using MeshGeometryContainer     = std::unordered_map<std::string, Spieler::MeshGeometry>;
+
+    struct ColorVertex
+    {
+        DirectX::XMFLOAT3 Position{};
+        DirectX::XMFLOAT4 Color{};
+    };
 
     class LandLayer : public Spieler::Layer
     {
@@ -34,8 +42,10 @@ namespace Sandbox
 
     private:
         bool InitDescriptorHeaps();
+        bool InitUploadBuffers();
         bool InitMeshGeometry();
         bool InitLandGeometry();
+        bool InitWavesGeometry();
         bool InitRootSignature();
         bool InitPipelineState();
 
@@ -43,6 +53,9 @@ namespace Sandbox
         void InitScissorRect();
 
         bool OnWindowResized(Spieler::WindowResizedEvent& event);
+
+    private:
+        const std::uint32_t                 m_RenderItemCount{ 2 };
 
     private:
         Spieler::Window&                    m_Window;
@@ -64,12 +77,16 @@ namespace Sandbox
         bool                                m_IsSolidRasterizerState{ true };
         bool                                m_IsShowDemoWindow{ false };
 
-        // Mesh
-        Spieler::MeshGeometry               m_MeshGeometry;
-        Spieler::MeshGeometry               m_LandMeshGeometry;
+        Spieler::UploadBuffer               m_PassUploadBuffer;
+        Spieler::UploadBuffer               m_ObjectUploadBuffer;
+        Spieler::UploadBuffer               m_WavesUploadBuffer;
+
+        MeshGeometryContainer               m_MeshGeometries;
 
         std::vector<Spieler::RenderItem>    m_RenderItems;
         Spieler::ConstantBuffer             m_PassConstantBuffer;
+
+        Waves                               m_Waves;
     };
 
 } // namespace Sandbox

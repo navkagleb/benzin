@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\spieler\window\input.h" />
+    <ClCompile Include="src\renderer\upload_buffer.cpp" />
     <ClCompile Include="src\window\input.cpp" />
     <ClCompile Include="src\layer_stack.cpp" />
     <ClCompile Include="src\renderer\descriptor_heap.cpp" />
@@ -46,6 +47,7 @@
     <ClCompile Include="third_party\imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\spieler\renderer\upload_buffer.h" />
     <ClInclude Include="include\spieler\window\key_code.h" />
     <ClInclude Include="include\spieler\layer.h" />
     <ClInclude Include="include\spieler\layer_stack.h" />
@@ -192,6 +194,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)spieler\third_party;$(SolutionDir)spieler\third_party\directx;$(SolutionDir)spieler\include\spieler;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>5105</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -209,6 +212,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)spieler\third_party;$(SolutionDir)spieler\third_party\directx;$(SolutionDir)spieler\include\spieler;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>5105</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

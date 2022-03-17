@@ -26,6 +26,7 @@
     <ClCompile Include="src\layer_stack.cpp" />
     <ClCompile Include="include\spieler\window\input.h" />
     <ClCompile Include="src\window\input.cpp" />
+    <ClCompile Include="src\renderer\upload_buffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\spieler\application.h" />
@@ -60,6 +61,7 @@
     <ClInclude Include="include\spieler\layer_stack.h" />
     <ClInclude Include="include\spieler\window\mouse_button.h" />
     <ClInclude Include="include\spieler\window\key_code.h" />
+    <ClInclude Include="include\spieler\renderer\upload_buffer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\spieler\renderer\vertex_buffer.inl" />

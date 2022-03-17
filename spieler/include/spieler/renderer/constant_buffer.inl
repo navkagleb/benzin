@@ -6,72 +6,33 @@
 namespace Spieler
 {
 
-    namespace _Internal
-    {
-
-        inline static std::uint32_t CalcConstantBufferSize(std::uint32_t size)
-        {
-            return (size + 255) & ~255;
-        }
-
-    } // namespace _Internal
-
     template <typename T>
-    bool ConstantBuffer::InitAsRootDescriptorTable(const DescriptorHeap& heap, std::uint32_t index)
+    bool ConstantBuffer::InitAsRootDescriptorTable(UploadBuffer* uploadBuffer, std::uint32_t index, const DescriptorHeap& heap, std::uint32_t heapIndex)
     {
-        return InitAsRootDescriptorTable(T{}, heap, index);
-    }
+        SPIELER_RETURN_IF_FAILED(Init<T>(uploadBuffer, index));
 
-    template <typename T>
-    bool ConstantBuffer::InitAsRootDescriptorTable(const T& data, const DescriptorHeap& heap, std::uint32_t index)
-    {
-        SPIELER_RETURN_IF_FAILED(Init(data));
-
-        m_Index = index;
+        m_HeapIndex = heapIndex;
 
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
-        cbvDesc.BufferLocation  = m_UploadBuffer->GetGPUVirtualAddress();
+        cbvDesc.BufferLocation  = m_UploadBuffer->GetGPUVirtualAddress(m_Index);
         cbvDesc.SizeInBytes     = _Internal::CalcConstantBufferSize(sizeof(T));
 
-        GetDevice()->CreateConstantBufferView(&cbvDesc, heap.GetCPUHandle(index));
+        GetDevice()->CreateConstantBufferView(&cbvDesc, heap.GetCPUHandle(heapIndex));
 
         return true;
     }
 
     template <typename T>
-    bool ConstantBuffer::InitAsRootDescriptor()
+    bool ConstantBuffer::InitAsRootDescriptor(UploadBuffer* uploadBuffer, std::uint32_t index)
     {
-        return InitAsRootDescriptor(T{});
+        return Init<T>(uploadBuffer, index);
     }
 
     template <typename T>
-    bool ConstantBuffer::InitAsRootDescriptor(const T& data)
+    bool ConstantBuffer::Init(UploadBuffer* uploadBuffer, std::uint32_t index)
     {
-        return Init(data);
-    }
-
-    template <typename T>
-    bool ConstantBuffer::Init(const T& data)
-    {
-        D3D12_RESOURCE_DESC resourceDesc{};
-        resourceDesc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resourceDesc.Alignment          = 0;
-        resourceDesc.Width              = _Internal::CalcConstantBufferSize(sizeof(T));
-        resourceDesc.Height             = 1;
-        resourceDesc.DepthOrArraySize   = 1;
-        resourceDesc.MipLevels          = 1;
-        resourceDesc.Format             = DXGI_FORMAT_UNKNOWN;
-        resourceDesc.SampleDesc.Count   = 1;
-        resourceDesc.SampleDesc.Quality = 0;
-        resourceDesc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        resourceDesc.Flags              = D3D12_RESOURCE_FLAG_NONE;
-
-        m_UploadBuffer = Resource::CreateUploadBuffer(resourceDesc);
-
-        SPIELER_RETURN_IF_FAILED(m_UploadBuffer);
-        SPIELER_RETURN_IF_FAILED(m_UploadBuffer->Map(0, nullptr, reinterpret_cast<void**>(&m_MappedData)));
-
-        std::memcpy(m_MappedData, &data, sizeof(data));
+        m_UploadBuffer  = uploadBuffer;
+        m_Index         = index;
 
         return true;
     }

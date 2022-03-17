@@ -24,12 +24,18 @@
     <ClCompile Include="src\projection_camera_controller.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\waves.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\land_layer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\projection_camera_controller.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\waves.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

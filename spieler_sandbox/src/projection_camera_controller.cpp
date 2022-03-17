@@ -95,18 +95,18 @@ namespace Sandbox
                 UpdateView();
             }
 
-            if (ImGui::SliderFloat("Yaw (Y)", &m_Yaw, -89.0f, 89.0f))
+            if (ImGui::SliderFloat("Yaw (Y)", &m_Yaw, -180.0f, 180.0f))
             {
                 UpdateView();
             }
 
-            if (ImGui::SliderFloat("Roll (Z)", &m_Roll, -89.0f, 89.0f))
+            if (ImGui::SliderFloat("Roll (Z)", &m_Roll, -180.0f, 180.0f))
             {
                 UpdateView();
             }
 
             ImGui::SliderFloat("CameraSpeed", &m_CameraSpeed, 20.0f, 100.0f);
-            ImGui::SliderFloat("MouseSensitivity", &m_MouseSensitivity, 0.05f, 0.4f, "%.0f");
+            ImGui::SliderFloat("MouseSensitivity", &m_MouseSensitivity, 0.05f, 0.4f, "%.2f");
         }
         ImGui::End();
     }
@@ -139,6 +139,16 @@ namespace Sandbox
             m_Pitch += m_MouseSensitivity * dy;
 
             m_Pitch = std::min<float>(std::max<float>(-89.0f, m_Pitch), 89.0f);
+
+            if (m_Yaw > 180.0f)
+            {
+                m_Yaw = -180.0f;
+            }
+
+            if (m_Yaw < -180.0f)
+            {
+                m_Yaw = 180.0f;
+            }
 
             UpdateView();
         }

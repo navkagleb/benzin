@@ -24,6 +24,8 @@ namespace Spieler
         Renderer& GetRenderer() { return m_Renderer; }
         const Renderer& GetRenderer() const { return m_Renderer; }
 
+        const Timer& GetTimer() const { return m_Timer; }
+
     public:
         bool InitInternal(const std::string& title, std::uint32_t width, std::uint32_t height);
 
@@ -36,19 +38,12 @@ namespace Spieler
 
     private:
         bool InitWindow(const std::string& title, std::uint32_t width, std::uint32_t height);
-
-#if SPIELER_USE_IMGUI
+        bool InitRenderer();
         bool InitImGui();
-#endif
 
         void OnUpdate(float dt);
         bool OnRender(float dt);
-
-#if SPIELER_USE_IMGUI
         void OnImGuiRender(float dt);
-#endif
-
-        void OnClose();
 
         void WindowEventCallback(Event& event);
 
@@ -74,8 +69,6 @@ namespace Spieler
             bool IsPaused{ false };
             bool IsFullscreen{ false };
         };
-
-    private:
 
     private:
         inline static Application*  g_Instance{ nullptr };

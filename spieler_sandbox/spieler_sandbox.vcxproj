@@ -22,10 +22,12 @@
     <ClCompile Include="src\land_layer.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\projection_camera_controller.cpp" />
+    <ClCompile Include="src\waves.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\land_layer.h" />
     <ClInclude Include="src\projection_camera_controller.h" />
+    <ClInclude Include="src\waves.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

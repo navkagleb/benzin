@@ -3,7 +3,8 @@
 #include "mouse_button.h"
 #include "key_code.h"
 
-#include <windows.h>
+#define NOMINMAX
+#include <Windows.h>
 
 namespace Spieler
 {

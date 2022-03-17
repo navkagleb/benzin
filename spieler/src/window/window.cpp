@@ -1,12 +1,12 @@
-#include "window.h"
+#include "window/window.h"
 
 #include <imgui/backends/imgui_impl_win32.h>
 
 #include "common.h"
-#include "window_event.h"
-#include "mouse_event.h"
-#include "key_event.h"
-#include "input.h"
+#include "window/window_event.h"
+#include "window/mouse_event.h"
+#include "window/key_event.h"
+#include "window/input.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
@@ -51,12 +51,10 @@ namespace Spieler
                 window = reinterpret_cast<Window*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
             }
 
-#if SPIELER_USE_IMGUI
             if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
             {
                 return true;
             }
-#endif
             if (!window || !window->m_EventCallback)
             {
                 return ::DefWindowProc(hwnd, msg, wparam, lparam);
@@ -65,281 +63,278 @@ namespace Spieler
             static std::uint32_t width  = window->m_Width;
             static std::uint32_t height = window->m_Height;
 
-            if (window && window->m_EventCallback)
+            switch (msg)
             {
-                switch (msg)
+                // Window events
+                case WM_CLOSE:
                 {
-                    // Window events
-                    case WM_CLOSE:
+                    WindowCloseEvent event;
+                    window->m_EventCallback(event);
+
+                    ::DestroyWindow(hwnd);
+
+                    return 0;
+                }
+
+                case WM_ACTIVATE:
+                {
+                    if (LOWORD(wparam) == WA_INACTIVE)
                     {
-                        WindowCloseEvent event;
+                        WindowUnfocusedEvent event;
                         window->m_EventCallback(event);
-
-                        ::DestroyWindow(hwnd);
-
-                        return 0;
+                    }
+                    else
+                    {
+                        WindowFocusedEvent event;
+                        window->m_EventCallback(event);
                     }
 
-                    case WM_ACTIVATE:
+                    return 0;
+                }
+
+                case WM_SIZE:
+                {
+                    width   = LOWORD(lparam);
+                    height  = HIWORD(lparam);
+
+                    switch (wparam)
                     {
-                        if (LOWORD(wparam) == WA_INACTIVE)
+                        case SIZE_MINIMIZED:
                         {
-                            WindowUnfocusedEvent event;
+                            window->m_Width         = width;
+                            window->m_Height        = height;
+                            window->m_IsMinimized   = true;
+                            window->m_IsMaximized   = false;
+
+                            WindowMinimizedEvent event;
                             window->m_EventCallback(event);
-                        }
-                        else
-                        {
-                            WindowFocusedEvent event;
-                            window->m_EventCallback(event);
+
+                            break;
                         }
 
-                        return 0;
-                    }
-
-                    case WM_SIZE:
-                    {
-                        width   = LOWORD(lparam);
-                        height  = HIWORD(lparam);
-
-                        switch (wparam)
+                        case SIZE_MAXIMIZED:
                         {
-                            case SIZE_MINIMIZED:
+                            window->m_Width         = width;
+                            window->m_Height        = height;
+                            window->m_IsMinimized   = false;
+                            window->m_IsMaximized   = true;
+
                             {
-                                window->m_Width         = width;
-                                window->m_Height        = height;
-                                window->m_IsMinimized   = true;
-                                window->m_IsMaximized   = false;
-
-                                WindowMinimizedEvent event;
+                                WindowMaximizedEvent event;
                                 window->m_EventCallback(event);
-
-                                break;
+                            }
+                                
+                            {
+                                WindowResizedEvent event(window->m_Width, window->m_Height);
+                                window->m_EventCallback(event);
                             }
 
-                            case SIZE_MAXIMIZED:
+                            break;
+                        }
+
+                        case SIZE_RESTORED:
+                        {
+                            if (window->m_IsResizing)
+                            {
+                                WindowResizingEvent event(window->m_Width, window->m_Height);
+                                window->m_EventCallback(event);
+                            }
+                            else if (window->m_IsMinimized)
                             {
                                 window->m_Width         = width;
                                 window->m_Height        = height;
                                 window->m_IsMinimized   = false;
-                                window->m_IsMaximized   = true;
 
                                 {
-                                    WindowMaximizedEvent event;
+                                    WindowRestoredEvent event;
                                     window->m_EventCallback(event);
                                 }
-                                
+                                    
                                 {
                                     WindowResizedEvent event(window->m_Width, window->m_Height);
                                     window->m_EventCallback(event);
                                 }
-
-                                break;
                             }
-
-                            case SIZE_RESTORED:
+                            else if (window->m_IsMaximized)
                             {
-                                if (window->m_IsResizing)
+                                window->m_Width         = width;
+                                window->m_Height        = height;
+                                window->m_IsMaximized   = false;
+
                                 {
-                                    WindowResizingEvent event(window->m_Width, window->m_Height);
+                                    WindowRestoredEvent event;
                                     window->m_EventCallback(event);
                                 }
-                                else if (window->m_IsMinimized)
+
                                 {
-                                    window->m_Width         = width;
-                                    window->m_Height        = height;
-                                    window->m_IsMinimized   = false;
-
-                                    {
-                                        WindowRestoredEvent event;
-                                        window->m_EventCallback(event);
-                                    }
-                                    
-                                    {
-                                        WindowResizedEvent event(window->m_Width, window->m_Height);
-                                        window->m_EventCallback(event);
-                                    }
+                                    WindowResizedEvent event(window->m_Width, window->m_Height);
+                                    window->m_EventCallback(event);
                                 }
-                                else if (window->m_IsMaximized)
-                                {
-                                    window->m_Width         = width;
-                                    window->m_Height        = height;
-                                    window->m_IsMaximized   = false;
-
-                                    {
-                                        WindowRestoredEvent event;
-                                        window->m_EventCallback(event);
-                                    }
-
-                                    {
-                                        WindowResizedEvent event(window->m_Width, window->m_Height);
-                                        window->m_EventCallback(event);
-                                    }
-                                }
-                                else
-                                {
-                                    window->m_Width     = width;
-                                    window->m_Height    = height;
-
-                                    // API call such as ::SetWindowPos or IDXGISwapChain::SetFullscreenState
-                                    {
-                                        WindowRestoredEvent event;
-                                        window->m_EventCallback(event);
-                                    }
-
-                                    {
-                                        WindowResizedEvent event(window->m_Width, window->m_Height);
-                                        window->m_EventCallback(event);
-                                    }
-                                }
-
-                                break;
                             }
-
-                            default:
+                            else
                             {
-                                break;
+                                window->m_Width     = width;
+                                window->m_Height    = height;
+
+                                // API call such as ::SetWindowPos or IDXGISwapChain::SetFullscreenState
+                                {
+                                    WindowRestoredEvent event;
+                                    window->m_EventCallback(event);
+                                }
+
+                                {
+                                    WindowResizedEvent event(window->m_Width, window->m_Height);
+                                    window->m_EventCallback(event);
+                                }
                             }
+
+                            break;
                         }
 
-                        return 0;
-                    }
-
-                    case WM_ENTERSIZEMOVE:
-                    {
-                        window->m_IsResizing = true;
-
-                        WindowEnterResizingEvent event;
-                        window->m_EventCallback(event);
-
-                        return 0;
-                    }
-
-                    case WM_EXITSIZEMOVE:
-                    {
-                        window->m_IsResizing = false;
-
+                        default:
                         {
-                            WindowExitResizingEvent event;
-                            window->m_EventCallback(event);
+                            break;
                         }
-
-                        if (window->m_Width != width || window->m_Height != height)
-                        {
-                            window->m_Width     = width;
-                            window->m_Height    = height;
-
-                            WindowResizedEvent event(window->m_Width, window->m_Height);
-                            window->m_EventCallback(event);
-                        }
-
-                        return 0;
                     }
 
-                    case WM_GETMINMAXINFO:
-                    {
-                        reinterpret_cast<MINMAXINFO*>(lparam)->ptMinTrackSize.x = 200;
-                        reinterpret_cast<MINMAXINFO*>(lparam)->ptMinTrackSize.y = 200;
+                    return 0;
+                }
 
-                        return 0;
-                    }
+                case WM_ENTERSIZEMOVE:
+                {
+                    window->m_IsResizing = true;
 
-                    // Mouse events
-                    case WM_LBUTTONDOWN:
+                    WindowEnterResizingEvent event;
+                    window->m_EventCallback(event);
+
+                    return 0;
+                }
+
+                case WM_EXITSIZEMOVE:
+                {
+                    window->m_IsResizing = false;
+
                     {
-                        MouseButtonPressedEvent event(MouseButton_Left, LOWORD(lparam), HIWORD(lparam));
+                        WindowExitResizingEvent event;
                         window->m_EventCallback(event);
-
-                        return 0;
                     }
 
-                    case WM_RBUTTONDOWN:
+                    if (window->m_Width != width || window->m_Height != height)
                     {
-                        MouseButtonPressedEvent event(MouseButton_Right, LOWORD(lparam), HIWORD(lparam));
+                        window->m_Width     = width;
+                        window->m_Height    = height;
+
+                        WindowResizedEvent event(window->m_Width, window->m_Height);
                         window->m_EventCallback(event);
-
-                        return 0;
                     }
 
-                    case WM_MBUTTONDOWN:
-                    {
-                        MouseButtonPressedEvent event(MouseButton_Middle, LOWORD(lparam), HIWORD(lparam));
-                        window->m_EventCallback(event);
+                    return 0;
+                }
 
-                        return 0;
-                    }
+                case WM_GETMINMAXINFO:
+                {
+                    reinterpret_cast<MINMAXINFO*>(lparam)->ptMinTrackSize.x = 200;
+                    reinterpret_cast<MINMAXINFO*>(lparam)->ptMinTrackSize.y = 200;
 
-                    case WM_LBUTTONUP:
-                    {
-                        MouseButtonReleasedEvent event(MouseButton_Left, LOWORD(lparam), HIWORD(lparam));
-                        window->m_EventCallback(event);
+                    return 0;
+                }
 
-                        return 0;
-                    }
+                // Mouse events
+                case WM_LBUTTONDOWN:
+                {
+                    MouseButtonPressedEvent event(MouseButton_Left, LOWORD(lparam), HIWORD(lparam));
+                    window->m_EventCallback(event);
 
-                    case WM_RBUTTONUP:
-                    {
-                        MouseButtonReleasedEvent event(MouseButton_Right, LOWORD(lparam), HIWORD(lparam));
-                        window->m_EventCallback(event);
+                    return 0;
+                }
 
-                        return 0;
-                    }
+                case WM_RBUTTONDOWN:
+                {
+                    MouseButtonPressedEvent event(MouseButton_Right, LOWORD(lparam), HIWORD(lparam));
+                    window->m_EventCallback(event);
 
-                    case WM_MBUTTONUP:
-                    {
-                        MouseButtonReleasedEvent event(MouseButton_Middle, LOWORD(lparam), HIWORD(lparam));
-                        window->m_EventCallback(event);
+                    return 0;
+                }
 
-                        return 0;
-                    }
+                case WM_MBUTTONDOWN:
+                {
+                    MouseButtonPressedEvent event(MouseButton_Middle, LOWORD(lparam), HIWORD(lparam));
+                    window->m_EventCallback(event);
 
-                    case WM_MOUSEMOVE:
-                    {
-                        MouseMovedEvent event(LOWORD(lparam), HIWORD(lparam));
-                        window->m_EventCallback(event);
+                    return 0;
+                }
 
-                        return 0;
-                    }
+                case WM_LBUTTONUP:
+                {
+                    MouseButtonReleasedEvent event(MouseButton_Left, LOWORD(lparam), HIWORD(lparam));
+                    window->m_EventCallback(event);
 
-                    case WM_MOUSEWHEEL:
-                    {
-                        MouseScrolledEvent event(GET_WHEEL_DELTA_WPARAM(wparam) > 0 ? 1 : -1);
-                        window->m_EventCallback(event);
+                    return 0;
+                }
 
-                        return 0;
-                    }
+                case WM_RBUTTONUP:
+                {
+                    MouseButtonReleasedEvent event(MouseButton_Right, LOWORD(lparam), HIWORD(lparam));
+                    window->m_EventCallback(event);
 
-                    // Key event
-                    case WM_KEYDOWN:
-                    case WM_SYSKEYDOWN:
-                    {
-                        KeyPressedEvent event(static_cast<KeyCode>(wparam), static_cast<bool>(HIWORD(lparam) & KF_REPEAT));
-                        window->m_EventCallback(event);
+                    return 0;
+                }
 
-                        break;
-                    }
+                case WM_MBUTTONUP:
+                {
+                    MouseButtonReleasedEvent event(MouseButton_Middle, LOWORD(lparam), HIWORD(lparam));
+                    window->m_EventCallback(event);
 
-                    case WM_KEYUP:
-                    case WM_SYSKEYUP:
-                    {
-                        KeyReleasedEvent event(static_cast<KeyCode>(wparam));
-                        window->m_EventCallback(event);
+                    return 0;
+                }
 
-                        break;
-                    }
+                case WM_MOUSEMOVE:
+                {
+                    MouseMovedEvent event(LOWORD(lparam), HIWORD(lparam));
+                    window->m_EventCallback(event);
 
-                    case WM_CHAR:
-                    case WM_SYSCHAR:
-                    {
-                        KeyTypedEvent event(wparam);
-                        window->m_EventCallback(event);
+                    return 0;
+                }
 
-                        break;
-                    }
+                case WM_MOUSEWHEEL:
+                {
+                    MouseScrolledEvent event(GET_WHEEL_DELTA_WPARAM(wparam) > 0 ? 1 : -1);
+                    window->m_EventCallback(event);
 
-                    default:
-                    {
-                        break;
-                    }
+                    return 0;
+                }
+
+                // Key event
+                case WM_KEYDOWN:
+                case WM_SYSKEYDOWN:
+                {
+                    KeyPressedEvent event(static_cast<KeyCode>(wparam), static_cast<bool>(HIWORD(lparam) & KF_REPEAT));
+                    window->m_EventCallback(event);
+
+                    break;
+                }
+
+                case WM_KEYUP:
+                case WM_SYSKEYUP:
+                {
+                    KeyReleasedEvent event(static_cast<KeyCode>(wparam));
+                    window->m_EventCallback(event);
+
+                    break;
+                }
+
+                case WM_CHAR:
+                case WM_SYSCHAR:
+                {
+                    KeyTypedEvent event(wparam);
+                    window->m_EventCallback(event);
+
+                    break;
+                }
+
+                default:
+                {
+                    break;
                 }
             }
 

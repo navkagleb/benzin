@@ -1,9 +1,13 @@
 #include "land_layer.h"
 
+#include <random>
+#include <chrono>
+
 #include <DirectXColors.h>
 
 #include <imgui/imgui.h>
 
+#include <spieler/application.h>
 #include <spieler/common.h>
 #include <spieler/window/input.h>
 #include <spieler/window/event_dispatcher.h>
@@ -40,11 +44,13 @@ namespace Sandbox
         : m_Window(window)
         , m_Renderer(renderer)
         , m_CameraController(DirectX::XM_PIDIV2, m_Window.GetAspectRatio())
+        , m_Waves(WavesProps{ 200, 200, 0.03f, 0.8f, 4.0f, 0.2f })
     {}
 
     bool LandLayer::OnAttach()
     {
         SPIELER_RETURN_IF_FAILED(InitDescriptorHeaps());
+        SPIELER_RETURN_IF_FAILED(InitUploadBuffers());
 
         InitViewport();
         InitScissorRect();
@@ -53,9 +59,10 @@ namespace Sandbox
         {
             //SPIELER_RETURN_IF_FAILED(InitMeshGeometry());
             SPIELER_RETURN_IF_FAILED(InitLandGeometry());
+            SPIELER_RETURN_IF_FAILED(InitWavesGeometry());
             SPIELER_RETURN_IF_FAILED(InitRootSignature());
             SPIELER_RETURN_IF_FAILED(InitPipelineState());
-            SPIELER_RETURN_IF_FAILED(m_PassConstantBuffer.InitAsRootDescriptor<PassConstants>());
+            SPIELER_RETURN_IF_FAILED(m_PassConstantBuffer.InitAsRootDescriptor<PassConstants>(&m_PassUploadBuffer, 0));
         }
         m_Renderer.ExexuteCommandList();
 
@@ -89,6 +96,39 @@ namespace Sandbox
         const auto& camera = m_CameraController.GetCamera();
         m_PassConstantBuffer.As<PassConstants>().View       = DirectX::XMMatrixTranspose(camera.View);
         m_PassConstantBuffer.As<PassConstants>().Projection = DirectX::XMMatrixTranspose(camera.Projection);
+
+        // Update Waves
+        static float time = 0.0f;
+        
+        static std::seed_seq seedSequence
+        {
+            std::random_device()(),
+            static_cast<std::uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())
+        };
+
+        static std::mt19937_64 mersenneTwisterEngine(seedSequence);
+
+        if ((Spieler::Application::GetInstance().GetTimer().GetTotalTime() - time) >= 0.25f)
+        {
+            time += 0.25f;
+
+            const std::uint32_t i = std::uniform_int_distribution<std::uint32_t>{ 4, m_Waves.GetRowCount() - 5 }(mersenneTwisterEngine);
+            const std::uint32_t j = std::uniform_int_distribution<std::uint32_t>{ 4, m_Waves.GetColumnCount() - 5 }(mersenneTwisterEngine);
+
+            const float r = std::uniform_real_distribution<float>{ 0.2f, 0.5f }(mersenneTwisterEngine);
+
+            m_Waves.Disturb(i, j, r);
+        }
+
+        m_Waves.OnUpdate(dt);
+
+        for (std::uint32_t i = 0; i < m_Waves.GetVertexCount(); ++i)
+        {
+            m_WavesUploadBuffer.As<ColorVertex>(i).Position = m_Waves.GetPosition(i);
+            m_WavesUploadBuffer.As<ColorVertex>(i).Color    = DirectX::XMFLOAT4{ DirectX::Colors::Blue };
+        }
+
+        m_MeshGeometries["waves"].VertexBuffer.Init(m_WavesUploadBuffer);
     }
 
     bool LandLayer::OnRender(float dt)
@@ -124,17 +164,19 @@ namespace Sandbox
                 &b
             );
 
+            const auto& landGeometry = m_MeshGeometries["land"];
+
             m_RootSignature.Bind();
             m_CBVDescriptorHeap.Bind();
-            m_LandMeshGeometry.VertexBuffer.Bind();
-            m_LandMeshGeometry.IndexBuffer.Bind();
-            m_Renderer.m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(m_LandMeshGeometry.PrimitiveTopology));
-
             m_PassConstantBuffer.BindAsRootDescriptor(0);
 
             for (const auto& renderItem : m_RenderItems)
             {
                 const auto& submeshGeometry = *renderItem.SubmeshGeometry;
+
+                renderItem.MeshGeometry->VertexBuffer.Bind();
+                renderItem.MeshGeometry->IndexBuffer.Bind();
+                m_Renderer.m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(renderItem.MeshGeometry->PrimitiveTopology));
 
                 renderItem.ConstantBuffer.BindAsRootDescriptor(1);
                 m_Renderer.m_CommandList->DrawIndexedInstanced(submeshGeometry.IndexCount, 1, submeshGeometry.StartIndexLocation, submeshGeometry.BaseVertexLocation, 0);
@@ -180,6 +222,15 @@ namespace Sandbox
         return true;
     }
 
+    bool LandLayer::InitUploadBuffers()
+    {
+        SPIELER_RETURN_IF_FAILED(m_PassUploadBuffer.Init<PassConstants>(Spieler::UploadBufferType_ConstantBuffer, 1));
+        SPIELER_RETURN_IF_FAILED(m_ObjectUploadBuffer.Init<ObjectConstants>(Spieler::UploadBufferType_ConstantBuffer, m_RenderItemCount));
+        SPIELER_RETURN_IF_FAILED(m_WavesUploadBuffer.Init<ColorVertex>(Spieler::UploadBufferType_Default, m_Waves.GetVertexCount()));
+
+        return true;
+    }
+
     bool LandLayer::InitMeshGeometry()
     {
         Spieler::BoxGeometryProps boxProps;
@@ -216,27 +267,29 @@ namespace Sandbox
         const Spieler::MeshData sphereMeshData       = Spieler::GeometryGenerator::GenerateSphere<Spieler::BasicVertex, std::uint32_t>(sphereProps);
         const Spieler::MeshData geosphereMeshData    = Spieler::GeometryGenerator::GenerateGeosphere<Spieler::BasicVertex, std::uint32_t>(geosphereProps);
 
-        Spieler::SubmeshGeometry& boxSubmesh    = m_MeshGeometry.Submeshes["box"];
+        auto& meshes = m_MeshGeometries["meshes"];
+
+        Spieler::SubmeshGeometry& boxSubmesh    = meshes.Submeshes["box"];
         boxSubmesh.IndexCount                   = static_cast<std::uint32_t>(boxMeshData.Indices.size());
         boxSubmesh.StartIndexLocation           = 0;
         boxSubmesh.BaseVertexLocation           = 0;
 
-        Spieler::SubmeshGeometry& gridSubmesh   = m_MeshGeometry.Submeshes["grid"];
+        Spieler::SubmeshGeometry& gridSubmesh   = meshes.Submeshes["grid"];
         gridSubmesh.IndexCount                  = static_cast<std::uint32_t>(gridMeshData.Indices.size());
         gridSubmesh.BaseVertexLocation          = boxSubmesh.BaseVertexLocation + static_cast<std::uint32_t>(boxMeshData.Vertices.size());
         gridSubmesh.StartIndexLocation          = boxSubmesh.StartIndexLocation + static_cast<std::uint32_t>(boxMeshData.Indices.size());
 
-        Spieler::SubmeshGeometry& cylinderSubmesh   = m_MeshGeometry.Submeshes["cylinder"];
+        Spieler::SubmeshGeometry& cylinderSubmesh   = meshes.Submeshes["cylinder"];
         cylinderSubmesh.IndexCount                  = static_cast<std::uint32_t>(cylinderMeshData.Indices.size());
         cylinderSubmesh.BaseVertexLocation          = gridSubmesh.BaseVertexLocation + static_cast<std::uint32_t>(gridMeshData.Vertices.size());
         cylinderSubmesh.StartIndexLocation          = gridSubmesh.StartIndexLocation + static_cast<std::uint32_t>(gridMeshData.Indices.size());
 
-        Spieler::SubmeshGeometry& sphereSubmesh     = m_MeshGeometry.Submeshes["sphere"];
+        Spieler::SubmeshGeometry& sphereSubmesh     = meshes.Submeshes["sphere"];
         sphereSubmesh.IndexCount                    = static_cast<std::uint32_t>(sphereMeshData.Indices.size());
         sphereSubmesh.BaseVertexLocation            = cylinderSubmesh.BaseVertexLocation + static_cast<std::uint32_t>(cylinderMeshData.Vertices.size());
         sphereSubmesh.StartIndexLocation            = cylinderSubmesh.StartIndexLocation + static_cast<std::uint32_t>(cylinderMeshData.Indices.size());
 
-        Spieler::SubmeshGeometry& geosphereSubmesh      = m_MeshGeometry.Submeshes["geosphere"];
+        Spieler::SubmeshGeometry& geosphereSubmesh      = meshes.Submeshes["geosphere"];
         geosphereSubmesh.IndexCount                     = static_cast<std::uint32_t>(geosphereMeshData.Indices.size());
         geosphereSubmesh.BaseVertexLocation             = sphereSubmesh.BaseVertexLocation + static_cast<std::uint32_t>(sphereMeshData.Vertices.size());
         geosphereSubmesh.StartIndexLocation             = sphereSubmesh.StartIndexLocation + static_cast<std::uint32_t>(sphereMeshData.Indices.size());
@@ -288,41 +341,41 @@ namespace Sandbox
         indices.insert(indices.end(), sphereMeshData.Indices.begin(),    sphereMeshData.Indices.end());
         indices.insert(indices.end(), geosphereMeshData.Indices.begin(), geosphereMeshData.Indices.end());
 
-        SPIELER_RETURN_IF_FAILED(m_MeshGeometry.VertexBuffer.Init(vertices.data(), static_cast<std::uint32_t>(vertices.size())));
-        SPIELER_RETURN_IF_FAILED(m_MeshGeometry.IndexBuffer.Init(indices.data(), static_cast<std::uint32_t>(indices.size())));
+        SPIELER_RETURN_IF_FAILED(meshes.VertexBuffer.Init(vertices.data(), static_cast<std::uint32_t>(vertices.size())));
+        SPIELER_RETURN_IF_FAILED(meshes.IndexBuffer.Init(indices.data(), static_cast<std::uint32_t>(indices.size())));
 
-        m_MeshGeometry.VertexBuffer.SetName(L"MeshGeometry VertexBuffer");
-        m_MeshGeometry.IndexBuffer.SetName(L"MeshGeometry IndexBuffer");
+        meshes.VertexBuffer.SetName(L"MeshGeometry VertexBuffer");
+        meshes.IndexBuffer.SetName(L"MeshGeometry IndexBuffer");
 
-        m_MeshGeometry.PrimitiveTopology = Spieler::PrimitiveTopology_TriangleList;
+        meshes.PrimitiveTopology = Spieler::PrimitiveTopology_TriangleList;
 
         // Render items
         Spieler::RenderItem box;
-        box.MeshGeometry        = &m_MeshGeometry;
-        box.SubmeshGeometry     = &m_MeshGeometry.Submeshes["box"];
+        box.MeshGeometry        = &meshes;
+        box.SubmeshGeometry     = &meshes.Submeshes["box"];
         
-        SPIELER_RETURN_IF_FAILED(box.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>());
+        SPIELER_RETURN_IF_FAILED(box.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 0));
         m_RenderItems.push_back(std::move(box));
 
         Spieler::RenderItem cylinder;
-        cylinder.MeshGeometry           = &m_MeshGeometry;
-        cylinder.SubmeshGeometry        = &m_MeshGeometry.Submeshes["cylinder"];
+        cylinder.MeshGeometry           = &meshes;
+        cylinder.SubmeshGeometry        = &meshes.Submeshes["cylinder"];
 
-        SPIELER_RETURN_IF_FAILED(cylinder.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>());
+        SPIELER_RETURN_IF_FAILED(cylinder.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 1));
         m_RenderItems.push_back(std::move(cylinder));
 
         Spieler::RenderItem sphere;
-        sphere.MeshGeometry           = &m_MeshGeometry;
-        sphere.SubmeshGeometry        = &m_MeshGeometry.Submeshes["sphere"];
+        sphere.MeshGeometry           = &meshes;
+        sphere.SubmeshGeometry        = &meshes.Submeshes["sphere"];
 
-        SPIELER_RETURN_IF_FAILED(sphere.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>());
+        SPIELER_RETURN_IF_FAILED(sphere.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 2));
         m_RenderItems.push_back(std::move(sphere));
 
         Spieler::RenderItem geosphere;
-        geosphere.MeshGeometry           = &m_MeshGeometry;
-        geosphere.SubmeshGeometry        = &m_MeshGeometry.Submeshes["geosphere"];
+        geosphere.MeshGeometry           = &meshes;
+        geosphere.SubmeshGeometry        = &meshes.Submeshes["geosphere"];
 
-        SPIELER_RETURN_IF_FAILED(geosphere.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>());
+        SPIELER_RETURN_IF_FAILED(geosphere.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 3));
         m_RenderItems.push_back(std::move(geosphere));
 
         return true;
@@ -337,12 +390,6 @@ namespace Sandbox
         gridGeometryProps.ColumnCount   = 100;
 
         const auto& gridMeshData = Spieler::GeometryGenerator::GenerateGrid<Spieler::BasicVertex, std::uint32_t>(gridGeometryProps);
-
-        struct ColorVertex
-        {
-            DirectX::XMFLOAT3 Position{};
-            DirectX::XMFLOAT4 Color{};
-        };
 
         std::vector<ColorVertex> vertices;
         vertices.reserve(gridMeshData.Vertices.size());
@@ -382,24 +429,77 @@ namespace Sandbox
             vertices.push_back(colorVertex);
         }
 
-        SPIELER_RETURN_IF_FAILED(m_LandMeshGeometry.VertexBuffer.Init(vertices.data(), vertices.size()));
-        SPIELER_RETURN_IF_FAILED(m_LandMeshGeometry.IndexBuffer.Init(gridMeshData.Indices.data(), gridMeshData.Indices.size()));
+        auto& landMeshGeometry = m_MeshGeometries["land"];
 
-        m_LandMeshGeometry.VertexBuffer.SetName(L"LandMeshGeometry VertexBuffer");
-        m_LandMeshGeometry.IndexBuffer.SetName(L"LandMeshGeometry IndexBuffer");
+        SPIELER_RETURN_IF_FAILED(landMeshGeometry.VertexBuffer.Init(vertices.data(), vertices.size()));
+        SPIELER_RETURN_IF_FAILED(landMeshGeometry.IndexBuffer.Init(gridMeshData.Indices.data(), gridMeshData.Indices.size()));
 
-        m_LandMeshGeometry.PrimitiveTopology = Spieler::PrimitiveTopology_TriangleList;
+        landMeshGeometry.VertexBuffer.SetName(L"LandMeshGeometry VertexBuffer");
+        landMeshGeometry.IndexBuffer.SetName(L"LandMeshGeometry IndexBuffer");
 
-        auto& landMesh      = m_LandMeshGeometry.Submeshes["land"];
+        landMeshGeometry.PrimitiveTopology = Spieler::PrimitiveTopology_TriangleList;
+
+        auto& landMesh      = landMeshGeometry.Submeshes["land"];
         landMesh.IndexCount = gridMeshData.Indices.size();
 
         // Render items
         Spieler::RenderItem land;
-        land.MeshGeometry       = &m_LandMeshGeometry;
-        land.SubmeshGeometry    = &m_LandMeshGeometry.Submeshes["land"];
+        land.MeshGeometry       = &landMeshGeometry;
+        land.SubmeshGeometry    = &landMeshGeometry.Submeshes["land"];
 
-        SPIELER_RETURN_IF_FAILED(land.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>({ DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, 0.0f, -100.0f)) }));
+        SPIELER_RETURN_IF_FAILED(land.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 0));
+        land.ConstantBuffer.As<ObjectConstants>().World = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, -20.0f, 0.0f));
+
         m_RenderItems.push_back(std::move(land));
+
+        return true;
+    }
+
+    bool LandLayer::InitWavesGeometry()
+    {
+        std::vector<std::uint32_t> indices(m_Waves.GetTriangleCount() * 3);
+
+        const std::uint32_t m = m_Waves.GetRowCount();
+        const std::uint32_t n = m_Waves.GetColumnCount();
+
+        std::uint32_t k = 0;
+
+        for (std::uint32_t i = 0; i < m - 1; ++i)
+        {
+            for (std::uint32_t j = 0; j < n - 1; ++j)
+            {
+                indices[k + 0] = i * n + j;
+                indices[k + 1] = i * n + j + 1;
+                indices[k + 2] = (i + 1) * n + j;
+
+                indices[k + 3] = (i + 1) * n + j;
+                indices[k + 4] = i * n + j + 1;
+                indices[k + 5] = (i + 1) * n + j + 1;
+
+                k += 6;
+            }
+        }
+
+        auto& wavesMeshGeometry = m_MeshGeometries["waves"];
+
+        SPIELER_RETURN_IF_FAILED(wavesMeshGeometry.IndexBuffer.Init(indices.data(), static_cast<std::uint32_t>(indices.size())));
+        
+        wavesMeshGeometry.PrimitiveTopology = Spieler::PrimitiveTopology_TriangleList;
+
+        auto& submesh               = wavesMeshGeometry.Submeshes["main"];
+        submesh.IndexCount          = static_cast<std::uint32_t>(indices.size());
+        submesh.StartIndexLocation  = 0;
+        submesh.BaseVertexLocation  = 0;
+
+        // Render Item
+        Spieler::RenderItem waves;
+        waves.MeshGeometry       = &wavesMeshGeometry;
+        waves.SubmeshGeometry    = &wavesMeshGeometry.Submeshes["main"];
+
+        SPIELER_RETURN_IF_FAILED(waves.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 1));
+        waves.ConstantBuffer.As<ObjectConstants>().World = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, -25.0f, 0.0f));
+
+        m_RenderItems.push_back(std::move(waves));
 
         return true;
     }
