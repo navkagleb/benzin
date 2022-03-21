@@ -12,10 +12,10 @@ namespace Spieler
     class ConstantBuffer : public RendererObject
     {
     public:
-        template <typename T>
-        bool InitAsRootDescriptorTable(UploadBuffer* uploadBuffer, std::uint32_t index, const DescriptorHeap& heap, std::uint32_t heapIndex);
+        std::uint32_t GetIndex() const { return m_Index; }
 
-        template <typename T>
+    public:
+        bool InitAsRootDescriptorTable(UploadBuffer* uploadBuffer, std::uint32_t index, const DescriptorHeap& heap, std::uint32_t heapIndex);
         bool InitAsRootDescriptor(UploadBuffer* uploadBuffer, std::uint32_t index);
 
         template <typename T>
@@ -28,12 +28,14 @@ namespace Spieler
         void BindAsRootDescriptor(std::uint32_t registerIndex) const;
 
     private:
-        template <typename T>
         bool Init(UploadBuffer* uploadBuffer, std::uint32_t index);
+
+    public:
+        explicit operator bool() const { return m_UploadBuffer; }
 
     private:
         UploadBuffer*   m_UploadBuffer{ nullptr };
-        std::uint32_t   m_Index{ 0   };
+        std::uint32_t   m_Index{ 0 };
         
         // Only for RootDescriptorTable
         std::uint32_t   m_HeapIndex{ 0 };
@@ -56,5 +58,3 @@ namespace Spieler
     }
 
 } // namespace Spieler
-
-#include "constant_buffer.inl"

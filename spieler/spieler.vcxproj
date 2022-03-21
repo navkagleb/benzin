@@ -47,6 +47,7 @@
     <ClCompile Include="third_party\imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\spieler\renderer\light.h" />
     <ClInclude Include="include\spieler\renderer\upload_buffer.h" />
     <ClInclude Include="include\spieler\window\key_code.h" />
     <ClInclude Include="include\spieler\layer.h" />
@@ -79,11 +80,11 @@
     <ClInclude Include="include\spieler\timer.h" />
     <ClInclude Include="include\spieler\window\window_event.h" />
     <ClInclude Include="third_party\directx\d3dx12.h" />
+    <ClInclude Include="third_party\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="third_party\imgui\backends\imgui_impl_win32.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\spieler\renderer\geometry_generator.inl" />
-    <None Include="include\spieler\renderer\constant_buffer.inl" />
     <None Include="include\spieler\renderer\index_buffer.inl" />
     <None Include="include\spieler\renderer\resource.inl" />
     <None Include="include\spieler\renderer\vertex_buffer.inl" />
@@ -193,7 +194,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)spieler\third_party;$(SolutionDir)spieler\third_party\directx;$(SolutionDir)spieler\include\spieler;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)spieler\third_party;$(SolutionDir)spieler\third_party\directx;$(SolutionDir)spieler\include\spieler;$(SolutionDir)spieler\third_party\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>5105</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -211,7 +212,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)spieler\third_party;$(SolutionDir)spieler\third_party\directx;$(SolutionDir)spieler\include\spieler;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)spieler\third_party;$(SolutionDir)spieler\third_party\directx;$(SolutionDir)spieler\include\spieler;$(SolutionDir)spieler\third_party\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>5105</DisableSpecificWarnings>
     </ClCompile>
     <Link>

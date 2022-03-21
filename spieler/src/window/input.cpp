@@ -50,7 +50,7 @@ namespace Spieler
         SPIELER_ASSERT(m_IsInit);
         SPIELER_ASSERT(m_WindowHandle);
 
-        return ::GetKeyState(static_cast<std::int32_t>(mouseButton)) & 0x8000;
+        return ::GetAsyncKeyState(static_cast<std::int32_t>(mouseButton)) & 0x8000;
     }
 
     bool Input::IsKeyPressed(KeyCode keyCode)
@@ -58,7 +58,7 @@ namespace Spieler
         SPIELER_ASSERT(m_IsInit);
         SPIELER_ASSERT(m_WindowHandle);
 
-        return ::GetKeyState(static_cast<std::int32_t>(keyCode)) & 0x8000;
+        return ::GetAsyncKeyState(static_cast<std::int32_t>(keyCode)) & 0x8000;
     }
 
 } // namespace Spieler

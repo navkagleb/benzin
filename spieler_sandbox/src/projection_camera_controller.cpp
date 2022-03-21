@@ -1,7 +1,5 @@
 #include "projection_camera_controller.h"
 
-#include <cmath>
-
 #include <imgui/imgui.h>
 
 #include <spieler/window/input.h>

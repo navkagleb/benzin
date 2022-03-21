@@ -60,9 +60,10 @@ namespace Sandbox
             //SPIELER_RETURN_IF_FAILED(InitMeshGeometry());
             SPIELER_RETURN_IF_FAILED(InitLandGeometry());
             SPIELER_RETURN_IF_FAILED(InitWavesGeometry());
+            SPIELER_RETURN_IF_FAILED(InitMaterials());
             SPIELER_RETURN_IF_FAILED(InitRootSignature());
             SPIELER_RETURN_IF_FAILED(InitPipelineState());
-            SPIELER_RETURN_IF_FAILED(m_PassConstantBuffer.InitAsRootDescriptor<PassConstants>(&m_PassUploadBuffer, 0));
+            SPIELER_RETURN_IF_FAILED(m_PassConstantBuffer.InitAsRootDescriptor(&m_PassUploadBuffer, 0));
         }
         m_Renderer.ExexuteCommandList();
 
@@ -179,6 +180,12 @@ namespace Sandbox
                 m_Renderer.m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(renderItem.MeshGeometry->PrimitiveTopology));
 
                 renderItem.ConstantBuffer.BindAsRootDescriptor(1);
+                
+                if (renderItem.Material)
+                {
+                    renderItem.Material->ConstantBuffer.BindAsRootDescriptor(2);
+                }
+
                 m_Renderer.m_CommandList->DrawIndexedInstanced(submeshGeometry.IndexCount, 1, submeshGeometry.StartIndexLocation, submeshGeometry.BaseVertexLocation, 0);
             }
             
@@ -227,6 +234,7 @@ namespace Sandbox
         SPIELER_RETURN_IF_FAILED(m_PassUploadBuffer.Init<PassConstants>(Spieler::UploadBufferType_ConstantBuffer, 1));
         SPIELER_RETURN_IF_FAILED(m_ObjectUploadBuffer.Init<ObjectConstants>(Spieler::UploadBufferType_ConstantBuffer, m_RenderItemCount));
         SPIELER_RETURN_IF_FAILED(m_WavesUploadBuffer.Init<ColorVertex>(Spieler::UploadBufferType_Default, m_Waves.GetVertexCount()));
+        SPIELER_RETURN_IF_FAILED(m_MaterialUploadBuffer.Init<Spieler::MaterialConstants>(Spieler::UploadBufferType_ConstantBuffer, m_MaterialCount));
 
         return true;
     }
@@ -354,28 +362,28 @@ namespace Sandbox
         box.MeshGeometry        = &meshes;
         box.SubmeshGeometry     = &meshes.Submeshes["box"];
         
-        SPIELER_RETURN_IF_FAILED(box.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 0));
+        SPIELER_RETURN_IF_FAILED(box.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 0));
         m_RenderItems.push_back(std::move(box));
 
         Spieler::RenderItem cylinder;
         cylinder.MeshGeometry           = &meshes;
         cylinder.SubmeshGeometry        = &meshes.Submeshes["cylinder"];
 
-        SPIELER_RETURN_IF_FAILED(cylinder.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 1));
+        SPIELER_RETURN_IF_FAILED(cylinder.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 1));
         m_RenderItems.push_back(std::move(cylinder));
 
         Spieler::RenderItem sphere;
         sphere.MeshGeometry           = &meshes;
         sphere.SubmeshGeometry        = &meshes.Submeshes["sphere"];
 
-        SPIELER_RETURN_IF_FAILED(sphere.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 2));
+        SPIELER_RETURN_IF_FAILED(sphere.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 2));
         m_RenderItems.push_back(std::move(sphere));
 
         Spieler::RenderItem geosphere;
         geosphere.MeshGeometry           = &meshes;
         geosphere.SubmeshGeometry        = &meshes.Submeshes["geosphere"];
 
-        SPIELER_RETURN_IF_FAILED(geosphere.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 3));
+        SPIELER_RETURN_IF_FAILED(geosphere.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 3));
         m_RenderItems.push_back(std::move(geosphere));
 
         return true;
@@ -447,7 +455,7 @@ namespace Sandbox
         land.MeshGeometry       = &landMeshGeometry;
         land.SubmeshGeometry    = &landMeshGeometry.Submeshes["land"];
 
-        SPIELER_RETURN_IF_FAILED(land.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 0));
+        SPIELER_RETURN_IF_FAILED(land.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 0));
         land.ConstantBuffer.As<ObjectConstants>().World = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, -20.0f, 0.0f));
 
         m_RenderItems.push_back(std::move(land));
@@ -496,10 +504,35 @@ namespace Sandbox
         waves.MeshGeometry       = &wavesMeshGeometry;
         waves.SubmeshGeometry    = &wavesMeshGeometry.Submeshes["main"];
 
-        SPIELER_RETURN_IF_FAILED(waves.ConstantBuffer.InitAsRootDescriptor<ObjectConstants>(&m_ObjectUploadBuffer, 1));
+        SPIELER_RETURN_IF_FAILED(waves.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 1));
         waves.ConstantBuffer.As<ObjectConstants>().World = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, -25.0f, 0.0f));
 
         m_RenderItems.push_back(std::move(waves));
+
+        return true;
+    }
+
+    bool LandLayer::InitMaterials()
+    {
+        // Grass material
+        Spieler::Material& grass{ m_Materials["grass"] };
+        
+        SPIELER_RETURN_IF_FAILED(grass.ConstantBuffer.InitAsRootDescriptor(&m_MaterialUploadBuffer, 0));
+
+        Spieler::MaterialConstants& grassConstants{ grass.ConstantBuffer.As<Spieler::MaterialConstants>() };
+        grassConstants.DiffuseAlbedo    = DirectX::XMFLOAT4{ 0.2f, 0.6f, 0.6f, 1.0f };
+        grassConstants.FrensnelR0       = DirectX::XMFLOAT3{ 0.01f, 0.01f, 0.01f };
+        grassConstants.Roughness        = 0.125f;
+
+        // Water material
+        Spieler::Material& water{ m_Materials["water"] };
+
+        SPIELER_RETURN_IF_FAILED(water.ConstantBuffer.InitAsRootDescriptor(&m_MaterialUploadBuffer, 1));
+
+        Spieler::MaterialConstants& waterConstants{ water.ConstantBuffer.As<Spieler::MaterialConstants>() };
+        waterConstants.DiffuseAlbedo    = DirectX::XMFLOAT4{ 0.0f, 0.2f, 0.6f, 1.0f };
+        waterConstants.FrensnelR0       = DirectX::XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+        waterConstants.Roughness        = 0.0f;
 
         return true;
     }
@@ -523,9 +556,8 @@ namespace Sandbox
 
     bool LandLayer::InitPipelineState()
     {
-        // Vertex shader
-        SPIELER_RETURN_IF_FAILED(m_VertexShader.LoadFromFile(L"assets/shaders/basic_vertex_color.fx", "VS_Main"));
-        SPIELER_RETURN_IF_FAILED(m_PixelShader.LoadFromFile(L"assets/shaders/basic_vertex_color.fx", "PS_Main"));
+        SPIELER_RETURN_IF_FAILED(m_VertexShader.LoadFromFile(L"assets/shaders/default.fx", "VS_Main"));
+        SPIELER_RETURN_IF_FAILED(m_PixelShader.LoadFromFile(L"assets/shaders/default.fx", "PS_Main"));
         
         Spieler::RasterizerState rasterzerState;
         rasterzerState.FillMode = Spieler::FillMode_Solid;

@@ -27,11 +27,28 @@ namespace Spieler
         PrimitiveTopology   PrimitiveTopology{ PrimitiveTopology_Undefined };
     };
 
+    struct Material
+    {
+        std::string     Name;
+        std::int32_t    DiffuseSRVHeapIndex{ -1 };
+        std::uint32_t   DirtyFrameCount{ 0 };
+        ConstantBuffer  ConstantBuffer;
+    };
+
+    struct MaterialConstants
+    {
+        DirectX::XMFLOAT4   DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f };
+        DirectX::XMFLOAT3   FrensnelR0{ 0.01f, 0.01f, 0.01f };
+        float               Roughness{ 0.25f };
+        DirectX::XMMATRIX   Transform{ DirectX::XMMatrixIdentity() };
+    };
+
     struct RenderItem
     {
         ConstantBuffer      ConstantBuffer;
         MeshGeometry*       MeshGeometry{ nullptr };
         SubmeshGeometry*    SubmeshGeometry{ nullptr };
+        Material*           Material{ nullptr };
     };
 
 } // namespace Spieler

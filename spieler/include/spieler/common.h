@@ -53,9 +53,9 @@ public:                                                         \
             << "\n    File: " << filename
             << "\n    Line: " << std::to_string(line);
 
-        OutputDebugString("----------- SPIELER_ERROR -----------\n");
-        OutputDebugString((oss.str() + "\n").c_str());
-        OutputDebugString("-------------------------------------\n");
+        ::OutputDebugString("----------- SPIELER_ERROR -----------\n");
+        ::OutputDebugString((oss.str() + "\n").c_str());
+        ::OutputDebugString("-------------------------------------\n");
 #else
         oss << "Function: " << function
             << "\nFile: " << filename
@@ -66,25 +66,46 @@ public:                                                         \
     }
 
     template <typename T>
-    inline bool CheckStatus(T status, const std::string& function, const std::string& filename, std::uint32_t line)
+    inline bool CheckStatus(T result, const std::string& function, const std::string& filename, std::uint32_t line)
     {
-        if constexpr (std::is_same_v<T, HRESULT>)
+        if constexpr (std::is_null_pointer_v<T>)
         {
-            if (FAILED(status))
+            ::Spieler::ErrorMessage(function, filename, line);
+
+            return false;
+        }
+        else if constexpr (std::is_pointer_v<T> || std::is_same_v<bool, T>)
+        {
+            if (!result)
             {
-                ErrorMessage(function, filename, line);
+                ::Spieler::ErrorMessage(function, filename, line);
 
                 return false;
             }
         }
-        else if constexpr (std::is_same_v<T, BOOL> || std::is_same_v<T, bool>)
+        else if constexpr (std::is_same_v<HRESULT, T>)
         {
-            if (!status)
+            if (FAILED(result))
             {
-                ErrorMessage(function, filename, line);
+                ::Spieler::ErrorMessage(function, filename, line);
 
                 return false;
             }
+        }
+        else if constexpr (std::is_same_v<BOOL, T>)
+        {
+            if (result == 0)
+            {
+                ::Spieler::ErrorMessage(function, filename, line);
+
+                return false;
+            }
+        }
+        else if (!result)
+        {
+            ::Spieler::ErrorMessage(function, filename, line);
+
+            return false;
         }
 
         return true;

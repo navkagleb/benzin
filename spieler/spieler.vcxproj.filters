@@ -5,13 +5,6 @@
     <ClCompile Include="src\entry_point.cpp" />
     <ClCompile Include="src\window\window.cpp" />
     <ClCompile Include="src\timer.cpp" />
-    <ClCompile Include="third_party\imgui\backends\imgui_impl_dx12.cpp" />
-    <ClCompile Include="third_party\imgui\backends\imgui_impl_win32.cpp" />
-    <ClCompile Include="third_party\imgui\imgui_tables.cpp" />
-    <ClCompile Include="third_party\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="third_party\imgui\imgui_draw.cpp" />
-    <ClCompile Include="third_party\imgui\imgui_demo.cpp" />
-    <ClCompile Include="third_party\imgui\imgui.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\renderer\shader.cpp" />
     <ClCompile Include="src\renderer\vertex_buffer.cpp" />
@@ -27,6 +20,13 @@
     <ClCompile Include="include\spieler\window\input.h" />
     <ClCompile Include="src\window\input.cpp" />
     <ClCompile Include="src\renderer\upload_buffer.cpp" />
+    <ClCompile Include="third_party\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="third_party\imgui\imgui_tables.cpp" />
+    <ClCompile Include="third_party\imgui\imgui_draw.cpp" />
+    <ClCompile Include="third_party\imgui\imgui_demo.cpp" />
+    <ClCompile Include="third_party\imgui\imgui.cpp" />
+    <ClCompile Include="third_party\imgui\backends\imgui_impl_dx12.cpp" />
+    <ClCompile Include="third_party\imgui\backends\imgui_impl_win32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\spieler\application.h" />
@@ -38,7 +38,6 @@
     <ClInclude Include="include\spieler\window\event_dispatcher.h" />
     <ClInclude Include="include\spieler\window\mouse_event.h" />
     <ClInclude Include="include\spieler\window\key_event.h" />
-    <ClInclude Include="third_party\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="include\spieler\renderer\bindable.h" />
     <ClInclude Include="include\spieler\renderer\renderer.h" />
     <ClInclude Include="include\spieler\renderer\renderer_object.h" />
@@ -62,12 +61,14 @@
     <ClInclude Include="include\spieler\window\mouse_button.h" />
     <ClInclude Include="include\spieler\window\key_code.h" />
     <ClInclude Include="include\spieler\renderer\upload_buffer.h" />
+    <ClInclude Include="include\spieler\renderer\light.h" />
+    <ClInclude Include="third_party\imgui\backends\imgui_impl_dx12.h" />
+    <ClInclude Include="third_party\imgui\backends\imgui_impl_win32.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\spieler\renderer\vertex_buffer.inl" />
     <None Include="include\spieler\renderer\index_buffer.inl" />
     <None Include="include\spieler\renderer\resource.inl" />
     <None Include="include\spieler\renderer\geometry_generator.inl" />
-    <None Include="include\spieler\renderer\constant_buffer.inl" />
   </ItemGroup>
 </Project>

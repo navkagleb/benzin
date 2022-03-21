@@ -20,6 +20,7 @@ namespace Sandbox
 
     using PipelineStateContainer    = std::unordered_map<std::string, Spieler::PipelineState>;
     using MeshGeometryContainer     = std::unordered_map<std::string, Spieler::MeshGeometry>;
+    using MaterialContainer         = std::unordered_map<std::string, Spieler::Material>;
 
     struct ColorVertex
     {
@@ -46,6 +47,7 @@ namespace Sandbox
         bool InitMeshGeometry();
         bool InitLandGeometry();
         bool InitWavesGeometry();
+        bool InitMaterials();
         bool InitRootSignature();
         bool InitPipelineState();
 
@@ -56,6 +58,7 @@ namespace Sandbox
 
     private:
         const std::uint32_t                 m_RenderItemCount{ 2 };
+        const std::uint32_t                 m_MaterialCount{ 2 };
 
     private:
         Spieler::Window&                    m_Window;
@@ -80,8 +83,10 @@ namespace Sandbox
         Spieler::UploadBuffer               m_PassUploadBuffer;
         Spieler::UploadBuffer               m_ObjectUploadBuffer;
         Spieler::UploadBuffer               m_WavesUploadBuffer;
+        Spieler::UploadBuffer               m_MaterialUploadBuffer;
 
         MeshGeometryContainer               m_MeshGeometries;
+        MaterialContainer                   m_Materials;
 
         std::vector<Spieler::RenderItem>    m_RenderItems;
         Spieler::ConstantBuffer             m_PassConstantBuffer;
