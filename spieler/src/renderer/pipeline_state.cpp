@@ -1,4 +1,4 @@
-#include "renderer/pipeline_state.h"
+#include "renderer/pipeline_state.hpp"
 
 namespace Spieler
 {
@@ -57,9 +57,29 @@ namespace Spieler
         depthStencilDesc.FrontFace          = { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
         depthStencilDesc.BackFace           = { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
 
+        std::vector<D3D12_INPUT_ELEMENT_DESC> d3d12InputLayout;
+        d3d12InputLayout.reserve(props.InputLayout->size());
+
+        std::uint32_t offset = 0;
+
+        for (const InputLayoutElement& element : *props.InputLayout)
+        {
+            d3d12InputLayout.push_back(D3D12_INPUT_ELEMENT_DESC{
+                element.Name.c_str(),
+                0,
+                element.Format,
+                0,
+                offset,
+                D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                0
+            });
+
+            offset += element.Size;
+        }
+
         D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
-        inputLayoutDesc.pInputElementDescs  = props.InputLayout->GetData();
-        inputLayoutDesc.NumElements         = props.InputLayout->GetCount();
+        inputLayoutDesc.pInputElementDescs  = d3d12InputLayout.data();
+        inputLayoutDesc.NumElements         = static_cast<UINT>(d3d12InputLayout.size());
 
         D3D12_CACHED_PIPELINE_STATE cachedPipelineState{};
         cachedPipelineState.pCachedBlob             = nullptr;

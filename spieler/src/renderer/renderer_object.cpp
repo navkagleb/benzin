@@ -1,6 +1,6 @@
-#include "renderer/renderer_object.h"
+#include "renderer/renderer_object.hpp"
 
-#include "application.h"
+#include "application.hpp"
 
 namespace Spieler
 {

@@ -1,6 +1,6 @@
-#include <spieler/application.h>
+#include <spieler/application.hpp>
 
-#include "land_layer.h"
+#include "land_layer.hpp"
 
 namespace Sandbox
 {
@@ -10,7 +10,7 @@ namespace Sandbox
     public:
         bool InitExternal() override
         {
-            SPIELER_RETURN_IF_FAILED(PushLayer<LandLayer>(m_Window, m_Renderer) != nullptr);
+            SPIELER_RETURN_IF_FAILED(PushLayer<LandLayer>(m_Window, m_Renderer));
             
             return true;
         }

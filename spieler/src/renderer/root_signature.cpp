@@ -1,4 +1,4 @@
-#include "renderer/root_signature.h"
+#include "renderer/root_signature.hpp"
 
 namespace Spieler
 {

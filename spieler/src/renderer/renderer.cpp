@@ -1,9 +1,10 @@
-#include "renderer/renderer.h"
+#include "renderer/renderer.hpp"
 
 #include <d3dx12.h>
+#include <dxgidebug.h>
 
-#include "window/window.h"
-#include "renderer/pipeline_state.h"
+#include "window/window.hpp"
+#include "renderer/pipeline_state.hpp"
 
 namespace Spieler
 {
@@ -14,6 +15,17 @@ namespace Spieler
         {
             FlushCommandQueue();
         }
+
+#if defined(SPIELER_DEBUG)
+        {
+            ComPtr<IDXGIDebug1> dxgiDebug;
+
+            if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))
+            {
+                dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_SUMMARY | DXGI_DEBUG_RLO_IGNORE_INTERNAL));
+            }
+        }
+#endif
     }
 
     bool Renderer::Init(const Window& window)
@@ -215,12 +227,14 @@ namespace Spieler
     bool Renderer::InitDevice()
     {
 #if defined(SPIELER_DEBUG)
-        ComPtr<ID3D12Debug> debugController;
+        {
+            ComPtr<ID3D12Debug> debugController;
+            SPIELER_RETURN_IF_FAILED(D3D12GetDebugInterface(__uuidof(ID3D12Debug), &debugController));
 
-        SPIELER_RETURN_IF_FAILED(D3D12GetDebugInterface(__uuidof(ID3D12Debug), &debugController));
-
-        debugController->EnableDebugLayer();
+            debugController->EnableDebugLayer();
+        }
 #endif
+
         SPIELER_RETURN_IF_FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), &m_Device));
 
         return true;
@@ -256,6 +270,16 @@ namespace Spieler
 
     bool Renderer::InitFactory()
     {
+#if defined(SPIELER_DEBUG)
+        {
+            ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
+            SPIELER_RETURN_IF_FAILED(DXGIGetDebugInterface1(0, __uuidof(IDXGIInfoQueue), &dxgiInfoQueue));
+
+            dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true);
+            dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true);
+        }
+#endif
+
         SPIELER_RETURN_IF_FAILED(CreateDXGIFactory(__uuidof(IDXGIFactory), &m_Factory));
 
         return true;

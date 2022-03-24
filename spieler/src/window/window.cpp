@@ -1,12 +1,12 @@
-#include "window/window.h"
+#include "window/window.hpp"
 
 #include <imgui/backends/imgui_impl_win32.h>
 
-#include "common.h"
-#include "window/window_event.h"
-#include "window/mouse_event.h"
-#include "window/key_event.h"
-#include "window/input.h"
+#include "common.hpp"
+#include "window/window_event.hpp"
+#include "window/mouse_event.hpp"
+#include "window/key_event.hpp"
+#include "window/input.hpp"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
@@ -53,8 +53,9 @@ namespace Spieler
 
             if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
             {
-                return true;
+                return 0;
             }
+
             if (!window || !window->m_EventCallback)
             {
                 return ::DefWindowProc(hwnd, msg, wparam, lparam);
@@ -364,7 +365,7 @@ namespace Spieler
 
         if (!instance.IsInitialized())
         {
-            instance.Init();
+            SPIELER_ASSERT(instance.Init());
         }
 
         return instance;

@@ -1,13 +1,13 @@
-#include "renderer/constant_buffer.h"
+#include "renderer/constant_buffer.hpp"
 
-#include "renderer/descriptor_heap.h"
+#include "renderer/descriptor_heap.hpp"
 
 namespace Spieler
 {
 
-    bool ConstantBuffer::InitAsRootDescriptorTable(UploadBuffer* uploadBuffer, std::uint32_t index, const DescriptorHeap& heap, std::uint32_t heapIndex)
+    void ConstantBuffer::InitAsRootDescriptorTable(UploadBuffer* uploadBuffer, std::uint32_t index, const DescriptorHeap& heap, std::uint32_t heapIndex)
     {
-        SPIELER_RETURN_IF_FAILED(Init(uploadBuffer, index));
+        Init(uploadBuffer, index);
 
         m_HeapIndex = heapIndex;
 
@@ -16,13 +16,11 @@ namespace Spieler
         cbvDesc.SizeInBytes     = m_UploadBuffer->GetStride();
 
         GetDevice()->CreateConstantBufferView(&cbvDesc, heap.GetCPUHandle(heapIndex));
-
-        return true;
     }
 
-    bool ConstantBuffer::InitAsRootDescriptor(UploadBuffer* uploadBuffer, std::uint32_t index)
+    void ConstantBuffer::InitAsRootDescriptor(UploadBuffer* uploadBuffer, std::uint32_t index)
     {
-        return Init(uploadBuffer, index);
+        Init(uploadBuffer, index);
     }
 
     bool ConstantBuffer::Init(UploadBuffer* uploadBuffer, std::uint32_t index)

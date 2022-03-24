@@ -1,10 +1,10 @@
-#include "waves.h"
+#include "waves.hpp"
 
 #include <ppl.h>
 
 #include <algorithm>
 
-#include <spieler/common.h>
+#include <spieler/common.hpp>
 
 namespace Sandbox
 {
@@ -40,10 +40,10 @@ namespace Sandbox
             {
                 const float x = -halfWidth + j * m_SpatialStep;
 
-                m_PreviousSolution[i * m_ColumnCount + j]  = DirectX::XMFLOAT3{ x,    0.0f, z    };
-                m_CurrentSolution[i * m_ColumnCount + j]   = DirectX::XMFLOAT3{ x,    0.0f, z    };
-                m_Normals[i * m_ColumnCount + j]           = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
-                m_TangentX[i * m_ColumnCount + j]          = DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f };
+                m_PreviousSolution[i * m_ColumnCount + j] = DirectX::XMFLOAT3{ x,    0.0f, z    };
+                m_CurrentSolution[i * m_ColumnCount + j] = DirectX::XMFLOAT3{ x,    0.0f, z    };
+                m_Normals[i * m_ColumnCount + j] = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
+                m_TangentX[i * m_ColumnCount + j] = DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f };
             }
         }
     }
@@ -56,20 +56,10 @@ namespace Sandbox
 
 		if (t >= m_TimeStep)
 		{
-			// Only update interior points; we use zero boundary conditions.
 			concurrency::parallel_for<std::uint32_t>(1, m_RowCount - 1, [this](std::uint32_t i)
 			{
 				for (std::uint32_t j = 1; j < m_ColumnCount - 1; ++j)
 				{
-					// After this update we will be discarding the old previous
-					// buffer, so overwrite that buffer with the new update.
-					// Note how we can do this inplace (read/write to same element) 
-					// because we won't need prev_ij again and the assignment happens last.
-
-					// Note j indexes x and i indexes z: h(x_j, z_i, t_k)
-					// Moreover, our +z axis goes "down"; this is just to 
-					// keep consistent with our row indices going down.
-
 					m_PreviousSolution[i * m_ColumnCount + j].y =
 						m_K1 * m_PreviousSolution[i * m_ColumnCount + j].y +
 						m_K2 * m_CurrentSolution[i * m_ColumnCount + j].y +
@@ -80,14 +70,10 @@ namespace Sandbox
 				}
 			});
 
-			// We just overwrote the previous buffer with the new data, so
-			// this data needs to become the current solution and the old
-			// current solution becomes the new previous solution.
 			std::swap(m_PreviousSolution, m_CurrentSolution);
 
-			t = 0.0f; // reset time
+			t = 0.0f;
 
-			// Compute normals using finite difference scheme
 			concurrency::parallel_for<std::uint32_t>(1, m_RowCount - 1, [this](std::uint32_t i)
 			{
 				for (std::uint32_t j = 1; j < m_ColumnCount - 1; ++j)

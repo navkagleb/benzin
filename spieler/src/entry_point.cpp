@@ -1,4 +1,4 @@
-#include "application.h"
+#include "application.hpp"
 
 int __stdcall WinMain(
     HINSTANCE hInstance,
@@ -6,12 +6,16 @@ int __stdcall WinMain(
     LPSTR     lpCmdLine,
     int       nShowCmd)
 {
-    auto& application = *Spieler::CreateApplication();
+    Spieler::Application* application = Spieler::CreateApplication();
     
-    if (!application.InitInternal("Spieler", 1280, 720))
+    if (!application->InitInternal("Spieler", 1280, 720))
     {
+        delete application;
         return -1;
     }
 
-    return application.Run();
+    const int result = application->Run();
+
+    delete application;
+    return result;
 }

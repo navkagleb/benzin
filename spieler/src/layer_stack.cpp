@@ -1,7 +1,7 @@
-#include "layer_stack.h"
+#include "layer_stack.hpp"
 
-#include "common.h"
-#include "window/event.h"
+#include "common.hpp"
+#include "window/event.hpp"
 
 namespace Spieler
 {

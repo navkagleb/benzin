@@ -27,15 +27,21 @@
     <ClCompile Include="src\waves.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\light_controller.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\land_layer.h">
+    <ClInclude Include="src\land_layer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\projection_camera_controller.h">
+    <ClInclude Include="src\projection_camera_controller.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\waves.h">
+    <ClInclude Include="src\waves.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\light_controller.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

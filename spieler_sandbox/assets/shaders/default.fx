@@ -4,6 +4,9 @@ struct PerPass
 {
     float4x4 View;
     float4x4 Projection;
+    float3 W_CameraPosition;
+    float4 AmbientLight;
+    Light::LightContainer Lights;
 };
 
 struct PerObject
@@ -11,37 +14,68 @@ struct PerObject
     float4x4 World;
 };
 
-ConstantBuffer<PerPass>     g_PerPass   : register(b0);
-ConstantBuffer<PerObject>   g_PerObject : register(b1);
+struct PerMaterial
+{
+    float4 DiffuseAlbedo;
+    float3 FresnelR0;
+    float Roughness;
+    float4x4 Transform;
+};
+
+ConstantBuffer<PerPass> g_PerPass : register(b0);
+ConstantBuffer<PerObject> g_PerObject : register(b1);
+ConstantBuffer<PerMaterial> g_PerMaterial : register(b2);
 
 struct VS_Input
 {
-    float4 Position : Position;
-    float4 Color    : Color;
+    float3 L_Position : Position;
+    float3 L_Normal : Normal;
 };
 
 struct VS_Output
 {
-    float4 Position : SV_Position;
-    float4 Color    : Color;
+    float4 H_Position : SV_Position;
+    float3 W_Position : Position;
+    float3 W_Normal : Normal;
 };
 
 VS_Output VS_Main(VS_Input input)
 {
-    input.Position.w = 1.0f;
+    VS_Output output;
+    output.W_Position = mul(float4(input.L_Position, 1.0f), g_PerObject.World).xyz;
+    output.W_Normal = mul(input.L_Normal, (float3x3) g_PerObject.World);
 
-    float4 position = mul(input.Position, g_PerObject.World);
-    position        = mul(position, g_PerPass.View);
-    position        = mul(position, g_PerPass.Projection);
+    float4 position = float4(output.W_Position, 1.0f);
+    position = mul(position, g_PerPass.View);
+    position = mul(position, g_PerPass.Projection);
 
-    VS_Output output    = (VS_Output) 0;
-    output.Position     = position;
-    output.Color        = input.Color;
+    output.H_Position = position;
 
     return output;
 }
 
 float4 PS_Main(VS_Output input) : SV_Target
 {
-    return input.Color;
+    input.W_Normal = normalize(input.W_Normal);
+
+    // Vector from point being lit to eye
+    const float3 viewVector = normalize(g_PerPass.W_CameraPosition - input.W_Position);
+
+    // Indirect lighting
+    const float4 ambient = g_PerPass.AmbientLight * g_PerMaterial.DiffuseAlbedo;
+
+    // Direct lighting
+    Light::Material material;
+    material.DiffuseAlbedo = g_PerMaterial.DiffuseAlbedo;
+    material.FresnelR0 = g_PerMaterial.FresnelR0;
+    material.Shininess = 1.0f - g_PerMaterial.Roughness;
+
+    const float3 shadowFactor = 1.0f;
+
+    float4 litColor = Light::ComputeLighting(g_PerPass.Lights, material, input.W_Position, input.W_Normal, viewVector, shadowFactor);
+    litColor += ambient;
+
+    litColor.a = g_PerMaterial.DiffuseAlbedo.a;
+
+    return litColor;
 }

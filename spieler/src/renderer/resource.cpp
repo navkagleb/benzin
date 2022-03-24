@@ -1,4 +1,4 @@
-#include "renderer/resource.h"
+#include "renderer/resource.hpp"
 
 namespace Spieler
 {

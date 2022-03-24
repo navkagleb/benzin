@@ -1,6 +1,6 @@
-#include "window/input.h"
+#include "window/input.hpp"
 
-#include "common.h"
+#include "common.hpp"
 
 namespace Spieler
 {
@@ -13,8 +13,8 @@ namespace Spieler
 
     bool Input::Init(HWND windowHandle)
     {
-        m_WindowHandle  = windowHandle;
-        m_IsInit        = true;
+        m_WindowHandle = windowHandle;
+        m_IsInit = true;
 
         return true;
     }

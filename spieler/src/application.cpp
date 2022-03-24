@@ -1,12 +1,12 @@
-#include "application.h"
+#include "application.hpp"
 
 #include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_dx12.h>
 #include <imgui/backends/imgui_impl_win32.h>
 
-#include "window/event_dispatcher.h"
-#include "window/window_event.h"
-#include "window/key_event.h"
+#include "window/event_dispatcher.hpp"
+#include "window/window_event.hpp"
+#include "window/key_event.hpp"
 
 namespace Spieler
 {
@@ -24,6 +24,13 @@ namespace Spieler
         {
             g_Instance = this;
         }
+    }
+
+    Application::~Application()
+    {
+        ImGui_ImplDX12_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
     }
 
     bool Application::InitInternal(const std::string& title, std::uint32_t width, std::uint32_t height)
@@ -53,38 +60,38 @@ namespace Spieler
 
         while (m_ApplicationProps.IsRunning && message.message != WM_QUIT)
         {
-            if (::PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
+            while (::PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
             {
                 ::TranslateMessage(&message);
                 ::DispatchMessage(&message);
             }
+            
+            if (m_ApplicationProps.IsPaused)
+            {
+                ::Sleep(100);
+            }
             else
             {
-                if (m_ApplicationProps.IsPaused)
+                m_Timer.Tick();
+
+                const float dt = m_Timer.GetDeltaTime();
+
+                ImGui_ImplDX12_NewFrame();
+                ImGui_ImplWin32_NewFrame();
+                ImGui::NewFrame();
+
+                OnUpdate(dt);
+                OnImGuiRender(dt);
+                ImGui::Render();
+
+                if (!OnRender(dt))
                 {
-                    ::Sleep(100);
-                }
-                else
-                {
-                    m_Timer.Tick();
-
-                    const float dt = m_Timer.GetDeltaTime();
-
-                    ImGui_ImplDX12_NewFrame();
-                    ImGui_ImplWin32_NewFrame();
-                    ImGui::NewFrame();
-
-                    OnUpdate(dt);
-                    OnImGuiRender(dt);
-                    ImGui::Render();
-
-                    if (!OnRender(dt))
-                    {
-                        break;
-                    }
+                    break;
                 }
             }
         }
+
+        m_Renderer.~Renderer();
 
         return static_cast<int>(message.lParam);
     }
@@ -216,10 +223,6 @@ namespace Spieler
     bool Application::OnWindowClose(WindowCloseEvent& event)
     {
         m_ApplicationProps.IsRunning = false;
-
-        ImGui_ImplDX12_Shutdown();
-        ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
 
         return false;
     }

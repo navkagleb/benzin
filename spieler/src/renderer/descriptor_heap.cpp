@@ -1,4 +1,4 @@
-#include "renderer/descriptor_heap.h"
+#include "renderer/descriptor_heap.hpp"
 
 namespace Spieler
 {

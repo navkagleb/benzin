@@ -1,4 +1,4 @@
-#include "renderer/fence.h"
+#include "renderer/fence.hpp"
 
 namespace Spieler
 {

@@ -1,4 +1,4 @@
-#include "renderer/index_buffer.h"
+#include "renderer/index_buffer.hpp"
 
 namespace Spieler
 {
