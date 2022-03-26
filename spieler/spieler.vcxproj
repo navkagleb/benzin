@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\renderer\texture.cpp" />
     <ClCompile Include="src\renderer\upload_buffer.cpp" />
     <ClCompile Include="src\utility\random.cpp" />
     <ClCompile Include="src\layer_stack.cpp" />
@@ -38,6 +39,7 @@
     <ClCompile Include="src\window\input.cpp" />
     <ClCompile Include="src\window\window.cpp" />
     <ClCompile Include="src\timer.cpp" />
+    <ClCompile Include="third_party\directx\DDSTetxtureLoader.cpp" />
     <ClCompile Include="third_party\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="third_party\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="third_party\imgui\imgui.cpp" />
@@ -49,6 +51,7 @@
   <ItemGroup>
     <ClInclude Include="include\spieler\math.hpp" />
     <ClInclude Include="include\spieler\renderer\light.hpp" />
+    <ClInclude Include="include\spieler\renderer\texture.hpp" />
     <ClInclude Include="include\spieler\renderer\upload_buffer.hpp" />
     <ClInclude Include="include\spieler\utility\random.hpp" />
     <ClInclude Include="include\spieler\window\input.hpp" />
@@ -83,6 +86,7 @@
     <ClInclude Include="include\spieler\timer.hpp" />
     <ClInclude Include="include\spieler\window\window_event.hpp" />
     <ClInclude Include="third_party\directx\d3dx12.h" />
+    <ClInclude Include="third_party\directx\DDSTextureLoader.h" />
     <ClInclude Include="third_party\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="third_party\imgui\backends\imgui_impl_win32.h" />
   </ItemGroup>

@@ -27,6 +27,8 @@
     <ClCompile Include="third_party\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="src\utility\random.cpp" />
     <ClCompile Include="src\window\input.cpp" />
+    <ClCompile Include="src\renderer\texture.cpp" />
+    <ClCompile Include="third_party\directx\DDSTetxtureLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\spieler\application.hpp" />
@@ -67,6 +69,8 @@
     <ClInclude Include="include\spieler\math.hpp" />
     <ClInclude Include="include\spieler\utility\random.hpp" />
     <ClInclude Include="include\spieler\window\input.hpp" />
+    <ClInclude Include="include\spieler\renderer\texture.hpp" />
+    <ClInclude Include="third_party\directx\DDSTextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\spieler\renderer\vertex_buffer.inl" />
