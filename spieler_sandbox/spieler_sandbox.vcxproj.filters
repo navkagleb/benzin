@@ -30,6 +30,9 @@
     <ClCompile Include="src\light_controller.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\test_layer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\land_layer.hpp">
@@ -44,5 +47,11 @@
     <ClInclude Include="src\light_controller.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\test_layer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="C:\Users\ngng\Downloads\d3d12book-master\d3d12book-master\Textures\WoodCrate01.dds" />
   </ItemGroup>
 </Project>

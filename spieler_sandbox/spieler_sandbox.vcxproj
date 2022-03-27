@@ -23,13 +23,18 @@
     <ClCompile Include="src\light_controller.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\projection_camera_controller.cpp" />
+    <ClCompile Include="src\test_layer.cpp" />
     <ClCompile Include="src\waves.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\land_layer.hpp" />
     <ClInclude Include="src\light_controller.hpp" />
     <ClInclude Include="src\projection_camera_controller.hpp" />
+    <ClInclude Include="src\test_layer.hpp" />
     <ClInclude Include="src\waves.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="C:\Users\ngng\Downloads\d3d12book-master\d3d12book-master\Textures\WoodCrate01.dds" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

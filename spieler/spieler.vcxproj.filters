@@ -28,7 +28,8 @@
     <ClCompile Include="src\utility\random.cpp" />
     <ClCompile Include="src\window\input.cpp" />
     <ClCompile Include="src\renderer\texture.cpp" />
-    <ClCompile Include="third_party\directx\DDSTetxtureLoader.cpp" />
+    <ClCompile Include="third_party\directx\DDSTextureLoader12.cpp" />
+    <ClCompile Include="src\renderer\sampler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\spieler\application.hpp" />
@@ -70,7 +71,9 @@
     <ClInclude Include="include\spieler\utility\random.hpp" />
     <ClInclude Include="include\spieler\window\input.hpp" />
     <ClInclude Include="include\spieler\renderer\texture.hpp" />
-    <ClInclude Include="third_party\directx\DDSTextureLoader.h" />
+    <ClInclude Include="third_party\directx\DDSTextureLoader12.h" />
+    <ClInclude Include="include\spieler\renderer\sampler.hpp" />
+    <ClInclude Include="include\spieler\renderer\shader_visibility.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\spieler\renderer\vertex_buffer.inl" />
