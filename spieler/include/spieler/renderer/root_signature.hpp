@@ -4,6 +4,7 @@
 #include <variant>
 
 #include "bindable.hpp"
+#include "shader_visibility.hpp"
 
 namespace Spieler
 {
@@ -17,16 +18,6 @@ namespace Spieler
         RootParameterType_ConstantBufferView    = D3D12_ROOT_PARAMETER_TYPE_CBV,
         RootParameterType_ShaderResourceView    = D3D12_ROOT_PARAMETER_TYPE_SRV,
         RootParameterType_UnorderedAccessView   = D3D12_ROOT_PARAMETER_TYPE_UAV
-    };
-
-    enum ShaderVisibility : std::uint32_t
-    {
-        ShaderVisibility_All        = D3D12_SHADER_VISIBILITY_ALL,
-        ShaderVisibility_Vertex     = D3D12_SHADER_VISIBILITY_VERTEX,
-        ShaderVisibility_Hull       = D3D12_SHADER_VISIBILITY_HULL,
-        ShaderVisibility_Domain     = D3D12_SHADER_VISIBILITY_DOMAIN,
-        ShaderVisibility_Geometry   = D3D12_SHADER_VISIBILITY_GEOMETRY,
-        ShaderVisibility_Pixel      = D3D12_SHADER_VISIBILITY_PIXEL,
     };
 
     enum DescriptorRangeType : std::int32_t
