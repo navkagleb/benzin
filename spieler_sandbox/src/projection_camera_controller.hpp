@@ -11,7 +11,7 @@ namespace Sandbox
     struct ProjectionCamera
     {
         // View props
-        DirectX::XMVECTOR EyePosition{ -50.0f, 0.0f, -37.0f, 1.0f };
+        DirectX::XMVECTOR EyePosition{ 0.0f, 0.0f, 0.0f, 1.0f };
         DirectX::XMVECTOR Front{ DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f) };
         DirectX::XMVECTOR UpDirection{ DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f) };
         DirectX::XMMATRIX View{ DirectX::XMMatrixIdentity() };
@@ -50,7 +50,7 @@ namespace Sandbox
         ProjectionCamera m_Camera;
         float m_Theta{ 0.0f };
         float m_Phi{ DirectX::XM_PIDIV2 };
-        float m_CameraSpeed{ 100.0f };
+        float m_CameraSpeed{ 50.0f };
         float m_MouseSensitivity{ 0.003f };
         DirectX::XMFLOAT2 m_LastMousePosition{ 0.0f, 0.0f };
         bool m_IsBlocked{ false };
