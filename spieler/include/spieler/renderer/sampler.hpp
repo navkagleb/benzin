@@ -1,13 +1,12 @@
 #pragma once
 
-#include <algorithm>
-
 #include "renderer_object.hpp"
+#include "shader_visibility.hpp"
 
 namespace Spieler
 {
 
-    const DescriptorHeap;
+    class DescriptorHeap;
 
     enum TextureFilterType : std::uint8_t
     {
@@ -74,13 +73,54 @@ namespace Spieler
     {
     public:
         Sampler() = default;
-        Sampler(const SamplerProps& props, const DescriptorHeap& heap, std::uint32_t index);
+        Sampler(const SamplerProps& props, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex);
 
     public:
-        void Init(const SamplerProps& props, const DescriptorHeap& heap, std::uint32_t index);
+        void Init(const SamplerProps& props, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex);
+
+        void Bind(std::uint32_t rootParameterIndex) const;
 
     private:
         SamplerProps m_Props;
+        const DescriptorHeap* m_DescriptorHeap{ nullptr };
+        std::uint32_t m_DescriptorHeapIndex{ 0 };
+    };
+
+    struct StaticSampler
+    {
+        enum BorderColor
+        {
+            BorderColor_TransparentBlack = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
+            BorderColor_OpaqueBlack = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
+            BorderColor_OpaqueWhite = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE
+        };
+
+        TextureFilter TextureFilter;
+        TextureAddressMode AddressU{ TextureAddressMode_Wrap };
+        TextureAddressMode AddressV{ TextureAddressMode_Wrap };
+        TextureAddressMode AddressW{ TextureAddressMode_Wrap };
+        BorderColor BorderColor{ BorderColor_TransparentBlack };
+        std::uint32_t ShaderRegister{ 0 };
+        std::uint32_t RegisterSpace{ 0 };
+        ShaderVisibility ShaderVisibility{ ShaderVisibility_All };
+
+        StaticSampler() = default;
+
+        StaticSampler(struct TextureFilter textureFilter, TextureAddressMode textureAddressMode, std::uint32_t shaderRegister = 0)
+            : TextureFilter(textureFilter)
+            , AddressU(textureAddressMode)
+            , AddressV(textureAddressMode)
+            , AddressW(textureAddressMode)
+            , ShaderRegister(shaderRegister)
+        {}
+
+        StaticSampler(struct TextureFilter textureFilter, TextureAddressMode addressU, TextureAddressMode addressV, TextureAddressMode addressW, std::uint32_t shaderRegister = 0)
+            : TextureFilter(textureFilter)
+            , AddressU(addressU)
+            , AddressV(addressV)
+            , AddressW(addressW)
+            , ShaderRegister(shaderRegister)
+        {}
     };
 
 } // namespace Spieler
