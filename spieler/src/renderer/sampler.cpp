@@ -54,14 +54,16 @@ namespace Spieler
 
     } // namespace _Internal
 
-    Sampler::Sampler(const SamplerProps& props, const DescriptorHeap& heap, std::uint32_t index)
+    Sampler::Sampler(const SamplerProps& props, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex)
     {
-        Init(props, heap, index);
+        Init(props, descriptorHeap, descriptorHeapIndex);
     }
 
-    void Sampler::Init(const SamplerProps& props, const DescriptorHeap& heap, std::uint32_t index)
+    void Sampler::Init(const SamplerProps& props, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex)
     {
         m_Props = props;
+        m_DescriptorHeap = &descriptorHeap;
+        m_DescriptorHeapIndex = descriptorHeapIndex;
 
         D3D12_SAMPLER_DESC samplerDesc{};
         samplerDesc.Filter = _Internal::ToD3D12TextureFilter(m_Props.TextureFilter);
@@ -73,7 +75,14 @@ namespace Spieler
         samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
         samplerDesc.MinLOD = 0.0f;
         samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
-        GetDevice()->CreateSampler(&samplerDesc, heap.GetCPUHandle(index));
+        GetDevice()->CreateSampler(&samplerDesc, m_DescriptorHeap->GetCPUHandle(m_DescriptorHeapIndex));
+    }
+
+    void Sampler::Bind(std::uint32_t rootParameterIndex) const
+    {
+        SPIELER_ASSERT(m_DescriptorHeap);
+
+        GetCommandList()->SetGraphicsRootDescriptorTable(rootParameterIndex, m_DescriptorHeap->GetGPUHandle(m_DescriptorHeapIndex));
     }
 
 } // namespace Spieler

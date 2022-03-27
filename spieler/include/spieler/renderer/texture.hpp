@@ -20,7 +20,7 @@ namespace Spieler
         bool LoadFromDDSFile(const std::wstring& filename);
 
     private:
-        ComPtr<ID3D12Resource> m_Resource;
+        ComPtr<ID3D12Resource> m_Texture;
         ComPtr<ID3D12Resource> m_UploadHeap;
 
         std::unique_ptr<std::uint8_t[]> m_Data;
@@ -30,6 +30,7 @@ namespace Spieler
     class ShaderResourceView : public RendererObject
     {
     public:
+        ShaderResourceView() = default;
         ShaderResourceView(const Texture2D& texture2D, const DescriptorHeap& descriptorHeap, std::uint32_t index);
 
     public:
