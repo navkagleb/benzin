@@ -7,12 +7,13 @@ namespace Spieler
 
     enum DescriptorHeapType : std::uint32_t
     {
-        DescriptorHeapType_CBV          = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        DescriptorHeapType_SRV          = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        DescriptorHeapType_UAV          = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        DescriptorHeapType_CBVSRVUAV    = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        DescriptorHeapType_RTV          = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-        DescriptorHeapType_DSV          = D3D12_DESCRIPTOR_HEAP_TYPE_DSV
+        DescriptorHeapType_CBV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+        DescriptorHeapType_SRV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+        DescriptorHeapType_UAV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+        DescriptorHeapType_CBVSRVUAV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+        DescriptorHeapType_Sampler = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+        DescriptorHeapType_RTV = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+        DescriptorHeapType_DSV = D3D12_DESCRIPTOR_HEAP_TYPE_DSV
     };
 
     class DescriptorHeap : public Bindable
@@ -33,9 +34,9 @@ namespace Spieler
         explicit operator ID3D12DescriptorHeap* () { return m_Heap.Get(); }
 
     private:
-        ComPtr<ID3D12DescriptorHeap>    m_Heap;
-        std::uint32_t                   m_Size              = 0;
-        std::uint32_t                   m_DescriptorCount   = 0;
+        ComPtr<ID3D12DescriptorHeap> m_Heap;
+        std::uint32_t m_Size              = 0;
+        std::uint32_t m_DescriptorCount   = 0;
     };
 
 } // namespace Spieler
