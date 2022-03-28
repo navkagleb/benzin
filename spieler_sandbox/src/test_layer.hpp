@@ -58,6 +58,8 @@ namespace Sandbox
         void UpdateViewport();
         void UpdateScissorRect();
 
+        bool OnWindowResized(Spieler::WindowResizedEvent& event);
+
     private:
         Spieler::Window& m_Window;
         Spieler::Renderer& m_Renderer;

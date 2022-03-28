@@ -1,6 +1,7 @@
 #include "test_layer.hpp"
 
 #include <spieler/window/event.hpp>
+#include <spieler/window/event_dispatcher.hpp>
 #include <spieler/renderer/geometry_generator.hpp>
 
 namespace Sandbox
@@ -37,6 +38,9 @@ namespace Sandbox
 
     void TestLayer::OnEvent(Spieler::Event& event)
     {
+        Spieler::EventDispatcher dispatcher(event);
+        dispatcher.Dispatch<Spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
+
         m_CameraController.OnEvent(event);
     }
 
@@ -259,6 +263,14 @@ namespace Sandbox
         m_ScissorRect.Y = 0.0f;
         m_ScissorRect.Width = static_cast<float>(m_Window.GetWidth());
         m_ScissorRect.Height = static_cast<float>(m_Window.GetHeight());
+    }
+
+    bool TestLayer::OnWindowResized(Spieler::WindowResizedEvent& event)
+    {
+        UpdateViewport();
+        UpdateScissorRect();
+
+        return true;
     }
 
 } // namespace Sandbox
