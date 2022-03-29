@@ -22,7 +22,7 @@ namespace Spieler
         VertexBuffer VertexBuffer;
         IndexBuffer IndexBuffer;
         std::unordered_map<std::string, SubmeshGeometry> Submeshes;
-        PrimitiveTopology PrimitiveTopology{ PrimitiveTopology_Undefined };
+        PrimitiveTopology PrimitiveTopology{ PrimitiveTopology::Undefined };
     };
 
     struct Material
