@@ -14,7 +14,7 @@ namespace Spieler
         static ComPtr<ID3D12Resource> CreateDefaultBuffer(const D3D12_RESOURCE_DESC& resourceDesc);
 
         template <typename T>
-        static void CopyDataToDefaultBuffer(ComPtr<ID3D12Resource>& buffer, const ComPtr<ID3D12Resource>& uploadBuffer, const T* data, std::uint32_t count);
+        static void CopyDataToDefaultBuffer(ID3D12Resource* buffer, ID3D12Resource* uploadBuffer, const T* data, std::uint32_t count);
 
     public:
         void SetName(const std::wstring& name);
