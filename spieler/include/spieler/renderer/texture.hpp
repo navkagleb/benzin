@@ -10,6 +10,7 @@ namespace Spieler
 {
 
     class DescriptorHeap;
+    class UploadBuffer;
 
     class Texture2D : public RendererObject
     {
@@ -17,12 +18,12 @@ namespace Spieler
         friend class ShaderResourceView;
 
     public:
-        bool LoadFromDDSFile(const std::wstring& filename);
+        bool LoadFromDDSFile(const std::wstring& filename, UploadBuffer& uploadBuffer);
+
+        void SetDebugName(const std::wstring& name) { m_Texture->SetName(name.c_str()); }
 
     private:
         ComPtr<ID3D12Resource> m_Texture;
-        ComPtr<ID3D12Resource> m_UploadHeap;
-
         std::unique_ptr<std::uint8_t[]> m_Data;
         std::vector<D3D12_SUBRESOURCE_DATA> m_SubresourceData;
     };
