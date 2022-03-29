@@ -1,8 +1,3 @@
-struct PerObject
-{
-    float4x4 World;
-};
-
 struct PerPass
 {
     float4x4 View;
@@ -11,8 +6,13 @@ struct PerPass
     float4 AmbientLight;
 };
 
-ConstantBuffer<PerPass> g_PerPass : register(b0);
-ConstantBuffer<PerObject> g_PerObject : register(b1);
+struct PerObject
+{
+    float4x4 World;
+};
+
+ConstantBuffer<PerPass> g_Pass : register(b0);
+ConstantBuffer<PerObject> g_Object : register(b1);
 
 struct VS_Input
 {
@@ -23,14 +23,14 @@ struct VS_Input
 struct VS_Output
 {
     float4 Position : SV_Position;
-    float4 Color : Color;
+    float4 Color : Position;
 };
 
 VS_Output VS_Main(VS_Input input)
 {
-    float4 position = mul(float4(input.Position, 1.0f), g_PerObject.World);
-    position = mul(position, g_PerPass.View);
-    position = mul(position, g_PerPass.Projection);
+    float4 position = mul(float4(input.Position, 1.0f), g_Object.World);
+    position = mul(position, g_Pass.View);
+    position = mul(position, g_Pass.Projection);
 
     VS_Output output = (VS_Output) 0;
     output.Position = position;

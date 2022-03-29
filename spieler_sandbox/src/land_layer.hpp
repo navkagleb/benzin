@@ -12,6 +12,7 @@
 #include <spieler/renderer/pipeline_state.hpp>
 #include <spieler/renderer/mesh.hpp>
 #include <spieler/renderer/light.hpp>
+#include <spieler/renderer/upload_buffer.hpp>
 
 #include "projection_camera_controller.hpp"
 #include "waves.hpp"
@@ -25,6 +26,8 @@ namespace Sandbox
     using MaterialContainer = std::unordered_map<std::string, Spieler::Material>;
     using VertexShaderContainer = std::unordered_map<std::string, Spieler::VertexShader>;
     using PixelShaderContainer = std::unordered_map<std::string, Spieler::PixelShader>;
+    using VertexBufferViewContainer = std::unordered_map<std::string, Spieler::VertexBufferView>;
+    using IndexBufferViewContainer = std::unordered_map<std::string, Spieler::IndexBufferView>;
 
     struct ColorVertex
     {
@@ -36,6 +39,12 @@ namespace Sandbox
     {
         DirectX::XMFLOAT3 Position{};
         DirectX::XMFLOAT3 Normal{};
+    };
+
+    struct MeshUploadBuffer
+    {
+        Spieler::UploadBuffer VertexUploadBuffer;
+        Spieler::UploadBuffer IndexUploadBuffer;
     };
 
     class LandLayer : public Spieler::Layer
@@ -53,9 +62,9 @@ namespace Sandbox
 
     private:
         bool InitUploadBuffers();
-        bool InitMeshGeometry();
-        bool InitLandGeometry();
-        bool InitWavesGeometry();
+        bool InitMeshGeometry(MeshUploadBuffer& meshUploadBuffer);
+        bool InitLandGeometry(MeshUploadBuffer& landUploadBuffer);
+        bool InitWavesGeometry(MeshUploadBuffer& wavesUploadBuffer);
         bool InitRootSignature();
         bool InitPipelineState();
 
@@ -99,6 +108,9 @@ namespace Sandbox
 
         MeshGeometryContainer               m_MeshGeometries;
         MaterialContainer                   m_Materials;
+
+        VertexBufferViewContainer           m_VertexBufferViews;
+        IndexBufferViewContainer            m_IndexBufferViews;
 
         std::vector<Spieler::RenderItem>    m_LitRenderItems;
         std::vector<Spieler::RenderItem>    m_ColorRenderItems;

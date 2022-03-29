@@ -18,6 +18,7 @@
 #include <spieler/math.hpp>
 #include <spieler/utility/random.hpp>
 
+#if 0
 namespace Sandbox
 {
 
@@ -66,15 +67,20 @@ namespace Sandbox
 
     bool LandLayer::OnAttach()
     {
+        MeshUploadBuffer meshUploadBuffer;
+        MeshUploadBuffer landUploadBuffer;
+        MeshUploadBuffer wavesUploadBuffer;
+
         SPIELER_RETURN_IF_FAILED(InitUploadBuffers());
 
         InitMaterials();
 
         SPIELER_RETURN_IF_FAILED(m_Renderer.ResetCommandList());
         {
-            SPIELER_RETURN_IF_FAILED(InitMeshGeometry());
-            SPIELER_RETURN_IF_FAILED(InitLandGeometry());
-            SPIELER_RETURN_IF_FAILED(InitWavesGeometry());
+            MeshUploadBuffer meshUploadBuffer;
+            SPIELER_RETURN_IF_FAILED(InitMeshGeometry(meshUploadBuffer));
+            SPIELER_RETURN_IF_FAILED(InitLandGeometry(landUploadBuffer));
+            SPIELER_RETURN_IF_FAILED(InitWavesGeometry(wavesUploadBuffer));
         }
         SPIELER_RETURN_IF_FAILED(m_Renderer.ExexuteCommandList());
         
@@ -154,15 +160,15 @@ namespace Sandbox
 
     bool LandLayer::InitUploadBuffers()
     {
-        SPIELER_RETURN_IF_FAILED(m_PassUploadBuffer.Init<PassConstants>(Spieler::UploadBufferType_ConstantBuffer, 1));
-        SPIELER_RETURN_IF_FAILED(m_ObjectUploadBuffer.Init<ObjectConstants>(Spieler::UploadBufferType_ConstantBuffer, m_RenderItemCount));
-        SPIELER_RETURN_IF_FAILED(m_WavesUploadBuffer.Init<NormalVertex>(Spieler::UploadBufferType_Default, m_Waves.GetVertexCount()));
-        SPIELER_RETURN_IF_FAILED(m_MaterialUploadBuffer.Init<Spieler::MaterialConstants>(Spieler::UploadBufferType_ConstantBuffer, m_MaterialCount));
+        SPIELER_RETURN_IF_FAILED(m_PassUploadBuffer.Init<PassConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
+        SPIELER_RETURN_IF_FAILED(m_ObjectUploadBuffer.Init<ObjectConstants>(Spieler::UploadBufferType::ConstantBuffer, m_RenderItemCount));
+        SPIELER_RETURN_IF_FAILED(m_WavesUploadBuffer.Init<NormalVertex>(Spieler::UploadBufferType::Default, m_Waves.GetVertexCount()));
+        SPIELER_RETURN_IF_FAILED(m_MaterialUploadBuffer.Init<Spieler::MaterialConstants>(Spieler::UploadBufferType::ConstantBuffer, m_MaterialCount));
 
         return true;
     }
 
-    bool LandLayer::InitMeshGeometry()
+    bool LandLayer::InitMeshGeometry(MeshUploadBuffer& meshUploadBuffers)
     {
         m_ColorRenderItems.reserve(10);
 
@@ -287,13 +293,10 @@ namespace Sandbox
         indices.insert(indices.end(), sphereMeshData.Indices.begin(),    sphereMeshData.Indices.end());
         indices.insert(indices.end(), geosphereMeshData.Indices.begin(), geosphereMeshData.Indices.end());
 
-        SPIELER_RETURN_IF_FAILED(meshes.VertexBuffer.Init(vertices.data(), static_cast<std::uint32_t>(vertices.size())));
-        SPIELER_RETURN_IF_FAILED(meshes.IndexBuffer.Init(indices.data(), static_cast<std::uint32_t>(indices.size())));
+        SPIELER_RETURN_IF_FAILED(meshes.VertexBuffer.Init(vertices.data(), static_cast<std::uint32_t>(vertices.size()), meshUploadBuffers.VertexUploadBuffer));
+        SPIELER_RETURN_IF_FAILED(meshes.IndexBuffer.Init(indices.data(), static_cast<std::uint32_t>(indices.size()), meshUploadBuffers.IndexUploadBuffer));
 
-        meshes.VertexBuffer.SetName(L"MeshGeometry VertexBuffer");
-        meshes.IndexBuffer.SetName(L"MeshGeometry IndexBuffer");
-
-        meshes.PrimitiveTopology = Spieler::PrimitiveTopology_TriangleList;
+        meshes.PrimitiveTopology = Spieler::PrimitiveTopology::TriangleList;
 
 #if 0
         // Render items
@@ -320,7 +323,7 @@ namespace Sandbox
             geosphere.MeshGeometry = &meshes;
             geosphere.SubmeshGeometry = &meshes.Submeshes["geosphere"];
 
-            geosphere.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 2);
+            geosphere.ConstantBuffer.Init(m_ObjectUploadBuffer, 2);
 
             m_ColorRenderItems.push_back(std::move(geosphere));
         }
@@ -331,7 +334,7 @@ namespace Sandbox
             geosphere.MeshGeometry = &meshes;
             geosphere.SubmeshGeometry = &meshes.Submeshes["geosphere"];
 
-            geosphere.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 3);
+            geosphere.ConstantBuffer.Init(m_ObjectUploadBuffer, 3);
 
             m_ColorRenderItems.push_back(std::move(geosphere));
         }
@@ -342,14 +345,14 @@ namespace Sandbox
             cylinder.MeshGeometry = &meshes;
             cylinder.SubmeshGeometry = &meshes.Submeshes["cylinder"];
 
-            cylinder.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 4);
+            cylinder.ConstantBuffer.Init(m_ObjectUploadBuffer, 4);
             m_ColorRenderItems.push_back(std::move(cylinder));
         }
 
         return true;
     }
 
-    bool LandLayer::InitLandGeometry()
+    bool LandLayer::InitLandGeometry(MeshUploadBuffer& landUploadBuffer)
     {
         Spieler::GridGeometryProps gridGeometryProps;
         gridGeometryProps.Width = 160.0f;
@@ -403,14 +406,10 @@ namespace Sandbox
 
         auto& landMeshGeometry = m_MeshGeometries["land"];
 
-        SPIELER_RETURN_IF_FAILED(landMeshGeometry.VertexBuffer.Init(vertices.data(), vertices.size()));
-        SPIELER_RETURN_IF_FAILED(landMeshGeometry.IndexBuffer.Init(gridMeshData.Indices.data(), gridMeshData.Indices.size()));
+        SPIELER_RETURN_IF_FAILED(landMeshGeometry.VertexBuffer.Init(vertices.data(), vertices.size(), landUploadBuffer.VertexUploadBuffer));
+        SPIELER_RETURN_IF_FAILED(landMeshGeometry.IndexBuffer.Init(gridMeshData.Indices.data(), gridMeshData.Indices.size(), landUploadBuffer.IndexUploadBuffer));
 
-
-        landMeshGeometry.VertexBuffer.SetName(L"LandMeshGeometry VertexBuffer");
-        landMeshGeometry.IndexBuffer.SetName(L"LandMeshGeometry IndexBuffer");
-
-        landMeshGeometry.PrimitiveTopology = Spieler::PrimitiveTopology_TriangleList;
+        landMeshGeometry.PrimitiveTopology = Spieler::PrimitiveTopology::TriangleList;
 
         auto& landMesh = landMeshGeometry.Submeshes["land"];
         landMesh.IndexCount = gridMeshData.Indices.size();
@@ -421,7 +420,7 @@ namespace Sandbox
         land.SubmeshGeometry = &landMeshGeometry.Submeshes["land"];
         land.Material = &m_Materials["grass"];
 
-        land.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 0);
+        land.ConstantBuffer.Init(m_ObjectUploadBuffer, 0);
         land.ConstantBuffer.As<ObjectConstants>().World = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, -20.0f, 0.0f));
 
         m_LitRenderItems.push_back(std::move(land));
@@ -429,7 +428,7 @@ namespace Sandbox
         return true;
     }
 
-    bool LandLayer::InitWavesGeometry()
+    bool LandLayer::InitWavesGeometry(MeshUploadBuffer& wavesUploadBuffer)
     {
         std::vector<std::uint32_t> indices(m_Waves.GetTriangleCount() * 3);
 
@@ -456,9 +455,9 @@ namespace Sandbox
 
         auto& wavesMeshGeometry = m_MeshGeometries["waves"];
 
-        SPIELER_RETURN_IF_FAILED(wavesMeshGeometry.IndexBuffer.Init(indices.data(), static_cast<std::uint32_t>(indices.size())));
+        SPIELER_RETURN_IF_FAILED(wavesMeshGeometry.IndexBuffer.Init(indices.data(), static_cast<std::uint32_t>(indices.size()), wavesUploadBuffer.IndexUploadBuffer));
 
-        wavesMeshGeometry.PrimitiveTopology = Spieler::PrimitiveTopology_TriangleList;
+        wavesMeshGeometry.PrimitiveTopology = Spieler::PrimitiveTopology::TriangleList;
 
         auto& submesh               = wavesMeshGeometry.Submeshes["main"];
         submesh.IndexCount          = static_cast<std::uint32_t>(indices.size());
@@ -471,7 +470,7 @@ namespace Sandbox
         waves.SubmeshGeometry   = &wavesMeshGeometry.Submeshes["main"];
         waves.Material          = &m_Materials["water"];
 
-        waves.ConstantBuffer.InitAsRootDescriptor(&m_ObjectUploadBuffer, 1);
+        waves.ConstantBuffer.Init(m_ObjectUploadBuffer, 1);
         waves.ConstantBuffer.As<ObjectConstants>().World = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, -25.0f, 0.0f));
 
         m_LitRenderItems.push_back(std::move(waves));
@@ -529,7 +528,7 @@ namespace Sandbox
             pipelineStateProps.PixelShader = &pixelShader;
             pipelineStateProps.RasterizerState = &rasterzerState;
             pipelineStateProps.InputLayout = &inputLayout;
-            pipelineStateProps.PrimitiveTopologyType = Spieler::PrimitiveTopologyType_Triangle;
+            pipelineStateProps.PrimitiveTopologyType = Spieler::PrimitiveTopologyType::Triangle;
             pipelineStateProps.RTVFormat = m_Renderer.GetSwapChainProps().BufferFormat;
             pipelineStateProps.DSVFormat = m_Renderer.GetDepthStencilFormat();
 
@@ -541,8 +540,8 @@ namespace Sandbox
             auto& vertexShader = m_VertexShaders["color"];
             auto& pixelShader = m_PixelShaders["color"];
 
-            SPIELER_RETURN_IF_FAILED(vertexShader.LoadFromFile(L"assets/shaders/color.fx", "VS_Main"));
-            SPIELER_RETURN_IF_FAILED(pixelShader.LoadFromFile(L"assets/shaders/color.fx", "PS_Main"));
+            SPIELER_RETURN_IF_FAILED(vertexShader.LoadFromFile(L"assets/shaders/color1.fx", "VS_Main"));
+            SPIELER_RETURN_IF_FAILED(pixelShader.LoadFromFile(L"assets/shaders/color1.fx", "PS_Main"));
 
             Spieler::RasterizerState rasterzerState;
             rasterzerState.FillMode = Spieler::FillMode_Wireframe;
@@ -560,7 +559,7 @@ namespace Sandbox
             pipelineStateProps.PixelShader = &pixelShader;
             pipelineStateProps.RasterizerState = &rasterzerState;
             pipelineStateProps.InputLayout = &inputLayout;
-            pipelineStateProps.PrimitiveTopologyType = Spieler::PrimitiveTopologyType_Triangle;
+            pipelineStateProps.PrimitiveTopologyType = Spieler::PrimitiveTopologyType::Triangle;
             pipelineStateProps.RTVFormat = m_Renderer.GetSwapChainProps().BufferFormat;
             pipelineStateProps.DSVFormat = m_Renderer.GetDepthStencilFormat();
 
@@ -574,7 +573,7 @@ namespace Sandbox
     {
         // Grass material
         Spieler::Material& grass{ m_Materials["grass"] };
-        grass.ConstantBuffer.InitAsRootDescriptor(&m_MaterialUploadBuffer, 0);
+        grass.ConstantBuffer.Init(m_MaterialUploadBuffer, 0);
 
         Spieler::MaterialConstants& grassConstants{ grass.ConstantBuffer.As<Spieler::MaterialConstants>() };
         grassConstants.DiffuseAlbedo = DirectX::XMFLOAT4{ 0.2f, 0.6f, 0.2f, 1.0f };
@@ -583,7 +582,7 @@ namespace Sandbox
 
         // Water material
         Spieler::Material& water{ m_Materials["water"] };
-        water.ConstantBuffer.InitAsRootDescriptor(&m_MaterialUploadBuffer, 1);
+        water.ConstantBuffer.Init(m_MaterialUploadBuffer, 1);
 
         Spieler::MaterialConstants& waterConstants{ water.ConstantBuffer.As<Spieler::MaterialConstants>() };
         waterConstants.DiffuseAlbedo = DirectX::XMFLOAT4{ 0.0f, 0.1f, 0.4f, 1.0f };
@@ -593,7 +592,7 @@ namespace Sandbox
 
     void LandLayer::InitPassConstantBuffer()
     {
-        m_PassConstantBuffer.InitAsRootDescriptor(&m_PassUploadBuffer, 0);
+        m_PassConstantBuffer.Init(m_PassUploadBuffer, 0);
 
         auto& passConstants{ m_PassConstantBuffer.As<PassConstants>() };
         passConstants.AmbientLight = DirectX::XMFLOAT4{ 0.25f, 0.25f, 0.35f, 1.0f };
@@ -705,8 +704,8 @@ namespace Sandbox
             m_Renderer.ClearRenderTarget(m_ClearColor);
             m_Renderer.ClearDepthStencil(1.0f, 0);
 
-            auto a = m_Renderer.m_SwapChainBufferRTVDescriptorHeap.GetCPUHandle(currentBackBuffer);
-            auto b = m_Renderer.m_DSVDescriptorHeap.GetCPUHandle(0);
+            const D3D12_CPU_DESCRIPTOR_HANDLE a{ m_Renderer.m_SwapChainBufferRTVDescriptorHeap.GetDescriptorCPUHandle(currentBackBuffer) };
+            const D3D12_CPU_DESCRIPTOR_HANDLE b{ m_Renderer.m_DSVDescriptorHeap.GetDescriptorCPUHandle(0) };
 
             m_Renderer.m_CommandList->OMSetRenderTargets(
                 1,
@@ -716,7 +715,7 @@ namespace Sandbox
             );
 
             m_RootSignature.Bind();
-            m_PassConstantBuffer.BindAsRootDescriptor(0);
+            m_PassConstantBuffer.Bind(0);
 
             for (const auto& renderItem : m_LitRenderItems)
             {
@@ -726,11 +725,11 @@ namespace Sandbox
                 renderItem.MeshGeometry->IndexBuffer.Bind();
                 m_Renderer.m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(renderItem.MeshGeometry->PrimitiveTopology));
 
-                renderItem.ConstantBuffer.BindAsRootDescriptor(1);
+                renderItem.ConstantBuffer.Bind(1);
 
                 if (renderItem.Material)
                 {
-                    renderItem.Material->ConstantBuffer.BindAsRootDescriptor(2);
+                    renderItem.Material->ConstantBuffer.Bind(2);
                 }
 
                 m_Renderer.m_CommandList->DrawIndexedInstanced(submeshGeometry.IndexCount, 1, submeshGeometry.StartIndexLocation, submeshGeometry.BaseVertexLocation, 0);
@@ -770,8 +769,8 @@ namespace Sandbox
 
             m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
 
-            auto a = m_Renderer.m_SwapChainBufferRTVDescriptorHeap.GetCPUHandle(currentBackBuffer);
-            auto b = m_Renderer.m_DSVDescriptorHeap.GetCPUHandle(0);
+            const D3D12_CPU_DESCRIPTOR_HANDLE a{ m_Renderer.m_SwapChainBufferRTVDescriptorHeap.GetDescriptorCPUHandle(currentBackBuffer) };
+            const D3D12_CPU_DESCRIPTOR_HANDLE b{ m_Renderer.m_DSVDescriptorHeap.GetDescriptorCPUHandle(0) };
 
             m_Renderer.m_CommandList->OMSetRenderTargets(
                 1,
@@ -783,7 +782,7 @@ namespace Sandbox
             const auto& landGeometry = m_MeshGeometries["land"];
 
             m_RootSignature.Bind();
-            m_PassConstantBuffer.BindAsRootDescriptor(0);
+            m_PassConstantBuffer.Bind(0);
 
             for (const auto& renderItem : m_ColorRenderItems)
             {
@@ -793,7 +792,7 @@ namespace Sandbox
                 renderItem.MeshGeometry->IndexBuffer.Bind();
                 m_Renderer.m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(renderItem.MeshGeometry->PrimitiveTopology));
 
-                renderItem.ConstantBuffer.BindAsRootDescriptor(1);
+                renderItem.ConstantBuffer.Bind(1);
 
                 m_Renderer.m_CommandList->DrawIndexedInstanced(submeshGeometry.IndexCount, 1, submeshGeometry.StartIndexLocation, submeshGeometry.BaseVertexLocation, 0);
             }
@@ -813,3 +812,4 @@ namespace Sandbox
     }
 
 } // namespace Sandbox
+#endif

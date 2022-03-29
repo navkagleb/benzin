@@ -1,12 +1,12 @@
+#include "light.fx"
+
 struct PerPass
 {
     float4x4 View;
     float4x4 Projection;
-#if 0
     float3 W_CameraPosition;
     float4 AmbientLight;
     Light::LightContainer Lights;
-#endif
 };
 
 struct PerObject
@@ -52,8 +52,38 @@ VS_Output VS_Main(VS_Input input)
 Texture2D g_Texture : register(t0);
 
 SamplerState g_SamplerPointWrap : register(s0);
+SamplerState g_SamplerPointClamp : register(s1);
+SamplerState g_SamplerLinearWrap : register(s2);
+SamplerState g_SamplerLinearClamp : register(s3);
+SamplerState g_SamplerAnisotropicWrap : register(s4);
+SamplerState g_SamplerAnisotropicClamp : register(s5);
 
 float4 PS_Main(VS_Output input) : SV_Target
 {
-    return g_Texture.Sample(g_SamplerPointWrap, input.TexCoord);
+    float4 g_DiffuseAlbedo = 1.0f; 
+    
+    float4 diffuseAlbedo = g_Texture.Sample(g_SamplerAnisotropicClamp, input.TexCoord) * g_DiffuseAlbedo;
+    
+    input.NormalW = normalize(input.NormalW);
+
+    // Vector from point being lit to eye
+    const float3 viewVector = normalize(g_Pass.W_CameraPosition - input.PositionW);
+
+    // Indirect lighting
+    const float4 ambient = g_Pass.AmbientLight * diffuseAlbedo;
+
+    // Direct lighting
+    Light::Material material;
+    material.DiffuseAlbedo = 1.0f;
+    material.FresnelR0 = 0.05f;
+    material.Shininess = 1.0f - 0.9f;
+
+    const float3 shadowFactor = 1.0f;
+
+    float4 litColor = Light::ComputeLighting(g_Pass.Lights, material, input.PositionW, input.NormalW, viewVector, shadowFactor);
+    litColor += ambient;
+
+    litColor.a = diffuseAlbedo.a;
+    
+    return litColor;
 }

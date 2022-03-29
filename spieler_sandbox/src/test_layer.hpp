@@ -14,23 +14,36 @@
 #include <spieler/renderer/pipeline_state.hpp>
 #include <spieler/renderer/texture.hpp>
 #include <spieler/renderer/sampler.hpp>
+#include <spieler/renderer/light.hpp>
 
 #include "projection_camera_controller.hpp"
+#include "light_controller.hpp"
 
 namespace Sandbox
 {
     template <typename T>
     using LookUpTable = std::unordered_map<std::string, T>;
 
+    constexpr std::uint32_t MAX_LIGHT_COUNT{ 16 };
+
     struct PassConstants
     {
-        DirectX::XMMATRIX View{};
-        DirectX::XMMATRIX Projection{};
+        alignas(16) DirectX::XMMATRIX View{};
+        alignas(16) DirectX::XMMATRIX Projection{};
+        alignas(16) DirectX::XMFLOAT3 CameraPosition{};
+        alignas(16) DirectX::XMFLOAT4 AmbientLight{};
+        alignas(16) Spieler::LightConstants Lights[MAX_LIGHT_COUNT];
     };
 
-    struct ObjectConstants
+    struct LitObjectConstants
     {
         DirectX::XMMATRIX World{};
+    };
+
+    struct UnlitObjectConstants
+    {
+        DirectX::XMMATRIX World{};
+        DirectX::XMFLOAT4 Color{};
     };
 
     class TestLayer : public Spieler::Layer
@@ -49,11 +62,12 @@ namespace Sandbox
     private:
         bool InitDescriptorHeaps();
         bool InitUploadBuffers();
-        bool InitTextures();
-        bool InitMeshGeometries();
+        bool InitTextures(Spieler::UploadBuffer& textureUploadBuffer);
+        bool InitMeshGeometries(Spieler::UploadBuffer& vertexUploadBuffer, Spieler::UploadBuffer& indexUploadBuffer);
         bool InitRootSignatures();
         bool InitPipelineStates();
         void InitConstantBuffers();
+        void InitLights();
 
         void UpdateViewport();
         void UpdateScissorRect();
@@ -69,6 +83,9 @@ namespace Sandbox
 
         ProjectionCameraController m_CameraController;
 
+        LookUpTable<Spieler::VertexBufferView> m_VertexBufferViews;
+        LookUpTable<Spieler::IndexBufferView> m_IndexBufferViews;
+
         LookUpTable<Spieler::DescriptorHeap> m_DescriptorHeaps;
         LookUpTable<Spieler::UploadBuffer> m_UploadBuffers;
         LookUpTable<Spieler::Texture2D> m_Textures;
@@ -79,8 +96,10 @@ namespace Sandbox
         LookUpTable<Spieler::VertexShader> m_VertexShaders;
         LookUpTable<Spieler::PixelShader> m_PixelShaders;
         LookUpTable<Spieler::PipelineState> m_PipelineStates;
-        LookUpTable<Spieler::RenderItem> m_RenderItems;
+        LookUpTable<Spieler::RenderItem> m_LitRenderItems;
+        LookUpTable<Spieler::RenderItem> m_UnlitRenderItems;
         LookUpTable<Spieler::ConstantBuffer> m_ConstantBuffers;
+        DirectionalLightController m_DirectionalLightController;
     };
 
 } // namespace Sandbox

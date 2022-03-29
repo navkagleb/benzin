@@ -75,14 +75,14 @@ namespace Spieler
         samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
         samplerDesc.MinLOD = 0.0f;
         samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
-        GetDevice()->CreateSampler(&samplerDesc, m_DescriptorHeap->GetCPUHandle(m_DescriptorHeapIndex));
+        GetDevice()->CreateSampler(&samplerDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ m_DescriptorHeap->GetDescriptorCPUHandle(m_DescriptorHeapIndex) });
     }
 
     void Sampler::Bind(std::uint32_t rootParameterIndex) const
     {
         SPIELER_ASSERT(m_DescriptorHeap);
 
-        GetCommandList()->SetGraphicsRootDescriptorTable(rootParameterIndex, m_DescriptorHeap->GetGPUHandle(m_DescriptorHeapIndex));
+        GetCommandList()->SetGraphicsRootDescriptorTable(rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE{ m_DescriptorHeap->GetDescriptorGPUHandle(m_DescriptorHeapIndex) });
     }
 
 } // namespace Spieler

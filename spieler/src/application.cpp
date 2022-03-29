@@ -125,7 +125,7 @@ namespace Spieler
         // Setup Dear ImGui style
         ImGui::StyleColorsDark();
 
-        SPIELER_RETURN_IF_FAILED(m_ImGuiDescriptorHeap.Init(DescriptorHeapType_CBVSRVUAV, 1));
+        SPIELER_RETURN_IF_FAILED(m_ImGuiDescriptorHeap.Init(DescriptorHeapType::CBVSRVUAV, 1));
 
         // Setup Platform/Renderer backends
         SPIELER_RETURN_IF_FAILED(ImGui_ImplWin32_Init(m_Window.GetHandle()));
@@ -134,8 +134,8 @@ namespace Spieler
             1,
             m_Renderer.GetSwapChainProps().BufferFormat, 
             static_cast<ID3D12DescriptorHeap*>(m_ImGuiDescriptorHeap),
-            m_ImGuiDescriptorHeap.GetCPUHandle(0),
-            m_ImGuiDescriptorHeap.GetGPUHandle(0)
+            D3D12_CPU_DESCRIPTOR_HANDLE{ m_ImGuiDescriptorHeap.GetDescriptorCPUHandle(0) },
+            D3D12_GPU_DESCRIPTOR_HANDLE{ m_ImGuiDescriptorHeap.GetDescriptorGPUHandle(0) }
         ));
 
         return true;
@@ -169,8 +169,8 @@ namespace Spieler
 
             m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
 
-            auto a = m_Renderer.m_SwapChainBufferRTVDescriptorHeap.GetCPUHandle(currentBackBuffer);
-            auto b = m_Renderer.m_DSVDescriptorHeap.GetCPUHandle(0);
+            const D3D12_CPU_DESCRIPTOR_HANDLE a{ m_Renderer.m_SwapChainBufferRTVDescriptorHeap.GetDescriptorCPUHandle(currentBackBuffer) };
+            const D3D12_CPU_DESCRIPTOR_HANDLE b{ m_Renderer.m_DSVDescriptorHeap.GetDescriptorCPUHandle(0) };
 
             m_Renderer.m_CommandList->OMSetRenderTargets(
                 1,

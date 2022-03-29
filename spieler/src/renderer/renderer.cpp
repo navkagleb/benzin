@@ -63,7 +63,7 @@ namespace Spieler
     void Renderer::ClearRenderTarget(const DirectX::XMFLOAT4& color)
     {
         m_CommandList->ClearRenderTargetView(
-            m_SwapChainBufferRTVDescriptorHeap.GetCPUHandle(m_SwapChain3->GetCurrentBackBufferIndex()),
+            D3D12_CPU_DESCRIPTOR_HANDLE{ m_SwapChainBufferRTVDescriptorHeap.GetDescriptorCPUHandle(m_SwapChain3->GetCurrentBackBufferIndex()) },
             reinterpret_cast<const float*>(&color),
             0,
             nullptr
@@ -121,7 +121,7 @@ namespace Spieler
         {
             SPIELER_RETURN_IF_FAILED(m_SwapChain->GetBuffer(i, __uuidof(ID3D12Resource), &m_SwapChainBuffers[i]));
 
-            m_Device->CreateRenderTargetView(m_SwapChainBuffers[i].Get(), nullptr, m_SwapChainBufferRTVDescriptorHeap.GetCPUHandle(i));
+            m_Device->CreateRenderTargetView(m_SwapChainBuffers[i].Get(), nullptr, D3D12_CPU_DESCRIPTOR_HANDLE{ m_SwapChainBufferRTVDescriptorHeap.GetDescriptorCPUHandle(i) });
         }
 
         D3D12_RESOURCE_DESC depthStencilDesc{};
@@ -160,7 +160,7 @@ namespace Spieler
         dsvDesc.Format              = m_DepthStencilFormat;
         dsvDesc.Texture2D.MipSlice  = 0;
 
-        m_Device->CreateDepthStencilView(m_DepthStencilBuffer.Get(), &dsvDesc, m_DSVDescriptorHeap.GetCPUHandle(0));
+        m_Device->CreateDepthStencilView(m_DepthStencilBuffer.Get(), &dsvDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ m_DSVDescriptorHeap.GetDescriptorCPUHandle(0) });
 
         const D3D12_RESOURCE_BARRIER resourceTransitionBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
             m_DepthStencilBuffer.Get(),
@@ -317,8 +317,8 @@ namespace Spieler
 
     bool Renderer::InitDescriptorHeaps()
     {
-        SPIELER_RETURN_IF_FAILED(m_SwapChainBufferRTVDescriptorHeap.Init(DescriptorHeapType_RTV, m_SwapChainProps.BufferCount));
-        SPIELER_RETURN_IF_FAILED(m_DSVDescriptorHeap.Init(DescriptorHeapType_DSV, 1));
+        SPIELER_RETURN_IF_FAILED(m_SwapChainBufferRTVDescriptorHeap.Init(DescriptorHeapType::RTV, m_SwapChainProps.BufferCount));
+        SPIELER_RETURN_IF_FAILED(m_DSVDescriptorHeap.Init(DescriptorHeapType::DSV, 1));
 
         return true;
     }
@@ -332,7 +332,7 @@ namespace Spieler
 
     void Renderer::ClearDepthStencil(float depth, std::uint8_t stencil, D3D12_CLEAR_FLAGS flags)
     {
-        m_CommandList->ClearDepthStencilView(m_DSVDescriptorHeap.GetCPUHandle(0), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
+        m_CommandList->ClearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE{ m_DSVDescriptorHeap.GetDescriptorCPUHandle(0) }, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
     }
 
 } // namespace Spieler
