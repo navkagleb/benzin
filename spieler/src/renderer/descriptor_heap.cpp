@@ -13,7 +13,7 @@ namespace Spieler
         desc.NodeMask = 0;
         desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
-        if (type == DescriptorHeapType_CBVSRVUAV || type == DescriptorHeapType_Sampler)
+        if (type == DescriptorHeapType::CBVSRVUAV || type == DescriptorHeapType::Sampler)
         {
             desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         }
@@ -32,18 +32,18 @@ namespace Spieler
         GetCommandList()->SetDescriptorHeaps(1, m_Heap.GetAddressOf());
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::GetCPUHandle(std::uint32_t index) const
+    CPUDescriptorHandle DescriptorHeap::GetDescriptorCPUHandle(std::uint32_t index) const
     {
         SPIELER_ASSERT(m_Heap);
 
-        return { m_Heap->GetCPUDescriptorHandleForHeapStart().ptr + index * m_Size };
+        return m_Heap->GetCPUDescriptorHandleForHeapStart().ptr + index * m_Size;
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeap::GetGPUHandle(std::uint32_t index) const
+    GPUDescriptorHandle DescriptorHeap::GetDescriptorGPUHandle(std::uint32_t index) const
     {
         SPIELER_ASSERT(m_Heap);
 
-        return { m_Heap->GetGPUDescriptorHandleForHeapStart().ptr + index * m_Size };
+        return m_Heap->GetGPUDescriptorHandleForHeapStart().ptr + index * m_Size;
     }
 
 } // namespace Spieler

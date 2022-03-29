@@ -5,15 +5,18 @@
 namespace Spieler
 {
 
-    enum DescriptorHeapType : std::uint32_t
+    using CPUDescriptorHandle = std::uint64_t;
+    using GPUDescriptorHandle = std::uint64_t;
+
+    enum class DescriptorHeapType : std::uint32_t
     {
-        DescriptorHeapType_CBV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        DescriptorHeapType_SRV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        DescriptorHeapType_UAV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        DescriptorHeapType_CBVSRVUAV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        DescriptorHeapType_Sampler = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
-        DescriptorHeapType_RTV = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-        DescriptorHeapType_DSV = D3D12_DESCRIPTOR_HEAP_TYPE_DSV
+        CBV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+        SRV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+        UAV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+        CBVSRVUAV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+        Sampler = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+        RTV = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+        DSV = D3D12_DESCRIPTOR_HEAP_TYPE_DSV
     };
 
     class DescriptorHeap : public Bindable
@@ -27,16 +30,16 @@ namespace Spieler
 
         void Bind() const override;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(std::uint32_t index) const;
-        D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(std::uint32_t index) const;
+        CPUDescriptorHandle GetDescriptorCPUHandle(std::uint32_t index) const;
+        GPUDescriptorHandle GetDescriptorGPUHandle(std::uint32_t index) const;
 
     public:
         explicit operator ID3D12DescriptorHeap* () { return m_Heap.Get(); }
 
     private:
         ComPtr<ID3D12DescriptorHeap> m_Heap;
-        std::uint32_t m_Size              = 0;
-        std::uint32_t m_DescriptorCount   = 0;
+        std::uint32_t m_Size{ 0 };
+        std::uint32_t m_DescriptorCount{ 0 };
     };
 
 } // namespace Spieler
