@@ -2,6 +2,7 @@
 
 #include <variant>
 
+#include "renderer_object.hpp"
 #include "upload_buffer.hpp"
 
 namespace Spieler
@@ -12,11 +13,16 @@ namespace Spieler
     class ConstantBuffer : public RendererObject
     {
     public:
-        std::uint32_t GetIndex() const { return m_Index; }
+        friend class ConstantBufferView;
 
     public:
-        void InitAsRootDescriptorTable(UploadBuffer* uploadBuffer, std::uint32_t index, const DescriptorHeap& heap, std::uint32_t heapIndex);
-        void InitAsRootDescriptor(UploadBuffer* uploadBuffer, std::uint32_t index);
+        ConstantBuffer() = default;
+        ConstantBuffer(UploadBuffer& uploadBuffer, std::uint32_t index);
+
+    public:
+        void Init(UploadBuffer& uploadBuffer, std::uint32_t index);
+
+        void Bind(std::uint32_t rootParameterIndex) const;
 
         template <typename T>
         T& As();
@@ -24,21 +30,25 @@ namespace Spieler
         template <typename T>
         const T& As() const;
 
-        void BindAsRootDescriptorTable(const DescriptorHeap& heap) const;
-        void BindAsRootDescriptor(std::uint32_t registerIndex) const;
-
     private:
-        bool Init(UploadBuffer* uploadBuffer, std::uint32_t index);
+        UploadBuffer* m_UploadBuffer{ nullptr };
+        std::uint32_t m_Index{ 0 };
+    };
+
+    class ConstantBufferView : public RendererObject
+    {
+    public:
+        ConstantBufferView() = default;
+        ConstantBufferView(const ConstantBuffer& constantBuffer, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex);
 
     public:
-        explicit operator bool() const { return m_UploadBuffer; }
+        void Init(const ConstantBuffer& constantBuffer, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex);
+
+        void Bind(std::uint32_t rootParameterIndex) const;
 
     private:
-        UploadBuffer*   m_UploadBuffer{ nullptr };
-        std::uint32_t   m_Index{ 0 };
-        
-        // Only for RootDescriptorTable
-        std::uint32_t   m_HeapIndex{ 0 };
+        const DescriptorHeap* m_DescriptorHeap{ nullptr };
+        std::uint32_t m_DescriptorHeapIndex{ 0 };
     };
 
     template <typename T>
