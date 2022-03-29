@@ -5,10 +5,12 @@
 namespace Spieler
 {
 
-    enum UploadBufferType : std::uint32_t
+    using GPUVirtualAddress = std::uint64_t;
+
+    enum class UploadBufferType : std::uint32_t
     {
-        UploadBufferType_Default        = 0,
-        UploadBufferType_ConstantBuffer = 1
+        Default = 0,
+        ConstantBuffer = 1
     };
 
     class UploadBuffer : public RendererObject
@@ -16,8 +18,6 @@ namespace Spieler
     public:
         UploadBuffer() = default;
         UploadBuffer(UploadBuffer&& other) noexcept;
-
-    public:
         ~UploadBuffer();
 
     public:
@@ -28,7 +28,8 @@ namespace Spieler
         template <typename T>
         bool Init(UploadBufferType type, std::uint32_t elementCount);
 
-        std::uint64_t GetGPUVirtualAddress(std::uint32_t index = 0) const { return m_Buffer->GetGPUVirtualAddress() + static_cast<std::uint64_t>(index * m_Stride); }
+        GPUVirtualAddress GetGPUVirtualAddress() const { return m_Buffer->GetGPUVirtualAddress(); }
+        GPUVirtualAddress GetElementGPUVirtualAddress(std::uint32_t index) const { return m_Buffer->GetGPUVirtualAddress() + static_cast<std::uint64_t>(index * m_Stride); }
 
         template <typename T>
         T& As(std::uint32_t index = 0);
@@ -39,11 +40,11 @@ namespace Spieler
         explicit operator ID3D12Resource* () const { return m_Buffer.Get(); }
 
     private:
-        ComPtr<ID3D12Resource>  m_Buffer;
-        std::byte*              m_MappedData{ nullptr };
+        ComPtr<ID3D12Resource> m_Buffer;
+        std::byte* m_MappedData{ nullptr };
 
-        std::uint32_t           m_ElementCount{ 0 };
-        std::uint32_t           m_Stride{ 0 };
+        std::uint32_t m_ElementCount{ 0 };
+        std::uint32_t m_Stride{ 0 };
     };
 
     namespace _Internal
@@ -61,28 +62,28 @@ namespace Spieler
     {
         SPIELER_ASSERT(elementCount != 0);
 
-        m_ElementCount  = elementCount;
-        m_Stride        = type == UploadBufferType_ConstantBuffer ? _Internal::CalcConstantBufferSize(sizeof(T)) : sizeof(T);
+        m_ElementCount = elementCount;
+        m_Stride = type == UploadBufferType::ConstantBuffer ? _Internal::CalcConstantBufferSize(sizeof(T)) : sizeof(T);
         
         D3D12_RESOURCE_DESC resourceDesc{};
-        resourceDesc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resourceDesc.Alignment          = 0;
-        resourceDesc.Width              = m_Stride * m_ElementCount;
-        resourceDesc.Height             = 1;
-        resourceDesc.DepthOrArraySize   = 1;
-        resourceDesc.MipLevels          = 1;
-        resourceDesc.Format             = DXGI_FORMAT_UNKNOWN;
-        resourceDesc.SampleDesc.Count   = 1;
+        resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        resourceDesc.Alignment = 0;
+        resourceDesc.Width = m_Stride * m_ElementCount;
+        resourceDesc.Height = 1;
+        resourceDesc.DepthOrArraySize = 1;
+        resourceDesc.MipLevels = 1;
+        resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+        resourceDesc.SampleDesc.Count = 1;
         resourceDesc.SampleDesc.Quality = 0;
-        resourceDesc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        resourceDesc.Flags              = D3D12_RESOURCE_FLAG_NONE;
+        resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
         D3D12_HEAP_PROPERTIES uploadHeapProps{};
-        uploadHeapProps.Type                    = D3D12_HEAP_TYPE_UPLOAD;
-        uploadHeapProps.CPUPageProperty         = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        uploadHeapProps.MemoryPoolPreference    = D3D12_MEMORY_POOL_UNKNOWN;
-        uploadHeapProps.CreationNodeMask        = 1;
-        uploadHeapProps.VisibleNodeMask         = 1;
+        uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        uploadHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        uploadHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        uploadHeapProps.CreationNodeMask = 1;
+        uploadHeapProps.VisibleNodeMask = 1;
 
         SPIELER_RETURN_IF_FAILED(GetDevice()->CreateCommittedResource(
             &uploadHeapProps,
