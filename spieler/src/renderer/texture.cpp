@@ -45,6 +45,7 @@ namespace Spieler
     void ShaderResourceView::Init(const Texture2D& texture2D, const DescriptorHeap& descriptorHeap, std::uint32_t index)
     {
         m_DescriptorHeap = &descriptorHeap;
+        m_Index = index;
 
         const D3D12_RESOURCE_DESC texture2DDesc{ texture2D.m_Texture->GetDesc() };
 
@@ -56,7 +57,7 @@ namespace Spieler
         srvDesc.Texture2D.MipLevels = texture2DDesc.MipLevels;
         srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
         srvDesc.Texture2D.MostDetailedMip = 0;
-        GetDevice()->CreateShaderResourceView(texture2D.m_Texture.Get(), &srvDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ m_DescriptorHeap->GetDescriptorCPUHandle(index) });
+        GetDevice()->CreateShaderResourceView(texture2D.m_Texture.Get(), &srvDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ m_DescriptorHeap->GetDescriptorCPUHandle(m_Index) });
     }
 
     void ShaderResourceView::Bind(std::uint32_t rootParameterIndex) const

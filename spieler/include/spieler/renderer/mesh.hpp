@@ -6,6 +6,7 @@
 #include "vertex_buffer.hpp"
 #include "index_buffer.hpp"
 #include "constant_buffer.hpp"
+#include "texture.hpp"
 
 namespace Spieler
 {
@@ -27,15 +28,14 @@ namespace Spieler
 
     struct Material
     {
-        std::int32_t DiffuseSRVHeapIndex{ -1 };
-        std::uint32_t DirtyFrameCount{ 0 };
         ConstantBuffer ConstantBuffer;
+        ShaderResourceView DiffuseMap;
     };
 
     struct MaterialConstants
     {
         DirectX::XMFLOAT4 DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f };
-        DirectX::XMFLOAT3 FrensnelR0{ 0.01f, 0.01f, 0.01f };
+        DirectX::XMFLOAT3 FresnelR0{ 0.01f, 0.01f, 0.01f };
         float Roughness{ 0.25f };
         DirectX::XMMATRIX Transform{ DirectX::XMMatrixIdentity() };
     };

@@ -34,6 +34,9 @@ namespace Sandbox
         const DirectX::XMFLOAT3& GetNormal(std::uint32_t index) const { return m_Normals[index]; }
         const DirectX::XMFLOAT3& GetTangentX(std::uint32_t index) const { return m_TangentX[index]; }
 
+        float GetWidth() const { return m_ColumnCount * m_SpatialStep; }
+        float GetDepth() const { return m_RowCount * m_SpatialStep; }
+
         void OnUpdate(float dt);
 
         void Disturb(std::uint32_t i, std::uint32_t j, float magnitude);

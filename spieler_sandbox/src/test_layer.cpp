@@ -28,6 +28,7 @@ namespace Sandbox
         SPIELER_RETURN_IF_FAILED(m_Renderer.ResetCommandList());
         {
             SPIELER_RETURN_IF_FAILED(InitTextures(textureUploadBuffer));
+            InitMaterials();
             SPIELER_RETURN_IF_FAILED(InitMeshGeometries(vertexUploadBuffer, indexUploadBuffer));
         }
         SPIELER_RETURN_IF_FAILED(m_Renderer.ExexuteCommandList());
@@ -97,7 +98,6 @@ namespace Sandbox
             m_ConstantBuffers["pass"].Bind(0);
 
             m_DescriptorHeaps["srv"].Bind();
-            m_SRVs["wood_crate1"].Bind(2);
 
             for (const auto& [renderItemName, renderItem] : m_LitRenderItems)
             {
@@ -108,6 +108,12 @@ namespace Sandbox
                 m_Renderer.m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(renderItem.MeshGeometry->PrimitiveTopology));
 
                 renderItem.ConstantBuffer.Bind(1);
+
+                if (renderItem.Material)
+                {
+                    renderItem.Material->ConstantBuffer.Bind(2);
+                    renderItem.Material->DiffuseMap.Bind(3);
+                }
                 
                 m_Renderer.m_CommandList->DrawIndexedInstanced(submeshGeometry.IndexCount, 1, submeshGeometry.StartIndexLocation, submeshGeometry.BaseVertexLocation, 0);
             }
@@ -199,22 +205,29 @@ namespace Sandbox
         SPIELER_RETURN_IF_FAILED(m_UploadBuffers["pass"].Init<PassConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
         SPIELER_RETURN_IF_FAILED(m_UploadBuffers["lit_object"].Init<LitObjectConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
         SPIELER_RETURN_IF_FAILED(m_UploadBuffers["unlit_object"].Init<UnlitObjectConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
+        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["material"].Init<Spieler::MaterialConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
 
         return true;
     }
 
     bool TestLayer::InitTextures(Spieler::UploadBuffer& textureUploadBuffer)
     {
-        // Wood texture
-        {
-            const std::string woodTextureName{ "wood_crate1" };
-
-            SPIELER_RETURN_IF_FAILED(m_Textures[woodTextureName].LoadFromDDSFile(L"assets/textures/wood_crate1.dds", textureUploadBuffer));
-
-            m_SRVs[woodTextureName].Init(m_Textures[woodTextureName], m_DescriptorHeaps["srv"], 0);
-        }
+        SPIELER_RETURN_IF_FAILED(m_Textures["wood_crate1"].LoadFromDDSFile(L"assets/textures/wood_crate1.dds", textureUploadBuffer));
         
         return true;
+    }
+
+    void TestLayer::InitMaterials()
+    {
+        auto& woodMaterial{ m_Materials["wood_crate1"] };
+        woodMaterial.DiffuseMap.Init(m_Textures["wood_crate1"], m_DescriptorHeaps["srv"], 0);
+        woodMaterial.ConstantBuffer.Init(m_UploadBuffers["material"], 0);
+
+        auto& woodMaterialConstants{ woodMaterial.ConstantBuffer.As<Spieler::MaterialConstants>() };
+        woodMaterialConstants.DiffuseAlbedo = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        woodMaterialConstants.FresnelR0 = DirectX::XMFLOAT3(0.05f, 0.05f, 0.05f);
+        woodMaterialConstants.Roughness = 0.2f;
+        woodMaterialConstants.Transform = DirectX::XMMatrixIdentity();
     }
 
     bool TestLayer::InitMeshGeometries(Spieler::UploadBuffer& vertexUploadBuffer, Spieler::UploadBuffer& indexUploadBuffer)
@@ -267,10 +280,12 @@ namespace Sandbox
         Spieler::RenderItem& boxRenderItem{ m_LitRenderItems["box"] };
         boxRenderItem.MeshGeometry = &basicMeshesGeometry;
         boxRenderItem.SubmeshGeometry = &boxSubmeshGeometry;
+        boxRenderItem.Material = &m_Materials["wood_crate1"]; 
         boxRenderItem.ConstantBuffer.Init(m_UploadBuffers["lit_object"], 0);
-        boxRenderItem.ConstantBuffer.As<LitObjectConstants>().World = DirectX::XMMatrixTranspose(
-            DirectX::XMMatrixTranslation(0.0, 0.0f, 20.0f)
-        );
+
+        auto& boxConstants{ boxRenderItem.ConstantBuffer.As<LitObjectConstants>() };
+        boxConstants.World = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0, 0.0f, 20.0f));
+        boxConstants.TextureTransform = DirectX::XMMatrixIdentity();
 
         Spieler::RenderItem& geosphereRenderItem{ m_UnlitRenderItems["geosphere"] };
         geosphereRenderItem.MeshGeometry = &basicMeshesGeometry;
@@ -288,7 +303,7 @@ namespace Sandbox
 
         // Init root parameters
         {
-            rootParameters.resize(3);
+            rootParameters.resize(4);
 
             rootParameters[0].Type = Spieler::RootParameterType_ConstantBufferView;
             rootParameters[0].ShaderVisibility = Spieler::ShaderVisibility_All;
@@ -298,9 +313,13 @@ namespace Sandbox
             rootParameters[1].ShaderVisibility = Spieler::ShaderVisibility_All;
             rootParameters[1].Child = Spieler::RootDescriptor{ 1, 0 };
 
-            rootParameters[2].Type = Spieler::RootParameterType_DescriptorTable;
+            rootParameters[2].Type = Spieler::RootParameterType_ConstantBufferView;
             rootParameters[2].ShaderVisibility = Spieler::ShaderVisibility_All;
-            rootParameters[2].Child = Spieler::RootDescriptorTable{ { Spieler::DescriptorRange{ Spieler::DescriptorRangeType_SRV, 1 } } };
+            rootParameters[2].Child = Spieler::RootDescriptor{ 2, 0 };
+
+            rootParameters[3].Type = Spieler::RootParameterType_DescriptorTable;
+            rootParameters[3].ShaderVisibility = Spieler::ShaderVisibility_All;
+            rootParameters[3].Child = Spieler::RootDescriptorTable{ { Spieler::DescriptorRange{ Spieler::DescriptorRangeType_SRV, 1 } } };
         }
 
         // Init statis samplers
@@ -410,7 +429,7 @@ namespace Sandbox
 
         m_DirectionalLightController.SetConstants(&m_UploadBuffers["pass"].As<PassConstants>(0).Lights[0]);
         m_DirectionalLightController.SetShape(&m_UnlitRenderItems["geosphere"]);
-        m_DirectionalLightController.Init(constants, DirectX::XM_PIDIV2, DirectX::XM_PIDIV4);
+        m_DirectionalLightController.Init(constants, DirectX::XM_PIDIV2 * 1.25f, DirectX::XM_PIDIV4);
     }
 
     void TestLayer::UpdateViewport()

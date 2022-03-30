@@ -13,6 +13,7 @@
 #include <spieler/renderer/mesh.hpp>
 #include <spieler/renderer/light.hpp>
 #include <spieler/renderer/upload_buffer.hpp>
+#include <spieler/renderer/texture.hpp>
 
 #include "projection_camera_controller.hpp"
 #include "waves.hpp"
@@ -21,13 +22,8 @@
 namespace Sandbox
 {
 
-    using PipelineStateContainer = std::unordered_map<std::string, Spieler::PipelineState>;
-    using MeshGeometryContainer = std::unordered_map<std::string, Spieler::MeshGeometry>;
-    using MaterialContainer = std::unordered_map<std::string, Spieler::Material>;
-    using VertexShaderContainer = std::unordered_map<std::string, Spieler::VertexShader>;
-    using PixelShaderContainer = std::unordered_map<std::string, Spieler::PixelShader>;
-    using VertexBufferViewContainer = std::unordered_map<std::string, Spieler::VertexBufferView>;
-    using IndexBufferViewContainer = std::unordered_map<std::string, Spieler::IndexBufferView>;
+    template <typename T>
+    using LookUpTable = std::unordered_map<std::string, T>;
 
     struct ColorVertex
     {
@@ -35,10 +31,11 @@ namespace Sandbox
         DirectX::XMFLOAT4 Color{};
     };
 
-    struct NormalVertex
+    struct Vertex
     {
         DirectX::XMFLOAT3 Position{};
         DirectX::XMFLOAT3 Normal{};
+        DirectX::XMFLOAT2 TexCoord{};
     };
 
     struct MeshUploadBuffer
@@ -61,14 +58,16 @@ namespace Sandbox
         void OnImGuiRender(float dt) override;
 
     private:
+        bool InitDescriptorHeaps();
         bool InitUploadBuffers();
+        bool InitTextures(Spieler::UploadBuffer& grassTextureUploadBuffer, Spieler::UploadBuffer& waterTextureUploadBuffer);
+        void InitMaterials();
         bool InitMeshGeometry(MeshUploadBuffer& meshUploadBuffer);
         bool InitLandGeometry(MeshUploadBuffer& landUploadBuffer);
         bool InitWavesGeometry(MeshUploadBuffer& wavesUploadBuffer);
         bool InitRootSignature();
         bool InitPipelineState();
 
-        void InitMaterials();
         void InitPassConstantBuffer();
         void InitLightControllers();
         void InitViewport();
@@ -76,7 +75,7 @@ namespace Sandbox
 
         bool OnWindowResized(Spieler::WindowResizedEvent& event);
 
-        void UpdateWavesVertexBuffer();
+        void UpdateWavesVertexBuffer(float dt);
 
         bool RenderLitRenderItems();
         bool RenderColorRenderItems();
@@ -92,28 +91,24 @@ namespace Sandbox
         Spieler::Viewport                   m_Viewport;
         Spieler::ScissorRect                m_ScissorRect;
 
+        DirectX::XMFLOAT4                   m_ClearColor{ 0.1f, 0.1f, 0.1f, 1.0f };
+
         ProjectionCameraController          m_CameraController;
 
-        VertexShaderContainer               m_VertexShaders;
-        PixelShaderContainer                m_PixelShaders;
-        Spieler::RootSignature              m_RootSignature;
-        PipelineStateContainer              m_PipelineStates;
-
-        DirectX::XMFLOAT4                   m_ClearColor{ 0.1f, 0.1f, 0.1f, 1.0f };
-    
-        Spieler::UploadBuffer               m_PassUploadBuffer;
-        Spieler::UploadBuffer               m_ObjectUploadBuffer;
-        Spieler::UploadBuffer               m_WavesUploadBuffer;
-        Spieler::UploadBuffer               m_MaterialUploadBuffer;
-
-        MeshGeometryContainer               m_MeshGeometries;
-        MaterialContainer                   m_Materials;
-
-        VertexBufferViewContainer           m_VertexBufferViews;
-        IndexBufferViewContainer            m_IndexBufferViews;
-
-        std::vector<Spieler::RenderItem>    m_LitRenderItems;
-        std::vector<Spieler::RenderItem>    m_ColorRenderItems;
+        LookUpTable<Spieler::DescriptorHeap> m_DescriptorHeaps;
+        LookUpTable<Spieler::UploadBuffer>  m_UploadBuffers;
+        LookUpTable<Spieler::Texture2D>     m_Textures;
+        LookUpTable<Spieler::VertexBufferView> m_VertexBufferViews;
+        LookUpTable<Spieler::IndexBufferView> m_IndexBufferViews;
+        LookUpTable<Spieler::MeshGeometry>  m_MeshGeometries;
+        LookUpTable<Spieler::RootSignature> m_RootSignatures;
+        LookUpTable<Spieler::VertexShader>  m_VertexShaders;
+        LookUpTable<Spieler::PixelShader>   m_PixelShaders;
+        LookUpTable<Spieler::PipelineState> m_PipelineStates;
+        LookUpTable<Spieler::Material>      m_Materials;
+        
+        LookUpTable<Spieler::RenderItem>    m_LitRenderItems;
+        LookUpTable<Spieler::RenderItem>    m_ColorRenderItems;
         Spieler::ConstantBuffer             m_PassConstantBuffer;
 
         DirectionalLightController          m_DirectionalLightController;

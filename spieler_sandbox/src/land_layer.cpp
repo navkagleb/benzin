@@ -17,8 +17,8 @@
 #include <spieler/renderer/geometry_generator.hpp>
 #include <spieler/math.hpp>
 #include <spieler/utility/random.hpp>
+#include <spieler/renderer/sampler.hpp>
 
-#if 0
 namespace Sandbox
 {
 
@@ -35,7 +35,8 @@ namespace Sandbox
 
     struct ObjectConstants
     {
-        DirectX::XMMATRIX World{};
+        DirectX::XMMATRIX World{ DirectX::XMMatrixIdentity() };
+        DirectX::XMMATRIX TextureTransform{ DirectX::XMMatrixIdentity() };
     };
 
     namespace _Internal
@@ -67,17 +68,21 @@ namespace Sandbox
 
     bool LandLayer::OnAttach()
     {
+        Spieler::UploadBuffer grassTextureUploadBuffer;
+        Spieler::UploadBuffer waterTextreUploadBuffer;
         MeshUploadBuffer meshUploadBuffer;
         MeshUploadBuffer landUploadBuffer;
         MeshUploadBuffer wavesUploadBuffer;
 
+        SPIELER_RETURN_IF_FAILED(InitDescriptorHeaps());
         SPIELER_RETURN_IF_FAILED(InitUploadBuffers());
-
-        InitMaterials();
 
         SPIELER_RETURN_IF_FAILED(m_Renderer.ResetCommandList());
         {
-            MeshUploadBuffer meshUploadBuffer;
+            SPIELER_RETURN_IF_FAILED(InitTextures(grassTextureUploadBuffer, waterTextreUploadBuffer));
+
+            InitMaterials();
+
             SPIELER_RETURN_IF_FAILED(InitMeshGeometry(meshUploadBuffer));
             SPIELER_RETURN_IF_FAILED(InitLandGeometry(landUploadBuffer));
             SPIELER_RETURN_IF_FAILED(InitWavesGeometry(wavesUploadBuffer));
@@ -131,7 +136,7 @@ namespace Sandbox
 
         m_Waves.OnUpdate(dt);
 
-        UpdateWavesVertexBuffer();
+        UpdateWavesVertexBuffer(dt);
     }
 
     bool LandLayer::OnRender(float dt)
@@ -158,20 +163,65 @@ namespace Sandbox
         m_SpotLightController.OnImGuiRender();
     }
 
-    bool LandLayer::InitUploadBuffers()
+    bool LandLayer::InitDescriptorHeaps()
     {
-        SPIELER_RETURN_IF_FAILED(m_PassUploadBuffer.Init<PassConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
-        SPIELER_RETURN_IF_FAILED(m_ObjectUploadBuffer.Init<ObjectConstants>(Spieler::UploadBufferType::ConstantBuffer, m_RenderItemCount));
-        SPIELER_RETURN_IF_FAILED(m_WavesUploadBuffer.Init<NormalVertex>(Spieler::UploadBufferType::Default, m_Waves.GetVertexCount()));
-        SPIELER_RETURN_IF_FAILED(m_MaterialUploadBuffer.Init<Spieler::MaterialConstants>(Spieler::UploadBufferType::ConstantBuffer, m_MaterialCount));
+        SPIELER_RETURN_IF_FAILED(m_DescriptorHeaps["srv"].Init(Spieler::DescriptorHeapType::SRV, 2));
 
         return true;
     }
 
+    bool LandLayer::InitUploadBuffers()
+    {
+        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["pass"].Init<PassConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
+        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["object"].Init<ObjectConstants>(Spieler::UploadBufferType::ConstantBuffer, m_RenderItemCount));
+        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["waves"].Init<Vertex>(Spieler::UploadBufferType::Default, m_Waves.GetVertexCount()));
+        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["material"].Init<Spieler::MaterialConstants>(Spieler::UploadBufferType::ConstantBuffer, m_MaterialCount));
+
+        return true;
+    }
+
+    bool LandLayer::InitTextures(Spieler::UploadBuffer& grassTextureUploadBuffer, Spieler::UploadBuffer& waterTextureUploadBuffer)
+    {
+        SPIELER_RETURN_IF_FAILED(m_Textures["grass"].LoadFromDDSFile(L"assets/textures/grass.dds", grassTextureUploadBuffer));
+        SPIELER_RETURN_IF_FAILED(m_Textures["water"].LoadFromDDSFile(L"assets/textures/water.dds", waterTextureUploadBuffer));
+
+        return true;
+    }
+
+    void LandLayer::InitMaterials()
+    {
+        auto& materialUploadBuffer{ m_UploadBuffers["material"] };
+        const auto& descriptorHeap{ m_DescriptorHeaps["srv"] };
+
+        // Grass material
+        {
+            Spieler::Material& grass{ m_Materials["grass"] };
+            grass.DiffuseMap.Init(m_Textures["grass"], descriptorHeap, 0);
+            grass.ConstantBuffer.Init(materialUploadBuffer, 0);
+
+            Spieler::MaterialConstants& grassConstants{ grass.ConstantBuffer.As<Spieler::MaterialConstants>() };
+            grassConstants.DiffuseAlbedo = DirectX::XMFLOAT4{ 0.2f, 0.6f, 0.2f, 1.0f };
+            grassConstants.FresnelR0 = DirectX::XMFLOAT3{ 0.01f, 0.01f, 0.01f };
+            grassConstants.Roughness = 0.9f;
+            grassConstants.Transform = DirectX::XMMatrixIdentity();
+        }
+
+        // Water material
+        {
+            Spieler::Material& water{ m_Materials["water"] };
+            water.DiffuseMap.Init(m_Textures["water"], descriptorHeap, 1);
+            water.ConstantBuffer.Init(materialUploadBuffer, 1);
+
+            Spieler::MaterialConstants& waterConstants{ water.ConstantBuffer.As<Spieler::MaterialConstants>() };
+            waterConstants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
+            waterConstants.FresnelR0 = DirectX::XMFLOAT3{ 0.2f, 0.2f, 0.2f };
+            waterConstants.Roughness = 0.0f;
+            waterConstants.Transform = DirectX::XMMatrixIdentity();
+        }
+    }
+
     bool LandLayer::InitMeshGeometry(MeshUploadBuffer& meshUploadBuffers)
     {
-        m_ColorRenderItems.reserve(10);
-
         Spieler::BoxGeometryProps boxProps;
         boxProps.Width = 30.0f;
         boxProps.Height = 20.0f;
@@ -296,6 +346,9 @@ namespace Sandbox
         SPIELER_RETURN_IF_FAILED(meshes.VertexBuffer.Init(vertices.data(), static_cast<std::uint32_t>(vertices.size()), meshUploadBuffers.VertexUploadBuffer));
         SPIELER_RETURN_IF_FAILED(meshes.IndexBuffer.Init(indices.data(), static_cast<std::uint32_t>(indices.size()), meshUploadBuffers.IndexUploadBuffer));
 
+        Spieler::VertexBufferView vbv(meshes.VertexBuffer);
+        Spieler::IndexBufferView ibv(meshes.IndexBuffer);
+
         meshes.PrimitiveTopology = Spieler::PrimitiveTopology::TriangleList;
 
 #if 0
@@ -319,34 +372,53 @@ namespace Sandbox
 
         // For m_DirectionalLight
         {
-            Spieler::RenderItem geosphere;
+            const std::string renderItemName{ "geosphere1" };
+
+            Spieler::RenderItem& geosphere{ m_ColorRenderItems[renderItemName] };
             geosphere.MeshGeometry = &meshes;
             geosphere.SubmeshGeometry = &meshes.Submeshes["geosphere"];
+            geosphere.ConstantBuffer.Init(m_UploadBuffers["object"], 2);
 
-            geosphere.ConstantBuffer.Init(m_ObjectUploadBuffer, 2);
+            ObjectConstants& geosphereConstants{ geosphere.ConstantBuffer.As<ObjectConstants>() };
+            geosphereConstants.World = DirectX::XMMatrixIdentity();
+            geosphereConstants.TextureTransform = DirectX::XMMatrixIdentity();
 
-            m_ColorRenderItems.push_back(std::move(geosphere));
+            m_VertexBufferViews[renderItemName] = vbv;
+            m_IndexBufferViews[renderItemName] = ibv;
         }
 
         // For m_PointLight
         {
-            Spieler::RenderItem geosphere;
+            const std::string renderItemName{ "geosphere2" };
+
+            Spieler::RenderItem& geosphere{ m_ColorRenderItems[renderItemName]};
             geosphere.MeshGeometry = &meshes;
             geosphere.SubmeshGeometry = &meshes.Submeshes["geosphere"];
+            geosphere.ConstantBuffer.Init(m_UploadBuffers["object"], 3);
 
-            geosphere.ConstantBuffer.Init(m_ObjectUploadBuffer, 3);
+            ObjectConstants& geosphereConstants{ geosphere.ConstantBuffer.As<ObjectConstants>() };
+            geosphereConstants.World = DirectX::XMMatrixIdentity();
+            geosphereConstants.TextureTransform = DirectX::XMMatrixIdentity();
 
-            m_ColorRenderItems.push_back(std::move(geosphere));
+            m_VertexBufferViews[renderItemName] = vbv;
+            m_IndexBufferViews[renderItemName] = ibv;
         }
 
         // For m_SpotLight
         {
-            Spieler::RenderItem cylinder;
+            const std::string renderItemName{ "cylinder" };
+
+            Spieler::RenderItem& cylinder{ m_ColorRenderItems["cylinder"] };
             cylinder.MeshGeometry = &meshes;
             cylinder.SubmeshGeometry = &meshes.Submeshes["cylinder"];
+            cylinder.ConstantBuffer.Init(m_UploadBuffers["object"], 4);
 
-            cylinder.ConstantBuffer.Init(m_ObjectUploadBuffer, 4);
-            m_ColorRenderItems.push_back(std::move(cylinder));
+            ObjectConstants& cylinderConstants{ cylinder.ConstantBuffer.As<ObjectConstants>() };
+            cylinderConstants.World = DirectX::XMMatrixIdentity();
+            cylinderConstants.TextureTransform = DirectX::XMMatrixIdentity();
+
+            m_VertexBufferViews[renderItemName] = vbv;
+            m_IndexBufferViews[renderItemName] = ibv;
         }
 
         return true;
@@ -362,16 +434,18 @@ namespace Sandbox
 
         const auto& gridMeshData = Spieler::GeometryGenerator::GenerateGrid<Spieler::BasicVertex, std::uint32_t>(gridGeometryProps);
 
-        std::vector<NormalVertex> vertices;
+        std::vector<Vertex> vertices;
         vertices.reserve(gridMeshData.Vertices.size());
 
         for (const auto& basicVertex : gridMeshData.Vertices)
         {
-            NormalVertex normalVertex;
-            normalVertex.Position   = basicVertex.Position;
-            
-            _Internal::SetLandHeight(normalVertex.Position);
-            _Internal::SetLandNormal(normalVertex.Position, normalVertex.Normal);
+            Vertex vertex;
+            vertex.Position = basicVertex.Position;
+            vertex.TexCoord = basicVertex.TexCoord;
+
+            _Internal::SetLandHeight(vertex.Position);
+            _Internal::SetLandNormal(vertex.Position, vertex.Normal);
+
 
 #if 0
             if (colorVertex.Position.y < -10.0f)
@@ -401,7 +475,7 @@ namespace Sandbox
             }
 #endif
 
-            vertices.push_back(normalVertex);
+            vertices.push_back(vertex);
         }
 
         auto& landMeshGeometry = m_MeshGeometries["land"];
@@ -409,21 +483,24 @@ namespace Sandbox
         SPIELER_RETURN_IF_FAILED(landMeshGeometry.VertexBuffer.Init(vertices.data(), vertices.size(), landUploadBuffer.VertexUploadBuffer));
         SPIELER_RETURN_IF_FAILED(landMeshGeometry.IndexBuffer.Init(gridMeshData.Indices.data(), gridMeshData.Indices.size(), landUploadBuffer.IndexUploadBuffer));
 
+        m_VertexBufferViews["land"].Init(landMeshGeometry.VertexBuffer);
+        m_IndexBufferViews["land"].Init(landMeshGeometry.IndexBuffer);
+
         landMeshGeometry.PrimitiveTopology = Spieler::PrimitiveTopology::TriangleList;
 
         auto& landMesh = landMeshGeometry.Submeshes["land"];
         landMesh.IndexCount = gridMeshData.Indices.size();
 
         // Render items
-        Spieler::RenderItem land;
+        Spieler::RenderItem& land{ m_LitRenderItems["land"] };
         land.MeshGeometry = &landMeshGeometry;
         land.SubmeshGeometry = &landMeshGeometry.Submeshes["land"];
         land.Material = &m_Materials["grass"];
+        land.ConstantBuffer.Init(m_UploadBuffers["object"], 0);
 
-        land.ConstantBuffer.Init(m_ObjectUploadBuffer, 0);
-        land.ConstantBuffer.As<ObjectConstants>().World = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, -20.0f, 0.0f));
-
-        m_LitRenderItems.push_back(std::move(land));
+        ObjectConstants& landConstants{ land.ConstantBuffer.As<ObjectConstants>() };
+        landConstants.World = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, -20.0f, 0.0f));
+        landConstants.TextureTransform = DirectX::XMMatrixScaling(5.0f, 5.0f, 1.0f);
 
         return true;
     }
@@ -457,41 +534,69 @@ namespace Sandbox
 
         SPIELER_RETURN_IF_FAILED(wavesMeshGeometry.IndexBuffer.Init(indices.data(), static_cast<std::uint32_t>(indices.size()), wavesUploadBuffer.IndexUploadBuffer));
 
+        m_IndexBufferViews["waves"].Init(wavesMeshGeometry.IndexBuffer);
+        m_VertexBufferViews["waves"].Init(m_UploadBuffers["waves"]);
+
         wavesMeshGeometry.PrimitiveTopology = Spieler::PrimitiveTopology::TriangleList;
 
-        auto& submesh               = wavesMeshGeometry.Submeshes["main"];
-        submesh.IndexCount          = static_cast<std::uint32_t>(indices.size());
-        submesh.StartIndexLocation  = 0;
-        submesh.BaseVertexLocation  = 0;
+        auto& submesh{ wavesMeshGeometry.Submeshes["main"] };
+        submesh.IndexCount = static_cast<std::uint32_t>(indices.size());
+        submesh.StartIndexLocation = 0;
+        submesh.BaseVertexLocation = 0;
 
         // Render Item
-        Spieler::RenderItem waves;
-        waves.MeshGeometry      = &wavesMeshGeometry;
-        waves.SubmeshGeometry   = &wavesMeshGeometry.Submeshes["main"];
-        waves.Material          = &m_Materials["water"];
+        Spieler::RenderItem& waves{ m_LitRenderItems["waves"] };
+        waves.MeshGeometry = &wavesMeshGeometry;
+        waves.SubmeshGeometry = &wavesMeshGeometry.Submeshes["main"];
+        waves.Material = &m_Materials["water"];
 
-        waves.ConstantBuffer.Init(m_ObjectUploadBuffer, 1);
+        waves.ConstantBuffer.Init(m_UploadBuffers["object"], 1);
         waves.ConstantBuffer.As<ObjectConstants>().World = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, -25.0f, 0.0f));
-
-        m_LitRenderItems.push_back(std::move(waves));
+        waves.ConstantBuffer.As<ObjectConstants>().TextureTransform = DirectX::XMMatrixScaling(10.0f, 10.0f, 1.0f);
 
         return true;
     }
 
     bool LandLayer::InitRootSignature()
     {
-        std::vector<Spieler::RootParameter> rootParameters(3);
+        std::vector<Spieler::RootParameter> rootParameters;
+        std::vector<Spieler::StaticSampler> staticSamplers;
 
-        for (std::size_t i = 0; i < rootParameters.size(); ++i)
+        // Init root parameters
         {
-            auto& rootParameter{ rootParameters[i] };
-            rootParameter.Type = Spieler::RootParameterType_ConstantBufferView;
-            rootParameter.ShaderVisibility = Spieler::ShaderVisibility_All;
-            rootParameter.Child = Spieler::RootDescriptor{ static_cast<std::uint32_t>(i), 0 };
+            rootParameters.resize(4);
+
+            rootParameters[0].Type = Spieler::RootParameterType_ConstantBufferView;
+            rootParameters[0].ShaderVisibility = Spieler::ShaderVisibility_All;
+            rootParameters[0].Child = Spieler::RootDescriptor{ 0, 0 };
+
+            rootParameters[1].Type = Spieler::RootParameterType_ConstantBufferView;
+            rootParameters[1].ShaderVisibility = Spieler::ShaderVisibility_All;
+            rootParameters[1].Child = Spieler::RootDescriptor{ 1, 0 };
+
+            rootParameters[2].Type = Spieler::RootParameterType_ConstantBufferView;
+            rootParameters[2].ShaderVisibility = Spieler::ShaderVisibility_All;
+            rootParameters[2].Child = Spieler::RootDescriptor{ 2, 0 };
+
+            rootParameters[3].Type = Spieler::RootParameterType_DescriptorTable;
+            rootParameters[3].ShaderVisibility = Spieler::ShaderVisibility_All;
+            rootParameters[3].Child = Spieler::RootDescriptorTable{ { Spieler::DescriptorRange{ Spieler::DescriptorRangeType_SRV, 1 } } };
         }
 
-        SPIELER_RETURN_IF_FAILED(m_RootSignature.Init(rootParameters));
-        
+        // Init statis samplers
+        {
+            staticSamplers.resize(6);
+
+            staticSamplers[0] = Spieler::StaticSampler(Spieler::TextureFilterType_Point, Spieler::TextureAddressMode_Wrap, 0);
+            staticSamplers[1] = Spieler::StaticSampler(Spieler::TextureFilterType_Point, Spieler::TextureAddressMode_Clamp, 1);
+            staticSamplers[2] = Spieler::StaticSampler(Spieler::TextureFilterType_Linear, Spieler::TextureAddressMode_Wrap, 2);
+            staticSamplers[3] = Spieler::StaticSampler(Spieler::TextureFilterType_Linear, Spieler::TextureAddressMode_Clamp, 3);
+            staticSamplers[4] = Spieler::StaticSampler(Spieler::TextureFilterType_Anisotropic, Spieler::TextureAddressMode_Wrap, 4);
+            staticSamplers[5] = Spieler::StaticSampler(Spieler::TextureFilterType_Anisotropic, Spieler::TextureAddressMode_Clamp, 5);
+        }
+
+        SPIELER_RETURN_IF_FAILED(m_RootSignatures["default"].Init(rootParameters, staticSamplers));
+
         return true;
     }
 
@@ -519,11 +624,12 @@ namespace Sandbox
             Spieler::InputLayout inputLayout
             {
                 Spieler::InputLayoutElement{ "Position", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
-                Spieler::InputLayoutElement{ "Normal", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) }
+                Spieler::InputLayoutElement{ "Normal", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
+                Spieler::InputLayoutElement{ "TexCoord", DXGI_FORMAT_R32G32_FLOAT, sizeof(DirectX::XMFLOAT2) }
             };
 
             Spieler::PipelineStateProps pipelineStateProps;
-            pipelineStateProps.RootSignature = &m_RootSignature;
+            pipelineStateProps.RootSignature = &m_RootSignatures["default"];
             pipelineStateProps.VertexShader = &vertexShader;
             pipelineStateProps.PixelShader = &pixelShader;
             pipelineStateProps.RasterizerState = &rasterzerState;
@@ -554,7 +660,7 @@ namespace Sandbox
             };
 
             Spieler::PipelineStateProps pipelineStateProps;
-            pipelineStateProps.RootSignature = &m_RootSignature;
+            pipelineStateProps.RootSignature = &m_RootSignatures["default"];
             pipelineStateProps.VertexShader = &vertexShader;
             pipelineStateProps.PixelShader = &pixelShader;
             pipelineStateProps.RasterizerState = &rasterzerState;
@@ -569,30 +675,9 @@ namespace Sandbox
         return true;
     }
 
-    void LandLayer::InitMaterials()
-    {
-        // Grass material
-        Spieler::Material& grass{ m_Materials["grass"] };
-        grass.ConstantBuffer.Init(m_MaterialUploadBuffer, 0);
-
-        Spieler::MaterialConstants& grassConstants{ grass.ConstantBuffer.As<Spieler::MaterialConstants>() };
-        grassConstants.DiffuseAlbedo = DirectX::XMFLOAT4{ 0.2f, 0.6f, 0.2f, 1.0f };
-        grassConstants.FrensnelR0 = DirectX::XMFLOAT3{ 0.01f, 0.01f, 0.01f };
-        grassConstants.Roughness = 0.9f;
-
-        // Water material
-        Spieler::Material& water{ m_Materials["water"] };
-        water.ConstantBuffer.Init(m_MaterialUploadBuffer, 1);
-
-        Spieler::MaterialConstants& waterConstants{ water.ConstantBuffer.As<Spieler::MaterialConstants>() };
-        waterConstants.DiffuseAlbedo = DirectX::XMFLOAT4{ 0.0f, 0.1f, 0.4f, 1.0f };
-        waterConstants.FrensnelR0 = DirectX::XMFLOAT3{ 0.1f, 0.1f, 0.1f };
-        waterConstants.Roughness = 0.0f;
-    }
-
     void LandLayer::InitPassConstantBuffer()
     {
-        m_PassConstantBuffer.Init(m_PassUploadBuffer, 0);
+        m_PassConstantBuffer.Init(m_UploadBuffers["pass"], 0);
 
         auto& passConstants{ m_PassConstantBuffer.As<PassConstants>() };
         passConstants.AmbientLight = DirectX::XMFLOAT4{ 0.25f, 0.25f, 0.35f, 1.0f };
@@ -608,7 +693,7 @@ namespace Sandbox
             constants.Strength = DirectX::XMFLOAT3{ 1.0f, 1.0f, 0.7f };
 
             m_DirectionalLightController.SetConstants(&lightsConstants[0]);
-            m_DirectionalLightController.SetShape(&m_ColorRenderItems[0]);
+            m_DirectionalLightController.SetShape(&m_ColorRenderItems["geosphere1"]);
             m_DirectionalLightController.SetName("Sun Controller");
             m_DirectionalLightController.Init(constants, 0.0f, DirectX::XMConvertToRadians(65.0f));
         }
@@ -622,7 +707,7 @@ namespace Sandbox
             constants.FalloffEnd = 40.0f;
 
             m_PointLightController.SetConstants(&lightsConstants[1]);
-            m_PointLightController.SetShape(&m_ColorRenderItems[1]);
+            m_PointLightController.SetShape(&m_ColorRenderItems["geosphere2"]);
             m_PointLightController.SetName("Point Light Controller");
             m_PointLightController.Init(constants);
         }
@@ -637,7 +722,7 @@ namespace Sandbox
             constants.SpotPower = 16.0f;
 
             m_SpotLightController.SetConstants(&lightsConstants[2]);
-            m_SpotLightController.SetShape(&m_ColorRenderItems[2]);
+            m_SpotLightController.SetShape(&m_ColorRenderItems["cylinder"]);
             m_SpotLightController.SetName("Spot Light Controller");
             m_SpotLightController.Init(constants, -DirectX::XM_PIDIV4, DirectX::XMConvertToRadians(75.0f));
         }
@@ -669,16 +754,52 @@ namespace Sandbox
         return false;
     }
 
-    void LandLayer::UpdateWavesVertexBuffer()
+    void LandLayer::UpdateWavesVertexBuffer(float dt)
     {
-        for (std::uint32_t i = 0; i < m_Waves.GetVertexCount(); ++i)
+        static Spieler::MaterialConstants& waterMaterialConstants{ m_Materials["water"].ConstantBuffer.As<Spieler::MaterialConstants>() };
+
+        waterMaterialConstants.Transform = DirectX::XMMatrixTranspose(waterMaterialConstants.Transform);
+        float tu = DirectX::XMVectorGetX(waterMaterialConstants.Transform.r[3]);
+        float tv = DirectX::XMVectorGetY(waterMaterialConstants.Transform.r[3]);
+
+        tu += 0.005f * dt;
+        tv += 0.009f * dt;
+
+        if (tu >= 1.0f)
         {
-            auto& normalVertex{ m_WavesUploadBuffer.As<NormalVertex>(i) };
-            normalVertex.Position = m_Waves.GetPosition(i);
-            normalVertex.Normal = m_Waves.GetNormal(i);
+            tu -= 1.0f;
         }
 
-        m_MeshGeometries["waves"].VertexBuffer.Init(m_WavesUploadBuffer);
+        if (tv >= 1.0f)
+        {
+            tv -= 1.0f;
+        }
+
+        waterMaterialConstants.Transform.r[3].m128_f32[0] = tu;
+        waterMaterialConstants.Transform.r[3].m128_f32[1] = tv;
+        waterMaterialConstants.Transform = DirectX::XMMatrixTranspose(waterMaterialConstants.Transform);
+
+        static Vertex* vertices{ &m_UploadBuffers["waves"].As<Vertex>(0) };
+
+        for (std::uint32_t i = 0; i < m_Waves.GetVertexCount(); ++i)
+        {
+            // TODO: Vertex& vertex{ vertices[i] } work in several times slower!
+            Vertex vertex;
+            vertex.Position = m_Waves.GetPosition(i);
+            vertex.Normal = m_Waves.GetNormal(i);
+
+#if 1
+            const float x{ vertex.Position.x };
+            const float z{ vertex.Position.z };
+#else
+            const float x{ 46.20f };
+            const float z{ 1.0f };
+#endif
+
+            vertex.TexCoord = DirectX::XMFLOAT2{ 0.5f + x / m_Waves.GetWidth(), 0.5f - z / m_Waves.GetDepth() };
+
+            vertices[i] = vertex;
+        }
     }
 
     bool LandLayer::RenderLitRenderItems()
@@ -714,15 +835,17 @@ namespace Sandbox
                 &b
             );
 
-            m_RootSignature.Bind();
+            m_RootSignatures["default"].Bind();
+            m_DescriptorHeaps["srv"].Bind();
             m_PassConstantBuffer.Bind(0);
 
-            for (const auto& renderItem : m_LitRenderItems)
+            for (const auto& [renderItemName, renderItem] : m_LitRenderItems)
             {
                 const auto& submeshGeometry = *renderItem.SubmeshGeometry;
 
-                renderItem.MeshGeometry->VertexBuffer.Bind();
-                renderItem.MeshGeometry->IndexBuffer.Bind();
+                m_VertexBufferViews[renderItemName].Bind();
+                m_IndexBufferViews[renderItemName].Bind();
+
                 m_Renderer.m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(renderItem.MeshGeometry->PrimitiveTopology));
 
                 renderItem.ConstantBuffer.Bind(1);
@@ -730,6 +853,7 @@ namespace Sandbox
                 if (renderItem.Material)
                 {
                     renderItem.Material->ConstantBuffer.Bind(2);
+                    renderItem.Material->DiffuseMap.Bind(3);
                 }
 
                 m_Renderer.m_CommandList->DrawIndexedInstanced(submeshGeometry.IndexCount, 1, submeshGeometry.StartIndexLocation, submeshGeometry.BaseVertexLocation, 0);
@@ -781,15 +905,16 @@ namespace Sandbox
 
             const auto& landGeometry = m_MeshGeometries["land"];
 
-            m_RootSignature.Bind();
+            m_RootSignatures["default"].Bind();
             m_PassConstantBuffer.Bind(0);
 
-            for (const auto& renderItem : m_ColorRenderItems)
+            for (const auto& [renderItemName, renderItem] : m_ColorRenderItems)
             {
                 const auto& submeshGeometry = *renderItem.SubmeshGeometry;
 
-                renderItem.MeshGeometry->VertexBuffer.Bind();
-                renderItem.MeshGeometry->IndexBuffer.Bind();
+                m_VertexBufferViews[renderItemName].Bind();
+                m_IndexBufferViews[renderItemName].Bind();
+
                 m_Renderer.m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(renderItem.MeshGeometry->PrimitiveTopology));
 
                 renderItem.ConstantBuffer.Bind(1);
@@ -812,4 +937,3 @@ namespace Sandbox
     }
 
 } // namespace Sandbox
-#endif

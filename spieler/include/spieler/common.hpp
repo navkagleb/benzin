@@ -124,10 +124,10 @@ public:                                                         \
     using ComPtr = Microsoft::WRL::ComPtr<T>;
 
     template <typename T>
-    using Ref = std::shared_ptr<T>;
+    using Reference = std::shared_ptr<T>;
 
     template <typename T, typename... Args>
-    inline Ref<T> CreateRef(Args&&... args)
+    inline Reference<T> CreateReference(Args&&... args)
     {
         return std::make_shared<T>(std::forward<Args>(args)...);
     }
@@ -136,7 +136,7 @@ public:                                                         \
     using Scope = std::unique_ptr<T>;
 
     template <typename T, typename... Args>
-    inline Ref<T> CreateScope(Args&&... args)
+    inline Scope<T> CreateScope(Args&&... args)
     {
         return std::make_unique<T>(std::forward<Args>(args)...);
     }

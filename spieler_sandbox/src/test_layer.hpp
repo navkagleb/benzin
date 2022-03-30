@@ -37,7 +37,8 @@ namespace Sandbox
 
     struct LitObjectConstants
     {
-        DirectX::XMMATRIX World{};
+        DirectX::XMMATRIX World{ DirectX::XMMatrixIdentity() };
+        DirectX::XMMATRIX TextureTransform{ DirectX::XMMatrixIdentity() };
     };
 
     struct UnlitObjectConstants
@@ -63,6 +64,7 @@ namespace Sandbox
         bool InitDescriptorHeaps();
         bool InitUploadBuffers();
         bool InitTextures(Spieler::UploadBuffer& textureUploadBuffer);
+        void InitMaterials();
         bool InitMeshGeometries(Spieler::UploadBuffer& vertexUploadBuffer, Spieler::UploadBuffer& indexUploadBuffer);
         bool InitRootSignatures();
         bool InitPipelineStates();
@@ -89,8 +91,8 @@ namespace Sandbox
         LookUpTable<Spieler::DescriptorHeap> m_DescriptorHeaps;
         LookUpTable<Spieler::UploadBuffer> m_UploadBuffers;
         LookUpTable<Spieler::Texture2D> m_Textures;
-        LookUpTable<Spieler::ShaderResourceView> m_SRVs;
         LookUpTable<Spieler::Sampler> m_Samplers;
+        LookUpTable<Spieler::Material> m_Materials;
         LookUpTable<Spieler::MeshGeometry> m_MeshGeometries;
         LookUpTable<Spieler::RootSignature> m_RootSignatures;
         LookUpTable<Spieler::VertexShader> m_VertexShaders;

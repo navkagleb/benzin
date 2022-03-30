@@ -12,10 +12,20 @@ struct PerPass
 struct PerObject
 {
     float4x4 World;
+    float4x4 TextureTransform;
+};
+
+struct Material
+{
+    float4 DiffuseAlbedo;
+    float3 FresnelR0;
+    float Roughness;
+    float4x4 Transform;
 };
 
 ConstantBuffer<PerPass> g_Pass : register(b0);
 ConstantBuffer<PerObject> g_Object : register(b1);
+ConstantBuffer<Material> g_Material : register(b2);
 
 struct VS_Input
 {
@@ -44,12 +54,14 @@ VS_Output VS_Main(VS_Input input)
     position = mul(position, g_Pass.Projection);
 
     output.PositionH = position;
-    output.TexCoord = input.TexCoord;
-
+    
+    float4 texCoord = mul(float4(input.TexCoord, 0.0f, 1.0f), g_Object.TextureTransform);
+    output.TexCoord = mul(texCoord, g_Material.Transform).xy;
+    
     return output;
 }
 
-Texture2D g_Texture : register(t0);
+Texture2D g_DiffuseMap : register(t0);
 
 SamplerState g_SamplerPointWrap : register(s0);
 SamplerState g_SamplerPointClamp : register(s1);
@@ -60,9 +72,7 @@ SamplerState g_SamplerAnisotropicClamp : register(s5);
 
 float4 PS_Main(VS_Output input) : SV_Target
 {
-    float4 g_DiffuseAlbedo = 1.0f; 
-    
-    float4 diffuseAlbedo = g_Texture.Sample(g_SamplerAnisotropicClamp, input.TexCoord) * g_DiffuseAlbedo;
+    float4 diffuseAlbedo = g_DiffuseMap.Sample(g_SamplerPointClamp, input.TexCoord) * g_Material.DiffuseAlbedo;
     
     input.NormalW = normalize(input.NormalW);
 
@@ -74,9 +84,9 @@ float4 PS_Main(VS_Output input) : SV_Target
 
     // Direct lighting
     Light::Material material;
-    material.DiffuseAlbedo = 1.0f;
-    material.FresnelR0 = 0.05f;
-    material.Shininess = 1.0f - 0.9f;
+    material.DiffuseAlbedo = diffuseAlbedo;
+    material.FresnelR0 = g_Material.FresnelR0;
+    material.Shininess = 1.0f - g_Material.Roughness;
 
     const float3 shadowFactor = 1.0f;
 
