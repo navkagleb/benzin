@@ -621,9 +621,9 @@ namespace Sandbox
             SPIELER_RETURN_IF_FAILED(vertexShader.LoadFromFile(L"assets/shaders/default.fx", "VS_Main", defines));
             SPIELER_RETURN_IF_FAILED(pixelShader.LoadFromFile(L"assets/shaders/default.fx", "PS_Main", defines));
 
-            Spieler::RasterizerState rasterzerState;
-            rasterzerState.FillMode = Spieler::FillMode_Solid;
-            rasterzerState.CullMode = Spieler::CullMode_Back;
+            Spieler::RasterizerState rasterizerState;
+            rasterizerState.FillMode = Spieler::FillMode::Solid;
+            rasterizerState.CullMode = Spieler::CullMode::Back;
 
             Spieler::InputLayout inputLayout
             {
@@ -636,7 +636,7 @@ namespace Sandbox
             pipelineStateProps.RootSignature = &m_RootSignatures["default"];
             pipelineStateProps.VertexShader = &vertexShader;
             pipelineStateProps.PixelShader = &pixelShader;
-            pipelineStateProps.RasterizerState = &rasterzerState;
+            pipelineStateProps.RasterizerState = &rasterizerState;
             pipelineStateProps.InputLayout = &inputLayout;
             pipelineStateProps.PrimitiveTopologyType = Spieler::PrimitiveTopologyType::Triangle;
             pipelineStateProps.RTVFormat = m_Renderer.GetSwapChainProps().BufferFormat;
@@ -654,8 +654,8 @@ namespace Sandbox
             SPIELER_RETURN_IF_FAILED(pixelShader.LoadFromFile(L"assets/shaders/color1.fx", "PS_Main"));
 
             Spieler::RasterizerState rasterzerState;
-            rasterzerState.FillMode = Spieler::FillMode_Wireframe;
-            rasterzerState.CullMode = Spieler::CullMode_None;
+            rasterzerState.FillMode = Spieler::FillMode::Wireframe;
+            rasterzerState.CullMode = Spieler::CullMode::None;
 
             Spieler::InputLayout inputLayout
             {

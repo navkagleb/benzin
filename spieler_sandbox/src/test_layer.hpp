@@ -63,7 +63,7 @@ namespace Sandbox
     private:
         bool InitDescriptorHeaps();
         bool InitUploadBuffers();
-        bool InitTextures(Spieler::UploadBuffer& textureUploadBuffer);
+        bool InitTextures(Spieler::UploadBuffer& woodCrateTextureUploadBuffer, Spieler::UploadBuffer& wireFenceTextureUploadBuffer);
         void InitMaterials();
         bool InitMeshGeometries(Spieler::UploadBuffer& vertexUploadBuffer, Spieler::UploadBuffer& indexUploadBuffer);
         bool InitRootSignatures();

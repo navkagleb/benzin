@@ -112,7 +112,7 @@ namespace Spieler
         RenderTargetBlendingType Type{ RenderTargetBlendingType::None };
         BlendColorEquation ColorEquation;
         BlendAlphaEquation AlphaEquation;
-        BlendLogicOperation LogicOperation{};
+        BlendLogicOperation LogicOperation{ BlendLogicOperation::None };
         BlendChannel Channels{ BlendChannel_None };
 
         static RenderTargetBlendProps CreateNoneBlending(BlendChannel channels = BlendChannel_All);

@@ -56,6 +56,8 @@ namespace Spieler
                     {
                         d3d12RenderTargetBlendDesc.BlendEnable = false;
                         d3d12RenderTargetBlendDesc.LogicOpEnable = false;
+
+                        break;
                     }
 
                     case RenderTargetBlendingType::Default:
@@ -68,6 +70,8 @@ namespace Spieler
                         d3d12RenderTargetBlendDesc.SrcBlendAlpha = static_cast<D3D12_BLEND>(renderTargetBlendProps.AlphaEquation.SourceFactor);
                         d3d12RenderTargetBlendDesc.DestBlendAlpha = static_cast<D3D12_BLEND>(renderTargetBlendProps.AlphaEquation.DestinationFactor);
                         d3d12RenderTargetBlendDesc.BlendOpAlpha = static_cast<D3D12_BLEND_OP>(renderTargetBlendProps.AlphaEquation.Operation);
+
+                        break;
                     }
 
                     case RenderTargetBlendingType::Logic:
@@ -75,6 +79,8 @@ namespace Spieler
                         d3d12RenderTargetBlendDesc.BlendEnable = false;
                         d3d12RenderTargetBlendDesc.LogicOpEnable = true;
                         d3d12RenderTargetBlendDesc.LogicOp = static_cast<D3D12_LOGIC_OP>(renderTargetBlendProps.LogicOperation);
+
+                        break;
                     }
                 }
 

@@ -3,6 +3,7 @@
 #include <spieler/window/event.hpp>
 #include <spieler/window/event_dispatcher.hpp>
 #include <spieler/renderer/geometry_generator.hpp>
+#include <spieler/renderer/blend_state.hpp>
 #include <spieler/renderer/rasterizer_state.hpp>
 
 namespace Sandbox
@@ -16,7 +17,8 @@ namespace Sandbox
 
     bool TestLayer::OnAttach()
     {
-        Spieler::UploadBuffer textureUploadBuffer;
+        Spieler::UploadBuffer woodCrateTextureUploadBuffer;
+        Spieler::UploadBuffer wireFenceTextureUploadBuffer;
         Spieler::UploadBuffer vertexUploadBuffer;
         Spieler::UploadBuffer indexUploadBuffer;
 
@@ -28,7 +30,7 @@ namespace Sandbox
 
         SPIELER_RETURN_IF_FAILED(m_Renderer.ResetCommandList());
         {
-            SPIELER_RETURN_IF_FAILED(InitTextures(textureUploadBuffer));
+            SPIELER_RETURN_IF_FAILED(InitTextures(woodCrateTextureUploadBuffer, wireFenceTextureUploadBuffer));
             InitMaterials();
             SPIELER_RETURN_IF_FAILED(InitMeshGeometries(vertexUploadBuffer, indexUploadBuffer));
         }
@@ -196,7 +198,7 @@ namespace Sandbox
 
     bool TestLayer::InitDescriptorHeaps()
     {
-        SPIELER_RETURN_IF_FAILED(m_DescriptorHeaps["srv"].Init(Spieler::DescriptorHeapType::SRV, 1));
+        SPIELER_RETURN_IF_FAILED(m_DescriptorHeaps["srv"].Init(Spieler::DescriptorHeapType::SRV, 2));
 
         return true;
     }
@@ -206,29 +208,46 @@ namespace Sandbox
         SPIELER_RETURN_IF_FAILED(m_UploadBuffers["pass"].Init<PassConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
         SPIELER_RETURN_IF_FAILED(m_UploadBuffers["lit_object"].Init<LitObjectConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
         SPIELER_RETURN_IF_FAILED(m_UploadBuffers["unlit_object"].Init<UnlitObjectConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
-        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["material"].Init<Spieler::MaterialConstants>(Spieler::UploadBufferType::ConstantBuffer, 1));
+        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["material"].Init<Spieler::MaterialConstants>(Spieler::UploadBufferType::ConstantBuffer, 2));
 
         return true;
     }
 
-    bool TestLayer::InitTextures(Spieler::UploadBuffer& textureUploadBuffer)
+    bool TestLayer::InitTextures(Spieler::UploadBuffer& woodCrateTextureUploadBuffer, Spieler::UploadBuffer& wireFenceTextureUploadBuffer)
     {
-        SPIELER_RETURN_IF_FAILED(m_Textures["wood_crate1"].LoadFromDDSFile(L"assets/textures/wood_crate1.dds", textureUploadBuffer));
+        SPIELER_RETURN_IF_FAILED(m_Textures["wood_crate1"].LoadFromDDSFile(L"assets/textures/wood_crate1.dds", woodCrateTextureUploadBuffer));
+        SPIELER_RETURN_IF_FAILED(m_Textures["wire_fence"].LoadFromDDSFile(L"assets/textures/wire_fence.dds", wireFenceTextureUploadBuffer));
         
         return true;
     }
 
     void TestLayer::InitMaterials()
     {
-        auto& woodMaterial{ m_Materials["wood_crate1"] };
-        woodMaterial.DiffuseMap.Init(m_Textures["wood_crate1"], m_DescriptorHeaps["srv"], 0);
-        woodMaterial.ConstantBuffer.Init(m_UploadBuffers["material"], 0);
+        // Wood crate material
+        {
+            auto& woodMaterial{ m_Materials["wood_crate1"] };
+            woodMaterial.DiffuseMap.Init(m_Textures["wood_crate1"], m_DescriptorHeaps["srv"], 0);
+            woodMaterial.ConstantBuffer.Init(m_UploadBuffers["material"], 0);
 
-        auto& woodMaterialConstants{ woodMaterial.ConstantBuffer.As<Spieler::MaterialConstants>() };
-        woodMaterialConstants.DiffuseAlbedo = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        woodMaterialConstants.FresnelR0 = DirectX::XMFLOAT3(0.05f, 0.05f, 0.05f);
-        woodMaterialConstants.Roughness = 0.2f;
-        woodMaterialConstants.Transform = DirectX::XMMatrixIdentity();
+            auto& woodMaterialConstants{ woodMaterial.ConstantBuffer.As<Spieler::MaterialConstants>() };
+            woodMaterialConstants.DiffuseAlbedo = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+            woodMaterialConstants.FresnelR0 = DirectX::XMFLOAT3(0.05f, 0.05f, 0.05f);
+            woodMaterialConstants.Roughness = 0.2f;
+            woodMaterialConstants.Transform = DirectX::XMMatrixIdentity();
+        }
+        
+        // Wire fence material
+        {
+            auto& woodMaterial{ m_Materials["wire_fence"] };
+            woodMaterial.DiffuseMap.Init(m_Textures["wire_fence"], m_DescriptorHeaps["srv"], 1);
+            woodMaterial.ConstantBuffer.Init(m_UploadBuffers["material"], 1);
+
+            auto& woodMaterialConstants{ woodMaterial.ConstantBuffer.As<Spieler::MaterialConstants>() };
+            woodMaterialConstants.DiffuseAlbedo = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+            woodMaterialConstants.FresnelR0 = DirectX::XMFLOAT3(0.05f, 0.05f, 0.05f);
+            woodMaterialConstants.Roughness = 0.2f;
+            woodMaterialConstants.Transform = DirectX::XMMatrixIdentity();
+        }
     }
 
     bool TestLayer::InitMeshGeometries(Spieler::UploadBuffer& vertexUploadBuffer, Spieler::UploadBuffer& indexUploadBuffer)
@@ -281,7 +300,7 @@ namespace Sandbox
         Spieler::RenderItem& boxRenderItem{ m_LitRenderItems["box"] };
         boxRenderItem.MeshGeometry = &basicMeshesGeometry;
         boxRenderItem.SubmeshGeometry = &boxSubmeshGeometry;
-        boxRenderItem.Material = &m_Materials["wood_crate1"]; 
+        boxRenderItem.Material = &m_Materials["wire_fence"]; 
         boxRenderItem.ConstantBuffer.Init(m_UploadBuffers["lit_object"], 0);
 
         auto& boxConstants{ boxRenderItem.ConstantBuffer.As<LitObjectConstants>() };
@@ -346,7 +365,8 @@ namespace Sandbox
         {
             std::vector<Spieler::ShaderDefine> defines
             {
-                Spieler::ShaderDefine{ "DIRECTIONAL_LIGHT_COUNT", "1" }
+                Spieler::ShaderDefine{ "DIRECTIONAL_LIGHT_COUNT", "1" },
+                Spieler::ShaderDefine{ "USE_ALPHA_TEST" }
             };
 
             Spieler::VertexShader& vertexShader{ m_VertexShaders["texture"] };
@@ -355,9 +375,22 @@ namespace Sandbox
             SPIELER_RETURN_IF_FAILED(vertexShader.LoadFromFile(L"assets/shaders/texture.fx", "VS_Main"));
             SPIELER_RETURN_IF_FAILED(pixelShader.LoadFromFile(L"assets/shaders/texture.fx", "PS_Main", defines));
 
-            Spieler::RasterizerState rasterzerState;
-            rasterzerState.FillMode = Spieler::FillMode_Solid;
-            rasterzerState.CullMode = Spieler::CullMode_Back;
+            Spieler::RasterizerState rasterizerState;
+            rasterizerState.FillMode = Spieler::FillMode::Solid;
+            rasterizerState.CullMode = Spieler::CullMode::None;
+
+            Spieler::RenderTargetBlendProps renderTargetBlendProps;
+            renderTargetBlendProps.Type = Spieler::RenderTargetBlendingType::Default;
+            renderTargetBlendProps.Channels = Spieler::BlendChannel_All;
+            renderTargetBlendProps.ColorEquation.SourceFactor = Spieler::BlendColorFactor::SourceAlpha;
+            renderTargetBlendProps.ColorEquation.DestinationFactor = Spieler::BlendColorFactor::InverseSourceAlpha;
+            renderTargetBlendProps.ColorEquation.Operation = Spieler::BlendOperation::Add;
+            renderTargetBlendProps.AlphaEquation.SourceFactor = Spieler::BlendAlphaFactor::One;
+            renderTargetBlendProps.AlphaEquation.DestinationFactor = Spieler::BlendAlphaFactor::Zero;
+            renderTargetBlendProps.AlphaEquation.Operation = Spieler::BlendOperation::Add;
+
+            Spieler::BlendState blendState;
+            blendState.RenderTargetProps.push_back(renderTargetBlendProps);
 
             Spieler::InputLayout inputLayout
             {
@@ -371,7 +404,8 @@ namespace Sandbox
             pipelineStateProps.RootSignature = &m_RootSignatures["default"];
             pipelineStateProps.VertexShader = &vertexShader;
             pipelineStateProps.PixelShader = &pixelShader;
-            pipelineStateProps.RasterizerState = &rasterzerState;
+            pipelineStateProps.BlendState = &blendState;
+            pipelineStateProps.RasterizerState = &rasterizerState;
             pipelineStateProps.InputLayout = &inputLayout;
             pipelineStateProps.PrimitiveTopologyType = Spieler::PrimitiveTopologyType::Triangle;
             pipelineStateProps.RTVFormat = m_Renderer.GetSwapChainProps().BufferFormat;
@@ -379,7 +413,6 @@ namespace Sandbox
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["lit"].Init(pipelineStateProps));
         }
-        
 
         // Unlit PSO
         {
@@ -390,8 +423,8 @@ namespace Sandbox
             SPIELER_RETURN_IF_FAILED(pixelShader.LoadFromFile(L"assets/shaders/color2.fx", "PS_Main"));
 
             Spieler::RasterizerState rasterzerState;
-            rasterzerState.FillMode = Spieler::FillMode_Wireframe;
-            rasterzerState.CullMode = Spieler::CullMode_None;
+            rasterzerState.FillMode = Spieler::FillMode::Wireframe;
+            rasterzerState.CullMode = Spieler::CullMode::None;
 
             Spieler::InputLayout inputLayout
             {

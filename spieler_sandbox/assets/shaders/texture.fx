@@ -74,6 +74,10 @@ float4 PS_Main(VS_Output input) : SV_Target
 {
     float4 diffuseAlbedo = g_DiffuseMap.Sample(g_SamplerPointClamp, input.TexCoord) * g_Material.DiffuseAlbedo;
     
+#if defined(USE_ALPHA_TEST)
+    clip(diffuseAlbedo.a - 0.1f);
+#endif
+    
     input.NormalW = normalize(input.NormalW);
 
     // Vector from point being lit to eye
