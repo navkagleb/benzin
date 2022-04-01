@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\renderer\blend_state.cpp" />
     <ClCompile Include="src\renderer\sampler.cpp" />
     <ClCompile Include="src\renderer\texture.cpp" />
     <ClCompile Include="src\renderer\upload_buffer.cpp" />
@@ -51,6 +52,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\spieler\math.hpp" />
+    <ClInclude Include="include\spieler\renderer\blend_state.hpp" />
     <ClInclude Include="include\spieler\renderer\light.hpp" />
     <ClInclude Include="include\spieler\renderer\sampler.hpp" />
     <ClInclude Include="include\spieler\renderer\shader_visibility.hpp" />

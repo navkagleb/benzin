@@ -30,6 +30,7 @@
     <ClCompile Include="src\renderer\texture.cpp" />
     <ClCompile Include="third_party\directx\DDSTextureLoader12.cpp" />
     <ClCompile Include="src\renderer\sampler.cpp" />
+    <ClCompile Include="src\renderer\blend_state.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\spieler\application.hpp" />
@@ -74,6 +75,7 @@
     <ClInclude Include="third_party\directx\DDSTextureLoader12.h" />
     <ClInclude Include="include\spieler\renderer\sampler.hpp" />
     <ClInclude Include="include\spieler\renderer\shader_visibility.hpp" />
+    <ClInclude Include="include\spieler\renderer\blend_state.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\spieler\renderer\vertex_buffer.inl" />

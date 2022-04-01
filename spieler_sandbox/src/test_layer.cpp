@@ -3,6 +3,7 @@
 #include <spieler/window/event.hpp>
 #include <spieler/window/event_dispatcher.hpp>
 #include <spieler/renderer/geometry_generator.hpp>
+#include <spieler/renderer/rasterizer_state.hpp>
 
 namespace Sandbox
 {

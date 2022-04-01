@@ -14,6 +14,7 @@
 #include <spieler/renderer/light.hpp>
 #include <spieler/renderer/upload_buffer.hpp>
 #include <spieler/renderer/texture.hpp>
+#include <spieler/renderer/root_signature.hpp>
 
 #include "projection_camera_controller.hpp"
 #include "waves.hpp"

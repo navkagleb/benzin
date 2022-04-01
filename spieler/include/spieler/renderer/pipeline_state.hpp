@@ -1,20 +1,24 @@
 #pragma once
 
 #include "renderer_object.hpp"
-#include "root_signature.hpp"
-#include "shader.hpp"
-#include "rasterizer_state.hpp"
 #include "input_layout.hpp"
 #include "primitive_topology.hpp"
 
 namespace Spieler
 {
 
+    class RootSignature;
+    class VertexShader;
+    class PixelShader;
+    struct BlendState;
+    struct RasterizerState;
+
     struct PipelineStateProps
     {
         RootSignature* RootSignature{ nullptr };
         VertexShader* VertexShader{ nullptr };
         PixelShader* PixelShader{ nullptr };
+        BlendState* BlendState{ nullptr };
         RasterizerState* RasterizerState{ nullptr };
         InputLayout* InputLayout{ nullptr };
         PrimitiveTopologyType PrimitiveTopologyType{ PrimitiveTopologyType::Undefined };
