@@ -7,6 +7,9 @@ struct PerPass
     float3 W_CameraPosition;
     float4 AmbientLight;
     Light::LightContainer Lights;
+    float4 FogColor;
+    float FogStart;
+    float FogRange;
 };
 
 struct PerObject
@@ -76,7 +79,9 @@ float4 PS_Main(VS_Output input) : SV_Target
     input.W_Normal = normalize(input.W_Normal);
 
     // Vector from point being lit to eye
-    const float3 viewVector = normalize(g_Pass.W_CameraPosition - input.W_Position);
+    const float3 toCameraVector = g_Pass.W_CameraPosition - input.W_Position;
+    const float distanceToCamera = length(toCameraVector);
+    const float3 viewVector = toCameraVector / distanceToCamera;
 
     // Indirect lighting
     const float4 ambient = g_Pass.AmbientLight * diffuseAlbedo;
@@ -92,6 +97,9 @@ float4 PS_Main(VS_Output input) : SV_Target
     float4 litColor = Light::ComputeLighting(g_Pass.Lights, material, input.W_Position, input.W_Normal, viewVector, shadowFactor);
     litColor += ambient;
 
+    float fogAmount = saturate((distanceToCamera - g_Pass.FogStart) / g_Pass.FogRange);
+    litColor = lerp(litColor, g_Pass.FogColor, fogAmount);
+    
     litColor.a = diffuseAlbedo.a;
 
     return litColor;

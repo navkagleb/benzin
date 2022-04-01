@@ -31,6 +31,9 @@ namespace Sandbox
         alignas(16) DirectX::XMFLOAT3 CameraPosition{};
         alignas(16) DirectX::XMFLOAT4 AmbientLight{};
         alignas(16) Spieler::LightConstants Lights[MAX_LIGHT_COUNT];
+        alignas(16) DirectX::XMFLOAT4 FogColor;
+        float FogStart;
+        float FogRange;
     };
 
     struct ObjectConstants
@@ -681,6 +684,9 @@ namespace Sandbox
 
         auto& passConstants{ m_PassConstantBuffer.As<PassConstants>() };
         passConstants.AmbientLight = DirectX::XMFLOAT4{ 0.25f, 0.25f, 0.35f, 1.0f };
+        passConstants.FogColor = m_ClearColor;
+        passConstants.FogStart = 30.0f;
+        passConstants.FogRange = 100.0f;
     }
 
     void LandLayer::InitLightControllers()
