@@ -79,6 +79,7 @@ namespace Sandbox
         void UpdateWavesVertexBuffer(float dt);
 
         bool RenderLitRenderItems();
+        bool RenderBlendedRenderItems();
         bool RenderColorRenderItems();
 
     private:
@@ -109,6 +110,7 @@ namespace Sandbox
         LookUpTable<Spieler::Material>      m_Materials;
         
         LookUpTable<Spieler::RenderItem>    m_LitRenderItems;
+        LookUpTable<Spieler::RenderItem>    m_BlendedRenderItems;
         LookUpTable<Spieler::RenderItem>    m_ColorRenderItems;
         Spieler::ConstantBuffer             m_PassConstantBuffer;
 

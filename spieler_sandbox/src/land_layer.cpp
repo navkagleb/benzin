@@ -19,6 +19,7 @@
 #include <spieler/renderer/geometry_generator.hpp>
 #include <spieler/renderer/sampler.hpp>
 #include <spieler/renderer/rasterizer_state.hpp>
+#include <spieler/renderer/blend_state.hpp>
 
 namespace Sandbox
 {
@@ -146,6 +147,7 @@ namespace Sandbox
     bool LandLayer::OnRender(float dt)
     {
         SPIELER_RETURN_IF_FAILED(RenderLitRenderItems());
+        SPIELER_RETURN_IF_FAILED(RenderBlendedRenderItems());
         SPIELER_RETURN_IF_FAILED(RenderColorRenderItems());
 
         return true;
@@ -217,7 +219,7 @@ namespace Sandbox
             water.ConstantBuffer.Init(materialUploadBuffer, 1);
 
             Spieler::MaterialConstants& waterConstants{ water.ConstantBuffer.As<Spieler::MaterialConstants>() };
-            waterConstants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
+            waterConstants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 0.3f };
             waterConstants.FresnelR0 = DirectX::XMFLOAT3{ 0.2f, 0.2f, 0.2f };
             waterConstants.Roughness = 0.0f;
             waterConstants.Transform = DirectX::XMMatrixIdentity();
@@ -549,7 +551,7 @@ namespace Sandbox
         submesh.BaseVertexLocation = 0;
 
         // Render Item
-        Spieler::RenderItem& waves{ m_LitRenderItems["waves"] };
+        Spieler::RenderItem& waves{ m_BlendedRenderItems["waves"] };
         waves.MeshGeometry = &wavesMeshGeometry;
         waves.SubmeshGeometry = &wavesMeshGeometry.Submeshes["main"];
         waves.Material = &m_Materials["water"];
@@ -645,6 +647,49 @@ namespace Sandbox
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["lit"].Init(pipelineStateProps));
         }
 
+        // Blended PSO
+        {
+            auto& vertexShader = m_VertexShaders["default"];
+            auto& pixelShader = m_PixelShaders["default"];
+
+            Spieler::RasterizerState rasterizerState;
+            rasterizerState.FillMode = Spieler::FillMode::Solid;
+            rasterizerState.CullMode = Spieler::CullMode::Back;
+
+            Spieler::RenderTargetBlendProps renderTargetBlendProps;
+            renderTargetBlendProps.Type = Spieler::RenderTargetBlendingType::Default;
+            renderTargetBlendProps.Channels = Spieler::BlendChannel_All;
+            renderTargetBlendProps.ColorEquation.SourceFactor = Spieler::BlendColorFactor::SourceAlpha;
+            renderTargetBlendProps.ColorEquation.DestinationFactor = Spieler::BlendColorFactor::InverseSourceAlpha;
+            renderTargetBlendProps.ColorEquation.Operation = Spieler::BlendOperation::Add;
+            renderTargetBlendProps.AlphaEquation.SourceFactor = Spieler::BlendAlphaFactor::One;
+            renderTargetBlendProps.AlphaEquation.DestinationFactor = Spieler::BlendAlphaFactor::Zero;
+            renderTargetBlendProps.AlphaEquation.Operation = Spieler::BlendOperation::Add;
+
+            Spieler::BlendState blendState;
+            blendState.RenderTargetProps.push_back(renderTargetBlendProps);
+
+            Spieler::InputLayout inputLayout
+            {
+                Spieler::InputLayoutElement{ "Position", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
+                Spieler::InputLayoutElement{ "Normal", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
+                Spieler::InputLayoutElement{ "TexCoord", DXGI_FORMAT_R32G32_FLOAT, sizeof(DirectX::XMFLOAT2) }
+            };
+
+            Spieler::PipelineStateProps pipelineStateProps;
+            pipelineStateProps.RootSignature = &m_RootSignatures["default"];
+            pipelineStateProps.VertexShader = &vertexShader;
+            pipelineStateProps.PixelShader = &pixelShader;
+            pipelineStateProps.BlendState = &blendState;
+            pipelineStateProps.RasterizerState = &rasterizerState;
+            pipelineStateProps.InputLayout = &inputLayout;
+            pipelineStateProps.PrimitiveTopologyType = Spieler::PrimitiveTopologyType::Triangle;
+            pipelineStateProps.RTVFormat = m_Renderer.GetSwapChainProps().BufferFormat;
+            pipelineStateProps.DSVFormat = m_Renderer.GetDepthStencilFormat();
+
+            SPIELER_RETURN_IF_FAILED(m_PipelineStates["blend"].Init(pipelineStateProps));
+        }
+
         // Color PSO
         {
             auto& vertexShader = m_VertexShaders["color"];
@@ -686,8 +731,8 @@ namespace Sandbox
         auto& passConstants{ m_PassConstantBuffer.As<PassConstants>() };
         passConstants.AmbientLight = DirectX::XMFLOAT4{ 0.25f, 0.25f, 0.35f, 1.0f };
         passConstants.FogColor = m_ClearColor;
-        passConstants.FogStart = 30.0f;
-        passConstants.FogRange = 100.0f;
+        passConstants.FogStart = 50.0f;
+        passConstants.FogRange = 110.0f;
     }
 
     void LandLayer::InitLightControllers()
@@ -847,6 +892,74 @@ namespace Sandbox
             m_PassConstantBuffer.Bind(0);
 
             for (const auto& [renderItemName, renderItem] : m_LitRenderItems)
+            {
+                const auto& submeshGeometry = *renderItem.SubmeshGeometry;
+
+                m_VertexBufferViews[renderItemName].Bind();
+                m_IndexBufferViews[renderItemName].Bind();
+
+                m_Renderer.m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(renderItem.MeshGeometry->PrimitiveTopology));
+
+                renderItem.ConstantBuffer.Bind(1);
+
+                if (renderItem.Material)
+                {
+                    renderItem.Material->ConstantBuffer.Bind(2);
+                    renderItem.Material->DiffuseMap.Bind(3);
+                }
+
+                m_Renderer.m_CommandList->DrawIndexedInstanced(submeshGeometry.IndexCount, 1, submeshGeometry.StartIndexLocation, submeshGeometry.BaseVertexLocation, 0);
+            }
+
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+
+            m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
+        }
+        SPIELER_RETURN_IF_FAILED(m_Renderer.ExexuteCommandList());
+
+        return true;
+    }
+
+    bool LandLayer::RenderBlendedRenderItems()
+    {
+        SPIELER_RETURN_IF_FAILED(m_Renderer.m_CommandAllocator->Reset());
+        SPIELER_RETURN_IF_FAILED(m_Renderer.ResetCommandList(m_PipelineStates["blend"]));
+        {
+            m_Renderer.SetViewport(m_Viewport);
+            m_Renderer.SetScissorRect(m_ScissorRect);
+
+            const std::uint32_t currentBackBuffer = m_Renderer.m_SwapChain3->GetCurrentBackBufferIndex();
+
+            D3D12_RESOURCE_BARRIER barrier{};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource = m_Renderer.GetSwapChainBuffer(currentBackBuffer).Get();
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+            m_Renderer.m_CommandList->ResourceBarrier(1, &barrier);
+
+            const D3D12_CPU_DESCRIPTOR_HANDLE a{ m_Renderer.m_SwapChainBufferRTVDescriptorHeap.GetDescriptorCPUHandle(currentBackBuffer) };
+            const D3D12_CPU_DESCRIPTOR_HANDLE b{ m_Renderer.m_DSVDescriptorHeap.GetDescriptorCPUHandle(0) };
+
+            m_Renderer.m_CommandList->OMSetRenderTargets(
+                1,
+                &a,
+                true,
+                &b
+            );
+
+            m_RootSignatures["default"].Bind();
+            m_DescriptorHeaps["srv"].Bind();
+            m_PassConstantBuffer.Bind(0);
+
+            for (const auto& [renderItemName, renderItem] : m_BlendedRenderItems)
             {
                 const auto& submeshGeometry = *renderItem.SubmeshGeometry;
 

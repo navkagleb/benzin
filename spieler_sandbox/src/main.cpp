@@ -11,8 +11,8 @@ namespace Sandbox
     public:
         bool InitExternal() override
         {
-            SPIELER_RETURN_IF_FAILED(PushLayer<TestLayer>(m_Window, m_Renderer));
-            //SPIELER_RETURN_IF_FAILED(PushLayer<LandLayer>(m_Window, m_Renderer));
+            //SPIELER_RETURN_IF_FAILED(PushLayer<TestLayer>(m_Window, m_Renderer));
+            SPIELER_RETURN_IF_FAILED(PushLayer<LandLayer>(m_Window, m_Renderer));
             
             return true;
         }
