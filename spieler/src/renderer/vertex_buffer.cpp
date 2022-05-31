@@ -1,39 +1,40 @@
-#include "renderer/vertex_buffer.hpp"
+#include "spieler/config/bootstrap.hpp"
 
-#include "renderer/upload_buffer.hpp"
+#include "spieler/renderer/vertex_buffer.hpp"
 
-namespace Spieler
+#include "spieler/core/assert.hpp"
+
+#include "spieler/renderer/buffer.hpp"
+#include "spieler/renderer/context.hpp"
+
+namespace spieler::renderer
 {
 
-    VertexBufferView::VertexBufferView(const VertexBuffer& vertexBuffer)
+    VertexBufferView::VertexBufferView(const BufferResource& resource)
     {
-        Init(vertexBuffer);
+        Init(resource);
     }
 
-    VertexBufferView::VertexBufferView(const UploadBuffer& uploadBuffer)
+    void VertexBufferView::Init(const BufferResource& resource)
     {
-        Init(uploadBuffer);
+        SPIELER_ASSERT(resource.GetResource());
+
+        m_View.BufferLocation = static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(resource.GetGPUVirtualAddress());
+        m_View.StrideInBytes = resource.GetStride();
+        m_View.SizeInBytes = resource.GetSize();
     }
 
-    void VertexBufferView::Init(const VertexBuffer& vertexBuffer)
+    void VertexBufferView::Bind(Context& context) const
     {
-        const D3D12_RESOURCE_DESC resourceDesc{ vertexBuffer.m_Buffer->GetDesc() };
-
-        m_View.BufferLocation = vertexBuffer.m_Buffer->GetGPUVirtualAddress();
-        m_View.StrideInBytes = resourceDesc.Width / vertexBuffer.m_VertexCount;
-        m_View.SizeInBytes = resourceDesc.Width;
+        context.GetNativeCommandList()->IASetVertexBuffers(0, 1, &m_View);
     }
 
-    void VertexBufferView::Init(const UploadBuffer& uploadBuffer)
+    void VertexBuffer::SetResource(const std::shared_ptr<BufferResource>& resource)
     {
-        m_View.BufferLocation = uploadBuffer.GetGPUVirtualAddress();
-        m_View.StrideInBytes = uploadBuffer.GetStride();
-        m_View.SizeInBytes = uploadBuffer.GetStride() * uploadBuffer.GetElementCount();
+        SPIELER_ASSERT(resource);
+
+        m_Resource = resource;
+        m_View = VertexBufferView{ *m_Resource };
     }
 
-    void VertexBufferView::Bind() const
-    {
-        GetCommandList()->IASetVertexBuffers(0, 1, &m_View);
-    }
-
-} // namespace Spieler
+} // namespace spieler::renderer

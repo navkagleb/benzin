@@ -1,33 +1,35 @@
-#include "renderer/blend_state.hpp"
+#include "spieler/config/bootstrap.hpp"
 
-namespace Spieler
+#include "spieler/renderer/blend_state.hpp"
+
+namespace spieler::renderer
 {
 
     RenderTargetBlendProps RenderTargetBlendProps::CreateNoneBlending(BlendChannel channels)
     {
-        RenderTargetBlendProps result;
-        result.Channels = channels;
-
-        return result;
+        return RenderTargetBlendProps
+        {
+            .Channels = channels
+        };
     }
 
     RenderTargetBlendProps RenderTargetBlendProps::CreateDefaultBlending(const BlendColorEquation& colorEquation, const BlendAlphaEquation& alphaEquation, BlendChannel channels)
     {
-        RenderTargetBlendProps result;
-        result.ColorEquation = colorEquation;
-        result.AlphaEquation = alphaEquation;
-        result.Channels = channels;
-
-        return result;
+        return RenderTargetBlendProps
+        {
+            .ColorEquation = colorEquation,
+            .AlphaEquation = alphaEquation,
+            .Channels = channels
+        };
     }
 
     RenderTargetBlendProps RenderTargetBlendProps::CreateLogicBlending(const BlendLogicOperation& logicOperation, BlendChannel channels)
     {
-        RenderTargetBlendProps result;
-        result.LogicOperation = logicOperation;
-        result.Channels = channels;
-
-        return result;
+        return RenderTargetBlendProps
+        {
+            .LogicOperation = logicOperation,
+            .Channels = channels,
+        };
     }
 
     BlendState BlendState::CreateNoneBlending(BlendChannel channels)
@@ -56,4 +58,4 @@ namespace Spieler
         return blendState;
     }
 
-} // namespace Spieler
+} // namespace spieler::renderer

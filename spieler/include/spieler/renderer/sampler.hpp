@@ -1,25 +1,24 @@
 #pragma once
 
-#include "renderer_object.hpp"
-#include "shader_visibility.hpp"
+#include "spieler/renderer/types.hpp"
 
-namespace Spieler
+namespace spieler::renderer
 {
 
-    class DescriptorHeap;
+    class DescriptorManager;
 
-    enum TextureFilterType : std::uint8_t
+    enum class TextureFilterType : uint8_t
     {
-        TextureFilterType_Point = 0,
-        TextureFilterType_Linear,
-        TextureFilterType_Anisotropic
+        Point = 0,
+        Linear,
+        Anisotropic
     };
 
     struct TextureFilter
     {
-        TextureFilterType Minification{ TextureFilterType_Point };
-        TextureFilterType Magnification{ TextureFilterType_Point };
-        TextureFilterType MipLevel{ TextureFilterType_Point };
+        TextureFilterType Minification{ TextureFilterType::Point };
+        TextureFilterType Magnification{ TextureFilterType::Point };
+        TextureFilterType MipLevel{ TextureFilterType::Point };
 
         TextureFilter() = default;
 
@@ -36,32 +35,32 @@ namespace Spieler
         {}
     };
 
-    enum TextureAddressMode : std::uint32_t
+    enum class TextureAddressMode : uint8_t
     {
-        TextureAddressMode_Wrap = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-        TextureAddressMode_Mirror = D3D12_TEXTURE_ADDRESS_MODE_MIRROR,
-        TextureAddressMode_Clamp = D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-        TextureAddressMode_Border = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
-        TextureAddressMode_MirrorOnce = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE
+        Wrap = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+        Mirror = D3D12_TEXTURE_ADDRESS_MODE_MIRROR,
+        Clamp = D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+        Border = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+        MirrorOnce = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE
     };
 
-    struct SamplerProps
+    struct SamplerConfig
     {
         TextureFilter TextureFilter;
-        TextureAddressMode AddressU{ TextureAddressMode_Wrap };
-        TextureAddressMode AddressV{ TextureAddressMode_Wrap };
-        TextureAddressMode AddressW{ TextureAddressMode_Wrap };
+        TextureAddressMode AddressU{ TextureAddressMode::Wrap };
+        TextureAddressMode AddressV{ TextureAddressMode::Wrap };
+        TextureAddressMode AddressW{ TextureAddressMode::Wrap };
 
-        SamplerProps() = default;
+        SamplerConfig() = default;
 
-        SamplerProps(struct TextureFilter textureFilter, TextureAddressMode textureAddressMode)
+        SamplerConfig(struct TextureFilter textureFilter, TextureAddressMode textureAddressMode)
             : TextureFilter(textureFilter)
             , AddressU(textureAddressMode)
             , AddressV(textureAddressMode)
             , AddressW(textureAddressMode)
         {}
       
-        SamplerProps(struct TextureFilter textureFilter, TextureAddressMode addressU, TextureAddressMode addressV, TextureAddressMode addressW)
+        SamplerConfig(struct TextureFilter textureFilter, TextureAddressMode addressU, TextureAddressMode addressV, TextureAddressMode addressW)
             : TextureFilter(textureFilter)
             , AddressU(addressU)
             , AddressV(addressV)
@@ -69,44 +68,27 @@ namespace Spieler
         {}
     };
 
-    class Sampler : public RendererObject
-    {
-    public:
-        Sampler() = default;
-        Sampler(const SamplerProps& props, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex);
-
-    public:
-        void Init(const SamplerProps& props, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex);
-
-        void Bind(std::uint32_t rootParameterIndex) const;
-
-    private:
-        SamplerProps m_Props;
-        const DescriptorHeap* m_DescriptorHeap{ nullptr };
-        std::uint32_t m_DescriptorHeapIndex{ 0 };
-    };
-
     struct StaticSampler
     {
-        enum BorderColor
+        enum class BorderColor : uint8_t
         {
-            BorderColor_TransparentBlack = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
-            BorderColor_OpaqueBlack = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
-            BorderColor_OpaqueWhite = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE
+            TransparentBlack = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
+            OpaqueBlack = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
+            OpaqueWhite = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE
         };
 
         TextureFilter TextureFilter;
-        TextureAddressMode AddressU{ TextureAddressMode_Wrap };
-        TextureAddressMode AddressV{ TextureAddressMode_Wrap };
-        TextureAddressMode AddressW{ TextureAddressMode_Wrap };
-        BorderColor BorderColor{ BorderColor_TransparentBlack };
-        std::uint32_t ShaderRegister{ 0 };
-        std::uint32_t RegisterSpace{ 0 };
-        ShaderVisibility ShaderVisibility{ ShaderVisibility_All };
+        TextureAddressMode AddressU{ TextureAddressMode::Wrap };
+        TextureAddressMode AddressV{ TextureAddressMode::Wrap };
+        TextureAddressMode AddressW{ TextureAddressMode::Wrap };
+        BorderColor BorderColor{ BorderColor::TransparentBlack };
+        uint32_t ShaderRegister{ 0 };
+        uint32_t RegisterSpace{ 0 };
+        ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
 
         StaticSampler() = default;
 
-        StaticSampler(struct TextureFilter textureFilter, TextureAddressMode textureAddressMode, std::uint32_t shaderRegister = 0)
+        StaticSampler(struct TextureFilter textureFilter, TextureAddressMode textureAddressMode, uint32_t shaderRegister = 0)
             : TextureFilter(textureFilter)
             , AddressU(textureAddressMode)
             , AddressV(textureAddressMode)
@@ -114,7 +96,7 @@ namespace Spieler
             , ShaderRegister(shaderRegister)
         {}
 
-        StaticSampler(struct TextureFilter textureFilter, TextureAddressMode addressU, TextureAddressMode addressV, TextureAddressMode addressW, std::uint32_t shaderRegister = 0)
+        StaticSampler(struct TextureFilter textureFilter, TextureAddressMode addressU, TextureAddressMode addressV, TextureAddressMode addressW, uint32_t shaderRegister = 0)
             : TextureFilter(textureFilter)
             , AddressU(addressU)
             , AddressV(addressV)
@@ -123,4 +105,4 @@ namespace Spieler
         {}
     };
 
-} // namespace Spieler
+} // namespace spieler::renderer

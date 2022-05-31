@@ -1,70 +1,48 @@
 #pragma once
 
-#include <variant>
+#include "spieler/core/assert.hpp"
 
-#include "renderer_object.hpp"
-#include "upload_buffer.hpp"
+#include "spieler/renderer/descriptor_manager.hpp"
+#include "spieler/renderer/upload_buffer.hpp"
 
-namespace Spieler
+namespace spieler::renderer
 {
 
-    class DescriptorHeap;
+    class ConstantBuffer;
 
-    class ConstantBuffer : public RendererObject
+    class ConstantBufferSlice
     {
     public:
-        friend class ConstantBufferView;
+        ConstantBufferSlice() = default;
+        ConstantBufferSlice(ConstantBuffer* constantBuffer, uint32_t offset);
 
     public:
-        ConstantBuffer() = default;
-        ConstantBuffer(UploadBuffer& uploadBuffer, std::uint32_t index);
-
-    public:
-        void Init(UploadBuffer& uploadBuffer, std::uint32_t index);
-
-        void Bind(std::uint32_t rootParameterIndex) const;
-
-        template <typename T>
-        T& As();
-
-        template <typename T>
-        const T& As() const;
+        void Bind(Context& context, uint32_t rootParameterIndex) const;
+        void Update(const void* data, uint32_t size);
 
     private:
-        UploadBuffer* m_UploadBuffer{ nullptr };
-        std::uint32_t m_Index{ 0 };
+        ConstantBuffer* m_ConstantBuffer{ nullptr };
+        uint32_t m_Offset{ 0 };
     };
 
-    class ConstantBufferView : public RendererObject
+    class ConstantBuffer
     {
     public:
-        ConstantBufferView() = default;
-        ConstantBufferView(const ConstantBuffer& constantBuffer, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex);
+        friend class ConstantBufferSlice;
 
     public:
-        void Init(const ConstantBuffer& constantBuffer, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex);
+        void SetResource(const std::shared_ptr<BufferResource>& resource);
 
-        void Bind(std::uint32_t rootParameterIndex) const;
+        bool HasSlice(const void* key) const;
+
+        ConstantBufferSlice& GetSlice(const void* key);
+        const ConstantBufferSlice& GetSlice(const void* key) const;
+
+        void SetSlice(const void* key);
 
     private:
-        const DescriptorHeap* m_DescriptorHeap{ nullptr };
-        std::uint32_t m_DescriptorHeapIndex{ 0 };
+        std::shared_ptr<BufferResource> m_Resource;
+        std::unordered_map<const void*, ConstantBufferSlice> m_Slices;
     };
 
-    template <typename T>
-    T& ConstantBuffer::As() 
-    { 
-        SPIELER_ASSERT(m_UploadBuffer);
-
-        return (*m_UploadBuffer).As<T>(m_Index);
-    }
-
-    template <typename T>
-    const T& ConstantBuffer::As() const 
-    { 
-        SPIELER_ASSERT(m_UploadBuffer);
-
-        return (*m_UploadBuffer).As<T>(m_Index);
-    }
-
-} // namespace Spieler
+} // namespace spieler::renderer

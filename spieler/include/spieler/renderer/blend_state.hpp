@@ -1,14 +1,9 @@
 #pragma once
 
-#include <cstdint>
-#include <vector>
-
-#include <d3d12.h>
-
-namespace Spieler
+namespace spieler::renderer
 {
 
-    enum class BlendOperation : std::uint8_t
+    enum class BlendOperation : uint8_t
     {
         Add = D3D12_BLEND_OP_ADD,
         Substract = D3D12_BLEND_OP_SUBTRACT,
@@ -17,7 +12,7 @@ namespace Spieler
         Max = D3D12_BLEND_OP_MAX
     };
 
-    enum class BlendLogicOperation : std::uint8_t
+    enum class BlendLogicOperation : uint8_t
     {
         Clear = D3D12_LOGIC_OP_CLEAR,
         Set = D3D12_LOGIC_OP_SET,
@@ -37,7 +32,7 @@ namespace Spieler
         OrInverted = D3D12_LOGIC_OP_OR_INVERTED
     };
 
-    enum class BlendColorFactor : std::uint8_t
+    enum class BlendColorFactor : uint8_t
     {
         Zero = D3D12_BLEND_ZERO,
         One = D3D12_BLEND_ONE,
@@ -54,7 +49,7 @@ namespace Spieler
         InverseBlendFactor = D3D12_BLEND_INV_BLEND_FACTOR
     };
 
-    enum class BlendAlphaFactor : std::uint8_t
+    enum class BlendAlphaFactor : uint8_t
     {
         Zero = D3D12_BLEND_ZERO,
         One = D3D12_BLEND_ONE,
@@ -82,15 +77,15 @@ namespace Spieler
     template <typename Factor>
     struct BlendEquation
     {
-        Factor SourceFactor;
-        Factor DestinationFactor;
-        BlendOperation Operation;
+        Factor SourceFactor{ Factor::One };
+        Factor DestinationFactor{ Factor::One };
+        BlendOperation Operation{ BlendOperation::Add };
     };
 
     using BlendColorEquation = BlendEquation<BlendColorFactor>;
     using BlendAlphaEquation = BlendEquation<BlendAlphaFactor>;
 
-    enum BlendChannel : std::uint8_t
+    enum BlendChannel : uint8_t
     {
         BlendChannel_None = 0,
         BlendChannel_Red = D3D12_COLOR_WRITE_ENABLE_RED,
@@ -100,7 +95,7 @@ namespace Spieler
         BlendChannel_All = D3D12_COLOR_WRITE_ENABLE_ALL
     };
 
-    enum class RenderTargetBlendingType : std::uint8_t
+    enum class RenderTargetBlendingType : uint8_t
     {
         None,
         Default,
@@ -122,8 +117,8 @@ namespace Spieler
 
     struct BlendState
     {
-        enum class AlphaToCoverageState AlphaToCoverageState{ AlphaToCoverageState::Disabled };
-        enum class IndependentBlendState IndependentBlendState{ IndependentBlendState::Disabled };
+        AlphaToCoverageState AlphaToCoverageState{ AlphaToCoverageState::Disabled };
+        IndependentBlendState IndependentBlendState{ IndependentBlendState::Disabled };
         std::vector<RenderTargetBlendProps> RenderTargetProps;
 
         static BlendState CreateNoneBlending(BlendChannel channels = BlendChannel_All);
@@ -131,4 +126,4 @@ namespace Spieler
         static BlendState CreateLogicBlending(enum class AlphaToCoverageState alphaToCoverageState, const BlendLogicOperation& logicOperation, BlendChannel channels = BlendChannel_All);
     };
 
-} // namespace Spieler
+} // namespace spieler::renderer

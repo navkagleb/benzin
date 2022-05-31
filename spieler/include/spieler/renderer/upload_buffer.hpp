@@ -1,111 +1,102 @@
 #pragma once
 
-#include "renderer_object.hpp"
+#include "spieler/core/assert.hpp"
+#include "spieler/core/common.hpp"
 
-namespace Spieler
+#include "spieler/renderer/resource.hpp"
+#include "spieler/renderer/device.hpp"
+
+namespace spieler::renderer
 {
 
-    using GPUVirtualAddress = std::uint64_t;
-
-    enum class UploadBufferType : std::uint32_t
+    enum class UploadBufferType : uint32_t
     {
         Default = 0,
         ConstantBuffer = 1
     };
 
-    class UploadBuffer : public RendererObject
+    class UploadBuffer : public Resource
     {
     public:
         UploadBuffer() = default;
+
+        template <typename T = std::byte>
+        UploadBuffer(Device& device, UploadBufferType type, uint32_t elementCount);
+
         UploadBuffer(UploadBuffer&& other) noexcept;
         ~UploadBuffer();
 
     public:
-        std::uint32_t GetElementCount() const { return m_ElementCount; }
-        std::uint32_t GetStride() const { return m_Stride; }
+        uint32_t GetSize() const { return m_Size; }
+        uint32_t GetStride() const { return m_Stride; }
+        uint32_t GetMarker() const { return m_Marker; }
 
     public:
-        template <typename T>
-        bool Init(UploadBufferType type, std::uint32_t elementCount);
+        template <typename T = std::byte>
+        bool Init(Device& device, UploadBufferType type, uint32_t elementCount);
 
-        GPUVirtualAddress GetGPUVirtualAddress() const { return m_Buffer->GetGPUVirtualAddress(); }
-        GPUVirtualAddress GetElementGPUVirtualAddress(std::uint32_t index) const { return m_Buffer->GetGPUVirtualAddress() + static_cast<std::uint64_t>(index * m_Stride); }
+    public:
+        uint32_t Allocate(uint32_t size, uint32_t alignment = 0);
+
+        GPUVirtualAddress GetGPUVirtualAddress() const { return static_cast<GPUVirtualAddress>(m_Resource->GetGPUVirtualAddress()); }
+        GPUVirtualAddress GetElementGPUVirtualAddress(uint32_t index) const { return static_cast<GPUVirtualAddress>(m_Resource->GetGPUVirtualAddress() + static_cast<uint64_t>(index * m_Stride)); }
 
         template <typename T>
-        T& As(std::uint32_t index = 0);
+        T& As(uint32_t index = 0);
 
     public:
         UploadBuffer& operator =(UploadBuffer&& other) noexcept;
 
-        explicit operator ID3D12Resource* () const { return m_Buffer.Get(); }
-
     private:
-        ComPtr<ID3D12Resource> m_Buffer;
         std::byte* m_MappedData{ nullptr };
-
-        std::uint32_t m_ElementCount{ 0 };
-        std::uint32_t m_Stride{ 0 };
+        uint32_t m_Size{ 0 };
+        uint32_t m_Stride{ 0 };
+        uint32_t m_Marker{ 0 };
     };
 
-    namespace _Internal
+    namespace _internal
     {
 
-        inline std::uint32_t CalcConstantBufferSize(std::uint32_t size)
+        inline uint32_t CalcConstantBufferSize(uint32_t size)
         {
             return (size + 255) & ~255;
         }
 
-    } // namespace _Internal
+    } // namespace _internal
 
     template <typename T>
-    bool UploadBuffer::Init(UploadBufferType type, std::uint32_t elementCount)
+    UploadBuffer::UploadBuffer(Device& device, UploadBufferType type, uint32_t elementCount)
+    {
+        SPIELER_ASSERT(Init<T>(device, type, elementCount));
+    }
+
+    template <typename T>
+    bool UploadBuffer::Init(Device& device, UploadBufferType type, uint32_t elementCount)
     {
         SPIELER_ASSERT(elementCount != 0);
 
-        m_ElementCount = elementCount;
-        m_Stride = type == UploadBufferType::ConstantBuffer ? _Internal::CalcConstantBufferSize(sizeof(T)) : sizeof(T);
+        m_Stride = type == UploadBufferType::ConstantBuffer ? _internal::CalcConstantBufferSize(sizeof(T)) : sizeof(T);
+        m_Size = m_Stride * elementCount;
         
-        D3D12_RESOURCE_DESC resourceDesc{};
-        resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resourceDesc.Alignment = 0;
-        resourceDesc.Width = m_Stride * m_ElementCount;
-        resourceDesc.Height = 1;
-        resourceDesc.DepthOrArraySize = 1;
-        resourceDesc.MipLevels = 1;
-        resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-        resourceDesc.SampleDesc.Count = 1;
-        resourceDesc.SampleDesc.Quality = 0;
-        resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        const BufferConfig bufferConfig
+        {
+            .Alignment = 0,
+            .ElementSize = m_Stride,
+            .ElementCount = elementCount
+        };
 
-        D3D12_HEAP_PROPERTIES uploadHeapProps{};
-        uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-        uploadHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        uploadHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-        uploadHeapProps.CreationNodeMask = 1;
-        uploadHeapProps.VisibleNodeMask = 1;
-
-        SPIELER_RETURN_IF_FAILED(GetDevice()->CreateCommittedResource(
-            &uploadHeapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            __uuidof(ID3D12Resource),
-            &m_Buffer
-        ));
-        
-        SPIELER_RETURN_IF_FAILED(m_Buffer->Map(0, nullptr, reinterpret_cast<void**>(&m_MappedData)));
+        SPIELER_RETURN_IF_FAILED(device.CreateUploadBuffer(bufferConfig, *this));
+        SPIELER_RETURN_IF_FAILED(m_Resource->Map(0, nullptr, reinterpret_cast<void**>(&m_MappedData)));
 
         return true;
     }
 
     template <typename T>
-    T& UploadBuffer::As(std::uint32_t index)
+    T& UploadBuffer::As(uint32_t index)
     {
-        SPIELER_ASSERT(index < m_ElementCount);
+        SPIELER_ASSERT(index * m_Stride < m_Size);
 
         return *reinterpret_cast<T*>(&m_MappedData[index * m_Stride]);
     }
 
-} // namespace Spieler
+} // namespace spieler::renderer

@@ -1,15 +1,23 @@
-#include "renderer/shader.hpp"
+#include "spieler/config/bootstrap.hpp"
 
-#include <d3dcompiler.h>
+#include "spieler/renderer/shader.hpp"
 
-namespace Spieler
+#include "spieler/core/logger.hpp"
+#include "spieler/core/assert.hpp"
+#include "spieler/core/common.hpp"
+
+namespace spieler::renderer
 {
 
-    namespace Internal
+    namespace _internal
     {
 
-
-        static ComPtr<ID3DBlob> CompileFromFile(const std::wstring& filename, const std::string& entryPoint, const std::string& target, const std::vector<ShaderDefine>& defines = {})
+        static bool CompileFromFile(
+            const std::wstring& filename, 
+            const std::string& entryPoint, 
+            const std::string& target, 
+            const DefineContainer& defines,
+            ComPtr<ID3DBlob>& byteCode)
         {
             std::vector<D3D_SHADER_MACRO> d3dDefines;
 
@@ -17,99 +25,103 @@ namespace Spieler
             {
                 d3dDefines.reserve(defines.size());
 
-                for (const auto& define : defines)
+                for (const auto& [name, value] : defines)
                 {
-                    d3dDefines.emplace_back(define.Name.c_str(), define.Value.c_str());
+                    d3dDefines.emplace_back(name.data(), value.c_str());
                 }
 
                 d3dDefines.emplace_back(nullptr, nullptr);
             }
 
 #if defined(SPIELER_DEBUG)
-            const std::uint32_t flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+            const uint32_t flags{ D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION };
 #else
-            const std::uint32_t flags = 0;
+            const uint32_t flags{ 0 };
 #endif
 
-            ComPtr<ID3DBlob> byteCode;
             ComPtr<ID3DBlob> error;
 
-            const HRESULT result = D3DCompileFromFile(
-                filename.c_str(),
-                d3dDefines.data(),
-                D3D_COMPILE_STANDARD_FILE_INCLUDE,
-                entryPoint.c_str(),
-                target.c_str(),
-                flags,
-                0,
-                &byteCode,
-                &error
-            );
+            const ::HRESULT result
+            {
+                D3DCompileFromFile(
+                    filename.c_str(),
+                    d3dDefines.data(),
+                    D3D_COMPILE_STANDARD_FILE_INCLUDE,
+                    entryPoint.c_str(),
+                    target.c_str(),
+                    flags,
+                    0,
+                    &byteCode,
+                    &error
+                )
+            };
 
             if (error)
             {
-                ::OutputDebugString(reinterpret_cast<const char*>(error->GetBufferPointer()));
-                return nullptr;
+                SPIELER_CRITICAL(reinterpret_cast<const char*>(error->GetBufferPointer()));
+                return false;
             }
 
-            if (result != S_OK)
+            if (FAILED(result))
             {
-                return nullptr;
+                SPIELER_CRITICAL("Failed to compile shader");
+                return false;
             }
 
-            return byteCode;
+            return true;
         }
 
-    } // namespace Internal
+        static const char* GetShaderTarget(ShaderType shaderType)
+        {
+            switch (shaderType)
+            {
+                case ShaderType::Vertex:
+                {
+                    return config::GetVertexShaderTarget();
+                }
+                case ShaderType::Pixel:
+                {
+                    return config::GetPixelShaderTarget();
+                }
+                case ShaderType::Geometry:
+                {
+                    return config::GetGeometryShaderTarget();
+                }
+                default:
+                {
+                    SPIELER_WARNING("Shader type is None or Unknown!");
+                    break;
+                }
+            }
+
+            return nullptr;
+        }
+
+    } // namespace _internal
 
     const void* Shader::GetData() const
     {
-        SPIELER_ASSERT(m_ByteCode != nullptr);
+        SPIELER_ASSERT(m_ByteCode);
 
         return m_ByteCode->GetBufferPointer();
     }
 
-    std::uint32_t Shader::GetSize() const
+    uint32_t Shader::GetSize() const
     {
-        SPIELER_ASSERT(m_ByteCode != nullptr);
+        SPIELER_ASSERT(m_ByteCode);
 
-        return static_cast<std::uint32_t>(m_ByteCode->GetBufferSize());
+        return static_cast<uint32_t>(m_ByteCode->GetBufferSize());
     }
 
-    bool VertexShader::LoadFromFile(const std::wstring& filename, const std::string& entryPoint)
+    Shader::Shader(const Config& config)
     {
-        m_ByteCode = Internal::CompileFromFile(filename, entryPoint, "vs_5_1");
-
-        SPIELER_RETURN_IF_FAILED(m_ByteCode);
-
-        return true;
+        SPIELER_ASSERT(_internal::CompileFromFile(
+            config.Filename, 
+            config.EntryPoint, 
+            _internal::GetShaderTarget(config.Type),
+            config.Defines,
+            m_ByteCode
+        ));
     }
 
-    bool VertexShader::LoadFromFile(const std::wstring& filename, const std::string& entryPoint, const std::vector<ShaderDefine>& defines)
-    {
-        m_ByteCode = Internal::CompileFromFile(filename, entryPoint, "vs_5_1", defines);
-
-        SPIELER_RETURN_IF_FAILED(m_ByteCode);
-
-        return true;
-    }
-
-    bool PixelShader::LoadFromFile(const std::wstring& filename, const std::string& entryPoint)
-    {
-        m_ByteCode = Internal::CompileFromFile(filename, entryPoint, "ps_5_1");
-
-        SPIELER_RETURN_IF_FAILED(m_ByteCode);
-
-        return true;
-    }
-
-    bool PixelShader::LoadFromFile(const std::wstring& filename, const std::string& entryPoint, const std::vector<ShaderDefine>& defines)
-    {
-        m_ByteCode = Internal::CompileFromFile(filename, entryPoint, "ps_5_1", defines);
-
-        SPIELER_RETURN_IF_FAILED(m_ByteCode);
-
-        return true;
-    }
-
-} // namespace Spieler
+} // namespace spieler::renderer

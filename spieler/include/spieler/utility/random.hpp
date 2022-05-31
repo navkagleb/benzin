@@ -1,13 +1,14 @@
 #pragma once
 
-#include <random>
-#include <concepts>
-
-namespace Spieler
+namespace spieler
 {
 
     class Random
     {
+    private:
+        SPIELER_NON_COPYABLE(Random)
+        SPIELER_NON_MOVEABLE(Random)
+
     private:
         template <std::integral T>
         using IntegralDistribution = std::uniform_int_distribution<T>;
@@ -18,7 +19,8 @@ namespace Spieler
     public:
         static Random& GetInstance();
 
-    private:
+    public:
+        // TODO: move to private section
         Random();
 
     public:
@@ -62,4 +64,4 @@ namespace Spieler
         return FloatingPointDistribution<T>{ min, max }(m_MersenneTwisterEngine);
     }
 
-} // namespace Spieler
+} // namespace spieler

@@ -1,41 +1,43 @@
 #pragma once
 
-#include "renderer_object.hpp"
-#include "input_layout.hpp"
-#include "primitive_topology.hpp"
+#include "spieler/renderer/input_layout.hpp"
+#include "spieler/renderer/types.hpp"
 
-namespace Spieler
+namespace spieler::renderer
 {
 
     class RootSignature;
-    class VertexShader;
-    class PixelShader;
+    class Shader;
     struct BlendState;
     struct RasterizerState;
+    struct DepthStencilState;
 
-    struct PipelineStateProps
+    struct PipelineStateConfig
     {
-        RootSignature* RootSignature{ nullptr };
-        VertexShader* VertexShader{ nullptr };
-        PixelShader* PixelShader{ nullptr };
-        BlendState* BlendState{ nullptr };
-        RasterizerState* RasterizerState{ nullptr };
-        InputLayout* InputLayout{ nullptr };
+        const RootSignature* RootSignature{ nullptr };
+        const Shader* VertexShader{ nullptr };
+        const Shader* PixelShader{ nullptr };
+        const Shader* GeometryShader{ nullptr };
+        const BlendState* BlendState{ nullptr };
+        const RasterizerState* RasterizerState{ nullptr };
+        const DepthStencilState* DepthStecilState{ nullptr };
+        const InputLayout* InputLayout{ nullptr };
+
         PrimitiveTopologyType PrimitiveTopologyType{ PrimitiveTopologyType::Undefined };
-        DXGI_FORMAT RTVFormat{ DXGI_FORMAT_R8G8B8A8_UNORM };
-        DXGI_FORMAT DSVFormat{ DXGI_FORMAT_D24_UNORM_S8_UINT };
+        GraphicsFormat RTVFormat{ GraphicsFormat::R8G8B8A8_UNORM };
+        GraphicsFormat DSVFormat{ GraphicsFormat::D24_UNORM_S8_UINT };
     };
 
-    class PipelineState : public RendererObject
+    class PipelineState
     {
     public:
-        bool Init(const PipelineStateProps& props);
+        bool Init(const PipelineStateConfig& props);
 
     public:
-        explicit operator ID3D12PipelineState* () const { return m_Handle.Get(); }
+        explicit operator ID3D12PipelineState* () const { return m_PipelineState.Get(); }
 
     private:
-        ComPtr<ID3D12PipelineState> m_Handle;
+        ComPtr<ID3D12PipelineState> m_PipelineState;
     };
 
-} // namespace Spieler
+} // namespace spieler::renderer

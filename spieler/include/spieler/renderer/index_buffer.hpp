@@ -1,48 +1,41 @@
 #pragma once
 
-#include "resource.hpp"
-
-namespace Spieler
+namespace spieler::renderer
 {
 
-    template <typename T>
-    concept IndexType = std::is_same_v<T, std::uint16_t> || std::is_same_v<T, std::uint32_t>;
+    class BufferResource;
+    class Context;
 
-    class UploadBuffer;
-
-    class IndexBuffer : public RendererObject
-    {
-    public:
-        friend class IndexBufferView;
-
-    public:
-        std::uint32_t GetIndexCount() const { return m_IndexCount; }
-
-    public:
-        template <IndexType T>
-        bool Init(const T* indices, std::uint32_t count, UploadBuffer& uploadBuffer);
-
-    private:
-        ComPtr<ID3D12Resource> m_Buffer;
-        std::uint32_t m_IndexCount{ 0 };
-        std::uint32_t m_IndexTypeBitCount{ 0 };
-    };
-
-    class IndexBufferView : public RendererObject
+    class IndexBufferView
     {
     public:
         IndexBufferView() = default;
-        IndexBufferView(const IndexBuffer& indexBuffer);
+        IndexBufferView(const BufferResource& resource);
 
     public:
-        void Init(const IndexBuffer& indexBuffer);
+        void Bind(Context& context) const;
 
-        void Bind() const;
+    public:
+        void Init(const BufferResource& resource);
 
     private:
         D3D12_INDEX_BUFFER_VIEW m_View{};
     };
 
-} // namespace Spieler
+    class IndexBuffer
+    {
+    public:
+        std::shared_ptr<BufferResource>& GetResource() { return m_Resource; }
+        const std::shared_ptr<BufferResource>& GetResource() const { return m_Resource; }
 
-#include "index_buffer.inl"
+        const IndexBufferView& GetView() const { return m_View; }
+
+    public:
+        void SetResource(const std::shared_ptr<BufferResource>& resource);
+
+    private:
+        std::shared_ptr<BufferResource> m_Resource;
+        IndexBufferView m_View;
+    };
+
+} // namespace spieler::renderer

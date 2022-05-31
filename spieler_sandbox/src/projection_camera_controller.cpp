@@ -1,11 +1,15 @@
+#include "bootstrap.hpp"
+
 #include "projection_camera_controller.hpp"
 
-#include <imgui/imgui.h>
+#include <third_party/imgui/imgui.h>
 
-#include <spieler/window/input.hpp>
-#include <spieler/window/event_dispatcher.hpp>
+#include <spieler/core/application.hpp>
 
-namespace Sandbox
+#include <spieler/system/input.hpp>
+#include <spieler/system/event_dispatcher.hpp>
+
+namespace sandbox
 {
 
     ProjectionCameraController::ProjectionCameraController(float fov, float aspectRatio)
@@ -17,50 +21,52 @@ namespace Sandbox
         UpdateProjection();
     }
 
-    void ProjectionCameraController::OnEvent(Spieler::Event& event)
+    void ProjectionCameraController::OnEvent(spieler::Event& event)
     {
-        Spieler::EventDispatcher dispatcher(event);
-        dispatcher.Dispatch<Spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
+        spieler::EventDispatcher dispatcher(event);
+        dispatcher.Dispatch<spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
 
         if (!m_IsBlocked)
         {
-            dispatcher.Dispatch<Spieler::MouseButtonPressedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnMouseButtonPressed));
-            dispatcher.Dispatch<Spieler::MouseMovedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnMouseMoved));
-            dispatcher.Dispatch<Spieler::MouseScrolledEvent>(SPIELER_BIND_EVENT_CALLBACK(OnMouseScrolled));
+            dispatcher.Dispatch<spieler::MouseButtonPressedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnMouseButtonPressed));
+            dispatcher.Dispatch<spieler::MouseMovedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnMouseMoved));
+            dispatcher.Dispatch<spieler::MouseScrolledEvent>(SPIELER_BIND_EVENT_CALLBACK(OnMouseScrolled));
         }
     }
 
     void ProjectionCameraController::OnUpdate(float dt)
     {
+        const spieler::Input& input{ spieler::Application::GetInstance()->GetWindow().GetInput() };
+
         if (m_IsBlocked)
         {
             return;
         }
 
-        bool triggered = false;
+        bool triggered{ false };
 
-        if (Spieler::Input::GetInstance().IsKeyPressed(Spieler::KeyCode_W))
+        if (input.IsKeyPressed(spieler::KeyCode::W))
         {
-            m_Camera.EyePosition    = DirectX::XMVectorAdd(m_Camera.EyePosition, DirectX::XMVectorScale(m_Camera.Front, m_CameraSpeed * dt));
-            triggered               = true;
+            m_Camera.EyePosition = DirectX::XMVectorAdd(m_Camera.EyePosition, DirectX::XMVectorScale(m_Camera.Front, m_CameraSpeed * dt));
+            triggered = true;
         }
 
-        if (Spieler::Input::GetInstance().IsKeyPressed(Spieler::KeyCode_S))
+        if (input.IsKeyPressed(spieler::KeyCode::S))
         {
-            m_Camera.EyePosition    = DirectX::XMVectorSubtract(m_Camera.EyePosition, DirectX::XMVectorScale(m_Camera.Front, m_CameraSpeed * dt));
-            triggered               = true;
+            m_Camera.EyePosition = DirectX::XMVectorSubtract(m_Camera.EyePosition, DirectX::XMVectorScale(m_Camera.Front, m_CameraSpeed * dt));
+            triggered = true;
         }
 
-        if (Spieler::Input::GetInstance().IsKeyPressed(Spieler::KeyCode_A))
+        if (input.IsKeyPressed(spieler::KeyCode::A))
         {   
-            m_Camera.EyePosition    = DirectX::XMVectorAdd(m_Camera.EyePosition, DirectX::XMVectorScale(DirectX::XMVector3Normalize(DirectX::XMVector3Cross(m_Camera.Front, m_Camera.UpDirection)), m_CameraSpeed * dt));
-            triggered               = true;
+            m_Camera.EyePosition = DirectX::XMVectorAdd(m_Camera.EyePosition, DirectX::XMVectorScale(DirectX::XMVector3Normalize(DirectX::XMVector3Cross(m_Camera.Front, m_Camera.UpDirection)), m_CameraSpeed * dt));
+            triggered = true;
         }
 
-        if (Spieler::Input::GetInstance().IsKeyPressed(Spieler::KeyCode_D))
+        if (input.IsKeyPressed(spieler::KeyCode::D))
         {
-            m_Camera.EyePosition    = DirectX::XMVectorSubtract(m_Camera.EyePosition, DirectX::XMVectorScale(DirectX::XMVector3Normalize(DirectX::XMVector3Cross(m_Camera.Front, m_Camera.UpDirection)), m_CameraSpeed * dt));
-            triggered               = true;
+            m_Camera.EyePosition = DirectX::XMVectorSubtract(m_Camera.EyePosition, DirectX::XMVectorScale(DirectX::XMVector3Normalize(DirectX::XMVector3Cross(m_Camera.Front, m_Camera.UpDirection)), m_CameraSpeed * dt));
+            triggered = true;
         }
 
         if (triggered)
@@ -114,7 +120,7 @@ namespace Sandbox
         ImGui::End();
     }
 
-    bool ProjectionCameraController::OnWindowResized(Spieler::WindowResizedEvent& event)
+    bool ProjectionCameraController::OnWindowResized(spieler::WindowResizedEvent& event)
     {
         m_Camera.AspectRatio = static_cast<float>(event.GetWidth()) / event.GetHeight();
 
@@ -123,7 +129,7 @@ namespace Sandbox
         return true;
     }
 
-    bool ProjectionCameraController::OnMouseButtonPressed(Spieler::MouseButtonPressedEvent& event)
+    bool ProjectionCameraController::OnMouseButtonPressed(spieler::MouseButtonPressedEvent& event)
     {
         m_LastMousePosition.x = static_cast<float>(event.GetX());
         m_LastMousePosition.y = static_cast<float>(event.GetY());
@@ -131,9 +137,11 @@ namespace Sandbox
         return true;
     }
 
-    bool ProjectionCameraController::OnMouseMoved(Spieler::MouseMovedEvent& event)
+    bool ProjectionCameraController::OnMouseMoved(spieler::MouseMovedEvent& event)
     {
-        if (Spieler::Input::GetInstance().IsMouseButtonPressed(Spieler::MouseButton_Left))
+        const spieler::Input& input{ spieler::Application::GetInstance()->GetWindow().GetInput() };
+
+        if (input.IsMouseButtonPressed(spieler::MouseButton::Left))
         {
             const float dx = static_cast<float>(event.GetX()) - m_LastMousePosition.x;
             const float dy = static_cast<float>(event.GetY()) - m_LastMousePosition.y;
@@ -141,7 +149,7 @@ namespace Sandbox
             m_Theta -= m_MouseSensitivity * dx;
             m_Phi -= m_MouseSensitivity * dy;
 
-            m_Phi = Spieler::Math::Clamp(0.01f, m_Phi, DirectX::XM_PI - 0.01f);
+            m_Phi = spieler::math::Clamp(0.01f, m_Phi, DirectX::XM_PI - 0.01f);
 
             if (m_Theta > DirectX::XM_PI)
             {
@@ -162,12 +170,12 @@ namespace Sandbox
         return true;
     }
 
-    bool ProjectionCameraController::OnMouseScrolled(Spieler::MouseScrolledEvent& event)
+    bool ProjectionCameraController::OnMouseScrolled(spieler::MouseScrolledEvent& event)
     {
         static const float min = DirectX::XM_PIDIV4;
         static const float max = DirectX::XM_PI * 2.0f / 3.0f;
 
-        m_Camera.Fov = Spieler::Math::Clamp(min, m_Camera.Fov - m_MouseSensitivity * static_cast<float>(event.GetOffsetX()), max);
+        m_Camera.Fov = spieler::math::Clamp(min, m_Camera.Fov - m_MouseSensitivity * static_cast<float>(event.GetOffsetX()), max);
     
         UpdateProjection();
 
@@ -176,7 +184,7 @@ namespace Sandbox
 
     void ProjectionCameraController::UpdateView()
     {
-        const DirectX::XMVECTOR direction = Spieler::Math::SphericalToCartesian(m_Theta, m_Phi);
+        const DirectX::XMVECTOR direction = spieler::math::SphericalToCartesian(m_Theta, m_Phi);
 
         m_Camera.Front = DirectX::XMVector3Normalize(direction);
         m_Camera.View = DirectX::XMMatrixLookAtLH(m_Camera.EyePosition, DirectX::XMVectorAdd(m_Camera.EyePosition, m_Camera.Front), m_Camera.UpDirection);
@@ -187,4 +195,4 @@ namespace Sandbox
         m_Camera.Projection = DirectX::XMMatrixPerspectiveFovLH(m_Camera.Fov, m_Camera.AspectRatio, m_Camera.NearPlane, m_Camera.FarPlane);
     }
 
-} // namespace Sandbox
+} // namespace sandbox

@@ -1,46 +1,40 @@
 #pragma once
 
-#include "renderer_object.hpp"
-
-namespace Spieler
+namespace spieler::renderer
 {
 
-    class UploadBuffer;
+    class BufferResource;
+    class Context;
 
-    class VertexBuffer : public RendererObject
-    {
-    public:
-        friend class VertexBufferView;
-
-    public:
-        std::uint32_t GetVertexCount() const { return m_VertexCount; }
-
-    public:
-        template <typename Vertex>
-        bool Init(const Vertex* vertices, std::uint32_t count, UploadBuffer& uploadBuffer);
-
-    private:
-        ComPtr<ID3D12Resource> m_Buffer;
-        std::uint32_t m_VertexCount{ 0 };
-    };
-
-    class VertexBufferView : public RendererObject
+    class VertexBufferView
     {
     public:
         VertexBufferView() = default;
-        VertexBufferView(const VertexBuffer& vertexBuffer);
-        VertexBufferView(const UploadBuffer& uploadBuffer);
+        VertexBufferView(const BufferResource& resource);
 
     public:
-        void Init(const VertexBuffer& vertexBuffer);
-        void Init(const UploadBuffer& uploadBuffer);
+        void Init(const BufferResource& resource);
 
-        void Bind() const;
+        void Bind(Context& context) const;
 
     private:
         D3D12_VERTEX_BUFFER_VIEW m_View{};
     };
 
-} // namespace Spieler
+    class VertexBuffer
+    {
+    public:
+        std::shared_ptr<BufferResource>& GetResource() { return m_Resource; }
+        const std::shared_ptr<BufferResource>& GetResource() const { return m_Resource; }
 
-#include "vertex_buffer.inl"
+        const VertexBufferView& GetView() const { return m_View; }
+
+    public:
+        void SetResource(const std::shared_ptr<BufferResource>& resource);
+
+    private:
+        std::shared_ptr<BufferResource> m_Resource;
+        VertexBufferView m_View;
+    };
+
+} // namespace spieler::renderer

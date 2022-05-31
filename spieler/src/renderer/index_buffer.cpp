@@ -1,27 +1,43 @@
-#include "renderer/index_buffer.hpp"
+#include "spieler/config/bootstrap.hpp"
 
-namespace Spieler
+#include "spieler/renderer/index_buffer.hpp"
+
+#include "spieler/core/assert.hpp"
+
+#include "spieler/renderer/types.hpp"
+#include "spieler/renderer/context.hpp"
+#include "spieler/renderer/buffer.hpp"
+
+namespace spieler::renderer
 {
 
-    IndexBufferView::IndexBufferView(const IndexBuffer& indexBuffer)
+    IndexBufferView::IndexBufferView(const BufferResource& resource)
     {
-        Init(indexBuffer);
+        Init(resource);
     }
 
-    void IndexBufferView::Init(const IndexBuffer& indexBuffer)
+    void IndexBufferView::Init(const BufferResource& resource)
     {
-        SPIELER_ASSERT(indexBuffer.m_IndexTypeBitCount != 0);
+        SPIELER_ASSERT(resource.GetResource());
 
-        const D3D12_RESOURCE_DESC resourceDesc{ indexBuffer.m_Buffer->GetDesc() };
+        const GraphicsFormat format{ resource.GetStride() == 2 ? GraphicsFormat::R16_UINT : GraphicsFormat::R32_UINT };
 
-        m_View.BufferLocation = indexBuffer.m_Buffer->GetGPUVirtualAddress();
-        m_View.SizeInBytes = static_cast<UINT>(resourceDesc.Width);
-        m_View.Format = (indexBuffer.m_IndexTypeBitCount == 16) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+        m_View.BufferLocation = static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(resource.GetGPUVirtualAddress());
+        m_View.SizeInBytes = resource.GetSize();
+        m_View.Format = static_cast<DXGI_FORMAT>(format);
     }
 
-    void IndexBufferView::Bind() const
+    void IndexBufferView::Bind(Context& context) const
     {
-        GetCommandList()->IASetIndexBuffer(&m_View);
+        context.GetNativeCommandList()->IASetIndexBuffer(&m_View);
     }
 
-} // namespace Spieler
+    void IndexBuffer::SetResource(const std::shared_ptr<BufferResource>& resource)
+    {
+        SPIELER_ASSERT(resource);
+
+        m_Resource = resource;
+        m_View = IndexBufferView{ *m_Resource };
+    }
+
+} // namespace spieler::renderer

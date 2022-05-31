@@ -1,61 +1,40 @@
-#include "renderer/resource.hpp"
+#include "spieler/config/bootstrap.hpp"
 
-namespace Spieler
+#include "spieler/renderer/resource.hpp"
+
+#include "spieler/core/assert.hpp"
+
+#include "spieler/renderer/device.hpp"
+
+namespace spieler::renderer
 {
 
-    ComPtr<ID3D12Resource> Resource::CreateUploadBuffer(const D3D12_RESOURCE_DESC& resourceDesc)
-    {
-        D3D12_HEAP_PROPERTIES uploadHeapProps{};
-        uploadHeapProps.Type                    = D3D12_HEAP_TYPE_UPLOAD;
-        uploadHeapProps.CPUPageProperty         = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        uploadHeapProps.MemoryPoolPreference    = D3D12_MEMORY_POOL_UNKNOWN;
-        uploadHeapProps.CreationNodeMask        = 1;
-        uploadHeapProps.VisibleNodeMask         = 1;
+    Resource::Resource(Resource&& other) noexcept
+        : m_Resource(std::exchange(other.m_Resource, nullptr))
+    {}
 
-        ComPtr<ID3D12Resource> uploadBuffer;
-
-        const HRESULT result = GetDevice()->CreateCommittedResource(
-            &uploadHeapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            __uuidof(ID3D12Resource),
-            &uploadBuffer
-        );
-
-        return result != S_OK ? nullptr : uploadBuffer;
-    }
-
-    ComPtr<ID3D12Resource> Resource::CreateDefaultBuffer(const D3D12_RESOURCE_DESC& resourceDesc)
-    {
-        D3D12_HEAP_PROPERTIES defaultHeapProps{};
-        defaultHeapProps.Type                  = D3D12_HEAP_TYPE_DEFAULT;
-        defaultHeapProps.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        defaultHeapProps.MemoryPoolPreference  = D3D12_MEMORY_POOL_UNKNOWN;
-        defaultHeapProps.CreationNodeMask      = 1;
-        defaultHeapProps.VisibleNodeMask       = 1;
-
-        ComPtr<ID3D12Resource> buffer;
-
-        const HRESULT result = GetDevice()->CreateCommittedResource(
-            &defaultHeapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDesc,
-            D3D12_RESOURCE_STATE_COMMON,
-            nullptr,
-            __uuidof(ID3D12Resource),
-            &buffer
-        );
-
-        return result != S_OK ? nullptr : buffer;
-    }
-
-    void Resource::SetName(const std::wstring& name)
+    void Resource::SetDebugName(const std::wstring& name)
     {
         SPIELER_ASSERT(m_Resource);
 
         m_Resource->SetName(name.c_str());
     }
 
-} // namespace Spieler
+    void Resource::Reset()
+    {
+        m_Resource.Reset();
+    }
+
+    Resource& Resource::operator =(Resource&& other) noexcept
+    {
+        if (this == &other)
+        {
+            return *this;
+        }
+
+        m_Resource = std::exchange(other.m_Resource, nullptr);
+
+        return *this;
+    }
+
+} // namespace spieler::renderer

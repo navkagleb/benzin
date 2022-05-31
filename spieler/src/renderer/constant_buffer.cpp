@@ -1,53 +1,75 @@
-#include "renderer/constant_buffer.hpp"
+#include "spieler/config/bootstrap.hpp"
 
-#include "renderer/descriptor_heap.hpp"
+#include "spieler/renderer/constant_buffer.hpp"
 
-namespace Spieler
+#include "spieler/core/assert.hpp"
+
+#include "spieler/renderer/renderer.hpp"
+#include "spieler/renderer/mapped_data.hpp"
+
+namespace spieler::renderer
 {
+    
+    // ConstantBufferSlice
+    ConstantBufferSlice::ConstantBufferSlice(ConstantBuffer* constantBuffer, uint32_t offset)
+        : m_ConstantBuffer(constantBuffer)
+        , m_Offset(offset)
+    {}
 
-    ConstantBuffer::ConstantBuffer(UploadBuffer& uploadBuffer, std::uint32_t index)
+    void ConstantBufferSlice::Bind(Context& context, uint32_t rootParameterIndex) const
     {
-        Init(uploadBuffer, index);
+        SPIELER_ASSERT(m_ConstantBuffer);
+
+        context.GetNativeCommandList()->SetGraphicsRootConstantBufferView(
+            rootParameterIndex,
+            static_cast<uint64_t>(m_ConstantBuffer->m_Resource->GetGPUVirtualAddress()) + m_Offset
+        );
     }
 
-    void ConstantBuffer::Init(UploadBuffer& uploadBuffer, std::uint32_t index)
+    void ConstantBufferSlice::Update(const void* data, uint32_t size)
     {
-        m_UploadBuffer = &uploadBuffer;
-        m_Index = index;
+        MappedData mappedData{ *m_ConstantBuffer->m_Resource };
+
+        std::memcpy(mappedData.GetPointer<std::byte>() + m_Offset, data, size);
     }
 
-    void ConstantBuffer::Bind(std::uint32_t rootParameterIndex) const
+    // ConstantBuffer
+    void ConstantBuffer::SetResource(const std::shared_ptr<BufferResource>& resource)
     {
-        SPIELER_ASSERT(m_UploadBuffer);
+        SPIELER_ASSERT(resource);
 
-        GetCommandList()->SetGraphicsRootConstantBufferView(rootParameterIndex, m_UploadBuffer->GetElementGPUVirtualAddress(m_Index));
+        m_Resource = resource;
     }
 
-    ConstantBufferView::ConstantBufferView(const ConstantBuffer& constantBuffer, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex)
+    bool ConstantBuffer::HasSlice(const void* key) const
     {
-        Init(constantBuffer, descriptorHeap, descriptorHeapIndex);
+        return m_Slices.contains(key);
     }
 
-    void ConstantBufferView::Init(const ConstantBuffer& constantBuffer, const DescriptorHeap& descriptorHeap, std::uint32_t descriptorHeapIndex)
+    ConstantBufferSlice& ConstantBuffer::GetSlice(const void* key)
     {
-        m_DescriptorHeap = &descriptorHeap;
-        m_DescriptorHeapIndex = descriptorHeapIndex;
+        SPIELER_ASSERT(m_Resource.get());
+        SPIELER_ASSERT(m_Slices.contains(key));
 
-        const UploadBuffer* const uploadBuffer{ constantBuffer.m_UploadBuffer };
-        const std::uint32_t index{ constantBuffer.m_Index };
-
-        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
-        cbvDesc.BufferLocation = uploadBuffer->GetElementGPUVirtualAddress(index);
-        cbvDesc.SizeInBytes = uploadBuffer->GetStride();
-
-        GetDevice()->CreateConstantBufferView(&cbvDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ m_DescriptorHeap->GetDescriptorCPUHandle(m_DescriptorHeapIndex) });
+        return m_Slices[key];
     }
 
-    void ConstantBufferView::Bind(std::uint32_t rootParameterIndex) const
+    const ConstantBufferSlice& ConstantBuffer::GetSlice(const void* key) const
     {
-        SPIELER_ASSERT(m_DescriptorHeap);
+        SPIELER_ASSERT(m_Resource.get());
+        SPIELER_ASSERT(m_Slices.contains(key));
 
-        GetCommandList()->SetGraphicsRootDescriptorTable(rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE{ m_DescriptorHeap->GetDescriptorGPUHandle(m_DescriptorHeapIndex) });
+        return m_Slices.at(key);
     }
 
-} // namespace Spieler
+    void ConstantBuffer::SetSlice(const void* key)
+    {
+        SPIELER_ASSERT(m_Resource.get());
+        SPIELER_ASSERT(!m_Slices.contains(key));
+
+        const ConstantBufferSlice slice{ this, m_Resource->GetStride() * static_cast<uint32_t>(m_Slices.size()) };
+
+        m_Slices[key] = slice;
+    }
+    
+} // namespace spieler::renderer

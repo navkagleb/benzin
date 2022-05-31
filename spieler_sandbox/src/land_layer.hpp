@@ -3,11 +3,12 @@
 #include <vector>
 #include <unordered_map>
 
+#if 0
+
 #include <spieler/layer.hpp>
 #include <spieler/window/window.hpp>
 #include <spieler/window/window_event.hpp>
 #include <spieler/renderer/renderer.hpp>
-#include <spieler/renderer/descriptor_heap.hpp>
 #include <spieler/renderer/shader.hpp>
 #include <spieler/renderer/pipeline_state.hpp>
 #include <spieler/renderer/mesh.hpp>
@@ -20,7 +21,7 @@
 #include "waves.hpp"
 #include "light_controller.hpp"
 
-namespace Sandbox
+namespace sandbox
 {
 
     template <typename T>
@@ -41,19 +42,19 @@ namespace Sandbox
 
     struct MeshUploadBuffer
     {
-        Spieler::UploadBuffer VertexUploadBuffer;
-        Spieler::UploadBuffer IndexUploadBuffer;
+        spieler::UploadBuffer VertexUploadBuffer;
+        spieler::UploadBuffer IndexUploadBuffer;
     };
 
-    class LandLayer : public Spieler::Layer
+    class LandLayer : public spieler::Layer
     {
     public:
-        LandLayer(Spieler::Window& window, Spieler::Renderer& renderer);
+        LandLayer(spieler::Window& window, spieler::Renderer& renderer);
 
     public:
         bool OnAttach() override;
 
-        void OnEvent(Spieler::Event& event) override;
+        void OnEvent(spieler::Event& event) override;
         void OnUpdate(float dt) override;
         bool OnRender(float dt) override;
         void OnImGuiRender(float dt) override;
@@ -61,11 +62,11 @@ namespace Sandbox
     private:
         bool InitDescriptorHeaps();
         bool InitUploadBuffers();
-        bool InitTextures(Spieler::UploadBuffer& grassTextureUploadBuffer, Spieler::UploadBuffer& waterTextureUploadBuffer);
+        bool InitTextures(spieler::UploadBuffer& uploadBuffer);
         void InitMaterials();
-        bool InitMeshGeometry(MeshUploadBuffer& meshUploadBuffer);
-        bool InitLandGeometry(MeshUploadBuffer& landUploadBuffer);
-        bool InitWavesGeometry(MeshUploadBuffer& wavesUploadBuffer);
+        bool InitMeshGeometry(spieler::UploadBuffer& uploadBuffer);
+        bool InitLandGeometry(spieler::UploadBuffer& uploadBuffer);
+        bool InitWavesGeometry(spieler::UploadBuffer& uploadBuffer);
         bool InitRootSignature();
         bool InitPipelineState();
 
@@ -74,7 +75,7 @@ namespace Sandbox
         void InitViewport();
         void InitScissorRect();
 
-        bool OnWindowResized(Spieler::WindowResizedEvent& event);
+        bool OnWindowResized(spieler::WindowResizedEvent& event);
 
         void UpdateWavesVertexBuffer(float dt);
 
@@ -87,32 +88,32 @@ namespace Sandbox
         const std::uint32_t                 m_MaterialCount{ 2 };
 
     private:
-        Spieler::Window&                    m_Window;
-        Spieler::Renderer&                  m_Renderer;
+        spieler::Window&                    m_Window;
+        spieler::Renderer&                  m_Renderer;
 
-        Spieler::Viewport                   m_Viewport;
-        Spieler::ScissorRect                m_ScissorRect;
+        spieler::Viewport                   m_Viewport;
+        spieler::ScissorRect                m_ScissorRect;
 
         DirectX::XMFLOAT4                   m_ClearColor{ 0.1f, 0.1f, 0.1f, 1.0f };
 
         ProjectionCameraController          m_CameraController;
 
-        LookUpTable<Spieler::DescriptorHeap> m_DescriptorHeaps;
-        LookUpTable<Spieler::UploadBuffer>  m_UploadBuffers;
-        LookUpTable<Spieler::Texture2D>     m_Textures;
-        LookUpTable<Spieler::VertexBufferView> m_VertexBufferViews;
-        LookUpTable<Spieler::IndexBufferView> m_IndexBufferViews;
-        LookUpTable<Spieler::MeshGeometry>  m_MeshGeometries;
-        LookUpTable<Spieler::RootSignature> m_RootSignatures;
-        LookUpTable<Spieler::VertexShader>  m_VertexShaders;
-        LookUpTable<Spieler::PixelShader>   m_PixelShaders;
-        LookUpTable<Spieler::PipelineState> m_PipelineStates;
-        LookUpTable<Spieler::Material>      m_Materials;
+        LookUpTable<spieler::DescriptorHeap> m_DescriptorHeaps;
+        LookUpTable<spieler::Reference<spieler::UploadBuffer>> m_UploadBuffers;
+        LookUpTable<spieler::Texture2D>     m_Textures;
+        LookUpTable<spieler::MeshGeometry>  m_MeshGeometries;
+        LookUpTable<spieler::RootSignature> m_RootSignatures;
+        LookUpTable<spieler::VertexShader>  m_VertexShaders;
+        LookUpTable<spieler::PixelShader>   m_PixelShaders;
+        LookUpTable<spieler::PipelineState> m_PipelineStates;
+        LookUpTable<spieler::Material>      m_Materials;
+
+        spieler::VertexBufferView           m_WaterVertexBufferView;
         
-        LookUpTable<Spieler::RenderItem>    m_LitRenderItems;
-        LookUpTable<Spieler::RenderItem>    m_BlendedRenderItems;
-        LookUpTable<Spieler::RenderItem>    m_ColorRenderItems;
-        Spieler::ConstantBuffer             m_PassConstantBuffer;
+        LookUpTable<spieler::RenderItem>    m_LitRenderItems;
+        LookUpTable<spieler::RenderItem>    m_BlendedRenderItems;
+        LookUpTable<spieler::RenderItem>    m_ColorRenderItems;
+        spieler::ConstantBuffer             m_PassConstantBuffer;
 
         DirectionalLightController          m_DirectionalLightController;
         PointLightController                m_PointLightController;
@@ -121,4 +122,6 @@ namespace Sandbox
         Waves                               m_Waves;
     };
 
-} // namespace Sandbox
+} // namespace sandbox
+
+#endif

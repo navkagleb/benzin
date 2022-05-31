@@ -1,35 +1,7 @@
 #pragma once
 
-#include <variant>
-
-#include <DirectXMath.h>
-
-namespace Spieler
+namespace spieler::renderer
 {
-
-    struct DirectionalLightConstants
-    {
-        alignas(16) DirectX::XMFLOAT3 Strength{};
-        alignas(16) DirectX::XMFLOAT3 Direction{};
-    };
-
-    struct PointLightConstants
-    {
-        DirectX::XMFLOAT3   Strength{};
-        float               FalloffStart{ 0.0f };
-        DirectX::XMFLOAT3   Position{};
-        float               FalloffEnd{ 0.0f };
-    };
-
-    struct SpotLightConstants
-    {
-        DirectX::XMFLOAT3   Strength{};
-        float               FalloffStart{ 0.0f };
-        DirectX::XMFLOAT3   Position{};
-        float               FalloffEnd{ 0.0f };
-        DirectX::XMFLOAT3   Direction{};
-        float               SpotPower{ 0.0f };
-    };
 
     struct LightConstants
     {
@@ -41,4 +13,4 @@ namespace Spieler
         float SpotPower{ 0.0f };
     };
 
-} // namespace Spieler
+} // namespace spieler::renderer

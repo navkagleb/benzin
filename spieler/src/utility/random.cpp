@@ -1,25 +1,26 @@
-#include "utility/random.hpp"
+#include "spieler/config/bootstrap.hpp"
 
-#include <chrono>
+#include "spieler/utility/random.hpp"
 
-namespace Spieler
+namespace spieler
 { 
+
+    static Random g_Instance;
 
     Random& Random::GetInstance()
     {
-        static Random instance;
-        return instance;
+        return g_Instance;
     }
 
     Random::Random()
     {
-        std::seed_seq seedSequence
+        const std::seed_seq seedSequence
         {
             std::random_device()(),
-            static_cast<std::uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())
+            static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())
         };
 
         m_MersenneTwisterEngine = std::mt19937_64(seedSequence);
     }
 
-} // namespace Spieler
+} // namespace spieler

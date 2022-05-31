@@ -1,18 +1,20 @@
-#include <spieler/application.hpp>
+#include "bootstrap.hpp"
+
+#include <spieler/core/application.hpp>
 
 #include "test_layer.hpp"
 #include "land_layer.hpp"
 
-namespace Sandbox
+namespace sandbox
 {
 
-    class Application : public Spieler::Application
+    class Application : public spieler::Application
     {
     public:
         bool InitExternal() override
         {
-            //SPIELER_RETURN_IF_FAILED(PushLayer<TestLayer>(m_Window, m_Renderer));
-            SPIELER_RETURN_IF_FAILED(PushLayer<LandLayer>(m_Window, m_Renderer));
+            SPIELER_RETURN_IF_FAILED(PushLayer<TestLayer>(*m_Window));
+            //SPIELER_RETURN_IF_FAILED(PushLayer<LandLayer>(m_Window, m_Renderer));
             
             return true;
         }
@@ -20,7 +22,7 @@ namespace Sandbox
 
 } // namespace Sandbox
 
-Spieler::Application* Spieler::CreateApplication()
+spieler::Application* spieler::CreateApplication()
 {
-    return new Sandbox::Application;
+    return sandbox::Application::CreateInstance<sandbox::Application>("Sandbox", 1280, 720);
 }

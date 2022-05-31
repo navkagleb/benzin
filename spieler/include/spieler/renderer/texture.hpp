@@ -1,48 +1,94 @@
 #pragma once
 
-#include <string>
-#include <memory>
-#include <vector>
+#include "spieler/renderer/resource.hpp"
+#include "spieler/renderer/types.hpp"
+#include "spieler/renderer/descriptor_manager.hpp"
+#include "spieler/renderer/upload_buffer.hpp"
+#include "spieler/renderer/resource_view.hpp"
 
-#include "renderer_object.hpp"
-
-namespace Spieler
+namespace spieler::renderer
 {
 
-    class DescriptorHeap;
-    class UploadBuffer;
+    class Device;
+    class Context;
 
-    class Texture2D : public RendererObject
+    struct Image
     {
-    public:
-        friend class ShaderResourceView;
-
-    public:
-        bool LoadFromDDSFile(const std::wstring& filename, UploadBuffer& uploadBuffer);
-
-        void SetDebugName(const std::wstring& name) { m_Texture->SetName(name.c_str()); }
-
-    private:
-        ComPtr<ID3D12Resource> m_Texture;
-        std::unique_ptr<std::uint8_t[]> m_Data;
-        std::vector<D3D12_SUBRESOURCE_DATA> m_SubresourceData;
+        std::unique_ptr<uint8_t[]> Data;
     };
 
-    class ShaderResourceView : public RendererObject
+    class Texture2DResource : public Resource
     {
     public:
-        ShaderResourceView() = default;
-        ShaderResourceView(const Texture2D& texture2D, const DescriptorHeap& descriptorHeap, std::uint32_t index);
+        GraphicsFormat GetFormat() const { return m_Format; }
 
     public:
-        void Init(const Texture2D& texture2D, const DescriptorHeap& descriptorHeap, std::uint32_t index);
-
-    public:
-        void Bind(std::uint32_t rootParameterIndex) const;
+        bool InitAsDepthStencil(Device& device, const Texture2DConfig& config, const DepthStencilClearValue& depthStencilClearValue);
+        bool LoadFromDDSFile(Device& device, Context& context, const std::wstring& filename, UploadBuffer& uploadBuffer);
+        void SetResource(ComPtr<ID3D12Resource>&& resource);
 
     private:
-        const DescriptorHeap* m_DescriptorHeap{ nullptr };
-        std::uint32_t m_Index{ 0 };
+        GraphicsFormat m_Format{ GraphicsFormat::UNKNOWN };
+        Image m_Image;
     };
 
-} // namespace Spieler
+    template <typename T>
+    concept TextureResourceView = std::_Is_any_of_v<T, RenderTargetView, DepthStencilView, ShaderResourceView>;
+
+    class Texture2D
+    {
+    private:
+        using ResourceViewInternal = std::variant<RenderTargetView, DepthStencilView, ShaderResourceView>;
+        using ViewContainer = std::unordered_map<uint64_t, ResourceViewInternal>;
+
+    public:
+        Texture2D() = default;
+
+    public:
+        // Resource
+        Texture2DResource& GetResource() { return m_Resource; }
+        const Texture2DResource& GetResource() const { return m_Resource; }
+
+        // View
+        template <TextureResourceView ResourceView> const ResourceView& GetView() const;
+        template <TextureResourceView ResourceView> void SetView(Device& device);
+        template <TextureResourceView ResourceView> bool IsViewExist() const;
+
+        void Reset();
+
+    private:
+        template <TextureResourceView ResourceView>
+        static uint64_t GetHashCode();
+
+    private:
+        Texture2DResource m_Resource;
+        ViewContainer m_Views;
+    };
+
+    template <TextureResourceView ResourceView>
+    const ResourceView& Texture2D::GetView() const
+    {
+        return std::get<ResourceView>(m_Views.at(GetHashCode<ResourceView>()));
+    }
+
+    template <TextureResourceView ResourceView>
+    void Texture2D::SetView(Device& device)
+    {
+        SPIELER_ASSERT(m_Resource.GetResource());
+
+        m_Views[GetHashCode<ResourceView>()] = ResourceView{ device, m_Resource };
+    }
+
+    template <TextureResourceView ResourceView>
+    bool Texture2D::IsViewExist() const
+    {
+        return m_Views.contains(GetHashCode<ResourceView>());
+    }
+
+    template <TextureResourceView ResourceView>
+    static uint64_t Texture2D::GetHashCode()
+    {
+        return static_cast<uint64_t>(typeid(ResourceView).hash_code());
+    }
+
+} // namespace spieler::renderer
