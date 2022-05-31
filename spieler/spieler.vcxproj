@@ -1,0 +1,252 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Final|x64">
+      <Configuration>Final</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\config\bootstrap.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Final|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">spieler/config/bootstrap.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Final|x64'">spieler/config/bootstrap.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">spieler/config/bootstrap.hpp</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\core\logger.cpp" />
+    <ClCompile Include="src\platform\win64_input.cpp" />
+    <ClCompile Include="src\platform\win64_window.cpp" />
+    <ClCompile Include="src\renderer\buffer.cpp" />
+    <ClCompile Include="src\renderer\context.cpp" />
+    <ClCompile Include="src\renderer\descriptor_manager.cpp" />
+    <ClCompile Include="src\renderer\device.cpp" />
+    <ClCompile Include="src\renderer\mapped_data.cpp" />
+    <ClCompile Include="src\renderer\blend_state.cpp" />
+    <ClCompile Include="src\renderer\mesh.cpp" />
+    <ClCompile Include="src\renderer\resource_view.cpp" />
+    <ClCompile Include="src\renderer\swap_chain.cpp" />
+    <ClCompile Include="src\renderer\texture.cpp" />
+    <ClCompile Include="src\renderer\upload_buffer.cpp" />
+    <ClCompile Include="src\utility\random.cpp" />
+    <ClCompile Include="src\core\layer_stack.cpp" />
+    <ClCompile Include="src\renderer\fence.cpp" />
+    <ClCompile Include="src\renderer\pipeline_state.cpp" />
+    <ClCompile Include="src\renderer\renderer.cpp" />
+    <ClCompile Include="src\core\application.cpp" />
+    <ClCompile Include="src\core\entry_point.cpp" />
+    <ClCompile Include="src\renderer\constant_buffer.cpp" />
+    <ClCompile Include="src\renderer\index_buffer.cpp" />
+    <ClCompile Include="src\renderer\resource.cpp" />
+    <ClCompile Include="src\renderer\vertex_buffer.cpp" />
+    <ClCompile Include="src\renderer\root_signature.cpp" />
+    <ClCompile Include="src\renderer\shader.cpp" />
+    <ClCompile Include="src\system\input.cpp" />
+    <ClCompile Include="src\system\window.cpp" />
+    <ClCompile Include="src\core\timer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\spieler\config\build_config.hpp" />
+    <ClInclude Include="include\spieler\config\engine_config.hpp" />
+    <ClInclude Include="include\spieler\core\assert.hpp" />
+    <ClInclude Include="include\spieler\core\class_modifiers.hpp" />
+    <ClInclude Include="include\spieler\core\logger.hpp" />
+    <ClInclude Include="include\spieler\math\math.hpp" />
+    <ClInclude Include="include\spieler\math\matrix.hpp" />
+    <ClInclude Include="include\spieler\math\vector.hpp" />
+    <ClInclude Include="include\spieler\renderer\blend_state.hpp" />
+    <ClInclude Include="include\spieler\renderer\buffer.hpp" />
+    <ClInclude Include="include\spieler\renderer\context.hpp" />
+    <ClInclude Include="include\spieler\renderer\depth_stencil_state.hpp" />
+    <ClInclude Include="include\spieler\renderer\descriptor_manager.hpp" />
+    <ClInclude Include="include\spieler\renderer\device.hpp" />
+    <ClInclude Include="include\spieler\renderer\light.hpp" />
+    <ClInclude Include="include\spieler\renderer\mapped_data.hpp" />
+    <ClInclude Include="include\spieler\renderer\resource_barrier.hpp" />
+    <ClInclude Include="include\spieler\renderer\resource_view.hpp" />
+    <ClInclude Include="include\spieler\renderer\sampler.hpp" />
+    <ClInclude Include="include\spieler\renderer\swap_chain.hpp" />
+    <ClInclude Include="include\spieler\renderer\texture.hpp" />
+    <ClInclude Include="include\spieler\renderer\types.hpp" />
+    <ClInclude Include="include\spieler\renderer\upload_buffer.hpp" />
+    <ClInclude Include="include\spieler\utility\random.hpp" />
+    <ClInclude Include="include\spieler\system\input.hpp" />
+    <ClInclude Include="include\spieler\system\key_code.hpp" />
+    <ClInclude Include="include\spieler\core\layer.hpp" />
+    <ClInclude Include="include\spieler\core\layer_stack.hpp" />
+    <ClInclude Include="include\spieler\system\mouse_button.hpp" />
+    <ClInclude Include="include\spieler\renderer\fence.hpp" />
+    <ClInclude Include="include\spieler\renderer\constant_buffer.hpp" />
+    <ClInclude Include="include\spieler\renderer\geometry_generator.hpp" />
+    <ClInclude Include="include\spieler\renderer\mesh.hpp" />
+    <ClInclude Include="include\spieler\renderer\index_buffer.hpp" />
+    <ClInclude Include="include\spieler\renderer\input_layout.hpp" />
+    <ClInclude Include="include\spieler\renderer\pipeline_state.hpp" />
+    <ClInclude Include="include\spieler\renderer\rasterizer_state.hpp" />
+    <ClInclude Include="include\spieler\renderer\renderer.hpp" />
+    <ClInclude Include="include\spieler\core\application.hpp" />
+    <ClInclude Include="include\spieler\core\common.hpp" />
+    <ClInclude Include="include\spieler\system\event.hpp" />
+    <ClInclude Include="include\spieler\system\event_dispatcher.hpp" />
+    <ClInclude Include="include\spieler\system\key_event.hpp" />
+    <ClInclude Include="include\spieler\system\mouse_event.hpp" />
+    <ClInclude Include="include\spieler\renderer\resource.hpp" />
+    <ClInclude Include="include\spieler\renderer\root_signature.hpp" />
+    <ClInclude Include="include\spieler\renderer\shader.hpp" />
+    <ClInclude Include="include\spieler\renderer\vertex_buffer.hpp" />
+    <ClInclude Include="include\spieler\system\window.hpp" />
+    <ClInclude Include="include\spieler\core\timer.hpp" />
+    <ClInclude Include="include\spieler\system\window_event.hpp" />
+    <ClInclude Include="include\spieler\config\bootstrap.hpp" />
+    <ClInclude Include="include\spieler\config\dx12_includes.hpp" />
+    <ClInclude Include="include\spieler\config\win64_includes.hpp" />
+    <ClInclude Include="src\platform\win64_input.hpp" />
+    <ClInclude Include="src\platform\win64_window.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="include\spieler\core\logger.inl" />
+    <None Include="include\spieler\renderer\geometry_generator.inl" />
+    <None Include="include\spieler\renderer\shader.inl" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{f8c42351-53d3-438f-ab22-bf5c097716eb}</ProjectGuid>
+    <RootNamespace>spieler</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Final|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Final|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin\int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <PublicIncludeDirectories>$(ProjectDir)include;$(PublicIncludeDirectories)</PublicIncludeDirectories>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin\int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <PublicIncludeDirectories>$(ProjectDir)include;$(PublicIncludeDirectories)</PublicIncludeDirectories>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Final|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin\int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <PublicIncludeDirectories>$(ProjectDir)include;$(PublicIncludeDirectories)</PublicIncludeDirectories>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;SPIELER_WIN64;SPIELER_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir)src;$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>5105</DisableSpecificWarnings>
+      <PrecompiledHeaderFile>spieler/config/bootstrap.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PreprocessToFile>false</PreprocessToFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d12.lib;d3dcompiler.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);;SPIELER_WINDOWS</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir)src;$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>5105</DisableSpecificWarnings>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>spieler/config/bootstrap.hpp</PrecompiledHeaderFile>
+      <PreprocessToFile>false</PreprocessToFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d12.lib;d3dcompiler.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Final|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;SPIELER_FINAL;%(PreprocessorDefinitions);;SPIELER_WINDOWS</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir)src;$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>5105</DisableSpecificWarnings>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>spieler/config/bootstrap.hpp</PrecompiledHeaderFile>
+      <PreprocessToFile>false</PreprocessToFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d12.lib;d3dcompiler.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
