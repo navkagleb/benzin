@@ -20,7 +20,6 @@
 #include <spieler/math/matrix.hpp>
 
 #include <spieler/utility/random.hpp>
-#include <spieler/utility/bits.hpp>
 
 namespace sandbox
 {
@@ -101,8 +100,6 @@ namespace sandbox
 
     bool TestLayer::OnAttach()
     {
-        spieler::Bits<spieler::renderer::BufferFlags> flags;
-
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
