@@ -5,7 +5,7 @@ namespace spieler
 
 #define EVENT_CLASS_TYPE(ClassName)                                                                     \
 public:                                                                                                 \
-    static EventType GetStaticEventType() { return EventType::##ClassName; }                            \
+    static EventType GetStaticEventType() { return EventType::ClassName; }                              \
                                                                                                         \
 public:                                                                                                 \
     EventType GetEventType() const override { return GetStaticEventType(); }                            \

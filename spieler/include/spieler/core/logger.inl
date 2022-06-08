@@ -1,12 +1,6 @@
 namespace spieler
 {
 
-    template <typename... Args>
-    std::string Logger::Format(const std::string& format, Args&&... args)
-    {
-        return std::format(format, std::forward<Args>(args)...);
-    }
-
     template <std::integral T>
     Logger& Logger::operator<< (T integral)
     {

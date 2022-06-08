@@ -58,7 +58,7 @@ namespace spieler::renderer
 
             if (error)
             {
-                SPIELER_CRITICAL(reinterpret_cast<const char*>(error->GetBufferPointer()));
+                SPIELER_CRITICAL("{}", static_cast<const char*>(error->GetBufferPointer()));
                 return false;
             }
 

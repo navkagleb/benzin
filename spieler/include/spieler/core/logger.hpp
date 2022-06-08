@@ -1,11 +1,13 @@
 #pragma once
 
+#include <third_party/fmt/format.h>
+
 namespace spieler
 {
 
-#define _SPIELER_LOGGER_TEXT_COLOR(textColor) static Logger& ##textColor(Logger& logger) { return logger.SetAttribute(Color::##textColor, Color::Black); }
-#define _SPIELER_LOGGER_BACKGROUND_COLOR(backgroundColor) static Logger& On##backgroundColor(Logger& logger) { return logger.SetAttribute(Color::White, Color::##backgroundColor); }
-#define _SPIELER_LOGGER_TEXT_BACKGROUND_COLOR(TextColor, BackgroundColor) static Logger& ##TextColor##On##BackgroundColor(Logger& logger) { return logger.SetAttribute(Color::##TextColor, Color::##BackgroundColor); }
+#define _SPIELER_LOGGER_TEXT_COLOR(textColor) static Logger& textColor(Logger& logger) { return logger.SetAttribute(Color::textColor, Color::Black); }
+#define _SPIELER_LOGGER_BACKGROUND_COLOR(backgroundColor) static Logger& On##backgroundColor(Logger& logger) { return logger.SetAttribute(Color::White, Color::backgroundColor); }
+#define _SPIELER_LOGGER_TEXT_BACKGROUND_COLOR(TextColor, BackgroundColor) static Logger& TextColor##On##BackgroundColor(Logger& logger) { return logger.SetAttribute(Color::TextColor, Color::BackgroundColor); }
 
 #define _SPIELER_LOGGER_TEXT_BACKGROUND_COLOR_SECTION(Background)                       \
     _SPIELER_LOGGER_TEXT_BACKGROUND_COLOR(Black, Background)                            \
@@ -56,9 +58,6 @@ namespace spieler
         static Logger& Reset(Logger& logger);
         static Logger& Flush(Logger& logger);
         static Logger& EndLine(Logger& logger);
-
-        template <typename... Args>
-        static std::string Format(const std::string& format, Args&&... args);
 
         _SPIELER_LOGGER_TEXT_COLOR(Black)
         _SPIELER_LOGGER_TEXT_COLOR(Blue)
@@ -139,10 +138,10 @@ namespace spieler
 #undef _SPIELER_LOGGER_TEXT_BACKGROUND_COLOR
 #undef _SPIELER_LOGGER_TEXT_BACKGROUND_COLOR_SECTION
 
-#define _SPIELER_LOGGER_LOG(type, color, format, ...)                                                                                           \
-{                                                                                                                                               \
-    using namespace ::spieler;                                                                                                                  \
-    Logger::GetInstance() << Logger::##color << "["##type"] " << Logger::Reset << Logger::Format(format, __VA_ARGS__) << Logger::EndLine;       \
+#define _SPIELER_LOGGER_LOG(type, Color, formatString, ...)                                                                                         \
+{                                                                                                                                                   \
+    using namespace ::spieler;                                                                                                                      \
+    Logger::GetInstance() << Logger::Color << "[ " << type << "] " << Logger::Reset << fmt::format(formatString, __VA_ARGS__) << Logger::EndLine;   \
 }
 
 #define SPIELER_INFO(format, ...) _SPIELER_LOGGER_LOG("INFO", Green, format, __VA_ARGS__)
