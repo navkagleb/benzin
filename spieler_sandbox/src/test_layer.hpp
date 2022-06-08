@@ -173,10 +173,10 @@ namespace sandbox
                 return m_ShaderLibrary.CreateShader<Type>(filename, entryPoints.at(Type), permutation);
             }
         }
-        else
+        /*else
         {
             static_assert(false);
-        }
+        }*/
 
         return m_ShaderLibrary.GetShader<Type>(permutation);
     }

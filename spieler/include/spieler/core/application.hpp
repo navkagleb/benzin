@@ -64,7 +64,7 @@ namespace spieler
         bool OnWindowFocused(WindowFocusedEvent& event);
         bool OnWindowUnfocused(WindowUnfocusedEvent& event);
 
-        void CalcStats();
+        void CalcStats(float dt);
 
         void UpdateScreenViewport();
         void UpdateScreenScissorRect();

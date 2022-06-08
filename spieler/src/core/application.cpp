@@ -6,6 +6,8 @@
 #include <third_party/imgui/imgui_impl_dx12.h>
 #include <third_party/imgui/imgui_impl_win32.h>
 
+#include <third_party/fmt/format.h>
+
 #include "platform/win64_window.hpp"
 #include "platform/win64_input.hpp"
 
@@ -72,6 +74,8 @@ namespace spieler
                 m_Timer.Tick();
 
                 const float dt{ m_Timer.GetDeltaTime() };
+
+                CalcStats(dt);
 
                 ImGui_ImplDX12_NewFrame();
                 ImGui_ImplWin32_NewFrame();
@@ -140,8 +144,6 @@ namespace spieler
 
     void Application::OnUpdate(float dt)
     {
-        CalcStats();
-
         m_LayerStack.OnUpdate(dt);
     }
 
@@ -280,23 +282,11 @@ namespace spieler
         return false;
     }
 
-    void Application::CalcStats()
+    void Application::CalcStats(float dt)
     {
-        static const float limit{ 1.0f };
-        static const float coefficient{ 1.0f / limit };
+        const float fps{ 1.0f / dt };
 
-        static uint32_t fps{ 0 };
-        static float timeElapsed{ 0.0f };
-
-        ++fps;
-
-        if (float delta = m_Timer.GetTotalTime() - timeElapsed; delta >= limit)
-        {
-            m_Window->SetTitle("FPS: " + std::to_string(fps * coefficient) + " ms: " + std::to_string(1000.0f / coefficient / fps));
-
-            fps = 0;
-            timeElapsed += delta;
-        }
+        m_Window->SetTitle(fmt::format("FPS: {:.2f}, ms: {:.2f}", fps, dt * 1000.0f));
     }
 
     void Application::UpdateScreenViewport()

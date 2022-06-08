@@ -9,6 +9,7 @@ namespace spieler
         Timer();
 
     public:
+        // Return in seconds
         float GetDeltaTime() const { return m_DeltaTime; }
 
         float GetTotalTime() const;
