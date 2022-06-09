@@ -46,6 +46,9 @@
     <ClInclude Include="src\test_layer.hpp" />
     <ClInclude Include="src\waves.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="src\test_layer.inl" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

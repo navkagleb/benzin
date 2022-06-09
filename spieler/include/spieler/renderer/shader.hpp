@@ -39,20 +39,11 @@ namespace spieler::renderer
     public:
         friend class ShaderLibrary;
 
-    private:
-        struct Config
-        {
-            ShaderType Type{ ShaderType::None };
-            std::wstring Filename;
-            std::string EntryPoint;
-            DefineContainer Defines;
-        };
-
     public:
         Shader() = default;
 
     private:
-        Shader(const Config& config);
+        Shader(ShaderType type, const std::wstring& filename, const std::string& entryPoint, const DefineContainer& defines);
 
     public:
         const void* GetData() const;
@@ -62,17 +53,25 @@ namespace spieler::renderer
         ComPtr<ID3DBlob> m_ByteCode;
     };
 
+    template <typename Permutations>
+    struct ShaderConfig
+    {
+        std::wstring Filename;
+        std::string EntryPoint;
+        ShaderPermutation<Permutations> Permutation;
+    };
+
     class ShaderLibrary
     {
     public:
-        template <ShaderType Type, typename Permutations>
-        Shader& CreateShader(const std::wstring& filename, const std::string& entryPoint, const ShaderPermutation<Permutations>& permutations);
+        template <typename Permutations>
+        Shader& CreateShader(ShaderType Type, const ShaderConfig<Permutations>& config);
 
-        template <ShaderType Type, typename Permutations>
-        bool HasShader(const ShaderPermutation<Permutations>& permutation) const;
+        template <typename Permutations>
+        bool HasShader(ShaderType Type, const ShaderPermutation<Permutations>& permutation) const;
 
-        template <ShaderType Type, typename Permutations>
-        const Shader& GetShader(const ShaderPermutation<Permutations>& permutation) const;
+        template <typename Permutations>
+        const Shader& GetShader(ShaderType type, const ShaderPermutation<Permutations>& permutation) const;
 
     private:
         std::unordered_map<ShaderType, std::unordered_map<uint64_t, Shader>> m_Shaders;

@@ -85,8 +85,10 @@ namespace sandbox
         void InitRenderItems();
         void InitLights();
 
-        template <spieler::renderer::ShaderType Type, typename Permutations>
-        const spieler::renderer::Shader& GetShader(const spieler::renderer::ShaderPermutation<Permutations>& permutation);
+        template <typename Permutations>
+        const spieler::renderer::Shader& GetShader(spieler::renderer::ShaderType type, const spieler::renderer::ShaderPermutation<Permutations>& permutation);
+
+        
 
         void UpdateViewport();
         void UpdateScissorRect();
@@ -136,49 +138,6 @@ namespace sandbox
         DirectionalLightController m_DirectionalLightController;
     };
 
-    template <spieler::renderer::ShaderType Type, typename Permutations>
-    const spieler::renderer::Shader& TestLayer::GetShader(const spieler::renderer::ShaderPermutation<Permutations>& permutation)
-    {
-        static const std::unordered_map<spieler::renderer::ShaderType, std::string> entryPoints
-        {
-            { spieler::renderer::ShaderType::Vertex, "VS_Main" },
-            { spieler::renderer::ShaderType::Pixel, "PS_Main" },
-            { spieler::renderer::ShaderType::Geometry, "GS_Main" }
-        };
-
-        if constexpr (std::is_same_v<per::Billboard, Permutations>)
-        {
-            static const std::wstring filename{ L"assets/shaders/billboard.hlsl" };
-
-            if (!m_ShaderLibrary.HasShader<Type>(permutation))
-            {
-                return m_ShaderLibrary.CreateShader<Type>(filename, entryPoints.at(Type), permutation);
-            }
-        }
-        else if constexpr (std::is_same_v<per::Texture, Permutations>)
-        {
-            static const std::wstring filename{ L"assets/shaders/texture.hlsl" };
-
-            if (!m_ShaderLibrary.HasShader<Type>(permutation))
-            {
-                return m_ShaderLibrary.CreateShader<Type>(filename, entryPoints.at(Type), permutation);
-            }
-        }
-        else if constexpr (std::is_same_v<per::Color, Permutations>)
-        {
-            static const std::wstring filename{ L"assets/shaders/color2.hlsl" };
-
-            if (!m_ShaderLibrary.HasShader<Type>(permutation))
-            {
-                return m_ShaderLibrary.CreateShader<Type>(filename, entryPoints.at(Type), permutation);
-            }
-        }
-        /*else
-        {
-            static_assert(false);
-        }*/
-
-        return m_ShaderLibrary.GetShader<Type>(permutation);
-    }
-
 } // namespace sandbox
+
+#include "test_layer.inl"

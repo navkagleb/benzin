@@ -113,13 +113,13 @@ namespace spieler::renderer
         return static_cast<uint32_t>(m_ByteCode->GetBufferSize());
     }
 
-    Shader::Shader(const Config& config)
+    Shader::Shader(ShaderType type, const std::wstring& filename, const std::string& entryPoint, const DefineContainer& defines)
     {
         SPIELER_ASSERT(_internal::CompileFromFile(
-            config.Filename, 
-            config.EntryPoint, 
-            _internal::GetShaderTarget(config.Type),
-            config.Defines,
+            filename, 
+            entryPoint, 
+            _internal::GetShaderTarget(type),
+            defines,
             m_ByteCode
         ));
     }

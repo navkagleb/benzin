@@ -41,34 +41,26 @@ namespace spieler::renderer
     }
 
     // ShaderLibrary
-    template <ShaderType Type, typename Permutations>
-    Shader& ShaderLibrary::CreateShader(const std::wstring& filename, const std::string& entryPoint, const ShaderPermutation<Permutations>& permutation)
+    template <typename Permutations>
+    Shader& ShaderLibrary::CreateShader(ShaderType type, const ShaderConfig<Permutations>& config)
     {
-        SPIELER_ASSERT(!HasShader<Type>(permutation));
+        SPIELER_ASSERT(!HasShader(type, config.Permutation));
 
-        const Shader::Config config
-        {
-            .Type = Type,
-            .Filename = filename,
-            .EntryPoint = entryPoint,
-            .Defines = permutation.GetDefines()
-        };
-
-        return m_Shaders[Type][permutation.GetHash()] = config;
+        return m_Shaders[type][config.Permutation.GetHash()] = Shader{ type, config.Filename, config.EntryPoint, config.Permutation.GetDefines() };
     }
 
-    template <ShaderType Type, typename Permutations>
-    bool ShaderLibrary::HasShader(const ShaderPermutation<Permutations>& permutation) const
+    template <typename Permutations>
+    bool ShaderLibrary::HasShader(ShaderType type, const ShaderPermutation<Permutations>& permutation) const
     {
-        return m_Shaders.contains(Type) && m_Shaders.at(Type).contains(permutation.GetHash());
+        return m_Shaders.contains(type) && m_Shaders.at(type).contains(permutation.GetHash());
     }
 
-    template <ShaderType Type, typename Permutations>
-    const Shader& ShaderLibrary::GetShader(const ShaderPermutation<Permutations>& permutation) const
+    template <typename Permutations>
+    const Shader& ShaderLibrary::GetShader(ShaderType type, const ShaderPermutation<Permutations>& permutation) const
     {
-        SPIELER_ASSERT(HasShader<Type>(permutation));
+        SPIELER_ASSERT(HasShader(type, permutation));
 
-        return m_Shaders.at(Type).at(permutation.GetHash());
+        return m_Shaders.at(type).at(permutation.GetHash());
     }
 
 } // namespace spieler::renderer

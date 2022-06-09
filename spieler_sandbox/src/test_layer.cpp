@@ -62,27 +62,6 @@ namespace sandbox
 
     } // namespace cb
 
-#if 0
-    namespace per
-    {
-
-        enum class Texture
-        {
-            DIRECTIONAL_LIGHT_COUNT,
-            USE_ALPHA_TEST,
-            ENABLE_FOG
-        };
-
-        enum class Billboard
-        {
-            DIRECTIONAL_LIGHT_COUNT,
-            USE_ALPHA_TEST,
-            ENABLE_FOG
-        };
-
-    } // namespace per
-#endif
-
     struct ColorConstants
     {
         DirectX::XMFLOAT4 Color{ 1.0f, 1.0f, 1.0f, 1.0f };
@@ -793,8 +772,8 @@ namespace sandbox
 
         // PSO for lights
         {
-            const spieler::renderer::Shader& vertexShader{ GetShader<spieler::renderer::ShaderType::Vertex>(spieler::renderer::ShaderPermutation<per::Color>{}) };
-            const spieler::renderer::Shader& pixelShader{ GetShader<spieler::renderer::ShaderType::Pixel>(spieler::renderer::ShaderPermutation<per::Color>{}) };
+            const spieler::renderer::Shader& vertexShader{ GetShader(spieler::renderer::ShaderType::Vertex, spieler::renderer::ShaderPermutation<per::Color>{}) };
+            const spieler::renderer::Shader& pixelShader{ GetShader(spieler::renderer::ShaderType::Pixel, spieler::renderer::ShaderPermutation<per::Color>{}) };
 
             const spieler::renderer::RasterizerState rasterzerState
             {
@@ -824,8 +803,8 @@ namespace sandbox
             permutation.Set<per::Texture::USE_ALPHA_TEST>(true);
             permutation.Set<per::Texture::ENABLE_FOG>(true);
 
-            const spieler::renderer::Shader& vertexShader{ GetShader<spieler::renderer::ShaderType::Vertex>(permutation) };
-            const spieler::renderer::Shader& pixelShader{ GetShader<spieler::renderer::ShaderType::Pixel>(permutation) };
+            const spieler::renderer::Shader& vertexShader{ GetShader(spieler::renderer::ShaderType::Vertex, permutation) };
+            const spieler::renderer::Shader& pixelShader{ GetShader(spieler::renderer::ShaderType::Pixel, permutation) };
 
             const spieler::renderer::RasterizerState rasterizerState
             {
@@ -879,8 +858,8 @@ namespace sandbox
             permutation.Set<per::Texture::USE_ALPHA_TEST>(true);
             permutation.Set<per::Texture::ENABLE_FOG>(true);
 
-            const spieler::renderer::Shader& vertexShader{ GetShader<spieler::renderer::ShaderType::Vertex>(permutation) };
-            const spieler::renderer::Shader& pixelShader{ GetShader<spieler::renderer::ShaderType::Pixel>(permutation) };
+            const spieler::renderer::Shader& vertexShader{ GetShader(spieler::renderer::ShaderType::Vertex, permutation) };
+            const spieler::renderer::Shader& pixelShader{ GetShader(spieler::renderer::ShaderType::Pixel, permutation) };
 
             const spieler::renderer::BlendState blendState
             {
@@ -953,8 +932,8 @@ namespace sandbox
             permutation.Set<per::Texture::USE_ALPHA_TEST>(true);
             permutation.Set<per::Texture::ENABLE_FOG>(true);
 
-            const spieler::renderer::Shader& vertexShader{ GetShader<spieler::renderer::ShaderType::Vertex>(permutation) };
-            const spieler::renderer::Shader& pixelShader{ GetShader<spieler::renderer::ShaderType::Pixel>(permutation) };
+            const spieler::renderer::Shader& vertexShader{ GetShader(spieler::renderer::ShaderType::Vertex, permutation) };
+            const spieler::renderer::Shader& pixelShader{ GetShader(spieler::renderer::ShaderType::Pixel, permutation) };
 
             const spieler::renderer::RenderTargetBlendProps renderTargetBlendProps
             {
@@ -1040,8 +1019,8 @@ namespace sandbox
             permutation.Set<per::Texture::USE_ALPHA_TEST>(true);
             permutation.Set<per::Texture::ENABLE_FOG>(true);
 
-            const spieler::renderer::Shader& vertexShader{ GetShader<spieler::renderer::ShaderType::Vertex>(permutation) };
-            const spieler::renderer::Shader& pixelShader{ GetShader<spieler::renderer::ShaderType::Pixel>(permutation) };
+            const spieler::renderer::Shader& vertexShader{ GetShader(spieler::renderer::ShaderType::Vertex, permutation) };
+            const spieler::renderer::Shader& pixelShader{ GetShader(spieler::renderer::ShaderType::Pixel, permutation) };
 
             const spieler::renderer::RenderTargetBlendProps renderTargetBlendProps
             {
@@ -1126,9 +1105,9 @@ namespace sandbox
             permutation.Set<per::Billboard::USE_ALPHA_TEST>(true);
             permutation.Set<per::Billboard::ENABLE_FOG>(true);
 
-            const spieler::renderer::Shader& vertexShader{ GetShader<spieler::renderer::ShaderType::Vertex>(permutation) };
-            const spieler::renderer::Shader& pixelShader{ GetShader<spieler::renderer::ShaderType::Pixel>(permutation) };
-            const spieler::renderer::Shader& geometryShader{ GetShader<spieler::renderer::ShaderType::Geometry>(permutation) };
+            const spieler::renderer::Shader& vertexShader{ GetShader(spieler::renderer::ShaderType::Vertex, permutation) };
+            const spieler::renderer::Shader& pixelShader{ GetShader(spieler::renderer::ShaderType::Pixel, permutation) };
+            const spieler::renderer::Shader& geometryShader{ GetShader(spieler::renderer::ShaderType::Geometry, permutation) };
 
             // Blend state
             const spieler::renderer::RenderTargetBlendProps renderTargetBlendProps
