@@ -66,6 +66,10 @@ namespace spieler::renderer
     class ShaderResourceView : public ResourceView<SRVDescriptor>
     {
     public:
+        ShaderResourceView() = default;
+        ShaderResourceView(Device& device, const Texture2DResource& texture);
+
+    public:
         void Init(Device& device, const Texture2DResource& texture);
         void Bind(Context& context, uint32_t rootParameterIndex) const;
     };

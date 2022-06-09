@@ -88,8 +88,6 @@ namespace sandbox
         template <typename Permutations>
         const spieler::renderer::Shader& GetShader(spieler::renderer::ShaderType type, const spieler::renderer::ShaderPermutation<Permutations>& permutation);
 
-        
-
         void UpdateViewport();
         void UpdateScissorRect();
 
@@ -109,7 +107,7 @@ namespace sandbox
 
         ProjectionCameraController m_CameraController;
 
-        LookUpTable<spieler::renderer::Texture2DResource> m_Textures;
+        LookUpTable<spieler::renderer::Texture2D> m_Textures;
         LookUpTable<spieler::renderer::SamplerConfig> m_Samplers;
         LookUpTable<spieler::renderer::SamplerView> m_SamplerViews;
         LookUpTable<spieler::renderer::Material> m_Materials;

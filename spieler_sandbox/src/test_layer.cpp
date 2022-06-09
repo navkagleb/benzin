@@ -422,13 +422,62 @@ namespace sandbox
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
 
-        SPIELER_RETURN_IF_FAILED(m_Textures["white"].LoadFromDDSFile(device, context, L"assets/textures/white.dds", uploadBuffer));
-        SPIELER_RETURN_IF_FAILED(m_Textures["wood_crate1"].LoadFromDDSFile(device, context, L"assets/textures/wood_crate1.dds", uploadBuffer));
-        SPIELER_RETURN_IF_FAILED(m_Textures["wire_fence"].LoadFromDDSFile(device, context, L"assets/textures/wire_fence.dds", uploadBuffer));
-        SPIELER_RETURN_IF_FAILED(m_Textures["tile"].LoadFromDDSFile(device, context, L"assets/textures/tile.dds", uploadBuffer));
-        SPIELER_RETURN_IF_FAILED(m_Textures["bricks"].LoadFromDDSFile(device, context, L"assets/textures/bricks3.dds", uploadBuffer));
-        SPIELER_RETURN_IF_FAILED(m_Textures["mirror"].LoadFromDDSFile(device, context, L"assets/textures/ice.dds", uploadBuffer));
-        SPIELER_RETURN_IF_FAILED(m_Textures["tree_array"].LoadFromDDSFile(device, context, L"assets/textures/tree_array.dds", uploadBuffer));
+        // White texture
+        {
+            spieler::renderer::Texture2D& whiteTexture{ m_Textures["white"] };
+
+            SPIELER_ASSERT(whiteTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/white.dds", uploadBuffer));
+            whiteTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+        }
+
+        // Wood crate texture
+        {
+            spieler::renderer::Texture2D& woodCrateTexture{ m_Textures["wood_crate"] };
+
+            SPIELER_ASSERT(woodCrateTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/wood_crate1.dds", uploadBuffer));
+            woodCrateTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+        }
+
+        // Wire fence texture
+        {
+            spieler::renderer::Texture2D& wireFenceTexture{ m_Textures["wire_fence"] };
+
+            SPIELER_ASSERT(wireFenceTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/wire_fence.dds", uploadBuffer));
+            wireFenceTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+        }
+
+        // Tile texture
+        {
+            spieler::renderer::Texture2D& tileTexture{ m_Textures["tile"] };
+
+            SPIELER_ASSERT(tileTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/tile.dds", uploadBuffer));
+            tileTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+        }
+
+        // Bricks texture
+        {
+            spieler::renderer::Texture2D& bricksTexture{ m_Textures["bricks"] };
+
+
+            SPIELER_ASSERT(bricksTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/bricks3.dds", uploadBuffer));
+            bricksTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+        }
+        
+        // Mirror texture
+        {
+            spieler::renderer::Texture2D& mirrorTexture{ m_Textures["mirror"] };
+
+            SPIELER_ASSERT(mirrorTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/ice.dds", uploadBuffer));
+            mirrorTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+        }
+
+        // Tree atlas texture
+        {
+            spieler::renderer::Texture2D& treeAtlasTexture{ m_Textures["tree_atlas"] };
+
+            SPIELER_ASSERT(treeAtlasTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/tree_array.dds", uploadBuffer));
+            treeAtlasTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+        }
 
         return true;
     }
@@ -442,7 +491,7 @@ namespace sandbox
         // Wood crate material
         {
             spieler::renderer::Material& wood{ m_Materials["wood_crate1"] };
-            wood.DiffuseMap.Init(device, m_Textures["wood_crate1"]);
+            wood.DiffuseMap = m_Textures["wood_crate"].GetView<spieler::renderer::ShaderResourceView>();
 
             wood.Constants.DiffuseAlbedo = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
             wood.Constants.FresnelR0 = DirectX::XMFLOAT3(0.05f, 0.05f, 0.05f);
@@ -454,7 +503,7 @@ namespace sandbox
         // Wire fence material
         {
             spieler::renderer::Material& fence{ m_Materials["wire_fence"] };
-            fence.DiffuseMap.Init(device, m_Textures["wire_fence"]);
+            fence.DiffuseMap = m_Textures["wire_fence"].GetView<spieler::renderer::ShaderResourceView>();
 
             fence.Constants.DiffuseAlbedo = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
             fence.Constants.FresnelR0 = DirectX::XMFLOAT3(0.05f, 0.05f, 0.05f);
@@ -466,7 +515,7 @@ namespace sandbox
         // Tile material
         {
             spieler::renderer::Material& tile{ m_Materials["tile"] };
-            tile.DiffuseMap.Init(device, m_Textures["tile"]);
+            tile.DiffuseMap = m_Textures["tile"].GetView<spieler::renderer::ShaderResourceView>();
 
             tile.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
             tile.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.05f, 0.05f, 0.05f };
@@ -478,7 +527,7 @@ namespace sandbox
         // Bricks material
         {
             spieler::renderer::Material& bricks{ m_Materials["bricks"] };
-            bricks.DiffuseMap.Init(device, m_Textures["bricks"]);
+            bricks.DiffuseMap = m_Textures["bricks"].GetView<spieler::renderer::ShaderResourceView>();
 
             bricks.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
             bricks.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.05f, 0.05f, 0.05f };
@@ -490,7 +539,7 @@ namespace sandbox
         // Skull material
         {
             spieler::renderer::Material& skull{ m_Materials["skull"] };
-            skull.DiffuseMap.Init(device, m_Textures["white"]);
+            skull.DiffuseMap = m_Textures["white"].GetView<spieler::renderer::ShaderResourceView>();
 
             skull.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
             skull.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.05f, 0.05f, 0.05f };
@@ -502,7 +551,7 @@ namespace sandbox
         // Mirror material
         {
             spieler::renderer::Material& mirror{ m_Materials["mirror"] };
-            mirror.DiffuseMap.Init(device, m_Textures["mirror"]);
+            mirror.DiffuseMap = m_Textures["mirror"].GetView<spieler::renderer::ShaderResourceView>();
 
             mirror.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 0.3f };
             mirror.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.1f, 0.1f, 0.1f };
@@ -514,7 +563,7 @@ namespace sandbox
         // Shadow material
         {
             spieler::renderer::Material& shadow{ m_Materials["shadow"] };
-            shadow.DiffuseMap.Init(device, m_Textures["white"]);
+            shadow.DiffuseMap = m_Textures["white"].GetView<spieler::renderer::ShaderResourceView>();
 
             shadow.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 0.5f };
             shadow.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.001f, 0.001f, 0.001f };
@@ -526,7 +575,7 @@ namespace sandbox
         // Tree material
         {
             spieler::renderer::Material& tree{ m_Materials["tree"] };
-            tree.DiffuseMap.Init(device, m_Textures["tree_array"]);
+            tree.DiffuseMap = m_Textures["tree_atlas"].GetView<spieler::renderer::ShaderResourceView>();
 
             tree.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
             tree.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.01f, 0.01f, 0.01f };

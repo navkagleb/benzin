@@ -168,6 +168,11 @@ namespace spieler::renderer
     }
 #endif
 
+    ShaderResourceView::ShaderResourceView(Device& device, const Texture2DResource& texture)
+    {
+        Init(device, texture);
+    }
+
     void ShaderResourceView::Init(Device& device, const Texture2DResource& texture)
     {
         SPIELER_ASSERT(texture.GetResource());
