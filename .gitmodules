@@ -1,3 +1,0 @@
-[submodule "spieler/third_party/imgui"]
-	path = spieler/third_party/imgui
-	url = https://github.com/ocornut/imgui
