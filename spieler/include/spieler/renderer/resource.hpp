@@ -20,12 +20,12 @@ namespace spieler::renderer
     };
 
     // Texture
-    enum Texture2DFlags : uint8_t
+    enum class Texture2DFlags : uint8_t
     {
-        Texture2DFlags_None = D3D12_RESOURCE_FLAG_NONE,
-        Texture2DFlags_RenderTarget = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-        Texture2DFlags_DepthStencil = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
-        Texture2DFlags_UnorderedAccess = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        None = D3D12_RESOURCE_FLAG_NONE,
+        RenderTarget = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+        DepthStencil = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
+        UnorderedAccess = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
     };
 
     struct Texture2DConfig
@@ -33,7 +33,7 @@ namespace spieler::renderer
         uint64_t Width{ 0 };
         uint32_t Height{ 0 };
         GraphicsFormat Format{ GraphicsFormat::UNKNOWN };
-        Texture2DFlags Flags{ Texture2DFlags_None };
+        Texture2DFlags Flags{ Texture2DFlags::None };
     };
 
     struct TextureClearValue

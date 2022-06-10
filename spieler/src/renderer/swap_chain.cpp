@@ -160,7 +160,7 @@ namespace spieler::renderer
             .Width = width,
             .Height = height,
             .Format = m_DepthStencilFormat,
-            .Flags = Texture2DFlags_DepthStencil
+            .Flags = Texture2DFlags::DepthStencil
         };
 
         const DepthStencilClearValue depthStencilClearValue
