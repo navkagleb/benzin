@@ -28,6 +28,13 @@ namespace spieler::renderer
 #endif
     }
 
+    Texture2D& SwapChain::GetCurrentBuffer()
+    {
+        const uint32_t bufferIndex{ m_SwapChain3->GetCurrentBackBufferIndex() };
+
+        return m_Buffers[bufferIndex];
+    }
+
     const Texture2D& SwapChain::GetCurrentBuffer() const
     {
         const uint32_t bufferIndex{ m_SwapChain3->GetCurrentBackBufferIndex() };

@@ -36,6 +36,7 @@ namespace spieler::renderer
         GraphicsFormat GetDepthStencilFormat() const { return m_DepthStencilFormat; }
 
     public:
+        Texture2D& GetCurrentBuffer();
         const Texture2D& GetCurrentBuffer() const;
         const Texture2D& GetDepthStencil() const { return m_DepthStencil; }
 
