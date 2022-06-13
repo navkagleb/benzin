@@ -87,6 +87,10 @@ namespace spieler::renderer
                 {
                     return config::GetGeometryShaderTarget();
                 }
+                case ShaderType::Compute:
+                {
+                    return config::GetComputeShaderTarget();
+                }
                 default:
                 {
                     SPIELER_WARNING("Shader type is None or Unknown!");

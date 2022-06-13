@@ -10,7 +10,8 @@ namespace spieler::renderer
         None,
         Vertex,
         Pixel,
-        Geometry
+        Geometry,
+        Compute
     };
 
     using DefineContainer = std::unordered_map<std::string_view, std::string>;
