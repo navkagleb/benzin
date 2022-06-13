@@ -6,6 +6,8 @@
 namespace spieler::renderer
 {
 
+    class Device;
+
     class RootSignature;
     class Shader;
     struct BlendState;
@@ -32,6 +34,28 @@ namespace spieler::renderer
     {
     public:
         bool Init(const PipelineStateConfig& props);
+
+    public:
+        explicit operator ID3D12PipelineState* () const { return m_PipelineState.Get(); }
+
+    private:
+        ComPtr<ID3D12PipelineState> m_PipelineState;
+    };
+
+    struct ComputePipelineStateConfig
+    {
+        const RootSignature* RootSignature{ nullptr };
+        const Shader* ComputeShader{ nullptr };
+    };
+
+    class ComputePipelineState
+    {
+    public:
+        ComputePipelineState() = default;
+        ComputePipelineState(Device& device, const ComputePipelineStateConfig& config);
+
+    private:
+        bool Init(Device& device, const ComputePipelineStateConfig& config);
 
     public:
         explicit operator ID3D12PipelineState* () const { return m_PipelineState.Get(); }

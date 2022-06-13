@@ -2,6 +2,7 @@
 
 #include "spieler/renderer/pipeline_state.hpp"
 
+#include "spieler/renderer/device.hpp"
 #include "spieler/renderer/root_signature.hpp"
 #include "spieler/renderer/shader.hpp"
 #include "spieler/renderer/blend_state.hpp"
@@ -224,9 +225,9 @@ namespace spieler::renderer
         const D3D12_CACHED_PIPELINE_STATE cachedPipelineState{ _internal::GetDefauldD3D12CachedPipelineState() };
 
 #if defined(SPIELER_DEBUG)
-        const D3D12_PIPELINE_STATE_FLAGS flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+        const D3D12_PIPELINE_STATE_FLAGS flags{ D3D12_PIPELINE_STATE_FLAG_NONE };
 #else
-        const D3D12_PIPELINE_STATE_FLAGS flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+        const D3D12_PIPELINE_STATE_FLAGS flags{ D3D12_PIPELINE_STATE_FLAG_NONE };
 #endif
 
         const D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineStateDesc
@@ -253,6 +254,39 @@ namespace spieler::renderer
         };
 
         SPIELER_RETURN_IF_FAILED(Renderer::GetInstance().GetDevice().GetNativeDevice()->CreateGraphicsPipelineState(&pipelineStateDesc, __uuidof(ID3D12PipelineState), &m_PipelineState));
+
+        return true;
+    }
+
+    ComputePipelineState::ComputePipelineState(Device& device, const ComputePipelineStateConfig& config)
+    {
+        SPIELER_ASSERT(Init(device, config));
+    }
+
+    bool ComputePipelineState::Init(Device& device, const ComputePipelineStateConfig& config)
+    {
+        SPIELER_ASSERT(config.RootSignature);
+        SPIELER_ASSERT(config.ComputeShader);
+
+        const D3D12_SHADER_BYTECODE computeShaderDesc{ _internal::ConvertToD3D12Shader(config.ComputeShader) };
+        const D3D12_CACHED_PIPELINE_STATE cachedPipelineState{ _internal::GetDefauldD3D12CachedPipelineState() };
+
+#if defined(SPIELER_DEBUG)
+        const D3D12_PIPELINE_STATE_FLAGS flags{ D3D12_PIPELINE_STATE_FLAG_NONE };
+#else
+        const D3D12_PIPELINE_STATE_FLAGS flags{ D3D12_PIPELINE_STATE_FLAG_NONE };
+#endif
+
+        const D3D12_COMPUTE_PIPELINE_STATE_DESC desc
+        {
+            .pRootSignature = static_cast<ID3D12RootSignature*>(*config.RootSignature),
+            .CS = computeShaderDesc,
+            .NodeMask = 0,
+            .CachedPSO = cachedPipelineState,
+            .Flags = flags
+        };
+
+        SPIELER_RETURN_IF_FAILED(device.GetNativeDevice()->CreateComputePipelineState(&desc, __uuidof(ID3D12PipelineState), &m_PipelineState));
 
         return true;
     }
