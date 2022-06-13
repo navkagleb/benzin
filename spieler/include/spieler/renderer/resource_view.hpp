@@ -74,4 +74,15 @@ namespace spieler::renderer
         void Bind(Context& context, uint32_t rootParameterIndex) const;
     };
 
+    class UnorderedAccessView : public ResourceView<UAVDescriptor>
+    {
+    public:
+        UnorderedAccessView() = default;
+        UnorderedAccessView(Device& device, const Texture2DResource& texture);
+
+    public:
+        void Init(Device& device, const Texture2DResource& texture);
+        void Bind(Context& context, uint32_t rootParameterIndex) const;
+    };
+
 } // namespace spieler::renderer

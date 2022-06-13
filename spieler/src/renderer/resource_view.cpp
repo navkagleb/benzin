@@ -212,4 +212,44 @@ namespace spieler::renderer
         );
     }
 
+    UnorderedAccessView::UnorderedAccessView(Device& device, const Texture2DResource& texture)
+    {
+        Init(device, texture);
+    }
+
+    void UnorderedAccessView::Init(Device& device, const Texture2DResource& texture)
+    {
+        SPIELER_ASSERT(texture.GetResource());
+
+        m_Descriptor = device.GetDescriptorManager().AllocateUAV();
+
+        const D3D12_RESOURCE_DESC texture2DDesc{ texture.GetResource()->GetDesc() };
+
+        const D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc
+        {
+            .Format = texture2DDesc.Format,
+            .ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D,
+            .Texture2D = D3D12_TEX2D_UAV
+            {
+                .MipSlice = 0,
+                .PlaneSlice = 0
+            }
+        };
+
+        device.GetNativeDevice()->CreateUnorderedAccessView(
+            texture.GetResource().Get(),
+            nullptr,
+            &uavDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE{ m_Descriptor.CPU }
+        );
+    }
+
+    void UnorderedAccessView::Bind(Context& context, uint32_t rootParameterIndex) const
+    {
+        context.GetNativeCommandList()->SetComputeRootDescriptorTable(
+            rootParameterIndex,
+            D3D12_GPU_DESCRIPTOR_HANDLE{ m_Descriptor.GPU }
+        );
+    }
+
 } // namespace spieler::renderer

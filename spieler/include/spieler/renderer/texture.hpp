@@ -33,12 +33,12 @@ namespace spieler::renderer
     };
 
     template <typename T>
-    concept TextureResourceView = std::_Is_any_of_v<T, RenderTargetView, DepthStencilView, ShaderResourceView>;
+    concept TextureResourceView = std::_Is_any_of_v<T, RenderTargetView, DepthStencilView, ShaderResourceView, UnorderedAccessView>;
 
     class Texture2D
     {
     private:
-        using ResourceViewInternal = std::variant<RenderTargetView, DepthStencilView, ShaderResourceView>;
+        using ResourceViewInternal = std::variant<RenderTargetView, DepthStencilView, ShaderResourceView, UnorderedAccessView>;
         using ViewContainer = std::unordered_map<uint64_t, ResourceViewInternal>;
 
     public:
