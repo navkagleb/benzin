@@ -11,6 +11,8 @@
 #include "spieler/renderer/upload_buffer.hpp"
 #include "spieler/renderer/texture.hpp"
 
+#include "spieler/renderer/resource_view.hpp"
+
 namespace spieler::renderer
 {
 
@@ -61,8 +63,46 @@ namespace spieler::renderer
         m_CommandList->RSSetScissorRects(1, &d3d12Rect);
     }
 
+    void Context::SetRenderTarget(const RenderTargetView& rtv)
+    {
+        const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
+
+        m_CommandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, nullptr);
+    }
+
+    void Context::SetRenderTarget(const RenderTargetView& rtv, const DepthStencilView& dsv)
+    {
+        const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
+        const D3D12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle{ dsv.GetDescriptor().CPU };
+
+        m_CommandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, &dsvDescriptorHandle);
+    }
+
+    void Context::ClearRenderTarget(const RenderTargetView& rtv, const DirectX::XMFLOAT4& color)
+    {
+        const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
+
+        m_CommandList->ClearRenderTargetView(rtvDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
+    }
+
+    void Context::ClearDepthStencil(const DepthStencilView& dsv, float depth, uint8_t stencil)
+    {
+        const D3D12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle{ dsv.GetDescriptor().CPU };
+
+        m_CommandList->ClearDepthStencilView(
+            dsvDescriptorHandle,
+            D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
+            depth,
+            stencil,
+            0,
+            nullptr
+        );
+    }
+
     void Context::SetResourceBarrier(const TransitionResourceBarrier& barrier)
     {
+        SPIELER_ASSERT(barrier.Resource);
+
         const D3D12_RESOURCE_BARRIER d3d12Barrier{ _internal::ConvertToD3D12ResourceBarrier(barrier) };
 
         m_CommandList->ResourceBarrier(1, &d3d12Barrier);

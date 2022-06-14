@@ -105,6 +105,8 @@ namespace sandbox
         InitRenderItems();
         InitLights();
 
+        InitDepthStencil();
+
         return true;
     }
 
@@ -249,25 +251,29 @@ namespace sandbox
         auto& swapChain{ renderer.GetSwapChain() };
         auto& context{ renderer.GetContext() };
 
+        spieler::renderer::Texture2D& currentBuffer{ swapChain.GetCurrentBuffer() };
+        spieler::renderer::Texture2DResource& currentBufferResource{ currentBuffer.GetTexture2DResource() };
+
         SPIELER_RETURN_IF_FAILED(context.ResetCommandAllocator());
         SPIELER_RETURN_IF_FAILED(context.ResetCommandList());
         {
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &swapChain.GetCurrentBuffer().GetResource(),
+                .Resource = &currentBufferResource,
                 .From = spieler::renderer::ResourceState::Present,
                 .To = spieler::renderer::ResourceState::RenderTarget
             });
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &swapChain.GetDepthStencil().GetResource(),
+                .Resource = &m_DepthStencil.GetTexture2DResource(),
                 .From = spieler::renderer::ResourceState::Present,
                 .To = spieler::renderer::ResourceState::DepthWrite
             });
 
-            renderer.SetDefaultRenderTargets();
-            renderer.ClearRenderTarget({ 0.1f, 0.1f, 0.1f, 1.0f });
-            renderer.ClearDepthStencil(1.0f, 0);
+            context.SetRenderTarget(currentBuffer.GetView<spieler::renderer::RenderTargetView>(), m_DepthStencil.GetView<spieler::renderer::DepthStencilView>());
+
+            context.ClearRenderTarget(currentBuffer.GetView<spieler::renderer::RenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+            context.ClearDepthStencil(m_DepthStencil.GetView<spieler::renderer::DepthStencilView>(), 1.0f, 0);
 
             context.SetViewport(m_Viewport);
             context.SetScissorRect(m_ScissorRect);
@@ -287,27 +293,27 @@ namespace sandbox
 
             Render(m_Shadows, m_PipelineStates["shadow"], m_PassConstants["direct"], &m_ConstantBuffers["render_item"]);
 
-            m_BlurPass.Execute(swapChain.GetCurrentBuffer().GetResource(), m_Window.GetWidth(), m_Window.GetHeight(), m_BlurCount);
+            m_BlurPass.Execute(currentBufferResource, m_Window.GetWidth(), m_Window.GetHeight(), m_BlurCount);
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &swapChain.GetCurrentBuffer().GetResource(),
+                .Resource = &currentBufferResource,
                 .From = spieler::renderer::ResourceState::CopySource,
                 .To = spieler::renderer::ResourceState::CopyDestination
             });
 
-            context.GetNativeCommandList()->CopyResource(swapChain.GetCurrentBuffer().GetResource().GetResource().Get(), m_BlurPass.GetOutput().GetResource().GetResource().Get());
+            context.GetNativeCommandList()->CopyResource(currentBufferResource.GetResource().Get(), m_BlurPass.GetOutput().GetTexture2DResource().GetResource().Get());
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &swapChain.GetCurrentBuffer().GetResource(),
+                .Resource = &currentBufferResource,
                 .From = spieler::renderer::ResourceState::CopyDestination,
                 .To = spieler::renderer::ResourceState::Present
             });
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &swapChain.GetDepthStencil().GetResource(),
+                .Resource = &m_DepthStencil.GetTexture2DResource(),
                 .From = spieler::renderer::ResourceState::DepthWrite,
                 .To = spieler::renderer::ResourceState::Present
             });
@@ -446,7 +452,7 @@ namespace sandbox
         {
             spieler::renderer::Texture2D& whiteTexture{ m_Textures["white"] };
 
-            SPIELER_ASSERT(whiteTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/white.dds", uploadBuffer));
+            SPIELER_ASSERT(whiteTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/white.dds", uploadBuffer));
             whiteTexture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
@@ -454,7 +460,7 @@ namespace sandbox
         {
             spieler::renderer::Texture2D& woodCrateTexture{ m_Textures["wood_crate"] };
 
-            SPIELER_ASSERT(woodCrateTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/wood_crate1.dds", uploadBuffer));
+            SPIELER_ASSERT(woodCrateTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/wood_crate1.dds", uploadBuffer));
             woodCrateTexture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
@@ -462,7 +468,7 @@ namespace sandbox
         {
             spieler::renderer::Texture2D& wireFenceTexture{ m_Textures["wire_fence"] };
 
-            SPIELER_ASSERT(wireFenceTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/wire_fence.dds", uploadBuffer));
+            SPIELER_ASSERT(wireFenceTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/wire_fence.dds", uploadBuffer));
             wireFenceTexture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
@@ -470,7 +476,7 @@ namespace sandbox
         {
             spieler::renderer::Texture2D& tileTexture{ m_Textures["tile"] };
 
-            SPIELER_ASSERT(tileTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/tile.dds", uploadBuffer));
+            SPIELER_ASSERT(tileTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/tile.dds", uploadBuffer));
             tileTexture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
@@ -478,8 +484,7 @@ namespace sandbox
         {
             spieler::renderer::Texture2D& bricksTexture{ m_Textures["bricks"] };
 
-
-            SPIELER_ASSERT(bricksTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/bricks3.dds", uploadBuffer));
+            SPIELER_ASSERT(bricksTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/bricks3.dds", uploadBuffer));
             bricksTexture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
         
@@ -487,7 +492,7 @@ namespace sandbox
         {
             spieler::renderer::Texture2D& mirrorTexture{ m_Textures["mirror"] };
 
-            SPIELER_ASSERT(mirrorTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/ice.dds", uploadBuffer));
+            SPIELER_ASSERT(mirrorTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/ice.dds", uploadBuffer));
             mirrorTexture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
@@ -495,7 +500,7 @@ namespace sandbox
         {
             spieler::renderer::Texture2D& treeAtlasTexture{ m_Textures["tree_atlas"] };
 
-            SPIELER_ASSERT(treeAtlasTexture.GetResource().LoadFromDDSFile(device, context, L"assets/textures/tree_array.dds", uploadBuffer));
+            SPIELER_ASSERT(treeAtlasTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/tree_array.dds", uploadBuffer));
             treeAtlasTexture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
@@ -862,7 +867,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Triangle,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = renderer.GetSwapChain().GetDepthStencilFormat(),
+                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
             };
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["light"].Init(pipelineStateConfig));
@@ -917,7 +922,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Triangle,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = renderer.GetSwapChain().GetDepthStencilFormat(),
+                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
             };
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["opaque"].Init(pipelineStateConfig));
@@ -991,7 +996,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Triangle,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = renderer.GetSwapChain().GetDepthStencilFormat(),
+                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
             };
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["mirror"].Init(pipelineStateConfig));
@@ -1078,7 +1083,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Triangle,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = renderer.GetSwapChain().GetDepthStencilFormat(),
+                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
             };
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["reflected"].Init(pipelineStateConfig));
@@ -1164,7 +1169,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Triangle,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = renderer.GetSwapChain().GetDepthStencilFormat(),
+                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
             };
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["shadow"].Init(pipelineStateConfig));
@@ -1229,7 +1234,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Point,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = renderer.GetSwapChain().GetDepthStencilFormat()
+                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT
             };
 
             m_PipelineStates["billboard"].Init(pipelineStateConfig);
@@ -1421,6 +1426,29 @@ namespace sandbox
         m_DirectionalLightController.SetConstants(&m_PassConstants["direct"].Lights[0]);
         m_DirectionalLightController.SetShape(m_RenderItems["sun"].get());
         m_DirectionalLightController.Init(constants, DirectX::XM_PIDIV2 * 1.25f, DirectX::XM_PIDIV4);
+    }
+
+    void TestLayer::InitDepthStencil()
+    {
+        auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
+
+        const spieler::renderer::Texture2DConfig depthStencilConfig
+        {
+            .Width = m_Window.GetWidth(),
+            .Height = m_Window.GetHeight(),
+            .Format = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
+            .Flags = spieler::renderer::Texture2DFlags::DepthStencil
+        };
+
+        const spieler::renderer::DepthStencilClearValue depthStencilClearValue
+        {
+            .Depth = 1.0f,
+            .Stencil = 0
+        };
+
+        SPIELER_ASSERT(device.CreateTexture(depthStencilConfig, depthStencilClearValue, m_DepthStencil.GetTexture2DResource()));
+        m_DepthStencil.GetTexture2DResource().SetDebugName(L"DepthStencil");
+        m_DepthStencil.SetView<spieler::renderer::DepthStencilView>(device);
     }
 
     void TestLayer::UpdateViewport()

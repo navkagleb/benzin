@@ -2,18 +2,18 @@
 
 #include "spieler/renderer/swap_chain.hpp"
 
+#include "spieler/core/common.hpp"
+
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/context.hpp"
 
 namespace spieler::renderer
 {
 
-    SwapChain::SwapChain(Device& device, Context& context, Window& window, const SwapChainConfig& props)
-        : m_BufferCount{ props.BufferCount }
-        , m_BufferFormat{ props.BufferFormat }
-        , m_DepthStencilFormat{ props.DepthStencilFormat }
+    SwapChain::SwapChain(Device& device, Context& context, Window& window, const SwapChainConfig& config)
+        : m_BufferFormat{ config.BufferFormat }
     {
-        SPIELER_ASSERT(Init(device, context, window));
+        SPIELER_ASSERT(Init(device, context, window, config));
     }
 
     SwapChain::~SwapChain()
@@ -28,50 +28,36 @@ namespace spieler::renderer
 #endif
     }
 
+    uint32_t SwapChain::GetCurrentBufferIndex() const
+    {
+        return m_SwapChain3->GetCurrentBackBufferIndex();
+    }
+
     Texture2D& SwapChain::GetCurrentBuffer()
     {
-        const uint32_t bufferIndex{ m_SwapChain3->GetCurrentBackBufferIndex() };
-
-        return m_Buffers[bufferIndex];
+        return m_Buffers[GetCurrentBufferIndex()];
     }
 
     const Texture2D& SwapChain::GetCurrentBuffer() const
     {
-        const uint32_t bufferIndex{ m_SwapChain3->GetCurrentBackBufferIndex() };
-
-        return m_Buffers[bufferIndex];
-    }
-
-    bool SwapChain::Init(Device& device, Context& context, Window& window)
-    {
-        SPIELER_RETURN_IF_FAILED(InitFactory());
-        SPIELER_RETURN_IF_FAILED(InitSwapChain(context, window));
-
-        m_Buffers.resize(m_BufferCount);
-
-        SPIELER_RETURN_IF_FAILED(ResizeBuffers(device, context, window.GetWidth(), window.GetHeight()));
-
-        return true;
+        return m_Buffers[GetCurrentBufferIndex()];
     }
 
     bool SwapChain::ResizeBuffers(Device& device, Context& context, uint32_t width, uint32_t height)
     {
+        SPIELER_ASSERT(!m_Buffers.empty());
+
         SPIELER_RETURN_IF_FAILED(context.FlushCommandQueue());
         SPIELER_RETURN_IF_FAILED(context.ResetCommandList());
         {
-            
-            // Reset Buffers and DepthStencil
-            {
-                for (Texture2D& buffer : m_Buffers)
-                {
-                    buffer.Reset();
-                }
 
-                m_DepthStencil.Reset();
+            for (Texture2D& buffer : m_Buffers)
+            {
+                buffer.GetTexture2DResource().Reset();
             }
 
             SPIELER_RETURN_IF_FAILED(m_SwapChain->ResizeBuffers(
-                m_BufferCount,
+                static_cast<UINT>(m_Buffers.size()),
                 width,
                 height,
                 static_cast<DXGI_FORMAT>(m_BufferFormat),
@@ -79,7 +65,6 @@ namespace spieler::renderer
             ));
 
             SPIELER_RETURN_IF_FAILED(CreateBuffers(device, width, height));
-            SPIELER_RETURN_IF_FAILED(CreateDepthStencil(device, width, height));
         }
         SPIELER_RETURN_IF_FAILED(context.ExecuteCommandList(true));
 
@@ -89,6 +74,17 @@ namespace spieler::renderer
     bool SwapChain::Present(VSyncState vsync)
     {
         SPIELER_RETURN_IF_FAILED(m_SwapChain->Present(static_cast<UINT>(vsync), 0));
+
+        return true;
+    }
+
+    bool SwapChain::Init(Device& device, Context& context, Window& window, const SwapChainConfig& config)
+    {
+        m_Buffers.resize(config.BufferCount);
+
+        SPIELER_RETURN_IF_FAILED(InitFactory());
+        SPIELER_RETURN_IF_FAILED(InitSwapChain(context, window));
+        SPIELER_RETURN_IF_FAILED(ResizeBuffers(device, context, window.GetWidth(), window.GetHeight()));
 
         return true;
     }
@@ -113,6 +109,8 @@ namespace spieler::renderer
 
     bool SwapChain::InitSwapChain(Context& context, Window& window)
     {
+        SPIELER_ASSERT(!m_Buffers.empty());
+
         const DXGI_MODE_DESC bufferDesc
         {
             .Width = window.GetWidth(),
@@ -134,7 +132,7 @@ namespace spieler::renderer
             .BufferDesc = bufferDesc,
             .SampleDesc = sampleDesc,
             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-            .BufferCount = m_BufferCount,
+            .BufferCount = static_cast<UINT>(m_Buffers.size()),
             .OutputWindow = window.GetNativeHandle<::HWND>(),
             .Windowed = true,
             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
@@ -149,36 +147,13 @@ namespace spieler::renderer
 
     bool SwapChain::CreateBuffers(Device& device, uint32_t width, uint32_t height)
     {
-        for (uint32_t i = 0; i < m_BufferCount; ++i)
+        for (size_t i = 0; i < m_Buffers.size(); ++i)
         {
-            SPIELER_RETURN_IF_FAILED(m_SwapChain->GetBuffer(i, __uuidof(ID3D12Resource), &m_Buffers[i].GetResource().GetResource()));
+            SPIELER_RETURN_IF_FAILED(m_SwapChain->GetBuffer(static_cast<UINT>(i), __uuidof(ID3D12Resource), &m_Buffers[i].GetTexture2DResource().GetResource()));
+            m_Buffers[i].GetTexture2DResource().SetDebugName(L"SwapChainBuffer_" + std::to_wstring(i));
 
-            m_Buffers[i].GetResource().SetDebugName(L"SwapChainBuffer_" + std::to_wstring(i));
             m_Buffers[i].SetView<RenderTargetView>(device);
         }
-
-        return true;
-    }
-
-    bool SwapChain::CreateDepthStencil(Device& device, uint32_t width, uint32_t height)
-    {
-        const Texture2DConfig depthStencilConfig
-        {
-            .Width = width,
-            .Height = height,
-            .Format = m_DepthStencilFormat,
-            .Flags = Texture2DFlags::DepthStencil
-        };
-
-        const DepthStencilClearValue depthStencilClearValue
-        {
-            .Depth = 1.0f,
-            .Stencil = 0
-        };
-
-        SPIELER_RETURN_IF_FAILED(m_DepthStencil.GetResource().InitAsDepthStencil(device, depthStencilConfig, depthStencilClearValue));
-        m_DepthStencil.GetResource().SetDebugName(L"SwapChainDepthStencil");
-        m_DepthStencil.SetView<DepthStencilView>(device);
 
         return true;
     }

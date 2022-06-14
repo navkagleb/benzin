@@ -13,6 +13,9 @@ namespace spieler::renderer
     class PipelineState;
     class Texture2DResource;
 
+    class RenderTargetView;
+    class DepthStencilView;
+
     struct Viewport
     {
         float X{ 0.0f };
@@ -45,6 +48,12 @@ namespace spieler::renderer
 
         void SetViewport(const Viewport& viewport);
         void SetScissorRect(const ScissorRect& scissorRect);
+
+        void SetRenderTarget(const RenderTargetView& rtv);
+        void SetRenderTarget(const RenderTargetView& rtv, const DepthStencilView& dsv);
+
+        void ClearRenderTarget(const RenderTargetView& rtv, const DirectX::XMFLOAT4& color);
+        void ClearDepthStencil(const DepthStencilView& dsv, float depth, uint8_t stencil);
 
         void SetResourceBarrier(const TransitionResourceBarrier& barrier);
         void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);

@@ -86,6 +86,8 @@ namespace sandbox
         void InitRenderItems();
         void InitLights();
 
+        void InitDepthStencil();
+
         template <typename Permutations>
         const spieler::renderer::Shader& GetShader(spieler::renderer::ShaderType type, const spieler::renderer::ShaderPermutation<Permutations>& permutation);
 
@@ -102,6 +104,8 @@ namespace sandbox
 
     private:
         spieler::Window& m_Window;
+
+        spieler::renderer::Texture2D m_DepthStencil;
 
         spieler::renderer::Viewport m_Viewport;
         spieler::renderer::ScissorRect m_ScissorRect;

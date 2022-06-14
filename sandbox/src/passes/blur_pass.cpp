@@ -87,23 +87,23 @@ namespace sandbox
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &m_BlurMaps[0].GetResource(),
+            .Resource = &m_BlurMaps[0].GetTexture2DResource(),
             .From = spieler::renderer::ResourceState::Present,
             .To = spieler::renderer::ResourceState::CopyDestination
         });
 
-        commandList->CopyResource(m_BlurMaps[0].GetResource().GetResource().Get(), input);
+        commandList->CopyResource(m_BlurMaps[0].GetTexture2DResource().GetResource().Get(), input);
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &m_BlurMaps[0].GetResource(),
+            .Resource = &m_BlurMaps[0].GetTexture2DResource(),
             .From = spieler::renderer::ResourceState::CopyDestination,
             .To = spieler::renderer::ResourceState::GenericRead
         });
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &m_BlurMaps[1].GetResource(),
+            .Resource = &m_BlurMaps[1].GetTexture2DResource(),
             .From = spieler::renderer::ResourceState::Present,
             .To = spieler::renderer::ResourceState::UnorderedAccess
         });
@@ -124,14 +124,14 @@ namespace sandbox
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource = &m_BlurMaps[0].GetResource(),
+                    .Resource = &m_BlurMaps[0].GetTexture2DResource(),
                     .From = spieler::renderer::ResourceState::GenericRead,
                     .To = spieler::renderer::ResourceState::UnorderedAccess
                 });
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource = &m_BlurMaps[1].GetResource(),
+                    .Resource = &m_BlurMaps[1].GetTexture2DResource(),
                     .From = spieler::renderer::ResourceState::UnorderedAccess,
                     .To = spieler::renderer::ResourceState::GenericRead
                 });
@@ -151,14 +151,14 @@ namespace sandbox
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource = &m_BlurMaps[0].GetResource(),
+                    .Resource = &m_BlurMaps[0].GetTexture2DResource(),
                     .From = spieler::renderer::ResourceState::UnorderedAccess,
                     .To = spieler::renderer::ResourceState::GenericRead
                 });
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource = &m_BlurMaps[1].GetResource(),
+                    .Resource = &m_BlurMaps[1].GetTexture2DResource(),
                     .From = spieler::renderer::ResourceState::GenericRead,
                     .To = spieler::renderer::ResourceState::UnorderedAccess
                 });
@@ -167,14 +167,14 @@ namespace sandbox
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &m_BlurMaps[0].GetResource(),
+            .Resource = &m_BlurMaps[0].GetTexture2DResource(),
             .From = spieler::renderer::ResourceState::GenericRead,
             .To = spieler::renderer::ResourceState::Present
         });
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &m_BlurMaps[1].GetResource(),
+            .Resource = &m_BlurMaps[1].GetTexture2DResource(),
             .From = spieler::renderer::ResourceState::UnorderedAccess,
             .To = spieler::renderer::ResourceState::Present
         });
@@ -198,12 +198,12 @@ namespace sandbox
         {
             auto& map{ m_BlurMaps[i] };
 
-            SPIELER_ASSERT(device.CreateTexture(textureConfig, map.GetResource()));
+            SPIELER_ASSERT(device.CreateTexture(textureConfig, map.GetTexture2DResource()));
 
             map.SetView<spieler::renderer::ShaderResourceView>(device);
             map.SetView<spieler::renderer::UnorderedAccessView>(device);
 
-            map.GetResource().SetDebugName(L"BlurMap" + std::to_wstring(i));
+            map.GetTexture2DResource().SetDebugName(L"BlurMap" + std::to_wstring(i));
         }
     }
 

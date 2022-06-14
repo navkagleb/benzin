@@ -31,19 +31,9 @@ namespace spieler::renderer
         SwapChain& GetSwapChain() { return m_SwapChain; }
 
     public:
-        void SetDefaultRenderTargets();
-
-        void ClearRenderTarget(const DirectX::XMFLOAT4& color);
-        void ClearDepth(float depth);
-        void ClearStencil(uint8_t stencil);
-        void ClearDepthStencil(float depth, uint8_t stencil);
-
         // Swap chain
         bool ResizeBuffers(uint32_t width, uint32_t height);
         bool Present(VSyncState vsync);
-
-    private:
-        void ClearDepthStencil(float depth, uint8_t stencil, D3D12_CLEAR_FLAGS flags);
 
     public:
         Device m_Device;

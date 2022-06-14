@@ -2,6 +2,8 @@
 
 #include "spieler/renderer/root_signature.hpp"
 
+#include "spieler/core/common.hpp"
+
 #include "spieler/renderer/sampler.hpp"
 #include "spieler/renderer/renderer.hpp"
 

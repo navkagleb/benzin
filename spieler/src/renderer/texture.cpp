@@ -4,16 +4,10 @@
 
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/context.hpp"
+#include "spieler/renderer/upload_buffer.hpp"
 
 namespace spieler::renderer
 {
-
-    bool Texture2DResource::InitAsDepthStencil(Device& device, const Texture2DConfig& config, const DepthStencilClearValue& depthStencilClearValue)
-    {
-        SPIELER_RETURN_IF_FAILED(device.CreateTexture(config, depthStencilClearValue, *this));
-
-        return true;
-    }
 
     bool Texture2DResource::LoadFromDDSFile(Device& device, Context& context, const std::wstring& filename, UploadBuffer& uploadBuffer)
     {
@@ -43,7 +37,7 @@ namespace spieler::renderer
 
     void Texture2D::Reset()
     {
-        m_Resource.Reset();
+        m_Texture2DResource.Reset();
         m_Views.clear();
     }
 

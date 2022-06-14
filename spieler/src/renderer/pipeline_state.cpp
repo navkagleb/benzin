@@ -2,6 +2,8 @@
 
 #include "spieler/renderer/pipeline_state.hpp"
 
+#include "spieler/core/common.hpp"
+
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/root_signature.hpp"
 #include "spieler/renderer/shader.hpp"

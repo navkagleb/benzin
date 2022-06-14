@@ -1,9 +1,10 @@
 #pragma once
 
+#include "spieler/core/assert.hpp"
+
 #include "spieler/renderer/resource.hpp"
 #include "spieler/renderer/types.hpp"
 #include "spieler/renderer/descriptor_manager.hpp"
-#include "spieler/renderer/upload_buffer.hpp"
 #include "spieler/renderer/resource_view.hpp"
 
 namespace spieler::renderer
@@ -11,6 +12,7 @@ namespace spieler::renderer
 
     class Device;
     class Context;
+    class UploadBuffer;
 
     struct Image
     {
@@ -23,7 +25,6 @@ namespace spieler::renderer
         GraphicsFormat GetFormat() const { return m_Format; }
 
     public:
-        bool InitAsDepthStencil(Device& device, const Texture2DConfig& config, const DepthStencilClearValue& depthStencilClearValue);
         bool LoadFromDDSFile(Device& device, Context& context, const std::wstring& filename, UploadBuffer& uploadBuffer);
         void SetResource(ComPtr<ID3D12Resource>&& resource);
 
@@ -46,8 +47,8 @@ namespace spieler::renderer
 
     public:
         // Resource
-        Texture2DResource& GetResource() { return m_Resource; }
-        const Texture2DResource& GetResource() const { return m_Resource; }
+        Texture2DResource& GetTexture2DResource() { return m_Texture2DResource; }
+        const Texture2DResource& GetTexture2DResource() const { return m_Texture2DResource; }
 
         // View
         template <TextureResourceView ResourceView> const ResourceView& GetView() const;
@@ -61,7 +62,7 @@ namespace spieler::renderer
         static uint64_t GetHashCode();
 
     private:
-        Texture2DResource m_Resource;
+        Texture2DResource m_Texture2DResource;
         ViewContainer m_Views;
     };
 
@@ -74,9 +75,9 @@ namespace spieler::renderer
     template <TextureResourceView ResourceView>
     void Texture2D::SetView(Device& device)
     {
-        SPIELER_ASSERT(m_Resource.GetResource());
+        SPIELER_ASSERT(m_Texture2DResource.GetResource());
 
-        m_Views[GetHashCode<ResourceView>()] = ResourceView{ device, m_Resource };
+        m_Views[GetHashCode<ResourceView>()] = ResourceView{ device, m_Texture2DResource };
     }
 
     template <TextureResourceView ResourceView>

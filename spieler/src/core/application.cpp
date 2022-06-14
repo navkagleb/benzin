@@ -11,6 +11,8 @@
 #include "platform/win64_window.hpp"
 #include "platform/win64_input.hpp"
 
+#include "spieler/core/common.hpp"
+
 #include "spieler/system/event_dispatcher.hpp"
 
 namespace spieler
@@ -152,6 +154,7 @@ namespace spieler
         renderer::Renderer& renderer{ renderer::Renderer::GetInstance() };
         renderer::Device& device{ renderer.GetDevice() };
         renderer::Context& context{ renderer.GetContext() };
+        renderer::SwapChain& swapChain{ renderer.GetSwapChain() };
         renderer::DescriptorManager& descriptorManager{ device.GetDescriptorManager() };
 
         SPIELER_RETURN_IF_FAILED(m_LayerStack.OnRender(dt));
@@ -163,19 +166,20 @@ namespace spieler
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &renderer.GetSwapChain().GetCurrentBuffer().GetResource(),
+                .Resource = &swapChain.GetCurrentBuffer().GetTexture2DResource(),
                 .From = spieler::renderer::ResourceState::Present,
                 .To = spieler::renderer::ResourceState::RenderTarget
             });
 
-            renderer.SetDefaultRenderTargets();
+            context.SetRenderTarget(swapChain.GetCurrentBuffer().GetView<spieler::renderer::RenderTargetView>());
+
             descriptorManager.Bind(context, renderer::DescriptorHeapType::SRV);
 
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context.GetNativeCommandList().Get());
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &renderer.GetSwapChain().GetCurrentBuffer().GetResource(),
+                .Resource = &swapChain.GetCurrentBuffer().GetTexture2DResource(),
                 .From = spieler::renderer::ResourceState::RenderTarget,
                 .To = spieler::renderer::ResourceState::Present
             });
