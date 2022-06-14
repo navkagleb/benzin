@@ -1523,6 +1523,8 @@ namespace sandbox
         UpdateViewport();
         UpdateScissorRect();
 
+        InitDepthStencil();
+
         m_BlurPass.OnResize(event.GetWidth(), event.GetHeight());
 
         return true;
