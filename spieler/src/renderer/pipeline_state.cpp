@@ -10,7 +10,6 @@
 #include "spieler/renderer/blend_state.hpp"
 #include "spieler/renderer/rasterizer_state.hpp"
 #include "spieler/renderer/depth_stencil_state.hpp"
-#include "spieler/renderer/renderer.hpp"
 
 namespace spieler::renderer
 {
@@ -207,7 +206,28 @@ namespace spieler::renderer
 
     } // namespace _internal
 
-    bool PipelineState::Init(const PipelineStateConfig& config)
+    PipelineState::PipelineState(PipelineState&& other) noexcept
+        : m_PipelineState{ std::exchange(other.m_PipelineState, nullptr) }
+    {}
+
+    PipelineState& PipelineState::operator=(PipelineState&& other) noexcept
+    {
+        if (this == &other)
+        {
+            return *this;
+        }
+
+        m_PipelineState = std::exchange(other.m_PipelineState, nullptr);
+
+        return *this;
+    }
+
+    GraphicsPipelineState::GraphicsPipelineState(Device& device, const GraphicsPipelineStateConfig& config)
+    {
+        SPIELER_ASSERT(Init(device, config));
+    }
+
+    bool GraphicsPipelineState::Init(Device& device, const GraphicsPipelineStateConfig& config)
     {
         SPIELER_ASSERT(config.RootSignature);
         SPIELER_ASSERT(config.VertexShader);
@@ -232,7 +252,7 @@ namespace spieler::renderer
         const D3D12_PIPELINE_STATE_FLAGS flags{ D3D12_PIPELINE_STATE_FLAG_NONE };
 #endif
 
-        const D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineStateDesc
+        const D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc
         {
             .pRootSignature = static_cast<ID3D12RootSignature*>(*config.RootSignature),
             .VS = vertexShaderDesc,
@@ -255,7 +275,7 @@ namespace spieler::renderer
             .Flags = flags
         };
 
-        SPIELER_RETURN_IF_FAILED(Renderer::GetInstance().GetDevice().GetNativeDevice()->CreateGraphicsPipelineState(&pipelineStateDesc, __uuidof(ID3D12PipelineState), &m_PipelineState));
+        SPIELER_RETURN_IF_FAILED(device.GetNativeDevice()->CreateGraphicsPipelineState(&graphicsPipelineStateDesc, __uuidof(ID3D12PipelineState), &m_PipelineState));
 
         return true;
     }
@@ -279,7 +299,7 @@ namespace spieler::renderer
         const D3D12_PIPELINE_STATE_FLAGS flags{ D3D12_PIPELINE_STATE_FLAG_NONE };
 #endif
 
-        const D3D12_COMPUTE_PIPELINE_STATE_DESC desc
+        const D3D12_COMPUTE_PIPELINE_STATE_DESC computePipelineStateDesc
         {
             .pRootSignature = static_cast<ID3D12RootSignature*>(*config.RootSignature),
             .CS = computeShaderDesc,
@@ -288,7 +308,7 @@ namespace spieler::renderer
             .Flags = flags
         };
 
-        SPIELER_RETURN_IF_FAILED(device.GetNativeDevice()->CreateComputePipelineState(&desc, __uuidof(ID3D12PipelineState), &m_PipelineState));
+        SPIELER_RETURN_IF_FAILED(device.GetNativeDevice()->CreateComputePipelineState(&computePipelineStateDesc, __uuidof(ID3D12PipelineState), &m_PipelineState));
 
         return true;
     }

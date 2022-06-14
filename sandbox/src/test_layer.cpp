@@ -838,6 +838,7 @@ namespace sandbox
     bool TestLayer::InitPipelineStates()
     {
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
+        auto& device{ renderer.GetDevice() };
 
         const spieler::renderer::InputLayout inputLayout
         {
@@ -858,7 +859,7 @@ namespace sandbox
                 .CullMode = spieler::renderer::CullMode::None
             };
 
-            const spieler::renderer::PipelineStateConfig pipelineStateConfig
+            const spieler::renderer::GraphicsPipelineStateConfig pipelineStateConfig
             {
                 .RootSignature = &m_RootSignatures["default"],
                 .VertexShader = &vertexShader,
@@ -870,7 +871,7 @@ namespace sandbox
                 .DSVFormat = m_DepthStencilFormat,
             };
 
-            SPIELER_RETURN_IF_FAILED(m_PipelineStates["light"].Init(pipelineStateConfig));
+            m_PipelineStates["light"] = spieler::renderer::GraphicsPipelineState{ device, pipelineStateConfig };
         }
 
         // PSO for opaque objects
@@ -912,7 +913,7 @@ namespace sandbox
                 .RenderTargetProps = { renderTargetBlendProps }
             };
 
-            const spieler::renderer::PipelineStateConfig pipelineStateConfig
+            const spieler::renderer::GraphicsPipelineStateConfig pipelineStateConfig
             {
                 .RootSignature = &m_RootSignatures["default"],
                 .VertexShader = &vertexShader,
@@ -925,7 +926,7 @@ namespace sandbox
                 .DSVFormat = m_DepthStencilFormat,
             };
 
-            SPIELER_RETURN_IF_FAILED(m_PipelineStates["opaque"].Init(pipelineStateConfig));
+            m_PipelineStates["opaque"] = spieler::renderer::GraphicsPipelineState{ device, pipelineStateConfig };
         }
 
         // PSO for marking mirros
@@ -985,7 +986,7 @@ namespace sandbox
                 }
             };
 
-            const spieler::renderer::PipelineStateConfig pipelineStateConfig
+            const spieler::renderer::GraphicsPipelineStateConfig pipelineStateConfig
             {
                 .RootSignature = &m_RootSignatures["default"],
                 .VertexShader = &vertexShader,
@@ -999,7 +1000,7 @@ namespace sandbox
                 .DSVFormat = m_DepthStencilFormat,
             };
 
-            SPIELER_RETURN_IF_FAILED(m_PipelineStates["mirror"].Init(pipelineStateConfig));
+            m_PipelineStates["mirror"] = spieler::renderer::GraphicsPipelineState{ device, pipelineStateConfig };
         }
 
         // PSO for stencil reflections
@@ -1072,7 +1073,7 @@ namespace sandbox
                 }
             };
 
-            const spieler::renderer::PipelineStateConfig pipelineStateConfig
+            const spieler::renderer::GraphicsPipelineStateConfig pipelineStateConfig
             {
                 .RootSignature = &m_RootSignatures["default"],
                 .VertexShader = &vertexShader,
@@ -1086,7 +1087,7 @@ namespace sandbox
                 .DSVFormat = m_DepthStencilFormat,
             };
 
-            SPIELER_RETURN_IF_FAILED(m_PipelineStates["reflected"].Init(pipelineStateConfig));
+            m_PipelineStates["reflected"] = spieler::renderer::GraphicsPipelineState{ device, pipelineStateConfig };
         }
 
         // PSO for planar shadows
@@ -1158,7 +1159,7 @@ namespace sandbox
                 }
             };
 
-            const spieler::renderer::PipelineStateConfig pipelineStateConfig
+            const spieler::renderer::GraphicsPipelineStateConfig pipelineStateConfig
             {
                 .RootSignature = &m_RootSignatures["default"],
                 .VertexShader = &vertexShader,
@@ -1172,7 +1173,7 @@ namespace sandbox
                 .DSVFormat = m_DepthStencilFormat,
             };
 
-            SPIELER_RETURN_IF_FAILED(m_PipelineStates["shadow"].Init(pipelineStateConfig));
+            m_PipelineStates["shadow"] = spieler::renderer::GraphicsPipelineState{ device, pipelineStateConfig };
         }
 
         // PSO for billboard technique
@@ -1223,7 +1224,7 @@ namespace sandbox
                 spieler::renderer::InputLayoutElement{ "Size", spieler::renderer::GraphicsFormat::R32G32Float, sizeof(DirectX::XMFLOAT2) },
             };
 
-            const spieler::renderer::PipelineStateConfig pipelineStateConfig
+            const spieler::renderer::GraphicsPipelineStateConfig pipelineStateConfig
             {
                 .RootSignature = &m_RootSignatures["default"],
                 .VertexShader = &vertexShader,
@@ -1237,7 +1238,7 @@ namespace sandbox
                 .DSVFormat = m_DepthStencilFormat
             };
 
-            m_PipelineStates["billboard"].Init(pipelineStateConfig);
+            m_PipelineStates["billboard"] = spieler::renderer::GraphicsPipelineState{ device, pipelineStateConfig };
         }
 
         return true;

@@ -122,7 +122,7 @@ namespace sandbox
 
         spieler::renderer::ShaderLibrary m_ShaderLibrary;
 
-        LookUpTable<spieler::renderer::PipelineState> m_PipelineStates;
+        LookUpTable<spieler::renderer::GraphicsPipelineState> m_PipelineStates;
         LookUpTable<spieler::renderer::ConstantBuffer> m_ConstantBuffers;
 
         // RenderItems

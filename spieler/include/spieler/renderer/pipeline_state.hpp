@@ -14,7 +14,28 @@ namespace spieler::renderer
     struct RasterizerState;
     struct DepthStencilState;
 
-    struct PipelineStateConfig
+    class PipelineState
+    {
+        SPIELER_NON_COPYABLE(PipelineState)
+
+    public:
+        friend class Context;
+
+    public:
+        PipelineState() = default;
+        PipelineState(PipelineState&& other) noexcept;
+        virtual ~PipelineState() = default;
+
+    public:
+        PipelineState& operator=(PipelineState&& other) noexcept;
+
+        explicit operator ID3D12PipelineState* () const { return m_PipelineState.Get(); }
+
+    protected:
+        ComPtr<ID3D12PipelineState> m_PipelineState;
+    };
+
+    struct GraphicsPipelineStateConfig
     {
         const RootSignature* RootSignature{ nullptr };
         const Shader* VertexShader{ nullptr };
@@ -30,16 +51,14 @@ namespace spieler::renderer
         GraphicsFormat DSVFormat{ GraphicsFormat::D24UnsignedNormS8UnsignedInt };
     };
 
-    class PipelineState
+    class GraphicsPipelineState : public PipelineState
     {
     public:
-        bool Init(const PipelineStateConfig& props);
-
-    public:
-        explicit operator ID3D12PipelineState* () const { return m_PipelineState.Get(); }
+        GraphicsPipelineState() = default;
+        GraphicsPipelineState(Device& device, const GraphicsPipelineStateConfig& config);
 
     private:
-        ComPtr<ID3D12PipelineState> m_PipelineState;
+        bool Init(Device& device, const GraphicsPipelineStateConfig& config);
     };
 
     struct ComputePipelineStateConfig
@@ -48,7 +67,7 @@ namespace spieler::renderer
         const Shader* ComputeShader{ nullptr };
     };
 
-    class ComputePipelineState
+    class ComputePipelineState : public PipelineState
     {
     public:
         ComputePipelineState() = default;
@@ -56,12 +75,6 @@ namespace spieler::renderer
 
     private:
         bool Init(Device& device, const ComputePipelineStateConfig& config);
-
-    public:
-        explicit operator ID3D12PipelineState* () const { return m_PipelineState.Get(); }
-
-    private:
-        ComPtr<ID3D12PipelineState> m_PipelineState;
     };
 
 } // namespace spieler::renderer
