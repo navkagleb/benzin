@@ -2,6 +2,7 @@
 
 #include "spieler/renderer/descriptor_manager.hpp"
 #include "spieler/renderer/buffer.hpp"
+#include "spieler/renderer/texture.hpp"
 
 namespace spieler::renderer
 {
@@ -33,7 +34,7 @@ namespace spieler::renderer
         bool CreateUploadBuffer(const BufferConfig& bufferConfig, Resource& resource);
 
         bool CreateTexture(const Texture2DConfig& texture2DConfig, Resource& resource);
-        bool CreateTexture(const Texture2DConfig& texture2DConfig, const TextureClearValue&, Resource& resource);
+        bool CreateTexture(const Texture2DConfig& texture2DConfig, const TextureClearValue& textureClearValue, Resource& resource);
         bool CreateTexture(const Texture2DConfig& texture2DConfig, const DepthStencilClearValue& depthStencilClearValue, Resource& resource);
 
         std::shared_ptr<BufferResource> CreateBuffer(const BufferConfig& bufferConfig, BufferFlags bufferFlags);
