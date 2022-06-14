@@ -49,6 +49,8 @@ namespace spieler::renderer
         void SetViewport(const Viewport& viewport);
         void SetScissorRect(const ScissorRect& scissorRect);
 
+        void SetPipelineState(const PipelineState& pso);
+
         void SetRenderTarget(const RenderTargetView& rtv);
         void SetRenderTarget(const RenderTargetView& rtv, const DepthStencilView& dsv);
 

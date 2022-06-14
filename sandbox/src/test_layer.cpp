@@ -1481,7 +1481,7 @@ namespace sandbox
         auto& context{ renderer.GetContext() };
         auto& descriptorManager{ device.GetDescriptorManager() };
 
-        context.GetNativeCommandList()->SetPipelineState(static_cast<ID3D12PipelineState*>(pso));
+        context.SetPipelineState(pso);
 
         m_RootSignatures["default"].Bind();
         m_ConstantBuffers["pass"].GetSlice(&passConstants).Bind(context, 0);

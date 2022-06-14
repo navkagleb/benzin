@@ -112,7 +112,7 @@ namespace sandbox
         {
             // Horizontal Blur pass
             {
-                commandList->SetPipelineState(static_cast<ID3D12PipelineState*>(m_HorizontalBlurPSO));
+                context.SetPipelineState(m_HorizontalBlurPSO);
 
                 commandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
                 commandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
@@ -139,7 +139,7 @@ namespace sandbox
             
             // Vertical Blur pass
             {
-                commandList->SetPipelineState(static_cast<ID3D12PipelineState*>(m_VerticalBlurPSO));
+                context.SetPipelineState(m_VerticalBlurPSO);
 
                 commandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
                 commandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });

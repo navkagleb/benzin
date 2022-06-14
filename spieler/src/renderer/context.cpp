@@ -63,6 +63,11 @@ namespace spieler::renderer
         m_CommandList->RSSetScissorRects(1, &d3d12Rect);
     }
 
+    void Context::SetPipelineState(const PipelineState& pso)
+    {
+        m_CommandList->SetPipelineState(static_cast<ID3D12PipelineState*>(pso));
+    }
+
     void Context::SetRenderTarget(const RenderTargetView& rtv)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };

@@ -16,6 +16,7 @@ namespace spieler::renderer
 
     class PipelineState
     {
+    private:
         SPIELER_NON_COPYABLE(PipelineState)
 
     public:
@@ -29,6 +30,7 @@ namespace spieler::renderer
     public:
         PipelineState& operator=(PipelineState&& other) noexcept;
 
+    private:
         explicit operator ID3D12PipelineState* () const { return m_PipelineState.Get(); }
 
     protected:
