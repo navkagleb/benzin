@@ -21,7 +21,7 @@ namespace spieler::renderer
     struct SwapChainConfig
     {
         uint32_t BufferCount{ 0 };
-        GraphicsFormat BufferFormat{ GraphicsFormat::UNKNOWN };
+        GraphicsFormat BufferFormat{ GraphicsFormat::Unknown };
     };
 
     class SwapChain

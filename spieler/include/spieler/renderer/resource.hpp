@@ -32,7 +32,7 @@ namespace spieler::renderer
     {
         uint64_t Width{ 0 };
         uint32_t Height{ 0 };
-        GraphicsFormat Format{ GraphicsFormat::UNKNOWN };
+        GraphicsFormat Format{ GraphicsFormat::Unknown };
         Texture2DFlags Flags{ Texture2DFlags::None };
     };
 

@@ -26,8 +26,8 @@ namespace spieler::renderer
         const InputLayout* InputLayout{ nullptr };
 
         PrimitiveTopologyType PrimitiveTopologyType{ PrimitiveTopologyType::Undefined };
-        GraphicsFormat RTVFormat{ GraphicsFormat::R8G8B8A8_UNORM };
-        GraphicsFormat DSVFormat{ GraphicsFormat::D24_UNORM_S8_UINT };
+        GraphicsFormat RTVFormat{ GraphicsFormat::R8G8B8A8UnsignedNorm };
+        GraphicsFormat DSVFormat{ GraphicsFormat::D24UnsignedNormS8UnsignedInt };
     };
 
     class PipelineState

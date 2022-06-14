@@ -190,7 +190,7 @@ namespace sandbox
         {
             .Width = width,
             .Height = height,
-            .Format = spieler::renderer::GraphicsFormat::R8G8B8A8_UNORM,
+            .Format = spieler::renderer::GraphicsFormat::R8G8B8A8UnsignedNorm,
             .Flags = spieler::renderer::Texture2DFlags::UnorderedAccess,
         };
 

@@ -20,7 +20,7 @@ namespace spieler::renderer
     {
         SPIELER_ASSERT(resource.GetResource());
 
-        const GraphicsFormat format{ resource.GetStride() == 2 ? GraphicsFormat::R16_UINT : GraphicsFormat::R32_UINT };
+        const GraphicsFormat format{ resource.GetStride() == 2 ? GraphicsFormat::R16UnsignedInt : GraphicsFormat::R32UnsignedInt };
 
         m_View.BufferLocation = static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(resource.GetGPUVirtualAddress());
         m_View.SizeInBytes = resource.GetSize();

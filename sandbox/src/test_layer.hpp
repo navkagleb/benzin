@@ -105,6 +105,7 @@ namespace sandbox
     private:
         spieler::Window& m_Window;
 
+        spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
         spieler::renderer::Texture2D m_DepthStencil;
 
         spieler::renderer::Viewport m_Viewport;

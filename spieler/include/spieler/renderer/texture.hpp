@@ -29,7 +29,7 @@ namespace spieler::renderer
         void SetResource(ComPtr<ID3D12Resource>&& resource);
 
     private:
-        GraphicsFormat m_Format{ GraphicsFormat::UNKNOWN };
+        GraphicsFormat m_Format{ GraphicsFormat::Unknown };
         Image m_Image;
     };
 

@@ -841,10 +841,10 @@ namespace sandbox
 
         const spieler::renderer::InputLayout inputLayout
         {
-            spieler::renderer::InputLayoutElement{ "Position", spieler::renderer::GraphicsFormat::R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
-            spieler::renderer::InputLayoutElement{ "Normal", spieler::renderer::GraphicsFormat::R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
-            spieler::renderer::InputLayoutElement{ "Tangent", spieler::renderer::GraphicsFormat::R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
-            spieler::renderer::InputLayoutElement{ "TexCoord", spieler::renderer::GraphicsFormat::R32G32_FLOAT, sizeof(DirectX::XMFLOAT2) }
+            spieler::renderer::InputLayoutElement{ "Position", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
+            spieler::renderer::InputLayoutElement{ "Normal", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
+            spieler::renderer::InputLayoutElement{ "Tangent", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
+            spieler::renderer::InputLayoutElement{ "TexCoord", spieler::renderer::GraphicsFormat::R32G32Float, sizeof(DirectX::XMFLOAT2) }
         };
 
         // PSO for lights
@@ -867,7 +867,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Triangle,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
+                .DSVFormat = m_DepthStencilFormat,
             };
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["light"].Init(pipelineStateConfig));
@@ -922,7 +922,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Triangle,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
+                .DSVFormat = m_DepthStencilFormat,
             };
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["opaque"].Init(pipelineStateConfig));
@@ -996,7 +996,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Triangle,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
+                .DSVFormat = m_DepthStencilFormat,
             };
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["mirror"].Init(pipelineStateConfig));
@@ -1083,7 +1083,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Triangle,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
+                .DSVFormat = m_DepthStencilFormat,
             };
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["reflected"].Init(pipelineStateConfig));
@@ -1169,7 +1169,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Triangle,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
+                .DSVFormat = m_DepthStencilFormat,
             };
 
             SPIELER_RETURN_IF_FAILED(m_PipelineStates["shadow"].Init(pipelineStateConfig));
@@ -1219,8 +1219,8 @@ namespace sandbox
 
             const spieler::renderer::InputLayout inputLayout
             {
-                spieler::renderer::InputLayoutElement{ "Position", spieler::renderer::GraphicsFormat::R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
-                spieler::renderer::InputLayoutElement{ "Size", spieler::renderer::GraphicsFormat::R32G32_FLOAT, sizeof(DirectX::XMFLOAT2) },
+                spieler::renderer::InputLayoutElement{ "Position", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
+                spieler::renderer::InputLayoutElement{ "Size", spieler::renderer::GraphicsFormat::R32G32Float, sizeof(DirectX::XMFLOAT2) },
             };
 
             const spieler::renderer::PipelineStateConfig pipelineStateConfig
@@ -1234,7 +1234,7 @@ namespace sandbox
                 .InputLayout = &inputLayout,
                 .PrimitiveTopologyType = spieler::renderer::PrimitiveTopologyType::Point,
                 .RTVFormat = renderer.GetSwapChain().GetBufferFormat(),
-                .DSVFormat = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT
+                .DSVFormat = m_DepthStencilFormat
             };
 
             m_PipelineStates["billboard"].Init(pipelineStateConfig);
@@ -1436,7 +1436,7 @@ namespace sandbox
         {
             .Width = m_Window.GetWidth(),
             .Height = m_Window.GetHeight(),
-            .Format = spieler::renderer::GraphicsFormat::D24_UNORM_S8_UINT,
+            .Format = m_DepthStencilFormat,
             .Flags = spieler::renderer::Texture2DFlags::DepthStencil
         };
 

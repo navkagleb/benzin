@@ -13,7 +13,7 @@ namespace spieler::renderer
     constexpr SwapChainConfig g_SwapChainConfig
     {
         .BufferCount = 2,
-        .BufferFormat = GraphicsFormat::R8G8B8A8_UNORM,
+        .BufferFormat = GraphicsFormat::R8G8B8A8UnsignedNorm,
     };
 
     Renderer& Renderer::CreateInstance(Window& window)
