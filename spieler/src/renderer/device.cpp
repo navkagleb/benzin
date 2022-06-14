@@ -187,11 +187,11 @@ namespace spieler::renderer
 
         if ((bufferFlags & BufferFlags::Dynamic) != BufferFlags::None)
         {
-            CreateUploadBuffer(bufferConfig, *buffer);
+            SPIELER_ASSERT(CreateUploadBuffer(bufferConfig, *buffer));
         }
         else
         {
-            CreateDefaultBuffer(bufferConfig, *buffer);
+            SPIELER_ASSERT(CreateDefaultBuffer(bufferConfig, *buffer));
         }
 
         return buffer;
