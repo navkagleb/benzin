@@ -34,7 +34,7 @@ namespace sandbox
             alignas(16) DirectX::XMFLOAT3 CameraPosition{};
             alignas(16) DirectX::XMFLOAT4 AmbientLight{};
             alignas(16) spieler::renderer::LightConstants Lights[MAX_LIGHT_COUNT];
-            
+
             alignas(16) DirectX::XMFLOAT4 FogColor{};
             float ForStart{};
             float FogRange{};
@@ -73,8 +73,9 @@ namespace sandbox
     };
 
     TestLayer::TestLayer(spieler::Window& window)
-        : m_Window(window)
-        , m_CameraController(spieler::math::ToRadians(60.0f), m_Window.GetAspectRatio())
+        : m_Window{ window }
+        , m_CameraController{ spieler::math::ToRadians(60.0f), m_Window.GetAspectRatio() }
+        , m_BlurPass{ window.GetWidth(), window.GetHeight() }
     {}
 
     bool TestLayer::OnAttach()
@@ -109,7 +110,7 @@ namespace sandbox
 
     void TestLayer::OnEvent(spieler::Event& event)
     {
-        spieler::EventDispatcher dispatcher(event);
+        spieler::EventDispatcher dispatcher{ event };
         dispatcher.Dispatch<spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
 
         m_CameraController.OnEvent(event);
@@ -245,6 +246,7 @@ namespace sandbox
     bool TestLayer::OnRender(float dt)
     {
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
+        auto& swapChain{ renderer.GetSwapChain() };
         auto& context{ renderer.GetContext() };
 
         SPIELER_RETURN_IF_FAILED(context.ResetCommandAllocator());
@@ -252,13 +254,13 @@ namespace sandbox
         {
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &renderer.GetSwapChain().GetCurrentBuffer().GetResource(),
+                .Resource = &swapChain.GetCurrentBuffer().GetResource(),
                 .From = spieler::renderer::ResourceState::Present,
                 .To = spieler::renderer::ResourceState::RenderTarget
             });
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &renderer.GetSwapChain().GetDepthStencil().GetResource(),
+                .Resource = &swapChain.GetDepthStencil().GetResource(),
                 .From = spieler::renderer::ResourceState::Present,
                 .To = spieler::renderer::ResourceState::DepthWrite
             });
@@ -285,15 +287,27 @@ namespace sandbox
 
             Render(m_Shadows, m_PipelineStates["shadow"], m_PassConstants["direct"], &m_ConstantBuffers["render_item"]);
 
+            m_BlurPass.Execute(swapChain.GetCurrentBuffer().GetResource(), m_Window.GetWidth(), m_Window.GetHeight(), m_BlurCount);
+
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &renderer.GetSwapChain().GetCurrentBuffer().GetResource(),
-                .From = spieler::renderer::ResourceState::RenderTarget,
+                .Resource = &swapChain.GetCurrentBuffer().GetResource(),
+                .From = spieler::renderer::ResourceState::CopySource,
+                .To = spieler::renderer::ResourceState::CopyDestination
+            });
+
+            context.GetNativeCommandList()->CopyResource(swapChain.GetCurrentBuffer().GetResource().GetResource().Get(), m_BlurPass.GetOutput().GetResource().GetResource().Get());
+
+            context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
+            {
+                .Resource = &swapChain.GetCurrentBuffer().GetResource(),
+                .From = spieler::renderer::ResourceState::CopyDestination,
                 .To = spieler::renderer::ResourceState::Present
             });
+
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource = &renderer.GetSwapChain().GetDepthStencil().GetResource(),
+                .Resource = &swapChain.GetDepthStencil().GetResource(),
                 .From = spieler::renderer::ResourceState::DepthWrite,
                 .To = spieler::renderer::ResourceState::Present
             });
@@ -338,6 +352,12 @@ namespace sandbox
             ImGui::ColorEdit4("Color", reinterpret_cast<float*>(&fog.Color));
             ImGui::SliderFloat("Start", &fog.Start, 0.1f, 100.0f);
             ImGui::SliderFloat("Range", &fog.Range, 0.1f, 300.1f);
+        }
+        ImGui::End();
+
+        ImGui::Begin("Blur");
+        {
+            ImGui::SliderInt("Blur Count", &m_BlurCount, 0, 5);
         }
         ImGui::End();
     }
@@ -766,43 +786,46 @@ namespace sandbox
 
     bool TestLayer::InitRootSignatures()
     {
-        std::vector<spieler::renderer::RootParameter> rootParameters;
-        std::vector<spieler::renderer::StaticSampler> staticSamplers;
-
-        // Init root parameters
+        // Default root signature
         {
-            rootParameters.resize(4);
+            std::vector<spieler::renderer::RootParameter> rootParameters;
+            std::vector<spieler::renderer::StaticSampler> staticSamplers;
 
-            rootParameters[0].Type = spieler::renderer::RootParameterType::ConstantBufferView;
-            rootParameters[0].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
-            rootParameters[0].Child = spieler::renderer::RootDescriptor{ .ShaderRegister = 0, .RegisterSpace = 0 };
+            // Init root parameters
+            {
+                rootParameters.resize(4);
 
-            rootParameters[1].Type = spieler::renderer::RootParameterType::ConstantBufferView;
-            rootParameters[1].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
-            rootParameters[1].Child = spieler::renderer::RootDescriptor{ .ShaderRegister = 1, .RegisterSpace = 0 };
+                rootParameters[0].Type = spieler::renderer::RootParameterType::ConstantBufferView;
+                rootParameters[0].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
+                rootParameters[0].Child = spieler::renderer::RootDescriptor{ .ShaderRegister = 0, .RegisterSpace = 0 };
 
-            rootParameters[2].Type = spieler::renderer::RootParameterType::ConstantBufferView;
-            rootParameters[2].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
-            rootParameters[2].Child = spieler::renderer::RootDescriptor{ .ShaderRegister = 2, .RegisterSpace = 0 };
+                rootParameters[1].Type = spieler::renderer::RootParameterType::ConstantBufferView;
+                rootParameters[1].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
+                rootParameters[1].Child = spieler::renderer::RootDescriptor{ .ShaderRegister = 1, .RegisterSpace = 0 };
 
-            rootParameters[3].Type = spieler::renderer::RootParameterType::DescriptorTable;
-            rootParameters[3].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
-            rootParameters[3].Child = spieler::renderer::RootDescriptorTable{ { spieler::renderer::DescriptorRange{ spieler::renderer::DescriptorRangeType::SRV, 1 } } };
+                rootParameters[2].Type = spieler::renderer::RootParameterType::ConstantBufferView;
+                rootParameters[2].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
+                rootParameters[2].Child = spieler::renderer::RootDescriptor{ .ShaderRegister = 2, .RegisterSpace = 0 };
+
+                rootParameters[3].Type = spieler::renderer::RootParameterType::DescriptorTable;
+                rootParameters[3].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
+                rootParameters[3].Child = spieler::renderer::RootDescriptorTable{ { spieler::renderer::DescriptorRange{ spieler::renderer::DescriptorRangeType::SRV, 1 } } };
+            }
+
+            // Init statis samplers
+            {
+                staticSamplers.resize(6);
+
+                staticSamplers[0] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Wrap, 0);
+                staticSamplers[1] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Clamp, 1);
+                staticSamplers[2] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Wrap, 2);
+                staticSamplers[3] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Clamp, 3);
+                staticSamplers[4] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Wrap, 4);
+                staticSamplers[5] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Clamp, 5);
+            }
+
+            SPIELER_RETURN_IF_FAILED(m_RootSignatures["default"].Init(rootParameters, staticSamplers));
         }
-
-        // Init statis samplers
-        {
-            staticSamplers.resize(6);
-
-            staticSamplers[0] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Wrap, 0);
-            staticSamplers[1] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Clamp, 1);
-            staticSamplers[2] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Wrap, 2);
-            staticSamplers[3] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Clamp, 3);
-            staticSamplers[4] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Wrap, 4);
-            staticSamplers[5] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Clamp, 5);
-        }
-
-        SPIELER_RETURN_IF_FAILED(m_RootSignatures["default"].Init(rootParameters, staticSamplers));
 
         return true;
     }
@@ -1470,6 +1493,8 @@ namespace sandbox
     {
         UpdateViewport();
         UpdateScissorRect();
+
+        m_BlurPass.OnResize(event.GetWidth(), event.GetHeight());
 
         return true;
     }

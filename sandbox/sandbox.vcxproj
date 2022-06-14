@@ -34,6 +34,7 @@
     <ClCompile Include="src\land_layer.cpp" />
     <ClCompile Include="src\light_controller.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\passes\blur_pass.cpp" />
     <ClCompile Include="src\projection_camera_controller.cpp" />
     <ClCompile Include="src\test_layer.cpp" />
     <ClCompile Include="src\waves.cpp" />
@@ -42,6 +43,7 @@
     <ClInclude Include="src\bootstrap.hpp" />
     <ClInclude Include="src\land_layer.hpp" />
     <ClInclude Include="src\light_controller.hpp" />
+    <ClInclude Include="src\passes\blur_pass.hpp" />
     <ClInclude Include="src\projection_camera_controller.hpp" />
     <ClInclude Include="src\test_layer.hpp" />
     <ClInclude Include="src\waves.hpp" />
@@ -118,7 +120,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)spieler\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)spieler\include;$(ProjectDir)\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>bootstrap.hpp</PrecompiledHeaderFile>
     </ClCompile>

@@ -15,6 +15,7 @@
 
 #include "projection_camera_controller.hpp"
 #include "light_controller.hpp"
+#include "passes/blur_pass.hpp"
 
 namespace sandbox
 {
@@ -134,6 +135,9 @@ namespace sandbox
         LookUpTable<PassConstants> m_PassConstants;
 
         DirectionalLightController m_DirectionalLightController;
+
+        BlurPass m_BlurPass;
+        int32_t m_BlurCount{ 0 };
     };
 
 } // namespace sandbox
