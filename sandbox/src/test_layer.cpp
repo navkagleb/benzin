@@ -293,7 +293,7 @@ namespace sandbox
 
             Render(m_Shadows, m_PipelineStates["shadow"], m_PassConstants["direct"], &m_ConstantBuffers["render_item"]);
 
-            m_BlurPass.Execute(currentBufferResource, m_Window.GetWidth(), m_Window.GetHeight(), m_BlurCount);
+            m_BlurPass.Execute(currentBufferResource, m_Window.GetWidth(), m_Window.GetHeight(), m_BlurPassExecuteProps);
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
@@ -361,9 +361,14 @@ namespace sandbox
         }
         ImGui::End();
 
-        ImGui::Begin("Blur");
+        ImGui::Begin("Blur Settings");
         {
-            ImGui::SliderInt("Blur Count", &m_BlurCount, 0, 5);
+            ImGui::SliderFloat("Horizontal Blur Sigma", &m_BlurPassExecuteProps.HorizontalBlurSigma, 0.1f, 2.5f, "%.3f");
+            ImGui::SliderFloat("Vertical Blur Sigma", &m_BlurPassExecuteProps.VerticalBlurSigma, 0.1f, 2.5f, "%.3f");
+            ImGui::SliderInt("Blur Count", reinterpret_cast<int*>(&m_BlurPassExecuteProps.BlurCount), 0, 20);
+
+            ImGui::Text(fmt::format("Horizontal Blur Radius: {}", BlurPass::GetBlurRadius(m_BlurPassExecuteProps.HorizontalBlurSigma)).c_str());
+            ImGui::Text(fmt::format("Vertical Blur Radius: {}", BlurPass::GetBlurRadius(m_BlurPassExecuteProps.VerticalBlurSigma)).c_str());
         }
         ImGui::End();
     }

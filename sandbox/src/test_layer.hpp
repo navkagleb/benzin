@@ -142,7 +142,7 @@ namespace sandbox
         DirectionalLightController m_DirectionalLightController;
 
         BlurPass m_BlurPass;
-        int32_t m_BlurCount{ 0 };
+        BlurPassExecuteProps m_BlurPassExecuteProps{ 2.5f, 2.5f, 0 };
     };
 
 } // namespace sandbox

@@ -42,6 +42,53 @@ namespace sandbox
             return weights;
         }
 
+        static std::vector<spieler::renderer::RootParameter> GetUniformPassRootParameters()
+        {
+            const spieler::renderer::RootParameter constants
+            {
+                .Type = spieler::renderer::RootParameterType::_32BitConstants,
+                .Child = spieler::renderer::RootConstants
+                {
+                    .ShaderRegister = 0,
+                    .Count = 12 // BlurRadius + 11 Weights
+                }
+            };
+
+            const spieler::renderer::RootParameter srvTable
+            {
+                .Type = spieler::renderer::RootParameterType::DescriptorTable,
+                .Child = spieler::renderer::RootDescriptorTable
+                {
+                    {
+                        spieler::renderer::DescriptorRange
+                        {
+                            .Type = spieler::renderer::DescriptorRangeType::SRV,
+                            .DescriptorCount = 1,
+                            .BaseShaderRegister = 0
+                        }
+                    }
+                }
+            };
+
+            const spieler::renderer::RootParameter uavTable
+            {
+                .Type = spieler::renderer::RootParameterType::DescriptorTable,
+                .Child = spieler::renderer::RootDescriptorTable
+                {
+                    {
+                        spieler::renderer::DescriptorRange
+                        {
+                            .Type = spieler::renderer::DescriptorRangeType::UAV,
+                            .DescriptorCount = 1,
+                            .BaseShaderRegister = 0
+                        }
+                    }
+                }
+            };
+
+            return { constants, srvTable, uavTable };
+        }
+
     } // namespace _internal
 
     namespace per
@@ -50,13 +97,11 @@ namespace sandbox
         enum class Horizontal
         {
             THREAD_PER_GROUP_COUNT,
-            MAX_BLUR_RADIUS
         };
 
         enum class Vertical
         {
             THREAD_PER_GROUP_COUNT,
-            MAX_BLUR_RADIUS
         };
 
     } // namespace per
@@ -64,8 +109,8 @@ namespace sandbox
     BlurPass::BlurPass(uint32_t width, uint32_t height)
     {
         InitTextures(width, height);
-        InitRootSignature();
-        InitPipelineStates();
+        InitHorizontalPass();
+        InitVerticalPass();
     }
 
     void BlurPass::OnResize(uint32_t width, uint32_t height)
@@ -73,19 +118,12 @@ namespace sandbox
         InitTextures(width, height);
     }
 
-    bool BlurPass::Execute(spieler::renderer::Texture2DResource& input, uint32_t width, uint32_t height, uint32_t blurCount)
+    bool BlurPass::Execute(spieler::renderer::Texture2DResource& input, uint32_t width, uint32_t height, const BlurPassExecuteProps& props)
     {
         spieler::renderer::Renderer& renderer{ spieler::renderer::Renderer::GetInstance() };
         spieler::renderer::Context& context{ renderer.GetContext() };
 
         auto& commandList{ context.GetNativeCommandList() };
-
-        const std::vector<float> weights{ _internal::CalcGaussWeights(2.5f) };
-        const auto blurRadius{ static_cast<int32_t>(weights.size() / 2) };
-
-        commandList->SetComputeRootSignature(static_cast<ID3D12RootSignature*>(m_RootSignature));
-        commandList->SetComputeRoot32BitConstants(0, 1, &blurRadius, 0);
-        commandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(weights.size()), weights.data(), 1);
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
@@ -117,18 +155,26 @@ namespace sandbox
             .To = spieler::renderer::ResourceState::UnorderedAccess
         });
 
-        for (uint32_t i = 0; i < blurCount; ++i)
+        const std::vector<float> horizontalWeights{ _internal::CalcGaussWeights(props.HorizontalBlurSigma) };
+        const auto horizontalBlurRadius{ static_cast<int32_t>(horizontalWeights.size() / 2) };
+
+        const std::vector<float> verticalWeights{ _internal::CalcGaussWeights(props.VerticalBlurSigma) };
+        const auto verticalBlurRadius{ static_cast<int32_t>(verticalWeights.size() / 2) };
+
+        for (uint32_t i = 0; i < props.BlurCount; ++i)
         {
             // Horizontal Blur pass
             {
-                context.SetPipelineState(m_HorizontalBlurPSO);
+                context.SetPipelineState(m_HorizontalPass.PSO);
+
+                commandList->SetComputeRootSignature(static_cast<ID3D12RootSignature*>(m_HorizontalPass.RootSignature));
+                commandList->SetComputeRoot32BitConstants(0, 1, &horizontalBlurRadius, 0);
+                commandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(horizontalWeights.size()), horizontalWeights.data(), 1);
 
                 commandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
                 commandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
 
-                // How many groups do we need to dispatch to cover a row of pixels, where each
-                // group covers 256 pixels (the 256 is defined in the ComputeShader).
-                const auto xGroupCount{ static_cast<uint32_t>(std::ceilf(width / 256.0f)) };
+                const auto xGroupCount{ width / _internal::g_ThreadPerGroupCount + 1 };
                 commandList->Dispatch(xGroupCount, height, 1);
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
@@ -148,14 +194,16 @@ namespace sandbox
             
             // Vertical Blur pass
             {
-                context.SetPipelineState(m_VerticalBlurPSO);
+                context.SetPipelineState(m_VerticalPass.PSO);
+
+                commandList->SetComputeRootSignature(static_cast<ID3D12RootSignature*>(m_VerticalPass.RootSignature));
+                commandList->SetComputeRoot32BitConstants(0, 1, &verticalBlurRadius, 0);
+                commandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(verticalWeights.size()), verticalWeights.data(), 1);
 
                 commandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
                 commandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
 
-                // How many groups do we need to dispatch to cover a column of pixels, where each
-                // group covers 256 pixels (the 256 is defined in the ComputeShader).
-                const auto yGroupCount{ static_cast<uint32_t>(std::ceilf(height / 256.0f)) };
+                const uint32_t yGroupCount{ height / _internal::g_ThreadPerGroupCount + 1 };
                 commandList->Dispatch(width, yGroupCount, 1);
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
@@ -216,65 +264,20 @@ namespace sandbox
         }
     }
 
-    void BlurPass::InitRootSignature()
-    {
-        const spieler::renderer::RootParameter constants
-        {
-            .Type = spieler::renderer::RootParameterType::_32BitConstants,
-            .Child = spieler::renderer::RootConstants
-            {
-                .ShaderRegister = 0,
-                .Count = 12
-            }
-        };
-
-        const spieler::renderer::RootParameter srvTable
-        {
-            .Type = spieler::renderer::RootParameterType::DescriptorTable,
-            .Child = spieler::renderer::RootDescriptorTable
-            {
-                {
-                    spieler::renderer::DescriptorRange
-                    {
-                        .Type = spieler::renderer::DescriptorRangeType::SRV,
-                        .DescriptorCount = 1,
-                        .BaseShaderRegister = 0
-                    }
-                }
-            }
-        };
-
-        const spieler::renderer::RootParameter uavTable
-        {
-            .Type = spieler::renderer::RootParameterType::DescriptorTable,
-            .Child = spieler::renderer::RootDescriptorTable
-            {
-                {
-                    spieler::renderer::DescriptorRange
-                    {
-                        .Type = spieler::renderer::DescriptorRangeType::UAV,
-                        .DescriptorCount = 1,
-                        .BaseShaderRegister = 0
-                    }
-                }
-            }
-        };
-
-        std::vector<spieler::renderer::RootParameter> rootParameters{ constants, srvTable, uavTable };
-
-        SPIELER_ASSERT(m_RootSignature.Init(rootParameters));
-    }
-
-    void BlurPass::InitPipelineStates()
+    void BlurPass::InitHorizontalPass()
     {
         spieler::renderer::Renderer& renderer{ spieler::renderer::Renderer::GetInstance() };
         spieler::renderer::Device& device{ renderer.GetDevice() };
 
-        // Horizontal PSO
+        // Root Signature
+        {
+            SPIELER_ASSERT(m_HorizontalPass.RootSignature.Init(_internal::GetUniformPassRootParameters()));
+        }
+
+        // PSO
         {
             spieler::renderer::ShaderPermutation<per::Horizontal> horizontalPermutation;
             horizontalPermutation.Set<per::Horizontal::THREAD_PER_GROUP_COUNT>(_internal::g_ThreadPerGroupCount);
-            horizontalPermutation.Set<per::Horizontal::MAX_BLUR_RADIUS>(_internal::g_MaxBlurRadius);
 
             const spieler::renderer::ShaderConfig<per::Horizontal> config
             {
@@ -287,18 +290,28 @@ namespace sandbox
 
             const spieler::renderer::ComputePipelineStateConfig horizontalPSOConfig
             {
-                .RootSignature = &m_RootSignature,
+                .RootSignature = &m_HorizontalPass.RootSignature,
                 .ComputeShader = &horizontalBlurShader
             };
 
-            m_HorizontalBlurPSO = spieler::renderer::ComputePipelineState(device, horizontalPSOConfig);
+            m_HorizontalPass.PSO = spieler::renderer::ComputePipelineState(device, horizontalPSOConfig);
+        }
+    }
+
+    void BlurPass::InitVerticalPass()
+    {
+        spieler::renderer::Renderer& renderer{ spieler::renderer::Renderer::GetInstance() };
+        spieler::renderer::Device& device{ renderer.GetDevice() };
+
+        // Root Signature
+        {
+            SPIELER_ASSERT(m_VerticalPass.RootSignature.Init(_internal::GetUniformPassRootParameters()));
         }
 
-        // Vertical PSO
+        // PSO
         {
             spieler::renderer::ShaderPermutation<per::Vertical> verticalPermutation;
             verticalPermutation.Set<per::Vertical::THREAD_PER_GROUP_COUNT>(_internal::g_ThreadPerGroupCount);
-            verticalPermutation.Set<per::Vertical::MAX_BLUR_RADIUS>(_internal::g_MaxBlurRadius);
 
             const spieler::renderer::ShaderConfig<per::Vertical> config
             {
@@ -311,11 +324,11 @@ namespace sandbox
 
             const spieler::renderer::ComputePipelineStateConfig verticalPSOConfig
             {
-                .RootSignature = &m_RootSignature,
+                .RootSignature = &m_VerticalPass.RootSignature,
                 .ComputeShader = &verticalBlurShader
             };
 
-            m_VerticalBlurPSO = spieler::renderer::ComputePipelineState(device, verticalPSOConfig);
+            m_VerticalPass.PSO = spieler::renderer::ComputePipelineState(device, verticalPSOConfig);
         }
     }
 
