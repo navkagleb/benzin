@@ -26,7 +26,7 @@ namespace sandbox
 
             float weightSum{ 0.0f };
 
-            for (int32_t i = -blurRadius; i < blurRadius  + 1; ++i)
+            for (int32_t i = -blurRadius; i < blurRadius + 1; ++i)
             {
                 const auto x{ static_cast<float>(i) };
 
