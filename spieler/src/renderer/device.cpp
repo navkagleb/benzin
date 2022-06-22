@@ -162,7 +162,7 @@ namespace spieler::renderer
         const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToD3D12ResourceDesc(texture2DConfig) };
         const D3D12_CLEAR_VALUE clearValueDesc{ _internal::ConvertToD3D12ClearValue(texture2DConfig, textureClearValue) };
 
-        return CreateResource(&heapDesc, &resourceDesc, nullptr, resource.m_Resource);
+        return CreateResource(&heapDesc, &resourceDesc, &clearValueDesc, resource.m_Resource);
     }
 
     bool Device::CreateTexture(const Texture2DConfig& texture2DConfig, const DepthStencilClearValue& depthStencilClearValue, Resource& resource)
@@ -218,7 +218,7 @@ namespace spieler::renderer
 
         if (FAILED(result))
         {
-            SPIELER_CRITICAL("Failed to create buffer");
+            SPIELER_CRITICAL("Failed to create Resource");
             return false;
         }
 
