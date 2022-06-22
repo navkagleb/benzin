@@ -1,4 +1,10 @@
-static const int g_MaxBlurRadius = 5;
+#if !defined(THREAD_PER_GROUP_COUNT)
+    #define THREAD_PER_GROUP_COUNT 256
+#endif
+
+#if !defined(MAX_BLUR_RADIUS)
+    #define MAX_BLUR_RADIUS 5
+#endif
 
 struct Settings
 {
@@ -23,8 +29,7 @@ ConstantBuffer<Settings> g_Settings : register(b0);
 Texture2D g_Input : register(t0);
 RWTexture2D<float4> g_Output : register(u0);
 
-#define N 256
-groupshared float4 g_Cache[N + 2 * g_MaxBlurRadius];
+groupshared float4 g_Cache[THREAD_PER_GROUP_COUNT + 2 * MAX_BLUR_RADIUS];
 
 struct CS_Input
 {
@@ -32,7 +37,7 @@ struct CS_Input
     int3 DispatchThreadID : SV_DispatchThreadID;
 };
 
-[numthreads(N, 1, 1)]
+[numthreads(THREAD_PER_GROUP_COUNT, 1, 1)]
 void CS_HorizontalBlur(CS_Input input)
 {
     const float weights[11] =
@@ -58,7 +63,7 @@ void CS_HorizontalBlur(CS_Input input)
         g_Cache[input.GroupThreadID.x] = g_Input[int2(inputX, inputY)];
     }
     
-    if (input.GroupThreadID.x >= N - g_Settings.BlurRadius)
+    if (input.GroupThreadID.x >= THREAD_PER_GROUP_COUNT - g_Settings.BlurRadius)
     {
         const int inputX = min(input.DispatchThreadID.x + g_Settings.BlurRadius, g_Input.Length.x - 1);
         const int inputY = input.DispatchThreadID.y;
@@ -83,7 +88,7 @@ void CS_HorizontalBlur(CS_Input input)
     g_Output[input.DispatchThreadID.xy] = blurColor;
 }
 
-[numthreads(1, N, 1)]
+[numthreads(1, THREAD_PER_GROUP_COUNT, 1)]
 void CS_VerticalBlur(CS_Input input)
 {
     const float weights[11] =
@@ -109,7 +114,7 @@ void CS_VerticalBlur(CS_Input input)
         g_Cache[input.GroupThreadID.y] = g_Input[int2(inputX, inputY)];
     }
     
-    if (input.GroupThreadID.y >= N - g_Settings.BlurRadius)
+    if (input.GroupThreadID.y >= THREAD_PER_GROUP_COUNT - g_Settings.BlurRadius)
     {
         const int inputX = input.DispatchThreadID.x;
         const int inputY = min(input.DispatchThreadID.y + g_Settings.BlurRadius, g_Input.Length.y - 1);
