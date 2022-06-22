@@ -12,6 +12,7 @@ namespace sandbox
     namespace _internal
     {
 
+        constexpr int32_t g_ThreadPerGroupCount{ 256 };
         constexpr int32_t g_MaxBlurRadius{ 5 };
 
         static std::vector<float> CalcGaussWeights(float sigma)
@@ -46,9 +47,17 @@ namespace sandbox
     namespace per
     {
 
-        enum class Horizontal {};
+        enum class Horizontal
+        {
+            THREAD_PER_GROUP_COUNT,
+            MAX_BLUR_RADIUS
+        };
 
-        enum class Vertical {};
+        enum class Vertical
+        {
+            THREAD_PER_GROUP_COUNT,
+            MAX_BLUR_RADIUS
+        };
 
     } // namespace per
 
@@ -263,11 +272,15 @@ namespace sandbox
 
         // Horizontal PSO
         {
+            spieler::renderer::ShaderPermutation<per::Horizontal> horizontalPermutation;
+            horizontalPermutation.Set<per::Horizontal::THREAD_PER_GROUP_COUNT>(_internal::g_ThreadPerGroupCount);
+            horizontalPermutation.Set<per::Horizontal::MAX_BLUR_RADIUS>(_internal::g_MaxBlurRadius);
+
             const spieler::renderer::ShaderConfig<per::Horizontal> config
             {
                 .Filename = L"assets/shaders/blur.hlsl",
                 .EntryPoint = "CS_HorizontalBlur",
-                .Permutation = spieler::renderer::ShaderPermutation<per::Horizontal>{}
+                .Permutation = horizontalPermutation
             };
 
             const spieler::renderer::Shader& horizontalBlurShader{ m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Compute, config) };
@@ -283,11 +296,15 @@ namespace sandbox
 
         // Vertical PSO
         {
+            spieler::renderer::ShaderPermutation<per::Vertical> verticalPermutation;
+            verticalPermutation.Set<per::Vertical::THREAD_PER_GROUP_COUNT>(_internal::g_ThreadPerGroupCount);
+            verticalPermutation.Set<per::Vertical::MAX_BLUR_RADIUS>(_internal::g_MaxBlurRadius);
+
             const spieler::renderer::ShaderConfig<per::Vertical> config
             {
                 .Filename = L"assets/shaders/blur.hlsl",
                 .EntryPoint = "CS_VerticalBlur",
-                .Permutation = spieler::renderer::ShaderPermutation<per::Vertical>{}
+                .Permutation = verticalPermutation
             };
 
             const spieler::renderer::Shader& verticalBlurShader{ m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Compute, config) };
