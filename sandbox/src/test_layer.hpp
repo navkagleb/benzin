@@ -16,6 +16,7 @@
 #include "projection_camera_controller.hpp"
 #include "light_controller.hpp"
 #include "passes/blur_pass.hpp"
+#include "passes/sobel_filter_pass.hpp"
 
 namespace sandbox
 {
@@ -61,6 +62,8 @@ namespace sandbox
             ENABLE_FOG
         };
 
+        enum class Composite {};
+
     } // namespace per
 
     class TestLayer : public spieler::Layer
@@ -93,6 +96,8 @@ namespace sandbox
 
         void UpdateViewport();
         void UpdateScissorRect();
+
+        void RenderFullscreenQuad();
 
         void Render(
             std::vector<const spieler::renderer::RenderItem*> items,
@@ -143,6 +148,8 @@ namespace sandbox
 
         BlurPass m_BlurPass;
         BlurPassExecuteProps m_BlurPassExecuteProps{ 2.5f, 2.5f, 0 };
+
+        SobelFilterPass m_SobelFilterPass;
     };
 
 } // namespace sandbox

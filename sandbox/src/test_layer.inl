@@ -82,4 +82,30 @@ namespace sandbox
         return m_ShaderLibrary.GetShader(type, permutation);
     }
 
+    template <>
+    inline const spieler::renderer::Shader& TestLayer::GetShader(spieler::renderer::ShaderType type, const spieler::renderer::ShaderPermutation<per::Composite>& permutation)
+    {
+        static const std::unordered_map<spieler::renderer::ShaderType, std::string> entryPoints
+        {
+            { spieler::renderer::ShaderType::Vertex, "VS_Main" },
+            { spieler::renderer::ShaderType::Pixel, "PS_Main" },
+        };
+
+        static const std::wstring filename{ L"assets/shaders/composite.hlsl" };
+
+        if (!m_ShaderLibrary.HasShader(type, permutation))
+        {
+            const spieler::renderer::ShaderConfig<per::Composite> config
+            {
+                .Filename = filename,
+                .EntryPoint = entryPoints.at(type),
+                .Permutation = permutation
+            };
+
+            return m_ShaderLibrary.CreateShader(type, config);
+        }
+
+        return m_ShaderLibrary.GetShader(type, permutation);
+    }
+
 } // namespace sandbox
