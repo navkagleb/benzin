@@ -58,7 +58,7 @@
     <ClInclude Include="include\spieler\config\build_config.hpp" />
     <ClInclude Include="include\spieler\config\engine_config.hpp" />
     <ClInclude Include="include\spieler\core\assert.hpp" />
-    <ClInclude Include="include\spieler\core\class_modifiers.hpp" />
+    <ClInclude Include="include\spieler\utility\class_modifiers.hpp" />
     <ClInclude Include="include\spieler\core\logger.hpp" />
     <ClInclude Include="include\spieler\math\math.hpp" />
     <ClInclude Include="include\spieler\math\matrix.hpp" />

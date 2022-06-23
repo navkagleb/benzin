@@ -39,4 +39,4 @@
 
 #include "spieler/config/engine_config.hpp"
 
-#include "spieler/core/class_modifiers.hpp"
+#include "spieler/utility/class_modifiers.hpp"
