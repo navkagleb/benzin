@@ -64,7 +64,7 @@ namespace spieler::renderer
                 DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
             ));
 
-            SPIELER_RETURN_IF_FAILED(CreateBuffers(device, width, height));
+            SPIELER_RETURN_IF_FAILED(CreateBuffers(device));
         }
         SPIELER_RETURN_IF_FAILED(context.ExecuteCommandList(true));
 
@@ -145,7 +145,7 @@ namespace spieler::renderer
         return true;
     }
 
-    bool SwapChain::CreateBuffers(Device& device, uint32_t width, uint32_t height)
+    bool SwapChain::CreateBuffers(Device& device)
     {
         for (size_t i = 0; i < m_Buffers.size(); ++i)
         {

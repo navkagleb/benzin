@@ -49,7 +49,7 @@ namespace spieler::renderer
         bool InitFactory();
         bool InitSwapChain(Context& context, Window& window);
 
-        bool CreateBuffers(Device& device, uint32_t width, uint32_t height);
+        bool CreateBuffers(Device& device);
 
     private:
         ComPtr<IDXGIFactory> m_Factory;
