@@ -15,6 +15,7 @@ namespace spieler::renderer
 
         std::vector<D3D12_SUBRESOURCE_DATA> subresources;
 
+        // TODO: Set m_Config from subresources
         SPIELER_RETURN_IF_FAILED(DirectX::LoadDDSTextureFromFile(
             device.GetNativeDevice().Get(),
             filename.c_str(),

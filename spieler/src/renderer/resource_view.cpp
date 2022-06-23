@@ -92,7 +92,7 @@ namespace spieler::renderer
 
         const D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc
         {
-            .Format = static_cast<DXGI_FORMAT>(texture.GetFormat()),
+            .Format = static_cast<DXGI_FORMAT>(texture.GetConfig().Format),
             .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
             .Flags = D3D12_DSV_FLAG_NONE,
             .Texture2D = D3D12_TEX2D_DSV{ 0 },

@@ -33,9 +33,9 @@ namespace spieler::renderer
         bool CreateDefaultBuffer(const BufferConfig& bufferConfig, Resource& resource);
         bool CreateUploadBuffer(const BufferConfig& bufferConfig, Resource& resource);
 
-        bool CreateTexture(const Texture2DConfig& texture2DConfig, Resource& resource);
-        bool CreateTexture(const Texture2DConfig& texture2DConfig, const TextureClearValue& textureClearValue, Resource& resource);
-        bool CreateTexture(const Texture2DConfig& texture2DConfig, const DepthStencilClearValue& depthStencilClearValue, Resource& resource);
+        bool CreateTexture(const Texture2DConfig& texture2DConfig, Texture2DResource& resource);
+        bool CreateTexture(const Texture2DConfig& texture2DConfig, const TextureClearValue& textureClearValue, Texture2DResource& resource);
+        bool CreateTexture(const Texture2DConfig& texture2DConfig, const DepthStencilClearValue& depthStencilClearValue, Texture2DResource& resource);
 
         std::shared_ptr<BufferResource> CreateBuffer(const BufferConfig& bufferConfig, BufferFlags bufferFlags);
 

@@ -22,14 +22,17 @@ namespace spieler::renderer
     class Texture2DResource : public Resource
     {
     public:
-        GraphicsFormat GetFormat() const { return m_Format; }
+        friend class Device;
+
+    public:
+        const Texture2DConfig& GetConfig() const { return m_Config; }
 
     public:
         bool LoadFromDDSFile(Device& device, Context& context, const std::wstring& filename, UploadBuffer& uploadBuffer);
         void SetResource(ComPtr<ID3D12Resource>&& resource);
 
     private:
-        GraphicsFormat m_Format{ GraphicsFormat::Unknown };
+        Texture2DConfig m_Config;
         Image m_Image;
     };
 

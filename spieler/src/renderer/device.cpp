@@ -4,6 +4,7 @@
 
 #include <third_party/magic_enum/magic_enum.hpp>
 
+#include "spieler/core/common.hpp"
 #include "spieler/core/assert.hpp"
 #include "spieler/core/logger.hpp"
 
@@ -148,30 +149,42 @@ namespace spieler::renderer
         return CreateResource(&heapDesc, &resourceDesc, nullptr, resource.m_Resource);
     }
 
-    bool Device::CreateTexture(const Texture2DConfig& texture2DConfig, Resource& resource)
+    bool Device::CreateTexture(const Texture2DConfig& texture2DConfig, Texture2DResource& resource)
     {
         const D3D12_HEAP_PROPERTIES heapDesc{ _internal::GetD3D12HeapDesc(_internal::HeapType::Default) };
         const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToD3D12ResourceDesc(texture2DConfig) };
 
-        return CreateResource(&heapDesc, &resourceDesc, nullptr, resource.m_Resource);
+        SPIELER_RETURN_IF_FAILED(CreateResource(&heapDesc, &resourceDesc, nullptr, resource.m_Resource));
+
+        resource.m_Config = texture2DConfig;
+
+        return true;
     }
 
-    bool Device::CreateTexture(const Texture2DConfig& texture2DConfig, const TextureClearValue& textureClearValue, Resource& resource)
+    bool Device::CreateTexture(const Texture2DConfig& texture2DConfig, const TextureClearValue& textureClearValue, Texture2DResource& resource)
     {
         const D3D12_HEAP_PROPERTIES heapDesc{ _internal::GetD3D12HeapDesc(_internal::HeapType::Default) };
         const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToD3D12ResourceDesc(texture2DConfig) };
         const D3D12_CLEAR_VALUE clearValueDesc{ _internal::ConvertToD3D12ClearValue(texture2DConfig, textureClearValue) };
 
-        return CreateResource(&heapDesc, &resourceDesc, &clearValueDesc, resource.m_Resource);
+        SPIELER_RETURN_IF_FAILED(CreateResource(&heapDesc, &resourceDesc, &clearValueDesc, resource.m_Resource));
+
+        resource.m_Config = texture2DConfig;
+
+        return true;
     }
 
-    bool Device::CreateTexture(const Texture2DConfig& texture2DConfig, const DepthStencilClearValue& depthStencilClearValue, Resource& resource)
+    bool Device::CreateTexture(const Texture2DConfig& texture2DConfig, const DepthStencilClearValue& depthStencilClearValue, Texture2DResource& resource)
     {
         const D3D12_HEAP_PROPERTIES heapDesc{ _internal::GetD3D12HeapDesc(_internal::HeapType::Default) };
         const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToD3D12ResourceDesc(texture2DConfig) };
         const D3D12_CLEAR_VALUE clearValueDesc{ _internal::ConvertToD3D12ClearValue(texture2DConfig, depthStencilClearValue) };
 
-        return CreateResource(&heapDesc, &resourceDesc, &clearValueDesc, resource.m_Resource);
+        SPIELER_RETURN_IF_FAILED(CreateResource(&heapDesc, &resourceDesc, &clearValueDesc, resource.m_Resource));
+
+        resource.m_Config = texture2DConfig;
+
+        return true;
     }
 
     std::shared_ptr<BufferResource> Device::CreateBuffer(const BufferConfig& bufferConfig, BufferFlags bufferFlags)
