@@ -304,15 +304,6 @@ namespace sandbox
             {
                 .Resource = &offScreenTexture.GetTexture2DResource(),
                 .From = spieler::renderer::ResourceState::CopySource,
-                .To = spieler::renderer::ResourceState::CopyDestination
-            });
-
-            context.GetNativeCommandList()->CopyResource(offScreenTexture.GetTexture2DResource().GetResource().Get(), m_BlurPass.GetOutput().GetTexture2DResource().GetResource().Get());
-
-            context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
-            {
-                .Resource = &offScreenTexture.GetTexture2DResource(),
-                .From = spieler::renderer::ResourceState::CopyDestination,
                 .To = spieler::renderer::ResourceState::Present
             });
 
@@ -327,9 +318,11 @@ namespace sandbox
 
             context.SetRenderTarget(currentBuffer.GetView<spieler::renderer::RenderTargetView>(), m_DepthStencil.GetView<spieler::renderer::DepthStencilView>());
 
+            context.ClearRenderTarget(currentBuffer.GetView<spieler::renderer::RenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+
             context.SetPipelineState(m_PipelineStates["composite"]);
             nativeCommandList->SetGraphicsRootSignature(static_cast<ID3D12RootSignature*>(m_RootSignatures["composite"]));
-            nativeCommandList->SetGraphicsRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ offScreenTexture.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+            nativeCommandList->SetGraphicsRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurPass.GetOutput().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
             nativeCommandList->SetGraphicsRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_SobelFilterPass.GetOutputTexture().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
 
             RenderFullscreenQuad();
