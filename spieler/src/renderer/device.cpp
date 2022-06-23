@@ -187,6 +187,22 @@ namespace spieler::renderer
         return true;
     }
 
+    void Device::RegisterTexture(ComPtr<ID3D12Resource>&& nativeResource, Texture2DResource& resource)
+    {
+        const D3D12_RESOURCE_DESC nativeDesc{ nativeResource->GetDesc() };
+
+        const Texture2DConfig texture2DConfig
+        {
+            .Width{ nativeDesc.Width },
+            .Height{ nativeDesc.Height },
+            .Format{ static_cast<GraphicsFormat>(nativeDesc.Format) },
+            .Flags{ static_cast<Texture2DFlags>(nativeDesc.Flags) }
+        };
+
+        resource.m_Resource = std::move(nativeResource);
+        resource.m_Config = texture2DConfig;
+    }
+
     std::shared_ptr<BufferResource> Device::CreateBuffer(const BufferConfig& bufferConfig, BufferFlags bufferFlags)
     {
         using namespace magic_enum::bitwise_operators;
