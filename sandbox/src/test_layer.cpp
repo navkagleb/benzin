@@ -293,7 +293,7 @@ namespace sandbox
 
             Render(m_Shadows, m_PipelineStates["shadow"], m_PassConstants["direct"], &m_ConstantBuffers["render_item"]);
 
-            m_BlurPass.Execute(currentBufferResource, m_Window.GetWidth(), m_Window.GetHeight(), m_BlurPassExecuteProps);
+            m_BlurPass.Execute(currentBufferResource, m_BlurPassExecuteProps);
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {

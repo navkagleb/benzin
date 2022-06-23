@@ -36,7 +36,7 @@ namespace sandbox
         spieler::renderer::Texture2D& GetOutput() { return m_BlurMaps[0]; }
 
     public:
-        bool Execute(spieler::renderer::Texture2DResource& input, uint32_t width, uint32_t height, const BlurPassExecuteProps& props);
+        bool Execute(spieler::renderer::Texture2DResource& input, const BlurPassExecuteProps& props);
 
         void OnResize(uint32_t width, uint32_t height);
 

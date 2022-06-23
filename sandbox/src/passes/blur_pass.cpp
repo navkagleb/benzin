@@ -118,10 +118,13 @@ namespace sandbox
         InitTextures(width, height);
     }
 
-    bool BlurPass::Execute(spieler::renderer::Texture2DResource& input, uint32_t width, uint32_t height, const BlurPassExecuteProps& props)
+    bool BlurPass::Execute(spieler::renderer::Texture2DResource& input, const BlurPassExecuteProps& props)
     {
         spieler::renderer::Renderer& renderer{ spieler::renderer::Renderer::GetInstance() };
         spieler::renderer::Context& context{ renderer.GetContext() };
+
+        const uint32_t width{ static_cast<uint32_t>(input.GetConfig().Width) };
+        const uint32_t height{ input.GetConfig().Height };
 
         auto& commandList{ context.GetNativeCommandList() };
 
