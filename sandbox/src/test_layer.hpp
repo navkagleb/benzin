@@ -150,6 +150,7 @@ namespace sandbox
         BlurPassExecuteProps m_BlurPassExecuteProps{ 2.5f, 2.5f, 0 };
 
         SobelFilterPass m_SobelFilterPass;
+        bool m_EnableSobelFilter{ true };
     };
 
 } // namespace sandbox

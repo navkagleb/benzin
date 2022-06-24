@@ -307,32 +307,53 @@ namespace sandbox
                 .To = spieler::renderer::ResourceState::Present
             });
 
-            m_SobelFilterPass.Execute(offScreenTexture);
-
-            context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
+            if (!m_EnableSobelFilter)
             {
-                .Resource = &currentBufferResource,
-                .From = spieler::renderer::ResourceState::Present,
-                .To = spieler::renderer::ResourceState::RenderTarget
-            });
+                context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
+                {
+                    .Resource = &currentBufferResource,
+                    .From = spieler::renderer::ResourceState::Present,
+                    .To = spieler::renderer::ResourceState::CopyDestination
+                });
 
-            context.SetRenderTarget(currentBuffer.GetView<spieler::renderer::RenderTargetView>(), m_DepthStencil.GetView<spieler::renderer::DepthStencilView>());
+                nativeCommandList->CopyResource(currentBufferResource.GetResource().Get(), m_BlurPass.GetOutput().GetTexture2DResource().GetResource().Get());
 
-            context.ClearRenderTarget(currentBuffer.GetView<spieler::renderer::RenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
-
-            context.SetPipelineState(m_PipelineStates["composite"]);
-            nativeCommandList->SetGraphicsRootSignature(static_cast<ID3D12RootSignature*>(m_RootSignatures["composite"]));
-            nativeCommandList->SetGraphicsRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurPass.GetOutput().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
-            nativeCommandList->SetGraphicsRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_SobelFilterPass.GetOutputTexture().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
-
-            RenderFullscreenQuad();
-
-            context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
+                context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
+                {
+                    .Resource = &currentBufferResource,
+                    .From = spieler::renderer::ResourceState::CopyDestination,
+                    .To = spieler::renderer::ResourceState::Present
+                });
+            }
+            else
             {
-                .Resource = &currentBufferResource,
-                .From = spieler::renderer::ResourceState::RenderTarget,
-                .To = spieler::renderer::ResourceState::Present
-            });
+                m_SobelFilterPass.Execute(offScreenTexture);
+
+                context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
+                {
+                    .Resource = &currentBufferResource,
+                    .From = spieler::renderer::ResourceState::Present,
+                    .To = spieler::renderer::ResourceState::RenderTarget
+                });
+
+                context.SetRenderTarget(currentBuffer.GetView<spieler::renderer::RenderTargetView>(), m_DepthStencil.GetView<spieler::renderer::DepthStencilView>());
+
+                context.ClearRenderTarget(currentBuffer.GetView<spieler::renderer::RenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+
+                context.SetPipelineState(m_PipelineStates["composite"]);
+                nativeCommandList->SetGraphicsRootSignature(static_cast<ID3D12RootSignature*>(m_RootSignatures["composite"]));
+                nativeCommandList->SetGraphicsRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurPass.GetOutput().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+                nativeCommandList->SetGraphicsRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_SobelFilterPass.GetOutputTexture().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+
+                RenderFullscreenQuad();
+
+                context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
+                {
+                    .Resource = &currentBufferResource,
+                    .From = spieler::renderer::ResourceState::RenderTarget,
+                    .To = spieler::renderer::ResourceState::Present
+                });
+            }
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
@@ -392,6 +413,12 @@ namespace sandbox
 
             ImGui::Text(fmt::format("Horizontal Blur Radius: {}", BlurPass::GetBlurRadius(m_BlurPassExecuteProps.HorizontalBlurSigma)).c_str());
             ImGui::Text(fmt::format("Vertical Blur Radius: {}", BlurPass::GetBlurRadius(m_BlurPassExecuteProps.VerticalBlurSigma)).c_str());
+        }
+        ImGui::End();
+
+        ImGui::Begin("Sober Filter Settings");
+        {
+            ImGui::Checkbox("Enable", &m_EnableSobelFilter);
         }
         ImGui::End();
     }
