@@ -11,6 +11,7 @@ namespace spieler::renderer
     class Resource;
     class UploadBuffer;
     class PipelineState;
+    class RootSignature;
     class Texture2DResource;
 
     class RenderTargetView;
@@ -50,6 +51,8 @@ namespace spieler::renderer
         void SetScissorRect(const ScissorRect& scissorRect);
 
         void SetPipelineState(const PipelineState& pso);
+        void SetGraphicsRootSignature(const RootSignature& rootSignature);
+        void SetComputeRootSignature(const RootSignature& rootSignature);
 
         void SetRenderTarget(const RenderTargetView& rtv);
         void SetRenderTarget(const RenderTargetView& rtv, const DepthStencilView& dsv);

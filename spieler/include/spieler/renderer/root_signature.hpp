@@ -4,7 +4,7 @@
 
 namespace spieler::renderer
 {
-
+    class Device;
     struct StaticSampler;
 
     enum class RootParameterType : int32_t
@@ -64,22 +64,33 @@ namespace spieler::renderer
         RootParameterChild Child;
     };
 
+    class Device;
+
     class RootSignature
     {
-    public:
-        bool Init(const std::vector<RootParameter>& rootParameters);
-        bool Init(const std::vector<RootParameter>& rootParameters, const std::vector<StaticSampler>& staticSamplers);
-
-        void Bind() const;
-
     private:
-        bool Init(const D3D12_ROOT_SIGNATURE_DESC& rootSignatureDesc);
+        SPIELER_NON_COPYABLE(RootSignature)
 
     public:
-        explicit operator ID3D12RootSignature* () const { return m_Handle.Get(); }
+        RootSignature() = default;
+        RootSignature(class Device& device, const std::vector<RootParameter>& rootParameters);
+        RootSignature(class Device& device, const std::vector<RootParameter>& rootParameters, const std::vector<StaticSampler>& staticSamplers);
+
+        RootSignature(RootSignature&& other) noexcept;
 
     private:
-        ComPtr<ID3D12RootSignature> m_Handle;
+        bool Init(class Device& device, const std::vector<RootParameter>& rootParameters);
+        bool Init(class Device& device, const std::vector<RootParameter>& rootParameters, const std::vector<StaticSampler>& staticSamplers);
+
+        bool Init(class Device& device, const D3D12_ROOT_SIGNATURE_DESC& rootSignatureDesc);
+
+    public:
+        RootSignature& operator=(RootSignature&& other) noexcept;
+
+        explicit operator ID3D12RootSignature* () const { return m_RootSignature.Get(); }
+
+    private:
+        ComPtr<ID3D12RootSignature> m_RootSignature;
     };
 
 

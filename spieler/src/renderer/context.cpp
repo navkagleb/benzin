@@ -8,6 +8,7 @@
 #include "spieler/renderer/resource.hpp"
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/pipeline_state.hpp"
+#include "spieler/renderer/root_signature.hpp"
 #include "spieler/renderer/upload_buffer.hpp"
 #include "spieler/renderer/texture.hpp"
 
@@ -66,6 +67,16 @@ namespace spieler::renderer
     void Context::SetPipelineState(const PipelineState& pso)
     {
         m_CommandList->SetPipelineState(static_cast<ID3D12PipelineState*>(pso));
+    }
+
+    void Context::SetGraphicsRootSignature(const RootSignature& rootSignature)
+    {
+        m_CommandList->SetGraphicsRootSignature(static_cast<ID3D12RootSignature*>(rootSignature));
+    }
+
+    void Context::SetComputeRootSignature(const RootSignature& rootSignature)
+    {
+        m_CommandList->SetComputeRootSignature(static_cast<ID3D12RootSignature*>(rootSignature));
     }
 
     void Context::SetRenderTarget(const RenderTargetView& rtv)

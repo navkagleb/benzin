@@ -33,8 +33,8 @@ namespace sandbox
         const uint32_t height{ input.GetTexture2DResource().GetConfig().Height };
 
         context.SetPipelineState(m_PipelineState);
+        context.SetComputeRootSignature(m_RootSignature);
 
-        nativeCommandList->SetComputeRootSignature(static_cast<ID3D12RootSignature*>(m_RootSignature));
         nativeCommandList->SetComputeRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ input.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
         nativeCommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_OutputTexture.GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
 
@@ -70,6 +70,8 @@ namespace sandbox
 
     void SobelFilterPass::InitRootSignature()
     {
+        auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
+
         const spieler::renderer::RootParameter srvTable
         {
             .Type{ spieler::renderer::RootParameterType::DescriptorTable },
@@ -108,7 +110,7 @@ namespace sandbox
             }
         };
 
-        SPIELER_ASSERT(m_RootSignature.Init({ srvTable, uavTable }));
+        m_RootSignature = spieler::renderer::RootSignature{ device, std::vector<spieler::renderer::RootParameter>{ srvTable, uavTable } };
     }
 
     void SobelFilterPass::InitPipelineState()

@@ -869,6 +869,8 @@ namespace sandbox
 
     bool TestLayer::InitRootSignatures()
     {
+        auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
+
         // Default root signature
         {
             std::vector<spieler::renderer::RootParameter> rootParameters;
@@ -907,7 +909,7 @@ namespace sandbox
                 staticSamplers[5] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Clamp, 5);
             }
 
-            SPIELER_RETURN_IF_FAILED(m_RootSignatures["default"].Init(rootParameters, staticSamplers));
+            m_RootSignatures["default"] = spieler::renderer::RootSignature{ device, rootParameters, staticSamplers };
         }
 
         // Composite root signature
@@ -971,7 +973,7 @@ namespace sandbox
                 staticSamplers[5] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Clamp, 5);
             }
 
-            SPIELER_RETURN_IF_FAILED(m_RootSignatures["composite"].Init(rootParameters, staticSamplers));
+            m_RootSignatures["composite"] = spieler::renderer::RootSignature{ device, rootParameters, staticSamplers };
         }
 
         return true;
@@ -1690,8 +1692,8 @@ namespace sandbox
         auto& descriptorManager{ device.GetDescriptorManager() };
 
         context.SetPipelineState(pso);
+        context.SetGraphicsRootSignature(m_RootSignatures["default"]);
 
-        m_RootSignatures["default"].Bind();
         m_ConstantBuffers["pass"].GetSlice(&passConstants).Bind(context, 0);
 
         for (const spieler::renderer::RenderItem* item : items)

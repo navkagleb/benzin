@@ -169,8 +169,8 @@ namespace sandbox
             // Horizontal Blur pass
             {
                 context.SetPipelineState(m_HorizontalPass.PSO);
+                context.SetComputeRootSignature(m_HorizontalPass.RootSignature);
 
-                commandList->SetComputeRootSignature(static_cast<ID3D12RootSignature*>(m_HorizontalPass.RootSignature));
                 commandList->SetComputeRoot32BitConstants(0, 1, &horizontalBlurRadius, 0);
                 commandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(horizontalWeights.size()), horizontalWeights.data(), 1);
 
@@ -198,8 +198,8 @@ namespace sandbox
             // Vertical Blur pass
             {
                 context.SetPipelineState(m_VerticalPass.PSO);
+                context.SetComputeRootSignature(m_VerticalPass.RootSignature);
 
-                commandList->SetComputeRootSignature(static_cast<ID3D12RootSignature*>(m_VerticalPass.RootSignature));
                 commandList->SetComputeRoot32BitConstants(0, 1, &verticalBlurRadius, 0);
                 commandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(verticalWeights.size()), verticalWeights.data(), 1);
 
@@ -274,7 +274,7 @@ namespace sandbox
 
         // Root Signature
         {
-            SPIELER_ASSERT(m_HorizontalPass.RootSignature.Init(_internal::GetUniformPassRootParameters()));
+            m_HorizontalPass.RootSignature = spieler::renderer::RootSignature{ device, _internal::GetUniformPassRootParameters() };
         }
 
         // PSO
@@ -308,7 +308,7 @@ namespace sandbox
 
         // Root Signature
         {
-            SPIELER_ASSERT(m_VerticalPass.RootSignature.Init(_internal::GetUniformPassRootParameters()));
+            m_VerticalPass.RootSignature = spieler::renderer::RootSignature{ device, _internal::GetUniformPassRootParameters() };
         }
 
         // PSO

@@ -3,9 +3,10 @@
 #include "spieler/renderer/root_signature.hpp"
 
 #include "spieler/core/common.hpp"
+#include "spieler/core/logger.hpp"
 
+#include "spieler/renderer/device.hpp"
 #include "spieler/renderer/sampler.hpp"
-#include "spieler/renderer/renderer.hpp"
 
 namespace spieler::renderer
 {
@@ -100,7 +101,21 @@ namespace spieler::renderer
 
     } // namespace _internal
 
-    bool RootSignature::Init(const std::vector<RootParameter>& rootParameters)
+    RootSignature::RootSignature(Device& device, const std::vector<RootParameter>& rootParameters)
+    {
+        SPIELER_ASSERT(Init(device, rootParameters));
+    }
+
+    RootSignature::RootSignature(Device& device, const std::vector<RootParameter>& rootParameters, const std::vector<StaticSampler>& staticSamplers)
+    {
+        SPIELER_ASSERT(Init(device, rootParameters, staticSamplers));
+    }
+
+    RootSignature::RootSignature(RootSignature&& other) noexcept
+        : m_RootSignature{ std::exchange(other.m_RootSignature, nullptr) }
+    {}
+
+    bool RootSignature::Init(Device& device, const std::vector<RootParameter>& rootParameters)
     {
         SPIELER_ASSERT(!rootParameters.empty());
 
@@ -115,12 +130,12 @@ namespace spieler::renderer
             .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
         };
 
-        SPIELER_RETURN_IF_FAILED(Init(rootSignatureDesc));
+        SPIELER_RETURN_IF_FAILED(Init(device, rootSignatureDesc));
 
         return true;
     }
 
-    bool RootSignature::Init(const std::vector<RootParameter>& rootParameters, const std::vector<StaticSampler>& staticSamplers)
+    bool RootSignature::Init(Device& device, const std::vector<RootParameter>& rootParameters, const std::vector<StaticSampler>& staticSamplers)
     {
         SPIELER_ASSERT(!rootParameters.empty());
         SPIELER_ASSERT(!staticSamplers.empty());
@@ -137,16 +152,13 @@ namespace spieler::renderer
             .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
         };
 
-        SPIELER_RETURN_IF_FAILED(Init(rootSignatureDesc));
+        SPIELER_RETURN_IF_FAILED(Init(device, rootSignatureDesc));
         
         return true;
     }
 
-    bool RootSignature::Init(const D3D12_ROOT_SIGNATURE_DESC& rootSignatureDesc)
+    bool RootSignature::Init(Device& device, const D3D12_ROOT_SIGNATURE_DESC& rootSignatureDesc)
     {
-        Renderer& renderer{ Renderer::GetInstance() };
-        Device& device{ renderer.GetDevice() };
-
         ComPtr<ID3DBlob> serializedRootSignature;
         ComPtr<ID3DBlob> error;
 
@@ -162,7 +174,7 @@ namespace spieler::renderer
 
         if (error)
         {
-            ::OutputDebugString(reinterpret_cast<const char*>(error->GetBufferPointer()));
+            SPIELER_CRITICAL("{}", reinterpret_cast<const char*>(error->GetBufferPointer()));
             return false;
         }
 
@@ -173,17 +185,22 @@ namespace spieler::renderer
             serializedRootSignature->GetBufferPointer(),
             serializedRootSignature->GetBufferSize(),
             __uuidof(ID3D12RootSignature),
-            &m_Handle
+            &m_RootSignature
         ));
 
         return true;
     }
 
-    void RootSignature::Bind() const
+    RootSignature& RootSignature::operator=(RootSignature&& other) noexcept
     {
-        SPIELER_ASSERT(m_Handle);
+        if (this == &other)
+        {
+            return *this;
+        }
 
-        Renderer::GetInstance().GetContext().GetNativeCommandList()->SetGraphicsRootSignature(m_Handle.Get());
+        m_RootSignature = std::exchange(other.m_RootSignature, nullptr);
+
+        return *this;
     }
 
 } // namespace spieler::renderer
