@@ -38,6 +38,39 @@ namespace spieler::renderer
             case PrimitiveTopology::TriangleList: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
             case PrimitiveTopology::TriangleStrip: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
 
+            case PrimitiveTopology::ControlPointPatchlist1: return D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist2: return D3D_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist3: return D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist4: return D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist5: return D3D_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist6: return D3D_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist7: return D3D_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist8: return D3D_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist9: return D3D_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist10: return D3D_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist11: return D3D_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist12: return D3D_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist13: return D3D_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist14: return D3D_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist15: return D3D_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist16: return D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist17: return D3D_PRIMITIVE_TOPOLOGY_17_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist18: return D3D_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist19: return D3D_PRIMITIVE_TOPOLOGY_19_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist20: return D3D_PRIMITIVE_TOPOLOGY_20_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist21: return D3D_PRIMITIVE_TOPOLOGY_21_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist22: return D3D_PRIMITIVE_TOPOLOGY_22_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist23: return D3D_PRIMITIVE_TOPOLOGY_23_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist24: return D3D_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist25: return D3D_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist26: return D3D_PRIMITIVE_TOPOLOGY_26_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist27: return D3D_PRIMITIVE_TOPOLOGY_27_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist28: return D3D_PRIMITIVE_TOPOLOGY_28_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist29: return D3D_PRIMITIVE_TOPOLOGY_29_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist30: return D3D_PRIMITIVE_TOPOLOGY_30_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist31: return D3D_PRIMITIVE_TOPOLOGY_31_CONTROL_POINT_PATCHLIST;
+            case PrimitiveTopology::ControlPointPatchlist32: return D3D_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST;
+
             default:
             {
                 SPIELER_WARNING("Unknown PrimitiveTopology!");
