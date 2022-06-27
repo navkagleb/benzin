@@ -172,7 +172,7 @@ namespace spieler::renderer
                     {
                         .SemanticName = element.Name.c_str(),
                         .SemanticIndex = 0,
-                        .Format = static_cast<DXGI_FORMAT>(element.Format),
+                        .Format = D3D12Converter::Convert(element.Format),
                         .InputSlot = 0,
                         .AlignedByteOffset = offset,
                         .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
@@ -265,10 +265,10 @@ namespace spieler::renderer
             .DepthStencilState = depthStencilDesc,
             .InputLayout = inputLayoutDesc,
             .IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
-            .PrimitiveTopologyType = static_cast<D3D12_PRIMITIVE_TOPOLOGY_TYPE>(config.PrimitiveTopologyType),
+            .PrimitiveTopologyType = D3D12Converter::Convert(config.PrimitiveTopologyType),
             .NumRenderTargets = 1,
-            .RTVFormats = { static_cast<DXGI_FORMAT>(config.RTVFormat) }, // RTVFormats in an array
-            .DSVFormat = static_cast<DXGI_FORMAT>(config.DSVFormat),
+            .RTVFormats = { D3D12Converter::Convert(config.RTVFormat) }, // RTVFormats in an array
+            .DSVFormat = D3D12Converter::Convert(config.DSVFormat),
             .SampleDesc = DXGI_SAMPLE_DESC{ 1, 0 },
             .NodeMask = 0,
             .CachedPSO = cachedPipelineState,

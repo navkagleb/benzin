@@ -24,7 +24,7 @@ namespace spieler::renderer
 
         m_View.BufferLocation = static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(resource.GetGPUVirtualAddress());
         m_View.SizeInBytes = resource.GetSize();
-        m_View.Format = static_cast<DXGI_FORMAT>(format);
+        m_View.Format = D3D12Converter::Convert(format);
     }
 
     void IndexBufferView::Bind(Context& context) const

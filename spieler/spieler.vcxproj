@@ -36,6 +36,7 @@
     <ClCompile Include="src\renderer\resource_view.cpp" />
     <ClCompile Include="src\renderer\swap_chain.cpp" />
     <ClCompile Include="src\renderer\texture.cpp" />
+    <ClCompile Include="src\renderer\types.cpp" />
     <ClCompile Include="src\renderer\upload_buffer.cpp" />
     <ClCompile Include="src\utility\random.cpp" />
     <ClCompile Include="src\core\layer_stack.cpp" />

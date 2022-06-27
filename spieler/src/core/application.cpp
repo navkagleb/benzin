@@ -137,7 +137,7 @@ namespace spieler
         SPIELER_RETURN_IF_FAILED(ImGui_ImplDX12_Init(
             device.GetNativeDevice().Get(),
             1,
-            static_cast<DXGI_FORMAT>(swapChain.GetBufferFormat()),
+            renderer::D3D12Converter::Convert(swapChain.GetBufferFormat()),
             descriptorManager.GetDescriptorHeap(renderer::DescriptorHeapType::SRV).GetNative().Get(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ imguiDescriptor.CPU },
             D3D12_GPU_DESCRIPTOR_HANDLE{ imguiDescriptor.GPU }

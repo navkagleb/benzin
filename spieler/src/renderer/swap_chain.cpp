@@ -60,7 +60,7 @@ namespace spieler::renderer
                 static_cast<UINT>(m_Buffers.size()),
                 width,
                 height,
-                static_cast<DXGI_FORMAT>(m_BufferFormat),
+                D3D12Converter::Convert(m_BufferFormat),
                 DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
             ));
 
@@ -116,7 +116,7 @@ namespace spieler::renderer
             .Width = window.GetWidth(),
             .Height = window.GetHeight(),
             .RefreshRate = DXGI_RATIONAL{ 60, 1 },
-            .Format = static_cast<DXGI_FORMAT>(m_BufferFormat),
+            .Format = D3D12Converter::Convert(m_BufferFormat),
             .ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED,
             .Scaling = DXGI_MODE_SCALING_UNSPECIFIED,
         };
