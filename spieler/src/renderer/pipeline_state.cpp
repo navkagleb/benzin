@@ -237,6 +237,8 @@ namespace spieler::renderer
 
         const D3D12_SHADER_BYTECODE vertexShaderDesc{ _internal::ConvertToD3D12Shader(config.VertexShader) };
         const D3D12_SHADER_BYTECODE pixelShaderDesc{ _internal::ConvertToD3D12Shader(config.PixelShader) };
+        const D3D12_SHADER_BYTECODE domainShaderDesc{ _internal::ConvertToD3D12Shader(config.DomainShader) };
+        const D3D12_SHADER_BYTECODE hullShaderDesc{ _internal::ConvertToD3D12Shader(config.HullShader) };
         const D3D12_SHADER_BYTECODE geometryShaderDesc{ _internal::ConvertToD3D12Shader(config.GeometryShader) };
         const D3D12_STREAM_OUTPUT_DESC streamOutputDesc{ _internal::GetDefaultD3D12StreatOutput() };
         const D3D12_BLEND_DESC blendDesc{ config.BlendState ? _internal::ConvertToD3D12BlendState(*config.BlendState) : _internal::GetDefaultD3D12BlendState() };
@@ -257,6 +259,8 @@ namespace spieler::renderer
             .pRootSignature = static_cast<ID3D12RootSignature*>(*config.RootSignature),
             .VS = vertexShaderDesc,
             .PS = pixelShaderDesc,
+            .DS = nullptr,
+            .HS = nullptr,
             .GS = geometryShaderDesc,
             .StreamOutput = streamOutputDesc,
             .BlendState = blendDesc,

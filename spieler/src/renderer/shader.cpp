@@ -75,25 +75,14 @@ namespace spieler::renderer
         {
             switch (shaderType)
             {
-                case ShaderType::Vertex:
-                {
-                    return config::GetVertexShaderTarget();
-                }
-                case ShaderType::Pixel:
-                {
-                    return config::GetPixelShaderTarget();
-                }
-                case ShaderType::Geometry:
-                {
-                    return config::GetGeometryShaderTarget();
-                }
-                case ShaderType::Compute:
-                {
-                    return config::GetComputeShaderTarget();
-                }
+                case ShaderType::Vertex: return config::GetVertexShaderTarget();
+                case ShaderType::Pixel: return config::GetPixelShaderTarget();
+                case ShaderType::Geometry: return config::GetGeometryShaderTarget();
+                case ShaderType::Compute: return config::GetComputeShaderTarget();
+
                 default:
                 {
-                    SPIELER_WARNING("Shader type is None or Unknown!");
+                    SPIELER_WARNING("Unknown ShaderType!");
                     break;
                 }
             }

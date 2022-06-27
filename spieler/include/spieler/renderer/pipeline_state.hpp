@@ -41,8 +41,10 @@ namespace spieler::renderer
     {
         const RootSignature* RootSignature{ nullptr };
         const Shader* VertexShader{ nullptr };
-        const Shader* PixelShader{ nullptr };
+        const Shader* HullShader{ nullptr };
+        const Shader* DomainShader{ nullptr };
         const Shader* GeometryShader{ nullptr };
+        const Shader* PixelShader{ nullptr };
         const BlendState* BlendState{ nullptr };
         const RasterizerState* RasterizerState{ nullptr };
         const DepthStencilState* DepthStecilState{ nullptr };

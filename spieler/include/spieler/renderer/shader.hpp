@@ -9,8 +9,10 @@ namespace spieler::renderer
     {
         None,
         Vertex,
-        Pixel,
+        Hull,
+        Domain,
         Geometry,
+        Pixel,
         Compute
     };
 
