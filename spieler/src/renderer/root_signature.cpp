@@ -71,7 +71,7 @@ namespace spieler::renderer
             return d3d12RootParameters;
         }
 
-        std::vector<D3D12_STATIC_SAMPLER_DESC> ToD3d12StaticSamplers(const std::vector<StaticSampler>& staticSamplers)
+        std::vector<D3D12_STATIC_SAMPLER_DESC> ToD3D12StaticSamplers(const std::vector<StaticSampler>& staticSamplers)
         {
             std::vector<D3D12_STATIC_SAMPLER_DESC> d3d12StaticSamplers;
             d3d12StaticSamplers.reserve(staticSamplers.size());
@@ -141,7 +141,7 @@ namespace spieler::renderer
         SPIELER_ASSERT(!staticSamplers.empty());
 
         const std::vector<D3D12_ROOT_PARAMETER> d3d12RootParameters{ _internal::ToD3D12RootParameters(rootParameters) };
-        const std::vector<D3D12_STATIC_SAMPLER_DESC> d3d12StaticSamplers{ _internal::ToD3d12StaticSamplers(staticSamplers) };
+        const std::vector<D3D12_STATIC_SAMPLER_DESC> d3d12StaticSamplers{ _internal::ToD3D12StaticSamplers(staticSamplers) };
 
         const D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc
         {
