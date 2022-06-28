@@ -126,7 +126,7 @@ namespace spieler::renderer
 
     void Context::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
     {
-        m_CommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(primitiveTopology));
+        m_CommandList->IASetPrimitiveTopology(D3D12Converter::Convert(primitiveTopology));
     }
 
     void Context::SetStencilReferenceValue(uint8_t referenceValue)
