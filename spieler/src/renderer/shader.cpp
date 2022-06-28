@@ -76,8 +76,10 @@ namespace spieler::renderer
             switch (shaderType)
             {
                 case ShaderType::Vertex: return config::GetVertexShaderTarget();
-                case ShaderType::Pixel: return config::GetPixelShaderTarget();
+                case ShaderType::Hull: return config::GetHullShaderTarget();
+                case ShaderType::Domain: return config::GetDomainShaderTarget();
                 case ShaderType::Geometry: return config::GetGeometryShaderTarget();
+                case ShaderType::Pixel: return config::GetPixelShaderTarget();
                 case ShaderType::Compute: return config::GetComputeShaderTarget();
 
                 default:

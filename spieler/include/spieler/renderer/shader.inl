@@ -1,3 +1,5 @@
+#include "spieler/core/assert.hpp"
+
 namespace spieler::renderer
 {
 
