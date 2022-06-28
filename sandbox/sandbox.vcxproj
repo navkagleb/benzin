@@ -32,6 +32,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\land_layer.cpp" />
+    <ClCompile Include="src\layers\tessellation_layer.cpp" />
     <ClCompile Include="src\light_controller.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\passes\blur_pass.cpp" />
@@ -43,6 +44,7 @@
   <ItemGroup>
     <ClInclude Include="src\bootstrap.hpp" />
     <ClInclude Include="src\land_layer.hpp" />
+    <ClInclude Include="src\layers\tessellation_layer.hpp" />
     <ClInclude Include="src\light_controller.hpp" />
     <ClInclude Include="src\passes\blur_pass.hpp" />
     <ClInclude Include="src\passes\sobel_filter_pass.hpp" />

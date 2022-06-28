@@ -2,8 +2,9 @@
 
 #include <spieler/core/application.hpp>
 
-#include "test_layer.hpp"
+//#include "test_layer.hpp"
 #include "land_layer.hpp"
+#include "layers/tessellation_layer.hpp"
 
 namespace sandbox
 {
@@ -13,8 +14,9 @@ namespace sandbox
     public:
         bool InitExternal() override
         {
-            SPIELER_RETURN_IF_FAILED(PushLayer<TestLayer>(*m_Window));
+            //SPIELER_RETURN_IF_FAILED(PushLayer<TestLayer>(*m_Window));
             //SPIELER_RETURN_IF_FAILED(PushLayer<LandLayer>(m_Window, m_Renderer));
+            SPIELER_RETURN_IF_FAILED(PushLayer<TessellationLayer>(*m_Window));
             
             return true;
         }
