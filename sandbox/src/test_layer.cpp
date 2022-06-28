@@ -1372,8 +1372,8 @@ namespace sandbox
             {
                 .RootSignature = &m_RootSignatures["default"],
                 .VertexShader = &vertexShader,
-                .PixelShader = &pixelShader,
                 .GeometryShader = &geometryShader,
+                .PixelShader = &pixelShader,
                 .BlendState = &blendState,
                 .RasterizerState = &rasterizerState,
                 .InputLayout = &inputLayout,
