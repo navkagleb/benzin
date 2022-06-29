@@ -38,7 +38,7 @@
     <ClCompile Include="src\passes\blur_pass.cpp" />
     <ClCompile Include="src\passes\sobel_filter_pass.cpp" />
     <ClCompile Include="src\projection_camera_controller.cpp" />
-    <ClCompile Include="src\test_layer.cpp" />
+    <ClCompile Include="src\layers\test_layer.cpp" />
     <ClCompile Include="src\waves.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -49,7 +49,7 @@
     <ClInclude Include="src\passes\blur_pass.hpp" />
     <ClInclude Include="src\passes\sobel_filter_pass.hpp" />
     <ClInclude Include="src\projection_camera_controller.hpp" />
-    <ClInclude Include="src\test_layer.hpp" />
+    <ClInclude Include="src\layers\test_layer.hpp" />
     <ClInclude Include="src\waves.hpp" />
   </ItemGroup>
   <ItemGroup>
