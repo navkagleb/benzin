@@ -46,6 +46,8 @@ namespace sandbox
         void InitScissorRect();
         void InitDepthStencil();
 
+        bool OnWindowResized(spieler::WindowResizedEvent& event);
+
     private:
         spieler::Window& m_Window;
 

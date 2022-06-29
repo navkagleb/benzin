@@ -2,6 +2,8 @@
 
 #include "tessellation_layer.hpp"
 
+#include <spieler/system/event_dispatcher.hpp>
+
 #include <spieler/renderer/renderer.hpp>
 #include <spieler/renderer/geometry_generator.hpp>
 #include <spieler/renderer/rasterizer_state.hpp>
@@ -59,7 +61,7 @@ namespace sandbox
                 .ElementCount{ 1 }
             };
 
-            m_RenderItem.Transform.Scale = DirectX::XMFLOAT3{ 10.0f, 10.0f, 10.0f };
+            m_RenderItem.Transform.Scale = DirectX::XMFLOAT3{ 20.0f, 20.0f, 20.0f };
 
             m_ObjectConstantBuffer.SetResource(device.CreateBuffer(objectBufferConfig, constantBufferFlags));
             m_ObjectConstantBuffer.SetSlice(&m_ObjectConstants);
@@ -186,6 +188,9 @@ namespace sandbox
     void TessellationLayer::OnEvent(spieler::Event& event)
     {
         m_CameraController.OnEvent(event);
+
+        spieler::EventDispatcher dispatcher{ event };
+        dispatcher.Dispatch<spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
     }
 
     void TessellationLayer::OnUpdate(float dt)
@@ -326,6 +331,15 @@ namespace sandbox
         SPIELER_ASSERT(device.CreateTexture(depthStencilConfig, depthStencilClearValue, m_DepthStencil.GetTexture2DResource()));
         m_DepthStencil.GetTexture2DResource().SetDebugName(L"DepthStencil");
         m_DepthStencil.SetView<spieler::renderer::DepthStencilView>(device);
+    }
+
+    bool TessellationLayer::OnWindowResized(spieler::WindowResizedEvent& event)
+    {
+        InitViewport();
+        InitScissorRect();
+        InitDepthStencil();
+
+        return true;
     }
 
 } // namespace sandbox

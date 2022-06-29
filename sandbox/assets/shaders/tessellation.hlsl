@@ -44,8 +44,8 @@ PatchTessellation HS_Constant(InputPatch<VS_Output, 4> patch, uint patchID : SV_
     const float3 centerW = mul(float4(centerL, 1.0f), g_Object.World).xyz;
     const float distanceToCamera = distance(centerW, g_Pass.CameraPosition);
     
-    const float distanceMin = 5.0f;
-    const float distanceMax = 40.0f;
+    const float distanceMin = 20.0f;
+    const float distanceMax = 70.0f;
     
     const float tessellationFactor = 64.0f * saturate((distanceMax - distanceToCamera) / (distanceMax - distanceMin));
     
@@ -85,17 +85,28 @@ struct DS_Output
 };
 
 [domain("quad")]
-DS_Output DS_Main(PatchTessellation patchTessellation, float2 uv : SV_DomainLocation, const OutputPatch<HS_Output, 4> quad)
+DS_Output DS_Main(PatchTessellation patchTessellation, float2 domainLocation : SV_DomainLocation, const OutputPatch<HS_Output, 4> quad)
 {
-    // Bilinear interpolation.
-    const float3 vertex1 = lerp(quad[0].PositionL, quad[1].PositionL, uv.x);
-    const float3 vertex2 = lerp(quad[2].PositionL, quad[3].PositionL, uv.x);
+    // Bilinear interpolation for quad
+    // 
+    // Q0--x---x---Q1--> U
+    // |   |   |   |
+    // x---x---x---x
+    // |   |   |   |
+    // x---x---x---x
+    // |   |   |   |
+    // Q2--x---x---Q3
+    // |
+    // v
+    // V
+    const float3 interpolatedQ0Q1ByX = lerp(quad[0].PositionL, quad[1].PositionL, domainLocation.x);
+    const float3 interpolatedQ2Q3ByX = lerp(quad[2].PositionL, quad[3].PositionL, domainLocation.x);
+    const float3 positionL = lerp(interpolatedQ0Q1ByX, interpolatedQ2Q3ByX, domainLocation.y);
     
-    float3 p = lerp(vertex1, vertex2, uv.y);
+    float4 positionW = mul(float4(positionL, 1.0f), g_Object.World);
     
     // Displacement mapping
-    p.y = 0.3f * (p.z * sin(p.x) + p.x * cos(p.z));
-    const float4 positionW = mul(float4(p, 1.0f), g_Object.World);
+    positionW.y = 0.2f * (positionW.z * sin(positionW.x) + positionW.x * cos(positionW.z));
     
     DS_Output output = (DS_Output) 0;
     output.PositionH = mul(positionW, g_Pass.ViewProjection);
