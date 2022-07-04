@@ -44,49 +44,39 @@ namespace sandbox
 
         static std::vector<spieler::renderer::RootParameter> GetUniformPassRootParameters()
         {
-            const spieler::renderer::RootParameter constants
+            std::vector<spieler::renderer::RootParameter> rootParameters;
+
+            const spieler::renderer::RootParameter::_32BitConstants constants
             {
-                .Type = spieler::renderer::RootParameterType::_32BitConstants,
-                .Child = spieler::renderer::RootConstants
+                .ShaderRegister{ 0 },
+                .Count{ 12 } // BlurRadius + 11 Weights
+            };
+
+            const spieler::renderer::RootParameter::SingleDescriptorTable srvTable
+            {
+                .Range
                 {
-                    .ShaderRegister = 0,
-                    .Count = 12 // BlurRadius + 11 Weights
+                    .Type{ spieler::renderer::RootParameter::DescriptorRangeType::ShaderResourceView },
+                    .DescriptorCount{ 1 },
+                    .BaseShaderRegister{ 0 }
                 }
             };
 
-            const spieler::renderer::RootParameter srvTable
+            const spieler::renderer::RootParameter::SingleDescriptorTable uavTable
             {
-                .Type = spieler::renderer::RootParameterType::DescriptorTable,
-                .Child = spieler::renderer::RootDescriptorTable
+                .Range
                 {
-                    {
-                        spieler::renderer::DescriptorRange
-                        {
-                            .Type = spieler::renderer::DescriptorRangeType::SRV,
-                            .DescriptorCount = 1,
-                            .BaseShaderRegister = 0
-                        }
-                    }
+                    .Type{ spieler::renderer::RootParameter::DescriptorRangeType::UnorderedAccessView },
+                    .DescriptorCount{ 1 },
+                    .BaseShaderRegister{ 0 }
                 }
             };
 
-            const spieler::renderer::RootParameter uavTable
-            {
-                .Type = spieler::renderer::RootParameterType::DescriptorTable,
-                .Child = spieler::renderer::RootDescriptorTable
-                {
-                    {
-                        spieler::renderer::DescriptorRange
-                        {
-                            .Type = spieler::renderer::DescriptorRangeType::UAV,
-                            .DescriptorCount = 1,
-                            .BaseShaderRegister = 0
-                        }
-                    }
-                }
-            };
+            rootParameters.emplace_back(constants);
+            rootParameters.emplace_back(srvTable);
+            rootParameters.emplace_back(uavTable);
 
-            return { constants, srvTable, uavTable };
+            return rootParameters;
         }
 
     } // namespace _internal

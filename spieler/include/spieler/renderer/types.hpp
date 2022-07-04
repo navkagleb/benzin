@@ -5,12 +5,12 @@ namespace spieler::renderer
 
     enum class ShaderVisibility : uint8_t
     {
-        All = D3D12_SHADER_VISIBILITY_ALL,
-        Vertex = D3D12_SHADER_VISIBILITY_VERTEX,
-        Hull = D3D12_SHADER_VISIBILITY_HULL,
-        Domain = D3D12_SHADER_VISIBILITY_DOMAIN,
-        Geometry = D3D12_SHADER_VISIBILITY_GEOMETRY,
-        Pixel = D3D12_SHADER_VISIBILITY_PIXEL,
+        All,
+        Vertex,
+        Hull,
+        Domain,
+        Geometry,
+        Pixel,
     };
 
     enum class PrimitiveTopologyType : uint8_t
@@ -125,6 +125,7 @@ namespace spieler::renderer
     class D3D12Converter
     {
     public:
+        static D3D12_SHADER_VISIBILITY Convert(ShaderVisibility shaderVisibility);
         static D3D12_PRIMITIVE_TOPOLOGY_TYPE Convert(PrimitiveTopologyType primitiveToplogyType);
         static D3D12_PRIMITIVE_TOPOLOGY Convert(PrimitiveTopology primitiveTopology);
         static DXGI_FORMAT Convert(GraphicsFormat graphicsFormat);

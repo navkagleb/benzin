@@ -343,6 +343,7 @@ namespace sandbox
                 context.SetPipelineState(m_PipelineStates["composite"]);
                 nativeCommandList->SetGraphicsRootSignature(static_cast<ID3D12RootSignature*>(m_RootSignatures["composite"]));
                 nativeCommandList->SetGraphicsRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurPass.GetOutput().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+
                 nativeCommandList->SetGraphicsRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_SobelFilterPass.GetOutputTexture().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
 
                 RenderFullscreenQuad();
@@ -880,21 +881,33 @@ namespace sandbox
             {
                 rootParameters.resize(4);
 
-                rootParameters[0].Type = spieler::renderer::RootParameterType::ConstantBufferView;
-                rootParameters[0].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
-                rootParameters[0].Child = spieler::renderer::RootDescriptor{ .ShaderRegister = 0, .RegisterSpace = 0 };
+                rootParameters[0] = spieler::renderer::RootParameter::Descriptor
+                {
+                    .Type{ spieler::renderer::RootParameter::DescriptorType::ConstantBufferView },
+                    .ShaderRegister{ 0 }
+                };
 
-                rootParameters[1].Type = spieler::renderer::RootParameterType::ConstantBufferView;
-                rootParameters[1].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
-                rootParameters[1].Child = spieler::renderer::RootDescriptor{ .ShaderRegister = 1, .RegisterSpace = 0 };
+                rootParameters[1] = spieler::renderer::RootParameter::Descriptor
+                {
+                    .Type{ spieler::renderer::RootParameter::DescriptorType::ConstantBufferView },
+                    .ShaderRegister{ 1 }
+                };
 
-                rootParameters[2].Type = spieler::renderer::RootParameterType::ConstantBufferView;
-                rootParameters[2].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
-                rootParameters[2].Child = spieler::renderer::RootDescriptor{ .ShaderRegister = 2, .RegisterSpace = 0 };
+                rootParameters[2] = spieler::renderer::RootParameter::Descriptor
+                {
+                    .Type{ spieler::renderer::RootParameter::DescriptorType::ConstantBufferView },
+                    .ShaderRegister{ 2 }
+                };
 
-                rootParameters[3].Type = spieler::renderer::RootParameterType::DescriptorTable;
-                rootParameters[3].ShaderVisibility = spieler::renderer::ShaderVisibility::All;
-                rootParameters[3].Child = spieler::renderer::RootDescriptorTable{ { spieler::renderer::DescriptorRange{ spieler::renderer::DescriptorRangeType::SRV, 1 } } };
+                rootParameters[3] = spieler::renderer::RootParameter::SingleDescriptorTable
+                {
+                    .Range
+                    {
+                        .Type{ spieler::renderer::RootParameter::DescriptorRangeType::ShaderResourceView },
+                        .DescriptorCount{ 1 },
+                        .BaseShaderRegister{ 0 }
+                    }
+                };
             }
 
             // Init statis samplers
@@ -919,46 +932,28 @@ namespace sandbox
 
             // Init root parameters
             {
-                const spieler::renderer::RootParameter srvTable1
+                const spieler::renderer::RootParameter::SingleDescriptorTable srvTable1
                 {
-                    .Type{ spieler::renderer::RootParameterType::DescriptorTable },
-                    .Child
+                    .Range
                     {
-                        spieler::renderer::RootDescriptorTable
-                        {
-                            {
-                                spieler::renderer::DescriptorRange
-                                {
-                                    .Type{ spieler::renderer::DescriptorRangeType::SRV },
-                                    .DescriptorCount{ 1 },
-                                    .BaseShaderRegister{ 0 }
-                                }
-                            }
-                        }
+                        .Type{ spieler::renderer::RootParameter::DescriptorRangeType::ShaderResourceView },
+                        .DescriptorCount{ 1 },
+                        .BaseShaderRegister{ 0 }
                     }
                 };
 
-                const spieler::renderer::RootParameter srvTable2
+                const spieler::renderer::RootParameter::SingleDescriptorTable srvTable2
                 {
-                    .Type{ spieler::renderer::RootParameterType::DescriptorTable },
-                    .Child
+                    .Range
                     {
-                        spieler::renderer::RootDescriptorTable
-                        {
-                            {
-                                spieler::renderer::DescriptorRange
-                                {
-                                    .Type{ spieler::renderer::DescriptorRangeType::SRV },
-                                    .DescriptorCount{ 1 },
-                                    .BaseShaderRegister{ 1 }
-                                }
-                            }
-                        }
+                        .Type{ spieler::renderer::RootParameter::DescriptorRangeType::ShaderResourceView },
+                        .DescriptorCount{ 1 },
+                        .BaseShaderRegister{ 1 }
                     }
                 };
 
-                rootParameters.push_back(srvTable1);
-                rootParameters.push_back(srvTable2);
+                rootParameters.emplace_back(srvTable1);
+                rootParameters.emplace_back(srvTable2);
             }
 
             // Init statis samplers

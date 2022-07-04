@@ -7,64 +7,95 @@ namespace spieler::renderer
     class Device;
     struct StaticSampler;
 
-    enum class RootParameterType : int32_t
+    class RootParameter
     {
-        Undefined = -1,
+    private:
+        SPIELER_NON_COPYABLE(RootParameter)
 
-        DescriptorTable = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-        _32BitConstants = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
-        ConstantBufferView = D3D12_ROOT_PARAMETER_TYPE_CBV,
-        ShaderResourceView = D3D12_ROOT_PARAMETER_TYPE_SRV,
-        UnorderedAccessView = D3D12_ROOT_PARAMETER_TYPE_UAV
+    private:
+        friend class RootSignature;
+
+    public:
+        enum class DescriptorType : uint8_t
+        {
+            Unknown,
+
+            ConstantBufferView,
+            ShaderResourceView,
+            UnorderedAccessView
+        };
+
+        enum class DescriptorRangeType : uint8_t
+        {
+            Unknown,
+
+            ShaderResourceView,
+            UnorderedAccessView,
+            ConstantBufferView,
+        };
+
+        struct ShaderRegister
+        {
+            uint32_t Register{ 0 };
+            uint32_t Space{ 0 };
+        };
+
+        struct _32BitConstants
+        {
+            ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
+            ShaderRegister ShaderRegister;
+            uint32_t Count{ 0 };
+        };
+
+        struct Descriptor
+        {
+            ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
+            DescriptorType Type{ DescriptorType::Unknown };
+            ShaderRegister ShaderRegister;
+        };
+
+        struct DescriptorRange
+        {
+            DescriptorRangeType Type{ DescriptorRangeType::Unknown };
+            uint32_t DescriptorCount{ 0 };
+            ShaderRegister BaseShaderRegister;
+        };
+
+        struct DescriptorTable
+        {
+            ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
+            std::vector<DescriptorRange> Ranges;
+        };
+
+        struct SingleDescriptorTable
+        {
+            ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
+            DescriptorRange Range;
+        };
+
+    public:
+        RootParameter() = default;
+        RootParameter(const _32BitConstants& constants);
+        RootParameter(const Descriptor& descriptor);
+        RootParameter(const DescriptorTable& descriptorTable);
+        RootParameter(const SingleDescriptorTable& singleDescriptorTable);
+        RootParameter(RootParameter&& other) noexcept;
+        ~RootParameter();
+
+    private:
+        void InitAs32BitConstants(const _32BitConstants& constants);
+        void InitAsDescriptor(const Descriptor& descriptor);
+        void InitAsDescriptorTable(const DescriptorTable& descriptorTable);
+        void InitAsSingleDescriptorTable(const SingleDescriptorTable& singleDescriptorTable);
+
+        void Swap(RootParameter&& other) noexcept;
+
+    public:
+        RootParameter& operator=(RootParameter&& other) noexcept;
+
+    private:
+        D3D12_ROOT_PARAMETER m_RootParameter;
     };
-
-    enum class DescriptorRangeType : int32_t
-    {
-        Undefined = -1,
-
-        SRV = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-        UAV = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-        CBV = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
-        Sampler = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER
-    };
-
-    struct DescriptorRange
-    {
-        DescriptorRangeType Type{ DescriptorRangeType::Undefined };
-        uint32_t DescriptorCount{ 0 };
-        uint32_t BaseShaderRegister{ 0 };
-        uint32_t RegisterSpace{ 0 };
-        uint32_t Offset{ 0xffffffff };
-    };
-
-    struct RootDescriptorTable
-    {
-        std::vector<DescriptorRange> DescriptorRanges;
-    };
-
-    struct RootConstants
-    {
-        uint32_t ShaderRegister{ 0 };
-        uint32_t RegisterSpace{ 0 };
-        uint32_t Count{ 0 };
-    };
-
-    struct RootDescriptor
-    {
-        uint32_t ShaderRegister{ 0 };
-        uint32_t RegisterSpace{ 0 };
-    };
-
-    using RootParameterChild = std::variant<RootDescriptorTable, RootConstants, RootDescriptor>;
-
-    struct RootParameter
-    {
-        RootParameterType Type{ RootParameterType::Undefined };
-        ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
-        RootParameterChild Child;
-    };
-
-    class Device;
 
     class RootSignature
     {

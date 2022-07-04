@@ -7,6 +7,27 @@
 namespace spieler::renderer
 {
 
+    D3D12_SHADER_VISIBILITY D3D12Converter::Convert(ShaderVisibility shaderVisibility)
+    {
+        switch (shaderVisibility)
+        {
+            case ShaderVisibility::All: return D3D12_SHADER_VISIBILITY_ALL;
+            case ShaderVisibility::Vertex: return D3D12_SHADER_VISIBILITY_VERTEX;
+            case ShaderVisibility::Hull: return D3D12_SHADER_VISIBILITY_HULL;
+            case ShaderVisibility::Domain: return D3D12_SHADER_VISIBILITY_DOMAIN;
+            case ShaderVisibility::Geometry: return D3D12_SHADER_VISIBILITY_GEOMETRY;
+            case ShaderVisibility::Pixel: return D3D12_SHADER_VISIBILITY_PIXEL;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown ShaderVisibility!");
+                break;
+            }
+        }
+
+        return D3D12_SHADER_VISIBILITY_ALL;
+    }
+
     D3D12_PRIMITIVE_TOPOLOGY_TYPE D3D12Converter::Convert(PrimitiveTopologyType primitiveTopologyType)
     {
         switch (primitiveTopologyType)

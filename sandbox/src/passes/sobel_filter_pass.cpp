@@ -72,45 +72,32 @@ namespace sandbox
     {
         auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
 
-        const spieler::renderer::RootParameter srvTable
+        std::vector<spieler::renderer::RootParameter> rootParameters;
+
+        const spieler::renderer::RootParameter::SingleDescriptorTable srvTable
         {
-            .Type{ spieler::renderer::RootParameterType::DescriptorTable },
-            .Child
+            .Range
             {
-                spieler::renderer::RootDescriptorTable
-                {
-                    {
-                        spieler::renderer::DescriptorRange
-                        {
-                            .Type{ spieler::renderer::DescriptorRangeType::SRV },
-                            .DescriptorCount{ 1 },
-                            .BaseShaderRegister{ 0 }
-                        }
-                    }
-                }
+                .Type{ spieler::renderer::RootParameter::DescriptorRangeType::ShaderResourceView },
+                .DescriptorCount{ 1 },
+                .BaseShaderRegister{ 0 }
             }
         };
 
-        const spieler::renderer::RootParameter uavTable
+        const spieler::renderer::RootParameter::SingleDescriptorTable uavTable
         {
-            .Type{ spieler::renderer::RootParameterType::DescriptorTable },
-            .Child
+            .Range
             {
-                spieler::renderer::RootDescriptorTable
-                {
-                    {
-                        spieler::renderer::DescriptorRange
-                        {
-                            .Type{ spieler::renderer::DescriptorRangeType::UAV },
-                            .DescriptorCount{ 1 },
-                            .BaseShaderRegister{ 0 }
-                        }
-                    }
-                }
+                .Type{ spieler::renderer::RootParameter::DescriptorRangeType::UnorderedAccessView },
+                .DescriptorCount{ 1 },
+                .BaseShaderRegister{ 0 }
             }
         };
 
-        m_RootSignature = spieler::renderer::RootSignature{ device, std::vector<spieler::renderer::RootParameter>{ srvTable, uavTable } };
+        rootParameters.emplace_back(srvTable);
+        rootParameters.emplace_back(uavTable);
+
+        m_RootSignature = spieler::renderer::RootSignature{ device, rootParameters };
     }
 
     void SobelFilterPass::InitPipelineState()
