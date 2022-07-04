@@ -72,8 +72,6 @@ namespace sandbox
     {
         auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
 
-        std::vector<spieler::renderer::RootParameter> rootParameters;
-
         const spieler::renderer::RootParameter::SingleDescriptorTable srvTable
         {
             .Range
@@ -94,10 +92,11 @@ namespace sandbox
             }
         };
 
-        rootParameters.emplace_back(srvTable);
-        rootParameters.emplace_back(uavTable);
+        spieler::renderer::RootSignature::Config rootSignatureConfig{ 2 };
+        rootSignatureConfig.RootParameters[0] = srvTable;
+        rootSignatureConfig.RootParameters[1] = uavTable;
 
-        m_RootSignature = spieler::renderer::RootSignature{ device, rootParameters };
+        m_RootSignature = spieler::renderer::RootSignature{ device, rootSignatureConfig };
     }
 
     void SobelFilterPass::InitPipelineState()

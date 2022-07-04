@@ -1,11 +1,11 @@
 #pragma once
 
 #include "spieler/renderer/types.hpp"
+#include "spieler/renderer/sampler.hpp"
 
 namespace spieler::renderer
 {
     class Device;
-    struct StaticSampler;
 
     class RootParameter
     {
@@ -99,21 +99,31 @@ namespace spieler::renderer
 
     class RootSignature
     {
+    public:
+        struct Config
+        {
+            std::vector<RootParameter> RootParameters;
+            std::vector<StaticSampler> StaticSamplers;
+
+            Config() = default;
+            Config(size_t rootParametersSize, size_t staticSamplersSize = 0)
+            {
+                RootParameters.resize(rootParametersSize);
+                StaticSamplers.resize(staticSamplersSize);
+            }
+        };
+
     private:
         SPIELER_NON_COPYABLE(RootSignature)
 
     public:
         RootSignature() = default;
-        RootSignature(class Device& device, const std::vector<RootParameter>& rootParameters);
-        RootSignature(class Device& device, const std::vector<RootParameter>& rootParameters, const std::vector<StaticSampler>& staticSamplers);
+        RootSignature(class Device& device, const Config& config);
 
         RootSignature(RootSignature&& other) noexcept;
 
     private:
-        bool Init(class Device& device, const std::vector<RootParameter>& rootParameters);
-        bool Init(class Device& device, const std::vector<RootParameter>& rootParameters, const std::vector<StaticSampler>& staticSamplers);
-
-        bool Init(class Device& device, const D3D12_ROOT_SIGNATURE_DESC& rootSignatureDesc);
+        bool Init(class Device& device, const Config& config);
 
     public:
         RootSignature& operator=(RootSignature&& other) noexcept;

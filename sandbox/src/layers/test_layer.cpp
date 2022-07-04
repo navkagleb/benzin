@@ -874,32 +874,31 @@ namespace sandbox
 
         // Default root signature
         {
-            std::vector<spieler::renderer::RootParameter> rootParameters;
-            std::vector<spieler::renderer::StaticSampler> staticSamplers;
+            spieler::renderer::RootSignature::Config rootSignatureConfig;
 
             // Init root parameters
             {
-                rootParameters.resize(4);
+                rootSignatureConfig.RootParameters.resize(4);
 
-                rootParameters[0] = spieler::renderer::RootParameter::Descriptor
+                rootSignatureConfig.RootParameters[0] = spieler::renderer::RootParameter::Descriptor
                 {
                     .Type{ spieler::renderer::RootParameter::DescriptorType::ConstantBufferView },
                     .ShaderRegister{ 0 }
                 };
 
-                rootParameters[1] = spieler::renderer::RootParameter::Descriptor
+                rootSignatureConfig.RootParameters[1] = spieler::renderer::RootParameter::Descriptor
                 {
                     .Type{ spieler::renderer::RootParameter::DescriptorType::ConstantBufferView },
                     .ShaderRegister{ 1 }
                 };
 
-                rootParameters[2] = spieler::renderer::RootParameter::Descriptor
+                rootSignatureConfig.RootParameters[2] = spieler::renderer::RootParameter::Descriptor
                 {
                     .Type{ spieler::renderer::RootParameter::DescriptorType::ConstantBufferView },
                     .ShaderRegister{ 2 }
                 };
 
-                rootParameters[3] = spieler::renderer::RootParameter::SingleDescriptorTable
+                rootSignatureConfig.RootParameters[3] = spieler::renderer::RootParameter::SingleDescriptorTable
                 {
                     .Range
                     {
@@ -912,27 +911,28 @@ namespace sandbox
 
             // Init statis samplers
             {
-                staticSamplers.resize(6);
+                rootSignatureConfig.StaticSamplers.resize(6);
 
-                staticSamplers[0] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Wrap, 0);
-                staticSamplers[1] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Clamp, 1);
-                staticSamplers[2] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Wrap, 2);
-                staticSamplers[3] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Clamp, 3);
-                staticSamplers[4] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Wrap, 4);
-                staticSamplers[5] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Clamp, 5);
+                rootSignatureConfig.StaticSamplers[0] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Wrap, 0 };
+                rootSignatureConfig.StaticSamplers[1] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Clamp, 1 };
+                rootSignatureConfig.StaticSamplers[2] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Wrap, 2 };
+                rootSignatureConfig.StaticSamplers[3] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Clamp, 3 };
+                rootSignatureConfig.StaticSamplers[4] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Wrap, 4 };
+                rootSignatureConfig.StaticSamplers[5] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Clamp, 5 };
             }
 
-            m_RootSignatures["default"] = spieler::renderer::RootSignature{ device, rootParameters, staticSamplers };
+            m_RootSignatures["default"] = spieler::renderer::RootSignature{ device, rootSignatureConfig };
         }
 
         // Composite root signature
         {
-            std::vector<spieler::renderer::RootParameter> rootParameters;
-            std::vector<spieler::renderer::StaticSampler> staticSamplers;
+            spieler::renderer::RootSignature::Config rootSignatureConfig;
 
             // Init root parameters
             {
-                const spieler::renderer::RootParameter::SingleDescriptorTable srvTable1
+                rootSignatureConfig.RootParameters.resize(2);
+
+                rootSignatureConfig.RootParameters[0] = spieler::renderer::RootParameter::SingleDescriptorTable
                 {
                     .Range
                     {
@@ -942,7 +942,7 @@ namespace sandbox
                     }
                 };
 
-                const spieler::renderer::RootParameter::SingleDescriptorTable srvTable2
+                rootSignatureConfig.RootParameters[1] = spieler::renderer::RootParameter::SingleDescriptorTable
                 {
                     .Range
                     {
@@ -951,24 +951,21 @@ namespace sandbox
                         .BaseShaderRegister{ 1 }
                     }
                 };
-
-                rootParameters.emplace_back(srvTable1);
-                rootParameters.emplace_back(srvTable2);
             }
 
             // Init statis samplers
             {
-                staticSamplers.resize(6);
+                rootSignatureConfig.StaticSamplers.resize(6);
 
-                staticSamplers[0] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Wrap, 0);
-                staticSamplers[1] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Clamp, 1);
-                staticSamplers[2] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Wrap, 2);
-                staticSamplers[3] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Clamp, 3);
-                staticSamplers[4] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Wrap, 4);
-                staticSamplers[5] = spieler::renderer::StaticSampler(spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Clamp, 5);
+                rootSignatureConfig.StaticSamplers[0] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Wrap, 0 };
+                rootSignatureConfig.StaticSamplers[1] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Point, spieler::renderer::TextureAddressMode::Clamp, 1 };
+                rootSignatureConfig.StaticSamplers[2] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Wrap, 2 };
+                rootSignatureConfig.StaticSamplers[3] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Linear, spieler::renderer::TextureAddressMode::Clamp, 3 };
+                rootSignatureConfig.StaticSamplers[4] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Wrap, 4 };
+                rootSignatureConfig.StaticSamplers[5] = spieler::renderer::StaticSampler{ spieler::renderer::TextureFilterType::Anisotropic, spieler::renderer::TextureAddressMode::Clamp, 5 };
             }
 
-            m_RootSignatures["composite"] = spieler::renderer::RootSignature{ device, rootParameters, staticSamplers };
+            m_RootSignatures["composite"] = spieler::renderer::RootSignature{ device, rootSignatureConfig };
         }
 
         return true;

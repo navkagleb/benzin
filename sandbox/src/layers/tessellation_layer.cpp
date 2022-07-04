@@ -98,8 +98,6 @@ namespace sandbox
 
         // Init RoogSignature
         {
-            std::vector<spieler::renderer::RootParameter> rootParameters;
-
             const spieler::renderer::RootParameter::Descriptor pass
             {
                 .Type{ spieler::renderer::RootParameter::DescriptorType::ConstantBufferView },
@@ -112,10 +110,11 @@ namespace sandbox
                 .ShaderRegister{ 1 }
             };
 
-            rootParameters.emplace_back(pass);
-            rootParameters.emplace_back(object);
+            spieler::renderer::RootSignature::Config rootSignatureConfig{ 2 };
+            rootSignatureConfig.RootParameters[0] = pass;
+            rootSignatureConfig.RootParameters[1] = object;
 
-            m_RootSignature = spieler::renderer::RootSignature{ device, rootParameters };
+            m_RootSignature = spieler::renderer::RootSignature{ device, rootSignatureConfig };
         }
 
         // Init PipelineState

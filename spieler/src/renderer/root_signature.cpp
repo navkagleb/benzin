@@ -53,8 +53,13 @@ namespace spieler::renderer
             return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         }
 
-        static std::vector<D3D12_STATIC_SAMPLER_DESC> ToD3D12StaticSamplers(const std::vector<StaticSampler>& staticSamplers)
+        static std::vector<D3D12_STATIC_SAMPLER_DESC> ConvertToD3D12StaticSamplers(const std::vector<StaticSampler>& staticSamplers)
         {
+            if (staticSamplers.empty())
+            {
+                return {};
+            }
+
             std::vector<D3D12_STATIC_SAMPLER_DESC> d3d12StaticSamplers;
             d3d12StaticSamplers.reserve(staticSamplers.size());
 
@@ -62,19 +67,19 @@ namespace spieler::renderer
             {
                 d3d12StaticSamplers.push_back(D3D12_STATIC_SAMPLER_DESC
                 {
-                    .Filter = ConvertToD3D12TextureFilter(staticSampler.TextureFilter),
-                    .AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.AddressU),
-                    .AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.AddressV),
-                    .AddressW = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.AddressW),
-                    .MipLODBias = 0.0f,
-                    .MaxAnisotropy = 1,
-                    .ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS,
-                    .BorderColor = static_cast<D3D12_STATIC_BORDER_COLOR>(staticSampler.BorderColor),
-                    .MinLOD = 0.0f,
-                    .MaxLOD = D3D12_FLOAT32_MAX,
-                    .ShaderRegister = static_cast<UINT>(staticSampler.ShaderRegister),
-                    .RegisterSpace = static_cast<UINT>(staticSampler.RegisterSpace),
-                    .ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(staticSampler.ShaderVisibility)
+                    .Filter{ ConvertToD3D12TextureFilter(staticSampler.TextureFilter) },
+                    .AddressU{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.AddressU) },
+                    .AddressV{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.AddressV) },
+                    .AddressW{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.AddressW) },
+                    .MipLODBias{ 0.0f },
+                    .MaxAnisotropy{ 1 },
+                    .ComparisonFunc{ D3D12_COMPARISON_FUNC_ALWAYS },
+                    .BorderColor{ static_cast<D3D12_STATIC_BORDER_COLOR>(staticSampler.BorderColor) },
+                    .MinLOD{ 0.0f },
+                    .MaxLOD{ D3D12_FLOAT32_MAX },
+                    .ShaderRegister{ static_cast<UINT>(staticSampler.ShaderRegister) },
+                    .RegisterSpace{ static_cast<UINT>(staticSampler.RegisterSpace) },
+                    .ShaderVisibility{ D3D12Converter::Convert(staticSampler.ShaderVisibility) }
                 });
             }
 
@@ -210,61 +215,30 @@ namespace spieler::renderer
     }
 
     // RootSignature
-    RootSignature::RootSignature(Device& device, const std::vector<RootParameter>& rootParameters)
+    RootSignature::RootSignature(Device& device, const Config& config)
     {
-        SPIELER_ASSERT(Init(device, rootParameters));
-    }
-
-    RootSignature::RootSignature(Device& device, const std::vector<RootParameter>& rootParameters, const std::vector<StaticSampler>& staticSamplers)
-    {
-        SPIELER_ASSERT(Init(device, rootParameters, staticSamplers));
+        SPIELER_ASSERT(Init(device, config));
     }
 
     RootSignature::RootSignature(RootSignature&& other) noexcept
         : m_RootSignature{ std::exchange(other.m_RootSignature, nullptr) }
     {}
 
-    bool RootSignature::Init(Device& device, const std::vector<RootParameter>& rootParameters)
+    bool RootSignature::Init(Device& device, const Config& config)
     {
-        SPIELER_ASSERT(!rootParameters.empty());
+        SPIELER_ASSERT(!config.RootParameters.empty());
+
+        const std::vector<D3D12_STATIC_SAMPLER_DESC> d3d12StaticSamplers{ _internal::ConvertToD3D12StaticSamplers(config.StaticSamplers) };
 
         const D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc
         {
-            .NumParameters{ static_cast<UINT>(rootParameters.size()) },
-            .pParameters{ reinterpret_cast<const D3D12_ROOT_PARAMETER*>(rootParameters.data()) },
-            .NumStaticSamplers{ 0 },
-            .pStaticSamplers{ nullptr },
-            .Flags{ D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT }
-        };
-
-        SPIELER_RETURN_IF_FAILED(Init(device, rootSignatureDesc));
-
-        return true;
-    }
-
-    bool RootSignature::Init(Device& device, const std::vector<RootParameter>& rootParameters, const std::vector<StaticSampler>& staticSamplers)
-    {
-        SPIELER_ASSERT(!rootParameters.empty());
-        SPIELER_ASSERT(!staticSamplers.empty());
-
-        const std::vector<D3D12_STATIC_SAMPLER_DESC> d3d12StaticSamplers{ _internal::ToD3D12StaticSamplers(staticSamplers) };
-
-        const D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc
-        {
-            .NumParameters{ static_cast<UINT>(rootParameters.size()) },
-            .pParameters{ reinterpret_cast<const D3D12_ROOT_PARAMETER*>(rootParameters.data()) },
+            .NumParameters{ static_cast<UINT>(config.RootParameters.size()) },
+            .pParameters{ reinterpret_cast<const D3D12_ROOT_PARAMETER*>(config.RootParameters.data()) },
             .NumStaticSamplers{ static_cast<UINT>(d3d12StaticSamplers.size()) },
             .pStaticSamplers{ d3d12StaticSamplers.data() },
             .Flags{ D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT }
         };
 
-        SPIELER_RETURN_IF_FAILED(Init(device, rootSignatureDesc));
-        
-        return true;
-    }
-
-    bool RootSignature::Init(Device& device, const D3D12_ROOT_SIGNATURE_DESC& rootSignatureDesc)
-    {
         ComPtr<ID3DBlob> serializedRootSignature;
         ComPtr<ID3DBlob> error;
 

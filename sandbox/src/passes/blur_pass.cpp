@@ -42,10 +42,8 @@ namespace sandbox
             return weights;
         }
 
-        static std::vector<spieler::renderer::RootParameter> GetUniformPassRootParameters()
+        static spieler::renderer::RootSignature::Config GetUniformPassRootSignatureConfig()
         {
-            std::vector<spieler::renderer::RootParameter> rootParameters;
-
             const spieler::renderer::RootParameter::_32BitConstants constants
             {
                 .ShaderRegister{ 0 },
@@ -72,11 +70,12 @@ namespace sandbox
                 }
             };
 
-            rootParameters.emplace_back(constants);
-            rootParameters.emplace_back(srvTable);
-            rootParameters.emplace_back(uavTable);
-
-            return rootParameters;
+            spieler::renderer::RootSignature::Config config{ 3 };
+            config.RootParameters[0] = constants;
+            config.RootParameters[1] = srvTable;
+            config.RootParameters[2] = uavTable;
+            
+            return config;
         }
 
     } // namespace _internal
@@ -264,7 +263,7 @@ namespace sandbox
 
         // Root Signature
         {
-            m_HorizontalPass.RootSignature = spieler::renderer::RootSignature{ device, _internal::GetUniformPassRootParameters() };
+            m_HorizontalPass.RootSignature = spieler::renderer::RootSignature{ device, _internal::GetUniformPassRootSignatureConfig() };
         }
 
         // PSO
@@ -298,7 +297,7 @@ namespace sandbox
 
         // Root Signature
         {
-            m_VerticalPass.RootSignature = spieler::renderer::RootSignature{ device, _internal::GetUniformPassRootParameters() };
+            m_VerticalPass.RootSignature = spieler::renderer::RootSignature{ device, _internal::GetUniformPassRootSignatureConfig() };
         }
 
         // PSO
