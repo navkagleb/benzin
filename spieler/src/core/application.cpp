@@ -93,8 +93,6 @@ namespace spieler
                 }
             }
         }
-
-        renderer::Renderer::DestoryInstance();
     }
 
     bool Application::InitWindow(const std::string& title, uint32_t width, uint32_t height)
@@ -158,6 +156,8 @@ namespace spieler
         renderer::Context& context{ renderer.GetContext() };
         renderer::SwapChain& swapChain{ renderer.GetSwapChain() };
         renderer::DescriptorManager& descriptorManager{ device.GetDescriptorManager() };
+
+        SPIELER_RETURN_IF_FAILED(context.ResetCommandAllocator());
 
         SPIELER_RETURN_IF_FAILED(m_LayerStack.OnRender(dt));
 

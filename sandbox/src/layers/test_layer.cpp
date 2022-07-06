@@ -259,7 +259,6 @@ namespace sandbox
         spieler::renderer::Texture2D& currentBuffer{ swapChain.GetCurrentBuffer() };
         spieler::renderer::Texture2DResource& currentBufferResource{ currentBuffer.GetTexture2DResource() };
 
-        SPIELER_RETURN_IF_FAILED(context.ResetCommandAllocator());
         SPIELER_RETURN_IF_FAILED(context.ResetCommandList());
         {
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
