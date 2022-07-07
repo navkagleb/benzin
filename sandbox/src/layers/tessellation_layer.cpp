@@ -16,6 +16,8 @@ namespace sandbox
 
         enum class Tessellation {};
 
+        enum class BezierTessellation {};
+
     } // namespace per
 
     TessellationLayer::TessellationLayer(spieler::Window& window)
@@ -58,42 +60,89 @@ namespace sandbox
             const spieler::renderer::BufferConfig objectBufferConfig
             {
                 .ElementSize{ sizeof(ObjectConstants) },
-                .ElementCount{ 1 }
+                .ElementCount{ 2 }
             };
 
-            m_RenderItem.Transform.Scale = DirectX::XMFLOAT3{ 20.0f, 20.0f, 20.0f };
+            m_RenderItems["quad"].Transform.Scale = DirectX::XMFLOAT3{ 20.0f, 20.0f, 20.0f };
 
             m_ObjectConstantBuffer.SetResource(device.CreateBuffer(objectBufferConfig, constantBufferFlags));
-            m_ObjectConstantBuffer.SetSlice(&m_ObjectConstants);
+            m_ObjectConstantBuffer.SetSlice(&m_RenderItems["quad"]);
+            m_ObjectConstantBuffer.SetSlice(&m_RenderItems["bezier_quad"]);
         }
 
         // Init MeshGeometry
         {
-            const std::array<DirectX::XMFLOAT3, 4> vertices =
+            const std::array<DirectX::XMFLOAT3, 4 + 16> vertices =
             {
+                // Quad
                 DirectX::XMFLOAT3{ -0.5f, 0.0f,  0.5f },
                 DirectX::XMFLOAT3{  0.5f, 0.0f,  0.5f },
                 DirectX::XMFLOAT3{ -0.5f, 0.0f, -0.5f },
-                DirectX::XMFLOAT3{  0.5f, 0.0f, -0.5f }
+                DirectX::XMFLOAT3{  0.5f, 0.0f, -0.5f },
+
+                // Bezier Quad
+                // Row 0
+                DirectX::XMFLOAT3{ -10.0f, -10.0f, +15.0f },
+                DirectX::XMFLOAT3{ -5.0f,  0.0f, +15.0f },
+                DirectX::XMFLOAT3{ +5.0f,  0.0f, +15.0f },
+                DirectX::XMFLOAT3{ +10.0f, 0.0f, +15.0f },
+
+                // Row 1
+                DirectX::XMFLOAT3{ -15.0f, 0.0f, +5.0f },
+                DirectX::XMFLOAT3{ -5.0f,  0.0f, +5.0f },
+                DirectX::XMFLOAT3{ +5.0f,  20.0f, +5.0f },
+                DirectX::XMFLOAT3{ +15.0f, 0.0f, +5.0f },
+
+                // Row 2
+                DirectX::XMFLOAT3{ -15.0f, 0.0f, -5.0f },
+                DirectX::XMFLOAT3{ -5.0f,  0.0f, -5.0f },
+                DirectX::XMFLOAT3{ +5.0f,  0.0f, -5.0f },
+                DirectX::XMFLOAT3{ +15.0f, 0.0f, -5.0f },
+
+                // Row 3
+                DirectX::XMFLOAT3{ -10.0f, 10.0f, -15.0f },
+                DirectX::XMFLOAT3{ -5.0f,  0.0f, -15.0f },
+                DirectX::XMFLOAT3{ +5.0f,  0.0f, -15.0f },
+                DirectX::XMFLOAT3{ +25.0f, 10.0f, -15.0f }
             };
 
-            const std::array<std::int16_t, 4> indices{ 0, 1, 2, 3 };
+            const std::array<std::int16_t, 4 + 16> indices
+            { 
+                // Quad
+                0, 1, 2, 3,
+
+                // Bezier Quad
+                0, 1, 2, 3,
+                4, 5, 6, 7,
+                8, 9, 10, 11,
+                12, 13, 14, 15
+            };
 
             m_MeshGeometry.InitStaticVertexBuffer(vertices.data(), vertices.size(), uploadBuffer);
             m_MeshGeometry.InitStaticIndexBuffer(indices.data(), indices.size(), uploadBuffer);
 
-            m_MeshGeometry.m_PrimitiveTopology = spieler::renderer::PrimitiveTopology::ControlPointPatchlist4;
+            m_MeshGeometry.m_PrimitiveTopology = spieler::renderer::PrimitiveTopology::ControlPointPatchlist16;
 
-            spieler::renderer::SubmeshGeometry& grid{ m_MeshGeometry.CreateSubmesh("grid") };
-            grid.IndexCount = indices.size();
+            spieler::renderer::SubmeshGeometry& grid{ m_MeshGeometry.CreateSubmesh("quad") };
+            grid.IndexCount = 4;
             grid.BaseVertexLocation = 0;
             grid.StartIndexLocation = 0;
+
+            spieler::renderer::SubmeshGeometry& bezierQuad{ m_MeshGeometry.CreateSubmesh("bezier_quad") };
+            bezierQuad.IndexCount = 16;
+            bezierQuad.BaseVertexLocation = 4;
+            bezierQuad.StartIndexLocation = 4;
         }
 
-        // Init RenderItem
+        // Init RenderItems
         {
-            m_RenderItem.MeshGeometry = &m_MeshGeometry;
-            m_RenderItem.SubmeshGeometry = &m_MeshGeometry.GetSubmesh("grid");
+            auto& quad{ m_RenderItems["quad"] };
+            quad.MeshGeometry = &m_MeshGeometry;
+            quad.SubmeshGeometry = &m_MeshGeometry.GetSubmesh("quad");
+
+            auto& bezierQuad{ m_RenderItems["bezier_quad"] };
+            bezierQuad.MeshGeometry = &m_MeshGeometry;
+            bezierQuad.SubmeshGeometry = &m_MeshGeometry.GetSubmesh("bezier_quad");
         }
 
         // Init RoogSignature
@@ -119,69 +168,135 @@ namespace sandbox
 
         // Init PipelineState
         {
-            const spieler::renderer::Shader* vs{ nullptr };
-            const spieler::renderer::Shader* hs{ nullptr };
-            const spieler::renderer::Shader* ds{ nullptr };
-            const spieler::renderer::Shader* ps{ nullptr };
-            
-            // Init Shaders
+            // Quad PipelineState
             {
-                vs = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Vertex, spieler::renderer::ShaderConfig<per::Tessellation>
-                {
-                    .Filename{ L"assets/shaders/tessellation.hlsl" },
-                    .EntryPoint{ "VS_Main" },
-                    //.Permutation{ spieler::renderer::ShaderPermutation<per::Tessellation>{} }
-                });
+                const spieler::renderer::Shader* vs{ nullptr };
+                const spieler::renderer::Shader* hs{ nullptr };
+                const spieler::renderer::Shader* ds{ nullptr };
+                const spieler::renderer::Shader* ps{ nullptr };
 
-                hs = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Hull, spieler::renderer::ShaderConfig<per::Tessellation>
+                // Init Shaders
                 {
-                    .Filename{ L"assets/shaders/tessellation.hlsl" },
-                    .EntryPoint{ "HS_Main" },
-                    //.Permutation{ spieler::renderer::ShaderPermutation<per::Tessellation>{} }
-                });
+                    const std::wstring filename{ L"assets/shaders/tessellation.hlsl" };
 
-                ds = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Domain, spieler::renderer::ShaderConfig<per::Tessellation>
-                {
-                    .Filename{ L"assets/shaders/tessellation.hlsl" },
-                    .EntryPoint{ "DS_Main" },
-                    //.Permutation{ spieler::renderer::ShaderPermutation<per::Tessellation>{} }
-                });
+                    vs = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Vertex, spieler::renderer::ShaderConfig<per::Tessellation>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "VS_Main" },
+                    });
 
-                ps = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Pixel, spieler::renderer::ShaderConfig<per::Tessellation>
+                    hs = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Hull, spieler::renderer::ShaderConfig<per::Tessellation>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "HS_Main" },
+                    });
+
+                    ds = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Domain, spieler::renderer::ShaderConfig<per::Tessellation>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "DS_Main" },
+                    });
+
+                    ps = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Pixel, spieler::renderer::ShaderConfig<per::Tessellation>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "PS_Main" },
+                    });
+                }
+
+                const spieler::renderer::RasterizerState rasterizerState
                 {
-                    .Filename{ L"assets/shaders/tessellation.hlsl" },
-                    .EntryPoint{ "PS_Main" },
-                    //.Permutation{ spieler::renderer::ShaderPermutation<per::Tessellation>{} }
-                });
+                    .FillMode{ spieler::renderer::FillMode::Wireframe },
+                    .CullMode{ spieler::renderer::CullMode::None },
+                    .TriangleOrder{ spieler::renderer::TriangleOrder::Clockwise }
+                };
+
+                const spieler::renderer::InputLayout inputLayout
+                {
+                    spieler::renderer::InputLayoutElement{ "Position", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) }
+                };
+
+                const spieler::renderer::GraphicsPipelineStateConfig graphicsPipelineStateConfig
+                {
+                    .RootSignature{ &m_RootSignature },
+                    .VertexShader{ vs },
+                    .HullShader{ hs },
+                    .DomainShader{ ds },
+                    .PixelShader{ ps },
+                    .RasterizerState{ &rasterizerState },
+                    .InputLayout{ &inputLayout },
+                    .PrimitiveTopologyType{ spieler::renderer::PrimitiveTopologyType::Patch },
+                    .RTVFormat{ swapChain.GetBufferFormat() },
+                    .DSVFormat{ m_DepthStencilFormat }
+                };
+
+                m_PipelineStates["quad"] = spieler::renderer::GraphicsPipelineState{ device, graphicsPipelineStateConfig };
             }
-
-            const spieler::renderer::RasterizerState rasterizerState
+            
+            // Bezier quad PipelineState
             {
-                .FillMode{ spieler::renderer::FillMode::Wireframe },
-                .CullMode{ spieler::renderer::CullMode::None },
-                .TriangleOrder{ spieler::renderer::TriangleOrder::Clockwise }
-            };
+                const spieler::renderer::Shader* vs{ nullptr };
+                const spieler::renderer::Shader* hs{ nullptr };
+                const spieler::renderer::Shader* ds{ nullptr };
+                const spieler::renderer::Shader* ps{ nullptr };
 
-            const spieler::renderer::InputLayout inputLayout
-            {
-                spieler::renderer::InputLayoutElement{ "Position", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) }
-            };
+                // Init Shaders
+                {
+                    const std::wstring filename{ L"assets/shaders/bezier_tessellation.hlsl" };
 
-            const spieler::renderer::GraphicsPipelineStateConfig graphicsPipelineStateConfig
-            {
-                .RootSignature{ &m_RootSignature },
-                .VertexShader{ vs },
-                .HullShader{ hs },
-                .DomainShader{ ds },
-                .PixelShader{ ps },
-                .RasterizerState{ &rasterizerState },
-                .InputLayout{ &inputLayout },
-                .PrimitiveTopologyType{ spieler::renderer::PrimitiveTopologyType::Patch },
-                .RTVFormat{ swapChain.GetBufferFormat() },
-                .DSVFormat{ m_DepthStencilFormat }
-            };
+                    vs = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Vertex, spieler::renderer::ShaderConfig<per::BezierTessellation>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "VS_Main" },
+                    });
 
-            m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, graphicsPipelineStateConfig };
+                    hs = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Hull, spieler::renderer::ShaderConfig<per::BezierTessellation>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "HS_Main" },
+                    });
+
+                    ds = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Domain, spieler::renderer::ShaderConfig<per::BezierTessellation>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "DS_Main" },
+                    });
+
+                    ps = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Pixel, spieler::renderer::ShaderConfig<per::BezierTessellation>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "PS_Main" },
+                    });
+                }
+
+                const spieler::renderer::RasterizerState rasterizerState
+                {
+                    .FillMode{ spieler::renderer::FillMode::Wireframe },
+                    .CullMode{ spieler::renderer::CullMode::None },
+                    .TriangleOrder{ spieler::renderer::TriangleOrder::Clockwise }
+                };
+
+                const spieler::renderer::InputLayout inputLayout
+                {
+                    spieler::renderer::InputLayoutElement{ "Position", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) }
+                };
+
+                const spieler::renderer::GraphicsPipelineStateConfig graphicsPipelineStateConfig
+                {
+                    .RootSignature{ &m_RootSignature },
+                    .VertexShader{ vs },
+                    .HullShader{ hs },
+                    .DomainShader{ ds },
+                    .PixelShader{ ps },
+                    .RasterizerState{ &rasterizerState },
+                    .InputLayout{ &inputLayout },
+                    .PrimitiveTopologyType{ spieler::renderer::PrimitiveTopologyType::Patch },
+                    .RTVFormat{ swapChain.GetBufferFormat() },
+                    .DSVFormat{ m_DepthStencilFormat }
+                };
+
+                m_PipelineStates["bezier_quad"] = spieler::renderer::GraphicsPipelineState{ device, graphicsPipelineStateConfig };
+            }
         }
 
         SPIELER_ASSERT(context.ExecuteCommandList(true));
@@ -201,7 +316,7 @@ namespace sandbox
     {
         m_CameraController.OnUpdate(dt);
 
-        // Uplodate Pass ConstantBuffer
+        // Update Pass ConstantBuffer
         {
             const ProjectionCamera& camera{ m_CameraController.GetCamera() };
 
@@ -215,9 +330,12 @@ namespace sandbox
 
         // Update Object ConstantBuffer
         {
-            m_ObjectConstants.World = DirectX::XMMatrixTranspose(m_RenderItem.Transform.GetMatrix()),
+            for (const auto& [name, renderItem] : m_RenderItems)
+            {
+                m_ObjectConstants[name].World = DirectX::XMMatrixTranspose(renderItem.Transform.GetMatrix());
 
-            m_ObjectConstantBuffer.GetSlice(&m_ObjectConstants).Update(&m_ObjectConstants, sizeof(m_ObjectConstants));
+                m_ObjectConstantBuffer.GetSlice(&renderItem).Update(&m_ObjectConstants[name], sizeof(m_ObjectConstants[name]));
+            }
         }
     }
 
@@ -253,22 +371,45 @@ namespace sandbox
             context.SetViewport(m_Viewport);
             context.SetScissorRect(m_ScissorRect);
 
-            context.SetPipelineState(m_PipelineState);
+#if 0
+            // Quad
+            context.SetPipelineState(m_PipelineStates["quad"]);
             context.SetGraphicsRootSignature(m_RootSignature);
 
             m_PassConstantBuffer.GetSlice(&m_PassConstants).Bind(context, 0);
-            m_ObjectConstantBuffer.GetSlice(&m_ObjectConstants).Bind(context, 1);
+            m_ObjectConstantBuffer.GetSlice(&m_RenderItems["quad"]).Bind(context, 1);
 
-            m_MeshGeometry.GetVertexBuffer().GetView().Bind(context);
-            m_MeshGeometry.GetIndexBuffer().GetView().Bind(context);
+            m_RenderItems["quad"].MeshGeometry->GetVertexBuffer().GetView().Bind(context);
+            m_RenderItems["quad"].MeshGeometry->GetIndexBuffer().GetView().Bind(context);
 
             context.SetPrimitiveTopology(m_MeshGeometry.GetPrimitiveTopology());
 
             context.GetNativeCommandList()->DrawIndexedInstanced(
-                m_MeshGeometry.GetSubmesh("grid").IndexCount,
+                m_RenderItems["quad"].SubmeshGeometry->IndexCount,
                 1,
-                m_MeshGeometry.GetSubmesh("grid").StartIndexLocation,
-                m_MeshGeometry.GetSubmesh("grid").BaseVertexLocation,
+                m_RenderItems["quad"].SubmeshGeometry->StartIndexLocation,
+                m_RenderItems["quad"].SubmeshGeometry->BaseVertexLocation,
+                0
+            );
+#endif
+
+            // Bezier Quad
+            context.SetPipelineState(m_PipelineStates["bezier_quad"]);
+            context.SetGraphicsRootSignature(m_RootSignature);
+
+            m_PassConstantBuffer.GetSlice(&m_PassConstants).Bind(context, 0);
+            m_ObjectConstantBuffer.GetSlice(&m_RenderItems["bezier_quad"]).Bind(context, 1);
+
+            m_RenderItems["bezier_quad"].MeshGeometry->GetVertexBuffer().GetView().Bind(context);
+            m_RenderItems["bezier_quad"].MeshGeometry->GetIndexBuffer().GetView().Bind(context);
+
+            context.SetPrimitiveTopology(m_MeshGeometry.GetPrimitiveTopology());
+
+            context.GetNativeCommandList()->DrawIndexedInstanced(
+                m_RenderItems["bezier_quad"].SubmeshGeometry->IndexCount,
+                1,
+                m_RenderItems["bezier_quad"].SubmeshGeometry->StartIndexLocation,
+                m_RenderItems["bezier_quad"].SubmeshGeometry->BaseVertexLocation,
                 0
             );
 

@@ -54,17 +54,16 @@ namespace sandbox
         spieler::renderer::Viewport m_Viewport;
         spieler::renderer::ScissorRect m_ScissorRect;
 
-        spieler::renderer::RootSignature m_RootSignature;
-        spieler::renderer::PipelineState m_PipelineState;
-        spieler::renderer::ShaderLibrary m_ShaderLibrary;
         spieler::renderer::MeshGeometry m_MeshGeometry;
-        spieler::renderer::Material m_Material;
-        spieler::renderer::RenderItem m_RenderItem;
+        spieler::renderer::RootSignature m_RootSignature;
+        spieler::renderer::ShaderLibrary m_ShaderLibrary;
+        std::unordered_map<std::string, spieler::renderer::PipelineState> m_PipelineStates;
+        std::unordered_map<std::string, spieler::renderer::RenderItem> m_RenderItems;
 
         PassConstants m_PassConstants;
         spieler::renderer::ConstantBuffer m_PassConstantBuffer;
 
-        ObjectConstants m_ObjectConstants;
+        std::unordered_map<std::string, ObjectConstants> m_ObjectConstants;
         spieler::renderer::ConstantBuffer m_ObjectConstantBuffer;
 
         spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
