@@ -50,7 +50,7 @@ namespace spieler::renderer
         const DepthStencilState* DepthStecilState{ nullptr };
         const InputLayout* InputLayout{ nullptr };
 
-        PrimitiveTopologyType PrimitiveTopologyType{ PrimitiveTopologyType::Undefined };
+        PrimitiveTopologyType PrimitiveTopologyType{ PrimitiveTopologyType::Unknown };
         GraphicsFormat RTVFormat{ GraphicsFormat::R8G8B8A8UnsignedNorm };
         GraphicsFormat DSVFormat{ GraphicsFormat::D24UnsignedNormS8UnsignedInt };
     };

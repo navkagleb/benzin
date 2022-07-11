@@ -15,7 +15,8 @@ namespace spieler::renderer
 
     enum class PrimitiveTopologyType : uint8_t
     {
-        Undefined,
+        Unknown,
+
         Point,
         Line,
         Triangle,
@@ -24,7 +25,8 @@ namespace spieler::renderer
 
     enum class PrimitiveTopology : uint8_t
     {
-        Undefined,
+        Unknown,
+
         PointList,
         LineList,
         LineStrip,

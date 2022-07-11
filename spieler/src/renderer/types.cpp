@@ -32,7 +32,8 @@ namespace spieler::renderer
     {
         switch (primitiveTopologyType)
         {
-            case PrimitiveTopologyType::Undefined: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
+            case PrimitiveTopologyType::Unknown: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
+
             case PrimitiveTopologyType::Point: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
             case PrimitiveTopologyType::Line: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
             case PrimitiveTopologyType::Triangle: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -52,7 +53,8 @@ namespace spieler::renderer
     {
         switch (primitiveTopology)
         {
-            case PrimitiveTopology::Undefined: return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+            case PrimitiveTopology::Unknown: return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+
             case PrimitiveTopology::PointList: return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
             case PrimitiveTopology::LineList: return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
             case PrimitiveTopology::LineStrip: return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;

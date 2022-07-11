@@ -29,7 +29,6 @@ namespace spieler::renderer
     public:
         const VertexBuffer& GetVertexBuffer() const { return m_VertexBuffer; }
         const IndexBuffer& GetIndexBuffer() const { return m_IndexBuffer; }
-        PrimitiveTopology GetPrimitiveTopology() const { return m_PrimitiveTopology; }
 
     public:
         template <typename Vertex>
@@ -48,7 +47,6 @@ namespace spieler::renderer
         // TODO: Move to private
         VertexBuffer m_VertexBuffer;
         IndexBuffer m_IndexBuffer;
-        PrimitiveTopology m_PrimitiveTopology{ PrimitiveTopology::Undefined };
 
         std::unordered_map<std::string, SubmeshGeometry> m_Submeshes;
     };
@@ -129,6 +127,7 @@ namespace spieler::renderer
     {
         MeshGeometry* MeshGeometry{ nullptr };
         SubmeshGeometry* SubmeshGeometry{ nullptr };
+        PrimitiveTopology PrimitiveTopology{ PrimitiveTopology::Unknown };
         Material* Material{ nullptr };
 
         struct Transform Transform;

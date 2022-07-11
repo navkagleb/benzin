@@ -722,7 +722,6 @@ namespace sandbox
             const auto& gridMeshData{ spieler::renderer::GeometryGenerator::GenerateGrid<uint32_t>(gridGeometryProps) };
 
             spieler::renderer::MeshGeometry& basicMeshesGeometry{ m_MeshGeometries["basic"] };
-            basicMeshesGeometry.m_PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             basicMeshesGeometry.GenerateFrom(
                 {
                     { "box", boxMeshData },
@@ -730,7 +729,7 @@ namespace sandbox
                     { "grid", gridMeshData },
                 },
                 uploadBuffer
-                );
+            );
         }
 
         // Load skull model
@@ -792,8 +791,6 @@ namespace sandbox
             skullMeshGeometry.m_IndexBuffer.SetResource(device.CreateBuffer(indexBufferConfig, spieler::renderer::BufferFlags::None));
             context.CopyBuffer(indices.data(), sizeof(uint32_t) * indices.size(), uploadBuffer, *skullMeshGeometry.m_IndexBuffer.GetResource());
 
-            skullMeshGeometry.m_PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
-
             spieler::renderer::SubmeshGeometry& submesh{ skullMeshGeometry.m_Submeshes["grid"] };
             submesh.IndexCount = static_cast<uint32_t>(indices.size());
             submesh.BaseVertexLocation = 0;
@@ -828,7 +825,6 @@ namespace sandbox
             std::iota(indices.begin(), indices.end(), 0);
 
             spieler::renderer::MeshGeometry& treeMeshGeometry{ m_MeshGeometries["trees"] };
-            treeMeshGeometry.m_PrimitiveTopology = spieler::renderer::PrimitiveTopology::PointList;
 
             // VertexBuffer
             {
@@ -1446,6 +1442,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& box{ m_RenderItems["box"] = std::make_unique<spieler::renderer::RenderItem>() };
             box->MeshGeometry = &basicMeshGeometry;
             box->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("box");
+            box->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             box->Material = &m_Materials["wire_fence"];
 
             box->Transform.Translation = DirectX::XMFLOAT3{ 0.0f, 0.0f, 20.0f };
@@ -1460,6 +1457,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& sun{ m_RenderItems["sun"] = std::make_unique<spieler::renderer::RenderItem>() };
             sun->MeshGeometry = &basicMeshGeometry;
             sun->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("geosphere");
+            sun->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
 
             sun->GetComponent<ColorConstants>().Color = DirectX::XMFLOAT4{ 1.0f, 1.0f, 0.2f, 1.0f };
 
@@ -1473,6 +1471,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& floor{ m_RenderItems["floor"] = std::make_unique<spieler::renderer::RenderItem>() };
             floor->MeshGeometry = &basicMeshGeometry;
             floor->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("grid");
+            floor->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             floor->Material = &m_Materials["tile"];
 
             floor->Transform.Scale = DirectX::XMFLOAT3{ 20.0f, 1.0f, 20.0f };
@@ -1491,6 +1490,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& wall{ m_RenderItems["wall1"] = std::make_unique<spieler::renderer::RenderItem>() };
             wall->MeshGeometry = &basicMeshGeometry;
             wall->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("grid");
+            wall->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             wall->Material = &m_Materials["bricks"];
 
             wall->Transform.Scale = DirectX::XMFLOAT3{ 5.0f, 1.0f, 10.0f };
@@ -1509,6 +1509,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& wall{ m_RenderItems["wall2"] = std::make_unique<spieler::renderer::RenderItem>() };
             wall->MeshGeometry = &basicMeshGeometry;
             wall->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("grid");
+            wall->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             wall->Material = &m_Materials["bricks"];
 
             wall->Transform.Scale = DirectX::XMFLOAT3{ 20.0f, 1.0f, 10.0f };
@@ -1527,6 +1528,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& wall{ m_RenderItems["wall3"] = std::make_unique<spieler::renderer::RenderItem>() };
             wall->MeshGeometry = &basicMeshGeometry;
             wall->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("grid");
+            wall->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             wall->Material = &m_Materials["bricks"];
 
             wall->Transform.Scale = DirectX::XMFLOAT3{ 5.0f, 1.0f, 10.0f };
@@ -1545,6 +1547,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& skull{ m_RenderItems["skull"] = std::make_unique<spieler::renderer::RenderItem>() };
             skull->MeshGeometry = &m_MeshGeometries["skull"];
             skull->SubmeshGeometry = &m_MeshGeometries["skull"].GetSubmesh("grid");
+            skull->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             skull->Material = &m_Materials["skull"];
 
             skull->Transform.Scale = DirectX::XMFLOAT3{ 0.5f, 0.5f, 0.5f };
@@ -1560,6 +1563,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& skull{ m_RenderItems["reflected_skull"] = std::make_unique<spieler::renderer::RenderItem>() };
             skull->MeshGeometry = &m_MeshGeometries["skull"];
             skull->SubmeshGeometry = &m_MeshGeometries["skull"].GetSubmesh("grid");
+            skull->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             skull->Material = &m_Materials["skull"];
 
             renderItemConstantBuffer.SetSlice(skull.get());
@@ -1572,6 +1576,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& mirror{ m_RenderItems["mirror"] = std::make_unique<spieler::renderer::RenderItem>() };
             mirror->MeshGeometry = &basicMeshGeometry;
             mirror->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("grid");
+            mirror->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             mirror->Material = &m_Materials["mirror"];
 
             mirror->Transform.Scale = DirectX::XMFLOAT3{ 10.0f, 1.0f, 10.0f };
@@ -1591,6 +1596,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& shadow{ m_RenderItems["skull_shadow"] = std::make_unique<spieler::renderer::RenderItem>() };
             shadow->MeshGeometry = &m_MeshGeometries["skull"];
             shadow->SubmeshGeometry = &m_MeshGeometries["skull"].GetSubmesh("grid");
+            shadow->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             shadow->Material = &m_Materials["shadow"];
 
             renderItemConstantBuffer.SetSlice(shadow.get());
@@ -1603,6 +1609,7 @@ namespace sandbox
             std::unique_ptr<spieler::renderer::RenderItem>& trees{ m_RenderItems["trees"] = std::make_unique<spieler::renderer::RenderItem>() };
             trees->MeshGeometry = &m_MeshGeometries["trees"];
             trees->SubmeshGeometry = &m_MeshGeometries["trees"].GetSubmesh("main");
+            trees->PrimitiveTopology = spieler::renderer::PrimitiveTopology::PointList;
             trees->Material = &m_Materials["tree"];
 
             m_AlphaTestedBillboards.push_back(trees.get());
@@ -1692,7 +1699,7 @@ namespace sandbox
             item->MeshGeometry->GetVertexBuffer().GetView().Bind(context);
             item->MeshGeometry->GetIndexBuffer().GetView().Bind(context);
 
-            context.SetPrimitiveTopology(item->MeshGeometry->m_PrimitiveTopology);
+            context.SetPrimitiveTopology(item->PrimitiveTopology);
 
             if (objectConstantBuffer)
             {

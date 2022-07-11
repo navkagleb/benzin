@@ -63,7 +63,8 @@ namespace sandbox
                 .ElementCount{ 2 }
             };
 
-            m_RenderItems["quad"].Transform.Scale = DirectX::XMFLOAT3{ 20.0f, 20.0f, 20.0f };
+            m_RenderItems["quad"].Transform.Scale = DirectX::XMFLOAT3{ 30.0f, 30.0f, 30.0f };
+            m_RenderItems["bezier_quad"].Transform.Translation = DirectX::XMFLOAT3{ 60.0f, 0.0f, 00.0f };
 
             m_ObjectConstantBuffer.SetResource(device.CreateBuffer(objectBufferConfig, constantBufferFlags));
             m_ObjectConstantBuffer.SetSlice(&m_RenderItems["quad"]);
@@ -121,8 +122,6 @@ namespace sandbox
             m_MeshGeometry.InitStaticVertexBuffer(vertices.data(), vertices.size(), uploadBuffer);
             m_MeshGeometry.InitStaticIndexBuffer(indices.data(), indices.size(), uploadBuffer);
 
-            m_MeshGeometry.m_PrimitiveTopology = spieler::renderer::PrimitiveTopology::ControlPointPatchlist16;
-
             spieler::renderer::SubmeshGeometry& grid{ m_MeshGeometry.CreateSubmesh("quad") };
             grid.IndexCount = 4;
             grid.BaseVertexLocation = 0;
@@ -139,10 +138,12 @@ namespace sandbox
             auto& quad{ m_RenderItems["quad"] };
             quad.MeshGeometry = &m_MeshGeometry;
             quad.SubmeshGeometry = &m_MeshGeometry.GetSubmesh("quad");
+            quad.PrimitiveTopology = spieler::renderer::PrimitiveTopology::ControlPointPatchlist4;
 
             auto& bezierQuad{ m_RenderItems["bezier_quad"] };
             bezierQuad.MeshGeometry = &m_MeshGeometry;
             bezierQuad.SubmeshGeometry = &m_MeshGeometry.GetSubmesh("bezier_quad");
+            bezierQuad.PrimitiveTopology = spieler::renderer::PrimitiveTopology::ControlPointPatchlist16;
         }
 
         // Init RoogSignature
@@ -371,48 +372,54 @@ namespace sandbox
             context.SetViewport(m_Viewport);
             context.SetScissorRect(m_ScissorRect);
 
-#if 0
             // Quad
-            context.SetPipelineState(m_PipelineStates["quad"]);
-            context.SetGraphicsRootSignature(m_RootSignature);
+            {
+                const auto& quad{ m_RenderItems["quad"] };
 
-            m_PassConstantBuffer.GetSlice(&m_PassConstants).Bind(context, 0);
-            m_ObjectConstantBuffer.GetSlice(&m_RenderItems["quad"]).Bind(context, 1);
+                context.SetPipelineState(m_PipelineStates["quad"]);
+                context.SetGraphicsRootSignature(m_RootSignature);
 
-            m_RenderItems["quad"].MeshGeometry->GetVertexBuffer().GetView().Bind(context);
-            m_RenderItems["quad"].MeshGeometry->GetIndexBuffer().GetView().Bind(context);
+                m_PassConstantBuffer.GetSlice(&m_PassConstants).Bind(context, 0);
+                m_ObjectConstantBuffer.GetSlice(&quad).Bind(context, 1);
 
-            context.SetPrimitiveTopology(m_MeshGeometry.GetPrimitiveTopology());
+                quad.MeshGeometry->GetVertexBuffer().GetView().Bind(context);
+                quad.MeshGeometry->GetIndexBuffer().GetView().Bind(context);
 
-            context.GetNativeCommandList()->DrawIndexedInstanced(
-                m_RenderItems["quad"].SubmeshGeometry->IndexCount,
-                1,
-                m_RenderItems["quad"].SubmeshGeometry->StartIndexLocation,
-                m_RenderItems["quad"].SubmeshGeometry->BaseVertexLocation,
-                0
-            );
-#endif
+                context.SetPrimitiveTopology(quad.PrimitiveTopology);
+
+                context.GetNativeCommandList()->DrawIndexedInstanced(
+                    quad.SubmeshGeometry->IndexCount,
+                    1,
+                    quad.SubmeshGeometry->StartIndexLocation,
+                    quad.SubmeshGeometry->BaseVertexLocation,
+                    0
+                );
+            }
 
             // Bezier Quad
-            context.SetPipelineState(m_PipelineStates["bezier_quad"]);
-            context.SetGraphicsRootSignature(m_RootSignature);
+            {
+                const auto& bezierQuad{ m_RenderItems["bezier_quad"] };
 
-            m_PassConstantBuffer.GetSlice(&m_PassConstants).Bind(context, 0);
-            m_ObjectConstantBuffer.GetSlice(&m_RenderItems["bezier_quad"]).Bind(context, 1);
+                context.SetPipelineState(m_PipelineStates["bezier_quad"]);
+                context.SetGraphicsRootSignature(m_RootSignature);
 
-            m_RenderItems["bezier_quad"].MeshGeometry->GetVertexBuffer().GetView().Bind(context);
-            m_RenderItems["bezier_quad"].MeshGeometry->GetIndexBuffer().GetView().Bind(context);
+                m_PassConstantBuffer.GetSlice(&m_PassConstants).Bind(context, 0);
+                m_ObjectConstantBuffer.GetSlice(&bezierQuad).Bind(context, 1);
 
-            context.SetPrimitiveTopology(m_MeshGeometry.GetPrimitiveTopology());
+                bezierQuad.MeshGeometry->GetVertexBuffer().GetView().Bind(context);
+                bezierQuad.MeshGeometry->GetIndexBuffer().GetView().Bind(context);
 
-            context.GetNativeCommandList()->DrawIndexedInstanced(
-                m_RenderItems["bezier_quad"].SubmeshGeometry->IndexCount,
-                1,
-                m_RenderItems["bezier_quad"].SubmeshGeometry->StartIndexLocation,
-                m_RenderItems["bezier_quad"].SubmeshGeometry->BaseVertexLocation,
-                0
-            );
+                context.SetPrimitiveTopology(bezierQuad.PrimitiveTopology);
 
+                context.GetNativeCommandList()->DrawIndexedInstanced(
+                    bezierQuad.SubmeshGeometry->IndexCount,
+                    1,
+                    bezierQuad.SubmeshGeometry->StartIndexLocation,
+                    bezierQuad.SubmeshGeometry->BaseVertexLocation,
+                    0
+                );
+            }
+            
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
                 .Resource = &backBuffer.GetTexture2DResource(),

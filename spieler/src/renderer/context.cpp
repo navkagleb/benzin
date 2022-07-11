@@ -126,6 +126,8 @@ namespace spieler::renderer
 
     void Context::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
     {
+        SPIELER_ASSERT(primitiveTopology != PrimitiveTopology::Unknown);
+
         m_CommandList->IASetPrimitiveTopology(D3D12Converter::Convert(primitiveTopology));
     }
 
