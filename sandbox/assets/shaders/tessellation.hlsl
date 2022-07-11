@@ -44,8 +44,8 @@ PatchTessellation HS_Constant(InputPatch<VS_Output, 4> patch, uint patchID : SV_
     const float3 centerW = mul(float4(centerL, 1.0f), g_Object.World).xyz;
     const float distanceToCamera = distance(centerW, g_Pass.CameraPosition);
     
-    const float distanceMin = 20.0f;
-    const float distanceMax = 70.0f;
+    const float distanceMin = 30.0f;
+    const float distanceMax = 100.0f;
     
     const float tessellationFactor = 64.0f * saturate((distanceMax - distanceToCamera) / (distanceMax - distanceMin));
     

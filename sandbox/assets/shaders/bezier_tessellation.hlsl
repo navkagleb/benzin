@@ -40,13 +40,12 @@ struct PatchTessellation
 
 PatchTessellation HS_Constant(InputPatch<VS_Output, 16> patch, uint patchID : SV_PrimitiveID)
 {
-#if 0
     const float3 centerL = 0.25f * (patch[0].PositionL + patch[1].PositionL + patch[2].PositionL + patch[3].PositionL);
     const float3 centerW = mul(float4(centerL, 1.0f), g_Object.World).xyz;
     const float distanceToCamera = distance(centerW, g_Pass.CameraPosition);
 
-    const float distanceMin = 20.0f;
-    const float distanceMax = 70.0f;
+    const float distanceMin = 30.0f;
+    const float distanceMax = 100.0f;
 
     const float tessellationFactor = 64.0f * saturate((distanceMax - distanceToCamera) / (distanceMax - distanceMin));
 
@@ -59,17 +58,6 @@ PatchTessellation HS_Constant(InputPatch<VS_Output, 16> patch, uint patchID : SV
     patchTessellation.InsideTessellation[1] = tessellationFactor;
 
     return patchTessellation;
-#else
-    PatchTessellation patchTessellation = (PatchTessellation)0;
-    patchTessellation.EdgesTessellation[0] = 25;
-    patchTessellation.EdgesTessellation[1] = 25;
-    patchTessellation.EdgesTessellation[2] = 25;
-    patchTessellation.EdgesTessellation[3] = 25;
-    patchTessellation.InsideTessellation[0] = 25;
-    patchTessellation.InsideTessellation[1] = 25;
-
-    return patchTessellation;
-#endif
 }
 
 struct HS_Output
