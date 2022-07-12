@@ -97,7 +97,7 @@ namespace spieler
 
     bool Application::InitWindow(const std::string& title, uint32_t width, uint32_t height)
     {
-#if defined(SPIELER_WIN64)
+#if defined(SPIELER_PLATFORM_WINDOWS)
         m_Window = std::make_unique<Win64_Window>(title, width, height);
 #else
         static_assert(false);

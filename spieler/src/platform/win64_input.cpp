@@ -2,7 +2,7 @@
 
 #include "platform/win64_input.hpp"
 
-#if defined(SPIELER_WIN64)
+#if defined(SPIELER_PLATFORM_WINDOWS)
 
 #include "spieler/core/assert.hpp"
 

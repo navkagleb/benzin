@@ -19,7 +19,7 @@ workspace "spieler"
         characterset "ASCII"
         linkoptions { "/ENTRY:mainCRTStartup" }
 
-        defines { "SPIELER_WIN64", "WIN32" }
+        defines { "SPIELER_PLATFORM_WINDOWS", "WIN32" }
 
     filter "configurations:Debug"
         defines { "DEBUG", "SPIELER_DEBUG" }

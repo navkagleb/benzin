@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(SPIELER_WIN64)
+#if defined(SPIELER_PLATFORM_WINDOWS)
 
 #include "spieler/system/window.hpp"
 

@@ -2,7 +2,7 @@
 
 #include "win64_window.hpp"
 
-#if defined(SPIELER_WIN64)
+#if defined(SPIELER_PLATFORM_WINDOWS)
 
 #include <third_party/imgui/imgui_impl_win32.h>
 
