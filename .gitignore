@@ -1,3 +1,4 @@
 .vs/
 bin/
-*.vcxproj.user
+*.vcxproj*
+*.sln
