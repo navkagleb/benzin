@@ -119,7 +119,9 @@ project "sandbox"
         "../sandbox/src/**.hpp",
         "../sandbox/src/**.inl",
 
-        "../sandbox/src/**.cpp"
+        "../sandbox/src/**.cpp",
+
+        "../sandbox/assets/**.hlsl"
     }
 
     includedirs
@@ -128,3 +130,6 @@ project "sandbox"
         "../spieler/include",
         "../sandbox/src"
     }
+
+    filter "files:**.hlsl"
+        buildaction "None"
