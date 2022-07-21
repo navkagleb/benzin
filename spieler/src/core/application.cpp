@@ -147,7 +147,10 @@ namespace spieler
 
     void Application::OnUpdate(float dt)
     {
-        m_LayerStack.OnUpdate(dt);
+        for (auto& layer : m_LayerStack)
+        {
+            layer->OnUpdate(dt);
+        }
     }
 
     bool Application::OnRender(float dt)
@@ -160,7 +163,10 @@ namespace spieler
 
         SPIELER_RETURN_IF_FAILED(context.ResetCommandAllocator());
 
-        SPIELER_RETURN_IF_FAILED(m_LayerStack.OnRender(dt));
+        for (auto& layer : m_LayerStack)
+        {
+            layer->OnRender(dt);
+        }
 
         SPIELER_RETURN_IF_FAILED(context.ResetCommandList());
         {
@@ -195,7 +201,10 @@ namespace spieler
 
     void Application::OnImGuiRender(float dt)
     {
-        m_LayerStack.OnImGuiRender(dt);
+        for (auto& layer : m_LayerStack)
+        {
+            layer->OnImGuiRender(dt);
+        }
     }
 
     void Application::WindowEventCallback(Event& event)
@@ -211,7 +220,15 @@ namespace spieler
         dispatcher.Dispatch<WindowFocusedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowFocused));
         dispatcher.Dispatch<WindowUnfocusedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowUnfocused));
 
-        m_LayerStack.OnEvent(event);
+        for (auto it = m_LayerStack.ReverseBegin(); it != m_LayerStack.ReverseEnd(); ++it)
+        {
+            if (event.IsHandled())
+            {
+                break;
+            }
+
+            (*it)->OnEvent(event);
+        }
     }
 
     bool Application::OnWindowClose(WindowCloseEvent& event)

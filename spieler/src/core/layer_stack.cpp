@@ -3,52 +3,35 @@
 #include "spieler/core/layer_stack.hpp"
 
 #include "spieler/core/common.hpp"
+#include "spieler/core/assert.hpp"
 #include "spieler/system/event.hpp"
 
 namespace spieler
 {
 
-    void LayerStack::OnEvent(Event& event)
+    void LayerStack::Pop(const std::shared_ptr<Layer>& layer)
     {
-        for (auto& layer : m_Layers)
+        auto layerIterator{ std::find(m_Layers.begin(), m_Layers.begin() + m_OverlayIndex, layer) };
+
+        if (layerIterator != m_Layers.end())
         {
-            layer->OnEvent(event);
+            SPIELER_ASSERT((*layerIterator)->OnDetach());
+
+            m_Layers.erase(layerIterator);
+            m_OverlayIndex--;
         }
     }
 
-    void LayerStack::OnUpdate(float dt)
+    void LayerStack::PopOverlay(const std::shared_ptr<Layer>& layer)
     {
-        for (auto& layer : m_Layers)
+        auto layerIterator{ std::find(m_Layers.begin() + m_OverlayIndex, m_Layers.end(), layer) };
+
+        if (layerIterator != m_Layers.end())
         {
-            layer->OnUpdate(dt);
+            SPIELER_ASSERT((*layerIterator)->OnDetach());
+
+            m_Layers.erase(layerIterator);
         }
-    }
-
-    bool LayerStack::OnRender(float dt)
-    {
-        for (auto& layer : m_Layers)
-        {
-            SPIELER_RETURN_IF_FAILED(layer->OnRender(dt));
-        }
-
-        return true;
-    }
-
-    void LayerStack::OnImGuiRender(float dt)
-    {
-        for (auto& layer : m_Layers)
-        {
-            layer->OnImGuiRender(dt);
-        }
-    }
-
-    bool LayerStack::PopLayer(const std::shared_ptr<Layer>& layer)
-    {
-        SPIELER_RETURN_IF_FAILED(layer->OnDetach());
-
-        m_Layers.erase(std::remove(m_Layers.begin(), m_Layers.end(), layer), m_Layers.end());
-
-        return true;
     }
 
 } // namespace spieler

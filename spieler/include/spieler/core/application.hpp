@@ -41,9 +41,6 @@ namespace spieler
         
         void Run();
 
-        template <typename T, typename... Args>
-        std::shared_ptr<T> PushLayer(Args&&... args) { return m_LayerStack.PushLayer<T>(std::forward<Args>(args)...); }
-
     private:
         bool InitWindow(const std::string& title, uint32_t width, uint32_t height);
         bool InitImGui();
@@ -82,11 +79,11 @@ namespace spieler
 
     protected:
         std::unique_ptr<Window> m_Window;
+        LayerStack m_LayerStack;
 
     private:
         ApplicationProps m_ApplicationProps;
         Timer m_Timer;
-        LayerStack m_LayerStack;
 
         renderer::Viewport m_ScreenViewport;
         renderer::ScissorRect m_ScreenScissorRect;

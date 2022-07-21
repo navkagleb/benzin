@@ -32,7 +32,7 @@ namespace spieler
         {
             if (m_Event.GetEventType() == T::GetStaticEventType())
             {
-                m_Event.m_Handled = callback(static_cast<T&>(m_Event));
+                m_Event.m_IsHandled = callback(static_cast<T&>(m_Event));
                 return true;
             }
 

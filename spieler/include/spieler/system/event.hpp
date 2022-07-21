@@ -60,6 +60,10 @@ public:                                                                         
     public:
         virtual ~Event() = default;
 
+    public:
+        bool IsHandled() const { return m_IsHandled; }
+
+    public:
         virtual EventType GetEventType() const = 0;
         virtual std::string GetName() const = 0;
         virtual int GetCategoryFlags() const = 0;
@@ -68,7 +72,7 @@ public:                                                                         
         bool IsInCategory(EventCategory category) const { return (GetCategoryFlags() & category) != EventCategory_None; }
 
     protected:
-        bool m_Handled{ false };
+        bool m_IsHandled{ false };
     };
 
 } // namespace spieler

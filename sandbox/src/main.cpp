@@ -16,7 +16,7 @@ namespace sandbox
         {
             //SPIELER_RETURN_IF_FAILED(PushLayer<TestLayer>(*m_Window));
             //SPIELER_RETURN_IF_FAILED(PushLayer<LandLayer>(m_Window, m_Renderer));
-            SPIELER_RETURN_IF_FAILED(PushLayer<TessellationLayer>(*m_Window));
+            SPIELER_RETURN_IF_FAILED(m_LayerStack.Push<TessellationLayer>(*m_Window));
             
             return true;
         }
