@@ -67,7 +67,6 @@ namespace spieler::renderer
         ControlPointPatchlist32,
     };
 
-    // Take from DXGI_FORMAT
     enum class GraphicsFormat : uint8_t
     {
         Unknown,
@@ -122,15 +121,6 @@ namespace spieler::renderer
         R16UnsignedInt,
         R16SignedNorm,
         R16SignedInt,
-    };
-
-    class D3D12Converter
-    {
-    public:
-        static D3D12_SHADER_VISIBILITY Convert(ShaderVisibility shaderVisibility);
-        static D3D12_PRIMITIVE_TOPOLOGY_TYPE Convert(PrimitiveTopologyType primitiveToplogyType);
-        static D3D12_PRIMITIVE_TOPOLOGY Convert(PrimitiveTopology primitiveTopology);
-        static DXGI_FORMAT Convert(GraphicsFormat graphicsFormat);
     };
 
 } // namespace spieler::renderer

@@ -3,7 +3,7 @@
 #include "spieler/core/assert.hpp"
 
 #include "spieler/renderer/resource.hpp"
-#include "spieler/renderer/types.hpp"
+#include "spieler/renderer/common.hpp"
 #include "spieler/renderer/descriptor_manager.hpp"
 #include "spieler/renderer/resource_view.hpp"
 

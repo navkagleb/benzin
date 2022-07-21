@@ -1,6 +1,6 @@
 #pragma once
 
-#include "spieler/renderer/types.hpp"
+#include "spieler/renderer/common.hpp"
 #include "spieler/renderer/sampler.hpp"
 
 namespace spieler::renderer

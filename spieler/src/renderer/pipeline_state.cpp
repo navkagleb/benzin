@@ -11,6 +11,8 @@
 #include "spieler/renderer/rasterizer_state.hpp"
 #include "spieler/renderer/depth_stencil_state.hpp"
 
+#include "platform/dx12/dx12_common.hpp"
+
 namespace spieler::renderer
 {
 
@@ -70,44 +72,36 @@ namespace spieler::renderer
                 .IndependentBlendEnable = static_cast<bool>(blendState.IndependentBlendState)
             };
 
-            for (std::size_t i = 0; i < blendState.RenderTargetProps.size(); ++i)
+            for (size_t i = 0; i < blendState.RenderTargetStates.size(); ++i)
             {
-                const RenderTargetBlendProps& renderTargetBlendProps{ blendState.RenderTargetProps[i] };
+                const BlendState::RenderTargetState& renderTargetState{ blendState.RenderTargetStates[i] };
                 D3D12_RENDER_TARGET_BLEND_DESC& d3d12RenderTargetBlendDesc{ d3d12BlendDesc.RenderTarget[i] };
 
-                switch (renderTargetBlendProps.Type)
+                switch (renderTargetState.State)
                 {
-                    case RenderTargetBlendingType::None:
+                    case BlendState::RenderTargetState::State::Disabled:
                     {
                         d3d12RenderTargetBlendDesc.BlendEnable = false;
                         d3d12RenderTargetBlendDesc.LogicOpEnable = false;
 
                         break;
                     }
-                    case RenderTargetBlendingType::Default:
+                    case BlendState::RenderTargetState::State::Enabled:
                     {
                         d3d12RenderTargetBlendDesc.BlendEnable = true;
                         d3d12RenderTargetBlendDesc.LogicOpEnable = false;
-                        d3d12RenderTargetBlendDesc.SrcBlend = static_cast<D3D12_BLEND>(renderTargetBlendProps.ColorEquation.SourceFactor);
-                        d3d12RenderTargetBlendDesc.DestBlend = static_cast<D3D12_BLEND>(renderTargetBlendProps.ColorEquation.DestinationFactor);
-                        d3d12RenderTargetBlendDesc.BlendOp = static_cast<D3D12_BLEND_OP>(renderTargetBlendProps.ColorEquation.Operation);
-                        d3d12RenderTargetBlendDesc.SrcBlendAlpha = static_cast<D3D12_BLEND>(renderTargetBlendProps.AlphaEquation.SourceFactor);
-                        d3d12RenderTargetBlendDesc.DestBlendAlpha = static_cast<D3D12_BLEND>(renderTargetBlendProps.AlphaEquation.DestinationFactor);
-                        d3d12RenderTargetBlendDesc.BlendOpAlpha = static_cast<D3D12_BLEND_OP>(renderTargetBlendProps.AlphaEquation.Operation);
-
-                        break;
-                    }
-                    case RenderTargetBlendingType::Logic:
-                    {
-                        d3d12RenderTargetBlendDesc.BlendEnable = false;
-                        d3d12RenderTargetBlendDesc.LogicOpEnable = true;
-                        d3d12RenderTargetBlendDesc.LogicOp = static_cast<D3D12_LOGIC_OP>(renderTargetBlendProps.LogicOperation);
+                        d3d12RenderTargetBlendDesc.SrcBlend = dx12::Convert(renderTargetState.ColorEquation.SourceFactor);
+                        d3d12RenderTargetBlendDesc.DestBlend = dx12::Convert(renderTargetState.ColorEquation.DestinationFactor);
+                        d3d12RenderTargetBlendDesc.BlendOp = dx12::Convert(renderTargetState.ColorEquation.Operation);
+                        d3d12RenderTargetBlendDesc.SrcBlendAlpha = dx12::Convert(renderTargetState.AlphaEquation.SourceFactor);
+                        d3d12RenderTargetBlendDesc.DestBlendAlpha = dx12::Convert(renderTargetState.AlphaEquation.DestinationFactor);
+                        d3d12RenderTargetBlendDesc.BlendOpAlpha = dx12::Convert(renderTargetState.AlphaEquation.Operation);
 
                         break;
                     }
                 }
 
-                d3d12RenderTargetBlendDesc.RenderTargetWriteMask = renderTargetBlendProps.Channels;
+                d3d12RenderTargetBlendDesc.RenderTargetWriteMask = static_cast<UINT8>(renderTargetState.Channels);
             }
 
             return d3d12BlendDesc;
@@ -172,7 +166,7 @@ namespace spieler::renderer
                     {
                         .SemanticName = element.Name.c_str(),
                         .SemanticIndex = 0,
-                        .Format = D3D12Converter::Convert(element.Format),
+                        .Format = dx12::Convert(element.Format),
                         .InputSlot = 0,
                         .AlignedByteOffset = offset,
                         .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
@@ -269,10 +263,10 @@ namespace spieler::renderer
             .DepthStencilState = depthStencilDesc,
             .InputLayout = inputLayoutDesc,
             .IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
-            .PrimitiveTopologyType = D3D12Converter::Convert(config.PrimitiveTopologyType),
+            .PrimitiveTopologyType = dx12::Convert(config.PrimitiveTopologyType),
             .NumRenderTargets = 1,
-            .RTVFormats = { D3D12Converter::Convert(config.RTVFormat) }, // RTVFormats in an array
-            .DSVFormat = D3D12Converter::Convert(config.DSVFormat),
+            .RTVFormats = { dx12::Convert(config.RTVFormat) }, // RTVFormats in an array
+            .DSVFormat = dx12::Convert(config.DSVFormat),
             .SampleDesc = DXGI_SAMPLE_DESC{ 1, 0 },
             .NodeMask = 0,
             .CachedPSO = cachedPipelineState,

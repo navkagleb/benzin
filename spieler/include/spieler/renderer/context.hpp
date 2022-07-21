@@ -2,7 +2,7 @@
 
 #include "spieler/renderer/fence.hpp"
 #include "spieler/renderer/resource_barrier.hpp"
-#include "spieler/renderer/types.hpp"
+#include "spieler/renderer/common.hpp"
 
 namespace spieler::renderer
 {

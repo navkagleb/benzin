@@ -10,6 +10,8 @@
 
 #include "spieler/renderer/buffer.hpp"
 
+#include "platform/dx12/dx12_common.hpp"
+
 namespace spieler::renderer
 {
 
@@ -66,7 +68,7 @@ namespace spieler::renderer
                 .Height = texture2DConfig.Height,
                 .DepthOrArraySize = 1,
                 .MipLevels = 1,
-                .Format = D3D12Converter::Convert(texture2DConfig.Format),
+                .Format = dx12::Convert(texture2DConfig.Format),
                 .SampleDesc = DXGI_SAMPLE_DESC{ 1, 0 },
                 .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
                 .Flags = static_cast<D3D12_RESOURCE_FLAGS>(texture2DConfig.Flags)
@@ -77,7 +79,7 @@ namespace spieler::renderer
         {
             return D3D12_CLEAR_VALUE
             {
-                .Format = D3D12Converter::Convert(texture2DConfig.Format),
+                .Format = dx12::Convert(texture2DConfig.Format),
                 .Color = 
                 { 
                     textureClearValue.Color.x,
@@ -98,7 +100,7 @@ namespace spieler::renderer
 
             return D3D12_CLEAR_VALUE
             {
-                .Format = D3D12Converter::Convert(texture2DConfig.Format),
+                .Format = dx12::Convert(texture2DConfig.Format),
                 .DepthStencil = d3d12DepthStencilClearValue
             };
         }

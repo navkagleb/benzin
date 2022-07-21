@@ -1,13 +1,17 @@
 #include "spieler/config/bootstrap.hpp"
 
-#include "spieler/renderer/types.hpp"
+#if defined(SPIELER_GRAPHICS_API_DX12)
+
+#include "platform/dx12/dx12_common.hpp"
 
 #include "spieler/core/logger.hpp"
 
-namespace spieler::renderer
+#include "spieler/renderer/blend_state.hpp"
+
+namespace spieler::renderer::dx12
 {
 
-    D3D12_SHADER_VISIBILITY D3D12Converter::Convert(ShaderVisibility shaderVisibility)
+    D3D12_SHADER_VISIBILITY Convert(ShaderVisibility shaderVisibility)
     {
         switch (shaderVisibility)
         {
@@ -28,7 +32,7 @@ namespace spieler::renderer
         return D3D12_SHADER_VISIBILITY_ALL;
     }
 
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE D3D12Converter::Convert(PrimitiveTopologyType primitiveTopologyType)
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE Convert(PrimitiveTopologyType primitiveTopologyType)
     {
         switch (primitiveTopologyType)
         {
@@ -49,7 +53,7 @@ namespace spieler::renderer
         return D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
     }
 
-    D3D12_PRIMITIVE_TOPOLOGY D3D12Converter::Convert(PrimitiveTopology primitiveTopology)
+    D3D12_PRIMITIVE_TOPOLOGY Convert(PrimitiveTopology primitiveTopology)
     {
         switch (primitiveTopology)
         {
@@ -104,7 +108,7 @@ namespace spieler::renderer
         return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     }
 
-    DXGI_FORMAT D3D12Converter::Convert(GraphicsFormat graphicsFormat)
+    DXGI_FORMAT Convert(GraphicsFormat graphicsFormat)
     {
         switch (graphicsFormat)
         {
@@ -171,4 +175,77 @@ namespace spieler::renderer
         return DXGI_FORMAT_UNKNOWN;
     }
 
-} // namespace spieler::renderer
+    D3D12_BLEND_OP Convert(BlendState::Operation blendOperation)
+    {
+        switch (blendOperation)
+        {
+            case BlendState::Operation::Add: return D3D12_BLEND_OP_ADD;
+            case BlendState::Operation::Substract: return D3D12_BLEND_OP_SUBTRACT;
+            case BlendState::Operation::Min: return D3D12_BLEND_OP_MIN;
+            case BlendState::Operation::Max: return D3D12_BLEND_OP_MAX;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown BlendState::Operation!");
+                break;
+            }
+        }
+
+        return D3D12_BLEND_OP_ADD;
+    }
+
+    D3D12_BLEND Convert(BlendState::ColorFactor blendColorFactor)
+    {
+        switch (blendColorFactor)
+        {
+        case BlendState::ColorFactor::Zero: return D3D12_BLEND_ZERO;
+        case BlendState::ColorFactor::One: return D3D12_BLEND_ONE;
+        case BlendState::ColorFactor::SourceColor: return D3D12_BLEND_SRC_COLOR;
+        case BlendState::ColorFactor::InverseSourceColor: return D3D12_BLEND_INV_SRC_COLOR;
+        case BlendState::ColorFactor::SourceAlpha: return D3D12_BLEND_SRC_ALPHA;
+        case BlendState::ColorFactor::InverseSourceAlpha: return D3D12_BLEND_INV_SRC_ALPHA;
+        case BlendState::ColorFactor::DesctinationAlpha: return D3D12_BLEND_DEST_ALPHA;
+        case BlendState::ColorFactor::InverseDestinationAlpha: return D3D12_BLEND_INV_DEST_ALPHA;
+        case BlendState::ColorFactor::DestinationColor: return D3D12_BLEND_DEST_COLOR;
+        case BlendState::ColorFactor::InverseDestinationColor: return D3D12_BLEND_INV_DEST_COLOR;
+        case BlendState::ColorFactor::SourceAlphaSaturated: return D3D12_BLEND_SRC_ALPHA_SAT;
+        case BlendState::ColorFactor::BlendFactor: return D3D12_BLEND_BLEND_FACTOR;
+        case BlendState::ColorFactor::InverseBlendFactor: return D3D12_BLEND_INV_BLEND_FACTOR;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown BlendState::ColorFactor!");
+                break;
+            }
+        }
+
+        return D3D12_BLEND_ZERO;
+    }
+
+    D3D12_BLEND Convert(BlendState::AlphaFactor blendAlphaFactor)
+    {
+        switch (blendAlphaFactor)
+        {
+            case BlendState::AlphaFactor::Zero: return D3D12_BLEND_ZERO;
+            case BlendState::AlphaFactor::One: return D3D12_BLEND_ONE;
+            case BlendState::AlphaFactor::SourceAlpha: D3D12_BLEND_SRC_ALPHA;
+            case BlendState::AlphaFactor::InverseSourceAlpha: return D3D12_BLEND_INV_SRC_ALPHA;
+            case BlendState::AlphaFactor::DesctinationAlpha: return D3D12_BLEND_DEST_ALPHA;
+            case BlendState::AlphaFactor::InverseDestinationAlpha: return D3D12_BLEND_INV_DEST_ALPHA;
+            case BlendState::AlphaFactor::SourceAlphaSaturated: return D3D12_BLEND_SRC_ALPHA_SAT;
+            case BlendState::AlphaFactor::BlendFactor: return D3D12_BLEND_BLEND_FACTOR;
+            case BlendState::AlphaFactor::InverseBlendFactor: return D3D12_BLEND_INV_BLEND_FACTOR;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown BlendState::AlphaFactor!");
+                break;
+            }
+        };
+
+        return D3D12_BLEND_ZERO;
+    }
+
+} // namespace spieler::renderer::dx12
+
+#endif // defined(SPIELER_GRAPHICS_API_DX12)

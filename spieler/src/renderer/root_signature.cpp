@@ -8,6 +8,8 @@
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/sampler.hpp"
 
+#include "platform/dx12/dx12_common.hpp"
+
 namespace spieler::renderer
 {
 
@@ -79,7 +81,7 @@ namespace spieler::renderer
                     .MaxLOD{ D3D12_FLOAT32_MAX },
                     .ShaderRegister{ static_cast<UINT>(staticSampler.ShaderRegister) },
                     .RegisterSpace{ static_cast<UINT>(staticSampler.RegisterSpace) },
-                    .ShaderVisibility{ D3D12Converter::Convert(staticSampler.ShaderVisibility) }
+                    .ShaderVisibility{ dx12::Convert(staticSampler.ShaderVisibility) }
                 });
             }
 
@@ -125,7 +127,7 @@ namespace spieler::renderer
     void RootParameter::InitAs32BitConstants(const _32BitConstants& constants)
     {
         m_RootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        m_RootParameter.ShaderVisibility = D3D12Converter::Convert(constants.ShaderVisibility);
+        m_RootParameter.ShaderVisibility = dx12::Convert(constants.ShaderVisibility);
 
         m_RootParameter.Constants.Num32BitValues = constants.Count;
         m_RootParameter.Constants.ShaderRegister = constants.ShaderRegister.Register;
@@ -135,7 +137,7 @@ namespace spieler::renderer
     void RootParameter::InitAsDescriptor(const Descriptor& descriptor)
     {
         m_RootParameter.ParameterType = _internal::ConvertToD3D12DescriptorType(descriptor.Type);
-        m_RootParameter.ShaderVisibility = D3D12Converter::Convert(descriptor.ShaderVisibility);
+        m_RootParameter.ShaderVisibility = dx12::Convert(descriptor.ShaderVisibility);
 
         m_RootParameter.Descriptor.ShaderRegister = descriptor.ShaderRegister.Register;
         m_RootParameter.Descriptor.RegisterSpace = descriptor.ShaderRegister.Space;
@@ -144,7 +146,7 @@ namespace spieler::renderer
     void RootParameter::InitAsDescriptorTable(const DescriptorTable& descriptorTable)
     {
         m_RootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        m_RootParameter.ShaderVisibility = D3D12Converter::Convert(descriptorTable.ShaderVisibility);
+        m_RootParameter.ShaderVisibility = dx12::Convert(descriptorTable.ShaderVisibility);
 
         m_RootParameter.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(descriptorTable.Ranges.size());
         m_RootParameter.DescriptorTable.pDescriptorRanges = new D3D12_DESCRIPTOR_RANGE[descriptorTable.Ranges.size()];

@@ -8,6 +8,8 @@
 #include "spieler/renderer/sampler.hpp"
 #include "spieler/renderer/constant_buffer.hpp"
 
+#include "platform/dx12/dx12_common.hpp"
+
 namespace spieler::renderer
 {
 
@@ -92,7 +94,7 @@ namespace spieler::renderer
 
         const D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc
         {
-            .Format = D3D12Converter::Convert(texture.GetConfig().Format),
+            .Format = dx12::Convert(texture.GetConfig().Format),
             .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
             .Flags = D3D12_DSV_FLAG_NONE,
             .Texture2D = D3D12_TEX2D_DSV{ 0 },

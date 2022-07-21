@@ -14,6 +14,8 @@
 
 #include "spieler/renderer/resource_view.hpp"
 
+#include "platform/dx12/dx12_common.hpp"
+
 namespace spieler::renderer
 {
 
@@ -128,7 +130,7 @@ namespace spieler::renderer
     {
         SPIELER_ASSERT(primitiveTopology != PrimitiveTopology::Unknown);
 
-        m_CommandList->IASetPrimitiveTopology(D3D12Converter::Convert(primitiveTopology));
+        m_CommandList->IASetPrimitiveTopology(dx12::Convert(primitiveTopology));
     }
 
     void Context::SetStencilReferenceValue(uint8_t referenceValue)

@@ -4,9 +4,11 @@
 
 #include "spieler/core/assert.hpp"
 
-#include "spieler/renderer/types.hpp"
+#include "spieler/renderer/common.hpp"
 #include "spieler/renderer/context.hpp"
 #include "spieler/renderer/buffer.hpp"
+
+#include "platform/dx12/dx12_common.hpp"
 
 namespace spieler::renderer
 {
@@ -24,7 +26,7 @@ namespace spieler::renderer
 
         m_View.BufferLocation = static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(resource.GetGPUVirtualAddress());
         m_View.SizeInBytes = resource.GetSize();
-        m_View.Format = D3D12Converter::Convert(format);
+        m_View.Format = dx12::Convert(format);
     }
 
     void IndexBufferView::Bind(Context& context) const

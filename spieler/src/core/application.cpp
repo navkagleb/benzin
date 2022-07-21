@@ -8,8 +8,9 @@
 
 #include <third_party/fmt/format.h>
 
-#include "platform/win64_window.hpp"
-#include "platform/win64_input.hpp"
+#include "platform/win64/win64_window.hpp"
+#include "platform/win64/win64_input.hpp"
+#include "platform/dx12/dx12_common.hpp"
 
 #include "spieler/core/common.hpp"
 
@@ -135,7 +136,7 @@ namespace spieler
         SPIELER_RETURN_IF_FAILED(ImGui_ImplDX12_Init(
             device.GetNativeDevice().Get(),
             1,
-            renderer::D3D12Converter::Convert(swapChain.GetBufferFormat()),
+            renderer::dx12::Convert(swapChain.GetBufferFormat()),
             descriptorManager.GetDescriptorHeap(renderer::DescriptorHeapType::SRV).GetNative().Get(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ imguiDescriptor.CPU },
             D3D12_GPU_DESCRIPTOR_HANDLE{ imguiDescriptor.GPU }

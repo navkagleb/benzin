@@ -1,7 +1,7 @@
 #pragma once
 
 #include "spieler/renderer/input_layout.hpp"
-#include "spieler/renderer/types.hpp"
+#include "spieler/renderer/common.hpp"
 
 namespace spieler::renderer
 {

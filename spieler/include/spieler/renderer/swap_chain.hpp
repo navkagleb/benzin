@@ -4,7 +4,7 @@
 
 #include "spieler/renderer/texture.hpp"
 #include "spieler/renderer/resource_view.hpp"
-#include "spieler/renderer/types.hpp"
+#include "spieler/renderer/common.hpp"
 
 namespace spieler::renderer
 {

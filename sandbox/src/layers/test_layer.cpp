@@ -1021,27 +1021,28 @@ namespace sandbox
                 .CullMode = spieler::renderer::CullMode::None,
             };
 
-            const spieler::renderer::RenderTargetBlendProps renderTargetBlendProps
-            {
-                .Type = spieler::renderer::RenderTargetBlendingType::Default,
-                .ColorEquation = spieler::renderer::BlendColorEquation
-                {
-                    .SourceFactor = spieler::renderer::BlendColorFactor::SourceAlpha,
-                    .DestinationFactor = spieler::renderer::BlendColorFactor::InverseSourceAlpha,
-                    .Operation = spieler::renderer::BlendOperation::Add
-                },
-                .AlphaEquation = spieler::renderer::BlendAlphaEquation
-                {
-                    .SourceFactor = spieler::renderer::BlendAlphaFactor::One,
-                    .DestinationFactor = spieler::renderer::BlendAlphaFactor::Zero,
-                    .Operation = spieler::renderer::BlendOperation::Add
-                },
-                .Channels = spieler::renderer::BlendChannel_All
-            };
-
             const spieler::renderer::BlendState blendState
             {
-                .RenderTargetProps = { renderTargetBlendProps }
+                .RenderTargetStates
+                {
+                    spieler::renderer::BlendState::RenderTargetState
+                    {
+                        .State{ spieler::renderer::BlendState::RenderTargetState::State::Enabled },
+                        .ColorEquation
+                        {
+                            .SourceFactor{ spieler::renderer::BlendState::ColorFactor::SourceAlpha },
+                            .DestinationFactor{ spieler::renderer::BlendState::ColorFactor::InverseSourceAlpha },
+                            .Operation{ spieler::renderer::BlendState::Operation::Add }
+                        },
+                        .AlphaEquation
+                        {
+                            .SourceFactor{ spieler::renderer::BlendState::AlphaFactor::One },
+                            .DestinationFactor{ spieler::renderer::BlendState::AlphaFactor::Zero },
+                            .Operation{ spieler::renderer::BlendState::Operation::Add }
+                        },
+                        .Channels{ spieler::renderer::BlendState::Channels::All }
+                    }
+                }
             };
 
             const spieler::renderer::GraphicsPipelineStateConfig pipelineStateConfig
@@ -1072,11 +1073,11 @@ namespace sandbox
 
             const spieler::renderer::BlendState blendState
             {
-                .RenderTargetProps = 
+                .RenderTargetStates 
                 { 
-                    spieler::renderer::RenderTargetBlendProps
+                    spieler::renderer::BlendState::RenderTargetState
                     {
-                        .Channels = spieler::renderer::BlendChannel_None
+                        .Channels{ spieler::renderer::BlendState::Channels::None }
                     }
                 }
             };
@@ -1144,27 +1145,28 @@ namespace sandbox
             const spieler::renderer::Shader& vertexShader{ GetShader(spieler::renderer::ShaderType::Vertex, permutation) };
             const spieler::renderer::Shader& pixelShader{ GetShader(spieler::renderer::ShaderType::Pixel, permutation) };
 
-            const spieler::renderer::RenderTargetBlendProps renderTargetBlendProps
-            {
-                .Type = spieler::renderer::RenderTargetBlendingType::Default,
-                .ColorEquation = spieler::renderer::BlendColorEquation
-                {
-                    .SourceFactor = spieler::renderer::BlendColorFactor::SourceAlpha,
-                    .DestinationFactor = spieler::renderer::BlendColorFactor::InverseSourceAlpha,
-                    .Operation = spieler::renderer::BlendOperation::Add
-                },
-                .AlphaEquation = spieler::renderer::BlendAlphaEquation
-                {
-                    .SourceFactor = spieler::renderer::BlendAlphaFactor::One,
-                    .DestinationFactor = spieler::renderer::BlendAlphaFactor::Zero,
-                    .Operation = spieler::renderer::BlendOperation::Add
-                },
-                .Channels = spieler::renderer::BlendChannel_All
-            };
-
             const spieler::renderer::BlendState blendState
             {
-                .RenderTargetProps = { renderTargetBlendProps }
+                .RenderTargetStates
+                {
+                    spieler::renderer::BlendState::RenderTargetState
+                    {
+                        .State{ spieler::renderer::BlendState::RenderTargetState::State::Enabled },
+                        .ColorEquation
+                        {
+                            .SourceFactor{ spieler::renderer::BlendState::ColorFactor::SourceAlpha },
+                            .DestinationFactor{ spieler::renderer::BlendState::ColorFactor::InverseSourceAlpha },
+                            .Operation{ spieler::renderer::BlendState::Operation::Add }
+                        },
+                        .AlphaEquation
+                        {
+                            .SourceFactor{ spieler::renderer::BlendState::AlphaFactor::One },
+                            .DestinationFactor{ spieler::renderer::BlendState::AlphaFactor::Zero },
+                            .Operation{ spieler::renderer::BlendState::Operation::Add }
+                        },
+                        .Channels{ spieler::renderer::BlendState::Channels::All }
+                    }
+                }
             };
 
             const spieler::renderer::RasterizerState rasterizerState
@@ -1231,27 +1233,28 @@ namespace sandbox
             const spieler::renderer::Shader& vertexShader{ GetShader(spieler::renderer::ShaderType::Vertex, permutation) };
             const spieler::renderer::Shader& pixelShader{ GetShader(spieler::renderer::ShaderType::Pixel, permutation) };
 
-            const spieler::renderer::RenderTargetBlendProps renderTargetBlendProps
-            {
-                .Type = spieler::renderer::RenderTargetBlendingType::Default,
-                .ColorEquation = spieler::renderer::BlendColorEquation
-                {
-                    .SourceFactor = spieler::renderer::BlendColorFactor::SourceAlpha,
-                    .DestinationFactor = spieler::renderer::BlendColorFactor::InverseSourceAlpha,
-                    .Operation = spieler::renderer::BlendOperation::Add
-                },
-                .AlphaEquation = spieler::renderer::BlendAlphaEquation
-                {
-                    .SourceFactor = spieler::renderer::BlendAlphaFactor::One,
-                    .DestinationFactor = spieler::renderer::BlendAlphaFactor::Zero,
-                    .Operation = spieler::renderer::BlendOperation::Add
-                },
-                .Channels = spieler::renderer::BlendChannel_All
-            };
-
             const spieler::renderer::BlendState blendState
             {
-                .RenderTargetProps = { renderTargetBlendProps }
+                .RenderTargetStates
+                {
+                    spieler::renderer::BlendState::RenderTargetState
+                    {
+                        .State{ spieler::renderer::BlendState::RenderTargetState::State::Enabled },
+                        .ColorEquation
+                        {
+                            .SourceFactor{ spieler::renderer::BlendState::ColorFactor::SourceAlpha },
+                            .DestinationFactor{ spieler::renderer::BlendState::ColorFactor::InverseSourceAlpha },
+                            .Operation{ spieler::renderer::BlendState::Operation::Add }
+                        },
+                        .AlphaEquation
+                        {
+                            .SourceFactor{ spieler::renderer::BlendState::AlphaFactor::One },
+                            .DestinationFactor{ spieler::renderer::BlendState::AlphaFactor::Zero },
+                            .Operation{ spieler::renderer::BlendState::Operation::Add }
+                        },
+                        .Channels{ spieler::renderer::BlendState::Channels::All }
+                    }
+                }
             };
 
             const spieler::renderer::RasterizerState rasterizerState
@@ -1319,27 +1322,28 @@ namespace sandbox
             const spieler::renderer::Shader& geometryShader{ GetShader(spieler::renderer::ShaderType::Geometry, permutation) };
 
             // Blend state
-            const spieler::renderer::RenderTargetBlendProps renderTargetBlendProps
-            {
-                .Type = spieler::renderer::RenderTargetBlendingType::Default,
-                .ColorEquation = spieler::renderer::BlendColorEquation
-                {
-                    .SourceFactor = spieler::renderer::BlendColorFactor::SourceAlpha,
-                    .DestinationFactor = spieler::renderer::BlendColorFactor::InverseSourceAlpha,
-                    .Operation = spieler::renderer::BlendOperation::Add
-                },
-                .AlphaEquation = spieler::renderer::BlendAlphaEquation
-                {
-                    .SourceFactor = spieler::renderer::BlendAlphaFactor::One,
-                    .DestinationFactor = spieler::renderer::BlendAlphaFactor::Zero,
-                    .Operation = spieler::renderer::BlendOperation::Add
-                },
-                .Channels = spieler::renderer::BlendChannel_All
-            };
-
             const spieler::renderer::BlendState blendState
             {
-                .RenderTargetProps = { renderTargetBlendProps }
+                .RenderTargetStates
+                {
+                    spieler::renderer::BlendState::RenderTargetState
+                    {
+                        .State{ spieler::renderer::BlendState::RenderTargetState::State::Enabled },
+                        .ColorEquation
+                        {
+                            .SourceFactor{ spieler::renderer::BlendState::ColorFactor::SourceAlpha },
+                            .DestinationFactor{ spieler::renderer::BlendState::ColorFactor::InverseSourceAlpha },
+                            .Operation{ spieler::renderer::BlendState::Operation::Add }
+                        },
+                        .AlphaEquation
+                        {
+                            .SourceFactor{ spieler::renderer::BlendState::AlphaFactor::One },
+                            .DestinationFactor{ spieler::renderer::BlendState::AlphaFactor::Zero },
+                            .Operation{ spieler::renderer::BlendState::Operation::Add }
+                        },
+                        .Channels{ spieler::renderer::BlendState::Channels::All }
+                    }
+                }
             };
 
             // Rasterizer state
@@ -1379,27 +1383,28 @@ namespace sandbox
             const spieler::renderer::Shader& pixelShader{ GetShader(spieler::renderer::ShaderType::Pixel, permutation) };
 
             // Blend state
-            const spieler::renderer::RenderTargetBlendProps renderTargetBlendProps
-            {
-                .Type = spieler::renderer::RenderTargetBlendingType::Default,
-                .ColorEquation = spieler::renderer::BlendColorEquation
-                {
-                    .SourceFactor = spieler::renderer::BlendColorFactor::SourceAlpha,
-                    .DestinationFactor = spieler::renderer::BlendColorFactor::InverseSourceAlpha,
-                    .Operation = spieler::renderer::BlendOperation::Add
-                },
-                .AlphaEquation = spieler::renderer::BlendAlphaEquation
-                {
-                    .SourceFactor = spieler::renderer::BlendAlphaFactor::One,
-                    .DestinationFactor = spieler::renderer::BlendAlphaFactor::Zero,
-                    .Operation = spieler::renderer::BlendOperation::Add
-                },
-                .Channels = spieler::renderer::BlendChannel_All
-            };
-
             const spieler::renderer::BlendState blendState
             {
-                .RenderTargetProps = { renderTargetBlendProps }
+                .RenderTargetStates
+                {
+                    spieler::renderer::BlendState::RenderTargetState
+                    {
+                        .State{ spieler::renderer::BlendState::RenderTargetState::State::Enabled },
+                        .ColorEquation
+                        {
+                            .SourceFactor{ spieler::renderer::BlendState::ColorFactor::SourceAlpha },
+                            .DestinationFactor{ spieler::renderer::BlendState::ColorFactor::InverseSourceAlpha },
+                            .Operation{ spieler::renderer::BlendState::Operation::Add }
+                        },
+                        .AlphaEquation
+                        {
+                            .SourceFactor{ spieler::renderer::BlendState::AlphaFactor::One },
+                            .DestinationFactor{ spieler::renderer::BlendState::AlphaFactor::Zero },
+                            .Operation{ spieler::renderer::BlendState::Operation::Add }
+                        },
+                        .Channels{ spieler::renderer::BlendState::Channels::All }
+                    }
+                }
             };
 
             // Rasterizer state
