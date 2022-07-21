@@ -1,7 +1,7 @@
 workspace "spieler"
     location "../"
 
-    platforms { "Win64" }
+    platforms { "win64_dx12" }
 
     configurations
     {
@@ -12,14 +12,13 @@ workspace "spieler"
 
     startproject "sandbox"
 
-    filter "platforms:Win64"
+    filter "platforms:win64_dx12"
         system "windows"
         systemversion "latest"
         architecture "x64"
         characterset "ASCII"
-        linkoptions { "/ENTRY:mainCRTStartup" }
 
-        defines { "SPIELER_PLATFORM_WINDOWS", "WIN32" }
+        defines { "SPIELER_PLATFORM_WINDOWS", "WIN32", "SPIELER_GRAPHICS_API_DX12" }
 
     filter "configurations:Debug"
         defines { "DEBUG", "SPIELER_DEBUG" }
