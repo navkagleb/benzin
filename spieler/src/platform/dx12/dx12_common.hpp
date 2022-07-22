@@ -4,6 +4,7 @@
 
 #include "spieler/renderer/common.hpp"
 #include "spieler/renderer/blend_state.hpp"
+#include "spieler/renderer/descriptor_manager.hpp"
 
 namespace spieler::renderer
 {
@@ -20,6 +21,9 @@ namespace spieler::renderer
         D3D12_BLEND_OP Convert(BlendState::Operation blendOperation);
         D3D12_BLEND Convert(BlendState::ColorFactor blendColorFactor);
         D3D12_BLEND Convert(BlendState::AlphaFactor blendColorFactor);
+
+        // descriptor_manager.hpp
+        D3D12_DESCRIPTOR_HEAP_TYPE Convert(DescriptorHeap::Type descriptorHeapType);
 
     } // namespace dx12
 

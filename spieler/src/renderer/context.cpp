@@ -51,6 +51,11 @@ namespace spieler::renderer
         SPIELER_ASSERT(Init(device));
     }
 
+    void Context::SetDescriptorHeap(const DescriptorHeap& descriptorHeap)
+    {
+        m_CommandList->SetDescriptorHeaps(1, descriptorHeap.GetNative().GetAddressOf());
+    }
+
     void Context::IASetVertexBuffer(const VertexBufferView* vertexBufferView)
     {
         m_CommandList->IASetVertexBuffers(0, 1, reinterpret_cast<const D3D12_VERTEX_BUFFER_VIEW*>(vertexBufferView));

@@ -47,9 +47,8 @@ namespace spieler
                 .To{ spieler::renderer::ResourceState::RenderTarget }
             });
 
-            context.SetRenderTarget(swapChain.GetCurrentBuffer().GetView<spieler::renderer::RenderTargetView>());
-
-            descriptorManager.Bind(context, renderer::DescriptorHeapType::SRV);
+            context.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(renderer::DescriptorHeap::Type::SRV));
+            context.SetRenderTarget(swapChain.GetCurrentBuffer().GetView<renderer::RenderTargetView>());
 
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context.GetNativeCommandList().Get());
 
@@ -89,7 +88,7 @@ namespace spieler
             device.GetNativeDevice().Get(),
             1,
             renderer::dx12::Convert(swapChain.GetBufferFormat()),
-            descriptorManager.GetDescriptorHeap(renderer::DescriptorHeapType::SRV).GetNative().Get(),
+            descriptorManager.GetDescriptorHeap(renderer::DescriptorHeap::Type::SRV).GetNative().Get(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ fontDescriptor.CPU },
             D3D12_GPU_DESCRIPTOR_HANDLE{ fontDescriptor.GPU }
         ));

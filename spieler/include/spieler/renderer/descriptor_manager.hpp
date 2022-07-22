@@ -37,65 +37,79 @@ namespace spieler::renderer
 //#undef _SPIELER_CPU_DESCRIPTOR
 //#undef _SPIELER_CPU_GPU_DESCRIPTOR
 
-    struct DescriptorManagerConfig
+    class DescriptorHeap
     {
-        uint32_t RTVDescriptorCount{ 0 };
-        uint32_t DSVDescriptorCount{ 0 };
-        uint32_t SamplerDescriptorCount{ 0 };
-        uint32_t CBVDescriptorCount{ 0 };
-        uint32_t SRVDescriptorCount{ 0 };
-        uint32_t UAVDescriptorCount{ 0 };
-    };
+    public:
+        enum class Type : uint8_t
+        {
+            CBV_SRV_UAV,
+            CBV = CBV_SRV_UAV,
+            SRV = CBV_SRV_UAV,
+            UAV = CBV_SRV_UAV,
+            Sampler,
+            RTV,
+            DSV,
+        };
 
-    enum class DescriptorHeapType : uint8_t
-    {
-        RTV = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-        DSV = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-        Sampler = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
-        CBV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        SRV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        UAV = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+    public:
+        SPIELER_NON_COPYABLE(DescriptorHeap)
+
+    public:
+        friend class DescriptorManager;
+
+    public:
+        DescriptorHeap() = default;
+
+    private:
+        DescriptorHeap(Device& device, Type type, uint32_t descriptorCount);
+        DescriptorHeap(DescriptorHeap&& other) noexcept;
+
+    public:
+        const ComPtr<ID3D12DescriptorHeap>& GetNative() const { return m_DescriptorHeap; }
+
+        uint32_t GetDescriptorSize() const { return m_DescriptorSize; }
+        uint32_t GetDescriptorCount() const { return m_DescriptorCount; }
+
+    public:
+        uint32_t AllocateIndex();
+        CPUDescriptorHandle AllocateCPU(uint32_t index);
+        GPUDescriptorHandle AllocateGPU(uint32_t index);
+
+    private:
+        bool Init(Device& device, Type type, uint32_t descriptorCount);
+
+    private:
+        DescriptorHeap& operator=(DescriptorHeap&& other) noexcept;
+
+    private:
+        ComPtr<ID3D12DescriptorHeap> m_DescriptorHeap;
+
+        uint32_t m_DescriptorSize{ 0 };
+        uint32_t m_DescriptorCount{ 0 };
+        uint32_t m_Marker{ 0 }; // TODO: Replace with allocator
     };
 
     class DescriptorManager
     {
-    private:
-        class DescriptorHeap
+    public:
+        struct Config
         {
-        public:
-            DescriptorHeap() = default;
-            DescriptorHeap(Device& device, DescriptorHeapType type, uint32_t descriptorCount);
-
-        public:
-            uint32_t GetDescriptorSize() const { return m_DescriptorSize; }
-            uint32_t GetDescriptorCount() const { return m_DescriptorCount; }
-
-        public:
-            const ComPtr<ID3D12DescriptorHeap>& GetNative() const { return m_DescriptorHeap; }
-
-            uint32_t AllocateIndex();
-            CPUDescriptorHandle AllocateCPU(uint32_t index);
-            GPUDescriptorHandle AllocateGPU(uint32_t index);
-
-            void Bind(Context& context) const;
-
-        private:
-            bool Init(Device& device, DescriptorHeapType type, uint32_t descriptorCount);
-
-        private:
-            ComPtr<ID3D12DescriptorHeap> m_DescriptorHeap;
-            uint32_t m_DescriptorSize{ 0 };
-            uint32_t m_DescriptorCount{ 0 };
-            uint32_t m_Marker{ 0 }; // TODO: Replace with allocator
+            uint32_t CBV_SRV_UAVDescriptorCount{ 0 };
+            uint32_t SamplerDescriptorCount{ 0 };
+            uint32_t RTVDescriptorCount{ 0 };
+            uint32_t DSVDescriptorCount{ 0 };
         };
 
     public:
-        DescriptorManager() = default;
-        DescriptorManager(Device& device, const DescriptorManagerConfig& config);
+        SPIELER_NON_COPYABLE(DescriptorManager)
 
     public:
-        const DescriptorHeap& GetDescriptorHeap(DescriptorHeapType type) const { return m_DescriptorHeaps.at(type); }
-        void Bind(Context& context, DescriptorHeapType type) const;
+        DescriptorManager() = default;
+        DescriptorManager(Device& device, const Config& config);
+        DescriptorManager(DescriptorManager&& other) noexcept;
+
+    public:
+        const DescriptorHeap& GetDescriptorHeap(DescriptorHeap::Type type) const { return m_DescriptorHeaps.at(type); }
 
         RTVDescriptor AllocateRTV();
         DSVDescriptor AllocateDSV();
@@ -104,8 +118,11 @@ namespace spieler::renderer
         SRVDescriptor AllocateSRV();
         UAVDescriptor AllocateUAV();
 
+    public:
+        DescriptorManager& operator=(DescriptorManager&& other) noexcept;
+
     private:
-        std::unordered_map<DescriptorHeapType, DescriptorHeap> m_DescriptorHeaps;
+        std::unordered_map<DescriptorHeap::Type, DescriptorHeap> m_DescriptorHeaps;
     };
 
 } // namespace spieler::renderer

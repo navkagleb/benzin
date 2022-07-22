@@ -246,6 +246,25 @@ namespace spieler::renderer::dx12
         return D3D12_BLEND_ZERO;
     }
 
+    D3D12_DESCRIPTOR_HEAP_TYPE Convert(DescriptorHeap::Type descriptorHeapType)
+    {
+        switch (descriptorHeapType)
+        {
+            case DescriptorHeap::Type::CBV_SRV_UAV: return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            case DescriptorHeap::Type::Sampler: return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+            case DescriptorHeap::Type::RTV: return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+            case DescriptorHeap::Type::DSV: return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown DescriptorHeap::Type!");
+                break;
+            }
+        }
+
+        return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    }
+
 } // namespace spieler::renderer::dx12
 
 #endif // defined(SPIELER_GRAPHICS_API_DX12)

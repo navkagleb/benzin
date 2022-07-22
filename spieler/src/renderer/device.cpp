@@ -107,14 +107,12 @@ namespace spieler::renderer
 
     } // namespace _internal
 
-    constexpr DescriptorManagerConfig g_DescriptorManagerConfig
+    constexpr DescriptorManager::Config g_DescriptorManagerConfig
     {
-        .RTVDescriptorCount = 100,
-        .DSVDescriptorCount = 100,
-        .SamplerDescriptorCount = 100,
-        .CBVDescriptorCount = 100,
-        .SRVDescriptorCount = 100,
-        .UAVDescriptorCount = 100
+        .CBV_SRV_UAVDescriptorCount{ 100 },
+        .SamplerDescriptorCount{ 100 },
+        .RTVDescriptorCount{ 100 },
+        .DSVDescriptorCount{ 100 }
     };
 
     Device::Device()

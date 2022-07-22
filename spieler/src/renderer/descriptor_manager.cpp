@@ -8,49 +8,56 @@
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/context.hpp"
 
+#include "platform/dx12/dx12_common.hpp"
+
 namespace spieler::renderer
 {
-
-    DescriptorManager::DescriptorHeap::DescriptorHeap(Device& device, DescriptorHeapType type, std::uint32_t descriptorCount)
+    
+    //////////////////////////////////////////////////////////////////////////
+    /// DescriptorHeap
+    //////////////////////////////////////////////////////////////////////////
+    DescriptorHeap::DescriptorHeap(Device& device, Type type, std::uint32_t descriptorCount)
     {
         SPIELER_ASSERT(Init(device, type, descriptorCount));
     }
 
-    CPUDescriptorHandle DescriptorManager::DescriptorHeap::AllocateCPU(uint32_t index)
+    DescriptorHeap::DescriptorHeap(DescriptorHeap&& other) noexcept
+        : m_DescriptorHeap{ std::exchange(other.m_DescriptorHeap, nullptr) }
+        , m_DescriptorSize{ std::exchange(other.m_DescriptorSize, 0) }
+        , m_DescriptorCount{ std::exchange(other.m_DescriptorCount, 0) }
+        , m_Marker{ std::exchange(other.m_Marker, 0) }
+    {}
+
+    uint32_t DescriptorHeap::AllocateIndex()
     {
-        return m_DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + index * m_DescriptorSize;
+        SPIELER_ASSERT(m_Marker + 1 <= m_DescriptorCount);
+
+        return m_Marker++;
     }
 
-    GPUDescriptorHandle DescriptorManager::DescriptorHeap::AllocateGPU(uint32_t index)
+    CPUDescriptorHandle DescriptorHeap::AllocateCPU(uint32_t index)
     {
-        return m_DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + index * m_DescriptorSize;
+        return m_DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
     }
 
-    void DescriptorManager::DescriptorHeap::Bind(Context& context) const
+    GPUDescriptorHandle DescriptorHeap::AllocateGPU(uint32_t index)
     {
-        SPIELER_ASSERT(m_DescriptorHeap);
-
-        context.GetNativeCommandList()->SetDescriptorHeaps(1, m_DescriptorHeap.GetAddressOf());
+        return m_DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
     }
 
-    bool DescriptorManager::DescriptorHeap::Init(Device& device, DescriptorHeapType type, uint32_t descriptorCount)
+    bool DescriptorHeap::Init(Device& device, Type type, uint32_t descriptorCount)
     {
         ComPtr<ID3D12Device>& d3d12Device{ device.GetNativeDevice() };
 
-        D3D12_DESCRIPTOR_HEAP_DESC desc
+        const D3D12_DESCRIPTOR_HEAP_DESC desc
         {
-            .Type = static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(type),
-            .NumDescriptors = descriptorCount,
-            .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
-            .NodeMask = 0
+            .Type{ dx12::Convert(type) },
+            .NumDescriptors{ descriptorCount },
+            .Flags{ type == Type::Sampler || type == Type::CBV_SRV_UAV ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE },
+            .NodeMask{ 0 }
         };
 
-        if (desc.Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || desc.Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
-        {
-            desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        }
-
-        SPIELER_RETURN_IF_FAILED(d3d12Device->CreateDescriptorHeap(&desc, __uuidof(ID3D12DescriptorHeap), &m_DescriptorHeap));
+        SPIELER_RETURN_IF_FAILED(d3d12Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_DescriptorHeap)));
 
         m_DescriptorCount = descriptorCount;
         m_DescriptorSize = d3d12Device->GetDescriptorHandleIncrementSize(desc.Type);
@@ -58,94 +65,122 @@ namespace spieler::renderer
         return true;
     }
 
-    uint32_t DescriptorManager::DescriptorHeap::AllocateIndex()
+    DescriptorHeap& DescriptorHeap::operator=(DescriptorHeap&& other) noexcept
     {
-        SPIELER_ASSERT(m_Marker + 1 <= m_DescriptorCount);
+        if (this == &other)
+        {
+            return *this;
+        }
 
-        return m_Marker++;
+        m_DescriptorHeap = std::exchange(other.m_DescriptorHeap, nullptr);
+        m_DescriptorSize = std::exchange(other.m_DescriptorSize, 0);
+        m_DescriptorCount = std::exchange(other.m_DescriptorCount, 0);
+        m_Marker = std::exchange(other.m_Marker, 0);
+
+        return *this;
     }
 
-    DescriptorManager::DescriptorManager(Device& device, const DescriptorManagerConfig& config)
+    //////////////////////////////////////////////////////////////////////////
+    /// DescriptorManager
+    //////////////////////////////////////////////////////////////////////////
+    DescriptorManager::DescriptorManager(Device& device, const Config& config)
     {
-        m_DescriptorHeaps[DescriptorHeapType::RTV] = DescriptorHeap(device, DescriptorHeapType::RTV, config.RTVDescriptorCount);
-        m_DescriptorHeaps[DescriptorHeapType::DSV] = DescriptorHeap(device, DescriptorHeapType::DSV, config.DSVDescriptorCount);
-        m_DescriptorHeaps[DescriptorHeapType::Sampler] = DescriptorHeap(device, DescriptorHeapType::Sampler, config.SamplerDescriptorCount);
-        m_DescriptorHeaps[DescriptorHeapType::CBV] = DescriptorHeap(device, DescriptorHeapType::CBV, config.CBVDescriptorCount);
-        m_DescriptorHeaps[DescriptorHeapType::SRV] = DescriptorHeap(device, DescriptorHeapType::SRV, config.SRVDescriptorCount);
-        m_DescriptorHeaps[DescriptorHeapType::UAV] = DescriptorHeap(device, DescriptorHeapType::UAV, config.UAVDescriptorCount);
+        m_DescriptorHeaps[DescriptorHeap::Type::CBV_SRV_UAV] = DescriptorHeap{ device, DescriptorHeap::Type::CBV_SRV_UAV, config.CBV_SRV_UAVDescriptorCount };
+        m_DescriptorHeaps[DescriptorHeap::Type::Sampler] = DescriptorHeap{ device, DescriptorHeap::Type::Sampler, config.SamplerDescriptorCount };
+        m_DescriptorHeaps[DescriptorHeap::Type::RTV] = DescriptorHeap{ device, DescriptorHeap::Type::RTV, config.RTVDescriptorCount };
+        m_DescriptorHeaps[DescriptorHeap::Type::DSV] = DescriptorHeap{ device, DescriptorHeap::Type::DSV, config.DSVDescriptorCount };
     }
 
-    void DescriptorManager::Bind(Context& context, DescriptorHeapType type) const
-    {
-        m_DescriptorHeaps.at(type).Bind(context);
-    }
+    DescriptorManager::DescriptorManager(DescriptorManager&& other) noexcept
+        : m_DescriptorHeaps{ std::exchange(other.m_DescriptorHeaps, {}) }
+    {}
 
     RTVDescriptor DescriptorManager::AllocateRTV()
     {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeapType::RTV] };
+        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::RTV] };
 
         return RTVDescriptor
         {
-            .CPU = heap.AllocateCPU(heap.AllocateIndex())
+            .CPU{ heap.AllocateCPU(heap.AllocateIndex()) }
         };
     }
 
     DSVDescriptor DescriptorManager::AllocateDSV()
     {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeapType::DSV] };
+        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::DSV] };
 
-        DSVDescriptor descriptor;
-        descriptor.CPU = heap.AllocateCPU(heap.AllocateIndex());
-
-        return descriptor;
+        return DSVDescriptor
+        {
+            .CPU{ heap.AllocateCPU(heap.AllocateIndex()) }
+        };
     }
 
     SamplerDescriptor DescriptorManager::AllocateSampler()
     {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeapType::Sampler] };
+        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::Sampler] };
 
-        SamplerDescriptor descriptor;
-        descriptor.HeapIndex = heap.AllocateIndex();
-        descriptor.CPU = heap.AllocateCPU(descriptor.HeapIndex);
-        descriptor.GPU = heap.AllocateGPU(descriptor.HeapIndex);
+        const uint32_t heapIndex{ heap.AllocateIndex() };
 
-        return descriptor;
+        return SamplerDescriptor
+        {
+            .HeapIndex{ heapIndex },
+            .CPU{ heap.AllocateCPU(heapIndex) },
+            .GPU{ heap.AllocateGPU(heapIndex) }
+        };
     }
 
     CBVDescriptor DescriptorManager::AllocateCBV()
     {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeapType::CBV] };
+        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::CBV] };
 
-        CBVDescriptor descriptor;
-        descriptor.HeapIndex = heap.AllocateIndex();
-        descriptor.CPU = heap.AllocateCPU(descriptor.HeapIndex);
-        descriptor.GPU = heap.AllocateGPU(descriptor.HeapIndex);
+        const uint32_t heapIndex{ heap.AllocateIndex() };
 
-        return descriptor;
+        return CBVDescriptor
+        {
+            .HeapIndex{ heapIndex },
+            .CPU{ heap.AllocateCPU(heapIndex) },
+            .GPU{ heap.AllocateGPU(heapIndex) }
+        };
     }
 
     SRVDescriptor DescriptorManager::AllocateSRV()
     {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeapType::SRV] };
+        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::SRV] };
 
-        SRVDescriptor descriptor;
-        descriptor.HeapIndex = heap.AllocateIndex();
-        descriptor.CPU = heap.AllocateCPU(descriptor.HeapIndex);
-        descriptor.GPU = heap.AllocateGPU(descriptor.HeapIndex);
+        const uint32_t heapIndex{ heap.AllocateIndex() };
 
-        return descriptor;
+        return SRVDescriptor
+        {
+            .HeapIndex{ heapIndex },
+            .CPU{ heap.AllocateCPU(heapIndex) },
+            .GPU{ heap.AllocateGPU(heapIndex) }
+        };
     }
 
     UAVDescriptor DescriptorManager::AllocateUAV()
     {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeapType::UAV] };
+        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::UAV] };
 
-        UAVDescriptor descriptor;
-        descriptor.HeapIndex = heap.AllocateIndex();
-        descriptor.CPU = heap.AllocateCPU(descriptor.HeapIndex);
-        descriptor.GPU = heap.AllocateGPU(descriptor.HeapIndex);
+        const uint32_t heapIndex{ heap.AllocateIndex() };
 
-        return descriptor;
+        return UAVDescriptor
+        {
+            .HeapIndex{ heapIndex },
+            .CPU{ heap.AllocateCPU(heapIndex) },
+            .GPU{ heap.AllocateGPU(heapIndex) }
+        };
+    }
+
+    DescriptorManager& DescriptorManager::operator=(DescriptorManager&& other) noexcept
+    {
+        if (this == &other)
+        {
+            return *this;
+        }
+
+        m_DescriptorHeaps = std::exchange(other.m_DescriptorHeaps, {});
+
+        return *this;
     }
 
 } // namespace spieler::renderer

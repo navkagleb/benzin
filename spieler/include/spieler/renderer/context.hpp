@@ -14,6 +14,8 @@ namespace spieler::renderer
     class RootSignature;
     class Texture2DResource;
 
+    class DescriptorHeap;
+
     class VertexBufferView;
     class IndexBufferView;
 
@@ -49,6 +51,8 @@ namespace spieler::renderer
     public:
         ComPtr<ID3D12GraphicsCommandList>& GetNativeCommandList() { return m_CommandList; }
         ComPtr<ID3D12CommandQueue>& GetNativeCommandQueue() { return m_CommandQueue; }
+
+        void SetDescriptorHeap(const DescriptorHeap& descriptorHeap);
 
         void IASetVertexBuffer(const VertexBufferView* vertexBufferView);
         void IASetIndexBuffer(const IndexBufferView* indexBufferView);

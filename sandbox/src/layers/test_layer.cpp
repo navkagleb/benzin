@@ -1712,7 +1712,7 @@ namespace sandbox
             // Material
             if (item->Material)
             {
-                descriptorManager.Bind(context, spieler::renderer::DescriptorHeapType::SRV);
+                context.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::renderer::DescriptorHeap::Type::SRV));
 
                 m_ConstantBuffers["material"].GetSlice(item->Material).Bind(context, 2);
                 item->Material->DiffuseMap.Bind(context, 3);
