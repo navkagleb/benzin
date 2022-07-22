@@ -38,7 +38,7 @@ namespace sandbox
 
         void OnEvent(spieler::Event& event) override;
         void OnUpdate(float dt) override;
-        bool OnRender(float dt) override;
+        void OnRender(float dt) override;
         void OnImGuiRender(float dt) override;
 
     private:

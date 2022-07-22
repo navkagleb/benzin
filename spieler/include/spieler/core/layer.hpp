@@ -16,7 +16,7 @@ namespace spieler
 
         virtual void OnEvent(Event& event) {}
         virtual void OnUpdate(float dt) {}
-        virtual bool OnRender(float dt) { return true; }
+        virtual void OnRender(float dt) {}
         virtual void OnImGuiRender(float dt) {}
 
     protected:

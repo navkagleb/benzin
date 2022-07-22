@@ -340,7 +340,7 @@ namespace sandbox
         }
     }
 
-    bool TessellationLayer::OnRender(float dt)
+    void TessellationLayer::OnRender(float dt)
     {
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& swapChain{ renderer.GetSwapChain() };
@@ -435,8 +435,6 @@ namespace sandbox
             });
         }
         SPIELER_ASSERT(context.ExecuteCommandList(true));
-
-        return true;
     }
 
     void TessellationLayer::OnImGuiRender(float dt)

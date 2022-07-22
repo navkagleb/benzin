@@ -246,7 +246,7 @@ namespace sandbox
         }
     }
 
-    bool TestLayer::OnRender(float dt)
+    void TestLayer::OnRender(float dt)
     {
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& swapChain{ renderer.GetSwapChain() };
@@ -259,7 +259,7 @@ namespace sandbox
         spieler::renderer::Texture2D& currentBuffer{ swapChain.GetCurrentBuffer() };
         spieler::renderer::Texture2DResource& currentBufferResource{ currentBuffer.GetTexture2DResource() };
 
-        SPIELER_RETURN_IF_FAILED(context.ResetCommandList());
+        SPIELER_ASSERT(context.ResetCommandList());
         {
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
@@ -362,9 +362,7 @@ namespace sandbox
                 .To = spieler::renderer::ResourceState::Present
             });
         }
-        SPIELER_RETURN_IF_FAILED(context.ExecuteCommandList(true));
-
-        return true;
+        SPIELER_ASSERT(context.ExecuteCommandList(true));
     }
 
     void TestLayer::OnImGuiRender(float dt)
