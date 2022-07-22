@@ -16,7 +16,7 @@ namespace spieler
     template <typename T, typename... Args>
     std::shared_ptr<T> LayerStack::PushOverlay(Args&&... args)
     {
-        std::shared_ptr<T> layer{ *std::make_unique<T>(std::forward<Args>(args)...) };
+        std::shared_ptr<T> layer{ std::make_unique<T>(std::forward<Args>(args)...) };
 
         SPIELER_ASSERT(layer->OnAttach());
 

@@ -42,9 +42,10 @@ namespace spieler
         // TODO: Init "Subsystems"
         SPIELER_RETURN_IF_FAILED(InitWindow(title, width, height));
         renderer::Renderer::CreateInstance(*g_Instance->m_Window);
-        SPIELER_RETURN_IF_FAILED(InitExternal());
 
-        m_ImGuiLayer = m_LayerStack.Push<ImGuiLayer>();
+        m_ImGuiLayer = m_LayerStack.PushOverlay<ImGuiLayer>();
+
+        SPIELER_RETURN_IF_FAILED(InitExternal());
 
         return true;
     }
