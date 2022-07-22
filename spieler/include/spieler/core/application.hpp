@@ -4,10 +4,10 @@
 
 #include "spieler/core/timer.hpp"
 #include "spieler/core/layer_stack.hpp"
+#include "spieler/core/imgui_layer.hpp"
 
 #include "spieler/system/window.hpp"
 #include "spieler/system/window_event.hpp"
-#include "spieler/system/key_event.hpp"
 
 #include "spieler/renderer/renderer.hpp"
 
@@ -32,6 +32,7 @@ namespace spieler
         virtual ~Application();
 
     public:
+        Window& GetWindow() { return *m_Window; }
         const Window& GetWindow() const { return *m_Window; }
 
     public:
@@ -43,11 +44,6 @@ namespace spieler
 
     private:
         bool InitWindow(const std::string& title, uint32_t width, uint32_t height);
-        bool InitImGui();
-
-        void OnUpdate(float dt);
-        bool OnRender(float dt);
-        void OnImGuiRender(float dt);
 
         void WindowEventCallback(Event& event);
 
@@ -62,9 +58,6 @@ namespace spieler
         bool OnWindowUnfocused(WindowUnfocusedEvent& event);
 
         void CalcStats(float dt);
-
-        void UpdateScreenViewport();
-        void UpdateScreenScissorRect();
 
     private:
         struct ApplicationProps
@@ -85,8 +78,7 @@ namespace spieler
         ApplicationProps m_ApplicationProps;
         Timer m_Timer;
 
-        renderer::Viewport m_ScreenViewport;
-        renderer::ScissorRect m_ScreenScissorRect;
+        std::shared_ptr<ImGuiLayer> m_ImGuiLayer;
     };
 
     template <typename ClientApplication>

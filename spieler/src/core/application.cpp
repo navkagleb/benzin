@@ -2,10 +2,6 @@
 
 #include "spieler/core/application.hpp"
 
-#include <third_party/imgui/imgui.h>
-#include <third_party/imgui/imgui_impl_dx12.h>
-#include <third_party/imgui/imgui_impl_win32.h>
-
 #include <third_party/fmt/format.h>
 
 #include "platform/win64/win64_window.hpp"
@@ -13,6 +9,7 @@
 #include "platform/dx12/dx12_common.hpp"
 
 #include "spieler/core/common.hpp"
+#include "spieler/core/logger.hpp"
 
 #include "spieler/system/event_dispatcher.hpp"
 
@@ -33,10 +30,6 @@ namespace spieler
 
     Application::~Application()
     {
-        ImGui_ImplDX12_Shutdown();
-        ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
-
         renderer::Renderer::DestoryInstance();
     }
 
@@ -49,11 +42,9 @@ namespace spieler
         // TODO: Init "Subsystems"
         SPIELER_RETURN_IF_FAILED(InitWindow(title, width, height));
         renderer::Renderer::CreateInstance(*g_Instance->m_Window);
-        SPIELER_RETURN_IF_FAILED(InitImGui());
         SPIELER_RETURN_IF_FAILED(InitExternal());
 
-        UpdateScreenViewport();
-        UpdateScreenScissorRect();
+        m_ImGuiLayer = m_LayerStack.Push<ImGuiLayer>();
 
         return true;
     }
@@ -63,6 +54,9 @@ namespace spieler
         m_Timer.Reset();
 
         m_ApplicationProps.IsRunning = true;
+
+        renderer::Renderer& renderer{ renderer::Renderer::GetInstance() };
+        renderer::Context& context{ renderer.GetContext() };
 
         while (m_ApplicationProps.IsRunning)
         {
@@ -80,18 +74,24 @@ namespace spieler
 
                 CalcStats(dt);
 
-                ImGui_ImplDX12_NewFrame();
-                ImGui_ImplWin32_NewFrame();
-                ImGui::NewFrame();
+                SPIELER_ASSERT(context.ResetCommandAllocator());
 
-                OnUpdate(dt);
-                OnImGuiRender(dt);
-                ImGui::Render();
-
-                if (!OnRender(dt))
+                for (auto& layer : m_LayerStack)
                 {
-                    break;
+                    layer->OnUpdate(dt);
+                    layer->OnRender(dt);
                 }
+
+                ImGuiLayer::Begin();
+                {
+                    for (auto& layer : m_LayerStack)
+                    {
+                        layer->OnImGuiRender(dt);
+                    }
+                }
+                ImGuiLayer::End();
+
+                SPIELER_ASSERT(renderer.Present(renderer::VSyncState::Disabled));
             }
         }
     }
@@ -109,107 +109,9 @@ namespace spieler
         return true;
     }
 
-    bool Application::InitImGui()
-    {
-        // Setup Dear ImGui context
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-
-        ImGuiIO& io{ ImGui::GetIO() };
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-        io.IniFilename = "config/imgui.ini";
-
-        // Setup Dear ImGui style
-        ImGui::StyleColorsDark();
-
-        // Setup Platform/Renderer backends
-        renderer::Renderer& renderer{ renderer::Renderer::GetInstance() };
-        renderer::Device& device{ renderer.GetDevice() };
-        renderer::SwapChain& swapChain{ renderer.GetSwapChain() };
-        renderer::DescriptorManager& descriptorManager{ device.GetDescriptorManager() };
-
-        renderer::SRVDescriptor imguiDescriptor{ descriptorManager.AllocateSRV() };
-
-        SPIELER_RETURN_IF_FAILED(ImGui_ImplWin32_Init(m_Window->GetNativeHandle()));
-        SPIELER_RETURN_IF_FAILED(ImGui_ImplDX12_Init(
-            device.GetNativeDevice().Get(),
-            1,
-            renderer::dx12::Convert(swapChain.GetBufferFormat()),
-            descriptorManager.GetDescriptorHeap(renderer::DescriptorHeapType::SRV).GetNative().Get(),
-            D3D12_CPU_DESCRIPTOR_HANDLE{ imguiDescriptor.CPU },
-            D3D12_GPU_DESCRIPTOR_HANDLE{ imguiDescriptor.GPU }
-        ));
-
-        return true;
-    }
-
-    void Application::OnUpdate(float dt)
-    {
-        for (auto& layer : m_LayerStack)
-        {
-            layer->OnUpdate(dt);
-        }
-    }
-
-    bool Application::OnRender(float dt)
-    {
-        renderer::Renderer& renderer{ renderer::Renderer::GetInstance() };
-        renderer::Device& device{ renderer.GetDevice() };
-        renderer::Context& context{ renderer.GetContext() };
-        renderer::SwapChain& swapChain{ renderer.GetSwapChain() };
-        renderer::DescriptorManager& descriptorManager{ device.GetDescriptorManager() };
-
-        SPIELER_RETURN_IF_FAILED(context.ResetCommandAllocator());
-
-        for (auto& layer : m_LayerStack)
-        {
-            layer->OnRender(dt);
-        }
-
-        SPIELER_RETURN_IF_FAILED(context.ResetCommandList());
-        {
-            context.SetViewport(m_ScreenViewport);
-            context.SetScissorRect(m_ScreenScissorRect);
-
-            context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
-            {
-                .Resource = &swapChain.GetCurrentBuffer().GetTexture2DResource(),
-                .From = spieler::renderer::ResourceState::Present,
-                .To = spieler::renderer::ResourceState::RenderTarget
-            });
-
-            context.SetRenderTarget(swapChain.GetCurrentBuffer().GetView<spieler::renderer::RenderTargetView>());
-
-            descriptorManager.Bind(context, renderer::DescriptorHeapType::SRV);
-
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context.GetNativeCommandList().Get());
-
-            context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
-            {
-                .Resource = &swapChain.GetCurrentBuffer().GetTexture2DResource(),
-                .From = spieler::renderer::ResourceState::RenderTarget,
-                .To = spieler::renderer::ResourceState::Present
-            });
-        }
-        SPIELER_RETURN_IF_FAILED(context.ExecuteCommandList(true));
-        SPIELER_RETURN_IF_FAILED(renderer.Present(renderer::VSyncState::Disabled));
-
-        return true;
-    }
-
-    void Application::OnImGuiRender(float dt)
-    {
-        for (auto& layer : m_LayerStack)
-        {
-            layer->OnImGuiRender(dt);
-        }
-    }
-
     void Application::WindowEventCallback(Event& event)
     {
-        EventDispatcher dispatcher(event);
+        EventDispatcher dispatcher{ event };
         dispatcher.Dispatch<WindowCloseEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowClose));
         dispatcher.Dispatch<WindowMinimizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowMinimized));
         dispatcher.Dispatch<WindowMaximizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowMaximized));
@@ -282,9 +184,6 @@ namespace spieler
         renderer::Renderer& renderer{ renderer::Renderer::GetInstance() };
         renderer.ResizeBuffers(m_Window->GetWidth(), m_Window->GetHeight());
 
-        UpdateScreenViewport();
-        UpdateScreenScissorRect();
-
         return false;
     }
 
@@ -311,24 +210,6 @@ namespace spieler
         const float fps{ 1.0f / dt };
 
         m_Window->SetTitle(fmt::format("FPS: {:.2f}, ms: {:.2f}", fps, dt * 1000.0f));
-    }
-
-    void Application::UpdateScreenViewport()
-    {
-        m_ScreenViewport.X = 0.0f;
-        m_ScreenViewport.Y = 0.0f;
-        m_ScreenViewport.Width = static_cast<float>(m_Window->GetWidth());
-        m_ScreenViewport.Height = static_cast<float>(m_Window->GetHeight());
-        m_ScreenViewport.MinDepth = 0.0f;
-        m_ScreenViewport.MaxDepth = 1.0f;
-    }
-
-    void Application::UpdateScreenScissorRect()
-    {
-        m_ScreenScissorRect.X = 0.0f;
-        m_ScreenScissorRect.Y = 0.0f;
-        m_ScreenScissorRect.Width = static_cast<float>(m_Window->GetWidth());
-        m_ScreenScissorRect.Height = static_cast<float>(m_Window->GetHeight());
     }
 
 } // namespace spieler

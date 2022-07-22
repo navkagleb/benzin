@@ -56,6 +56,7 @@ public:                                                                         
     {
     public:
         friend class EventDispatcher;
+        friend class ImGuiLayer;
 
     public:
         virtual ~Event() = default;
