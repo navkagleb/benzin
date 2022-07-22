@@ -12,10 +12,7 @@ namespace spieler::renderer
         IndexBufferView() = default;
         IndexBufferView(const BufferResource& resource);
 
-    public:
-        void Bind(Context& context) const;
-
-    public:
+    private:
         void Init(const BufferResource& resource);
 
     private:

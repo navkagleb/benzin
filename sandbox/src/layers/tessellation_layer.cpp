@@ -382,10 +382,9 @@ namespace sandbox
                 m_PassConstantBuffer.GetSlice(&m_PassConstants).Bind(context, 0);
                 m_ObjectConstantBuffer.GetSlice(&quad).Bind(context, 1);
 
-                quad.MeshGeometry->GetVertexBuffer().GetView().Bind(context);
-                quad.MeshGeometry->GetIndexBuffer().GetView().Bind(context);
-
-                context.SetPrimitiveTopology(quad.PrimitiveTopology);
+                context.IASetVertexBuffer(&quad.MeshGeometry->GetVertexBuffer().GetView());
+                context.IASetIndexBuffer(&quad.MeshGeometry->GetIndexBuffer().GetView());
+                context.IASetPrimitiveTopology(quad.PrimitiveTopology);
 
                 context.GetNativeCommandList()->DrawIndexedInstanced(
                     quad.SubmeshGeometry->IndexCount,
@@ -406,10 +405,9 @@ namespace sandbox
                 m_PassConstantBuffer.GetSlice(&m_PassConstants).Bind(context, 0);
                 m_ObjectConstantBuffer.GetSlice(&bezierQuad).Bind(context, 1);
 
-                bezierQuad.MeshGeometry->GetVertexBuffer().GetView().Bind(context);
-                bezierQuad.MeshGeometry->GetIndexBuffer().GetView().Bind(context);
-
-                context.SetPrimitiveTopology(bezierQuad.PrimitiveTopology);
+                context.IASetVertexBuffer(&bezierQuad.MeshGeometry->GetVertexBuffer().GetView());
+                context.IASetIndexBuffer(&bezierQuad.MeshGeometry->GetIndexBuffer().GetView());
+                context.IASetPrimitiveTopology(bezierQuad.PrimitiveTopology);
 
                 context.GetNativeCommandList()->DrawIndexedInstanced(
                     bezierQuad.SubmeshGeometry->IndexCount,

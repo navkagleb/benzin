@@ -29,11 +29,6 @@ namespace spieler::renderer
         m_View.Format = dx12::Convert(format);
     }
 
-    void IndexBufferView::Bind(Context& context) const
-    {
-        context.GetNativeCommandList()->IASetIndexBuffer(&m_View);
-    }
-
     void IndexBuffer::SetResource(const std::shared_ptr<BufferResource>& resource)
     {
         SPIELER_ASSERT(resource);

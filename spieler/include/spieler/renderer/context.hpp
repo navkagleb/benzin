@@ -14,6 +14,9 @@ namespace spieler::renderer
     class RootSignature;
     class Texture2DResource;
 
+    class VertexBufferView;
+    class IndexBufferView;
+
     class RenderTargetView;
     class DepthStencilView;
 
@@ -47,6 +50,10 @@ namespace spieler::renderer
         ComPtr<ID3D12GraphicsCommandList>& GetNativeCommandList() { return m_CommandList; }
         ComPtr<ID3D12CommandQueue>& GetNativeCommandQueue() { return m_CommandQueue; }
 
+        void IASetVertexBuffer(const VertexBufferView* vertexBufferView);
+        void IASetIndexBuffer(const IndexBufferView* indexBufferView);
+        void IASetPrimitiveTopology(PrimitiveTopology primitiveTopology);
+
         void SetViewport(const Viewport& viewport);
         void SetScissorRect(const ScissorRect& scissorRect);
 
@@ -61,7 +68,6 @@ namespace spieler::renderer
         void ClearDepthStencil(const DepthStencilView& dsv, float depth, uint8_t stencil);
 
         void SetResourceBarrier(const TransitionResourceBarrier& barrier);
-        void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
         void SetStencilReferenceValue(uint8_t referenceValue);
 
         void CopyBuffer(const void* data, uint64_t size, UploadBuffer& from, Resource& to);

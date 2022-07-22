@@ -24,11 +24,6 @@ namespace spieler::renderer
         m_View.SizeInBytes = resource.GetSize();
     }
 
-    void VertexBufferView::Bind(Context& context) const
-    {
-        context.GetNativeCommandList()->IASetVertexBuffers(0, 1, &m_View);
-    }
-
     void VertexBuffer::SetResource(const std::shared_ptr<BufferResource>& resource)
     {
         SPIELER_ASSERT(resource);

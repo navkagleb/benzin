@@ -12,10 +12,8 @@ namespace spieler::renderer
         VertexBufferView() = default;
         VertexBufferView(const BufferResource& resource);
 
-    public:
+    private:
         void Init(const BufferResource& resource);
-
-        void Bind(Context& context) const;
 
     private:
         D3D12_VERTEX_BUFFER_VIEW m_View{};

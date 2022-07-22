@@ -12,6 +12,9 @@
 #include "spieler/renderer/upload_buffer.hpp"
 #include "spieler/renderer/texture.hpp"
 
+#include "spieler/renderer/vertex_buffer.hpp"
+#include "spieler/renderer/index_buffer.hpp"
+
 #include "spieler/renderer/resource_view.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
@@ -46,6 +49,23 @@ namespace spieler::renderer
         : m_Fence(device)
     {
         SPIELER_ASSERT(Init(device));
+    }
+
+    void Context::IASetVertexBuffer(const VertexBufferView* vertexBufferView)
+    {
+        m_CommandList->IASetVertexBuffers(0, 1, reinterpret_cast<const D3D12_VERTEX_BUFFER_VIEW*>(vertexBufferView));
+    }
+
+    void Context::IASetIndexBuffer(const IndexBufferView* indexBufferView)
+    {
+        m_CommandList->IASetIndexBuffer(reinterpret_cast<const D3D12_INDEX_BUFFER_VIEW*>(indexBufferView));
+    }
+
+    void Context::IASetPrimitiveTopology(PrimitiveTopology primitiveTopology)
+    {
+        SPIELER_ASSERT(primitiveTopology != PrimitiveTopology::Unknown);
+
+        m_CommandList->IASetPrimitiveTopology(dx12::Convert(primitiveTopology));
     }
 
     void Context::SetViewport(const Viewport& viewport)
@@ -124,13 +144,6 @@ namespace spieler::renderer
         const D3D12_RESOURCE_BARRIER d3d12Barrier{ _internal::ConvertToD3D12ResourceBarrier(barrier) };
 
         m_CommandList->ResourceBarrier(1, &d3d12Barrier);
-    }
-
-    void Context::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
-    {
-        SPIELER_ASSERT(primitiveTopology != PrimitiveTopology::Unknown);
-
-        m_CommandList->IASetPrimitiveTopology(dx12::Convert(primitiveTopology));
     }
 
     void Context::SetStencilReferenceValue(uint8_t referenceValue)

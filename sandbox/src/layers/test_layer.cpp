@@ -1672,11 +1672,12 @@ namespace sandbox
 
     void TestLayer::RenderFullscreenQuad()
     {
-        auto& nativeCommandList{ spieler::renderer::Renderer::GetInstance().GetContext().GetNativeCommandList() };
+        auto& context{ spieler::renderer::Renderer::GetInstance().GetContext() };
+        auto& nativeCommandList{ context.GetNativeCommandList() };
 
-        nativeCommandList->IASetVertexBuffers(0, 1, nullptr);
-        nativeCommandList->IASetIndexBuffer(nullptr);
-        nativeCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        context.IASetVertexBuffer(nullptr);
+        context.IASetIndexBuffer(nullptr);
+        context.IASetPrimitiveTopology(spieler::renderer::PrimitiveTopology::TriangleList);
 
         nativeCommandList->DrawInstanced(6, 1, 0, 0);
     }
@@ -1699,10 +1700,9 @@ namespace sandbox
 
         for (const spieler::renderer::RenderItem* item : items)
         {
-            item->MeshGeometry->GetVertexBuffer().GetView().Bind(context);
-            item->MeshGeometry->GetIndexBuffer().GetView().Bind(context);
-
-            context.SetPrimitiveTopology(item->PrimitiveTopology);
+            context.IASetVertexBuffer(&item->MeshGeometry->GetVertexBuffer().GetView());
+            context.IASetIndexBuffer(&item->MeshGeometry->GetIndexBuffer().GetView());
+            context.IASetPrimitiveTopology(item->PrimitiveTopology);
 
             if (objectConstantBuffer)
             {
