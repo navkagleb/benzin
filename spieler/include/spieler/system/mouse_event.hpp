@@ -45,12 +45,12 @@ namespace spieler
         EVENT_CLASS_CATEGORY(EventCategory_Input | EventCategory_Mouse)
 
     public:
-        MouseScrolledEvent(int offsetX)
-            : m_OffsetX(offsetX)
+        MouseScrolledEvent(int8_t offsetX)
+            : m_OffsetX{ offsetX }
         {}
         
     public:
-        uint8_t GetOffsetX() const { return m_OffsetX; }
+        int8_t GetOffsetX() const { return m_OffsetX; }
 
         std::string ToString() const override
         {
@@ -58,7 +58,7 @@ namespace spieler
         }
 
     private:
-        uint8_t m_OffsetX;
+        int8_t m_OffsetX{ 0 };
     };
 
     class MouseButtonEvent : public Event, public MousePosition
