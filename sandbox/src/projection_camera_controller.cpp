@@ -13,17 +13,19 @@ namespace sandbox
 {
 
     ProjectionCameraController::ProjectionCameraController(float fov, float aspectRatio)
+        : m_Camera
+        {
+            .FOV{ fov },
+            .AspectRatio{ aspectRatio }
+        }
     {
-        m_Camera.Fov = fov;
-        m_Camera.AspectRatio = aspectRatio;
-
         UpdateView();
         UpdateProjection();
     }
 
     void ProjectionCameraController::OnEvent(spieler::Event& event)
     {
-        spieler::EventDispatcher dispatcher(event);
+        spieler::EventDispatcher dispatcher{ event };
         dispatcher.Dispatch<spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
 
         if (!m_IsBlocked)
@@ -96,7 +98,7 @@ namespace sandbox
 
             ImGui::Separator();
 
-            if (ImGui::SliderAngle("Fov", &m_Camera.Fov, 45.0f, 120.0f))
+            if (ImGui::SliderAngle("FOV", &m_Camera.FOV, 45.0f, 120.0f))
             {
                 UpdateProjection();
             }
@@ -122,7 +124,7 @@ namespace sandbox
 
     bool ProjectionCameraController::OnWindowResized(spieler::WindowResizedEvent& event)
     {
-        m_Camera.AspectRatio = static_cast<float>(event.GetWidth()) / event.GetHeight();
+        m_Camera.AspectRatio = event.GetWidth<float>() / event.GetHeight<float>();
 
         UpdateProjection();
 
@@ -131,8 +133,8 @@ namespace sandbox
 
     bool ProjectionCameraController::OnMouseButtonPressed(spieler::MouseButtonPressedEvent& event)
     {
-        m_LastMousePosition.x = static_cast<float>(event.GetX());
-        m_LastMousePosition.y = static_cast<float>(event.GetY());
+        m_LastMousePosition.x = event.GetX<float>();
+        m_LastMousePosition.y = event.GetY<float>();
 
         return true;
     }
@@ -143,8 +145,8 @@ namespace sandbox
 
         if (input.IsMouseButtonPressed(spieler::MouseButton::Left))
         {
-            const float dx = static_cast<float>(event.GetX()) - m_LastMousePosition.x;
-            const float dy = static_cast<float>(event.GetY()) - m_LastMousePosition.y;
+            const float dx{ event.GetX<float>() - m_LastMousePosition.x };
+            const float dy{ event.GetY<float>() - m_LastMousePosition.y };
 
             m_Theta -= m_MouseSensitivity * dx;
             m_Phi -= m_MouseSensitivity * dy;
@@ -172,10 +174,10 @@ namespace sandbox
 
     bool ProjectionCameraController::OnMouseScrolled(spieler::MouseScrolledEvent& event)
     {
-        static const float min = DirectX::XM_PIDIV4;
-        static const float max = DirectX::XM_PI * 2.0f / 3.0f;
+        static const float min{ DirectX::XM_PIDIV4 }; // 45 degrees
+        static const float max{ DirectX::XM_PI * 2.0f / 3.0f }; // 120 degrees
 
-        m_Camera.Fov = spieler::math::Clamp(min, m_Camera.Fov - m_MouseSensitivity * static_cast<float>(event.GetOffsetX()), max);
+        m_Camera.FOV = std::clamp(m_Camera.FOV - m_MouseWheelSensitivity * static_cast<float>(event.GetOffsetX()), min, max);
     
         UpdateProjection();
 
@@ -184,7 +186,7 @@ namespace sandbox
 
     void ProjectionCameraController::UpdateView()
     {
-        const DirectX::XMVECTOR direction = spieler::math::SphericalToCartesian(m_Theta, m_Phi);
+        const DirectX::XMVECTOR direction{ spieler::math::SphericalToCartesian(m_Theta, m_Phi) };
 
         m_Camera.Front = DirectX::XMVector3Normalize(direction);
         m_Camera.View = DirectX::XMMatrixLookAtLH(m_Camera.EyePosition, DirectX::XMVectorAdd(m_Camera.EyePosition, m_Camera.Front), m_Camera.UpDirection);
@@ -192,7 +194,7 @@ namespace sandbox
 
     void ProjectionCameraController::UpdateProjection()
     {
-        m_Camera.Projection = DirectX::XMMatrixPerspectiveFovLH(m_Camera.Fov, m_Camera.AspectRatio, m_Camera.NearPlane, m_Camera.FarPlane);
+        m_Camera.Projection = DirectX::XMMatrixPerspectiveFovLH(m_Camera.FOV, m_Camera.AspectRatio, m_Camera.NearPlane, m_Camera.FarPlane);
     }
 
 } // namespace sandbox

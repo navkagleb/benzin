@@ -17,7 +17,7 @@ namespace sandbox
         DirectX::XMMATRIX View{ DirectX::XMMatrixIdentity() };
 
         // Projection props
-        float Fov{ spieler::math::ToRadians(60.0f) };
+        float FOV{ spieler::math::ToRadians(60.0f) };
         float AspectRatio{ 0.0f };
         float NearPlane{ 0.1f };
         float FarPlane{ 1000.0f };
@@ -27,6 +27,7 @@ namespace sandbox
     class ProjectionCameraController
     {
     public:
+        ProjectionCameraController() = default;
         ProjectionCameraController(float fov, float aspectRatio);
 
     public:
@@ -52,6 +53,7 @@ namespace sandbox
         float m_Phi{ DirectX::XM_PIDIV2 };
         float m_CameraSpeed{ 20.0f };
         float m_MouseSensitivity{ 0.003f };
+        float m_MouseWheelSensitivity{ 0.04f };
         DirectX::XMFLOAT2 m_LastMousePosition{ 0.0f, 0.0f };
         bool m_IsBlocked{ false };
     };
