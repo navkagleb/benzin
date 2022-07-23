@@ -30,20 +30,24 @@ namespace spieler
 
     Application::~Application()
     {
+        //m_ImGuiLayer.reset();
+        //m_LayerStack.~LayerStack();
         renderer::Renderer::DestoryInstance();
     }
 
     bool Application::InitInternal(const std::string& title, uint32_t width, uint32_t height)
     {
+#if 0
 #if defined(SPIELER_DEBUG)
         _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
 #endif
 
         // TODO: Init "Subsystems"
         SPIELER_RETURN_IF_FAILED(InitWindow(title, width, height));
         renderer::Renderer::CreateInstance(*g_Instance->m_Window);
 
-        m_ImGuiLayer = m_LayerStack.PushOverlay<ImGuiLayer>();
+        m_LayerStack.PushOverlay<ImGuiLayer>();
 
         SPIELER_RETURN_IF_FAILED(InitExternal());
 

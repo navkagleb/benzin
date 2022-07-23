@@ -2,8 +2,40 @@
 
 #include <spieler/core/application.hpp>
 
+#if 1
+
+//#include "layers/test_layer.hpp"
+#include "layers/tessellation_layer.hpp"
+
+namespace sandbox
+{
+
+    class DummyLayer final : public spieler::Layer
+    {
+    public:
+        bool OnAttach() override
+        {
+            return true;
+        }
+    };
+
+    class Application : public spieler::Application
+    {
+    public:
+        bool InitExternal() override
+        {
+            //SPIELER_RETURN_IF_FAILED(m_LayerStack.Push<TestLayer>());
+            m_LayerStack.Push<TessellationLayer>();
+            
+            return true;
+        }
+    };
+
+} // namespace Sandbox
+
+#else
+
 #include "layers/test_layer.hpp"
-//#include "land_layer.hpp"
 //#include "layers/tessellation_layer.hpp"
 
 namespace sandbox
@@ -14,15 +46,16 @@ namespace sandbox
     public:
         bool InitExternal() override
         {
-            SPIELER_RETURN_IF_FAILED(m_LayerStack.Push<TestLayer>(*m_Window));
-            //SPIELER_RETURN_IF_FAILED(PushLayer<LandLayer>(m_Window, m_Renderer));
-            //SPIELER_RETURN_IF_FAILED(m_LayerStack.Push<TessellationLayer>(*m_Window));
-            
+            SPIELER_RETURN_IF_FAILED(m_LayerStack.Push<TestLayer>());
+            //SPIELER_RETURN_IF_FAILED(m_LayerStack.Push<TessellationLayer>());
+
             return true;
         }
     };
 
 } // namespace Sandbox
+
+#endif
 
 spieler::Application* spieler::CreateApplication()
 {

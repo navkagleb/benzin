@@ -11,6 +11,9 @@ namespace spieler
         using LayerContainer = std::vector<std::shared_ptr<Layer>>;
 
     public:
+        ~LayerStack();
+
+    public:
         template <typename T, typename... Args>
         std::shared_ptr<T> Push(Args&&... args);
 
@@ -28,7 +31,7 @@ namespace spieler
         LayerContainer::reverse_iterator ReverseEnd() { return  m_Layers.rend(); }
 
     private:
-        std::vector<std::shared_ptr<Layer>> m_Layers;
+        LayerContainer m_Layers;
         size_t m_OverlayIndex{ 0 };
     };
 

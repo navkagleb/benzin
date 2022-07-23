@@ -78,7 +78,7 @@ namespace spieler
         ApplicationProps m_ApplicationProps;
         Timer m_Timer;
 
-        std::shared_ptr<ImGuiLayer> m_ImGuiLayer;
+        //std::shared_ptr<ImGuiLayer> m_ImGuiLayer;
     };
 
     template <typename ClientApplication>

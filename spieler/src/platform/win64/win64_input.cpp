@@ -1,6 +1,6 @@
 #include "spieler/config/bootstrap.hpp"
 
-#include "platform/win64_input.hpp"
+#include "platform/win64/win64_input.hpp"
 
 #if defined(SPIELER_PLATFORM_WINDOWS)
 

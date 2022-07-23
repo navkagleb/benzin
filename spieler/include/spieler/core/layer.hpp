@@ -8,6 +8,7 @@ namespace spieler
     class Layer
     {
     public:
+        Layer() = default;
         virtual ~Layer() = default;
 
     public:

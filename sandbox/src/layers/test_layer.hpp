@@ -1,5 +1,7 @@
 #pragma once
 
+#if 0
+
 #include <spieler/core/layer.hpp>
 
 #include <spieler/system/window.hpp>
@@ -66,11 +68,8 @@ namespace sandbox
 
     } // namespace per
 
-    class TestLayer : public spieler::Layer
+    class TestLayer final : public spieler::Layer
     {
-    public:
-        TestLayer(spieler::Window& window);
-
     public:
         bool OnAttach() override;
 
@@ -108,8 +107,6 @@ namespace sandbox
         bool OnWindowResized(spieler::WindowResizedEvent& event);
 
     private:
-        spieler::Window& m_Window;
-
         spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
         spieler::renderer::Texture2D m_DepthStencil;
 
@@ -146,13 +143,15 @@ namespace sandbox
 
         DirectionalLightController m_DirectionalLightController;
 
-        BlurPass m_BlurPass;
+        std::unique_ptr<BlurPass> m_BlurPass;
         BlurPassExecuteProps m_BlurPassExecuteProps{ 2.5f, 2.5f, 0 };
 
-        SobelFilterPass m_SobelFilterPass;
+        std::unique_ptr<SobelFilterPass> m_SobelFilterPass;
         bool m_EnableSobelFilter{ true };
     };
 
 } // namespace sandbox
 
 #include "test_layer.inl"
+
+#endif

@@ -23,6 +23,9 @@ workspace "spieler"
     filter "configurations:Debug"
         defines { "DEBUG", "SPIELER_DEBUG" }
         optimize "Off"
+        
+        staticruntime "on"
+        runtime "Debug"
 
 --[[
     filter "configurations:Release"

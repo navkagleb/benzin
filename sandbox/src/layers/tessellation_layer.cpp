@@ -2,6 +2,8 @@
 
 #include "tessellation_layer.hpp"
 
+#include <spieler/core/application.hpp>
+
 #include <spieler/system/event_dispatcher.hpp>
 
 #include <spieler/renderer/renderer.hpp>
@@ -20,19 +22,17 @@ namespace sandbox
 
     } // namespace per
 
-    TessellationLayer::TessellationLayer(spieler::Window& window)
-        : m_Window{ window }
-        , m_CameraController{ spieler::math::ToRadians(60.0f), m_Window.GetAspectRatio() }
-    {}
-
     bool TessellationLayer::OnAttach()
     {
+#if 1
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& swapChain{ renderer.GetSwapChain() };
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
 
         spieler::renderer::UploadBuffer uploadBuffer{ device, spieler::renderer::UploadBufferType::Default, spieler::MB(2) };
+
+        m_CameraController = ProjectionCameraController{ spieler::math::ToRadians(60.0f), 16.0f / 9.0f };
 
         SPIELER_ASSERT(context.ResetCommandList());
 
@@ -301,20 +301,24 @@ namespace sandbox
         }
 
         SPIELER_ASSERT(context.ExecuteCommandList(true));
+#endif
 
         return true;
     }
 
     void TessellationLayer::OnEvent(spieler::Event& event)
     {
+#if 1
         m_CameraController.OnEvent(event);
 
         spieler::EventDispatcher dispatcher{ event };
         dispatcher.Dispatch<spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
+#endif
     }
 
     void TessellationLayer::OnUpdate(float dt)
     {
+#if 1
         m_CameraController.OnUpdate(dt);
 
         // Update Pass ConstantBuffer
@@ -338,10 +342,12 @@ namespace sandbox
                 m_ObjectConstantBuffer.GetSlice(&renderItem).Update(&m_ObjectConstants[name], sizeof(m_ObjectConstants[name]));
             }
         }
+#endif
     }
 
     void TessellationLayer::OnRender(float dt)
     {
+#if 1
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& swapChain{ renderer.GetSwapChain() };
         auto& context{ renderer.GetContext() };
@@ -372,6 +378,7 @@ namespace sandbox
             context.SetViewport(m_Viewport);
             context.SetScissorRect(m_ScissorRect);
 
+#if 1
             // Quad
             {
                 const auto& quad{ m_RenderItems["quad"] };
@@ -394,7 +401,9 @@ namespace sandbox
                     0
                 );
             }
+#endif
 
+#if 1
             // Bezier Quad
             {
                 const auto& bezierQuad{ m_RenderItems["bezier_quad"] };
@@ -417,6 +426,7 @@ namespace sandbox
                     0
                 );
             }
+#endif
             
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
@@ -433,39 +443,45 @@ namespace sandbox
             });
         }
         SPIELER_ASSERT(context.ExecuteCommandList(true));
-    }
-
-    void TessellationLayer::OnImGuiRender(float dt)
-    {
-
+#endif
     }
 
     void TessellationLayer::InitViewport()
     {
+    #if 1
+        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+
         m_Viewport.X = 0.0f;
         m_Viewport.Y = 0.0f;
-        m_Viewport.Width = static_cast<float>(m_Window.GetWidth());
-        m_Viewport.Height = static_cast<float>(m_Window.GetHeight());
+        m_Viewport.Width = static_cast<float>(window.GetWidth());
+        m_Viewport.Height = static_cast<float>(window.GetHeight());
         m_Viewport.MinDepth = 0.0f;
         m_Viewport.MaxDepth = 1.0f;
+        #endif
     }
 
     void TessellationLayer::InitScissorRect()
     {
+    #if 1
+        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+
         m_ScissorRect.X = 0.0f;
         m_ScissorRect.Y = 0.0f;
-        m_ScissorRect.Width = static_cast<float>(m_Window.GetWidth());
-        m_ScissorRect.Height = static_cast<float>(m_Window.GetHeight());
+        m_ScissorRect.Width = static_cast<float>(window.GetWidth());
+        m_ScissorRect.Height = static_cast<float>(window.GetHeight());
+    #endif
     }
 
     void TessellationLayer::InitDepthStencil()
     {
+    #if 1
         auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
+        auto& window{ spieler::Application::GetInstance()->GetWindow() };
 
         const spieler::renderer::Texture2DConfig depthStencilConfig
         {
-            .Width = m_Window.GetWidth(),
-            .Height = m_Window.GetHeight(),
+            .Width = window.GetWidth(),
+            .Height = window.GetHeight(),
             .Format = m_DepthStencilFormat,
             .Flags = spieler::renderer::Texture2DFlags::DepthStencil
         };
@@ -479,13 +495,16 @@ namespace sandbox
         SPIELER_ASSERT(device.CreateTexture(depthStencilConfig, depthStencilClearValue, m_DepthStencil.GetTexture2DResource()));
         m_DepthStencil.GetTexture2DResource().SetDebugName(L"DepthStencil");
         m_DepthStencil.SetView<spieler::renderer::DepthStencilView>(device);
+    #endif
     }
 
     bool TessellationLayer::OnWindowResized(spieler::WindowResizedEvent& event)
     {
+    #if 1
         InitViewport();
         InitScissorRect();
         InitDepthStencil();
+    #endif
 
         return true;
     }

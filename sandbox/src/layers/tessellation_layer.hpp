@@ -1,7 +1,6 @@
 #pragma once
 
 #include <spieler/core/layer.hpp>
-#include <spieler/system/window.hpp>
 
 #include <spieler/renderer/root_signature.hpp>
 #include <spieler/renderer/pipeline_state.hpp>
@@ -31,15 +30,11 @@ namespace sandbox
     class TessellationLayer : public spieler::Layer
     {
     public:
-        TessellationLayer(spieler::Window& window);
-
-    public:
         bool OnAttach() override;
 
         void OnEvent(spieler::Event& event) override;
         void OnUpdate(float dt) override;
         void OnRender(float dt) override;
-        void OnImGuiRender(float dt) override;
 
     private:
         void InitViewport();
@@ -49,8 +44,7 @@ namespace sandbox
         bool OnWindowResized(spieler::WindowResizedEvent& event);
 
     private:
-        spieler::Window& m_Window;
-
+    #if 1
         spieler::renderer::Viewport m_Viewport;
         spieler::renderer::ScissorRect m_ScissorRect;
 
@@ -60,13 +54,19 @@ namespace sandbox
         std::unordered_map<std::string, spieler::renderer::PipelineState> m_PipelineStates;
         std::unordered_map<std::string, spieler::renderer::RenderItem> m_RenderItems;
 
+#endif
         PassConstants m_PassConstants;
+
+
         spieler::renderer::ConstantBuffer m_PassConstantBuffer;
 
         std::unordered_map<std::string, ObjectConstants> m_ObjectConstants;
+
         spieler::renderer::ConstantBuffer m_ObjectConstantBuffer;
 
+
         spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
+
         spieler::renderer::Texture2D m_DepthStencil;
 
         ProjectionCameraController m_CameraController;

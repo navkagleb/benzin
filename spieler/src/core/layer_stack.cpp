@@ -9,6 +9,14 @@
 namespace spieler
 {
 
+    LayerStack::~LayerStack()
+    {
+        for (auto& layer : m_Layers)
+        {
+            layer->OnDetach();
+        }
+    }
+
     void LayerStack::Pop(const std::shared_ptr<Layer>& layer)
     {
         auto layerIterator{ std::find(m_Layers.begin(), m_Layers.begin() + m_OverlayIndex, layer) };
