@@ -128,7 +128,7 @@ namespace sandbox
 
         UpdateProjection();
 
-        return true;
+        return false;
     }
 
     bool ProjectionCameraController::OnMouseButtonPressed(spieler::MouseButtonPressedEvent& event)
@@ -136,7 +136,7 @@ namespace sandbox
         m_LastMousePosition.x = event.GetX<float>();
         m_LastMousePosition.y = event.GetY<float>();
 
-        return true;
+        return false;
     }
 
     bool ProjectionCameraController::OnMouseMoved(spieler::MouseMovedEvent& event)
@@ -169,7 +169,7 @@ namespace sandbox
         m_LastMousePosition.x = static_cast<float>(event.GetX());
         m_LastMousePosition.y = static_cast<float>(event.GetY());
 
-        return true;
+        return false;
     }
 
     bool ProjectionCameraController::OnMouseScrolled(spieler::MouseScrolledEvent& event)
@@ -181,7 +181,7 @@ namespace sandbox
     
         UpdateProjection();
 
-        return true;
+        return false;
     }
 
     void ProjectionCameraController::UpdateView()

@@ -20,28 +20,8 @@
 
 namespace sandbox
 {
-    template <typename T>
-    using LookUpTable = std::unordered_map<std::string, T>;
 
-    constexpr uint32_t MAX_LIGHT_COUNT{ 16 };
-
-    struct PassConstants
-    {
-        struct Fog
-        {
-            DirectX::XMFLOAT4 Color{ 0.0f, 0.0f, 0.0f, 0.0f };
-            float Start{ 0.0f };
-            float Range{ 0.0f };
-        };
-
-        DirectX::XMMATRIX View{};
-        DirectX::XMMATRIX Projection{};
-        DirectX::XMFLOAT3 CameraPosition{};
-        DirectX::XMFLOAT4 AmbientLight{};
-        std::array<spieler::renderer::LightConstants, MAX_LIGHT_COUNT> Lights;
-
-        Fog Fog;
-    };
+    constexpr uint32_t g_MaxLightCount{ 16 };
 
     namespace per
     {
@@ -68,8 +48,28 @@ namespace sandbox
 
     class TestLayer : public spieler::Layer
     {
-    public:
-        TestLayer(spieler::Window& window);
+    private:
+        struct PassConstants
+        {
+            struct Fog
+            {
+                DirectX::XMFLOAT4 Color{ 0.0f, 0.0f, 0.0f, 0.0f };
+                float Start{ 0.0f };
+                float Range{ 0.0f };
+            };
+
+            DirectX::XMMATRIX View{};
+            DirectX::XMMATRIX Projection{};
+            DirectX::XMFLOAT3 CameraPosition{};
+            DirectX::XMFLOAT4 AmbientLight{};
+            std::array<spieler::renderer::LightConstants, g_MaxLightCount> Lights;
+
+            Fog Fog;
+        };
+
+    private:
+        template <typename T>
+        using LookUpTable = std::unordered_map<std::string, T>;
 
     public:
         bool OnAttach() override;
@@ -108,8 +108,6 @@ namespace sandbox
         bool OnWindowResized(spieler::WindowResizedEvent& event);
 
     private:
-        spieler::Window& m_Window;
-
         spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
         spieler::renderer::Texture2D m_DepthStencil;
 
@@ -146,10 +144,10 @@ namespace sandbox
 
         DirectionalLightController m_DirectionalLightController;
 
-        BlurPass m_BlurPass;
+        std::unique_ptr<BlurPass> m_BlurPass;
         BlurPassExecuteProps m_BlurPassExecuteProps{ 2.5f, 2.5f, 0 };
 
-        SobelFilterPass m_SobelFilterPass;
+        std::unique_ptr<SobelFilterPass> m_SobelFilterPass;
         bool m_EnableSobelFilter{ true };
     };
 

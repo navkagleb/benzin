@@ -5,6 +5,7 @@
 #include <third_party/imgui/imgui.h>
 #include <third_party/magic_enum/magic_enum.hpp>
 
+#include <spieler/core/application.hpp>
 #include <spieler/core/logger.hpp>
 
 #include <spieler/system/event.hpp>
@@ -33,7 +34,7 @@ namespace sandbox
             alignas(16) DirectX::XMMATRIX Projection{};
             alignas(16) DirectX::XMFLOAT3 CameraPosition{};
             alignas(16) DirectX::XMFLOAT4 AmbientLight{};
-            alignas(16) spieler::renderer::LightConstants Lights[MAX_LIGHT_COUNT];
+            alignas(16) spieler::renderer::LightConstants Lights[g_MaxLightCount];
 
             alignas(16) DirectX::XMFLOAT4 FogColor{};
             float ForStart{};
@@ -72,15 +73,9 @@ namespace sandbox
         DirectX::XMVECTOR Plane{ 0.0f, 0.0f, 0.0f, 0.0f };
     };
 
-    TestLayer::TestLayer(spieler::Window& window)
-        : m_Window{ window }
-        , m_CameraController{ spieler::math::ToRadians(60.0f), m_Window.GetAspectRatio() }
-        , m_BlurPass{ window.GetWidth(), window.GetHeight() }
-        , m_SobelFilterPass{ window.GetWidth(), window.GetHeight() }
-    {}
-
     bool TestLayer::OnAttach()
     {
+        auto& window{ spieler::Application::GetInstance()->GetWindow() };
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
@@ -107,6 +102,11 @@ namespace sandbox
         InitLights();
 
         InitDepthStencil();
+
+        m_CameraController = ProjectionCameraController{ spieler::math::ToRadians(60.0f), window.GetAspectRatio() };
+
+        m_BlurPass = std::make_unique<BlurPass>(window.GetWidth(), window.GetHeight());
+        m_SobelFilterPass = std::make_unique<SobelFilterPass>(window.GetWidth(), window.GetHeight());
 
         return true;
     }
@@ -142,7 +142,7 @@ namespace sandbox
 
                 reflected = direct;
 
-                for (uint32_t i = 0; i < MAX_LIGHT_COUNT; ++i)
+                for (uint32_t i = 0; i < g_MaxLightCount; ++i)
                 {
                     const DirectX::XMVECTOR directlightDirection{ DirectX::XMLoadFloat3(&direct.Lights[i].Direction) };
                     const DirectX::XMVECTOR reflectedLightDirection{ DirectX::XMVector3TransformNormal(directlightDirection, reflectOperator) };
@@ -165,7 +165,7 @@ namespace sandbox
                     .FogRange = pass.Fog.Range
                 };
 
-                for (uint32_t i = 0; i < MAX_LIGHT_COUNT; ++i)
+                for (uint32_t i = 0; i < g_MaxLightCount; ++i)
                 {
                     constants.Lights[i] = pass.Lights[i];
                 }
@@ -297,7 +297,7 @@ namespace sandbox
 
             Render(m_Shadows, m_PipelineStates["shadow"], m_PassConstants["direct"], &m_ConstantBuffers["render_item"]);
 
-            m_BlurPass.Execute(offScreenTexture.GetTexture2DResource(), m_BlurPassExecuteProps);
+            m_BlurPass->Execute(offScreenTexture.GetTexture2DResource(), m_BlurPassExecuteProps);
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
@@ -315,7 +315,7 @@ namespace sandbox
                     .To = spieler::renderer::ResourceState::CopyDestination
                 });
 
-                nativeCommandList->CopyResource(currentBufferResource.GetResource().Get(), m_BlurPass.GetOutput().GetTexture2DResource().GetResource().Get());
+                nativeCommandList->CopyResource(currentBufferResource.GetResource().Get(), m_BlurPass->GetOutput().GetTexture2DResource().GetResource().Get());
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
@@ -326,7 +326,7 @@ namespace sandbox
             }
             else
             {
-                m_SobelFilterPass.Execute(offScreenTexture);
+                m_SobelFilterPass->Execute(offScreenTexture);
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
@@ -341,9 +341,9 @@ namespace sandbox
 
                 context.SetPipelineState(m_PipelineStates["composite"]);
                 nativeCommandList->SetGraphicsRootSignature(static_cast<ID3D12RootSignature*>(m_RootSignatures["composite"]));
-                nativeCommandList->SetGraphicsRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurPass.GetOutput().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+                nativeCommandList->SetGraphicsRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurPass->GetOutput().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
 
-                nativeCommandList->SetGraphicsRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_SobelFilterPass.GetOutputTexture().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+                nativeCommandList->SetGraphicsRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_SobelFilterPass->GetOutputTexture().GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
 
                 RenderFullscreenQuad();
 
@@ -497,6 +497,7 @@ namespace sandbox
 
     bool TestLayer::InitTextures(spieler::renderer::UploadBuffer& uploadBuffer)
     {
+        auto& window{ spieler::Application::GetInstance()->GetWindow() };
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
@@ -561,8 +562,8 @@ namespace sandbox
         {
             const spieler::renderer::Texture2DConfig offScreenTextureConfig
             {
-                .Width{ static_cast<uint64_t>(m_Window.GetWidth()) },
-                .Height{ m_Window.GetHeight() },
+                .Width{ static_cast<uint64_t>(window.GetWidth()) },
+                .Height{ window.GetHeight() },
                 .Format{ spieler::renderer::GraphicsFormat::R8G8B8A8UnsignedNorm },
                 .Flags{ spieler::renderer::Texture2DFlags::RenderTarget }
             };
@@ -1631,12 +1632,13 @@ namespace sandbox
 
     void TestLayer::InitDepthStencil()
     {
+        auto& window{ spieler::Application::GetInstance()->GetWindow() };
         auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
 
         const spieler::renderer::Texture2DConfig depthStencilConfig
         {
-            .Width = m_Window.GetWidth(),
-            .Height = m_Window.GetHeight(),
+            .Width = window.GetWidth(),
+            .Height = window.GetHeight(),
             .Format = m_DepthStencilFormat,
             .Flags = spieler::renderer::Texture2DFlags::DepthStencil
         };
@@ -1654,20 +1656,24 @@ namespace sandbox
 
     void TestLayer::UpdateViewport()
     {
+        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+
         m_Viewport.X = 0.0f;
         m_Viewport.Y = 0.0f;
-        m_Viewport.Width = static_cast<float>(m_Window.GetWidth());
-        m_Viewport.Height = static_cast<float>(m_Window.GetHeight());
+        m_Viewport.Width = static_cast<float>(window.GetWidth());
+        m_Viewport.Height = static_cast<float>(window.GetHeight());
         m_Viewport.MinDepth = 0.0f;
         m_Viewport.MaxDepth = 1.0f;
     }
 
     void TestLayer::UpdateScissorRect()
     {
+        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+
         m_ScissorRect.X = 0.0f;
         m_ScissorRect.Y = 0.0f;
-        m_ScissorRect.Width = static_cast<float>(m_Window.GetWidth());
-        m_ScissorRect.Height = static_cast<float>(m_Window.GetHeight());
+        m_ScissorRect.Width = static_cast<float>(window.GetWidth());
+        m_ScissorRect.Height = static_cast<float>(window.GetHeight());
     }
 
     void TestLayer::RenderFullscreenQuad()
@@ -1736,8 +1742,8 @@ namespace sandbox
 
         InitDepthStencil();
 
-        m_BlurPass.OnResize(event.GetWidth(), event.GetHeight());
-        m_SobelFilterPass.OnResize(event.GetWidth(), event.GetHeight());
+        m_BlurPass->OnResize(event.GetWidth(), event.GetHeight());
+        m_SobelFilterPass->OnResize(event.GetWidth(), event.GetHeight());
 
         // Off-screen texture
         {
@@ -1764,7 +1770,7 @@ namespace sandbox
             offScreenTexture.SetView<spieler::renderer::RenderTargetView>(device);
         }
 
-        return true;
+        return false;
     }
 
 } // namespace sandbox

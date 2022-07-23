@@ -15,23 +15,21 @@
 namespace sandbox
 {
 
-    struct PassConstants
-    {
-        DirectX::XMMATRIX View{};
-        DirectX::XMMATRIX Projection{};
-        DirectX::XMMATRIX ViewProjection{};
-        DirectX::XMFLOAT3 CameraPosition{};
-    };
-
-    struct ObjectConstants
-    {
-        DirectX::XMMATRIX World{ DirectX::XMMatrixIdentity() };
-    };
-
     class TessellationLayer : public spieler::Layer
     {
-    public:
-        TessellationLayer(spieler::Window& window);
+    private:
+        struct PassConstants
+        {
+            DirectX::XMMATRIX View{};
+            DirectX::XMMATRIX Projection{};
+            DirectX::XMMATRIX ViewProjection{};
+            DirectX::XMFLOAT3 CameraPosition{};
+        };
+
+        struct ObjectConstants
+        {
+            DirectX::XMMATRIX World{ DirectX::XMMatrixIdentity() };
+        };
 
     public:
         bool OnAttach() override;
@@ -39,7 +37,6 @@ namespace sandbox
         void OnEvent(spieler::Event& event) override;
         void OnUpdate(float dt) override;
         void OnRender(float dt) override;
-        void OnImGuiRender(float dt) override;
 
     private:
         void InitViewport();
@@ -49,8 +46,6 @@ namespace sandbox
         bool OnWindowResized(spieler::WindowResizedEvent& event);
 
     private:
-        spieler::Window& m_Window;
-
         spieler::renderer::Viewport m_Viewport;
         spieler::renderer::ScissorRect m_ScissorRect;
 
