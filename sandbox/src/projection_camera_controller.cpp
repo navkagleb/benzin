@@ -38,7 +38,7 @@ namespace sandbox
 
     void ProjectionCameraController::OnUpdate(float dt)
     {
-        const spieler::Input& input{ spieler::Application::GetInstance()->GetWindow().GetInput() };
+        const spieler::Input& input{ spieler::Application::GetInstance().GetWindow().GetInput() };
 
         if (m_IsBlocked)
         {
@@ -141,7 +141,7 @@ namespace sandbox
 
     bool ProjectionCameraController::OnMouseMoved(spieler::MouseMovedEvent& event)
     {
-        const spieler::Input& input{ spieler::Application::GetInstance()->GetWindow().GetInput() };
+        const spieler::Input& input{ spieler::Application::GetInstance().GetWindow().GetInput() };
 
         if (input.IsMouseButtonPressed(spieler::MouseButton::Left))
         {

@@ -75,7 +75,7 @@ namespace sandbox
 
     bool TestLayer::OnAttach()
     {
-        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+        auto& window{ spieler::Application::GetInstance().GetWindow() };
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
@@ -497,7 +497,7 @@ namespace sandbox
 
     bool TestLayer::InitTextures(spieler::renderer::UploadBuffer& uploadBuffer)
     {
-        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+        auto& window{ spieler::Application::GetInstance().GetWindow() };
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
@@ -1632,7 +1632,7 @@ namespace sandbox
 
     void TestLayer::InitDepthStencil()
     {
-        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+        auto& window{ spieler::Application::GetInstance().GetWindow() };
         auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
 
         const spieler::renderer::Texture2DConfig depthStencilConfig
@@ -1656,7 +1656,7 @@ namespace sandbox
 
     void TestLayer::UpdateViewport()
     {
-        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+        auto& window{ spieler::Application::GetInstance().GetWindow() };
 
         m_Viewport.X = 0.0f;
         m_Viewport.Y = 0.0f;
@@ -1668,7 +1668,7 @@ namespace sandbox
 
     void TestLayer::UpdateScissorRect()
     {
-        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+        auto& window{ spieler::Application::GetInstance().GetWindow() };
 
         m_ScissorRect.X = 0.0f;
         m_ScissorRect.Y = 0.0f;

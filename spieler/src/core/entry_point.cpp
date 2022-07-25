@@ -9,16 +9,13 @@ namespace spieler
 
     int Main(int argc, char** argv)
     {
-        spieler::Application* application{ spieler::CreateApplication() };
-
-        if (!application)
-        {
-            return -1;
-        }
-
-        application->Run();
-
-        delete application;
+#if defined(SPIELER_DEBUG)
+        _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
+        
+        Application::CreateInstance();
+        Application::GetInstance().Run();
+        Application::DestroyInstance();
 
         return 0;
     }
@@ -41,4 +38,4 @@ int main(int argc, char** argv)
 
 #endif // defined(SPIELER_FINAL)
 
-#endif // defined(SPIELER_WIN64)
+#endif // defined(SPIELER_PLATFORM_WINDOWS)

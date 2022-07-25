@@ -16,17 +16,25 @@ namespace spieler
 
     class Application
     {
+    public:
+        struct Config
+        {
+            std::string Title;
+            uint32_t Width{ 0 };
+            uint32_t Height{ 0 };
+        };
+
     private:
         SPIELER_NON_COPYABLE(Application)
         SPIELER_NON_MOVEABLE(Application)
 
     public:
-        template <typename ClientApplication>
-        static Application* CreateInstance(const std::string& title, uint32_t width, uint32_t height);
-        static Application* GetInstance();
+        static void CreateInstance();
+        static void DestroyInstance();
+        static Application& GetInstance();
 
     protected:
-        Application();
+        Application(const Config& config);
 
     public:
         virtual ~Application();
@@ -36,15 +44,9 @@ namespace spieler
         const Window& GetWindow() const { return *m_Window; }
 
     public:
-        bool InitInternal(const std::string& title, uint32_t width, uint32_t height);
-
-        virtual bool InitExternal() = 0;
-        
         void Run();
 
     private:
-        bool InitWindow(const std::string& title, uint32_t width, uint32_t height);
-
         void WindowEventCallback(Event& event);
 
         bool OnWindowClose(WindowCloseEvent& event);
@@ -59,43 +61,17 @@ namespace spieler
 
         void CalcStats(float dt);
 
-    private:
-        struct ApplicationProps
-        {
-            bool IsRunning{ false };
-            bool IsPaused{ false };
-            bool IsFullscreen{ false };
-        };
-
-    private:
-        inline static Application* g_Instance{ nullptr };
-
     protected:
         std::unique_ptr<Window> m_Window;
         LayerStack m_LayerStack;
 
     private:
-        ApplicationProps m_ApplicationProps;
+        bool IsRunning{ false };
+        bool IsPaused{ false };
         Timer m_Timer;
 
         std::shared_ptr<ImGuiLayer> m_ImGuiLayer;
     };
-
-    template <typename ClientApplication>
-    Application* Application::CreateInstance(const std::string& title, uint32_t width, uint32_t height)
-    {
-        SPIELER_ASSERT(!g_Instance);
-
-        g_Instance = new ClientApplication;
-
-        if (!g_Instance->InitInternal(title, width, height))
-        {
-            delete g_Instance;
-            return nullptr;
-        }
-
-        return g_Instance;
-    }
 
     // To be defined in client!
     Application* CreateApplication();

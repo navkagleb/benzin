@@ -24,7 +24,7 @@ namespace sandbox
 
     bool TessellationLayer::OnAttach()
     {
-        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+        auto& window{ spieler::Application::GetInstance().GetWindow() };
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& swapChain{ renderer.GetSwapChain() };
         auto& device{ renderer.GetDevice() };
@@ -437,7 +437,7 @@ namespace sandbox
 
     void TessellationLayer::InitViewport()
     {
-        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+        auto& window{ spieler::Application::GetInstance().GetWindow() };
 
         m_Viewport.X = 0.0f;
         m_Viewport.Y = 0.0f;
@@ -449,7 +449,7 @@ namespace sandbox
 
     void TessellationLayer::InitScissorRect()
     {
-        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+        auto& window{ spieler::Application::GetInstance().GetWindow() };
 
         m_ScissorRect.X = 0.0f;
         m_ScissorRect.Y = 0.0f;
@@ -459,7 +459,7 @@ namespace sandbox
 
     void TessellationLayer::InitDepthStencil()
     {
-        auto& window{ spieler::Application::GetInstance()->GetWindow() };
+        auto& window{ spieler::Application::GetInstance().GetWindow() };
         auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
 
         const spieler::renderer::Texture2DConfig depthStencilConfig

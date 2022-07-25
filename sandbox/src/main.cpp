@@ -11,18 +11,24 @@ namespace sandbox
     class Application : public spieler::Application
     {
     public:
-        bool InitExternal() override
+        Application(const spieler::Application::Config& config)
+            : spieler::Application{ config }
         {
             //SPIELER_ASSERT(m_LayerStack.Push<TestLayer>());
             SPIELER_ASSERT(m_LayerStack.Push<TessellationLayer>());
-            
-            return true;
         }
     };
 
-} // namespace Sandbox
+} // namespace sandbox
 
 spieler::Application* spieler::CreateApplication()
 {
-    return sandbox::Application::CreateInstance<sandbox::Application>("Sandbox", 1280, 720);
+    const spieler::Application::Config config
+    {
+        .Title{ "Sandbox" },
+        .Width{ 1280 },
+        .Height{ 720 }
+    };
+
+    return new sandbox::Application{ config };
 }

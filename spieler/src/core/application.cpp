@@ -4,28 +4,56 @@
 
 #include <third_party/fmt/format.h>
 
-#include "platform/win64/win64_window.hpp"
-#include "platform/win64/win64_input.hpp"
-#include "platform/dx12/dx12_common.hpp"
-
 #include "spieler/core/common.hpp"
 #include "spieler/core/logger.hpp"
 
 #include "spieler/system/event_dispatcher.hpp"
 
+#include "platform/win64/win64_window.hpp"
+#include "platform/win64/win64_input.hpp"
+#include "platform/dx12/dx12_common.hpp"
+
 namespace spieler
 {
 
-    Application* Application::GetInstance()
+    static Application* g_Instance{ nullptr };
+
+    void Application::CreateInstance()
+    {
+        SPIELER_ASSERT(!g_Instance);
+
+        CreateApplication();
+    }
+
+    Application& Application::GetInstance()
     {
         SPIELER_ASSERT(g_Instance);
 
-        return g_Instance;
+        return *g_Instance;
     }
 
-    Application::Application()
+    void Application::DestroyInstance()
+    {
+        delete g_Instance;
+        g_Instance = nullptr;
+    }
+
+    Application::Application(const Config& config)
     {
         SPIELER_ASSERT(!g_Instance);
+
+        g_Instance = this;
+
+#if defined(SPIELER_PLATFORM_WINDOWS)
+        m_Window = std::make_unique<Win64_Window>(config.Title, config.Width, config.Height);
+        m_Window->SetEventCallbackFunction([&](Event& event) { WindowEventCallback(event); });
+#else
+    static_assert(false);
+#endif
+
+        renderer::Renderer::CreateInstance(*m_Window);
+
+        m_ImGuiLayer = m_LayerStack.PushOverlay<ImGuiLayer>();
     }
 
     Application::~Application()
@@ -33,37 +61,20 @@ namespace spieler
         renderer::Renderer::DestroyInstance();
     }
 
-    bool Application::InitInternal(const std::string& title, uint32_t width, uint32_t height)
-    {
-#if defined(SPIELER_DEBUG)
-        _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-#endif
-
-        // TODO: Init "Subsystems"
-        SPIELER_RETURN_IF_FAILED(InitWindow(title, width, height));
-        renderer::Renderer::CreateInstance(*g_Instance->m_Window);
-
-        m_ImGuiLayer = m_LayerStack.PushOverlay<ImGuiLayer>();
-
-        SPIELER_RETURN_IF_FAILED(InitExternal());
-
-        return true;
-    }
-
     void Application::Run()
     {
         m_Timer.Reset();
 
-        m_ApplicationProps.IsRunning = true;
+        IsRunning = true;
 
         renderer::Renderer& renderer{ renderer::Renderer::GetInstance() };
         renderer::Context& context{ renderer.GetContext() };
 
-        while (m_ApplicationProps.IsRunning)
+        while (IsRunning)
         {
             m_Window->ProcessEvents();
             
-            if (m_ApplicationProps.IsPaused)
+            if (IsPaused)
             {
                 ::Sleep(100);
             }
@@ -97,19 +108,6 @@ namespace spieler
         }
     }
 
-    bool Application::InitWindow(const std::string& title, uint32_t width, uint32_t height)
-    {
-#if defined(SPIELER_PLATFORM_WINDOWS)
-        m_Window = std::make_unique<Win64_Window>(title, width, height);
-#else
-        static_assert(false);
-#endif
-
-        m_Window->SetEventCallbackFunction([&](Event& event) { WindowEventCallback(event); });
-
-        return true;
-    }
-
     void Application::WindowEventCallback(Event& event)
     {
         EventDispatcher dispatcher{ event };
@@ -136,35 +134,35 @@ namespace spieler
 
     bool Application::OnWindowClose(WindowCloseEvent& event)
     {
-        m_ApplicationProps.IsRunning = false;
+        IsRunning = false;
 
         return false;
     }
 
     bool Application::OnWindowMinimized(WindowMinimizedEvent& event)
     {
-        m_ApplicationProps.IsPaused = true;
+        IsPaused = true;
 
         return false;
     }
 
     bool Application::OnWindowMaximized(WindowMaximizedEvent& event)
     {
-        m_ApplicationProps.IsPaused = false;
+        IsPaused = false;
 
         return false;
     }
 
     bool Application::OnWindowRestored(WindowRestoredEvent& event)
     {
-        m_ApplicationProps.IsPaused = false;
+        IsPaused = false;
 
         return false;
     }
 
     bool Application::OnWindowEnterResizing(WindowEnterResizingEvent& event)
     {
-        m_ApplicationProps.IsPaused = true;
+        IsPaused = true;
 
         m_Timer.Stop();
 
@@ -173,7 +171,7 @@ namespace spieler
 
     bool Application::OnWindowExitResizing(WindowExitResizingEvent& event)
     {
-        m_ApplicationProps.IsPaused = false;
+        IsPaused = false;
 
         m_Timer.Start();
 
@@ -182,15 +180,14 @@ namespace spieler
 
     bool Application::OnWindowResized(WindowResizedEvent& event)
     {
-        renderer::Renderer& renderer{ renderer::Renderer::GetInstance() };
-        renderer.ResizeBuffers(m_Window->GetWidth(), m_Window->GetHeight());
+        renderer::Renderer::GetInstance().ResizeBuffers(m_Window->GetWidth(), m_Window->GetHeight());
 
         return false;
     }
 
     bool Application::OnWindowFocused(WindowFocusedEvent& event)
     {
-        m_ApplicationProps.IsPaused = false;
+        IsPaused = false;
 
         m_Timer.Start();
 
@@ -199,7 +196,7 @@ namespace spieler
 
     bool Application::OnWindowUnfocused(WindowUnfocusedEvent& event)
     {
-        m_ApplicationProps.IsPaused = true;
+        IsPaused = true;
 
         m_Timer.Stop();
 
