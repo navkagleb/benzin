@@ -221,7 +221,7 @@ namespace spieler::renderer
     template <typename Index>
     MeshData<Index> GeometryGenerator::GenerateSphere(const SphereGeometryProps& props)
     {
-        MeshData<Vertex, Index> meshData;
+        MeshData<Index> meshData;
 
         // Vertices
         const Vertex topVertex
@@ -303,7 +303,7 @@ namespace spieler::renderer
             }
         }
 
-        const uint32_t southPoleIndex{ meshData.Vertices.size() - 1 };
+        const auto southPoleIndex{ static_cast<uint32_t>(meshData.Vertices.size() - 1) };
 
         baseIndex = southPoleIndex - ringVertexCount;
 
