@@ -20,9 +20,11 @@ namespace spieler
         bool OnDetach() override;
 
         void OnEvent(Event& event) override;
+        void OnImGuiRender(float dt) override;
 
     private:
         bool m_IsEventsAreBlocked{ true };
+        bool m_IsDemoWindowEnabled{ false };
     };
 
 } // namespace spieler

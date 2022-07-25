@@ -84,8 +84,6 @@ namespace spieler
 
                 const float dt{ m_Timer.GetDeltaTime() };
 
-                CalcStats(dt);
-
                 SPIELER_ASSERT(context.ResetCommandAllocator());
 
                 for (auto& layer : m_LayerStack)
@@ -201,13 +199,6 @@ namespace spieler
         m_Timer.Stop();
 
         return false;
-    }
-
-    void Application::CalcStats(float dt)
-    {
-        const float fps{ 1.0f / dt };
-
-        m_Window->SetTitle(fmt::format("FPS: {:.2f}, ms: {:.2f}", fps, dt * 1000.0f));
     }
 
 } // namespace spieler

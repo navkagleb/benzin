@@ -59,8 +59,6 @@ namespace spieler
         bool OnWindowFocused(WindowFocusedEvent& event);
         bool OnWindowUnfocused(WindowUnfocusedEvent& event);
 
-        void CalcStats(float dt);
-
     protected:
         std::unique_ptr<Window> m_Window;
         LayerStack m_LayerStack;

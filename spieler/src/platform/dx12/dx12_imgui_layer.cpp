@@ -5,6 +5,7 @@
 #include "spieler/core/imgui_layer.hpp"
 
 #include <third_party/imgui/imgui.h>
+#include <third_party/imgui/imgui_internal.h>
 #include <third_party/imgui/imgui_impl_dx12.h>
 #include <third_party/imgui/imgui_impl_win32.h>
 
@@ -123,8 +124,40 @@ namespace spieler
                 m_IsEventsAreBlocked = !m_IsEventsAreBlocked;
             }
 
+            if (event.GetKeyCode() == KeyCode::O)
+            {
+                m_IsDemoWindowEnabled = !m_IsDemoWindowEnabled;
+            }
+
             return true;
         });
+    }
+
+    void ImGuiLayer::OnImGuiRender(float dt)
+    {
+        if (m_IsDemoWindowEnabled)
+        {
+            ImGui::ShowDemoWindow(&m_IsDemoWindowEnabled);
+        }
+
+        ImGuiContext& context{ *ImGui::GetCurrentContext() };
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 10.0f, 5.0f });
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(184, 100, 0, 240));
+
+        const float panelHeight{ context.FontBaseSize + context.Style.WindowPadding.y * 2.0f };
+        ImGui::SetNextWindowPos(ImVec2(0.0f, context.IO.DisplaySize.y - panelHeight));
+        ImGui::SetNextWindowSize(ImVec2(context.IO.DisplaySize.x, panelHeight));
+
+        if (ImGui::Begin("Bottom Panel", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs))
+        {
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            ImGui::End();
+        }
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(3);
     }
 
 } // namespace spieler
