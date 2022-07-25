@@ -129,6 +129,11 @@ namespace spieler
                 m_IsDemoWindowEnabled = !m_IsDemoWindowEnabled;
             }
 
+            if (event.GetKeyCode() == KeyCode::P)
+            {
+                m_IsBottomPanelEnabled = !m_IsBottomPanelEnabled;
+            }
+
             return true;
         });
     }
@@ -140,24 +145,27 @@ namespace spieler
             ImGui::ShowDemoWindow(&m_IsDemoWindowEnabled);
         }
 
-        ImGuiContext& context{ *ImGui::GetCurrentContext() };
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 10.0f, 5.0f });
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(184, 100, 0, 240));
-
-        const float panelHeight{ context.FontBaseSize + context.Style.WindowPadding.y * 2.0f };
-        ImGui::SetNextWindowPos(ImVec2(0.0f, context.IO.DisplaySize.y - panelHeight));
-        ImGui::SetNextWindowSize(ImVec2(context.IO.DisplaySize.x, panelHeight));
-
-        if (ImGui::Begin("Bottom Panel", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs))
+        if (m_IsBottomPanelEnabled)
         {
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::End();
-        }
+            ImGuiContext& context{ *ImGui::GetCurrentContext() };
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 10.0f, 5.0f });
+            ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(184, 100, 0, 240));
 
-        ImGui::PopStyleColor();
-        ImGui::PopStyleVar(3);
+            const float panelHeight{ context.FontBaseSize + context.Style.WindowPadding.y * 2.0f };
+            ImGui::SetNextWindowPos(ImVec2(0.0f, context.IO.DisplaySize.y - panelHeight));
+            ImGui::SetNextWindowSize(ImVec2(context.IO.DisplaySize.x, panelHeight));
+
+            if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs))
+            {
+                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                ImGui::End();
+            }
+
+            ImGui::PopStyleColor();
+            ImGui::PopStyleVar(3);
+        }
     }
 
 } // namespace spieler

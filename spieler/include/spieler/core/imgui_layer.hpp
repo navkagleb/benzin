@@ -25,6 +25,7 @@ namespace spieler
     private:
         bool m_IsEventsAreBlocked{ true };
         bool m_IsDemoWindowEnabled{ false };
+        bool m_IsBottomPanelEnabled{ true };
     };
 
 } // namespace spieler
