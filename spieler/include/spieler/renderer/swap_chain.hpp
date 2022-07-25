@@ -34,13 +34,14 @@ namespace spieler::renderer
         GraphicsFormat GetBufferFormat() const { return m_BufferFormat; }
 
     public:
-        uint32_t GetCurrentBufferIndex() const;
-
         Texture2D& GetCurrentBuffer();
         const Texture2D& GetCurrentBuffer() const;
 
+    private:
+        uint32_t GetCurrentBufferIndex() const;
+
     public:
-        bool ResizeBuffers(Device& device, Context& context, uint32_t width, uint32_t height);
+        bool ResizeBuffers(Device& device, uint32_t width, uint32_t height);
         bool Present(VSyncState vsync);
 
     private:

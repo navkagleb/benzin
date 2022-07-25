@@ -30,11 +30,6 @@ namespace spieler::renderer
 #endif
     }
 
-    uint32_t SwapChain::GetCurrentBufferIndex() const
-    {
-        return m_SwapChain3->GetCurrentBackBufferIndex();
-    }
-
     Texture2D& SwapChain::GetCurrentBuffer()
     {
         return m_Buffers[GetCurrentBufferIndex()];
@@ -45,30 +40,29 @@ namespace spieler::renderer
         return m_Buffers[GetCurrentBufferIndex()];
     }
 
-    bool SwapChain::ResizeBuffers(Device& device, Context& context, uint32_t width, uint32_t height)
+    uint32_t SwapChain::GetCurrentBufferIndex() const
+    {
+        return m_SwapChain3->GetCurrentBackBufferIndex();
+    }
+
+    bool SwapChain::ResizeBuffers(Device& device, uint32_t width, uint32_t height)
     {
         SPIELER_ASSERT(!m_Buffers.empty());
 
-        SPIELER_RETURN_IF_FAILED(context.FlushCommandQueue());
-        SPIELER_RETURN_IF_FAILED(context.ResetCommandList());
+        for (Texture2D& buffer : m_Buffers)
         {
-
-            for (Texture2D& buffer : m_Buffers)
-            {
-                buffer.GetTexture2DResource().Reset();
-            }
-
-            SPIELER_RETURN_IF_FAILED(m_SwapChain->ResizeBuffers(
-                static_cast<UINT>(m_Buffers.size()),
-                width,
-                height,
-                dx12::Convert(m_BufferFormat),
-                DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
-            ));
-
-            SPIELER_RETURN_IF_FAILED(CreateBuffers(device));
+            buffer.GetTexture2DResource().Reset();
         }
-        SPIELER_RETURN_IF_FAILED(context.ExecuteCommandList(true));
+
+        SPIELER_RETURN_IF_FAILED(m_SwapChain->ResizeBuffers(
+            static_cast<UINT>(m_Buffers.size()),
+            width,
+            height,
+            dx12::Convert(m_BufferFormat),
+            DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
+        ));
+
+        SPIELER_RETURN_IF_FAILED(CreateBuffers(device));
 
         return true;
     }
@@ -86,7 +80,7 @@ namespace spieler::renderer
 
         SPIELER_RETURN_IF_FAILED(InitFactory());
         SPIELER_RETURN_IF_FAILED(InitSwapChain(context, window));
-        SPIELER_RETURN_IF_FAILED(ResizeBuffers(device, context, window.GetWidth(), window.GetHeight()));
+        SPIELER_RETURN_IF_FAILED(ResizeBuffers(device, window.GetWidth(), window.GetHeight()));
 
         return true;
     }
@@ -96,15 +90,15 @@ namespace spieler::renderer
 #if defined(SPIELER_DEBUG)
         {
             ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
-            SPIELER_RETURN_IF_FAILED(DXGIGetDebugInterface1(0, __uuidof(IDXGIInfoQueue), &dxgiInfoQueue));
+            SPIELER_RETURN_IF_FAILED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));
 
             SPIELER_RETURN_IF_FAILED(dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true));
             SPIELER_RETURN_IF_FAILED(dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true));
         }
 #endif
 
-        SPIELER_RETURN_IF_FAILED(CreateDXGIFactory(__uuidof(IDXGIFactory), &m_Factory));
-        SPIELER_RETURN_IF_FAILED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, __uuidof(IDXGIFactory), &m_Factory));
+        SPIELER_RETURN_IF_FAILED(CreateDXGIFactory(IID_PPV_ARGS(&m_Factory)));
+        SPIELER_RETURN_IF_FAILED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&m_Factory)));
 
         return true;
     }
@@ -113,36 +107,32 @@ namespace spieler::renderer
     {
         SPIELER_ASSERT(!m_Buffers.empty());
 
-        const DXGI_MODE_DESC bufferDesc
-        {
-            .Width = window.GetWidth(),
-            .Height = window.GetHeight(),
-            .RefreshRate = DXGI_RATIONAL{ 60, 1 },
-            .Format = dx12::Convert(m_BufferFormat),
-            .ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED,
-            .Scaling = DXGI_MODE_SCALING_UNSPECIFIED,
-        };
-
-        const DXGI_SAMPLE_DESC sampleDesc
-        {
-            .Count = 1,
-            .Quality = 0
-        };
-
         DXGI_SWAP_CHAIN_DESC swapChainDesc
         {
-            .BufferDesc = bufferDesc,
-            .SampleDesc = sampleDesc,
-            .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-            .BufferCount = static_cast<UINT>(m_Buffers.size()),
-            .OutputWindow = window.GetNativeHandle<::HWND>(),
-            .Windowed = true,
-            .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
-            .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
+            .BufferDesc
+            {
+                .Width{ window.GetWidth() },
+                .Height{ window.GetHeight() },
+                .RefreshRate{ 60, 1 },
+                .Format{ dx12::Convert(m_BufferFormat) },
+                .ScanlineOrdering{ DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED },
+                .Scaling{ DXGI_MODE_SCALING_UNSPECIFIED },
+            },
+            .SampleDesc
+            {
+                .Count{ 1 },
+                .Quality{ 0 }
+            },
+            .BufferUsage{ DXGI_USAGE_RENDER_TARGET_OUTPUT },
+            .BufferCount{ static_cast<UINT>(m_Buffers.size()) },
+            .OutputWindow{ window.GetNativeHandle<::HWND>() },
+            .Windowed{ true },
+            .SwapEffect{ DXGI_SWAP_EFFECT_FLIP_DISCARD },
+            .Flags{ DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH }
         };
 
-        SPIELER_ASSERT(SUCCEEDED(m_Factory->CreateSwapChain(context.GetNativeCommandQueue().Get(), &swapChainDesc, &m_SwapChain)));
-        SPIELER_ASSERT(SUCCEEDED(m_SwapChain->QueryInterface(__uuidof(IDXGISwapChain3), &m_SwapChain3)));
+        SPIELER_RETURN_IF_FAILED(m_Factory->CreateSwapChain(context.GetNativeCommandQueue().Get(), &swapChainDesc, &m_SwapChain));
+        SPIELER_RETURN_IF_FAILED(m_SwapChain->QueryInterface(IID_PPV_ARGS(&m_SwapChain3)));
 
         return true;
     }
@@ -152,12 +142,11 @@ namespace spieler::renderer
         for (size_t i = 0; i < m_Buffers.size(); ++i)
         {
             ComPtr<ID3D12Resource> buffer;
-            SPIELER_RETURN_IF_FAILED(m_SwapChain->GetBuffer(static_cast<UINT>(i), __uuidof(ID3D12Resource), &buffer));
+            SPIELER_RETURN_IF_FAILED(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&buffer)));
             
             device.RegisterTexture(std::move(buffer), m_Buffers[i].GetTexture2DResource());
             
             m_Buffers[i].GetTexture2DResource().SetDebugName(L"SwapChainBuffer_" + std::to_wstring(i));
-
             m_Buffers[i].SetView<RenderTargetView>(device);
         }
 

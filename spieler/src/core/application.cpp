@@ -30,7 +30,7 @@ namespace spieler
 
     Application::~Application()
     {
-        renderer::Renderer::DestoryInstance();
+        renderer::Renderer::DestroyInstance();
     }
 
     bool Application::InitInternal(const std::string& title, uint32_t width, uint32_t height)

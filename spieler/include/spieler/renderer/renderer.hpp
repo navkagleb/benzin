@@ -17,7 +17,7 @@ namespace spieler::renderer
     public:
         static Renderer& CreateInstance(Window& window);
         static Renderer& GetInstance();
-        static void DestoryInstance();
+        static void DestroyInstance();
 
     private:
         Renderer(Window& window);
