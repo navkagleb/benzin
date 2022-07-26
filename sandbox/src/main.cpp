@@ -4,6 +4,7 @@
 
 #include "layers/test_layer.hpp"
 #include "layers/tessellation_layer.hpp"
+#include "layers/dynamic_indexing_layer.hpp"
 
 namespace sandbox
 {
@@ -15,7 +16,8 @@ namespace sandbox
             : spieler::Application{ config }
         {
             //SPIELER_ASSERT(m_LayerStack.Push<TestLayer>());
-            SPIELER_ASSERT(m_LayerStack.Push<TessellationLayer>());
+            //SPIELER_ASSERT(m_LayerStack.Push<TessellationLayer>());
+            SPIELER_ASSERT(m_LayerStack.Push<DynamicIndexingLayer>());
         }
     };
 

@@ -31,6 +31,7 @@ namespace spieler::renderer
         friend class ConstantBufferSlice;
 
     public:
+        std::shared_ptr<BufferResource>& GetResource() { return m_Resource; }
         void SetResource(const std::shared_ptr<BufferResource>& resource);
 
         bool HasSlice(const void* key) const;
