@@ -540,7 +540,7 @@ namespace spieler::renderer
         {
             const float x{ props.BottomRadius * cosf(i * dTheta) };
             const float z{ props.BottomRadius * sinf(i * dTheta) };
-            const float u{ x / props.Height + 0.5 };
+            const float u{ x / props.Height + 0.5f };
             const float v{ z / props.Height + 0.5f };
             meshData.Vertices.push_back(Vertex
             {
