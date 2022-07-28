@@ -3,6 +3,7 @@
 #include "spieler/renderer/fence.hpp"
 #include "spieler/renderer/resource_barrier.hpp"
 #include "spieler/renderer/common.hpp"
+#include "spieler/renderer/upload_buffer.hpp"
 
 namespace spieler::renderer
 {
@@ -10,6 +11,7 @@ namespace spieler::renderer
     class Device;
     class Resource;
     class UploadBuffer;
+    class BufferResource;
     class PipelineState;
     class RootSignature;
     class Texture2DResource;
@@ -46,7 +48,7 @@ namespace spieler::renderer
         SPIELER_NON_COPYABLE(Context)
 
     public:
-        explicit Context(Device& device);
+        Context(Device& device, uint32_t uploadBufferSize);
 
     public:
         ComPtr<ID3D12GraphicsCommandList>& GetNativeCommandList() { return m_CommandList; }
@@ -74,8 +76,9 @@ namespace spieler::renderer
         void SetResourceBarrier(const TransitionResourceBarrier& barrier);
         void SetStencilReferenceValue(uint8_t referenceValue);
 
-        void CopyBuffer(const void* data, uint64_t size, UploadBuffer& from, Resource& to);
         void Copy(std::vector<D3D12_SUBRESOURCE_DATA>& subresources, uint32_t alingment, UploadBuffer& from, Resource& to);
+
+        void WriteToBuffer(BufferResource& buffer, size_t size, const void* data);
 
         bool CloseCommandList();
         bool ExecuteCommandList(bool isNeedToFlushCommandQueue = false);
@@ -95,6 +98,7 @@ namespace spieler::renderer
         ComPtr<ID3D12CommandQueue> m_CommandQueue;
 
         Fence m_Fence;
+        UploadBuffer m_UploadBuffer;
     };
 
 } // namespace spieler::renderer

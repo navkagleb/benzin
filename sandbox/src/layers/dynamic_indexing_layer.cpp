@@ -42,7 +42,7 @@ namespace sandbox
 
         m_CameraController = ProjectionCameraController{ spieler::math::ToRadians(60.0f), window.GetAspectRatio() };
 
-        spieler::renderer::UploadBuffer uploadBuffer{ device, spieler::renderer::UploadBufferType::Default, spieler::MB(10) };
+        spieler::renderer::UploadBuffer uploadBuffer{ device, spieler::MB(10) };
 
         InitViewport();
         InitScissorRect();
@@ -204,20 +204,65 @@ namespace sandbox
                 .StackCount{ 5 }
             };
 
-            const spieler::renderer::MeshData gridMeshData{ spieler::renderer::GeometryGenerator::GenerateGrid<uint32_t>(gridProps) };
-            const spieler::renderer::MeshData boxMeshData{ spieler::renderer::GeometryGenerator::GenerateBox<uint32_t>(boxProps) };
-            const spieler::renderer::MeshData geosphereMeshData{ spieler::renderer::GeometryGenerator::GenerateGeosphere<uint32_t>(geosphereProps) };
-            const spieler::renderer::MeshData cylinderMeshData{ spieler::renderer::GeometryGenerator::GenerateCylinder<uint32_t>(cylinderProps) };
+            const std::unordered_map<std::string, spieler::renderer::MeshData<uint32_t>> meshes
+            {
+                { "grid", spieler::renderer::GeometryGenerator::GenerateGrid<uint32_t>(gridProps) },
+                { "box", spieler::renderer::GeometryGenerator::GenerateBox<uint32_t>(boxProps) },
+                { "geosphere", spieler::renderer::GeometryGenerator::GenerateGeosphere<uint32_t>(geosphereProps) },
+                { "cylinder", spieler::renderer::GeometryGenerator::GenerateCylinder<uint32_t>(cylinderProps) }
+            };
 
-            m_MeshGeometry.GenerateFrom(
+            size_t vertexCount{ 0 };
+            size_t indexCount{ 0 };
+
+            for (const auto& [name, mesh] : meshes)
+            {
+                m_MeshGeometry.Submeshes[name] = spieler::renderer::SubmeshGeometry
                 {
-                    { "grid", gridMeshData },
-                    { "box", boxMeshData },
-                    { "geosphere", geosphereMeshData },
-                    { "cylinder", cylinderMeshData }
-                },
-                uploadBuffer
-            );
+                    .IndexCount{ static_cast<uint32_t>(mesh.Indices.size()) },
+                    .BaseVertexLocation{ static_cast<uint32_t>(vertexCount) },
+                    .StartIndexLocation{ static_cast<uint32_t>(indexCount) }
+                };
+
+                vertexCount += mesh.Vertices.size();
+                indexCount += mesh.Indices.size();
+            }
+
+            std::vector<spieler::renderer::Vertex> vertices;
+            vertices.reserve(vertexCount);
+
+            std::vector<uint32_t> indices;
+            indices.reserve(indexCount);
+
+            for(const auto& [name, mesh] : meshes)
+            {
+                vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
+                indices.insert(indices.end(), mesh.Indices.begin(), mesh.Indices.end());
+            }
+
+            // VertexBuffer
+            {
+                const spieler::renderer::BufferConfig config
+                {
+                    .ElementSize{ sizeof(spieler::renderer::Vertex) },
+                    .ElementCount{ static_cast<uint32_t>(vertexCount) }
+                };
+
+                m_MeshGeometry.VertexBuffer.SetResource(device.CreateBuffer(config, spieler::renderer::BufferFlags::None));
+                context.WriteToBuffer(*m_MeshGeometry.VertexBuffer.GetResource(), sizeof(spieler::renderer::Vertex) * vertexCount, vertices.data());
+            }
+            
+            // IndexBuffer
+            {
+                const spieler::renderer::BufferConfig config
+                {
+                    .ElementSize{ sizeof(uint32_t) },
+                    .ElementCount{ static_cast<uint32_t>(indexCount) }
+                };
+
+                m_MeshGeometry.IndexBuffer.SetResource(device.CreateBuffer(config, spieler::renderer::BufferFlags::None));
+                context.WriteToBuffer(*m_MeshGeometry.IndexBuffer.GetResource(), sizeof(uint32_t) * indexCount, indices.data());
+            }
         }
 
         // Init RenderItems
@@ -226,7 +271,7 @@ namespace sandbox
             {
                 auto& box{ m_RenderItems["box"] = std::make_unique<spieler::renderer::RenderItem>() };
                 box->MeshGeometry = &m_MeshGeometry;
-                box->SubmeshGeometry = &m_MeshGeometry.GetSubmesh("box");
+                box->SubmeshGeometry = &m_MeshGeometry.Submeshes["box"];
                 box->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
 
                 box->Transform.Scale = DirectX::XMFLOAT3{ 2.0f, 2.0f, 2.0f };
@@ -240,7 +285,7 @@ namespace sandbox
             {
                 auto& grid{ m_RenderItems["grid"] = std::make_unique<spieler::renderer::RenderItem>() };
                 grid->MeshGeometry = &m_MeshGeometry;
-                grid->SubmeshGeometry = &m_MeshGeometry.GetSubmesh("grid");
+                grid->SubmeshGeometry = &m_MeshGeometry.Submeshes["grid"];
                 grid->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
 
                 grid->Transform.Scale = DirectX::XMFLOAT3{ 40.0f, 40.0f, 40.0f };
@@ -257,7 +302,7 @@ namespace sandbox
                 {
                     auto& Geosphere{ m_RenderItems["geosphere" + std::to_string(i)] = std::make_unique<spieler::renderer::RenderItem>() };
                     Geosphere->MeshGeometry = &m_MeshGeometry;
-                    Geosphere->SubmeshGeometry = &m_MeshGeometry.GetSubmesh("geosphere");
+                    Geosphere->SubmeshGeometry = &m_MeshGeometry.Submeshes["geosphere"];
                     Geosphere->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
 
                     Geosphere->Transform.Translation = DirectX::XMFLOAT3{ (static_cast<float>(i % 2) * 2.0f - 1.0f) * 10.0f, 1.6f, (static_cast<float>(i / 2) - 2.0f) * 5.0f };
@@ -271,7 +316,7 @@ namespace sandbox
                 {
                     auto& cylinder{ m_RenderItems["cylinder" + std::to_string(i)] = std::make_unique<spieler::renderer::RenderItem>() };
                     cylinder->MeshGeometry = &m_MeshGeometry;
-                    cylinder->SubmeshGeometry = &m_MeshGeometry.GetSubmesh("cylinder");
+                    cylinder->SubmeshGeometry = &m_MeshGeometry.Submeshes["cylinder"];
                     cylinder->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
 
                     cylinder->Transform.Translation = DirectX::XMFLOAT3{ (static_cast<float>(i % 2) * 2.0f - 1.0f) * 10.0f, -2.0f, (static_cast<float>(i / 2) - 2.0f) * 5.0f };
@@ -493,8 +538,8 @@ namespace sandbox
             {
                 m_ObjectConstantBuffer.GetSlice(renderItem.get()).Bind(context, 1);
 
-                context.IASetVertexBuffer(&renderItem->MeshGeometry->GetVertexBuffer().GetView());
-                context.IASetIndexBuffer(&renderItem->MeshGeometry->GetIndexBuffer().GetView());
+                context.IASetVertexBuffer(&renderItem->MeshGeometry->VertexBuffer.GetView());
+                context.IASetIndexBuffer(&renderItem->MeshGeometry->IndexBuffer.GetView());
                 context.IASetPrimitiveTopology(renderItem->PrimitiveTopology);
 
                 context.GetNativeCommandList()->DrawIndexedInstanced(

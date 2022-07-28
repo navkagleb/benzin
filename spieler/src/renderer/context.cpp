@@ -6,6 +6,7 @@
 #include "spieler/core/common.hpp"
 
 #include "spieler/renderer/resource.hpp"
+#include "spieler/renderer/buffer.hpp"
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/pipeline_state.hpp"
 #include "spieler/renderer/root_signature.hpp"
@@ -45,8 +46,9 @@ namespace spieler::renderer
 
     } // namespace _internal
 
-    Context::Context(Device& device)
-        : m_Fence(device)
+    Context::Context(Device& device, uint32_t uploadBufferSize)
+        : m_Fence{ device }
+        , m_UploadBuffer{ device, uploadBufferSize }
     {
         SPIELER_ASSERT(Init(device));
     }
@@ -156,21 +158,6 @@ namespace spieler::renderer
         m_CommandList->OMSetStencilRef(referenceValue);
     }
 
-    void Context::CopyBuffer(const void* data, uint64_t size, UploadBuffer& from, Resource& to)
-    {
-        std::vector<D3D12_SUBRESOURCE_DATA> subresources
-        {
-            D3D12_SUBRESOURCE_DATA
-            {
-                .pData = data,
-                .RowPitch = static_cast<::LONG_PTR>(size),
-                .SlicePitch = static_cast<::LONG_PTR>(size)
-            }
-        };
-
-        Copy(subresources, 0, from, to);
-    }
-
     void Context::Copy(std::vector<D3D12_SUBRESOURCE_DATA>& subresources, uint32_t alingment, UploadBuffer& from, Resource& to)
     {
         // TODO: Set barrier to resources
@@ -206,6 +193,19 @@ namespace spieler::renderer
             .To = ResourceState::GenericRead
         });
 #endif
+    }
+
+    void Context::WriteToBuffer(BufferResource& buffer, size_t size, const void* data)
+    {
+        SPIELER_ASSERT(buffer.GetResource());
+        SPIELER_ASSERT(size);
+        SPIELER_ASSERT(data);
+
+        const uint32_t uploadBufferOffset{ m_UploadBuffer.Allocate(size) };
+
+        memcpy_s(m_UploadBuffer.GetMappedData() + uploadBufferOffset, size, data, size);
+
+        m_CommandList->CopyBufferRegion(buffer.GetResource().Get(), 0, m_UploadBuffer.GetResource().Get(), uploadBufferOffset, size);
     }
 
     bool Context::CloseCommandList()

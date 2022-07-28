@@ -9,13 +9,14 @@
 #include <spieler/renderer/mesh.hpp>
 #include <spieler/renderer/constant_buffer.hpp>
 #include <spieler/renderer/texture.hpp>
+#include <spieler/renderer/context.hpp>
 
 #include "projection_camera_controller.hpp"
 
 namespace sandbox
 {
 
-    class TessellationLayer : public spieler::Layer
+    class TessellationLayer final : public spieler::Layer
     {
     private:
         struct PassConstants

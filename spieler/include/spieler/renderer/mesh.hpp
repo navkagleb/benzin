@@ -1,11 +1,9 @@
 #pragma once
 
+#include "spieler/renderer/common.hpp"
 #include "spieler/renderer/vertex_buffer.hpp"
 #include "spieler/renderer/index_buffer.hpp"
-#include "spieler/renderer/constant_buffer.hpp"
-#include "spieler/renderer/texture.hpp"
-#include "spieler/renderer/geometry_generator.hpp"
-#include "spieler/renderer/renderer.hpp"
+#include "spieler/renderer/resource_view.hpp"
 
 namespace spieler::renderer
 {
@@ -17,81 +15,13 @@ namespace spieler::renderer
         uint32_t StartIndexLocation{ 0 };
     };
 
-    template <typename Index = uint32_t>
-    struct NamedMeshData
+    struct MeshGeometry
     {
-        std::string Name;
-        MeshData<Index> MeshData;
+        VertexBuffer VertexBuffer;
+        IndexBuffer IndexBuffer;
+
+        std::unordered_map<std::string, SubmeshGeometry> Submeshes;
     };
-
-    class MeshGeometry
-    {
-    public:
-        const VertexBuffer& GetVertexBuffer() const { return m_VertexBuffer; }
-        const IndexBuffer& GetIndexBuffer() const { return m_IndexBuffer; }
-
-    public:
-        template <typename Vertex>
-        bool InitStaticVertexBuffer(const Vertex* vertices, uint32_t vertexCount, UploadBuffer& uploadBuffer);
-
-        template <typename Index>
-        bool InitStaticIndexBuffer(const Index* indices, uint32_t indexCount, UploadBuffer& uploadBuffer);
-
-        SubmeshGeometry& CreateSubmesh(const std::string& name);
-        SubmeshGeometry& GetSubmesh(const std::string& name);
-        const SubmeshGeometry& GetSubmesh(const std::string& name) const;
-
-        void GenerateFrom(const std::vector<NamedMeshData<>>& meshes, UploadBuffer& uploadBuffer);
-
-    public:
-        // TODO: Move to private
-        VertexBuffer m_VertexBuffer;
-        IndexBuffer m_IndexBuffer;
-
-        std::unordered_map<std::string, SubmeshGeometry> m_Submeshes;
-    };
-
-    template <typename Vertex>
-    bool MeshGeometry::InitStaticVertexBuffer(const Vertex* vertices, uint32_t vertexCount, UploadBuffer& uploadBuffer)
-    {
-        auto& renderer{ Renderer::GetInstance() };
-        auto& device{ renderer.GetDevice() };
-
-        const BufferConfig bufferConfig
-        {
-            .ElementSize = sizeof(Vertex),
-            .ElementCount = vertexCount
-        };
-
-        const BufferFlags bufferFlags{ BufferFlags::None};
-
-        m_VertexBuffer.SetResource(device.CreateBuffer(bufferConfig, bufferFlags));
-        
-        spieler::renderer::Renderer::GetInstance().GetContext().CopyBuffer(vertices, bufferConfig.ElementSize * bufferConfig.ElementCount, uploadBuffer, *m_VertexBuffer.GetResource());
-
-        return true;
-    }
-
-    template <typename Index>
-    bool MeshGeometry::InitStaticIndexBuffer(const Index* indices, uint32_t indexCount, UploadBuffer& uploadBuffer)
-    {
-        auto& renderer{ Renderer::GetInstance() };
-        auto& device{ renderer.GetDevice() };
-
-        const BufferConfig bufferConfig
-        {
-            .ElementSize = sizeof(Index),
-            .ElementCount = indexCount
-        };
-
-        const BufferFlags bufferFlags{ BufferFlags::None };
-
-        m_IndexBuffer.SetResource(device.CreateBuffer(bufferConfig, bufferFlags));
-
-        spieler::renderer::Renderer::GetInstance().GetContext().CopyBuffer(indices, bufferConfig.ElementSize * bufferConfig.ElementCount, uploadBuffer, *m_IndexBuffer.GetResource());
-
-        return true;
-    }
 
     struct Transform
     {
@@ -125,8 +55,8 @@ namespace spieler::renderer
 
     struct RenderItem
     {
-        MeshGeometry* MeshGeometry{ nullptr };
-        SubmeshGeometry* SubmeshGeometry{ nullptr };
+        const MeshGeometry* MeshGeometry{ nullptr };
+        const SubmeshGeometry* SubmeshGeometry{ nullptr };
         PrimitiveTopology PrimitiveTopology{ PrimitiveTopology::Unknown };
         Material* Material{ nullptr };
 

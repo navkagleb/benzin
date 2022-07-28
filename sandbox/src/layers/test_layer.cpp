@@ -80,7 +80,7 @@ namespace sandbox
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
 
-        spieler::renderer::UploadBuffer uploadBuffer(device, spieler::renderer::UploadBufferType::Default, spieler::MB(6));
+        spieler::renderer::UploadBuffer uploadBuffer(device, spieler::MB(6));
 
         UpdateViewport();
         UpdateScissorRect();
@@ -716,19 +716,64 @@ namespace sandbox
                 .ColumnCount = 2
             };
 
-            const auto& boxMeshData{ spieler::renderer::GeometryGenerator::GenerateBox<uint32_t>(boxGeometryProps) };
-            const auto& geosphereMeshData{ spieler::renderer::GeometryGenerator::GenerateGeosphere<uint32_t>(geosphereGeometryProps) };
-            const auto& gridMeshData{ spieler::renderer::GeometryGenerator::GenerateGrid<uint32_t>(gridGeometryProps) };
+            const std::unordered_map<std::string, spieler::renderer::MeshData<uint32_t>> meshes
+            {
+                { "box", spieler::renderer::GeometryGenerator::GenerateBox<uint32_t>(boxGeometryProps) },
+                { "geosphere", spieler::renderer::GeometryGenerator::GenerateGeosphere<uint32_t>(geosphereGeometryProps) },
+                { "grid", spieler::renderer::GeometryGenerator::GenerateGrid<uint32_t>(gridGeometryProps) }
+            };
 
-            spieler::renderer::MeshGeometry& basicMeshesGeometry{ m_MeshGeometries["basic"] };
-            basicMeshesGeometry.GenerateFrom(
+            size_t vertexCount{ 0 };
+            size_t indexCount{ 0 };
+
+            for (const auto& [name, mesh] : meshes)
+            {
+                m_MeshGeometries["basic"].Submeshes[name] = spieler::renderer::SubmeshGeometry
                 {
-                    { "box", boxMeshData },
-                    { "geosphere", geosphereMeshData },
-                    { "grid", gridMeshData },
-                },
-                uploadBuffer
-            );
+                    .IndexCount{ static_cast<uint32_t>(mesh.Indices.size()) },
+                    .BaseVertexLocation{ static_cast<uint32_t>(vertexCount) },
+                    .StartIndexLocation{ static_cast<uint32_t>(indexCount) }
+                };
+
+                vertexCount += mesh.Vertices.size();
+                indexCount += mesh.Indices.size();
+            }
+
+            std::vector<spieler::renderer::Vertex> vertices;
+            vertices.reserve(vertexCount);
+
+            std::vector<uint32_t> indices;
+            indices.reserve(indexCount);
+
+            for (const auto& [name, mesh] : meshes)
+            {
+                vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
+                indices.insert(indices.end(), mesh.Indices.begin(), mesh.Indices.end());
+            }
+
+            // VertexBuffer
+            {
+                const spieler::renderer::BufferConfig config
+                {
+                    .ElementSize{ sizeof(spieler::renderer::Vertex) },
+                    .ElementCount{ static_cast<uint32_t>(vertexCount) }
+                };
+
+                m_MeshGeometries["basic"].VertexBuffer.SetResource(device.CreateBuffer(config, spieler::renderer::BufferFlags::None));
+                context.WriteToBuffer(*m_MeshGeometries["basic"].VertexBuffer.GetResource(), sizeof(spieler::renderer::Vertex) * vertexCount, vertices.data());
+            }
+
+            // IndexBuffer
+            {
+                const spieler::renderer::BufferConfig config
+                {
+                    .ElementSize{ sizeof(uint32_t) },
+                    .ElementCount{ static_cast<uint32_t>(indexCount) }
+                };
+
+                m_MeshGeometries["basic"].IndexBuffer.SetResource(device.CreateBuffer(config, spieler::renderer::BufferFlags::None));
+                context.WriteToBuffer(*m_MeshGeometries["basic"].IndexBuffer.GetResource(), sizeof(uint32_t) * indexCount, indices.data());
+            }
         }
 
         // Load skull model
@@ -767,33 +812,38 @@ namespace sandbox
 
             fin.close();
 
-            //
-            // Pack the indices of all the meshes into one index buffer.
-            //
             spieler::renderer::MeshGeometry& skullMeshGeometry{ m_MeshGeometries["skull"] };
 
-            const spieler::renderer::BufferConfig vertexBufferConfig
+            // VertexBuffer
             {
-                .ElementSize = sizeof(spieler::renderer::Vertex),
-                .ElementCount = static_cast<uint32_t>(vertices.size())
-            };
+                const spieler::renderer::BufferConfig vertexBufferConfig
+                {
+                    .ElementSize{ sizeof(spieler::renderer::Vertex) },
+                    .ElementCount{ static_cast<uint32_t>(vertices.size()) }
+                };
 
-            skullMeshGeometry.m_VertexBuffer.SetResource(device.CreateBuffer(vertexBufferConfig, spieler::renderer::BufferFlags::None));
-            context.CopyBuffer(vertices.data(), sizeof(spieler::renderer::Vertex) * vertices.size(), uploadBuffer, *skullMeshGeometry.m_VertexBuffer.GetResource());
+                skullMeshGeometry.VertexBuffer.SetResource(device.CreateBuffer(vertexBufferConfig, spieler::renderer::BufferFlags::None));
+                context.WriteToBuffer(*skullMeshGeometry.VertexBuffer.GetResource(), sizeof(spieler::renderer::Vertex) * vertices.size(), vertices.data());
+            }
 
-            const spieler::renderer::BufferConfig indexBufferConfig
+            // IndexBuffer
             {
-                .ElementSize = sizeof(uint32_t),
-                .ElementCount = static_cast<uint32_t>(indices.size())
+                const spieler::renderer::BufferConfig indexBufferConfig
+                {
+                    .ElementSize{ sizeof(uint32_t) },
+                    .ElementCount{ static_cast<uint32_t>(indices.size()) }
+                };
+
+                skullMeshGeometry.IndexBuffer.SetResource(device.CreateBuffer(indexBufferConfig, spieler::renderer::BufferFlags::None));
+                context.WriteToBuffer(*skullMeshGeometry.IndexBuffer.GetResource(), sizeof(uint32_t) * indices.size(), indices.data());
+            }
+
+            skullMeshGeometry.Submeshes["grid"] = spieler::renderer::SubmeshGeometry
+            {
+                .IndexCount{ static_cast<uint32_t>(indices.size()) },
+                .BaseVertexLocation{ 0 },
+                .StartIndexLocation{ 0 }
             };
-
-            skullMeshGeometry.m_IndexBuffer.SetResource(device.CreateBuffer(indexBufferConfig, spieler::renderer::BufferFlags::None));
-            context.CopyBuffer(indices.data(), sizeof(uint32_t) * indices.size(), uploadBuffer, *skullMeshGeometry.m_IndexBuffer.GetResource());
-
-            spieler::renderer::SubmeshGeometry& submesh{ skullMeshGeometry.m_Submeshes["grid"] };
-            submesh.IndexCount = static_cast<uint32_t>(indices.size());
-            submesh.BaseVertexLocation = 0;
-            submesh.StartIndexLocation = 0;
         }
 
         // Trees (billboards)
@@ -827,36 +877,34 @@ namespace sandbox
 
             // VertexBuffer
             {
-                const spieler::renderer::BufferConfig vertexBufferConfig
+                const spieler::renderer::BufferConfig config
                 {
-                    .ElementSize = sizeof(TreeVertex),
-                    .ElementCount = treeCount
+                    .ElementSize{ sizeof(TreeVertex) },
+                    .ElementCount{ static_cast<uint32_t>(vertices.size()) }
                 };
 
-                const spieler::renderer::BufferFlags vertexBufferFlags{ spieler::renderer::BufferFlags::None };
-
-                treeMeshGeometry.m_VertexBuffer.SetResource(device.CreateBuffer(vertexBufferConfig, vertexBufferFlags));
-                context.CopyBuffer(vertices.data(), sizeof(TreeVertex)* vertices.size(), uploadBuffer, *treeMeshGeometry.m_VertexBuffer.GetResource());
+                treeMeshGeometry.VertexBuffer.SetResource(device.CreateBuffer(config, spieler::renderer::BufferFlags::None));
+                context.WriteToBuffer(*treeMeshGeometry.VertexBuffer.GetResource(), sizeof(TreeVertex) * vertices.size(), vertices.data());
             }
 
             // IndexBuffer
             {
-                const spieler::renderer::BufferConfig indexBufferConfig
+                const spieler::renderer::BufferConfig config
                 {
-                    .ElementSize = sizeof(uint32_t),
-                    .ElementCount = treeCount
+                    .ElementSize{ sizeof(uint32_t) },
+                    .ElementCount{ static_cast<uint32_t>(indices.size()) }
                 };
 
-                const spieler::renderer::BufferFlags indexBufferFlags{ spieler::renderer::BufferFlags::None };
-
-                treeMeshGeometry.m_IndexBuffer.SetResource(device.CreateBuffer(indexBufferConfig, indexBufferFlags));
-                context.CopyBuffer(indices.data(), sizeof(uint32_t)* indices.size(), uploadBuffer, *treeMeshGeometry.m_IndexBuffer.GetResource());
+                treeMeshGeometry.IndexBuffer.SetResource(device.CreateBuffer(config, spieler::renderer::BufferFlags::None));
+                context.WriteToBuffer(*treeMeshGeometry.IndexBuffer.GetResource(), sizeof(uint32_t) * indices.size(), indices.data());
             }
 
-            spieler::renderer::SubmeshGeometry& main{ treeMeshGeometry.CreateSubmesh("main") };
-            main.IndexCount = static_cast<uint32_t>(indices.size());
-            main.BaseVertexLocation = 0;
-            main.StartIndexLocation = 0;
+            treeMeshGeometry.Submeshes["main"] = spieler::renderer::SubmeshGeometry
+            {
+                .IndexCount{ static_cast<uint32_t>(indices.size()) },
+                .BaseVertexLocation{ 0 },
+                .StartIndexLocation{ 0 }
+            };
         }
 
         return true;
@@ -1445,7 +1493,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& box{ m_RenderItems["box"] = std::make_unique<spieler::renderer::RenderItem>() };
             box->MeshGeometry = &basicMeshGeometry;
-            box->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("box");
+            box->SubmeshGeometry = &basicMeshGeometry.Submeshes.at("box");
             box->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             box->Material = &m_Materials["wire_fence"];
 
@@ -1460,7 +1508,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& sun{ m_RenderItems["sun"] = std::make_unique<spieler::renderer::RenderItem>() };
             sun->MeshGeometry = &basicMeshGeometry;
-            sun->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("geosphere");
+            sun->SubmeshGeometry = &basicMeshGeometry.Submeshes.at("geosphere");
             sun->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
 
             sun->GetComponent<ColorConstants>().Color = DirectX::XMFLOAT4{ 1.0f, 1.0f, 0.2f, 1.0f };
@@ -1474,7 +1522,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& floor{ m_RenderItems["floor"] = std::make_unique<spieler::renderer::RenderItem>() };
             floor->MeshGeometry = &basicMeshGeometry;
-            floor->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("grid");
+            floor->SubmeshGeometry = &basicMeshGeometry.Submeshes.at("grid");
             floor->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             floor->Material = &m_Materials["tile"];
 
@@ -1493,7 +1541,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& wall{ m_RenderItems["wall1"] = std::make_unique<spieler::renderer::RenderItem>() };
             wall->MeshGeometry = &basicMeshGeometry;
-            wall->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("grid");
+            wall->SubmeshGeometry = &basicMeshGeometry.Submeshes.at("grid");
             wall->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             wall->Material = &m_Materials["bricks"];
 
@@ -1512,7 +1560,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& wall{ m_RenderItems["wall2"] = std::make_unique<spieler::renderer::RenderItem>() };
             wall->MeshGeometry = &basicMeshGeometry;
-            wall->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("grid");
+            wall->SubmeshGeometry = &basicMeshGeometry.Submeshes.at("grid");
             wall->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             wall->Material = &m_Materials["bricks"];
 
@@ -1531,7 +1579,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& wall{ m_RenderItems["wall3"] = std::make_unique<spieler::renderer::RenderItem>() };
             wall->MeshGeometry = &basicMeshGeometry;
-            wall->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("grid");
+            wall->SubmeshGeometry = &basicMeshGeometry.Submeshes.at("grid");
             wall->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             wall->Material = &m_Materials["bricks"];
 
@@ -1550,7 +1598,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& skull{ m_RenderItems["skull"] = std::make_unique<spieler::renderer::RenderItem>() };
             skull->MeshGeometry = &m_MeshGeometries["skull"];
-            skull->SubmeshGeometry = &m_MeshGeometries["skull"].GetSubmesh("grid");
+            skull->SubmeshGeometry = &m_MeshGeometries["skull"].Submeshes.at("grid");
             skull->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             skull->Material = &m_Materials["skull"];
 
@@ -1566,7 +1614,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& skull{ m_RenderItems["reflected_skull"] = std::make_unique<spieler::renderer::RenderItem>() };
             skull->MeshGeometry = &m_MeshGeometries["skull"];
-            skull->SubmeshGeometry = &m_MeshGeometries["skull"].GetSubmesh("grid");
+            skull->SubmeshGeometry = &m_MeshGeometries["skull"].Submeshes.at("grid");
             skull->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             skull->Material = &m_Materials["skull"];
 
@@ -1579,7 +1627,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& mirror{ m_RenderItems["mirror"] = std::make_unique<spieler::renderer::RenderItem>() };
             mirror->MeshGeometry = &basicMeshGeometry;
-            mirror->SubmeshGeometry = &basicMeshGeometry.GetSubmesh("grid");
+            mirror->SubmeshGeometry = &basicMeshGeometry.Submeshes.at("grid");
             mirror->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             mirror->Material = &m_Materials["mirror"];
 
@@ -1599,7 +1647,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& shadow{ m_RenderItems["skull_shadow"] = std::make_unique<spieler::renderer::RenderItem>() };
             shadow->MeshGeometry = &m_MeshGeometries["skull"];
-            shadow->SubmeshGeometry = &m_MeshGeometries["skull"].GetSubmesh("grid");
+            shadow->SubmeshGeometry = &m_MeshGeometries["skull"].Submeshes.at("grid");
             shadow->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
             shadow->Material = &m_Materials["shadow"];
 
@@ -1612,7 +1660,7 @@ namespace sandbox
         {
             std::unique_ptr<spieler::renderer::RenderItem>& trees{ m_RenderItems["trees"] = std::make_unique<spieler::renderer::RenderItem>() };
             trees->MeshGeometry = &m_MeshGeometries["trees"];
-            trees->SubmeshGeometry = &m_MeshGeometries["trees"].GetSubmesh("main");
+            trees->SubmeshGeometry = &m_MeshGeometries["trees"].Submeshes.at("main");
             trees->PrimitiveTopology = spieler::renderer::PrimitiveTopology::PointList;
             trees->Material = &m_Materials["tree"];
 
@@ -1706,8 +1754,8 @@ namespace sandbox
 
         for (const spieler::renderer::RenderItem* item : items)
         {
-            context.IASetVertexBuffer(&item->MeshGeometry->GetVertexBuffer().GetView());
-            context.IASetIndexBuffer(&item->MeshGeometry->GetIndexBuffer().GetView());
+            context.IASetVertexBuffer(&item->MeshGeometry->VertexBuffer.GetView());
+            context.IASetIndexBuffer(&item->MeshGeometry->IndexBuffer.GetView());
             context.IASetPrimitiveTopology(item->PrimitiveTopology);
 
             if (objectConstantBuffer)

@@ -12,6 +12,7 @@
 #include <spieler/renderer/texture.hpp>
 #include <spieler/renderer/sampler.hpp>
 #include <spieler/renderer/light.hpp>
+#include <spieler/renderer/context.hpp>
 
 #include "projection_camera_controller.hpp"
 #include "light_controller.hpp"
@@ -46,7 +47,7 @@ namespace sandbox
 
     } // namespace per
 
-    class TestLayer : public spieler::Layer
+    class TestLayer final : public spieler::Layer
     {
     private:
         struct PassConstants

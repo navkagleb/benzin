@@ -6,6 +6,8 @@
 #include <spieler/renderer/mesh.hpp>
 #include <spieler/renderer/shader.hpp>
 #include <spieler/renderer/pipeline_state.hpp>
+#include <spieler/renderer/context.hpp>
+#include <spieler/renderer/constant_buffer.hpp>
 
 #include "projection_camera_controller.hpp"
 

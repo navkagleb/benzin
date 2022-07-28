@@ -32,7 +32,7 @@ namespace sandbox
 
         m_CameraController = ProjectionCameraController{ spieler::math::ToRadians(60.0f), window.GetAspectRatio() };
 
-        spieler::renderer::UploadBuffer uploadBuffer{ device, spieler::renderer::UploadBufferType::Default, spieler::MB(2) };
+        spieler::renderer::UploadBuffer uploadBuffer{ device, spieler::MB(2) };
 
         SPIELER_ASSERT(context.ResetCommandList());
 
@@ -73,7 +73,7 @@ namespace sandbox
 
         // Init MeshGeometry
         {
-            const std::array<DirectX::XMFLOAT3, 4 + 16> vertices =
+            const std::array<DirectX::XMFLOAT3, 4 + 16> vertices
             {
                 // Quad
                 DirectX::XMFLOAT3{ -0.5f, 0.0f,  0.5f },
@@ -107,7 +107,7 @@ namespace sandbox
                 DirectX::XMFLOAT3{ +25.0f, 10.0f, -15.0f }
             };
 
-            const std::array<std::int16_t, 4 + 16> indices
+            const std::array<int16_t, 4 + 16> indices
             { 
                 // Quad
                 0, 1, 2, 3,
@@ -119,30 +119,55 @@ namespace sandbox
                 12, 13, 14, 15
             };
 
-            m_MeshGeometry.InitStaticVertexBuffer(vertices.data(), vertices.size(), uploadBuffer);
-            m_MeshGeometry.InitStaticIndexBuffer(indices.data(), indices.size(), uploadBuffer);
+            // VertexBuffer
+            {
+                const spieler::renderer::BufferConfig config
+                {
+                    .ElementSize{ sizeof(DirectX::XMFLOAT3) },
+                    .ElementCount{ static_cast<uint32_t>(vertices.size()) }
+                };
 
-            spieler::renderer::SubmeshGeometry& grid{ m_MeshGeometry.CreateSubmesh("quad") };
-            grid.IndexCount = 4;
-            grid.BaseVertexLocation = 0;
-            grid.StartIndexLocation = 0;
+                m_MeshGeometry.VertexBuffer.SetResource(device.CreateBuffer(config, spieler::renderer::BufferFlags::None));
+                context.WriteToBuffer(*m_MeshGeometry.VertexBuffer.GetResource(), sizeof(DirectX::XMFLOAT3) * vertices.size(), vertices.data());
+            }
 
-            spieler::renderer::SubmeshGeometry& bezierQuad{ m_MeshGeometry.CreateSubmesh("bezier_quad") };
-            bezierQuad.IndexCount = 16;
-            bezierQuad.BaseVertexLocation = 4;
-            bezierQuad.StartIndexLocation = 4;
+            // IndexBuffer
+            {
+                const spieler::renderer::BufferConfig config
+                {
+                    .ElementSize{ sizeof(uint16_t) },
+                    .ElementCount{ static_cast<uint32_t>(indices.size()) }
+                };
+
+                m_MeshGeometry.IndexBuffer.SetResource(device.CreateBuffer(config, spieler::renderer::BufferFlags::None));
+                context.WriteToBuffer(*m_MeshGeometry.IndexBuffer.GetResource(), sizeof(uint16_t) * indices.size(), indices.data());
+            }
+
+            m_MeshGeometry.Submeshes["quad"] = spieler::renderer::SubmeshGeometry
+            {
+                .IndexCount{ 4 },
+                .BaseVertexLocation{ 0 },
+                .StartIndexLocation{ 0 },
+            };
+
+            m_MeshGeometry.Submeshes["bezier_quad"] = spieler::renderer::SubmeshGeometry
+            {
+                .IndexCount{ 16 },
+                .BaseVertexLocation{ 4 },
+                .StartIndexLocation{ 4 },
+            };
         }
 
         // Init RenderItems
         {
             auto& quad{ m_RenderItems["quad"] };
             quad.MeshGeometry = &m_MeshGeometry;
-            quad.SubmeshGeometry = &m_MeshGeometry.GetSubmesh("quad");
+            quad.SubmeshGeometry = &m_MeshGeometry.Submeshes["quad"];
             quad.PrimitiveTopology = spieler::renderer::PrimitiveTopology::ControlPointPatchlist4;
 
             auto& bezierQuad{ m_RenderItems["bezier_quad"] };
             bezierQuad.MeshGeometry = &m_MeshGeometry;
-            bezierQuad.SubmeshGeometry = &m_MeshGeometry.GetSubmesh("bezier_quad");
+            bezierQuad.SubmeshGeometry = &m_MeshGeometry.Submeshes["bezier_quad"];
             bezierQuad.PrimitiveTopology = spieler::renderer::PrimitiveTopology::ControlPointPatchlist16;
         }
 
@@ -382,8 +407,8 @@ namespace sandbox
                 m_PassConstantBuffer.GetSlice(&m_PassConstants).Bind(context, 0);
                 m_ObjectConstantBuffer.GetSlice(&quad).Bind(context, 1);
 
-                context.IASetVertexBuffer(&quad.MeshGeometry->GetVertexBuffer().GetView());
-                context.IASetIndexBuffer(&quad.MeshGeometry->GetIndexBuffer().GetView());
+                context.IASetVertexBuffer(&quad.MeshGeometry->VertexBuffer.GetView());
+                context.IASetIndexBuffer(&quad.MeshGeometry->IndexBuffer.GetView());
                 context.IASetPrimitiveTopology(quad.PrimitiveTopology);
 
                 context.GetNativeCommandList()->DrawIndexedInstanced(
@@ -405,8 +430,8 @@ namespace sandbox
                 m_PassConstantBuffer.GetSlice(&m_PassConstants).Bind(context, 0);
                 m_ObjectConstantBuffer.GetSlice(&bezierQuad).Bind(context, 1);
 
-                context.IASetVertexBuffer(&bezierQuad.MeshGeometry->GetVertexBuffer().GetView());
-                context.IASetIndexBuffer(&bezierQuad.MeshGeometry->GetIndexBuffer().GetView());
+                context.IASetVertexBuffer(&bezierQuad.MeshGeometry->VertexBuffer.GetView());
+                context.IASetIndexBuffer(&bezierQuad.MeshGeometry->IndexBuffer.GetView());
                 context.IASetPrimitiveTopology(bezierQuad.PrimitiveTopology);
 
                 context.GetNativeCommandList()->DrawIndexedInstanced(

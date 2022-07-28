@@ -9,19 +9,13 @@
 namespace spieler::renderer
 {
 
-    enum class UploadBufferType : uint32_t
-    {
-        Default = 0,
-        ConstantBuffer = 1
-    };
-
     class UploadBuffer : public Resource
     {
     public:
         UploadBuffer() = default;
 
         template <typename T = std::byte>
-        UploadBuffer(Device& device, UploadBufferType type, uint32_t elementCount);
+        UploadBuffer(Device& device, uint32_t elementCount);
 
         UploadBuffer(UploadBuffer&& other) noexcept;
         ~UploadBuffer();
@@ -32,8 +26,11 @@ namespace spieler::renderer
         uint32_t GetMarker() const { return m_Marker; }
 
     public:
+        std::byte* GetMappedData() { return m_MappedData; }
+
+    public:
         template <typename T = std::byte>
-        bool Init(Device& device, UploadBufferType type, uint32_t elementCount);
+        bool Init(Device& device, uint32_t elementCount);
 
     public:
         uint32_t Allocate(uint32_t size, uint32_t alignment = 0);
@@ -65,17 +62,17 @@ namespace spieler::renderer
     } // namespace _internal
 
     template <typename T>
-    UploadBuffer::UploadBuffer(Device& device, UploadBufferType type, uint32_t elementCount)
+    UploadBuffer::UploadBuffer(Device& device, uint32_t elementCount)
     {
-        SPIELER_ASSERT(Init<T>(device, type, elementCount));
+        SPIELER_ASSERT(Init<T>(device, elementCount));
     }
 
     template <typename T>
-    bool UploadBuffer::Init(Device& device, UploadBufferType type, uint32_t elementCount)
+    bool UploadBuffer::Init(Device& device, uint32_t elementCount)
     {
         SPIELER_ASSERT(elementCount != 0);
 
-        m_Stride = type == UploadBufferType::ConstantBuffer ? _internal::CalcConstantBufferSize(sizeof(T)) : sizeof(T);
+        m_Stride = sizeof(T);
         m_Size = m_Stride * elementCount;
         
         const BufferConfig bufferConfig
