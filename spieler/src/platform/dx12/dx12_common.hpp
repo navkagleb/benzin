@@ -15,6 +15,8 @@ namespace spieler::renderer
         D3D12_SHADER_VISIBILITY Convert(ShaderVisibility shaderVisibility);
         D3D12_PRIMITIVE_TOPOLOGY_TYPE Convert(PrimitiveTopologyType primitiveToplogyType);
         D3D12_PRIMITIVE_TOPOLOGY Convert(PrimitiveTopology primitiveTopology);
+
+        GraphicsFormat Convert(DXGI_FORMAT dxgiFormat);
         DXGI_FORMAT Convert(GraphicsFormat graphicsFormat);
 
         // blend_state.hpp

@@ -108,6 +108,76 @@ namespace spieler::renderer::dx12
         return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     }
 
+    GraphicsFormat Convert(DXGI_FORMAT dxgiFormat)
+    {
+        switch (dxgiFormat)
+        {
+            case DXGI_FORMAT_UNKNOWN: return GraphicsFormat::Unknown;
+
+            case DXGI_FORMAT_R32G32B32A32_TYPELESS: return GraphicsFormat::R32G32B32A32Typeless;
+            case DXGI_FORMAT_R32G32B32A32_FLOAT: return GraphicsFormat::R32G32B32A32Float;
+            case DXGI_FORMAT_R32G32B32A32_UINT: return GraphicsFormat::R32G32B32A32UnsignedInt;
+            case DXGI_FORMAT_R32G32B32A32_SINT: return GraphicsFormat::R32G32B32A32SignedInt;
+
+            case DXGI_FORMAT_R32G32B32_TYPELESS: return GraphicsFormat::R32G32B32Typeless;
+            case DXGI_FORMAT_R32G32B32_FLOAT: return GraphicsFormat::R32G32B32Float;
+            case DXGI_FORMAT_R32G32B32_UINT: return GraphicsFormat::R32G32B32UnsignedInt;
+            case DXGI_FORMAT_R32G32B32_SINT: return GraphicsFormat::R32G32B32SignedInt;
+
+            case DXGI_FORMAT_R16G16B16A16_TYPELESS: return GraphicsFormat::R16G16B16A16Typeless;
+            case DXGI_FORMAT_R16G16B16A16_FLOAT: return GraphicsFormat::R16G16B16A16Float;
+            case DXGI_FORMAT_R16G16B16A16_UNORM: return GraphicsFormat::R16G16B16A16UnsignedNorm;
+            case DXGI_FORMAT_R16G16B16A16_UINT: return GraphicsFormat::R16G16B16A16UnsignedInt;
+            case DXGI_FORMAT_R16G16B16A16_SNORM: return GraphicsFormat::R16G16B16A16SignedNorm;
+            case DXGI_FORMAT_R16G16B16A16_SINT: return GraphicsFormat::R16G16B16A16SignedInt;
+
+            case DXGI_FORMAT_R32G32_TYPELESS: return GraphicsFormat::R32G32Typeless;
+            case DXGI_FORMAT_R32G32_FLOAT: return GraphicsFormat::R32G32Float;
+            case DXGI_FORMAT_R32G32_UINT: return GraphicsFormat::R32G32UnsignedInt;
+            case DXGI_FORMAT_R32G32_SINT: return GraphicsFormat::R32G32SignedInt;
+
+            case DXGI_FORMAT_R8G8B8A8_TYPELESS: return GraphicsFormat::R8G8B8A8Typeless;
+            case DXGI_FORMAT_R8G8B8A8_UNORM: return GraphicsFormat::R8G8B8A8UnsignedNorm;
+            case DXGI_FORMAT_R8G8B8A8_UINT: return GraphicsFormat::R8G8B8A8UnsignedInt;
+            case DXGI_FORMAT_R8G8B8A8_SNORM: return GraphicsFormat::R8G8B8A8SignedNorm;
+            case DXGI_FORMAT_R8G8B8A8_SINT: return GraphicsFormat::R8G8B8A8SignedInt;
+
+            case DXGI_FORMAT_R16G16_TYPELESS: return GraphicsFormat::R16G16Typeless;
+            case DXGI_FORMAT_R16G16_FLOAT: return GraphicsFormat::R16G16Float;
+            case DXGI_FORMAT_R16G16_UNORM: return GraphicsFormat::R16G16UnsignedNorm;
+            case DXGI_FORMAT_R16G16_UINT: return GraphicsFormat::R16G16UnsignedInt;
+            case DXGI_FORMAT_R16G16_SNORM: return GraphicsFormat::R16G16SignedNorm;
+            case DXGI_FORMAT_R16G16_SINT: return GraphicsFormat::R16G16SignedInt;
+
+            case DXGI_FORMAT_R32_TYPELESS: return GraphicsFormat::R32Typeless;
+            case DXGI_FORMAT_D32_FLOAT: return GraphicsFormat::D32Float;
+            case DXGI_FORMAT_R32_FLOAT: return GraphicsFormat::R32Float;
+            case DXGI_FORMAT_R32_UINT: return GraphicsFormat::R32UnsignedInt;
+            case DXGI_FORMAT_R32_SINT: return GraphicsFormat::R32SignedInt;
+
+            case DXGI_FORMAT_D24_UNORM_S8_UINT: return GraphicsFormat::D24UnsignedNormS8UnsignedInt;
+
+            case DXGI_FORMAT_R16_TYPELESS: return GraphicsFormat::R16Typeless;
+            case DXGI_FORMAT_R16_FLOAT: return GraphicsFormat::R16Float;
+            case DXGI_FORMAT_D16_UNORM: return GraphicsFormat::D16UnsignedNorm;
+            case DXGI_FORMAT_R16_UNORM: return GraphicsFormat::R16UnsignedNorm;
+            case DXGI_FORMAT_R16_UINT: return GraphicsFormat::R16UnsignedInt;
+            case DXGI_FORMAT_R16_SNORM: return GraphicsFormat::R16SignedNorm;
+            case DXGI_FORMAT_R16_SINT: return GraphicsFormat::R16SignedInt;
+
+            case DXGI_FORMAT_BC1_UNORM: return GraphicsFormat::BlockCompression1UnsignedNormalized;
+            case DXGI_FORMAT_BC3_UNORM: return GraphicsFormat::BlockCompression3UnsignedNormalized;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown DXGI_FORMAT!");
+                break;
+            }
+        }
+
+        return GraphicsFormat::Unknown;
+    }
+
     DXGI_FORMAT Convert(GraphicsFormat graphicsFormat)
     {
         switch (graphicsFormat)
@@ -164,6 +234,9 @@ namespace spieler::renderer::dx12
             case GraphicsFormat::R16UnsignedInt: return DXGI_FORMAT_R16_UINT;
             case GraphicsFormat::R16SignedNorm: return DXGI_FORMAT_R16_SNORM;
             case GraphicsFormat::R16SignedInt: return DXGI_FORMAT_R16_SINT;
+
+            case GraphicsFormat::BlockCompression1UnsignedNormalized: return DXGI_FORMAT_BC1_UNORM;
+            case GraphicsFormat::BlockCompression3UnsignedNormalized: return DXGI_FORMAT_BC3_UNORM;
 
             default:
             {
