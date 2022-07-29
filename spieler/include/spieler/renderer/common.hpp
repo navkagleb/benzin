@@ -121,6 +121,9 @@ namespace spieler::renderer
         R16UnsignedInt,
         R16SignedNorm,
         R16SignedInt,
+
+        BlockCompression1UnsignedNormalized,
+        BlockCompression3UnsignedNormalized
     };
 
 } // namespace spieler::renderer
