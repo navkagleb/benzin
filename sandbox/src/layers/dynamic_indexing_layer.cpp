@@ -12,7 +12,6 @@
 #include <spieler/core/logger.hpp>
 
 #include <spieler/renderer/renderer.hpp>
-#include <spieler/renderer/upload_buffer.hpp>
 #include <spieler/renderer/geometry_generator.hpp>
 #include <spieler/renderer/rasterizer_state.hpp>
 #include <spieler/renderer/depth_stencil_state.hpp> 
@@ -42,8 +41,6 @@ namespace sandbox
 
         m_CameraController = ProjectionCameraController{ spieler::math::ToRadians(60.0f), window.GetAspectRatio() };
 
-        spieler::renderer::UploadBuffer uploadBuffer{ device, spieler::MB(10) };
-
         InitViewport();
         InitScissorRect();
         InitDepthStencil();
@@ -55,28 +52,40 @@ namespace sandbox
             // Crate
             {
                 auto& texture{ m_Textures["crate"] };
-                texture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/wood_crate1.dds", uploadBuffer);
+                auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/wood_crate1.dds") };
+
+                context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
                 texture.SetView<spieler::renderer::ShaderResourceView>(device);
             }
 
             // Bricks
             {
                 auto& texture{ m_Textures["bricks"] };
-                texture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/bricks.dds", uploadBuffer);
+                auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/bricks.dds") };
+
+                context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
                 texture.SetView<spieler::renderer::ShaderResourceView>(device);
             }
 
             // Stone
             {
                 auto& texture{ m_Textures["stone"] };
-                texture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/stone.dds", uploadBuffer);
+                auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/stone.dds") };
+
+                context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
                 texture.SetView<spieler::renderer::ShaderResourceView>(device);
             }
 
             // Tile
             {
                 auto& texture{ m_Textures["tile"] };
-                texture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/tile.dds", uploadBuffer);
+                auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/tile.dds") };
+
+                context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
                 texture.SetView<spieler::renderer::ShaderResourceView>(device);
             }
         }

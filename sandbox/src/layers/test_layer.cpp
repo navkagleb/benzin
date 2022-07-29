@@ -80,8 +80,6 @@ namespace sandbox
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
 
-        spieler::renderer::UploadBuffer uploadBuffer(device, spieler::MB(6));
-
         UpdateViewport();
         UpdateScissorRect();
 
@@ -89,8 +87,8 @@ namespace sandbox
 
         SPIELER_RETURN_IF_FAILED(context.ResetCommandList());
         {
-            SPIELER_RETURN_IF_FAILED(InitTextures(uploadBuffer));
-            SPIELER_RETURN_IF_FAILED(InitMeshGeometries(uploadBuffer));
+            SPIELER_RETURN_IF_FAILED(InitTextures());
+            SPIELER_RETURN_IF_FAILED(InitMeshGeometries());
         }
         SPIELER_RETURN_IF_FAILED(context.ExecuteCommandList(true));
 
@@ -495,7 +493,7 @@ namespace sandbox
         }
     }
 
-    bool TestLayer::InitTextures(spieler::renderer::UploadBuffer& uploadBuffer)
+    bool TestLayer::InitTextures()
     {
         auto& window{ spieler::Application::GetInstance().GetWindow() };
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
@@ -504,58 +502,72 @@ namespace sandbox
 
         // White texture
         {
-            spieler::renderer::Texture2D& whiteTexture{ m_Textures["white"] };
+            auto& texture{ m_Textures["white"] };
+            auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/white.dds") };
 
-            SPIELER_ASSERT(whiteTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/white.dds", uploadBuffer));
-            whiteTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+            context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
+            texture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
         // Wood crate texture
         {
-            spieler::renderer::Texture2D& woodCrateTexture{ m_Textures["wood_crate"] };
+            auto& texture{ m_Textures["wood_crate"] };
+            auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/wood_crate1.dds") };
 
-            SPIELER_ASSERT(woodCrateTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/wood_crate1.dds", uploadBuffer));
-            woodCrateTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+            context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
+            texture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
         // Wire fence texture
         {
-            spieler::renderer::Texture2D& wireFenceTexture{ m_Textures["wire_fence"] };
+            auto& texture{ m_Textures["wire_fence"] };
+            auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/wire_fence.dds") };
 
-            SPIELER_ASSERT(wireFenceTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/wire_fence.dds", uploadBuffer));
-            wireFenceTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+            context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
+            texture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
         // Tile texture
         {
-            spieler::renderer::Texture2D& tileTexture{ m_Textures["tile"] };
+            auto& texture{ m_Textures["tile"] };
+            auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/tile.dds") };
 
-            SPIELER_ASSERT(tileTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/tile.dds", uploadBuffer));
-            tileTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+            context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
+            texture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
         // Bricks texture
         {
-            spieler::renderer::Texture2D& bricksTexture{ m_Textures["bricks"] };
+            auto& texture{ m_Textures["bricks"] };
+            auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/bricks3.dds") };
 
-            SPIELER_ASSERT(bricksTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/bricks3.dds", uploadBuffer));
-            bricksTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+            context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
+            texture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
         
         // Mirror texture
         {
-            spieler::renderer::Texture2D& mirrorTexture{ m_Textures["mirror"] };
+            auto& texture{ m_Textures["mirror"] };
+            auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/ice.dds") };
 
-            SPIELER_ASSERT(mirrorTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/ice.dds", uploadBuffer));
-            mirrorTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+            context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
+            texture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
         // Tree atlas texture
         {
-            spieler::renderer::Texture2D& treeAtlasTexture{ m_Textures["tree_atlas"] };
+            auto& texture{ m_Textures["tree_atlas"] };
+            auto subresources{ texture.GetTexture2DResource().LoadFromDDSFile(device, L"assets/textures/tree_array.dds") };
 
-            SPIELER_ASSERT(treeAtlasTexture.GetTexture2DResource().LoadFromDDSFile(device, context, L"assets/textures/tree_array.dds", uploadBuffer));
-            treeAtlasTexture.SetView<spieler::renderer::ShaderResourceView>(device);
+            context.WriteToTexture(texture.GetTexture2DResource(), subresources);
+
+            texture.SetView<spieler::renderer::ShaderResourceView>(device);
         }
 
         // Off-screen texture
@@ -687,7 +699,7 @@ namespace sandbox
         }
     }
 
-    bool TestLayer::InitMeshGeometries(spieler::renderer::UploadBuffer& uploadBuffer)
+    bool TestLayer::InitMeshGeometries()
     {
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& device{ renderer.GetDevice() };

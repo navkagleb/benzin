@@ -37,7 +37,7 @@ namespace spieler::renderer
         bool CreateTexture(const Texture2DConfig& texture2DConfig, const TextureClearValue& textureClearValue, Texture2DResource& resource);
         bool CreateTexture(const Texture2DConfig& texture2DConfig, const DepthStencilClearValue& depthStencilClearValue, Texture2DResource& resource);
 
-        void RegisterTexture(ComPtr<ID3D12Resource>&& nativeResource, Texture2DResource& resource);
+        Texture2DResource RegisterTexture(ComPtr<ID3D12Resource>&& d3d12Texture);
 
         std::shared_ptr<BufferResource> CreateBuffer(const BufferConfig& bufferConfig, BufferFlags bufferFlags);
 

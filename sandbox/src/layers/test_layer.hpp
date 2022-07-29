@@ -82,9 +82,9 @@ namespace sandbox
 
     private:
         void InitConstantBuffers();
-        bool InitTextures(spieler::renderer::UploadBuffer& uploadBuffer);
+        bool InitTextures();
         void InitMaterials();
-        bool InitMeshGeometries(spieler::renderer::UploadBuffer& uploadBuffer);
+        bool InitMeshGeometries();
         bool InitRootSignatures();
         bool InitPipelineStates();
         void InitRenderItems();

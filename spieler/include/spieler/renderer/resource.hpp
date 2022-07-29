@@ -32,6 +32,8 @@ namespace spieler::renderer
     {
         uint64_t Width{ 0 };
         uint32_t Height{ 0 };
+        uint32_t Depth{ 0 };
+        uint32_t MipCount{ 0 };
         GraphicsFormat Format{ GraphicsFormat::Unknown };
         Texture2DFlags Flags{ Texture2DFlags::None };
     };
@@ -45,6 +47,13 @@ namespace spieler::renderer
     {
         float Depth{ 0.0f };
         uint8_t Stencil{ 0 };
+    };
+
+    struct SubresourceData
+    {
+        const std::byte* Data{ nullptr };
+        uint64_t RowPitch{ 0 };
+        uint64_t SlicePitch{ 0 };
     };
 
     class Resource

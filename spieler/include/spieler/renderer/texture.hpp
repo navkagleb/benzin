@@ -4,20 +4,12 @@
 
 #include "spieler/renderer/resource.hpp"
 #include "spieler/renderer/common.hpp"
-#include "spieler/renderer/descriptor_manager.hpp"
 #include "spieler/renderer/resource_view.hpp"
 
 namespace spieler::renderer
 {
 
     class Device;
-    class Context;
-    class UploadBuffer;
-
-    struct Image
-    {
-        std::unique_ptr<uint8_t[]> Data;
-    };
 
     class Texture2DResource : public Resource
     {
@@ -28,12 +20,13 @@ namespace spieler::renderer
         const Texture2DConfig& GetConfig() const { return m_Config; }
 
     public:
-        bool LoadFromDDSFile(Device& device, Context& context, const std::wstring& filename, UploadBuffer& uploadBuffer);
+        std::vector<SubresourceData> LoadFromDDSFile(Device& device, const std::wstring& filename);
+
         void SetResource(ComPtr<ID3D12Resource>&& resource);
 
     private:
         Texture2DConfig m_Config;
-        Image m_Image;
+        std::unique_ptr<uint8_t[]> m_Data; // #TODO: Move to another place. For now store it here because it need for SubResources
     };
 
     template <typename T>

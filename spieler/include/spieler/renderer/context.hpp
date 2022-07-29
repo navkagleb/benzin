@@ -76,9 +76,8 @@ namespace spieler::renderer
         void SetResourceBarrier(const TransitionResourceBarrier& barrier);
         void SetStencilReferenceValue(uint8_t referenceValue);
 
-        void Copy(std::vector<D3D12_SUBRESOURCE_DATA>& subresources, uint32_t alingment, UploadBuffer& from, Resource& to);
-
         void WriteToBuffer(BufferResource& buffer, size_t size, const void* data);
+        void WriteToTexture(Texture2DResource& texture, std::vector<SubresourceData>& subresources);
 
         bool CloseCommandList();
         bool ExecuteCommandList(bool isNeedToFlushCommandQueue = false);

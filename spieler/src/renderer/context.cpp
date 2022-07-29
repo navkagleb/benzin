@@ -10,7 +10,6 @@
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/pipeline_state.hpp"
 #include "spieler/renderer/root_signature.hpp"
-#include "spieler/renderer/upload_buffer.hpp"
 #include "spieler/renderer/texture.hpp"
 
 #include "spieler/renderer/vertex_buffer.hpp"
@@ -158,43 +157,6 @@ namespace spieler::renderer
         m_CommandList->OMSetStencilRef(referenceValue);
     }
 
-    void Context::Copy(std::vector<D3D12_SUBRESOURCE_DATA>& subresources, uint32_t alingment, UploadBuffer& from, Resource& to)
-    {
-        // TODO: Set barrier to resources
-#if 0
-        SetResourceBarrier(TransitionResourceBarrier
-        {
-            .Resource = &to,
-            .From = ResourceState::Present,
-            .To = ResourceState::CopyDestination
-        });
-#endif
-
-        const uint32_t uploadBufferSize{ static_cast<uint32_t>(::GetRequiredIntermediateSize(to.GetResource().Get(), 0, static_cast<uint32_t>(subresources.size()))) };
-        const uint32_t offset{ from.Allocate(uploadBufferSize, alingment) };
-        const uint32_t firstSubresource{ 0 };
-
-        UpdateSubresources(
-            m_CommandList.Get(),
-            to.GetResource().Get(),
-            from.GetResource().Get(),
-            offset,
-            firstSubresource,
-            static_cast<uint32_t>(subresources.size()),
-            subresources.data()
-        );
-
-        // TODO: Set barrier to resources
-#if 0
-        SetResourceBarrier(TransitionResourceBarrier
-        {
-            .Resource = &to,
-            .From = ResourceState::CopyDestination,
-            .To = ResourceState::GenericRead
-        });
-#endif
-    }
-
     void Context::WriteToBuffer(BufferResource& buffer, size_t size, const void* data)
     {
         SPIELER_ASSERT(buffer.GetResource());
@@ -206,6 +168,90 @@ namespace spieler::renderer
         memcpy_s(m_UploadBuffer.GetMappedData() + uploadBufferOffset, size, data, size);
 
         m_CommandList->CopyBufferRegion(buffer.GetResource().Get(), 0, m_UploadBuffer.GetResource().Get(), uploadBufferOffset, size);
+    }
+
+    void Context::WriteToTexture(Texture2DResource& texture, std::vector<SubresourceData>& subresources)
+    {
+        SPIELER_ASSERT(texture.GetResource());
+        SPIELER_ASSERT(!subresources.empty());
+
+        const uint32_t firstSubresource{ 0 };
+        
+        std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts;
+        layouts.resize(subresources.size());
+
+        std::vector<uint32_t> rowCounts;
+        rowCounts.resize(subresources.size());
+
+        std::vector<uint64_t> rowSizes; // Aligned by D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT unlike row pitch in subresources
+        rowSizes.resize(subresources.size());
+
+        // Init Layouts and allocate memory in UploadBuffer
+        {
+            uint64_t requiredUploadBufferSize{ 0 };
+
+            {
+                ComPtr<ID3D12Device> d3d12Device;
+                texture.GetResource()->GetDevice(IID_PPV_ARGS(&d3d12Device));
+
+                const D3D12_RESOURCE_DESC textureDesc{ texture.GetResource()->GetDesc() };
+
+                d3d12Device->GetCopyableFootprints(
+                    &textureDesc,
+                    firstSubresource,
+                    subresources.size(),
+                    m_UploadBuffer.Allocate(0, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+                    layouts.data(),
+                    rowCounts.data(),
+                    rowSizes.data(),
+                    &requiredUploadBufferSize
+                );
+            }
+
+            m_UploadBuffer.Allocate(requiredUploadBufferSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+        }
+        
+        // Copying subresources to UploadBuffer
+        for (size_t i = 0; i < subresources.size(); ++i)
+        {
+            SPIELER_ASSERT(rowSizes[i] <= static_cast<uint64_t>(-1));
+
+            std::byte* destinationData{ m_UploadBuffer.GetMappedData() + layouts[i].Offset };
+
+            for (uint32_t z = 0; z < layouts[i].Footprint.Depth; ++z)
+            {
+                std::byte* destinationSlice{ destinationData + layouts[i].Footprint.RowPitch * static_cast<uint64_t>(rowCounts[i]) * z };
+                const std::byte* sourceSlice{ subresources[i].Data + subresources[i].SlicePitch * z };
+
+                for (uint32_t y = 0; y < rowCounts[i]; ++y)
+                {
+                    std::byte* destinationRow{ destinationSlice + static_cast<uint64_t>(layouts[i].Footprint.RowPitch) * y };
+                    const std::byte* sourceRow{ sourceSlice + subresources[i].RowPitch * y };
+
+                    memcpy_s(destinationRow, rowSizes[i], sourceRow, rowSizes[i]);
+                }
+            }
+        }
+
+        // Copy to texture
+        for (size_t i = 0; i < subresources.size(); ++i)
+        {
+            const D3D12_TEXTURE_COPY_LOCATION destination
+            {
+                .pResource{ texture.GetResource().Get() },
+                .Type{ D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX },
+                .SubresourceIndex{ static_cast<uint32_t>(i + firstSubresource) }
+            };
+
+            const D3D12_TEXTURE_COPY_LOCATION source
+            {
+                .pResource{ m_UploadBuffer.GetResource().Get() },
+                .Type{ D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT },
+                .PlacedFootprint{ layouts[i] }
+            };
+
+            m_CommandList->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
+        }
     }
 
     bool Context::CloseCommandList()

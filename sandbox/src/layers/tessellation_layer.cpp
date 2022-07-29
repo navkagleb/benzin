@@ -32,8 +32,6 @@ namespace sandbox
 
         m_CameraController = ProjectionCameraController{ spieler::math::ToRadians(60.0f), window.GetAspectRatio() };
 
-        spieler::renderer::UploadBuffer uploadBuffer{ device, spieler::MB(2) };
-
         SPIELER_ASSERT(context.ResetCommandList());
 
         InitViewport();

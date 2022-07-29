@@ -3,32 +3,30 @@
 #include "spieler/renderer/texture.hpp"
 
 #include "spieler/renderer/device.hpp"
-#include "spieler/renderer/context.hpp"
-#include "spieler/renderer/upload_buffer.hpp"
 
 namespace spieler::renderer
 {
 
-    bool Texture2DResource::LoadFromDDSFile(Device& device, Context& context, const std::wstring& filename, UploadBuffer& uploadBuffer)
+    std::vector<SubresourceData> Texture2DResource::LoadFromDDSFile(Device& device, const std::wstring& filename)
     {
+        SPIELER_ASSERT(device.GetNativeDevice());
         SPIELER_ASSERT(!filename.empty());
 
-        std::vector<D3D12_SUBRESOURCE_DATA> subresources;
+        std::vector<SubresourceData> subresources;
 
-        // TODO: Set m_Config from subresources
-        SPIELER_RETURN_IF_FAILED(DirectX::LoadDDSTextureFromFile(
+        // Create texture using Desc from DDS file
+        SPIELER_ASSERT(SUCCEEDED(DirectX::LoadDDSTextureFromFile(
             device.GetNativeDevice().Get(),
             filename.c_str(),
             &m_Resource,
-            m_Image.Data,
-            subresources
-        ));
+            m_Data,
+            *reinterpret_cast<std::vector<D3D12_SUBRESOURCE_DATA>*>(&subresources)
+        )));
 
-        context.Copy(subresources, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT, uploadBuffer, *this);
+        // #TODO: Register texture throw device
+        //*this = device.RegisterTexture(std::move(m_Resource));
 
-        SetDebugName(filename);
-
-        return true;
+        return subresources;
     }
 
     void Texture2DResource::SetResource(ComPtr<ID3D12Resource>&& resource)

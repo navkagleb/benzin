@@ -141,11 +141,10 @@ namespace spieler::renderer
     {
         for (size_t i = 0; i < m_Buffers.size(); ++i)
         {
-            ComPtr<ID3D12Resource> buffer;
-            SPIELER_RETURN_IF_FAILED(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&buffer)));
+            ComPtr<ID3D12Resource> backBuffer;
+            SPIELER_RETURN_IF_FAILED(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
             
-            device.RegisterTexture(std::move(buffer), m_Buffers[i].GetTexture2DResource());
-            
+            m_Buffers[i].GetTexture2DResource() = device.RegisterTexture(std::move(backBuffer));
             m_Buffers[i].GetTexture2DResource().SetDebugName(L"SwapChainBuffer_" + std::to_wstring(i));
             m_Buffers[i].SetView<RenderTargetView>(device);
         }

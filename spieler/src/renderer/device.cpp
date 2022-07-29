@@ -187,20 +187,25 @@ namespace spieler::renderer
         return true;
     }
 
-    void Device::RegisterTexture(ComPtr<ID3D12Resource>&& nativeResource, Texture2DResource& resource)
+    Texture2DResource Device::RegisterTexture(ComPtr<ID3D12Resource>&& d3d12Texture)
     {
-        const D3D12_RESOURCE_DESC nativeDesc{ nativeResource->GetDesc() };
+        const D3D12_RESOURCE_DESC d3d12Desc{ d3d12Texture->GetDesc() };
 
-        const Texture2DConfig texture2DConfig
+        const Texture2DConfig config
         {
-            .Width{ nativeDesc.Width },
-            .Height{ nativeDesc.Height },
-            .Format{ static_cast<GraphicsFormat>(nativeDesc.Format) },
-            .Flags{ static_cast<Texture2DFlags>(nativeDesc.Flags) }
+            .Width{ d3d12Desc.Width },
+            .Height{ d3d12Desc.Height },
+            .Depth{ d3d12Desc.DepthOrArraySize },
+            .MipCount{ d3d12Desc.MipLevels },
+            .Format{ dx12::Convert(d3d12Desc.Format) },
+            .Flags{ static_cast<Texture2DFlags>(d3d12Desc.Flags) } // #TODO: Replace with dx12::Convert
         };
 
-        resource.m_Resource = std::move(nativeResource);
-        resource.m_Config = texture2DConfig;
+        Texture2DResource texture;
+        texture.m_Resource = std::move(d3d12Texture);
+        texture.m_Config = config;
+
+        return texture;
     }
 
     std::shared_ptr<BufferResource> Device::CreateBuffer(const BufferConfig& bufferConfig, BufferFlags bufferFlags)
