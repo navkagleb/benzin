@@ -9,21 +9,19 @@ namespace spieler::renderer
     class Fence
     {
     public:
-        Fence(Device& device);
+        explicit Fence(Device& device);
 
     public:
         uint64_t GetValue() const { return m_Value; }
 
     public:
+        ID3D12Fence* GetDX12Fence() const { return m_DX12Fence.Get(); }
+
         void Increment();
-        bool Signal(Context& context) const;
-        bool WaitForGPU() const;
+        void WaitForGPU() const;
 
     private:
-        bool Init(Device& device);
-
-    private:
-        ComPtr<ID3D12Fence> m_Fence;
+        ComPtr<ID3D12Fence> m_DX12Fence;
 
         uint64_t m_Value{ 0 };
     };

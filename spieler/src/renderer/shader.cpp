@@ -19,18 +19,18 @@ namespace spieler::renderer
             const DefineContainer& defines,
             ComPtr<ID3DBlob>& byteCode)
         {
-            std::vector<D3D_SHADER_MACRO> d3dDefines;
+            std::vector<D3D_SHADER_MACRO> dx12Defines;
 
             if (!defines.empty())
             {
-                d3dDefines.reserve(defines.size());
+                dx12Defines.reserve(defines.size());
 
                 for (const auto& [name, value] : defines)
                 {
-                    d3dDefines.emplace_back(name.data(), value.c_str());
+                    dx12Defines.emplace_back(name.data(), value.c_str());
                 }
 
-                d3dDefines.emplace_back(nullptr, nullptr);
+                dx12Defines.emplace_back(nullptr, nullptr);
             }
 
 #if defined(SPIELER_DEBUG)
@@ -45,7 +45,7 @@ namespace spieler::renderer
             {
                 D3DCompileFromFile(
                     filename.c_str(),
-                    d3dDefines.data(),
+                    dx12Defines.data(),
                     D3D_COMPILE_STANDARD_FILE_INCLUDE,
                     entryPoint.c_str(),
                     target.c_str(),
@@ -96,16 +96,16 @@ namespace spieler::renderer
 
     const void* Shader::GetData() const
     {
-        SPIELER_ASSERT(m_ByteCode);
+        SPIELER_ASSERT(m_DX12Blob);
 
-        return m_ByteCode->GetBufferPointer();
+        return m_DX12Blob->GetBufferPointer();
     }
 
     uint32_t Shader::GetSize() const
     {
-        SPIELER_ASSERT(m_ByteCode);
+        SPIELER_ASSERT(m_DX12Blob);
 
-        return static_cast<uint32_t>(m_ByteCode->GetBufferSize());
+        return static_cast<uint32_t>(m_DX12Blob->GetBufferSize());
     }
 
     Shader::Shader(ShaderType type, const std::wstring& filename, const std::string& entryPoint, const DefineContainer& defines)
@@ -115,7 +115,7 @@ namespace spieler::renderer
             entryPoint, 
             _internal::GetShaderTarget(type),
             defines,
-            m_ByteCode
+            m_DX12Blob
         ));
     }
 

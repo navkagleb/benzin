@@ -21,26 +21,26 @@ namespace sandbox
         InitPipelineState();
     }
 
-    void SobelFilterPass::Execute(spieler::renderer::Texture2D& input)
+    void SobelFilterPass::Execute(spieler::renderer::Texture& input)
     {
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
 
-        auto& nativeCommandList{ context.GetNativeCommandList() };
+        auto* dx12GraphicsCommandList{ context.GetDX12GraphicsCommandList() };
 
-        const uint32_t width{ static_cast<uint32_t>(input.GetTexture2DResource().GetConfig().Width) };
-        const uint32_t height{ input.GetTexture2DResource().GetConfig().Height };
+        const uint32_t width{ static_cast<uint32_t>(input.Resource.GetConfig().Width) };
+        const uint32_t height{ input.Resource.GetConfig().Height };
 
         context.SetPipelineState(m_PipelineState);
         context.SetComputeRootSignature(m_RootSignature);
 
-        nativeCommandList->SetComputeRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ input.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
-        nativeCommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_OutputTexture.GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
+        dx12GraphicsCommandList->SetComputeRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ input.Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+        dx12GraphicsCommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_OutputTexture.Views.GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
 
         const uint32_t threadGroupXCount{ width / 16 + 1 };
         const uint32_t threadGroupYCount{ height / 16 + 1 };
-        nativeCommandList->Dispatch(threadGroupXCount, threadGroupYCount, 1);
+        dx12GraphicsCommandList->Dispatch(threadGroupXCount, threadGroupYCount, 1);
     }
 
     void SobelFilterPass::OnResize(uint32_t width, uint32_t height)
@@ -52,20 +52,20 @@ namespace sandbox
     {
         auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
 
-        const spieler::renderer::Texture2DConfig outputTextureConfig
+        const spieler::renderer::TextureResource::Config config
         {
-            .Width{ static_cast<uint64_t>(width) },
+            .Width{ width },
             .Height{ height },
             .Format{ spieler::renderer::GraphicsFormat::R8G8B8A8UnsignedNorm },
-            .Flags{ spieler::renderer::Texture2DFlags::UnorderedAccess }
+            .Flags{ spieler::renderer::TextureResource::Flags::UnorderedAccess }
         };
 
-        SPIELER_ASSERT(device.CreateTexture(outputTextureConfig, m_OutputTexture.GetTexture2DResource()));
+        m_OutputTexture.Resource = spieler::renderer::TextureResource{ device, config };
 
-        m_OutputTexture.GetTexture2DResource().SetDebugName(L"SobelFilterOutput");
+        //m_OutputTexture.GetTexture2DResource().SetDebugName(L"SobelFilterOutput");
 
-        m_OutputTexture.SetView<spieler::renderer::ShaderResourceView>(device);
-        m_OutputTexture.SetView<spieler::renderer::UnorderedAccessView>(device);
+        m_OutputTexture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
+        m_OutputTexture.Views.CreateView<spieler::renderer::UnorderedAccessView>(device);
     }
 
     void SobelFilterPass::InitRootSignature()
@@ -112,7 +112,7 @@ namespace sandbox
 
         const spieler::renderer::Shader& computeShader{ m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Compute, shaderConfig) };
 
-        const spieler::renderer::ComputePipelineStateConfig pipelineStateConfig
+        const spieler::renderer::ComputePipelineState::Config pipelineStateConfig
         {
             .RootSignature{ &m_RootSignature },
             .ComputeShader{ &computeShader }

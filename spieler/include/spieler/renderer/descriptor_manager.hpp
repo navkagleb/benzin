@@ -65,7 +65,7 @@ namespace spieler::renderer
         DescriptorHeap(DescriptorHeap&& other) noexcept;
 
     public:
-        const ComPtr<ID3D12DescriptorHeap>& GetNative() const { return m_DescriptorHeap; }
+        ID3D12DescriptorHeap* GetDX12DescriptorHeap() const { return m_DX12DescriptorHeap.Get(); }
 
         uint32_t GetDescriptorSize() const { return m_DescriptorSize; }
         uint32_t GetDescriptorCount() const { return m_DescriptorCount; }
@@ -82,7 +82,7 @@ namespace spieler::renderer
         DescriptorHeap& operator=(DescriptorHeap&& other) noexcept;
 
     private:
-        ComPtr<ID3D12DescriptorHeap> m_DescriptorHeap;
+        ComPtr<ID3D12DescriptorHeap> m_DX12DescriptorHeap;
 
         uint32_t m_DescriptorSize{ 0 };
         uint32_t m_DescriptorCount{ 0 };

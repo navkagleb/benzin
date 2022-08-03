@@ -126,4 +126,16 @@ namespace spieler::renderer
         BlockCompression3UnsignedNormalized
     };
 
+    enum class ComparisonFunction : uint8_t
+    {
+        Never = D3D12_COMPARISON_FUNC_NEVER,
+        Less = D3D12_COMPARISON_FUNC_LESS,
+        Equal = D3D12_COMPARISON_FUNC_EQUAL,
+        LessEqual = D3D12_COMPARISON_FUNC_LESS_EQUAL,
+        Greate = D3D12_COMPARISON_FUNC_GREATER,
+        NotEqual = D3D12_COMPARISON_FUNC_NOT_EQUAL,
+        GreateEqual = D3D12_COMPARISON_FUNC_GREATER_EQUAL,
+        Always = D3D12_COMPARISON_FUNC_ALWAYS
+    };
+
 } // namespace spieler::renderer

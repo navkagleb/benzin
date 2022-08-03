@@ -5,6 +5,7 @@
 
 namespace spieler::renderer
 {
+
     class Device;
 
     class RootParameter
@@ -94,7 +95,7 @@ namespace spieler::renderer
         RootParameter& operator=(RootParameter&& other) noexcept;
 
     private:
-        D3D12_ROOT_PARAMETER m_RootParameter;
+        D3D12_ROOT_PARAMETER m_DX12RootParameter;
     };
 
     class RootSignature
@@ -118,9 +119,11 @@ namespace spieler::renderer
 
     public:
         RootSignature() = default;
-        RootSignature(class Device& device, const Config& config);
-
+        RootSignature(Device& device, const Config& config);
         RootSignature(RootSignature&& other) noexcept;
+
+    public:
+        ID3D12RootSignature* GetDX12RootSignature() const { return m_DX12RootSignature.Get(); }
 
     private:
         bool Init(class Device& device, const Config& config);
@@ -128,10 +131,8 @@ namespace spieler::renderer
     public:
         RootSignature& operator=(RootSignature&& other) noexcept;
 
-        explicit operator ID3D12RootSignature* () const { return m_RootSignature.Get(); }
-
     private:
-        ComPtr<ID3D12RootSignature> m_RootSignature;
+        ComPtr<ID3D12RootSignature> m_DX12RootSignature;
     };
 
 

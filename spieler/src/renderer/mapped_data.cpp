@@ -1,23 +1,27 @@
 #include "spieler/config/bootstrap.hpp"
 
-#include "spieler/renderer/mapped_data.hpp"
+#include "renderer/mapped_data.hpp"
 
 #include "spieler/core/assert.hpp"
 
 namespace spieler::renderer
 {
 
-    static constexpr uint32_t g_SubresourceIndex{ 0 };
-
-    MappedData::MappedData(Resource& resource)
+    MappedData::MappedData(Resource& resource, uint32_t subresourceIndex)
         : m_Resource{ resource }
+        , m_SubresourceIndex{ subresourceIndex }
     {
-        SPIELER_ASSERT(SUCCEEDED(m_Resource.GetResource()->Map(g_SubresourceIndex, nullptr, reinterpret_cast<void**>(& m_Data))));
+        const ::HRESULT result{ m_Resource.GetDX12Resource()->Map(m_SubresourceIndex, nullptr, reinterpret_cast<void**>(&m_Data)) };
+
+        SPIELER_ASSERT(SUCCEEDED(result));
     }
 
     MappedData::~MappedData()
-    {
-        m_Resource.GetResource()->Unmap(g_SubresourceIndex, nullptr);
+    {   
+        if (m_Resource.GetDX12Resource())
+        {
+            m_Resource.GetDX12Resource()->Unmap(m_SubresourceIndex, nullptr);
+        }
     }
 
 } // namespace spieler::renderer

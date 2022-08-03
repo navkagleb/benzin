@@ -22,7 +22,7 @@ namespace spieler::renderer
     }
 
     DescriptorHeap::DescriptorHeap(DescriptorHeap&& other) noexcept
-        : m_DescriptorHeap{ std::exchange(other.m_DescriptorHeap, nullptr) }
+        : m_DX12DescriptorHeap{ std::exchange(other.m_DX12DescriptorHeap, nullptr) }
         , m_DescriptorSize{ std::exchange(other.m_DescriptorSize, 0) }
         , m_DescriptorCount{ std::exchange(other.m_DescriptorCount, 0) }
         , m_Marker{ std::exchange(other.m_Marker, 0) }
@@ -37,18 +37,16 @@ namespace spieler::renderer
 
     CPUDescriptorHandle DescriptorHeap::AllocateCPU(uint32_t index)
     {
-        return m_DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
+        return m_DX12DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
     }
 
     GPUDescriptorHandle DescriptorHeap::AllocateGPU(uint32_t index)
     {
-        return m_DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
+        return m_DX12DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
     }
 
     bool DescriptorHeap::Init(Device& device, Type type, uint32_t descriptorCount)
     {
-        ComPtr<ID3D12Device>& d3d12Device{ device.GetNativeDevice() };
-
         const D3D12_DESCRIPTOR_HEAP_DESC desc
         {
             .Type{ dx12::Convert(type) },
@@ -57,10 +55,10 @@ namespace spieler::renderer
             .NodeMask{ 0 }
         };
 
-        SPIELER_RETURN_IF_FAILED(d3d12Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_DescriptorHeap)));
+        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_DX12DescriptorHeap)));
 
         m_DescriptorCount = descriptorCount;
-        m_DescriptorSize = d3d12Device->GetDescriptorHandleIncrementSize(desc.Type);
+        m_DescriptorSize = device.GetDX12Device()->GetDescriptorHandleIncrementSize(desc.Type);
 
         return true;
     }
@@ -72,7 +70,7 @@ namespace spieler::renderer
             return *this;
         }
 
-        m_DescriptorHeap = std::exchange(other.m_DescriptorHeap, nullptr);
+        m_DX12DescriptorHeap = std::exchange(other.m_DX12DescriptorHeap, nullptr);
         m_DescriptorSize = std::exchange(other.m_DescriptorSize, 0);
         m_DescriptorCount = std::exchange(other.m_DescriptorCount, 0);
         m_Marker = std::exchange(other.m_Marker, 0);

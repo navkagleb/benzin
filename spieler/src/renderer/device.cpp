@@ -23,85 +23,77 @@ namespace spieler::renderer
             return (value + alignment - 1) & ~(alignment - 1);
         }
 
-        enum class HeapType : uint8_t
-        {
-            Default = D3D12_HEAP_TYPE_DEFAULT,
-            Upload = D3D12_HEAP_TYPE_UPLOAD
-        };
-
-        inline static D3D12_HEAP_PROPERTIES GetD3D12HeapDesc(HeapType heapType)
+        inline static D3D12_HEAP_PROPERTIES GetDX12HeapProperties(D3D12_HEAP_TYPE type)
         {
             return D3D12_HEAP_PROPERTIES
             {
-                .Type = static_cast<D3D12_HEAP_TYPE>(heapType),
-                .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-                .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-                .CreationNodeMask = 1,
-                .VisibleNodeMask = 1,
+                .Type{ type },
+                .CPUPageProperty{ D3D12_CPU_PAGE_PROPERTY_UNKNOWN },
+                .MemoryPoolPreference{ D3D12_MEMORY_POOL_UNKNOWN },
+                .CreationNodeMask{ 1 },
+                .VisibleNodeMask{ 1 },
             };
         }
 
-        inline static D3D12_RESOURCE_DESC ConvertToD3D12ResourceDesc(const BufferConfig& bufferConfig)
+        inline static D3D12_RESOURCE_DESC ConvertToDX12ResourceDesc(const BufferResource::Config& config)
         {
             return D3D12_RESOURCE_DESC
             {
-                .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-                .Alignment = bufferConfig.Alignment,
-                .Width = bufferConfig.ElementSize * bufferConfig.ElementCount,
-                .Height = 1,
-                .DepthOrArraySize = 1,
-                .MipLevels = 1,
-                .Format = DXGI_FORMAT_UNKNOWN,
-                .SampleDesc = DXGI_SAMPLE_DESC{ 1, 0 },
-                .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-                .Flags = D3D12_RESOURCE_FLAG_NONE
+                .Dimension{ D3D12_RESOURCE_DIMENSION_BUFFER },
+                .Alignment{ config.Alignment },
+                .Width{ static_cast<uint64_t>(config.ElementSize) * config.ElementCount },
+                .Height{ 1 },
+                .DepthOrArraySize{ 1 },
+                .MipLevels{ 1 },
+                .Format{ DXGI_FORMAT_UNKNOWN },
+                .SampleDesc{ 1, 0 },
+                .Layout{ D3D12_TEXTURE_LAYOUT_ROW_MAJOR },
+                .Flags{ D3D12_RESOURCE_FLAG_NONE }
             };
         }
 
-        inline static D3D12_RESOURCE_DESC ConvertToD3D12ResourceDesc(const Texture2DConfig& texture2DConfig)
+        inline static D3D12_RESOURCE_DESC ConvertToDX12ResourceDesc(const TextureResource::Config& config)
         {
             return D3D12_RESOURCE_DESC
             {
-                .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-                .Alignment = 0,
-                .Width = texture2DConfig.Width,
-                .Height = texture2DConfig.Height,
-                .DepthOrArraySize = 1,
-                .MipLevels = 1,
-                .Format = dx12::Convert(texture2DConfig.Format),
-                .SampleDesc = DXGI_SAMPLE_DESC{ 1, 0 },
-                .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
-                .Flags = static_cast<D3D12_RESOURCE_FLAGS>(texture2DConfig.Flags)
+                .Dimension{ dx12::Convert(config.Dimension) },
+                .Alignment{ 0 },
+                .Width{ static_cast<uint64_t>(config.Width) },
+                .Height{ config.Height },
+                .DepthOrArraySize{ config.Depth },
+                .MipLevels{ config.MipCount },
+                .Format{ dx12::Convert(config.Format) },
+                .SampleDesc{ 1, 0 },
+                .Layout{ D3D12_TEXTURE_LAYOUT_UNKNOWN },
+                .Flags{ dx12::Convert(config.Flags) }
             };
         }
 
-        inline static D3D12_CLEAR_VALUE ConvertToD3D12ClearValue(const Texture2DConfig& texture2DConfig, const TextureClearValue& textureClearValue)
+        inline static D3D12_CLEAR_VALUE ConvertToDX12ClearValue(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor)
         {
             return D3D12_CLEAR_VALUE
             {
-                .Format = dx12::Convert(texture2DConfig.Format),
-                .Color = 
+                .Format{ dx12::Convert(config.Format) },
+                .Color 
                 { 
-                    textureClearValue.Color.x,
-                    textureClearValue.Color.y,
-                    textureClearValue.Color.z,
-                    textureClearValue.Color.w
+                    clearColor.Color.x,
+                    clearColor.Color.y,
+                    clearColor.Color.z,
+                    clearColor.Color.w
                 }
             };
         }
 
-        inline static D3D12_CLEAR_VALUE ConvertToD3D12ClearValue(const Texture2DConfig& texture2DConfig, const DepthStencilClearValue& depthStencilClearValue)
+        inline static D3D12_CLEAR_VALUE ConvertToDX12ClearValue(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil)
         {
-            const D3D12_DEPTH_STENCIL_VALUE d3d12DepthStencilClearValue
-            {
-                .Depth = depthStencilClearValue.Depth,
-                .Stencil = depthStencilClearValue.Stencil
-            };
-
             return D3D12_CLEAR_VALUE
             {
-                .Format = dx12::Convert(texture2DConfig.Format),
-                .DepthStencil = d3d12DepthStencilClearValue
+                .Format{ dx12::Convert(config.Format) },
+                .DepthStencil
+                {
+                    .Depth{ clearDepthStencil.Depth },
+                    .Stencil{ clearDepthStencil.Stencil }
+                }
             };
         }
 
@@ -120,143 +112,78 @@ namespace spieler::renderer
 #if defined(SPIELER_DEBUG)
     {
         ComPtr<ID3D12Debug> debugController;
-        SPIELER_ASSERT(SUCCEEDED(D3D12GetDebugInterface(__uuidof(ID3D12Debug), &debugController)));
+        SPIELER_ASSERT(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))));
 
         debugController->EnableDebugLayer();
     }
 #endif
 
         // m_Device
-        SPIELER_ASSERT(SUCCEEDED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), &m_Device)));
+        SPIELER_ASSERT(SUCCEEDED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_DX12Device))));
 
         // m_DescriptorManager
         m_DescriptorManager = DescriptorManager{ *this, g_DescriptorManagerConfig };
     }
 
-    bool Device::CreateDefaultBuffer(const BufferConfig& bufferConfig, Resource& resource)
+    ComPtr<ID3D12Resource> Device::CreateDX12Buffer(const BufferResource::Config& config)
     {
-        const D3D12_HEAP_PROPERTIES heapDesc{ _internal::GetD3D12HeapDesc(_internal::HeapType::Default) };
-        const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToD3D12ResourceDesc(bufferConfig) };
+        const D3D12_HEAP_TYPE heapType{ config.Flags == BufferResource::Flags::None ? D3D12_HEAP_TYPE_DEFAULT : D3D12_HEAP_TYPE_UPLOAD };
 
-        return CreateResource(&heapDesc, &resourceDesc, nullptr, resource.m_Resource);
+        const D3D12_HEAP_PROPERTIES heapProperties{ _internal::GetDX12HeapProperties(heapType) };
+        const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToDX12ResourceDesc(config) };
+
+        return CreateDX12Resource(&heapProperties, &resourceDesc, nullptr);
     }
 
-    bool Device::CreateUploadBuffer(const BufferConfig& bufferConfig, Resource& resource)
+    ComPtr<ID3D12Resource> Device::CreateDX12Texture(const TextureResource::Config& config)
     {
-        const D3D12_HEAP_PROPERTIES heapDesc{ _internal::GetD3D12HeapDesc(_internal::HeapType::Upload) };
-        const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToD3D12ResourceDesc(bufferConfig) };
+        const D3D12_HEAP_PROPERTIES heapProperties{ _internal::GetDX12HeapProperties(D3D12_HEAP_TYPE_DEFAULT) };
+        const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToDX12ResourceDesc(config) };
 
-        return CreateResource(&heapDesc, &resourceDesc, nullptr, resource.m_Resource);
+        return CreateDX12Resource(&heapProperties, &resourceDesc, nullptr);
     }
 
-    bool Device::CreateTexture(const Texture2DConfig& texture2DConfig, Texture2DResource& resource)
+    ComPtr<ID3D12Resource> Device::CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor)
     {
-        const D3D12_HEAP_PROPERTIES heapDesc{ _internal::GetD3D12HeapDesc(_internal::HeapType::Default) };
-        const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToD3D12ResourceDesc(texture2DConfig) };
+        const D3D12_HEAP_PROPERTIES heapProperties{ _internal::GetDX12HeapProperties(D3D12_HEAP_TYPE_DEFAULT) };
+        const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToDX12ResourceDesc(config) };
+        const D3D12_CLEAR_VALUE clearValue{ _internal::ConvertToDX12ClearValue(config, clearColor) };
 
-        SPIELER_RETURN_IF_FAILED(CreateResource(&heapDesc, &resourceDesc, nullptr, resource.m_Resource));
-
-        resource.m_Config = texture2DConfig;
-
-        return true;
+        return CreateDX12Resource(&heapProperties, &resourceDesc, &clearValue);
     }
 
-    bool Device::CreateTexture(const Texture2DConfig& texture2DConfig, const TextureClearValue& textureClearValue, Texture2DResource& resource)
+    ComPtr<ID3D12Resource> Device::CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil)
     {
-        const D3D12_HEAP_PROPERTIES heapDesc{ _internal::GetD3D12HeapDesc(_internal::HeapType::Default) };
-        const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToD3D12ResourceDesc(texture2DConfig) };
-        const D3D12_CLEAR_VALUE clearValueDesc{ _internal::ConvertToD3D12ClearValue(texture2DConfig, textureClearValue) };
+        const D3D12_HEAP_PROPERTIES heapProperties{ _internal::GetDX12HeapProperties(D3D12_HEAP_TYPE_DEFAULT) };
+        const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToDX12ResourceDesc(config) };
+        const D3D12_CLEAR_VALUE clearValue{ _internal::ConvertToDX12ClearValue(config, clearDepthStencil) };
 
-        SPIELER_RETURN_IF_FAILED(CreateResource(&heapDesc, &resourceDesc, &clearValueDesc, resource.m_Resource));
-
-        resource.m_Config = texture2DConfig;
-
-        return true;
+        return CreateDX12Resource(&heapProperties, &resourceDesc, &clearValue);
     }
 
-    bool Device::CreateTexture(const Texture2DConfig& texture2DConfig, const DepthStencilClearValue& depthStencilClearValue, Texture2DResource& resource)
+    ComPtr<ID3D12Resource> Device::CreateDX12Resource(const D3D12_HEAP_PROPERTIES* heapProperties, const D3D12_RESOURCE_DESC* const resourceDesc, const D3D12_CLEAR_VALUE* const clearValueDesc)
     {
-        const D3D12_HEAP_PROPERTIES heapDesc{ _internal::GetD3D12HeapDesc(_internal::HeapType::Default) };
-        const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToD3D12ResourceDesc(texture2DConfig) };
-        const D3D12_CLEAR_VALUE clearValueDesc{ _internal::ConvertToD3D12ClearValue(texture2DConfig, depthStencilClearValue) };
+        ComPtr<ID3D12Resource> resource;
 
-        SPIELER_RETURN_IF_FAILED(CreateResource(&heapDesc, &resourceDesc, &clearValueDesc, resource.m_Resource));
-
-        resource.m_Config = texture2DConfig;
-
-        return true;
-    }
-
-    Texture2DResource Device::RegisterTexture(ComPtr<ID3D12Resource>&& d3d12Texture)
-    {
-        const D3D12_RESOURCE_DESC d3d12Desc{ d3d12Texture->GetDesc() };
-
-        const Texture2DConfig config
-        {
-            .Width{ d3d12Desc.Width },
-            .Height{ d3d12Desc.Height },
-            .Depth{ d3d12Desc.DepthOrArraySize },
-            .MipCount{ d3d12Desc.MipLevels },
-            .Format{ dx12::Convert(d3d12Desc.Format) },
-            .Flags{ static_cast<Texture2DFlags>(d3d12Desc.Flags) } // #TODO: Replace with dx12::Convert
-        };
-
-        Texture2DResource texture;
-        texture.m_Resource = std::move(d3d12Texture);
-        texture.m_Config = config;
-
-        return texture;
-    }
-
-    std::shared_ptr<BufferResource> Device::CreateBuffer(const BufferConfig& bufferConfig, BufferFlags bufferFlags)
-    {
-        using namespace magic_enum::bitwise_operators;
-
-        if ((bufferFlags & BufferFlags::ConstantBuffer) != BufferFlags::None)
-        {
-            const_cast<BufferConfig&>(bufferConfig).ElementSize = _internal::Align(bufferConfig.ElementSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-        }
-
-        std::shared_ptr<BufferResource> buffer{ std::make_shared<BufferResource>(bufferConfig) };
-
-        if ((bufferFlags & BufferFlags::Dynamic) != BufferFlags::None)
-        {
-            SPIELER_ASSERT(CreateUploadBuffer(bufferConfig, *buffer));
-        }
-        else
-        {
-            SPIELER_ASSERT(CreateDefaultBuffer(bufferConfig, *buffer));
-        }
-
-        return buffer;
-    }
-
-    bool Device::CreateResource(
-        const D3D12_HEAP_PROPERTIES* heapDesc, 
-        const D3D12_RESOURCE_DESC* const resourceDesc, 
-        const D3D12_CLEAR_VALUE* const clearValueDesc, 
-        ComPtr<ID3D12Resource>& resource)
-    {
         const ::HRESULT result
         {
-            m_Device->CreateCommittedResource(
-                heapDesc,
+            m_DX12Device->CreateCommittedResource(
+                heapProperties,
                 D3D12_HEAP_FLAG_NONE,
                 resourceDesc,
-                heapDesc->Type == D3D12_HEAP_TYPE_UPLOAD ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON,
+                heapProperties->Type == D3D12_HEAP_TYPE_UPLOAD ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON,
                 clearValueDesc,
-                __uuidof(std::remove_reference<decltype(resource)>::type::InterfaceType),
-                &resource
+                IID_PPV_ARGS(&resource)
             )
         };
 
         if (FAILED(result))
         {
             SPIELER_CRITICAL("Failed to create Resource");
-            return false;
+            SPIELER_ASSERT(false);
         }
 
-        return true;
+        return resource;
     }
 
 } // namespace spieler::renderer

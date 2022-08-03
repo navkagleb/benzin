@@ -30,31 +30,31 @@ namespace spieler::renderer
 #endif
     }
 
-    Texture2D& SwapChain::GetCurrentBuffer()
+    Texture& SwapChain::GetCurrentBuffer()
     {
         return m_Buffers[GetCurrentBufferIndex()];
     }
 
-    const Texture2D& SwapChain::GetCurrentBuffer() const
+    const Texture& SwapChain::GetCurrentBuffer() const
     {
         return m_Buffers[GetCurrentBufferIndex()];
     }
 
     uint32_t SwapChain::GetCurrentBufferIndex() const
     {
-        return m_SwapChain3->GetCurrentBackBufferIndex();
+        return m_DXGISwapChain3->GetCurrentBackBufferIndex();
     }
 
     bool SwapChain::ResizeBuffers(Device& device, uint32_t width, uint32_t height)
     {
         SPIELER_ASSERT(!m_Buffers.empty());
 
-        for (Texture2D& buffer : m_Buffers)
+        for (Texture& buffer : m_Buffers)
         {
-            buffer.GetTexture2DResource().Reset();
+            //buffer.GetResource().Reset();
         }
 
-        SPIELER_RETURN_IF_FAILED(m_SwapChain->ResizeBuffers(
+        SPIELER_RETURN_IF_FAILED(m_DXGISwapChain->ResizeBuffers(
             static_cast<UINT>(m_Buffers.size()),
             width,
             height,
@@ -69,7 +69,7 @@ namespace spieler::renderer
 
     bool SwapChain::Present(VSyncState vsync)
     {
-        SPIELER_RETURN_IF_FAILED(m_SwapChain->Present(static_cast<UINT>(vsync), 0));
+        SPIELER_RETURN_IF_FAILED(m_DXGISwapChain->Present(static_cast<UINT>(vsync), 0));
 
         return true;
     }
@@ -97,8 +97,8 @@ namespace spieler::renderer
         }
 #endif
 
-        SPIELER_RETURN_IF_FAILED(CreateDXGIFactory(IID_PPV_ARGS(&m_Factory)));
-        SPIELER_RETURN_IF_FAILED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&m_Factory)));
+        SPIELER_RETURN_IF_FAILED(CreateDXGIFactory(IID_PPV_ARGS(&m_DXGIFactory)));
+        SPIELER_RETURN_IF_FAILED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&m_DXGIFactory)));
 
         return true;
     }
@@ -131,8 +131,8 @@ namespace spieler::renderer
             .Flags{ DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH }
         };
 
-        SPIELER_RETURN_IF_FAILED(m_Factory->CreateSwapChain(context.GetNativeCommandQueue().Get(), &swapChainDesc, &m_SwapChain));
-        SPIELER_RETURN_IF_FAILED(m_SwapChain->QueryInterface(IID_PPV_ARGS(&m_SwapChain3)));
+        SPIELER_RETURN_IF_FAILED(m_DXGIFactory->CreateSwapChain(context.GetDX12CommandQueue(), &swapChainDesc, &m_DXGISwapChain));
+        SPIELER_RETURN_IF_FAILED(m_DXGISwapChain->QueryInterface(IID_PPV_ARGS(&m_DXGISwapChain3)));
 
         return true;
     }
@@ -142,11 +142,12 @@ namespace spieler::renderer
         for (size_t i = 0; i < m_Buffers.size(); ++i)
         {
             ComPtr<ID3D12Resource> backBuffer;
-            SPIELER_RETURN_IF_FAILED(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
+            SPIELER_RETURN_IF_FAILED(m_DXGISwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
             
-            m_Buffers[i].GetTexture2DResource() = device.RegisterTexture(std::move(backBuffer));
-            m_Buffers[i].GetTexture2DResource().SetDebugName(L"SwapChainBuffer_" + std::to_wstring(i));
-            m_Buffers[i].SetView<RenderTargetView>(device);
+            m_Buffers[i].Resource = TextureResource{ std::move(backBuffer) };
+
+            m_Buffers[i].Views.Clear();
+            m_Buffers[i].Views.CreateView<RenderTargetView>(device);
         }
 
         return true;

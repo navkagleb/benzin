@@ -1,26 +1,24 @@
 #pragma once
 
-#include "spieler/renderer/fence.hpp"
-#include "spieler/renderer/resource_barrier.hpp"
 #include "spieler/renderer/common.hpp"
-#include "spieler/renderer/upload_buffer.hpp"
+#include "spieler/renderer/fence.hpp"
+#include "spieler/renderer/buffer.hpp"
+#include "spieler/renderer/resource_barrier.hpp"
+#include "spieler/renderer/pipeline_state.hpp"
 
 namespace spieler::renderer
 {
 
     class Device;
-    class Resource;
-    class UploadBuffer;
-    class BufferResource;
-    class PipelineState;
     class RootSignature;
-    class Texture2DResource;
-
     class DescriptorHeap;
+
+    class Resource;
+    class BufferResource;
+    class TextureResource;
 
     class VertexBufferView;
     class IndexBufferView;
-
     class RenderTargetView;
     class DepthStencilView;
 
@@ -44,6 +42,23 @@ namespace spieler::renderer
 
     class Context
     {
+    private:
+        struct UploadBuffer
+        {
+            BufferResource Resource;
+            uint64_t Offset{ 0 };
+
+            uint64_t Allocate(uint64_t size, uint64_t alignment = 0)
+            {
+                const uint64_t offset{ alignment == 0 ? Offset : utils::Align(Offset, alignment) };
+
+                SPIELER_ASSERT(offset + size <= Resource.GetConfig().ElementCount);
+                Offset = offset + size;
+
+                return offset;
+            }
+        };
+
     public:
         SPIELER_NON_COPYABLE(Context)
 
@@ -51,8 +66,8 @@ namespace spieler::renderer
         Context(Device& device, uint32_t uploadBufferSize);
 
     public:
-        ComPtr<ID3D12GraphicsCommandList>& GetNativeCommandList() { return m_CommandList; }
-        ComPtr<ID3D12CommandQueue>& GetNativeCommandQueue() { return m_CommandQueue; }
+        ID3D12GraphicsCommandList* GetDX12GraphicsCommandList() const { return m_DX12GraphicsCommandList.Get(); }
+        ID3D12CommandQueue* GetDX12CommandQueue() const { return m_DX12CommandQueue.Get(); }
 
         void SetDescriptorHeap(const DescriptorHeap& descriptorHeap);
 
@@ -76,13 +91,13 @@ namespace spieler::renderer
         void SetResourceBarrier(const TransitionResourceBarrier& barrier);
         void SetStencilReferenceValue(uint8_t referenceValue);
 
-        void WriteToBuffer(BufferResource& buffer, size_t size, const void* data);
-        void WriteToTexture(Texture2DResource& texture, std::vector<SubresourceData>& subresources);
+        void UploadToBuffer(BufferResource& buffer, const void* data, uint64_t size);
+        void UploadToTexture(TextureResource& texture, std::vector<SubresourceData>& subresources);
 
         bool CloseCommandList();
         bool ExecuteCommandList(bool isNeedToFlushCommandQueue = false);
         bool FlushCommandQueue();
-        bool ResetCommandList(const PipelineState* pso = nullptr);
+        bool ResetCommandList(const PipelineState& pso = PipelineState{});
         bool ResetCommandAllocator();
 
     private:
@@ -92,9 +107,9 @@ namespace spieler::renderer
         bool InitCommandQueue(Device& device);
 
     private:
-        ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
-        ComPtr<ID3D12GraphicsCommandList> m_CommandList;
-        ComPtr<ID3D12CommandQueue> m_CommandQueue;
+        ComPtr<ID3D12CommandAllocator> m_DX12CommandAllocator;
+        ComPtr<ID3D12GraphicsCommandList> m_DX12GraphicsCommandList;
+        ComPtr<ID3D12CommandQueue> m_DX12CommandQueue;
 
         Fence m_Fence;
         UploadBuffer m_UploadBuffer;

@@ -1,53 +1,7 @@
 #pragma once
 
-#include "spieler/math/vector.hpp"
-
-#include "spieler/renderer/common.hpp"
-
 namespace spieler::renderer
 {
-
-    class Device;
-    class Context;
-
-    enum class ResourceDimension : uint8_t
-    {
-        Unknown = D3D12_RESOURCE_DIMENSION_UNKNOWN,
-        Buffer = D3D12_RESOURCE_DIMENSION_BUFFER,
-        Texture1D = D3D12_RESOURCE_DIMENSION_TEXTURE1D,
-        Texture2D = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-        Texture3D = D3D12_RESOURCE_DIMENSION_TEXTURE3D
-    };
-
-    // Texture
-    enum class Texture2DFlags : uint8_t
-    {
-        None = D3D12_RESOURCE_FLAG_NONE,
-        RenderTarget = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-        DepthStencil = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
-        UnorderedAccess = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-    };
-
-    struct Texture2DConfig
-    {
-        uint64_t Width{ 0 };
-        uint32_t Height{ 0 };
-        uint32_t Depth{ 0 };
-        uint32_t MipCount{ 0 };
-        GraphicsFormat Format{ GraphicsFormat::Unknown };
-        Texture2DFlags Flags{ Texture2DFlags::None };
-    };
-
-    struct TextureClearValue
-    {
-        math::Vector4f Color{ 0.0f, 0.0f, 0.0f, 1.0f };
-    };
-
-    struct DepthStencilClearValue
-    {
-        float Depth{ 0.0f };
-        uint8_t Stencil{ 0 };
-    };
 
     struct SubresourceData
     {
@@ -56,6 +10,8 @@ namespace spieler::renderer
         uint64_t SlicePitch{ 0 };
     };
 
+    using GPUVirtualAddress = uint64_t;
+
     class Resource
     {
     public:
@@ -63,23 +19,16 @@ namespace spieler::renderer
 
     public:
         Resource() = default;
-        Resource(Resource&& other) noexcept;
-        virtual ~Resource() = default;
+        Resource(ComPtr<ID3D12Resource>&& dx12Resource);
 
     public:
-        ComPtr<ID3D12Resource>& GetResource() { return m_Resource; }
-        const ComPtr<ID3D12Resource>& GetResource() const { return m_Resource; }
+        ID3D12Resource* GetDX12Resource() const { return m_DX12Resource.Get(); }
 
     public:
-        void SetDebugName(const std::wstring& name);
-        void Reset();
-
-    public:
-        Resource& operator =(Resource&& other) noexcept;
-        operator ID3D12Resource* () const { return m_Resource.Get(); }
-
+        GPUVirtualAddress GetGPUVirtualAddress() const { return static_cast<GPUVirtualAddress>(m_DX12Resource->GetGPUVirtualAddress()); }
+        
     protected:
-        ComPtr<ID3D12Resource> m_Resource;
+        ComPtr<ID3D12Resource> m_DX12Resource;
     };
 
 } // namespace spieler::renderer

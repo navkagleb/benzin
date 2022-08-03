@@ -42,6 +42,8 @@ namespace spieler
     public:
         Window& GetWindow() { return *m_Window; }
         const Window& GetWindow() const { return *m_Window; }
+        
+        LayerStack& GetLayerStack() { return m_LayerStack; }
 
     public:
         void Run();
@@ -64,8 +66,8 @@ namespace spieler
         LayerStack m_LayerStack;
 
     private:
-        bool IsRunning{ false };
-        bool IsPaused{ false };
+        bool m_IsRunning{ false };
+        bool m_IsPaused{ false };
         Timer m_Timer;
 
         std::shared_ptr<ImGuiLayer> m_ImGuiLayer;

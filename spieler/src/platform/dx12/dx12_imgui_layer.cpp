@@ -43,19 +43,19 @@ namespace spieler
         {
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &swapChain.GetCurrentBuffer().GetTexture2DResource() },
+                .Resource{ &swapChain.GetCurrentBuffer().Resource },
                 .From{ spieler::renderer::ResourceState::Present },
                 .To{ spieler::renderer::ResourceState::RenderTarget }
             });
 
             context.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(renderer::DescriptorHeap::Type::SRV));
-            context.SetRenderTarget(swapChain.GetCurrentBuffer().GetView<renderer::RenderTargetView>());
+            context.SetRenderTarget(swapChain.GetCurrentBuffer().Views.GetView<renderer::RenderTargetView>());
 
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context.GetNativeCommandList().Get());
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context.GetDX12GraphicsCommandList());
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &swapChain.GetCurrentBuffer().GetTexture2DResource() },
+                .Resource{ &swapChain.GetCurrentBuffer().Resource },
                 .From{ spieler::renderer::ResourceState::RenderTarget },
                 .To{ spieler::renderer::ResourceState::Present }
             });
@@ -86,10 +86,10 @@ namespace spieler
 
         SPIELER_RETURN_IF_FAILED(ImGui_ImplWin32_Init(Application::GetInstance().GetWindow().GetNativeHandle<::HWND>()));
         SPIELER_RETURN_IF_FAILED(ImGui_ImplDX12_Init(
-            device.GetNativeDevice().Get(),
+            device.GetDX12Device(),
             1,
             renderer::dx12::Convert(swapChain.GetBufferFormat()),
-            descriptorManager.GetDescriptorHeap(renderer::DescriptorHeap::Type::SRV).GetNative().Get(),
+            descriptorManager.GetDescriptorHeap(renderer::DescriptorHeap::Type::SRV).GetDX12DescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ fontDescriptor.CPU },
             D3D12_GPU_DESCRIPTOR_HANDLE{ fontDescriptor.GPU }
         ));
@@ -134,7 +134,7 @@ namespace spieler
                 m_IsBottomPanelEnabled = !m_IsBottomPanelEnabled;
             }
 
-            return true;
+            return false;
         });
     }
 

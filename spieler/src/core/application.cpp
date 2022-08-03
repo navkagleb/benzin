@@ -65,16 +65,16 @@ namespace spieler
     {
         m_Timer.Reset();
 
-        IsRunning = true;
+        m_IsRunning = true;
 
         renderer::Renderer& renderer{ renderer::Renderer::GetInstance() };
         renderer::Context& context{ renderer.GetContext() };
 
-        while (IsRunning)
+        while (m_IsRunning)
         {
             m_Window->ProcessEvents();
             
-            if (IsPaused)
+            if (m_IsPaused)
             {
                 ::Sleep(100);
             }
@@ -132,35 +132,35 @@ namespace spieler
 
     bool Application::OnWindowClose(WindowCloseEvent& event)
     {
-        IsRunning = false;
+        m_IsRunning = false;
 
         return false;
     }
 
     bool Application::OnWindowMinimized(WindowMinimizedEvent& event)
     {
-        IsPaused = true;
+        m_IsPaused = true;
 
         return false;
     }
 
     bool Application::OnWindowMaximized(WindowMaximizedEvent& event)
     {
-        IsPaused = false;
+        m_IsPaused = false;
 
         return false;
     }
 
     bool Application::OnWindowRestored(WindowRestoredEvent& event)
     {
-        IsPaused = false;
+        m_IsPaused = false;
 
         return false;
     }
 
     bool Application::OnWindowEnterResizing(WindowEnterResizingEvent& event)
     {
-        IsPaused = true;
+        m_IsPaused = true;
 
         m_Timer.Stop();
 
@@ -169,7 +169,7 @@ namespace spieler
 
     bool Application::OnWindowExitResizing(WindowExitResizingEvent& event)
     {
-        IsPaused = false;
+        m_IsPaused = false;
 
         m_Timer.Start();
 
@@ -185,7 +185,7 @@ namespace spieler
 
     bool Application::OnWindowFocused(WindowFocusedEvent& event)
     {
-        IsPaused = false;
+        m_IsPaused = false;
 
         m_Timer.Start();
 
@@ -194,7 +194,7 @@ namespace spieler
 
     bool Application::OnWindowUnfocused(WindowUnfocusedEvent& event)
     {
-        IsPaused = true;
+        m_IsPaused = true;
 
         m_Timer.Stop();
 

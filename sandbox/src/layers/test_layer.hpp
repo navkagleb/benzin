@@ -4,7 +4,6 @@
 
 #include <spieler/system/window.hpp>
 
-#include <spieler/renderer/upload_buffer.hpp>
 #include <spieler/renderer/mesh.hpp>
 #include <spieler/renderer/shader.hpp>
 #include <spieler/renderer/root_signature.hpp>
@@ -66,6 +65,8 @@ namespace sandbox
             std::array<spieler::renderer::LightConstants, g_MaxLightCount> Lights;
 
             Fog Fog;
+
+            uint32_t ConstantBufferIndex{ 0 };
         };
 
     private:
@@ -104,20 +105,20 @@ namespace sandbox
             std::vector<const spieler::renderer::RenderItem*> items,
             const spieler::renderer::PipelineState& pso,
             const PassConstants& passConstants,
-            const spieler::renderer::ConstantBuffer* objectConstantBuffer = nullptr);
+            const spieler::renderer::BufferResource* objectConstantBuffer = nullptr);
 
         bool OnWindowResized(spieler::WindowResizedEvent& event);
 
     private:
         spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
-        spieler::renderer::Texture2D m_DepthStencil;
+        spieler::renderer::Texture m_DepthStencil;
 
         spieler::renderer::Viewport m_Viewport;
         spieler::renderer::ScissorRect m_ScissorRect;
 
         ProjectionCameraController m_CameraController;
 
-        LookUpTable<spieler::renderer::Texture2D> m_Textures;
+        LookUpTable<spieler::renderer::Texture> m_Textures;
         LookUpTable<spieler::renderer::SamplerConfig> m_Samplers;
         LookUpTable<spieler::renderer::SamplerView> m_SamplerViews;
         LookUpTable<spieler::renderer::Material> m_Materials;
@@ -127,7 +128,7 @@ namespace sandbox
         spieler::renderer::ShaderLibrary m_ShaderLibrary;
 
         LookUpTable<spieler::renderer::GraphicsPipelineState> m_PipelineStates;
-        LookUpTable<spieler::renderer::ConstantBuffer> m_ConstantBuffers;
+        LookUpTable<spieler::renderer::BufferResource> m_ConstantBuffers;
 
         // RenderItems
         std::unordered_map<std::string, std::unique_ptr<spieler::renderer::RenderItem>> m_RenderItems;

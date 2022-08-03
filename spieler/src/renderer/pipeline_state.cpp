@@ -125,30 +125,30 @@ namespace spieler::renderer
             };
         }
 
-        static D3D12_DEPTH_STENCIL_DESC ConvertToD3D12DepthStencilState(const DepthStencilState& depthStencilState)
+        static D3D12_DEPTH_STENCIL_DESC ConvertToDX12DepthStencilState(const DepthStencilState& depthStencilState)
         {
             return D3D12_DEPTH_STENCIL_DESC
             {
-                .DepthEnable = static_cast<BOOL>(depthStencilState.DepthState.DepthTest),
-                .DepthWriteMask = static_cast<D3D12_DEPTH_WRITE_MASK>(depthStencilState.DepthState.DepthWriteState),
-                .DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(depthStencilState.DepthState.ComparisonFunction),
-                .StencilEnable = static_cast<BOOL>(depthStencilState.StencilState.StencilTest),
-                .StencilReadMask = depthStencilState.StencilState.ReadMask,
-                .StencilWriteMask = depthStencilState.StencilState.WriteMask,
-                .FrontFace = D3D12_DEPTH_STENCILOP_DESC
+                .DepthEnable{ static_cast<BOOL>(depthStencilState.DepthState.TestState) },
+                .DepthWriteMask{ dx12::Convert(depthStencilState.DepthState.WriteState) },
+                .DepthFunc{ dx12::Convert(depthStencilState.DepthState.ComparisonFunction) },
+                .StencilEnable{ static_cast<BOOL>(depthStencilState.StencilState.TestState) },
+                .StencilReadMask{ depthStencilState.StencilState.ReadMask },
+                .StencilWriteMask{ depthStencilState.StencilState.WriteMask },
+                .FrontFace
                 {
-                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(depthStencilState.StencilState.FrontFace.StencilFailOperation),
-                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(depthStencilState.StencilState.FrontFace.DepthFailOperation),
-                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(depthStencilState.StencilState.FrontFace.PassOperation),
-                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(depthStencilState.StencilState.FrontFace.StencilFunction),
+                    .StencilFailOp{ dx12::Convert(depthStencilState.StencilState.FrontFaceBehaviour.StencilFailOperation) },
+                    .StencilDepthFailOp{ dx12::Convert(depthStencilState.StencilState.FrontFaceBehaviour.DepthFailOperation) },
+                    .StencilPassOp{ dx12::Convert(depthStencilState.StencilState.FrontFaceBehaviour.PassOperation) },
+                    .StencilFunc{ dx12::Convert(depthStencilState.StencilState.FrontFaceBehaviour.StencilFunction) },
                 },
-                .BackFace = D3D12_DEPTH_STENCILOP_DESC
+                .BackFace
                 {
-                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(depthStencilState.StencilState.BackFace.StencilFailOperation),
-                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(depthStencilState.StencilState.BackFace.DepthFailOperation),
-                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(depthStencilState.StencilState.BackFace.PassOperation),
-                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(depthStencilState.StencilState.BackFace.StencilFunction),
-                },
+                    .StencilFailOp{ dx12::Convert(depthStencilState.StencilState.BackFaceBehaviour.StencilFailOperation) },
+                    .StencilDepthFailOp{ dx12::Convert(depthStencilState.StencilState.BackFaceBehaviour.DepthFailOperation) },
+                    .StencilPassOp{ dx12::Convert(depthStencilState.StencilState.BackFaceBehaviour.PassOperation) },
+                    .StencilFunc{ dx12::Convert(depthStencilState.StencilState.BackFaceBehaviour.StencilFunction) },
+                }
             };
         }
 
@@ -201,7 +201,7 @@ namespace spieler::renderer
     } // namespace _internal
 
     PipelineState::PipelineState(PipelineState&& other) noexcept
-        : m_PipelineState{ std::exchange(other.m_PipelineState, nullptr) }
+        : m_DX12PipelineState{ std::exchange(other.m_DX12PipelineState, nullptr) }
     {}
 
     PipelineState& PipelineState::operator=(PipelineState&& other) noexcept
@@ -211,17 +211,17 @@ namespace spieler::renderer
             return *this;
         }
 
-        m_PipelineState = std::exchange(other.m_PipelineState, nullptr);
+        m_DX12PipelineState = std::exchange(other.m_DX12PipelineState, nullptr);
 
         return *this;
     }
 
-    GraphicsPipelineState::GraphicsPipelineState(Device& device, const GraphicsPipelineStateConfig& config)
+    GraphicsPipelineState::GraphicsPipelineState(Device& device, const Config& config)
     {
         SPIELER_ASSERT(Init(device, config));
     }
 
-    bool GraphicsPipelineState::Init(Device& device, const GraphicsPipelineStateConfig& config)
+    bool GraphicsPipelineState::Init(Device& device, const Config& config)
     {
         SPIELER_ASSERT(config.RootSignature);
         SPIELER_ASSERT(config.VertexShader);
@@ -237,7 +237,7 @@ namespace spieler::renderer
         const D3D12_STREAM_OUTPUT_DESC streamOutputDesc{ _internal::GetDefaultD3D12StreatOutput() };
         const D3D12_BLEND_DESC blendDesc{ config.BlendState ? _internal::ConvertToD3D12BlendState(*config.BlendState) : _internal::GetDefaultD3D12BlendState() };
         const D3D12_RASTERIZER_DESC rasterizerDesc{ _internal::ConvertToD3D12RasterizerState(*config.RasterizerState) };
-        const D3D12_DEPTH_STENCIL_DESC depthStencilDesc{ _internal::ConvertToD3D12DepthStencilState(config.DepthStecilState ? *config.DepthStecilState : DepthStencilState{}) };
+        const D3D12_DEPTH_STENCIL_DESC depthStencilDesc{ _internal::ConvertToDX12DepthStencilState(config.DepthStecilState ? *config.DepthStecilState : DepthStencilState{}) };
         const std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayoutElements{ _internal::ConvertToD3D12InputLayoutElements(*config.InputLayout) };
         const D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{ _internal::ConvertToD3D12InputLayout(inputLayoutElements) };
         const D3D12_CACHED_PIPELINE_STATE cachedPipelineState{ _internal::GetDefauldD3D12CachedPipelineState() };
@@ -250,7 +250,7 @@ namespace spieler::renderer
 
         const D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc
         {
-            .pRootSignature = static_cast<ID3D12RootSignature*>(*config.RootSignature),
+            .pRootSignature{ config.RootSignature->GetDX12RootSignature() },
             .VS = vertexShaderDesc,
             .PS = pixelShaderDesc,
             .DS = domainShaderDesc,
@@ -273,17 +273,17 @@ namespace spieler::renderer
             .Flags = flags
         };
 
-        SPIELER_RETURN_IF_FAILED(device.GetNativeDevice()->CreateGraphicsPipelineState(&graphicsPipelineStateDesc, __uuidof(ID3D12PipelineState), &m_PipelineState));
+        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateGraphicsPipelineState(&graphicsPipelineStateDesc, IID_PPV_ARGS(&m_DX12PipelineState)));
 
         return true;
     }
 
-    ComputePipelineState::ComputePipelineState(Device& device, const ComputePipelineStateConfig& config)
+    ComputePipelineState::ComputePipelineState(Device& device, const Config& config)
     {
         SPIELER_ASSERT(Init(device, config));
     }
 
-    bool ComputePipelineState::Init(Device& device, const ComputePipelineStateConfig& config)
+    bool ComputePipelineState::Init(Device& device, const Config& config)
     {
         SPIELER_ASSERT(config.RootSignature);
         SPIELER_ASSERT(config.ComputeShader);
@@ -299,14 +299,14 @@ namespace spieler::renderer
 
         const D3D12_COMPUTE_PIPELINE_STATE_DESC computePipelineStateDesc
         {
-            .pRootSignature = static_cast<ID3D12RootSignature*>(*config.RootSignature),
-            .CS = computeShaderDesc,
-            .NodeMask = 0,
-            .CachedPSO = cachedPipelineState,
-            .Flags = flags
+            .pRootSignature{ config.RootSignature->GetDX12RootSignature() },
+            .CS{ computeShaderDesc },
+            .NodeMask{ 0 },
+            .CachedPSO{ cachedPipelineState },
+            .Flags{ flags }
         };
 
-        SPIELER_RETURN_IF_FAILED(device.GetNativeDevice()->CreateComputePipelineState(&computePipelineStateDesc, __uuidof(ID3D12PipelineState), &m_PipelineState));
+        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateComputePipelineState(&computePipelineStateDesc, IID_PPV_ARGS(&m_DX12PipelineState)));
 
         return true;
     }

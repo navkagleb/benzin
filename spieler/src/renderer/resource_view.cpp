@@ -3,10 +3,8 @@
 #include "spieler/renderer/resource_view.hpp"
 
 #include "spieler/renderer/device.hpp"
-#include "spieler/renderer/context.hpp"
 #include "spieler/renderer/texture.hpp"
 #include "spieler/renderer/sampler.hpp"
-#include "spieler/renderer/constant_buffer.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
 
@@ -63,195 +61,160 @@ namespace spieler::renderer
 
     } // namespace _internal
 
-    RenderTargetView::RenderTargetView(Device& device, const Texture2DResource& texture)
+    // #TODO: SPIELER_ASSERT(resource) to all ctors in views
+
+    VertexBufferView::VertexBufferView(const BufferResource& resource)
     {
-        Init(device, texture);
+        SPIELER_ASSERT(resource.GetDX12Resource());
+
+        m_View = D3D12_VERTEX_BUFFER_VIEW
+        {
+            .BufferLocation{ static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(resource.GetGPUVirtualAddress()) },
+            .SizeInBytes{ resource.GetConfig().ElementSize * resource.GetConfig().ElementCount },
+            .StrideInBytes{ resource.GetConfig().ElementSize }
+        };
     }
 
-    void RenderTargetView::Init(Device& device, const Texture2DResource& texture)
+    IndexBufferView::IndexBufferView(const BufferResource& resource)
     {
-        SPIELER_ASSERT(texture.GetResource());
+        SPIELER_ASSERT(resource.GetDX12Resource());
+
+        GraphicsFormat format;
+
+        switch (resource.GetConfig().ElementSize)
+        {
+            case 2:
+            {
+                format = GraphicsFormat::R16UnsignedInt;
+                break;
+            }
+            case 4:
+            {
+                format = GraphicsFormat::R32UnsignedInt;
+                break;
+            }
+            default:
+            {
+                SPIELER_ASSERT(false);
+                break;
+            }
+        }
+
+        m_View = D3D12_INDEX_BUFFER_VIEW
+        {
+            .BufferLocation{ static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(resource.GetGPUVirtualAddress()) },
+            .SizeInBytes{ resource.GetConfig().ElementSize * resource.GetConfig().ElementCount },
+            .Format{ dx12::Convert(format) }
+        };
+    }
+    
+    RenderTargetView::RenderTargetView(Device& device, const Resource& resource)
+    {
+        SPIELER_ASSERT(resource.GetDX12Resource());
 
         m_Descriptor = device.GetDescriptorManager().AllocateRTV();
 
-        device.GetNativeDevice()->CreateRenderTargetView(
-            texture.GetResource().Get(),
+        device.GetDX12Device()->CreateRenderTargetView(
+            resource.GetDX12Resource(),
             nullptr,
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_Descriptor.CPU }
         );
     }
 
-    DepthStencilView::DepthStencilView(Device& device, const Texture2DResource& texture)
+    DepthStencilView::DepthStencilView(Device& device, const Resource& resource)
     {
-        Init(device, texture);
-    }
-
-    void DepthStencilView::Init(Device& device, const Texture2DResource& texture)
-    {
-        SPIELER_ASSERT(texture.GetResource());
+        SPIELER_ASSERT(resource.GetDX12Resource());
 
         m_Descriptor = device.GetDescriptorManager().AllocateDSV();
 
-        const D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc
-        {
-            .Format = dx12::Convert(texture.GetConfig().Format),
-            .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
-            .Flags = D3D12_DSV_FLAG_NONE,
-            .Texture2D = D3D12_TEX2D_DSV{ 0 },
-        };
-
-        device.GetNativeDevice()->CreateDepthStencilView(
-            texture.GetResource().Get(),
-            &dsvDesc,
+        device.GetDX12Device()->CreateDepthStencilView(
+            resource.GetDX12Resource(),
+            nullptr,
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_Descriptor.CPU }
         );
     }
 
-    void SamplerView::Init(Device& device, DescriptorManager& descriptorManager, const SamplerConfig& samplerConfig)
+    SamplerView::SamplerView(Device& device, const SamplerConfig& samplerConfig)
     {
-        m_Descriptor = descriptorManager.AllocateSampler();
+        m_Descriptor = device.GetDescriptorManager().AllocateSampler();
 
-        const D3D12_SAMPLER_DESC samplerDesc
+        const D3D12_SAMPLER_DESC desc
         {
-            .Filter = _internal::ConvertToD3D12TextureFilter(samplerConfig.TextureFilter),
-            .AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(samplerConfig.AddressU),
-            .AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(samplerConfig.AddressV),
-            .AddressW = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(samplerConfig.AddressW),
-            .MipLODBias = 0.0f,
-            .MaxAnisotropy = 1,
-            .ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS,
-            .MinLOD = 0.0f,
-            .MaxLOD = D3D12_FLOAT32_MAX
+            .Filter{ _internal::ConvertToD3D12TextureFilter(samplerConfig.TextureFilter) },
+            .AddressU{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(samplerConfig.AddressU) },
+            .AddressV{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(samplerConfig.AddressV) },
+            .AddressW{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(samplerConfig.AddressW) },
+            .MipLODBias{ 0.0f },
+            .MaxAnisotropy{ 1 },
+            .ComparisonFunc{ D3D12_COMPARISON_FUNC_ALWAYS },
+            .MinLOD{ 0.0f },
+            .MaxLOD{ D3D12_FLOAT32_MAX }
         };
 
-        device.GetNativeDevice()->CreateSampler(
-            &samplerDesc, 
+        device.GetDX12Device()->CreateSampler(
+            &desc,
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_Descriptor.CPU }
         );
     }
 
-    void SamplerView::Bind(Context& context, uint32_t rootParameterIndex) const
-    {
-        SPIELER_ASSERT(m_Descriptor);
-
-        context.GetNativeCommandList()->SetGraphicsRootDescriptorTable(
-            rootParameterIndex,
-            D3D12_GPU_DESCRIPTOR_HANDLE{ m_Descriptor.GPU }
-        );
-    }
-
+    // #TODO: 
 #if 0
-    void ConstantBufferView::Init(Device& device, const ConstantBuffer& resource)
+    ConstantBufferView::ConstantBufferView(Device& device, const Resource& resource)
     {
-        SPIELER_ASSERT(resource.m_UploadBuffer);
+        SPIELER_ASSERT(resource.GetDX12Resource());
 
         m_Descriptor = device.GetDescriptorManager().AllocateCBV();
 
-        const D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc
+        const D3D12_CONSTANT_BUFFER_VIEW_DESC desc
         {
-            .BufferLocation = resource.m_UploadBuffer->GetElementGPUVirtualAddress(resource.m_Index),
-            .SizeInBytes = resource.m_UploadBuffer->GetStride()
+            .BufferLocation{ resource.GetElementGPUVirtualAddress(resource.m_Index) },
+            .SizeInBytes{ resource.GetConGetStride() }
         };
 
-        device.GetNativeDevice()->CreateConstantBufferView(
-            &cbvDesc,
+        device.GetDX12Device()->CreateConstantBufferView(
+            &desc,
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_Descriptor.CPU }
-        );
-    }
-
-    void ConstantBufferView::Bind(Context& context, uint32_t rootParameterIndex) const
-    {
-        SPIELER_ASSERT(m_Descriptor);
-
-        context.GetNativeCommandList()->SetGraphicsRootDescriptorTable(
-            rootParameterIndex,
-            D3D12_GPU_DESCRIPTOR_HANDLE{ m_Descriptor.GPU }
         );
     }
 #endif
 
-    ShaderResourceView::ShaderResourceView(Device& device, const Texture2DResource& texture)
+    ShaderResourceView::ShaderResourceView(Device& device, const Resource& resource)
     {
-        Init(device, texture);
-    }
-
-    void ShaderResourceView::Init(Device& device, const Texture2DResource& texture)
-    {
-        SPIELER_ASSERT(texture.GetResource());
+        SPIELER_ASSERT(resource.GetDX12Resource());
 
         m_Descriptor = device.GetDescriptorManager().AllocateSRV();
 
-        const D3D12_RESOURCE_DESC texture2DDesc{ texture.GetResource()->GetDesc()};
-
-        const D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc
-        {
-            .Format = texture2DDesc.Format,
-            .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
-            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-            .Texture2D = D3D12_TEX2D_SRV
-            {
-                .MostDetailedMip = 0,
-                .MipLevels = texture2DDesc.MipLevels,
-                .PlaneSlice = 0,
-                .ResourceMinLODClamp = 0.0f,
-            }
-        };
-
-        device.GetNativeDevice()->CreateShaderResourceView(
-            texture.GetResource().Get(),
-            &srvDesc,
+        device.GetDX12Device()->CreateShaderResourceView(
+            resource.GetDX12Resource(),
+            nullptr,
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_Descriptor.CPU }
         );
     }
 
-    void ShaderResourceView::Bind(Context& context, uint32_t rootParameterIndex) const
+    UnorderedAccessView::UnorderedAccessView(Device& device, const Resource& resource)
     {
-        SPIELER_ASSERT(m_Descriptor);
-
-        context.GetNativeCommandList()->SetGraphicsRootDescriptorTable(
-            rootParameterIndex,
-            D3D12_GPU_DESCRIPTOR_HANDLE{ m_Descriptor.GPU }
-        );
-    }
-
-    UnorderedAccessView::UnorderedAccessView(Device& device, const Texture2DResource& texture)
-    {
-        Init(device, texture);
-    }
-
-    void UnorderedAccessView::Init(Device& device, const Texture2DResource& texture)
-    {
-        SPIELER_ASSERT(texture.GetResource());
+        SPIELER_ASSERT(resource.GetDX12Resource());
 
         m_Descriptor = device.GetDescriptorManager().AllocateUAV();
 
-        const D3D12_RESOURCE_DESC texture2DDesc{ texture.GetResource()->GetDesc() };
-
-        const D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc
-        {
-            .Format = texture2DDesc.Format,
-            .ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D,
-            .Texture2D = D3D12_TEX2D_UAV
-            {
-                .MipSlice = 0,
-                .PlaneSlice = 0
-            }
-        };
-
-        device.GetNativeDevice()->CreateUnorderedAccessView(
-            texture.GetResource().Get(),
+        device.GetDX12Device()->CreateUnorderedAccessView(
+            resource.GetDX12Resource(),
             nullptr,
-            &uavDesc,
+            nullptr,
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_Descriptor.CPU }
         );
     }
 
-    void UnorderedAccessView::Bind(Context& context, uint32_t rootParameterIndex) const
+    //////////////////////////////////////////////////////////////////////////
+    /// ViewContainer
+    //////////////////////////////////////////////////////////////////////////
+    ViewContainer::ViewContainer(Resource& resource)
+        : m_Resource{ resource }
+    {}
+
+    void ViewContainer::Clear()
     {
-        context.GetNativeCommandList()->SetComputeRootDescriptorTable(
-            rootParameterIndex,
-            D3D12_GPU_DESCRIPTOR_HANDLE{ m_Descriptor.GPU }
-        );
+        m_Views.clear();
     }
 
 } // namespace spieler::renderer

@@ -8,15 +8,16 @@ namespace spieler::renderer
     class MappedData
     {
     public:
-        explicit MappedData(Resource& resource);
+        MappedData() = default;
+        MappedData(Resource& resource, uint32_t subresourceIndex);
         ~MappedData();
 
     public:
-        template <typename T = void>
-        T* GetPointer() { return reinterpret_cast<T*>(m_Data); }
+        std::byte* GetData() { return m_Data; }
 
     private:
         Resource& m_Resource;
+        uint32_t m_SubresourceIndex{ 0 };
         std::byte* m_Data{ nullptr };
     };
 

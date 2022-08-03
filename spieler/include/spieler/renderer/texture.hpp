@@ -1,7 +1,5 @@
 #pragma once
 
-#include "spieler/core/assert.hpp"
-
 #include "spieler/renderer/resource.hpp"
 #include "spieler/renderer/common.hpp"
 #include "spieler/renderer/resource_view.hpp"
@@ -11,81 +9,70 @@ namespace spieler::renderer
 
     class Device;
 
-    class Texture2DResource : public Resource
+    class TextureResource final : public Resource
     {
     public:
-        friend class Device;
+        enum class Flags
+        {
+            None,
+            RenderTarget,
+            DepthStencil,
+            UnorderedAccess,
+        };
+
+        enum class Dimension
+        {
+            Unknown,
+            _1D,
+            _2D,
+            _3D
+        };
+
+        struct Config
+        {
+            Dimension Dimension{ Dimension::_2D };
+            uint32_t Width{ 0 };
+            uint32_t Height{ 0 };
+            uint16_t Depth{ 1 };
+            uint16_t MipCount{ 1 };
+            GraphicsFormat Format{ GraphicsFormat::Unknown };
+            Flags Flags{ Flags::None };
+        };
+
+        struct ClearColor
+        {
+            DirectX::XMFLOAT4 Color{ 0.0f, 0.0f, 0.0f, 1.0f };
+        };
+
+        struct ClearDepthStencil
+        {
+            float Depth{ 0.0f };
+            uint8_t Stencil{ 0 };
+        };
 
     public:
-        const Texture2DConfig& GetConfig() const { return m_Config; }
+        TextureResource() = default;
+        TextureResource(Device& device, const Config& config);
+        TextureResource(Device& device, const Config& config, const ClearColor& clearColor);
+        TextureResource(Device& device, const Config& config, const ClearDepthStencil& clearDepthStencil);
+
+        TextureResource(ComPtr<ID3D12Resource>&& dx12Texture);
 
     public:
-        std::vector<SubresourceData> LoadFromDDSFile(Device& device, const std::wstring& filename);
+        const Config& GetConfig() const { return m_Config; }
 
-        void SetResource(ComPtr<ID3D12Resource>&& resource);
+    public:
+        std::vector<SubresourceData> LoadFromDDSFile(Device& device, const std::wstring& filepath);
 
     private:
-        Texture2DConfig m_Config;
-        std::unique_ptr<uint8_t[]> m_Data; // #TODO: Move to another place. For now store it here because it need for SubResources
+        Config m_Config;
+        std::unique_ptr<uint8_t[]> m_Data;
     };
 
-    template <typename T>
-    concept TextureResourceView = std::_Is_any_of_v<T, RenderTargetView, DepthStencilView, ShaderResourceView, UnorderedAccessView>;
-
-    class Texture2D
+    struct Texture
     {
-    private:
-        using ResourceViewInternal = std::variant<RenderTargetView, DepthStencilView, ShaderResourceView, UnorderedAccessView>;
-        using ViewContainer = std::unordered_map<uint64_t, ResourceViewInternal>;
-
-    public:
-        Texture2D() = default;
-
-    public:
-        // Resource
-        Texture2DResource& GetTexture2DResource() { return m_Texture2DResource; }
-        const Texture2DResource& GetTexture2DResource() const { return m_Texture2DResource; }
-
-        // View
-        template <TextureResourceView ResourceView> const ResourceView& GetView() const;
-        template <TextureResourceView ResourceView> void SetView(Device& device);
-        template <TextureResourceView ResourceView> bool IsViewExist() const;
-
-        void Reset();
-
-    private:
-        template <TextureResourceView ResourceView>
-        static uint64_t GetHashCode();
-
-    private:
-        Texture2DResource m_Texture2DResource;
-        ViewContainer m_Views;
+        TextureResource Resource;
+        ViewContainer Views{ Resource };
     };
-
-    template <TextureResourceView ResourceView>
-    const ResourceView& Texture2D::GetView() const
-    {
-        return std::get<ResourceView>(m_Views.at(GetHashCode<ResourceView>()));
-    }
-
-    template <TextureResourceView ResourceView>
-    void Texture2D::SetView(Device& device)
-    {
-        SPIELER_ASSERT(m_Texture2DResource.GetResource());
-
-        m_Views[GetHashCode<ResourceView>()] = ResourceView{ device, m_Texture2DResource };
-    }
-
-    template <TextureResourceView ResourceView>
-    bool Texture2D::IsViewExist() const
-    {
-        return m_Views.contains(GetHashCode<ResourceView>());
-    }
-
-    template <TextureResourceView ResourceView>
-    static uint64_t Texture2D::GetHashCode()
-    {
-        return static_cast<uint64_t>(typeid(ResourceView).hash_code());
-    }
 
 } // namespace spieler::renderer

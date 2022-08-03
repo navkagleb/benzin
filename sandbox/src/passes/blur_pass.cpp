@@ -107,44 +107,44 @@ namespace sandbox
         InitTextures(width, height);
     }
 
-    bool BlurPass::Execute(spieler::renderer::Texture2DResource& input, const BlurPassExecuteProps& props)
+    bool BlurPass::Execute(spieler::renderer::TextureResource& input, const BlurPassExecuteProps& props)
     {
         spieler::renderer::Renderer& renderer{ spieler::renderer::Renderer::GetInstance() };
         spieler::renderer::Context& context{ renderer.GetContext() };
 
-        const uint32_t width{ static_cast<uint32_t>(input.GetConfig().Width) };
+        const uint32_t width{ input.GetConfig().Width };
         const uint32_t height{ input.GetConfig().Height };
 
-        auto& commandList{ context.GetNativeCommandList() };
+        auto* dx12CommandList{ context.GetDX12GraphicsCommandList() };
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &input,
-            .From = spieler::renderer::ResourceState::RenderTarget,
-            .To = spieler::renderer::ResourceState::CopySource
+            .Resource{ &input },
+            .From{ spieler::renderer::ResourceState::RenderTarget },
+            .To{ spieler::renderer::ResourceState::CopySource }
         });
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &m_BlurMaps[0].GetTexture2DResource(),
-            .From = spieler::renderer::ResourceState::Present,
-            .To = spieler::renderer::ResourceState::CopyDestination
+            .Resource{ &m_BlurMaps[0].Resource },
+            .From{ spieler::renderer::ResourceState::Present },
+            .To{ spieler::renderer::ResourceState::CopyDestination }
         });
 
-        commandList->CopyResource(m_BlurMaps[0].GetTexture2DResource().GetResource().Get(), input);
+        dx12CommandList->CopyResource(m_BlurMaps[0].Resource.GetDX12Resource(), input.GetDX12Resource());
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &m_BlurMaps[0].GetTexture2DResource(),
-            .From = spieler::renderer::ResourceState::CopyDestination,
-            .To = spieler::renderer::ResourceState::GenericRead
+            .Resource{ &m_BlurMaps[0].Resource },
+            .From{ spieler::renderer::ResourceState::CopyDestination },
+            .To{ spieler::renderer::ResourceState::GenericRead }
         });
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &m_BlurMaps[1].GetTexture2DResource(),
-            .From = spieler::renderer::ResourceState::Present,
-            .To = spieler::renderer::ResourceState::UnorderedAccess
+            .Resource{ &m_BlurMaps[1].Resource },
+            .From{ spieler::renderer::ResourceState::Present },
+            .To{ spieler::renderer::ResourceState::UnorderedAccess }
         });
 
         const std::vector<float> horizontalWeights{ _internal::CalcGaussWeights(props.HorizontalBlurSigma) };
@@ -160,27 +160,27 @@ namespace sandbox
                 context.SetPipelineState(m_HorizontalPass.PSO);
                 context.SetComputeRootSignature(m_HorizontalPass.RootSignature);
 
-                commandList->SetComputeRoot32BitConstants(0, 1, &horizontalBlurRadius, 0);
-                commandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(horizontalWeights.size()), horizontalWeights.data(), 1);
+                dx12CommandList->SetComputeRoot32BitConstants(0, 1, &horizontalBlurRadius, 0);
+                dx12CommandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(horizontalWeights.size()), horizontalWeights.data(), 1);
 
-                commandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
-                commandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
+                dx12CommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+                dx12CommandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].Views.GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
 
                 const auto xGroupCount{ width / _internal::g_ThreadPerGroupCount + 1 };
-                commandList->Dispatch(xGroupCount, height, 1);
+                dx12CommandList->Dispatch(xGroupCount, height, 1);
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource = &m_BlurMaps[0].GetTexture2DResource(),
-                    .From = spieler::renderer::ResourceState::GenericRead,
-                    .To = spieler::renderer::ResourceState::UnorderedAccess
+                    .Resource{ &m_BlurMaps[0].Resource },
+                    .From{ spieler::renderer::ResourceState::GenericRead },
+                    .To{ spieler::renderer::ResourceState::UnorderedAccess }
                 });
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource = &m_BlurMaps[1].GetTexture2DResource(),
-                    .From = spieler::renderer::ResourceState::UnorderedAccess,
-                    .To = spieler::renderer::ResourceState::GenericRead
+                    .Resource{ &m_BlurMaps[1].Resource },
+                    .From{ spieler::renderer::ResourceState::UnorderedAccess },
+                    .To{ spieler::renderer::ResourceState::GenericRead }
                 });
             }
             
@@ -189,43 +189,43 @@ namespace sandbox
                 context.SetPipelineState(m_VerticalPass.PSO);
                 context.SetComputeRootSignature(m_VerticalPass.RootSignature);
 
-                commandList->SetComputeRoot32BitConstants(0, 1, &verticalBlurRadius, 0);
-                commandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(verticalWeights.size()), verticalWeights.data(), 1);
+                dx12CommandList->SetComputeRoot32BitConstants(0, 1, &verticalBlurRadius, 0);
+                dx12CommandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(verticalWeights.size()), verticalWeights.data(), 1);
 
-                commandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
-                commandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
+                dx12CommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+                dx12CommandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].Views.GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
 
                 const uint32_t yGroupCount{ height / _internal::g_ThreadPerGroupCount + 1 };
-                commandList->Dispatch(width, yGroupCount, 1);
+                dx12CommandList->Dispatch(width, yGroupCount, 1);
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource = &m_BlurMaps[0].GetTexture2DResource(),
-                    .From = spieler::renderer::ResourceState::UnorderedAccess,
-                    .To = spieler::renderer::ResourceState::GenericRead
+                    .Resource{ &m_BlurMaps[0].Resource },
+                    .From{ spieler::renderer::ResourceState::UnorderedAccess },
+                    .To{ spieler::renderer::ResourceState::GenericRead }
                 });
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource = &m_BlurMaps[1].GetTexture2DResource(),
-                    .From = spieler::renderer::ResourceState::GenericRead,
-                    .To = spieler::renderer::ResourceState::UnorderedAccess
+                    .Resource{ &m_BlurMaps[1].Resource },
+                    .From{ spieler::renderer::ResourceState::GenericRead },
+                    .To{ spieler::renderer::ResourceState::UnorderedAccess }
                 });
             }
         }
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &m_BlurMaps[0].GetTexture2DResource(),
-            .From = spieler::renderer::ResourceState::GenericRead,
-            .To = spieler::renderer::ResourceState::Present
+            .Resource{ &m_BlurMaps[0].Resource },
+            .From{ spieler::renderer::ResourceState::GenericRead },
+            .To{ spieler::renderer::ResourceState::Present }
         });
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource = &m_BlurMaps[1].GetTexture2DResource(),
-            .From = spieler::renderer::ResourceState::UnorderedAccess,
-            .To = spieler::renderer::ResourceState::Present
+            .Resource{ &m_BlurMaps[1].Resource },
+            .From{ spieler::renderer::ResourceState::UnorderedAccess },
+            .To{ spieler::renderer::ResourceState::Present }
         });
 
         return true;
@@ -235,24 +235,24 @@ namespace sandbox
     {
         auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
 
-        const spieler::renderer::Texture2DConfig textureConfig
+        const spieler::renderer::TextureResource::Config config
         {
-            .Width = width,
-            .Height = height,
-            .Format = spieler::renderer::GraphicsFormat::R8G8B8A8UnsignedNorm,
-            .Flags = spieler::renderer::Texture2DFlags::UnorderedAccess,
+            .Width{ width },
+            .Height{ height },
+            .Format{ spieler::renderer::GraphicsFormat::R8G8B8A8UnsignedNorm },
+            .Flags{ spieler::renderer::TextureResource::Flags::UnorderedAccess },
         };
 
         for (size_t i = 0; i < m_BlurMaps.size(); ++i)
         {
             auto& map{ m_BlurMaps[i] };
 
-            SPIELER_ASSERT(device.CreateTexture(textureConfig, map.GetTexture2DResource()));
+            map.Resource = spieler::renderer::TextureResource{ device, config };
 
-            map.SetView<spieler::renderer::ShaderResourceView>(device);
-            map.SetView<spieler::renderer::UnorderedAccessView>(device);
+            map.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
+            map.Views.CreateView<spieler::renderer::UnorderedAccessView>(device);
 
-            map.GetTexture2DResource().SetDebugName(L"BlurMap" + std::to_wstring(i));
+            //map.GetTexture2DResource().SetDebugName(L"BlurMap" + std::to_wstring(i));
         }
     }
 
@@ -273,17 +273,17 @@ namespace sandbox
 
             const spieler::renderer::ShaderConfig<per::Horizontal> config
             {
-                .Filename = L"assets/shaders/blur.hlsl",
-                .EntryPoint = "CS_HorizontalBlur",
-                .Permutation = horizontalPermutation
+                .Filename{ L"assets/shaders/blur.hlsl" },
+                .EntryPoint{ "CS_HorizontalBlur" },
+                .Permutation{ horizontalPermutation }
             };
 
             const spieler::renderer::Shader& horizontalBlurShader{ m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Compute, config) };
 
-            const spieler::renderer::ComputePipelineStateConfig horizontalPSOConfig
+            const spieler::renderer::ComputePipelineState::Config horizontalPSOConfig
             {
-                .RootSignature = &m_HorizontalPass.RootSignature,
-                .ComputeShader = &horizontalBlurShader
+                .RootSignature{ &m_HorizontalPass.RootSignature },
+                .ComputeShader{ &horizontalBlurShader }
             };
 
             m_HorizontalPass.PSO = spieler::renderer::ComputePipelineState(device, horizontalPSOConfig);
@@ -307,17 +307,17 @@ namespace sandbox
 
             const spieler::renderer::ShaderConfig<per::Vertical> config
             {
-                .Filename = L"assets/shaders/blur.hlsl",
-                .EntryPoint = "CS_VerticalBlur",
-                .Permutation = verticalPermutation
+                .Filename{ L"assets/shaders/blur.hlsl" },
+                .EntryPoint{ "CS_VerticalBlur" },
+                .Permutation{ verticalPermutation }
             };
 
             const spieler::renderer::Shader& verticalBlurShader{ m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Compute, config) };
 
-            const spieler::renderer::ComputePipelineStateConfig verticalPSOConfig
+            const spieler::renderer::ComputePipelineState::Config verticalPSOConfig
             {
-                .RootSignature = &m_VerticalPass.RootSignature,
-                .ComputeShader = &verticalBlurShader
+                .RootSignature{ &m_VerticalPass.RootSignature },
+                .ComputeShader{ &verticalBlurShader }
             };
 
             m_VerticalPass.PSO = spieler::renderer::ComputePipelineState(device, verticalPSOConfig);

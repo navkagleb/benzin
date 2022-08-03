@@ -7,14 +7,6 @@
 namespace spieler::renderer
 {
 
-    class Resource;
-
-    struct BufferConfig;
-
-    struct Texture2DConfig;
-    struct TextureClearValue;
-    struct DepthStencilClearValue;
-
     class Device
     {
     public:
@@ -24,28 +16,22 @@ namespace spieler::renderer
         Device();
 
     public:
-        ComPtr<ID3D12Device>& GetNativeDevice() { return m_Device; }
-        const ComPtr<ID3D12Device>& GetNativeDevice() const { return m_Device; }
+        ID3D12Device* GetDX12Device() const { return m_DX12Device.Get(); }
 
         DescriptorManager& GetDescriptorManager() { return m_DescriptorManager; }
 
     public:
-        bool CreateDefaultBuffer(const BufferConfig& bufferConfig, Resource& resource);
-        bool CreateUploadBuffer(const BufferConfig& bufferConfig, Resource& resource);
+        ComPtr<ID3D12Resource> CreateDX12Buffer(const BufferResource::Config& config);
 
-        bool CreateTexture(const Texture2DConfig& texture2DConfig, Texture2DResource& resource);
-        bool CreateTexture(const Texture2DConfig& texture2DConfig, const TextureClearValue& textureClearValue, Texture2DResource& resource);
-        bool CreateTexture(const Texture2DConfig& texture2DConfig, const DepthStencilClearValue& depthStencilClearValue, Texture2DResource& resource);
-
-        Texture2DResource RegisterTexture(ComPtr<ID3D12Resource>&& d3d12Texture);
-
-        std::shared_ptr<BufferResource> CreateBuffer(const BufferConfig& bufferConfig, BufferFlags bufferFlags);
+        ComPtr<ID3D12Resource> CreateDX12Texture(const TextureResource::Config& config);
+        ComPtr<ID3D12Resource> CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor);
+        ComPtr<ID3D12Resource> CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil);
 
     private:
-        bool CreateResource(const D3D12_HEAP_PROPERTIES* heapDesc, const D3D12_RESOURCE_DESC* resourceDesc, const D3D12_CLEAR_VALUE* clearValueDesc, ComPtr<ID3D12Resource>& resource);
+        ComPtr<ID3D12Resource> CreateDX12Resource(const D3D12_HEAP_PROPERTIES* heapProperties, const D3D12_RESOURCE_DESC* resourceDesc, const D3D12_CLEAR_VALUE* clearValueDesc);
 
     private:
-        ComPtr<ID3D12Device> m_Device;
+        ComPtr<ID3D12Device> m_DX12Device;
 
         DescriptorManager m_DescriptorManager;
     };

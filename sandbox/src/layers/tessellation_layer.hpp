@@ -7,7 +7,6 @@
 #include <spieler/renderer/pipeline_state.hpp>
 #include <spieler/renderer/shader.hpp>
 #include <spieler/renderer/mesh.hpp>
-#include <spieler/renderer/constant_buffer.hpp>
 #include <spieler/renderer/texture.hpp>
 #include <spieler/renderer/context.hpp>
 
@@ -57,13 +56,12 @@ namespace sandbox
         std::unordered_map<std::string, spieler::renderer::RenderItem> m_RenderItems;
 
         PassConstants m_PassConstants;
-        spieler::renderer::ConstantBuffer m_PassConstantBuffer;
+        spieler::renderer::BufferResource m_PassConstantBuffer;
 
-        std::unordered_map<std::string, ObjectConstants> m_ObjectConstants;
-        spieler::renderer::ConstantBuffer m_ObjectConstantBuffer;
+        spieler::renderer::BufferResource m_ObjectConstantBuffer;
 
         spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
-        spieler::renderer::Texture2D m_DepthStencil;
+        spieler::renderer::Texture m_DepthStencil;
 
         ProjectionCameraController m_CameraController;
     };

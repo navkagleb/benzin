@@ -11,11 +11,9 @@
 #include "spieler/renderer/pipeline_state.hpp"
 #include "spieler/renderer/root_signature.hpp"
 #include "spieler/renderer/texture.hpp"
-
-#include "spieler/renderer/vertex_buffer.hpp"
-#include "spieler/renderer/index_buffer.hpp"
-
 #include "spieler/renderer/resource_view.hpp"
+
+#include "renderer/mapped_data.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
 
@@ -27,19 +25,17 @@ namespace spieler::renderer
 
         static D3D12_RESOURCE_BARRIER ConvertToD3D12ResourceBarrier(const TransitionResourceBarrier& barrier)
         {
-            const D3D12_RESOURCE_TRANSITION_BARRIER d3d12TransitionBarrier
-            {
-                .pResource = static_cast<ID3D12Resource*>(*barrier.Resource),
-                .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                .StateBefore = static_cast<D3D12_RESOURCE_STATES>(barrier.From),
-                .StateAfter = static_cast<D3D12_RESOURCE_STATES>(barrier.To)
-            };
-
             return D3D12_RESOURCE_BARRIER
             {
-                .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                .Transition = d3d12TransitionBarrier
+                .Type{ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION },
+                .Flags{ D3D12_RESOURCE_BARRIER_FLAG_NONE },
+                .Transition
+                {
+                    .pResource{ barrier.Resource->GetDX12Resource() },
+                    .Subresource{ D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES },
+                    .StateBefore{ static_cast<D3D12_RESOURCE_STATES>(barrier.From) },
+                    .StateAfter{ static_cast<D3D12_RESOURCE_STATES>(barrier.To) }
+                }
             };
         }
 
@@ -47,71 +43,84 @@ namespace spieler::renderer
 
     Context::Context(Device& device, uint32_t uploadBufferSize)
         : m_Fence{ device }
-        , m_UploadBuffer{ device, uploadBufferSize }
     {
+        // Init m_UploadBuffer
+        {
+            const BufferResource::Config config
+            {
+                .ElementSize{ sizeof(std::byte) },
+                .ElementCount{ uploadBufferSize },
+                .Flags{ BufferResource::Flags::Dynamic }
+            };
+
+            m_UploadBuffer.Resource = BufferResource{ device, config };
+        }
+
         SPIELER_ASSERT(Init(device));
     }
 
     void Context::SetDescriptorHeap(const DescriptorHeap& descriptorHeap)
     {
-        m_CommandList->SetDescriptorHeaps(1, descriptorHeap.GetNative().GetAddressOf());
+        ID3D12DescriptorHeap* dx12DescriptorHeap{ descriptorHeap.GetDX12DescriptorHeap() };
+
+        m_DX12GraphicsCommandList->SetDescriptorHeaps(1, &dx12DescriptorHeap);
     }
 
     void Context::IASetVertexBuffer(const VertexBufferView* vertexBufferView)
     {
-        m_CommandList->IASetVertexBuffers(0, 1, reinterpret_cast<const D3D12_VERTEX_BUFFER_VIEW*>(vertexBufferView));
+        m_DX12GraphicsCommandList->IASetVertexBuffers(0, 1, reinterpret_cast<const D3D12_VERTEX_BUFFER_VIEW*>(vertexBufferView));
     }
 
     void Context::IASetIndexBuffer(const IndexBufferView* indexBufferView)
     {
-        m_CommandList->IASetIndexBuffer(reinterpret_cast<const D3D12_INDEX_BUFFER_VIEW*>(indexBufferView));
+        m_DX12GraphicsCommandList->IASetIndexBuffer(reinterpret_cast<const D3D12_INDEX_BUFFER_VIEW*>(indexBufferView));
     }
 
     void Context::IASetPrimitiveTopology(PrimitiveTopology primitiveTopology)
     {
         SPIELER_ASSERT(primitiveTopology != PrimitiveTopology::Unknown);
 
-        m_CommandList->IASetPrimitiveTopology(dx12::Convert(primitiveTopology));
+        m_DX12GraphicsCommandList->IASetPrimitiveTopology(dx12::Convert(primitiveTopology));
     }
 
     void Context::SetViewport(const Viewport& viewport)
     {
-        m_CommandList->RSSetViewports(1, reinterpret_cast<const D3D12_VIEWPORT*>(&viewport));
+        m_DX12GraphicsCommandList->RSSetViewports(1, reinterpret_cast<const D3D12_VIEWPORT*>(&viewport));
     }
 
     void Context::SetScissorRect(const ScissorRect& scissorRect)
     {
-        const ::RECT d3d12Rect
+        const D3D12_RECT d3d12Rect
         {
-            .left = static_cast<LONG>(scissorRect.X),
-            .top = static_cast<LONG>(scissorRect.Y),
-            .right = static_cast<LONG>(scissorRect.X + scissorRect.Width),
-            .bottom = static_cast<LONG>(scissorRect.Y + scissorRect.Height),
+            .left{ static_cast<LONG>(scissorRect.X) },
+            .top{ static_cast<LONG>(scissorRect.Y) },
+            .right{ static_cast<LONG>(scissorRect.X + scissorRect.Width) },
+            .bottom{ static_cast<LONG>(scissorRect.Y + scissorRect.Height) },
         };
 
-        m_CommandList->RSSetScissorRects(1, &d3d12Rect);
+        m_DX12GraphicsCommandList->RSSetScissorRects(1, &d3d12Rect);
     }
 
     void Context::SetPipelineState(const PipelineState& pso)
     {
-        m_CommandList->SetPipelineState(static_cast<ID3D12PipelineState*>(pso));
+        m_DX12GraphicsCommandList->SetPipelineState(pso.GetDX12PipelineState());
     }
 
     void Context::SetGraphicsRootSignature(const RootSignature& rootSignature)
     {
-        m_CommandList->SetGraphicsRootSignature(static_cast<ID3D12RootSignature*>(rootSignature));
+        m_DX12GraphicsCommandList->SetGraphicsRootSignature(rootSignature.GetDX12RootSignature());
     }
 
     void Context::SetComputeRootSignature(const RootSignature& rootSignature)
     {
-        m_CommandList->SetComputeRootSignature(static_cast<ID3D12RootSignature*>(rootSignature));
+        m_DX12GraphicsCommandList->SetComputeRootSignature(rootSignature.GetDX12RootSignature());
     }
 
     void Context::SetRenderTarget(const RenderTargetView& rtv)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
 
-        m_CommandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, nullptr);
+        m_DX12GraphicsCommandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, nullptr);
     }
 
     void Context::SetRenderTarget(const RenderTargetView& rtv, const DepthStencilView& dsv)
@@ -119,21 +128,21 @@ namespace spieler::renderer
         const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
         const D3D12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle{ dsv.GetDescriptor().CPU };
 
-        m_CommandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, &dsvDescriptorHandle);
+        m_DX12GraphicsCommandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, &dsvDescriptorHandle);
     }
 
     void Context::ClearRenderTarget(const RenderTargetView& rtv, const DirectX::XMFLOAT4& color)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
 
-        m_CommandList->ClearRenderTargetView(rtvDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
+        m_DX12GraphicsCommandList->ClearRenderTargetView(rtvDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
     }
 
     void Context::ClearDepthStencil(const DepthStencilView& dsv, float depth, uint8_t stencil)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle{ dsv.GetDescriptor().CPU };
 
-        m_CommandList->ClearDepthStencilView(
+        m_DX12GraphicsCommandList->ClearDepthStencilView(
             dsvDescriptorHandle,
             D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
             depth,
@@ -146,33 +155,36 @@ namespace spieler::renderer
     void Context::SetResourceBarrier(const TransitionResourceBarrier& barrier)
     {
         SPIELER_ASSERT(barrier.Resource);
+        SPIELER_ASSERT(barrier.Resource->GetDX12Resource());
 
         const D3D12_RESOURCE_BARRIER d3d12Barrier{ _internal::ConvertToD3D12ResourceBarrier(barrier) };
 
-        m_CommandList->ResourceBarrier(1, &d3d12Barrier);
+        m_DX12GraphicsCommandList->ResourceBarrier(1, &d3d12Barrier);
     }
 
     void Context::SetStencilReferenceValue(uint8_t referenceValue)
     {
-        m_CommandList->OMSetStencilRef(referenceValue);
+        m_DX12GraphicsCommandList->OMSetStencilRef(referenceValue);
     }
 
-    void Context::WriteToBuffer(BufferResource& buffer, size_t size, const void* data)
+    void Context::UploadToBuffer(BufferResource& buffer,const void* data, uint64_t size)
     {
-        SPIELER_ASSERT(buffer.GetResource());
+        SPIELER_ASSERT(buffer.GetDX12Resource());
         SPIELER_ASSERT(size);
         SPIELER_ASSERT(data);
 
-        const uint32_t uploadBufferOffset{ m_UploadBuffer.Allocate(size) };
+        MappedData mappedData{ m_UploadBuffer.Resource, 0 };
 
-        memcpy_s(m_UploadBuffer.GetMappedData() + uploadBufferOffset, size, data, size);
+        const uint64_t uploadBufferOffset{ m_UploadBuffer.Allocate(size) };
 
-        m_CommandList->CopyBufferRegion(buffer.GetResource().Get(), 0, m_UploadBuffer.GetResource().Get(), uploadBufferOffset, size);
+        memcpy_s(mappedData.GetData() + uploadBufferOffset, size, data, size);
+
+        m_DX12GraphicsCommandList->CopyBufferRegion(buffer.GetDX12Resource(), 0, m_UploadBuffer.Resource.GetDX12Resource(), uploadBufferOffset, size);
     }
 
-    void Context::WriteToTexture(Texture2DResource& texture, std::vector<SubresourceData>& subresources)
+    void Context::UploadToTexture(TextureResource& texture, std::vector<SubresourceData>& subresources)
     {
-        SPIELER_ASSERT(texture.GetResource());
+        SPIELER_ASSERT(texture.GetDX12Resource());
         SPIELER_ASSERT(!subresources.empty());
 
         const uint32_t firstSubresource{ 0 };
@@ -191,15 +203,15 @@ namespace spieler::renderer
             uint64_t requiredUploadBufferSize{ 0 };
 
             {
-                ComPtr<ID3D12Device> d3d12Device;
-                texture.GetResource()->GetDevice(IID_PPV_ARGS(&d3d12Device));
+                ComPtr<ID3D12Device> dx12Device;
+                texture.GetDX12Resource()->GetDevice(IID_PPV_ARGS(&dx12Device));
 
-                const D3D12_RESOURCE_DESC textureDesc{ texture.GetResource()->GetDesc() };
+                const D3D12_RESOURCE_DESC textureDesc{ texture.GetDX12Resource()->GetDesc() };
 
-                d3d12Device->GetCopyableFootprints(
+                dx12Device->GetCopyableFootprints(
                     &textureDesc,
                     firstSubresource,
-                    subresources.size(),
+                    static_cast<uint32_t>(subresources.size()),
                     m_UploadBuffer.Allocate(0, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
                     layouts.data(),
                     rowCounts.data(),
@@ -212,23 +224,28 @@ namespace spieler::renderer
         }
         
         // Copying subresources to UploadBuffer
-        for (size_t i = 0; i < subresources.size(); ++i)
         {
-            SPIELER_ASSERT(rowSizes[i] <= static_cast<uint64_t>(-1));
+            MappedData mappedData{ m_UploadBuffer.Resource, 0 };
 
-            std::byte* destinationData{ m_UploadBuffer.GetMappedData() + layouts[i].Offset };
-
-            for (uint32_t z = 0; z < layouts[i].Footprint.Depth; ++z)
+            for (size_t i = 0; i < subresources.size(); ++i)
             {
-                std::byte* destinationSlice{ destinationData + layouts[i].Footprint.RowPitch * static_cast<uint64_t>(rowCounts[i]) * z };
-                const std::byte* sourceSlice{ subresources[i].Data + subresources[i].SlicePitch * z };
+                SPIELER_ASSERT(rowSizes[i] <= static_cast<uint64_t>(-1));
 
-                for (uint32_t y = 0; y < rowCounts[i]; ++y)
+                std::byte* destinationData{ mappedData.GetData() + layouts[i].Offset };
+                const std::byte* sourceData{ subresources[i].Data };
+
+                for (uint32_t z = 0; z < layouts[i].Footprint.Depth; ++z)
                 {
-                    std::byte* destinationRow{ destinationSlice + static_cast<uint64_t>(layouts[i].Footprint.RowPitch) * y };
-                    const std::byte* sourceRow{ sourceSlice + subresources[i].RowPitch * y };
+                    std::byte* destinationSlice{ destinationData + layouts[i].Footprint.RowPitch * static_cast<uint64_t>(rowCounts[i]) * z };
+                    const std::byte* sourceSlice{ sourceData + subresources[i].SlicePitch * z };
 
-                    memcpy_s(destinationRow, rowSizes[i], sourceRow, rowSizes[i]);
+                    for (uint32_t y = 0; y < rowCounts[i]; ++y)
+                    {
+                        std::byte* destinationRow{ destinationSlice + static_cast<uint64_t>(layouts[i].Footprint.RowPitch) * y };
+                        const std::byte* sourceRow{ sourceSlice + subresources[i].RowPitch * y };
+
+                        memcpy_s(destinationRow, rowSizes[i], sourceRow, rowSizes[i]);
+                    }
                 }
             }
         }
@@ -238,25 +255,25 @@ namespace spieler::renderer
         {
             const D3D12_TEXTURE_COPY_LOCATION destination
             {
-                .pResource{ texture.GetResource().Get() },
+                .pResource{ texture.GetDX12Resource() },
                 .Type{ D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX },
                 .SubresourceIndex{ static_cast<uint32_t>(i + firstSubresource) }
             };
 
             const D3D12_TEXTURE_COPY_LOCATION source
             {
-                .pResource{ m_UploadBuffer.GetResource().Get() },
+                .pResource{ m_UploadBuffer.Resource.GetDX12Resource() },
                 .Type{ D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT },
                 .PlacedFootprint{ layouts[i] }
             };
 
-            m_CommandList->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
+            m_DX12GraphicsCommandList->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
         }
     }
 
     bool Context::CloseCommandList()
     {
-        SPIELER_RETURN_IF_FAILED(m_CommandList->Close());
+        SPIELER_RETURN_IF_FAILED(m_DX12GraphicsCommandList->Close());
 
         return true;
     }
@@ -265,11 +282,13 @@ namespace spieler::renderer
     {
         SPIELER_RETURN_IF_FAILED(CloseCommandList());
 
-        m_CommandQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList* const*>(m_CommandList.GetAddressOf()));
+        m_DX12CommandQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList* const*>(m_DX12GraphicsCommandList.GetAddressOf()));
 
         if (isNeedToFlushCommandQueue)
         {
             SPIELER_RETURN_IF_FAILED(FlushCommandQueue());
+
+            m_UploadBuffer.Offset = 0;
         }
 
         return true;
@@ -279,24 +298,22 @@ namespace spieler::renderer
     {
         m_Fence.Increment();
 
-        SPIELER_RETURN_IF_FAILED(m_Fence.Signal(*this));
-        SPIELER_RETURN_IF_FAILED(m_Fence.WaitForGPU());
+        SPIELER_ASSERT(SUCCEEDED(m_DX12CommandQueue->Signal(m_Fence.GetDX12Fence(), m_Fence.GetValue())));
+        m_Fence.WaitForGPU();
 
         return true;
     }
 
-    bool Context::ResetCommandList(const PipelineState* pso)
+    bool Context::ResetCommandList(const PipelineState& pso)
     {
-        ID3D12PipelineState* d3d12PSO{ pso ? static_cast<ID3D12PipelineState*>(*pso) : nullptr };
-
-        SPIELER_RETURN_IF_FAILED(m_CommandList->Reset(m_CommandAllocator.Get(), d3d12PSO));
+        SPIELER_RETURN_IF_FAILED(m_DX12GraphicsCommandList->Reset(m_DX12CommandAllocator.Get(), pso.GetDX12PipelineState()));
 
         return true;
     }
 
     bool Context::ResetCommandAllocator()
     {
-        SPIELER_RETURN_IF_FAILED(m_CommandAllocator->Reset());
+        SPIELER_RETURN_IF_FAILED(m_DX12CommandAllocator->Reset());
 
         return true;
     }
@@ -308,15 +325,22 @@ namespace spieler::renderer
 
     bool Context::InitCommandAllocator(Device& device)
     {
-        SPIELER_RETURN_IF_FAILED(device.GetNativeDevice()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), &m_CommandAllocator));
+        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_DX12CommandAllocator)));
 
         return true;
     }
 
     bool Context::InitCommandList(Device& device)
     {
-        SPIELER_RETURN_IF_FAILED(device.GetNativeDevice()->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_CommandAllocator.Get(), nullptr, __uuidof(ID3D12CommandList), &m_CommandList));
-        SPIELER_RETURN_IF_FAILED(m_CommandList->Close());
+        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateCommandList(
+            0, 
+            D3D12_COMMAND_LIST_TYPE_DIRECT, 
+            m_DX12CommandAllocator.Get(),
+            nullptr, 
+            IID_PPV_ARGS(&m_DX12GraphicsCommandList)
+        ));
+
+        SPIELER_RETURN_IF_FAILED(m_DX12GraphicsCommandList->Close());
 
         return true;
     }
@@ -325,13 +349,13 @@ namespace spieler::renderer
     {
         const D3D12_COMMAND_QUEUE_DESC desc
         {
-            .Type = D3D12_COMMAND_LIST_TYPE_DIRECT,
-            .Priority = 0,
-            .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
-            .NodeMask = 0
+            .Type{ D3D12_COMMAND_LIST_TYPE_DIRECT },
+            .Priority{ 0 },
+            .Flags{ D3D12_COMMAND_QUEUE_FLAG_NONE },
+            .NodeMask{ 0 }
         };
 
-        SPIELER_RETURN_IF_FAILED(device.GetNativeDevice()->CreateCommandQueue(&desc, __uuidof(ID3D12CommandQueue), &m_CommandQueue));
+        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_DX12CommandQueue)));
 
         return true;
     }

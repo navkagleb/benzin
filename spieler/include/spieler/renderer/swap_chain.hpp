@@ -34,8 +34,8 @@ namespace spieler::renderer
         GraphicsFormat GetBufferFormat() const { return m_BufferFormat; }
 
     public:
-        Texture2D& GetCurrentBuffer();
-        const Texture2D& GetCurrentBuffer() const;
+        Texture& GetCurrentBuffer();
+        const Texture& GetCurrentBuffer() const;
 
     private:
         uint32_t GetCurrentBufferIndex() const;
@@ -53,12 +53,12 @@ namespace spieler::renderer
         bool CreateBuffers(Device& device);
 
     private:
-        ComPtr<IDXGIFactory> m_Factory;
-        ComPtr<IDXGISwapChain> m_SwapChain;
-        ComPtr<IDXGISwapChain3> m_SwapChain3;
+        ComPtr<IDXGIFactory> m_DXGIFactory;
+        ComPtr<IDXGISwapChain> m_DXGISwapChain;
+        ComPtr<IDXGISwapChain3> m_DXGISwapChain3;
 
         GraphicsFormat m_BufferFormat;
-        std::vector<Texture2D> m_Buffers;
+        std::vector<Texture> m_Buffers;
     };
 
 } // namespace spieler::renderer

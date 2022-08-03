@@ -7,7 +7,7 @@
 #include <spieler/renderer/shader.hpp>
 #include <spieler/renderer/pipeline_state.hpp>
 #include <spieler/renderer/context.hpp>
-#include <spieler/renderer/constant_buffer.hpp>
+#include <spieler/renderer/texture.hpp>
 
 #include "projection_camera_controller.hpp"
 
@@ -29,6 +29,16 @@ namespace sandbox
         {
             DirectX::XMMATRIX World{ DirectX::XMMatrixIdentity() };
             uint32_t MaterialIndex{ 0 };
+        };
+
+        struct Material
+        {
+            DirectX::XMFLOAT4 DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f };
+            DirectX::XMFLOAT3 FresnelR0{ 0.01f, 0.01f, 0.01f };
+            float Roughness{ 0.25f };
+            DirectX::XMMATRIX Transform{ DirectX::XMMatrixIdentity() };
+            uint32_t DiffuseMapIndex{ 0 };
+            uint32_t ConstantBufferIndex{ 0 };
         };
 
         struct MaterialConstants
@@ -61,9 +71,9 @@ namespace sandbox
         spieler::renderer::ScissorRect m_ScissorRect;
 
         const spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
-        spieler::renderer::Texture2D m_DepthStencil;
+        spieler::renderer::Texture m_DepthStencil;
 
-        std::unordered_map<std::string, spieler::renderer::Texture2D> m_Textures;
+        std::unordered_map<std::string, spieler::renderer::Texture> m_Textures;
 
         spieler::renderer::MeshGeometry m_MeshGeometry;
         spieler::renderer::RootSignature m_RootSignature;
@@ -73,12 +83,12 @@ namespace sandbox
         std::unordered_map<std::string, std::unique_ptr<spieler::renderer::RenderItem>> m_RenderItems;
 
         PassConstants m_PassConstants;
-        spieler::renderer::ConstantBuffer m_PassConstantBuffer;
+        spieler::renderer::BufferResource m_PassConstantBuffer;
 
-        spieler::renderer::ConstantBuffer m_ObjectConstantBuffer;
+        spieler::renderer::BufferResource m_ObjectConstantBuffer;
 
-        std::unordered_map<std::string, MaterialConstants> m_MaterialConstants;
-        spieler::renderer::ConstantBuffer m_MaterialConstantBuffer;
+        std::unordered_map<std::string, Material> m_Materials;
+        spieler::renderer::BufferResource m_MaterialConstantBuffer;
     };
 
 } // namespace sandbox

@@ -42,13 +42,13 @@ namespace spieler::renderer
     }
 
     Renderer::Renderer(Window& window)
-        : m_Context{ m_Device, MB(10) }
+        : m_Context{ m_Device, MB(30) }
         , m_SwapChain{ m_Device, m_Context, window, g_SwapChainConfig }
     {}
 
     Renderer::~Renderer()
     {
-        if (m_Device.GetNativeDevice())
+        if (m_Device.GetDX12Device())
         {
             m_Context.FlushCommandQueue();
         }

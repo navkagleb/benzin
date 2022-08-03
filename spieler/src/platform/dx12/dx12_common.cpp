@@ -11,6 +11,7 @@
 namespace spieler::renderer::dx12
 {
 
+    // common.hpp
     D3D12_SHADER_VISIBILITY Convert(ShaderVisibility shaderVisibility)
     {
         switch (shaderVisibility)
@@ -106,6 +107,29 @@ namespace spieler::renderer::dx12
         }
 
         return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    }
+
+    D3D12_COMPARISON_FUNC Convert(ComparisonFunction comparisonFunction)
+    {
+        switch (comparisonFunction)
+        {
+            case ComparisonFunction::Never: return D3D12_COMPARISON_FUNC_NEVER;
+            case ComparisonFunction::Less: return D3D12_COMPARISON_FUNC_LESS;
+            case ComparisonFunction::Equal: return D3D12_COMPARISON_FUNC_EQUAL;
+            case ComparisonFunction::LessEqual: return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+            case ComparisonFunction::Greate: return D3D12_COMPARISON_FUNC_GREATER;
+            case ComparisonFunction::NotEqual: return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+            case ComparisonFunction::GreateEqual: return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+            case ComparisonFunction::Always: return D3D12_COMPARISON_FUNC_ALWAYS;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown ComparisonFuncion!");
+                break;
+            }
+        }
+
+        return D3D12_COMPARISON_FUNC_NEVER;
     }
 
     GraphicsFormat Convert(DXGI_FORMAT dxgiFormat)
@@ -248,6 +272,7 @@ namespace spieler::renderer::dx12
         return DXGI_FORMAT_UNKNOWN;
     }
 
+    // blend_state.hpp
     D3D12_BLEND_OP Convert(BlendState::Operation blendOperation)
     {
         switch (blendOperation)
@@ -319,6 +344,48 @@ namespace spieler::renderer::dx12
         return D3D12_BLEND_ZERO;
     }
 
+    // depth_stencil_state.hpp
+    D3D12_DEPTH_WRITE_MASK Convert(enum class DepthState::WriteState writeState)
+    {
+        switch (writeState)
+        {
+            case DepthState::WriteState::Disabled: return D3D12_DEPTH_WRITE_MASK_ZERO;
+            case DepthState::WriteState::Enabled: return D3D12_DEPTH_WRITE_MASK_ALL;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown DepthState::WriteState!");
+                break;
+            }
+        }
+
+        return D3D12_DEPTH_WRITE_MASK_ZERO;
+    }
+
+    D3D12_STENCIL_OP Convert(StencilState::Operation operation)
+    {
+        switch (operation)
+        {
+            case StencilState::Operation::Keep: return D3D12_STENCIL_OP_KEEP;
+            case StencilState::Operation::Zero: return D3D12_STENCIL_OP_ZERO;
+            case StencilState::Operation::Replace: return D3D12_STENCIL_OP_REPLACE;
+            case StencilState::Operation::IncreateSatureated: return D3D12_STENCIL_OP_INCR_SAT;
+            case StencilState::Operation::DescreaseSaturated: return D3D12_STENCIL_OP_DECR_SAT;
+            case StencilState::Operation::Invert: return D3D12_STENCIL_OP_INVERT;
+            case StencilState::Operation::Increase: return D3D12_STENCIL_OP_INCR;
+            case StencilState::Operation::Decrease: return D3D12_STENCIL_OP_DECR;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown StencilState::Operation!");
+                break;
+            }
+        }
+
+        return D3D12_STENCIL_OP_KEEP;
+    }
+
+    // descriptor_manager.hpp
     D3D12_DESCRIPTOR_HEAP_TYPE Convert(DescriptorHeap::Type descriptorHeapType)
     {
         switch (descriptorHeapType)
@@ -336,6 +403,82 @@ namespace spieler::renderer::dx12
         }
 
         return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    }
+
+    TextureResource::Dimension Convert(D3D12_RESOURCE_DIMENSION dimension)
+    {
+        switch (dimension)
+        {
+            case D3D12_RESOURCE_DIMENSION_UNKNOWN: return TextureResource::Dimension::Unknown;
+            case D3D12_RESOURCE_DIMENSION_TEXTURE1D: return TextureResource::Dimension::_1D;
+            case D3D12_RESOURCE_DIMENSION_TEXTURE2D: return TextureResource::Dimension::_2D;
+            case D3D12_RESOURCE_DIMENSION_TEXTURE3D: return TextureResource::Dimension::_3D;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown D3D12_RESOURCE_DIMENSION!");
+                break;
+            }
+        }
+
+        return TextureResource::Dimension::Unknown;
+    }
+
+    D3D12_RESOURCE_DIMENSION Convert(TextureResource::Dimension dimension)
+    {
+        switch (dimension)
+        {
+            case TextureResource::Dimension::Unknown: return D3D12_RESOURCE_DIMENSION_UNKNOWN;
+            case TextureResource::Dimension::_1D: return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+            case TextureResource::Dimension::_2D: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+            case TextureResource::Dimension::_3D: return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+            
+            default:
+            {
+                SPIELER_WARNING("Unknown TextureResource::Dimension!");
+                break;
+            }
+        }
+
+        return D3D12_RESOURCE_DIMENSION_UNKNOWN;
+    }
+
+    TextureResource::Flags Convert(D3D12_RESOURCE_FLAGS flags)
+    {
+        switch (flags)
+        {
+            case D3D12_RESOURCE_FLAG_NONE: return TextureResource::Flags::None;
+            case D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET: return TextureResource::Flags::RenderTarget;
+            case D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL: return TextureResource::Flags::DepthStencil;
+            case D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS: return TextureResource::Flags::UnorderedAccess;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown D3D12_RESOURCE_FLAGS!");
+                break;
+            }
+        }
+
+        return TextureResource::Flags::None;
+    }
+
+    D3D12_RESOURCE_FLAGS Convert(TextureResource::Flags flags)
+    {
+        switch (flags)
+        {
+            case TextureResource::Flags::None: return D3D12_RESOURCE_FLAG_NONE;
+            case TextureResource::Flags::RenderTarget: return D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+            case TextureResource::Flags::DepthStencil: return D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+            case TextureResource::Flags::UnorderedAccess: return D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+            default:
+            {
+                SPIELER_WARNING("Unknown TextureResource::Flags!");
+                break;
+            }
+        }
+
+        return D3D12_RESOURCE_FLAG_NONE;
     }
 
 } // namespace spieler::renderer::dx12

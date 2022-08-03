@@ -33,10 +33,10 @@ namespace sandbox
         BlurPass(uint32_t width, uint32_t height);
 
     public:
-        spieler::renderer::Texture2D& GetOutput() { return m_BlurMaps[0]; }
+        spieler::renderer::Texture& GetOutput() { return m_BlurMaps[0]; }
 
     public:
-        bool Execute(spieler::renderer::Texture2DResource& input, const BlurPassExecuteProps& props);
+        bool Execute(spieler::renderer::TextureResource& input, const BlurPassExecuteProps& props);
 
         void OnResize(uint32_t width, uint32_t height);
 
@@ -49,7 +49,7 @@ namespace sandbox
         BlurPassDirection m_HorizontalPass;
         BlurPassDirection m_VerticalPass;
 
-        std::array<spieler::renderer::Texture2D, 2> m_BlurMaps;
+        std::array<spieler::renderer::Texture, 2> m_BlurMaps;
         spieler::renderer::ShaderLibrary m_ShaderLibrary;
     };
 

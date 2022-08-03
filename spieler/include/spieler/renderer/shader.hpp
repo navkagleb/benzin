@@ -53,7 +53,7 @@ namespace spieler::renderer
         uint32_t GetSize() const;
 
     protected:
-        ComPtr<ID3DBlob> m_ByteCode;
+        ComPtr<ID3DBlob> m_DX12Blob;
     };
 
     template <typename Permutations>

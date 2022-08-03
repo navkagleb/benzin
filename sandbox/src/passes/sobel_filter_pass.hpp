@@ -14,10 +14,10 @@ namespace sandbox
         SobelFilterPass(uint32_t width, uint32_t height);
 
     public:
-        const spieler::renderer::Texture2D& GetOutputTexture() const { return m_OutputTexture; }
+        const spieler::renderer::Texture& GetOutputTexture() const { return m_OutputTexture; }
 
     public:
-        void Execute(spieler::renderer::Texture2D& input);
+        void Execute(spieler::renderer::Texture& input);
 
         void OnResize(uint32_t width, uint32_t height);
 
@@ -27,7 +27,7 @@ namespace sandbox
         void InitPipelineState();
 
     private:
-        spieler::renderer::Texture2D m_OutputTexture;
+        spieler::renderer::Texture m_OutputTexture;
         spieler::renderer::RootSignature m_RootSignature;
         spieler::renderer::ComputePipelineState m_PipelineState;
         spieler::renderer::ShaderLibrary m_ShaderLibrary;

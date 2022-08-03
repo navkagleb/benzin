@@ -20,65 +20,64 @@ namespace spieler::renderer
         SPIELER_NON_COPYABLE(PipelineState)
 
     public:
-        friend class Context;
-
-    public:
         PipelineState() = default;
         PipelineState(PipelineState&& other) noexcept;
         virtual ~PipelineState() = default;
 
     public:
+        ID3D12PipelineState* GetDX12PipelineState() const { return m_DX12PipelineState.Get(); }
+
+    public:
         PipelineState& operator=(PipelineState&& other) noexcept;
 
-    private:
-        explicit operator ID3D12PipelineState* () const { return m_PipelineState.Get(); }
-
     protected:
-        ComPtr<ID3D12PipelineState> m_PipelineState;
-    };
-
-    struct GraphicsPipelineStateConfig
-    {
-        const RootSignature* RootSignature{ nullptr };
-        const Shader* VertexShader{ nullptr };
-        const Shader* HullShader{ nullptr };
-        const Shader* DomainShader{ nullptr };
-        const Shader* GeometryShader{ nullptr };
-        const Shader* PixelShader{ nullptr };
-        const BlendState* BlendState{ nullptr };
-        const RasterizerState* RasterizerState{ nullptr };
-        const DepthStencilState* DepthStecilState{ nullptr };
-        const InputLayout* InputLayout{ nullptr };
-
-        PrimitiveTopologyType PrimitiveTopologyType{ PrimitiveTopologyType::Unknown };
-        GraphicsFormat RTVFormat{ GraphicsFormat::R8G8B8A8UnsignedNorm };
-        GraphicsFormat DSVFormat{ GraphicsFormat::D24UnsignedNormS8UnsignedInt };
+        ComPtr<ID3D12PipelineState> m_DX12PipelineState;
     };
 
     class GraphicsPipelineState : public PipelineState
     {
     public:
+        struct Config
+        {
+            const RootSignature* RootSignature{ nullptr };
+            const Shader* VertexShader{ nullptr };
+            const Shader* HullShader{ nullptr };
+            const Shader* DomainShader{ nullptr };
+            const Shader* GeometryShader{ nullptr };
+            const Shader* PixelShader{ nullptr };
+            const BlendState* BlendState{ nullptr };
+            const RasterizerState* RasterizerState{ nullptr };
+            const DepthStencilState* DepthStecilState{ nullptr };
+            const InputLayout* InputLayout{ nullptr };
+
+            PrimitiveTopologyType PrimitiveTopologyType{ PrimitiveTopologyType::Unknown };
+            GraphicsFormat RTVFormat{ GraphicsFormat::R8G8B8A8UnsignedNorm };
+            GraphicsFormat DSVFormat{ GraphicsFormat::D24UnsignedNormS8UnsignedInt };
+        };
+
+    public:
         GraphicsPipelineState() = default;
-        GraphicsPipelineState(Device& device, const GraphicsPipelineStateConfig& config);
+        GraphicsPipelineState(Device& device, const Config& config);
 
     private:
-        bool Init(Device& device, const GraphicsPipelineStateConfig& config);
-    };
-
-    struct ComputePipelineStateConfig
-    {
-        const RootSignature* RootSignature{ nullptr };
-        const Shader* ComputeShader{ nullptr };
+        bool Init(Device& device, const Config& config);
     };
 
     class ComputePipelineState : public PipelineState
     {
     public:
+        struct Config
+        {
+            const RootSignature* RootSignature{ nullptr };
+            const Shader* ComputeShader{ nullptr };
+        };
+
+    public:
         ComputePipelineState() = default;
-        ComputePipelineState(Device& device, const ComputePipelineStateConfig& config);
+        ComputePipelineState(Device& device, const Config& config);
 
     private:
-        bool Init(Device& device, const ComputePipelineStateConfig& config);
+        bool Init(Device& device, const Config& config);
     };
 
 } // namespace spieler::renderer

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <spieler/renderer/constant_buffer.hpp>
 #include <spieler/renderer/light.hpp>
 #include <spieler/renderer/mesh.hpp>
 #include <spieler/math/math.hpp>

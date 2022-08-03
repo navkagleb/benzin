@@ -1,8 +1,7 @@
 #pragma once
 
 #include "spieler/renderer/common.hpp"
-#include "spieler/renderer/vertex_buffer.hpp"
-#include "spieler/renderer/index_buffer.hpp"
+#include "spieler/renderer/buffer.hpp"
 #include "spieler/renderer/resource_view.hpp"
 
 namespace spieler::renderer
@@ -17,8 +16,8 @@ namespace spieler::renderer
 
     struct MeshGeometry
     {
-        VertexBuffer VertexBuffer;
-        IndexBuffer IndexBuffer;
+        Buffer VertexBuffer;
+        Buffer IndexBuffer;
 
         std::unordered_map<std::string, SubmeshGeometry> Submeshes;
     };
@@ -51,6 +50,7 @@ namespace spieler::renderer
         ShaderResourceView DiffuseMap;
         MaterialConstants Constants;
         Transform Transform;
+        uint32_t ConstantBufferIndex{ 0 };
     };
 
     struct RenderItem
@@ -59,6 +59,8 @@ namespace spieler::renderer
         const SubmeshGeometry* SubmeshGeometry{ nullptr };
         PrimitiveTopology PrimitiveTopology{ PrimitiveTopology::Unknown };
         Material* Material{ nullptr };
+
+        uint32_t ConstantBufferIndex{ 0 };
 
         struct Transform Transform;
         struct Transform TextureTransform;
