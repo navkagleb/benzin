@@ -84,7 +84,7 @@ namespace spieler
 
                 const float dt{ m_Timer.GetDeltaTime() };
 
-                SPIELER_ASSERT(context.ResetCommandAllocator());
+                context.ResetCommandAllocator();
 
                 for (auto& layer : m_LayerStack)
                 {

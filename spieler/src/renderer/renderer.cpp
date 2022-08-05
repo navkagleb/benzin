@@ -56,7 +56,7 @@ namespace spieler::renderer
 
     bool Renderer::ResizeBuffers(uint32_t width, uint32_t height)
     {
-        SPIELER_RETURN_IF_FAILED(m_Context.FlushCommandQueue());
+        m_Context.FlushCommandQueue();
 
         return m_SwapChain.ResizeBuffers(m_Device, width, height);
     }

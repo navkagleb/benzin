@@ -85,12 +85,12 @@ namespace sandbox
 
         InitConstantBuffers();
 
-        SPIELER_ASSERT(context.ResetCommandList());
         {
+            spieler::renderer::Context::CommandListScope commandListScope{ context, true };
+
             SPIELER_ASSERT(InitTextures());
             SPIELER_ASSERT(InitMeshGeometries());
         }
-        SPIELER_ASSERT(context.ExecuteCommandList(true));
 
         InitMaterials();
         SPIELER_ASSERT(InitRootSignatures());
@@ -250,8 +250,9 @@ namespace sandbox
         spieler::renderer::Texture& offScreenTexture{ m_Textures["off_screen"] };
         spieler::renderer::Texture& currentBuffer{ swapChain.GetCurrentBuffer() };
 
-        SPIELER_ASSERT(context.ResetCommandList());
         {
+            spieler::renderer::Context::CommandListScope commandListScope{ context, true };
+
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
                 .Resource{ &offScreenTexture.Resource },
@@ -360,7 +361,6 @@ namespace sandbox
                 .To{ spieler::renderer::ResourceState::Present }
             });
         }
-        SPIELER_ASSERT(context.ExecuteCommandList(true));
     }
 
     void TestLayer::OnImGuiRender(float dt)

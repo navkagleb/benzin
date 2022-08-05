@@ -41,6 +41,37 @@ namespace spieler::renderer
 
     } // namespace _internal
 
+    //////////////////////////////////////////////////////////////////////////
+    /// Context::CommandListScope
+    //////////////////////////////////////////////////////////////////////////
+    Context::CommandListScope::CommandListScope(Context& context, bool isNeedToFlushCommandQueue)
+        : m_Context{ context }
+        , m_IsNeedToFlushCommandQueue{ isNeedToFlushCommandQueue }
+    {
+        m_Context.ResetCommandList();
+    }
+
+    Context::CommandListScope::~CommandListScope()
+    {
+        m_Context.ExecuteCommandList(m_IsNeedToFlushCommandQueue);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    /// Context::UploadBuffer
+    //////////////////////////////////////////////////////////////////////////
+    uint64_t Context::UploadBuffer::Allocate(uint64_t size, uint64_t alignment)
+    {
+        const uint64_t offset{ alignment == 0 ? Offset : utils::Align(Offset, alignment) };
+
+        SPIELER_ASSERT(offset + size <= Resource.GetConfig().ElementCount);
+        Offset = offset + size;
+
+        return offset;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    /// Context
+    //////////////////////////////////////////////////////////////////////////
     Context::Context(Device& device, uint32_t uploadBufferSize)
         : m_Fence{ device }
     {
@@ -271,51 +302,41 @@ namespace spieler::renderer
         }
     }
 
-    bool Context::CloseCommandList()
+    void Context::CloseCommandList()
     {
-        SPIELER_RETURN_IF_FAILED(m_DX12GraphicsCommandList->Close());
-
-        return true;
+        SPIELER_ASSERT(SUCCEEDED(m_DX12GraphicsCommandList->Close()));
     }
 
-    bool Context::ExecuteCommandList(bool isNeedToFlushCommandQueue)
+    void Context::ExecuteCommandList(bool isNeedToFlushCommandQueue)
     {
-        SPIELER_RETURN_IF_FAILED(CloseCommandList());
+        CloseCommandList();
 
         m_DX12CommandQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList* const*>(m_DX12GraphicsCommandList.GetAddressOf()));
 
         if (isNeedToFlushCommandQueue)
         {
-            SPIELER_RETURN_IF_FAILED(FlushCommandQueue());
+            FlushCommandQueue();
 
             m_UploadBuffer.Offset = 0;
         }
-
-        return true;
     }
 
-    bool Context::FlushCommandQueue()
+    void Context::FlushCommandQueue()
     {
         m_Fence.Increment();
 
         SPIELER_ASSERT(SUCCEEDED(m_DX12CommandQueue->Signal(m_Fence.GetDX12Fence(), m_Fence.GetValue())));
         m_Fence.WaitForGPU();
-
-        return true;
     }
 
-    bool Context::ResetCommandList(const PipelineState& pso)
+    void Context::ResetCommandList(const PipelineState& pso)
     {
-        SPIELER_RETURN_IF_FAILED(m_DX12GraphicsCommandList->Reset(m_DX12CommandAllocator.Get(), pso.GetDX12PipelineState()));
-
-        return true;
+        SPIELER_ASSERT(SUCCEEDED(m_DX12GraphicsCommandList->Reset(m_DX12CommandAllocator.Get(), pso.GetDX12PipelineState())));
     }
 
-    bool Context::ResetCommandAllocator()
+    void Context::ResetCommandAllocator()
     {
-        SPIELER_RETURN_IF_FAILED(m_DX12CommandAllocator->Reset());
-
-        return true;
+        SPIELER_ASSERT(SUCCEEDED(m_DX12CommandAllocator->Reset()));
     }
 
     bool Context::Init(Device& device)

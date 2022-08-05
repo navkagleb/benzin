@@ -42,21 +42,25 @@ namespace spieler::renderer
 
     class Context
     {
+    public:
+        class CommandListScope
+        {
+        public:
+            CommandListScope(Context& context, bool isNeedToFlushCommandQueue);
+            ~CommandListScope();
+
+        private:
+            Context& m_Context;
+            bool m_IsNeedToFlushCommandQueue{ false };
+        };
+
     private:
         struct UploadBuffer
         {
             BufferResource Resource;
             uint64_t Offset{ 0 };
 
-            uint64_t Allocate(uint64_t size, uint64_t alignment = 0)
-            {
-                const uint64_t offset{ alignment == 0 ? Offset : utils::Align(Offset, alignment) };
-
-                SPIELER_ASSERT(offset + size <= Resource.GetConfig().ElementCount);
-                Offset = offset + size;
-
-                return offset;
-            }
+            uint64_t Allocate(uint64_t size, uint64_t alignment = 0);
         };
 
     public:
@@ -94,11 +98,11 @@ namespace spieler::renderer
         void UploadToBuffer(BufferResource& buffer, const void* data, uint64_t size);
         void UploadToTexture(TextureResource& texture, std::vector<SubresourceData>& subresources);
 
-        bool CloseCommandList();
-        bool ExecuteCommandList(bool isNeedToFlushCommandQueue = false);
-        bool FlushCommandQueue();
-        bool ResetCommandList(const PipelineState& pso = PipelineState{});
-        bool ResetCommandAllocator();
+        void CloseCommandList();
+        void ExecuteCommandList(bool isNeedToFlushCommandQueue = false);
+        void FlushCommandQueue();
+        void ResetCommandList(const PipelineState& pso = PipelineState{});
+        void ResetCommandAllocator();
 
     private:
         bool Init(Device& device);

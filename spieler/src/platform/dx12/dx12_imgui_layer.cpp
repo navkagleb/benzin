@@ -39,8 +39,9 @@ namespace spieler
 
         ImGui::Render();
 
-        SPIELER_ASSERT(context.ResetCommandList());
         {
+            renderer::Context::CommandListScope commandListScope{ context, true };
+
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
                 .Resource{ &swapChain.GetCurrentBuffer().Resource },
@@ -60,7 +61,6 @@ namespace spieler
                 .To{ spieler::renderer::ResourceState::Present }
             });
         }
-        SPIELER_ASSERT(context.ExecuteCommandList(true));
     }
 
     bool ImGuiLayer::OnAttach()
