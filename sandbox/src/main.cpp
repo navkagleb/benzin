@@ -16,18 +16,23 @@ namespace sandbox
     class MainLayer final : public spieler::Layer
     {
     public:
-        bool OnAttach()
+        bool OnAttach() override
         {
             UpdateLayer();
 
             return true;
         }
 
-        void OnEvent(spieler::Event& event)
+        void OnEvent(spieler::Event& event) override
         {
             spieler::EventDispatcher dispatcher{ event };
 
             dispatcher.Dispatch<spieler::KeyPressedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnKeyPressed));
+        }
+
+        void OnUpdate(float dt) override
+        {
+            UpdateLayer();
         }
 
     private:
@@ -35,7 +40,7 @@ namespace sandbox
         {
             const size_t maxLayerCount{ 3 };
 
-            bool isTriggered{ true };
+            m_IsTriggered = true;
 
             switch (event.GetKeyCode())
             {
@@ -51,14 +56,9 @@ namespace sandbox
                 }
                 default:
                 {
-                    isTriggered = false;
+                    m_IsTriggered = false;
                     break;
                 }
-            }
-
-            if (isTriggered)
-            {
-                UpdateLayer();
             }
 
             SPIELER_INFO("{}", event.ToString());
@@ -69,6 +69,11 @@ namespace sandbox
 
         void UpdateLayer()
         {
+            if (!m_IsTriggered)
+            {
+                return;
+            }
+
             auto& application{ spieler::Application::GetInstance() };
 
             if (m_CurrentLayer)
@@ -94,11 +99,14 @@ namespace sandbox
                     break;
                 }
             }
+
+            m_IsTriggered = false;
         }
 
     private:
         size_t m_CurrentLayerIndex{ 1 };
         std::shared_ptr<spieler::Layer> m_CurrentLayer;
+        bool m_IsTriggered{ true };
     };
 
     class Application final : public spieler::Application
