@@ -45,33 +45,30 @@ namespace spieler::renderer
         return m_DXGISwapChain3->GetCurrentBackBufferIndex();
     }
 
-    bool SwapChain::ResizeBuffers(Device& device, uint32_t width, uint32_t height)
+    void SwapChain::ResizeBuffers(Device& device, uint32_t width, uint32_t height)
     {
         SPIELER_ASSERT(!m_Buffers.empty());
 
         for (Texture& buffer : m_Buffers)
         {
-            //buffer.GetResource().Reset();
+            buffer.Resource.Release();
+            buffer.Views.Clear();
         }
 
-        SPIELER_RETURN_IF_FAILED(m_DXGISwapChain->ResizeBuffers(
+        SPIELER_ASSERT(SUCCEEDED(m_DXGISwapChain->ResizeBuffers(
             static_cast<UINT>(m_Buffers.size()),
             width,
             height,
             dx12::Convert(m_BufferFormat),
             DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
-        ));
+        )));
 
-        SPIELER_RETURN_IF_FAILED(CreateBuffers(device));
-
-        return true;
+        CreateBuffers(device);
     }
 
-    bool SwapChain::Present(VSyncState vsync)
+    void SwapChain::Present(VSyncState vsync)
     {
-        SPIELER_RETURN_IF_FAILED(m_DXGISwapChain->Present(static_cast<UINT>(vsync), 0));
-
-        return true;
+        SPIELER_ASSERT(SUCCEEDED(m_DXGISwapChain->Present(static_cast<UINT>(vsync), 0)));
     }
 
     bool SwapChain::Init(Device& device, Context& context, Window& window, const SwapChainConfig& config)
@@ -80,7 +77,8 @@ namespace spieler::renderer
 
         SPIELER_RETURN_IF_FAILED(InitFactory());
         SPIELER_RETURN_IF_FAILED(InitSwapChain(context, window));
-        SPIELER_RETURN_IF_FAILED(ResizeBuffers(device, window.GetWidth(), window.GetHeight()));
+
+        ResizeBuffers(device, window.GetWidth(), window.GetHeight());
 
         return true;
     }
@@ -137,20 +135,18 @@ namespace spieler::renderer
         return true;
     }
 
-    bool SwapChain::CreateBuffers(Device& device)
+    void SwapChain::CreateBuffers(Device& device)
     {
         for (size_t i = 0; i < m_Buffers.size(); ++i)
         {
             ComPtr<ID3D12Resource> backBuffer;
-            SPIELER_RETURN_IF_FAILED(m_DXGISwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
+            SPIELER_ASSERT(SUCCEEDED(m_DXGISwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer))));
             
             m_Buffers[i].Resource = TextureResource{ std::move(backBuffer) };
 
             m_Buffers[i].Views.Clear();
             m_Buffers[i].Views.CreateView<RenderTargetView>(device);
         }
-
-        return true;
     }
 
 } // namespace spieler::renderer

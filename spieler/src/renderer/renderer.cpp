@@ -54,16 +54,15 @@ namespace spieler::renderer
         }
     }
 
-    bool Renderer::ResizeBuffers(uint32_t width, uint32_t height)
+    void Renderer::ResizeBuffers(uint32_t width, uint32_t height)
     {
         m_Context.FlushCommandQueue();
-
-        return m_SwapChain.ResizeBuffers(m_Device, width, height);
+        m_SwapChain.ResizeBuffers(m_Device, width, height);
     }
 
-    bool Renderer::Present(renderer::VSyncState vsync)
+    void Renderer::Present(renderer::VSyncState vsync)
     {
-        return m_SwapChain.Present(vsync);
+        m_SwapChain.Present(vsync);
     }
 
 } // namespace spieler::renderer

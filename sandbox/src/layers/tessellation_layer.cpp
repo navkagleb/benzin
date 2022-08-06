@@ -518,8 +518,7 @@ namespace sandbox
 
         m_DepthStencil.Resource = spieler::renderer::TextureResource{ device, config, clearDepthStencil };
 
-        //m_DepthStencil.GetTexture2DResource().SetDebugName(L"DepthStencil");
-
+        m_DepthStencil.Views.Clear();
         m_DepthStencil.Views.CreateView<spieler::renderer::DepthStencilView>(device);
     }
 

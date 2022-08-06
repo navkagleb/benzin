@@ -62,10 +62,11 @@ namespace sandbox
 
         m_OutputTexture.Resource = spieler::renderer::TextureResource{ device, config };
 
-        //m_OutputTexture.GetTexture2DResource().SetDebugName(L"SobelFilterOutput");
-
+        m_OutputTexture.Views.Clear();
         m_OutputTexture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
         m_OutputTexture.Views.CreateView<spieler::renderer::UnorderedAccessView>(device);
+
+        //m_OutputTexture.GetTexture2DResource().SetDebugName(L"SobelFilterOutput");
     }
 
     void SobelFilterPass::InitRootSignature()

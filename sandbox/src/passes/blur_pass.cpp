@@ -249,6 +249,7 @@ namespace sandbox
 
             map.Resource = spieler::renderer::TextureResource{ device, config };
 
+            map.Views.Clear();
             map.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
             map.Views.CreateView<spieler::renderer::UnorderedAccessView>(device);
 

@@ -1710,6 +1710,7 @@ namespace sandbox
         };
 
         m_DepthStencil.Resource = spieler::renderer::TextureResource{ device, config, clearDepthStencil };
+        m_DepthStencil.Views.Clear();
         m_DepthStencil.Views.CreateView<spieler::renderer::DepthStencilView>(device);
     }
 
@@ -1833,6 +1834,7 @@ namespace sandbox
             spieler::renderer::Texture& offScreenTexture{ m_Textures["off_screen"] };
 
             offScreenTexture.Resource = spieler::renderer::TextureResource{ device, config, clearColor };
+            offScreenTexture.Views.Clear();
             offScreenTexture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
             offScreenTexture.Views.CreateView<spieler::renderer::RenderTargetView>(device);
         }

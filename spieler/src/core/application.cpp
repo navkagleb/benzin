@@ -101,7 +101,7 @@ namespace spieler
                 }
                 ImGuiLayer::End();
 
-                SPIELER_ASSERT(renderer.Present(renderer::VSyncState::Disabled));
+                renderer.Present(renderer::VSyncState::Disabled);
             }
         }
     }

@@ -41,8 +41,8 @@ namespace spieler::renderer
         uint32_t GetCurrentBufferIndex() const;
 
     public:
-        bool ResizeBuffers(Device& device, uint32_t width, uint32_t height);
-        bool Present(VSyncState vsync);
+        void ResizeBuffers(Device& device, uint32_t width, uint32_t height);
+        void Present(VSyncState vsync);
 
     private:
         bool Init(Device& device, Context& context, Window& window, const SwapChainConfig& config);
@@ -50,7 +50,7 @@ namespace spieler::renderer
         bool InitFactory();
         bool InitSwapChain(Context& context, Window& window);
 
-        bool CreateBuffers(Device& device);
+        void CreateBuffers(Device& device);
 
     private:
         ComPtr<IDXGIFactory> m_DXGIFactory;

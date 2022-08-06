@@ -32,8 +32,8 @@ namespace spieler::renderer
 
     public:
         // Swap chain
-        bool ResizeBuffers(uint32_t width, uint32_t height);
-        bool Present(VSyncState vsync);
+        void ResizeBuffers(uint32_t width, uint32_t height);
+        void Present(VSyncState vsync);
 
     public:
         Device m_Device;
