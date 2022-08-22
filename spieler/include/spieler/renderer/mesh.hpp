@@ -12,6 +12,8 @@ namespace spieler::renderer
         uint32_t IndexCount{ 0 };
         uint32_t BaseVertexLocation{ 0 };
         uint32_t StartIndexLocation{ 0 };
+
+        DirectX::BoundingBox BoundingBox{};
     };
 
     struct MeshGeometry
