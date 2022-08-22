@@ -21,3 +21,4 @@ using Microsoft::WRL::ComPtr;
 #include <third_party/directx/DDSTextureLoader12.h>
 
 #include <DirectXMath.h>
+#include <DirectXCollision.h>

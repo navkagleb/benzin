@@ -195,6 +195,8 @@ namespace sandbox
     void ProjectionCameraController::UpdateProjection()
     {
         m_Camera.Projection = DirectX::XMMatrixPerspectiveFovLH(m_Camera.FOV, m_Camera.AspectRatio, m_Camera.NearPlane, m_Camera.FarPlane);
+
+        DirectX::BoundingFrustum::CreateFromMatrix(m_Camera.BoundingFrustum, m_Camera.Projection);
     }
 
 } // namespace sandbox

@@ -22,6 +22,8 @@ namespace sandbox
         float NearPlane{ 0.1f };
         float FarPlane{ 1000.0f };
         DirectX::XMMATRIX Projection{ DirectX::XMMatrixIdentity() };
+
+        DirectX::BoundingFrustum BoundingFrustum;
     };
 
     class ProjectionCameraController
