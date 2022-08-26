@@ -101,8 +101,6 @@ namespace sandbox
 
         InitDepthStencil();
 
-        m_CameraController = ProjectionCameraController{ spieler::math::ToRadians(60.0f), window.GetAspectRatio() };
-
         m_BlurPass = std::make_unique<BlurPass>(window.GetWidth(), window.GetHeight());
         m_SobelFilterPass = std::make_unique<SobelFilterPass>(window.GetWidth(), window.GetHeight());
 
@@ -121,15 +119,11 @@ namespace sandbox
     {
         m_CameraController.OnUpdate(dt);
 
-        const ProjectionCamera& camera{ m_CameraController.GetCamera() };
-        
         // Update Pass Constants
         {
-            const ProjectionCamera& camera{ m_CameraController.GetCamera() };
-
-            m_PassConstants["direct"].View = camera.View;
-            m_PassConstants["direct"].Projection = camera.Projection;
-            DirectX::XMStoreFloat3(&m_PassConstants["direct"].CameraPosition, camera.EyePosition);
+            m_PassConstants["direct"].View = m_Camera.View;
+            m_PassConstants["direct"].Projection = m_Camera.Projection;
+            DirectX::XMStoreFloat3(&m_PassConstants["direct"].CameraPosition, m_Camera.EyePosition);
 
             // Reflect light
             {

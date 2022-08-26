@@ -30,8 +30,6 @@ namespace sandbox
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
 
-        m_CameraController = ProjectionCameraController{ spieler::math::ToRadians(60.0f), window.GetAspectRatio() };
-
         {
             spieler::renderer::Context::CommandListScope commandListScope{ context, true };
 
@@ -348,12 +346,10 @@ namespace sandbox
 
         // Update Pass ConstantBuffer
         {
-            const ProjectionCamera& camera{ m_CameraController.GetCamera() };
-
-            m_PassConstants.View = DirectX::XMMatrixTranspose(camera.View);
-            m_PassConstants.Projection = DirectX::XMMatrixTranspose(camera.Projection);
-            m_PassConstants.ViewProjection = DirectX::XMMatrixTranspose(camera.View * camera.Projection);
-            m_PassConstants.CameraPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.EyePosition);
+            m_PassConstants.View = DirectX::XMMatrixTranspose(m_Camera.View);
+            m_PassConstants.Projection = DirectX::XMMatrixTranspose(m_Camera.Projection);
+            m_PassConstants.ViewProjection = DirectX::XMMatrixTranspose(m_Camera.View * m_Camera.Projection);
+            m_PassConstants.CameraPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.EyePosition);
 
             m_PassConstantBuffer.Write(0, &m_PassConstants, sizeof(m_PassConstants));
         }

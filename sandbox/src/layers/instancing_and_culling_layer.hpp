@@ -77,7 +77,8 @@ namespace sandbox
         std::unordered_map<std::string, RenderItem> m_RenderItems;
         std::unordered_map<std::string, MaterialData> m_Materials;
 
-        ProjectionCameraController m_CameraController;
+        Camera m_Camera;
+        CameraController m_CameraController{ m_Camera };
 
         bool m_IsCullingEnabled{ true };
     };

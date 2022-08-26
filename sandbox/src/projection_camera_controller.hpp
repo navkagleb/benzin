@@ -8,15 +8,13 @@
 namespace sandbox
 {
 
-    struct ProjectionCamera
+    struct Camera
     {
-        // View props
         DirectX::XMVECTOR EyePosition{ 0.0f, 0.0f, 0.0f, 1.0f };
-        DirectX::XMVECTOR Front{ DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f) };
-        DirectX::XMVECTOR UpDirection{ DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f) };
+        DirectX::XMVECTOR Front{ 0.0f, 0.0f, 1.0f, 1.0f };
+        DirectX::XMVECTOR Up{ 0.0f, 1.0f, 0.0f, 1.0f };
         DirectX::XMMATRIX View{ DirectX::XMMatrixIdentity() };
 
-        // Projection props
         float FOV{ spieler::math::ToRadians(60.0f) };
         float AspectRatio{ 0.0f };
         float NearPlane{ 0.1f };
@@ -26,14 +24,11 @@ namespace sandbox
         DirectX::BoundingFrustum BoundingFrustum;
     };
 
-    class ProjectionCameraController
+    class CameraController
     {
     public:
-        ProjectionCameraController() = default;
-        ProjectionCameraController(float fov, float aspectRatio);
-
-    public:
-        const ProjectionCamera& GetCamera() const { return m_Camera; }
+        CameraController() = default;
+        CameraController(Camera& camera);
 
     public:
         void OnEvent(spieler::Event& event);
@@ -50,14 +45,14 @@ namespace sandbox
         void UpdateProjection();
 
     private:
-        ProjectionCamera m_Camera;
+        Camera* m_Camera{ nullptr };
+
         float m_Theta{ 0.0f };
         float m_Phi{ DirectX::XM_PIDIV2 };
         float m_CameraSpeed{ 20.0f };
         float m_MouseSensitivity{ 0.003f };
         float m_MouseWheelSensitivity{ 0.04f };
         DirectX::XMFLOAT2 m_LastMousePosition{ 0.0f, 0.0f };
-        bool m_IsBlocked{ false };
     };
 
 } // namespace sandbox

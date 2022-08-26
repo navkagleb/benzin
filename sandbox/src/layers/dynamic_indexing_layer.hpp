@@ -65,7 +65,8 @@ namespace sandbox
         bool OnWindowResized(spieler::WindowResizedEvent& event);
 
     private:
-        ProjectionCameraController m_CameraController;
+        Camera m_Camera;
+        CameraController m_CameraController{ m_Camera };
 
         spieler::renderer::Viewport m_Viewport;
         spieler::renderer::ScissorRect m_ScissorRect;

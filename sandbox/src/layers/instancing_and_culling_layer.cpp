@@ -431,8 +431,6 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
 
         OnWindowResized();
 
-        m_CameraController = ProjectionCameraController{ spieler::math::ToRadians(60.0f), window.GetAspectRatio() };
-
         return true;
     }
 
@@ -453,16 +451,14 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
     {
         m_CameraController.OnUpdate(dt);
 
-        const ProjectionCamera& camera{ m_CameraController.GetCamera() };
-
         // Pass ConstantBuffer
         {
             const cb::Pass constants
             {
-                .View{ DirectX::XMMatrixTranspose(camera.View) },
-                .Projection{ DirectX::XMMatrixTranspose(camera.Projection) },
-                .ViewProjection{ DirectX::XMMatrixTranspose(camera.View * camera.Projection) },
-                .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.EyePosition) }
+                .View{ DirectX::XMMatrixTranspose(m_Camera.View) },
+                .Projection{ DirectX::XMMatrixTranspose(m_Camera.Projection) },
+                .ViewProjection{ DirectX::XMMatrixTranspose(m_Camera.View * m_Camera.Projection) },
+                .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.EyePosition) }
             };
 
             m_Buffers["pass_constant_buffer"].Resource.Write(0, &constants, sizeof(constants));
@@ -470,7 +466,7 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
 
         // RenderItem StructuredBuffer
         {
-            const DirectX::XMMATRIX& view{ camera.View };
+            const DirectX::XMMATRIX& view{ m_Camera.View };
 
             DirectX::XMVECTOR viewDeterminant{ DirectX::XMMatrixDeterminant(view) };
             const DirectX::XMMATRIX inverseView{ DirectX::XMMatrixInverse(&viewDeterminant, view) };
@@ -489,7 +485,7 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
                     const DirectX::XMMATRIX viewToLocal{ DirectX::XMMatrixMultiply(inverseView, inverseWorld) };
 
                     DirectX::BoundingFrustum localSpaceFrustum;
-                    camera.BoundingFrustum.Transform(localSpaceFrustum, viewToLocal);
+                    m_Camera.BoundingFrustum.Transform(localSpaceFrustum, viewToLocal);
 
                     if (!m_IsCullingEnabled || localSpaceFrustum.Contains(renderItem.SubmeshGeometry->BoundingBox) != DirectX::DISJOINT)
                     {

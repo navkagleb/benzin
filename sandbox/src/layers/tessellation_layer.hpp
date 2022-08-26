@@ -63,7 +63,8 @@ namespace sandbox
         spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
         spieler::renderer::Texture m_DepthStencil;
 
-        ProjectionCameraController m_CameraController;
+        Camera m_Camera;
+        CameraController m_CameraController{ m_Camera };
     };
 
 } // namespace sandbox

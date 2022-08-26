@@ -116,7 +116,8 @@ namespace sandbox
         spieler::renderer::Viewport m_Viewport;
         spieler::renderer::ScissorRect m_ScissorRect;
 
-        ProjectionCameraController m_CameraController;
+        Camera m_Camera;
+        CameraController m_CameraController{ m_Camera };
 
         LookUpTable<spieler::renderer::Texture> m_Textures;
         LookUpTable<spieler::renderer::SamplerConfig> m_Samplers;
