@@ -8,8 +8,7 @@
 #include <spieler/renderer/pipeline_state.hpp>
 #include <spieler/renderer/context.hpp>
 #include <spieler/renderer/texture.hpp>
-
-#include "projection_camera_controller.hpp"
+#include <spieler/renderer/camera.hpp>
 
 namespace sandbox
 {
@@ -65,8 +64,8 @@ namespace sandbox
         bool OnWindowResized(spieler::WindowResizedEvent& event);
 
     private:
-        Camera m_Camera;
-        CameraController m_CameraController{ m_Camera };
+        spieler::renderer::Camera m_Camera;
+        spieler::renderer::CameraController m_CameraController{ m_Camera };
 
         spieler::renderer::Viewport m_Viewport;
         spieler::renderer::ScissorRect m_ScissorRect;

@@ -12,8 +12,8 @@
 #include <spieler/renderer/sampler.hpp>
 #include <spieler/renderer/light.hpp>
 #include <spieler/renderer/context.hpp>
+#include <spieler/renderer/camera.hpp>
 
-#include "projection_camera_controller.hpp"
 #include "light_controller.hpp"
 #include "passes/blur_pass.hpp"
 #include "passes/sobel_filter_pass.hpp"
@@ -116,8 +116,8 @@ namespace sandbox
         spieler::renderer::Viewport m_Viewport;
         spieler::renderer::ScissorRect m_ScissorRect;
 
-        Camera m_Camera;
-        CameraController m_CameraController{ m_Camera };
+        spieler::renderer::Camera m_Camera;
+        spieler::renderer::CameraController m_CameraController{ m_Camera };
 
         LookUpTable<spieler::renderer::Texture> m_Textures;
         LookUpTable<spieler::renderer::SamplerConfig> m_Samplers;

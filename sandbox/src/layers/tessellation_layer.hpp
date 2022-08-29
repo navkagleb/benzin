@@ -9,8 +9,7 @@
 #include <spieler/renderer/mesh.hpp>
 #include <spieler/renderer/texture.hpp>
 #include <spieler/renderer/context.hpp>
-
-#include "projection_camera_controller.hpp"
+#include <spieler/renderer/camera.hpp>
 
 namespace sandbox
 {
@@ -63,8 +62,8 @@ namespace sandbox
         spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
         spieler::renderer::Texture m_DepthStencil;
 
-        Camera m_Camera;
-        CameraController m_CameraController{ m_Camera };
+        spieler::renderer::Camera m_Camera;
+        spieler::renderer::CameraController m_CameraController{ m_Camera };
     };
 
 } // namespace sandbox

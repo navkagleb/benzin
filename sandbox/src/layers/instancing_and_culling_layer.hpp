@@ -9,8 +9,7 @@
 #include <spieler/renderer/root_signature.hpp>
 #include <spieler/renderer/shader.hpp>
 #include <spieler/renderer/pipeline_state.hpp>
-
-#include "projection_camera_controller.hpp"
+#include <spieler/renderer/camera.hpp>
 
 namespace sandbox
 {
@@ -77,8 +76,8 @@ namespace sandbox
         std::unordered_map<std::string, RenderItem> m_RenderItems;
         std::unordered_map<std::string, MaterialData> m_Materials;
 
-        Camera m_Camera;
-        CameraController m_CameraController{ m_Camera };
+        spieler::renderer::Camera m_Camera;
+        spieler::renderer::CameraController m_CameraController{ m_Camera };
 
         bool m_IsCullingEnabled{ true };
     };

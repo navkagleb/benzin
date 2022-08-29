@@ -346,10 +346,10 @@ namespace sandbox
 
         // Update Pass ConstantBuffer
         {
-            m_PassConstants.View = DirectX::XMMatrixTranspose(m_Camera.View);
-            m_PassConstants.Projection = DirectX::XMMatrixTranspose(m_Camera.Projection);
-            m_PassConstants.ViewProjection = DirectX::XMMatrixTranspose(m_Camera.View * m_Camera.Projection);
-            m_PassConstants.CameraPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.EyePosition);
+            m_PassConstants.View = DirectX::XMMatrixTranspose(m_Camera.GetView());
+            m_PassConstants.Projection = DirectX::XMMatrixTranspose(m_Camera.GetProjection());
+            m_PassConstants.ViewProjection = DirectX::XMMatrixTranspose(m_Camera.GetViewProjection());
+            m_PassConstants.CameraPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition());
 
             m_PassConstantBuffer.Write(0, &m_PassConstants, sizeof(m_PassConstants));
         }

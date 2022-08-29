@@ -121,9 +121,9 @@ namespace sandbox
 
         // Update Pass Constants
         {
-            m_PassConstants["direct"].View = m_Camera.View;
-            m_PassConstants["direct"].Projection = m_Camera.Projection;
-            DirectX::XMStoreFloat3(&m_PassConstants["direct"].CameraPosition, m_Camera.EyePosition);
+            m_PassConstants["direct"].View = m_Camera.GetView();
+            m_PassConstants["direct"].Projection = m_Camera.GetProjection();
+            DirectX::XMStoreFloat3(&m_PassConstants["direct"].CameraPosition, m_Camera.GetPosition());
 
             // Reflect light
             {

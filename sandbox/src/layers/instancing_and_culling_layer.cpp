@@ -455,10 +455,10 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
         {
             const cb::Pass constants
             {
-                .View{ DirectX::XMMatrixTranspose(m_Camera.View) },
-                .Projection{ DirectX::XMMatrixTranspose(m_Camera.Projection) },
-                .ViewProjection{ DirectX::XMMatrixTranspose(m_Camera.View * m_Camera.Projection) },
-                .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.EyePosition) }
+                .View{ DirectX::XMMatrixTranspose(m_Camera.GetView()) },
+                .Projection{ DirectX::XMMatrixTranspose(m_Camera.GetProjection()) },
+                .ViewProjection{ DirectX::XMMatrixTranspose(m_Camera.GetViewProjection()) },
+                .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition()) }
             };
 
             m_Buffers["pass_constant_buffer"].Resource.Write(0, &constants, sizeof(constants));
@@ -466,11 +466,6 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
 
         // RenderItem StructuredBuffer
         {
-            const DirectX::XMMATRIX& view{ m_Camera.View };
-
-            DirectX::XMVECTOR viewDeterminant{ DirectX::XMMatrixDeterminant(view) };
-            const DirectX::XMMATRIX inverseView{ DirectX::XMMatrixInverse(&viewDeterminant, view) };
-
             for (auto& [name, renderItem] : m_RenderItems)
             {
                 uint32_t visibleInstanceCount{ 0 };
@@ -482,10 +477,10 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
                     DirectX::XMVECTOR worldDeterminant{ DirectX::XMMatrixDeterminant(world) };
                     const DirectX::XMMATRIX inverseWorld{ DirectX::XMMatrixInverse(&worldDeterminant, world) };
 
-                    const DirectX::XMMATRIX viewToLocal{ DirectX::XMMatrixMultiply(inverseView, inverseWorld) };
+                    const DirectX::XMMATRIX viewToLocal{ DirectX::XMMatrixMultiply(m_Camera.GetInverseView(), inverseWorld) };
 
                     DirectX::BoundingFrustum localSpaceFrustum;
-                    m_Camera.BoundingFrustum.Transform(localSpaceFrustum, viewToLocal);
+                    m_Camera.GetBoundingFrustum().Transform(localSpaceFrustum, viewToLocal);
 
                     if (!m_IsCullingEnabled || localSpaceFrustum.Contains(renderItem.SubmeshGeometry->BoundingBox) != DirectX::DISJOINT)
                     {
