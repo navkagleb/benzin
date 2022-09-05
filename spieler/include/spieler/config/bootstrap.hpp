@@ -33,6 +33,7 @@
 #include <variant>
 #include <any> // TODO: Remove any
 #include <bitset>
+#include <span>
 
 #include "spieler/config/win64_includes.hpp"
 #include "spieler/config/dx12_includes.hpp"
