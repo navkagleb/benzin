@@ -140,38 +140,35 @@ namespace light
         float3 result = 0.0f;
         uint i = 0;
 
-#if defined(DIRECTIONAL_LIGHT_COUNT)
-#if DIRECTIONAL_LIGHT_COUNT > 1
-        for (; i < DIRECTIONAL_LIGHT_COUNT; ++i)
+#ifndef DIRECTIONAL_LIGHT_COUNT
+    #define DIRECTIONAL_LIGHT_COUNT 0
+#endif
+
+#ifndef POINT_LIGHT_COUNT
+    #define POINT_LIGHT_COUNT 0
+#endif
+
+#ifndef SPOT_LIGHT_COUNT
+    #define SPOT_LIGHT_COUNT 0
+#endif
+
+        [unroll]
+        for (i = 0; i < DIRECTIONAL_LIGHT_COUNT; ++i)
         {
             result += shadowFactor[i] * ComputeDirectionalLight(lights[i], material, normal, viewVector);
         }
-#else
-        result += shadowFactor[i] * ComputeDirectionalLight(lights[0], material, normal, viewVector);
-#endif // DIRECTIONAL_LIGHT_COUNT > 1
-#endif // defined(DIRECTIONAL_LIGHT_COUNT)
 
-#if defined(POINT_LIGHT_COUNT)
-#if POINT_LIGHT_COUNT > 1
+        [unroll]
         for (i = DIRECTIONAL_LIGHT_COUNT; i < DIRECTIONAL_LIGHT_COUNT + POINT_LIGHT_COUNT; ++i)
         {
             result += ComputePointLight(lights[i], material, position, normal, viewVector);
         }
-#else
-        result += ComputePointLight(lights[DIRECTIONAL_LIGHT_COUNT], material, position, normal, viewVector);
-#endif // POINT_LIGHT_COUNT > 1
-#endif // defined(POINT_LIGHT_COUNT)
 
-#if defined(SPOT_LIGHT_COUNT)
-#if SPOT_LIGHT_COUNT > 1
+        [unroll]
         for (i = DIRECTIONAL_LIGHT_COUNT + POINT_LIGHT_COUNT; i < DIRECTIONAL_LIGHT_COUNT + POINT_LIGHT_COUNT + SPOT_LIGHT_COUNT; ++i)
         {
             result += ComputeSpotLight(lights[i], material, position, normal, viewVector);
         }
-#else
-        result += ComputeSpotLight(lights[DIRECTIONAL_LIGHT_COUNT + POINT_LIGHT_COUNT], material, position, normal, viewVector);
-#endif // SPOT_LIGHT_COUNT > 1
-#endif // defined(SPOT_LIGHT_COUNT)
 
         return float4(result, 0.0f);
     }
