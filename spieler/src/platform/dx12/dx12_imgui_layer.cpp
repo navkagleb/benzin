@@ -17,6 +17,7 @@
 #include "spieler/system/key_event.hpp"
 
 #include "spieler/renderer/renderer.hpp"
+#include "spieler/renderer/camera.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
 
@@ -154,18 +155,35 @@ namespace spieler
             ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(184, 100, 0, 240));
 
             const float panelHeight{ context.FontBaseSize + context.Style.WindowPadding.y * 2.0f };
-            ImGui::SetNextWindowPos(ImVec2(0.0f, context.IO.DisplaySize.y - panelHeight));
-            ImGui::SetNextWindowSize(ImVec2(context.IO.DisplaySize.x, panelHeight));
+            ImGui::SetNextWindowPos(ImVec2{ 0.0f, context.IO.DisplaySize.y - panelHeight });
+            ImGui::SetNextWindowSize(ImVec2{ context.IO.DisplaySize.x, panelHeight });
 
             if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs))
             {
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                
+                if (m_Camera)
+                {
+                    ImGui::SameLine();
+                    ImGui::Text(
+                        "  |  Camera Position: { %.2f, %.2f, %.2f }", 
+                        DirectX::XMVectorGetX(m_Camera->GetPosition()),
+                        DirectX::XMVectorGetY(m_Camera->GetPosition()),
+                        DirectX::XMVectorGetZ(m_Camera->GetPosition())
+                    );
+                }
+                
                 ImGui::End();
             }
 
             ImGui::PopStyleColor();
             ImGui::PopStyleVar(3);
         }
+    }
+
+    void ImGuiLayer::SetCamera(renderer::Camera* camera)
+    {
+        m_Camera = camera;
     }
 
 } // namespace spieler

@@ -45,6 +45,8 @@ namespace spieler
         
         LayerStack& GetLayerStack() { return m_LayerStack; }
 
+        const std::shared_ptr<ImGuiLayer>& GetImGuiLayer() const { return m_ImGuiLayer; }
+
     public:
         void Run();
 
