@@ -3,6 +3,7 @@
 #include "spieler/renderer/common.hpp"
 #include "spieler/renderer/buffer.hpp"
 #include "spieler/renderer/resource_view.hpp"
+#include "spieler/renderer/geometry_generator.hpp"
 
 namespace spieler::renderer
 {
@@ -18,6 +19,9 @@ namespace spieler::renderer
 
     struct MeshGeometry
     {
+        std::vector<Vertex> Vertices;
+        std::vector<uint32_t> Indices;
+
         Buffer VertexBuffer;
         Buffer IndexBuffer;
 
@@ -37,6 +41,14 @@ namespace spieler::renderer
             const DirectX::XMMATRIX translation{ DirectX::XMMatrixTranslation(Translation.x, Translation.y, Translation.z) };
 
             return scaling * rotation * translation;
+        }
+
+        DirectX::XMMATRIX GetInverseMatrix() const
+        {
+            const DirectX::XMMATRIX transform{ GetMatrix() };
+            DirectX::XMVECTOR transformDeterminant{ DirectX::XMMatrixDeterminant(transform) };
+
+            return DirectX::XMMatrixInverse(&transformDeterminant, transform);
         }
     };
 
