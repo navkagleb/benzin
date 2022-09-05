@@ -46,7 +46,8 @@ namespace spieler::renderer
     template <typename Permutations>
     Shader& ShaderLibrary::CreateShader(ShaderType type, const ShaderConfig<Permutations>& config)
     {
-        SPIELER_ASSERT(!HasShader(type, config.Permutation));
+        // #TODO: Refactor ShaderLibrary
+        //SPIELER_ASSERT(!HasShader(type, config.Permutation));
 
         return m_Shaders[type][config.Permutation.GetHash()] = Shader{ type, config.Filename, config.EntryPoint, config.Permutation.GetDefines() };
     }
