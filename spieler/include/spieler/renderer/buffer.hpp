@@ -46,6 +46,9 @@ namespace spieler::renderer
         const Config& GetConfig() const { return m_Config; }
 
     public:
+        GPUVirtualAddress GetGPUVirtualAddressWithOffset(uint32_t offset) const { return static_cast<GPUVirtualAddress>(m_DX12Resource->GetGPUVirtualAddress() + offset * m_Config.ElementSize); }
+
+    public:
         void Write(uint64_t offset, const void* data, uint64_t size);
 
     protected:
