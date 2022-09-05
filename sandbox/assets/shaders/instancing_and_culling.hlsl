@@ -5,7 +5,10 @@ struct PassData
     float4x4 View;
     float4x4 Projection;
     float4x4 ViewProjection;
-    float3 CameraPosition;
+    float3 CameraPositionW;
+
+    float4 AmbientLight;
+    light::LightContainer Lights;
 };
 
 struct RenderItemData
@@ -53,7 +56,7 @@ VS_OUTPUT VS_Main(VS_INPUT input, uint instanceID : SV_InstanceID)
     const MaterialData materialData = g_Materials[renderItemData.MaterialIndex];
 
     VS_OUTPUT output = (VS_OUTPUT)0;
-    output.PositionW = mul(input.Position, (float3x3)renderItemData.World);
+    output.PositionW = mul(float4(input.Position, 1.0f), renderItemData.World).xyz;
     output.PositionH = mul(mul(float4(input.Position, 1.0f), renderItemData.World), g_Pass.ViewProjection);
     output.NormalW = mul(input.Normal, (float3x3)renderItemData.World);
     output.TexCoord = mul(float4(input.TexCoord, 0.0f, 1.0f), materialData.Transform).xy;
@@ -62,7 +65,7 @@ VS_OUTPUT VS_Main(VS_INPUT input, uint instanceID : SV_InstanceID)
     return output;
 }
 
-Texture2D g_DiffuseMaps[6] : register(t0);
+Texture2D g_DiffuseMaps[4] : register(t0);
 
 SamplerState g_SamplerLinearWrap : register(s0);
 SamplerState g_SamplerAnisotropicWrap : register(s1);
@@ -72,5 +75,35 @@ float4 PS_Main(VS_OUTPUT input) : SV_Target
     const MaterialData materialData = g_Materials[input.MaterialIndex];
     const Texture2D diffuseMap = g_DiffuseMaps[NonUniformResourceIndex(materialData.DiffuseMapIndex)];
 
-    return diffuseMap.Sample(g_SamplerLinearWrap, input.TexCoord);
+    float4 diffuseAlbedo = diffuseMap.Sample(g_SamplerLinearWrap, input.TexCoord);
+
+#if !defined(USE_LIGHTING)
+
+    return diffuseAlbedo;
+
+#else
+
+    diffuseAlbedo *= materialData.DiffuseAlbedo;
+
+    input.NormalW = normalize(input.NormalW);
+
+    const float3 viewVector = normalize(g_Pass.CameraPositionW - input.PositionW);
+
+    const float4 ambient = g_Pass.AmbientLight * diffuseAlbedo;
+
+    light::Material material;
+    material.DiffuseAlbedo = diffuseAlbedo;
+    material.FresnelR0 = materialData.FresnelR0;
+    material.Shininess = 1.0f - materialData.Roughness;
+
+    const float3 shadowFactor = 1.0f;
+
+    float4 litColor = light::ComputeLighting(g_Pass.Lights, material, input.PositionW, input.NormalW, viewVector, shadowFactor);
+    litColor += ambient;
+
+    litColor.a = diffuseAlbedo.a;
+
+    return litColor;
+
+#endif // !defined(USE_LIGHTING)
 }

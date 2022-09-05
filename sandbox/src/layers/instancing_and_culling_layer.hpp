@@ -1,5 +1,7 @@
 #pragma once
 
+#include <spieler/math/math.hpp>
+
 #include <spieler/core/layer.hpp>
 
 #include <spieler/renderer/buffer.hpp>
@@ -16,13 +18,14 @@ namespace sandbox
 
     class InstancingAndCullingLayer final : public spieler::Layer
     {
-    private:
+    public:
         struct RenderItem
         {
             struct Instance
             {
                 spieler::renderer::Transform Transform;
                 uint32_t MaterialIndex{ 0 };
+                bool Visible{ true };
             };
 
             const spieler::renderer::MeshGeometry* MeshGeometry{ nullptr };
@@ -31,6 +34,31 @@ namespace sandbox
 
             std::vector<Instance> Instances;
             uint32_t VisibleInstanceCount{ 0 };
+            uint32_t StructuredBufferOffset{ 0 };
+        };
+
+        struct PickedRenderItem
+        {
+            RenderItem* RenderItem{ nullptr };
+
+            uint32_t InstanceIndex{ 0 };
+            uint32_t TriangleIndex{ 0 };
+        };
+
+        struct LightData
+        {
+            DirectX::XMFLOAT3 Strength{ 1.0f, 1.0f, 1.0f };
+            float FalloffStart{ 0.0f };
+            DirectX::XMFLOAT3 Direction{ 0.0f, 0.0f, 0.0f };
+            float FalloffEnd{ 0.0f };
+            DirectX::XMFLOAT3 Position{ 0.0f, 0.0f, 0.0f };
+            float SpotPower{ 0.0f };
+        };
+
+        struct PassData
+        {
+            DirectX::XMFLOAT4 AmbientLight{ 0.1f, 0.1f, 0.1f, 1.0f };
+            std::vector<LightData> Lights;
         };
 
         struct MaterialData
@@ -41,6 +69,19 @@ namespace sandbox
             DirectX::XMMATRIX Transform{ DirectX::XMMatrixIdentity() };
             uint32_t DiffuseMapIndex{ 0 };
             uint32_t StructuredBufferIndex{ 0 };
+        };
+
+        class PointLightController
+        {
+        public:
+            PointLightController() = default;
+            PointLightController(LightData* light);
+
+        public:
+            void OnImGuiRender();
+
+        private:
+            InstancingAndCullingLayer::LightData* m_Light{ nullptr };
         };
 
     public:
@@ -58,6 +99,10 @@ namespace sandbox
 
         void OnWindowResized();
 
+        void PickTriangle(float x, float y);
+
+        void RenderRenderItems(const spieler::renderer::PipelineState& pso, const std::span<RenderItem*>& renderItems) const;
+
     private:
         static const spieler::renderer::GraphicsFormat ms_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
 
@@ -71,13 +116,20 @@ namespace sandbox
         spieler::renderer::MeshGeometry m_MeshGeometry;
         spieler::renderer::RootSignature m_RootSignature;
         spieler::renderer::ShaderLibrary m_ShaderLibrary;
-        spieler::renderer::PipelineState m_PipelineState;
+        std::unordered_map<std::string, spieler::renderer::PipelineState> m_PipelineStates;
         
-        std::unordered_map<std::string, RenderItem> m_RenderItems;
+        std::unordered_map<std::string, std::unique_ptr<RenderItem>> m_RenderItems;
+        std::vector<RenderItem*> m_DefaultRenderItems;
+        std::vector<RenderItem*> m_LightRenderItems;
+        PickedRenderItem m_PickedRenderItem;
+
+        PassData m_PassData;
         std::unordered_map<std::string, MaterialData> m_Materials;
 
         spieler::renderer::Camera m_Camera;
         spieler::renderer::CameraController m_CameraController{ m_Camera };
+
+        PointLightController m_PointLightController;
 
         bool m_IsCullingEnabled{ true };
     };

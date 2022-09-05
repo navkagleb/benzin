@@ -24,10 +24,12 @@ namespace sandbox
 
         struct Pass
         {
-            DirectX::XMMATRIX View{};
-            DirectX::XMMATRIX Projection{};
-            DirectX::XMMATRIX ViewProjection{};
-            DirectX::XMFLOAT3 CameraPosition{};
+            alignas(16) DirectX::XMMATRIX View{};
+            alignas(16) DirectX::XMMATRIX Projection{};
+            alignas(16) DirectX::XMMATRIX ViewProjection{};
+            alignas(16) DirectX::XMFLOAT3 CameraPosition{};
+            alignas(16) DirectX::XMFLOAT4 AmbientLight{};
+            alignas(16) std::array<InstancingAndCullingLayer::LightData, 16> Lights;
         };
 
         struct RenderItem
@@ -50,16 +52,57 @@ namespace sandbox
     namespace per
     {
 
-        enum class InstancingAndCulling {};
+        enum class InstancingAndCulling
+        {
+            USE_LIGHTING,
+            DIRECTIONAL_LIGHT_COUNT,
+            POINT_LIGHT_COUNT,
+        };
 
     } // namespace per
 
+    //////////////////////////////////////////////////////////////////////////
+    //// PointLightController
+    //////////////////////////////////////////////////////////////////////////
+    InstancingAndCullingLayer::PointLightController::PointLightController(LightData* light)
+        : m_Light{ light }
+    {}
+
+    void InstancingAndCullingLayer::PointLightController::OnImGuiRender()
+    {
+        SPIELER_ASSERT(m_Light);
+
+        ImGui::Begin("Point Light Controller");
+        {
+            ImGui::DragFloat3("Position", reinterpret_cast<float*>(&m_Light->Position), 0.1f);
+            ImGui::ColorEdit3("Strength", reinterpret_cast<float*>(&m_Light->Strength));
+
+            ImGui::DragFloat("Falloff Start", &m_Light->FalloffStart, 0.1f, 0.0f, m_Light->FalloffEnd);
+
+            if (ImGui::DragFloat("Falloff End", &m_Light->FalloffEnd, 0.1f, 0.0f))
+            {
+                if (m_Light->FalloffStart > m_Light->FalloffEnd)
+                {
+                    m_Light->FalloffStart = m_Light->FalloffEnd;
+                }
+            }
+        }
+        ImGui::End();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    /// InstancingAndCullingLayer
+    //////////////////////////////////////////////////////////////////////////
     bool InstancingAndCullingLayer::OnAttach()
     {
-        auto& window{ spieler::Application::GetInstance().GetWindow() };
+        auto& application{ spieler::Application::GetInstance() };
+        auto& window{ application.GetWindow() };
+
         auto& renderer{ spieler::renderer::Renderer::GetInstance() };
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
+
+        application.GetImGuiLayer()->SetCamera(&m_Camera);
 
         {
             spieler::renderer::Context::CommandListScope commandListScope{ context, true };
@@ -77,12 +120,10 @@ namespace sandbox
                     texture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
                 };
 
-                initTexture("crate", L"assets/textures/wood_crate1.dds");
-                initTexture("bricks", L"assets/textures/bricks.dds");
-                initTexture("stone", L"assets/textures/stone.dds");
-                initTexture("tile", L"assets/textures/tile.dds");
                 initTexture("red", L"assets/textures/red.dds");
                 initTexture("green", L"assets/textures/green.dds");
+                initTexture("blue", L"assets/textures/blue.dds");
+                initTexture("white", L"assets/textures/white.dds");
             }
 
             // Init m_MeshGeometry
@@ -99,67 +140,64 @@ namespace sandbox
                     { "box", spieler::renderer::GeometryGenerator::GenerateBox(boxProps) }
                 };
 
-                size_t vertexCount{ 0 };
-                size_t indexCount{ 0 };
+                const uint32_t vertexSize{ sizeof(spieler::renderer::Vertex) };
+                const uint32_t indexSize{ sizeof(uint32_t) };
+
+                size_t vertexOffset{ 0 };
+                size_t indexOffset{ 0 };
 
                 for (const auto& [name, mesh] : meshes)
                 {
                     m_MeshGeometry.Submeshes[name] = spieler::renderer::SubmeshGeometry
                     {
                         .IndexCount{ static_cast<uint32_t>(mesh.Indices.size()) },
-                        .BaseVertexLocation{ static_cast<uint32_t>(vertexCount) },
-                        .StartIndexLocation{ static_cast<uint32_t>(indexCount) }
+                        .BaseVertexLocation{ static_cast<uint32_t>(vertexOffset) },
+                        .StartIndexLocation{ static_cast<uint32_t>(indexOffset) }
                     };
 
-                    vertexCount += mesh.Vertices.size();
-                    indexCount += mesh.Indices.size();
-                }
+                    m_MeshGeometry.Vertices.resize(m_MeshGeometry.Vertices.size() + mesh.Vertices.size());
+                    m_MeshGeometry.Indices.resize(m_MeshGeometry.Indices.size() + mesh.Indices.size());
 
-                std::vector<spieler::renderer::Vertex> vertices;
-                vertices.reserve(vertexCount);
-
-                std::vector<uint32_t> indices;
-                indices.reserve(indexCount);
-
-                for (const auto& [name, mesh] : meshes)
-                {
-                    vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
-                    indices.insert(indices.end(), mesh.Indices.begin(), mesh.Indices.end());
+                    memcpy_s(m_MeshGeometry.Vertices.data() + vertexOffset, mesh.Vertices.size() * vertexSize, mesh.Vertices.data(), mesh.Vertices.size() * vertexSize);
+                    memcpy_s(m_MeshGeometry.Indices.data() + indexOffset, mesh.Indices.size() * indexSize, mesh.Indices.data(), mesh.Indices.size() * indexSize);
 
                     DirectX::BoundingBox::CreateFromPoints(
                         m_MeshGeometry.Submeshes[name].BoundingBox,
-                        vertexCount,
-                        reinterpret_cast<const DirectX::XMFLOAT3*>(vertices.data()),
+                        mesh.Vertices.size(),
+                        reinterpret_cast<const DirectX::XMFLOAT3*>(mesh.Vertices.data()),
                         sizeof(spieler::renderer::Vertex)
                     );
+
+                    vertexOffset += mesh.Vertices.size();
+                    indexOffset += mesh.Indices.size();
                 }
 
                 // VertexBuffer
                 {
                     const spieler::renderer::BufferResource::Config config
                     {
-                        .ElementSize{ sizeof(spieler::renderer::Vertex) },
-                        .ElementCount{ static_cast<uint32_t>(vertexCount) },
+                        .ElementSize{ vertexSize },
+                        .ElementCount{ static_cast<uint32_t>(m_MeshGeometry.Vertices.size()) },
                     };
 
                     m_MeshGeometry.VertexBuffer.Resource = spieler::renderer::BufferResource{ device, config };
                     m_MeshGeometry.VertexBuffer.Views.CreateView<spieler::renderer::VertexBufferView>();
 
-                    context.UploadToBuffer(m_MeshGeometry.VertexBuffer.Resource, vertices.data(), sizeof(spieler::renderer::Vertex) * vertexCount);
+                    context.UploadToBuffer(m_MeshGeometry.VertexBuffer.Resource, m_MeshGeometry.Vertices.data(), m_MeshGeometry.Vertices.size() * vertexSize);
                 }
 
                 // IndexBuffer
                 {
                     const spieler::renderer::BufferResource::Config config
                     {
-                        .ElementSize{ sizeof(uint32_t) },
-                        .ElementCount{ static_cast<uint32_t>(indexCount) }
+                        .ElementSize{ indexSize },
+                        .ElementCount{ static_cast<uint32_t>(m_MeshGeometry.Indices.size()) }
                     };
 
                     m_MeshGeometry.IndexBuffer.Resource = spieler::renderer::BufferResource{ device, config };
                     m_MeshGeometry.IndexBuffer.Views.CreateView<spieler::renderer::IndexBufferView>();
 
-                    context.UploadToBuffer(m_MeshGeometry.IndexBuffer.Resource, indices.data(), sizeof(uint32_t) * indexCount);
+                    context.UploadToBuffer(m_MeshGeometry.IndexBuffer.Resource, m_MeshGeometry.Indices.data(), m_MeshGeometry.Indices.size() * indexSize);
                 }
             }
         }
@@ -180,28 +218,28 @@ namespace sandbox
                 buffer.Resource = spieler::renderer::BufferResource{ device, config };
             }
 
-            // RenderItem Buffer
+            // RenderItem StructuredBuffer
             {
                 auto& buffer{ m_Buffers["render_item_structured_buffer"] };
 
                 const spieler::renderer::BufferResource::Config config
                 {
                     .ElementSize{ sizeof(cb::RenderItem) },
-                    .ElementCount{ 1000 },
+                    .ElementCount{ 1002 },
                     .Flags{ spieler::renderer::BufferResource::Flags::Dynamic }
                 };
 
                 buffer.Resource = spieler::renderer::BufferResource{ device, config };
             }
 
-            // Material Buffer
+            // Material StructuredBuffer
             {
                 auto& buffer{ m_Buffers["material_structured_buffer"] };
 
                 const spieler::renderer::BufferResource::Config config
                 {
                     .ElementSize{ sizeof(cb::Material) },
-                    .ElementCount{ 6 },
+                    .ElementCount{ 4 },
                     .Flags{ spieler::renderer::BufferResource::Flags::Dynamic }
                 };
 
@@ -209,72 +247,68 @@ namespace sandbox
             }
         }
 
+        // Init m_PassData
+        {
+            m_PassData.Lights.push_back(LightData
+            {
+                .Strength{ 1.0f, 1.0f, 0.9f },
+                .FalloffStart{ 20.0f },
+                .Direction{ 0.5f, 0.5f, 0.5f },
+                .FalloffEnd{ 21.0f },
+                .Position{ 0.0f, 3.0f, 0.0f }
+            });
+
+            m_PointLightController = PointLightController{ &m_PassData.Lights[0] };
+        }
+
         // Init m_Materials
         {
-            // Crate
-            {
-                auto& material{ m_Materials["crate"] };
-                material.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
-                material.FresnelR0 = DirectX::XMFLOAT3{ 0.05f, 0.05f, 0.05f };
-                material.Roughness = 0.2f;
-                material.Transform = DirectX::XMMatrixIdentity();
-                material.DiffuseMapIndex = 0;
-                material.StructuredBufferIndex = static_cast<uint32_t>(m_Materials.size() - 1);
-            }
-
-            // Bricks
-            {
-                auto& material{ m_Materials["bricks"] };
-                material.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
-                material.FresnelR0 = DirectX::XMFLOAT3{ 0.02f, 0.02f, 0.02f };
-                material.Roughness = 0.1f;
-                material.Transform = DirectX::XMMatrixIdentity();
-                material.DiffuseMapIndex = 1;
-                material.StructuredBufferIndex = static_cast<uint32_t>(m_Materials.size() - 1);
-            }
-
-            // Stone
-            {
-                auto& material{ m_Materials["stone"] };
-                material.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
-                material.FresnelR0 = DirectX::XMFLOAT3{ 0.05f, 0.05f, 0.05f };
-                material.Roughness = 0.3f;
-                material.Transform = DirectX::XMMatrixIdentity();
-                material.DiffuseMapIndex = 2;
-                material.StructuredBufferIndex = static_cast<uint32_t>(m_Materials.size() - 1);
-            }
-
-            // Tile
-            {
-                auto& material{ m_Materials["tile"] };
-                material.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
-                material.FresnelR0 = DirectX::XMFLOAT3{ 0.02f, 0.02f, 0.02f };
-                material.Roughness = 0.3f;
-                material.Transform = DirectX::XMMatrixScaling(10.0f, 10.0f, 10.0f);
-                material.DiffuseMapIndex = 3;
-                material.StructuredBufferIndex = static_cast<uint32_t>(m_Materials.size() - 1);
-            }
-
             // Red
             {
-                auto& material{ m_Materials["red"] };
-                material.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
-                material.FresnelR0 = DirectX::XMFLOAT3{ 0.02f, 0.02f, 0.02f };
-                material.Roughness = 0.3f;
-                material.Transform = DirectX::XMMatrixScaling(10.0f, 10.0f, 10.0f);
-                material.DiffuseMapIndex = 4;
-                material.StructuredBufferIndex = static_cast<uint32_t>(m_Materials.size() - 1);
+                m_Materials["red"] = MaterialData
+                {
+                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                    .FresnelR0{ 0.05f, 0.05f, 0.05f },
+                    .Roughness{ 0.1f },
+                    .DiffuseMapIndex{ 0 },
+                    .StructuredBufferIndex{ 0 }
+                };
             }
 
             // Green
             {
-                auto& material{ m_Materials["green"] };
-                material.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
-                material.FresnelR0 = DirectX::XMFLOAT3{ 0.02f, 0.02f, 0.02f };
-                material.Roughness = 0.3f;
-                material.Transform = DirectX::XMMatrixScaling(10.0f, 10.0f, 10.0f);
-                material.DiffuseMapIndex = 5;
-                material.StructuredBufferIndex = static_cast<uint32_t>(m_Materials.size() - 1);
+                m_Materials["green"] = MaterialData
+                {
+                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                    .FresnelR0{ 0.05f, 0.05f, 0.05f },
+                    .Roughness{ 0.0f },
+                    .DiffuseMapIndex{ 1 },
+                    .StructuredBufferIndex{ 1 }
+                };
+            }
+
+            // Blue
+            {
+                m_Materials["blue"] = MaterialData
+                {
+                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                    .FresnelR0{ 0.05f, 0.05f, 0.05f },
+                    .Roughness{ 0.1f },
+                    .DiffuseMapIndex{ 2 },
+                    .StructuredBufferIndex{ 2 }
+                };
+            }
+
+            // White
+            {
+                m_Materials["white"] = MaterialData
+                {
+                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                    .FresnelR0{ 0.05f, 0.05f, 0.05f },
+                    .Roughness{ 0.1f },
+                    .DiffuseMapIndex{ 3 },
+                    .StructuredBufferIndex{ 3 }
+                };
             }
         }
 
@@ -286,12 +320,12 @@ namespace sandbox
                 const int32_t boxInColumnCount{ 10 };
                 const int32_t boxInDepthCount{ 10 };
 
-                RenderItem& renderItem{ m_RenderItems["box"] };
-                renderItem.MeshGeometry = &m_MeshGeometry;
-                renderItem.SubmeshGeometry = &m_MeshGeometry.Submeshes["box"];
-                renderItem.PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
+                auto& renderItem{ m_RenderItems["box"] = std::make_unique<RenderItem>() };
+                renderItem->MeshGeometry = &m_MeshGeometry;
+                renderItem->SubmeshGeometry = &m_MeshGeometry.Submeshes["box"];
+                renderItem->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
 
-                renderItem.Instances.resize(boxInRowCount * boxInColumnCount * boxInDepthCount);
+                renderItem->Instances.resize(boxInRowCount * boxInColumnCount * boxInDepthCount);
 
                 for (int32_t i = 0; i < boxInRowCount; ++i)
                 {
@@ -301,12 +335,46 @@ namespace sandbox
                         {
                             const auto index{ static_cast<size_t>((i * boxInRowCount + j) * boxInColumnCount + k) };
 
-                            renderItem.Instances[index].Transform.Translation = DirectX::XMFLOAT3{ static_cast<float>((i - 5) * 10), static_cast<float>((j - 5) * 10), static_cast<float>((k - 5) * 10) };
-                            renderItem.Instances[index].Transform.Scale = DirectX::XMFLOAT3{ 3.0f, 3.0f, 3.0f };
-                            renderItem.Instances[index].MaterialIndex = spieler::Random::GetInstance().GetIntegral(4, 5);
+                            renderItem->Instances[index].Transform.Translation = DirectX::XMFLOAT3{ static_cast<float>((i - 5) * 10), static_cast<float>((j - 5) * 10), static_cast<float>((k - 5) * 10) };
+                            renderItem->Instances[index].Transform.Scale = DirectX::XMFLOAT3{ 3.0f, 3.0f, 3.0f };
+                            renderItem->Instances[index].MaterialIndex = spieler::Random::GetInstance().GetIntegral(0, 1);
                         }
                     }
                 }
+
+                m_DefaultRenderItems.push_back(renderItem.get());
+            }
+
+            // Picked
+            {
+                auto& renderItem{ m_RenderItems["picked"] = std::make_unique<RenderItem>() };
+
+                renderItem->MeshGeometry = &m_MeshGeometry;
+                renderItem->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
+
+                renderItem->Instances.push_back(RenderItem::Instance
+                {
+                    .MaterialIndex{ 2 },
+                    .Visible{ false }
+                });
+
+                m_PickedRenderItem.RenderItem = renderItem.get();
+            }
+
+            // Light
+            {
+                auto& renderItem{ m_RenderItems["light"] = std::make_unique<RenderItem>() };
+                renderItem->MeshGeometry = &m_MeshGeometry;
+                renderItem->SubmeshGeometry = &m_MeshGeometry.Submeshes["box"];
+                renderItem->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
+
+                renderItem->Instances.push_back(RenderItem::Instance
+                {
+                    .MaterialIndex{ 3 },
+                    .Visible{ true }
+                });
+
+                m_LightRenderItems.push_back(renderItem.get());
             }
         }
 
@@ -339,7 +407,7 @@ namespace sandbox
                     .Range
                     {
                         .Type{ spieler::renderer::RootParameter::DescriptorRangeType::ShaderResourceView },
-                        .DescriptorCount{ 6 },
+                        .DescriptorCount{ 4 },
                         .BaseShaderRegister{ 0 }
                     }
                 };
@@ -376,10 +444,16 @@ namespace sandbox
                     .EntryPoint{ "VS_Main" },
                 });
 
+                spieler::renderer::ShaderPermutation<per::InstancingAndCulling> pixelShaderPermutation;
+                pixelShaderPermutation.Set<per::InstancingAndCulling::USE_LIGHTING>(true);
+                pixelShaderPermutation.Set<per::InstancingAndCulling::DIRECTIONAL_LIGHT_COUNT>(0);
+                pixelShaderPermutation.Set<per::InstancingAndCulling::POINT_LIGHT_COUNT>(1);
+
                 pixelShader = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Pixel, spieler::renderer::ShaderConfig<per::InstancingAndCulling>
                 {
                     .Filename{ filename },
                     .EntryPoint{ "PS_Main" },
+                    .Permutation{ pixelShaderPermutation }
                 });
             }
 
@@ -390,43 +464,128 @@ namespace sandbox
                 .TriangleOrder{ spieler::renderer::TriangleOrder::Clockwise }
             };
 
-const spieler::renderer::DepthStencilState depthStencilState
-{
-    .DepthState
-    {
-        .TestState{ spieler::renderer::DepthState::TestState::Enabled },
-        .WriteState{ spieler::renderer::DepthState::WriteState::Enabled },
-        .ComparisonFunction{ spieler::renderer::ComparisonFunction::Less }
-    },
-    .StencilState
-    {
-        .TestState{ spieler::renderer::StencilState::TestState::Disabled },
-    }
-};
+            const spieler::renderer::InputLayout inputLayout
+            {
+                spieler::renderer::InputLayoutElement{ "Position", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
+                spieler::renderer::InputLayoutElement{ "Normal", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
+                spieler::renderer::InputLayoutElement{ "Tangent", spieler::renderer::GraphicsFormat::R32G32Float, sizeof(DirectX::XMFLOAT3) },
+                spieler::renderer::InputLayoutElement{ "TexCoord", spieler::renderer::GraphicsFormat::R32G32Float, sizeof(DirectX::XMFLOAT2) }
+            };
 
-const spieler::renderer::InputLayout inputLayout
-{
-    spieler::renderer::InputLayoutElement{ "Position", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
-    spieler::renderer::InputLayoutElement{ "Normal", spieler::renderer::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
-    spieler::renderer::InputLayoutElement{ "Tangent", spieler::renderer::GraphicsFormat::R32G32Float, sizeof(DirectX::XMFLOAT3) },
-    spieler::renderer::InputLayoutElement{ "TexCoord", spieler::renderer::GraphicsFormat::R32G32Float, sizeof(DirectX::XMFLOAT2) }
-};
+            // Default PSO
+            {
+                const spieler::renderer::DepthStencilState depthStencilState
+                {
+                    .DepthState
+                    {
+                        .TestState{ spieler::renderer::DepthState::TestState::Enabled },
+                        .WriteState{ spieler::renderer::DepthState::WriteState::Enabled },
+                        .ComparisonFunction{ spieler::renderer::ComparisonFunction::Less }
+                    },
+                    .StencilState
+                    {
+                        .TestState{ spieler::renderer::StencilState::TestState::Disabled },
+                    }
+                };
 
-const spieler::renderer::GraphicsPipelineState::Config config
-{
-    .RootSignature{ &m_RootSignature },
-    .VertexShader{ vertexShader },
-    .PixelShader{ pixelShader },
-    .BlendState{ nullptr },
-    .RasterizerState{ &rasterizerState },
-    .DepthStecilState{ &depthStencilState },
-    .InputLayout{ &inputLayout },
-    .PrimitiveTopologyType{ spieler::renderer::PrimitiveTopologyType::Triangle },
-    .RTVFormat{ swapChain.GetBufferFormat() },
-    .DSVFormat{ ms_DepthStencilFormat }
-};
+                const spieler::renderer::GraphicsPipelineState::Config config
+                {
+                    .RootSignature{ &m_RootSignature },
+                    .VertexShader{ vertexShader },
+                    .PixelShader{ pixelShader },
+                    .BlendState{ nullptr },
+                    .RasterizerState{ &rasterizerState },
+                    .DepthStecilState{ &depthStencilState },
+                    .InputLayout{ &inputLayout },
+                    .PrimitiveTopologyType{ spieler::renderer::PrimitiveTopologyType::Triangle },
+                    .RTVFormat{ swapChain.GetBufferFormat() },
+                    .DSVFormat{ ms_DepthStencilFormat }
+                };
 
-m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
+                m_PipelineStates["default"] = spieler::renderer::GraphicsPipelineState{ device, config };
+            }
+
+            // PSO for picked RenderItem
+            {
+                const spieler::renderer::DepthStencilState depthStencilState
+                {
+                    .DepthState
+                    {
+                        .TestState{ spieler::renderer::DepthState::TestState::Enabled },
+                        .WriteState{ spieler::renderer::DepthState::WriteState::Enabled },
+                        .ComparisonFunction{ spieler::renderer::ComparisonFunction::LessEqual }
+                    },
+                        .StencilState
+                    {
+                        .TestState{ spieler::renderer::StencilState::TestState::Disabled },
+                    }
+                };
+
+                const spieler::renderer::GraphicsPipelineState::Config config
+                {
+                    .RootSignature{ &m_RootSignature },
+                    .VertexShader{ vertexShader },
+                    .PixelShader{ pixelShader },
+                    .BlendState{ nullptr },
+                    .RasterizerState{ &rasterizerState },
+                    .DepthStecilState{ &depthStencilState },
+                    .InputLayout{ &inputLayout },
+                    .PrimitiveTopologyType{ spieler::renderer::PrimitiveTopologyType::Triangle },
+                    .RTVFormat{ swapChain.GetBufferFormat() },
+                    .DSVFormat{ ms_DepthStencilFormat }
+                };
+
+                m_PipelineStates["picked"] = spieler::renderer::GraphicsPipelineState{ device, config };
+            }
+
+            // PSO for lighting
+            {
+                const spieler::renderer::Shader* vertexShader{ nullptr };
+                const spieler::renderer::Shader* pixelShader{ nullptr };
+
+                // Init Shaders
+                {
+                    const std::wstring filename{ L"assets/shaders/instancing_and_culling.hlsl" };
+
+                    vertexShader = &m_ShaderLibrary.GetShader(spieler::renderer::ShaderType::Vertex, spieler::renderer::ShaderPermutation<per::InstancingAndCulling>{});
+
+                    pixelShader = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Pixel, spieler::renderer::ShaderConfig<per::InstancingAndCulling>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "PS_Main" },
+                    });
+                }
+
+                const spieler::renderer::DepthStencilState depthStencilState
+                {
+                    .DepthState
+                    {
+                        .TestState{ spieler::renderer::DepthState::TestState::Enabled },
+                        .WriteState{ spieler::renderer::DepthState::WriteState::Enabled },
+                        .ComparisonFunction{ spieler::renderer::ComparisonFunction::Less }
+                    },
+                    .StencilState
+                    {
+                        .TestState{ spieler::renderer::StencilState::TestState::Disabled },
+                    }
+                };
+
+                const spieler::renderer::GraphicsPipelineState::Config config
+                {
+                    .RootSignature{ &m_RootSignature },
+                    .VertexShader{ vertexShader },
+                    .PixelShader{ pixelShader },
+                    .BlendState{ nullptr },
+                    .RasterizerState{ &rasterizerState },
+                    .DepthStecilState{ &depthStencilState },
+                    .InputLayout{ &inputLayout },
+                    .PrimitiveTopologyType{ spieler::renderer::PrimitiveTopologyType::Triangle },
+                    .RTVFormat{ swapChain.GetBufferFormat() },
+                    .DSVFormat{ ms_DepthStencilFormat }
+                };
+
+                m_PipelineStates["lighting"] = spieler::renderer::GraphicsPipelineState{ device, config };
+            }
         }
 
         OnWindowResized();
@@ -439,9 +598,20 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
         m_CameraController.OnEvent(event);
 
         spieler::EventDispatcher dispatcher{ event };
+
         dispatcher.Dispatch<spieler::WindowResizedEvent>([this](spieler::WindowResizedEvent& event)
         {
             OnWindowResized();
+
+            return false;
+        });
+
+        dispatcher.Dispatch<spieler::MouseButtonPressedEvent>([this](spieler::MouseButtonPressedEvent& event)
+        {
+            if (event.GetButton() == spieler::MouseButton::Right)
+            {
+                PickTriangle(event.GetX<float>(), event.GetY<float>());
+            }
 
             return false;
         });
@@ -453,48 +623,62 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
 
         // Pass ConstantBuffer
         {
-            const cb::Pass constants
+            cb::Pass constants
             {
                 .View{ DirectX::XMMatrixTranspose(m_Camera.GetView()) },
                 .Projection{ DirectX::XMMatrixTranspose(m_Camera.GetProjection()) },
                 .ViewProjection{ DirectX::XMMatrixTranspose(m_Camera.GetViewProjection()) },
-                .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition()) }
+                .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition()) },
+                .AmbientLight{ m_PassData.AmbientLight }
             };
+
+            const uint64_t lightsSize{ m_PassData.Lights.size() * sizeof(LightData) };
+            memcpy_s(constants.Lights.data(), lightsSize, m_PassData.Lights.data(), lightsSize);
 
             m_Buffers["pass_constant_buffer"].Resource.Write(0, &constants, sizeof(constants));
         }
 
         // RenderItem StructuredBuffer
         {
+            uint32_t offset{ 0 };
+
             for (auto& [name, renderItem] : m_RenderItems)
             {
                 uint32_t visibleInstanceCount{ 0 };
 
-                for (size_t i = 0; i < renderItem.Instances.size(); ++i)
+                if (name == "light")
                 {
-                    const DirectX::XMMATRIX world{ renderItem.Instances[i].Transform.GetMatrix() };
+                    renderItem->Instances[0].Transform.Translation = m_PassData.Lights[0].Position;
+                }
 
-                    DirectX::XMVECTOR worldDeterminant{ DirectX::XMMatrixDeterminant(world) };
-                    const DirectX::XMMATRIX inverseWorld{ DirectX::XMMatrixInverse(&worldDeterminant, world) };
+                for (size_t i = 0; i < renderItem->Instances.size(); ++i)
+                {
+                    if (!renderItem->Instances[i].Visible)
+                    {
+                        continue;
+                    }
 
-                    const DirectX::XMMATRIX viewToLocal{ DirectX::XMMatrixMultiply(m_Camera.GetInverseView(), inverseWorld) };
+                    const DirectX::XMMATRIX viewToLocal{ DirectX::XMMatrixMultiply(m_Camera.GetInverseView(), renderItem->Instances[i].Transform.GetInverseMatrix()) };
 
                     DirectX::BoundingFrustum localSpaceFrustum;
                     m_Camera.GetBoundingFrustum().Transform(localSpaceFrustum, viewToLocal);
 
-                    if (!m_IsCullingEnabled || localSpaceFrustum.Contains(renderItem.SubmeshGeometry->BoundingBox) != DirectX::DISJOINT)
+                    if (!m_IsCullingEnabled || localSpaceFrustum.Contains(renderItem->SubmeshGeometry->BoundingBox) != DirectX::DISJOINT)
                     {
                         const cb::RenderItem constants
                         {
-                            .World{ DirectX::XMMatrixTranspose(world) },
-                            .MaterialIndex{ renderItem.Instances[i].MaterialIndex }
+                            .World{ DirectX::XMMatrixTranspose(renderItem->Instances[i].Transform.GetMatrix()) },
+                            .MaterialIndex{ renderItem->Instances[i].MaterialIndex }
                         };
 
-                        m_Buffers["render_item_structured_buffer"].Resource.Write(visibleInstanceCount++ * sizeof(constants), &constants, sizeof(constants));
+                        m_Buffers["render_item_structured_buffer"].Resource.Write((offset + visibleInstanceCount++) * sizeof(constants), &constants, sizeof(constants));
                     }
                 }
 
-                renderItem.VisibleInstanceCount = visibleInstanceCount;
+                renderItem->VisibleInstanceCount = visibleInstanceCount;
+                renderItem->StructuredBufferOffset = offset;
+
+                offset += visibleInstanceCount;
             }
         }
 
@@ -553,29 +737,11 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
             context.ClearRenderTarget(backBuffer.Views.GetView<spieler::renderer::RenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
             context.ClearDepthStencil(depthStencil.Views.GetView<spieler::renderer::DepthStencilView>(), 1.0f, 0);
 
-            context.SetPipelineState(m_PipelineState);
-            context.SetGraphicsRootSignature(m_RootSignature);
             context.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::renderer::DescriptorHeap::Type::SRV));
 
-            dx12CommandList->SetGraphicsRootConstantBufferView(0, D3D12_GPU_VIRTUAL_ADDRESS{ m_Buffers["pass_constant_buffer"].Resource.GetGPUVirtualAddress() });
-            dx12CommandList->SetGraphicsRootShaderResourceView(1, D3D12_GPU_VIRTUAL_ADDRESS{ m_Buffers["render_item_structured_buffer"].Resource.GetGPUVirtualAddress() });
-            dx12CommandList->SetGraphicsRootShaderResourceView(2, D3D12_GPU_VIRTUAL_ADDRESS{ m_Buffers["material_structured_buffer"].Resource.GetGPUVirtualAddress() });
-            dx12CommandList->SetGraphicsRootDescriptorTable(3, D3D12_GPU_DESCRIPTOR_HANDLE{ m_Textures["crate"].Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
-
-            for (auto& [name, renderItem] : m_RenderItems)
-            {
-                context.IASetVertexBuffer(&renderItem.MeshGeometry->VertexBuffer.Views.GetView<spieler::renderer::VertexBufferView>());
-                context.IASetIndexBuffer(&renderItem.MeshGeometry->IndexBuffer.Views.GetView<spieler::renderer::IndexBufferView>());
-                context.IASetPrimitiveTopology(renderItem.PrimitiveTopology);
-
-                dx12CommandList->DrawIndexedInstanced(
-                    renderItem.SubmeshGeometry->IndexCount,
-                    renderItem.VisibleInstanceCount,
-                    renderItem.SubmeshGeometry->StartIndexLocation,
-                    renderItem.SubmeshGeometry->BaseVertexLocation,
-                    0
-                );
-            }
+            RenderRenderItems(m_PipelineStates.at("default"), m_DefaultRenderItems);
+            RenderRenderItems(m_PipelineStates.at("picked"), std::span{ &m_PickedRenderItem.RenderItem, 1 });
+            RenderRenderItems(m_PipelineStates.at("lighting"), m_LightRenderItems);
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
@@ -595,13 +761,29 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
 
     void InstancingAndCullingLayer::OnImGuiRender(float dt)
     {
+        m_PointLightController.OnImGuiRender();
+
         ImGui::Begin("Culling Data");
         {   
             ImGui::Checkbox("Is Culling Enabled", &m_IsCullingEnabled);
 
             for (const auto& [name, renderItem] : m_RenderItems)
             {
-                ImGui::Text("%s visible instances: %d", name.c_str(), renderItem.VisibleInstanceCount);
+                ImGui::Text("%s visible instances: %d", name.c_str(), renderItem->VisibleInstanceCount);
+            }
+        }
+        ImGui::End();
+
+        ImGui::Begin("Picked RenderItem");
+        {
+            if (!m_PickedRenderItem.RenderItem || !m_PickedRenderItem.RenderItem->Instances[0].Visible)
+            {
+                ImGui::Text("Null");
+            }
+            else
+            {
+                ImGui::Text("Instance Index: %d", m_PickedRenderItem.InstanceIndex);
+                ImGui::Text("Triangle Index: %d", m_PickedRenderItem.TriangleIndex);
             }
         }
         ImGui::End();
@@ -670,6 +852,154 @@ m_PipelineState = spieler::renderer::GraphicsPipelineState{ device, config };
         InitViewport();
         InitScissorRect();
         InitDepthStencil();
+    }
+
+    void InstancingAndCullingLayer::PickTriangle(float x, float y)
+    {
+        const uint32_t width{ spieler::Application::GetInstance().GetWindow().GetWidth() };
+        const uint32_t height{ spieler::Application::GetInstance().GetWindow().GetHeight() };
+
+        m_PickedRenderItem.RenderItem->Instances[0].Visible = false;
+
+        // In View Space
+        const DirectX::XMVECTOR viewRayOrigin{ 0.0f, 0.0f, 0.0f, 1.0f };
+        const DirectX::XMVECTOR viewRayDirection
+        {
+            (2.0f * x / static_cast<float>(width) - 1.0f) / DirectX::XMVectorGetByIndex(m_Camera.GetProjection().r[0], 0),
+            (-2.0f * y / static_cast<float>(height) + 1.0f) / DirectX::XMVectorGetByIndex(m_Camera.GetProjection().r[1], 1),
+            1.0f,
+            0.0f
+        };
+
+        float minDistance{ std::numeric_limits<float>::max() };
+
+        for (const auto& renderItem : m_DefaultRenderItems)
+        {
+            const spieler::renderer::Vertex* vertices
+            { 
+                reinterpret_cast<const spieler::renderer::Vertex*>(renderItem->MeshGeometry->Vertices.data()) + renderItem->SubmeshGeometry->BaseVertexLocation
+            };
+
+            const uint32_t* indices
+            {
+                reinterpret_cast<const uint32_t*>(renderItem->MeshGeometry->Indices.data()) + renderItem->SubmeshGeometry->StartIndexLocation
+            };
+
+            float minInstanceDistance{ std::numeric_limits<float>::max() };
+            uint32_t minInstanceIndex{ 0 };
+            uint32_t minTriangleIndex{ 0 };
+
+            for (size_t instanceIndex = 0; instanceIndex < renderItem->Instances.size(); ++instanceIndex)
+            {
+                if (!renderItem->Instances[instanceIndex].Visible)
+                {
+                    continue;
+                }
+
+                const DirectX::XMMATRIX toLocal{ DirectX::XMMatrixMultiply(m_Camera.GetInverseView(), renderItem->Instances[instanceIndex].Transform.GetInverseMatrix()) };
+
+                const DirectX::XMVECTOR rayOrigin{ DirectX::XMVector3TransformCoord(viewRayOrigin, toLocal) };
+                const DirectX::XMVECTOR rayDirection{ DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(viewRayDirection, toLocal)) };
+
+                float instanceDistance{ 0.0f };
+
+                if (!renderItem->SubmeshGeometry->BoundingBox.Intersects(rayOrigin, rayDirection, instanceDistance))
+                {
+                    continue;
+                }
+
+                if (minInstanceDistance > instanceDistance)
+                {
+                    // Min Instance
+                    minInstanceDistance = instanceDistance;
+                    minInstanceIndex = static_cast<uint32_t>(instanceIndex);
+
+                    float minTriangleDistance{ std::numeric_limits<float>::max() };
+
+                    for (uint32_t triangleIndex = 0; triangleIndex < renderItem->SubmeshGeometry->IndexCount / 3; ++triangleIndex)
+                    {
+                        // Triangle
+                        const DirectX::XMVECTOR a{ DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 0]].Position) };
+                        const DirectX::XMVECTOR b{ DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 1]].Position) };
+                        const DirectX::XMVECTOR c{ DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 2]].Position) };
+
+                        float triangleDistance{ 0.0f };
+
+                        if (DirectX::TriangleTests::Intersects(rayOrigin, rayDirection, a, b, c, triangleDistance))
+                        {
+                            if (minTriangleDistance > triangleDistance)
+                            {
+                                // Min Instance Triangle
+                                minTriangleDistance = triangleDistance;
+                                minTriangleIndex = triangleIndex;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (minDistance > minInstanceDistance)
+            {
+                // Min RenderItem
+                minDistance = minInstanceDistance;
+
+                // Picked RenderItem
+                m_PickedRenderItem.RenderItem->SubmeshGeometry = new spieler::renderer::SubmeshGeometry
+                {
+                    .IndexCount{ 3 },
+                    .BaseVertexLocation{ renderItem->SubmeshGeometry->BaseVertexLocation },
+                    .StartIndexLocation{ minTriangleIndex * 3 }
+                };
+
+                m_PickedRenderItem.RenderItem->Instances[0].Visible = true;
+                m_PickedRenderItem.RenderItem->Instances[0].Transform = renderItem->Instances[minInstanceIndex].Transform;
+
+                m_PickedRenderItem.InstanceIndex = static_cast<uint32_t>(minInstanceIndex);
+                m_PickedRenderItem.TriangleIndex = minTriangleIndex;
+            }
+        }
+    }
+
+    void InstancingAndCullingLayer::RenderRenderItems(const spieler::renderer::PipelineState& pso, const std::span<RenderItem*>& renderItems) const
+    {
+        auto& renderer{ spieler::renderer::Renderer::GetInstance() };
+        auto& context{ renderer.GetContext() };
+        auto* dx12CommandList{ context.GetDX12GraphicsCommandList() };
+
+        context.SetPipelineState(pso);
+        context.SetGraphicsRootSignature(m_RootSignature);
+
+        dx12CommandList->SetGraphicsRootConstantBufferView(0, D3D12_GPU_VIRTUAL_ADDRESS{ m_Buffers.at("pass_constant_buffer").Resource.GetGPUVirtualAddress() });
+        dx12CommandList->SetGraphicsRootShaderResourceView(2, D3D12_GPU_VIRTUAL_ADDRESS{ m_Buffers.at("material_structured_buffer").Resource.GetGPUVirtualAddress() });
+        dx12CommandList->SetGraphicsRootDescriptorTable(3, D3D12_GPU_DESCRIPTOR_HANDLE{ m_Textures.at("red").Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+
+        for (const auto& renderItem : renderItems)
+        {
+            if (!renderItem->MeshGeometry || !renderItem->SubmeshGeometry)
+            {
+                continue;
+            }
+
+            dx12CommandList->SetGraphicsRootShaderResourceView(
+                1,
+                D3D12_GPU_VIRTUAL_ADDRESS
+                {
+                    m_Buffers.at("render_item_structured_buffer").Resource.GetGPUVirtualAddressWithOffset(renderItem->StructuredBufferOffset)
+                }
+            );
+
+            context.IASetVertexBuffer(&renderItem->MeshGeometry->VertexBuffer.Views.GetView<spieler::renderer::VertexBufferView>());
+            context.IASetIndexBuffer(&renderItem->MeshGeometry->IndexBuffer.Views.GetView<spieler::renderer::IndexBufferView>());
+            context.IASetPrimitiveTopology(renderItem->PrimitiveTopology);
+
+            dx12CommandList->DrawIndexedInstanced(
+                renderItem->SubmeshGeometry->IndexCount,
+                renderItem->VisibleInstanceCount,
+                renderItem->SubmeshGeometry->StartIndexLocation,
+                renderItem->SubmeshGeometry->BaseVertexLocation,
+                0
+            );
+        }
     }
 
 } // namespace sandbox
