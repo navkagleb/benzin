@@ -127,6 +127,9 @@ namespace spieler::renderer
 
     ComPtr<ID3D12Resource> Device::CreateDX12Buffer(const BufferResource::Config& config)
     {
+        SPIELER_ASSERT(config.ElementSize != 0);
+        SPIELER_ASSERT(config.ElementCount != 0);
+
         const D3D12_HEAP_TYPE heapType{ config.Flags == BufferResource::Flags::None ? D3D12_HEAP_TYPE_DEFAULT : D3D12_HEAP_TYPE_UPLOAD };
 
         const D3D12_HEAP_PROPERTIES heapProperties{ _internal::GetDX12HeapProperties(heapType) };
