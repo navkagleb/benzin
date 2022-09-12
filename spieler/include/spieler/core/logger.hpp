@@ -138,10 +138,10 @@ namespace spieler
 #undef _SPIELER_LOGGER_TEXT_BACKGROUND_COLOR
 #undef _SPIELER_LOGGER_TEXT_BACKGROUND_COLOR_SECTION
 
-#define _SPIELER_LOGGER_LOG(type, Color, formatString, ...)                                                                                         \
-{                                                                                                                                                   \
-    using namespace ::spieler;                                                                                                                      \
-    Logger::GetInstance() << Logger::Color << "[ " << type << "] " << Logger::Reset << fmt::format(formatString, __VA_ARGS__) << Logger::EndLine;   \
+#define _SPIELER_LOGGER_LOG(type, Color, formatString, ...)                                                                                                     \
+{                                                                                                                                                               \
+    using namespace ::spieler;                                                                                                                                  \
+    Logger::GetInstance() << Logger::Color << "[" << type << "] " << Logger::Reset << fmt::format(FMT_STRING(formatString), __VA_ARGS__) << Logger::EndLine;    \
 }
 
 #define SPIELER_INFO(format, ...) _SPIELER_LOGGER_LOG("INFO", Green, format, __VA_ARGS__)
