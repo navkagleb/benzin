@@ -42,7 +42,7 @@ namespace spieler::renderer
     }
 
     Renderer::Renderer(Window& window)
-        : m_Context{ m_Device, MB(30) }
+        : m_Context{ m_Device, ConvertMBToBytes(120) }
         , m_SwapChain{ m_Device, m_Context, window, g_SwapChainConfig }
     {}
 
