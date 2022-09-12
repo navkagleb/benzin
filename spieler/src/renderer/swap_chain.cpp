@@ -3,6 +3,7 @@
 #include "spieler/renderer/swap_chain.hpp"
 
 #include "spieler/core/common.hpp"
+#include "spieler/core/logger.hpp"
 
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/context.hpp"
@@ -25,7 +26,7 @@ namespace spieler::renderer
 
         if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))
         {
-            dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_SUMMARY | DXGI_DEBUG_RLO_IGNORE_INTERNAL));
+            dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
         }
 #endif
     }
@@ -77,7 +78,8 @@ namespace spieler::renderer
 
         SPIELER_RETURN_IF_FAILED(InitFactory());
         SPIELER_RETURN_IF_FAILED(InitSwapChain(context, window));
-
+        
+        EnumerateAdapters();
         ResizeBuffers(device, window.GetWidth(), window.GetHeight());
 
         return true;
@@ -133,6 +135,58 @@ namespace spieler::renderer
         SPIELER_RETURN_IF_FAILED(m_DXGISwapChain->QueryInterface(IID_PPV_ARGS(&m_DXGISwapChain3)));
 
         return true;
+    }
+
+    void SwapChain::EnumerateAdapters()
+    {
+        ComPtr<IDXGIAdapter> dxgiAdapter;
+
+        for (uint32_t adapterIndex = 0; m_DXGIFactory->EnumAdapters(adapterIndex, &dxgiAdapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex)
+        {
+            std::stringstream adapterStringStream;
+
+            DXGI_ADAPTER_DESC dxgiAdapterDesc;
+            dxgiAdapter->GetDesc(&dxgiAdapterDesc);
+
+            const size_t adapterDescriptionSize{ std::size(dxgiAdapterDesc.Description) };
+
+            std::string adapterName;
+            adapterName.resize(adapterDescriptionSize);
+            wcstombs_s(nullptr, adapterName.data(), adapterDescriptionSize, dxgiAdapterDesc.Description, adapterDescriptionSize * sizeof(wchar_t));
+
+            adapterStringStream << fmt::format(
+                "{}\n"
+                "       DedicatedVideoMemory: {}MB, {}GB\n"
+                "       DedicatedSystemMemory: {}MB, {}GB\n"
+                "       SharedSystemMemory: {}MB, {}GB\n",
+                adapterName.c_str(),
+                ConvertBytesToMB(dxgiAdapterDesc.DedicatedVideoMemory), ConvertBytesToGB(dxgiAdapterDesc.DedicatedVideoMemory),
+                ConvertBytesToMB(dxgiAdapterDesc.DedicatedSystemMemory), ConvertBytesToGB(dxgiAdapterDesc.DedicatedSystemMemory),
+                ConvertBytesToMB(dxgiAdapterDesc.SharedSystemMemory), ConvertBytesToGB(dxgiAdapterDesc.SharedSystemMemory)
+            );
+
+            ComPtr<IDXGIOutput> dxgiOutput;
+
+            for (uint32_t outputIndex = 0; dxgiAdapter->EnumOutputs(outputIndex, &dxgiOutput) != DXGI_ERROR_NOT_FOUND; ++outputIndex)
+            {
+                DXGI_OUTPUT_DESC dxgiOutputDesc;
+                dxgiOutput->GetDesc(&dxgiOutputDesc);
+
+                const size_t outputDescriptionSize{ std::size(dxgiOutputDesc.DeviceName) };
+
+                std::string outputName;
+                adapterName.resize(outputDescriptionSize);
+                wcstombs_s(nullptr, outputName.data(), outputDescriptionSize, dxgiOutputDesc.DeviceName, outputDescriptionSize * sizeof(wchar_t));
+
+                adapterStringStream << fmt::format("           {}: {}", outputIndex, outputName.c_str()); 
+            }
+
+            adapterStringStream << std::endl;
+
+            SPIELER_INFO("{}", adapterStringStream.str().c_str());
+
+            m_Adapters.push_back(std::move(dxgiAdapter));
+        }
     }
 
     void SwapChain::CreateBuffers(Device& device)

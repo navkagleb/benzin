@@ -50,12 +50,15 @@ namespace spieler::renderer
         bool InitFactory();
         bool InitSwapChain(Context& context, Window& window);
 
+        void EnumerateAdapters();
+
         void CreateBuffers(Device& device);
 
     private:
         ComPtr<IDXGIFactory> m_DXGIFactory;
         ComPtr<IDXGISwapChain> m_DXGISwapChain;
         ComPtr<IDXGISwapChain3> m_DXGISwapChain3;
+        std::vector<ComPtr<IDXGIAdapter>> m_Adapters;
 
         GraphicsFormat m_BufferFormat;
         std::vector<Texture> m_Buffers;
