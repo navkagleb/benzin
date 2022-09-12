@@ -77,7 +77,7 @@ namespace spieler::renderer
     CameraController::CameraController(Camera& camera)
         : m_Camera{ &camera }
     {
-        m_Camera->SetAspectRatio(spieler::Application::GetInstance().GetWindow().GetAspectRatio());
+        m_Camera->SetAspectRatio(Application::GetInstance().GetWindow().GetAspectRatio());
     }
 
     void CameraController::OnEvent(spieler::Event& event)
@@ -97,22 +97,43 @@ namespace spieler::renderer
 
         const spieler::Input& input{ spieler::Application::GetInstance().GetWindow().GetInput() };
 
-        if (input.IsKeyPressed(spieler::KeyCode::W))
+        const float delta{ m_CameraSpeed * dt };
+
+        DirectX::XMVECTOR updatedPosition{ DirectX::XMVectorZero() };
+
+        // Front / Back
+        if (input.IsKeyPressed(KeyCode::W))
         {
-            m_Camera->SetPosition(DirectX::XMVectorAdd(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetFrontDirection(), m_CameraSpeed * dt)));
+            updatedPosition = DirectX::XMVectorAdd(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetFrontDirection(), delta));
         }
-        else if (input.IsKeyPressed(spieler::KeyCode::S))
+        else if (input.IsKeyPressed(KeyCode::S))
         {
-            m_Camera->SetPosition(DirectX::XMVectorSubtract(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetFrontDirection(), m_CameraSpeed * dt)));
+            updatedPosition = DirectX::XMVectorSubtract(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetFrontDirection(), delta));
         }
 
-        if (input.IsKeyPressed(spieler::KeyCode::A))
+        // Left / Right
+        if (input.IsKeyPressed(KeyCode::A))
         {
-            m_Camera->SetPosition(DirectX::XMVectorAdd(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetRightDirection(), m_CameraSpeed * dt)));
+            updatedPosition = DirectX::XMVectorAdd(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetRightDirection(), delta));
         }
-        else if (input.IsKeyPressed(spieler::KeyCode::D))
+        else if (input.IsKeyPressed(KeyCode::D))
         {
-            m_Camera->SetPosition(DirectX::XMVectorSubtract(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetRightDirection(), m_CameraSpeed * dt)));
+            updatedPosition = DirectX::XMVectorSubtract(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetRightDirection(), delta));
+        }
+
+        // Up / Down
+        if (input.IsKeyPressed(KeyCode::Space))
+        {
+            updatedPosition = DirectX::XMVectorAdd(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetUpDirection(), delta));
+        }
+        else if (input.IsKeyPressed(KeyCode::C))
+        {
+            updatedPosition = DirectX::XMVectorSubtract(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetUpDirection(), delta));
+        }
+
+        if (!DirectX::XMVector4Equal(updatedPosition, DirectX::XMVectorZero()))
+        {
+            m_Camera->SetPosition(updatedPosition);
         }
     }
 
@@ -193,9 +214,9 @@ namespace spieler::renderer
 
     bool CameraController::OnMouseMoved(spieler::MouseMovedEvent& event)
     {
-        const spieler::Input& input{ spieler::Application::GetInstance().GetWindow().GetInput() };
+        const spieler::Input& input{ Application::GetInstance().GetWindow().GetInput() };
 
-        if (input.IsMouseButtonPressed(spieler::MouseButton::Left))
+        if (input.IsMouseButtonPressed(MouseButton::Left))
         {
             const float deltaX{ event.GetX<float>() - m_LastMousePosition.x };
             const float deltaY{ event.GetY<float>() - m_LastMousePosition.y };
