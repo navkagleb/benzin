@@ -504,16 +504,6 @@ namespace sandbox
             texture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
         }
 
-        // Wood crate texture
-        {
-            auto& texture{ m_Textures["wood_crate"] };
-            auto subresources{ texture.Resource.LoadFromDDSFile(device, L"assets/textures/wood_crate1.dds") };
-
-            context.UploadToTexture(texture.Resource, subresources);
-
-            texture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
-        }
-
         // Wire fence texture
         {
             auto& texture{ m_Textures["wire_fence"] };
@@ -595,18 +585,6 @@ namespace sandbox
 
         spieler::renderer::BufferResource& materialConstantBuffer{ m_ConstantBuffers["material"] };
 
-        // Wood crate material
-        {
-            spieler::renderer::Material& wood{ m_Materials["wood_crate1"] };
-            wood.DiffuseMap = m_Textures["wood_crate"].Views.GetView<spieler::renderer::ShaderResourceView>();
-
-            wood.Constants.DiffuseAlbedo = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-            wood.Constants.FresnelR0 = DirectX::XMFLOAT3(0.05f, 0.05f, 0.05f);
-            wood.Constants.Roughness = 0.2f;
-
-            wood.ConstantBufferIndex = 0;
-        }
-        
         // Wire fence material
         {
             spieler::renderer::Material& fence{ m_Materials["wire_fence"] };

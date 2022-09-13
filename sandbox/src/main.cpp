@@ -8,7 +8,6 @@
 
 #include "layers/test_layer.hpp"
 #include "layers/tessellation_layer.hpp"
-#include "layers/dynamic_indexing_layer.hpp"
 #include "layers/instancing_and_culling_layer.hpp"
 
 namespace sandbox
@@ -38,7 +37,7 @@ namespace sandbox
     private:
         bool OnKeyPressed(spieler::KeyPressedEvent& event)
         {
-            const size_t maxLayerCount{ 4 };
+            const size_t maxLayerCount{ 3 };
 
             m_IsTriggered = true;
 
@@ -92,11 +91,6 @@ namespace sandbox
                 }
                 case 2:
                 {
-                    m_CurrentLayer = application.GetLayerStack().Push<DynamicIndexingLayer>();
-                    break;
-                }
-                case 3:
-                {
                     m_CurrentLayer = application.GetLayerStack().Push<InstancingAndCullingLayer>();
                     break;
                 }
@@ -106,7 +100,7 @@ namespace sandbox
         }
 
     private:
-        size_t m_CurrentLayerIndex{ 3 };
+        size_t m_CurrentLayerIndex{ 2 };
         std::shared_ptr<spieler::Layer> m_CurrentLayer;
         bool m_IsTriggered{ true };
     };
