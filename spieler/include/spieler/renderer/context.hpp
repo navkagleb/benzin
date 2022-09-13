@@ -67,7 +67,7 @@ namespace spieler::renderer
         SPIELER_NON_COPYABLE(Context)
 
     public:
-        Context(Device& device, uint32_t uploadBufferSize);
+        Context(Device& device, uint64_t uploadBufferSize);
 
     public:
         ID3D12GraphicsCommandList* GetDX12GraphicsCommandList() const { return m_DX12GraphicsCommandList.Get(); }

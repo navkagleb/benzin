@@ -72,7 +72,7 @@ namespace spieler::renderer
     //////////////////////////////////////////////////////////////////////////
     /// Context
     //////////////////////////////////////////////////////////////////////////
-    Context::Context(Device& device, uint32_t uploadBufferSize)
+    Context::Context(Device& device, uint64_t uploadBufferSize)
         : m_Fence{ device }
     {
         // Init m_UploadBuffer
@@ -80,7 +80,7 @@ namespace spieler::renderer
             const BufferResource::Config config
             {
                 .ElementSize{ sizeof(std::byte) },
-                .ElementCount{ uploadBufferSize },
+                .ElementCount{ static_cast<uint32_t>(uploadBufferSize) },
                 .Flags{ BufferResource::Flags::Dynamic }
             };
 
