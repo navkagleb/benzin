@@ -32,6 +32,8 @@ namespace sandbox
             const spieler::renderer::SubmeshGeometry* SubmeshGeometry{ nullptr };
             spieler::renderer::PrimitiveTopology PrimitiveTopology{ spieler::renderer::PrimitiveTopology::Unknown };
 
+            bool IsNeedCulling{ true };
+
             std::vector<Instance> Instances;
             uint32_t VisibleInstanceCount{ 0 };
             uint32_t StructuredBufferOffset{ 0 };
@@ -121,6 +123,7 @@ namespace sandbox
         std::unordered_map<std::string, std::unique_ptr<RenderItem>> m_RenderItems;
         std::vector<RenderItem*> m_DefaultRenderItems;
         std::vector<RenderItem*> m_LightRenderItems;
+        RenderItem* m_CubeMapRenderItem{ nullptr };
         PickedRenderItem m_PickedRenderItem;
 
         PassData m_PassData;

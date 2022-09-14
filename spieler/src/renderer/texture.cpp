@@ -16,13 +16,13 @@ namespace spieler::renderer
         {
             return TextureResource::Config
             {
-                .Dimension{ dx12::Convert(dx12Desc.Dimension) },
+                .Type{ dx12::Convert(dx12Desc.Dimension) },
                 .Width{ static_cast<uint32_t>(dx12Desc.Width) },
                 .Height{ dx12Desc.Height },
                 .Depth{ dx12Desc.DepthOrArraySize },
                 .MipCount{ dx12Desc.MipLevels },
                 .Format{ dx12::Convert(dx12Desc.Format) },
-                .Flags{ dx12::Convert(dx12Desc.Flags) }
+                .UsageFlags{ dx12::Convert(dx12Desc.Flags) }
             };
         }
 
@@ -56,15 +56,25 @@ namespace spieler::renderer
         std::vector<SubresourceData> subresources;
 
         // Create texture using Desc from DDS file
+        bool isCubeMap{ false };
+
         SPIELER_ASSERT(SUCCEEDED(DirectX::LoadDDSTextureFromFile(
             device.GetDX12Device(),
             filename.c_str(),
             &m_DX12Resource,
             m_Data,
-            *reinterpret_cast<std::vector<D3D12_SUBRESOURCE_DATA>*>(&subresources)
+            *reinterpret_cast<std::vector<D3D12_SUBRESOURCE_DATA>*>(&subresources),
+            0, // maxSize default value is 0, so leave it
+            nullptr,
+            &isCubeMap
         )));
 
         m_Config = _internal::ConvertFromDX12ResourceDesc(m_DX12Resource->GetDesc());
+        
+        if (isCubeMap)
+        {
+            m_Config.Type = Type::CubeMap;
+        }
 
         return subresources;
     }

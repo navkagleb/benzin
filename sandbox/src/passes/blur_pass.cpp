@@ -240,7 +240,7 @@ namespace sandbox
             .Width{ width },
             .Height{ height },
             .Format{ spieler::renderer::GraphicsFormat::R8G8B8A8UnsignedNorm },
-            .Flags{ spieler::renderer::TextureResource::Flags::UnorderedAccess },
+            .UsageFlags{ spieler::renderer::TextureResource::UsageFlags::UnorderedAccess },
         };
 
         for (size_t i = 0; i < m_BlurMaps.size(); ++i)

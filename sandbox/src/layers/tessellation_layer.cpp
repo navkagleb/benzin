@@ -503,7 +503,7 @@ namespace sandbox
             .Width{ window.GetWidth() },
             .Height{ window.GetHeight() },
             .Format{ m_DepthStencilFormat },
-            .Flags{ spieler::renderer::TextureResource::Flags::DepthStencil }
+            .UsageFlags{ spieler::renderer::TextureResource::UsageFlags::DepthStencil }
         };
 
         const spieler::renderer::TextureResource::ClearDepthStencil clearDepthStencil

@@ -561,7 +561,7 @@ namespace sandbox
                 .Width{ window.GetWidth() },
                 .Height{ window.GetHeight() },
                 .Format{ spieler::renderer::GraphicsFormat::R8G8B8A8UnsignedNorm },
-                .Flags{ spieler::renderer::TextureResource::Flags::RenderTarget }
+                .UsageFlags{ spieler::renderer::TextureResource::UsageFlags::RenderTarget }
             };
 
             const spieler::renderer::TextureResource::ClearColor clearColor
@@ -1672,7 +1672,7 @@ namespace sandbox
             .Width{ window.GetWidth() },
             .Height{ window.GetHeight() },
             .Format{ m_DepthStencilFormat },
-            .Flags{ spieler::renderer::TextureResource::Flags::DepthStencil }
+            .UsageFlags{ spieler::renderer::TextureResource::UsageFlags::DepthStencil }
         };
 
         const spieler::renderer::TextureResource::ClearDepthStencil clearDepthStencil
@@ -1795,7 +1795,7 @@ namespace sandbox
                 .Width{ event.GetWidth() },
                 .Height{ event.GetHeight() },
                 .Format{ spieler::renderer::GraphicsFormat::R8G8B8A8UnsignedNorm },
-                .Flags{ spieler::renderer::TextureResource::Flags::RenderTarget }
+                .UsageFlags{ spieler::renderer::TextureResource::UsageFlags::RenderTarget }
             };
 
             const spieler::renderer::TextureResource::ClearColor clearColor

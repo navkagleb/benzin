@@ -59,6 +59,11 @@ namespace sandbox
             POINT_LIGHT_COUNT,
         };
 
+        enum class CubeMap
+        {
+
+        };
+
     } // namespace per
 
     //////////////////////////////////////////////////////////////////////////
@@ -124,6 +129,7 @@ namespace sandbox
                 initTexture("green", L"assets/textures/green.dds");
                 initTexture("blue", L"assets/textures/blue.dds");
                 initTexture("white", L"assets/textures/white.dds");
+                initTexture("space_cubemap", L"assets/textures/space_cubemap.dds");
             }
 
             // Init m_MeshGeometry
@@ -239,7 +245,7 @@ namespace sandbox
                 const spieler::renderer::BufferResource::Config config
                 {
                     .ElementSize{ sizeof(cb::Material) },
-                    .ElementCount{ 4 },
+                    .ElementCount{ 5 },
                     .Flags{ spieler::renderer::BufferResource::Flags::Dynamic }
                 };
 
@@ -281,7 +287,7 @@ namespace sandbox
                 {
                     .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
-                    .Roughness{ 0.0f },
+                    .Roughness{ 0.9f },
                     .DiffuseMapIndex{ 1 },
                     .StructuredBufferIndex{ 1 }
                 };
@@ -310,10 +316,45 @@ namespace sandbox
                     .StructuredBufferIndex{ 3 }
                 };
             }
+
+            // CubeMap
+            {
+                m_Materials["cubemap"] = MaterialData
+                {
+                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                    .FresnelR0{ 0.1f, 0.1f, 0.1f },
+                    .Roughness{ 0.1f },
+                    .DiffuseMapIndex{ 4 },
+                    .StructuredBufferIndex{ 4 }
+                };
+            }
         }
 
         // Init m_RenderItems
         {
+            // CubeMap
+            {
+                auto& renderItem{ m_RenderItems["cubemap"] = std::make_unique<RenderItem>() };
+
+                renderItem->MeshGeometry = &m_MeshGeometry;
+                renderItem->SubmeshGeometry = &m_MeshGeometry.Submeshes["box"];
+                renderItem->PrimitiveTopology = spieler::renderer::PrimitiveTopology::TriangleList;
+
+                renderItem->IsNeedCulling = false;
+
+                renderItem->Instances.push_back(RenderItem::Instance
+                {
+                    .Transform
+                    {
+                        .Scale{ 100.0f, 100.0f, 100.0f }
+                    },
+                    .MaterialIndex{ 4 },
+                    .Visible{ true }
+                });
+
+                m_CubeMapRenderItem = renderItem.get();
+            }
+
             // Boxes
             {
                 const int32_t boxInRowCount{ 10 };
@@ -380,7 +421,7 @@ namespace sandbox
 
         // Init m_RootSignature
         {
-            spieler::renderer::RootSignature::Config config{ 4, 2 };
+            spieler::renderer::RootSignature::Config config{ 5, 2 };
 
             // Root parameters
             {
@@ -393,13 +434,23 @@ namespace sandbox
                 const spieler::renderer::RootParameter::Descriptor renderItemStructuredBuffer
                 {
                     .Type{ spieler::renderer::RootParameter::DescriptorType::ShaderResourceView },
-                    .ShaderRegister{ 0, 1 }
+                    .ShaderRegister{ 1, 1 }
                 };
 
                 const spieler::renderer::RootParameter::Descriptor materialStructuredBuffer
                 {
                     .Type{ spieler::renderer::RootParameter::DescriptorType::ShaderResourceView },
-                    .ShaderRegister{ 0, 2 }
+                    .ShaderRegister{ 1, 2 }
+                };
+
+                const spieler::renderer::RootParameter::SingleDescriptorTable cubeMap
+                {
+                    .Range
+                    {
+                        .Type{ spieler::renderer::RootParameter::DescriptorRangeType::ShaderResourceView },
+                        .DescriptorCount{ 1 },
+                        .BaseShaderRegister{ 0 }
+                    }
                 };
 
                 const spieler::renderer::RootParameter::SingleDescriptorTable textureTable
@@ -408,14 +459,15 @@ namespace sandbox
                     {
                         .Type{ spieler::renderer::RootParameter::DescriptorRangeType::ShaderResourceView },
                         .DescriptorCount{ 4 },
-                        .BaseShaderRegister{ 0 }
+                        .BaseShaderRegister{ 1 }
                     }
                 };
 
                 config.RootParameters[0] = passConstantBuffer;
                 config.RootParameters[1] = renderItemStructuredBuffer;
                 config.RootParameters[2] = materialStructuredBuffer;
-                config.RootParameters[3] = textureTable;
+                config.RootParameters[3] = cubeMap;
+                config.RootParameters[4] = textureTable;
             }
 
             // Static samplers
@@ -586,6 +638,66 @@ namespace sandbox
 
                 m_PipelineStates["lighting"] = spieler::renderer::GraphicsPipelineState{ device, config };
             }
+
+            // PSO for CubeMap
+            {
+                const spieler::renderer::Shader* vertexShader{ nullptr };
+                const spieler::renderer::Shader* pixelShader{ nullptr };
+
+                // Init Shaders
+                {
+                    const std::wstring filename{ L"assets/shaders/cube_map.hlsl" };
+
+                    vertexShader = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Vertex, spieler::renderer::ShaderConfig<per::CubeMap>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "VS_Main" }
+                    });
+
+                    pixelShader = &m_ShaderLibrary.CreateShader(spieler::renderer::ShaderType::Pixel, spieler::renderer::ShaderConfig<per::CubeMap>
+                    {
+                        .Filename{ filename },
+                        .EntryPoint{ "PS_Main" }
+                    });
+                }
+
+                const spieler::renderer::RasterizerState rasterizerState
+                {
+                    .FillMode{ spieler::renderer::FillMode::Solid },
+                    .CullMode{ spieler::renderer::CullMode::None },
+                    .TriangleOrder{ spieler::renderer::TriangleOrder::Clockwise }
+                };
+
+                const spieler::renderer::DepthStencilState depthStencilState
+                {
+                    .DepthState
+                    {
+                        .TestState{ spieler::renderer::DepthState::TestState::Enabled },
+                        .WriteState{ spieler::renderer::DepthState::WriteState::Enabled },
+                        .ComparisonFunction{ spieler::renderer::ComparisonFunction::LessEqual }
+                    },
+                    .StencilState
+                    {
+                        .TestState{ spieler::renderer::StencilState::TestState::Disabled },
+                    }
+                };
+
+                const spieler::renderer::GraphicsPipelineState::Config config
+                {
+                    .RootSignature{ &m_RootSignature },
+                    .VertexShader{ vertexShader },
+                    .PixelShader{ pixelShader },
+                    .BlendState{ nullptr },
+                    .RasterizerState{ &rasterizerState },
+                    .DepthStecilState{ &depthStencilState },
+                    .InputLayout{ &inputLayout },
+                    .PrimitiveTopologyType{ spieler::renderer::PrimitiveTopologyType::Triangle },
+                    .RTVFormat{ swapChain.GetBufferFormat() },
+                    .DSVFormat{ ms_DepthStencilFormat }
+                };
+
+                m_PipelineStates["cubemap"] = spieler::renderer::GraphicsPipelineState{ device, config };
+            }
         }
 
         OnWindowResized();
@@ -663,7 +775,7 @@ namespace sandbox
                     DirectX::BoundingFrustum localSpaceFrustum;
                     m_Camera.GetBoundingFrustum().Transform(localSpaceFrustum, viewToLocal);
 
-                    if (!m_IsCullingEnabled || localSpaceFrustum.Contains(renderItem->SubmeshGeometry->BoundingBox) != DirectX::DISJOINT)
+                    if (!m_IsCullingEnabled || !renderItem->IsNeedCulling || localSpaceFrustum.Contains(renderItem->SubmeshGeometry->BoundingBox) != DirectX::DISJOINT)
                     {
                         const cb::RenderItem constants
                         {
@@ -742,6 +854,7 @@ namespace sandbox
             RenderRenderItems(m_PipelineStates.at("default"), m_DefaultRenderItems);
             RenderRenderItems(m_PipelineStates.at("picked"), std::span{ &m_PickedRenderItem.RenderItem, 1 });
             RenderRenderItems(m_PipelineStates.at("lighting"), m_LightRenderItems);
+            RenderRenderItems(m_PipelineStates.at("cubemap"), std::span{ &m_CubeMapRenderItem, 1 });
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
@@ -824,13 +937,13 @@ namespace sandbox
 
         const spieler::renderer::TextureResource::Config config
         {
-            .Dimension{ spieler::renderer::TextureResource::Dimension::_2D },
+            .Type{ spieler::renderer::TextureResource::Type::_2D },
             .Width{ window.GetWidth() },
             .Height{ window.GetHeight() },
             .Depth{ 1 },
             .MipCount{ 1 },
             .Format{ ms_DepthStencilFormat },
-            .Flags{ spieler::renderer::TextureResource::Flags::DepthStencil }
+            .UsageFlags{ spieler::renderer::TextureResource::UsageFlags::DepthStencil }
         };
 
         const spieler::renderer::TextureResource::ClearDepthStencil clearDepthStencil
@@ -969,9 +1082,17 @@ namespace sandbox
         context.SetPipelineState(pso);
         context.SetGraphicsRootSignature(m_RootSignature);
 
+#if 0
+        context.SetGraphicsRawConstantBufferView(0, m_Buffers.at("pass_constant_buffer").Resource);
+        context.SetGraphicsRawShaderResourceView(2, m_Buffers.at("material_structured_buffer").Resource);
+        context.SetGraphicsShaderResourceView(3, m_Textures.at("space_cubemap").Views.GetView<spieler::renderer::ShaderResourceView>());
+        context.SetGraphicsShaderResourceViewRange(4, m_Textures.at("red").Views.GetView<spieler::renderer::ShaderResourceView>());
+#endif
+
         dx12CommandList->SetGraphicsRootConstantBufferView(0, D3D12_GPU_VIRTUAL_ADDRESS{ m_Buffers.at("pass_constant_buffer").Resource.GetGPUVirtualAddress() });
         dx12CommandList->SetGraphicsRootShaderResourceView(2, D3D12_GPU_VIRTUAL_ADDRESS{ m_Buffers.at("material_structured_buffer").Resource.GetGPUVirtualAddress() });
-        dx12CommandList->SetGraphicsRootDescriptorTable(3, D3D12_GPU_DESCRIPTOR_HANDLE{ m_Textures.at("red").Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+        dx12CommandList->SetGraphicsRootDescriptorTable(3, D3D12_GPU_DESCRIPTOR_HANDLE{ m_Textures.at("space_cubemap").Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
+        dx12CommandList->SetGraphicsRootDescriptorTable(4, D3D12_GPU_DESCRIPTOR_HANDLE{ m_Textures.at("red").Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
 
         for (const auto& renderItem : renderItems)
         {

@@ -33,11 +33,11 @@ namespace spieler::renderer::dx12
     D3D12_DESCRIPTOR_HEAP_TYPE Convert(DescriptorHeap::Type descriptorHeapType);
 
     // texture.hpp
-    TextureResource::Dimension Convert(D3D12_RESOURCE_DIMENSION dimension);
-    D3D12_RESOURCE_DIMENSION Convert(TextureResource::Dimension dimension);
+    TextureResource::Type Convert(D3D12_RESOURCE_DIMENSION dimension);
+    D3D12_RESOURCE_DIMENSION Convert(TextureResource::Type type);
 
-    TextureResource::Flags Convert(D3D12_RESOURCE_FLAGS flags);
-    D3D12_RESOURCE_FLAGS Convert(TextureResource::Flags flags);
+    TextureResource::UsageFlags Convert(D3D12_RESOURCE_FLAGS flags);
+    D3D12_RESOURCE_FLAGS Convert(TextureResource::UsageFlags flags);
     
 } // namespace spieler::renderer::dx12
 

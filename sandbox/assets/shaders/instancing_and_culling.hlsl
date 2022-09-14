@@ -1,32 +1,4 @@
-#include "light.hlsl"
-
-struct PassData
-{
-    float4x4 View;
-    float4x4 Projection;
-    float4x4 ViewProjection;
-    float3 CameraPositionW;
-
-    float4 AmbientLight;
-    light::LightContainer Lights;
-};
-
-struct RenderItemData
-{
-    float4x4 World;
-    uint MaterialIndex;
-    uint3 Padding;
-};
-
-struct MaterialData
-{
-    float4 DiffuseAlbedo;
-    float3 FresnelR0;
-    float Roughness;
-    float4x4 Transform;
-    uint DiffuseMapIndex;
-    uint3 Padding;
-};
+#include "common.hlsl"
 
 struct VS_INPUT
 {
@@ -45,11 +17,6 @@ struct VS_OUTPUT
     nointerpolation uint MaterialIndex : MaterialIndex;
 };
 
-ConstantBuffer<PassData> g_Pass : register(b0);
-
-StructuredBuffer<RenderItemData> g_RenderItems : register(t0, space1);
-StructuredBuffer<MaterialData> g_Materials : register(t0, space2);
-
 VS_OUTPUT VS_Main(VS_INPUT input, uint instanceID : SV_InstanceID)
 {
     const RenderItemData renderItemData = g_RenderItems[instanceID];
@@ -65,17 +32,12 @@ VS_OUTPUT VS_Main(VS_INPUT input, uint instanceID : SV_InstanceID)
     return output;
 }
 
-Texture2D g_DiffuseMaps[4] : register(t0);
-
-SamplerState g_SamplerLinearWrap : register(s0);
-SamplerState g_SamplerAnisotropicWrap : register(s1);
-
 float4 PS_Main(VS_OUTPUT input) : SV_Target
 {
     const MaterialData materialData = g_Materials[input.MaterialIndex];
     const Texture2D diffuseMap = g_DiffuseMaps[NonUniformResourceIndex(materialData.DiffuseMapIndex)];
 
-    float4 diffuseAlbedo = diffuseMap.Sample(g_SamplerLinearWrap, input.TexCoord);
+    float4 diffuseAlbedo = diffuseMap.Sample(g_LinearWrapSampler, input.TexCoord);
 
 #if !defined(USE_LIGHTING)
 

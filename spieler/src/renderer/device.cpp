@@ -56,7 +56,7 @@ namespace spieler::renderer
         {
             return D3D12_RESOURCE_DESC
             {
-                .Dimension{ dx12::Convert(config.Dimension) },
+                .Dimension{ dx12::Convert(config.Type) },
                 .Alignment{ 0 },
                 .Width{ static_cast<uint64_t>(config.Width) },
                 .Height{ config.Height },
@@ -65,7 +65,7 @@ namespace spieler::renderer
                 .Format{ dx12::Convert(config.Format) },
                 .SampleDesc{ 1, 0 },
                 .Layout{ D3D12_TEXTURE_LAYOUT_UNKNOWN },
-                .Flags{ dx12::Convert(config.Flags) }
+                .Flags{ dx12::Convert(config.UsageFlags) }
             };
         }
 

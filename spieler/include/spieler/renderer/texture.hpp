@@ -12,7 +12,7 @@ namespace spieler::renderer
     class TextureResource final : public Resource
     {
     public:
-        enum class Flags
+        enum class UsageFlags
         {
             None,
             RenderTarget,
@@ -20,23 +20,24 @@ namespace spieler::renderer
             UnorderedAccess,
         };
 
-        enum class Dimension
+        enum class Type
         {
             Unknown,
-            _1D,
+            //_1D,
             _2D,
-            _3D
+            //_3D,
+            CubeMap
         };
 
         struct Config
         {
-            Dimension Dimension{ Dimension::_2D };
+            Type Type{ Type::_2D };
             uint32_t Width{ 0 };
             uint32_t Height{ 0 };
             uint16_t Depth{ 1 };
             uint16_t MipCount{ 1 };
             GraphicsFormat Format{ GraphicsFormat::Unknown };
-            Flags Flags{ Flags::None };
+            UsageFlags UsageFlags{ UsageFlags::None };
         };
 
         struct ClearColor

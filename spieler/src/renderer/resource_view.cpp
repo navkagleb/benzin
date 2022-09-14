@@ -184,9 +184,68 @@ namespace spieler::renderer
 
         m_Descriptor = device.GetDescriptorManager().AllocateSRV();
 
+        const D3D12_RESOURCE_DESC dx12ResourceDesc{ resource.GetDX12Resource()->GetDesc() };
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC dx12SRVDesc
+        {
+            .Format{ dx12ResourceDesc.Format },
+            .Shader4ComponentMapping{ D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING }
+        };
+
+        if (dx12ResourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+        {
+            const auto& bufferResource{ static_cast<const BufferResource&>(resource) };
+
+            dx12SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+            dx12SRVDesc.Buffer = D3D12_BUFFER_SRV
+            {
+                .FirstElement{ 0 },
+                .NumElements{ bufferResource.GetConfig().ElementCount },
+                .StructureByteStride{ bufferResource.GetConfig().ElementSize },
+                .Flags{ D3D12_BUFFER_SRV_FLAG_NONE }
+            };
+        }
+        else
+        {
+            const auto& textureResource{ static_cast<const TextureResource&>(resource) };
+
+            switch (textureResource.GetConfig().Type)
+            {
+                case TextureResource::Type::_2D:
+                {
+                    dx12SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                    dx12SRVDesc.Texture2D = D3D12_TEX2D_SRV
+                    {
+                        .MostDetailedMip{ 0 },
+                        .MipLevels{ dx12ResourceDesc.MipLevels },
+                        .PlaneSlice{ 0 },
+                        .ResourceMinLODClamp{ 0.0f }
+                    };
+
+                    break;
+                }
+                case TextureResource::Type::CubeMap:
+                {
+                    dx12SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+                    dx12SRVDesc.TextureCube = D3D12_TEXCUBE_SRV
+                    {
+                        .MostDetailedMip{ 0 },
+                        .MipLevels{ dx12ResourceDesc.MipLevels },
+                        .ResourceMinLODClamp{ 0.0f }
+                    };
+
+                    break;
+                }
+                default:
+                {
+                    SPIELER_ASSERT(false);
+                }
+            }
+        }
+
         device.GetDX12Device()->CreateShaderResourceView(
             resource.GetDX12Resource(),
-            nullptr,
+            &dx12SRVDesc,
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_Descriptor.CPU }
         );
     }

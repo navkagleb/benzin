@@ -405,14 +405,14 @@ namespace spieler::renderer::dx12
         return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     }
 
-    TextureResource::Dimension Convert(D3D12_RESOURCE_DIMENSION dimension)
+    TextureResource::Type Convert(D3D12_RESOURCE_DIMENSION dimension)
     {
         switch (dimension)
         {
-            case D3D12_RESOURCE_DIMENSION_UNKNOWN: return TextureResource::Dimension::Unknown;
-            case D3D12_RESOURCE_DIMENSION_TEXTURE1D: return TextureResource::Dimension::_1D;
-            case D3D12_RESOURCE_DIMENSION_TEXTURE2D: return TextureResource::Dimension::_2D;
-            case D3D12_RESOURCE_DIMENSION_TEXTURE3D: return TextureResource::Dimension::_3D;
+            case D3D12_RESOURCE_DIMENSION_UNKNOWN: return TextureResource::Type::Unknown;
+            //case D3D12_RESOURCE_DIMENSION_TEXTURE1D: return TextureResource::Dimension::_1D;
+            case D3D12_RESOURCE_DIMENSION_TEXTURE2D: return TextureResource::Type::_2D;
+            //case D3D12_RESOURCE_DIMENSION_TEXTURE3D: return TextureResource::Dimension::_3D;
 
             default:
             {
@@ -421,17 +421,18 @@ namespace spieler::renderer::dx12
             }
         }
 
-        return TextureResource::Dimension::Unknown;
+        return TextureResource::Type::Unknown;
     }
 
-    D3D12_RESOURCE_DIMENSION Convert(TextureResource::Dimension dimension)
+    D3D12_RESOURCE_DIMENSION Convert(TextureResource::Type type)
     {
-        switch (dimension)
+        switch (type)
         {
-            case TextureResource::Dimension::Unknown: return D3D12_RESOURCE_DIMENSION_UNKNOWN;
-            case TextureResource::Dimension::_1D: return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
-            case TextureResource::Dimension::_2D: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-            case TextureResource::Dimension::_3D: return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+            case TextureResource::Type::Unknown: return D3D12_RESOURCE_DIMENSION_UNKNOWN;
+            //case TextureResource::Dimension::_1D: return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+            case TextureResource::Type::_2D:
+            case TextureResource::Type::CubeMap: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+            //case TextureResource::Dimension::_3D: return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
             
             default:
             {
@@ -443,14 +444,14 @@ namespace spieler::renderer::dx12
         return D3D12_RESOURCE_DIMENSION_UNKNOWN;
     }
 
-    TextureResource::Flags Convert(D3D12_RESOURCE_FLAGS flags)
+    TextureResource::UsageFlags Convert(D3D12_RESOURCE_FLAGS flags)
     {
         switch (flags)
         {
-            case D3D12_RESOURCE_FLAG_NONE: return TextureResource::Flags::None;
-            case D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET: return TextureResource::Flags::RenderTarget;
-            case D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL: return TextureResource::Flags::DepthStencil;
-            case D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS: return TextureResource::Flags::UnorderedAccess;
+            case D3D12_RESOURCE_FLAG_NONE: return TextureResource::UsageFlags::None;
+            case D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET: return TextureResource::UsageFlags::RenderTarget;
+            case D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL: return TextureResource::UsageFlags::DepthStencil;
+            case D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS: return TextureResource::UsageFlags::UnorderedAccess;
 
             default:
             {
@@ -459,17 +460,17 @@ namespace spieler::renderer::dx12
             }
         }
 
-        return TextureResource::Flags::None;
+        return TextureResource::UsageFlags::None;
     }
 
-    D3D12_RESOURCE_FLAGS Convert(TextureResource::Flags flags)
+    D3D12_RESOURCE_FLAGS Convert(TextureResource::UsageFlags flags)
     {
         switch (flags)
         {
-            case TextureResource::Flags::None: return D3D12_RESOURCE_FLAG_NONE;
-            case TextureResource::Flags::RenderTarget: return D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-            case TextureResource::Flags::DepthStencil: return D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-            case TextureResource::Flags::UnorderedAccess: return D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            case TextureResource::UsageFlags::None: return D3D12_RESOURCE_FLAG_NONE;
+            case TextureResource::UsageFlags::RenderTarget: return D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+            case TextureResource::UsageFlags::DepthStencil: return D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+            case TextureResource::UsageFlags::UnorderedAccess: return D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
             default:
             {
