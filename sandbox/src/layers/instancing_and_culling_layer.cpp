@@ -287,7 +287,7 @@ namespace sandbox
                 {
                     .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
-                    .Roughness{ 0.9f },
+                    .Roughness{ 0.7f },
                     .DiffuseMapIndex{ 1 },
                     .StructuredBufferIndex{ 1 }
                 };

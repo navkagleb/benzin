@@ -44,24 +44,39 @@ float4 PS_Main(VS_OUTPUT input) : SV_Target
     return diffuseAlbedo;
 
 #else
-
-    diffuseAlbedo *= materialData.DiffuseAlbedo;
-
-    input.NormalW = normalize(input.NormalW);
+    float4 litColor = 0.0f;
 
     const float3 viewVector = normalize(g_Pass.CameraPositionW - input.PositionW);
 
-    const float4 ambient = g_Pass.AmbientLight * diffuseAlbedo;
+    diffuseAlbedo *= materialData.DiffuseAlbedo;
 
     light::Material material;
     material.DiffuseAlbedo = diffuseAlbedo;
     material.FresnelR0 = materialData.FresnelR0;
     material.Shininess = 1.0f - materialData.Roughness;
 
-    const float3 shadowFactor = 1.0f;
+    // Ligting
+    {
+        input.NormalW = normalize(input.NormalW);
 
-    float4 litColor = light::ComputeLighting(g_Pass.Lights, material, input.PositionW, input.NormalW, viewVector, shadowFactor);
-    litColor += ambient;
+        const float4 ambient = g_Pass.AmbientLight * diffuseAlbedo;
+
+        const float3 shadowFactor = 1.0f;
+        const float4 light = light::ComputeLighting(g_Pass.Lights, material, input.PositionW, input.NormalW, viewVector, shadowFactor);
+
+        litColor = ambient + light;
+    }
+
+    // Specular reflections
+    {
+        const float3 reflection = reflect(-viewVector, input.NormalW);
+        const float4 reflectionColor = g_CubeMap.Sample(g_LinearWrapSampler, reflection);
+        const float3 fresnelFactor = light::internal::SchlickFresnel(materialData.FresnelR0, input.NormalW, reflection);
+
+        const float3 specularReflections = material.Shininess * fresnelFactor * reflectionColor.rgb;
+
+        litColor.rgb += specularReflections;
+    }
 
     litColor.a = diffuseAlbedo.a;
 
