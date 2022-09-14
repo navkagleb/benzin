@@ -155,11 +155,15 @@ namespace spieler::renderer
             wcstombs_s(nullptr, adapterName.data(), adapterDescriptionSize, dxgiAdapterDesc.Description, adapterDescriptionSize * sizeof(wchar_t));
 
             adapterStringStream << fmt::format(
-                "{}\n"
+                "{}: {}\n"
+                "       VendorID: {}\n"
+                "       DeviceID: {}\n"
                 "       DedicatedVideoMemory: {}MB, {}GB\n"
                 "       DedicatedSystemMemory: {}MB, {}GB\n"
                 "       SharedSystemMemory: {}MB, {}GB\n",
-                adapterName.c_str(),
+                adapterIndex, adapterName.c_str(),
+                dxgiAdapterDesc.VendorId,
+                dxgiAdapterDesc.DeviceId,
                 ConvertBytesToMB(dxgiAdapterDesc.DedicatedVideoMemory), ConvertBytesToGB(dxgiAdapterDesc.DedicatedVideoMemory),
                 ConvertBytesToMB(dxgiAdapterDesc.DedicatedSystemMemory), ConvertBytesToGB(dxgiAdapterDesc.DedicatedSystemMemory),
                 ConvertBytesToMB(dxgiAdapterDesc.SharedSystemMemory), ConvertBytesToGB(dxgiAdapterDesc.SharedSystemMemory)
