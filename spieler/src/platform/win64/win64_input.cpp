@@ -4,8 +4,6 @@
 
 #if defined(SPIELER_PLATFORM_WINDOWS)
 
-#include "spieler/core/assert.hpp"
-
 namespace spieler
 {
 

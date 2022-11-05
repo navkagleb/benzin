@@ -11,14 +11,13 @@ namespace spieler::renderer
         DirectX::XMFLOAT2 TexCoord{};
     };
 
-    template <typename Index>
     struct MeshData
     {
         std::vector<Vertex> Vertices;
-        std::vector<Index> Indices;
+        std::vector<uint32_t> Indices;
     };
 
-    struct BoxGeometryProps
+    struct BoxGeometryConfig
     {
         float Width{ 0.0f };
         float Height{ 0.0f };
@@ -26,7 +25,7 @@ namespace spieler::renderer
         uint32_t SubdivisionCount{ 0 };
     };
 
-    struct GridGeometryProps
+    struct GridGeometryConfig
     {
         float Width{ 0.0f };
         float Depth{ 0.0f };
@@ -34,7 +33,7 @@ namespace spieler::renderer
         uint32_t ColumnCount{ 0 };
     };
 
-    struct CylinderGeometryProps
+    struct CylinderGeometryConfig
     {
         float TopRadius{ 0.0f };
         float BottomRadius{ 0.0f };
@@ -43,14 +42,14 @@ namespace spieler::renderer
         uint32_t StackCount{ 0 };
     };
 
-    struct SphereGeometryProps
+    struct SphereGeometryConfig
     {
         float Radius{ 0.0f };
         uint32_t SliceCount{ 0 };
         uint32_t StackCount{ 0 };
     };
 
-    struct GeosphereGeometryProps
+    struct GeosphereGeometryConfig
     {
         float Radius{ 0.0f };
         uint32_t SubdivisionCount{ 6 };
@@ -59,34 +58,18 @@ namespace spieler::renderer
     class GeometryGenerator
     {
     public:
-        template <typename Index = uint32_t>
-        static MeshData<Index> GenerateBox(const BoxGeometryProps& props);
-
-        template <typename Index = uint32_t>
-        static MeshData<Index> GenerateGrid(const GridGeometryProps& props);
-
-        template <typename Index = uint32_t>
-        static MeshData<Index> GenerateCylinder(const CylinderGeometryProps& props);
-
-        template <typename Index = uint32_t>
-        static MeshData<Index> GenerateSphere(const SphereGeometryProps& props);
-
-        template <typename Index = uint32_t>
-        static MeshData<Index> GenerateGeosphere(const GeosphereGeometryProps& props);
+        static MeshData GenerateBox(const BoxGeometryConfig& props);
+        static MeshData GenerateGrid(const GridGeometryConfig& props);
+        static MeshData GenerateCylinder(const CylinderGeometryConfig& props);
+        static MeshData GenerateSphere(const SphereGeometryConfig& props);
+        static MeshData GenerateGeosphere(const GeosphereGeometryConfig& props);
 
     private:
-        template <typename Index>
-        static void Subdivide(MeshData<Index>& meshData);
-
         static Vertex MiddlePoint(const Vertex& lhs, const Vertex& rhs);
 
-        template <typename Index>
-        static void GenerateCylinderTopCap(const CylinderGeometryProps& props, MeshData<Index>& meshData);
-
-        template <typename Index>
-        static void GenerateCylinderBottomCap(const CylinderGeometryProps& props, MeshData<Index>& meshData);
+        static void Subdivide(MeshData& meshData);
+        static void GenerateCylinderTopCap(const CylinderGeometryConfig& props, MeshData& meshData);
+        static void GenerateCylinderBottomCap(const CylinderGeometryConfig& props, MeshData& meshData);
     };
 
 } // namespace spieler::renderer
-
-#include "geometry_generator.inl"

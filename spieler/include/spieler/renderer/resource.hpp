@@ -1,5 +1,8 @@
 #pragma once
 
+#include "spieler/renderer/common.hpp"
+#include "spieler/renderer/descriptor_manager.hpp"
+
 namespace spieler::renderer
 {
 
@@ -19,22 +22,27 @@ namespace spieler::renderer
 
     public:
         Resource() = default;
-        Resource(ComPtr<ID3D12Resource>&& dx12Resource);
-        Resource(Resource&& other) noexcept;
+        Resource(ID3D12Resource* dx12Resource);
+        virtual ~Resource();
 
     public:
-        ID3D12Resource* GetDX12Resource() const { return m_DX12Resource.Get(); }
+        ID3D12Resource* GetDX12Resource() const { return m_DX12Resource; }
 
     public:
-        GPUVirtualAddress GetGPUVirtualAddress() const { return static_cast<GPUVirtualAddress>(m_DX12Resource->GetGPUVirtualAddress()); }
-
-        void Release();
+        GPUVirtualAddress GetGPUVirtualAddress() const;
         
+    protected:
+        ID3D12Resource* m_DX12Resource{ nullptr };
+    };
+
+    template <typename Descriptor>
+    class DescriptorView
+    {
     public:
-        Resource& operator=(Resource&& other) noexcept;
+        const Descriptor& GetDescriptor() const { return m_Descriptor; }
 
     protected:
-        ComPtr<ID3D12Resource> m_DX12Resource;
+        Descriptor m_Descriptor;
     };
 
 } // namespace spieler::renderer

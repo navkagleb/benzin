@@ -5,29 +5,23 @@
 namespace spieler::renderer
 {
 
-    Resource::Resource(ComPtr<ID3D12Resource>&& dx12Resource)
-        : m_DX12Resource{ std::exchange(dx12Resource, nullptr) }
+    Resource::Resource(ID3D12Resource* dx12Resource)
+        : m_DX12Resource{ dx12Resource }
     {}
 
-    Resource::Resource(Resource&& other) noexcept
-        : m_DX12Resource{ std::exchange(other.m_DX12Resource, nullptr) }
-    {}
-
-    void Resource::Release()
+    Resource::~Resource()
     {
-        m_DX12Resource.Reset();
+        if (m_DX12Resource)
+        {
+            m_DX12Resource->Release();
+        }
     }
 
-    Resource& Resource::operator=(Resource&& other) noexcept
+    GPUVirtualAddress Resource::GetGPUVirtualAddress() const
     {
-        if (this == &other)
-        {
-            return *this;
-        }
+        SPIELER_ASSERT(m_DX12Resource);
 
-        m_DX12Resource.Swap(std::move(other.m_DX12Resource));
-
-        return *this;
+        return m_DX12Resource->GetGPUVirtualAddress();
     }
 
 } // namespace spieler::renderer

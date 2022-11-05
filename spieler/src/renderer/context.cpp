@@ -2,18 +2,16 @@
 
 #include "spieler/renderer/context.hpp"
 
-#include "spieler/core/assert.hpp"
 #include "spieler/core/common.hpp"
 
 #include "spieler/renderer/resource.hpp"
 #include "spieler/renderer/buffer.hpp"
+#include "spieler/renderer/texture.hpp"
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/pipeline_state.hpp"
 #include "spieler/renderer/root_signature.hpp"
-#include "spieler/renderer/texture.hpp"
-#include "spieler/renderer/resource_view.hpp"
-
-#include "renderer/mapped_data.hpp"
+#include "spieler/renderer/utils.hpp"
+#include "spieler/renderer/mapped_data.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
 
@@ -63,7 +61,7 @@ namespace spieler::renderer
     {
         const uint64_t offset{ alignment == 0 ? Offset : utils::Align(Offset, alignment) };
 
-        SPIELER_ASSERT(offset + size <= Resource.GetConfig().ElementCount);
+        SPIELER_ASSERT(offset + size <= Resource->GetConfig().ElementCount);
         Offset = offset + size;
 
         return offset;
@@ -84,7 +82,7 @@ namespace spieler::renderer
                 .Flags{ BufferResource::Flags::Dynamic }
             };
 
-            m_UploadBuffer.Resource = BufferResource{ device, config };
+            m_UploadBuffer.Resource = BufferResource::Create(device, config);
         }
 
         SPIELER_ASSERT(Init(device));
@@ -97,14 +95,63 @@ namespace spieler::renderer
         m_DX12GraphicsCommandList->SetDescriptorHeaps(1, &dx12DescriptorHeap);
     }
 
-    void Context::IASetVertexBuffer(const VertexBufferView* vertexBufferView)
+    void Context::IASetVertexBuffer(const BufferResource* vertexBuffer)
     {
-        m_DX12GraphicsCommandList->IASetVertexBuffers(0, 1, reinterpret_cast<const D3D12_VERTEX_BUFFER_VIEW*>(vertexBufferView));
+        if (!vertexBuffer)
+        {
+            m_DX12GraphicsCommandList->IASetVertexBuffers(0, 1, nullptr);
+        }
+        else
+        {
+            const D3D12_VERTEX_BUFFER_VIEW dx12VBV
+            {
+                .BufferLocation{ static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(vertexBuffer->GetGPUVirtualAddress()) },
+                .SizeInBytes{ vertexBuffer->GetConfig().ElementSize * vertexBuffer->GetConfig().ElementCount },
+                .StrideInBytes{ vertexBuffer->GetConfig().ElementSize }
+            };
+
+            m_DX12GraphicsCommandList->IASetVertexBuffers(0, 1, &dx12VBV);
+        }
     }
 
-    void Context::IASetIndexBuffer(const IndexBufferView* indexBufferView)
+    void Context::IASetIndexBuffer(const BufferResource* indexBuffer)
     {
-        m_DX12GraphicsCommandList->IASetIndexBuffer(reinterpret_cast<const D3D12_INDEX_BUFFER_VIEW*>(indexBufferView));
+        if (!indexBuffer)
+        {
+            m_DX12GraphicsCommandList->IASetIndexBuffer(nullptr);
+        }
+        else
+        {
+            GraphicsFormat format;
+
+            switch (indexBuffer->GetConfig().ElementSize)
+            {
+                case 2:
+                {
+                    format = GraphicsFormat::R16UnsignedInt;
+                    break;
+                }
+                case 4:
+                {
+                    format = GraphicsFormat::R32UnsignedInt;
+                    break;
+                }
+                default:
+                {
+                    SPIELER_ASSERT(false);
+                    break;
+                }
+            }
+
+            const D3D12_INDEX_BUFFER_VIEW dx12IBV
+            {
+                .BufferLocation{ static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(indexBuffer->GetGPUVirtualAddress()) },
+                .SizeInBytes{ indexBuffer->GetConfig().ElementSize * indexBuffer->GetConfig().ElementCount },
+                .Format{ dx12::Convert(format) }
+            };
+
+            m_DX12GraphicsCommandList->IASetIndexBuffer(&dx12IBV);
+        }
     }
 
     void Context::IASetPrimitiveTopology(PrimitiveTopology primitiveTopology)
@@ -147,14 +194,35 @@ namespace spieler::renderer
         m_DX12GraphicsCommandList->SetComputeRootSignature(rootSignature.GetDX12RootSignature());
     }
 
-    void Context::SetRenderTarget(const RenderTargetView& rtv)
+    void Context::SetGraphicsRawConstantBuffer(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement)
+    {
+        const D3D12_GPU_VIRTUAL_ADDRESS dx12GPUVirtualAddress{ bufferResource.GetDX12Resource()->GetGPUVirtualAddress() + beginElement * bufferResource.GetConfig().ElementSize };
+
+        m_DX12GraphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, dx12GPUVirtualAddress);
+    }
+
+    void Context::SetGraphicsRawShaderResource(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement)
+    {
+        const D3D12_GPU_VIRTUAL_ADDRESS dx12GPUVirtualAddress{ bufferResource.GetDX12Resource()->GetGPUVirtualAddress() + beginElement * bufferResource.GetConfig().ElementSize };
+
+        m_DX12GraphicsCommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, dx12GPUVirtualAddress);
+    }
+
+    void Context::SetGraphicsDescriptorTable(uint32_t rootParameterIndex, const TextureShaderResourceView& srv)
+    {
+        const D3D12_GPU_DESCRIPTOR_HANDLE dx12GPUDescriptorHandle{ srv.GetDescriptor().GPU };
+        
+        m_DX12GraphicsCommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, dx12GPUDescriptorHandle);
+    }
+
+    void Context::SetRenderTarget(const TextureRenderTargetView& rtv)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
 
         m_DX12GraphicsCommandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, nullptr);
     }
 
-    void Context::SetRenderTarget(const RenderTargetView& rtv, const DepthStencilView& dsv)
+    void Context::SetRenderTarget(const TextureRenderTargetView& rtv, const TextureDepthStencilView& dsv)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
         const D3D12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle{ dsv.GetDescriptor().CPU };
@@ -162,14 +230,14 @@ namespace spieler::renderer
         m_DX12GraphicsCommandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, &dsvDescriptorHandle);
     }
 
-    void Context::ClearRenderTarget(const RenderTargetView& rtv, const DirectX::XMFLOAT4& color)
+    void Context::ClearRenderTarget(const TextureRenderTargetView& rtv, const DirectX::XMFLOAT4& color)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
 
         m_DX12GraphicsCommandList->ClearRenderTargetView(rtvDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
     }
 
-    void Context::ClearDepthStencil(const DepthStencilView& dsv, float depth, uint8_t stencil)
+    void Context::ClearDepthStencil(const TextureDepthStencilView& dsv, float depth, uint8_t stencil)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle{ dsv.GetDescriptor().CPU };
 
@@ -210,7 +278,7 @@ namespace spieler::renderer
 
         memcpy_s(mappedData.GetData() + uploadBufferOffset, size, data, size);
 
-        m_DX12GraphicsCommandList->CopyBufferRegion(buffer.GetDX12Resource(), 0, m_UploadBuffer.Resource.GetDX12Resource(), uploadBufferOffset, size);
+        m_DX12GraphicsCommandList->CopyBufferRegion(buffer.GetDX12Resource(), 0, m_UploadBuffer.Resource->GetDX12Resource(), uploadBufferOffset, size);
     }
 
     void Context::UploadToTexture(TextureResource& texture, std::vector<SubresourceData>& subresources)
@@ -293,13 +361,18 @@ namespace spieler::renderer
 
             const D3D12_TEXTURE_COPY_LOCATION source
             {
-                .pResource{ m_UploadBuffer.Resource.GetDX12Resource() },
+                .pResource{ m_UploadBuffer.Resource->GetDX12Resource() },
                 .Type{ D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT },
                 .PlacedFootprint{ layouts[i] }
             };
 
             m_DX12GraphicsCommandList->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
         }
+    }
+
+    void Context::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount /* = 1 */)
+    {
+        m_DX12GraphicsCommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, 0);
     }
 
     void Context::CloseCommandList()

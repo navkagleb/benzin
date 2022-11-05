@@ -23,14 +23,22 @@ namespace spieler::renderer
         void SetFrontDirection(const DirectX::XMVECTOR& frontDirection);
 
         const DirectX::XMVECTOR& GetUpDirection() const { return m_UpDirection; }
+        void SetUpDirection(const DirectX::XMVECTOR& upDirection);
 
         const DirectX::XMVECTOR& GetRightDirection() const { return m_RightDirection; }
 
+        // Supports only radians
         float GetFOV() const { return m_FOV; }
         void SetFOV(float fov);
 
         float GetAspectRatio() const { return m_AspectRatio; }
         void SetAspectRatio(float aspectRatio);
+
+        float GetNearPlane() const { return m_NearPlane; }
+        void SetNearPlane(float nearPlane);
+
+        float GetFarPlane() const { return m_FarPlane; }
+        void SetFarPlane(float farPlane);
 
         const DirectX::XMMATRIX& GetView() const { return m_View; }
         const DirectX::XMMATRIX& GetInverseView() const { return m_InverseView; }
@@ -43,6 +51,8 @@ namespace spieler::renderer
         const DirectX::BoundingFrustum& GetBoundingFrustum() const { return m_BoundingFrustum; }
 
     public:
+        void UpdateRightDirection();
+
         void UpdateView();
         void UpdateProjection();
 

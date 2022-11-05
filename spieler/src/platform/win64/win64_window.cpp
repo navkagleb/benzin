@@ -6,9 +6,6 @@
 
 #include <third_party/imgui/imgui_impl_win32.h>
 
-#include "spieler/core/logger.hpp"
-#include "spieler/core/assert.hpp"
-
 #include "spieler/system/window_event.hpp"
 #include "spieler/system/mouse_event.hpp"
 #include "spieler/system/key_event.hpp"

@@ -1,7 +1,6 @@
 #include "bootstrap.hpp"
 
 #include <spieler/core/application.hpp>
-#include <spieler/core/logger.hpp>
 
 #include <spieler/system/key_event.hpp>
 #include <spieler/system/event_dispatcher.hpp>
@@ -81,12 +80,12 @@ namespace sandbox
             {
                 case 0:
                 {
-                    m_CurrentLayer = application.GetLayerStack().Push<TestLayer>();
+                    //m_CurrentLayer = application.GetLayerStack().Push<TestLayer>();
                     break;
                 }
                 case 1:
                 {
-                    m_CurrentLayer = application.GetLayerStack().Push<TessellationLayer>();
+                    //m_CurrentLayer = application.GetLayerStack().Push<TessellationLayer>();
                     break;
                 }
                 case 2:

@@ -2,7 +2,7 @@
 
 #include "spieler/renderer/common.hpp"
 #include "spieler/renderer/buffer.hpp"
-#include "spieler/renderer/resource_view.hpp"
+#include "spieler/renderer/texture.hpp"
 #include "spieler/renderer/geometry_generator.hpp"
 
 namespace spieler::renderer
@@ -17,15 +17,33 @@ namespace spieler::renderer
         DirectX::BoundingBox BoundingBox{};
     };
 
-    struct MeshGeometry
+    class MeshGeometry
     {
-        std::vector<Vertex> Vertices;
-        std::vector<uint32_t> Indices;
+    public:
+        MeshGeometry() = default;
+        explicit MeshGeometry(const std::unordered_map<std::string, MeshData>& submeshes);
 
-        Buffer VertexBuffer;
-        Buffer IndexBuffer;
+    public:
+        const std::vector<Vertex>& GetVertices() const { return m_Vertices; }
+        const std::vector<uint32_t>& GetIndices() const { return m_Indices; }
 
-        std::unordered_map<std::string, SubmeshGeometry> Submeshes;
+        Buffer& GetVertexBuffer() { return m_VertexBuffer; }
+        const Buffer& GetVertexBuffer() const { return m_VertexBuffer; }
+
+        Buffer& GetIndexBuffer() { return m_IndexBuffer; }
+        const Buffer& GetIndexBuffer() const { return m_IndexBuffer; }
+
+        const SubmeshGeometry& GetSubmesh(const std::string& name) const { return m_Submeshes.at(name); }
+        void SetSubmeshes(const std::unordered_map<std::string, MeshData>& submeshes);
+
+    private:
+        std::vector<Vertex> m_Vertices;
+        std::vector<uint32_t> m_Indices;
+
+        Buffer m_VertexBuffer;
+        Buffer m_IndexBuffer;
+
+        std::unordered_map<std::string, SubmeshGeometry> m_Submeshes;
     };
 
     struct Transform
@@ -61,7 +79,7 @@ namespace spieler::renderer
 
     struct Material
     {
-        ShaderResourceView DiffuseMap;
+        TextureShaderResourceView DiffuseMap;
         MaterialConstants Constants;
         Transform Transform;
         uint32_t ConstantBufferIndex{ 0 };

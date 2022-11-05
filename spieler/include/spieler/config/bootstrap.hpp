@@ -7,7 +7,7 @@
 #include <cstdint>
 
 #if defined(SPIELER_DEBUG)
-#include <cassert>
+    #include <cassert>
 #endif
 
 #include <memory>
@@ -41,3 +41,6 @@
 #include "spieler/config/engine_config.hpp"
 
 #include "spieler/utility/class_modifiers.hpp"
+
+#include "spieler/core/assert.hpp"
+#include "spieler/core/logger.hpp"

@@ -121,7 +121,7 @@ namespace sandbox
 
         LookUpTable<spieler::renderer::Texture> m_Textures;
         LookUpTable<spieler::renderer::SamplerConfig> m_Samplers;
-        LookUpTable<spieler::renderer::SamplerView> m_SamplerViews;
+        //LookUpTable<spieler::renderer::SamplerView> m_SamplerViews;
         LookUpTable<spieler::renderer::Material> m_Materials;
         LookUpTable<spieler::renderer::MeshGeometry> m_MeshGeometries;
         LookUpTable<spieler::renderer::RootSignature> m_RootSignatures;
@@ -129,7 +129,7 @@ namespace sandbox
         spieler::renderer::ShaderLibrary m_ShaderLibrary;
 
         LookUpTable<spieler::renderer::GraphicsPipelineState> m_PipelineStates;
-        LookUpTable<spieler::renderer::BufferResource> m_ConstantBuffers;
+        LookUpTable<std::shared_ptr<spieler::renderer::BufferResource>> m_ConstantBuffers;
 
         // RenderItems
         std::unordered_map<std::string, std::unique_ptr<spieler::renderer::RenderItem>> m_RenderItems;

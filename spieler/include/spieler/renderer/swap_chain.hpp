@@ -2,9 +2,8 @@
 
 #include "spieler/system/window.hpp"
 
-#include "spieler/renderer/texture.hpp"
-#include "spieler/renderer/resource_view.hpp"
 #include "spieler/renderer/common.hpp"
+#include "spieler/renderer/texture.hpp"
 
 namespace spieler::renderer
 {

@@ -3,7 +3,6 @@
 #include "spieler/core/layer_stack.hpp"
 
 #include "spieler/core/common.hpp"
-#include "spieler/core/assert.hpp"
 #include "spieler/system/event.hpp"
 
 namespace spieler

@@ -13,8 +13,52 @@
 #include <spieler/renderer/pipeline_state.hpp>
 #include <spieler/renderer/camera.hpp>
 
+namespace spieler::renderer
+{
+
+    class Device;
+
+} // namespace spieler::renderer
+
 namespace sandbox
 {
+
+    class DynamicCubeMap
+    {
+    public:
+        DynamicCubeMap(uint32_t width, uint32_t height);
+
+    public:
+        spieler::renderer::Texture& GetCubeMap() { return m_CubeMap; }
+        spieler::renderer::Texture& GetDepthStencil() { return m_DepthStencil; }
+
+        const DirectX::XMVECTOR& GetPosition() const { return m_Position; }
+        void SetPosition(const DirectX::XMVECTOR& position);
+
+        const spieler::renderer::Camera& GetCamera(uint32_t index) const { return m_Cameras[index]; }
+
+        const spieler::renderer::Viewport& GetViewport() const { return m_Viewport; }
+        const spieler::renderer::ScissorRect& GetScissorRect() const { return m_ScissorRect; }
+
+    public:
+        void OnResize(uint32_t width, uint32_t height);
+
+    private:
+        void InitCubeMap(spieler::renderer::Device& device, uint32_t width, uint32_t height);
+        void InitDepthStencil(spieler::renderer::Device& device, uint32_t width, uint32_t height);
+        void InitCameras(uint32_t width, uint32_t height);
+        void InitViewport(float width, float height);
+
+    private:
+        spieler::renderer::Texture m_CubeMap;
+        spieler::renderer::Texture m_DepthStencil;
+
+        DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, 0.0f, 1.0f };
+        std::array<spieler::renderer::Camera, 6> m_Cameras;
+
+        spieler::renderer::Viewport m_Viewport;
+        spieler::renderer::ScissorRect m_ScissorRect;
+    };
 
     class InstancingAndCullingLayer final : public spieler::Layer
     {
@@ -95,6 +139,14 @@ namespace sandbox
         void OnImGuiRender(float dt) override;
 
     private:
+        void InitTextures();
+        void InitMeshGeometries();
+
+        void InitBuffers();
+
+        void InitRootSignature();
+        void InitPipelineState();
+
         void InitViewport();
         void InitScissorRect();
         void InitDepthStencil();
@@ -123,6 +175,7 @@ namespace sandbox
         std::unordered_map<std::string, std::unique_ptr<RenderItem>> m_RenderItems;
         std::vector<RenderItem*> m_DefaultRenderItems;
         std::vector<RenderItem*> m_LightRenderItems;
+        RenderItem* m_DynamicCubeRenderItem{ nullptr };
         RenderItem* m_CubeMapRenderItem{ nullptr };
         PickedRenderItem m_PickedRenderItem;
 
@@ -133,6 +186,8 @@ namespace sandbox
         spieler::renderer::CameraController m_CameraController{ m_Camera };
 
         PointLightController m_PointLightController;
+
+        std::unique_ptr<DynamicCubeMap> m_DynamicCubeMap;
 
         bool m_IsCullingEnabled{ true };
     };

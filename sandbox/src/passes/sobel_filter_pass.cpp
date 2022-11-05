@@ -29,14 +29,14 @@ namespace sandbox
 
         auto* dx12GraphicsCommandList{ context.GetDX12GraphicsCommandList() };
 
-        const uint32_t width{ static_cast<uint32_t>(input.Resource.GetConfig().Width) };
-        const uint32_t height{ input.Resource.GetConfig().Height };
+        const uint32_t width{ static_cast<uint32_t>(input.GetTextureResource()->GetConfig().Width) };
+        const uint32_t height{ input.GetTextureResource()->GetConfig().Height };
 
         context.SetPipelineState(m_PipelineState);
         context.SetComputeRootSignature(m_RootSignature);
 
-        dx12GraphicsCommandList->SetComputeRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ input.Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
-        dx12GraphicsCommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_OutputTexture.Views.GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
+        dx12GraphicsCommandList->SetComputeRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ input.GetView<spieler::renderer::TextureShaderResourceView>().GetDescriptor().GPU });
+        dx12GraphicsCommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_OutputTexture.GetView<spieler::renderer::TextureUnorderedAccessView>().GetDescriptor().GPU });
 
         const uint32_t threadGroupXCount{ width / 16 + 1 };
         const uint32_t threadGroupYCount{ height / 16 + 1 };
@@ -60,13 +60,9 @@ namespace sandbox
             .UsageFlags{ spieler::renderer::TextureResource::UsageFlags::UnorderedAccess }
         };
 
-        m_OutputTexture.Resource = spieler::renderer::TextureResource{ device, config };
-
-        m_OutputTexture.Views.Clear();
-        m_OutputTexture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
-        m_OutputTexture.Views.CreateView<spieler::renderer::UnorderedAccessView>(device);
-
-        //m_OutputTexture.GetTexture2DResource().SetDebugName(L"SobelFilterOutput");
+        m_OutputTexture.SetTextureResource(spieler::renderer::TextureResource::Create(device, config));
+        m_OutputTexture.PushView<spieler::renderer::TextureShaderResourceView>(device);
+        m_OutputTexture.PushView<spieler::renderer::TextureUnorderedAccessView>(device);
     }
 
     void SobelFilterPass::InitRootSignature()

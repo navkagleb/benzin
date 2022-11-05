@@ -55,9 +55,9 @@ namespace sandbox
         std::unordered_map<std::string, spieler::renderer::RenderItem> m_RenderItems;
 
         PassConstants m_PassConstants;
-        spieler::renderer::BufferResource m_PassConstantBuffer;
+        std::shared_ptr<spieler::renderer::BufferResource> m_PassConstantBuffer;
 
-        spieler::renderer::BufferResource m_ObjectConstantBuffer;
+        std::shared_ptr<spieler::renderer::BufferResource> m_ObjectConstantBuffer;
 
         spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
         spieler::renderer::Texture m_DepthStencil;

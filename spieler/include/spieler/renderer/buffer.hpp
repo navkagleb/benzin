@@ -1,21 +1,9 @@
 #pragma once
 
 #include "spieler/renderer/resource.hpp"
-#include "spieler/renderer/resource_view.hpp"
 
 namespace spieler::renderer
 {
-
-    namespace utils
-    {
-
-        template <std::integral T>
-        constexpr inline static T Align(T value, T alignment)
-        {
-            return (value + alignment - 1) & ~(alignment - 1);
-        }
-
-    } // namespace utils
 
     class BufferResource : public Resource
     {
@@ -39,26 +27,34 @@ namespace spieler::renderer
         };
 
     public:
+        static std::shared_ptr<BufferResource> Create(Device& device, const Config& config);
+
+    public:
         BufferResource() = default;
         BufferResource(Device& device, const Config& config);
+
+    public:
+        ~BufferResource() override = default;
 
     public:
         const Config& GetConfig() const { return m_Config; }
 
     public:
-        GPUVirtualAddress GetGPUVirtualAddressWithOffset(uint32_t offset) const { return static_cast<GPUVirtualAddress>(m_DX12Resource->GetGPUVirtualAddress() + offset * m_Config.ElementSize); }
-
-    public:
-        void Write(uint64_t offset, const void* data, uint64_t size);
+        GPUVirtualAddress GetGPUVirtualAddressWithOffset(uint64_t offset) const;
 
     protected:
         Config m_Config;
     };
 
-    struct Buffer
+    class Buffer
     {
-        BufferResource Resource;
-        ViewContainer Views{ Resource };
+    public:
+        std::shared_ptr<BufferResource>& GetBufferResource() { return m_BufferResource; }
+        const std::shared_ptr<BufferResource>& GetBufferResource() const { return m_BufferResource; }
+        void SetBufferResource(std::shared_ptr<BufferResource>&& bufferResource) { m_BufferResource = std::move(bufferResource); }
+
+    private:
+        std::shared_ptr<BufferResource> m_BufferResource;
     };
 
 } // namespace spieler::renderer

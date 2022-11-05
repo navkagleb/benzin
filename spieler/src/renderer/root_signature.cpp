@@ -3,7 +3,6 @@
 #include "spieler/renderer/root_signature.hpp"
 
 #include "spieler/core/common.hpp"
-#include "spieler/core/logger.hpp"
 
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/sampler.hpp"
@@ -16,8 +15,49 @@ namespace spieler::renderer
     namespace _internal
     {
 
-        // Defined in resource_view.cpp
-        extern D3D12_FILTER ConvertToD3D12TextureFilter(const TextureFilter& filter);
+        static D3D12_FILTER ConvertToD3D12TextureFilter(const TextureFilter& filter)
+        {
+            const TextureFilterType minification{ filter.Minification };
+            const TextureFilterType magnification{ filter.Magnification };
+            const TextureFilterType mipLevel{ filter.MipLevel };
+
+            D3D12_FILTER d3d12Filter{ D3D12_FILTER_MIN_MAG_MIP_POINT };
+
+            if (minification == TextureFilterType::Point)
+            {
+                SPIELER_ASSERT(magnification != TextureFilterType::Anisotropic && mipLevel != TextureFilterType::Anisotropic);
+
+                if (magnification == TextureFilterType::Point)
+                {
+                    d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_MAG_MIP_POINT : D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+                }
+                else
+                {
+                    d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+                }
+            }
+            else if (minification == TextureFilterType::Linear)
+            {
+                SPIELER_ASSERT(magnification != TextureFilterType::Anisotropic && mipLevel != TextureFilterType::Anisotropic);
+
+                if (magnification == TextureFilterType::Point)
+                {
+                    d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT : D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+                }
+                else
+                {
+                    d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                }
+            }
+            else if (minification == TextureFilterType::Anisotropic)
+            {
+                SPIELER_ASSERT(magnification == TextureFilterType::Anisotropic && mipLevel == TextureFilterType::Anisotropic);
+
+                d3d12Filter = D3D12_FILTER_ANISOTROPIC;
+            }
+
+            return d3d12Filter;
+        }
 
         static D3D12_ROOT_PARAMETER_TYPE ConvertToD3D12DescriptorType(RootParameter::DescriptorType descriptorType)
         {

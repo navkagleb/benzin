@@ -6,7 +6,6 @@
 #include <third_party/magic_enum/magic_enum.hpp>
 
 #include <spieler/core/application.hpp>
-#include <spieler/core/logger.hpp>
 
 #include <spieler/system/event.hpp>
 #include <spieler/system/event_dispatcher.hpp>
@@ -17,10 +16,11 @@
 #include <spieler/renderer/rasterizer_state.hpp>
 #include <spieler/renderer/resource_barrier.hpp>
 #include <spieler/renderer/depth_stencil_state.hpp>
-
-#include <spieler/math/matrix.hpp>
+#include <spieler/renderer/mapped_data.hpp>
 
 #include <spieler/utility/random.hpp>
+
+#if 0
 
 namespace sandbox
 {
@@ -121,6 +121,8 @@ namespace sandbox
 
         // Update Pass Constants
         {
+            spieler::renderer::MappedData bufferData{ m_ConstantBuffers["pass"], 0 };
+
             m_PassConstants["direct"].View = m_Camera.GetView();
             m_PassConstants["direct"].Projection = m_Camera.GetProjection();
             DirectX::XMStoreFloat3(&m_PassConstants["direct"].CameraPosition, m_Camera.GetPosition());
@@ -162,12 +164,15 @@ namespace sandbox
                     constants.Lights[i] = pass.Lights[i];
                 }
 
-                m_ConstantBuffers["pass"].Write(pass.ConstantBufferIndex * m_ConstantBuffers["pass"].GetConfig().ElementSize, &constants, sizeof(constants));
+                bufferData.Write(&constants, sizeof(constants), pass.ConstantBufferIndex * m_ConstantBuffers["pass"]->GetConfig().ElementSize);
             }
         }
 
         // Update RenderItems
         {
+            spieler::renderer::MappedData defaultBufferData{ m_ConstantBuffers["render_item"], 0 };
+            spieler::renderer::MappedData colorBufferData{ m_ConstantBuffers["color_render_item"], 0 };
+
             m_RenderItems["skull"]->Transform.Rotation.x += 1.0f * dt;
             m_RenderItems["skull"]->Transform.Rotation.y += 1.0f * dt;
 
@@ -182,7 +187,7 @@ namespace sandbox
                         .Color{ item->GetComponent<ColorConstants>().Color }
                     };
 
-                    m_ConstantBuffers["color_render_item"].Write(item->ConstantBufferIndex * m_ConstantBuffers["color_render_item"].GetConfig().ElementSize, &constants, sizeof(constants));
+                    colorBufferData.Write(&constants, sizeof(constants), item->ConstantBufferIndex * m_ConstantBuffers["color_render_item"]->GetConfig().ElementSize);
                 }
                 else
                 {
@@ -213,13 +218,15 @@ namespace sandbox
                         constants.World = DirectX::XMMatrixTranspose(item->Transform.GetMatrix());
                     }
 
-                    m_ConstantBuffers["render_item"].Write(item->ConstantBufferIndex * m_ConstantBuffers["render_item"].GetConfig().ElementSize, &constants, sizeof(constants));
+                    defaultBufferData.Write(&constants, sizeof(constants), item->ConstantBufferIndex * m_ConstantBuffers["render_item"]->GetConfig().ElementSize);
                 }
             }
         }
 
         // Update Materials
         {
+            spieler::renderer::MappedData bufferData{ m_ConstantBuffers["material"], 0 };
+
             for (const auto& [name, material] : m_Materials)
             {
                 const cb::Material constants
@@ -230,7 +237,7 @@ namespace sandbox
                     .Transform{ material.Transform.GetMatrix() }
                 };
 
-                m_ConstantBuffers["material"].Write(material.ConstantBufferIndex * m_ConstantBuffers["material"].GetConfig().ElementSize, &constants, sizeof(constants));
+                bufferData.Write(&constants, sizeof(constants), material.ConstantBufferIndex * m_ConstantBuffers["material"]->GetConfig().ElementSize);
             }
         }
     }
@@ -249,45 +256,45 @@ namespace sandbox
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &offScreenTexture.Resource },
+                .Resource{ offScreenTexture.GetTextureResource().get() },
                 .From{ spieler::renderer::ResourceState::Present },
                 .To{ spieler::renderer::ResourceState::RenderTarget }
             });
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &m_DepthStencil.Resource },
+                .Resource{ m_DepthStencil.GetTextureResource().get() },
                 .From{ spieler::renderer::ResourceState::Present },
                 .To{ spieler::renderer::ResourceState::DepthWrite }
             });
 
-            context.SetRenderTarget(offScreenTexture.Views.GetView<spieler::renderer::RenderTargetView>(), m_DepthStencil.Views.GetView<spieler::renderer::DepthStencilView>());
+            context.SetRenderTarget(offScreenTexture.GetView<spieler::renderer::TextureRenderTargetView>(), m_DepthStencil.GetView<spieler::renderer::TextureDepthStencilView>());
 
-            context.ClearRenderTarget(offScreenTexture.Views.GetView<spieler::renderer::RenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
-            context.ClearDepthStencil(m_DepthStencil.Views.GetView<spieler::renderer::DepthStencilView>(), 1.0f, 0);
+            context.ClearRenderTarget(offScreenTexture.GetView<spieler::renderer::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+            context.ClearDepthStencil(m_DepthStencil.GetView<spieler::renderer::TextureDepthStencilView>(), 1.0f, 0);
 
             context.SetViewport(m_Viewport);
             context.SetScissorRect(m_ScissorRect);
 
-            Render(m_Lights, m_PipelineStates["light"], m_PassConstants["direct"], &m_ConstantBuffers["color_render_item"]);
-            Render(m_OpaqueObjects, m_PipelineStates["opaque"], m_PassConstants["direct"], &m_ConstantBuffers["render_item"]);
+            Render(m_Lights, m_PipelineStates["light"], m_PassConstants["direct"], m_ConstantBuffers["color_render_item"].get());
+            Render(m_OpaqueObjects, m_PipelineStates["opaque"], m_PassConstants["direct"], m_ConstantBuffers["render_item"].get());
 
             context.SetStencilReferenceValue(1);
-            Render(m_Mirrors, m_PipelineStates["mirror"], m_PassConstants["direct"], &m_ConstantBuffers["render_item"]);
+            Render(m_Mirrors, m_PipelineStates["mirror"], m_PassConstants["direct"], m_ConstantBuffers["render_item"].get());
 
-            Render(m_ReflectedObjects, m_PipelineStates["reflected"], m_PassConstants["reflected"], &m_ConstantBuffers["render_item"]);
+            Render(m_ReflectedObjects, m_PipelineStates["reflected"], m_PassConstants["reflected"], m_ConstantBuffers["render_item"].get());
 
             Render(m_AlphaTestedBillboards, m_PipelineStates["billboard"], m_PassConstants["direct"]);
 
             context.SetStencilReferenceValue(0);
-            Render(m_TransparentObjects, m_PipelineStates["opaque"], m_PassConstants["direct"], &m_ConstantBuffers["render_item"]);
+            Render(m_TransparentObjects, m_PipelineStates["opaque"], m_PassConstants["direct"], m_ConstantBuffers["render_item"].get());
 
-            Render(m_Shadows, m_PipelineStates["shadow"], m_PassConstants["direct"], &m_ConstantBuffers["render_item"]);
+            Render(m_Shadows, m_PipelineStates["shadow"], m_PassConstants["direct"], m_ConstantBuffers["render_item"].get());
 
-            m_BlurPass->Execute(offScreenTexture.Resource, m_BlurPassExecuteProps);
+            m_BlurPass->Execute(*offScreenTexture.GetTextureResource(), m_BlurPassExecuteProps);
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &offScreenTexture.Resource },
+                .Resource{ offScreenTexture.GetTextureResource().get() },
                 .From{ spieler::renderer::ResourceState::CopySource },
                 .To{ spieler::renderer::ResourceState::Present }
             });
@@ -296,16 +303,16 @@ namespace sandbox
             {
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource{ &currentBuffer.Resource },
+                    .Resource{ currentBuffer.GetTextureResource().get() },
                     .From{ spieler::renderer::ResourceState::Present },
                     .To{ spieler::renderer::ResourceState::CopyDestination }
                 });
 
-                context.GetDX12GraphicsCommandList()->CopyResource(currentBuffer.Resource.GetDX12Resource(), m_BlurPass->GetOutput().Resource.GetDX12Resource());
+                context.GetDX12GraphicsCommandList()->CopyResource(currentBuffer.GetTextureResource()->GetDX12Resource(), m_BlurPass->GetOutput().GetTextureResource()->GetDX12Resource());
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource{ &currentBuffer.Resource },
+                    .Resource{ currentBuffer.GetTextureResource().get() },
                     .From{ spieler::renderer::ResourceState::CopyDestination },
                     .To{ spieler::renderer::ResourceState::Present }
                 });
@@ -316,33 +323,33 @@ namespace sandbox
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource{ &currentBuffer.Resource },
+                    .Resource{ currentBuffer.GetTextureResource().get() },
                     .From{ spieler::renderer::ResourceState::Present },
                     .To{ spieler::renderer::ResourceState::RenderTarget }
                 });
 
-                context.SetRenderTarget(currentBuffer.Views.GetView<spieler::renderer::RenderTargetView>(), m_DepthStencil.Views.GetView<spieler::renderer::DepthStencilView>());
+                context.SetRenderTarget(currentBuffer.GetView<spieler::renderer::TextureRenderTargetView>(), m_DepthStencil.GetView<spieler::renderer::TextureDepthStencilView>());
 
-                context.ClearRenderTarget(currentBuffer.Views.GetView<spieler::renderer::RenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+                context.ClearRenderTarget(currentBuffer.GetView<spieler::renderer::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
 
                 context.SetPipelineState(m_PipelineStates["composite"]);
 
                 context.GetDX12GraphicsCommandList()->SetGraphicsRootSignature(m_RootSignatures["composite"].GetDX12RootSignature());
                 context.GetDX12GraphicsCommandList()->SetGraphicsRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE
                 { 
-                    m_BlurPass->GetOutput().Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU
+                    m_BlurPass->GetOutput().GetView<spieler::renderer::TextureShaderResourceView>().GetDescriptor().GPU
                 });
 
                 context.GetDX12GraphicsCommandList()->SetGraphicsRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE
                 { 
-                    m_SobelFilterPass->GetOutputTexture().Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU
+                    m_SobelFilterPass->GetOutputTexture().GetView<spieler::renderer::TextureShaderResourceView>().GetDescriptor().GPU
                 });
 
                 RenderFullscreenQuad();
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource{ &currentBuffer.Resource },
+                    .Resource{ currentBuffer.GetTextureResource().get() },
                     .From{ spieler::renderer::ResourceState::RenderTarget },
                     .To{ spieler::renderer::ResourceState::Present }
                 });
@@ -350,7 +357,7 @@ namespace sandbox
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &m_DepthStencil.Resource },
+                .Resource{ m_DepthStencil.GetTextureResource().get() },
                 .From{ spieler::renderer::ResourceState::DepthWrite },
                 .To{ spieler::renderer::ResourceState::Present }
             });
@@ -428,9 +435,8 @@ namespace sandbox
                 .Flags{ spieler::renderer::BufferResource::Flags::ConstantBuffer }
             };
 
-            spieler::renderer::BufferResource& pass{ m_ConstantBuffers["pass"] };
-
-            pass = spieler::renderer::BufferResource{ device, config };
+            auto& pass{ m_ConstantBuffers["pass"] };
+            pass = spieler::renderer::BufferResource::Create(device, config);
 
             // Direct
             {
@@ -459,7 +465,7 @@ namespace sandbox
                 .Flags{ spieler::renderer::BufferResource::Flags::ConstantBuffer }
             };
 
-            m_ConstantBuffers["color_render_item"] = spieler::renderer::BufferResource{ device, config };
+            m_ConstantBuffers["color_render_item"] = spieler::renderer::BufferResource::Create(device, config);
         }
 
         // Objects
@@ -471,7 +477,7 @@ namespace sandbox
                 .Flags{ spieler::renderer::BufferResource::Flags::ConstantBuffer }
             };
 
-            m_ConstantBuffers["render_item"] = spieler::renderer::BufferResource{ device, config };
+            m_ConstantBuffers["render_item"] = spieler::renderer::BufferResource::Create(device, config);
         }
 
         // Materials
@@ -483,7 +489,7 @@ namespace sandbox
                 .Flags{ spieler::renderer::BufferResource::Flags::ConstantBuffer }
             };
 
-            m_ConstantBuffers["material"] = spieler::renderer::BufferResource{ device, config };
+            m_ConstantBuffers["material"] = spieler::renderer::BufferResource::Create(device, config);
         }
     }
 
@@ -497,61 +503,43 @@ namespace sandbox
         // White texture
         {
             auto& texture{ m_Textures["white"] };
-            auto subresources{ texture.Resource.LoadFromDDSFile(device, L"assets/textures/white.dds") };
-
-            context.UploadToTexture(texture.Resource, subresources);
-
-            texture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
+            texture.SetTextureResource(spieler::renderer::TextureResource::LoadFromDDSFile(device, context, L"assets/textures/white.dds"));
+            texture.PushView<spieler::renderer::TextureShaderResourceView>(device);
         }
 
         // Wire fence texture
         {
             auto& texture{ m_Textures["wire_fence"] };
-            auto subresources{ texture.Resource.LoadFromDDSFile(device, L"assets/textures/wire_fence.dds") };
-
-            context.UploadToTexture(texture.Resource, subresources);
-
-            texture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
+            texture.SetTextureResource(spieler::renderer::TextureResource::LoadFromDDSFile(device, context, L"assets/textures/wire_fence.dds"));
+            texture.PushView<spieler::renderer::TextureShaderResourceView>(device);
         }
 
         // Tile texture
         {
             auto& texture{ m_Textures["tile"] };
-            auto subresources{ texture.Resource.LoadFromDDSFile(device, L"assets/textures/tile.dds") };
-
-            context.UploadToTexture(texture.Resource, subresources);
-
-            texture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
+            texture.SetTextureResource(spieler::renderer::TextureResource::LoadFromDDSFile(device, context, L"assets/textures/tile.dds"));
+            texture.PushView<spieler::renderer::TextureShaderResourceView>(device);
         }
 
         // Bricks texture
         {
             auto& texture{ m_Textures["bricks"] };
-            auto subresources{ texture.Resource.LoadFromDDSFile(device, L"assets/textures/bricks3.dds") };
-
-            context.UploadToTexture(texture.Resource, subresources);
-
-            texture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
+            texture.SetTextureResource(spieler::renderer::TextureResource::LoadFromDDSFile(device, context, L"assets/textures/bricks3.dds"));
+            texture.PushView<spieler::renderer::TextureShaderResourceView>(device);
         }
         
         // Mirror texture
         {
             auto& texture{ m_Textures["mirror"] };
-            auto subresources{ texture.Resource.LoadFromDDSFile(device, L"assets/textures/ice.dds") };
-
-            context.UploadToTexture(texture.Resource, subresources);
-
-            texture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
+            texture.SetTextureResource(spieler::renderer::TextureResource::LoadFromDDSFile(device, context, L"assets/textures/ice.dds"));
+            texture.PushView<spieler::renderer::TextureShaderResourceView>(device);
         }
 
         // Tree atlas texture
         {
             auto& texture{ m_Textures["tree_atlas"] };
-            auto subresources{ texture.Resource.LoadFromDDSFile(device, L"assets/textures/tree_array.dds") };
-
-            context.UploadToTexture(texture.Resource, subresources);
-
-            texture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
+            texture.SetTextureResource(spieler::renderer::TextureResource::LoadFromDDSFile(device, context, L"assets/textures/tree_array.dds"));
+            texture.PushView<spieler::renderer::TextureShaderResourceView>(device);
         }
 
         // Off-screen texture
@@ -571,9 +559,9 @@ namespace sandbox
 
             spieler::renderer::Texture& offScreenTexture{ m_Textures["off_screen"] };
 
-            offScreenTexture.Resource = spieler::renderer::TextureResource{ device, config, clearColor };
-            offScreenTexture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
-            offScreenTexture.Views.CreateView<spieler::renderer::RenderTargetView>(device);
+            offScreenTexture.SetTextureResource(spieler::renderer::TextureResource::Create(device, config, clearColor));
+            offScreenTexture.PushView<spieler::renderer::TextureShaderResourceView>(device);
+            offScreenTexture.PushView<spieler::renderer::TextureRenderTargetView>(device);
         }
 
         return true;
@@ -583,12 +571,10 @@ namespace sandbox
     {
         auto& device{ spieler::renderer::Renderer::GetInstance().GetDevice() };
 
-        spieler::renderer::BufferResource& materialConstantBuffer{ m_ConstantBuffers["material"] };
-
         // Wire fence material
         {
             spieler::renderer::Material& fence{ m_Materials["wire_fence"] };
-            fence.DiffuseMap = m_Textures["wire_fence"].Views.GetView<spieler::renderer::ShaderResourceView>();
+            fence.DiffuseMap = m_Textures["wire_fence"].GetView<spieler::renderer::TextureShaderResourceView>();
 
             fence.Constants.DiffuseAlbedo = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
             fence.Constants.FresnelR0 = DirectX::XMFLOAT3(0.05f, 0.05f, 0.05f);
@@ -600,7 +586,7 @@ namespace sandbox
         // Tile material
         {
             spieler::renderer::Material& tile{ m_Materials["tile"] };
-            tile.DiffuseMap = m_Textures["tile"].Views.GetView<spieler::renderer::ShaderResourceView>();
+            tile.DiffuseMap = m_Textures["tile"].GetView<spieler::renderer::TextureShaderResourceView>();
 
             tile.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
             tile.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.05f, 0.05f, 0.05f };
@@ -612,7 +598,7 @@ namespace sandbox
         // Bricks material
         {
             spieler::renderer::Material& bricks{ m_Materials["bricks"] };
-            bricks.DiffuseMap = m_Textures["bricks"].Views.GetView<spieler::renderer::ShaderResourceView>();
+            bricks.DiffuseMap = m_Textures["bricks"].GetView<spieler::renderer::TextureShaderResourceView>();
 
             bricks.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
             bricks.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.05f, 0.05f, 0.05f };
@@ -624,7 +610,7 @@ namespace sandbox
         // Skull material
         {
             spieler::renderer::Material& skull{ m_Materials["skull"] };
-            skull.DiffuseMap = m_Textures["white"].Views.GetView<spieler::renderer::ShaderResourceView>();
+            skull.DiffuseMap = m_Textures["white"].GetView<spieler::renderer::TextureShaderResourceView>();
 
             skull.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
             skull.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.05f, 0.05f, 0.05f };
@@ -636,7 +622,7 @@ namespace sandbox
         // Mirror material
         {
             spieler::renderer::Material& mirror{ m_Materials["mirror"] };
-            mirror.DiffuseMap = m_Textures["mirror"].Views.GetView<spieler::renderer::ShaderResourceView>();
+            mirror.DiffuseMap = m_Textures["mirror"].GetView<spieler::renderer::TextureShaderResourceView>();
 
             mirror.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 0.3f };
             mirror.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.1f, 0.1f, 0.1f };
@@ -648,7 +634,7 @@ namespace sandbox
         // Shadow material
         {
             spieler::renderer::Material& shadow{ m_Materials["shadow"] };
-            shadow.DiffuseMap = m_Textures["white"].Views.GetView<spieler::renderer::ShaderResourceView>();
+            shadow.DiffuseMap = m_Textures["white"].GetView<spieler::renderer::TextureShaderResourceView>();
 
             shadow.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 0.5f };
             shadow.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.001f, 0.001f, 0.001f };
@@ -660,7 +646,7 @@ namespace sandbox
         // Tree material
         {
             spieler::renderer::Material& tree{ m_Materials["tree"] };
-            tree.DiffuseMap = m_Textures["tree_atlas"].Views.GetView<spieler::renderer::ShaderResourceView>();
+            tree.DiffuseMap = m_Textures["tree_atlas"].GetView<spieler::renderer::TextureShaderResourceView>();
 
             tree.Constants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
             tree.Constants.FresnelR0 = DirectX::XMFLOAT3{ 0.01f, 0.01f, 0.01f };
@@ -742,10 +728,8 @@ namespace sandbox
                     .ElementCount{ static_cast<uint32_t>(vertexCount) }
                 };
 
-                m_MeshGeometries["basic"].VertexBuffer.Resource = spieler::renderer::BufferResource{ device, config };
-                m_MeshGeometries["basic"].VertexBuffer.Views.CreateView<spieler::renderer::VertexBufferView>();
-
-                context.UploadToBuffer(m_MeshGeometries["basic"].VertexBuffer.Resource, vertices.data(), sizeof(spieler::renderer::Vertex) * vertexCount);
+                m_MeshGeometries["basic"].VertexBuffer.SetBufferResource(spieler::renderer::BufferResource::Create(device, config));
+                context.UploadToBuffer(*m_MeshGeometries["basic"].VertexBuffer.GetBufferResource(), vertices.data(), sizeof(spieler::renderer::Vertex) * vertexCount);
             }
 
             // IndexBuffer
@@ -756,10 +740,8 @@ namespace sandbox
                     .ElementCount{ static_cast<uint32_t>(indexCount) }
                 };
 
-                m_MeshGeometries["basic"].IndexBuffer.Resource = spieler::renderer::BufferResource{ device, config };
-                m_MeshGeometries["basic"].IndexBuffer.Views.CreateView<spieler::renderer::IndexBufferView>();
-
-                context.UploadToBuffer(m_MeshGeometries["basic"].IndexBuffer.Resource, indices.data(), sizeof(uint32_t) * indexCount);
+                m_MeshGeometries["basic"].IndexBuffer.SetBufferResource(spieler::renderer::BufferResource::Create(device, config));
+                context.UploadToBuffer(*m_MeshGeometries["basic"].IndexBuffer.GetBufferResource(), indices.data(), sizeof(uint32_t) * indexCount);
             }
         }
 
@@ -809,10 +791,8 @@ namespace sandbox
                     .ElementCount{ static_cast<uint32_t>(vertices.size()) }
                 };
 
-                skullMeshGeometry.VertexBuffer.Resource = spieler::renderer::BufferResource{ device, config };
-                skullMeshGeometry.VertexBuffer.Views.CreateView<spieler::renderer::VertexBufferView>();
-
-                context.UploadToBuffer(skullMeshGeometry.VertexBuffer.Resource, vertices.data(), sizeof(spieler::renderer::Vertex) * vertices.size());
+                skullMeshGeometry.VertexBuffer.SetBufferResource(spieler::renderer::BufferResource::Create(device, config));
+                context.UploadToBuffer(*skullMeshGeometry.VertexBuffer.GetBufferResource(), vertices.data(), sizeof(spieler::renderer::Vertex) * vertices.size());
             }
 
             // IndexBuffer
@@ -823,10 +803,8 @@ namespace sandbox
                     .ElementCount{ static_cast<uint32_t>(indices.size()) }
                 };
 
-                skullMeshGeometry.IndexBuffer.Resource = spieler::renderer::BufferResource{ device, config };
-                skullMeshGeometry.IndexBuffer.Views.CreateView<spieler::renderer::IndexBufferView>();
-
-                context.UploadToBuffer(skullMeshGeometry.IndexBuffer.Resource, indices.data(), sizeof(uint32_t) * indices.size());
+                skullMeshGeometry.IndexBuffer.SetBufferResource(spieler::renderer::BufferResource::Create(device, config));
+                context.UploadToBuffer(*skullMeshGeometry.IndexBuffer.GetBufferResource(), indices.data(), sizeof(uint32_t) * indices.size());
             }
 
             skullMeshGeometry.Submeshes["grid"] = spieler::renderer::SubmeshGeometry
@@ -874,10 +852,8 @@ namespace sandbox
                     .ElementCount{ static_cast<uint32_t>(vertices.size()) }
                 };
 
-                treeMeshGeometry.VertexBuffer.Resource = spieler::renderer::BufferResource{ device, config };
-                treeMeshGeometry.VertexBuffer.Views.CreateView<spieler::renderer::VertexBufferView>();
-
-                context.UploadToBuffer(treeMeshGeometry.VertexBuffer.Resource, vertices.data(), sizeof(TreeVertex) * vertices.size());
+                treeMeshGeometry.VertexBuffer.SetBufferResource(spieler::renderer::BufferResource::Create(device, config));
+                context.UploadToBuffer(*treeMeshGeometry.VertexBuffer.GetBufferResource(), vertices.data(), sizeof(TreeVertex) * vertices.size());
             }
 
             // IndexBuffer
@@ -888,10 +864,8 @@ namespace sandbox
                     .ElementCount{ static_cast<uint32_t>(indices.size()) }
                 };
 
-                treeMeshGeometry.IndexBuffer.Resource = spieler::renderer::BufferResource{ device, config };
-                treeMeshGeometry.IndexBuffer.Views.CreateView<spieler::renderer::IndexBufferView>();
-
-                context.UploadToBuffer(treeMeshGeometry.IndexBuffer.Resource, indices.data(), sizeof(uint32_t) * indices.size());
+                treeMeshGeometry.IndexBuffer.SetBufferResource(spieler::renderer::BufferResource::Create(device, config));
+                context.UploadToBuffer(*treeMeshGeometry.IndexBuffer.GetBufferResource(), indices.data(), sizeof(uint32_t) * indices.size());
             }
 
             treeMeshGeometry.Submeshes["main"] = spieler::renderer::SubmeshGeometry
@@ -1681,9 +1655,8 @@ namespace sandbox
             .Stencil{ 0 }
         };
 
-        m_DepthStencil.Resource = spieler::renderer::TextureResource{ device, config, clearDepthStencil };
-        m_DepthStencil.Views.Clear();
-        m_DepthStencil.Views.CreateView<spieler::renderer::DepthStencilView>(device);
+        m_DepthStencil.SetTextureResource(spieler::renderer::TextureResource::Create(device, config, clearDepthStencil));
+        m_DepthStencil.PushView<spieler::renderer::TextureDepthStencilView>(device);
     }
 
     void TestLayer::UpdateViewport()
@@ -1735,13 +1708,13 @@ namespace sandbox
 
         context.GetDX12GraphicsCommandList()->SetGraphicsRootConstantBufferView(
             0, 
-            m_ConstantBuffers["pass"].GetGPUVirtualAddress() + passConstants.ConstantBufferIndex * m_ConstantBuffers["pass"].GetConfig().ElementSize
+            m_ConstantBuffers["pass"]->GetGPUVirtualAddress() + passConstants.ConstantBufferIndex * m_ConstantBuffers["pass"]->GetConfig().ElementSize
         );
 
         for (const spieler::renderer::RenderItem* item : items)
         {
-            context.IASetVertexBuffer(&item->MeshGeometry->VertexBuffer.Views.GetView<spieler::renderer::VertexBufferView>());
-            context.IASetIndexBuffer(&item->MeshGeometry->IndexBuffer.Views.GetView<spieler::renderer::IndexBufferView>());
+            context.IASetVertexBuffer(item->MeshGeometry->VertexBuffer.GetBufferResource().get());
+            context.IASetIndexBuffer(item->MeshGeometry->IndexBuffer.GetBufferResource().get());
             context.IASetPrimitiveTopology(item->PrimitiveTopology);
 
             if (objectConstantBuffer)
@@ -1759,7 +1732,7 @@ namespace sandbox
 
                 context.GetDX12GraphicsCommandList()->SetGraphicsRootConstantBufferView(
                     2,
-                    m_ConstantBuffers["material"].GetGPUVirtualAddress() + item->Material->ConstantBufferIndex * m_ConstantBuffers["material"].GetConfig().ElementSize
+                    m_ConstantBuffers["material"]->GetGPUVirtualAddress() + item->Material->ConstantBufferIndex * m_ConstantBuffers["material"]->GetConfig().ElementSize
                 );
 
                 context.GetDX12GraphicsCommandList()->SetGraphicsRootDescriptorTable(3, D3D12_GPU_DESCRIPTOR_HANDLE{ item->Material->DiffuseMap.GetDescriptor().GPU });
@@ -1805,13 +1778,14 @@ namespace sandbox
 
             spieler::renderer::Texture& offScreenTexture{ m_Textures["off_screen"] };
 
-            offScreenTexture.Resource = spieler::renderer::TextureResource{ device, config, clearColor };
-            offScreenTexture.Views.Clear();
-            offScreenTexture.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
-            offScreenTexture.Views.CreateView<spieler::renderer::RenderTargetView>(device);
+            offScreenTexture.SetTextureResource(spieler::renderer::TextureResource::Create(device, config, clearColor));
+            offScreenTexture.PushView<spieler::renderer::TextureShaderResourceView>(device);
+            offScreenTexture.PushView<spieler::renderer::TextureRenderTargetView>(device);
         }
 
         return false;
     }
 
 } // namespace sandbox
+
+#endif

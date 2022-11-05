@@ -11,7 +11,6 @@
 
 #include "spieler/core/application.hpp"
 #include "spieler/core/common.hpp"
-#include "spieler/core/logger.hpp"
 
 #include "spieler/system/event_dispatcher.hpp"
 #include "spieler/system/key_event.hpp"
@@ -45,19 +44,19 @@ namespace spieler
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &swapChain.GetCurrentBuffer().Resource },
+                .Resource{ swapChain.GetCurrentBuffer().GetTextureResource().get() },
                 .From{ spieler::renderer::ResourceState::Present },
                 .To{ spieler::renderer::ResourceState::RenderTarget }
             });
 
             context.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(renderer::DescriptorHeap::Type::SRV));
-            context.SetRenderTarget(swapChain.GetCurrentBuffer().Views.GetView<renderer::RenderTargetView>());
+            context.SetRenderTarget(swapChain.GetCurrentBuffer().GetView<renderer::TextureRenderTargetView>());
 
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context.GetDX12GraphicsCommandList());
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &swapChain.GetCurrentBuffer().Resource },
+                .Resource{ swapChain.GetCurrentBuffer().GetTextureResource().get() },
                 .From{ spieler::renderer::ResourceState::RenderTarget },
                 .To{ spieler::renderer::ResourceState::Present }
             });

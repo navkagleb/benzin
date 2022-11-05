@@ -30,8 +30,18 @@ namespace spieler::renderer
     void Camera::SetFrontDirection(const DirectX::XMVECTOR& frontDirection)
     {
         m_FrontDirection = frontDirection;
-        m_RightDirection = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(m_FrontDirection, m_UpDirection));
+        DirectX::XMVector3Normalize(m_FrontDirection);
+        
+        UpdateRightDirection();
+        UpdateView();
+    }
 
+    void Camera::SetUpDirection(const DirectX::XMVECTOR& upDirection)
+    {
+        m_UpDirection = upDirection;
+        DirectX::XMVector3Normalize(m_UpDirection);
+
+        UpdateRightDirection();
         UpdateView();
     }
 
@@ -47,6 +57,25 @@ namespace spieler::renderer
         m_AspectRatio = aspectRatio;
 
         UpdateProjection();
+    }
+
+    void Camera::SetNearPlane(float nearPlane)
+    {
+        m_NearPlane = nearPlane;
+        
+        UpdateProjection();
+    }
+
+    void Camera::SetFarPlane(float farPlane)
+    {
+        m_FarPlane = farPlane;
+
+        UpdateProjection();
+    }
+
+    void Camera::UpdateRightDirection()
+    {
+        m_RightDirection = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(m_FrontDirection, m_UpDirection));
     }
 
     void Camera::UpdateView()

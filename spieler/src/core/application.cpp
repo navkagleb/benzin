@@ -5,7 +5,6 @@
 #include <third_party/fmt/format.h>
 
 #include "spieler/core/common.hpp"
-#include "spieler/core/logger.hpp"
 
 #include "spieler/system/event_dispatcher.hpp"
 

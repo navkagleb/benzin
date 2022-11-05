@@ -2,7 +2,6 @@
 
 #include "spieler/renderer/fence.hpp"
 
-#include "spieler/core/assert.hpp"
 #include "spieler/core/common.hpp"
 
 #include "spieler/renderer/device.hpp"

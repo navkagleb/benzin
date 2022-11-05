@@ -5,8 +5,6 @@
 #include <third_party/magic_enum/magic_enum.hpp>
 
 #include "spieler/core/common.hpp"
-#include "spieler/core/assert.hpp"
-#include "spieler/core/logger.hpp"
 
 #include "spieler/renderer/buffer.hpp"
 
@@ -60,7 +58,7 @@ namespace spieler::renderer
                 .Alignment{ 0 },
                 .Width{ static_cast<uint64_t>(config.Width) },
                 .Height{ config.Height },
-                .DepthOrArraySize{ config.Depth },
+                .DepthOrArraySize{ config.ArraySize },
                 .MipLevels{ config.MipCount },
                 .Format{ dx12::Convert(config.Format) },
                 .SampleDesc{ 1, 0 },
@@ -125,7 +123,7 @@ namespace spieler::renderer
         m_DescriptorManager = DescriptorManager{ *this, g_DescriptorManagerConfig };
     }
 
-    ComPtr<ID3D12Resource> Device::CreateDX12Buffer(const BufferResource::Config& config)
+    ID3D12Resource* Device::CreateDX12Buffer(const BufferResource::Config& config)
     {
         SPIELER_ASSERT(config.ElementSize != 0);
         SPIELER_ASSERT(config.ElementCount != 0);
@@ -138,7 +136,7 @@ namespace spieler::renderer
         return CreateDX12Resource(&heapProperties, &resourceDesc, nullptr);
     }
 
-    ComPtr<ID3D12Resource> Device::CreateDX12Texture(const TextureResource::Config& config)
+    ID3D12Resource* Device::CreateDX12Texture(const TextureResource::Config& config)
     {
         const D3D12_HEAP_PROPERTIES heapProperties{ _internal::GetDX12HeapProperties(D3D12_HEAP_TYPE_DEFAULT) };
         const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToDX12ResourceDesc(config) };
@@ -146,7 +144,7 @@ namespace spieler::renderer
         return CreateDX12Resource(&heapProperties, &resourceDesc, nullptr);
     }
 
-    ComPtr<ID3D12Resource> Device::CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor)
+    ID3D12Resource* Device::CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor)
     {
         const D3D12_HEAP_PROPERTIES heapProperties{ _internal::GetDX12HeapProperties(D3D12_HEAP_TYPE_DEFAULT) };
         const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToDX12ResourceDesc(config) };
@@ -155,7 +153,7 @@ namespace spieler::renderer
         return CreateDX12Resource(&heapProperties, &resourceDesc, &clearValue);
     }
 
-    ComPtr<ID3D12Resource> Device::CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil)
+    ID3D12Resource* Device::CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil)
     {
         const D3D12_HEAP_PROPERTIES heapProperties{ _internal::GetDX12HeapProperties(D3D12_HEAP_TYPE_DEFAULT) };
         const D3D12_RESOURCE_DESC resourceDesc{ _internal::ConvertToDX12ResourceDesc(config) };
@@ -164,9 +162,9 @@ namespace spieler::renderer
         return CreateDX12Resource(&heapProperties, &resourceDesc, &clearValue);
     }
 
-    ComPtr<ID3D12Resource> Device::CreateDX12Resource(const D3D12_HEAP_PROPERTIES* heapProperties, const D3D12_RESOURCE_DESC* const resourceDesc, const D3D12_CLEAR_VALUE* const clearValueDesc)
+    ID3D12Resource* Device::CreateDX12Resource(const D3D12_HEAP_PROPERTIES* heapProperties, const D3D12_RESOURCE_DESC* const resourceDesc, const D3D12_CLEAR_VALUE* const clearValueDesc)
     {
-        ComPtr<ID3D12Resource> resource;
+        ID3D12Resource* resource{ nullptr };
 
         const ::HRESULT result
         {

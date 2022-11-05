@@ -9,6 +9,9 @@
 #include <spieler/renderer/renderer.hpp>
 #include <spieler/renderer/geometry_generator.hpp>
 #include <spieler/renderer/rasterizer_state.hpp>
+#include <spieler/renderer/mapped_data.hpp>
+
+#if 0
 
 namespace sandbox
 {
@@ -50,7 +53,7 @@ namespace sandbox
                         .Flags{ spieler::renderer::BufferResource::Flags::ConstantBuffer }
                     };
 
-                    m_PassConstantBuffer = spieler::renderer::BufferResource{ device, config };
+                    m_PassConstantBuffer = spieler::renderer::BufferResource::Create(device, config);
                 }
             
                 // Object
@@ -62,7 +65,7 @@ namespace sandbox
                         .Flags{ spieler::renderer::BufferResource::Flags::ConstantBuffer }
                     };
 
-                    m_ObjectConstantBuffer = spieler::renderer::BufferResource{ device, config };
+                    m_ObjectConstantBuffer = spieler::renderer::BufferResource::Create(device, config);
                 }
             }
 
@@ -122,10 +125,9 @@ namespace sandbox
                         .ElementCount{ static_cast<uint32_t>(vertices.size()) }
                     };
 
-                    m_MeshGeometry.VertexBuffer.Resource = spieler::renderer::BufferResource{ device, config };
-                    m_MeshGeometry.VertexBuffer.Views.CreateView<spieler::renderer::VertexBufferView>();
+                    m_MeshGeometry.VertexBuffer.SetBufferResource(spieler::renderer::BufferResource::Create(device, config));
 
-                    context.UploadToBuffer(m_MeshGeometry.VertexBuffer.Resource, vertices.data(), sizeof(DirectX::XMFLOAT3) * vertices.size());
+                    context.UploadToBuffer(*m_MeshGeometry.VertexBuffer.GetBufferResource(), vertices.data(), sizeof(DirectX::XMFLOAT3) * vertices.size());
                 }
 
                 // IndexBuffer
@@ -136,10 +138,9 @@ namespace sandbox
                         .ElementCount{ static_cast<uint32_t>(indices.size()) },
                     };
 
-                    m_MeshGeometry.IndexBuffer.Resource = spieler::renderer::BufferResource{ device, config };;
-                    m_MeshGeometry.IndexBuffer.Views.CreateView<spieler::renderer::IndexBufferView>();
+                    m_MeshGeometry.IndexBuffer.SetBufferResource(spieler::renderer::BufferResource::Create(device, config));
 
-                    context.UploadToBuffer(m_MeshGeometry.IndexBuffer.Resource, indices.data(), sizeof(uint16_t) * indices.size());
+                    context.UploadToBuffer(*m_MeshGeometry.IndexBuffer.GetBufferResource(), indices.data(), sizeof(uint16_t) * indices.size());
                 }
 
                 m_MeshGeometry.Submeshes["quad"] = spieler::renderer::SubmeshGeometry
@@ -346,16 +347,20 @@ namespace sandbox
 
         // Update Pass ConstantBuffer
         {
+            spieler::renderer::MappedData bufferData{ m_PassConstantBuffer, 0 };
+
             m_PassConstants.View = DirectX::XMMatrixTranspose(m_Camera.GetView());
             m_PassConstants.Projection = DirectX::XMMatrixTranspose(m_Camera.GetProjection());
             m_PassConstants.ViewProjection = DirectX::XMMatrixTranspose(m_Camera.GetViewProjection());
             m_PassConstants.CameraPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition());
 
-            m_PassConstantBuffer.Write(0, &m_PassConstants, sizeof(m_PassConstants));
+            bufferData.Write(&m_PassConstants, sizeof(m_PassConstants));
         }
 
         // Update Object ConstantBuffer
         {
+            spieler::renderer::MappedData bufferData{ m_ObjectConstantBuffer, 0 };
+
             for (const auto& [name, renderItem] : m_RenderItems)
             {
                 const ObjectConstants constants
@@ -363,9 +368,7 @@ namespace sandbox
                     .World{ DirectX::XMMatrixTranspose(renderItem.Transform.GetMatrix()) }
                 };
 
-                const uint64_t offset{ renderItem.ConstantBufferIndex * m_ObjectConstantBuffer.GetConfig().ElementSize };
-
-                m_ObjectConstantBuffer.Write(offset, &constants, sizeof(constants));
+                bufferData.Write(&constants, sizeof(constants), renderItem.ConstantBufferIndex * m_ObjectConstantBuffer->GetConfig().ElementSize);
             }
         }
     }
@@ -383,22 +386,22 @@ namespace sandbox
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &backBuffer.Resource },
+                .Resource{ backBuffer.GetTextureResource().get() },
                 .From{ spieler::renderer::ResourceState::Present },
                 .To{ spieler::renderer::ResourceState::RenderTarget }
             });
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &m_DepthStencil.Resource },
+                .Resource{ m_DepthStencil.GetTextureResource().get() },
                 .From{ spieler::renderer::ResourceState::Present },
                 .To{ spieler::renderer::ResourceState::DepthWrite }
             });
 
-            context.SetRenderTarget(backBuffer.Views.GetView<spieler::renderer::RenderTargetView>(), m_DepthStencil.Views.GetView<spieler::renderer::DepthStencilView>());
+            context.SetRenderTarget(backBuffer.GetView<spieler::renderer::TextureRenderTargetView>(), m_DepthStencil.GetView<spieler::renderer::TextureDepthStencilView>());
 
-            context.ClearRenderTarget(backBuffer.Views.GetView<spieler::renderer::RenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
-            context.ClearDepthStencil(m_DepthStencil.Views.GetView<spieler::renderer::DepthStencilView>(), 1.0f, 0);
+            context.ClearRenderTarget(backBuffer.GetView<spieler::renderer::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+            context.ClearDepthStencil(m_DepthStencil.GetView<spieler::renderer::TextureDepthStencilView>(), 1.0f, 0);
 
             context.SetViewport(m_Viewport);
             context.SetScissorRect(m_ScissorRect);
@@ -410,14 +413,14 @@ namespace sandbox
                 context.SetPipelineState(m_PipelineStates["quad"]);
                 context.SetGraphicsRootSignature(m_RootSignature);
 
-                context.GetDX12GraphicsCommandList()->SetGraphicsRootConstantBufferView(0, m_PassConstantBuffer.GetGPUVirtualAddress());
+                context.GetDX12GraphicsCommandList()->SetGraphicsRootConstantBufferView(0, m_PassConstantBuffer->GetGPUVirtualAddress());
                 context.GetDX12GraphicsCommandList()->SetGraphicsRootConstantBufferView(
                     1, 
-                    m_ObjectConstantBuffer.GetGPUVirtualAddress() + quad.ConstantBufferIndex * m_ObjectConstantBuffer.GetConfig().ElementSize
+                    m_ObjectConstantBuffer->GetGPUVirtualAddress() + quad.ConstantBufferIndex * m_ObjectConstantBuffer->GetConfig().ElementSize
                 );
 
-                context.IASetVertexBuffer(&quad.MeshGeometry->VertexBuffer.Views.GetView<spieler::renderer::VertexBufferView>());
-                context.IASetIndexBuffer(&quad.MeshGeometry->IndexBuffer.Views.GetView<spieler::renderer::IndexBufferView>());
+                context.IASetVertexBuffer(quad.MeshGeometry->VertexBuffer.GetBufferResource().get());
+                context.IASetIndexBuffer(quad.MeshGeometry->IndexBuffer.GetBufferResource().get());
                 context.IASetPrimitiveTopology(quad.PrimitiveTopology);
 
                 context.GetDX12GraphicsCommandList()->DrawIndexedInstanced(
@@ -436,14 +439,14 @@ namespace sandbox
                 context.SetPipelineState(m_PipelineStates["bezier_quad"]);
                 context.SetGraphicsRootSignature(m_RootSignature);
 
-                context.GetDX12GraphicsCommandList()->SetGraphicsRootConstantBufferView(0, m_PassConstantBuffer.GetGPUVirtualAddress());
+                context.GetDX12GraphicsCommandList()->SetGraphicsRootConstantBufferView(0, m_PassConstantBuffer->GetGPUVirtualAddress());
                 context.GetDX12GraphicsCommandList()->SetGraphicsRootConstantBufferView(
                     1,
-                    m_ObjectConstantBuffer.GetGPUVirtualAddress() + bezierQuad.ConstantBufferIndex * m_ObjectConstantBuffer.GetConfig().ElementSize
+                    m_ObjectConstantBuffer->GetGPUVirtualAddress() + bezierQuad.ConstantBufferIndex * m_ObjectConstantBuffer->GetConfig().ElementSize
                 );
 
-                context.IASetVertexBuffer(&bezierQuad.MeshGeometry->VertexBuffer.Views.GetView<spieler::renderer::VertexBufferView>());
-                context.IASetIndexBuffer(&bezierQuad.MeshGeometry->IndexBuffer.Views.GetView<spieler::renderer::IndexBufferView>());
+                context.IASetVertexBuffer(bezierQuad.MeshGeometry->VertexBuffer.GetBufferResource().get());
+                context.IASetIndexBuffer(bezierQuad.MeshGeometry->IndexBuffer.GetBufferResource().get());
                 context.IASetPrimitiveTopology(bezierQuad.PrimitiveTopology);
 
                 context.GetDX12GraphicsCommandList()->DrawIndexedInstanced(
@@ -457,14 +460,14 @@ namespace sandbox
             
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &backBuffer.Resource },
+                .Resource{ backBuffer.GetTextureResource().get() },
                 .From{ spieler::renderer::ResourceState::RenderTarget },
                 .To{ spieler::renderer::ResourceState::Present }
             });
 
             context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
             {
-                .Resource{ &m_DepthStencil.Resource },
+                .Resource{ m_DepthStencil.GetTextureResource().get() },
                 .From{ spieler::renderer::ResourceState::DepthWrite },
                 .To{ spieler::renderer::ResourceState::Present }
             });
@@ -512,10 +515,8 @@ namespace sandbox
             .Stencil{ 0 }
         };
 
-        m_DepthStencil.Resource = spieler::renderer::TextureResource{ device, config, clearDepthStencil };
-
-        m_DepthStencil.Views.Clear();
-        m_DepthStencil.Views.CreateView<spieler::renderer::DepthStencilView>(device);
+        m_DepthStencil.SetTextureResource(spieler::renderer::TextureResource::Create(device, config, clearDepthStencil));
+        m_DepthStencil.PushView<spieler::renderer::TextureDepthStencilView>(device);
     }
 
     bool TessellationLayer::OnWindowResized(spieler::WindowResizedEvent& event)
@@ -528,3 +529,5 @@ namespace sandbox
     }
 
 } // namespace sandbox
+
+#endif

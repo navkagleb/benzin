@@ -21,14 +21,14 @@ namespace spieler::renderer
         DescriptorManager& GetDescriptorManager() { return m_DescriptorManager; }
 
     public:
-        ComPtr<ID3D12Resource> CreateDX12Buffer(const BufferResource::Config& config);
+        ID3D12Resource* CreateDX12Buffer(const BufferResource::Config& config);
 
-        ComPtr<ID3D12Resource> CreateDX12Texture(const TextureResource::Config& config);
-        ComPtr<ID3D12Resource> CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor);
-        ComPtr<ID3D12Resource> CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil);
+        ID3D12Resource* CreateDX12Texture(const TextureResource::Config& config);
+        ID3D12Resource* CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor);
+        ID3D12Resource* CreateDX12Texture(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil);
 
     private:
-        ComPtr<ID3D12Resource> CreateDX12Resource(const D3D12_HEAP_PROPERTIES* heapProperties, const D3D12_RESOURCE_DESC* resourceDesc, const D3D12_CLEAR_VALUE* clearValueDesc);
+        ID3D12Resource* CreateDX12Resource(const D3D12_HEAP_PROPERTIES* heapProperties, const D3D12_RESOURCE_DESC* resourceDesc, const D3D12_CLEAR_VALUE* clearValueDesc);
 
     private:
         ComPtr<ID3D12Device> m_DX12Device;

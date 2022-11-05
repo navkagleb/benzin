@@ -6,6 +6,9 @@
 #include "spieler/renderer/resource_barrier.hpp"
 #include "spieler/renderer/pipeline_state.hpp"
 
+#include "spieler/renderer/buffer.hpp"
+#include "spieler/renderer/texture.hpp"
+
 namespace spieler::renderer
 {
 
@@ -13,14 +16,14 @@ namespace spieler::renderer
     class RootSignature;
     class DescriptorHeap;
 
-    class Resource;
-    class BufferResource;
-    class TextureResource;
+    //class Resource;
+    //class BufferResource;
+    //class TextureResource;
 
-    class VertexBufferView;
-    class IndexBufferView;
-    class RenderTargetView;
-    class DepthStencilView;
+    //class VertexBufferView;
+    //class IndexBufferView;
+    //class RenderTargetView;
+    //class DepthStencilView;
 
     struct Viewport
     {
@@ -57,7 +60,7 @@ namespace spieler::renderer
     private:
         struct UploadBuffer
         {
-            BufferResource Resource;
+            std::shared_ptr<BufferResource> Resource;
             uint64_t Offset{ 0 };
 
             uint64_t Allocate(uint64_t size, uint64_t alignment = 0);
@@ -75,8 +78,8 @@ namespace spieler::renderer
 
         void SetDescriptorHeap(const DescriptorHeap& descriptorHeap);
 
-        void IASetVertexBuffer(const VertexBufferView* vertexBufferView);
-        void IASetIndexBuffer(const IndexBufferView* indexBufferView);
+        void IASetVertexBuffer(const BufferResource* vertexBuffer);
+        void IASetIndexBuffer(const BufferResource* indexBuffer);
         void IASetPrimitiveTopology(PrimitiveTopology primitiveTopology);
 
         void SetViewport(const Viewport& viewport);
@@ -86,17 +89,23 @@ namespace spieler::renderer
         void SetGraphicsRootSignature(const RootSignature& rootSignature);
         void SetComputeRootSignature(const RootSignature& rootSignature);
 
-        void SetRenderTarget(const RenderTargetView& rtv);
-        void SetRenderTarget(const RenderTargetView& rtv, const DepthStencilView& dsv);
+        void SetGraphicsRawConstantBuffer(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement = 0);
+        void SetGraphicsRawShaderResource(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement = 0);
+        void SetGraphicsDescriptorTable(uint32_t rootParameterIndex, const TextureShaderResourceView& firstSRV);
 
-        void ClearRenderTarget(const RenderTargetView& rtv, const DirectX::XMFLOAT4& color);
-        void ClearDepthStencil(const DepthStencilView& dsv, float depth, uint8_t stencil);
+        void SetRenderTarget(const TextureRenderTargetView& rtv);
+        void SetRenderTarget(const TextureRenderTargetView& rtv, const TextureDepthStencilView& dsv);
+
+        void ClearRenderTarget(const TextureRenderTargetView& rtv, const DirectX::XMFLOAT4& color);
+        void ClearDepthStencil(const TextureDepthStencilView& dsv, float depth, uint8_t stencil);
 
         void SetResourceBarrier(const TransitionResourceBarrier& barrier);
         void SetStencilReferenceValue(uint8_t referenceValue);
 
         void UploadToBuffer(BufferResource& buffer, const void* data, uint64_t size);
         void UploadToTexture(TextureResource& texture, std::vector<SubresourceData>& subresources);
+
+        void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount = 1);
 
         void CloseCommandList();
         void ExecuteCommandList(bool isNeedToFlushCommandQueue = false);

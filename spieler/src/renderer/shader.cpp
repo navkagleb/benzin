@@ -2,8 +2,6 @@
 
 #include "spieler/renderer/shader.hpp"
 
-#include "spieler/core/logger.hpp"
-#include "spieler/core/assert.hpp"
 #include "spieler/core/common.hpp"
 
 namespace spieler::renderer

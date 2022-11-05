@@ -126,23 +126,23 @@ namespace sandbox
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource{ &m_BlurMaps[0].Resource },
+            .Resource{ m_BlurMaps[0].GetTextureResource().get() },
             .From{ spieler::renderer::ResourceState::Present },
             .To{ spieler::renderer::ResourceState::CopyDestination }
         });
 
-        dx12CommandList->CopyResource(m_BlurMaps[0].Resource.GetDX12Resource(), input.GetDX12Resource());
+        dx12CommandList->CopyResource(m_BlurMaps[0].GetTextureResource()->GetDX12Resource(), input.GetDX12Resource());
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource{ &m_BlurMaps[0].Resource },
+            .Resource{ m_BlurMaps[0].GetTextureResource().get() },
             .From{ spieler::renderer::ResourceState::CopyDestination },
             .To{ spieler::renderer::ResourceState::GenericRead }
         });
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource{ &m_BlurMaps[1].Resource },
+            .Resource{ m_BlurMaps[1].GetTextureResource().get() },
             .From{ spieler::renderer::ResourceState::Present },
             .To{ spieler::renderer::ResourceState::UnorderedAccess }
         });
@@ -163,22 +163,22 @@ namespace sandbox
                 dx12CommandList->SetComputeRoot32BitConstants(0, 1, &horizontalBlurRadius, 0);
                 dx12CommandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(horizontalWeights.size()), horizontalWeights.data(), 1);
 
-                dx12CommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
-                dx12CommandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].Views.GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
+                dx12CommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].GetView<spieler::renderer::TextureShaderResourceView>().GetDescriptor().GPU });
+                dx12CommandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].GetView<spieler::renderer::TextureUnorderedAccessView>().GetDescriptor().GPU });
 
                 const auto xGroupCount{ width / _internal::g_ThreadPerGroupCount + 1 };
                 dx12CommandList->Dispatch(xGroupCount, height, 1);
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource{ &m_BlurMaps[0].Resource },
+                    .Resource{ m_BlurMaps[0].GetTextureResource().get() },
                     .From{ spieler::renderer::ResourceState::GenericRead },
                     .To{ spieler::renderer::ResourceState::UnorderedAccess }
                 });
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource{ &m_BlurMaps[1].Resource },
+                    .Resource{ m_BlurMaps[1].GetTextureResource().get() },
                     .From{ spieler::renderer::ResourceState::UnorderedAccess },
                     .To{ spieler::renderer::ResourceState::GenericRead }
                 });
@@ -192,22 +192,22 @@ namespace sandbox
                 dx12CommandList->SetComputeRoot32BitConstants(0, 1, &verticalBlurRadius, 0);
                 dx12CommandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(verticalWeights.size()), verticalWeights.data(), 1);
 
-                dx12CommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].Views.GetView<spieler::renderer::ShaderResourceView>().GetDescriptor().GPU });
-                dx12CommandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].Views.GetView<spieler::renderer::UnorderedAccessView>().GetDescriptor().GPU });
+                dx12CommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].GetView<spieler::renderer::TextureShaderResourceView>().GetDescriptor().GPU });
+                dx12CommandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].GetView<spieler::renderer::TextureUnorderedAccessView>().GetDescriptor().GPU });
 
                 const uint32_t yGroupCount{ height / _internal::g_ThreadPerGroupCount + 1 };
                 dx12CommandList->Dispatch(width, yGroupCount, 1);
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource{ &m_BlurMaps[0].Resource },
+                    .Resource{ m_BlurMaps[0].GetTextureResource().get() },
                     .From{ spieler::renderer::ResourceState::UnorderedAccess },
                     .To{ spieler::renderer::ResourceState::GenericRead }
                 });
 
                 context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
                 {
-                    .Resource{ &m_BlurMaps[1].Resource },
+                    .Resource{ m_BlurMaps[1].GetTextureResource().get() },
                     .From{ spieler::renderer::ResourceState::GenericRead },
                     .To{ spieler::renderer::ResourceState::UnorderedAccess }
                 });
@@ -216,14 +216,14 @@ namespace sandbox
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource{ &m_BlurMaps[0].Resource },
+            .Resource{ m_BlurMaps[0].GetTextureResource().get() },
             .From{ spieler::renderer::ResourceState::GenericRead },
             .To{ spieler::renderer::ResourceState::Present }
         });
 
         context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
         {
-            .Resource{ &m_BlurMaps[1].Resource },
+            .Resource{ m_BlurMaps[1].GetTextureResource().get() },
             .From{ spieler::renderer::ResourceState::UnorderedAccess },
             .To{ spieler::renderer::ResourceState::Present }
         });
@@ -246,14 +246,9 @@ namespace sandbox
         for (size_t i = 0; i < m_BlurMaps.size(); ++i)
         {
             auto& map{ m_BlurMaps[i] };
-
-            map.Resource = spieler::renderer::TextureResource{ device, config };
-
-            map.Views.Clear();
-            map.Views.CreateView<spieler::renderer::ShaderResourceView>(device);
-            map.Views.CreateView<spieler::renderer::UnorderedAccessView>(device);
-
-            //map.GetTexture2DResource().SetDebugName(L"BlurMap" + std::to_wstring(i));
+            map.SetTextureResource(spieler::renderer::TextureResource::Create(device, config));
+            map.PushView<spieler::renderer::TextureShaderResourceView>(device);
+            map.PushView<spieler::renderer::TextureUnorderedAccessView>(device);
         }
     }
 

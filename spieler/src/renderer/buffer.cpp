@@ -5,30 +5,45 @@
 #include <third_party/magic_enum/magic_enum.hpp>
 
 #include "spieler/renderer/device.hpp"
-
-#include "renderer/mapped_data.hpp"
+#include "spieler/renderer/utils.hpp"
 
 namespace spieler::renderer
 {
 
-    BufferResource::BufferResource(Device& device, const Config& config)
-        : m_Config{ config }
+    namespace _internal
     {
-        using namespace magic_enum::bitwise_operators;
 
-        if ((m_Config.Flags & Flags::ConstantBuffer) != Flags::None)
+        BufferResource::Config ValidateConfig(const BufferResource::Config& config)
         {
-            m_Config.ElementSize = utils::Align<uint32_t>(m_Config.ElementSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+            using namespace magic_enum::bitwise_operators;
+
+            BufferResource::Config validatedConfig{ config };
+
+            if ((validatedConfig.Flags & BufferResource::Flags::ConstantBuffer) != BufferResource::Flags::None)
+            {
+                validatedConfig.ElementSize = utils::Align<uint32_t>(validatedConfig.ElementSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+            }
+
+            return validatedConfig;
         }
 
-        m_DX12Resource = device.CreateDX12Buffer(m_Config);
+    } // namespace _internal
+
+    std::shared_ptr<BufferResource> BufferResource::Create(Device& device, const Config& config)
+    {
+        return std::make_shared<BufferResource>(device, config);
     }
 
-    void BufferResource::Write(uint64_t offset, const void* data, uint64_t size)
-    {
-        MappedData mappedData{ *this, 0 };
+    BufferResource::BufferResource(Device& device, const Config& config)
+        : Resource{ device.CreateDX12Buffer(_internal::ValidateConfig(config)) }
+        , m_Config{ _internal::ValidateConfig(config) }
+    {}
 
-        memcpy_s(mappedData.GetData() + offset, size, data, size);
+    GPUVirtualAddress BufferResource::GetGPUVirtualAddressWithOffset(uint64_t offset) const
+    {
+        SPIELER_ASSERT(m_DX12Resource);
+
+        return m_DX12Resource->GetGPUVirtualAddress() + offset * m_Config.ElementSize;
     }
 
 } // namespace spieler::renderer

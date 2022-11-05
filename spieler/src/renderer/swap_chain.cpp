@@ -3,7 +3,6 @@
 #include "spieler/renderer/swap_chain.hpp"
 
 #include "spieler/core/common.hpp"
-#include "spieler/core/logger.hpp"
 
 #include "spieler/renderer/device.hpp"
 #include "spieler/renderer/context.hpp"
@@ -52,8 +51,7 @@ namespace spieler::renderer
 
         for (Texture& buffer : m_Buffers)
         {
-            buffer.Resource.Release();
-            buffer.Views.Clear();
+            buffer.GetTextureResource().reset();
         }
 
         SPIELER_ASSERT(SUCCEEDED(m_DXGISwapChain->ResizeBuffers(
@@ -197,13 +195,11 @@ namespace spieler::renderer
     {
         for (size_t i = 0; i < m_Buffers.size(); ++i)
         {
-            ComPtr<ID3D12Resource> backBuffer;
+            ID3D12Resource* backBuffer;
             SPIELER_ASSERT(SUCCEEDED(m_DXGISwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer))));
             
-            m_Buffers[i].Resource = TextureResource{ std::move(backBuffer) };
-
-            m_Buffers[i].Views.Clear();
-            m_Buffers[i].Views.CreateView<RenderTargetView>(device);
+            m_Buffers[i].SetTextureResource(TextureResource::Create(backBuffer));
+            m_Buffers[i].PushView<TextureRenderTargetView>(device);
         }
     }
 

@@ -4,8 +4,6 @@
 
 #include "platform/dx12/dx12_common.hpp"
 
-#include "spieler/core/logger.hpp"
-
 #include "spieler/renderer/blend_state.hpp"
 
 namespace spieler::renderer::dx12
@@ -431,7 +429,7 @@ namespace spieler::renderer::dx12
             case TextureResource::Type::Unknown: return D3D12_RESOURCE_DIMENSION_UNKNOWN;
             //case TextureResource::Dimension::_1D: return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
             case TextureResource::Type::_2D:
-            case TextureResource::Type::CubeMap: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+            case TextureResource::Type::Cube: return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
             //case TextureResource::Dimension::_3D: return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
             
             default:
