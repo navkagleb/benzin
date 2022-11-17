@@ -3,13 +3,14 @@
 #include <spieler/core/layer.hpp>
 #include <spieler/system/window.hpp>
 
-#include <spieler/renderer/root_signature.hpp>
-#include <spieler/renderer/pipeline_state.hpp>
-#include <spieler/renderer/shader.hpp>
-#include <spieler/renderer/mesh.hpp>
-#include <spieler/renderer/texture.hpp>
-#include <spieler/renderer/context.hpp>
-#include <spieler/renderer/camera.hpp>
+#include <spieler/graphics/root_signature.hpp>
+#include <spieler/graphics/pipeline_state.hpp>
+#include <spieler/graphics/shader.hpp>
+#include <spieler/graphics/texture.hpp>
+#include <spieler/graphics/context.hpp>
+
+#include <spieler/engine/camera.hpp>
+#include <spieler/engine/mesh.hpp>
 
 namespace sandbox
 {
@@ -45,25 +46,25 @@ namespace sandbox
         bool OnWindowResized(spieler::WindowResizedEvent& event);
 
     private:
-        spieler::renderer::Viewport m_Viewport;
-        spieler::renderer::ScissorRect m_ScissorRect;
+        spieler::Viewport m_Viewport;
+        spieler::ScissorRect m_ScissorRect;
 
-        spieler::renderer::MeshGeometry m_MeshGeometry;
-        spieler::renderer::RootSignature m_RootSignature;
-        spieler::renderer::ShaderLibrary m_ShaderLibrary;
-        std::unordered_map<std::string, spieler::renderer::PipelineState> m_PipelineStates;
-        std::unordered_map<std::string, spieler::renderer::RenderItem> m_RenderItems;
+        spieler::MeshGeometry m_MeshGeometry;
+        spieler::RootSignature m_RootSignature;
+        std::unordered_map<std::string, std::shared_ptr<spieler::Shader>> m_ShaderLibrary;
+        std::unordered_map<std::string, spieler::PipelineState> m_PipelineStates;
+        std::unordered_map<std::string, spieler::RenderItem> m_RenderItems;
 
         PassConstants m_PassConstants;
-        std::shared_ptr<spieler::renderer::BufferResource> m_PassConstantBuffer;
+        std::shared_ptr<spieler::BufferResource> m_PassConstantBuffer;
 
-        std::shared_ptr<spieler::renderer::BufferResource> m_ObjectConstantBuffer;
+        std::shared_ptr<spieler::BufferResource> m_ObjectConstantBuffer;
 
-        spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
-        spieler::renderer::Texture m_DepthStencil;
+        spieler::GraphicsFormat m_DepthStencilFormat{ spieler::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
+        spieler::Texture m_DepthStencil;
 
-        spieler::renderer::Camera m_Camera;
-        spieler::renderer::CameraController m_CameraController{ m_Camera };
+        spieler::Camera m_Camera;
+        spieler::CameraController m_CameraController{ m_Camera };
     };
 
 } // namespace sandbox

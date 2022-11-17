@@ -9,8 +9,6 @@
 #include "spieler/system/window.hpp"
 #include "spieler/system/window_event.hpp"
 
-#include "spieler/renderer/renderer.hpp"
-
 namespace spieler
 {
 

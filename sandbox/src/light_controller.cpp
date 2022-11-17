@@ -12,7 +12,7 @@ namespace sandbox
         DirectX::XMMATRIX World{};
     };
 
-    void DirectionalLightController::Init(const spieler::renderer::LightConstants& constants, float theta, float phi)
+    void DirectionalLightController::Init(const spieler::LightConstants& constants, float theta, float phi)
     {
         SPIELER_ASSERT(m_Constants);
         SPIELER_ASSERT(m_Shape);
@@ -59,7 +59,7 @@ namespace sandbox
         };
     }
 
-    void PointLightController::Init(const spieler::renderer::LightConstants& constants)
+    void PointLightController::Init(const spieler::LightConstants& constants)
     {
         SPIELER_ASSERT(m_Constants);
         SPIELER_ASSERT(m_Shape);
@@ -100,7 +100,7 @@ namespace sandbox
 #endif
     }
 
-    void SpotLightController::Init(const spieler::renderer::LightConstants& constants, float pitch, float yaw)
+    void SpotLightController::Init(const spieler::LightConstants& constants, float pitch, float yaw)
     {
         SPIELER_ASSERT(m_Constants);
         SPIELER_ASSERT(m_Shape);

@@ -15,8 +15,8 @@
 #include "spieler/system/event_dispatcher.hpp"
 #include "spieler/system/key_event.hpp"
 
-#include "spieler/renderer/renderer.hpp"
-#include "spieler/renderer/camera.hpp"
+#include "spieler/graphics/renderer.hpp"
+#include "spieler/engine/camera.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
 
@@ -32,7 +32,7 @@ namespace spieler
 
     void ImGuiLayer::End()
     {
-        auto& renderer{ renderer::Renderer::GetInstance() };
+        auto& renderer{ Renderer::GetInstance() };
         auto& context{ renderer.GetContext() };
         auto& swapChain{ renderer.GetSwapChain() };
         auto& descriptorManager{ renderer.GetDevice().GetDescriptorManager() };
@@ -40,25 +40,25 @@ namespace spieler
         ImGui::Render();
 
         {
-            renderer::Context::CommandListScope commandListScope{ context, true };
+            Context::CommandListScope commandListScope{ context, true };
 
-            context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
+            context.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ swapChain.GetCurrentBuffer().GetTextureResource().get() },
-                .From{ spieler::renderer::ResourceState::Present },
-                .To{ spieler::renderer::ResourceState::RenderTarget }
+                .From{ spieler::ResourceState::Present },
+                .To{ spieler::ResourceState::RenderTarget }
             });
 
-            context.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(renderer::DescriptorHeap::Type::SRV));
-            context.SetRenderTarget(swapChain.GetCurrentBuffer().GetView<renderer::TextureRenderTargetView>());
+            context.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(DescriptorHeap::Type::SRV));
+            context.SetRenderTarget(swapChain.GetCurrentBuffer().GetView<TextureRenderTargetView>());
 
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context.GetDX12GraphicsCommandList());
 
-            context.SetResourceBarrier(spieler::renderer::TransitionResourceBarrier
+            context.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ swapChain.GetCurrentBuffer().GetTextureResource().get() },
-                .From{ spieler::renderer::ResourceState::RenderTarget },
-                .To{ spieler::renderer::ResourceState::Present }
+                .From{ spieler::ResourceState::RenderTarget },
+                .To{ spieler::ResourceState::Present }
             });
         }
     }
@@ -77,19 +77,19 @@ namespace spieler
 
         ImGui::StyleColorsClassic();
 
-        auto& renderer{ renderer::Renderer::GetInstance() };
+        auto& renderer{ Renderer::GetInstance() };
         auto& device{ renderer.GetDevice() };
         auto& swapChain{ renderer.GetSwapChain() };
         auto& descriptorManager{ device.GetDescriptorManager() };
 
-        renderer::SRVDescriptor fontDescriptor{ descriptorManager.AllocateSRV() };
+        SRVDescriptor fontDescriptor{ descriptorManager.AllocateSRV() };
 
         SPIELER_RETURN_IF_FAILED(ImGui_ImplWin32_Init(Application::GetInstance().GetWindow().GetNativeHandle<::HWND>()));
         SPIELER_RETURN_IF_FAILED(ImGui_ImplDX12_Init(
             device.GetDX12Device(),
             1,
-            renderer::dx12::Convert(swapChain.GetBufferFormat()),
-            descriptorManager.GetDescriptorHeap(renderer::DescriptorHeap::Type::SRV).GetDX12DescriptorHeap(),
+            dx12::Convert(swapChain.GetBufferFormat()),
+            descriptorManager.GetDescriptorHeap(DescriptorHeap::Type::SRV).GetDX12DescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ fontDescriptor.CPU },
             D3D12_GPU_DESCRIPTOR_HANDLE{ fontDescriptor.GPU }
         ));
@@ -180,7 +180,7 @@ namespace spieler
         }
     }
 
-    void ImGuiLayer::SetCamera(renderer::Camera* camera)
+    void ImGuiLayer::SetCamera(Camera* camera)
     {
         m_Camera = camera;
     }

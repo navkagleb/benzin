@@ -1,9 +1,9 @@
 #pragma once
 
-#include <spieler/renderer/texture.hpp>
-#include <spieler/renderer/root_signature.hpp>
-#include <spieler/renderer/pipeline_state.hpp>
-#include <spieler/renderer/shader.hpp>
+#include <spieler/graphics/texture.hpp>
+#include <spieler/graphics/root_signature.hpp>
+#include <spieler/graphics/pipeline_state.hpp>
+#include <spieler/graphics/shader.hpp>
 
 namespace sandbox
 {
@@ -14,10 +14,10 @@ namespace sandbox
         SobelFilterPass(uint32_t width, uint32_t height);
 
     public:
-        const spieler::renderer::Texture& GetOutputTexture() const { return m_OutputTexture; }
+        const spieler::Texture& GetOutputTexture() const { return m_OutputTexture; }
 
     public:
-        void Execute(spieler::renderer::Texture& input);
+        void Execute(spieler::Texture& input);
 
         void OnResize(uint32_t width, uint32_t height);
 
@@ -27,10 +27,10 @@ namespace sandbox
         void InitPipelineState();
 
     private:
-        spieler::renderer::Texture m_OutputTexture;
-        spieler::renderer::RootSignature m_RootSignature;
-        spieler::renderer::ComputePipelineState m_PipelineState;
-        spieler::renderer::ShaderLibrary m_ShaderLibrary;
+        spieler::Texture m_OutputTexture;
+        spieler::RootSignature m_RootSignature;
+        spieler::ComputePipelineState m_PipelineState;
+        std::shared_ptr<spieler::Shader> m_Shader;
     };
 
 } // namespace sandbox

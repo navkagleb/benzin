@@ -20,10 +20,10 @@
 #include <spieler/window/mouse_event.hpp>
 #include <spieler/window/key_event.hpp>
 #include <spieler/utility/random.hpp>
-#include <spieler/renderer/geometry_generator.hpp>
-#include <spieler/renderer/sampler.hpp>
-#include <spieler/renderer/rasterizer_state.hpp>
-#include <spieler/renderer/blend_state.hpp>
+#include <spieler/graphics/geometry_generator.hpp>
+#include <spieler/graphics/sampler.hpp>
+#include <spieler/graphics/rasterizer_state.hpp>
+#include <spieler/graphics/blend_state.hpp>
 
 namespace sandbox
 {

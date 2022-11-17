@@ -4,15 +4,16 @@
 
 #include <spieler/system/window.hpp>
 
-#include <spieler/renderer/mesh.hpp>
-#include <spieler/renderer/shader.hpp>
-#include <spieler/renderer/root_signature.hpp>
-#include <spieler/renderer/pipeline_state.hpp>
-#include <spieler/renderer/texture.hpp>
-#include <spieler/renderer/sampler.hpp>
-#include <spieler/renderer/light.hpp>
-#include <spieler/renderer/context.hpp>
-#include <spieler/renderer/camera.hpp>
+#include <spieler/graphics/shader.hpp>
+#include <spieler/graphics/root_signature.hpp>
+#include <spieler/graphics/pipeline_state.hpp>
+#include <spieler/graphics/texture.hpp>
+#include <spieler/graphics/sampler.hpp>
+#include <spieler/graphics/context.hpp>
+
+#include <spieler/engine/mesh.hpp>
+#include <spieler/engine/light.hpp>
+#include <spieler/engine/camera.hpp>
 
 #include "light_controller.hpp"
 #include "passes/blur_pass.hpp"
@@ -62,7 +63,7 @@ namespace sandbox
             DirectX::XMMATRIX Projection{};
             DirectX::XMFLOAT3 CameraPosition{};
             DirectX::XMFLOAT4 AmbientLight{};
-            std::array<spieler::renderer::LightConstants, g_MaxLightCount> Lights;
+            std::array<spieler::LightConstants, g_MaxLightCount> Lights;
 
             Fog Fog;
 
@@ -93,55 +94,52 @@ namespace sandbox
 
         void InitDepthStencil();
 
-        template <typename Permutations>
-        const spieler::renderer::Shader& GetShader(spieler::renderer::ShaderType type, const spieler::renderer::ShaderPermutation<Permutations>& permutation);
-
         void UpdateViewport();
         void UpdateScissorRect();
 
         void RenderFullscreenQuad();
 
         void Render(
-            std::vector<const spieler::renderer::RenderItem*> items,
-            const spieler::renderer::PipelineState& pso,
+            std::vector<const spieler::RenderItem*> items,
+            const spieler::PipelineState& pso,
             const PassConstants& passConstants,
-            const spieler::renderer::BufferResource* objectConstantBuffer = nullptr);
+            const spieler::BufferResource* objectConstantBuffer = nullptr);
 
         bool OnWindowResized(spieler::WindowResizedEvent& event);
 
     private:
-        spieler::renderer::GraphicsFormat m_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
-        spieler::renderer::Texture m_DepthStencil;
+        spieler::GraphicsFormat m_DepthStencilFormat{ spieler::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
+        spieler::Texture m_DepthStencil;
 
-        spieler::renderer::Viewport m_Viewport;
-        spieler::renderer::ScissorRect m_ScissorRect;
+        spieler::Viewport m_Viewport;
+        spieler::ScissorRect m_ScissorRect;
 
-        spieler::renderer::Camera m_Camera;
-        spieler::renderer::CameraController m_CameraController{ m_Camera };
+        spieler::Camera m_Camera;
+        spieler::CameraController m_CameraController{ m_Camera };
 
-        LookUpTable<spieler::renderer::Texture> m_Textures;
-        LookUpTable<spieler::renderer::SamplerConfig> m_Samplers;
-        //LookUpTable<spieler::renderer::SamplerView> m_SamplerViews;
-        LookUpTable<spieler::renderer::Material> m_Materials;
-        LookUpTable<spieler::renderer::MeshGeometry> m_MeshGeometries;
-        LookUpTable<spieler::renderer::RootSignature> m_RootSignatures;
+        LookUpTable<spieler::Texture> m_Textures;
+        LookUpTable<spieler::SamplerConfig> m_Samplers;
+        //LookUpTable<spieler::SamplerView> m_SamplerViews;
+        LookUpTable<spieler::Material> m_Materials;
+        LookUpTable<spieler::MeshGeometry> m_MeshGeometries;
+        LookUpTable<spieler::RootSignature> m_RootSignatures;
 
-        spieler::renderer::ShaderLibrary m_ShaderLibrary;
+        std::unordered_map<std::string, std::shared_ptr<spieler::Shader>> m_ShaderLibrary;
 
-        LookUpTable<spieler::renderer::GraphicsPipelineState> m_PipelineStates;
-        LookUpTable<std::shared_ptr<spieler::renderer::BufferResource>> m_ConstantBuffers;
+        LookUpTable<spieler::GraphicsPipelineState> m_PipelineStates;
+        LookUpTable<std::shared_ptr<spieler::BufferResource>> m_ConstantBuffers;
 
         // RenderItems
-        std::unordered_map<std::string, std::unique_ptr<spieler::renderer::RenderItem>> m_RenderItems;
-        std::vector<const spieler::renderer::RenderItem*> m_Lights;
-        std::vector<const spieler::renderer::RenderItem*> m_OpaqueObjects;
-        std::vector<const spieler::renderer::RenderItem*> m_Mirrors;
-        std::vector<const spieler::renderer::RenderItem*> m_ReflectedObjects;
-        std::vector<const spieler::renderer::RenderItem*> m_AlphaTestedObjects;
-        std::vector<const spieler::renderer::RenderItem*> m_AlphaTestedBillboards;
-        std::vector<const spieler::renderer::RenderItem*> m_TransparentObjects;
-        std::vector<const spieler::renderer::RenderItem*> m_Shadows;
-        std::vector<const spieler::renderer::RenderItem*> m_BillboardShadows;
+        std::unordered_map<std::string, std::unique_ptr<spieler::RenderItem>> m_RenderItems;
+        std::vector<const spieler::RenderItem*> m_Lights;
+        std::vector<const spieler::RenderItem*> m_OpaqueObjects;
+        std::vector<const spieler::RenderItem*> m_Mirrors;
+        std::vector<const spieler::RenderItem*> m_ReflectedObjects;
+        std::vector<const spieler::RenderItem*> m_AlphaTestedObjects;
+        std::vector<const spieler::RenderItem*> m_AlphaTestedBillboards;
+        std::vector<const spieler::RenderItem*> m_TransparentObjects;
+        std::vector<const spieler::RenderItem*> m_Shadows;
+        std::vector<const spieler::RenderItem*> m_BillboardShadows;
 
         LookUpTable<PassConstants> m_PassConstants;
 

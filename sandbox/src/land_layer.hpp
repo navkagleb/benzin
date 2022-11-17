@@ -8,14 +8,14 @@
 #include <spieler/layer.hpp>
 #include <spieler/window/window.hpp>
 #include <spieler/window/window_event.hpp>
-#include <spieler/renderer/renderer.hpp>
-#include <spieler/renderer/shader.hpp>
-#include <spieler/renderer/pipeline_state.hpp>
-#include <spieler/renderer/mesh.hpp>
-#include <spieler/renderer/light.hpp>
-#include <spieler/renderer/upload_buffer.hpp>
-#include <spieler/renderer/texture.hpp>
-#include <spieler/renderer/root_signature.hpp>
+#include <spieler/graphics/renderer.hpp>
+#include <spieler/graphics/shader.hpp>
+#include <spieler/graphics/pipeline_state.hpp>
+#include <spieler/graphics/mesh.hpp>
+#include <spieler/graphics/light.hpp>
+#include <spieler/graphics/upload_buffer.hpp>
+#include <spieler/graphics/texture.hpp>
+#include <spieler/graphics/root_signature.hpp>
 
 #include "projection_camera_controller.hpp"
 #include "waves.hpp"

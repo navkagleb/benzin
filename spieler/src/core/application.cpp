@@ -6,6 +6,8 @@
 
 #include "spieler/core/common.hpp"
 
+#include "spieler/graphics/renderer.hpp"
+
 #include "spieler/system/event_dispatcher.hpp"
 
 #include "platform/win64/win64_window.hpp"
@@ -50,14 +52,14 @@ namespace spieler
     static_assert(false);
 #endif
 
-        renderer::Renderer::CreateInstance(*m_Window);
+        Renderer::CreateInstance(*m_Window);
 
         m_ImGuiLayer = m_LayerStack.PushOverlay<ImGuiLayer>();
     }
 
     Application::~Application()
     {
-        renderer::Renderer::DestroyInstance();
+        Renderer::DestroyInstance();
     }
 
     void Application::Run()
@@ -66,8 +68,8 @@ namespace spieler
 
         m_IsRunning = true;
 
-        renderer::Renderer& renderer{ renderer::Renderer::GetInstance() };
-        renderer::Context& context{ renderer.GetContext() };
+        Renderer& renderer{ Renderer::GetInstance() };
+        Context& context{ renderer.GetContext() };
 
         while (m_IsRunning)
         {
@@ -100,7 +102,7 @@ namespace spieler
                 }
                 ImGuiLayer::End();
 
-                renderer.Present(renderer::VSyncState::Disabled);
+                renderer.Present(VSyncState::Disabled);
             }
         }
     }
@@ -177,7 +179,7 @@ namespace spieler
 
     bool Application::OnWindowResized(WindowResizedEvent& event)
     {
-        renderer::Renderer::GetInstance().ResizeBuffers(m_Window->GetWidth(), m_Window->GetHeight());
+        Renderer::GetInstance().ResizeBuffers(m_Window->GetWidth(), m_Window->GetHeight());
 
         return false;
     }

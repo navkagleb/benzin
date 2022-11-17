@@ -4,9 +4,9 @@
 
 #include "platform/dx12/dx12_common.hpp"
 
-#include "spieler/renderer/blend_state.hpp"
+#include "spieler/graphics/blend_state.hpp"
 
-namespace spieler::renderer::dx12
+namespace spieler::dx12
 {
 
     // common.hpp
@@ -480,6 +480,6 @@ namespace spieler::renderer::dx12
         return D3D12_RESOURCE_FLAG_NONE;
     }
 
-} // namespace spieler::renderer::dx12
+} // namespace spieler::dx12
 
 #endif // defined(SPIELER_GRAPHICS_API_DX12)

@@ -5,12 +5,7 @@
 namespace spieler
 {
 
-    namespace renderer
-    {
-
-        class Camera;
-
-    } // namespace renderer
+    class Camera;
 
     class ImGuiLayer final : public Layer
     {
@@ -30,14 +25,14 @@ namespace spieler
         void OnImGuiRender(float dt) override;
 
     public:
-        void SetCamera(renderer::Camera* camera);
+        void SetCamera(Camera* camera);
 
     private:
         bool m_IsEventsAreBlocked{ true };
         bool m_IsDemoWindowEnabled{ false };
         bool m_IsBottomPanelEnabled{ true };
 
-        renderer::Camera* m_Camera{ nullptr };
+        Camera* m_Camera{ nullptr };
     };
 
 } // namespace spieler

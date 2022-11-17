@@ -4,21 +4,21 @@
 
 #include <spieler/core/layer.hpp>
 
-#include <spieler/renderer/buffer.hpp>
-#include <spieler/renderer/texture.hpp>
-#include <spieler/renderer/context.hpp>
-#include <spieler/renderer/mesh.hpp>
-#include <spieler/renderer/root_signature.hpp>
-#include <spieler/renderer/shader.hpp>
-#include <spieler/renderer/pipeline_state.hpp>
-#include <spieler/renderer/camera.hpp>
+#include <spieler/graphics/buffer.hpp>
+#include <spieler/graphics/texture.hpp>
+#include <spieler/graphics/context.hpp>
+#include <spieler/engine/mesh.hpp>
+#include <spieler/graphics/root_signature.hpp>
+#include <spieler/graphics/shader.hpp>
+#include <spieler/graphics/pipeline_state.hpp>
+#include <spieler/engine/camera.hpp>
 
-namespace spieler::renderer
+namespace spieler
 {
 
     class Device;
 
-} // namespace spieler::renderer
+} // namespace spieler
 
 namespace sandbox
 {
@@ -29,35 +29,35 @@ namespace sandbox
         DynamicCubeMap(uint32_t width, uint32_t height);
 
     public:
-        spieler::renderer::Texture& GetCubeMap() { return m_CubeMap; }
-        spieler::renderer::Texture& GetDepthStencil() { return m_DepthStencil; }
+        spieler::Texture& GetCubeMap() { return m_CubeMap; }
+        spieler::Texture& GetDepthStencil() { return m_DepthStencil; }
 
         const DirectX::XMVECTOR& GetPosition() const { return m_Position; }
         void SetPosition(const DirectX::XMVECTOR& position);
 
-        const spieler::renderer::Camera& GetCamera(uint32_t index) const { return m_Cameras[index]; }
+        const spieler::Camera& GetCamera(uint32_t index) const { return m_Cameras[index]; }
 
-        const spieler::renderer::Viewport& GetViewport() const { return m_Viewport; }
-        const spieler::renderer::ScissorRect& GetScissorRect() const { return m_ScissorRect; }
+        const spieler::Viewport& GetViewport() const { return m_Viewport; }
+        const spieler::ScissorRect& GetScissorRect() const { return m_ScissorRect; }
 
     public:
         void OnResize(uint32_t width, uint32_t height);
 
     private:
-        void InitCubeMap(spieler::renderer::Device& device, uint32_t width, uint32_t height);
-        void InitDepthStencil(spieler::renderer::Device& device, uint32_t width, uint32_t height);
+        void InitCubeMap(spieler::Device& device, uint32_t width, uint32_t height);
+        void InitDepthStencil(spieler::Device& device, uint32_t width, uint32_t height);
         void InitCameras(uint32_t width, uint32_t height);
         void InitViewport(float width, float height);
 
     private:
-        spieler::renderer::Texture m_CubeMap;
-        spieler::renderer::Texture m_DepthStencil;
+        spieler::Texture m_CubeMap;
+        spieler::Texture m_DepthStencil;
 
         DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, 0.0f, 1.0f };
-        std::array<spieler::renderer::Camera, 6> m_Cameras;
+        std::array<spieler::Camera, 6> m_Cameras;
 
-        spieler::renderer::Viewport m_Viewport;
-        spieler::renderer::ScissorRect m_ScissorRect;
+        spieler::Viewport m_Viewport;
+        spieler::ScissorRect m_ScissorRect;
     };
 
     class InstancingAndCullingLayer final : public spieler::Layer
@@ -67,14 +67,14 @@ namespace sandbox
         {
             struct Instance
             {
-                spieler::renderer::Transform Transform;
+                spieler::Transform Transform;
                 uint32_t MaterialIndex{ 0 };
                 bool Visible{ true };
             };
 
-            const spieler::renderer::MeshGeometry* MeshGeometry{ nullptr };
-            const spieler::renderer::SubmeshGeometry* SubmeshGeometry{ nullptr };
-            spieler::renderer::PrimitiveTopology PrimitiveTopology{ spieler::renderer::PrimitiveTopology::Unknown };
+            const spieler::MeshGeometry* MeshGeometry{ nullptr };
+            const spieler::SubmeshGeometry* SubmeshGeometry{ nullptr };
+            spieler::PrimitiveTopology PrimitiveTopology{ spieler::PrimitiveTopology::Unknown };
 
             bool IsNeedCulling{ true };
 
@@ -155,22 +155,22 @@ namespace sandbox
 
         void PickTriangle(float x, float y);
 
-        void RenderRenderItems(const spieler::renderer::PipelineState& pso, const std::span<RenderItem*>& renderItems) const;
+        void RenderRenderItems(const spieler::PipelineState& pso, const std::span<RenderItem*>& renderItems) const;
 
     private:
-        static const spieler::renderer::GraphicsFormat ms_DepthStencilFormat{ spieler::renderer::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
+        static const spieler::GraphicsFormat ms_DepthStencilFormat{ spieler::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
 
     private:
-        spieler::renderer::Viewport m_Viewport;
-        spieler::renderer::ScissorRect m_ScissorRect;
+        spieler::Viewport m_Viewport;
+        spieler::ScissorRect m_ScissorRect;
 
-        std::unordered_map<std::string, spieler::renderer::Buffer> m_Buffers;
-        std::unordered_map<std::string, spieler::renderer::Texture> m_Textures;
+        std::unordered_map<std::string, spieler::Buffer> m_Buffers;
+        std::unordered_map<std::string, spieler::Texture> m_Textures;
 
-        spieler::renderer::MeshGeometry m_MeshGeometry;
-        spieler::renderer::RootSignature m_RootSignature;
-        spieler::renderer::ShaderLibrary m_ShaderLibrary;
-        std::unordered_map<std::string, spieler::renderer::PipelineState> m_PipelineStates;
+        spieler::MeshGeometry m_MeshGeometry;
+        spieler::RootSignature m_RootSignature;
+        std::unordered_map<std::string, std::shared_ptr<spieler::Shader>> m_ShaderLibrary;
+        std::unordered_map<std::string, spieler::PipelineState> m_PipelineStates;
         
         std::unordered_map<std::string, std::unique_ptr<RenderItem>> m_RenderItems;
         std::vector<RenderItem*> m_DefaultRenderItems;
@@ -182,8 +182,8 @@ namespace sandbox
         PassData m_PassData;
         std::unordered_map<std::string, MaterialData> m_Materials;
 
-        spieler::renderer::Camera m_Camera;
-        spieler::renderer::CameraController m_CameraController{ m_Camera };
+        spieler::Camera m_Camera;
+        spieler::CameraController m_CameraController{ m_Camera };
 
         PointLightController m_PointLightController;
 

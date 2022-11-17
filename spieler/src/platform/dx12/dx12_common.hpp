@@ -2,13 +2,13 @@
 
 #if defined(SPIELER_GRAPHICS_API_DX12)
 
-#include "spieler/renderer/common.hpp"
-#include "spieler/renderer/blend_state.hpp"
-#include "spieler/renderer/depth_stencil_state.hpp"
-#include "spieler/renderer/descriptor_manager.hpp"
-#include "spieler/renderer/texture.hpp"
+#include "spieler/graphics/common.hpp"
+#include "spieler/graphics/blend_state.hpp"
+#include "spieler/graphics/depth_stencil_state.hpp"
+#include "spieler/graphics/descriptor_manager.hpp"
+#include "spieler/graphics/texture.hpp"
 
-namespace spieler::renderer::dx12
+namespace spieler::dx12
 {
     
     // common.hpp
@@ -39,6 +39,6 @@ namespace spieler::renderer::dx12
     TextureResource::UsageFlags Convert(D3D12_RESOURCE_FLAGS flags);
     D3D12_RESOURCE_FLAGS Convert(TextureResource::UsageFlags flags);
     
-} // namespace spieler::renderer::dx12
+} // namespace spieler::dx12
 
 #endif // defined(SPIELER_GRAPHICS_API_DX12)

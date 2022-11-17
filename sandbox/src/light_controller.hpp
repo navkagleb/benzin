@@ -1,7 +1,8 @@
 #pragma once
 
-#include <spieler/renderer/light.hpp>
-#include <spieler/renderer/mesh.hpp>
+#include <spieler/engine/light.hpp>
+#include <spieler/engine/mesh.hpp>
+
 #include <spieler/math/math.hpp>
 
 namespace sandbox
@@ -10,23 +11,23 @@ namespace sandbox
     class LightController
     {
     public:
-        void SetConstants(spieler::renderer::LightConstants* constants) { m_Constants = constants; }
-        void SetShape(spieler::renderer::RenderItem* shape) { m_Shape = shape; }
+        void SetConstants(spieler::LightConstants* constants) { m_Constants = constants; }
+        void SetShape(spieler::RenderItem* shape) { m_Shape = shape; }
         void SetName(const std::string& name) { m_Name = name; }
 
     public:
         virtual void OnImGuiRender() = 0;
 
     protected:
-        spieler::renderer::LightConstants* m_Constants{ nullptr };
-        spieler::renderer::RenderItem* m_Shape{ nullptr };
+        spieler::LightConstants* m_Constants{ nullptr };
+        spieler::RenderItem* m_Shape{ nullptr };
         std::string m_Name{ "LightController" };
     };
 
     class DirectionalLightController : public LightController
     {
     public:
-        void Init(const spieler::renderer::LightConstants& constants = {}, float theta = 0.0f, float phi = 0.0f);
+        void Init(const spieler::LightConstants& constants = {}, float theta = 0.0f, float phi = 0.0f);
         void OnImGuiRender() override;
 
     private:
@@ -39,7 +40,7 @@ namespace sandbox
     class PointLightController : public LightController
     {
     public:
-        void Init(const spieler::renderer::LightConstants& constants = {});
+        void Init(const spieler::LightConstants& constants = {});
         void OnImGuiRender() override;
 
     private:
@@ -49,7 +50,7 @@ namespace sandbox
     class SpotLightController : public LightController
     {
     public:
-        void Init(const spieler::renderer::LightConstants& constants = {}, float pitch = 0.0f, float yaw = 0.0f);
+        void Init(const spieler::LightConstants& constants = {}, float pitch = 0.0f, float yaw = 0.0f);
         void OnImGuiRender() override;
 
         void SetPosition(const DirectX::XMVECTOR& position);

@@ -2,10 +2,10 @@
 
 #include <spieler/system/window_event.hpp>
 
-#include <spieler/renderer/texture.hpp>
-#include <spieler/renderer/root_signature.hpp>
-#include <spieler/renderer/pipeline_state.hpp>
-#include <spieler/renderer/shader.hpp>
+#include <spieler/graphics/texture.hpp>
+#include <spieler/graphics/root_signature.hpp>
+#include <spieler/graphics/pipeline_state.hpp>
+#include <spieler/graphics/shader.hpp>
 
 namespace sandbox
 {
@@ -22,8 +22,8 @@ namespace sandbox
     private:
         struct BlurPassDirection
         {
-            spieler::renderer::RootSignature RootSignature;
-            spieler::renderer::PipelineState PSO;
+            spieler::RootSignature RootSignature;
+            spieler::PipelineState PSO;
         };
 
     public:
@@ -33,10 +33,10 @@ namespace sandbox
         BlurPass(uint32_t width, uint32_t height);
 
     public:
-        spieler::renderer::Texture& GetOutput() { return m_BlurMaps[0]; }
+        spieler::Texture& GetOutput() { return m_BlurMaps[0]; }
 
     public:
-        bool Execute(spieler::renderer::TextureResource& input, const BlurPassExecuteProps& props);
+        bool Execute(spieler::TextureResource& input, const BlurPassExecuteProps& props);
 
         void OnResize(uint32_t width, uint32_t height);
 
@@ -49,8 +49,8 @@ namespace sandbox
         BlurPassDirection m_HorizontalPass;
         BlurPassDirection m_VerticalPass;
 
-        std::array<spieler::renderer::Texture, 2> m_BlurMaps;
-        spieler::renderer::ShaderLibrary m_ShaderLibrary;
+        std::array<spieler::Texture, 2> m_BlurMaps;
+        std::unordered_map<std::string, std::shared_ptr<spieler::Shader>> m_ShaderLibrary;
     };
 
 } // namespace sandbox
