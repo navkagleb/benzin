@@ -84,7 +84,7 @@ namespace spieler
 
         SRVDescriptor fontDescriptor{ descriptorManager.AllocateSRV() };
 
-        SPIELER_RETURN_IF_FAILED(ImGui_ImplWin32_Init(Application::GetInstance().GetWindow().GetNativeHandle<::HWND>()));
+        SPIELER_RETURN_IF_FAILED(ImGui_ImplWin32_Init(Application::GetInstance().GetWindow().GetWin64Window()));
         SPIELER_RETURN_IF_FAILED(ImGui_ImplDX12_Init(
             device.GetDX12Device(),
             1,

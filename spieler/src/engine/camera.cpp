@@ -124,38 +124,36 @@ namespace spieler
     {
         SPIELER_ASSERT(m_Camera);
 
-        const spieler::Input& input{ spieler::Application::GetInstance().GetWindow().GetInput() };
-
         const float delta{ m_CameraSpeed * dt };
 
         DirectX::XMVECTOR updatedPosition{ DirectX::XMVectorZero() };
 
         // Front / Back
-        if (input.IsKeyPressed(KeyCode::W))
+        if (Input::IsKeyPressed(KeyCode::W))
         {
             updatedPosition = DirectX::XMVectorAdd(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetFrontDirection(), delta));
         }
-        else if (input.IsKeyPressed(KeyCode::S))
+        else if (Input::IsKeyPressed(KeyCode::S))
         {
             updatedPosition = DirectX::XMVectorSubtract(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetFrontDirection(), delta));
         }
 
         // Left / Right
-        if (input.IsKeyPressed(KeyCode::A))
+        if (Input::IsKeyPressed(KeyCode::A))
         {
             updatedPosition = DirectX::XMVectorAdd(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetRightDirection(), delta));
         }
-        else if (input.IsKeyPressed(KeyCode::D))
+        else if (Input::IsKeyPressed(KeyCode::D))
         {
             updatedPosition = DirectX::XMVectorSubtract(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetRightDirection(), delta));
         }
 
         // Up / Down
-        if (input.IsKeyPressed(KeyCode::Space))
+        if (Input::IsKeyPressed(KeyCode::Space))
         {
             updatedPosition = DirectX::XMVectorAdd(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetUpDirection(), delta));
         }
-        else if (input.IsKeyPressed(KeyCode::C))
+        else if (Input::IsKeyPressed(KeyCode::C))
         {
             updatedPosition = DirectX::XMVectorSubtract(m_Camera->GetPosition(), DirectX::XMVectorScale(m_Camera->GetUpDirection(), delta));
         }
@@ -243,9 +241,7 @@ namespace spieler
 
     bool CameraController::OnMouseMoved(spieler::MouseMovedEvent& event)
     {
-        const spieler::Input& input{ Application::GetInstance().GetWindow().GetInput() };
-
-        if (input.IsMouseButtonPressed(MouseButton::Left))
+        if (Input::IsMouseButtonPressed(MouseButton::Left))
         {
             const float deltaX{ event.GetX<float>() - m_LastMousePosition.x };
             const float deltaY{ event.GetY<float>() - m_LastMousePosition.y };

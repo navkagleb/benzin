@@ -10,8 +10,6 @@
 
 #include "spieler/system/event_dispatcher.hpp"
 
-#include "platform/win64/win64_window.hpp"
-#include "platform/win64/win64_input.hpp"
 #include "platform/dx12/dx12_common.hpp"
 
 namespace spieler
@@ -46,7 +44,7 @@ namespace spieler
         g_Instance = this;
 
 #if defined(SPIELER_PLATFORM_WINDOWS)
-        m_Window = std::make_unique<Win64_Window>(config.Title, config.Width, config.Height);
+        m_Window = std::make_unique<Window>(config.Title, config.Width, config.Height);
         m_Window->SetEventCallbackFunction([&](Event& event) { WindowEventCallback(event); });
 #else
     static_assert(false);

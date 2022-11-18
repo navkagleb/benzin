@@ -6,33 +6,22 @@
 namespace spieler
 {
 
-    class InputPlatform
+    class Window;
+
+    class Input
     {
     public:
-        virtual ~InputPlatform() = default;
+        template <typename T>
+        static T GetMouseX(const Window& window) { return static_cast<T>(GetMousePosition(window).x); }
 
-    public:
-        virtual float GetMouseX() const = 0;
-        virtual float GetMouseY() const = 0;
+        template <typename T>
+        static T GetMouseY(const Window& window) { return static_cast<T>(GetMousePosition(window).y); }
 
-        virtual bool IsMouseButtonPressed(MouseButton mouseButton) const = 0;
-        virtual bool IsKeyPressed(KeyCode keyCode) const = 0;
-    };
-
-    class Input : private InputPlatform
-    {
-    public:
-        float GetMouseX() const { return m_InputPlatform->GetMouseX(); }
-        float GetMouseY() const { return m_InputPlatform->GetMouseY(); };
-
-        bool IsMouseButtonPressed(MouseButton mouseButton) const { return m_InputPlatform->IsMouseButtonPressed(mouseButton); }
-        bool IsKeyPressed(KeyCode keyCode) const { return m_InputPlatform->IsKeyPressed(keyCode); }
-
-    public:
-        void SetInputPlatform(std::unique_ptr<InputPlatform>&& inputPlatform) { m_InputPlatform = std::move(inputPlatform); }
+        static bool IsMouseButtonPressed(MouseButton mouseButton);
+        static bool IsKeyPressed(KeyCode keyCode);
 
     private:
-        std::unique_ptr<InputPlatform> m_InputPlatform;
+        static POINT GetMousePosition(const Window& window);
     };
 
 } // namespace spieler
