@@ -155,6 +155,7 @@ namespace sandbox
         void PickTriangle(float x, float y);
 
         void RenderRenderItems(const spieler::PipelineState& pso, const std::span<RenderItem*>& renderItems);
+        void RenderFullscreenQuad(const spieler::TextureShaderResourceView& srv);
 
     private:
         static const spieler::GraphicsFormat ms_DepthStencilFormat{ spieler::GraphicsFormat::D24UnsignedNormS8UnsignedInt };

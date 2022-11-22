@@ -623,7 +623,7 @@ namespace sandbox
 
     void InstancingAndCullingLayer::OnRender(float dt)
     {
-        auto& backBuffer{ m_SwapChain.GetCurrentBuffer() };
+        auto& renderTarget{ m_Textures["render_target"] };
         auto& depthStencil{ m_Textures["depth_stencil"] };
 
         auto& descriptorManager{ m_Device.GetDescriptorManager() };
@@ -687,7 +687,7 @@ namespace sandbox
 
             m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
-                .Resource{ backBuffer.GetTextureResource().get() },
+                .Resource{ renderTarget.GetTextureResource().get() },
                 .From{ spieler::ResourceState::Present },
                 .To{ spieler::ResourceState::RenderTarget }
             });
@@ -702,9 +702,9 @@ namespace sandbox
             m_GraphicsCommandList.SetViewport(m_Window.GetViewport());
             m_GraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
 
-            m_GraphicsCommandList.SetRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), depthStencil.GetView<spieler::TextureDepthStencilView>());
+            m_GraphicsCommandList.SetRenderTarget(renderTarget.GetView<spieler::TextureRenderTargetView>(), depthStencil.GetView<spieler::TextureDepthStencilView>());
 
-            m_GraphicsCommandList.ClearRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+            m_GraphicsCommandList.ClearRenderTarget(renderTarget.GetView<spieler::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
             m_GraphicsCommandList.ClearDepthStencil(depthStencil.GetView<spieler::TextureDepthStencilView>(), 1.0f, 0);
 
             m_GraphicsCommandList.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::DescriptorHeap::Type::SRV));
@@ -723,7 +723,7 @@ namespace sandbox
 
             m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
-                .Resource{ backBuffer.GetTextureResource().get() },
+                .Resource{ renderTarget.GetTextureResource().get() },
                 .From{ spieler::ResourceState::RenderTarget },
                 .To{ spieler::ResourceState::Present }
             });
@@ -734,6 +734,8 @@ namespace sandbox
                 .From{ spieler::ResourceState::DepthWrite },
                 .To{ spieler::ResourceState::Present }
             });
+
+            RenderFullscreenQuad(m_Textures["render_target"].GetView<spieler::TextureShaderResourceView>());
 
             m_GraphicsCommandList.Close();
         }
@@ -1165,6 +1167,58 @@ namespace sandbox
 
             m_PipelineStates["cubemap"] = spieler::GraphicsPipelineState{ m_Device, config };
         }
+
+        // Fullscreen
+        {
+            const spieler::Shader* vertexShader{ nullptr };
+            const spieler::Shader* pixelShader{ nullptr };
+
+            // Init Shaders
+            {
+                const std::wstring_view filepath{ L"assets/shaders/fullscreen.hlsl" };
+
+                const spieler::Shader::Config vertexShaderConfig
+                {
+                    .Type{ spieler::Shader::Type::Vertex },
+                    .Filepath{ filepath },
+                    .EntryPoint{ "VS_Main" }
+                };
+
+                const spieler::Shader::Config pixelShaderConfig
+                {
+                    .Type{ spieler::Shader::Type::Pixel },
+                    .Filepath{ filepath },
+                    .EntryPoint{ "PS_Main" }
+                };
+
+                m_ShaderLibrary["fullscreen_vs"] = spieler::Shader::Create(vertexShaderConfig);
+                m_ShaderLibrary["fullscreen_ps"] = spieler::Shader::Create(pixelShaderConfig);
+
+                vertexShader = m_ShaderLibrary["fullscreen_vs"].get();
+                pixelShader = m_ShaderLibrary["fullscreen_ps"].get();
+            }
+
+            const spieler::RasterizerState rasterizerState
+            {
+                .FillMode{ spieler::FillMode::Solid },
+                .CullMode{ spieler::CullMode::None },
+            };
+
+            const spieler::InputLayout nullInputLayout;
+
+            const spieler::GraphicsPipelineState::Config config
+            {
+                .RootSignature{ &m_RootSignature },
+                .VertexShader{ vertexShader },
+                .PixelShader{ pixelShader },
+                .RasterizerState{ &rasterizerState },
+                .InputLayout{ &nullInputLayout },
+                .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
+                .RTVFormat{ m_SwapChain.GetBufferFormat() },
+            };
+
+            m_PipelineStates["fullscreen"] = spieler::GraphicsPipelineState{ m_Device, config };
+        }
     }
 
     void InstancingAndCullingLayer::InitRenderTarget()
@@ -1349,6 +1403,36 @@ namespace sandbox
                 renderItem->VisibleInstanceCount
             );
         }
+    }
+
+    void InstancingAndCullingLayer::RenderFullscreenQuad(const spieler::TextureShaderResourceView& srv)
+    {
+        auto& backBuffer{ m_SwapChain.GetCurrentBuffer() };
+
+        m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
+        {
+            .Resource{ backBuffer.GetTextureResource().get() },
+            .From{ spieler::ResourceState::Present },
+            .To{ spieler::ResourceState::RenderTarget }
+        });
+
+        m_GraphicsCommandList.SetRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>());
+        m_GraphicsCommandList.ClearRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+
+        m_GraphicsCommandList.SetPipelineState(m_PipelineStates["fullscreen"]);
+        m_GraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
+        m_GraphicsCommandList.IASetVertexBuffer(nullptr);
+        m_GraphicsCommandList.IASetIndexBuffer(nullptr);
+        m_GraphicsCommandList.IASetPrimitiveTopology(spieler::PrimitiveTopology::TriangleList);
+        m_GraphicsCommandList.SetGraphicsDescriptorTable(4, srv);
+        m_GraphicsCommandList.DrawVertexed(6, 0);
+
+        m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
+        {
+            .Resource{ backBuffer.GetTextureResource().get() },
+            .From{ spieler::ResourceState::RenderTarget },
+            .To{ spieler::ResourceState::Present }
+        });
     }
 
 } // namespace sandbox
