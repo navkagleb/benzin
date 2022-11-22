@@ -44,67 +44,19 @@ namespace sandbox
             return weights;
         }
 
-        static spieler::RootSignature::Config GetUniformPassRootSignatureConfig()
-        {
-            const spieler::RootParameter::_32BitConstants constants
-            {
-                .ShaderRegister{ 0 },
-                .Count{ 12 } // BlurRadius + 11 Weights
-            };
-
-            const spieler::RootParameter::SingleDescriptorTable srvTable
-            {
-                .Range
-                {
-                    .Type{ spieler::RootParameter::DescriptorRangeType::ShaderResourceView },
-                    .DescriptorCount{ 1 },
-                    .BaseShaderRegister{ 0 }
-                }
-            };
-
-            const spieler::RootParameter::SingleDescriptorTable uavTable
-            {
-                .Range
-                {
-                    .Type{ spieler::RootParameter::DescriptorRangeType::UnorderedAccessView },
-                    .DescriptorCount{ 1 },
-                    .BaseShaderRegister{ 0 }
-                }
-            };
-
-            spieler::RootSignature::Config config{ 3 };
-            config.RootParameters[0] = constants;
-            config.RootParameters[1] = srvTable;
-            config.RootParameters[2] = uavTable;
-            
-            return config;
-        }
-
     } // namespace _internal
 
     BlurPass::BlurPass(spieler::Device& device, uint32_t width, uint32_t height)
     {
         InitTextures(device, width, height);
-        InitHorizontalPass(device);
-        InitVerticalPass(device);
+        InitRootSignature(device);
+        InitPSOs(device);
     }
 
-    void BlurPass::OnResize(spieler::Device& device, uint32_t width, uint32_t height)
-    {
-        InitTextures(device, width, height);
-    }
-
-    bool BlurPass::Execute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input, const BlurPassExecuteProps& props)
+    void BlurPass::OnExecute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input, const BlurPassExecuteProps& props)
     {
         const uint32_t width{ input.GetConfig().Width };
         const uint32_t height{ input.GetConfig().Height };
-
-        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-        {
-            .Resource{ &input },
-            .From{ spieler::ResourceState::RenderTarget },
-            .To{ spieler::ResourceState::CopySource }
-        });
 
         graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
         {
@@ -139,8 +91,8 @@ namespace sandbox
         {
             // Horizontal Blur pass
             {
-                graphicsCommandList.SetPipelineState(m_HorizontalPass.PSO);
-                graphicsCommandList.SetComputeRootSignature(m_HorizontalPass.RootSignature);
+                graphicsCommandList.SetPipelineState(m_HorizontalPSO);
+                graphicsCommandList.SetComputeRootSignature(m_RootSignature);
 
                 graphicsCommandList.SetCompute32BitConstants(0, &horizontalBlurRadius, 1, 0);
                 graphicsCommandList.SetCompute32BitConstants(0, horizontalWeights.data(), horizontalWeights.size(), 1);
@@ -168,8 +120,8 @@ namespace sandbox
             
             // Vertical Blur pass
             {
-                graphicsCommandList.SetPipelineState(m_VerticalPass.PSO);
-                graphicsCommandList.SetComputeRootSignature(m_VerticalPass.RootSignature);
+                graphicsCommandList.SetPipelineState(m_VerticalPSO);
+                graphicsCommandList.SetComputeRootSignature(m_RootSignature);
 
                 graphicsCommandList.SetCompute32BitConstants(0, &verticalBlurRadius, 1, 0);
                 graphicsCommandList.SetCompute32BitConstants(0, verticalWeights.data(), verticalWeights.size(), 1);
@@ -209,8 +161,11 @@ namespace sandbox
             .From{ spieler::ResourceState::UnorderedAccess },
             .To{ spieler::ResourceState::Present }
         });
+    }
 
-        return true;
+    void BlurPass::OnResize(spieler::Device& device, uint32_t width, uint32_t height)
+    {
+        InitTextures(device, width, height);
     }
 
     void BlurPass::InitTextures(spieler::Device& device, uint32_t width, uint32_t height)
@@ -232,14 +187,45 @@ namespace sandbox
         }
     }
 
-    void BlurPass::InitHorizontalPass(spieler::Device& device)
+    void BlurPass::InitRootSignature(spieler::Device& device)
     {
-        // Root Signature
+        const spieler::RootParameter::_32BitConstants constants
         {
-            m_HorizontalPass.RootSignature = spieler::RootSignature{ device, _internal::GetUniformPassRootSignatureConfig() };
-        }
+            .ShaderRegister{ 0 },
+            .Count{ 12 } // BlurRadius + 11 Weights
+        };
 
-        // PSO
+        const spieler::RootParameter::SingleDescriptorTable srvTable
+        {
+            .Range
+            {
+                .Type{ spieler::RootParameter::DescriptorRangeType::ShaderResourceView },
+                .DescriptorCount{ 1 },
+                .BaseShaderRegister{ 0 }
+            }
+        };
+
+        const spieler::RootParameter::SingleDescriptorTable uavTable
+        {
+            .Range
+            {
+                .Type{ spieler::RootParameter::DescriptorRangeType::UnorderedAccessView },
+                .DescriptorCount{ 1 },
+                .BaseShaderRegister{ 0 }
+            }
+        };
+
+        spieler::RootSignature::Config config{ 3 };
+        config.RootParameters[0] = constants;
+        config.RootParameters[1] = srvTable;
+        config.RootParameters[2] = uavTable;
+
+        m_RootSignature = spieler::RootSignature{ device, config };
+    }
+
+    void BlurPass::InitPSOs(spieler::Device& device)
+    {
+        // Horizontal
         {
             const spieler::Shader::Config shaderConfig
             {
@@ -248,7 +234,7 @@ namespace sandbox
                 .EntryPoint{ "CS_HorizontalBlur" },
                 .Defines
                 {
-                    { "THREAD_PER_GROUP_COUNT", std::to_string(_internal::g_ThreadPerGroupCount)}
+                    { "THREAD_PER_GROUP_COUNT", std::to_string(_internal::g_ThreadPerGroupCount) }
                 }
             };
 
@@ -256,22 +242,14 @@ namespace sandbox
 
             const spieler::ComputePipelineState::Config horizontalPSOConfig
             {
-                .RootSignature{ &m_HorizontalPass.RootSignature },
+                .RootSignature{ &m_RootSignature },
                 .ComputeShader{ m_ShaderLibrary["horizontal_cs"].get() }
             };
 
-            m_HorizontalPass.PSO = spieler::ComputePipelineState(device, horizontalPSOConfig);
-        }
-    }
-
-    void BlurPass::InitVerticalPass(spieler::Device& device)
-    {
-        // Root Signature
-        {
-            m_VerticalPass.RootSignature = spieler::RootSignature{ device, _internal::GetUniformPassRootSignatureConfig() };
+            m_HorizontalPSO = spieler::ComputePipelineState{ device, horizontalPSOConfig };
         }
 
-        // PSO
+        // Vertical
         {
             const spieler::Shader::Config shaderConfig
             {
@@ -280,7 +258,7 @@ namespace sandbox
                 .EntryPoint{ "CS_VerticalBlur" },
                 .Defines
                 {
-                    { "THREAD_PER_GROUP_COUNT", std::to_string(_internal::g_ThreadPerGroupCount)}
+                    { "THREAD_PER_GROUP_COUNT", std::to_string(_internal::g_ThreadPerGroupCount) }
                 }
             };
 
@@ -288,11 +266,11 @@ namespace sandbox
 
             const spieler::ComputePipelineState::Config verticalPSOConfig
             {
-                .RootSignature{ &m_VerticalPass.RootSignature },
+                .RootSignature{ &m_RootSignature },
                 .ComputeShader{ m_ShaderLibrary["vertical_cs"].get() }
             };
 
-            m_VerticalPass.PSO = spieler::ComputePipelineState(device, verticalPSOConfig);
+            m_VerticalPSO = spieler::ComputePipelineState{ device, verticalPSOConfig };
         }
     }
 

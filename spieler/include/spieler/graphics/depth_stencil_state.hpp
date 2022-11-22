@@ -19,7 +19,7 @@ namespace spieler
             Enabled = true
         };
 
-        TestState TestState{ TestState::Enabled };
+        TestState TestState{ TestState::Disabled };
         WriteState WriteState{ WriteState::Enabled };
         ComparisonFunction ComparisonFunction{ ComparisonFunction::Less };
     };

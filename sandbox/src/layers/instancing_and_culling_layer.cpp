@@ -243,6 +243,7 @@ namespace sandbox
         , m_CommandQueue{ commandQueue }
         , m_SwapChain{ swapChain }
         , m_GraphicsCommandList{ device }
+        , m_PostEffectsGraphicsCommandList{ device }
     {}
 
     bool InstancingAndCullingLayer::OnAttach()
@@ -262,6 +263,7 @@ namespace sandbox
         }
 
         m_DynamicCubeMap = std::make_unique<DynamicCubeMap>(m_Device, 200.0f, 200.0f);
+        m_BlurPass = std::make_unique<BlurPass>(m_Device, m_Window.GetWidth(), m_Window.GetHeight());
 
         InitBuffers();
 
@@ -735,12 +737,22 @@ namespace sandbox
                 .To{ spieler::ResourceState::Present }
             });
 
-            RenderFullscreenQuad(m_Textures["render_target"].GetView<spieler::TextureShaderResourceView>());
-
             m_GraphicsCommandList.Close();
+            m_CommandQueue.Submit(m_GraphicsCommandList);
         }
 
-        m_CommandQueue.Submit(m_GraphicsCommandList);
+        {
+            m_PostEffectsGraphicsCommandList.Reset();
+
+            m_PostEffectsGraphicsCommandList.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::DescriptorHeap::Type::SRV));
+
+            m_BlurPass->OnExecute(m_PostEffectsGraphicsCommandList, *m_Textures["render_target"].GetTextureResource(), BlurPassExecuteProps{ 2.5f, 2.5f, 1 });
+
+            RenderFullscreenQuad(m_BlurPass->GetOutput().GetView<spieler::TextureShaderResourceView>());
+
+            m_PostEffectsGraphicsCommandList.Close();
+            m_CommandQueue.Submit(m_PostEffectsGraphicsCommandList);
+        }
     }
 
     void InstancingAndCullingLayer::OnImGuiRender(float dt)
@@ -1268,6 +1280,8 @@ namespace sandbox
     {
         InitRenderTarget();
         InitDepthStencil();
+
+        m_BlurPass->OnResize(m_Device, m_Window.GetWidth(), m_Window.GetHeight());
     }
 
     void InstancingAndCullingLayer::PickTriangle(float x, float y)
@@ -1409,25 +1423,27 @@ namespace sandbox
     {
         auto& backBuffer{ m_SwapChain.GetCurrentBuffer() };
 
-        m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
+        m_PostEffectsGraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
         {
             .Resource{ backBuffer.GetTextureResource().get() },
             .From{ spieler::ResourceState::Present },
             .To{ spieler::ResourceState::RenderTarget }
         });
 
-        m_GraphicsCommandList.SetRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>());
-        m_GraphicsCommandList.ClearRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+        m_PostEffectsGraphicsCommandList.SetRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>());
+        m_PostEffectsGraphicsCommandList.ClearRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
 
-        m_GraphicsCommandList.SetPipelineState(m_PipelineStates["fullscreen"]);
-        m_GraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
-        m_GraphicsCommandList.IASetVertexBuffer(nullptr);
-        m_GraphicsCommandList.IASetIndexBuffer(nullptr);
-        m_GraphicsCommandList.IASetPrimitiveTopology(spieler::PrimitiveTopology::TriangleList);
-        m_GraphicsCommandList.SetGraphicsDescriptorTable(4, srv);
-        m_GraphicsCommandList.DrawVertexed(6, 0);
+        m_PostEffectsGraphicsCommandList.SetViewport(m_Window.GetViewport());
+        m_PostEffectsGraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
+        m_PostEffectsGraphicsCommandList.SetPipelineState(m_PipelineStates["fullscreen"]);
+        m_PostEffectsGraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
+        m_PostEffectsGraphicsCommandList.IASetVertexBuffer(nullptr);
+        m_PostEffectsGraphicsCommandList.IASetIndexBuffer(nullptr);
+        m_PostEffectsGraphicsCommandList.IASetPrimitiveTopology(spieler::PrimitiveTopology::TriangleList);
+        m_PostEffectsGraphicsCommandList.SetGraphicsDescriptorTable(4, srv);
+        m_PostEffectsGraphicsCommandList.DrawVertexed(6, 0);
 
-        m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
+        m_PostEffectsGraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
         {
             .Resource{ backBuffer.GetTextureResource().get() },
             .From{ spieler::ResourceState::RenderTarget },

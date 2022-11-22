@@ -16,6 +16,8 @@
 #include <spieler/engine/mesh.hpp>
 #include <spieler/engine/camera.hpp>
 
+#include "passes/blur_pass.hpp"
+
 namespace sandbox
 {
 
@@ -167,6 +169,7 @@ namespace sandbox
         spieler::SwapChain& m_SwapChain;
 
         spieler::GraphicsCommandList m_GraphicsCommandList;
+        spieler::GraphicsCommandList m_PostEffectsGraphicsCommandList;
 
         std::unordered_map<std::string, spieler::Buffer> m_Buffers;
         std::unordered_map<std::string, spieler::Texture> m_Textures;
@@ -194,6 +197,8 @@ namespace sandbox
         std::unique_ptr<DynamicCubeMap> m_DynamicCubeMap;
 
         bool m_IsCullingEnabled{ true };
+
+        std::unique_ptr<BlurPass> m_BlurPass;
     };
 
 } // namespace sandbox

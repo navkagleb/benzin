@@ -9,7 +9,7 @@ namespace spieler
         friend class ShaderLibrary;
 
     public:
-        using DefineContainer = std::unordered_map<std::string_view, std::string_view>;
+        using DefineContainer = std::unordered_map<std::string_view, std::string>;
 
     public:
         enum class Type : uint8_t

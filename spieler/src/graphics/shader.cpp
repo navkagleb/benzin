@@ -77,7 +77,7 @@ namespace spieler
 
             for (const auto& [name, value] : defines)
             {
-                dx12Defines.emplace_back(name.data(), value.data());
+                dx12Defines.emplace_back(name.data(), value.c_str());
             }
 
             dx12Defines.emplace_back(nullptr, nullptr);
