@@ -51,8 +51,8 @@ namespace spieler
             const InputLayout* InputLayout{ nullptr };
 
             PrimitiveTopologyType PrimitiveTopologyType{ PrimitiveTopologyType::Unknown };
-            GraphicsFormat RTVFormat{ GraphicsFormat::R8G8B8A8UnsignedNorm };
-            GraphicsFormat DSVFormat{ GraphicsFormat::D24UnsignedNormS8UnsignedInt };
+            GraphicsFormat RTVFormat{ GraphicsFormat::Unknown };
+            GraphicsFormat DSVFormat{ GraphicsFormat::Unknown };
         };
 
     public:
