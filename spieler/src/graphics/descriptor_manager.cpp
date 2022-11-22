@@ -5,7 +5,6 @@
 #include "spieler/core/common.hpp"
 
 #include "spieler/graphics/device.hpp"
-#include "spieler/graphics/context.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
 

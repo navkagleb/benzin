@@ -8,6 +8,8 @@
 #include "spieler/system/mouse_event.hpp"
 #include "spieler/system/key_event.hpp"
 
+#include "spieler/graphics/graphics_command_list.hpp"
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 namespace spieler
@@ -378,6 +380,30 @@ namespace spieler
     {
         ::SetWindowLongPtr(m_Win64Window, GWLP_USERDATA, 0);
         ::DestroyWindow(m_Win64Window);
+    }
+
+    Viewport Window::GetViewport() const
+    {
+        return Viewport
+        {
+            .X{ 0.0f },
+            .Y{ 0.0f },
+            .Width{ static_cast<float>(m_Width) },
+            .Height{ static_cast<float>(m_Height) },
+            .MinDepth{ 0.0f },
+            .MaxDepth{ 1.0f }
+        };
+    }
+
+    ScissorRect Window::GetScissorRect() const
+    {
+        return ScissorRect
+        {
+            .X{ 0.0f },
+            .Y{ 0.0f },
+            .Width{ static_cast<float>(m_Width) },
+            .Height{ static_cast<float>(m_Height) }
+        };
     }
 
     void Window::ProcessEvents()

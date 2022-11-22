@@ -3,6 +3,7 @@
 #include "spieler/graphics/common.hpp"
 #include "spieler/graphics/buffer.hpp"
 #include "spieler/graphics/texture.hpp"
+#include "spieler/graphics/device.hpp"
 
 #include "spieler/engine/geometry_generator.hpp"
 
@@ -22,7 +23,7 @@ namespace spieler
     {
     public:
         MeshGeometry() = default;
-        explicit MeshGeometry(const std::unordered_map<std::string, MeshData>& submeshes);
+        explicit MeshGeometry(Device& device, const std::unordered_map<std::string, MeshData>& submeshes);
 
     public:
         const std::vector<Vertex>& GetVertices() const { return m_Vertices; }
@@ -35,7 +36,7 @@ namespace spieler
         const Buffer& GetIndexBuffer() const { return m_IndexBuffer; }
 
         const SubmeshGeometry& GetSubmesh(const std::string& name) const { return m_Submeshes.at(name); }
-        void SetSubmeshes(const std::unordered_map<std::string, MeshData>& submeshes);
+        void SetSubmeshes(Device& device, const std::unordered_map<std::string, MeshData>& submeshes);
 
     private:
         std::vector<Vertex> m_Vertices;

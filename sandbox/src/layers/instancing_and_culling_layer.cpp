@@ -5,14 +5,12 @@
 #include <third_party/imgui/imgui.h>
 #include <third_party/magic_enum/magic_enum.hpp>
 
-#include <spieler/core/application.hpp>
-
 #include <spieler/system/event_dispatcher.hpp>
 
 #include <spieler/graphics/depth_stencil_state.hpp>
 #include <spieler/graphics/mapped_data.hpp>
 #include <spieler/graphics/rasterizer_state.hpp>
-#include <spieler/graphics/renderer.hpp>
+#include <spieler/graphics/resource_barrier.hpp>
 
 #include <spieler/engine/geometry_generator.hpp>
 
@@ -66,9 +64,9 @@ namespace sandbox
     //////////////////////////////////////////////////////////////////////////
     /// DynamicCubeMap
     //////////////////////////////////////////////////////////////////////////
-    DynamicCubeMap::DynamicCubeMap(uint32_t width, uint32_t height)
+    DynamicCubeMap::DynamicCubeMap(spieler::Device& device, uint32_t width, uint32_t height)
     {
-        OnResize(width, height);
+        OnResize(device, width, height);
     }
 
     void DynamicCubeMap::SetPosition(const DirectX::XMVECTOR& position)
@@ -81,10 +79,8 @@ namespace sandbox
         }
     }
 
-    void DynamicCubeMap::OnResize(uint32_t width, uint32_t height)
+    void DynamicCubeMap::OnResize(spieler::Device& device, uint32_t width, uint32_t height)
     {
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
-
         InitCubeMap(device, width, height);
         InitDepthStencil(device, width, height);
         InitCameras(width, height);
@@ -236,25 +232,36 @@ namespace sandbox
     //////////////////////////////////////////////////////////////////////////
     /// InstancingAndCullingLayer
     //////////////////////////////////////////////////////////////////////////
+    InstancingAndCullingLayer::InstancingAndCullingLayer(
+        spieler::Window& window, 
+        spieler::Device& device, 
+        spieler::CommandQueue& commandQueue, 
+        spieler::SwapChain& swapChain
+    )
+        : m_Window{ window }
+        , m_Device{ device }
+        , m_CommandQueue{ commandQueue }
+        , m_SwapChain{ swapChain }
+        , m_GraphicsCommandList{ device }
+    {}
+
     bool InstancingAndCullingLayer::OnAttach()
     {
-        auto& application{ spieler::Application::GetInstance() };
-        auto& window{ application.GetWindow() };
-
-        auto& renderer{ spieler::Renderer::GetInstance() };
-        auto& device{ renderer.GetDevice() };
-        auto& context{ renderer.GetContext() };
-
-        application.GetImGuiLayer()->SetCamera(&m_Camera);
+        //application.GetImGuiLayer()->SetCamera(&m_Camera);
 
         {
-            spieler::Context::CommandListScope commandListScope{ context, true };
+            m_GraphicsCommandList.Reset();
 
             InitTextures();
             InitMeshGeometries();
+
+            m_GraphicsCommandList.Close();
+
+            m_CommandQueue.Submit(m_GraphicsCommandList);
+            m_CommandQueue.Flush();
         }
 
-        m_DynamicCubeMap = std::make_unique<DynamicCubeMap>(200.0f, 200.0f);
+        m_DynamicCubeMap = std::make_unique<DynamicCubeMap>(m_Device, 200.0f, 200.0f);
 
         InitBuffers();
 
@@ -471,6 +478,13 @@ namespace sandbox
         return true;
     }
 
+    bool InstancingAndCullingLayer::OnDetach()
+    {
+        m_CommandQueue.Flush();
+
+        return true;
+    }
+
     void InstancingAndCullingLayer::OnEvent(spieler::Event& event)
     {
         m_CameraController.OnEvent(event);
@@ -609,64 +623,61 @@ namespace sandbox
 
     void InstancingAndCullingLayer::OnRender(float dt)
     {
-        auto& renderer{ spieler::Renderer::GetInstance() };
-        auto& descriptorManager{ renderer.GetDevice().GetDescriptorManager() };
-        auto& swapChain{ renderer.GetSwapChain() };
-        auto& context{ renderer.GetContext() };
-
-        auto& backBuffer{ swapChain.GetCurrentBuffer() };
+        auto& backBuffer{ m_SwapChain.GetCurrentBuffer() };
         auto& depthStencil{ m_Textures["depth_stencil"] };
 
+        auto& descriptorManager{ m_Device.GetDescriptorManager() };
+
         {
-            spieler::Context::CommandListScope commandListScope{ context, true };
+            m_GraphicsCommandList.Reset();
 
             // Render to cube map
             {
-                context.SetResourceBarrier(spieler::TransitionResourceBarrier
+                m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ m_DynamicCubeMap->GetCubeMap().GetTextureResource().get() },
                     .From{ spieler::ResourceState::Present },
                     .To{ spieler::ResourceState::RenderTarget }
                 });
 
-                context.SetResourceBarrier(spieler::TransitionResourceBarrier
+                m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ m_DynamicCubeMap->GetDepthStencil().GetTextureResource().get() },
                     .From{ spieler::ResourceState::Present },
                     .To{ spieler::ResourceState::DepthWrite }
                 });
 
-                context.SetViewport(m_DynamicCubeMap->GetViewport());
-                context.SetScissorRect(m_DynamicCubeMap->GetScissorRect());
+                m_GraphicsCommandList.SetViewport(m_DynamicCubeMap->GetViewport());
+                m_GraphicsCommandList.SetScissorRect(m_DynamicCubeMap->GetScissorRect());
 
-                context.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::DescriptorHeap::Type::SRV));
-                context.SetGraphicsRootSignature(m_RootSignature);
+                m_GraphicsCommandList.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::DescriptorHeap::Type::SRV));
+                m_GraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
 
                 for (uint32_t i = 0; i < 6; ++i)
                 {
-                    context.ClearRenderTarget(m_DynamicCubeMap->GetCubeMap().GetView<spieler::TextureRenderTargetView>(i), { 0.1f, 0.1f, 0.1f, 1.0f });
-                    context.ClearDepthStencil(m_DynamicCubeMap->GetDepthStencil().GetView<spieler::TextureDepthStencilView>(), 1.0f, 0);
+                    m_GraphicsCommandList.ClearRenderTarget(m_DynamicCubeMap->GetCubeMap().GetView<spieler::TextureRenderTargetView>(i), { 0.1f, 0.1f, 0.1f, 1.0f });
+                    m_GraphicsCommandList.ClearDepthStencil(m_DynamicCubeMap->GetDepthStencil().GetView<spieler::TextureDepthStencilView>(), 1.0f, 0);
 
-                    context.SetRenderTarget(
+                    m_GraphicsCommandList.SetRenderTarget(
                         m_DynamicCubeMap->GetCubeMap().GetView<spieler::TextureRenderTargetView>(i),
                         m_DynamicCubeMap->GetDepthStencil().GetView<spieler::TextureDepthStencilView>()
                     );
 
-                    context.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer").GetBufferResource(), i + 1);
+                    m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer").GetBufferResource(), i + 1);
 
-                    context.SetGraphicsDescriptorTable(3, m_Textures.at("space_cubemap").GetView<spieler::TextureShaderResourceView>());
+                    m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("space_cubemap").GetView<spieler::TextureShaderResourceView>());
                     RenderRenderItems(m_PipelineStates.at("default"), m_DefaultRenderItems);
                     RenderRenderItems(m_PipelineStates.at("cubemap"), std::span{ &m_CubeMapRenderItem, 1 });
                 }
 
-                context.SetResourceBarrier(spieler::TransitionResourceBarrier
+                m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ m_DynamicCubeMap->GetCubeMap().GetTextureResource().get() },
                     .From{ spieler::ResourceState::RenderTarget },
                     .To{ spieler::ResourceState::Present }
                 });
 
-                context.SetResourceBarrier(spieler::TransitionResourceBarrier
+                m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ m_DynamicCubeMap->GetDepthStencil().GetTextureResource().get() },
                     .From{ spieler::ResourceState::DepthWrite },
@@ -674,56 +685,60 @@ namespace sandbox
                 });
             }
 
-            context.SetResourceBarrier(spieler::TransitionResourceBarrier
+            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ backBuffer.GetTextureResource().get() },
                 .From{ spieler::ResourceState::Present },
                 .To{ spieler::ResourceState::RenderTarget }
             });
 
-            context.SetResourceBarrier(spieler::TransitionResourceBarrier
+            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ depthStencil.GetTextureResource().get() },
                 .From{ spieler::ResourceState::Present },
                 .To{ spieler::ResourceState::DepthWrite }
             });
 
-            context.SetViewport(m_Viewport);
-            context.SetScissorRect(m_ScissorRect);
+            m_GraphicsCommandList.SetViewport(m_Window.GetViewport());
+            m_GraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
 
-            context.SetRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), depthStencil.GetView<spieler::TextureDepthStencilView>());
+            m_GraphicsCommandList.SetRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), depthStencil.GetView<spieler::TextureDepthStencilView>());
 
-            context.ClearRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
-            context.ClearDepthStencil(depthStencil.GetView<spieler::TextureDepthStencilView>(), 1.0f, 0);
+            m_GraphicsCommandList.ClearRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+            m_GraphicsCommandList.ClearDepthStencil(depthStencil.GetView<spieler::TextureDepthStencilView>(), 1.0f, 0);
 
-            context.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::DescriptorHeap::Type::SRV));
-            context.SetGraphicsRootSignature(m_RootSignature);
+            m_GraphicsCommandList.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::DescriptorHeap::Type::SRV));
+            m_GraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
 
-            context.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer").GetBufferResource());
+            m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer").GetBufferResource());
 
-            context.SetGraphicsDescriptorTable(3, m_DynamicCubeMap->GetCubeMap().GetView<spieler::TextureShaderResourceView>());
+            m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_DynamicCubeMap->GetCubeMap().GetView<spieler::TextureShaderResourceView>());
             RenderRenderItems(m_PipelineStates.at("default"), std::span{ &m_DynamicCubeRenderItem, 1 });
 
-            context.SetGraphicsDescriptorTable(3, m_Textures.at("space_cubemap").GetView<spieler::TextureShaderResourceView>());
+            m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("space_cubemap").GetView<spieler::TextureShaderResourceView>());
             RenderRenderItems(m_PipelineStates.at("default"), m_DefaultRenderItems);
             RenderRenderItems(m_PipelineStates.at("picked"), std::span{ &m_PickedRenderItem.RenderItem, 1 });
             RenderRenderItems(m_PipelineStates.at("lighting"), m_LightRenderItems);
             RenderRenderItems(m_PipelineStates.at("cubemap"), std::span{ &m_CubeMapRenderItem, 1 });
 
-            context.SetResourceBarrier(spieler::TransitionResourceBarrier
+            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ backBuffer.GetTextureResource().get() },
                 .From{ spieler::ResourceState::RenderTarget },
                 .To{ spieler::ResourceState::Present }
             });
 
-            context.SetResourceBarrier(spieler::TransitionResourceBarrier
+            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ depthStencil.GetTextureResource().get() },
                 .From{ spieler::ResourceState::DepthWrite },
                 .To{ spieler::ResourceState::Present }
             });
+
+            m_GraphicsCommandList.Close();
         }
+
+        m_CommandQueue.Submit(m_GraphicsCommandList);
     }
 
     void InstancingAndCullingLayer::OnImGuiRender(float dt)
@@ -766,15 +781,11 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitTextures()
     {
-        auto& renderer{ spieler::Renderer::GetInstance() };
-        auto& device{ renderer.GetDevice() };
-        auto& context{ renderer.GetContext() };
-
         const auto initTexture = [&](const std::string& name, const std::wstring& filepath)
         {
             auto& texture{ m_Textures[name] };
-            texture.SetTextureResource(spieler::TextureResource::LoadFromDDSFile(device, context, filepath));
-            texture.PushView<spieler::TextureShaderResourceView>(device);
+            texture.SetTextureResource(spieler::TextureResource::LoadFromDDSFile(m_Device, m_GraphicsCommandList, filepath));
+            texture.PushView<spieler::TextureShaderResourceView>(m_Device);
         };
 
         initTexture("red", L"assets/textures/red.dds");
@@ -786,10 +797,6 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitMeshGeometries()
     {
-        auto& renderer{ spieler::Renderer::GetInstance() };
-        auto& device{ renderer.GetDevice() };
-        auto& context{ renderer.GetContext() };
-
         const spieler::BoxGeometryConfig boxProps
         {
             .Width{ 1.0f },
@@ -810,16 +817,14 @@ namespace sandbox
             { "sphere", spieler::GeometryGenerator::GenerateSphere(sphereProps) }
         };
 
-        m_MeshGeometry.SetSubmeshes(submeshes);
+        m_MeshGeometry.SetSubmeshes(m_Device, submeshes);
 
-        context.UploadToBuffer(*m_MeshGeometry.GetVertexBuffer().GetBufferResource(), m_MeshGeometry.GetVertices().data(), m_MeshGeometry.GetVertices().size() * sizeof(spieler::Vertex));
-        context.UploadToBuffer(*m_MeshGeometry.GetIndexBuffer().GetBufferResource(), m_MeshGeometry.GetIndices().data(), m_MeshGeometry.GetIndices().size() * sizeof(uint32_t));
+        m_GraphicsCommandList.UploadToBuffer(*m_MeshGeometry.GetVertexBuffer().GetBufferResource(), m_MeshGeometry.GetVertices().data(), m_MeshGeometry.GetVertices().size() * sizeof(spieler::Vertex));
+        m_GraphicsCommandList.UploadToBuffer(*m_MeshGeometry.GetIndexBuffer().GetBufferResource(), m_MeshGeometry.GetIndices().data(), m_MeshGeometry.GetIndices().size() * sizeof(uint32_t));
     }
 
     void InstancingAndCullingLayer::InitBuffers()
     {
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
-
         // Pass ConstantBuffer
         {
             auto& buffer{ m_Buffers["pass_constant_buffer"] };
@@ -831,7 +836,7 @@ namespace sandbox
                 .Flags{ spieler::BufferResource::Flags::ConstantBuffer }
             };
 
-            buffer.SetBufferResource(spieler::BufferResource::Create(device, config));
+            buffer.SetBufferResource(spieler::BufferResource::Create(m_Device, config));
         }
 
         // RenderItem StructuredBuffer
@@ -845,7 +850,7 @@ namespace sandbox
                 .Flags{ spieler::BufferResource::Flags::Dynamic }
             };
 
-            buffer.SetBufferResource(spieler::BufferResource::Create(device, config));
+            buffer.SetBufferResource(spieler::BufferResource::Create(m_Device, config));
         }
 
         // Material StructuredBuffer
@@ -859,14 +864,12 @@ namespace sandbox
                 .Flags{ spieler::BufferResource::Flags::Dynamic }
             };
 
-            buffer.SetBufferResource(spieler::BufferResource::Create(device, config));
+            buffer.SetBufferResource(spieler::BufferResource::Create(m_Device, config));
         }
     }
 
     void InstancingAndCullingLayer::InitRootSignature()
     {
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
-
         spieler::RootSignature::Config config{ 5, 2 };
 
         // Root parameters
@@ -922,14 +925,11 @@ namespace sandbox
             config.StaticSamplers[1] = spieler::StaticSampler{ spieler::TextureFilterType::Anisotropic, spieler::TextureAddressMode::Wrap, 1 };
         }
 
-        m_RootSignature = spieler::RootSignature{ device, config };
+        m_RootSignature = spieler::RootSignature{ m_Device, config };
     }
 
     void InstancingAndCullingLayer::InitPipelineState()
     {
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
-        auto& swapChain{ spieler::Renderer::GetInstance().GetSwapChain() };
-
         const spieler::Shader* vertexShader{ nullptr };
         const spieler::Shader* pixelShader{ nullptr };
 
@@ -1005,11 +1005,11 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ swapChain.GetBufferFormat() },
+                .RTVFormat{ m_SwapChain.GetBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["default"] = spieler::GraphicsPipelineState{ device, config };
+            m_PipelineStates["default"] = spieler::GraphicsPipelineState{ m_Device, config };
         }
 
         // PSO for picked RenderItem
@@ -1038,11 +1038,11 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ swapChain.GetBufferFormat() },
+                .RTVFormat{ m_SwapChain.GetBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["picked"] = spieler::GraphicsPipelineState{ device, config };
+            m_PipelineStates["picked"] = spieler::GraphicsPipelineState{ m_Device, config };
         }
 
         // PSO for lighting
@@ -1091,11 +1091,11 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ swapChain.GetBufferFormat() },
+                .RTVFormat{ m_SwapChain.GetBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["lighting"] = spieler::GraphicsPipelineState{ device, config };
+            m_PipelineStates["lighting"] = spieler::GraphicsPipelineState{ m_Device, config };
         }
 
         // PSO for CubeMap
@@ -1159,52 +1159,42 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ swapChain.GetBufferFormat() },
+                .RTVFormat{ m_SwapChain.GetBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["cubemap"] = spieler::GraphicsPipelineState{ device, config };
+            m_PipelineStates["cubemap"] = spieler::GraphicsPipelineState{ m_Device, config };
         }
     }
 
-    void InstancingAndCullingLayer::InitViewport()
+    void InstancingAndCullingLayer::InitRenderTarget()
     {
-        auto& window{ spieler::Application::GetInstance().GetWindow() };
-
-        m_Viewport = spieler::Viewport
+        const spieler::TextureResource::Config config
         {
-            .X{ 0.0f },
-            .Y{ 0.0f },
-            .Width{ static_cast<float>(window.GetWidth()) },
-            .Height{ static_cast<float>(window.GetHeight()) },
-            .MinDepth{ 0.0f },
-            .MaxDepth{ 1.0f }
+            .Type{ spieler::TextureResource::Type::_2D },
+            .Width{ m_Window.GetWidth() },
+            .Height{ m_Window.GetHeight() },
+            .Format{ spieler::GraphicsFormat::R8G8B8A8UnsignedNorm },
+            .UsageFlags{ spieler::TextureResource::UsageFlags::RenderTarget }
         };
-    }
 
-    void InstancingAndCullingLayer::InitScissorRect()
-    {
-        auto& window{ spieler::Application::GetInstance().GetWindow() };
-
-        m_ScissorRect = spieler::ScissorRect
+        const spieler::TextureResource::ClearColor clearColor
         {
-            .X{ 0.0f },
-            .Y{ 0.0f },
-            .Width{ static_cast<float>(window.GetWidth()) },
-            .Height{ static_cast<float>(window.GetHeight()) }
+            .Color{ 0.1f, 0.1f, 0.1f, 1.0f }
         };
+
+        m_Textures["render_target"].SetTextureResource(spieler::TextureResource::Create(m_Device, config, clearColor));
+        m_Textures["render_target"].PushView<spieler::TextureShaderResourceView>(m_Device);
+        m_Textures["render_target"].PushView<spieler::TextureRenderTargetView>(m_Device);
     }
 
     void InstancingAndCullingLayer::InitDepthStencil()
     {
-        auto& window{ spieler::Application::GetInstance().GetWindow() };
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
-
         const spieler::TextureResource::Config config
         {
             .Type{ spieler::TextureResource::Type::_2D },
-            .Width{ window.GetWidth() },
-            .Height{ window.GetHeight() },
+            .Width{ m_Window.GetWidth() },
+            .Height{ m_Window.GetHeight() },
             .Format{ ms_DepthStencilFormat },
             .UsageFlags{ spieler::TextureResource::UsageFlags::DepthStencil }
         };
@@ -1216,21 +1206,20 @@ namespace sandbox
         };
 
         auto& depthStencil{ m_Textures["depth_stencil"] };
-        depthStencil.SetTextureResource(spieler::TextureResource::Create(device, config, clearDepthStencil));
-        depthStencil.PushView<spieler::TextureDepthStencilView>(device);
+        depthStencil.SetTextureResource(spieler::TextureResource::Create(m_Device, config, clearDepthStencil));
+        depthStencil.PushView<spieler::TextureDepthStencilView>(m_Device);
     }
 
     void InstancingAndCullingLayer::OnWindowResized()
     {
-        InitViewport();
-        InitScissorRect();
+        InitRenderTarget();
         InitDepthStencil();
     }
 
     void InstancingAndCullingLayer::PickTriangle(float x, float y)
     {
-        const uint32_t width{ spieler::Application::GetInstance().GetWindow().GetWidth() };
-        const uint32_t height{ spieler::Application::GetInstance().GetWindow().GetHeight() };
+        const uint32_t width{ m_Window.GetWidth() };
+        const uint32_t height{ m_Window.GetHeight() };
 
         m_PickedRenderItem.RenderItem->Instances[0].Visible = false;
 
@@ -1333,15 +1322,12 @@ namespace sandbox
         }
     }
 
-    void InstancingAndCullingLayer::RenderRenderItems(const spieler::PipelineState& pso, const std::span<RenderItem*>& renderItems) const
+    void InstancingAndCullingLayer::RenderRenderItems(const spieler::PipelineState& pso, const std::span<RenderItem*>& renderItems)
     {
-        auto& renderer{ spieler::Renderer::GetInstance() };
-        auto& context{ renderer.GetContext() };
+        m_GraphicsCommandList.SetPipelineState(pso);
 
-        context.SetPipelineState(pso);
-
-        context.SetGraphicsRawShaderResource(2, *m_Buffers.at("material_structured_buffer").GetBufferResource());
-        context.SetGraphicsDescriptorTable(4, m_Textures.at("red").GetView<spieler::TextureShaderResourceView>());
+        m_GraphicsCommandList.SetGraphicsRawShaderResource(2, *m_Buffers.at("material_structured_buffer").GetBufferResource());
+        m_GraphicsCommandList.SetGraphicsDescriptorTable(4, m_Textures.at("red").GetView<spieler::TextureShaderResourceView>());
 
         for (const auto& renderItem : renderItems)
         {
@@ -1350,13 +1336,13 @@ namespace sandbox
                 continue;
             }
 
-            context.SetGraphicsRawShaderResource(1, *m_Buffers.at("render_item_structured_buffer").GetBufferResource(), renderItem->StructuredBufferOffset);
+            m_GraphicsCommandList.SetGraphicsRawShaderResource(1, *m_Buffers.at("render_item_structured_buffer").GetBufferResource(), renderItem->StructuredBufferOffset);
 
-            context.IASetVertexBuffer(renderItem->MeshGeometry->GetVertexBuffer().GetBufferResource().get());
-            context.IASetIndexBuffer(renderItem->MeshGeometry->GetIndexBuffer().GetBufferResource().get());
-            context.IASetPrimitiveTopology(renderItem->PrimitiveTopology);
+            m_GraphicsCommandList.IASetVertexBuffer(renderItem->MeshGeometry->GetVertexBuffer().GetBufferResource().get());
+            m_GraphicsCommandList.IASetIndexBuffer(renderItem->MeshGeometry->GetIndexBuffer().GetBufferResource().get());
+            m_GraphicsCommandList.IASetPrimitiveTopology(renderItem->PrimitiveTopology);
 
-            context.DrawIndexed(
+            m_GraphicsCommandList.DrawIndexed(
                 renderItem->SubmeshGeometry->IndexCount,
                 renderItem->SubmeshGeometry->StartIndexLocation,
                 renderItem->SubmeshGeometry->BaseVertexLocation,

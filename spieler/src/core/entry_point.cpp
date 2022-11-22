@@ -1,6 +1,6 @@
 #include "spieler/config/bootstrap.hpp"
 
-#include "spieler/core/application.hpp"
+#include "spieler/core/entry_point.hpp"
 
 #if defined(SPIELER_PLATFORM_WINDOWS)
 
@@ -9,15 +9,8 @@ namespace spieler
 
     int Main(int argc, char** argv)
     {
-#if defined(SPIELER_DEBUG)
-        _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-#endif
-        
-        Application::CreateInstance();
-        Application::GetInstance().Run();
-        Application::DestroyInstance();
-
-        return 0;
+        // TODO: Make abstraction for CommandArguments
+        return ClientMain();
     }
 
 } // namespace spieler

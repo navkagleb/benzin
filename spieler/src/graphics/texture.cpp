@@ -3,7 +3,7 @@
 #include "spieler/graphics/texture.hpp"
 
 #include "spieler/graphics/device.hpp"
-#include "spieler/graphics/context.hpp"
+#include "spieler/graphics/graphics_command_list.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
 
@@ -52,7 +52,7 @@ namespace spieler
         return std::make_shared<TextureResource>(dx12Resource);
     }
 
-    std::shared_ptr<TextureResource> TextureResource::LoadFromDDSFile(Device& device, Context& context, const std::wstring& filename)
+    std::shared_ptr<TextureResource> TextureResource::LoadFromDDSFile(Device& device, GraphicsCommandList& graphicsCommandList, const std::wstring& filename)
     {
         SPIELER_ASSERT(device.GetDX12Device());
         SPIELER_ASSERT(!filename.empty());
@@ -81,7 +81,7 @@ namespace spieler
             textureResource->m_Config.Type = Type::Cube;
         }
 
-        context.UploadToTexture(*textureResource, subresources);
+        graphicsCommandList.UploadToTexture(*textureResource, subresources);
 
         return textureResource;
     }

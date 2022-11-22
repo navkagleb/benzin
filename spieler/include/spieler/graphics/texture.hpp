@@ -6,7 +6,7 @@ namespace spieler
 {
 
     class Device;
-    class Context;
+    class GraphicsCommandList;
 
     class TextureResource final : public Resource
     {
@@ -56,7 +56,7 @@ namespace spieler
         static std::shared_ptr<TextureResource> Create(Device& device, const Config& config, const ClearDepthStencil& clearDepthStencil);
         static std::shared_ptr<TextureResource> Create(ID3D12Resource* dx12Resource);
 
-        static std::shared_ptr<TextureResource> LoadFromDDSFile(Device& device, Context& context, const std::wstring& filename);
+        static std::shared_ptr<TextureResource> LoadFromDDSFile(Device& device, GraphicsCommandList& graphicsCommandList, const std::wstring& filename);
 
     public:
         TextureResource() = default;

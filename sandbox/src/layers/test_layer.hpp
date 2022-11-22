@@ -9,7 +9,7 @@
 #include <spieler/graphics/pipeline_state.hpp>
 #include <spieler/graphics/texture.hpp>
 #include <spieler/graphics/sampler.hpp>
-#include <spieler/graphics/context.hpp>
+#include <spieler/graphics/graphics_command_list.hpp>
 
 #include <spieler/engine/mesh.hpp>
 #include <spieler/engine/light.hpp>

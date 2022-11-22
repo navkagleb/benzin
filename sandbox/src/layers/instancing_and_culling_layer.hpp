@@ -4,21 +4,17 @@
 
 #include <spieler/core/layer.hpp>
 
+#include <spieler/system/window.hpp>
 #include <spieler/graphics/buffer.hpp>
 #include <spieler/graphics/texture.hpp>
-#include <spieler/graphics/context.hpp>
-#include <spieler/engine/mesh.hpp>
 #include <spieler/graphics/root_signature.hpp>
 #include <spieler/graphics/shader.hpp>
 #include <spieler/graphics/pipeline_state.hpp>
+#include <spieler/graphics/graphics_command_list.hpp>
+#include <spieler/graphics/command_queue.hpp>
+#include <spieler/graphics/swap_chain.hpp>
+#include <spieler/engine/mesh.hpp>
 #include <spieler/engine/camera.hpp>
-
-namespace spieler
-{
-
-    class Device;
-
-} // namespace spieler
 
 namespace sandbox
 {
@@ -26,7 +22,7 @@ namespace sandbox
     class DynamicCubeMap
     {
     public:
-        DynamicCubeMap(uint32_t width, uint32_t height);
+        DynamicCubeMap(spieler::Device& device, uint32_t width, uint32_t height);
 
     public:
         spieler::Texture& GetCubeMap() { return m_CubeMap; }
@@ -41,7 +37,7 @@ namespace sandbox
         const spieler::ScissorRect& GetScissorRect() const { return m_ScissorRect; }
 
     public:
-        void OnResize(uint32_t width, uint32_t height);
+        void OnResize(spieler::Device& device, uint32_t width, uint32_t height);
 
     private:
         void InitCubeMap(spieler::Device& device, uint32_t width, uint32_t height);
@@ -131,7 +127,11 @@ namespace sandbox
         };
 
     public:
+        InstancingAndCullingLayer(spieler::Window& window, spieler::Device& device, spieler::CommandQueue& commandQueue, spieler::SwapChain& swapChain);
+
+    public:
         bool OnAttach() override;
+        bool OnDetach() override;
 
         void OnEvent(spieler::Event& event) override;
         void OnUpdate(float dt) override;
@@ -147,22 +147,25 @@ namespace sandbox
         void InitRootSignature();
         void InitPipelineState();
 
-        void InitViewport();
-        void InitScissorRect();
+        void InitRenderTarget();
         void InitDepthStencil();
 
         void OnWindowResized();
 
         void PickTriangle(float x, float y);
 
-        void RenderRenderItems(const spieler::PipelineState& pso, const std::span<RenderItem*>& renderItems) const;
+        void RenderRenderItems(const spieler::PipelineState& pso, const std::span<RenderItem*>& renderItems);
 
     private:
         static const spieler::GraphicsFormat ms_DepthStencilFormat{ spieler::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
 
     private:
-        spieler::Viewport m_Viewport;
-        spieler::ScissorRect m_ScissorRect;
+        spieler::Window& m_Window;
+        spieler::Device& m_Device;
+        spieler::CommandQueue& m_CommandQueue;
+        spieler::SwapChain& m_SwapChain;
+
+        spieler::GraphicsCommandList m_GraphicsCommandList;
 
         std::unordered_map<std::string, spieler::Buffer> m_Buffers;
         std::unordered_map<std::string, spieler::Texture> m_Textures;

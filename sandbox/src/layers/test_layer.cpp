@@ -5,12 +5,9 @@
 #include <third_party/imgui/imgui.h>
 #include <third_party/magic_enum/magic_enum.hpp>
 
-#include <spieler/core/application.hpp>
-
 #include <spieler/system/event.hpp>
 #include <spieler/system/event_dispatcher.hpp>
 
-#include <spieler/graphics/renderer.hpp>
 #include <spieler/graphics/blend_state.hpp>
 #include <spieler/graphics/rasterizer_state.hpp>
 #include <spieler/graphics/resource_barrier.hpp>

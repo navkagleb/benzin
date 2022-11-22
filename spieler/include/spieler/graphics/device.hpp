@@ -1,7 +1,7 @@
 #pragma once
 
-#include "spieler/graphics/descriptor_manager.hpp"
 #include "spieler/graphics/buffer.hpp"
+#include "spieler/graphics/descriptor_manager.hpp"
 #include "spieler/graphics/texture.hpp"
 
 namespace spieler

@@ -6,6 +6,9 @@
 namespace spieler
 {
 
+    struct Viewport;
+    struct ScissorRect;
+
     class Window
     {
     private:
@@ -29,6 +32,9 @@ namespace spieler
         bool IsMaximized() const { return m_IsMaximized; }
 
         float GetAspectRatio() const { return static_cast<float>(m_Width) / m_Height; }
+
+        Viewport GetViewport() const;
+        ScissorRect GetScissorRect() const;
 
     public:
         void ProcessEvents();

@@ -5,16 +5,13 @@
 #include "spieler/core/common.hpp"
 
 #include "spieler/graphics/device.hpp"
-#include "spieler/graphics/context.hpp"
 
 namespace spieler
 {
 
     Fence::Fence(Device& device)
     {
-        const ::HRESULT result{ device.GetDX12Device()->CreateFence(m_Value, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_DX12Fence)) };
-
-        SPIELER_ASSERT(SUCCEEDED(result));
+        SPIELER_ASSERT(SUCCEEDED(device.GetDX12Device()->CreateFence(m_Value, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_DX12Fence))));
     }
 
     void Fence::Increment()

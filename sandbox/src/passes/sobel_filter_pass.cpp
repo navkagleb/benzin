@@ -2,49 +2,39 @@
 
 #include "sobel_filter_pass.hpp"
 
-#include <spieler/graphics/renderer.hpp>
-
 namespace sandbox
 {
 
-    SobelFilterPass::SobelFilterPass(uint32_t width, uint32_t height)
+    SobelFilterPass::SobelFilterPass(spieler::Device& device, uint32_t width, uint32_t height)
     {
-        InitOutputTexture(width, height);
-        InitRootSignature();
-        InitPipelineState();
+        InitOutputTexture(device, width, height);
+        InitRootSignature(device);
+        InitPipelineState(device);
     }
 
-    void SobelFilterPass::Execute(spieler::Texture& input)
+    void SobelFilterPass::Execute(spieler::GraphicsCommandList& graphicsCommandList, spieler::Texture& input)
     {
-        auto& renderer{ spieler::Renderer::GetInstance() };
-        auto& device{ renderer.GetDevice() };
-        auto& context{ renderer.GetContext() };
-
-        auto* dx12GraphicsCommandList{ context.GetDX12GraphicsCommandList() };
-
         const uint32_t width{ static_cast<uint32_t>(input.GetTextureResource()->GetConfig().Width) };
         const uint32_t height{ input.GetTextureResource()->GetConfig().Height };
 
-        context.SetPipelineState(m_PipelineState);
-        context.SetComputeRootSignature(m_RootSignature);
+        graphicsCommandList.SetPipelineState(m_PipelineState);
+        graphicsCommandList.SetComputeRootSignature(m_RootSignature);
 
-        dx12GraphicsCommandList->SetComputeRootDescriptorTable(0, D3D12_GPU_DESCRIPTOR_HANDLE{ input.GetView<spieler::TextureShaderResourceView>().GetDescriptor().GPU });
-        dx12GraphicsCommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_OutputTexture.GetView<spieler::TextureUnorderedAccessView>().GetDescriptor().GPU });
+        graphicsCommandList.SetComputeDescriptorTable(0, input.GetView<spieler::TextureShaderResourceView>());
+        graphicsCommandList.SetComputeDescriptorTable(1, m_OutputTexture.GetView<spieler::TextureUnorderedAccessView>());
 
         const uint32_t threadGroupXCount{ width / 16 + 1 };
         const uint32_t threadGroupYCount{ height / 16 + 1 };
-        dx12GraphicsCommandList->Dispatch(threadGroupXCount, threadGroupYCount, 1);
+        graphicsCommandList.Dispatch(threadGroupXCount, threadGroupYCount, 1);
     }
 
-    void SobelFilterPass::OnResize(uint32_t width, uint32_t height)
+    void SobelFilterPass::OnResize(spieler::Device& device, uint32_t width, uint32_t height)
     {
-        InitOutputTexture(width, height);
+        InitOutputTexture(device, width, height);
     }
 
-    void SobelFilterPass::InitOutputTexture(uint32_t width, uint32_t height)
+    void SobelFilterPass::InitOutputTexture(spieler::Device& device, uint32_t width, uint32_t height)
     {
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
-
         const spieler::TextureResource::Config config
         {
             .Width{ width },
@@ -58,10 +48,8 @@ namespace sandbox
         m_OutputTexture.PushView<spieler::TextureUnorderedAccessView>(device);
     }
 
-    void SobelFilterPass::InitRootSignature()
+    void SobelFilterPass::InitRootSignature(spieler::Device& device)
     {
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
-
         const spieler::RootParameter::SingleDescriptorTable srvTable
         {
             .Range
@@ -89,10 +77,8 @@ namespace sandbox
         m_RootSignature = spieler::RootSignature{ device, rootSignatureConfig };
     }
 
-    void SobelFilterPass::InitPipelineState()
+    void SobelFilterPass::InitPipelineState(spieler::Device& device)
     {
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
-
         const spieler::Shader::Config shaderConfig
         {
             .Type{ spieler::Shader::Type::Compute },

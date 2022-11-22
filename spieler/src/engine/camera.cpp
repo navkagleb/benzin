@@ -4,8 +4,6 @@
 
 #include <third_party/imgui/imgui.h>
 
-#include "spieler/core/application.hpp"
-
 #include "spieler/system/input.hpp"
 #include "spieler/system/event_dispatcher.hpp"
 
@@ -106,7 +104,7 @@ namespace spieler
     CameraController::CameraController(Camera& camera)
         : m_Camera{ &camera }
     {
-        m_Camera->SetAspectRatio(Application::GetInstance().GetWindow().GetAspectRatio());
+        m_Camera->SetAspectRatio(16.0f / 9.0f);
     }
 
     void CameraController::OnEvent(spieler::Event& event)

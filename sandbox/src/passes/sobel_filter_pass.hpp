@@ -4,6 +4,7 @@
 #include <spieler/graphics/root_signature.hpp>
 #include <spieler/graphics/pipeline_state.hpp>
 #include <spieler/graphics/shader.hpp>
+#include <spieler/graphics/graphics_command_list.hpp>
 
 namespace sandbox
 {
@@ -11,20 +12,20 @@ namespace sandbox
     class SobelFilterPass
     {
     public:
-        SobelFilterPass(uint32_t width, uint32_t height);
+        SobelFilterPass(spieler::Device& device, uint32_t width, uint32_t height);
 
     public:
         const spieler::Texture& GetOutputTexture() const { return m_OutputTexture; }
 
     public:
-        void Execute(spieler::Texture& input);
+        void Execute(spieler::GraphicsCommandList& graphicsCommandList, spieler::Texture& input);
 
-        void OnResize(uint32_t width, uint32_t height);
+        void OnResize(spieler::Device& device, uint32_t width, uint32_t height);
 
     private:
-        void InitOutputTexture(uint32_t width, uint32_t height);
-        void InitRootSignature();
-        void InitPipelineState();
+        void InitOutputTexture(spieler::Device& device, uint32_t width, uint32_t height);
+        void InitRootSignature(spieler::Device& device);
+        void InitPipelineState(spieler::Device& device);
 
     private:
         spieler::Texture m_OutputTexture;

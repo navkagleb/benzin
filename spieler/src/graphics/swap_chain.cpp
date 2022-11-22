@@ -4,18 +4,19 @@
 
 #include "spieler/core/common.hpp"
 
+#include "spieler/system/window.hpp"
+
 #include "spieler/graphics/device.hpp"
-#include "spieler/graphics/context.hpp"
+#include "spieler/graphics/command_queue.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
 
 namespace spieler
 {
 
-    SwapChain::SwapChain(Device& device, Context& context, Window& window, const SwapChainConfig& config)
-        : m_BufferFormat{ config.BufferFormat }
+    SwapChain::SwapChain(const Window& window, Device& device, CommandQueue& commandQueue)
     {
-        SPIELER_ASSERT(Init(device, context, window, config));
+        SPIELER_ASSERT(Init(window, device, commandQueue));
     }
 
     SwapChain::~SwapChain()
@@ -65,17 +66,18 @@ namespace spieler
         CreateBuffers(device);
     }
 
-    void SwapChain::Present(VSyncState vsync)
+    void SwapChain::Flip(VSyncState vsync)
     {
         SPIELER_ASSERT(SUCCEEDED(m_DXGISwapChain->Present(static_cast<UINT>(vsync), 0)));
     }
 
-    bool SwapChain::Init(Device& device, Context& context, Window& window, const SwapChainConfig& config)
+    bool SwapChain::Init(const Window& window, Device& device, CommandQueue& commandQueue)
     {
-        m_Buffers.resize(config.BufferCount);
+        const size_t bufferCount{ 2 };
+        m_Buffers.resize(bufferCount);
 
         SPIELER_RETURN_IF_FAILED(InitFactory());
-        SPIELER_RETURN_IF_FAILED(InitSwapChain(context, window));
+        SPIELER_RETURN_IF_FAILED(InitSwapChain(window, commandQueue));
         
         EnumerateAdapters();
         ResizeBuffers(device, window.GetWidth(), window.GetHeight());
@@ -101,7 +103,7 @@ namespace spieler
         return true;
     }
 
-    bool SwapChain::InitSwapChain(Context& context, Window& window)
+    bool SwapChain::InitSwapChain(const Window& window, CommandQueue& commandQueue)
     {
         SPIELER_ASSERT(!m_Buffers.empty());
 
@@ -129,7 +131,7 @@ namespace spieler
             .Flags{ DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH }
         };
 
-        SPIELER_RETURN_IF_FAILED(m_DXGIFactory->CreateSwapChain(context.GetDX12CommandQueue(), &swapChainDesc, &m_DXGISwapChain));
+        SPIELER_RETURN_IF_FAILED(m_DXGIFactory->CreateSwapChain(commandQueue.GetDX12CommandQueue(), &swapChainDesc, &m_DXGISwapChain));
         SPIELER_RETURN_IF_FAILED(m_DXGISwapChain->QueryInterface(IID_PPV_ARGS(&m_DXGISwapChain3)));
 
         return true;

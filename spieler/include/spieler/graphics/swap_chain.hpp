@@ -1,15 +1,15 @@
 #pragma once
 
-#include "spieler/system/window.hpp"
-
 #include "spieler/graphics/common.hpp"
 #include "spieler/graphics/texture.hpp"
 
 namespace spieler
 {
 
+    class Window;
+
     class Device;
-    class Context;
+    class CommandQueue;
 
     enum class VSyncState : bool
     {
@@ -17,16 +17,10 @@ namespace spieler
         Disabled = false
     };
 
-    struct SwapChainConfig
-    {
-        uint32_t BufferCount{ 0 };
-        GraphicsFormat BufferFormat{ GraphicsFormat::Unknown };
-    };
-
     class SwapChain
     {
     public:
-        SwapChain(Device& device, Context& context, Window& window, const SwapChainConfig& config);
+        SwapChain(const Window& window, Device& device, CommandQueue& commandQueue);
         ~SwapChain();
 
     public:
@@ -41,13 +35,13 @@ namespace spieler
 
     public:
         void ResizeBuffers(Device& device, uint32_t width, uint32_t height);
-        void Present(VSyncState vsync);
+        void Flip(VSyncState vsync);
 
     private:
-        bool Init(Device& device, Context& context, Window& window, const SwapChainConfig& config);
+        bool Init(const Window& window, Device& device, CommandQueue& commandQueue);
 
         bool InitFactory();
-        bool InitSwapChain(Context& context, Window& window);
+        bool InitSwapChain(const Window& window, CommandQueue& commandQueue);
 
         void EnumerateAdapters();
 
@@ -59,7 +53,7 @@ namespace spieler
         ComPtr<IDXGISwapChain3> m_DXGISwapChain3;
         std::vector<ComPtr<IDXGIAdapter>> m_Adapters;
 
-        GraphicsFormat m_BufferFormat;
+        GraphicsFormat m_BufferFormat{ GraphicsFormat::R8G8B8A8UnsignedNorm };
         std::vector<Texture> m_Buffers;
     };
 

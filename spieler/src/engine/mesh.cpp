@@ -2,17 +2,15 @@
 
 #include "spieler/engine/mesh.hpp"
 
-#include "spieler/graphics/renderer.hpp"
-
 namespace spieler
 {
 
-    MeshGeometry::MeshGeometry(const std::unordered_map<std::string, MeshData>& submeshes)
+    MeshGeometry::MeshGeometry(Device& device, const std::unordered_map<std::string, MeshData>& submeshes)
     {
-        SetSubmeshes(submeshes);
+        SetSubmeshes(device, submeshes);
     }
 
-    void MeshGeometry::SetSubmeshes(const std::unordered_map<std::string, MeshData>& submeshes)
+    void MeshGeometry::SetSubmeshes(Device& device, const std::unordered_map<std::string, MeshData>& submeshes)
     {
         const uint32_t vertexSize{ sizeof(Vertex) };
         const uint32_t indexSize{ sizeof(uint32_t) };
@@ -46,8 +44,6 @@ namespace spieler
             vertexOffset += submesh.Vertices.size();
             indexOffset += submesh.Indices.size();
         }
-
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
 
         // VertexBuffer
         {

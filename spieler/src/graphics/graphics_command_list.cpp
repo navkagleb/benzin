@@ -1,17 +1,15 @@
 #include "spieler/config/bootstrap.hpp"
 
-#include "spieler/graphics/context.hpp"
+#include "spieler/graphics/graphics_command_list.hpp"
 
 #include "spieler/core/common.hpp"
 
-#include "spieler/graphics/resource.hpp"
-#include "spieler/graphics/buffer.hpp"
-#include "spieler/graphics/texture.hpp"
 #include "spieler/graphics/device.hpp"
-#include "spieler/graphics/pipeline_state.hpp"
-#include "spieler/graphics/root_signature.hpp"
-#include "spieler/graphics/utils.hpp"
 #include "spieler/graphics/mapped_data.hpp"
+#include "spieler/graphics/utils.hpp"
+#include "spieler/graphics/root_signature.hpp"
+#include "spieler/graphics/resource_barrier.hpp"
+#include "spieler/graphics/pipeline_state.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
 
@@ -21,7 +19,7 @@ namespace spieler
     namespace _internal
     {
 
-        static D3D12_RESOURCE_BARRIER ConvertToD3D12ResourceBarrier(const TransitionResourceBarrier& barrier)
+        static D3D12_RESOURCE_BARRIER ConvertToDX12ResourceBarrier(const TransitionResourceBarrier& barrier)
         {
             return D3D12_RESOURCE_BARRIER
             {
@@ -39,63 +37,68 @@ namespace spieler
 
     } // namespace _internal
 
-    //////////////////////////////////////////////////////////////////////////
-    /// Context::CommandListScope
-    //////////////////////////////////////////////////////////////////////////
-    Context::CommandListScope::CommandListScope(Context& context, bool isNeedToFlushCommandQueue)
-        : m_Context{ context }
-        , m_IsNeedToFlushCommandQueue{ isNeedToFlushCommandQueue }
-    {
-        m_Context.ResetCommandList();
-    }
+	GraphicsCommandList::GraphicsCommandList(Device& device)
+	{
+		const D3D12_COMMAND_LIST_TYPE commandListType{ D3D12_COMMAND_LIST_TYPE_DIRECT };
 
-    Context::CommandListScope::~CommandListScope()
-    {
-        m_Context.ExecuteCommandList(m_IsNeedToFlushCommandQueue);
-    }
+		SPIELER_ASSERT(SUCCEEDED(device.GetDX12Device()->CreateCommandAllocator(commandListType, IID_PPV_ARGS(&m_DX12CommandAllocator))));
 
-    //////////////////////////////////////////////////////////////////////////
-    /// Context::UploadBuffer
-    //////////////////////////////////////////////////////////////////////////
-    uint64_t Context::UploadBuffer::Allocate(uint64_t size, uint64_t alignment)
-    {
-        const uint64_t offset{ alignment == 0 ? Offset : utils::Align(Offset, alignment) };
+		SPIELER_ASSERT(SUCCEEDED(device.GetDX12Device()->CreateCommandList(
+			0,
+			commandListType,
+			m_DX12CommandAllocator.Get(),
+			nullptr,
+			IID_PPV_ARGS(&m_DX12GraphicsCommandList)
+		)));
 
-        SPIELER_ASSERT(offset + size <= Resource->GetConfig().ElementCount);
-        Offset = offset + size;
+		Close();
+
+        // Upload Buffer
+        {
+            const BufferResource::Config uploadBufferConfig
+            {
+                .ElementSize{ sizeof(std::byte) },
+                .ElementCount{ static_cast<uint32_t>(ConvertMBToBytes(120)) },
+                .Flags{ BufferResource::Flags::Dynamic }
+            };
+
+            m_UploadBuffer = BufferResource::Create(device, uploadBufferConfig);
+        }
+	}
+
+	void GraphicsCommandList::Close()
+	{
+		SPIELER_ASSERT(SUCCEEDED(m_DX12GraphicsCommandList->Close()));
+	}
+
+	void GraphicsCommandList::Reset(const PipelineState* const pso)
+	{
+        // Reset CommandAllocator
+        SPIELER_ASSERT(SUCCEEDED(m_DX12CommandAllocator->Reset()));
+        
+        // Reset GraphicsCommandList
+		ID3D12PipelineState* dx12PSO{ pso ? pso->GetDX12PipelineState() : nullptr };
+		SPIELER_ASSERT(SUCCEEDED(m_DX12GraphicsCommandList->Reset(m_DX12CommandAllocator.Get(), dx12PSO)));
+	}
+
+    uint64_t GraphicsCommandList::AllocateInUploadBuffer(uint64_t size, uint64_t alignment)
+    {
+        const uint64_t offset{ alignment == 0 ? m_UploadBufferOffset : utils::Align(m_UploadBufferOffset, alignment) };
+
+        SPIELER_ASSERT(offset + size <= m_UploadBuffer->GetConfig().ElementCount);
+        m_UploadBufferOffset = offset + size;
 
         return offset;
     }
 
-    //////////////////////////////////////////////////////////////////////////
-    /// Context
-    //////////////////////////////////////////////////////////////////////////
-    Context::Context(Device& device, uint64_t uploadBufferSize)
-        : m_Fence{ device }
-    {
-        // Init m_UploadBuffer
-        {
-            const BufferResource::Config config
-            {
-                .ElementSize{ sizeof(std::byte) },
-                .ElementCount{ static_cast<uint32_t>(uploadBufferSize) },
-                .Flags{ BufferResource::Flags::Dynamic }
-            };
-
-            m_UploadBuffer.Resource = BufferResource::Create(device, config);
-        }
-
-        SPIELER_ASSERT(Init(device));
-    }
-
-    void Context::SetDescriptorHeap(const DescriptorHeap& descriptorHeap)
+    void GraphicsCommandList::SetDescriptorHeap(const DescriptorHeap& descriptorHeap)
     {
         ID3D12DescriptorHeap* dx12DescriptorHeap{ descriptorHeap.GetDX12DescriptorHeap() };
 
         m_DX12GraphicsCommandList->SetDescriptorHeaps(1, &dx12DescriptorHeap);
     }
 
-    void Context::IASetVertexBuffer(const BufferResource* vertexBuffer)
+    void GraphicsCommandList::IASetVertexBuffer(const BufferResource* vertexBuffer)
     {
         if (!vertexBuffer)
         {
@@ -114,7 +117,7 @@ namespace spieler
         }
     }
 
-    void Context::IASetIndexBuffer(const BufferResource* indexBuffer)
+    void GraphicsCommandList::IASetIndexBuffer(const BufferResource* indexBuffer)
     {
         if (!indexBuffer)
         {
@@ -126,21 +129,21 @@ namespace spieler
 
             switch (indexBuffer->GetConfig().ElementSize)
             {
-                case 2:
-                {
-                    format = GraphicsFormat::R16UnsignedInt;
-                    break;
-                }
-                case 4:
-                {
-                    format = GraphicsFormat::R32UnsignedInt;
-                    break;
-                }
-                default:
-                {
-                    SPIELER_ASSERT(false);
-                    break;
-                }
+            case 2:
+            {
+                format = GraphicsFormat::R16UnsignedInt;
+                break;
+            }
+            case 4:
+            {
+                format = GraphicsFormat::R32UnsignedInt;
+                break;
+            }
+            default:
+            {
+                SPIELER_ASSERT(false);
+                break;
+            }
             }
 
             const D3D12_INDEX_BUFFER_VIEW dx12IBV
@@ -154,19 +157,19 @@ namespace spieler
         }
     }
 
-    void Context::IASetPrimitiveTopology(PrimitiveTopology primitiveTopology)
+    void GraphicsCommandList::IASetPrimitiveTopology(PrimitiveTopology primitiveTopology)
     {
         SPIELER_ASSERT(primitiveTopology != PrimitiveTopology::Unknown);
 
         m_DX12GraphicsCommandList->IASetPrimitiveTopology(dx12::Convert(primitiveTopology));
     }
 
-    void Context::SetViewport(const Viewport& viewport)
+    void GraphicsCommandList::SetViewport(const Viewport& viewport)
     {
         m_DX12GraphicsCommandList->RSSetViewports(1, reinterpret_cast<const D3D12_VIEWPORT*>(&viewport));
     }
 
-    void Context::SetScissorRect(const ScissorRect& scissorRect)
+    void GraphicsCommandList::SetScissorRect(const ScissorRect& scissorRect)
     {
         const D3D12_RECT d3d12Rect
         {
@@ -179,50 +182,69 @@ namespace spieler
         m_DX12GraphicsCommandList->RSSetScissorRects(1, &d3d12Rect);
     }
 
-    void Context::SetPipelineState(const PipelineState& pso)
+    void GraphicsCommandList::SetPipelineState(const PipelineState& pso)
     {
         m_DX12GraphicsCommandList->SetPipelineState(pso.GetDX12PipelineState());
     }
 
-    void Context::SetGraphicsRootSignature(const RootSignature& rootSignature)
+    void GraphicsCommandList::SetGraphicsRootSignature(const RootSignature& rootSignature)
     {
         m_DX12GraphicsCommandList->SetGraphicsRootSignature(rootSignature.GetDX12RootSignature());
     }
 
-    void Context::SetComputeRootSignature(const RootSignature& rootSignature)
+    void GraphicsCommandList::SetComputeRootSignature(const RootSignature& rootSignature)
     {
         m_DX12GraphicsCommandList->SetComputeRootSignature(rootSignature.GetDX12RootSignature());
     }
 
-    void Context::SetGraphicsRawConstantBuffer(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement)
+    void GraphicsCommandList::SetCompute32BitConstants(uint32_t rootParameterIndex, const void* data, uint64_t count, uint64_t offsetCount)
+    {
+        m_DX12GraphicsCommandList->SetComputeRoot32BitConstants(rootParameterIndex, static_cast<UINT>(count), data, static_cast<UINT>(offsetCount));
+    }
+
+    void GraphicsCommandList::SetGraphicsRawConstantBuffer(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement)
     {
         const D3D12_GPU_VIRTUAL_ADDRESS dx12GPUVirtualAddress{ bufferResource.GetDX12Resource()->GetGPUVirtualAddress() + beginElement * bufferResource.GetConfig().ElementSize };
 
         m_DX12GraphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, dx12GPUVirtualAddress);
     }
 
-    void Context::SetGraphicsRawShaderResource(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement)
+    void GraphicsCommandList::SetGraphicsRawShaderResource(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement)
     {
         const D3D12_GPU_VIRTUAL_ADDRESS dx12GPUVirtualAddress{ bufferResource.GetDX12Resource()->GetGPUVirtualAddress() + beginElement * bufferResource.GetConfig().ElementSize };
 
         m_DX12GraphicsCommandList->SetGraphicsRootShaderResourceView(rootParameterIndex, dx12GPUVirtualAddress);
     }
 
-    void Context::SetGraphicsDescriptorTable(uint32_t rootParameterIndex, const TextureShaderResourceView& srv)
+    void GraphicsCommandList::SetGraphicsDescriptorTable(uint32_t rootParameterIndex, const TextureShaderResourceView& firstSRV)
     {
-        const D3D12_GPU_DESCRIPTOR_HANDLE dx12GPUDescriptorHandle{ srv.GetDescriptor().GPU };
-        
+        const D3D12_GPU_DESCRIPTOR_HANDLE dx12GPUDescriptorHandle{ firstSRV.GetDescriptor().GPU };
+
         m_DX12GraphicsCommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, dx12GPUDescriptorHandle);
     }
 
-    void Context::SetRenderTarget(const TextureRenderTargetView& rtv)
+    void GraphicsCommandList::SetComputeDescriptorTable(uint32_t rootParameterIndex, const TextureShaderResourceView& firstSRV)
+    {
+        const D3D12_GPU_DESCRIPTOR_HANDLE dx12GPUDescriptorHandle{ firstSRV.GetDescriptor().GPU };
+
+        m_DX12GraphicsCommandList->SetComputeRootDescriptorTable(rootParameterIndex, dx12GPUDescriptorHandle);
+    }
+
+    void GraphicsCommandList::SetComputeDescriptorTable(uint32_t rootParameterIndex, const TextureUnorderedAccessView& firstUAV)
+    {
+        const D3D12_GPU_DESCRIPTOR_HANDLE dx12GPUDescriptorHandle{ firstUAV.GetDescriptor().GPU };
+
+        m_DX12GraphicsCommandList->SetComputeRootDescriptorTable(rootParameterIndex, dx12GPUDescriptorHandle);
+    }
+
+    void GraphicsCommandList::SetRenderTarget(const TextureRenderTargetView& rtv)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
 
         m_DX12GraphicsCommandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, nullptr);
     }
 
-    void Context::SetRenderTarget(const TextureRenderTargetView& rtv, const TextureDepthStencilView& dsv)
+    void GraphicsCommandList::SetRenderTarget(const TextureRenderTargetView& rtv, const TextureDepthStencilView& dsv)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
         const D3D12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle{ dsv.GetDescriptor().CPU };
@@ -230,14 +252,14 @@ namespace spieler
         m_DX12GraphicsCommandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, &dsvDescriptorHandle);
     }
 
-    void Context::ClearRenderTarget(const TextureRenderTargetView& rtv, const DirectX::XMFLOAT4& color)
+    void GraphicsCommandList::ClearRenderTarget(const TextureRenderTargetView& rtv, const DirectX::XMFLOAT4& color)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle{ rtv.GetDescriptor().CPU };
 
         m_DX12GraphicsCommandList->ClearRenderTargetView(rtvDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
     }
 
-    void Context::ClearDepthStencil(const TextureDepthStencilView& dsv, float depth, uint8_t stencil)
+    void GraphicsCommandList::ClearDepthStencil(const TextureDepthStencilView& dsv, float depth, uint8_t stencil)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle{ dsv.GetDescriptor().CPU };
 
@@ -251,43 +273,43 @@ namespace spieler
         );
     }
 
-    void Context::SetResourceBarrier(const TransitionResourceBarrier& barrier)
+    void GraphicsCommandList::SetResourceBarrier(const TransitionResourceBarrier& barrier)
     {
         SPIELER_ASSERT(barrier.Resource);
         SPIELER_ASSERT(barrier.Resource->GetDX12Resource());
 
-        const D3D12_RESOURCE_BARRIER d3d12Barrier{ _internal::ConvertToD3D12ResourceBarrier(barrier) };
+        const D3D12_RESOURCE_BARRIER dx12Barrier{ _internal::ConvertToDX12ResourceBarrier(barrier) };
 
-        m_DX12GraphicsCommandList->ResourceBarrier(1, &d3d12Barrier);
+        m_DX12GraphicsCommandList->ResourceBarrier(1, &dx12Barrier);
     }
 
-    void Context::SetStencilReferenceValue(uint8_t referenceValue)
+    void GraphicsCommandList::SetStencilReferenceValue(uint8_t referenceValue)
     {
         m_DX12GraphicsCommandList->OMSetStencilRef(referenceValue);
     }
 
-    void Context::UploadToBuffer(BufferResource& buffer,const void* data, uint64_t size)
+    void GraphicsCommandList::UploadToBuffer(BufferResource& buffer, const void* data, uint64_t size)
     {
         SPIELER_ASSERT(buffer.GetDX12Resource());
         SPIELER_ASSERT(size);
         SPIELER_ASSERT(data);
 
-        MappedData mappedData{ m_UploadBuffer.Resource, 0 };
+        MappedData mappedData{ m_UploadBuffer, 0 };
 
-        const uint64_t uploadBufferOffset{ m_UploadBuffer.Allocate(size) };
+        const uint64_t uploadBufferOffset{ AllocateInUploadBuffer(size) };
 
         memcpy_s(mappedData.GetData() + uploadBufferOffset, size, data, size);
 
-        m_DX12GraphicsCommandList->CopyBufferRegion(buffer.GetDX12Resource(), 0, m_UploadBuffer.Resource->GetDX12Resource(), uploadBufferOffset, size);
+        m_DX12GraphicsCommandList->CopyBufferRegion(buffer.GetDX12Resource(), 0, m_UploadBuffer->GetDX12Resource(), uploadBufferOffset, size);
     }
 
-    void Context::UploadToTexture(TextureResource& texture, std::vector<SubresourceData>& subresources)
+    void GraphicsCommandList::UploadToTexture(TextureResource& texture, std::vector<SubresourceData>& subresources)
     {
         SPIELER_ASSERT(texture.GetDX12Resource());
         SPIELER_ASSERT(!subresources.empty());
 
         const uint32_t firstSubresource{ 0 };
-        
+
         std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts;
         layouts.resize(subresources.size());
 
@@ -311,7 +333,7 @@ namespace spieler
                     &textureDesc,
                     firstSubresource,
                     static_cast<uint32_t>(subresources.size()),
-                    m_UploadBuffer.Allocate(0, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+                    AllocateInUploadBuffer(0, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
                     layouts.data(),
                     rowCounts.data(),
                     rowSizes.data(),
@@ -319,12 +341,12 @@ namespace spieler
                 );
             }
 
-            m_UploadBuffer.Allocate(requiredUploadBufferSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+            AllocateInUploadBuffer(requiredUploadBufferSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
         }
-        
+
         // Copying subresources to UploadBuffer
         {
-            MappedData mappedData{ m_UploadBuffer.Resource, 0 };
+            MappedData mappedData{ m_UploadBuffer, 0 };
 
             for (size_t i = 0; i < subresources.size(); ++i)
             {
@@ -361,7 +383,7 @@ namespace spieler
 
             const D3D12_TEXTURE_COPY_LOCATION source
             {
-                .pResource{ m_UploadBuffer.Resource->GetDX12Resource() },
+                .pResource{ m_UploadBuffer->GetDX12Resource() },
                 .Type{ D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT },
                 .PlacedFootprint{ layouts[i] }
             };
@@ -370,88 +392,19 @@ namespace spieler
         }
     }
 
-    void Context::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount /* = 1 */)
+    void GraphicsCommandList::CopyResource(Resource& to, Resource& from)
+    {
+        m_DX12GraphicsCommandList->CopyResource(to.GetDX12Resource(), from.GetDX12Resource());
+    }
+
+    void GraphicsCommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount /* = 1 */)
     {
         m_DX12GraphicsCommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, 0);
     }
 
-    void Context::CloseCommandList()
+    void GraphicsCommandList::Dispatch(uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)
     {
-        SPIELER_ASSERT(SUCCEEDED(m_DX12GraphicsCommandList->Close()));
-    }
-
-    void Context::ExecuteCommandList(bool isNeedToFlushCommandQueue)
-    {
-        CloseCommandList();
-
-        m_DX12CommandQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList* const*>(m_DX12GraphicsCommandList.GetAddressOf()));
-
-        if (isNeedToFlushCommandQueue)
-        {
-            FlushCommandQueue();
-
-            m_UploadBuffer.Offset = 0;
-        }
-    }
-
-    void Context::FlushCommandQueue()
-    {
-        m_Fence.Increment();
-
-        SPIELER_ASSERT(SUCCEEDED(m_DX12CommandQueue->Signal(m_Fence.GetDX12Fence(), m_Fence.GetValue())));
-        m_Fence.WaitForGPU();
-    }
-
-    void Context::ResetCommandList(const PipelineState& pso)
-    {
-        SPIELER_ASSERT(SUCCEEDED(m_DX12GraphicsCommandList->Reset(m_DX12CommandAllocator.Get(), pso.GetDX12PipelineState())));
-    }
-
-    void Context::ResetCommandAllocator()
-    {
-        SPIELER_ASSERT(SUCCEEDED(m_DX12CommandAllocator->Reset()));
-    }
-
-    bool Context::Init(Device& device)
-    {
-        return InitCommandAllocator(device) && InitCommandList(device) && InitCommandQueue(device);
-    }
-
-    bool Context::InitCommandAllocator(Device& device)
-    {
-        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_DX12CommandAllocator)));
-
-        return true;
-    }
-
-    bool Context::InitCommandList(Device& device)
-    {
-        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateCommandList(
-            0, 
-            D3D12_COMMAND_LIST_TYPE_DIRECT, 
-            m_DX12CommandAllocator.Get(),
-            nullptr, 
-            IID_PPV_ARGS(&m_DX12GraphicsCommandList)
-        ));
-
-        SPIELER_RETURN_IF_FAILED(m_DX12GraphicsCommandList->Close());
-
-        return true;
-    }
-
-    bool Context::InitCommandQueue(Device& device)
-    {
-        const D3D12_COMMAND_QUEUE_DESC desc
-        {
-            .Type{ D3D12_COMMAND_LIST_TYPE_DIRECT },
-            .Priority{ 0 },
-            .Flags{ D3D12_COMMAND_QUEUE_FLAG_NONE },
-            .NodeMask{ 0 }
-        };
-
-        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_DX12CommandQueue)));
-
-        return true;
+        m_DX12GraphicsCommandList->Dispatch(threadGroupCountX, threadGroupCountY, threadGroupCountZ);
     }
 
 } // namespace spieler

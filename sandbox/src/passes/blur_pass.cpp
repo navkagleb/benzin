@@ -6,7 +6,7 @@
 
 #include <spieler/system/event_dispatcher.hpp>
 
-#include <spieler/graphics/renderer.hpp>
+#include <spieler/graphics/resource_barrier.hpp>
 
 namespace sandbox
 {
@@ -82,52 +82,47 @@ namespace sandbox
 
     } // namespace _internal
 
-    BlurPass::BlurPass(uint32_t width, uint32_t height)
+    BlurPass::BlurPass(spieler::Device& device, uint32_t width, uint32_t height)
     {
-        InitTextures(width, height);
-        InitHorizontalPass();
-        InitVerticalPass();
+        InitTextures(device, width, height);
+        InitHorizontalPass(device);
+        InitVerticalPass(device);
     }
 
-    void BlurPass::OnResize(uint32_t width, uint32_t height)
+    void BlurPass::OnResize(spieler::Device& device, uint32_t width, uint32_t height)
     {
-        InitTextures(width, height);
+        InitTextures(device, width, height);
     }
 
-    bool BlurPass::Execute(spieler::TextureResource& input, const BlurPassExecuteProps& props)
+    bool BlurPass::Execute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input, const BlurPassExecuteProps& props)
     {
-        spieler::Renderer& renderer{ spieler::Renderer::GetInstance() };
-        spieler::Context& context{ renderer.GetContext() };
-
         const uint32_t width{ input.GetConfig().Width };
         const uint32_t height{ input.GetConfig().Height };
 
-        auto* dx12CommandList{ context.GetDX12GraphicsCommandList() };
-
-        context.SetResourceBarrier(spieler::TransitionResourceBarrier
+        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
         {
             .Resource{ &input },
             .From{ spieler::ResourceState::RenderTarget },
             .To{ spieler::ResourceState::CopySource }
         });
 
-        context.SetResourceBarrier(spieler::TransitionResourceBarrier
+        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
         {
             .Resource{ m_BlurMaps[0].GetTextureResource().get() },
             .From{ spieler::ResourceState::Present },
             .To{ spieler::ResourceState::CopyDestination }
         });
 
-        dx12CommandList->CopyResource(m_BlurMaps[0].GetTextureResource()->GetDX12Resource(), input.GetDX12Resource());
+        graphicsCommandList.CopyResource(*m_BlurMaps[0].GetTextureResource(), input);
 
-        context.SetResourceBarrier(spieler::TransitionResourceBarrier
+        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
         {
             .Resource{ m_BlurMaps[0].GetTextureResource().get() },
             .From{ spieler::ResourceState::CopyDestination },
             .To{ spieler::ResourceState::GenericRead }
         });
 
-        context.SetResourceBarrier(spieler::TransitionResourceBarrier
+        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
         {
             .Resource{ m_BlurMaps[1].GetTextureResource().get() },
             .From{ spieler::ResourceState::Present },
@@ -144,26 +139,26 @@ namespace sandbox
         {
             // Horizontal Blur pass
             {
-                context.SetPipelineState(m_HorizontalPass.PSO);
-                context.SetComputeRootSignature(m_HorizontalPass.RootSignature);
+                graphicsCommandList.SetPipelineState(m_HorizontalPass.PSO);
+                graphicsCommandList.SetComputeRootSignature(m_HorizontalPass.RootSignature);
 
-                dx12CommandList->SetComputeRoot32BitConstants(0, 1, &horizontalBlurRadius, 0);
-                dx12CommandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(horizontalWeights.size()), horizontalWeights.data(), 1);
+                graphicsCommandList.SetCompute32BitConstants(0, &horizontalBlurRadius, 1, 0);
+                graphicsCommandList.SetCompute32BitConstants(0, horizontalWeights.data(), horizontalWeights.size(), 1);
 
-                dx12CommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].GetView<spieler::TextureShaderResourceView>().GetDescriptor().GPU });
-                dx12CommandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].GetView<spieler::TextureUnorderedAccessView>().GetDescriptor().GPU });
+                graphicsCommandList.SetComputeDescriptorTable(1, m_BlurMaps[0].GetView<spieler::TextureShaderResourceView>());
+                graphicsCommandList.SetComputeDescriptorTable(2, m_BlurMaps[1].GetView<spieler::TextureUnorderedAccessView>());
 
                 const auto xGroupCount{ width / _internal::g_ThreadPerGroupCount + 1 };
-                dx12CommandList->Dispatch(xGroupCount, height, 1);
+                graphicsCommandList.Dispatch(xGroupCount, height, 1);
 
-                context.SetResourceBarrier(spieler::TransitionResourceBarrier
+                graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ m_BlurMaps[0].GetTextureResource().get() },
                     .From{ spieler::ResourceState::GenericRead },
                     .To{ spieler::ResourceState::UnorderedAccess }
                 });
 
-                context.SetResourceBarrier(spieler::TransitionResourceBarrier
+                graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ m_BlurMaps[1].GetTextureResource().get() },
                     .From{ spieler::ResourceState::UnorderedAccess },
@@ -173,26 +168,26 @@ namespace sandbox
             
             // Vertical Blur pass
             {
-                context.SetPipelineState(m_VerticalPass.PSO);
-                context.SetComputeRootSignature(m_VerticalPass.RootSignature);
+                graphicsCommandList.SetPipelineState(m_VerticalPass.PSO);
+                graphicsCommandList.SetComputeRootSignature(m_VerticalPass.RootSignature);
 
-                dx12CommandList->SetComputeRoot32BitConstants(0, 1, &verticalBlurRadius, 0);
-                dx12CommandList->SetComputeRoot32BitConstants(0, static_cast<uint32_t>(verticalWeights.size()), verticalWeights.data(), 1);
+                graphicsCommandList.SetCompute32BitConstants(0, &verticalBlurRadius, 1, 0);
+                graphicsCommandList.SetCompute32BitConstants(0, verticalWeights.data(), verticalWeights.size(), 1);
 
-                dx12CommandList->SetComputeRootDescriptorTable(1, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[1].GetView<spieler::TextureShaderResourceView>().GetDescriptor().GPU });
-                dx12CommandList->SetComputeRootDescriptorTable(2, D3D12_GPU_DESCRIPTOR_HANDLE{ m_BlurMaps[0].GetView<spieler::TextureUnorderedAccessView>().GetDescriptor().GPU });
+                graphicsCommandList.SetComputeDescriptorTable(1, m_BlurMaps[1].GetView<spieler::TextureShaderResourceView>());
+                graphicsCommandList.SetComputeDescriptorTable(2, m_BlurMaps[0].GetView<spieler::TextureUnorderedAccessView>());
 
                 const uint32_t yGroupCount{ height / _internal::g_ThreadPerGroupCount + 1 };
-                dx12CommandList->Dispatch(width, yGroupCount, 1);
+                graphicsCommandList.Dispatch(width, yGroupCount, 1);
 
-                context.SetResourceBarrier(spieler::TransitionResourceBarrier
+                graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ m_BlurMaps[0].GetTextureResource().get() },
                     .From{ spieler::ResourceState::UnorderedAccess },
                     .To{ spieler::ResourceState::GenericRead }
                 });
 
-                context.SetResourceBarrier(spieler::TransitionResourceBarrier
+                graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ m_BlurMaps[1].GetTextureResource().get() },
                     .From{ spieler::ResourceState::GenericRead },
@@ -201,14 +196,14 @@ namespace sandbox
             }
         }
 
-        context.SetResourceBarrier(spieler::TransitionResourceBarrier
+        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
         {
             .Resource{ m_BlurMaps[0].GetTextureResource().get() },
             .From{ spieler::ResourceState::GenericRead },
             .To{ spieler::ResourceState::Present }
         });
 
-        context.SetResourceBarrier(spieler::TransitionResourceBarrier
+        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
         {
             .Resource{ m_BlurMaps[1].GetTextureResource().get() },
             .From{ spieler::ResourceState::UnorderedAccess },
@@ -218,10 +213,8 @@ namespace sandbox
         return true;
     }
 
-    void BlurPass::InitTextures(uint32_t width, uint32_t height)
+    void BlurPass::InitTextures(spieler::Device& device, uint32_t width, uint32_t height)
     {
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
-
         const spieler::TextureResource::Config config
         {
             .Width{ width },
@@ -239,11 +232,8 @@ namespace sandbox
         }
     }
 
-    void BlurPass::InitHorizontalPass()
+    void BlurPass::InitHorizontalPass(spieler::Device& device)
     {
-        spieler::Renderer& renderer{ spieler::Renderer::GetInstance() };
-        spieler::Device& device{ renderer.GetDevice() };
-
         // Root Signature
         {
             m_HorizontalPass.RootSignature = spieler::RootSignature{ device, _internal::GetUniformPassRootSignatureConfig() };
@@ -274,11 +264,8 @@ namespace sandbox
         }
     }
 
-    void BlurPass::InitVerticalPass()
+    void BlurPass::InitVerticalPass(spieler::Device& device)
     {
-        spieler::Renderer& renderer{ spieler::Renderer::GetInstance() };
-        spieler::Device& device{ renderer.GetDevice() };
-
         // Root Signature
         {
             m_VerticalPass.RootSignature = spieler::RootSignature{ device, _internal::GetUniformPassRootSignatureConfig() };

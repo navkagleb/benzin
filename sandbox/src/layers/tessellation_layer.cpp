@@ -2,11 +2,8 @@
 
 #include "tessellation_layer.hpp"
 
-#include <spieler/core/application.hpp>
-
 #include <spieler/system/event_dispatcher.hpp>
 
-#include <spieler/graphics/renderer.hpp>
 #include <spieler/graphics/rasterizer_state.hpp>
 #include <spieler/graphics/mapped_data.hpp>
 

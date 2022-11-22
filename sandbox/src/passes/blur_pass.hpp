@@ -6,6 +6,8 @@
 #include <spieler/graphics/root_signature.hpp>
 #include <spieler/graphics/pipeline_state.hpp>
 #include <spieler/graphics/shader.hpp>
+#include <spieler/graphics/graphics_command_list.hpp>
+#include <spieler/graphics/device.hpp>
 
 namespace sandbox
 {
@@ -30,20 +32,20 @@ namespace sandbox
         static int32_t GetBlurRadius(float sigma) { return static_cast<int32_t>(std::ceilf(sigma * 2.0f)); }
 
     public:
-        BlurPass(uint32_t width, uint32_t height);
+        BlurPass(spieler::Device& device, uint32_t width, uint32_t height);
 
     public:
         spieler::Texture& GetOutput() { return m_BlurMaps[0]; }
 
     public:
-        bool Execute(spieler::TextureResource& input, const BlurPassExecuteProps& props);
+        bool Execute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input, const BlurPassExecuteProps& props);
 
-        void OnResize(uint32_t width, uint32_t height);
+        void OnResize(spieler::Device& device, uint32_t width, uint32_t height);
 
     private:
-        void InitTextures(uint32_t width, uint32_t height);
-        void InitHorizontalPass();
-        void InitVerticalPass();
+        void InitTextures(spieler::Device& device, uint32_t width, uint32_t height);
+        void InitHorizontalPass(spieler::Device& device);
+        void InitVerticalPass(spieler::Device& device);
 
     private:
         BlurPassDirection m_HorizontalPass;

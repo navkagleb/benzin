@@ -1,7 +1,5 @@
 #include "spieler/config/bootstrap.hpp"
 
-#if defined(SPIELER_GRAPHICS_API_DX12)
-
 #include "spieler/core/imgui_layer.hpp"
 
 #include <third_party/imgui/imgui.h>
@@ -9,13 +7,12 @@
 #include <third_party/imgui/imgui_impl_dx12.h>
 #include <third_party/imgui/imgui_impl_win32.h>
 
-#include "spieler/core/application.hpp"
 #include "spieler/core/common.hpp"
 
 #include "spieler/system/event_dispatcher.hpp"
 #include "spieler/system/key_event.hpp"
 
-#include "spieler/graphics/renderer.hpp"
+#include "spieler/graphics/resource_barrier.hpp"
 #include "spieler/engine/camera.hpp"
 
 #include "platform/dx12/dx12_common.hpp"
@@ -23,45 +20,13 @@
 namespace spieler
 {
 
-    void ImGuiLayer::Begin()
-    {
-        ImGui_ImplDX12_NewFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-    }
-
-    void ImGuiLayer::End()
-    {
-        auto& renderer{ Renderer::GetInstance() };
-        auto& context{ renderer.GetContext() };
-        auto& swapChain{ renderer.GetSwapChain() };
-        auto& descriptorManager{ renderer.GetDevice().GetDescriptorManager() };
-
-        ImGui::Render();
-
-        {
-            Context::CommandListScope commandListScope{ context, true };
-
-            context.SetResourceBarrier(spieler::TransitionResourceBarrier
-            {
-                .Resource{ swapChain.GetCurrentBuffer().GetTextureResource().get() },
-                .From{ spieler::ResourceState::Present },
-                .To{ spieler::ResourceState::RenderTarget }
-            });
-
-            context.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(DescriptorHeap::Type::SRV));
-            context.SetRenderTarget(swapChain.GetCurrentBuffer().GetView<TextureRenderTargetView>());
-
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context.GetDX12GraphicsCommandList());
-
-            context.SetResourceBarrier(spieler::TransitionResourceBarrier
-            {
-                .Resource{ swapChain.GetCurrentBuffer().GetTextureResource().get() },
-                .From{ spieler::ResourceState::RenderTarget },
-                .To{ spieler::ResourceState::Present }
-            });
-        }
-    }
+    ImGuiLayer::ImGuiLayer(Window& window, Device& device, CommandQueue& commandQueue, SwapChain& swapChain)
+        : m_Window{ window }
+        , m_Device{ device }
+        , m_CommandQueue{ commandQueue }
+        , m_SwapChain{ swapChain }
+        , m_GraphicsCommandList{ device }
+    {}
 
     bool ImGuiLayer::OnAttach()
     {
@@ -77,19 +42,14 @@ namespace spieler
 
         ImGui::StyleColorsClassic();
 
-        auto& renderer{ Renderer::GetInstance() };
-        auto& device{ renderer.GetDevice() };
-        auto& swapChain{ renderer.GetSwapChain() };
-        auto& descriptorManager{ device.GetDescriptorManager() };
+        SRVDescriptor fontDescriptor{ m_Device.GetDescriptorManager().AllocateSRV() };
 
-        SRVDescriptor fontDescriptor{ descriptorManager.AllocateSRV() };
-
-        SPIELER_RETURN_IF_FAILED(ImGui_ImplWin32_Init(Application::GetInstance().GetWindow().GetWin64Window()));
+        SPIELER_RETURN_IF_FAILED(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
         SPIELER_RETURN_IF_FAILED(ImGui_ImplDX12_Init(
-            device.GetDX12Device(),
+            m_Device.GetDX12Device(),
             1,
-            dx12::Convert(swapChain.GetBufferFormat()),
-            descriptorManager.GetDescriptorHeap(DescriptorHeap::Type::SRV).GetDX12DescriptorHeap(),
+            dx12::Convert(m_SwapChain.GetBufferFormat()),
+            m_Device.GetDescriptorManager().GetDescriptorHeap(DescriptorHeap::Type::SRV).GetDX12DescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ fontDescriptor.CPU },
             D3D12_GPU_DESCRIPTOR_HANDLE{ fontDescriptor.GPU }
         ));
@@ -104,6 +64,45 @@ namespace spieler
         ImGui::DestroyContext();
 
         return true;
+    }
+
+    void ImGuiLayer::Begin()
+    {
+        ImGui_ImplDX12_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+    }
+
+    void ImGuiLayer::End()
+    {
+        ImGui::Render();
+
+        {
+            m_GraphicsCommandList.Reset();
+
+            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
+            {
+                .Resource{ m_SwapChain.GetCurrentBuffer().GetTextureResource().get() },
+                .From{ spieler::ResourceState::Present },
+                .To{ spieler::ResourceState::RenderTarget }
+            });
+
+            m_GraphicsCommandList.SetDescriptorHeap(m_Device.GetDescriptorManager().GetDescriptorHeap(DescriptorHeap::Type::SRV));
+            m_GraphicsCommandList.SetRenderTarget(m_SwapChain.GetCurrentBuffer().GetView<TextureRenderTargetView>());
+
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_GraphicsCommandList.GetDX12GraphicsCommandList());
+
+            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
+            {
+                .Resource{ m_SwapChain.GetCurrentBuffer().GetTextureResource().get() },
+                .From{ spieler::ResourceState::RenderTarget },
+                .To{ spieler::ResourceState::Present }
+            });
+
+            m_GraphicsCommandList.Close();
+        }
+
+        m_CommandQueue.Submit(m_GraphicsCommandList);
     }
 
     void ImGuiLayer::OnEvent(Event& event)
@@ -160,18 +159,18 @@ namespace spieler
             if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs))
             {
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-                
+
                 if (m_Camera)
                 {
                     ImGui::SameLine();
                     ImGui::Text(
-                        "  |  Camera Position: { %.2f, %.2f, %.2f }", 
+                        "  |  Camera Position: { %.2f, %.2f, %.2f }",
                         DirectX::XMVectorGetX(m_Camera->GetPosition()),
                         DirectX::XMVectorGetY(m_Camera->GetPosition()),
                         DirectX::XMVectorGetZ(m_Camera->GetPosition())
                     );
                 }
-                
+
                 ImGui::End();
             }
 
@@ -186,5 +185,3 @@ namespace spieler
     }
 
 } // namespace spieler
-
-#endif // defined(SPIELER_GRAPHICS_API_DX12)
