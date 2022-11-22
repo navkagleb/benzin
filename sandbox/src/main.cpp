@@ -106,6 +106,7 @@ namespace sandbox
 
             dispatcher.Dispatch<spieler::WindowResizedEvent>([this](spieler::WindowResizedEvent& event)
             {
+                m_CommandQueue->Flush();
                 m_SwapChain->ResizeBuffers(*m_Device, event.GetWidth(), event.GetHeight());
                 return false;
             });
@@ -121,7 +122,6 @@ namespace sandbox
             dispatcher.Dispatch<spieler::WindowUnfocusedEvent>([this](spieler::WindowUnfocusedEvent& event)
             {
                 m_IsPaused = true;
-
                 m_FrameTimer.Stop();
 
                 return false;
