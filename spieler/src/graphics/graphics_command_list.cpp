@@ -397,7 +397,12 @@ namespace spieler
         m_DX12GraphicsCommandList->CopyResource(to.GetDX12Resource(), from.GetDX12Resource());
     }
 
-    void GraphicsCommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount /* = 1 */)
+    void GraphicsCommandList::DrawVertexed(uint32_t vertexCount, uint32_t startVertexLocation, uint32_t instanceCount)
+    {
+        m_DX12GraphicsCommandList->DrawInstanced(vertexCount, instanceCount, startVertexLocation, 0);
+    }
+
+    void GraphicsCommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount)
     {
         m_DX12GraphicsCommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, 0);
     }

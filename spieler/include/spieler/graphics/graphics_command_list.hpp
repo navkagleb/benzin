@@ -88,6 +88,7 @@ namespace spieler
         void UploadToTexture(TextureResource& texture, std::vector<SubresourceData>& subresources);
         void CopyResource(Resource& to, Resource& from);
 
+        void DrawVertexed(uint32_t vertexCount, uint32_t startVertexLocation, uint32_t instanceCount = 1);
         void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount = 1);
 
         void Dispatch(uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ);
