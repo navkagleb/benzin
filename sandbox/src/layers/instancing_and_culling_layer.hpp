@@ -17,9 +17,12 @@
 #include <spieler/engine/camera.hpp>
 
 #include "passes/blur_pass.hpp"
+//#include "techniques/picking_technique.hpp"
 
 namespace sandbox
 {
+
+    class PickingTechnique;
 
     class DynamicCubeMap
     {
@@ -154,8 +157,6 @@ namespace sandbox
 
         void OnWindowResized();
 
-        void PickTriangle(float x, float y);
-
         void RenderRenderItems(const spieler::PipelineState& pso, const std::span<RenderItem*>& renderItems);
         void RenderFullscreenQuad(const spieler::TextureShaderResourceView& srv);
 
@@ -199,6 +200,7 @@ namespace sandbox
         bool m_IsCullingEnabled{ true };
 
         std::unique_ptr<BlurPass> m_BlurPass;
+        PickingTechnique* m_PickingTechnique;
     };
 
 } // namespace sandbox

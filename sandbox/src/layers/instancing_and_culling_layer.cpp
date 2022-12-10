@@ -16,6 +16,8 @@
 
 #include <spieler/utility/random.hpp>
 
+#include "techniques/picking_technique.hpp"
+
 namespace sandbox
 {
 
@@ -477,12 +479,18 @@ namespace sandbox
 
         OnWindowResized();
 
+        m_PickingTechnique = new PickingTechnique(m_Window);
+        m_PickingTechnique->SetActiveCamera(&m_Camera);
+        m_PickingTechnique->SetPickableRenderItems(m_DefaultRenderItems);
+
         return true;
     }
 
     bool InstancingAndCullingLayer::OnDetach()
     {
         m_CommandQueue.Flush();
+
+        delete m_PickingTechnique;
 
         return true;
     }
@@ -504,7 +512,27 @@ namespace sandbox
         {
             if (event.GetButton() == spieler::MouseButton::Right)
             {
-                PickTriangle(event.GetX<float>(), event.GetY<float>());
+                const PickingTechnique::Result result = m_PickingTechnique->PickTriangle(event.GetX<float>(), event.GetY<float>());
+
+                if (!result.PickedRenderItem)
+                {
+                    m_PickedRenderItem.RenderItem->Instances[0].Visible = false;
+                }
+                else
+                {
+                    m_PickedRenderItem.RenderItem->MeshGeometry = result.PickedRenderItem->MeshGeometry;
+                    m_PickedRenderItem.RenderItem->SubmeshGeometry = new spieler::SubmeshGeometry
+                    {
+                        .IndexCount{ 3 },
+                        .BaseVertexLocation{ result.PickedRenderItem->SubmeshGeometry->BaseVertexLocation },
+                        .StartIndexLocation{ result.TriangleIndex * 3 }
+                    };
+                    m_PickedRenderItem.RenderItem->Instances[0].Visible = true;
+                    m_PickedRenderItem.RenderItem->Instances[0].Transform = result.PickedRenderItem->Instances[result.InstanceIndex].Transform;
+                
+                    m_PickedRenderItem.InstanceIndex = result.InstanceIndex;
+                    m_PickedRenderItem.TriangleIndex = result.TriangleIndex;
+                }
             }
 
             return false;
@@ -1282,112 +1310,6 @@ namespace sandbox
         InitDepthStencil();
 
         m_BlurPass->OnResize(m_Device, m_Window.GetWidth(), m_Window.GetHeight());
-    }
-
-    void InstancingAndCullingLayer::PickTriangle(float x, float y)
-    {
-        const uint32_t width{ m_Window.GetWidth() };
-        const uint32_t height{ m_Window.GetHeight() };
-
-        m_PickedRenderItem.RenderItem->Instances[0].Visible = false;
-
-        // In View Space
-        const DirectX::XMVECTOR viewRayOrigin{ 0.0f, 0.0f, 0.0f, 1.0f };
-        const DirectX::XMVECTOR viewRayDirection
-        {
-            (2.0f * x / static_cast<float>(width) - 1.0f) / DirectX::XMVectorGetByIndex(m_Camera.GetProjection().r[0], 0),
-            (-2.0f * y / static_cast<float>(height) + 1.0f) / DirectX::XMVectorGetByIndex(m_Camera.GetProjection().r[1], 1),
-            1.0f,
-            0.0f
-        };
-
-        float minDistance{ std::numeric_limits<float>::max() };
-
-        for (const auto& renderItem : m_DefaultRenderItems)
-        {
-            const spieler::Vertex* vertices
-            { 
-                reinterpret_cast<const spieler::Vertex*>(renderItem->MeshGeometry->GetVertices().data()) + renderItem->SubmeshGeometry->BaseVertexLocation
-            };
-
-            const uint32_t* indices
-            {
-                reinterpret_cast<const uint32_t*>(renderItem->MeshGeometry->GetIndices().data()) + renderItem->SubmeshGeometry->StartIndexLocation
-            };
-
-            float minInstanceDistance{ std::numeric_limits<float>::max() };
-            uint32_t minInstanceIndex{ 0 };
-            uint32_t minTriangleIndex{ 0 };
-
-            for (size_t instanceIndex = 0; instanceIndex < renderItem->Instances.size(); ++instanceIndex)
-            {
-                if (!renderItem->Instances[instanceIndex].Visible)
-                {
-                    continue;
-                }
-
-                const DirectX::XMMATRIX toLocal{ DirectX::XMMatrixMultiply(m_Camera.GetInverseView(), renderItem->Instances[instanceIndex].Transform.GetInverseMatrix()) };
-
-                const DirectX::XMVECTOR rayOrigin{ DirectX::XMVector3TransformCoord(viewRayOrigin, toLocal) };
-                const DirectX::XMVECTOR rayDirection{ DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(viewRayDirection, toLocal)) };
-
-                float instanceDistance{ 0.0f };
-
-                if (!renderItem->SubmeshGeometry->BoundingBox.Intersects(rayOrigin, rayDirection, instanceDistance))
-                {
-                    continue;
-                }
-
-                if (minInstanceDistance > instanceDistance)
-                {
-                    // Min Instance
-                    minInstanceDistance = instanceDistance;
-                    minInstanceIndex = static_cast<uint32_t>(instanceIndex);
-
-                    float minTriangleDistance{ std::numeric_limits<float>::max() };
-
-                    for (uint32_t triangleIndex = 0; triangleIndex < renderItem->SubmeshGeometry->IndexCount / 3; ++triangleIndex)
-                    {
-                        // Triangle
-                        const DirectX::XMVECTOR a{ DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 0]].Position) };
-                        const DirectX::XMVECTOR b{ DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 1]].Position) };
-                        const DirectX::XMVECTOR c{ DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 2]].Position) };
-
-                        float triangleDistance{ 0.0f };
-
-                        if (DirectX::TriangleTests::Intersects(rayOrigin, rayDirection, a, b, c, triangleDistance))
-                        {
-                            if (minTriangleDistance > triangleDistance)
-                            {
-                                // Min Instance Triangle
-                                minTriangleDistance = triangleDistance;
-                                minTriangleIndex = triangleIndex;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (minDistance > minInstanceDistance)
-            {
-                // Min RenderItem
-                minDistance = minInstanceDistance;
-
-                // Picked RenderItem
-                m_PickedRenderItem.RenderItem->SubmeshGeometry = new spieler::SubmeshGeometry
-                {
-                    .IndexCount{ 3 },
-                    .BaseVertexLocation{ renderItem->SubmeshGeometry->BaseVertexLocation },
-                    .StartIndexLocation{ minTriangleIndex * 3 }
-                };
-
-                m_PickedRenderItem.RenderItem->Instances[0].Visible = true;
-                m_PickedRenderItem.RenderItem->Instances[0].Transform = renderItem->Instances[minInstanceIndex].Transform;
-
-                m_PickedRenderItem.InstanceIndex = static_cast<uint32_t>(minInstanceIndex);
-                m_PickedRenderItem.TriangleIndex = minTriangleIndex;
-            }
-        }
     }
 
     void InstancingAndCullingLayer::RenderRenderItems(const spieler::PipelineState& pso, const std::span<RenderItem*>& renderItems)
