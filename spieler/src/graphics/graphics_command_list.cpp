@@ -308,7 +308,7 @@ namespace spieler
         SPIELER_ASSERT(texture.GetDX12Resource());
         SPIELER_ASSERT(!subresources.empty());
 
-        const uint32_t firstSubresource{ 0 };
+        const uint32_t firstSubresource = 0;
 
         std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts;
         layouts.resize(subresources.size());
@@ -327,13 +327,14 @@ namespace spieler
                 ComPtr<ID3D12Device> dx12Device;
                 texture.GetDX12Resource()->GetDevice(IID_PPV_ARGS(&dx12Device));
 
-                const D3D12_RESOURCE_DESC textureDesc{ texture.GetDX12Resource()->GetDesc() };
+                const D3D12_RESOURCE_DESC textureDesc = texture.GetDX12Resource()->GetDesc();
+                const uint64_t offset = AllocateInUploadBuffer(0, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
                 dx12Device->GetCopyableFootprints(
                     &textureDesc,
                     firstSubresource,
                     static_cast<uint32_t>(subresources.size()),
-                    AllocateInUploadBuffer(0, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+                    offset,
                     layouts.data(),
                     rowCounts.data(),
                     rowSizes.data(),
@@ -345,27 +346,38 @@ namespace spieler
         }
 
         // Copying subresources to UploadBuffer
+        // Go down to rows and copy it
         {
             MappedData mappedData{ m_UploadBuffer, 0 };
 
             for (size_t i = 0; i < subresources.size(); ++i)
             {
-                SPIELER_ASSERT(rowSizes[i] <= static_cast<uint64_t>(-1));
+                const SubresourceData& subresource = subresources[i];
+                const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& layout = layouts[i];
 
-                std::byte* destinationData{ mappedData.GetData() + layouts[i].Offset };
-                const std::byte* sourceData{ subresources[i].Data };
+                // SubResource data
+                std::byte* destinationData = mappedData.GetData() + layout.Offset;
+                const std::byte* sourceData = subresource.Data;
 
-                for (uint32_t z = 0; z < layouts[i].Footprint.Depth; ++z)
+                for (uint32_t sliceIndex = 0; sliceIndex < layout.Footprint.Depth; ++sliceIndex)
                 {
-                    std::byte* destinationSlice{ destinationData + layouts[i].Footprint.RowPitch * static_cast<uint64_t>(rowCounts[i]) * z };
-                    const std::byte* sourceSlice{ sourceData + subresources[i].SlicePitch * z };
+                    const uint64_t rowCount = rowCounts[i];
+                    const uint64_t destinationSlicePitch = layout.Footprint.RowPitch * rowCount;
 
-                    for (uint32_t y = 0; y < rowCounts[i]; ++y)
+                    // Slice data
+                    std::byte* destinationSliceData = destinationData + destinationSlicePitch * sliceIndex;
+                    const std::byte* sourceSliceData = sourceData + subresource.SlicePitch * sliceIndex;
+
+                    for (uint32_t rowIndex = 0; rowIndex < rowCount; ++rowIndex)
                     {
-                        std::byte* destinationRow{ destinationSlice + static_cast<uint64_t>(layouts[i].Footprint.RowPitch) * y };
-                        const std::byte* sourceRow{ sourceSlice + subresources[i].RowPitch * y };
+                        const uint64_t destinationRowPitch = layout.Footprint.RowPitch;
 
-                        memcpy_s(destinationRow, rowSizes[i], sourceRow, rowSizes[i]);
+                        // Row data
+                        std::byte* destinationRowData = destinationSliceData + destinationRowPitch * rowIndex;
+                        const std::byte* sourceRowData = sourceSliceData + subresource.RowPitch * rowIndex;
+                        
+                        const uint64_t rowSize = rowSizes[i];
+                        memcpy_s(destinationRowData, rowSize, sourceRowData, rowSize);
                     }
                 }
             }
