@@ -17,7 +17,7 @@ namespace spieler
     class PipelineState
     {
     private:
-        SPIELER_NON_COPYABLE(PipelineState)
+        SPIELER_NON_COPYABLE(PipelineState);
 
     public:
         PipelineState() = default;

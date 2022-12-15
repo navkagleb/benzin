@@ -11,7 +11,7 @@ namespace spieler
     class RootParameter
     {
     private:
-        SPIELER_NON_COPYABLE(RootParameter)
+        SPIELER_NON_COPYABLE(RootParameter);
 
     private:
         friend class RootSignature;
@@ -115,7 +115,7 @@ namespace spieler
         };
 
     private:
-        SPIELER_NON_COPYABLE(RootSignature)
+        SPIELER_NON_COPYABLE(RootSignature);
 
     public:
         RootSignature() = default;

@@ -6,8 +6,8 @@ namespace spieler
     class Random
     {
     private:
-        SPIELER_NON_COPYABLE(Random)
-        SPIELER_NON_MOVEABLE(Random)
+        SPIELER_NON_COPYABLE(Random);
+        SPIELER_NON_MOVEABLE(Random);
 
     private:
         template <std::integral T>

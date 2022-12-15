@@ -52,7 +52,7 @@ namespace spieler
         };
 
     public:
-        SPIELER_NON_COPYABLE(DescriptorHeap)
+        SPIELER_NON_COPYABLE(DescriptorHeap);
 
     public:
         friend class DescriptorManager;
@@ -101,7 +101,7 @@ namespace spieler
         };
 
     public:
-        SPIELER_NON_COPYABLE(DescriptorManager)
+        SPIELER_NON_COPYABLE(DescriptorManager);
 
     public:
         DescriptorManager() = default;

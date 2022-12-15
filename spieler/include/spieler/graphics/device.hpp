@@ -10,7 +10,7 @@ namespace spieler
     class Device
     {
     public:
-        SPIELER_NON_COPYABLE(Device)
+        SPIELER_NON_COPYABLE(Device);
 
     public:
         Device();
