@@ -1,18 +1,12 @@
+#include <third_party/fmt/format.h>
+
 namespace spieler
 {
 
-    template <std::integral T>
-    Logger& Logger::operator<< (T integral)
+    template <typename... Args>
+    void Logger::Log(Severity severity, std::string_view filepath, uint32_t line, std::string_view format, Args&&... args)
     {
-        m_OutputStream << integral;
-        return *this;
-    }
-
-    template <std::floating_point T>
-    Logger& Logger::operator<< (T floatingPoint)
-    {
-        m_OutputStream << floatingPoint;
-        return *this;
+        LogImpl(severity, filepath, line, fmt::format(format.data(), std::forward<Args>(args)...));
     }
 
 } // namespace spieler
