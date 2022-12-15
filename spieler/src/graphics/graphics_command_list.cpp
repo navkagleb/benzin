@@ -316,7 +316,7 @@ namespace spieler
         std::vector<uint32_t> rowCounts;
         rowCounts.resize(subresources.size());
 
-        std::vector<uint64_t> rowSizes; // Aligned by D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT unlike row pitch in subresources
+        std::vector<uint64_t> rowSizes;
         rowSizes.resize(subresources.size());
 
         // Init Layouts and allocate memory in UploadBuffer
