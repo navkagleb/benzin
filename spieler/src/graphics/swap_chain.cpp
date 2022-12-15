@@ -155,12 +155,13 @@ namespace spieler
             wcstombs_s(nullptr, adapterName.data(), adapterDescriptionSize, dxgiAdapterDesc.Description, adapterDescriptionSize * sizeof(wchar_t));
 
             adapterStringStream << fmt::format(
-                "{}: {}\n"
-                "       VendorID: {}\n"
-                "       DeviceID: {}\n"
-                "       DedicatedVideoMemory: {}MB, {}GB\n"
-                "       DedicatedSystemMemory: {}MB, {}GB\n"
-                "       SharedSystemMemory: {}MB, {}GB\n",
+                "\n"
+                "  {}: {}\n"
+                "  VendorID: {}\n"
+                "  DeviceID: {}\n"
+                "  DedicatedVideoMemory: {}MB, {}GB\n"
+                "  DedicatedSystemMemory: {}MB, {}GB\n"
+                "  SharedSystemMemory: {}MB, {}GB\n",
                 adapterIndex, adapterName.c_str(),
                 dxgiAdapterDesc.VendorId,
                 dxgiAdapterDesc.DeviceId,
@@ -182,10 +183,8 @@ namespace spieler
                 adapterName.resize(outputDescriptionSize);
                 wcstombs_s(nullptr, outputName.data(), outputDescriptionSize, dxgiOutputDesc.DeviceName, outputDescriptionSize * sizeof(wchar_t));
 
-                adapterStringStream << fmt::format("           {}: {}", outputIndex, outputName.c_str()); 
+                adapterStringStream << fmt::format("    {}: {}\n", outputIndex, outputName.c_str()); 
             }
-
-            adapterStringStream << std::endl;
 
             SPIELER_INFO("{}", adapterStringStream.str().c_str());
 
