@@ -115,6 +115,7 @@ namespace sandbox
             float Roughness{ 0.25f };
             DirectX::XMMATRIX Transform{ DirectX::XMMatrixIdentity() };
             uint32_t DiffuseMapIndex{ 0 };
+            uint32_t NormalMapIndex{ 0 };
             uint32_t StructuredBufferIndex{ 0 };
         };
 

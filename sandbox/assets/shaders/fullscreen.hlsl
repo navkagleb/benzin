@@ -35,5 +35,5 @@ VS_Output VS_Main(VS_Input input)
 
 float4 PS_Main(VS_Output input) : SV_Target
 {
-    return g_DiffuseMaps[NonUniformResourceIndex(0)].Sample(g_LinearWrapSampler, input.TexCoord);
+    return g_Textures[NonUniformResourceIndex(0)].Sample(g_LinearWrapSampler, input.TexCoord);
 }

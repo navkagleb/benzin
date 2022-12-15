@@ -47,6 +47,7 @@ namespace sandbox
             float Roughness{ 0.25f };
             DirectX::XMMATRIX Transform{ DirectX::XMMatrixIdentity() };
             uint32_t DiffuseMapIndex{ 0 };
+            uint32_t NormalMapIndex{ 0 };
         };
 
     } // namespace cb
@@ -293,6 +294,7 @@ namespace sandbox
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
                     .Roughness{ 0.1f },
                     .DiffuseMapIndex{ 0 },
+                    .NormalMapIndex{ 7 },
                     .StructuredBufferIndex{ 0 }
                 };
             }
@@ -305,6 +307,7 @@ namespace sandbox
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
                     .Roughness{ 0.7f },
                     .DiffuseMapIndex{ 1 },
+                    .NormalMapIndex{ 7 },
                     .StructuredBufferIndex{ 1 }
                 };
             }
@@ -317,6 +320,7 @@ namespace sandbox
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
                     .Roughness{ 0.1f },
                     .DiffuseMapIndex{ 2 },
+                    .NormalMapIndex{ 7 },
                     .StructuredBufferIndex{ 2 }
                 };
             }
@@ -329,6 +333,7 @@ namespace sandbox
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
                     .Roughness{ 0.1f },
                     .DiffuseMapIndex{ 3 },
+                    .NormalMapIndex{ 7 },
                     .StructuredBufferIndex{ 3 }
                 };
             }
@@ -341,6 +346,7 @@ namespace sandbox
                     .FresnelR0{ 0.1f, 0.1f, 0.1f },
                     .Roughness{ 0.1f },
                     .DiffuseMapIndex{ 4 },
+                    .NormalMapIndex{ 7 },
                     .StructuredBufferIndex{ 4 }
                 };
             }
@@ -353,7 +359,21 @@ namespace sandbox
                     .FresnelR0{ 0.98f, 0.97f, 0.95f },
                     .Roughness{ 0.1f },
                     .DiffuseMapIndex{ 5 },
+                    .NormalMapIndex{ 7 },
                     .StructuredBufferIndex{ 5 }
+                };
+            }
+
+            // Bricks2
+            {
+                m_Materials["bricks2"] = MaterialData
+                {
+                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                    .FresnelR0{ 0.05f, 0.05f, 0.05f },
+                    .Roughness{ 0.1f },
+                    .DiffuseMapIndex{ 5 },
+                    .NormalMapIndex{ 6 },
+                    .StructuredBufferIndex{ 6 }
                 };
             }
         }
@@ -433,7 +453,7 @@ namespace sandbox
 
                             renderItem->Instances[index].Transform.Translation = DirectX::XMFLOAT3{ static_cast<float>((i - 5) * 10), static_cast<float>((j - 5) * 10), static_cast<float>((k - 5) * 10) };
                             renderItem->Instances[index].Transform.Scale = DirectX::XMFLOAT3{ 3.0f, 3.0f, 3.0f };
-                            renderItem->Instances[index].MaterialIndex = spieler::Random::GetInstance().GetIntegral(0, 1);
+                            renderItem->Instances[index].MaterialIndex = 6;
                         }
                     }
                 }
@@ -644,6 +664,7 @@ namespace sandbox
                     .Roughness{ material.Roughness },
                     .Transform{ material.Transform },
                     .DiffuseMapIndex{ material.DiffuseMapIndex },
+                    .NormalMapIndex{ material.NormalMapIndex }
                 };
 
                 bufferData.Write(&constants, sizeof(constants), material.StructuredBufferIndex * sizeof(constants));
@@ -774,7 +795,7 @@ namespace sandbox
 
             m_PostEffectsGraphicsCommandList.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::DescriptorHeap::Type::SRV));
 
-            m_BlurPass->OnExecute(m_PostEffectsGraphicsCommandList, *m_Textures["render_target"].GetTextureResource(), BlurPassExecuteProps{ 2.5f, 2.5f, 1 });
+            m_BlurPass->OnExecute(m_PostEffectsGraphicsCommandList, *m_Textures["render_target"].GetTextureResource(), BlurPassExecuteProps{ 2.5f, 2.5f, 0 });
 
             RenderFullscreenQuad(m_BlurPass->GetOutput().GetView<spieler::TextureShaderResourceView>());
 
@@ -823,18 +844,21 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitTextures()
     {
-        const auto initTexture = [&](const std::string& name, const std::wstring& filepath)
+        const auto loadTexture = [&](const std::string& name, const std::wstring& filepath)
         {
             auto& texture{ m_Textures[name] };
             texture.SetTextureResource(spieler::TextureResource::LoadFromDDSFile(m_Device, m_GraphicsCommandList, filepath));
             texture.PushView<spieler::TextureShaderResourceView>(m_Device);
         };
 
-        initTexture("red", L"assets/textures/red.dds");
-        initTexture("green", L"assets/textures/green.dds");
-        initTexture("blue", L"assets/textures/blue.dds");
-        initTexture("white", L"assets/textures/white.dds");
-        initTexture("space_cubemap", L"assets/textures/space_cubemap.dds");
+        loadTexture("red", L"assets/textures/red.dds");
+        loadTexture("green", L"assets/textures/green.dds");
+        loadTexture("blue", L"assets/textures/blue.dds");
+        loadTexture("white", L"assets/textures/white.dds");
+        loadTexture("space_cubemap", L"assets/textures/space_cubemap.dds");
+        loadTexture("bricks2", L"assets/textures/bricks2.dds");
+        loadTexture("bricks2_normalmap", L"assets/textures/bricks2_normalmap.dds");
+        loadTexture("default_normalmap", L"assets/textures/default_normalmap.dds");
     }
 
     void InstancingAndCullingLayer::InitMeshGeometries()
@@ -949,7 +973,7 @@ namespace sandbox
                 .Range
                 {
                     .Type{ spieler::RootParameter::DescriptorRangeType::ShaderResourceView },
-                    .DescriptorCount{ 4 },
+                    .DescriptorCount{ 10 },
                     .BaseShaderRegister{ 1 }
                 }
             };

@@ -25,7 +25,8 @@ struct MaterialData
     float Roughness;
     float4x4 Transform;
     uint DiffuseMapIndex;
-    uint3 Padding;
+    uint NormalMapIndex;
+    uint2 Padding;
 };
 
 ConstantBuffer<PassData> g_Pass : register(b0);
@@ -35,7 +36,7 @@ StructuredBuffer<MaterialData> g_Materials : register(t1, space2);
 
 TextureCube g_CubeMap : register(t0);
 
-Texture2D g_DiffuseMaps[4] : register(t1);
+Texture2D g_Textures[10] : register(t1);
 
 //SamplerState g_SamplerPointWrap : register(s0);
 //SamplerState g_SamplerPointClamp : register(s1);
@@ -43,3 +44,20 @@ SamplerState g_LinearWrapSampler : register(s0);
 //SamplerState g_SamplerLinearClamp : register(s3);
 SamplerState g_AnisotropicWrapSampler : register(s1);
 //SamplerState g_SamplerAnisotropicClamp : register(s5);
+
+float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, float3 tangentW)
+{
+    // [0, 1] -> [-1, 1]
+    const float3 normalT = 2.0f * normalMapSample - 1.0f;
+
+    // Orthonormal basis
+    const float3 n = unitNormalW;
+    const float3 t = normalize(tangentW - dot(tangentW, n) * n);
+    const float3 b = -cross(n, t);
+
+    const float3x3 tbn = float3x3(t, b, n);
+
+    // Transform from tangent space to world space
+    const float3 bumpedNormalW = mul(normalT, tbn);
+    return bumpedNormalW;
+}
