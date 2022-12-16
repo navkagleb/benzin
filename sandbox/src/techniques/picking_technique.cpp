@@ -35,7 +35,7 @@ namespace sandbox
             0.0f
         };
 
-        float minDistance{ std::numeric_limits<float>::max() };
+        float minDistance = std::numeric_limits<float>::max();
 
         for (const auto& entity : m_PickableEntities)
         {

@@ -3,7 +3,7 @@
 namespace spieler
 {
 
-    struct LightConstants
+    struct Light
     {
         DirectX::XMFLOAT3 Strength{ 1.0f, 1.0f, 1.0f };
         float FalloffStart{ 0.0f };

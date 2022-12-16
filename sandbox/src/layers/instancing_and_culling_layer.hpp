@@ -15,6 +15,7 @@
 #include <spieler/graphics/swap_chain.hpp>
 #include <spieler/engine/mesh.hpp>
 #include <spieler/engine/camera.hpp>
+#include <spieler/engine/light.hpp>
 
 #include "passes/blur_pass.hpp"
 #include "techniques/picking_technique.hpp"
@@ -64,39 +65,17 @@ namespace sandbox
     class InstancingAndCullingLayer final : public spieler::Layer
     {
     public:
-        struct PickedEntityComponent
-        {
-            uint32_t InstanceIndex{ 0 };
-            uint32_t TriangleIndex{ 0 };
-        };
-
-        struct LightData
-        {
-            DirectX::XMFLOAT3 Strength{ 1.0f, 1.0f, 1.0f };
-            float FalloffStart{ 0.0f };
-            DirectX::XMFLOAT3 Direction{ 0.0f, 0.0f, 0.0f };
-            float FalloffEnd{ 0.0f };
-            DirectX::XMFLOAT3 Position{ 0.0f, 0.0f, 0.0f };
-            float SpotPower{ 0.0f };
-        };
-
-        struct PassData
-        {
-            DirectX::XMFLOAT4 AmbientLight{ 0.1f, 0.1f, 0.1f, 1.0f };
-            std::vector<LightData> Lights;
-        };
-
         class PointLightController
         {
         public:
             PointLightController() = default;
-            PointLightController(LightData* light);
+            PointLightController(spieler::Light* light);
 
         public:
             void OnImGuiRender();
 
         private:
-            InstancingAndCullingLayer::LightData* m_Light{ nullptr };
+            spieler::Light* m_Light{ nullptr };
         };
 
     public:
@@ -113,7 +92,7 @@ namespace sandbox
 
     private:
         void InitTextures();
-        void InitMeshGeometries();
+        void InitMesh();
 
         void InitBuffers();
 
@@ -151,9 +130,11 @@ namespace sandbox
         std::unordered_map<std::string, std::unique_ptr<spieler::Entity>> m_Entities;
         std::vector<const spieler::Entity*> m_DefaultEntities;
         std::vector<const spieler::Entity*> m_LightSourceEntities;
+        std::vector<const spieler::Entity*> m_PickableEntities;
 
-        PassData m_PassData;
         std::unordered_map<std::string, spieler::Material> m_Materials;
+
+        const DirectX::XMFLOAT4 m_AmbientLight{ 0.1f, 0.1f, 0.1f, 1.0f };
 
         spieler::Camera m_Camera;
         spieler::CameraController m_CameraController{ m_Camera };

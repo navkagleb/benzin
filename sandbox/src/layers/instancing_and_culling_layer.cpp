@@ -31,7 +31,7 @@ namespace sandbox
             alignas(16) DirectX::XMMATRIX ViewProjection{};
             alignas(16) DirectX::XMFLOAT3 CameraPosition{};
             alignas(16) DirectX::XMFLOAT4 AmbientLight{};
-            alignas(16) std::array<InstancingAndCullingLayer::LightData, 16> Lights;
+            alignas(16) std::array<spieler::Light, 16> Lights;
         };
 
         struct RenderItem
@@ -206,7 +206,7 @@ namespace sandbox
     //////////////////////////////////////////////////////////////////////////
     //// PointLightController
     //////////////////////////////////////////////////////////////////////////
-    InstancingAndCullingLayer::PointLightController::PointLightController(LightData* light)
+    InstancingAndCullingLayer::PointLightController::PointLightController(spieler::Light* light)
         : m_Light{ light }
     {}
 
@@ -231,6 +231,12 @@ namespace sandbox
         }
         ImGui::End();
     }
+
+    struct PickedEntityComponent
+    {
+        uint32_t InstanceIndex{ 0 };
+        uint32_t TriangleIndex{ 0 };
+    };
 
     //////////////////////////////////////////////////////////////////////////
     /// InstancingAndCullingLayer
@@ -257,7 +263,7 @@ namespace sandbox
             m_GraphicsCommandList.Reset();
 
             InitTextures();
-            InitMeshGeometries();
+            InitMesh();
 
             m_GraphicsCommandList.Close();
 
@@ -265,24 +271,10 @@ namespace sandbox
             m_CommandQueue.Flush();
         }
 
-        m_DynamicCubeMap = std::make_unique<DynamicCubeMap>(m_Device, 200.0f, 200.0f);
+        m_DynamicCubeMap = std::make_unique<DynamicCubeMap>(m_Device, 200, 200);
         m_BlurPass = std::make_unique<BlurPass>(m_Device, m_Window.GetWidth(), m_Window.GetHeight());
 
         InitBuffers();
-
-        // Init m_PassData
-        {
-            m_PassData.Lights.push_back(LightData
-            {
-                .Strength{ 1.0f, 1.0f, 0.9f },
-                .FalloffStart{ 20.0f },
-                .Direction{ 0.5f, 0.5f, 0.5f },
-                .FalloffEnd{ 21.0f },
-                .Position{ 0.0f, 3.0f, 0.0f }
-            });
-
-            m_PointLightController = PointLightController{ &m_PassData.Lights[0] };
-        }
 
         // Init m_Materials
         {
@@ -461,6 +453,7 @@ namespace sandbox
                 }
 
                 m_DefaultEntities.push_back(entity.get());
+                m_PickableEntities.push_back(entity.get());
             }
 
             // Picked
@@ -495,10 +488,22 @@ namespace sandbox
                 auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
                 instancesComponent.IsNeedCulling = true;
 
+                const DirectX::XMFLOAT3 position{ 0.0f, 3.0f, 0.0f };
+
                 auto& instanceComponent = instancesComponent.Instances.emplace_back();
                 instanceComponent.MaterialIndex = 3;
+                instanceComponent.Transform.Translation = position;
+
+                auto& lightComponent = entity->CreateComponent<spieler::Light>();
+                lightComponent.Strength = DirectX::XMFLOAT3{ 1.0f, 1.0f, 0.9f };
+                lightComponent.FalloffStart = 20.0f;
+                lightComponent.FalloffEnd = 23.0f;
+                lightComponent.Position = position;
 
                 m_LightSourceEntities.push_back(entity.get());
+                m_PickableEntities.push_back(entity.get());
+
+                m_PointLightController = PointLightController{ &lightComponent };
             }
         }
 
@@ -509,7 +514,7 @@ namespace sandbox
 
         m_PickingTechnique = std::make_unique<PickingTechnique>(m_Window);
         m_PickingTechnique->SetActiveCamera(&m_Camera);
-        m_PickingTechnique->SetPickableEntities(m_DefaultEntities);
+        m_PickingTechnique->SetPickableEntities(m_PickableEntities);
 
         return true;
     }
@@ -560,7 +565,7 @@ namespace sandbox
                     };
 
                     instanceComponent.IsVisible = true;
-                    instanceComponent.Transform = resultEntity->GetComponent<spieler::InstancesComponent>().Instances[result.InstanceIndex].Transform;;
+                    instanceComponent.Transform = resultEntity->GetComponent<spieler::InstancesComponent>().Instances[result.InstanceIndex].Transform;
                 
                     auto& pickedEntityComponent = pickedEntity->GetComponent<PickedEntityComponent>();
                     pickedEntityComponent.InstanceIndex = result.InstanceIndex;
@@ -588,19 +593,24 @@ namespace sandbox
                     .Projection{ DirectX::XMMatrixTranspose(m_Camera.GetProjection()) },
                     .ViewProjection{ DirectX::XMMatrixTranspose(m_Camera.GetViewProjection()) },
                     .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition()) },
-                    .AmbientLight{ m_PassData.AmbientLight }
+                    .AmbientLight{ m_AmbientLight }
                 };
 
-                const uint64_t lightsSize{ m_PassData.Lights.size() * sizeof(LightData) };
-                memcpy_s(constants.Lights.data(), lightsSize, m_PassData.Lights.data(), lightsSize);
+                const uint64_t lightSize = sizeof(spieler::Light);
+
+                for (size_t i = 0; i < m_LightSourceEntities.size(); ++i)
+                {
+                    const auto& lightComponent = m_LightSourceEntities[i]->GetComponent<spieler::Light>();
+                    memcpy_s(constants.Lights.data() + lightSize * i, lightSize, &lightComponent, lightSize);
+                }
 
                 bufferData.Write(&constants, sizeof(constants));
             }
             
 
-            for (uint32_t i = 0; i < 6; ++i)
+            for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
             {
-                const spieler::Camera& camera{ m_DynamicCubeMap->GetCamera(i) };
+                const spieler::Camera& camera = m_DynamicCubeMap->GetCamera(faceIndex);
 
                 cb::Pass constants
                 {
@@ -608,13 +618,18 @@ namespace sandbox
                     .Projection{ DirectX::XMMatrixTranspose(camera.GetProjection()) },
                     .ViewProjection{ DirectX::XMMatrixTranspose(camera.GetViewProjection()) },
                     .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()) },
-                    .AmbientLight{ m_PassData.AmbientLight }
+                    .AmbientLight{ m_AmbientLight }
                 };
 
-                const uint64_t lightsSize{ m_PassData.Lights.size() * sizeof(LightData) };
-                memcpy_s(constants.Lights.data(), lightsSize, m_PassData.Lights.data(), lightsSize);
+                const uint64_t lightSize = sizeof(spieler::Light);
 
-                bufferData.Write(&constants, sizeof(constants), m_Buffers["pass_constant_buffer"].GetBufferResource()->GetConfig().ElementSize * (i + 1));
+                for (size_t i = 0; i < m_LightSourceEntities.size(); ++i)
+                {
+                    const auto& lightComponent = m_LightSourceEntities[i]->GetComponent<spieler::Light>();
+                    memcpy_s(constants.Lights.data() + lightSize * i, lightSize, &lightComponent, lightSize);
+                }
+
+                bufferData.Write(&constants, sizeof(constants), m_Buffers["pass_constant_buffer"].GetBufferResource()->GetConfig().ElementSize * (faceIndex + 1));
             }
         }
 
@@ -631,10 +646,12 @@ namespace sandbox
                 const auto& meshComponent = entity->GetComponent<spieler::MeshComponent>();
                 auto& instancesComponent = entity->GetComponent<spieler::InstancesComponent>();
 
-                if (name == "light")
+                if (entity->HasComponent<spieler::Light>())
                 {
+                    const auto& lightComponent = entity->GetComponent<spieler::Light>();
                     auto& instanceComponent = instancesComponent.Instances[0];
-                    instanceComponent.Transform.Translation = m_PassData.Lights[0].Position;
+                    
+                    instanceComponent.Transform.Translation = lightComponent.Position;
                 }
 
                 for (const auto& instanceComponent : instancesComponent.Instances)
@@ -900,7 +917,7 @@ namespace sandbox
         loadTexture("default_normalmap", L"assets/textures/default_normalmap.dds");
     }
 
-    void InstancingAndCullingLayer::InitMeshGeometries()
+    void InstancingAndCullingLayer::InitMesh()
     {
         const spieler::BoxGeometryConfig boxProps
         {
@@ -912,8 +929,8 @@ namespace sandbox
         const spieler::SphereGeometryConfig sphereProps
         {
             .Radius{ 1.0f },
-            .SliceCount{ 20 },
-            .StackCount{ 20 }
+            .SliceCount{ 6 },
+            .StackCount{ 6 }
         };
 
         const std::unordered_map<std::string, spieler::MeshData> submeshes
