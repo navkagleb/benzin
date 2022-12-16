@@ -288,7 +288,7 @@ namespace sandbox
         {
             // Red
             {
-                m_Materials["red"] = MaterialData
+                m_Materials["red"] = spieler::Material
                 {
                     .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -301,7 +301,7 @@ namespace sandbox
 
             // Green
             {
-                m_Materials["green"] = MaterialData
+                m_Materials["green"] = spieler::Material
                 {
                     .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -314,7 +314,7 @@ namespace sandbox
 
             // Blue
             {
-                m_Materials["blue"] = MaterialData
+                m_Materials["blue"] = spieler::Material
                 {
                     .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -327,7 +327,7 @@ namespace sandbox
 
             // White
             {
-                m_Materials["white"] = MaterialData
+                m_Materials["white"] = spieler::Material
                 {
                     .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -340,7 +340,7 @@ namespace sandbox
 
             // CubeMap
             {
-                m_Materials["cubemap"] = MaterialData
+                m_Materials["cubemap"] = spieler::Material
                 {
                     .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                     .FresnelR0{ 0.1f, 0.1f, 0.1f },
@@ -353,7 +353,7 @@ namespace sandbox
 
             // Mirror
             {
-                m_Materials["mirror"] = MaterialData
+                m_Materials["mirror"] = spieler::Material
                 {
                     .DiffuseAlbedo{ 0.0f, 0.0f, 0.0f, 1.0f },
                     .FresnelR0{ 0.98f, 0.97f, 0.95f },
@@ -366,11 +366,11 @@ namespace sandbox
 
             // Bricks2
             {
-                m_Materials["bricks2"] = MaterialData
+                m_Materials["bricks2"] = spieler::Material
                 {
                     .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                     .FresnelR0{ 0.05f, 0.05f, 0.05f },
-                    .Roughness{ 0.1f },
+                    .Roughness{ 0.9f },
                     .DiffuseMapIndex{ 5 },
                     .NormalMapIndex{ 6 },
                     .StructuredBufferIndex{ 6 }
@@ -382,66 +382,66 @@ namespace sandbox
         {
             // CubeMap
             {
-                auto& renderItem{ m_RenderItems["cubemap"] = std::make_unique<RenderItem>() };
+                auto& entity = m_Entities["cubemap"];
+                entity = std::make_unique<spieler::Entity>();
 
-                renderItem->MeshGeometry = &m_MeshGeometry;
-                renderItem->SubmeshGeometry = &m_MeshGeometry.GetSubmesh("box");
-                renderItem->PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+                auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+                meshComponent.Mesh = &m_Mesh;
+                meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
+                meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
 
-                renderItem->IsNeedCulling = false;
+                auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+                instancesComponent.IsNeedCulling = true;
 
-                renderItem->Instances.push_back(RenderItem::Instance
+                auto& instanceComponent = instancesComponent.Instances.emplace_back();
+                instanceComponent.MaterialIndex = 4;
+                instanceComponent.Transform = spieler::Transform
                 {
-                    .Transform
-                    {
-                        .Scale{ 100.0f, 100.0f, 100.0f },
-                        .Translation{ 2.0f, 0.0f, 0.0f }
-                    },
-                    .MaterialIndex{ 4 },
-                    .Visible{ true }
-                });
-
-
-                m_CubeMapRenderItem = renderItem.get();
+                    .Scale{ 100.0f, 100.0f, 100.0f },
+                    .Translation{ 2.0f, 0.0f, 0.0f }
+                };
             }
             // Dynamic sphere
             {
-                auto& renderItem{ m_RenderItems["dynamic_sphere"] = std::make_unique<RenderItem>() };
+                auto& entity = m_Entities["dynamic_sphere"];
+                entity = std::make_unique<spieler::Entity>();
 
-                renderItem->MeshGeometry = &m_MeshGeometry;
-                renderItem->SubmeshGeometry = &m_MeshGeometry.GetSubmesh("sphere");
-                renderItem->PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+                auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+                meshComponent.Mesh = &m_Mesh;
+                meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
+                meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
 
-                renderItem->IsNeedCulling = true;
+                auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+                instancesComponent.IsNeedCulling = true;
 
-                renderItem->Instances.push_back(RenderItem::Instance
+                auto& instanceComponent = instancesComponent.Instances.emplace_back();
+                instanceComponent.MaterialIndex = 5;
+                instanceComponent.Transform = spieler::Transform
                 {
-                    .Transform
-                    {
-                        .Scale{ 2.0f, 2.0f, 2.0f },
-                        .Translation{ -5.0f, 0.0f, 0.0f }
-                    },
-                    .MaterialIndex{ 5 },
-                    .Visible{ true }
-                });
+                    .Scale{ 2.0f, 2.0f, 2.0f },
+                    .Translation{ -5.0f, 0.0f, 0.0f }
+                };
 
                 m_DynamicCubeMap->SetPosition({ -5.0f, 0.0f, 0.0f, 1.0f });
-
-                m_DynamicCubeRenderItem = renderItem.get();
             }
 
             // Boxes
             {
-                const int32_t boxInRowCount{ 10 };
-                const int32_t boxInColumnCount{ 10 };
-                const int32_t boxInDepthCount{ 10 };
+                const int32_t boxInRowCount = 10;
+                const int32_t boxInColumnCount = 10;
+                const int32_t boxInDepthCount = 10;
 
-                auto& renderItem{ m_RenderItems["box"] = std::make_unique<RenderItem>() };
-                renderItem->MeshGeometry = &m_MeshGeometry;
-                renderItem->SubmeshGeometry = &m_MeshGeometry.GetSubmesh("box");
-                renderItem->PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+                auto& entity = m_Entities["box"];
+                entity = std::make_unique<spieler::Entity>();
 
-                renderItem->Instances.resize(boxInRowCount * boxInColumnCount * boxInDepthCount);
+                auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+                meshComponent.Mesh = &m_Mesh;
+                meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
+                meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+                
+                auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+                instancesComponent.IsNeedCulling = true;
+                instancesComponent.Instances.resize(boxInRowCount * boxInColumnCount * boxInDepthCount);
 
                 for (int32_t i = 0; i < boxInRowCount; ++i)
                 {
@@ -449,48 +449,56 @@ namespace sandbox
                     {
                         for (int32_t k = 0; k < boxInDepthCount; ++k)
                         {
-                            const auto index{ static_cast<size_t>((i * boxInRowCount + j) * boxInColumnCount + k) };
+                            const auto index = static_cast<size_t>((i * boxInRowCount + j) * boxInColumnCount + k);
 
-                            renderItem->Instances[index].Transform.Translation = DirectX::XMFLOAT3{ static_cast<float>((i - 5) * 10), static_cast<float>((j - 5) * 10), static_cast<float>((k - 5) * 10) };
-                            renderItem->Instances[index].Transform.Scale = DirectX::XMFLOAT3{ 3.0f, 3.0f, 3.0f };
-                            renderItem->Instances[index].MaterialIndex = 6;
+                            auto& instanceComponent = instancesComponent.Instances[index];
+
+                            instanceComponent.Transform.Translation = DirectX::XMFLOAT3{ static_cast<float>((i - 5) * 10), static_cast<float>((j - 5) * 10), static_cast<float>((k - 5) * 10) };
+                            instanceComponent.Transform.Scale = DirectX::XMFLOAT3{ 3.0f, 3.0f, 3.0f };
+                            instanceComponent.MaterialIndex = 6;
                         }
                     }
                 }
 
-                m_DefaultRenderItems.push_back(renderItem.get());
+                m_DefaultEntities.push_back(entity.get());
             }
 
             // Picked
             {
-                auto& renderItem{ m_RenderItems["picked"] = std::make_unique<RenderItem>() };
+                auto& entity = m_Entities["picked"];
+                entity = std::make_unique<spieler::Entity>();
 
-                renderItem->MeshGeometry = &m_MeshGeometry;
-                renderItem->PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+                auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+                meshComponent.Mesh = &m_Mesh;
+                meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
 
-                renderItem->Instances.push_back(RenderItem::Instance
-                {
-                    .MaterialIndex{ 2 },
-                    .Visible{ false }
-                });
+                auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+                instancesComponent.IsNeedCulling = true;
 
-                m_PickedRenderItem.RenderItem = renderItem.get();
+                auto& instanceComponent = instancesComponent.Instances.emplace_back();
+                instanceComponent.MaterialIndex = 2;
+                instanceComponent.IsVisible = false;
+
+                entity->CreateComponent<PickedEntityComponent>();
             }
 
-            // Light
+            // Light source
             {
-                auto& renderItem{ m_RenderItems["light"] = std::make_unique<RenderItem>() };
-                renderItem->MeshGeometry = &m_MeshGeometry;
-                renderItem->SubmeshGeometry = &m_MeshGeometry.GetSubmesh("box");
-                renderItem->PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+                auto& entity = m_Entities["light"];
+                entity = std::make_unique<spieler::Entity>();
 
-                renderItem->Instances.push_back(RenderItem::Instance
-                {
-                    .MaterialIndex{ 3 },
-                    .Visible{ true }
-                });
+                auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+                meshComponent.Mesh = &m_Mesh;
+                meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
+                meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
 
-                m_LightRenderItems.push_back(renderItem.get());
+                auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+                instancesComponent.IsNeedCulling = true;
+
+                auto& instanceComponent = instancesComponent.Instances.emplace_back();
+                instanceComponent.MaterialIndex = 3;
+
+                m_LightSourceEntities.push_back(entity.get());
             }
         }
 
@@ -499,9 +507,9 @@ namespace sandbox
 
         OnWindowResized();
 
-        m_PickingTechnique = new PickingTechnique(m_Window);
+        m_PickingTechnique = std::make_unique<PickingTechnique>(m_Window);
         m_PickingTechnique->SetActiveCamera(&m_Camera);
-        m_PickingTechnique->SetPickableRenderItems(m_DefaultRenderItems);
+        m_PickingTechnique->SetPickableEntities(m_DefaultEntities);
 
         return true;
     }
@@ -509,8 +517,6 @@ namespace sandbox
     bool InstancingAndCullingLayer::OnDetach()
     {
         m_CommandQueue.Flush();
-
-        delete m_PickingTechnique;
 
         return true;
     }
@@ -533,25 +539,32 @@ namespace sandbox
             if (event.GetButton() == spieler::MouseButton::Right)
             {
                 const PickingTechnique::Result result = m_PickingTechnique->PickTriangle(event.GetX<float>(), event.GetY<float>());
+                const spieler::Entity* resultEntity = result.PickedEntity;
 
-                if (!result.PickedRenderItem)
+                auto& pickedEntity = m_Entities["picked"];
+                auto& instanceComponent = pickedEntity->GetComponent<spieler::InstancesComponent>().Instances[0];
+
+                if (!result.PickedEntity)
                 {
-                    m_PickedRenderItem.RenderItem->Instances[0].Visible = false;
+                    instanceComponent.IsVisible = false;
                 }
                 else
                 {
-                    m_PickedRenderItem.RenderItem->MeshGeometry = result.PickedRenderItem->MeshGeometry;
-                    m_PickedRenderItem.RenderItem->SubmeshGeometry = new spieler::SubmeshGeometry
+                    auto& meshComponent = pickedEntity->GetComponent<spieler::MeshComponent>();
+                    meshComponent.Mesh = result.PickedEntity->GetComponent<spieler::MeshComponent>().Mesh;
+                    meshComponent.SubMesh = new spieler::SubMesh
                     {
                         .IndexCount{ 3 },
-                        .BaseVertexLocation{ result.PickedRenderItem->SubmeshGeometry->BaseVertexLocation },
+                        .BaseVertexLocation{ resultEntity->GetComponent<spieler::MeshComponent>().SubMesh->BaseVertexLocation },
                         .StartIndexLocation{ result.TriangleIndex * 3 }
                     };
-                    m_PickedRenderItem.RenderItem->Instances[0].Visible = true;
-                    m_PickedRenderItem.RenderItem->Instances[0].Transform = result.PickedRenderItem->Instances[result.InstanceIndex].Transform;
+
+                    instanceComponent.IsVisible = true;
+                    instanceComponent.Transform = resultEntity->GetComponent<spieler::InstancesComponent>().Instances[result.InstanceIndex].Transform;;
                 
-                    m_PickedRenderItem.InstanceIndex = result.InstanceIndex;
-                    m_PickedRenderItem.TriangleIndex = result.TriangleIndex;
+                    auto& pickedEntityComponent = pickedEntity->GetComponent<PickedEntityComponent>();
+                    pickedEntityComponent.InstanceIndex = result.InstanceIndex;
+                    pickedEntityComponent.TriangleIndex = result.TriangleIndex;
                 }
             }
 
@@ -609,43 +622,50 @@ namespace sandbox
         {
             spieler::MappedData bufferData{ m_Buffers["render_item_structured_buffer"].GetBufferResource(), 0 };
 
-            uint32_t offset{ 0 };
+            uint32_t offset = 0;
 
-            for (auto& [name, renderItem] : m_RenderItems)
+            for (auto& [name, entity] : m_Entities)
             {
-                uint32_t visibleInstanceCount{ 0 };
+                uint32_t visibleInstanceCount = 0;
+
+                const auto& meshComponent = entity->GetComponent<spieler::MeshComponent>();
+                auto& instancesComponent = entity->GetComponent<spieler::InstancesComponent>();
 
                 if (name == "light")
                 {
-                    renderItem->Instances[0].Transform.Translation = m_PassData.Lights[0].Position;
+                    auto& instanceComponent = instancesComponent.Instances[0];
+                    instanceComponent.Transform.Translation = m_PassData.Lights[0].Position;
                 }
 
-                for (size_t i = 0; i < renderItem->Instances.size(); ++i)
+                for (const auto& instanceComponent : instancesComponent.Instances)
                 {
-                    if (!renderItem->Instances[i].Visible)
+                    if (!meshComponent.SubMesh || !instanceComponent.IsVisible)
                     {
                         continue;
                     }
 
-                    const DirectX::XMMATRIX viewToLocal{ DirectX::XMMatrixMultiply(m_Camera.GetInverseView(), renderItem->Instances[i].Transform.GetInverseMatrix()) };
+                    const DirectX::XMMATRIX viewToLocal = DirectX::XMMatrixMultiply(
+                        m_Camera.GetInverseView(),
+                        instanceComponent.Transform.GetInverseMatrix()
+                    );
 
                     DirectX::BoundingFrustum localSpaceFrustum;
                     m_Camera.GetBoundingFrustum().Transform(localSpaceFrustum, viewToLocal);
 
-                    if (!m_IsCullingEnabled || !renderItem->IsNeedCulling || localSpaceFrustum.Contains(renderItem->SubmeshGeometry->BoundingBox) != DirectX::DISJOINT)
+                    if (!m_IsCullingEnabled || !instancesComponent.IsNeedCulling || localSpaceFrustum.Contains(meshComponent.SubMesh->BoundingBox) != DirectX::DISJOINT)
                     {
                         const cb::RenderItem constants
                         {
-                            .World{ DirectX::XMMatrixTranspose(renderItem->Instances[i].Transform.GetMatrix()) },
-                            .MaterialIndex{ renderItem->Instances[i].MaterialIndex }
+                            .World{ DirectX::XMMatrixTranspose(instanceComponent.Transform.GetMatrix()) },
+                            .MaterialIndex{ instanceComponent.MaterialIndex }
                         };
 
                         bufferData.Write(&constants, sizeof(constants), (offset + visibleInstanceCount++) * sizeof(constants));
                     }
                 }
 
-                renderItem->VisibleInstanceCount = visibleInstanceCount;
-                renderItem->StructuredBufferOffset = offset;
+                instancesComponent.VisibleInstanceCount = visibleInstanceCount;
+                instancesComponent.StructuredBufferOffset = offset;
 
                 offset += visibleInstanceCount;
             }
@@ -717,8 +737,11 @@ namespace sandbox
                     m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer").GetBufferResource(), i + 1);
 
                     m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("space_cubemap").GetView<spieler::TextureShaderResourceView>());
-                    RenderRenderItems(m_PipelineStates.at("default"), m_DefaultRenderItems);
-                    RenderRenderItems(m_PipelineStates.at("cubemap"), std::span{ &m_CubeMapRenderItem, 1 });
+                    
+                    RenderEntities(m_PipelineStates.at("default"), m_DefaultEntities);
+
+                    const spieler::Entity* cubemapEntity = m_Entities.at("cubemap").get();
+                    RenderEntities(m_PipelineStates.at("cubemap"), std::span{ &cubemapEntity, 1});
                 }
 
                 m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
@@ -764,13 +787,21 @@ namespace sandbox
             m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer").GetBufferResource());
 
             m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_DynamicCubeMap->GetCubeMap().GetView<spieler::TextureShaderResourceView>());
-            RenderRenderItems(m_PipelineStates.at("default"), std::span{ &m_DynamicCubeRenderItem, 1 });
+            
+            const spieler::Entity* dynamicSphereEntity = m_Entities.at("dynamic_sphere").get();
+            RenderEntities(m_PipelineStates.at("default"), std::span{ &dynamicSphereEntity, 1 });
 
             m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("space_cubemap").GetView<spieler::TextureShaderResourceView>());
-            RenderRenderItems(m_PipelineStates.at("default"), m_DefaultRenderItems);
-            RenderRenderItems(m_PipelineStates.at("picked"), std::span{ &m_PickedRenderItem.RenderItem, 1 });
-            RenderRenderItems(m_PipelineStates.at("lighting"), m_LightRenderItems);
-            RenderRenderItems(m_PipelineStates.at("cubemap"), std::span{ &m_CubeMapRenderItem, 1 });
+            
+            RenderEntities(m_PipelineStates.at("default"), m_DefaultEntities);
+            
+            const spieler::Entity* pickedEntity = m_Entities.at("picked").get();
+            RenderEntities(m_PipelineStates.at("picked"), std::span{ &pickedEntity, 1 });
+
+            RenderEntities(m_PipelineStates.at("lighting"), m_LightSourceEntities);
+
+            const spieler::Entity* cubemapEntity = m_Entities.at("cubemap").get();
+            RenderEntities(m_PipelineStates.at("cubemap"), std::span{ &cubemapEntity, 1});
 
             m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
@@ -812,32 +843,40 @@ namespace sandbox
         {   
             ImGui::Checkbox("Is Culling Enabled", &m_IsCullingEnabled);
 
-            for (const auto& [name, renderItem] : m_RenderItems)
+            for (const auto& [name, entity] : m_Entities)
             {
-                ImGui::Text("%s visible instances: %d", name.c_str(), renderItem->VisibleInstanceCount);
+                const auto& instancesComponent = entity->GetComponent<spieler::InstancesComponent>();
+                ImGui::Text("%s visible instances: %d", name.c_str(), instancesComponent.VisibleInstanceCount);
             }
         }
         ImGui::End();
 
-        ImGui::Begin("Picked RenderItem");
+        ImGui::Begin("Picked Entity");
         {
-            if (!m_PickedRenderItem.RenderItem || !m_PickedRenderItem.RenderItem->Instances[0].Visible)
+            const auto& pickedEntity = m_Entities["picked"];
+            const auto& instancesComponent = pickedEntity->GetComponent<spieler::InstancesComponent>();
+
+            if (!instancesComponent.Instances[0].IsVisible)
             {
                 ImGui::Text("Null");
             }
             else
             {
-                ImGui::Text("Instance Index: %d", m_PickedRenderItem.InstanceIndex);
-                ImGui::Text("Triangle Index: %d", m_PickedRenderItem.TriangleIndex);
+                const auto& pickedEntityComponent = pickedEntity->GetComponent<PickedEntityComponent>();
+                ImGui::Text("Instance Index: %d", pickedEntityComponent.InstanceIndex);
+                ImGui::Text("Triangle Index: %d", pickedEntityComponent.TriangleIndex);
             }
         }
         ImGui::End();
 
         ImGui::Begin("DynamicCube RenderItem");
         {
-            ImGui::DragFloat3("Position", reinterpret_cast<float*>(&m_DynamicCubeRenderItem->Instances[0].Transform.Translation), 0.1f);
+            auto& dynamicSphereEntity = m_Entities["dynamic_sphere"];
+            auto& instanceComponent = dynamicSphereEntity->GetComponent<spieler::InstancesComponent>().Instances[0];
+
+            ImGui::DragFloat3("Position", reinterpret_cast<float*>(&instanceComponent.Transform.Translation), 0.1f);
             
-            m_DynamicCubeMap->SetPosition(DirectX::XMLoadFloat3(&m_DynamicCubeRenderItem->Instances[0].Transform.Translation));
+            m_DynamicCubeMap->SetPosition(DirectX::XMLoadFloat3(&instanceComponent.Transform.Translation));
         }
         ImGui::End();
     }
@@ -883,10 +922,10 @@ namespace sandbox
             { "sphere", spieler::GeometryGenerator::GenerateSphere(sphereProps) }
         };
 
-        m_MeshGeometry.SetSubmeshes(m_Device, submeshes);
+        m_Mesh.SetSubMeshes(m_Device, submeshes);
 
-        m_GraphicsCommandList.UploadToBuffer(*m_MeshGeometry.GetVertexBuffer().GetBufferResource(), m_MeshGeometry.GetVertices().data(), m_MeshGeometry.GetVertices().size() * sizeof(spieler::Vertex));
-        m_GraphicsCommandList.UploadToBuffer(*m_MeshGeometry.GetIndexBuffer().GetBufferResource(), m_MeshGeometry.GetIndices().data(), m_MeshGeometry.GetIndices().size() * sizeof(uint32_t));
+        m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetVertexBuffer().GetBufferResource(), m_Mesh.GetVertices().data(), m_Mesh.GetVertices().size() * sizeof(spieler::Vertex));
+        m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetIndexBuffer().GetBufferResource(), m_Mesh.GetIndices().data(), m_Mesh.GetIndices().size() * sizeof(uint32_t));
     }
 
     void InstancingAndCullingLayer::InitBuffers()
@@ -1336,31 +1375,39 @@ namespace sandbox
         m_BlurPass->OnResize(m_Device, m_Window.GetWidth(), m_Window.GetHeight());
     }
 
-    void InstancingAndCullingLayer::RenderRenderItems(const spieler::PipelineState& pso, const std::span<RenderItem*>& renderItems)
+    void InstancingAndCullingLayer::RenderEntities(const spieler::PipelineState& pso, const std::span<const spieler::Entity*>& entities)
     {
         m_GraphicsCommandList.SetPipelineState(pso);
 
         m_GraphicsCommandList.SetGraphicsRawShaderResource(2, *m_Buffers.at("material_structured_buffer").GetBufferResource());
         m_GraphicsCommandList.SetGraphicsDescriptorTable(4, m_Textures.at("red").GetView<spieler::TextureShaderResourceView>());
 
-        for (const auto& renderItem : renderItems)
+        for (const auto& entity : entities)
         {
-            if (!renderItem->MeshGeometry || !renderItem->SubmeshGeometry)
+            const auto& meshComponent = entity->GetComponent<spieler::MeshComponent>();
+
+            if (!meshComponent.Mesh || !meshComponent.SubMesh)
             {
                 continue;
             }
 
-            m_GraphicsCommandList.SetGraphicsRawShaderResource(1, *m_Buffers.at("render_item_structured_buffer").GetBufferResource(), renderItem->StructuredBufferOffset);
+            const auto& instancesComponent = entity->GetComponent<spieler::InstancesComponent>();
 
-            m_GraphicsCommandList.IASetVertexBuffer(renderItem->MeshGeometry->GetVertexBuffer().GetBufferResource().get());
-            m_GraphicsCommandList.IASetIndexBuffer(renderItem->MeshGeometry->GetIndexBuffer().GetBufferResource().get());
-            m_GraphicsCommandList.IASetPrimitiveTopology(renderItem->PrimitiveTopology);
+            m_GraphicsCommandList.SetGraphicsRawShaderResource(
+                1, 
+                *m_Buffers.at("render_item_structured_buffer").GetBufferResource(),
+                instancesComponent.StructuredBufferOffset
+            );
+
+            m_GraphicsCommandList.IASetVertexBuffer(meshComponent.Mesh->GetVertexBuffer().GetBufferResource().get());
+            m_GraphicsCommandList.IASetIndexBuffer(meshComponent.Mesh->GetIndexBuffer().GetBufferResource().get());
+            m_GraphicsCommandList.IASetPrimitiveTopology(meshComponent.PrimitiveTopology);
 
             m_GraphicsCommandList.DrawIndexed(
-                renderItem->SubmeshGeometry->IndexCount,
-                renderItem->SubmeshGeometry->StartIndexLocation,
-                renderItem->SubmeshGeometry->BaseVertexLocation,
-                renderItem->VisibleInstanceCount
+                meshComponent.SubMesh->IndexCount,
+                meshComponent.SubMesh->StartIndexLocation,
+                meshComponent.SubMesh->BaseVertexLocation,
+                instancesComponent.VisibleInstanceCount
             );
         }
     }

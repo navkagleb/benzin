@@ -5,44 +5,44 @@
 namespace spieler
 {
 
-    MeshGeometry::MeshGeometry(Device& device, const std::unordered_map<std::string, MeshData>& submeshes)
+    Mesh::Mesh(Device& device, const std::unordered_map<std::string, MeshData>& subMeshes)
     {
-        SetSubmeshes(device, submeshes);
+        SetSubMeshes(device, subMeshes);
     }
 
-    void MeshGeometry::SetSubmeshes(Device& device, const std::unordered_map<std::string, MeshData>& submeshes)
+    void Mesh::SetSubMeshes(Device& device, const std::unordered_map<std::string, MeshData>& subMeshes)
     {
-        const uint32_t vertexSize{ sizeof(Vertex) };
-        const uint32_t indexSize{ sizeof(uint32_t) };
+        const uint32_t vertexSize = sizeof(Vertex);
+        const uint32_t indexSize = sizeof(uint32_t);
 
-        size_t vertexOffset{ 0 };
-        size_t indexOffset{ 0 };
+        size_t vertexOffset = 0;
+        size_t indexOffset = 0;
 
-        for (const auto& [name, submesh] : submeshes)
+        for (const auto& [name, meshData] : subMeshes)
         {
-            m_Submeshes[name] = spieler::SubmeshGeometry
+            m_SubMeshes[name] = spieler::SubMesh
             {
-                .IndexCount{ static_cast<uint32_t>(submesh.Indices.size()) },
-                .BaseVertexLocation{ static_cast<uint32_t>(vertexOffset) },
-                .StartIndexLocation{ static_cast<uint32_t>(indexOffset) }
+                .IndexCount = static_cast<uint32_t>(meshData.Indices.size()),
+                .BaseVertexLocation = static_cast<uint32_t>(vertexOffset),
+                .StartIndexLocation = static_cast<uint32_t>(indexOffset)
             };
 
-            m_Vertices.resize(m_Vertices.size() + submesh.Vertices.size());
-            m_Indices.resize(m_Indices.size() + submesh.Indices.size());
+            m_Vertices.resize(m_Vertices.size() + meshData.Vertices.size());
+            m_Indices.resize(m_Indices.size() + meshData.Indices.size());
 
-            memcpy_s(m_Vertices.data() + vertexOffset, submesh.Vertices.size() * vertexSize, submesh.Vertices.data(), submesh.Vertices.size() * vertexSize);
-            memcpy_s(m_Indices.data() + indexOffset, submesh.Indices.size() * indexSize, submesh.Indices.data(), submesh.Indices.size() * indexSize);
+            memcpy_s(m_Vertices.data() + vertexOffset, meshData.Vertices.size() * vertexSize, meshData.Vertices.data(), meshData.Vertices.size() * vertexSize);
+            memcpy_s(m_Indices.data() + indexOffset, meshData.Indices.size() * indexSize, meshData.Indices.data(), meshData.Indices.size() * indexSize);
 
             // TODO: add ability to choose None | BoundingBox | BoundingSphere
             DirectX::BoundingBox::CreateFromPoints(
-                m_Submeshes[name].BoundingBox,
-                submesh.Vertices.size(),
-                reinterpret_cast<const DirectX::XMFLOAT3*>(submesh.Vertices.data()),
+                m_SubMeshes[name].BoundingBox,
+                meshData.Vertices.size(),
+                reinterpret_cast<const DirectX::XMFLOAT3*>(meshData.Vertices.data()),
                 sizeof(spieler::Vertex)
             );
 
-            vertexOffset += submesh.Vertices.size();
-            indexOffset += submesh.Indices.size();
+            vertexOffset += meshData.Vertices.size();
+            indexOffset += meshData.Indices.size();
         }
 
         // VertexBuffer

@@ -4,8 +4,6 @@
 #include <spieler/engine/mesh.hpp>
 #include <spieler/engine/camera.hpp>
 
-#include "layers/instancing_and_culling_layer.hpp"
-
 namespace sandbox
 {
 
@@ -14,7 +12,7 @@ namespace sandbox
 	public:
 		struct Result
 		{
-			const InstancingAndCullingLayer::RenderItem* PickedRenderItem{ nullptr };
+			const spieler::Entity* PickedEntity{ nullptr };
 			uint32_t InstanceIndex{ 0 };
 			uint32_t TriangleIndex{ 0 };
 		};
@@ -24,7 +22,7 @@ namespace sandbox
 
 	public:
 		void SetActiveCamera(const spieler::Camera* activeCamera);
-		void SetPickableRenderItems(const std::span<InstancingAndCullingLayer::RenderItem*>& pickableRenderItems);
+		void SetPickableEntities(const std::span<const spieler::Entity*>& pickableEntities);
 
 	public:
 		Result PickTriangle(float mouseX, float mouseY);
@@ -32,7 +30,7 @@ namespace sandbox
 	private:
 		spieler::Window& m_Window;
 
-		std::span<InstancingAndCullingLayer::RenderItem*> m_PickableRenderItems;
+		std::span<const spieler::Entity*> m_PickableEntities;
 		const spieler::Camera* m_ActiveCamera{ nullptr };
 	};
 

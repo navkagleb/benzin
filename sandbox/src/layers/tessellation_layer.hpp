@@ -14,6 +14,7 @@
 
 namespace sandbox
 {
+#if 0
 
     class TessellationLayer final : public spieler::Layer
     {
@@ -66,5 +67,7 @@ namespace sandbox
         spieler::Camera m_Camera;
         spieler::CameraController m_CameraController{ m_Camera };
     };
+
+#endif
 
 } // namespace sandbox

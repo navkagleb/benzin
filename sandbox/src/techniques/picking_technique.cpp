@@ -14,9 +14,9 @@ namespace sandbox
         m_ActiveCamera = activeCamera;
     }
 
-    void PickingTechnique::SetPickableRenderItems(const std::span<InstancingAndCullingLayer::RenderItem*>& pickableRenderItems)
+    void PickingTechnique::SetPickableEntities(const std::span<const spieler::Entity*>& pickableEntities)
     {
-        m_PickableRenderItems = pickableRenderItems;
+        m_PickableEntities = pickableEntities;
     }
 
 	PickingTechnique::Result PickingTechnique::PickTriangle(float mouseX, float mouseY)
@@ -37,37 +37,35 @@ namespace sandbox
 
         float minDistance{ std::numeric_limits<float>::max() };
 
-        for (const auto& renderItem : m_PickableRenderItems)
+        for (const auto& entity : m_PickableEntities)
         {
-            const spieler::Vertex* vertices
-            {
-                reinterpret_cast<const spieler::Vertex*>(renderItem->MeshGeometry->GetVertices().data()) + renderItem->SubmeshGeometry->BaseVertexLocation
-            };
+            const auto& meshComponent = entity->GetComponent<spieler::MeshComponent>();
+            const auto& instancesComponent = entity->GetComponent<spieler::InstancesComponent>();
 
-            const uint32_t* indices
-            {
-                reinterpret_cast<const uint32_t*>(renderItem->MeshGeometry->GetIndices().data()) + renderItem->SubmeshGeometry->StartIndexLocation
-            };
+            const auto* vertices = reinterpret_cast<const spieler::Vertex*>(meshComponent.Mesh->GetVertices().data()) + meshComponent.SubMesh->BaseVertexLocation;
+            const auto* indices = reinterpret_cast<const uint32_t*>(meshComponent.Mesh->GetIndices().data()) + meshComponent.SubMesh->StartIndexLocation;
 
-            float minInstanceDistance{ std::numeric_limits<float>::max() };
-            uint32_t minInstanceIndex{ 0 };
-            uint32_t minTriangleIndex{ 0 };
+            float minInstanceDistance = std::numeric_limits<float>::max();
+            uint32_t minInstanceIndex = 0;
+            uint32_t minTriangleIndex = 0;
 
-            for (size_t instanceIndex = 0; instanceIndex < renderItem->Instances.size(); ++instanceIndex)
+            for (size_t instanceIndex = 0; instanceIndex < instancesComponent.Instances.size(); ++instanceIndex)
             {
-                if (!renderItem->Instances[instanceIndex].Visible)
+                const auto& instanceComponent = instancesComponent.Instances[instanceIndex];
+
+                if (!instanceComponent.IsVisible)
                 {
                     continue;
                 }
 
-                const DirectX::XMMATRIX toLocal{ DirectX::XMMatrixMultiply(m_ActiveCamera->GetInverseView(), renderItem->Instances[instanceIndex].Transform.GetInverseMatrix()) };
+                const DirectX::XMMATRIX toLocal = DirectX::XMMatrixMultiply(m_ActiveCamera->GetInverseView(), instanceComponent.Transform.GetInverseMatrix());
 
-                const DirectX::XMVECTOR rayOrigin{ DirectX::XMVector3TransformCoord(viewRayOrigin, toLocal) };
-                const DirectX::XMVECTOR rayDirection{ DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(viewRayDirection, toLocal)) };
+                const DirectX::XMVECTOR rayOrigin = DirectX::XMVector3TransformCoord(viewRayOrigin, toLocal);
+                const DirectX::XMVECTOR rayDirection = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(viewRayDirection, toLocal));
 
-                float instanceDistance{ 0.0f };
+                float instanceDistance = 0.0f;
 
-                if (!renderItem->SubmeshGeometry->BoundingBox.Intersects(rayOrigin, rayDirection, instanceDistance))
+                if (!meshComponent.SubMesh->BoundingBox.Intersects(rayOrigin, rayDirection, instanceDistance))
                 {
                     continue;
                 }
@@ -76,18 +74,18 @@ namespace sandbox
                 {
                     // Min Instance
                     minInstanceDistance = instanceDistance;
-                    minInstanceIndex = static_cast<uint32_t>(instanceIndex);
+                    minInstanceIndex = instanceIndex;
 
-                    float minTriangleDistance{ std::numeric_limits<float>::max() };
+                    float minTriangleDistance = std::numeric_limits<float>::max();
 
-                    for (uint32_t triangleIndex = 0; triangleIndex < renderItem->SubmeshGeometry->IndexCount / 3; ++triangleIndex)
+                    for (uint32_t triangleIndex = 0; triangleIndex < meshComponent.SubMesh->IndexCount / 3; ++triangleIndex)
                     {
                         // Triangle
-                        const DirectX::XMVECTOR a{ DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 0]].Position) };
-                        const DirectX::XMVECTOR b{ DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 1]].Position) };
-                        const DirectX::XMVECTOR c{ DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 2]].Position) };
+                        const DirectX::XMVECTOR a = DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 0]].Position);
+                        const DirectX::XMVECTOR b = DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 1]].Position);
+                        const DirectX::XMVECTOR c = DirectX::XMLoadFloat3(&vertices[indices[triangleIndex * 3 + 2]].Position);
 
-                        float triangleDistance{ 0.0f };
+                        float triangleDistance = 0.0f;
 
                         if (DirectX::TriangleTests::Intersects(rayOrigin, rayDirection, a, b, c, triangleDistance))
                         {
@@ -107,8 +105,8 @@ namespace sandbox
                 // Min RenderItem
                 minDistance = minInstanceDistance;
 
-                result.PickedRenderItem = renderItem;
-                result.InstanceIndex = static_cast<uint32_t>(minInstanceIndex);
+                result.PickedEntity = entity;
+                result.InstanceIndex = minInstanceIndex;
                 result.TriangleIndex = minTriangleIndex;
             }
         }

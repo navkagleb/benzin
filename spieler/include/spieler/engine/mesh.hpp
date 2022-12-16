@@ -10,7 +10,7 @@
 namespace spieler
 {
 
-    struct SubmeshGeometry
+    struct SubMesh
     {
         uint32_t IndexCount{ 0 };
         uint32_t BaseVertexLocation{ 0 };
@@ -19,11 +19,11 @@ namespace spieler
         DirectX::BoundingBox BoundingBox{};
     };
 
-    class MeshGeometry
+    class Mesh
     {
     public:
-        MeshGeometry() = default;
-        explicit MeshGeometry(Device& device, const std::unordered_map<std::string, MeshData>& submeshes);
+        Mesh() = default;
+        explicit Mesh(Device& device, const std::unordered_map<std::string, MeshData>& subMeshes);
 
     public:
         const std::vector<Vertex>& GetVertices() const { return m_Vertices; }
@@ -35,8 +35,8 @@ namespace spieler
         Buffer& GetIndexBuffer() { return m_IndexBuffer; }
         const Buffer& GetIndexBuffer() const { return m_IndexBuffer; }
 
-        const SubmeshGeometry& GetSubmesh(const std::string& name) const { return m_Submeshes.at(name); }
-        void SetSubmeshes(Device& device, const std::unordered_map<std::string, MeshData>& submeshes);
+        const SubMesh& GetSubMesh(const std::string& name) const { return m_SubMeshes.at(name); }
+        void SetSubMeshes(Device& device, const std::unordered_map<std::string, MeshData>& subMeshes);
 
     private:
         std::vector<Vertex> m_Vertices;
@@ -45,7 +45,25 @@ namespace spieler
         Buffer m_VertexBuffer;
         Buffer m_IndexBuffer;
 
-        std::unordered_map<std::string, SubmeshGeometry> m_Submeshes;
+        std::unordered_map<std::string, SubMesh> m_SubMeshes;
+    };
+
+    struct Material
+    {
+        DirectX::XMFLOAT4 DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f };
+        DirectX::XMFLOAT3 FresnelR0{ 0.01f, 0.01f, 0.01f };
+        float Roughness{ 0.25f };
+        DirectX::XMMATRIX Transform{ DirectX::XMMatrixIdentity() };
+        uint32_t DiffuseMapIndex{ 0 };
+        uint32_t NormalMapIndex{ 0 };
+        uint32_t StructuredBufferIndex{ 0 };
+    };
+
+    struct MeshComponent
+    {
+        const Mesh* Mesh{ nullptr };
+        const SubMesh* SubMesh{ nullptr };
+        PrimitiveTopology PrimitiveTopology{ PrimitiveTopology::Unknown };
     };
 
     struct Transform
@@ -72,44 +90,54 @@ namespace spieler
         }
     };
 
-    struct MaterialConstants
+    struct InstanceComponent
     {
-        DirectX::XMFLOAT4 DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f };
-        DirectX::XMFLOAT3 FresnelR0{ 0.01f, 0.01f, 0.01f };
-        float Roughness{ 0.25f };
-    };
-
-    struct Material
-    {
-        TextureShaderResourceView DiffuseMap;
-        MaterialConstants Constants;
         Transform Transform;
-        uint32_t ConstantBufferIndex{ 0 };
+        uint32_t MaterialIndex{ 0 };
+        bool IsVisible{ true };
     };
 
-    struct RenderItem
+    struct InstancesComponent
     {
-        const MeshGeometry* MeshGeometry{ nullptr };
-        const SubmeshGeometry* SubmeshGeometry{ nullptr };
-        PrimitiveTopology PrimitiveTopology{ PrimitiveTopology::Unknown };
-        Material* Material{ nullptr };
+        std::vector<InstanceComponent> Instances;
+        uint32_t VisibleInstanceCount{ 0 };
+        uint32_t StructuredBufferOffset{ 0 };
+        bool IsNeedCulling{ false };
+    };
 
-        uint32_t ConstantBufferIndex{ 0 };
+    class Entity
+    {
+    public:
+        template <typename T>
+        T& CreateComponent()
+        {
+            const uint64_t key = typeid(T).hash_code();
 
-        struct Transform Transform;
-        struct Transform TextureTransform;
-        
+            SPIELER_ASSERT(!HasComponent<T>());
+
+            m_Components[key] = T{};
+
+            return std::any_cast<T&>(m_Components[key]);
+        }
+
         template <typename T>
         T& GetComponent()
         {
-            const uint64_t key{ typeid(T).hash_code() };
+            const uint64_t key = typeid(T).hash_code();
 
-            if (!m_Components.contains(key))
-            {
-                m_Components[key] = T{};
-            }
+            SPIELER_ASSERT(HasComponent<T>());
 
             return std::any_cast<T&>(m_Components[key]);
+        }
+
+        template <typename T>
+        const T& GetComponent() const
+        {
+            const uint64_t key = typeid(T).hash_code();
+
+            SPIELER_ASSERT(HasComponent<T>());
+
+            return std::any_cast<const T&>(m_Components.at(key));
         }
 
         template <typename T>

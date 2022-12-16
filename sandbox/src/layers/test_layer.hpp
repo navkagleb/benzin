@@ -15,13 +15,13 @@
 #include <spieler/engine/light.hpp>
 #include <spieler/engine/camera.hpp>
 
-#include "light_controller.hpp"
 #include "passes/blur_pass.hpp"
 #include "passes/sobel_filter_pass.hpp"
 
 namespace sandbox
 {
 
+#if 0
     constexpr uint32_t g_MaxLightCount{ 16 };
 
     namespace per
@@ -151,6 +151,7 @@ namespace sandbox
         std::unique_ptr<SobelFilterPass> m_SobelFilterPass;
         bool m_EnableSobelFilter{ true };
     };
+#endif
 
 } // namespace sandbox
 

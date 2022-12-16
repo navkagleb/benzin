@@ -17,7 +17,7 @@
 #include <spieler/engine/camera.hpp>
 
 #include "passes/blur_pass.hpp"
-//#include "techniques/picking_technique.hpp"
+#include "techniques/picking_technique.hpp"
 
 namespace sandbox
 {
@@ -64,30 +64,8 @@ namespace sandbox
     class InstancingAndCullingLayer final : public spieler::Layer
     {
     public:
-        struct RenderItem
+        struct PickedEntityComponent
         {
-            struct Instance
-            {
-                spieler::Transform Transform;
-                uint32_t MaterialIndex{ 0 };
-                bool Visible{ true };
-            };
-
-            const spieler::MeshGeometry* MeshGeometry{ nullptr };
-            const spieler::SubmeshGeometry* SubmeshGeometry{ nullptr };
-            spieler::PrimitiveTopology PrimitiveTopology{ spieler::PrimitiveTopology::Unknown };
-
-            bool IsNeedCulling{ true };
-
-            std::vector<Instance> Instances;
-            uint32_t VisibleInstanceCount{ 0 };
-            uint32_t StructuredBufferOffset{ 0 };
-        };
-
-        struct PickedRenderItem
-        {
-            RenderItem* RenderItem{ nullptr };
-
             uint32_t InstanceIndex{ 0 };
             uint32_t TriangleIndex{ 0 };
         };
@@ -106,17 +84,6 @@ namespace sandbox
         {
             DirectX::XMFLOAT4 AmbientLight{ 0.1f, 0.1f, 0.1f, 1.0f };
             std::vector<LightData> Lights;
-        };
-
-        struct MaterialData
-        {
-            DirectX::XMFLOAT4 DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f };
-            DirectX::XMFLOAT3 FresnelR0{ 0.01f, 0.01f, 0.01f };
-            float Roughness{ 0.25f };
-            DirectX::XMMATRIX Transform{ DirectX::XMMatrixIdentity() };
-            uint32_t DiffuseMapIndex{ 0 };
-            uint32_t NormalMapIndex{ 0 };
-            uint32_t StructuredBufferIndex{ 0 };
         };
 
         class PointLightController
@@ -158,7 +125,7 @@ namespace sandbox
 
         void OnWindowResized();
 
-        void RenderRenderItems(const spieler::PipelineState& pso, const std::span<RenderItem*>& renderItems);
+        void RenderEntities(const spieler::PipelineState& pso, const std::span<const spieler::Entity*>& entities);
         void RenderFullscreenQuad(const spieler::TextureShaderResourceView& srv);
 
     private:
@@ -176,20 +143,17 @@ namespace sandbox
         std::unordered_map<std::string, spieler::Buffer> m_Buffers;
         std::unordered_map<std::string, spieler::Texture> m_Textures;
 
-        spieler::MeshGeometry m_MeshGeometry;
+        spieler::Mesh m_Mesh;
         spieler::RootSignature m_RootSignature;
         std::unordered_map<std::string, std::shared_ptr<spieler::Shader>> m_ShaderLibrary;
         std::unordered_map<std::string, spieler::PipelineState> m_PipelineStates;
         
-        std::unordered_map<std::string, std::unique_ptr<RenderItem>> m_RenderItems;
-        std::vector<RenderItem*> m_DefaultRenderItems;
-        std::vector<RenderItem*> m_LightRenderItems;
-        RenderItem* m_DynamicCubeRenderItem{ nullptr };
-        RenderItem* m_CubeMapRenderItem{ nullptr };
-        PickedRenderItem m_PickedRenderItem;
+        std::unordered_map<std::string, std::unique_ptr<spieler::Entity>> m_Entities;
+        std::vector<const spieler::Entity*> m_DefaultEntities;
+        std::vector<const spieler::Entity*> m_LightSourceEntities;
 
         PassData m_PassData;
-        std::unordered_map<std::string, MaterialData> m_Materials;
+        std::unordered_map<std::string, spieler::Material> m_Materials;
 
         spieler::Camera m_Camera;
         spieler::CameraController m_CameraController{ m_Camera };
@@ -201,7 +165,7 @@ namespace sandbox
         bool m_IsCullingEnabled{ true };
 
         std::unique_ptr<BlurPass> m_BlurPass;
-        PickingTechnique* m_PickingTechnique;
+        std::unique_ptr<PickingTechnique> m_PickingTechnique;
     };
 
 } // namespace sandbox
