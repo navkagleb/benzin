@@ -34,7 +34,7 @@ namespace sandbox
             alignas(16) std::array<spieler::Light, 16> Lights;
         };
 
-        struct RenderItem
+        struct Entity
         {
             DirectX::XMMATRIX World{ DirectX::XMMatrixIdentity() };
             uint32_t MaterialIndex{ 0 };
@@ -383,8 +383,6 @@ namespace sandbox
                 meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
 
                 auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
-                instancesComponent.IsNeedCulling = true;
-
                 auto& instanceComponent = instancesComponent.Instances.emplace_back();
                 instanceComponent.MaterialIndex = 4;
                 instanceComponent.Transform = spieler::Transform
@@ -393,6 +391,7 @@ namespace sandbox
                     .Translation{ 2.0f, 0.0f, 0.0f }
                 };
             }
+
             // Dynamic sphere
             {
                 auto& entity = m_Entities["dynamic_sphere"];
@@ -403,6 +402,9 @@ namespace sandbox
                 meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
                 meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
 
+                auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
+                collisionComponent.CreateBoundingSphere(meshComponent);
+
                 auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
                 instancesComponent.IsNeedCulling = true;
 
@@ -410,11 +412,13 @@ namespace sandbox
                 instanceComponent.MaterialIndex = 5;
                 instanceComponent.Transform = spieler::Transform
                 {
-                    .Scale{ 2.0f, 2.0f, 2.0f },
+                    .Scale{ 2.5f, 2.5f, 2.5f },
                     .Translation{ -5.0f, 0.0f, 0.0f }
                 };
 
                 m_DynamicCubeMap->SetPosition({ -5.0f, 0.0f, 0.0f, 1.0f });
+
+                m_PickableEntities.push_back(entity.get());
             }
 
             // Boxes
@@ -431,6 +435,9 @@ namespace sandbox
                 meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
                 meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
                 
+                auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
+                collisionComponent.CreateBoundingBox(meshComponent);
+
                 auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
                 instancesComponent.IsNeedCulling = true;
                 instancesComponent.Instances.resize(boxInRowCount * boxInColumnCount * boxInDepthCount);
@@ -444,9 +451,8 @@ namespace sandbox
                             const auto index = static_cast<size_t>((i * boxInRowCount + j) * boxInColumnCount + k);
 
                             auto& instanceComponent = instancesComponent.Instances[index];
-
                             instanceComponent.Transform.Translation = DirectX::XMFLOAT3{ static_cast<float>((i - 5) * 10), static_cast<float>((j - 5) * 10), static_cast<float>((k - 5) * 10) };
-                            instanceComponent.Transform.Scale = DirectX::XMFLOAT3{ 3.0f, 3.0f, 3.0f };
+                            instanceComponent.Transform.Scale = DirectX::XMFLOAT3{ 2.0f, 2.0f, 2.0f };
                             instanceComponent.MaterialIndex = 6;
                         }
                     }
@@ -469,7 +475,7 @@ namespace sandbox
                 instancesComponent.IsNeedCulling = true;
 
                 auto& instanceComponent = instancesComponent.Instances.emplace_back();
-                instanceComponent.MaterialIndex = 2;
+                instanceComponent.MaterialIndex = 0;
                 instanceComponent.IsVisible = false;
 
                 entity->CreateComponent<PickedEntityComponent>();
@@ -484,6 +490,9 @@ namespace sandbox
                 meshComponent.Mesh = &m_Mesh;
                 meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
                 meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+
+                auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
+                collisionComponent.CreateBoundingBox(meshComponent);
 
                 auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
                 instancesComponent.IsNeedCulling = true;
@@ -559,10 +568,14 @@ namespace sandbox
                     meshComponent.Mesh = result.PickedEntity->GetComponent<spieler::MeshComponent>().Mesh;
                     meshComponent.SubMesh = new spieler::SubMesh
                     {
+                        .VertexCount{ 3 },
                         .IndexCount{ 3 },
                         .BaseVertexLocation{ resultEntity->GetComponent<spieler::MeshComponent>().SubMesh->BaseVertexLocation },
-                        .StartIndexLocation{ result.TriangleIndex * 3 }
+                        .StartIndexLocation{ resultEntity->GetComponent<spieler::MeshComponent>().SubMesh->StartIndexLocation + result.TriangleIndex * 3 }
                     };
+
+                    auto& collisionComponent = pickedEntity->GetOrCreateComponent<spieler::CollisionComponent>();
+                    collisionComponent.CreateBoundingBox(meshComponent);
 
                     instanceComponent.IsVisible = true;
                     instanceComponent.Transform = resultEntity->GetComponent<spieler::InstancesComponent>().Instances[result.InstanceIndex].Transform;
@@ -661,17 +674,12 @@ namespace sandbox
                         continue;
                     }
 
-                    const DirectX::XMMATRIX viewToLocal = DirectX::XMMatrixMultiply(
-                        m_Camera.GetInverseView(),
-                        instanceComponent.Transform.GetInverseMatrix()
-                    );
+                    const DirectX::XMMATRIX viewToLocal = DirectX::XMMatrixMultiply(m_Camera.GetInverseView(), instanceComponent.Transform.GetInverseMatrix());
+                    const DirectX::BoundingFrustum localSpaceFrustum = m_Camera.GetTransformedBoundingFrustum(viewToLocal);
 
-                    DirectX::BoundingFrustum localSpaceFrustum;
-                    m_Camera.GetBoundingFrustum().Transform(localSpaceFrustum, viewToLocal);
-
-                    if (!m_IsCullingEnabled || !instancesComponent.IsNeedCulling || localSpaceFrustum.Contains(meshComponent.SubMesh->BoundingBox) != DirectX::DISJOINT)
+                    if (!m_IsCullingEnabled || !instancesComponent.IsNeedCulling)
                     {
-                        const cb::RenderItem constants
+                        const cb::Entity constants
                         {
                             .World{ DirectX::XMMatrixTranspose(instanceComponent.Transform.GetMatrix()) },
                             .MaterialIndex{ instanceComponent.MaterialIndex }
@@ -679,6 +687,40 @@ namespace sandbox
 
                         bufferData.Write(&constants, sizeof(constants), (offset + visibleInstanceCount++) * sizeof(constants));
                     }
+                    else
+                    {
+                        const auto& collisionComponent = entity->GetComponent<spieler::CollisionComponent>();
+
+                        if (collisionComponent.IsCollides(localSpaceFrustum))
+                        {
+                            const cb::Entity constants
+                            {
+                                .World{ DirectX::XMMatrixTranspose(instanceComponent.Transform.GetMatrix()) },
+                                .MaterialIndex{ instanceComponent.MaterialIndex }
+                            };
+
+                            bufferData.Write(&constants, sizeof(constants), (offset + visibleInstanceCount++) * sizeof(constants));
+                        }
+                    }
+
+#if 0
+                    if (!m_IsCullingEnabled || !instancesComponent.IsNeedCulling)
+                    {
+                        if (
+                            !entity->HasComponent<spieler::CollisionComponent>() ||
+                            entity->GetComponent<spieler::CollisionComponent>().IsCollides(localSpaceFrustum)
+                        )
+                        {
+                            const cb::Entity constants
+                            {
+                                .World{ DirectX::XMMatrixTranspose(instanceComponent.Transform.GetMatrix()) },
+                                .MaterialIndex{ instanceComponent.MaterialIndex }
+                            };
+
+                            bufferData.Write(&constants, sizeof(constants), (offset + visibleInstanceCount++) * sizeof(constants));
+                        }
+                    }
+#endif
                 }
 
                 instancesComponent.VisibleInstanceCount = visibleInstanceCount;
@@ -929,8 +971,8 @@ namespace sandbox
         const spieler::SphereGeometryConfig sphereProps
         {
             .Radius{ 1.0f },
-            .SliceCount{ 6 },
-            .StackCount{ 6 }
+            .SliceCount{ 16 },
+            .StackCount{ 16 }
         };
 
         const std::unordered_map<std::string, spieler::MeshData> submeshes
@@ -967,7 +1009,7 @@ namespace sandbox
 
             const spieler::BufferResource::Config config
             {
-                .ElementSize{ sizeof(cb::RenderItem) },
+                .ElementSize{ sizeof(cb::Entity) },
                 .ElementCount{ 1004 },
                 .Flags{ spieler::BufferResource::Flags::Dynamic }
             };

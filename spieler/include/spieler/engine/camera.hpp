@@ -51,6 +51,8 @@ namespace spieler
         const DirectX::BoundingFrustum& GetBoundingFrustum() const { return m_BoundingFrustum; }
 
     public:
+        DirectX::BoundingFrustum GetTransformedBoundingFrustum(const DirectX::XMMATRIX& transform) const;
+
         void UpdateRightDirection();
 
         void UpdateView();

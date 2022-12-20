@@ -71,6 +71,14 @@ namespace spieler
         UpdateProjection();
     }
 
+    DirectX::BoundingFrustum Camera::GetTransformedBoundingFrustum(const DirectX::XMMATRIX& transform) const
+    {
+        DirectX::BoundingFrustum transformedBoundingFrustum;
+        m_BoundingFrustum.Transform(transformedBoundingFrustum, transform);
+
+        return transformedBoundingFrustum;
+    }
+
     void Camera::UpdateRightDirection()
     {
         m_RightDirection = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(m_FrontDirection, m_UpDirection));

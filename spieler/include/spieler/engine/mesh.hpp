@@ -12,11 +12,10 @@ namespace spieler
 
     struct SubMesh
     {
+        uint32_t VertexCount{ 0 };
         uint32_t IndexCount{ 0 };
         uint32_t BaseVertexLocation{ 0 };
         uint32_t StartIndexLocation{ 0 };
-
-        DirectX::BoundingBox BoundingBox{};
     };
 
     class Mesh
@@ -74,17 +73,17 @@ namespace spieler
 
         DirectX::XMMATRIX GetMatrix() const
         {
-            const DirectX::XMMATRIX scaling{ DirectX::XMMatrixScaling(Scale.x, Scale.y, Scale.z) };
-            const DirectX::XMMATRIX rotation{ DirectX::XMMatrixRotationX(Rotation.x) * DirectX::XMMatrixRotationY(Rotation.y) * DirectX::XMMatrixRotationZ(Rotation.z) };
-            const DirectX::XMMATRIX translation{ DirectX::XMMatrixTranslation(Translation.x, Translation.y, Translation.z) };
+            const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(Scale.x, Scale.y, Scale.z);
+            const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(Rotation.x) * DirectX::XMMatrixRotationY(Rotation.y) * DirectX::XMMatrixRotationZ(Rotation.z);
+            const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(Translation.x, Translation.y, Translation.z);
 
             return scaling * rotation * translation;
         }
 
         DirectX::XMMATRIX GetInverseMatrix() const
         {
-            const DirectX::XMMATRIX transform{ GetMatrix() };
-            DirectX::XMVECTOR transformDeterminant{ DirectX::XMMatrixDeterminant(transform) };
+            const DirectX::XMMATRIX transform = GetMatrix();
+            DirectX::XMVECTOR transformDeterminant = DirectX::XMMatrixDeterminant(transform);
 
             return DirectX::XMMatrixInverse(&transformDeterminant, transform);
         }
@@ -103,6 +102,79 @@ namespace spieler
         uint32_t VisibleInstanceCount{ 0 };
         uint32_t StructuredBufferOffset{ 0 };
         bool IsNeedCulling{ false };
+    };
+
+    class CollisionComponent
+    {
+    private:
+        using BoundingVariant = std::variant<DirectX::BoundingBox, DirectX::BoundingSphere>;
+
+    public:
+        void CreateBoundingBox(const MeshComponent& meshComponent)
+        {
+            const uint32_t vertexCount = meshComponent.SubMesh->VertexCount;
+            const Vertex* vertices = meshComponent.Mesh->GetVertices().data() + meshComponent.SubMesh->BaseVertexLocation;
+            const size_t stride = sizeof(Vertex);
+
+            DirectX::BoundingBox boundingBox;
+            DirectX::BoundingBox::CreateFromPoints(
+                boundingBox,
+                vertexCount,
+                reinterpret_cast<const DirectX::XMFLOAT3*>(vertices),
+                stride
+            );
+
+            m_BoundingVariant = boundingBox;
+        }
+
+        void CreateBoundingSphere(const MeshComponent& meshComponent)
+        {
+            const uint32_t vertexCount = meshComponent.SubMesh->VertexCount;
+            const Vertex* vertices = meshComponent.Mesh->GetVertices().data() + meshComponent.SubMesh->BaseVertexLocation;
+            const size_t stride = sizeof(Vertex);
+
+            DirectX::BoundingSphere boundingSphere;
+            DirectX::BoundingSphere::CreateFromPoints(
+                boundingSphere,
+                vertexCount,
+                reinterpret_cast<const DirectX::XMFLOAT3*>(vertices),
+                stride
+            );
+
+            m_BoundingVariant = boundingSphere;
+        }
+
+        bool IsCollides(const DirectX::BoundingFrustum& boundingFrustum) const
+        {
+            return std::visit(
+                [&boundingFrustum](auto&& boundingVariant) -> bool
+                {
+                    return boundingFrustum.Contains(boundingVariant) != DirectX::DISJOINT;
+                },
+                m_BoundingVariant
+            );
+        }
+
+        std::optional<float> HitRay(const DirectX::XMVECTOR& origin, const DirectX::XMVECTOR& direction) const
+        {
+            return std::visit(
+                [&origin, &direction](auto&& boundingVariant) -> std::optional<float>
+                {
+                    float distance = 0.0f;
+                    
+                    if (boundingVariant.Intersects(origin, direction, distance))
+                    {
+                        return distance;
+                    }
+
+                    return std::nullopt;
+                },
+                m_BoundingVariant
+            );
+        }
+
+    private:
+        BoundingVariant m_BoundingVariant;
     };
 
     class Entity
@@ -138,6 +210,24 @@ namespace spieler
             SPIELER_ASSERT(HasComponent<T>());
 
             return std::any_cast<const T&>(m_Components.at(key));
+        }
+
+        template <typename T>
+        T& GetOrCreateComponent()
+        {
+            return HasComponent<T>() ? GetComponent<T>() : CreateComponent<T>();
+        }
+
+        template <typename T>
+        T* GetPtrComponent()
+        {
+            return HasComponent<T>() ? &GetComponent<T>() : nullptr;
+        }
+
+        template <typename T>
+        const T* GetPtrComponent() const
+        {
+            return HasComponent<T>() ? &GetComponent<T>() : nullptr;
         }
 
         template <typename T>
