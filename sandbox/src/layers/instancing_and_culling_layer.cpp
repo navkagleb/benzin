@@ -330,9 +330,9 @@ namespace sandbox
                 };
             }
 
-            // CubeMap
+            // Environment
             {
-                m_Materials["cubemap"] = spieler::Material
+                m_Materials["environment"] = spieler::Material
                 {
                     .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                     .FresnelR0{ 0.1f, 0.1f, 0.1f },
@@ -372,9 +372,9 @@ namespace sandbox
 
         // Init m_RenderItems
         {
-            // CubeMap
+            // Environment CubeMap
             {
-                auto& entity = m_Entities["cubemap"];
+                auto& entity = m_Entities["environment"];
                 entity = std::make_unique<spieler::Entity>();
 
                 auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
@@ -799,8 +799,8 @@ namespace sandbox
                     
                     RenderEntities(m_PipelineStates.at("default"), m_DefaultEntities);
 
-                    const spieler::Entity* cubemapEntity = m_Entities.at("cubemap").get();
-                    RenderEntities(m_PipelineStates.at("cubemap"), std::span{ &cubemapEntity, 1});
+                    const spieler::Entity* environmentEntity = m_Entities.at("environment").get();
+                    RenderEntities(m_PipelineStates.at("environment"), std::span{ &environmentEntity, 1});
                 }
 
                 m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
@@ -859,8 +859,8 @@ namespace sandbox
 
             RenderEntities(m_PipelineStates.at("lighting"), m_LightSourceEntities);
 
-            const spieler::Entity* cubemapEntity = m_Entities.at("cubemap").get();
-            RenderEntities(m_PipelineStates.at("cubemap"), std::span{ &cubemapEntity, 1});
+            const spieler::Entity* environmentEntity = m_Entities.at("environment").get();
+            RenderEntities(m_PipelineStates.at("environment"), std::span{ &environmentEntity, 1});
 
             m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
@@ -1099,7 +1099,7 @@ namespace sandbox
 
         // Init Shaders
         {
-            const std::wstring_view filepath{ L"assets/shaders/instancing_and_culling.hlsl" };
+            const std::wstring_view filepath{ L"assets/shaders/default.hlsl" };
 
             const spieler::Shader::Config vertexShaderConfig
             {
@@ -1216,7 +1216,7 @@ namespace sandbox
 
             // Init Shaders
             {
-                const std::wstring_view filepath{ L"assets/shaders/instancing_and_culling.hlsl" };
+                const std::wstring_view filepath{ L"assets/shaders/default.hlsl" };
 
                 const spieler::Shader::Config pixelShaderConfig
                 {
@@ -1269,7 +1269,7 @@ namespace sandbox
 
             // Init Shaders
             {
-                const std::wstring filepath{ L"assets/shaders/cube_map.hlsl" };
+                const std::wstring filepath{ L"assets/shaders/environment.hlsl" };
 
                 const spieler::Shader::Config vertexShaderConfig
                 {
@@ -1285,11 +1285,11 @@ namespace sandbox
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["cubemap_vs"] = spieler::Shader::Create(vertexShaderConfig);
-                m_ShaderLibrary["cubemap_ps"] = spieler::Shader::Create(pixelShaderConfig);
+                m_ShaderLibrary["environment_vs"] = spieler::Shader::Create(vertexShaderConfig);
+                m_ShaderLibrary["environment_ps"] = spieler::Shader::Create(pixelShaderConfig);
 
-                vertexShader = m_ShaderLibrary["cubemap_vs"].get();
-                pixelShader = m_ShaderLibrary["cubemap_ps"].get();
+                vertexShader = m_ShaderLibrary["environment_vs"].get();
+                pixelShader = m_ShaderLibrary["environment_ps"].get();
             }
 
             const spieler::RasterizerState rasterizerState
@@ -1327,7 +1327,7 @@ namespace sandbox
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["cubemap"] = spieler::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["environment"] = spieler::GraphicsPipelineState{ m_Device, config };
         }
 
         // Fullscreen

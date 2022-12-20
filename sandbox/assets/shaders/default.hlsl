@@ -1,106 +1,100 @@
-#include "light.hlsl"
+#include "common.hlsl"
 
-struct PerPass
+struct VS_INPUT
 {
-    float4x4 View;
-    float4x4 Projection;
-    float3 W_CameraPosition;
-    float4 AmbientLight;
-    light::LightContainer Lights;
-    float4 FogColor;
-    float FogStart;
-    float FogRange;
-};
-
-struct PerObject
-{
-    float4x4 World;
-    float4x4 TextureTransform;
-};
-
-struct PerMaterial
-{
-    float4 DiffuseAlbedo;
-    float3 FresnelR0;
-    float Roughness;
-    float4x4 Transform;
-};
-
-ConstantBuffer<PerPass> g_Pass : register(b0);
-ConstantBuffer<PerObject> g_Object : register(b1);
-ConstantBuffer<PerMaterial> g_Material : register(b2);
-
-struct VS_Input
-{
-    float3 L_Position : Position;
-    float3 L_Normal : Normal;
+    float3 Position : Position;
+    float3 Normal : Normal;
+    float3 Tangent : Tangent;
     float2 TexCoord : TexCoord;
 };
 
-struct VS_Output
+struct VS_OUTPUT
 {
-    float4 H_Position : SV_Position;
-    float3 W_Position : Position;
-    float3 W_Normal : Normal;
+    float4 PositionH : SV_Position;
+    float3 PositionW : Position;
+    float3 NormalW : Normal;
+    float3 TangentW : Tangent;
     float2 TexCoord : TexCoord;
+
+    nointerpolation uint MaterialIndex : MaterialIndex;
 };
 
-VS_Output VS_Main(VS_Input input)
+VS_OUTPUT VS_Main(VS_INPUT input, uint instanceID : SV_InstanceID)
 {
-    VS_Output output;
-    output.W_Position = mul(float4(input.L_Position, 1.0f), g_Object.World).xyz;
-    output.W_Normal = mul(input.L_Normal, (float3x3) g_Object.World);
+    const RenderItemData renderItemData = g_RenderItems[instanceID];
+    const MaterialData materialData = g_Materials[renderItemData.MaterialIndex];
 
-    float4 position = float4(output.W_Position, 1.0f);
-    position = mul(position, g_Pass.View);
-    position = mul(position, g_Pass.Projection);
+    VS_OUTPUT output = (VS_OUTPUT)0;
+    output.PositionW = mul(float4(input.Position, 1.0f), renderItemData.World).xyz;
+    output.PositionH = mul(mul(float4(input.Position, 1.0f), renderItemData.World), g_Pass.ViewProjection);
+    output.NormalW = mul(input.Normal, (float3x3)renderItemData.World);
+    output.TangentW = mul(input.Tangent, (float3x3)renderItemData.World);
+    output.TexCoord = mul(float4(input.TexCoord, 0.0f, 1.0f), materialData.Transform).xy;
+    output.MaterialIndex = renderItemData.MaterialIndex;
 
-    output.H_Position = position;
-
-    float4 texCoord = mul(float4(input.TexCoord, 0.0f, 1.0f), g_Object.TextureTransform);
-    output.TexCoord = mul(texCoord, g_Material.Transform).xy;
-    
     return output;
 }
 
-Texture2D g_DiffuseMap : register(t0);
-
-SamplerState g_SamplerPointWrap : register(s0);
-SamplerState g_SamplerPointClamp : register(s1);
-SamplerState g_SamplerLinearWrap : register(s2);
-SamplerState g_SamplerLinearClamp : register(s3);
-SamplerState g_SamplerAnisotropicWrap : register(s4);
-SamplerState g_SamplerAnisotropicClamp : register(s5);
-
-float4 PS_Main(VS_Output input) : SV_Target
+float4 PS_Main(VS_OUTPUT input) : SV_Target
 {
-    float4 diffuseAlbedo = g_DiffuseMap.Sample(g_SamplerAnisotropicWrap, input.TexCoord) * g_Material.DiffuseAlbedo;
-    
-    input.W_Normal = normalize(input.W_Normal);
+    const MaterialData materialData = g_Materials[input.MaterialIndex];
+    const Texture2D diffuseMap = g_Textures[NonUniformResourceIndex(materialData.DiffuseMapIndex)];
+    const Texture2D normalMap = g_Textures[NonUniformResourceIndex(materialData.NormalMapIndex)];
 
-    // Vector from point being lit to eye
-    const float3 toCameraVector = g_Pass.W_CameraPosition - input.W_Position;
-    const float distanceToCamera = length(toCameraVector);
-    const float3 viewVector = toCameraVector / distanceToCamera;
+    float4 diffuseAlbedo = diffuseMap.Sample(g_LinearWrapSampler, input.TexCoord);
 
-    // Indirect lighting
-    const float4 ambient = g_Pass.AmbientLight * diffuseAlbedo;
+#if !defined(USE_LIGHTING)
 
-    // Direct lighting
+    return diffuseAlbedo;
+
+#else
+    float4 litColor = 0.0f;
+
+    const float3 viewVector = normalize(g_Pass.CameraPositionW - input.PositionW);
+
+    diffuseAlbedo *= materialData.DiffuseAlbedo;
+
     light::Material material;
     material.DiffuseAlbedo = diffuseAlbedo;
-    material.FresnelR0 = g_Material.FresnelR0;
-    material.Shininess = 1.0f - g_Material.Roughness;
+    material.FresnelR0 = materialData.FresnelR0;
+    material.Shininess = 1.0f - materialData.Roughness;
 
-    const float3 shadowFactor = 1.0f;
+    input.NormalW = normalize(input.NormalW);
 
-    float4 litColor = Light::ComputeLighting(g_Pass.Lights, material, input.W_Position, input.W_Normal, viewVector, shadowFactor);
-    litColor += ambient;
+    const float4 normalMapSample = normalMap.Sample(g_AnisotropicWrapSampler, input.TexCoord);
+    const float3 bumpedNormalW = NormalSampleToWorldSpace(normalMapSample.rgb, input.NormalW, input.TangentW);
 
-    float fogAmount = saturate((distanceToCamera - g_Pass.FogStart) / g_Pass.FogRange);
-    litColor = lerp(litColor, g_Pass.FogColor, fogAmount);
-    
+    // Ligting
+    {
+        const float4 ambientLight = g_Pass.AmbientLight * diffuseAlbedo;
+
+        const float3 shadowFactor = 1.0f;
+        const float4 light = light::ComputeLighting(
+            g_Pass.Lights, 
+            material, 
+            input.PositionW, 
+            bumpedNormalW, 
+            viewVector, 
+            shadowFactor
+        );
+
+        litColor = ambientLight + light;
+    }
+
+    // Specular reflections
+    {
+        const float3 reflection = reflect(-viewVector, bumpedNormalW);
+        const float4 reflectionColor = g_CubeMap.Sample(g_LinearWrapSampler, reflection);
+        const float3 fresnelFactor = light::internal::SchlickFresnel(materialData.FresnelR0, bumpedNormalW, reflection);
+
+        const float3 specularReflections = material.Shininess * fresnelFactor * reflectionColor.rgb;
+
+        litColor.rgb += specularReflections;
+    }
+
     litColor.a = diffuseAlbedo.a;
 
     return litColor;
+
+#endif // !defined(USE_LIGHTING)
 }
