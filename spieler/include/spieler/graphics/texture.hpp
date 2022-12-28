@@ -78,13 +78,12 @@ namespace spieler
 
     struct TextureViewConfig
     {
-        std::string Tag;
-        uint32_t MostDetailedMip{ 0 };
-        float MinLODClamp{ 0.0f };
+        uint32_t MostDetailedMipIndex{ 0 };
         uint32_t MipCount{ 0 };
         uint32_t FirstArraySlice{ 0 };
         uint32_t ArraySize{ 0 };
         GraphicsFormat Format{ GraphicsFormat::Unknown };
+        TextureResource::Type Type{ TextureResource::Type::Unknown };
     };
 
     class TextureShaderResourceView : public DescriptorView<SRVDescriptor>
@@ -93,6 +92,7 @@ namespace spieler
         struct Config
         {
             TextureResource::Type Type{ TextureResource::Type::Unknown };
+            GraphicsFormat Format{ GraphicsFormat::Unknown };
             uint32_t MostDetailedMipIndex{ 0 };
             uint32_t MipCount{ 0xffffffff }; // 0xffffffff value selects all mips
             uint32_t FirstArrayElement{ 0 };
