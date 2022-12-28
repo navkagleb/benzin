@@ -63,8 +63,8 @@ namespace sandbox
         const float ndcX = 2.0f * mouseX / static_cast<float>(m_Window.GetWidth()) - 1.0f;
         const float ndcY = -2.0f * mouseY / static_cast<float>(m_Window.GetHeight()) + 1.0f;
 
-        const float viewX = ndcX / DirectX::XMVectorGetByIndex(m_ActiveCamera->GetProjection().r[0], 0);
-        const float viewY = ndcY / DirectX::XMVectorGetByIndex(m_ActiveCamera->GetProjection().r[1], 1);
+        const float viewX = ndcX / DirectX::XMVectorGetByIndex(m_ActiveCamera->GetProjection()->GetMatrix().r[0], 0);
+        const float viewY = ndcY / DirectX::XMVectorGetByIndex(m_ActiveCamera->GetProjection()->GetMatrix().r[1], 1);
         const float viewZ = 1.0f;
 
         return Ray
@@ -77,7 +77,7 @@ namespace sandbox
     PickingTechnique::Ray PickingTechnique::GetRayInLocalSpace(const Ray& rayInViewSpace, const spieler::InstanceComponent& instanceComponent) const
     {
         const DirectX::XMMATRIX toLocalSpaceTransform = DirectX::XMMatrixMultiply(
-            m_ActiveCamera->GetInverseView(),
+            m_ActiveCamera->GetInverseViewMatrix(),
             instanceComponent.Transform.GetInverseMatrix()
         );
 

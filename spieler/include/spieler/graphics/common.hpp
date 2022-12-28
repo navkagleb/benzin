@@ -113,6 +113,7 @@ namespace spieler
         R32SignedInt,
 
         D24UnsignedNormS8UnsignedInt,
+        R24UnsignedNormX8Typeless,
 
         R16Typeless,
         R16Float,

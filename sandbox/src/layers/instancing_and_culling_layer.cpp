@@ -68,6 +68,7 @@ namespace sandbox
     /// DynamicCubeMap
     //////////////////////////////////////////////////////////////////////////
     DynamicCubeMap::DynamicCubeMap(spieler::Device& device, uint32_t width, uint32_t height)
+        : m_PerspectiveProjection{ DirectX::XMConvertToRadians(90.0f), 1.0f, 0.1f, 1000.0f }
     {
         OnResize(device, width, height);
     }
@@ -181,16 +182,16 @@ namespace sandbox
             DirectX::XMVECTOR{ 0.0f, 1.0f, 0.0f, 0.0f }     // -Z
         };
 
+        m_PerspectiveProjection.SetAspectRatio(1.0f);
+
         for (size_t i = 0; i < m_Cameras.size(); ++i)
         {
-            m_Cameras[i].SetPosition(m_Position);
-            m_Cameras[i].SetFrontDirection(frontDirections[i]);
-            m_Cameras[i].SetUpDirection(upDirections[i]);
+            auto& camera = m_Cameras[i];
 
-            m_Cameras[i].SetAspectRatio(1.0f);
-            m_Cameras[i].SetFOV(DirectX::XMConvertToRadians(90.0f));
-            m_Cameras[i].SetNearPlane(0.1f);
-            m_Cameras[i].SetFarPlane(1000.0f);
+            camera.SetPosition(m_Position);
+            camera.SetFrontDirection(frontDirections[i]);
+            camera.SetUpDirection(upDirections[i]);
+            camera.SetProjection(&m_PerspectiveProjection);
         }
     }
 
@@ -423,9 +424,9 @@ namespace sandbox
 
             // Boxes
             {
-                const int32_t boxInRowCount = 10;
-                const int32_t boxInColumnCount = 10;
-                const int32_t boxInDepthCount = 10;
+                const int32_t boxInRowCount = 2;
+                const int32_t boxInColumnCount = 2;
+                const int32_t boxInDepthCount = 2;
 
                 auto& entity = m_Entities["box"];
                 entity = std::make_unique<spieler::Entity>();
@@ -451,8 +452,13 @@ namespace sandbox
                             const auto index = static_cast<size_t>((i * boxInRowCount + j) * boxInColumnCount + k);
 
                             auto& instanceComponent = instancesComponent.Instances[index];
-                            instanceComponent.Transform.Translation = DirectX::XMFLOAT3{ static_cast<float>((i - 5) * 10), static_cast<float>((j - 5) * 10), static_cast<float>((k - 5) * 10) };
-                            instanceComponent.Transform.Scale = DirectX::XMFLOAT3{ 2.0f, 2.0f, 2.0f };
+                            instanceComponent.Transform.Translation = DirectX::XMFLOAT3
+                            { 
+                                static_cast<float>((i - boxInRowCount / 2) * boxInRowCount),
+                                static_cast<float>((j - boxInColumnCount / 2) * boxInColumnCount),
+                                static_cast<float>((k - boxInDepthCount / 2) * boxInDepthCount)
+                            };
+                            instanceComponent.Transform.Scale = DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f };
                             instanceComponent.MaterialIndex = 6;
                         }
                     }
@@ -488,11 +494,11 @@ namespace sandbox
 
                 auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
                 meshComponent.Mesh = &m_Mesh;
-                meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
+                meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
                 meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
 
                 auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
-                collisionComponent.CreateBoundingBox(meshComponent);
+                collisionComponent.CreateBoundingSphere(meshComponent);
 
                 auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
                 instancesComponent.IsNeedCulling = true;
@@ -504,10 +510,11 @@ namespace sandbox
                 instanceComponent.Transform.Translation = position;
 
                 auto& lightComponent = entity->CreateComponent<spieler::Light>();
+                lightComponent.Direction = DirectX::XMFLOAT3{ -0.5f, -0.5f, -0.5f };
                 lightComponent.Strength = DirectX::XMFLOAT3{ 1.0f, 1.0f, 0.9f };
-                lightComponent.FalloffStart = 20.0f;
-                lightComponent.FalloffEnd = 23.0f;
-                lightComponent.Position = position;
+                //lightComponent.FalloffStart = 20.0f;
+                //lightComponent.FalloffEnd = 23.0f;
+                //lightComponent.Position = position;
 
                 m_LightSourceEntities.push_back(entity.get());
                 m_PickableEntities.push_back(entity.get());
@@ -537,7 +544,7 @@ namespace sandbox
 
     void InstancingAndCullingLayer::OnEvent(spieler::Event& event)
     {
-        m_CameraController.OnEvent(event);
+        m_FlyCameraController.OnEvent(event);
 
         spieler::EventDispatcher dispatcher{ event };
 
@@ -592,7 +599,7 @@ namespace sandbox
 
     void InstancingAndCullingLayer::OnUpdate(float dt)
     {
-        m_CameraController.OnUpdate(dt);
+        m_FlyCameraController.OnUpdate(dt);
 
         // Pass ConstantBuffer
         {
@@ -602,9 +609,9 @@ namespace sandbox
             {
                 cb::Pass constants
                 {
-                    .View{ DirectX::XMMatrixTranspose(m_Camera.GetView()) },
-                    .Projection{ DirectX::XMMatrixTranspose(m_Camera.GetProjection()) },
-                    .ViewProjection{ DirectX::XMMatrixTranspose(m_Camera.GetViewProjection()) },
+                    .View{ DirectX::XMMatrixTranspose(m_Camera.GetViewMatrix()) },
+                    .Projection{ DirectX::XMMatrixTranspose(m_Camera.GetProjection()->GetMatrix()) },
+                    .ViewProjection{ DirectX::XMMatrixTranspose(m_Camera.GetViewProjectionMatrix()) },
                     .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition()) },
                     .AmbientLight{ m_AmbientLight }
                 };
@@ -627,9 +634,9 @@ namespace sandbox
 
                 cb::Pass constants
                 {
-                    .View{ DirectX::XMMatrixTranspose(camera.GetView()) },
-                    .Projection{ DirectX::XMMatrixTranspose(camera.GetProjection()) },
-                    .ViewProjection{ DirectX::XMMatrixTranspose(camera.GetViewProjection()) },
+                    .View{ DirectX::XMMatrixTranspose(camera.GetViewMatrix()) },
+                    .Projection{ DirectX::XMMatrixTranspose(camera.GetProjection()->GetMatrix()) },
+                    .ViewProjection{ DirectX::XMMatrixTranspose(camera.GetViewProjectionMatrix()) },
                     .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()) },
                     .AmbientLight{ m_AmbientLight }
                 };
@@ -664,7 +671,10 @@ namespace sandbox
                     const auto& lightComponent = entity->GetComponent<spieler::Light>();
                     auto& instanceComponent = instancesComponent.Instances[0];
                     
-                    instanceComponent.Transform.Translation = lightComponent.Position;
+                    DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&lightComponent.Direction);
+                    position = DirectX::XMVectorScale(position, -100.0f);
+
+                    DirectX::XMStoreFloat3(&instanceComponent.Transform.Translation, position);
                 }
 
                 for (const auto& instanceComponent : instancesComponent.Instances)
@@ -674,8 +684,8 @@ namespace sandbox
                         continue;
                     }
 
-                    const DirectX::XMMATRIX viewToLocal = DirectX::XMMatrixMultiply(m_Camera.GetInverseView(), instanceComponent.Transform.GetInverseMatrix());
-                    const DirectX::BoundingFrustum localSpaceFrustum = m_Camera.GetTransformedBoundingFrustum(viewToLocal);
+                    const DirectX::XMMATRIX viewToLocal = DirectX::XMMatrixMultiply(m_Camera.GetInverseViewMatrix(), instanceComponent.Transform.GetInverseMatrix());
+                    const DirectX::BoundingFrustum localSpaceFrustum = m_Camera.GetProjection()->GetTransformedBoundingFrustum(viewToLocal);
 
                     if (!m_IsCullingEnabled || !instancesComponent.IsNeedCulling)
                     {
@@ -857,7 +867,7 @@ namespace sandbox
             const spieler::Entity* pickedEntity = m_Entities.at("picked").get();
             RenderEntities(m_PipelineStates.at("picked"), std::span{ &pickedEntity, 1 });
 
-            RenderEntities(m_PipelineStates.at("lighting"), m_LightSourceEntities);
+            RenderEntities(m_PipelineStates.at("light_source"), m_LightSourceEntities);
 
             const spieler::Entity* environmentEntity = m_Entities.at("environment").get();
             RenderEntities(m_PipelineStates.at("environment"), std::span{ &environmentEntity, 1});
@@ -896,6 +906,7 @@ namespace sandbox
 
     void InstancingAndCullingLayer::OnImGuiRender(float dt)
     {
+        m_FlyCameraController.OnImGuiRender(dt);
         m_PointLightController.OnImGuiRender();
 
         ImGui::Begin("Culling Data");
@@ -1116,8 +1127,8 @@ namespace sandbox
                 .Defines
                 {
                     { magic_enum::enum_name(per::InstancingAndCulling::USE_LIGHTING), "" },
-                    { magic_enum::enum_name(per::InstancingAndCulling::DIRECTIONAL_LIGHT_COUNT), "0" },
-                    { magic_enum::enum_name(per::InstancingAndCulling::POINT_LIGHT_COUNT), "1" },
+                    { magic_enum::enum_name(per::InstancingAndCulling::DIRECTIONAL_LIGHT_COUNT), "1" },
+                    { magic_enum::enum_name(per::InstancingAndCulling::POINT_LIGHT_COUNT), "0" },
                 }
             };
 
@@ -1209,7 +1220,7 @@ namespace sandbox
             m_PipelineStates["picked"] = spieler::GraphicsPipelineState{ m_Device, config };
         }
 
-        // PSO for lighting
+        // PSO for light sources
         {
             const spieler::Shader* vertexShader{ nullptr };
             const spieler::Shader* pixelShader{ nullptr };
@@ -1225,10 +1236,10 @@ namespace sandbox
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["lighting_ps"] = spieler::Shader::Create(pixelShaderConfig);
+                m_ShaderLibrary["light_source_ps"] = spieler::Shader::Create(pixelShaderConfig);
 
                 vertexShader = m_ShaderLibrary["default_vs"].get();
-                pixelShader = m_ShaderLibrary["lighting_ps"].get();
+                pixelShader = m_ShaderLibrary["light_source_ps"].get();
             }
 
             const spieler::DepthStencilState depthStencilState
@@ -1259,7 +1270,7 @@ namespace sandbox
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["lighting"] = spieler::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["light_source"] = spieler::GraphicsPipelineState{ m_Device, config };
         }
 
         // PSO for CubeMap

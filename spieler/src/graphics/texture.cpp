@@ -199,26 +199,27 @@ namespace spieler
     TextureShaderResourceView::TextureShaderResourceView(Device& device, const TextureResource& resource, const Config& config)
     {
         SPIELER_ASSERT(resource.GetDX12Resource());
-        SPIELER_ASSERT(resource.GetConfig().Format != GraphicsFormat::Unknown);
 
-        SPIELER_ASSERT(config.Type != TextureResource::Type::Unknown);
+        const TextureResource::Type type = config.Type != TextureResource::Type::Unknown ? config.Type : resource.GetConfig().Type;
+        SPIELER_ASSERT(type != TextureResource::Type::Unknown);
 
-        //SPIELER_ASSERT(config.MostDetailedMip + config.MipCount <= resource.GetConfig().MipCount);
+        const GraphicsFormat format = config.Format != GraphicsFormat::Unknown ? config.Format : resource.GetConfig().Format;
+        SPIELER_ASSERT(format != GraphicsFormat::Unknown);
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC dx12SRVDesc
+        D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SRVDesc
         {
-            .Format{ dx12::Convert(resource.GetConfig().Format) },
+            .Format{ dx12::Convert(format) },
             .Shader4ComponentMapping{ D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING }
         };
 
-        switch (config.Type)
+        switch (type)
         {
             case TextureResource::Type::_2D:
             {
                 if (resource.GetConfig().ArraySize == 1)
                 {
-                    dx12SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-                    dx12SRVDesc.Texture2D = D3D12_TEX2D_SRV
+                    d3d12SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                    d3d12SRVDesc.Texture2D = D3D12_TEX2D_SRV
                     {
                         .MostDetailedMip{ config.MostDetailedMipIndex },
                         .MipLevels{ config.MipCount },
@@ -228,8 +229,8 @@ namespace spieler
                 }
                 else
                 {
-                    dx12SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-                    dx12SRVDesc.Texture2DArray = D3D12_TEX2D_ARRAY_SRV
+                    d3d12SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                    d3d12SRVDesc.Texture2DArray = D3D12_TEX2D_ARRAY_SRV
                     {
                         .MostDetailedMip{ config.MostDetailedMipIndex },
                         .MipLevels{ config.MipCount },
@@ -244,8 +245,8 @@ namespace spieler
             }
             case TextureResource::Type::Cube:
             {
-                dx12SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-                dx12SRVDesc.TextureCube = D3D12_TEXCUBE_SRV
+                d3d12SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+                d3d12SRVDesc.TextureCube = D3D12_TEXCUBE_SRV
                 {
                     .MostDetailedMip{ config.MostDetailedMipIndex },
                     .MipLevels{ config.MipCount },
@@ -265,7 +266,7 @@ namespace spieler
 
         device.GetDX12Device()->CreateShaderResourceView(
             resource.GetDX12Resource(),
-            &dx12SRVDesc,
+            &d3d12SRVDesc,
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_Descriptor.CPU }
         );
     }
@@ -323,7 +324,7 @@ namespace spieler
                     dx12RTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
                     dx12RTVDesc.Texture2D = D3D12_TEX2D_RTV
                     {
-                        .MipSlice{ config.MostDetailedMip },
+                        .MipSlice{ config.MostDetailedMipIndex },
                         .PlaneSlice{ 0 }
                     };
                 }
@@ -332,7 +333,7 @@ namespace spieler
                     dx12RTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
                     dx12RTVDesc.Texture2DArray = D3D12_TEX2D_ARRAY_RTV
                     {
-                        .MipSlice{ config.MostDetailedMip },
+                        .MipSlice{ config.MostDetailedMipIndex },
                         .FirstArraySlice{ config.FirstArraySlice },
                         .ArraySize{ config.ArraySize },
                         .PlaneSlice{ 0 }

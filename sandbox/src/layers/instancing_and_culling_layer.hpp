@@ -54,6 +54,8 @@ namespace sandbox
         spieler::Texture m_DepthStencil;
 
         DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, 0.0f, 1.0f };
+
+        spieler::PerspectiveProjection m_PerspectiveProjection;
         std::array<spieler::Camera, 6> m_Cameras;
 
         spieler::Viewport m_Viewport;
@@ -134,14 +136,16 @@ namespace sandbox
 
         const DirectX::XMFLOAT4 m_AmbientLight{ 0.1f, 0.1f, 0.1f, 1.0f };
 
-        spieler::Camera m_Camera;
-        spieler::CameraController m_CameraController{ m_Camera };
+        spieler::PerspectiveProjection m_PerspectiveProjection{ DirectX::XMConvertToRadians(60.0f), m_Window.GetAspectRatio(), 0.1f, 1000.0f };
+        spieler::Camera m_Camera{ &m_PerspectiveProjection };
+        spieler::FlyCameraController m_FlyCameraController{ &m_Camera };
 
         PointLightController m_PointLightController;
 
         std::unique_ptr<DynamicCubeMap> m_DynamicCubeMap;
 
         bool m_IsCullingEnabled{ true };
+        bool m_IsCullingEnabled{ false };
 
         std::unique_ptr<BlurPass> m_BlurPass;
         std::unique_ptr<PickingTechnique> m_PickingTechnique;
