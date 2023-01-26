@@ -10,7 +10,8 @@
 #include <spieler/graphics/depth_stencil_state.hpp>
 #include <spieler/graphics/mapped_data.hpp>
 #include <spieler/graphics/rasterizer_state.hpp>
-#include <spieler/graphics/resource_barrier.hpp>
+#include <spieler/graphics/resource_view_builder.hpp>
+#include <spieler/graphics/resource_loader.hpp>
 
 #include <spieler/engine/geometry_generator.hpp>
 
@@ -65,146 +66,6 @@ namespace sandbox
     } // namespace per
 
     //////////////////////////////////////////////////////////////////////////
-    /// DynamicCubeMap
-    //////////////////////////////////////////////////////////////////////////
-    DynamicCubeMap::DynamicCubeMap(spieler::Device& device, uint32_t width, uint32_t height)
-        : m_PerspectiveProjection{ DirectX::XMConvertToRadians(90.0f), 1.0f, 0.1f, 1000.0f }
-    {
-        OnResize(device, width, height);
-    }
-
-    void DynamicCubeMap::SetPosition(const DirectX::XMVECTOR& position)
-    {
-        m_Position = position;
-
-        for (auto& camera : m_Cameras)
-        {
-            camera.SetPosition(position);
-        }
-    }
-
-    void DynamicCubeMap::OnResize(spieler::Device& device, uint32_t width, uint32_t height)
-    {
-        InitCubeMap(device, width, height);
-        InitDepthStencil(device, width, height);
-        InitCameras(width, height);
-        InitViewport(static_cast<float>(width), static_cast<float>(height));
-    }
-
-    void DynamicCubeMap::InitCubeMap(spieler::Device& device, uint32_t width, uint32_t height)
-    {
-        // Resource
-        {
-            const spieler::TextureResource::Config config
-            {
-                .Type{ spieler::TextureResource::Type::_2D },
-                .Width{ width },
-                .Height{ height },
-                .ArraySize{ 6 },
-                .Format{ spieler::GraphicsFormat::R8G8B8A8UnsignedNorm },
-                .UsageFlags{ spieler::TextureResource::UsageFlags::RenderTarget }
-            };
-
-            const spieler::TextureResource::ClearColor clearColor
-            {
-                .Color{ 0.1f, 0.1f, 0.1f, 1.0f }
-            };
-
-            m_CubeMap.SetTextureResource(spieler::TextureResource::Create(device, config, clearColor));
-        }
-        
-        // SRV
-        {
-            const spieler::TextureShaderResourceView::Config srvConfig
-            {
-                .Type{ spieler::TextureResource::Type::Cube }
-            };
-
-            m_CubeMap.PushView<spieler::TextureShaderResourceView>(device, srvConfig);
-        }
-        
-        // RTV
-        {
-            for (uint32_t i = 0; i < 6; ++i)
-            {
-                const spieler::TextureViewConfig rtvConfig
-                {
-                    .FirstArraySlice{ i },
-                    .ArraySize{ 1 }
-                };
-
-                m_CubeMap.PushView<spieler::TextureRenderTargetView>(device, rtvConfig);
-            }
-        }
-    }
-
-    void DynamicCubeMap::InitDepthStencil(spieler::Device& device, uint32_t width, uint32_t height)
-    {
-        const spieler::TextureResource::Config config
-        {
-            .Type{ spieler::TextureResource::Type::_2D },
-            .Width{ width },
-            .Height{ height },
-            .ArraySize{ 1 },
-            .Format{ spieler::GraphicsFormat::D24UnsignedNormS8UnsignedInt },
-            .UsageFlags{ spieler::TextureResource::UsageFlags::DepthStencil }
-        };
-
-        const spieler::TextureResource::ClearDepthStencil clearDepthStencil
-        {
-            .Depth{ 1.0f },
-            .Stencil{ 0 }
-        };
-
-        m_DepthStencil.SetTextureResource(spieler::TextureResource::Create(device, config, clearDepthStencil));
-        m_DepthStencil.PushView<spieler::TextureDepthStencilView>(device);
-    }
-
-    void DynamicCubeMap::InitCameras(uint32_t width, uint32_t height)
-    {
-        const std::array<DirectX::XMVECTOR, 6> frontDirections
-        {
-            DirectX::XMVECTOR{ 1.0f, 0.0f, 0.0f, 0.0f },    // +X
-            DirectX::XMVECTOR{ -1.0f, 0.0f, 0.0f, 0.0f },   // -X
-            DirectX::XMVECTOR{ 0.0f, 1.0f, 0.0f, 0.0f },    // +Y
-            DirectX::XMVECTOR{ 0.0f, -1.0f, 0.0f, 0.0f },   // -Y
-            DirectX::XMVECTOR{ 0.0f, 0.0f, 1.0f, 0.0f },    // +Z
-            DirectX::XMVECTOR{ 0.0f, 0.0f, -1.0f, 0.0f }    // -Z
-        };
-
-        const std::array<DirectX::XMVECTOR, 6> upDirections
-        {
-            DirectX::XMVECTOR{ 0.0f, 1.0f, 0.0f, 0.0f },    // +X
-            DirectX::XMVECTOR{ 0.0f, 1.0f, 0.0f, 0.0f },    // -X
-            DirectX::XMVECTOR{ 0.0f, 0.0f, -1.0f, 0.0f },   // +Y
-            DirectX::XMVECTOR{ 0.0f, 0.0f, 1.0f, 0.0f },    // -Y
-            DirectX::XMVECTOR{ 0.0f, 1.0f, 0.0f, 0.0f },    // +Z
-            DirectX::XMVECTOR{ 0.0f, 1.0f, 0.0f, 0.0f }     // -Z
-        };
-
-        m_PerspectiveProjection.SetAspectRatio(1.0f);
-
-        for (size_t i = 0; i < m_Cameras.size(); ++i)
-        {
-            auto& camera = m_Cameras[i];
-
-            camera.SetPosition(m_Position);
-            camera.SetFrontDirection(frontDirections[i]);
-            camera.SetUpDirection(upDirections[i]);
-            camera.SetProjection(&m_PerspectiveProjection);
-        }
-    }
-
-    void DynamicCubeMap::InitViewport(float width, float height)
-    {
-        m_Viewport.Width = width;
-        m_Viewport.Height = height;
-
-        m_ScissorRect.Width = width;
-        m_ScissorRect.Height = height;
-    }
-
-    //////////////////////////////////////////////////////////////////////////
     //// PointLightController
     //////////////////////////////////////////////////////////////////////////
     InstancingAndCullingLayer::PointLightController::PointLightController(spieler::Light* light)
@@ -242,6 +103,9 @@ namespace sandbox
     //////////////////////////////////////////////////////////////////////////
     /// InstancingAndCullingLayer
     //////////////////////////////////////////////////////////////////////////
+    constexpr uint32_t g_RenderTargetCubeMapWidth = 200;
+    constexpr uint32_t g_RenderTargetCubeMapHeight = 200;
+
     InstancingAndCullingLayer::InstancingAndCullingLayer(
         spieler::Window& window, 
         spieler::Device& device, 
@@ -254,6 +118,7 @@ namespace sandbox
         , m_SwapChain{ swapChain }
         , m_GraphicsCommandList{ device }
         , m_PostEffectsGraphicsCommandList{ device }
+        , m_RenderTargetCubeMap{ device, g_RenderTargetCubeMapWidth, g_RenderTargetCubeMapHeight }
     {}
 
     bool InstancingAndCullingLayer::OnAttach()
@@ -272,257 +137,11 @@ namespace sandbox
             m_CommandQueue.Flush();
         }
 
-        m_DynamicCubeMap = std::make_unique<DynamicCubeMap>(m_Device, 200, 200);
         m_BlurPass = std::make_unique<BlurPass>(m_Device, m_Window.GetWidth(), m_Window.GetHeight());
 
         InitBuffers();
-
-        // Init m_Materials
-        {
-            // Red
-            {
-                m_Materials["red"] = spieler::Material
-                {
-                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
-                    .FresnelR0{ 0.05f, 0.05f, 0.05f },
-                    .Roughness{ 0.1f },
-                    .DiffuseMapIndex{ 0 },
-                    .NormalMapIndex{ 7 },
-                    .StructuredBufferIndex{ 0 }
-                };
-            }
-
-            // Green
-            {
-                m_Materials["green"] = spieler::Material
-                {
-                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
-                    .FresnelR0{ 0.05f, 0.05f, 0.05f },
-                    .Roughness{ 0.7f },
-                    .DiffuseMapIndex{ 1 },
-                    .NormalMapIndex{ 7 },
-                    .StructuredBufferIndex{ 1 }
-                };
-            }
-
-            // Blue
-            {
-                m_Materials["blue"] = spieler::Material
-                {
-                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
-                    .FresnelR0{ 0.05f, 0.05f, 0.05f },
-                    .Roughness{ 0.1f },
-                    .DiffuseMapIndex{ 2 },
-                    .NormalMapIndex{ 7 },
-                    .StructuredBufferIndex{ 2 }
-                };
-            }
-
-            // White
-            {
-                m_Materials["white"] = spieler::Material
-                {
-                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
-                    .FresnelR0{ 0.05f, 0.05f, 0.05f },
-                    .Roughness{ 0.1f },
-                    .DiffuseMapIndex{ 3 },
-                    .NormalMapIndex{ 7 },
-                    .StructuredBufferIndex{ 3 }
-                };
-            }
-
-            // Environment
-            {
-                m_Materials["environment"] = spieler::Material
-                {
-                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
-                    .FresnelR0{ 0.1f, 0.1f, 0.1f },
-                    .Roughness{ 0.1f },
-                    .DiffuseMapIndex{ 4 },
-                    .NormalMapIndex{ 7 },
-                    .StructuredBufferIndex{ 4 }
-                };
-            }
-
-            // Mirror
-            {
-                m_Materials["mirror"] = spieler::Material
-                {
-                    .DiffuseAlbedo{ 0.0f, 0.0f, 0.0f, 1.0f },
-                    .FresnelR0{ 0.98f, 0.97f, 0.95f },
-                    .Roughness{ 0.1f },
-                    .DiffuseMapIndex{ 5 },
-                    .NormalMapIndex{ 7 },
-                    .StructuredBufferIndex{ 5 }
-                };
-            }
-
-            // Bricks2
-            {
-                m_Materials["bricks2"] = spieler::Material
-                {
-                    .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
-                    .FresnelR0{ 0.05f, 0.05f, 0.05f },
-                    .Roughness{ 0.9f },
-                    .DiffuseMapIndex{ 5 },
-                    .NormalMapIndex{ 6 },
-                    .StructuredBufferIndex{ 6 }
-                };
-            }
-        }
-
-        // Init m_RenderItems
-        {
-            // Environment CubeMap
-            {
-                auto& entity = m_Entities["environment"];
-                entity = std::make_unique<spieler::Entity>();
-
-                auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
-                meshComponent.Mesh = &m_Mesh;
-                meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
-                meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
-
-                auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
-                auto& instanceComponent = instancesComponent.Instances.emplace_back();
-                instanceComponent.MaterialIndex = 4;
-                instanceComponent.Transform = spieler::Transform
-                {
-                    .Scale{ 100.0f, 100.0f, 100.0f },
-                    .Translation{ 2.0f, 0.0f, 0.0f }
-                };
-            }
-
-            // Dynamic sphere
-            {
-                auto& entity = m_Entities["dynamic_sphere"];
-                entity = std::make_unique<spieler::Entity>();
-
-                auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
-                meshComponent.Mesh = &m_Mesh;
-                meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
-                meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
-
-                auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
-                collisionComponent.CreateBoundingSphere(meshComponent);
-
-                auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
-                instancesComponent.IsNeedCulling = true;
-
-                auto& instanceComponent = instancesComponent.Instances.emplace_back();
-                instanceComponent.MaterialIndex = 5;
-                instanceComponent.Transform = spieler::Transform
-                {
-                    .Scale{ 2.5f, 2.5f, 2.5f },
-                    .Translation{ -5.0f, 0.0f, 0.0f }
-                };
-
-                m_DynamicCubeMap->SetPosition({ -5.0f, 0.0f, 0.0f, 1.0f });
-
-                m_PickableEntities.push_back(entity.get());
-            }
-
-            // Boxes
-            {
-                const int32_t boxInRowCount = 2;
-                const int32_t boxInColumnCount = 2;
-                const int32_t boxInDepthCount = 2;
-
-                auto& entity = m_Entities["box"];
-                entity = std::make_unique<spieler::Entity>();
-
-                auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
-                meshComponent.Mesh = &m_Mesh;
-                meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
-                meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
-                
-                auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
-                collisionComponent.CreateBoundingBox(meshComponent);
-
-                auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
-                instancesComponent.IsNeedCulling = true;
-                instancesComponent.Instances.resize(boxInRowCount * boxInColumnCount * boxInDepthCount);
-
-                for (int32_t i = 0; i < boxInRowCount; ++i)
-                {
-                    for (int32_t j = 0; j < boxInColumnCount; ++j)
-                    {
-                        for (int32_t k = 0; k < boxInDepthCount; ++k)
-                        {
-                            const auto index = static_cast<size_t>((i * boxInRowCount + j) * boxInColumnCount + k);
-
-                            auto& instanceComponent = instancesComponent.Instances[index];
-                            instanceComponent.Transform.Translation = DirectX::XMFLOAT3
-                            { 
-                                static_cast<float>((i - boxInRowCount / 2) * boxInRowCount),
-                                static_cast<float>((j - boxInColumnCount / 2) * boxInColumnCount),
-                                static_cast<float>((k - boxInDepthCount / 2) * boxInDepthCount)
-                            };
-                            instanceComponent.Transform.Scale = DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f };
-                            instanceComponent.MaterialIndex = 6;
-                        }
-                    }
-                }
-
-                m_DefaultEntities.push_back(entity.get());
-                m_PickableEntities.push_back(entity.get());
-            }
-
-            // Picked
-            {
-                auto& entity = m_Entities["picked"];
-                entity = std::make_unique<spieler::Entity>();
-
-                auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
-                meshComponent.Mesh = &m_Mesh;
-                meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
-
-                auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
-                instancesComponent.IsNeedCulling = true;
-
-                auto& instanceComponent = instancesComponent.Instances.emplace_back();
-                instanceComponent.MaterialIndex = 0;
-                instanceComponent.IsVisible = false;
-
-                entity->CreateComponent<PickedEntityComponent>();
-            }
-
-            // Light source
-            {
-                auto& entity = m_Entities["light"];
-                entity = std::make_unique<spieler::Entity>();
-
-                auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
-                meshComponent.Mesh = &m_Mesh;
-                meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
-                meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
-
-                auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
-                collisionComponent.CreateBoundingSphere(meshComponent);
-
-                auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
-                instancesComponent.IsNeedCulling = true;
-
-                const DirectX::XMFLOAT3 position{ 0.0f, 3.0f, 0.0f };
-
-                auto& instanceComponent = instancesComponent.Instances.emplace_back();
-                instanceComponent.MaterialIndex = 3;
-                instanceComponent.Transform.Translation = position;
-
-                auto& lightComponent = entity->CreateComponent<spieler::Light>();
-                lightComponent.Direction = DirectX::XMFLOAT3{ -0.5f, -0.5f, -0.5f };
-                lightComponent.Strength = DirectX::XMFLOAT3{ 1.0f, 1.0f, 0.9f };
-                //lightComponent.FalloffStart = 20.0f;
-                //lightComponent.FalloffEnd = 23.0f;
-                //lightComponent.Position = position;
-
-                m_LightSourceEntities.push_back(entity.get());
-                m_PickableEntities.push_back(entity.get());
-
-                m_PointLightController = PointLightController{ &lightComponent };
-            }
-        }
-
+        InitMaterials();
+        InitEntities();
         InitRootSignature();
         InitPipelineState();
 
@@ -547,54 +166,8 @@ namespace sandbox
         m_FlyCameraController.OnEvent(event);
 
         spieler::EventDispatcher dispatcher{ event };
-
-        dispatcher.Dispatch<spieler::WindowResizedEvent>([this](spieler::WindowResizedEvent& event)
-        {
-            OnWindowResized();
-
-            return false;
-        });
-
-        dispatcher.Dispatch<spieler::MouseButtonPressedEvent>([this](spieler::MouseButtonPressedEvent& event)
-        {
-            if (event.GetButton() == spieler::MouseButton::Right)
-            {
-                const PickingTechnique::Result result = m_PickingTechnique->PickTriangle(event.GetX<float>(), event.GetY<float>());
-                const spieler::Entity* resultEntity = result.PickedEntity;
-
-                auto& pickedEntity = m_Entities["picked"];
-                auto& instanceComponent = pickedEntity->GetComponent<spieler::InstancesComponent>().Instances[0];
-
-                if (!result.PickedEntity)
-                {
-                    instanceComponent.IsVisible = false;
-                }
-                else
-                {
-                    auto& meshComponent = pickedEntity->GetComponent<spieler::MeshComponent>();
-                    meshComponent.Mesh = result.PickedEntity->GetComponent<spieler::MeshComponent>().Mesh;
-                    meshComponent.SubMesh = new spieler::SubMesh
-                    {
-                        .VertexCount{ 3 },
-                        .IndexCount{ 3 },
-                        .BaseVertexLocation{ resultEntity->GetComponent<spieler::MeshComponent>().SubMesh->BaseVertexLocation },
-                        .StartIndexLocation{ resultEntity->GetComponent<spieler::MeshComponent>().SubMesh->StartIndexLocation + result.TriangleIndex * 3 }
-                    };
-
-                    auto& collisionComponent = pickedEntity->GetOrCreateComponent<spieler::CollisionComponent>();
-                    collisionComponent.CreateBoundingBox(meshComponent);
-
-                    instanceComponent.IsVisible = true;
-                    instanceComponent.Transform = resultEntity->GetComponent<spieler::InstancesComponent>().Instances[result.InstanceIndex].Transform;
-                
-                    auto& pickedEntityComponent = pickedEntity->GetComponent<PickedEntityComponent>();
-                    pickedEntityComponent.InstanceIndex = result.InstanceIndex;
-                    pickedEntityComponent.TriangleIndex = result.TriangleIndex;
-                }
-            }
-
-            return false;
-        });
+        dispatcher.Dispatch<spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
+        dispatcher.Dispatch<spieler::MouseButtonPressedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnMouseButtonPressed));
     }
 
     void InstancingAndCullingLayer::OnUpdate(float dt)
@@ -603,7 +176,7 @@ namespace sandbox
 
         // Pass ConstantBuffer
         {
-            spieler::MappedData bufferData{ m_Buffers["pass_constant_buffer"].GetBufferResource(), 0 };
+            spieler::MappedData bufferData{ *m_Buffers["pass_constant_buffer"] };
             
             // Main pass
             {
@@ -630,7 +203,7 @@ namespace sandbox
 
             for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
             {
-                const spieler::Camera& camera = m_DynamicCubeMap->GetCamera(faceIndex);
+                const spieler::Camera& camera = m_RenderTargetCubeMap.GetCamera(faceIndex);
 
                 cb::Pass constants
                 {
@@ -649,13 +222,13 @@ namespace sandbox
                     memcpy_s(constants.Lights.data() + lightSize * i, lightSize, &lightComponent, lightSize);
                 }
 
-                bufferData.Write(&constants, sizeof(constants), m_Buffers["pass_constant_buffer"].GetBufferResource()->GetConfig().ElementSize * (faceIndex + 1));
+                bufferData.Write(&constants, sizeof(constants), m_Buffers["pass_constant_buffer"]->GetConfig().ElementSize * (faceIndex + 1));
             }
         }
 
         // RenderItem StructuredBuffer
         {
-            spieler::MappedData bufferData{ m_Buffers["render_item_structured_buffer"].GetBufferResource(), 0 };
+            spieler::MappedData bufferData{ *m_Buffers["render_item_structured_buffer"] };
 
             uint32_t offset = 0;
 
@@ -742,7 +315,7 @@ namespace sandbox
 
         // Material StructuredBuffer
         {
-            spieler::MappedData bufferData{ m_Buffers["material_structured_buffer"].GetBufferResource(), 0 };
+            spieler::MappedData bufferData{ *m_Buffers["material_structured_buffer"] };
 
             for (const auto& [name, material] : m_Materials)
             {
@@ -763,49 +336,35 @@ namespace sandbox
 
     void InstancingAndCullingLayer::OnRender(float dt)
     {
-        auto& renderTarget{ m_Textures["render_target"] };
-        auto& depthStencil{ m_Textures["depth_stencil"] };
-
-        auto& descriptorManager{ m_Device.GetDescriptorManager() };
+        auto& renderTarget = m_Textures["render_target"];
+        auto& depthStencil = m_Textures["depth_stencil"];
 
         {
             m_GraphicsCommandList.Reset();
 
             // Render to cube map
             {
-                m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-                {
-                    .Resource{ m_DynamicCubeMap->GetCubeMap().GetTextureResource().get() },
-                    .From{ spieler::ResourceState::Present },
-                    .To{ spieler::ResourceState::RenderTarget }
-                });
+                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), spieler::Resource::State::RenderTarget);
+                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetDepthStencil(), spieler::Resource::State::DepthWrite);
 
-                m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-                {
-                    .Resource{ m_DynamicCubeMap->GetDepthStencil().GetTextureResource().get() },
-                    .From{ spieler::ResourceState::Present },
-                    .To{ spieler::ResourceState::DepthWrite }
-                });
+                m_GraphicsCommandList.SetViewport(m_RenderTargetCubeMap.GetViewport());
+                m_GraphicsCommandList.SetScissorRect(m_RenderTargetCubeMap.GetScissorRect());
 
-                m_GraphicsCommandList.SetViewport(m_DynamicCubeMap->GetViewport());
-                m_GraphicsCommandList.SetScissorRect(m_DynamicCubeMap->GetScissorRect());
-
-                m_GraphicsCommandList.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::DescriptorHeap::Type::SRV));
+                m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
                 m_GraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
 
                 for (uint32_t i = 0; i < 6; ++i)
                 {
-                    m_GraphicsCommandList.ClearRenderTarget(m_DynamicCubeMap->GetCubeMap().GetView<spieler::TextureRenderTargetView>(i), { 0.1f, 0.1f, 0.1f, 1.0f });
-                    m_GraphicsCommandList.ClearDepthStencil(m_DynamicCubeMap->GetDepthStencil().GetView<spieler::TextureDepthStencilView>(), 1.0f, 0);
+                    m_GraphicsCommandList.ClearRenderTarget(m_RenderTargetCubeMap.GetCubeMap()->GetRenderTargetView(i), { 0.1f, 0.1f, 0.1f, 1.0f });
+                    m_GraphicsCommandList.ClearDepthStencil(m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView(), 1.0f, 0);
 
                     m_GraphicsCommandList.SetRenderTarget(
-                        m_DynamicCubeMap->GetCubeMap().GetView<spieler::TextureRenderTargetView>(i),
-                        m_DynamicCubeMap->GetDepthStencil().GetView<spieler::TextureDepthStencilView>()
+                        m_RenderTargetCubeMap.GetCubeMap()->GetRenderTargetView(i),
+                        m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView()
                     );
 
-                    m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer").GetBufferResource(), i + 1);
-
-                    m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("space_cubemap").GetView<spieler::TextureShaderResourceView>());
+                    m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer"), i + 1);
+                    m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("environment")->GetShaderResourceView());
                     
                     RenderEntities(m_PipelineStates.at("default"), m_DefaultEntities);
 
@@ -813,54 +372,31 @@ namespace sandbox
                     RenderEntities(m_PipelineStates.at("environment"), std::span{ &environmentEntity, 1});
                 }
 
-                m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-                {
-                    .Resource{ m_DynamicCubeMap->GetCubeMap().GetTextureResource().get() },
-                    .From{ spieler::ResourceState::RenderTarget },
-                    .To{ spieler::ResourceState::Present }
-                });
-
-                m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-                {
-                    .Resource{ m_DynamicCubeMap->GetDepthStencil().GetTextureResource().get() },
-                    .From{ spieler::ResourceState::DepthWrite },
-                    .To{ spieler::ResourceState::Present }
-                });
+                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), spieler::Resource::State::Present);
+                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetDepthStencil(), spieler::Resource::State::Present);
             }
 
-            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-            {
-                .Resource{ renderTarget.GetTextureResource().get() },
-                .From{ spieler::ResourceState::Present },
-                .To{ spieler::ResourceState::RenderTarget }
-            });
-
-            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-            {
-                .Resource{ depthStencil.GetTextureResource().get() },
-                .From{ spieler::ResourceState::Present },
-                .To{ spieler::ResourceState::DepthWrite }
-            });
+            m_GraphicsCommandList.SetResourceBarrier(*renderTarget, spieler::Resource::State::RenderTarget);
+            m_GraphicsCommandList.SetResourceBarrier(*depthStencil, spieler::Resource::State::DepthWrite);
 
             m_GraphicsCommandList.SetViewport(m_Window.GetViewport());
             m_GraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
 
-            m_GraphicsCommandList.SetRenderTarget(renderTarget.GetView<spieler::TextureRenderTargetView>(), depthStencil.GetView<spieler::TextureDepthStencilView>());
+            m_GraphicsCommandList.SetRenderTarget(renderTarget->GetRenderTargetView(), depthStencil->GetDepthStencilView());
 
-            m_GraphicsCommandList.ClearRenderTarget(renderTarget.GetView<spieler::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
-            m_GraphicsCommandList.ClearDepthStencil(depthStencil.GetView<spieler::TextureDepthStencilView>(), 1.0f, 0);
+            m_GraphicsCommandList.ClearRenderTarget(renderTarget->GetRenderTargetView(), { 0.1f, 0.1f, 0.1f, 1.0f });
+            m_GraphicsCommandList.ClearDepthStencil(depthStencil->GetDepthStencilView(), 1.0f, 0);
 
-            m_GraphicsCommandList.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::DescriptorHeap::Type::SRV));
+            m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
             m_GraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
 
-            m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer").GetBufferResource());
-
-            m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_DynamicCubeMap->GetCubeMap().GetView<spieler::TextureShaderResourceView>());
+            m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer"));
+            m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_RenderTargetCubeMap.GetCubeMap()->GetShaderResourceView());
             
-            const spieler::Entity* dynamicSphereEntity = m_Entities.at("dynamic_sphere").get();
+            const spieler::Entity* dynamicSphereEntity = m_Entities.at("mirror_sphere").get();
             RenderEntities(m_PipelineStates.at("default"), std::span{ &dynamicSphereEntity, 1 });
 
-            m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("space_cubemap").GetView<spieler::TextureShaderResourceView>());
+            m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("environment")->GetShaderResourceView());
             
             RenderEntities(m_PipelineStates.at("default"), m_DefaultEntities);
             
@@ -872,19 +408,8 @@ namespace sandbox
             const spieler::Entity* environmentEntity = m_Entities.at("environment").get();
             RenderEntities(m_PipelineStates.at("environment"), std::span{ &environmentEntity, 1});
 
-            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-            {
-                .Resource{ renderTarget.GetTextureResource().get() },
-                .From{ spieler::ResourceState::RenderTarget },
-                .To{ spieler::ResourceState::Present }
-            });
-
-            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-            {
-                .Resource{ depthStencil.GetTextureResource().get() },
-                .From{ spieler::ResourceState::DepthWrite },
-                .To{ spieler::ResourceState::Present }
-            });
+            m_GraphicsCommandList.SetResourceBarrier(*renderTarget, spieler::Resource::State::Present);
+            m_GraphicsCommandList.SetResourceBarrier(*depthStencil, spieler::Resource::State::Present);
 
             m_GraphicsCommandList.Close();
             m_CommandQueue.Submit(m_GraphicsCommandList);
@@ -893,11 +418,11 @@ namespace sandbox
         {
             m_PostEffectsGraphicsCommandList.Reset();
 
-            m_PostEffectsGraphicsCommandList.SetDescriptorHeap(descriptorManager.GetDescriptorHeap(spieler::DescriptorHeap::Type::SRV));
+            m_PostEffectsGraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
 
-            m_BlurPass->OnExecute(m_PostEffectsGraphicsCommandList, *m_Textures["render_target"].GetTextureResource(), BlurPassExecuteProps{ 2.5f, 2.5f, 0 });
+            m_BlurPass->OnExecute(m_PostEffectsGraphicsCommandList, *m_Textures["render_target"], BlurPassExecuteProps{ 2.5f, 2.5f, 0 });
 
-            RenderFullscreenQuad(m_BlurPass->GetOutput().GetView<spieler::TextureShaderResourceView>());
+            RenderFullscreenQuad(m_BlurPass->GetOutput()->GetShaderResourceView());
 
             m_PostEffectsGraphicsCommandList.Close();
             m_CommandQueue.Submit(m_PostEffectsGraphicsCommandList);
@@ -941,33 +466,64 @@ namespace sandbox
 
         ImGui::Begin("DynamicCube RenderItem");
         {
-            auto& dynamicSphereEntity = m_Entities["dynamic_sphere"];
+            auto& dynamicSphereEntity = m_Entities["mirror_sphere"];
             auto& instanceComponent = dynamicSphereEntity->GetComponent<spieler::InstancesComponent>().Instances[0];
 
             ImGui::DragFloat3("Position", reinterpret_cast<float*>(&instanceComponent.Transform.Translation), 0.1f);
             
-            m_DynamicCubeMap->SetPosition(DirectX::XMLoadFloat3(&instanceComponent.Transform.Translation));
+            m_RenderTargetCubeMap.SetPosition(DirectX::XMLoadFloat3(&instanceComponent.Transform.Translation));
+        }
+        ImGui::End();
+
+        ImGui::Begin("Textures");
+        {
+            for (const auto& [name, texture] : m_Textures)
+            {
+                if (texture->HasShaderResourceView())
+                {
+                    const uint64_t gpuHandle = texture->GetShaderResourceView().GetGPUHandle();
+                    const float width = texture->GetConfig().Width / 2.0f;
+                    const float height = texture->GetConfig().Height / 2.0f;
+
+                    ImGui::Image(reinterpret_cast<ImTextureID>(gpuHandle), ImVec2{ width, height });
+                }
+            }
         }
         ImGui::End();
     }
 
     void InstancingAndCullingLayer::InitTextures()
     {
-        const auto loadTexture = [&](const std::string& name, const std::wstring& filepath)
+        const auto loadTextureFromDDSFile = [&](const std::string& name, const std::wstring& filepath)
         {
-            auto& texture{ m_Textures[name] };
-            texture.SetTextureResource(spieler::TextureResource::LoadFromDDSFile(m_Device, m_GraphicsCommandList, filepath));
-            texture.PushView<spieler::TextureShaderResourceView>(m_Device);
+            auto& texture = m_Textures[name];
+            texture = m_Device.GetResourceLoader().LoadTextureResourceFromDDSFile(filepath, m_GraphicsCommandList);
+            texture->SetName("Texture_" + name);
+
+            return texture.get();
         };
 
-        loadTexture("red", L"assets/textures/red.dds");
-        loadTexture("green", L"assets/textures/green.dds");
-        loadTexture("blue", L"assets/textures/blue.dds");
-        loadTexture("white", L"assets/textures/white.dds");
-        loadTexture("space_cubemap", L"assets/textures/space_cubemap.dds");
-        loadTexture("bricks2", L"assets/textures/bricks2.dds");
-        loadTexture("bricks2_normalmap", L"assets/textures/bricks2_normalmap.dds");
-        loadTexture("default_normalmap", L"assets/textures/default_normalmap.dds");
+        std::vector<spieler::TextureResource*> textures;
+        textures.push_back(loadTextureFromDDSFile("red", L"assets/textures/red.dds"));
+        textures.push_back(loadTextureFromDDSFile("green", L"assets/textures/green.dds"));
+        textures.push_back(loadTextureFromDDSFile("blue", L"assets/textures/blue.dds"));
+        textures.push_back(loadTextureFromDDSFile("white", L"assets/textures/white.dds"));
+        textures.push_back(loadTextureFromDDSFile("environment", L"assets/textures/environment.dds"));
+        textures.push_back(loadTextureFromDDSFile("bricks2", L"assets/textures/bricks2.dds"));
+        textures.push_back(loadTextureFromDDSFile("bricks2_normalmap", L"assets/textures/bricks2_normalmap.dds"));
+        textures.push_back(loadTextureFromDDSFile("default_normalmap", L"assets/textures/default_normalmap.dds"));
+
+        const std::vector<spieler::Descriptor> srvDescriptors = m_Device.GetDescriptorManager().AllocateDescriptors(
+            spieler::Descriptor::Type::ShaderResourceView,
+            static_cast<uint32_t>(textures.size())
+        );
+
+        const auto& resourceViewBuilder = m_Device.GetResourceViewBuilder();
+        for (size_t i = 0; i < textures.size(); ++i)
+        {
+            resourceViewBuilder.InitShaderResourceViewForDescriptor(srvDescriptors[i], *textures[i]);
+            textures[i]->PushShaderResourceView(srvDescriptors[i]);
+        }
     }
 
     void InstancingAndCullingLayer::InitMesh()
@@ -994,15 +550,15 @@ namespace sandbox
 
         m_Mesh.SetSubMeshes(m_Device, submeshes);
 
-        m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetVertexBuffer().GetBufferResource(), m_Mesh.GetVertices().data(), m_Mesh.GetVertices().size() * sizeof(spieler::Vertex));
-        m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetIndexBuffer().GetBufferResource(), m_Mesh.GetIndices().data(), m_Mesh.GetIndices().size() * sizeof(uint32_t));
+        m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetVertexBuffer(), m_Mesh.GetVertices().data(), m_Mesh.GetVertices().size() * sizeof(spieler::Vertex));
+        m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetIndexBuffer(), m_Mesh.GetIndices().data(), m_Mesh.GetIndices().size() * sizeof(uint32_t));
     }
 
     void InstancingAndCullingLayer::InitBuffers()
     {
         // Pass ConstantBuffer
         {
-            auto& buffer{ m_Buffers["pass_constant_buffer"] };
+            const std::string_view name = "pass_constant_buffer";
 
             const spieler::BufferResource::Config config
             {
@@ -1011,12 +567,14 @@ namespace sandbox
                 .Flags{ spieler::BufferResource::Flags::ConstantBuffer }
             };
 
-            buffer.SetBufferResource(spieler::BufferResource::Create(m_Device, config));
+            auto& buffer = m_Buffers[name.data()];
+            buffer = m_Device.CreateBufferResource(config);
+            buffer->SetName(name);
         }
 
         // RenderItem StructuredBuffer
         {
-            auto& buffer{ m_Buffers["render_item_structured_buffer"] };
+            const std::string_view name = "render_item_structured_buffer";
 
             const spieler::BufferResource::Config config
             {
@@ -1025,21 +583,25 @@ namespace sandbox
                 .Flags{ spieler::BufferResource::Flags::Dynamic }
             };
 
-            buffer.SetBufferResource(spieler::BufferResource::Create(m_Device, config));
+            auto& buffer = m_Buffers[name.data()];
+            buffer = m_Device.CreateBufferResource(config);
+            buffer->SetName(name);
         }
 
         // Material StructuredBuffer
         {
-            auto& buffer{ m_Buffers["material_structured_buffer"] };
+            const std::string_view name = "material_structured_buffer";
 
             const spieler::BufferResource::Config config
             {
                 .ElementSize{ sizeof(cb::Material) },
-                .ElementCount{ 6 },
+                .ElementCount{ 7 },
                 .Flags{ spieler::BufferResource::Flags::Dynamic }
             };
 
-            buffer.SetBufferResource(spieler::BufferResource::Create(m_Device, config));
+            auto& buffer = m_Buffers[name.data()];
+            buffer = m_Device.CreateBufferResource(config);
+            buffer->SetName(name);
         }
     }
 
@@ -1105,12 +667,12 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitPipelineState()
     {
-        const spieler::Shader* vertexShader{ nullptr };
-        const spieler::Shader* pixelShader{ nullptr };
+        const spieler::Shader* vertexShader = nullptr;
+        const spieler::Shader* pixelShader = nullptr;
 
         // Init Shaders
         {
-            const std::wstring_view filepath{ L"assets/shaders/default.hlsl" };
+            const std::wstring_view filepath = L"assets/shaders/default.hlsl";
 
             const spieler::Shader::Config vertexShaderConfig
             {
@@ -1180,7 +742,7 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ m_SwapChain.GetBufferFormat() },
+                .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
@@ -1213,7 +775,7 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ m_SwapChain.GetBufferFormat() },
+                .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
@@ -1222,12 +784,12 @@ namespace sandbox
 
         // PSO for light sources
         {
-            const spieler::Shader* vertexShader{ nullptr };
-            const spieler::Shader* pixelShader{ nullptr };
+            const spieler::Shader* vertexShader = nullptr;
+            const spieler::Shader* pixelShader = nullptr;
 
             // Init Shaders
             {
-                const std::wstring_view filepath{ L"assets/shaders/default.hlsl" };
+                const std::wstring_view filepath = L"assets/shaders/default.hlsl";
 
                 const spieler::Shader::Config pixelShaderConfig
                 {
@@ -1266,7 +828,7 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ m_SwapChain.GetBufferFormat() },
+                .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
@@ -1275,8 +837,8 @@ namespace sandbox
 
         // PSO for CubeMap
         {
-            const spieler::Shader* vertexShader{ nullptr };
-            const spieler::Shader* pixelShader{ nullptr };
+            const spieler::Shader* vertexShader = nullptr;
+            const spieler::Shader* pixelShader = nullptr;
 
             // Init Shaders
             {
@@ -1334,7 +896,7 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ m_SwapChain.GetBufferFormat() },
+                .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
@@ -1343,12 +905,12 @@ namespace sandbox
 
         // Fullscreen
         {
-            const spieler::Shader* vertexShader{ nullptr };
-            const spieler::Shader* pixelShader{ nullptr };
+            const spieler::Shader* vertexShader = nullptr;
+            const spieler::Shader* pixelShader = nullptr;
 
             // Init Shaders
             {
-                const std::wstring_view filepath{ L"assets/shaders/fullscreen.hlsl" };
+                const std::wstring_view filepath = L"assets/shaders/fullscreen.hlsl";
 
                 const spieler::Shader::Config vertexShaderConfig
                 {
@@ -1387,7 +949,7 @@ namespace sandbox
                 .RasterizerState{ &rasterizerState },
                 .InputLayout{ &nullInputLayout },
                 .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ m_SwapChain.GetBufferFormat() },
+                .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
             };
 
             m_PipelineStates["fullscreen"] = spieler::GraphicsPipelineState{ m_Device, config };
@@ -1398,11 +960,11 @@ namespace sandbox
     {
         const spieler::TextureResource::Config config
         {
-            .Type{ spieler::TextureResource::Type::_2D },
+            .Type{ spieler::TextureResource::Type::Texture2D },
             .Width{ m_Window.GetWidth() },
             .Height{ m_Window.GetHeight() },
             .Format{ spieler::GraphicsFormat::R8G8B8A8UnsignedNorm },
-            .UsageFlags{ spieler::TextureResource::UsageFlags::RenderTarget }
+            .Flags{ spieler::TextureResource::Flags::BindAsRenderTarget }
         };
 
         const spieler::TextureResource::ClearColor clearColor
@@ -1410,20 +972,21 @@ namespace sandbox
             .Color{ 0.1f, 0.1f, 0.1f, 1.0f }
         };
 
-        m_Textures["render_target"].SetTextureResource(spieler::TextureResource::Create(m_Device, config, clearColor));
-        m_Textures["render_target"].PushView<spieler::TextureShaderResourceView>(m_Device);
-        m_Textures["render_target"].PushView<spieler::TextureRenderTargetView>(m_Device);
+        auto& renderTarget = m_Textures["render_target"];
+        renderTarget = m_Device.CreateTextureResource(config, clearColor);
+        renderTarget->PushRenderTargetView(m_Device.GetResourceViewBuilder().CreateRenderTargetView(*renderTarget));
+        renderTarget->PushShaderResourceView(m_Device.GetResourceViewBuilder().CreateShaderResourceView(*renderTarget));
     }
 
     void InstancingAndCullingLayer::InitDepthStencil()
     {
         const spieler::TextureResource::Config config
         {
-            .Type{ spieler::TextureResource::Type::_2D },
+            .Type{ spieler::TextureResource::Type::Texture2D },
             .Width{ m_Window.GetWidth() },
             .Height{ m_Window.GetHeight() },
             .Format{ ms_DepthStencilFormat },
-            .UsageFlags{ spieler::TextureResource::UsageFlags::DepthStencil }
+            .Flags{ spieler::TextureResource::Flags::BindAsDepthStencil }
         };
 
         const spieler::TextureResource::ClearDepthStencil clearDepthStencil
@@ -1432,25 +995,274 @@ namespace sandbox
             .Stencil{ 0 }
         };
 
-        auto& depthStencil{ m_Textures["depth_stencil"] };
-        depthStencil.SetTextureResource(spieler::TextureResource::Create(m_Device, config, clearDepthStencil));
-        depthStencil.PushView<spieler::TextureDepthStencilView>(m_Device);
+        auto& depthStencil = m_Textures["depth_stencil"];
+        depthStencil = m_Device.CreateTextureResource(config, clearDepthStencil);
+        depthStencil->PushDepthStencilView(m_Device.GetResourceViewBuilder().CreateDepthStencilView(*depthStencil));
+    }
+
+    void InstancingAndCullingLayer::InitMaterials()
+    {
+        const auto getNewMaterialStructuredBufferIndex = [this]
+        {
+            return static_cast<uint32_t>(m_Materials.size());
+        };
+
+        // Red
+        {
+            m_Materials["red"] = spieler::Material
+            {
+                .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                .FresnelR0{ 0.05f, 0.05f, 0.05f },
+                .Roughness{ 0.1f },
+                .DiffuseMapIndex{ 0 },
+                .NormalMapIndex{ 7 },
+                .StructuredBufferIndex{ getNewMaterialStructuredBufferIndex() }
+            };
+        }
+
+        // Green
+        {
+            m_Materials["green"] = spieler::Material
+            {
+                .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                .FresnelR0{ 0.05f, 0.05f, 0.05f },
+                .Roughness{ 0.7f },
+                .DiffuseMapIndex{ 1 },
+                .NormalMapIndex{ 7 },
+                .StructuredBufferIndex{ getNewMaterialStructuredBufferIndex() }
+            };
+        }
+
+        // Blue
+        {
+            m_Materials["blue"] = spieler::Material
+            {
+                .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                .FresnelR0{ 0.05f, 0.05f, 0.05f },
+                .Roughness{ 0.1f },
+                .DiffuseMapIndex{ 2 },
+                .NormalMapIndex{ 7 },
+                .StructuredBufferIndex{ getNewMaterialStructuredBufferIndex() }
+            };
+        }
+
+        // White
+        {
+            m_Materials["white"] = spieler::Material
+            {
+                .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                .FresnelR0{ 0.05f, 0.05f, 0.05f },
+                .Roughness{ 0.1f },
+                .DiffuseMapIndex{ 3 },
+                .NormalMapIndex{ 7 },
+                .StructuredBufferIndex{ getNewMaterialStructuredBufferIndex() }
+            };
+        }
+
+        // Environment
+        {
+            m_Materials["environment"] = spieler::Material
+            {
+                .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                .FresnelR0{ 0.1f, 0.1f, 0.1f },
+                .Roughness{ 0.1f },
+                .DiffuseMapIndex{ 4 },
+                .NormalMapIndex{ 7 },
+                .StructuredBufferIndex{ getNewMaterialStructuredBufferIndex() }
+            };
+        }
+
+        // Mirror
+        {
+            m_Materials["mirror"] = spieler::Material
+            {
+                .DiffuseAlbedo{ 0.0f, 0.0f, 0.0f, 1.0f },
+                .FresnelR0{ 0.98f, 0.97f, 0.95f },
+                .Roughness{ 0.1f },
+                .DiffuseMapIndex{ 5 },
+                .NormalMapIndex{ 7 },
+                .StructuredBufferIndex{ getNewMaterialStructuredBufferIndex() }
+            };
+        }
+
+        // Bricks2
+        {
+            m_Materials["bricks2"] = spieler::Material
+            {
+                .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
+                .FresnelR0{ 0.05f, 0.05f, 0.05f },
+                .Roughness{ 0.9f },
+                .DiffuseMapIndex{ 5 },
+                .NormalMapIndex{ 6 },
+                .StructuredBufferIndex{ getNewMaterialStructuredBufferIndex() }
+            };
+        }
+    }
+    
+    void InstancingAndCullingLayer::InitEntities()
+    {
+        // Environment CubeMap
+        {
+            auto& entity = m_Entities["environment"];
+            entity = std::make_unique<spieler::Entity>();
+
+            auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+            meshComponent.Mesh = &m_Mesh;
+            meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
+            meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+
+            auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+            auto& instanceComponent = instancesComponent.Instances.emplace_back();
+            instanceComponent.MaterialIndex = 4;
+            instanceComponent.Transform = spieler::Transform
+            {
+                .Scale{ 100.0f, 100.0f, 100.0f },
+                .Translation{ 2.0f, 0.0f, 0.0f }
+            };
+        }
+
+        // Dynamic sphere
+        {
+            auto& entity = m_Entities["mirror_sphere"];
+            entity = std::make_unique<spieler::Entity>();
+
+            auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+            meshComponent.Mesh = &m_Mesh;
+            meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
+            meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+
+            auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
+            collisionComponent.CreateBoundingSphere(meshComponent);
+
+            auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+            instancesComponent.IsNeedCulling = true;
+
+            auto& instanceComponent = instancesComponent.Instances.emplace_back();
+            instanceComponent.MaterialIndex = 5;
+            instanceComponent.Transform = spieler::Transform
+            {
+                .Scale{ 2.5f, 2.5f, 2.5f },
+                .Translation{ -5.0f, 0.0f, 0.0f }
+            };
+
+            m_RenderTargetCubeMap.SetPosition({ -5.0f, 0.0f, 0.0f, 1.0f });
+
+            m_PickableEntities.push_back(entity.get());
+        }
+
+        // Boxes
+        {
+            const int32_t boxInRowCount = 2;
+            const int32_t boxInColumnCount = 2;
+            const int32_t boxInDepthCount = 2;
+
+            auto& entity = m_Entities["box"];
+            entity = std::make_unique<spieler::Entity>();
+
+            auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+            meshComponent.Mesh = &m_Mesh;
+            meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
+            meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+
+            auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
+            collisionComponent.CreateBoundingBox(meshComponent);
+
+            auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+            instancesComponent.IsNeedCulling = true;
+            instancesComponent.Instances.resize(boxInRowCount * boxInColumnCount * boxInDepthCount);
+
+            for (int32_t i = 0; i < boxInRowCount; ++i)
+            {
+                for (int32_t j = 0; j < boxInColumnCount; ++j)
+                {
+                    for (int32_t k = 0; k < boxInDepthCount; ++k)
+                    {
+                        const auto index = static_cast<size_t>((i * boxInRowCount + j) * boxInColumnCount + k);
+
+                        auto& instanceComponent = instancesComponent.Instances[index];
+                        instanceComponent.Transform.Translation = DirectX::XMFLOAT3
+                        {
+                            static_cast<float>((i - boxInRowCount / 2) * boxInRowCount),
+                            static_cast<float>((j - boxInColumnCount / 2) * boxInColumnCount),
+                            static_cast<float>((k - boxInDepthCount / 2) * boxInDepthCount)
+                        };
+                        instanceComponent.Transform.Scale = DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+                        instanceComponent.MaterialIndex = 6;
+                    }
+                }
+            }
+
+            m_DefaultEntities.push_back(entity.get());
+            m_PickableEntities.push_back(entity.get());
+        }
+
+        // Picked
+        {
+            auto& entity = m_Entities["picked"];
+            entity = std::make_unique<spieler::Entity>();
+
+            auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+            meshComponent.Mesh = &m_Mesh;
+            meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+
+            auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+            instancesComponent.IsNeedCulling = true;
+
+            auto& instanceComponent = instancesComponent.Instances.emplace_back();
+            instanceComponent.MaterialIndex = 0;
+            instanceComponent.IsVisible = false;
+
+            entity->CreateComponent<PickedEntityComponent>();
+        }
+
+        // Light source
+        {
+            auto& entity = m_Entities["light"];
+            entity = std::make_unique<spieler::Entity>();
+
+            auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+            meshComponent.Mesh = &m_Mesh;
+            meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
+            meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+
+            auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
+            collisionComponent.CreateBoundingSphere(meshComponent);
+
+            auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+            instancesComponent.IsNeedCulling = true;
+
+            const DirectX::XMFLOAT3 position{ 0.0f, 3.0f, 0.0f };
+
+            auto& instanceComponent = instancesComponent.Instances.emplace_back();
+            instanceComponent.MaterialIndex = 3;
+            instanceComponent.Transform.Translation = position;
+
+            auto& lightComponent = entity->CreateComponent<spieler::Light>();
+            lightComponent.Direction = DirectX::XMFLOAT3{ -0.5f, -0.5f, -0.5f };
+            lightComponent.Strength = DirectX::XMFLOAT3{ 1.0f, 1.0f, 0.9f };
+            //lightComponent.FalloffStart = 20.0f;
+            //lightComponent.FalloffEnd = 23.0f;
+            //lightComponent.Position = position;
+
+            m_LightSourceEntities.push_back(entity.get());
+            m_PickableEntities.push_back(entity.get());
+
+            m_PointLightController = PointLightController{ &lightComponent };
+        }
     }
 
     void InstancingAndCullingLayer::OnWindowResized()
     {
         InitRenderTarget();
         InitDepthStencil();
-
-        m_BlurPass->OnResize(m_Device, m_Window.GetWidth(), m_Window.GetHeight());
     }
 
     void InstancingAndCullingLayer::RenderEntities(const spieler::PipelineState& pso, const std::span<const spieler::Entity*>& entities)
     {
         m_GraphicsCommandList.SetPipelineState(pso);
 
-        m_GraphicsCommandList.SetGraphicsRawShaderResource(2, *m_Buffers.at("material_structured_buffer").GetBufferResource());
-        m_GraphicsCommandList.SetGraphicsDescriptorTable(4, m_Textures.at("red").GetView<spieler::TextureShaderResourceView>());
+        m_GraphicsCommandList.SetGraphicsRawShaderResource(2, *m_Buffers.at("material_structured_buffer"));
+        m_GraphicsCommandList.SetGraphicsDescriptorTable(4, m_Textures.at("red")->GetShaderResourceView());
 
         for (const auto& entity : entities)
         {
@@ -1465,12 +1277,12 @@ namespace sandbox
 
             m_GraphicsCommandList.SetGraphicsRawShaderResource(
                 1, 
-                *m_Buffers.at("render_item_structured_buffer").GetBufferResource(),
+                *m_Buffers.at("render_item_structured_buffer"),
                 instancesComponent.StructuredBufferOffset
             );
 
-            m_GraphicsCommandList.IASetVertexBuffer(meshComponent.Mesh->GetVertexBuffer().GetBufferResource().get());
-            m_GraphicsCommandList.IASetIndexBuffer(meshComponent.Mesh->GetIndexBuffer().GetBufferResource().get());
+            m_GraphicsCommandList.IASetVertexBuffer(meshComponent.Mesh->GetVertexBuffer().get());
+            m_GraphicsCommandList.IASetIndexBuffer(meshComponent.Mesh->GetIndexBuffer().get());
             m_GraphicsCommandList.IASetPrimitiveTopology(meshComponent.PrimitiveTopology);
 
             m_GraphicsCommandList.DrawIndexed(
@@ -1482,19 +1294,14 @@ namespace sandbox
         }
     }
 
-    void InstancingAndCullingLayer::RenderFullscreenQuad(const spieler::TextureShaderResourceView& srv)
+    void InstancingAndCullingLayer::RenderFullscreenQuad(const spieler::Descriptor& srv)
     {
-        auto& backBuffer{ m_SwapChain.GetCurrentBuffer() };
+        auto& backBuffer = m_SwapChain.GetCurrentBackBuffer();
 
-        m_PostEffectsGraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-        {
-            .Resource{ backBuffer.GetTextureResource().get() },
-            .From{ spieler::ResourceState::Present },
-            .To{ spieler::ResourceState::RenderTarget }
-        });
+        m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, spieler::Resource::State::RenderTarget);
 
-        m_PostEffectsGraphicsCommandList.SetRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>());
-        m_PostEffectsGraphicsCommandList.ClearRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+        m_PostEffectsGraphicsCommandList.SetRenderTarget(backBuffer->GetRenderTargetView());
+        m_PostEffectsGraphicsCommandList.ClearRenderTarget(backBuffer->GetRenderTargetView(), { 0.1f, 0.1f, 0.1f, 1.0f });
 
         m_PostEffectsGraphicsCommandList.SetViewport(m_Window.GetViewport());
         m_PostEffectsGraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
@@ -1506,12 +1313,56 @@ namespace sandbox
         m_PostEffectsGraphicsCommandList.SetGraphicsDescriptorTable(4, srv);
         m_PostEffectsGraphicsCommandList.DrawVertexed(6, 0);
 
-        m_PostEffectsGraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
+        m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, spieler::Resource::State::Present);
+    }
+
+    bool InstancingAndCullingLayer::OnWindowResized(spieler::WindowResizedEvent& event)
+    {
+        OnWindowResized();
+        m_BlurPass->OnResize(m_Device, event.GetWidth(), event.GetHeight());
+
+        return false;
+    }
+
+    bool InstancingAndCullingLayer::OnMouseButtonPressed(spieler::MouseButtonPressedEvent& event)
+    {
+        if (event.GetButton() == spieler::MouseButton::Right)
         {
-            .Resource{ backBuffer.GetTextureResource().get() },
-            .From{ spieler::ResourceState::RenderTarget },
-            .To{ spieler::ResourceState::Present }
-        });
+            const PickingTechnique::Result result = m_PickingTechnique->PickTriangle(event.GetX<float>(), event.GetY<float>());
+            const spieler::Entity* resultEntity = result.PickedEntity;
+
+            auto& pickedEntity = m_Entities["picked"];
+            auto& instanceComponent = pickedEntity->GetComponent<spieler::InstancesComponent>().Instances[0];
+
+            if (!result.PickedEntity)
+            {
+                instanceComponent.IsVisible = false;
+            }
+            else
+            {
+                auto& meshComponent = pickedEntity->GetComponent<spieler::MeshComponent>();
+                meshComponent.Mesh = result.PickedEntity->GetComponent<spieler::MeshComponent>().Mesh;
+                meshComponent.SubMesh = new spieler::SubMesh
+                {
+                    .VertexCount{ 3 },
+                    .IndexCount{ 3 },
+                    .BaseVertexLocation{ resultEntity->GetComponent<spieler::MeshComponent>().SubMesh->BaseVertexLocation },
+                    .StartIndexLocation{ resultEntity->GetComponent<spieler::MeshComponent>().SubMesh->StartIndexLocation + result.TriangleIndex * 3 }
+                };
+
+                auto& collisionComponent = pickedEntity->GetOrCreateComponent<spieler::CollisionComponent>();
+                collisionComponent.CreateBoundingBox(meshComponent);
+
+                instanceComponent.IsVisible = true;
+                instanceComponent.Transform = resultEntity->GetComponent<spieler::InstancesComponent>().Instances[result.InstanceIndex].Transform;
+
+                auto& pickedEntityComponent = pickedEntity->GetComponent<PickedEntityComponent>();
+                pickedEntityComponent.InstanceIndex = result.InstanceIndex;
+                pickedEntityComponent.TriangleIndex = result.TriangleIndex;
+            }
+        }
+
+        return false;
     }
 
 } // namespace sandbox

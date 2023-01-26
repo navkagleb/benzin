@@ -10,40 +10,24 @@
 namespace spieler
 {
 
-    namespace _internal
+    static uint32_t g_BufferResourceCounter = 0;
+
+    BufferResource::BufferResource(ID3D12Resource* d3d12Resource, const Config& config)
+        : Resource{ d3d12Resource }
+        , m_Config{ config }
     {
+        SetName("BufferResource" + std::to_string(g_BufferResourceCounter));
 
-        BufferResource::Config ValidateConfig(const BufferResource::Config& config)
-        {
-            using namespace magic_enum::bitwise_operators;
+        SPIELER_INFO("{} created", GetName());
 
-            BufferResource::Config validatedConfig{ config };
-
-            if ((validatedConfig.Flags & BufferResource::Flags::ConstantBuffer) != BufferResource::Flags::None)
-            {
-                validatedConfig.ElementSize = utils::Align<uint32_t>(validatedConfig.ElementSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-            }
-
-            return validatedConfig;
-        }
-
-    } // namespace _internal
-
-    std::shared_ptr<BufferResource> BufferResource::Create(Device& device, const Config& config)
-    {
-        return std::make_shared<BufferResource>(device, config);
+        g_BufferResourceCounter++;
     }
 
-    BufferResource::BufferResource(Device& device, const Config& config)
-        : Resource{ device.CreateDX12Buffer(_internal::ValidateConfig(config)) }
-        , m_Config{ _internal::ValidateConfig(config) }
-    {}
-
-    GPUVirtualAddress BufferResource::GetGPUVirtualAddressWithOffset(uint64_t offset) const
+    uint64_t BufferResource::GetGPUVirtualAddressWithOffset(uint64_t offset) const
     {
-        SPIELER_ASSERT(m_DX12Resource);
+        SPIELER_ASSERT(m_D3D12Resource);
 
-        return m_DX12Resource->GetGPUVirtualAddress() + offset * m_Config.ElementSize;
+        return m_D3D12Resource->GetGPUVirtualAddress() + offset * m_Config.ElementSize;
     }
 
 } // namespace spieler

@@ -10,7 +10,6 @@
 
 #include <spieler/graphics/blend_state.hpp>
 #include <spieler/graphics/rasterizer_state.hpp>
-#include <spieler/graphics/resource_barrier.hpp>
 #include <spieler/graphics/depth_stencil_state.hpp>
 #include <spieler/graphics/mapped_data.hpp>
 
@@ -255,14 +254,14 @@ namespace sandbox
             context.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ offScreenTexture.GetTextureResource().get() },
-                .From{ spieler::ResourceState::Present },
-                .To{ spieler::ResourceState::RenderTarget }
+                .From{ spieler::Resource::State::Present },
+                .To{ spieler::Resource::State::RenderTarget }
             });
             context.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ m_DepthStencil.GetTextureResource().get() },
-                .From{ spieler::ResourceState::Present },
-                .To{ spieler::ResourceState::DepthWrite }
+                .From{ spieler::Resource::State::Present },
+                .To{ spieler::Resource::State::DepthWrite }
             });
 
             context.SetRenderTarget(offScreenTexture.GetView<spieler::TextureRenderTargetView>(), m_DepthStencil.GetView<spieler::TextureDepthStencilView>());
@@ -293,8 +292,8 @@ namespace sandbox
             context.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ offScreenTexture.GetTextureResource().get() },
-                .From{ spieler::ResourceState::CopySource },
-                .To{ spieler::ResourceState::Present }
+                .From{ spieler::Resource::State::CopySource },
+                .To{ spieler::Resource::State::Present }
             });
 
             if (!m_EnableSobelFilter)
@@ -302,8 +301,8 @@ namespace sandbox
                 context.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ currentBuffer.GetTextureResource().get() },
-                    .From{ spieler::ResourceState::Present },
-                    .To{ spieler::ResourceState::CopyDestination }
+                    .From{ spieler::Resource::State::Present },
+                    .To{ spieler::Resource::State::CopyDestination }
                 });
 
                 context.GetDX12GraphicsCommandList()->CopyResource(currentBuffer.GetTextureResource()->GetDX12Resource(), m_BlurPass->GetOutput().GetTextureResource()->GetDX12Resource());
@@ -311,8 +310,8 @@ namespace sandbox
                 context.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ currentBuffer.GetTextureResource().get() },
-                    .From{ spieler::ResourceState::CopyDestination },
-                    .To{ spieler::ResourceState::Present }
+                    .From{ spieler::Resource::State::CopyDestination },
+                    .To{ spieler::Resource::State::Present }
                 });
             }
             else
@@ -322,8 +321,8 @@ namespace sandbox
                 context.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ currentBuffer.GetTextureResource().get() },
-                    .From{ spieler::ResourceState::Present },
-                    .To{ spieler::ResourceState::RenderTarget }
+                    .From{ spieler::Resource::State::Present },
+                    .To{ spieler::Resource::State::RenderTarget }
                 });
 
                 context.SetRenderTarget(currentBuffer.GetView<spieler::TextureRenderTargetView>(), m_DepthStencil.GetView<spieler::TextureDepthStencilView>());
@@ -348,16 +347,16 @@ namespace sandbox
                 context.SetResourceBarrier(spieler::TransitionResourceBarrier
                 {
                     .Resource{ currentBuffer.GetTextureResource().get() },
-                    .From{ spieler::ResourceState::RenderTarget },
-                    .To{ spieler::ResourceState::Present }
+                    .From{ spieler::Resource::State::RenderTarget },
+                    .To{ spieler::Resource::State::Present }
                 });
             }
 
             context.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ m_DepthStencil.GetTextureResource().get() },
-                .From{ spieler::ResourceState::DepthWrite },
-                .To{ spieler::ResourceState::Present }
+                .From{ spieler::Resource::State::DepthWrite },
+                .To{ spieler::Resource::State::Present }
             });
         }
     }

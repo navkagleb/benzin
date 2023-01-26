@@ -53,7 +53,7 @@ namespace sandbox
                 {
                     m_FrameTimer.Tick();
 
-                    const float dt{ m_FrameTimer.GetDeltaTime() };
+                    const float dt = m_FrameTimer.GetDeltaTime();
 
                     for (auto& layer : m_LayerStack)
                     {
@@ -107,7 +107,8 @@ namespace sandbox
             dispatcher.Dispatch<spieler::WindowResizedEvent>([this](spieler::WindowResizedEvent& event)
             {
                 m_CommandQueue->Flush();
-                m_SwapChain->ResizeBuffers(*m_Device, event.GetWidth(), event.GetHeight());
+                m_SwapChain->ResizeBackBuffers(*m_Device, event.GetWidth(), event.GetHeight());
+
                 return false;
             });
 
@@ -158,8 +159,10 @@ namespace sandbox
 
 int spieler::ClientMain()
 {
-    sandbox::Application application;
-    application.Execute();
+    {
+        sandbox::Application application;
+        application.Execute();
+    }
 
     return 0;
 }

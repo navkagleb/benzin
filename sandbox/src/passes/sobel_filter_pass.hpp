@@ -15,10 +15,10 @@ namespace sandbox
         SobelFilterPass(spieler::Device& device, uint32_t width, uint32_t height);
 
     public:
-        const spieler::Texture& GetOutputTexture() const { return m_OutputTexture; }
+        const std::shared_ptr<spieler::TextureResource>& GetOutputTexture() const { return m_OutputTexture; }
 
     public:
-        void Execute(spieler::GraphicsCommandList& graphicsCommandList, spieler::Texture& input);
+        void Execute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input);
 
         void OnResize(spieler::Device& device, uint32_t width, uint32_t height);
 
@@ -28,7 +28,7 @@ namespace sandbox
         void InitPipelineState(spieler::Device& device);
 
     private:
-        spieler::Texture m_OutputTexture;
+        std::shared_ptr<spieler::TextureResource> m_OutputTexture;
         spieler::RootSignature m_RootSignature;
         spieler::ComputePipelineState m_PipelineState;
         std::shared_ptr<spieler::Shader> m_Shader;

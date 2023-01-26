@@ -7,40 +7,40 @@ namespace spieler
     {
         enum class Operation : uint8_t
         {
-            Add,
-            Substract,
-            Min,
-            Max
+            Add = D3D12_BLEND_OP_ADD,
+            Substract = D3D12_BLEND_OP_SUBTRACT,
+            Min = D3D12_BLEND_OP_MIN,
+            Max = D3D12_BLEND_OP_MAX
         };
 
         enum class ColorFactor : uint8_t
         {
-            Zero,
-            One,
-            SourceColor,
-            InverseSourceColor,
-            SourceAlpha,
-            InverseSourceAlpha,
-            DesctinationAlpha,
-            InverseDestinationAlpha,
-            DestinationColor,
-            InverseDestinationColor,
-            SourceAlphaSaturated,
-            BlendFactor,
-            InverseBlendFactor
+            Zero = D3D12_BLEND_ZERO,
+            One = D3D12_BLEND_ONE,
+            SourceColor = D3D12_BLEND_SRC_COLOR,
+            InverseSourceColor = D3D12_BLEND_INV_SRC_COLOR,
+            SourceAlpha = D3D12_BLEND_SRC_ALPHA,
+            InverseSourceAlpha = D3D12_BLEND_INV_SRC_ALPHA,
+            DesctinationAlpha = D3D12_BLEND_DEST_ALPHA,
+            InverseDestinationAlpha = D3D12_BLEND_INV_DEST_ALPHA,
+            DestinationColor = D3D12_BLEND_DEST_COLOR,
+            InverseDestinationColor = D3D12_BLEND_INV_DEST_COLOR,
+            SourceAlphaSaturated = D3D12_BLEND_SRC_ALPHA_SAT,
+            BlendFactor = D3D12_BLEND_BLEND_FACTOR,
+            InverseBlendFactor = D3D12_BLEND_INV_BLEND_FACTOR
         };
 
         enum class AlphaFactor : uint8_t
         {
-            Zero,
-            One,
-            SourceAlpha,
-            InverseSourceAlpha,
-            DesctinationAlpha,
-            InverseDestinationAlpha,
-            SourceAlphaSaturated,
-            BlendFactor,
-            InverseBlendFactor
+            Zero = D3D12_BLEND_ZERO,
+            One = D3D12_BLEND_ONE,
+            SourceAlpha = D3D12_BLEND_SRC_ALPHA,
+            InverseSourceAlpha = D3D12_BLEND_INV_SRC_ALPHA,
+            DesctinationAlpha = D3D12_BLEND_DEST_ALPHA,
+            InverseDestinationAlpha = D3D12_BLEND_INV_DEST_ALPHA,
+            SourceAlphaSaturated = D3D12_BLEND_SRC_ALPHA_SAT,
+            BlendFactor = D3D12_BLEND_BLEND_FACTOR,
+            InverseBlendFactor = D3D12_BLEND_INV_BLEND_FACTOR
         };
 
         enum class AlphaToCoverageState : bool

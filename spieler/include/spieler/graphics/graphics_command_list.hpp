@@ -1,23 +1,9 @@
 #pragma once
 
-#include "spieler/graphics/buffer.hpp"
+#include "spieler/graphics/resource.hpp"
 
 namespace spieler
 {
-
-    class Device;
-    class PipelineState;
-    class RootSignature;
-
-    class BufferResource;
-    class TextureResource;
-
-    class TextureShaderResourceView;
-    class TextureUnorderedAccessView;
-    class TextureRenderTargetView;
-    class TextureDepthStencilView;
-
-    struct TransitionResourceBarrier;
 
     struct Viewport
     {
@@ -40,20 +26,23 @@ namespace spieler
 	class GraphicsCommandList
 	{
     public:
-        GraphicsCommandList(Device& device);
+        SPIELER_NON_COPYABLE(GraphicsCommandList)
+        SPIELER_NON_MOVEABLE(GraphicsCommandList)
+        SPIELER_NAME_D3D12_OBJECT(m_D3D12GraphicsCommandList)
 
     public:
-        ID3D12GraphicsCommandList* GetDX12GraphicsCommandList() const { return m_DX12GraphicsCommandList.Get(); }
+        GraphicsCommandList(Device& device);
+        ~GraphicsCommandList();
+
+    public:
+        ID3D12GraphicsCommandList* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList; }
 
 	public:
         void Close();
         void Reset(const PipelineState* const pso = nullptr);
 
-        // UploadBuffer
-        uint64_t AllocateInUploadBuffer(uint64_t size, uint64_t alignment = 0);
-
         // Commands
-        void SetDescriptorHeap(const DescriptorHeap& descriptorHeap);
+        void SetDescriptorHeaps(const DescriptorManager& descriptorManager);
 
         void IASetVertexBuffer(const BufferResource* vertexBuffer);
         void IASetIndexBuffer(const BufferResource* indexBuffer);
@@ -71,21 +60,20 @@ namespace spieler
         void SetGraphicsRawConstantBuffer(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement = 0);
         void SetGraphicsRawShaderResource(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement = 0);
 
-        void SetGraphicsDescriptorTable(uint32_t rootParameterIndex, const TextureShaderResourceView& firstSRV);
-        void SetComputeDescriptorTable(uint32_t rootParameterIndex, const TextureShaderResourceView& firstSRV);
-        void SetComputeDescriptorTable(uint32_t rootParameterIndex, const TextureUnorderedAccessView& firstUAV);
+        void SetGraphicsDescriptorTable(uint32_t rootParameterIndex, const Descriptor& firstDescriptor);
+        void SetComputeDescriptorTable(uint32_t rootParameterIndex, const Descriptor& firstDescriptor);
 
-        void SetRenderTarget(const TextureRenderTargetView& rtv);
-        void SetRenderTarget(const TextureRenderTargetView& rtv, const TextureDepthStencilView& dsv);
+        void SetRenderTarget(const Descriptor& rtv);
+        void SetRenderTarget(const Descriptor& rtv, const Descriptor& dsv);
 
-        void ClearRenderTarget(const TextureRenderTargetView& rtv, const DirectX::XMFLOAT4& color);
-        void ClearDepthStencil(const TextureDepthStencilView& dsv, float depth, uint8_t stencil);
+        void ClearRenderTarget(const Descriptor& rtv, const DirectX::XMFLOAT4& color);
+        void ClearDepthStencil(const Descriptor& dsv, float depth, uint8_t stencil);
 
-        void SetResourceBarrier(const TransitionResourceBarrier& barrier);
+        void SetResourceBarrier(Resource& resource, Resource::State resourceStateAfter);
         void SetStencilReferenceValue(uint8_t referenceValue);
 
         void UploadToBuffer(BufferResource& buffer, const void* data, uint64_t size);
-        void UploadToTexture(TextureResource& texture, std::vector<SubresourceData>& subresources);
+        void UploadToTexture(TextureResource& texture, const std::vector<SubResourceData>& subResources);
         void CopyResource(Resource& to, Resource& from);
 
         void DrawVertexed(uint32_t vertexCount, uint32_t startVertexLocation, uint32_t instanceCount = 1);
@@ -93,9 +81,12 @@ namespace spieler
 
         void Dispatch(uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ);
 
+    private:
+        uint64_t AllocateInUploadBuffer(uint64_t size, uint64_t alignment = 0);
+
 	private:
-        ComPtr<ID3D12CommandAllocator> m_DX12CommandAllocator;
-        ComPtr<ID3D12GraphicsCommandList> m_DX12GraphicsCommandList;
+        ID3D12CommandAllocator* m_D3D12CommandAllocator{ nullptr };
+        ID3D12GraphicsCommandList* m_D3D12GraphicsCommandList{ nullptr };
 
         std::shared_ptr<BufferResource> m_UploadBuffer;
         uint64_t m_UploadBufferOffset{ 0 };

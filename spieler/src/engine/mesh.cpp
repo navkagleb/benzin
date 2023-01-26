@@ -46,7 +46,7 @@ namespace spieler
                 .ElementCount{ static_cast<uint32_t>(m_Vertices.size()) },
             };
 
-            m_VertexBuffer.SetBufferResource(spieler::BufferResource::Create(device, config));
+            m_VertexBuffer = device.CreateBufferResource(config);
         }
 
         // IndexBuffer
@@ -57,7 +57,7 @@ namespace spieler
                 .ElementCount{ static_cast<uint32_t>(m_Indices.size()) }
             };
 
-            m_IndexBuffer.SetBufferResource(spieler::BufferResource::Create(device, config));
+            m_IndexBuffer = device.CreateBufferResource(config);
         }
     }
 

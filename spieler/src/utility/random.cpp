@@ -5,22 +5,15 @@
 namespace spieler
 { 
 
-    static Random g_Instance;
-
-    Random& Random::GetInstance()
+    static const std::seed_seq g_SeedSequence
     {
-        return g_Instance;
-    }
+        std::random_device()(),
+        static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())
+    };
 
-    Random::Random()
+    std::mt19937_64 Random::ms_MersenneTwisterEngine
     {
-        const std::seed_seq seedSequence
-        {
-            std::random_device()(),
-            static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())
-        };
-
-        m_MersenneTwisterEngine = std::mt19937_64(seedSequence);
-    }
+        g_SeedSequence
+    };
 
 } // namespace spieler

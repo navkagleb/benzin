@@ -15,8 +15,8 @@ namespace spieler
 
         enum class WriteState : bool
         {
-            Disabled = false,
-            Enabled = true
+            Disabled = D3D12_DEPTH_WRITE_MASK_ZERO,
+            Enabled = D3D12_DEPTH_WRITE_MASK_ALL
         };
 
         TestState TestState{ TestState::Disabled };

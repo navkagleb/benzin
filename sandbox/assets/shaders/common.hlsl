@@ -11,7 +11,7 @@ struct PassData
     light::LightContainer Lights;
 };
 
-struct RenderItemData
+struct EntityData
 {
     float4x4 World;
     uint MaterialIndex;
@@ -31,7 +31,7 @@ struct MaterialData
 
 ConstantBuffer<PassData> g_Pass : register(b0);
 
-StructuredBuffer<RenderItemData> g_RenderItems : register(t1, space1);
+StructuredBuffer<EntityData> g_Entities : register(t1, space1);
 StructuredBuffer<MaterialData> g_Materials : register(t1, space2);
 
 TextureCube g_CubeMap : register(t0);

@@ -2,22 +2,18 @@
 
 #include "blur_pass.hpp"
 
-#include <third_party/magic_enum/magic_enum.hpp>
-
-#include <spieler/system/event_dispatcher.hpp>
-
-#include <spieler/graphics/resource_barrier.hpp>
+#include <spieler/graphics/resource_view_builder.hpp>
 
 namespace sandbox
 {
 
-    namespace _internal
+    namespace
     {
 
         constexpr int32_t g_ThreadPerGroupCount{ 256 };
         constexpr int32_t g_MaxBlurRadius{ 5 };
 
-        static std::vector<float> CalcGaussWeights(float sigma)
+        std::vector<float> CalcGaussWeights(float sigma)
         {
             const float twoSigma2{ 2.0f * sigma * sigma };
             const auto blurRadius{ static_cast<int32_t>(std::ceil(2.0f * sigma)) };
@@ -44,7 +40,7 @@ namespace sandbox
             return weights;
         }
 
-    } // namespace _internal
+    } // anonymous namespace
 
     BlurPass::BlurPass(spieler::Device& device, uint32_t width, uint32_t height)
     {
@@ -55,37 +51,20 @@ namespace sandbox
 
     void BlurPass::OnExecute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input, const BlurPassExecuteProps& props)
     {
-        const uint32_t width{ input.GetConfig().Width };
-        const uint32_t height{ input.GetConfig().Height };
+        const uint32_t width = input.GetConfig().Width;
+        const uint32_t height = input.GetConfig().Height;
 
-        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-        {
-            .Resource{ m_BlurMaps[0].GetTextureResource().get() },
-            .From{ spieler::ResourceState::Present },
-            .To{ spieler::ResourceState::CopyDestination }
-        });
+        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], spieler::Resource::State::CopyDestination);
+        graphicsCommandList.CopyResource(*m_BlurMaps[0], input);
 
-        graphicsCommandList.CopyResource(*m_BlurMaps[0].GetTextureResource(), input);
+        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], spieler::Resource::State::GenericRead);
+        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], spieler::Resource::State::UnorderedAccess);
 
-        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-        {
-            .Resource{ m_BlurMaps[0].GetTextureResource().get() },
-            .From{ spieler::ResourceState::CopyDestination },
-            .To{ spieler::ResourceState::GenericRead }
-        });
+        const std::vector<float> horizontalWeights = CalcGaussWeights(props.HorizontalBlurSigma);
+        const uint32_t horizontalBlurRadius = horizontalWeights.size() / 2;
 
-        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-        {
-            .Resource{ m_BlurMaps[1].GetTextureResource().get() },
-            .From{ spieler::ResourceState::Present },
-            .To{ spieler::ResourceState::UnorderedAccess }
-        });
-
-        const std::vector<float> horizontalWeights{ _internal::CalcGaussWeights(props.HorizontalBlurSigma) };
-        const auto horizontalBlurRadius{ static_cast<int32_t>(horizontalWeights.size() / 2) };
-
-        const std::vector<float> verticalWeights{ _internal::CalcGaussWeights(props.VerticalBlurSigma) };
-        const auto verticalBlurRadius{ static_cast<int32_t>(verticalWeights.size() / 2) };
+        const std::vector<float> verticalWeights = CalcGaussWeights(props.VerticalBlurSigma);
+        const uint32_t verticalBlurRadius = verticalWeights.size() / 2;
 
         for (uint32_t i = 0; i < props.BlurCount; ++i)
         {
@@ -97,25 +76,14 @@ namespace sandbox
                 graphicsCommandList.SetCompute32BitConstants(0, &horizontalBlurRadius, 1, 0);
                 graphicsCommandList.SetCompute32BitConstants(0, horizontalWeights.data(), horizontalWeights.size(), 1);
 
-                graphicsCommandList.SetComputeDescriptorTable(1, m_BlurMaps[0].GetView<spieler::TextureShaderResourceView>());
-                graphicsCommandList.SetComputeDescriptorTable(2, m_BlurMaps[1].GetView<spieler::TextureUnorderedAccessView>());
+                graphicsCommandList.SetComputeDescriptorTable(1, m_BlurMaps[0]->GetShaderResourceView());
+                graphicsCommandList.SetComputeDescriptorTable(2, m_BlurMaps[1]->GetUnorderedAccessView());
 
-                const auto xGroupCount{ width / _internal::g_ThreadPerGroupCount + 1 };
+                const uint32_t xGroupCount = width / g_ThreadPerGroupCount + 1;
                 graphicsCommandList.Dispatch(xGroupCount, height, 1);
 
-                graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-                {
-                    .Resource{ m_BlurMaps[0].GetTextureResource().get() },
-                    .From{ spieler::ResourceState::GenericRead },
-                    .To{ spieler::ResourceState::UnorderedAccess }
-                });
-
-                graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-                {
-                    .Resource{ m_BlurMaps[1].GetTextureResource().get() },
-                    .From{ spieler::ResourceState::UnorderedAccess },
-                    .To{ spieler::ResourceState::GenericRead }
-                });
+                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], spieler::Resource::State::UnorderedAccess);
+                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], spieler::Resource::State::GenericRead);
             }
             
             // Vertical Blur pass
@@ -126,41 +94,19 @@ namespace sandbox
                 graphicsCommandList.SetCompute32BitConstants(0, &verticalBlurRadius, 1, 0);
                 graphicsCommandList.SetCompute32BitConstants(0, verticalWeights.data(), verticalWeights.size(), 1);
 
-                graphicsCommandList.SetComputeDescriptorTable(1, m_BlurMaps[1].GetView<spieler::TextureShaderResourceView>());
-                graphicsCommandList.SetComputeDescriptorTable(2, m_BlurMaps[0].GetView<spieler::TextureUnorderedAccessView>());
+                graphicsCommandList.SetComputeDescriptorTable(1, m_BlurMaps[1]->GetShaderResourceView());
+                graphicsCommandList.SetComputeDescriptorTable(2, m_BlurMaps[0]->GetUnorderedAccessView());
 
-                const uint32_t yGroupCount{ height / _internal::g_ThreadPerGroupCount + 1 };
+                const uint32_t yGroupCount = height / g_ThreadPerGroupCount + 1;
                 graphicsCommandList.Dispatch(width, yGroupCount, 1);
 
-                graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-                {
-                    .Resource{ m_BlurMaps[0].GetTextureResource().get() },
-                    .From{ spieler::ResourceState::UnorderedAccess },
-                    .To{ spieler::ResourceState::GenericRead }
-                });
-
-                graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-                {
-                    .Resource{ m_BlurMaps[1].GetTextureResource().get() },
-                    .From{ spieler::ResourceState::GenericRead },
-                    .To{ spieler::ResourceState::UnorderedAccess }
-                });
+                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], spieler::Resource::State::GenericRead);
+                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], spieler::Resource::State::UnorderedAccess);
             }
         }
 
-        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-        {
-            .Resource{ m_BlurMaps[0].GetTextureResource().get() },
-            .From{ spieler::ResourceState::GenericRead },
-            .To{ spieler::ResourceState::Present }
-        });
-
-        graphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-        {
-            .Resource{ m_BlurMaps[1].GetTextureResource().get() },
-            .From{ spieler::ResourceState::UnorderedAccess },
-            .To{ spieler::ResourceState::Present }
-        });
+        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], spieler::Resource::State::Present);
+        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], spieler::Resource::State::Present);
     }
 
     void BlurPass::OnResize(spieler::Device& device, uint32_t width, uint32_t height)
@@ -172,18 +118,20 @@ namespace sandbox
     {
         const spieler::TextureResource::Config config
         {
+            .Type{ spieler::TextureResource::Type::Texture2D },
             .Width{ width },
             .Height{ height },
             .Format{ spieler::GraphicsFormat::R8G8B8A8UnsignedNorm },
-            .UsageFlags{ spieler::TextureResource::UsageFlags::UnorderedAccess },
+            .Flags{ spieler::TextureResource::Flags::BindAsUnorderedAccess },
         };
 
         for (size_t i = 0; i < m_BlurMaps.size(); ++i)
         {
-            auto& map{ m_BlurMaps[i] };
-            map.SetTextureResource(spieler::TextureResource::Create(device, config));
-            map.PushView<spieler::TextureShaderResourceView>(device);
-            map.PushView<spieler::TextureUnorderedAccessView>(device);
+            auto& blurMap = m_BlurMaps[i];
+            blurMap = device.CreateTextureResource(config);
+            blurMap->PushShaderResourceView(device.GetResourceViewBuilder().CreateShaderResourceView(*blurMap));
+            blurMap->PushUnorderedAccessView(device.GetResourceViewBuilder().CreateUnorderedAccessView(*blurMap));
+            blurMap->SetName("BlurMap" + std::to_string(i));
         }
     }
 
@@ -234,7 +182,7 @@ namespace sandbox
                 .EntryPoint{ "CS_HorizontalBlur" },
                 .Defines
                 {
-                    { "THREAD_PER_GROUP_COUNT", std::to_string(_internal::g_ThreadPerGroupCount) }
+                    { "THREAD_PER_GROUP_COUNT", std::to_string(g_ThreadPerGroupCount) }
                 }
             };
 
@@ -258,7 +206,7 @@ namespace sandbox
                 .EntryPoint{ "CS_VerticalBlur" },
                 .Defines
                 {
-                    { "THREAD_PER_GROUP_COUNT", std::to_string(_internal::g_ThreadPerGroupCount) }
+                    { "THREAD_PER_GROUP_COUNT", std::to_string(g_ThreadPerGroupCount) }
                 }
             };
 

@@ -17,7 +17,7 @@ namespace spieler
     class PipelineState
     {
     private:
-        SPIELER_NON_COPYABLE(PipelineState);
+        SPIELER_NON_COPYABLE(PipelineState)
 
     public:
         PipelineState() = default;
@@ -25,13 +25,13 @@ namespace spieler
         virtual ~PipelineState() = default;
 
     public:
-        ID3D12PipelineState* GetDX12PipelineState() const { return m_DX12PipelineState.Get(); }
+        ID3D12PipelineState* GetD3D12PipelineState() const { return m_D3D12PipelineState.Get(); }
 
     public:
         PipelineState& operator=(PipelineState&& other) noexcept;
 
     protected:
-        ComPtr<ID3D12PipelineState> m_DX12PipelineState;
+        ComPtr<ID3D12PipelineState> m_D3D12PipelineState;
     };
 
     class GraphicsPipelineState : public PipelineState
@@ -58,9 +58,6 @@ namespace spieler
     public:
         GraphicsPipelineState() = default;
         GraphicsPipelineState(Device& device, const Config& config);
-
-    private:
-        bool Init(Device& device, const Config& config);
     };
 
     class ComputePipelineState : public PipelineState
@@ -75,9 +72,6 @@ namespace spieler
     public:
         ComputePipelineState() = default;
         ComputePipelineState(Device& device, const Config& config);
-
-    private:
-        bool Init(Device& device, const Config& config);
     };
 
 } // namespace spieler

@@ -2,17 +2,13 @@
 
 #include "spieler/graphics/shader.hpp"
 
-#include <third_party/magic_enum/magic_enum.hpp>
-
-#include "spieler/core/common.hpp"
-
 namespace spieler
 {
 
-    namespace _internal
+    namespace
     {
 
-        static const char* GetShaderTarget(Shader::Type shaderType)
+        const char* GetShaderTarget(Shader::Type shaderType)
         {
             switch (shaderType)
             {
@@ -33,7 +29,7 @@ namespace spieler
             return nullptr;
         }
 
-    } // namespace _internal
+    } // anonymous namespace
 
     std::shared_ptr<Shader> Shader::Create(const Config& config)
     {
@@ -47,67 +43,61 @@ namespace spieler
 
     Shader::~Shader()
     {
-        if (m_DX12Shader)
-        {
-            m_DX12Shader->Release();
-        }
+        SafeReleaseD3D12Object(m_D3D12Shader);
     }
 
     const void* Shader::GetData() const
     {
-        SPIELER_ASSERT(m_DX12Shader);
+        SPIELER_ASSERT(m_D3D12Shader);
 
-        return m_DX12Shader->GetBufferPointer();
+        return m_D3D12Shader->GetBufferPointer();
     }
 
     uint64_t Shader::GetSize() const
     {
-        SPIELER_ASSERT(m_DX12Shader);
+        SPIELER_ASSERT(m_D3D12Shader);
 
-        return m_DX12Shader->GetBufferSize();
+        return m_D3D12Shader->GetBufferSize();
     }
 
     void Shader::CompileFromFile(Type type, const std::wstring_view& filepath, const std::string_view& entryPoint, const DefineContainer& defines)
     {
-        std::vector<D3D_SHADER_MACRO> dx12Defines;
+        std::vector<D3D_SHADER_MACRO> d3d12Defines;
 
         if (!defines.empty())
         {
-            dx12Defines.reserve(defines.size());
+            d3d12Defines.reserve(defines.size());
 
             for (const auto& [name, value] : defines)
             {
-                dx12Defines.emplace_back(name.data(), value.c_str());
+                d3d12Defines.emplace_back(name.data(), value.c_str());
             }
 
-            dx12Defines.emplace_back(nullptr, nullptr);
+            d3d12Defines.emplace_back(nullptr, nullptr);
         }
 
 #if defined(SPIELER_DEBUG)
-        const uint32_t flags{ D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION };
+        const uint32_t flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #else
-        const uint32_t flags{ 0 };
+        const uint32_t flags = 0;
 #endif
 
         ComPtr<ID3DBlob> error;
 
-        const char* target{ _internal::GetShaderTarget(type) };
+        const char* target = GetShaderTarget(type);
         SPIELER_ASSERT(target);
 
-        const ::HRESULT result
-        {
-            D3DCompileFromFile(
-                filepath.data(),
-                dx12Defines.data(),
-                D3D_COMPILE_STANDARD_FILE_INCLUDE,
-                entryPoint.data(),
-                target,
-                flags,
-                0,
-                &m_DX12Shader,
-                &error
-            )
-        };
+        const HRESULT result = D3DCompileFromFile(
+            filepath.data(),
+            d3d12Defines.data(),
+            D3D_COMPILE_STANDARD_FILE_INCLUDE,
+            entryPoint.data(),
+            target,
+            flags,
+            0,
+            &m_D3D12Shader,
+            &error
+        );
 
         if (error)
         {
@@ -115,11 +105,7 @@ namespace spieler
             return;
         }
 
-        if (FAILED(result))
-        {
-            SPIELER_CRITICAL("Failed to compile shader");
-            return;
-        }
+        SPIELER_D3D12_ASSERT(result);
     }
 
 } // namespace spieler

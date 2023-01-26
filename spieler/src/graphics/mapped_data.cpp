@@ -5,33 +5,20 @@
 namespace spieler
 {
 
-    MappedData::MappedData(Resource* resource, uint32_t subresourceIndex)
+    MappedData::MappedData(Resource& resource, uint32_t subresourceIndex)
         : m_Resource{ resource }
         , m_SubresourceIndex{ subresourceIndex }
     {
-        SPIELER_ASSERT(m_Resource->GetDX12Resource());
+        SPIELER_ASSERT(m_Resource.GetD3D12Resource());
 
-        const ::HRESULT result{ m_Resource->GetDX12Resource()->Map(m_SubresourceIndex, nullptr, reinterpret_cast<void**>(&m_Data)) };
-
-        SPIELER_ASSERT(SUCCEEDED(result));
-    }
-
-    MappedData::MappedData(const std::shared_ptr<Resource>& resource, uint32_t subresourceIndex)
-        : m_Resource{ resource.get() }
-        , m_SubresourceIndex{ subresourceIndex }
-    {
-        SPIELER_ASSERT(m_Resource->GetDX12Resource());
-
-        const ::HRESULT result{ m_Resource->GetDX12Resource()->Map(m_SubresourceIndex, nullptr, reinterpret_cast<void**>(&m_Data)) };
-
-        SPIELER_ASSERT(SUCCEEDED(result));
+        SPIELER_D3D12_ASSERT(m_Resource.GetD3D12Resource()->Map(m_SubresourceIndex, nullptr, reinterpret_cast<void**>(&m_Data)));
     }
 
     MappedData::~MappedData()
     {   
-        if (m_Resource->GetDX12Resource())
+        if (m_Resource.GetD3D12Resource())
         {
-            m_Resource->GetDX12Resource()->Unmap(m_SubresourceIndex, nullptr);
+            m_Resource.GetD3D12Resource()->Unmap(m_SubresourceIndex, nullptr);
         }
     }
 

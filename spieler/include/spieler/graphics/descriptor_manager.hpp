@@ -1,92 +1,89 @@
 #pragma once
 
+#include "spieler/graphics/common.hpp"
+
 namespace spieler
 {
 
     class Device;
-    class Context;
 
-    using CPUDescriptorHandle = uint64_t;
-    using GPUDescriptorHandle = uint64_t;
+    class Descriptor
+    {
+    public:
+        enum Type : uint8_t
+        {
+            RenderTargetView,
+            DepthStencilView,
+            ConstantBufferView,
+            ShaderResourceView,
+            UnorderedAccessView,
+            Sampler
+        };
 
-#define _SPIELER_CPU_DESCRIPTOR(ClassName)                                                      \
-    struct ClassName                                                                            \
-    {                                                                                           \
-        CPUDescriptorHandle CPU{ 0 };                                                           \
-                                                                                                \
-        explicit operator bool() const { return CPU != 0; }                                     \
+    public:
+        Descriptor() = default;
+        Descriptor(uint32_t heapIndex, uint64_t cpuHandle, uint64_t gpuHandle = 0);
+
+    public:
+        uint32_t GetHeapIndex() const { return m_HeapIndex; }
+        uint64_t GetCPUHandle() const { return m_CPUHandle; }
+        uint64_t GetGPUHandle() const { SPIELER_ASSERT(m_GPUHandle != 0);  return m_GPUHandle; }
+
+    public:
+        bool IsValid() const { return m_CPUHandle != 0; }
+
+    private:
+        uint32_t m_HeapIndex{ 0 };
+        uint64_t m_CPUHandle{ 0 };
+        uint64_t m_GPUHandle{ 0 };
     };
-
-#define _SPIELER_CPU_GPU_DESCRIPTOR(ClassName)                                                  \
-    struct ClassName                                                                            \
-    {                                                                                           \
-        uint32_t HeapIndex{ 0 };                                                                \
-        CPUDescriptorHandle CPU{ 0 };                                                           \
-        GPUDescriptorHandle GPU{ 0 };                                                           \
-                                                                                                \
-        explicit operator bool() const { return CPU != 0; }                                     \
-    };
-
-    _SPIELER_CPU_DESCRIPTOR(RTVDescriptor)
-    _SPIELER_CPU_DESCRIPTOR(DSVDescriptor)
-    _SPIELER_CPU_GPU_DESCRIPTOR(SamplerDescriptor)
-    _SPIELER_CPU_GPU_DESCRIPTOR(CBVDescriptor)
-    _SPIELER_CPU_GPU_DESCRIPTOR(SRVDescriptor)
-    _SPIELER_CPU_GPU_DESCRIPTOR(UAVDescriptor)
-
-//#undef _SPIELER_CPU_DESCRIPTOR
-//#undef _SPIELER_CPU_GPU_DESCRIPTOR
 
     class DescriptorHeap
     {
     public:
+        SPIELER_NON_COPYABLE(DescriptorHeap)
+        SPIELER_NON_MOVEABLE(DescriptorHeap)
+        SPIELER_NAME_D3D12_OBJECT(m_D3D12DescriptorHeap)
+
+    public:
         enum class Type : uint8_t
         {
-            CBV_SRV_UAV,
-            CBV = CBV_SRV_UAV,
-            SRV = CBV_SRV_UAV,
-            UAV = CBV_SRV_UAV,
-            Sampler,
-            RTV,
-            DSV,
+            RenderTargetView = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+            DepthStencilView = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+            Resource = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            Sampler = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER
         };
 
     public:
-        SPIELER_NON_COPYABLE(DescriptorHeap);
-
-    public:
-        friend class DescriptorManager;
-
-    public:
         DescriptorHeap() = default;
-
-    private:
         DescriptorHeap(Device& device, Type type, uint32_t descriptorCount);
-        DescriptorHeap(DescriptorHeap&& other) noexcept;
+        ~DescriptorHeap();
 
     public:
-        ID3D12DescriptorHeap* GetDX12DescriptorHeap() const { return m_DX12DescriptorHeap.Get(); }
-
-        uint32_t GetDescriptorSize() const { return m_DescriptorSize; }
-        uint32_t GetDescriptorCount() const { return m_DescriptorCount; }
+        ID3D12DescriptorHeap* GetD3D12DescriptorHeap() const { return m_D3D12DescriptorHeap; }
 
     public:
-        uint32_t AllocateIndex();
-        CPUDescriptorHandle AllocateCPU(uint32_t index);
-        GPUDescriptorHandle AllocateGPU(uint32_t index);
+        Descriptor AllocateDescriptor();
+        std::vector<Descriptor> AllocateDescriptors(uint32_t count);
+        void DeallocateDescriptor(const Descriptor& descriptor);
 
     private:
-        bool Init(Device& device, Type type, uint32_t descriptorCount);
+        uint32_t AllocateIndices(uint32_t count);
+        void DeallocateIndex(uint32_t index);
+
+        Descriptor GetDescriptor(uint32_t index) const;
+        uint64_t GetCPUHandle(uint32_t index) const;
+        uint64_t GetGPUHandle(uint32_t index) const;
 
     private:
-        DescriptorHeap& operator=(DescriptorHeap&& other) noexcept;
+        ID3D12DescriptorHeap* m_D3D12DescriptorHeap{ nullptr };
 
-    private:
-        ComPtr<ID3D12DescriptorHeap> m_DX12DescriptorHeap;
-
+        bool m_IsAccessableByShader{ false };
         uint32_t m_DescriptorSize{ 0 };
         uint32_t m_DescriptorCount{ 0 };
-        uint32_t m_Marker{ 0 }; // TODO: Replace with allocator
+
+        uint32_t m_Marker{ 0 };
+        std::vector<uint32_t> m_FreeIndices;
     };
 
     class DescriptorManager
@@ -94,35 +91,30 @@ namespace spieler
     public:
         struct Config
         {
-            uint32_t CBV_SRV_UAVDescriptorCount{ 0 };
+            uint32_t RenderTargetViewDescriptorCount{ 0 };
+            uint32_t DepthStencilViewDescriptorCount{ 0 };
+            uint32_t ResourceDescriptorCount{ 0 };
             uint32_t SamplerDescriptorCount{ 0 };
-            uint32_t RTVDescriptorCount{ 0 };
-            uint32_t DSVDescriptorCount{ 0 };
         };
 
     public:
-        SPIELER_NON_COPYABLE(DescriptorManager);
+        SPIELER_NON_COPYABLE(DescriptorManager)
+        SPIELER_NON_MOVEABLE(DescriptorManager)
 
     public:
-        DescriptorManager() = default;
         DescriptorManager(Device& device, const Config& config);
-        DescriptorManager(DescriptorManager&& other) noexcept;
 
     public:
-        const DescriptorHeap& GetDescriptorHeap(DescriptorHeap::Type type) const { return m_DescriptorHeaps.at(type); }
+        ID3D12DescriptorHeap* GetD3D12ResourceDescriptorHeap() const { return m_DescriptorHeaps.at(DescriptorHeap::Type::Resource)->GetD3D12DescriptorHeap(); }
+        ID3D12DescriptorHeap* GetD3D12SamplerDescriptorHeap() const { return m_DescriptorHeaps.at(DescriptorHeap::Type::Sampler)->GetD3D12DescriptorHeap(); }
 
-        RTVDescriptor AllocateRTV();
-        DSVDescriptor AllocateDSV();
-        SamplerDescriptor AllocateSampler();
-        CBVDescriptor AllocateCBV();
-        SRVDescriptor AllocateSRV();
-        UAVDescriptor AllocateUAV();
+        Descriptor AllocateDescriptor(Descriptor::Type descriptorType);
+        std::vector<Descriptor> AllocateDescriptors(Descriptor::Type descriptorType, uint32_t count);
 
-    public:
-        DescriptorManager& operator=(DescriptorManager&& other) noexcept;
+        void DeallocateDescriptor(Descriptor::Type descriptorType, const Descriptor& descriptor);
 
     private:
-        std::unordered_map<DescriptorHeap::Type, DescriptorHeap> m_DescriptorHeaps;
+        std::unordered_map<DescriptorHeap::Type, std::unique_ptr<DescriptorHeap>> m_DescriptorHeaps;
     };
 
 } // namespace spieler

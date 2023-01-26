@@ -8,10 +8,7 @@ namespace spieler
     class MappedData
     {
     public:
-        MappedData(Resource* resource, uint32_t subresourceIndex);
-        MappedData(const std::shared_ptr<Resource>& resource, uint32_t subresourceIndex);
-
-    public:
+        explicit MappedData(Resource& resource, uint32_t subresourceIndex = 0);
         ~MappedData();
 
     public:
@@ -20,7 +17,7 @@ namespace spieler
         std::byte* GetData() { return m_Data; }
 
     private:
-        Resource* m_Resource{ nullptr };
+        Resource& m_Resource;
         uint32_t m_SubresourceIndex{ 0 };
         std::byte* m_Data{ nullptr };
     };

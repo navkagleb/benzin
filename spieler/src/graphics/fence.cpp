@@ -11,7 +11,17 @@ namespace spieler
 
     Fence::Fence(Device& device)
     {
-        SPIELER_ASSERT(SUCCEEDED(device.GetDX12Device()->CreateFence(m_Value, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_DX12Fence))));
+        SPIELER_D3D12_ASSERT(device.GetD3D12Device()->CreateFence(m_Value, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_D3D12Fence)));
+
+        m_WaitEvent = CreateEvent(nullptr, false, false, nullptr);
+        SPIELER_ASSERT(m_WaitEvent);
+    }
+
+    Fence::~Fence()
+    {
+        ::CloseHandle(m_WaitEvent);
+
+        SafeReleaseD3D12Object(m_D3D12Fence);
     }
 
     void Fence::Increment()
@@ -21,17 +31,10 @@ namespace spieler
 
     void Fence::WaitForGPU() const
     {
-        if (m_DX12Fence->GetCompletedValue() < m_Value)
+        if (m_D3D12Fence->GetCompletedValue() < m_Value)
         {
-            // ::Handle is void*
-            const ::HANDLE eventHandle{ CreateEventEx(nullptr, nullptr, 0, EVENT_ALL_ACCESS) };
-
-            SPIELER_ASSERT(eventHandle);
-
-            m_DX12Fence->SetEventOnCompletion(m_Value, eventHandle);
-
-            ::WaitForSingleObject(eventHandle, INFINITE);
-            ::CloseHandle(eventHandle);
+            m_D3D12Fence->SetEventOnCompletion(m_Value, m_WaitEvent);
+            ::WaitForSingleObject(m_WaitEvent, INFINITE);
         }
     }
 

@@ -385,15 +385,15 @@ namespace sandbox
             context.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ backBuffer.GetTextureResource().get() },
-                .From{ spieler::ResourceState::Present },
-                .To{ spieler::ResourceState::RenderTarget }
+                .From{ spieler::Resource::State::Present },
+                .To{ spieler::Resource::State::RenderTarget }
             });
 
             context.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ m_DepthStencil.GetTextureResource().get() },
-                .From{ spieler::ResourceState::Present },
-                .To{ spieler::ResourceState::DepthWrite }
+                .From{ spieler::Resource::State::Present },
+                .To{ spieler::Resource::State::DepthWrite }
             });
 
             context.SetRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), m_DepthStencil.GetView<spieler::TextureDepthStencilView>());
@@ -459,15 +459,15 @@ namespace sandbox
             context.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ backBuffer.GetTextureResource().get() },
-                .From{ spieler::ResourceState::RenderTarget },
-                .To{ spieler::ResourceState::Present }
+                .From{ spieler::Resource::State::RenderTarget },
+                .To{ spieler::Resource::State::Present }
             });
 
             context.SetResourceBarrier(spieler::TransitionResourceBarrier
             {
                 .Resource{ m_DepthStencil.GetTextureResource().get() },
-                .From{ spieler::ResourceState::DepthWrite },
-                .To{ spieler::ResourceState::Present }
+                .From{ spieler::Resource::State::DepthWrite },
+                .To{ spieler::Resource::State::Present }
             });
         }
     }

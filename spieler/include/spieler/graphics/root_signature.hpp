@@ -6,12 +6,10 @@
 namespace spieler
 {
 
-    class Device;
-
     class RootParameter
     {
     private:
-        SPIELER_NON_COPYABLE(RootParameter);
+        SPIELER_NON_COPYABLE(RootParameter)
 
     private:
         friend class RootSignature;
@@ -95,7 +93,7 @@ namespace spieler
         RootParameter& operator=(RootParameter&& other) noexcept;
 
     private:
-        D3D12_ROOT_PARAMETER m_DX12RootParameter;
+        D3D12_ROOT_PARAMETER m_D3D12RootParameter;
     };
 
     class RootSignature
@@ -115,7 +113,7 @@ namespace spieler
         };
 
     private:
-        SPIELER_NON_COPYABLE(RootSignature);
+        SPIELER_NON_COPYABLE(RootSignature)
 
     public:
         RootSignature() = default;
@@ -123,16 +121,13 @@ namespace spieler
         RootSignature(RootSignature&& other) noexcept;
 
     public:
-        ID3D12RootSignature* GetDX12RootSignature() const { return m_DX12RootSignature.Get(); }
-
-    private:
-        bool Init(class Device& device, const Config& config);
+        ID3D12RootSignature* GetD3D12RootSignature() const { return m_D3D12RootSignature.Get(); }
 
     public:
         RootSignature& operator=(RootSignature&& other) noexcept;
 
     private:
-        ComPtr<ID3D12RootSignature> m_DX12RootSignature;
+        ComPtr<ID3D12RootSignature> m_D3D12RootSignature;
     };
 
 

@@ -15,12 +15,12 @@ struct VS_OUTPUT
 
 VS_OUTPUT VS_Main(VS_INPUT input, uint instanceID : SV_InstanceID)
 {
-    const RenderItemData renderItemData = g_RenderItems[instanceID];
+    const EntityData entityData = g_Entities[instanceID];
 
     VS_OUTPUT output = (VS_OUTPUT)0;
     output.PositionL = input.PositionL;
 
-    float4 positionW = mul(float4(input.PositionL, 1.0f), renderItemData.World);
+    float4 positionW = mul(float4(input.PositionL, 1.0f), entityData.World);
     positionW.xyz += g_Pass.CameraPositionW;
 
     output.PositionH = mul(positionW, g_Pass.ViewProjection).xyww;

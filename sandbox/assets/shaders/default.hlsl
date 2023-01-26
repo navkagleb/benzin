@@ -21,16 +21,16 @@ struct VS_OUTPUT
 
 VS_OUTPUT VS_Main(VS_INPUT input, uint instanceID : SV_InstanceID)
 {
-    const RenderItemData renderItemData = g_RenderItems[instanceID];
-    const MaterialData materialData = g_Materials[renderItemData.MaterialIndex];
+    const EntityData entityData = g_Entities[instanceID];
+    const MaterialData materialData = g_Materials[entityData.MaterialIndex];
 
     VS_OUTPUT output = (VS_OUTPUT)0;
-    output.PositionW = mul(float4(input.Position, 1.0f), renderItemData.World).xyz;
-    output.PositionH = mul(mul(float4(input.Position, 1.0f), renderItemData.World), g_Pass.ViewProjection);
-    output.NormalW = mul(input.Normal, (float3x3)renderItemData.World);
-    output.TangentW = mul(input.Tangent, (float3x3)renderItemData.World);
+    output.PositionW = mul(float4(input.Position, 1.0f), entityData.World).xyz;
+    output.PositionH = mul(mul(float4(input.Position, 1.0f), entityData.World), g_Pass.ViewProjection);
+    output.NormalW = mul(input.Normal, (float3x3)entityData.World);
+    output.TangentW = mul(input.Tangent, (float3x3)entityData.World);
     output.TexCoord = mul(float4(input.TexCoord, 0.0f, 1.0f), materialData.Transform).xy;
-    output.MaterialIndex = renderItemData.MaterialIndex;
+    output.MaterialIndex = entityData.MaterialIndex;
 
     return output;
 }

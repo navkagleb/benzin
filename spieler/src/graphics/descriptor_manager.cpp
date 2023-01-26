@@ -2,78 +2,162 @@
 
 #include "spieler/graphics/descriptor_manager.hpp"
 
-#include "spieler/core/common.hpp"
+#include <third_party/magic_enum/magic_enum.hpp>
 
 #include "spieler/graphics/device.hpp"
 
-#include "platform/dx12/dx12_common.hpp"
-
 namespace spieler
 {
-    
+ 
+    namespace
+    {
+
+        constexpr DescriptorHeap::Type GetDescriptorHeapTypeFromDescriptorType(Descriptor::Type descripitorType)
+        {
+            switch (descripitorType)
+            {
+                case Descriptor::Type::RenderTargetView: return DescriptorHeap::Type::RenderTargetView;
+                case Descriptor::Type::DepthStencilView: return DescriptorHeap::Type::DepthStencilView;
+                case Descriptor::Type::ConstantBufferView:
+                case Descriptor::Type::ShaderResourceView:
+                case Descriptor::Type::UnorderedAccessView: return DescriptorHeap::Type::Resource;
+                case Descriptor::Type::Sampler: return DescriptorHeap::Type::Sampler;
+                default: break;
+            }
+
+            SPIELER_ASSERT(false);
+        }
+
+    } // anonymous namespace
+
+    //////////////////////////////////////////////////////////////////////////
+    /// Descriptor
+    //////////////////////////////////////////////////////////////////////////
+    Descriptor::Descriptor(uint32_t heapIndex, uint64_t cpuHandle, uint64_t gpuHandle)
+        : m_HeapIndex{ heapIndex }
+        , m_CPUHandle{ cpuHandle }
+        , m_GPUHandle{ gpuHandle }
+    {}
+
     //////////////////////////////////////////////////////////////////////////
     /// DescriptorHeap
     //////////////////////////////////////////////////////////////////////////
     DescriptorHeap::DescriptorHeap(Device& device, Type type, std::uint32_t descriptorCount)
     {
-        SPIELER_ASSERT(Init(device, type, descriptorCount));
-    }
+        m_IsAccessableByShader = type == Type::Sampler || type == Type::Resource;
 
-    DescriptorHeap::DescriptorHeap(DescriptorHeap&& other) noexcept
-        : m_DX12DescriptorHeap{ std::exchange(other.m_DX12DescriptorHeap, nullptr) }
-        , m_DescriptorSize{ std::exchange(other.m_DescriptorSize, 0) }
-        , m_DescriptorCount{ std::exchange(other.m_DescriptorCount, 0) }
-        , m_Marker{ std::exchange(other.m_Marker, 0) }
-    {}
-
-    uint32_t DescriptorHeap::AllocateIndex()
-    {
-        SPIELER_ASSERT(m_Marker + 1 <= m_DescriptorCount);
-
-        return m_Marker++;
-    }
-
-    CPUDescriptorHandle DescriptorHeap::AllocateCPU(uint32_t index)
-    {
-        return m_DX12DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
-    }
-
-    GPUDescriptorHandle DescriptorHeap::AllocateGPU(uint32_t index)
-    {
-        return m_DX12DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
-    }
-
-    bool DescriptorHeap::Init(Device& device, Type type, uint32_t descriptorCount)
-    {
-        const D3D12_DESCRIPTOR_HEAP_DESC desc
+        const D3D12_DESCRIPTOR_HEAP_DESC d3d12DescriptorHeapDesc
         {
-            .Type{ dx12::Convert(type) },
+            .Type{ static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(type) },
             .NumDescriptors{ descriptorCount },
-            .Flags{ type == Type::Sampler || type == Type::CBV_SRV_UAV ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE },
+            .Flags{ m_IsAccessableByShader ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE },
             .NodeMask{ 0 }
         };
 
-        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_DX12DescriptorHeap)));
+        SPIELER_D3D12_ASSERT(device.GetD3D12Device()->CreateDescriptorHeap(&d3d12DescriptorHeapDesc, IID_PPV_ARGS(&m_D3D12DescriptorHeap)));
 
         m_DescriptorCount = descriptorCount;
-        m_DescriptorSize = device.GetDX12Device()->GetDescriptorHandleIncrementSize(desc.Type);
+        m_DescriptorSize = device.GetD3D12Device()->GetDescriptorHandleIncrementSize(d3d12DescriptorHeapDesc.Type);
 
-        return true;
+        SetName("DescriptorHeap_" + std::string{ magic_enum::enum_name(type) });
+
+        SPIELER_INFO("{} created", GetName());
     }
 
-    DescriptorHeap& DescriptorHeap::operator=(DescriptorHeap&& other) noexcept
+    DescriptorHeap::~DescriptorHeap()
     {
-        if (this == &other)
+        const std::string name = GetName();
+
+        SafeReleaseD3D12Object(m_D3D12DescriptorHeap);
+
+        SPIELER_INFO("{} destroyed", name);
+    }
+
+    Descriptor DescriptorHeap::AllocateDescriptor()
+    {
+        const uint32_t index = AllocateIndices(1);
+
+        return GetDescriptor(index);
+    }
+
+    std::vector<Descriptor> DescriptorHeap::AllocateDescriptors(uint32_t count)
+    {
+        const uint32_t beginIndex = AllocateIndices(count);
+
+        std::vector<Descriptor> result;
+        result.reserve(count);
+
+        for (uint32_t i = 0; i < count; ++i)
         {
-            return *this;
+            result.push_back(GetDescriptor(beginIndex + i));
         }
 
-        m_DX12DescriptorHeap = std::exchange(other.m_DX12DescriptorHeap, nullptr);
-        m_DescriptorSize = std::exchange(other.m_DescriptorSize, 0);
-        m_DescriptorCount = std::exchange(other.m_DescriptorCount, 0);
-        m_Marker = std::exchange(other.m_Marker, 0);
+        return result;
+    }
 
-        return *this;
+    void DescriptorHeap::DeallocateDescriptor(const Descriptor& descriptor)
+    {
+        DeallocateIndex(descriptor.GetHeapIndex());
+    }
+
+    uint32_t DescriptorHeap::AllocateIndices(uint32_t count)
+    {
+        uint32_t beginIndex = 0;
+
+        if (m_FreeIndices.size() >= count)
+        {
+            beginIndex = m_FreeIndices.front();
+
+            for (size_t i = 0; i < count - 1; ++i)
+            {
+                if (i - beginIndex == count)
+                {
+                    m_FreeIndices.erase(m_FreeIndices.begin() + beginIndex, m_FreeIndices.begin() + i);
+
+                    return beginIndex;
+                }
+
+                if (m_FreeIndices[i] + 1 != m_FreeIndices[i + 1])
+                {
+                    beginIndex = m_FreeIndices[i + 1];
+                    continue;
+                }
+            }
+        }
+
+        beginIndex = m_Marker;
+        m_Marker += count;
+
+        return beginIndex;
+    }
+
+    void DescriptorHeap::DeallocateIndex(uint32_t index)
+    {
+        if (std::find(m_FreeIndices.begin(), m_FreeIndices.end(), index) == m_FreeIndices.end())
+        {
+            m_FreeIndices.push_back(index);
+            std::sort(m_FreeIndices.begin(), m_FreeIndices.end());
+        }
+    }
+
+    Descriptor DescriptorHeap::GetDescriptor(uint32_t index) const
+    {
+        return Descriptor
+        {
+            index,
+            GetCPUHandle(index),
+            m_IsAccessableByShader ? GetGPUHandle(index) : 0
+        };
+    }
+
+    uint64_t DescriptorHeap::GetCPUHandle(uint32_t index) const
+    {
+        return m_D3D12DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
+    }
+
+    uint64_t DescriptorHeap::GetGPUHandle(uint32_t index) const
+    {
+        return m_D3D12DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -81,102 +165,35 @@ namespace spieler
     //////////////////////////////////////////////////////////////////////////
     DescriptorManager::DescriptorManager(Device& device, const Config& config)
     {
-        m_DescriptorHeaps[DescriptorHeap::Type::CBV_SRV_UAV] = DescriptorHeap{ device, DescriptorHeap::Type::CBV_SRV_UAV, config.CBV_SRV_UAVDescriptorCount };
-        m_DescriptorHeaps[DescriptorHeap::Type::Sampler] = DescriptorHeap{ device, DescriptorHeap::Type::Sampler, config.SamplerDescriptorCount };
-        m_DescriptorHeaps[DescriptorHeap::Type::RTV] = DescriptorHeap{ device, DescriptorHeap::Type::RTV, config.RTVDescriptorCount };
-        m_DescriptorHeaps[DescriptorHeap::Type::DSV] = DescriptorHeap{ device, DescriptorHeap::Type::DSV, config.DSVDescriptorCount };
-    }
-
-    DescriptorManager::DescriptorManager(DescriptorManager&& other) noexcept
-        : m_DescriptorHeaps{ std::exchange(other.m_DescriptorHeaps, {}) }
-    {}
-
-    RTVDescriptor DescriptorManager::AllocateRTV()
-    {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::RTV] };
-
-        return RTVDescriptor
+        const auto& createDescriptorHeap = [this, &device](DescriptorHeap::Type type, uint32_t descriptorCount)
         {
-            .CPU{ heap.AllocateCPU(heap.AllocateIndex()) }
+            m_DescriptorHeaps[type] = std::make_unique<DescriptorHeap>(device, type, descriptorCount);
         };
+
+        createDescriptorHeap(DescriptorHeap::Type::RenderTargetView, config.RenderTargetViewDescriptorCount);
+        createDescriptorHeap(DescriptorHeap::Type::DepthStencilView, config.DepthStencilViewDescriptorCount);
+        createDescriptorHeap(DescriptorHeap::Type::Resource, config.ResourceDescriptorCount);
+        createDescriptorHeap(DescriptorHeap::Type::Sampler, config.SamplerDescriptorCount);
     }
 
-    DSVDescriptor DescriptorManager::AllocateDSV()
+    Descriptor DescriptorManager::AllocateDescriptor(Descriptor::Type descriptorType)
     {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::DSV] };
-
-        return DSVDescriptor
-        {
-            .CPU{ heap.AllocateCPU(heap.AllocateIndex()) }
-        };
+        DescriptorHeap& descriptorHeap = *m_DescriptorHeaps[GetDescriptorHeapTypeFromDescriptorType(descriptorType)];
+        
+        return descriptorHeap.AllocateDescriptor();
     }
 
-    SamplerDescriptor DescriptorManager::AllocateSampler()
+    std::vector<Descriptor> DescriptorManager::AllocateDescriptors(Descriptor::Type descriptorType, uint32_t count)
     {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::Sampler] };
+        DescriptorHeap& descriptorHeap = *m_DescriptorHeaps[GetDescriptorHeapTypeFromDescriptorType(descriptorType)];
 
-        const uint32_t heapIndex{ heap.AllocateIndex() };
-
-        return SamplerDescriptor
-        {
-            .HeapIndex{ heapIndex },
-            .CPU{ heap.AllocateCPU(heapIndex) },
-            .GPU{ heap.AllocateGPU(heapIndex) }
-        };
+        return descriptorHeap.AllocateDescriptors(count);
     }
 
-    CBVDescriptor DescriptorManager::AllocateCBV()
+    void DescriptorManager::DeallocateDescriptor(Descriptor::Type descriptorType, const Descriptor& descriptor)
     {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::CBV] };
-
-        const uint32_t heapIndex{ heap.AllocateIndex() };
-
-        return CBVDescriptor
-        {
-            .HeapIndex{ heapIndex },
-            .CPU{ heap.AllocateCPU(heapIndex) },
-            .GPU{ heap.AllocateGPU(heapIndex) }
-        };
-    }
-
-    SRVDescriptor DescriptorManager::AllocateSRV()
-    {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::SRV] };
-
-        const uint32_t heapIndex{ heap.AllocateIndex() };
-
-        return SRVDescriptor
-        {
-            .HeapIndex{ heapIndex },
-            .CPU{ heap.AllocateCPU(heapIndex) },
-            .GPU{ heap.AllocateGPU(heapIndex) }
-        };
-    }
-
-    UAVDescriptor DescriptorManager::AllocateUAV()
-    {
-        DescriptorHeap& heap{ m_DescriptorHeaps[DescriptorHeap::Type::UAV] };
-
-        const uint32_t heapIndex{ heap.AllocateIndex() };
-
-        return UAVDescriptor
-        {
-            .HeapIndex{ heapIndex },
-            .CPU{ heap.AllocateCPU(heapIndex) },
-            .GPU{ heap.AllocateGPU(heapIndex) }
-        };
-    }
-
-    DescriptorManager& DescriptorManager::operator=(DescriptorManager&& other) noexcept
-    {
-        if (this == &other)
-        {
-            return *this;
-        }
-
-        m_DescriptorHeaps = std::exchange(other.m_DescriptorHeaps, {});
-
-        return *this;
+        DescriptorHeap& descriptorHeap = *m_DescriptorHeaps[GetDescriptorHeapTypeFromDescriptorType(descriptorType)];
+        descriptorHeap.DeallocateDescriptor(descriptor);
     }
 
 } // namespace spieler

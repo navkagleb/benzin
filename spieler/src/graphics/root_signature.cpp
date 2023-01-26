@@ -7,15 +7,13 @@
 #include "spieler/graphics/device.hpp"
 #include "spieler/graphics/sampler.hpp"
 
-#include "platform/dx12/dx12_common.hpp"
-
 namespace spieler
 {
 
-    namespace _internal
+    namespace
     {
 
-        static D3D12_FILTER ConvertToD3D12TextureFilter(const TextureFilter& filter)
+        D3D12_FILTER ConvertToD3D12TextureFilter(const TextureFilter& filter)
         {
             const TextureFilterType minification{ filter.Minification };
             const TextureFilterType magnification{ filter.Magnification };
@@ -59,7 +57,7 @@ namespace spieler
             return d3d12Filter;
         }
 
-        static D3D12_ROOT_PARAMETER_TYPE ConvertToD3D12DescriptorType(RootParameter::DescriptorType descriptorType)
+        D3D12_ROOT_PARAMETER_TYPE ConvertToD3D12DescriptorType(RootParameter::DescriptorType descriptorType)
         {
             switch (descriptorType)
             {
@@ -77,7 +75,7 @@ namespace spieler
             return D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         }
 
-        static D3D12_DESCRIPTOR_RANGE_TYPE ConvertToD3D12RangeType(RootParameter::DescriptorRangeType descriptorRangeType)
+        D3D12_DESCRIPTOR_RANGE_TYPE ConvertToD3D12RangeType(RootParameter::DescriptorRangeType descriptorRangeType)
         {
             switch (descriptorRangeType)
             {
@@ -95,7 +93,7 @@ namespace spieler
             return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         }
 
-        static std::vector<D3D12_STATIC_SAMPLER_DESC> ConvertToD3D12StaticSamplers(const std::vector<StaticSampler>& staticSamplers)
+        std::vector<D3D12_STATIC_SAMPLER_DESC> ConvertToD3D12StaticSamplers(const std::vector<StaticSampler>& staticSamplers)
         {
             if (staticSamplers.empty())
             {
@@ -121,14 +119,14 @@ namespace spieler
                     .MaxLOD{ D3D12_FLOAT32_MAX },
                     .ShaderRegister{ static_cast<UINT>(staticSampler.ShaderRegister) },
                     .RegisterSpace{ static_cast<UINT>(staticSampler.RegisterSpace) },
-                    .ShaderVisibility{ dx12::Convert(staticSampler.ShaderVisibility) }
+                    .ShaderVisibility{ static_cast<D3D12_SHADER_VISIBILITY>(staticSampler.ShaderVisibility) }
                 });
             }
 
             return d3d12StaticSamplers;
         }
 
-    } // namespace _internal
+    } // anonymous namespace
 
     //////////////////////////////////////////////////////////////////////////
     /// RootParameter
@@ -160,45 +158,45 @@ namespace spieler
 
     RootParameter::~RootParameter()
     {
-        if (m_DX12RootParameter.ParameterType == D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
+        if (m_D3D12RootParameter.ParameterType == D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
         {
-            delete[] m_DX12RootParameter.DescriptorTable.pDescriptorRanges;
+            delete[] m_D3D12RootParameter.DescriptorTable.pDescriptorRanges;
         }
     }
 
     void RootParameter::InitAs32BitConstants(const _32BitConstants& constants)
     {
-        m_DX12RootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        m_DX12RootParameter.ShaderVisibility = dx12::Convert(constants.ShaderVisibility);
+        m_D3D12RootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        m_D3D12RootParameter.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(constants.ShaderVisibility);
 
-        m_DX12RootParameter.Constants.Num32BitValues = constants.Count;
-        m_DX12RootParameter.Constants.ShaderRegister = constants.ShaderRegister.Register;
-        m_DX12RootParameter.Constants.RegisterSpace = constants.ShaderRegister.Space;
+        m_D3D12RootParameter.Constants.Num32BitValues = constants.Count;
+        m_D3D12RootParameter.Constants.ShaderRegister = constants.ShaderRegister.Register;
+        m_D3D12RootParameter.Constants.RegisterSpace = constants.ShaderRegister.Space;
     }
 
     void RootParameter::InitAsDescriptor(const Descriptor& descriptor)
     {
-        m_DX12RootParameter.ParameterType = _internal::ConvertToD3D12DescriptorType(descriptor.Type);
-        m_DX12RootParameter.ShaderVisibility = dx12::Convert(descriptor.ShaderVisibility);
+        m_D3D12RootParameter.ParameterType = ConvertToD3D12DescriptorType(descriptor.Type);
+        m_D3D12RootParameter.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(descriptor.ShaderVisibility);
 
-        m_DX12RootParameter.Descriptor.ShaderRegister = descriptor.ShaderRegister.Register;
-        m_DX12RootParameter.Descriptor.RegisterSpace = descriptor.ShaderRegister.Space;
+        m_D3D12RootParameter.Descriptor.ShaderRegister = descriptor.ShaderRegister.Register;
+        m_D3D12RootParameter.Descriptor.RegisterSpace = descriptor.ShaderRegister.Space;
     }
 
     void RootParameter::InitAsDescriptorTable(const DescriptorTable& descriptorTable)
     {
-        m_DX12RootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        m_DX12RootParameter.ShaderVisibility = dx12::Convert(descriptorTable.ShaderVisibility);
+        m_D3D12RootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        m_D3D12RootParameter.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(descriptorTable.ShaderVisibility);
 
-        m_DX12RootParameter.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(descriptorTable.Ranges.size());
-        m_DX12RootParameter.DescriptorTable.pDescriptorRanges = new D3D12_DESCRIPTOR_RANGE[descriptorTable.Ranges.size()];
+        m_D3D12RootParameter.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(descriptorTable.Ranges.size());
+        m_D3D12RootParameter.DescriptorTable.pDescriptorRanges = new D3D12_DESCRIPTOR_RANGE[descriptorTable.Ranges.size()];
 
         for (size_t i = 0; i < descriptorTable.Ranges.size(); ++i)
         {
-            const DescriptorRange& range{ descriptorTable.Ranges[i] };
-            D3D12_DESCRIPTOR_RANGE& d3d12Range{ const_cast<D3D12_DESCRIPTOR_RANGE&>(m_DX12RootParameter.DescriptorTable.pDescriptorRanges[i]) };
+            const DescriptorRange& range = descriptorTable.Ranges[i];
+            D3D12_DESCRIPTOR_RANGE& d3d12Range = const_cast<D3D12_DESCRIPTOR_RANGE&>(m_D3D12RootParameter.DescriptorTable.pDescriptorRanges[i]);
 
-            d3d12Range.RangeType = _internal::ConvertToD3D12RangeType(range.Type);
+            d3d12Range.RangeType = ConvertToD3D12RangeType(range.Type);
             d3d12Range.NumDescriptors = range.DescriptorCount;
             d3d12Range.BaseShaderRegister = range.BaseShaderRegister.Register;
             d3d12Range.RegisterSpace = range.BaseShaderRegister.Space;
@@ -217,21 +215,21 @@ namespace spieler
 
     void RootParameter::Swap(RootParameter&& other) noexcept
     {
-        m_DX12RootParameter.ParameterType = other.m_DX12RootParameter.ParameterType;
-        m_DX12RootParameter.ShaderVisibility = other.m_DX12RootParameter.ShaderVisibility;
+        m_D3D12RootParameter.ParameterType = other.m_D3D12RootParameter.ParameterType;
+        m_D3D12RootParameter.ShaderVisibility = other.m_D3D12RootParameter.ShaderVisibility;
 
-        switch (m_DX12RootParameter.ParameterType)
+        switch (m_D3D12RootParameter.ParameterType)
         {
             case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
             {
-                m_DX12RootParameter.DescriptorTable.NumDescriptorRanges = std::exchange(other.m_DX12RootParameter.DescriptorTable.NumDescriptorRanges, 0);
-                m_DX12RootParameter.DescriptorTable.pDescriptorRanges = std::exchange(other.m_DX12RootParameter.DescriptorTable.pDescriptorRanges, nullptr);
+                m_D3D12RootParameter.DescriptorTable.NumDescriptorRanges = std::exchange(other.m_D3D12RootParameter.DescriptorTable.NumDescriptorRanges, 0);
+                m_D3D12RootParameter.DescriptorTable.pDescriptorRanges = std::exchange(other.m_D3D12RootParameter.DescriptorTable.pDescriptorRanges, nullptr);
 
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
             {
-                m_DX12RootParameter.Constants = other.m_DX12RootParameter.Constants;
+                m_D3D12RootParameter.Constants = other.m_D3D12RootParameter.Constants;
 
                 break;
             }
@@ -239,7 +237,7 @@ namespace spieler
             case D3D12_ROOT_PARAMETER_TYPE_SRV:
             case D3D12_ROOT_PARAMETER_TYPE_UAV:
             {
-                m_DX12RootParameter.Descriptor = other.m_DX12RootParameter.Descriptor;
+                m_D3D12RootParameter.Descriptor = other.m_D3D12RootParameter.Descriptor;
 
                 break;
             }
@@ -263,58 +261,48 @@ namespace spieler
     //////////////////////////////////////////////////////////////////////////
     RootSignature::RootSignature(Device& device, const Config& config)
     {
-        SPIELER_ASSERT(Init(device, config));
-    }
-
-    RootSignature::RootSignature(RootSignature&& other) noexcept
-        : m_DX12RootSignature{ std::exchange(other.m_DX12RootSignature, nullptr) }
-    {}
-
-    bool RootSignature::Init(Device& device, const Config& config)
-    {
         SPIELER_ASSERT(!config.RootParameters.empty());
 
-        const std::vector<D3D12_STATIC_SAMPLER_DESC> dx12StaticSamplers{ _internal::ConvertToD3D12StaticSamplers(config.StaticSamplers) };
+        const std::vector<D3D12_STATIC_SAMPLER_DESC> d3d12StaticSamplers = ConvertToD3D12StaticSamplers(config.StaticSamplers);
 
         const D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc
         {
             .NumParameters{ static_cast<UINT>(config.RootParameters.size()) },
             .pParameters{ reinterpret_cast<const D3D12_ROOT_PARAMETER*>(config.RootParameters.data()) },
-            .NumStaticSamplers{ static_cast<UINT>(dx12StaticSamplers.size()) },
-            .pStaticSamplers{ dx12StaticSamplers.data() },
+            .NumStaticSamplers{ static_cast<UINT>(d3d12StaticSamplers.size()) },
+            .pStaticSamplers{ d3d12StaticSamplers.data() },
             .Flags{ D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT }
         };
 
         ComPtr<ID3DBlob> serializedRootSignature;
         ComPtr<ID3DBlob> error;
 
-        const ::HRESULT result
-        {
-            D3D12SerializeRootSignature(
-                &rootSignatureDesc,
-                D3D_ROOT_SIGNATURE_VERSION_1,
-                &serializedRootSignature,
-                &error
-            )
-        };
+        const HRESULT result = D3D12SerializeRootSignature(
+            &rootSignatureDesc,
+            D3D_ROOT_SIGNATURE_VERSION_1,
+            &serializedRootSignature,
+            &error
+        );
 
         if (error)
         {
             SPIELER_CRITICAL("{}", reinterpret_cast<const char*>(error->GetBufferPointer()));
-            return false;
+            return;
         }
 
-        SPIELER_RETURN_IF_FAILED(result);
+        SPIELER_D3D12_ASSERT(result);
 
-        SPIELER_RETURN_IF_FAILED(device.GetDX12Device()->CreateRootSignature(
+        SPIELER_D3D12_ASSERT(device.GetD3D12Device()->CreateRootSignature(
             0,
             serializedRootSignature->GetBufferPointer(),
             serializedRootSignature->GetBufferSize(),
-            IID_PPV_ARGS(&m_DX12RootSignature)
+            IID_PPV_ARGS(&m_D3D12RootSignature)
         ));
-
-        return true;
     }
+
+    RootSignature::RootSignature(RootSignature&& other) noexcept
+        : m_D3D12RootSignature{ std::exchange(other.m_D3D12RootSignature, nullptr) }
+    {}
 
     RootSignature& RootSignature::operator=(RootSignature&& other) noexcept
     {
@@ -323,7 +311,7 @@ namespace spieler
             return *this;
         }
 
-        m_DX12RootSignature = std::exchange(other.m_DX12RootSignature, nullptr);
+        m_D3D12RootSignature = std::exchange(other.m_D3D12RootSignature, nullptr);
 
         return *this;
     }

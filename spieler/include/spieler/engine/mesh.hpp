@@ -28,11 +28,8 @@ namespace spieler
         const std::vector<Vertex>& GetVertices() const { return m_Vertices; }
         const std::vector<uint32_t>& GetIndices() const { return m_Indices; }
 
-        Buffer& GetVertexBuffer() { return m_VertexBuffer; }
-        const Buffer& GetVertexBuffer() const { return m_VertexBuffer; }
-
-        Buffer& GetIndexBuffer() { return m_IndexBuffer; }
-        const Buffer& GetIndexBuffer() const { return m_IndexBuffer; }
+        const std::shared_ptr<BufferResource>& GetVertexBuffer() const { return m_VertexBuffer; }
+        const std::shared_ptr<BufferResource>& GetIndexBuffer() const { return m_IndexBuffer; }
 
         const SubMesh& GetSubMesh(const std::string& name) const { return m_SubMeshes.at(name); }
         void SetSubMeshes(Device& device, const std::unordered_map<std::string, MeshData>& subMeshes);
@@ -41,8 +38,8 @@ namespace spieler
         std::vector<Vertex> m_Vertices;
         std::vector<uint32_t> m_Indices;
 
-        Buffer m_VertexBuffer;
-        Buffer m_IndexBuffer;
+        std::shared_ptr<BufferResource> m_VertexBuffer;
+        std::shared_ptr<BufferResource> m_IndexBuffer;
 
         std::unordered_map<std::string, SubMesh> m_SubMeshes;
     };

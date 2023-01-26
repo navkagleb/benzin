@@ -36,7 +36,7 @@
 #include <span>
 
 #include "spieler/config/win64_includes.hpp"
-#include "spieler/config/dx12_includes.hpp"
+#include "spieler/config/d3d12_includes.hpp"
 
 #include "spieler/config/engine_config.hpp"
 

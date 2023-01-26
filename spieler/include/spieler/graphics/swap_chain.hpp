@@ -8,9 +8,6 @@ namespace spieler
 
     class Window;
 
-    class Device;
-    class CommandQueue;
-
     enum class VSyncState : bool
     {
         Enabled = true,
@@ -20,41 +17,39 @@ namespace spieler
     class SwapChain
     {
     public:
+        SPIELER_NON_COPYABLE(SwapChain)
+        SPIELER_NON_MOVEABLE(SwapChain)
+        SPIELER_NAME_D3D12_OBJECT(m_DXGISwapChain3)
+
+    public:
         SwapChain(const Window& window, Device& device, CommandQueue& commandQueue);
         ~SwapChain();
 
     public:
-        GraphicsFormat GetBufferFormat() const { return m_BufferFormat; }
+        GraphicsFormat GetBackBufferFormat() const { return m_BackBufferFormat; }
 
     public:
-        Texture& GetCurrentBuffer();
-        const Texture& GetCurrentBuffer() const;
+        std::shared_ptr<TextureResource>& GetCurrentBackBuffer();
+        const std::shared_ptr<TextureResource>& GetCurrentBackBuffer() const;
 
     private:
         uint32_t GetCurrentBufferIndex() const;
 
     public:
-        void ResizeBuffers(Device& device, uint32_t width, uint32_t height);
+        void ResizeBackBuffers(Device& device, uint32_t width, uint32_t height);
         void Flip(VSyncState vsync);
 
     private:
-        bool Init(const Window& window, Device& device, CommandQueue& commandQueue);
-
-        bool InitFactory();
-        bool InitSwapChain(const Window& window, CommandQueue& commandQueue);
-
         void EnumerateAdapters();
 
-        void CreateBuffers(Device& device);
+        void CreateBackBuffers(Device& device);
 
     private:
-        ComPtr<IDXGIFactory> m_DXGIFactory;
-        ComPtr<IDXGISwapChain> m_DXGISwapChain;
-        ComPtr<IDXGISwapChain3> m_DXGISwapChain3;
-        std::vector<ComPtr<IDXGIAdapter>> m_Adapters;
+        IDXGIFactory4* m_DXGIFactory4{ nullptr };
+        IDXGISwapChain3* m_DXGISwapChain3{ nullptr };
 
-        GraphicsFormat m_BufferFormat{ GraphicsFormat::R8G8B8A8UnsignedNorm };
-        std::vector<Texture> m_Buffers;
+        GraphicsFormat m_BackBufferFormat{ GraphicsFormat::R8G8B8A8UnsignedNorm };
+        std::vector<std::shared_ptr<TextureResource>> m_BackBuffers;
     };
 
 } // namespace spieler

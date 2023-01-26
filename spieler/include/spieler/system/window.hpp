@@ -44,7 +44,7 @@ namespace spieler
 
         void SetEventCallbackFunction(const EventCallbackFunction& callback);
 
-    protected:
+    private:
         HWND m_Win64Window{ nullptr };
 
         uint32_t m_Width{ 0 };

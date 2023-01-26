@@ -2,7 +2,7 @@
 
 #include "spieler/system/window.hpp"
 
-#include <third_party/imgui/imgui_impl_win32.h>
+#include <third_party/imgui/backends/imgui_impl_win32.h>
 
 #include "spieler/system/window_event.hpp"
 #include "spieler/system/mouse_event.hpp"
@@ -374,12 +374,16 @@ namespace spieler
         SPIELER_ASSERT(m_Win64Window != nullptr);
 
         SetVisible(true);
+
+        SPIELER_INFO("Window created");
     }
 
     Window::~Window()
     {
         ::SetWindowLongPtr(m_Win64Window, GWLP_USERDATA, 0);
         ::DestroyWindow(m_Win64Window);
+
+        SPIELER_INFO("Window destoroyed");
     }
 
     Viewport Window::GetViewport() const

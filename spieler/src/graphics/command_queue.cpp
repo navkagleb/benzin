@@ -19,28 +19,34 @@ namespace spieler
             .NodeMask{ 0 }
         };
 
-        SPIELER_ASSERT(SUCCEEDED(device.GetDX12Device()->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&m_DX12CommandQueue))));
+        SPIELER_D3D12_ASSERT(device.GetD3D12Device()->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&m_D3D12CommandQueue)));
+
+        SPIELER_INFO("CommandQueue created");
 	}
 
     CommandQueue::~CommandQueue()
     {
-        if (m_DX12CommandQueue)
+        if (m_D3D12CommandQueue)
         {
             Flush();
         }
+
+        SafeReleaseD3D12Object(m_D3D12CommandQueue);
+
+        SPIELER_INFO("CommandQueue destroyed");
     }
 
     void CommandQueue::Submit(GraphicsCommandList& commandList)
     {
-        ID3D12CommandList* dx12CommandLists[]{ commandList.GetDX12GraphicsCommandList() };
-        m_DX12CommandQueue->ExecuteCommandLists(1, dx12CommandLists);
+        ID3D12CommandList* d3d12CommandLists[]{ commandList.GetD3D12GraphicsCommandList() };
+        m_D3D12CommandQueue->ExecuteCommandLists(1, d3d12CommandLists);
     }
 
     void CommandQueue::Flush()
     {
         m_Fence.Increment();
 
-        SPIELER_ASSERT(SUCCEEDED(m_DX12CommandQueue->Signal(m_Fence.GetDX12Fence(), m_Fence.GetValue())));
+        SPIELER_D3D12_ASSERT(m_D3D12CommandQueue->Signal(m_Fence.GetD3D12Fence(), m_Fence.GetValue()));
         m_Fence.WaitForGPU();
     }
 

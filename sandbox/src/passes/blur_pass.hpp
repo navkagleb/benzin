@@ -28,7 +28,7 @@ namespace sandbox
         BlurPass(spieler::Device& device, uint32_t width, uint32_t height);
 
     public:
-        spieler::Texture& GetOutput() { return m_BlurMaps[0]; }
+        std::shared_ptr<spieler::TextureResource>& GetOutput() { return m_BlurMaps[0]; }
 
     public:
         void OnExecute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input, const BlurPassExecuteProps& props);
@@ -44,7 +44,7 @@ namespace sandbox
         spieler::PipelineState m_HorizontalPSO;
         spieler::PipelineState m_VerticalPSO;
 
-        std::array<spieler::Texture, 2> m_BlurMaps;
+        std::array<std::shared_ptr<spieler::TextureResource>, 2> m_BlurMaps;
         std::unordered_map<std::string, std::shared_ptr<spieler::Shader>> m_ShaderLibrary;
     };
 

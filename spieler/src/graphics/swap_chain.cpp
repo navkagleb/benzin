@@ -2,43 +2,88 @@
 
 #include "spieler/graphics/swap_chain.hpp"
 
+#include <third_party/magic_enum/magic_enum.hpp>
+
 #include "spieler/core/common.hpp"
 
 #include "spieler/system/window.hpp"
 
 #include "spieler/graphics/device.hpp"
 #include "spieler/graphics/command_queue.hpp"
-
-#include "platform/dx12/dx12_common.hpp"
+#include "spieler/graphics/resource_view_builder.hpp"
 
 namespace spieler
 {
 
     SwapChain::SwapChain(const Window& window, Device& device, CommandQueue& commandQueue)
     {
-        SPIELER_ASSERT(Init(window, device, commandQueue));
+        const size_t backBufferCount = 2;
+        m_BackBuffers.resize(backBufferCount);
+
+        // DXGI Factory
+        {
+            SPIELER_D3D12_ASSERT(CreateDXGIFactory1(IID_PPV_ARGS(&m_DXGIFactory4)));
+        }
+
+        // D3D12 SwapChain
+        {
+            const DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc1
+            {
+                .Width{ window.GetWidth() },
+                .Height{ window.GetHeight() },
+                .Format{ static_cast<DXGI_FORMAT>(m_BackBufferFormat) },
+                .Stereo{ false },
+                .SampleDesc
+                {
+                    .Count{ 1 },
+                    .Quality{ 0 }
+                },
+                .BufferUsage{ DXGI_USAGE_RENDER_TARGET_OUTPUT },
+                .BufferCount{ static_cast<UINT>(m_BackBuffers.size()) },
+                .Scaling{ DXGI_SCALING_STRETCH },
+                .SwapEffect{ DXGI_SWAP_EFFECT_FLIP_DISCARD },
+                .AlphaMode{ DXGI_ALPHA_MODE_UNSPECIFIED },
+                .Flags{ DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT }
+            };
+
+            ComPtr<IDXGISwapChain1> dxgiSwapChain1;
+
+            m_DXGIFactory4->CreateSwapChainForHwnd(
+                commandQueue.GetD3D12CommandQueue(),
+                window.GetWin64Window(),
+                &dxgiSwapChainDesc1,
+                nullptr,
+                nullptr,
+                &dxgiSwapChain1
+            );
+
+            SPIELER_D3D12_ASSERT(dxgiSwapChain1->QueryInterface(IID_PPV_ARGS(&m_DXGISwapChain3)));
+
+            m_DXGISwapChain3->SetMaximumFrameLatency(2);
+        }
+
+        EnumerateAdapters();
+        ResizeBackBuffers(device, window.GetWidth(), window.GetHeight());
+
+        SPIELER_INFO("SwapChain created");
     }
 
     SwapChain::~SwapChain()
     {
-#if defined(SPIELER_DEBUG)
-        ComPtr<IDXGIDebug1> dxgiDebug;
+        SafeReleaseD3D12Object(m_DXGISwapChain3);
+        SafeReleaseD3D12Object(m_DXGIFactory4);
 
-        if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))
-        {
-            dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
-        }
-#endif
+        SPIELER_INFO("SwapChain destroyed");
     }
 
-    Texture& SwapChain::GetCurrentBuffer()
+    std::shared_ptr<TextureResource>& SwapChain::GetCurrentBackBuffer()
     {
-        return m_Buffers[GetCurrentBufferIndex()];
+        return m_BackBuffers[GetCurrentBufferIndex()];
     }
 
-    const Texture& SwapChain::GetCurrentBuffer() const
+    const std::shared_ptr<TextureResource>& SwapChain::GetCurrentBackBuffer() const
     {
-        return m_Buffers[GetCurrentBufferIndex()];
+        return m_BackBuffers[GetCurrentBufferIndex()];
     }
 
     uint32_t SwapChain::GetCurrentBufferIndex() const
@@ -46,109 +91,43 @@ namespace spieler
         return m_DXGISwapChain3->GetCurrentBackBufferIndex();
     }
 
-    void SwapChain::ResizeBuffers(Device& device, uint32_t width, uint32_t height)
+    void SwapChain::ResizeBackBuffers(Device& device, uint32_t width, uint32_t height)
     {
-        SPIELER_ASSERT(!m_Buffers.empty());
+        SPIELER_ASSERT(!m_BackBuffers.empty());
 
-        for (Texture& buffer : m_Buffers)
+        for (std::shared_ptr<TextureResource>& backBuffer : m_BackBuffers)
         {
-            buffer.GetTextureResource().reset();
+            backBuffer.reset();
         }
 
-        SPIELER_ASSERT(SUCCEEDED(m_DXGISwapChain->ResizeBuffers(
-            static_cast<UINT>(m_Buffers.size()),
+        SPIELER_D3D12_ASSERT(m_DXGISwapChain3->ResizeBuffers(
+            static_cast<UINT>(m_BackBuffers.size()),
             width,
             height,
-            dx12::Convert(m_BufferFormat),
-            DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
-        )));
+            static_cast<DXGI_FORMAT>(m_BackBufferFormat),
+            DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT
+        ));
 
-        CreateBuffers(device);
+        CreateBackBuffers(device);
     }
 
     void SwapChain::Flip(VSyncState vsync)
     {
-        SPIELER_ASSERT(SUCCEEDED(m_DXGISwapChain->Present(static_cast<UINT>(vsync), 0)));
-    }
-
-    bool SwapChain::Init(const Window& window, Device& device, CommandQueue& commandQueue)
-    {
-        const size_t bufferCount{ 2 };
-        m_Buffers.resize(bufferCount);
-
-        SPIELER_RETURN_IF_FAILED(InitFactory());
-        SPIELER_RETURN_IF_FAILED(InitSwapChain(window, commandQueue));
-        
-        EnumerateAdapters();
-        ResizeBuffers(device, window.GetWidth(), window.GetHeight());
-
-        return true;
-    }
-
-    bool SwapChain::InitFactory()
-    {
-#if defined(SPIELER_DEBUG)
-        {
-            ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
-            SPIELER_RETURN_IF_FAILED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));
-
-            SPIELER_RETURN_IF_FAILED(dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true));
-            SPIELER_RETURN_IF_FAILED(dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true));
-        }
-#endif
-
-        SPIELER_RETURN_IF_FAILED(CreateDXGIFactory(IID_PPV_ARGS(&m_DXGIFactory)));
-        SPIELER_RETURN_IF_FAILED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&m_DXGIFactory)));
-
-        return true;
-    }
-
-    bool SwapChain::InitSwapChain(const Window& window, CommandQueue& commandQueue)
-    {
-        SPIELER_ASSERT(!m_Buffers.empty());
-
-        DXGI_SWAP_CHAIN_DESC swapChainDesc
-        {
-            .BufferDesc
-            {
-                .Width{ window.GetWidth() },
-                .Height{ window.GetHeight() },
-                .RefreshRate{ 60, 1 },
-                .Format{ dx12::Convert(m_BufferFormat) },
-                .ScanlineOrdering{ DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED },
-                .Scaling{ DXGI_MODE_SCALING_UNSPECIFIED },
-            },
-            .SampleDesc
-            {
-                .Count{ 1 },
-                .Quality{ 0 }
-            },
-            .BufferUsage{ DXGI_USAGE_RENDER_TARGET_OUTPUT },
-            .BufferCount{ static_cast<UINT>(m_Buffers.size()) },
-            .OutputWindow{ window.GetWin64Window() },
-            .Windowed{ true },
-            .SwapEffect{ DXGI_SWAP_EFFECT_FLIP_DISCARD },
-            .Flags{ DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH }
-        };
-
-        SPIELER_RETURN_IF_FAILED(m_DXGIFactory->CreateSwapChain(commandQueue.GetDX12CommandQueue(), &swapChainDesc, &m_DXGISwapChain));
-        SPIELER_RETURN_IF_FAILED(m_DXGISwapChain->QueryInterface(IID_PPV_ARGS(&m_DXGISwapChain3)));
-
-        return true;
+        SPIELER_D3D12_ASSERT(m_DXGISwapChain3->Present(static_cast<UINT>(vsync), 0));
     }
 
     void SwapChain::EnumerateAdapters()
     {
         ComPtr<IDXGIAdapter> dxgiAdapter;
 
-        for (uint32_t adapterIndex = 0; m_DXGIFactory->EnumAdapters(adapterIndex, &dxgiAdapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex)
+        for (uint32_t adapterIndex = 0; m_DXGIFactory4->EnumAdapters(adapterIndex, &dxgiAdapter) != DXGI_ERROR_NOT_FOUND; ++adapterIndex)
         {
             std::stringstream adapterStringStream;
 
             DXGI_ADAPTER_DESC dxgiAdapterDesc;
             dxgiAdapter->GetDesc(&dxgiAdapterDesc);
 
-            const size_t adapterDescriptionSize{ std::size(dxgiAdapterDesc.Description) };
+            const size_t adapterDescriptionSize = std::size(dxgiAdapterDesc.Description);
 
             std::string adapterName;
             adapterName.resize(adapterDescriptionSize);
@@ -177,7 +156,7 @@ namespace spieler
                 DXGI_OUTPUT_DESC dxgiOutputDesc;
                 dxgiOutput->GetDesc(&dxgiOutputDesc);
 
-                const size_t outputDescriptionSize{ std::size(dxgiOutputDesc.DeviceName) };
+                const size_t outputDescriptionSize = std::size(dxgiOutputDesc.DeviceName);
 
                 std::string outputName;
                 adapterName.resize(outputDescriptionSize);
@@ -187,20 +166,20 @@ namespace spieler
             }
 
             SPIELER_INFO("{}", adapterStringStream.str().c_str());
-
-            m_Adapters.push_back(std::move(dxgiAdapter));
         }
     }
 
-    void SwapChain::CreateBuffers(Device& device)
+    void SwapChain::CreateBackBuffers(Device& device)
     {
-        for (size_t i = 0; i < m_Buffers.size(); ++i)
+        for (size_t i = 0; i < m_BackBuffers.size(); ++i)
         {
-            ID3D12Resource* backBuffer;
-            SPIELER_ASSERT(SUCCEEDED(m_DXGISwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer))));
+            ID3D12Resource* d3d12BackBuffer;
+            SPIELER_D3D12_ASSERT(m_DXGISwapChain3->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&d3d12BackBuffer)));
             
-            m_Buffers[i].SetTextureResource(TextureResource::Create(backBuffer));
-            m_Buffers[i].PushView<TextureRenderTargetView>(device);
+            auto& backBuffer = m_BackBuffers[i];
+            backBuffer = device.RegisterTextureResource(d3d12BackBuffer);
+            backBuffer->PushRenderTargetView(device.GetResourceViewBuilder().CreateRenderTargetView(*backBuffer));
+            backBuffer->SetName("SwapChainBackBuffer" + std::to_string(i));
         }
     }
 

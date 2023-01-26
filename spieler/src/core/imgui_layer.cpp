@@ -4,18 +4,15 @@
 
 #include <third_party/imgui/imgui.h>
 #include <third_party/imgui/imgui_internal.h>
-#include <third_party/imgui/imgui_impl_dx12.h>
-#include <third_party/imgui/imgui_impl_win32.h>
+#include <third_party/imgui/backends/imgui_impl_dx12.h>
+#include <third_party/imgui/backends/imgui_impl_win32.h>
 
 #include "spieler/core/common.hpp"
 
 #include "spieler/system/event_dispatcher.hpp"
 #include "spieler/system/key_event.hpp"
 
-#include "spieler/graphics/resource_barrier.hpp"
 #include "spieler/engine/camera.hpp"
-
-#include "platform/dx12/dx12_common.hpp"
 
 namespace spieler
 {
@@ -34,24 +31,33 @@ namespace spieler
 
         ImGui::CreateContext();
 
-        auto& io{ ImGui::GetIO() };
+        auto& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         io.IniFilename = "config/imgui.ini";
 
         ImGui::StyleColorsClassic();
 
-        SRVDescriptor fontDescriptor{ m_Device.GetDescriptorManager().AllocateSRV() };
+        auto& style = ImGui::GetStyle();
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            style.WindowRounding = 0.0f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+        }
 
-        SPIELER_RETURN_IF_FAILED(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
-        SPIELER_RETURN_IF_FAILED(ImGui_ImplDX12_Init(
-            m_Device.GetDX12Device(),
-            1,
-            dx12::Convert(m_SwapChain.GetBufferFormat()),
-            m_Device.GetDescriptorManager().GetDescriptorHeap(DescriptorHeap::Type::SRV).GetDX12DescriptorHeap(),
-            D3D12_CPU_DESCRIPTOR_HANDLE{ fontDescriptor.CPU },
-            D3D12_GPU_DESCRIPTOR_HANDLE{ fontDescriptor.GPU }
+        const Descriptor fontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(Descriptor::Type::ShaderResourceView);
+        const uint32_t framesInFlightCount = 1;
+
+        SPIELER_ASSERT(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
+        SPIELER_ASSERT(ImGui_ImplDX12_Init(
+            m_Device.GetD3D12Device(),
+            framesInFlightCount,
+            static_cast<DXGI_FORMAT>(m_SwapChain.GetBackBufferFormat()),
+            m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
+            D3D12_CPU_DESCRIPTOR_HANDLE{ fontDescriptor.GetCPUHandle() },
+            D3D12_GPU_DESCRIPTOR_HANDLE{ fontDescriptor.GetGPUHandle() }
         ));
 
         return true;
@@ -77,27 +83,23 @@ namespace spieler
     {
         ImGui::Render();
 
+        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_GraphicsCommandList.GetD3D12GraphicsCommandList());
+        }
+
         {
             m_GraphicsCommandList.Reset();
 
-            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-            {
-                .Resource{ m_SwapChain.GetCurrentBuffer().GetTextureResource().get() },
-                .From{ spieler::ResourceState::Present },
-                .To{ spieler::ResourceState::RenderTarget }
-            });
+            m_GraphicsCommandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::RenderTarget);
 
-            m_GraphicsCommandList.SetDescriptorHeap(m_Device.GetDescriptorManager().GetDescriptorHeap(DescriptorHeap::Type::SRV));
-            m_GraphicsCommandList.SetRenderTarget(m_SwapChain.GetCurrentBuffer().GetView<TextureRenderTargetView>());
+            m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
+            m_GraphicsCommandList.SetRenderTarget(m_SwapChain.GetCurrentBackBuffer()->GetRenderTargetView());
 
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_GraphicsCommandList.GetDX12GraphicsCommandList());
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_GraphicsCommandList.GetD3D12GraphicsCommandList());
 
-            m_GraphicsCommandList.SetResourceBarrier(spieler::TransitionResourceBarrier
-            {
-                .Resource{ m_SwapChain.GetCurrentBuffer().GetTextureResource().get() },
-                .From{ spieler::ResourceState::RenderTarget },
-                .To{ spieler::ResourceState::Present }
-            });
+            m_GraphicsCommandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::Present);
 
             m_GraphicsCommandList.Close();
         }
@@ -146,17 +148,18 @@ namespace spieler
 
         if (m_IsBottomPanelEnabled)
         {
-            ImGuiContext& context{ *ImGui::GetCurrentContext() };
+            ImGuiContext& context = *ImGui::GetCurrentContext();
             ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 10.0f, 5.0f });
             ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(184, 100, 0, 240));
 
-            const float panelHeight{ context.FontBaseSize + context.Style.WindowPadding.y * 2.0f };
+            const float panelHeight = context.FontBaseSize + context.Style.WindowPadding.y * 2.0f;
             ImGui::SetNextWindowPos(ImVec2{ 0.0f, context.IO.DisplaySize.y - panelHeight });
             ImGui::SetNextWindowSize(ImVec2{ context.IO.DisplaySize.x, panelHeight });
 
-            if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs))
+            const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs;
+            if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, windowFlags))
             {
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 

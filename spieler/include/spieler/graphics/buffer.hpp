@@ -5,7 +5,7 @@
 namespace spieler
 {
 
-    class BufferResource : public Resource
+    class BufferResource final : public Resource
     {
     public:
         friend class Device;
@@ -27,34 +27,19 @@ namespace spieler
         };
 
     public:
-        static std::shared_ptr<BufferResource> Create(Device& device, const Config& config);
-
-    public:
         BufferResource() = default;
-        BufferResource(Device& device, const Config& config);
 
-    public:
-        ~BufferResource() override = default;
+    private:
+        BufferResource(ID3D12Resource* d3d12Resource, const Config& config);
 
     public:
         const Config& GetConfig() const { return m_Config; }
 
     public:
-        GPUVirtualAddress GetGPUVirtualAddressWithOffset(uint64_t offset) const;
-
-    protected:
-        Config m_Config;
-    };
-
-    class Buffer
-    {
-    public:
-        std::shared_ptr<BufferResource>& GetBufferResource() { return m_BufferResource; }
-        const std::shared_ptr<BufferResource>& GetBufferResource() const { return m_BufferResource; }
-        void SetBufferResource(std::shared_ptr<BufferResource>&& bufferResource) { m_BufferResource = std::move(bufferResource); }
+        uint64_t GetGPUVirtualAddressWithOffset(uint64_t offset) const;
 
     private:
-        std::shared_ptr<BufferResource> m_BufferResource;
+        Config m_Config;
     };
 
 } // namespace spieler

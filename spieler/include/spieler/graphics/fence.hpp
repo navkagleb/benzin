@@ -1,5 +1,7 @@
 #pragma once
 
+#include "spieler/graphics/common.hpp"
+
 namespace spieler
 {
 
@@ -9,19 +11,25 @@ namespace spieler
     class Fence
     {
     public:
+        SPIELER_NAME_D3D12_OBJECT(m_D3D12Fence)
+
+    public:
         explicit Fence(Device& device);
+        ~Fence();
 
     public:
         uint64_t GetValue() const { return m_Value; }
 
     public:
-        ID3D12Fence* GetDX12Fence() const { return m_DX12Fence.Get(); }
+        ID3D12Fence* GetD3D12Fence() const { return m_D3D12Fence; }
+        uint64_t GetCompletedValue() const { return m_D3D12Fence->GetCompletedValue(); }
 
         void Increment();
         void WaitForGPU() const;
 
     private:
-        ComPtr<ID3D12Fence> m_DX12Fence;
+        ID3D12Fence* m_D3D12Fence{ nullptr };
+        HANDLE m_WaitEvent{ nullptr };
 
         uint64_t m_Value{ 0 };
     };

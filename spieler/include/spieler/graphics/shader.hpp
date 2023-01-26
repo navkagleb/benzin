@@ -1,12 +1,15 @@
 #pragma once
 
+#include "spieler/graphics/common.hpp"
+
 namespace spieler
 {
 
     class Shader
     {
     public:
-        friend class ShaderLibrary;
+        SPIELER_NON_COPYABLE(Shader)
+        SPIELER_NON_MOVEABLE(Shader)
 
     public:
         using DefineContainer = std::unordered_map<std::string_view, std::string>;
@@ -47,8 +50,8 @@ namespace spieler
         const void* GetData() const;
         uint64_t GetSize() const;
 
-    protected:
-        ID3DBlob* m_DX12Shader{ nullptr };
+    private:
+        ID3DBlob* m_D3D12Shader{ nullptr };
     };
 
 } // namespace spieler

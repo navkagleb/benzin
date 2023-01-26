@@ -6,7 +6,7 @@ namespace spieler
 	class Logger
 	{
 	public:
-		SPIELER_NON_CONSTRUCTABLE(Logger);
+		SPIELER_NON_CONSTRUCTABLE(Logger)
 
 	public:
 		enum class Severity
