@@ -5,23 +5,23 @@
 namespace sandbox
 {
 
-    PickingTechnique::PickingTechnique(const spieler::Window& window)
+    PickingTechnique::PickingTechnique(const benzin::Window& window)
         : m_Window{ window }
     {}
 
-    void PickingTechnique::SetActiveCamera(const spieler::Camera* activeCamera)
+    void PickingTechnique::SetActiveCamera(const benzin::Camera* activeCamera)
     {
         m_ActiveCamera = activeCamera;
     }
 
-    void PickingTechnique::SetPickableEntities(const std::span<const spieler::Entity*>& pickableEntities)
+    void PickingTechnique::SetPickableEntities(const std::span<const benzin::Entity*>& pickableEntities)
     {
         m_PickableEntities = pickableEntities;
     }
 
 	PickingTechnique::Result PickingTechnique::PickTriangle(float mouseX, float mouseY) const
 	{
-        SPIELER_ASSERT(m_ActiveCamera);
+        BENZIN_ASSERT(m_ActiveCamera);
 
         const Ray rayInViewSpace = GetRayInViewSpace(mouseX, mouseY);
 
@@ -30,13 +30,13 @@ namespace sandbox
 
         for (const auto& entity : m_PickableEntities)
         {
-            const auto& meshComponent = entity->GetComponent<spieler::MeshComponent>();
-            const auto& instancesComponent = entity->GetComponent<spieler::InstancesComponent>();
-            const auto* collisionComponent = entity->GetPtrComponent<spieler::CollisionComponent>();
+            const auto& meshComponent = entity->GetComponent<benzin::MeshComponent>();
+            const auto& instancesComponent = entity->GetComponent<benzin::InstancesComponent>();
+            const auto* collisionComponent = entity->GetPtrComponent<benzin::CollisionComponent>();
 
             const auto [instanceDistance, instanceIndex] = PickEntityInstance(rayInViewSpace, instancesComponent, collisionComponent);
 
-            SPIELER_INFO("!! {} {} | {}", instanceIndex, instanceDistance, instancesComponent.Instances.size());
+            BENZIN_INFO("!! {} {} | {}", instanceIndex, instanceDistance, instancesComponent.Instances.size());
 
             if (minDistance > instanceDistance)
             {
@@ -49,11 +49,11 @@ namespace sandbox
                     meshComponent
                 );
 
-                SPIELER_INFO("  -- {} {} {} -> {}", (const void*)entity, instanceIndex, result.TriangleIndex, minDistance);
+                BENZIN_INFO("  -- {} {} {} -> {}", (const void*)entity, instanceIndex, result.TriangleIndex, minDistance);
             }
         }
 
-        SPIELER_INFO("\n");
+        BENZIN_INFO("\n");
 
         return result;
 	}
@@ -74,7 +74,7 @@ namespace sandbox
         };
     }
 
-    PickingTechnique::Ray PickingTechnique::GetRayInLocalSpace(const Ray& rayInViewSpace, const spieler::InstanceComponent& instanceComponent) const
+    PickingTechnique::Ray PickingTechnique::GetRayInLocalSpace(const Ray& rayInViewSpace, const benzin::InstanceComponent& instanceComponent) const
     {
         const DirectX::XMMATRIX toLocalSpaceTransform = DirectX::XMMatrixMultiply(
             m_ActiveCamera->GetInverseViewMatrix(),
@@ -90,13 +90,13 @@ namespace sandbox
 
     std::pair<float, uint32_t> PickingTechnique::PickEntityInstance(
         const Ray& rayInViewSpace,
-        const spieler::InstancesComponent& instancesComponent,
-        const spieler::CollisionComponent* collisionComponent
+        const benzin::InstancesComponent& instancesComponent,
+        const benzin::CollisionComponent* collisionComponent
     ) const
     {
         if (!collisionComponent)
         {
-            SPIELER_WARNING("Entity doesn't have CollisionComponent");
+            BENZIN_WARNING("Entity doesn't have CollisionComponent");
             return { std::numeric_limits<float>::max(), std::numeric_limits<uint32_t>::max() };
         }
 
@@ -126,15 +126,15 @@ namespace sandbox
                 minInstanceIndex = static_cast<uint32_t>(instanceIndex);
             }
 
-            SPIELER_INFO("    Distance: {}, MinDistance: {}", *instanceDistance, minInstanceDistance);
+            BENZIN_INFO("    Distance: {}, MinDistance: {}", *instanceDistance, minInstanceDistance);
         }
 
         return { minInstanceDistance, minInstanceIndex };
     }
 
-    uint32_t PickingTechnique::PickEntityInstanceTriangle(const Ray& rayInLocalSpace, const spieler::MeshComponent& meshComponent) const
+    uint32_t PickingTechnique::PickEntityInstanceTriangle(const Ray& rayInLocalSpace, const benzin::MeshComponent& meshComponent) const
     {
-        const auto* vertices = reinterpret_cast<const spieler::Vertex*>(meshComponent.Mesh->GetVertices().data()) + meshComponent.SubMesh->BaseVertexLocation;
+        const auto* vertices = reinterpret_cast<const benzin::Vertex*>(meshComponent.Mesh->GetVertices().data()) + meshComponent.SubMesh->BaseVertexLocation;
         const auto* indices = reinterpret_cast<const uint32_t*>(meshComponent.Mesh->GetIndices().data()) + meshComponent.SubMesh->StartIndexLocation;
 
         float minTriangleDistance = std::numeric_limits<float>::max();
@@ -156,7 +156,7 @@ namespace sandbox
                     minTriangleDistance = triangleDistance;
                     minTriangleIndex = triangleIndex;
 
-                    SPIELER_WARNING("MinTriangleDistance: {}", minTriangleDistance);
+                    BENZIN_WARNING("MinTriangleDistance: {}", minTriangleDistance);
                 }
             }
         }

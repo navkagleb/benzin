@@ -5,17 +5,17 @@
 
 #if 0
 
-#include <spieler/layer.hpp>
-#include <spieler/window/window.hpp>
-#include <spieler/window/window_event.hpp>
-#include <spieler/graphics/renderer.hpp>
-#include <spieler/graphics/shader.hpp>
-#include <spieler/graphics/pipeline_state.hpp>
-#include <spieler/graphics/mesh.hpp>
-#include <spieler/graphics/light.hpp>
-#include <spieler/graphics/upload_buffer.hpp>
-#include <spieler/graphics/texture.hpp>
-#include <spieler/graphics/root_signature.hpp>
+#include <benzin/layer.hpp>
+#include <benzin/window/window.hpp>
+#include <benzin/window/window_event.hpp>
+#include <benzin/graphics/renderer.hpp>
+#include <benzin/graphics/shader.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/mesh.hpp>
+#include <benzin/graphics/light.hpp>
+#include <benzin/graphics/upload_buffer.hpp>
+#include <benzin/graphics/texture.hpp>
+#include <benzin/graphics/root_signature.hpp>
 
 #include "projection_camera_controller.hpp"
 #include "waves.hpp"
@@ -42,19 +42,19 @@ namespace sandbox
 
     struct MeshUploadBuffer
     {
-        spieler::UploadBuffer VertexUploadBuffer;
-        spieler::UploadBuffer IndexUploadBuffer;
+        benzin::UploadBuffer VertexUploadBuffer;
+        benzin::UploadBuffer IndexUploadBuffer;
     };
 
-    class LandLayer : public spieler::Layer
+    class LandLayer : public benzin::Layer
     {
     public:
-        LandLayer(spieler::Window& window, spieler::Renderer& renderer);
+        LandLayer(benzin::Window& window, benzin::Renderer& renderer);
 
     public:
         bool OnAttach() override;
 
-        void OnEvent(spieler::Event& event) override;
+        void OnEvent(benzin::Event& event) override;
         void OnUpdate(float dt) override;
         bool OnRender(float dt) override;
         void OnImGuiRender(float dt) override;
@@ -62,11 +62,11 @@ namespace sandbox
     private:
         bool InitDescriptorHeaps();
         bool InitUploadBuffers();
-        bool InitTextures(spieler::UploadBuffer& uploadBuffer);
+        bool InitTextures(benzin::UploadBuffer& uploadBuffer);
         void InitMaterials();
-        bool InitMeshGeometry(spieler::UploadBuffer& uploadBuffer);
-        bool InitLandGeometry(spieler::UploadBuffer& uploadBuffer);
-        bool InitWavesGeometry(spieler::UploadBuffer& uploadBuffer);
+        bool InitMeshGeometry(benzin::UploadBuffer& uploadBuffer);
+        bool InitLandGeometry(benzin::UploadBuffer& uploadBuffer);
+        bool InitWavesGeometry(benzin::UploadBuffer& uploadBuffer);
         bool InitRootSignature();
         bool InitPipelineState();
 
@@ -75,7 +75,7 @@ namespace sandbox
         void InitViewport();
         void InitScissorRect();
 
-        bool OnWindowResized(spieler::WindowResizedEvent& event);
+        bool OnWindowResized(benzin::WindowResizedEvent& event);
 
         void UpdateWavesVertexBuffer(float dt);
 
@@ -88,32 +88,32 @@ namespace sandbox
         const std::uint32_t                 m_MaterialCount{ 2 };
 
     private:
-        spieler::Window&                    m_Window;
-        spieler::Renderer&                  m_Renderer;
+        benzin::Window&                    m_Window;
+        benzin::Renderer&                  m_Renderer;
 
-        spieler::Viewport                   m_Viewport;
-        spieler::ScissorRect                m_ScissorRect;
+        benzin::Viewport                   m_Viewport;
+        benzin::ScissorRect                m_ScissorRect;
 
         DirectX::XMFLOAT4                   m_ClearColor{ 0.1f, 0.1f, 0.1f, 1.0f };
 
         ProjectionCameraController          m_CameraController;
 
-        LookUpTable<spieler::DescriptorHeap> m_DescriptorHeaps;
-        LookUpTable<spieler::Reference<spieler::UploadBuffer>> m_UploadBuffers;
-        LookUpTable<spieler::Texture2D>     m_Textures;
-        LookUpTable<spieler::MeshGeometry>  m_MeshGeometries;
-        LookUpTable<spieler::RootSignature> m_RootSignatures;
-        LookUpTable<spieler::VertexShader>  m_VertexShaders;
-        LookUpTable<spieler::PixelShader>   m_PixelShaders;
-        LookUpTable<spieler::PipelineState> m_PipelineStates;
-        LookUpTable<spieler::Material>      m_Materials;
+        LookUpTable<benzin::DescriptorHeap> m_DescriptorHeaps;
+        LookUpTable<benzin::Reference<benzin::UploadBuffer>> m_UploadBuffers;
+        LookUpTable<benzin::Texture2D>     m_Textures;
+        LookUpTable<benzin::MeshGeometry>  m_MeshGeometries;
+        LookUpTable<benzin::RootSignature> m_RootSignatures;
+        LookUpTable<benzin::VertexShader>  m_VertexShaders;
+        LookUpTable<benzin::PixelShader>   m_PixelShaders;
+        LookUpTable<benzin::PipelineState> m_PipelineStates;
+        LookUpTable<benzin::Material>      m_Materials;
 
-        spieler::VertexBufferView           m_WaterVertexBufferView;
+        benzin::VertexBufferView           m_WaterVertexBufferView;
         
-        LookUpTable<spieler::RenderItem>    m_LitRenderItems;
-        LookUpTable<spieler::RenderItem>    m_BlendedRenderItems;
-        LookUpTable<spieler::RenderItem>    m_ColorRenderItems;
-        spieler::ConstantBuffer             m_PassConstantBuffer;
+        LookUpTable<benzin::RenderItem>    m_LitRenderItems;
+        LookUpTable<benzin::RenderItem>    m_BlendedRenderItems;
+        LookUpTable<benzin::RenderItem>    m_ColorRenderItems;
+        benzin::ConstantBuffer             m_PassConstantBuffer;
 
         DirectionalLightController          m_DirectionalLightController;
         PointLightController                m_PointLightController;

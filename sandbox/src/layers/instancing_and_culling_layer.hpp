@@ -1,20 +1,20 @@
 #pragma once
 
-#include <spieler/core/layer.hpp>
+#include <benzin/core/layer.hpp>
 
-#include <spieler/system/window.hpp>
-#include <spieler/graphics/buffer.hpp>
-#include <spieler/graphics/texture.hpp>
-#include <spieler/graphics/root_signature.hpp>
-#include <spieler/graphics/shader.hpp>
-#include <spieler/graphics/pipeline_state.hpp>
-#include <spieler/graphics/graphics_command_list.hpp>
-#include <spieler/graphics/command_queue.hpp>
-#include <spieler/graphics/swap_chain.hpp>
-#include <spieler/graphics/render_target_cube_map.hpp>
-#include <spieler/engine/mesh.hpp>
-#include <spieler/engine/camera.hpp>
-#include <spieler/engine/light.hpp>
+#include <benzin/system/window.hpp>
+#include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/texture.hpp>
+#include <benzin/graphics/root_signature.hpp>
+#include <benzin/graphics/shader.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/graphics_command_list.hpp>
+#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/swap_chain.hpp>
+#include <benzin/graphics/render_target_cube_map.hpp>
+#include <benzin/engine/mesh.hpp>
+#include <benzin/engine/camera.hpp>
+#include <benzin/engine/light.hpp>
 
 #include "passes/blur_pass.hpp"
 #include "techniques/picking_technique.hpp"
@@ -22,30 +22,30 @@
 namespace sandbox
 {
 
-    class InstancingAndCullingLayer final : public spieler::Layer
+    class InstancingAndCullingLayer final : public benzin::Layer
     {
     public:
         class PointLightController
         {
         public:
             PointLightController() = default;
-            PointLightController(spieler::Light* light);
+            PointLightController(benzin::Light* light);
 
         public:
             void OnImGuiRender();
 
         private:
-            spieler::Light* m_Light{ nullptr };
+            benzin::Light* m_Light{ nullptr };
         };
 
     public:
-        InstancingAndCullingLayer(spieler::Window& window, spieler::Device& device, spieler::CommandQueue& commandQueue, spieler::SwapChain& swapChain);
+        InstancingAndCullingLayer(benzin::Window& window, benzin::Device& device, benzin::CommandQueue& commandQueue, benzin::SwapChain& swapChain);
 
     public:
         bool OnAttach() override;
         bool OnDetach() override;
 
-        void OnEvent(spieler::Event& event) override;
+        void OnEvent(benzin::Event& event) override;
         void OnUpdate(float dt) override;
         void OnRender(float dt) override;
         void OnImGuiRender(float dt) override;
@@ -67,48 +67,48 @@ namespace sandbox
 
         void OnWindowResized();
 
-        void RenderEntities(const spieler::PipelineState& pso, const std::span<const spieler::Entity*>& entities);
-        void RenderFullscreenQuad(const spieler::Descriptor& srv);
+        void RenderEntities(const benzin::PipelineState& pso, const std::span<const benzin::Entity*>& entities);
+        void RenderFullscreenQuad(const benzin::Descriptor& srv);
 
-        bool OnWindowResized(spieler::WindowResizedEvent& event);
-        bool OnMouseButtonPressed(spieler::MouseButtonPressedEvent& event);
-
-    private:
-        static const spieler::GraphicsFormat ms_DepthStencilFormat{ spieler::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
+        bool OnWindowResized(benzin::WindowResizedEvent& event);
+        bool OnMouseButtonPressed(benzin::MouseButtonPressedEvent& event);
 
     private:
-        spieler::Window& m_Window;
-        spieler::Device& m_Device;
-        spieler::CommandQueue& m_CommandQueue;
-        spieler::SwapChain& m_SwapChain;
+        static const benzin::GraphicsFormat ms_DepthStencilFormat{ benzin::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
 
-        spieler::GraphicsCommandList m_GraphicsCommandList;
-        spieler::GraphicsCommandList m_PostEffectsGraphicsCommandList;
+    private:
+        benzin::Window& m_Window;
+        benzin::Device& m_Device;
+        benzin::CommandQueue& m_CommandQueue;
+        benzin::SwapChain& m_SwapChain;
 
-        std::unordered_map<std::string, std::shared_ptr<spieler::BufferResource>> m_Buffers;
-        std::unordered_map<std::string, std::shared_ptr<spieler::TextureResource>> m_Textures;
+        benzin::GraphicsCommandList m_GraphicsCommandList;
+        benzin::GraphicsCommandList m_PostEffectsGraphicsCommandList;
 
-        spieler::Mesh m_Mesh;
-        spieler::RootSignature m_RootSignature;
-        std::unordered_map<std::string, std::shared_ptr<spieler::Shader>> m_ShaderLibrary;
-        std::unordered_map<std::string, spieler::PipelineState> m_PipelineStates;
+        std::unordered_map<std::string, std::shared_ptr<benzin::BufferResource>> m_Buffers;
+        std::unordered_map<std::string, std::shared_ptr<benzin::TextureResource>> m_Textures;
+
+        benzin::Mesh m_Mesh;
+        benzin::RootSignature m_RootSignature;
+        std::unordered_map<std::string, std::shared_ptr<benzin::Shader>> m_ShaderLibrary;
+        std::unordered_map<std::string, benzin::PipelineState> m_PipelineStates;
         
-        std::unordered_map<std::string, std::unique_ptr<spieler::Entity>> m_Entities;
-        std::vector<const spieler::Entity*> m_DefaultEntities;
-        std::vector<const spieler::Entity*> m_LightSourceEntities;
-        std::vector<const spieler::Entity*> m_PickableEntities;
+        std::unordered_map<std::string, std::unique_ptr<benzin::Entity>> m_Entities;
+        std::vector<const benzin::Entity*> m_DefaultEntities;
+        std::vector<const benzin::Entity*> m_LightSourceEntities;
+        std::vector<const benzin::Entity*> m_PickableEntities;
 
-        std::unordered_map<std::string, spieler::Material> m_Materials;
+        std::unordered_map<std::string, benzin::Material> m_Materials;
 
         const DirectX::XMFLOAT4 m_AmbientLight{ 0.1f, 0.1f, 0.1f, 1.0f };
 
-        spieler::PerspectiveProjection m_PerspectiveProjection{ DirectX::XMConvertToRadians(60.0f), m_Window.GetAspectRatio(), 0.1f, 1000.0f };
-        spieler::Camera m_Camera{ &m_PerspectiveProjection };
-        spieler::FlyCameraController m_FlyCameraController{ &m_Camera };
+        benzin::PerspectiveProjection m_PerspectiveProjection{ DirectX::XMConvertToRadians(60.0f), m_Window.GetAspectRatio(), 0.1f, 1000.0f };
+        benzin::Camera m_Camera{ &m_PerspectiveProjection };
+        benzin::FlyCameraController m_FlyCameraController{ &m_Camera };
 
         PointLightController m_PointLightController;
 
-        spieler::RenderTargetCubeMap m_RenderTargetCubeMap;
+        benzin::RenderTargetCubeMap m_RenderTargetCubeMap;
 
         bool m_IsCullingEnabled{ true };
 

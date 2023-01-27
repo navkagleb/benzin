@@ -1,13 +1,13 @@
 #pragma once
 
-#include <spieler/system/window_event.hpp>
+#include <benzin/system/window_event.hpp>
 
-#include <spieler/graphics/texture.hpp>
-#include <spieler/graphics/root_signature.hpp>
-#include <spieler/graphics/pipeline_state.hpp>
-#include <spieler/graphics/shader.hpp>
-#include <spieler/graphics/graphics_command_list.hpp>
-#include <spieler/graphics/device.hpp>
+#include <benzin/graphics/texture.hpp>
+#include <benzin/graphics/root_signature.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/shader.hpp>
+#include <benzin/graphics/graphics_command_list.hpp>
+#include <benzin/graphics/device.hpp>
 
 namespace sandbox
 {
@@ -25,27 +25,27 @@ namespace sandbox
         static int32_t GetBlurRadius(float sigma) { return static_cast<int32_t>(std::ceilf(sigma * 2.0f)); }
 
     public:
-        BlurPass(spieler::Device& device, uint32_t width, uint32_t height);
+        BlurPass(benzin::Device& device, uint32_t width, uint32_t height);
 
     public:
-        std::shared_ptr<spieler::TextureResource>& GetOutput() { return m_BlurMaps[0]; }
+        std::shared_ptr<benzin::TextureResource>& GetOutput() { return m_BlurMaps[0]; }
 
     public:
-        void OnExecute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input, const BlurPassExecuteProps& props);
-        void OnResize(spieler::Device& device, uint32_t width, uint32_t height);
+        void OnExecute(benzin::GraphicsCommandList& graphicsCommandList, benzin::TextureResource& input, const BlurPassExecuteProps& props);
+        void OnResize(benzin::Device& device, uint32_t width, uint32_t height);
 
     private:
-        void InitTextures(spieler::Device& device, uint32_t width, uint32_t height);
-        void InitRootSignature(spieler::Device& device);
-        void InitPSOs(spieler::Device& device);
+        void InitTextures(benzin::Device& device, uint32_t width, uint32_t height);
+        void InitRootSignature(benzin::Device& device);
+        void InitPSOs(benzin::Device& device);
 
     private:
-        spieler::RootSignature m_RootSignature;
-        spieler::PipelineState m_HorizontalPSO;
-        spieler::PipelineState m_VerticalPSO;
+        benzin::RootSignature m_RootSignature;
+        benzin::PipelineState m_HorizontalPSO;
+        benzin::PipelineState m_VerticalPSO;
 
-        std::array<std::shared_ptr<spieler::TextureResource>, 2> m_BlurMaps;
-        std::unordered_map<std::string, std::shared_ptr<spieler::Shader>> m_ShaderLibrary;
+        std::array<std::shared_ptr<benzin::TextureResource>, 2> m_BlurMaps;
+        std::unordered_map<std::string, std::shared_ptr<benzin::Shader>> m_ShaderLibrary;
     };
 
 } // namespace sandbox

@@ -11,19 +11,19 @@
 
 #include <imgui/imgui.h>
 
-#include <spieler/application.hpp>
-#include <spieler/common.hpp>
-#include <spieler/math.hpp>
-#include <spieler/window/input.hpp>
-#include <spieler/window/event_dispatcher.hpp>
-#include <spieler/window/window_event.hpp>
-#include <spieler/window/mouse_event.hpp>
-#include <spieler/window/key_event.hpp>
-#include <spieler/utility/random.hpp>
-#include <spieler/graphics/geometry_generator.hpp>
-#include <spieler/graphics/sampler.hpp>
-#include <spieler/graphics/rasterizer_state.hpp>
-#include <spieler/graphics/blend_state.hpp>
+#include <benzin/application.hpp>
+#include <benzin/common.hpp>
+#include <benzin/math.hpp>
+#include <benzin/window/input.hpp>
+#include <benzin/window/event_dispatcher.hpp>
+#include <benzin/window/window_event.hpp>
+#include <benzin/window/mouse_event.hpp>
+#include <benzin/window/key_event.hpp>
+#include <benzin/utility/random.hpp>
+#include <benzin/graphics/geometry_generator.hpp>
+#include <benzin/graphics/sampler.hpp>
+#include <benzin/graphics/rasterizer_state.hpp>
+#include <benzin/graphics/blend_state.hpp>
 
 namespace sandbox
 {
@@ -36,7 +36,7 @@ namespace sandbox
         alignas(16) DirectX::XMMATRIX Projection{};
         alignas(16) DirectX::XMFLOAT3 CameraPosition{};
         alignas(16) DirectX::XMFLOAT4 AmbientLight{};
-        alignas(16) spieler::LightConstants Lights[MAX_LIGHT_COUNT];
+        alignas(16) benzin::LightConstants Lights[MAX_LIGHT_COUNT];
         alignas(16) DirectX::XMFLOAT4 FogColor;
         float FogStart;
         float FogRange;
@@ -68,7 +68,7 @@ namespace sandbox
 
     } // namespace _Internal
 
-    LandLayer::LandLayer(spieler::Window& window, spieler::Renderer& renderer)
+    LandLayer::LandLayer(benzin::Window& window, benzin::Renderer& renderer)
         : m_Window(window)
         , m_Renderer(renderer)
         , m_CameraController(DirectX::XM_PIDIV2, m_Window.GetAspectRatio())
@@ -77,7 +77,7 @@ namespace sandbox
 
     bool LandLayer::OnAttach()
     {
-        spieler::Reference<spieler::UploadBuffer> uploadBuffer{ spieler::UploadBuffer::Create(spieler::UploadBufferType::Default, spieler::MB(10)) };
+        benzin::Reference<benzin::UploadBuffer> uploadBuffer{ benzin::UploadBuffer::Create(benzin::UploadBufferType::Default, benzin::MB(10)) };
 
         SPIELER_RETURN_IF_FAILED(InitDescriptorHeaps());
         SPIELER_RETURN_IF_FAILED(InitUploadBuffers());
@@ -105,10 +105,10 @@ namespace sandbox
         return true;
     }
 
-    void LandLayer::OnEvent(spieler::Event& event)
+    void LandLayer::OnEvent(benzin::Event& event)
     {
-        spieler::EventDispatcher dispatcher(event);
-        dispatcher.Dispatch<spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
+        benzin::EventDispatcher dispatcher(event);
+        dispatcher.Dispatch<benzin::WindowResizedEvent>(BENZIN_BIND_EVENT_CALLBACK(OnWindowResized));
 
         m_CameraController.OnEvent(event);
     }
@@ -128,13 +128,13 @@ namespace sandbox
         // Update m_Waves
         static float time = 0.0f;
         
-        if ((spieler::Application::GetInstance().GetTimer().GetTotalTime() - time) >= 0.25f)
+        if ((benzin::Application::GetInstance().GetTimer().GetTotalTime() - time) >= 0.25f)
         {
             time += 0.25f;
 
-            const auto i = spieler::Random::GetInstance().GetIntegral<std::uint32_t>(4, m_Waves.GetRowCount() - 5);
-            const auto j = spieler::Random::GetInstance().GetIntegral<std::uint32_t>(4, m_Waves.GetColumnCount() - 5);
-            const auto r = spieler::Random::GetInstance().GetFloatingPoint<float>(0.2f, 0.5f);
+            const auto i = benzin::Random::GetInstance().GetIntegral<std::uint32_t>(4, m_Waves.GetRowCount() - 5);
+            const auto j = benzin::Random::GetInstance().GetIntegral<std::uint32_t>(4, m_Waves.GetColumnCount() - 5);
+            const auto r = benzin::Random::GetInstance().GetFloatingPoint<float>(0.2f, 0.5f);
 
             m_Waves.Disturb(i, j, r);
         }
@@ -171,21 +171,21 @@ namespace sandbox
 
     bool LandLayer::InitDescriptorHeaps()
     {
-        SPIELER_RETURN_IF_FAILED(m_DescriptorHeaps["srv"].Init(spieler::DescriptorHeapType::SRV, 2));
+        SPIELER_RETURN_IF_FAILED(m_DescriptorHeaps["srv"].Init(benzin::DescriptorHeapType::SRV, 2));
 
         return true;
     }
 
     bool LandLayer::InitUploadBuffers()
     {
-        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["pass"] = spieler::UploadBuffer::Create<PassConstants>(spieler::UploadBufferType::ConstantBuffer, 1));
-        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["object"] = spieler::UploadBuffer::Create<ObjectConstants>(spieler::UploadBufferType::ConstantBuffer, m_RenderItemCount));
-        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["material"] = spieler::UploadBuffer::Create<spieler::MaterialConstants>(spieler::UploadBufferType::ConstantBuffer, m_MaterialCount));
+        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["pass"] = benzin::UploadBuffer::Create<PassConstants>(benzin::UploadBufferType::ConstantBuffer, 1));
+        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["object"] = benzin::UploadBuffer::Create<ObjectConstants>(benzin::UploadBufferType::ConstantBuffer, m_RenderItemCount));
+        SPIELER_RETURN_IF_FAILED(m_UploadBuffers["material"] = benzin::UploadBuffer::Create<benzin::MaterialConstants>(benzin::UploadBufferType::ConstantBuffer, m_MaterialCount));
 
         return true;
     }
 
-    bool LandLayer::InitTextures(spieler::UploadBuffer& textureUploadBuffer)
+    bool LandLayer::InitTextures(benzin::UploadBuffer& textureUploadBuffer)
     {
         SPIELER_RETURN_IF_FAILED(m_Textures["grass"].LoadFromDDSFile(L"assets/textures/grass.dds", textureUploadBuffer));
         SPIELER_RETURN_IF_FAILED(m_Textures["water"].LoadFromDDSFile(L"assets/textures/water.dds", textureUploadBuffer));
@@ -195,16 +195,16 @@ namespace sandbox
 
     void LandLayer::InitMaterials()
     {
-        const spieler::Reference<spieler::UploadBuffer> materialUploadBuffer{ m_UploadBuffers["material"] };
+        const benzin::Reference<benzin::UploadBuffer> materialUploadBuffer{ m_UploadBuffers["material"] };
         const auto& descriptorHeap{ m_DescriptorHeaps["srv"] };
 
         // Grass material
         {
-            spieler::Material& grass{ m_Materials["grass"] };
+            benzin::Material& grass{ m_Materials["grass"] };
             grass.DiffuseMap.Init(m_Textures["grass"], descriptorHeap.GetDescriptorHandle(0));
             grass.ConstantBuffer.Init(*materialUploadBuffer, 0);
 
-            spieler::MaterialConstants& grassConstants{ grass.ConstantBuffer.As<spieler::MaterialConstants>() };
+            benzin::MaterialConstants& grassConstants{ grass.ConstantBuffer.As<benzin::MaterialConstants>() };
             grassConstants.DiffuseAlbedo = DirectX::XMFLOAT4{ 0.2f, 0.6f, 0.2f, 1.0f };
             grassConstants.FresnelR0 = DirectX::XMFLOAT3{ 0.01f, 0.01f, 0.01f };
             grassConstants.Roughness = 0.9f;
@@ -213,11 +213,11 @@ namespace sandbox
 
         // Water material
         {
-            spieler::Material& water{ m_Materials["water"] };
+            benzin::Material& water{ m_Materials["water"] };
             water.DiffuseMap.Init(m_Textures["water"], descriptorHeap.GetDescriptorHandle(1));
             water.ConstantBuffer.Init(*materialUploadBuffer, 1);
 
-            spieler::MaterialConstants& waterConstants{ water.ConstantBuffer.As<spieler::MaterialConstants>() };
+            benzin::MaterialConstants& waterConstants{ water.ConstantBuffer.As<benzin::MaterialConstants>() };
             waterConstants.DiffuseAlbedo = DirectX::XMFLOAT4{ 1.0f, 1.0f, 1.0f, 0.3f };
             waterConstants.FresnelR0 = DirectX::XMFLOAT3{ 0.2f, 0.2f, 0.2f };
             waterConstants.Roughness = 0.0f;
@@ -225,65 +225,65 @@ namespace sandbox
         }
     }
 
-    bool LandLayer::InitMeshGeometry(spieler::UploadBuffer& uploadBuffer)
+    bool LandLayer::InitMeshGeometry(benzin::UploadBuffer& uploadBuffer)
     {
-        spieler::BoxGeometryProps boxProps;
+        benzin::BoxGeometryProps boxProps;
         boxProps.Width = 30.0f;
         boxProps.Height = 20.0f;
         boxProps.Depth = 25.0f;
         boxProps.SubdivisionCount = 2;
 
-        spieler::GridGeometryProps gridProps;
+        benzin::GridGeometryProps gridProps;
         gridProps.Width = 100.0f;
         gridProps.Depth = 100.0f;
         gridProps.RowCount = 10;
         gridProps.ColumnCount = 10;
 
-        spieler::CylinderGeometryProps cylinderProps;
+        benzin::CylinderGeometryProps cylinderProps;
         cylinderProps.TopRadius = 10.0f;
         cylinderProps.BottomRadius = 20.0f;
         cylinderProps.Height = 40.0f;
         cylinderProps.SliceCount = 20;
         cylinderProps.StackCount = 3;
 
-        spieler::SphereGeometryProps sphereProps;
+        benzin::SphereGeometryProps sphereProps;
         sphereProps.Radius = 20.0f;
         sphereProps.SliceCount = 30;
         sphereProps.StackCount = 10;
 
-        spieler::GeosphereGeometryProps geosphereProps;
+        benzin::GeosphereGeometryProps geosphereProps;
         geosphereProps.Radius = 20.0f;
         geosphereProps.SubdivisionCount = 2;
 
-        const spieler::MeshData boxMeshData = spieler::GeometryGenerator::GenerateBox<spieler::BasicVertex, std::uint32_t>(boxProps);
-        const spieler::MeshData gridMeshData = spieler::GeometryGenerator::GenerateGrid<spieler::BasicVertex, std::uint32_t>(gridProps);
-        const spieler::MeshData cylinderMeshData = spieler::GeometryGenerator::GenerateCylinder<spieler::BasicVertex, std::uint32_t>(cylinderProps);
-        const spieler::MeshData sphereMeshData = spieler::GeometryGenerator::GenerateSphere<spieler::BasicVertex, std::uint32_t>(sphereProps);
-        const spieler::MeshData geosphereMeshData = spieler::GeometryGenerator::GenerateGeosphere<spieler::BasicVertex, std::uint32_t>(geosphereProps);
+        const benzin::MeshData boxMeshData = benzin::GeometryGenerator::GenerateBox<benzin::BasicVertex, std::uint32_t>(boxProps);
+        const benzin::MeshData gridMeshData = benzin::GeometryGenerator::GenerateGrid<benzin::BasicVertex, std::uint32_t>(gridProps);
+        const benzin::MeshData cylinderMeshData = benzin::GeometryGenerator::GenerateCylinder<benzin::BasicVertex, std::uint32_t>(cylinderProps);
+        const benzin::MeshData sphereMeshData = benzin::GeometryGenerator::GenerateSphere<benzin::BasicVertex, std::uint32_t>(sphereProps);
+        const benzin::MeshData geosphereMeshData = benzin::GeometryGenerator::GenerateGeosphere<benzin::BasicVertex, std::uint32_t>(geosphereProps);
 
         auto& meshes{ m_MeshGeometries["meshes"] };
 
-        spieler::SubmeshGeometry& boxSubmesh{ meshes.Submeshes["box"] };
+        benzin::SubmeshGeometry& boxSubmesh{ meshes.Submeshes["box"] };
         boxSubmesh.IndexCount = static_cast<std::uint32_t>(boxMeshData.Indices.size());
         boxSubmesh.StartIndexLocation = 0;
         boxSubmesh.BaseVertexLocation = 0;
 
-        spieler::SubmeshGeometry& gridSubmesh{ meshes.Submeshes["grid"] };
+        benzin::SubmeshGeometry& gridSubmesh{ meshes.Submeshes["grid"] };
         gridSubmesh.IndexCount = static_cast<std::uint32_t>(gridMeshData.Indices.size());
         gridSubmesh.BaseVertexLocation = boxSubmesh.BaseVertexLocation + static_cast<std::uint32_t>(boxMeshData.Vertices.size());
         gridSubmesh.StartIndexLocation = boxSubmesh.StartIndexLocation + static_cast<std::uint32_t>(boxMeshData.Indices.size());
 
-        spieler::SubmeshGeometry& cylinderSubmesh{ meshes.Submeshes["cylinder"] };
+        benzin::SubmeshGeometry& cylinderSubmesh{ meshes.Submeshes["cylinder"] };
         cylinderSubmesh.IndexCount = static_cast<std::uint32_t>(cylinderMeshData.Indices.size());
         cylinderSubmesh.BaseVertexLocation = gridSubmesh.BaseVertexLocation + static_cast<std::uint32_t>(gridMeshData.Vertices.size());
         cylinderSubmesh.StartIndexLocation = gridSubmesh.StartIndexLocation + static_cast<std::uint32_t>(gridMeshData.Indices.size());
 
-        spieler::SubmeshGeometry& sphereSubmesh{ meshes.Submeshes["sphere"] };
+        benzin::SubmeshGeometry& sphereSubmesh{ meshes.Submeshes["sphere"] };
         sphereSubmesh.IndexCount = static_cast<std::uint32_t>(sphereMeshData.Indices.size());
         sphereSubmesh.BaseVertexLocation = cylinderSubmesh.BaseVertexLocation + static_cast<std::uint32_t>(cylinderMeshData.Vertices.size());
         sphereSubmesh.StartIndexLocation = cylinderSubmesh.StartIndexLocation + static_cast<std::uint32_t>(cylinderMeshData.Indices.size());
 
-        spieler::SubmeshGeometry& geosphereSubmesh{ meshes.Submeshes["geosphere"] };
+        benzin::SubmeshGeometry& geosphereSubmesh{ meshes.Submeshes["geosphere"] };
         geosphereSubmesh.IndexCount = static_cast<std::uint32_t>(geosphereMeshData.Indices.size());
         geosphereSubmesh.BaseVertexLocation = sphereSubmesh.BaseVertexLocation + static_cast<std::uint32_t>(sphereMeshData.Vertices.size());
         geosphereSubmesh.StartIndexLocation = sphereSubmesh.StartIndexLocation + static_cast<std::uint32_t>(sphereMeshData.Indices.size());
@@ -351,11 +351,11 @@ namespace sandbox
         SPIELER_RETURN_IF_FAILED(meshes.InitStaticVertexBuffer(vertices.data(), vertices.size(), uploadBuffer));
         SPIELER_RETURN_IF_FAILED(meshes.InitStaticIndexBuffer(indices.data(), indices.size(), uploadBuffer));
 
-        meshes.m_PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+        meshes.m_PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
 #if 0
         // Render items
-        spieler::RenderItem box;
+        benzin::RenderItem box;
         box.MeshGeometry        = &meshes;
         box.SubmeshGeometry     = &meshes.Submeshes["box"];
         
@@ -364,7 +364,7 @@ namespace sandbox
 #endif
 
 #if 0
-        spieler::RenderItem sphere;
+        benzin::RenderItem sphere;
         sphere.MeshGeometry           = &meshes;
         sphere.SubmeshGeometry        = &meshes.Submeshes["sphere"];
 
@@ -376,7 +376,7 @@ namespace sandbox
         {
             const std::string renderItemName{ "geosphere1" };
 
-            spieler::RenderItem& geosphere{ m_ColorRenderItems[renderItemName] };
+            benzin::RenderItem& geosphere{ m_ColorRenderItems[renderItemName] };
             geosphere.MeshGeometry = &meshes;
             geosphere.SubmeshGeometry = &meshes.Submeshes["geosphere"];
             geosphere.ConstantBuffer.Init(*m_UploadBuffers["object"], 2);
@@ -390,7 +390,7 @@ namespace sandbox
         {
             const std::string renderItemName{ "geosphere2" };
 
-            spieler::RenderItem& geosphere{ m_ColorRenderItems[renderItemName]};
+            benzin::RenderItem& geosphere{ m_ColorRenderItems[renderItemName]};
             geosphere.MeshGeometry = &meshes;
             geosphere.SubmeshGeometry = &meshes.Submeshes["geosphere"];
             geosphere.ConstantBuffer.Init(*m_UploadBuffers["object"], 3);
@@ -404,7 +404,7 @@ namespace sandbox
         {
             const std::string renderItemName{ "cylinder" };
 
-            spieler::RenderItem& cylinder{ m_ColorRenderItems["cylinder"] };
+            benzin::RenderItem& cylinder{ m_ColorRenderItems["cylinder"] };
             cylinder.MeshGeometry = &meshes;
             cylinder.SubmeshGeometry = &meshes.Submeshes["cylinder"];
             cylinder.ConstantBuffer.Init(*m_UploadBuffers["object"], 4);
@@ -417,15 +417,15 @@ namespace sandbox
         return true;
     }
 
-    bool LandLayer::InitLandGeometry(spieler::UploadBuffer& uploadBuffer)
+    bool LandLayer::InitLandGeometry(benzin::UploadBuffer& uploadBuffer)
     {
-        spieler::GridGeometryProps gridGeometryProps;
+        benzin::GridGeometryProps gridGeometryProps;
         gridGeometryProps.Width = 160.0f;
         gridGeometryProps.Depth = 160.0f;
         gridGeometryProps.RowCount = 100;
         gridGeometryProps.ColumnCount = 100;
 
-        const auto& gridMeshData = spieler::GeometryGenerator::GenerateGrid<spieler::BasicVertex, std::uint32_t>(gridGeometryProps);
+        const auto& gridMeshData = benzin::GeometryGenerator::GenerateGrid<benzin::BasicVertex, std::uint32_t>(gridGeometryProps);
 
         std::vector<Vertex> vertices;
         vertices.reserve(gridMeshData.Vertices.size());
@@ -476,13 +476,13 @@ namespace sandbox
         SPIELER_RETURN_IF_FAILED(landMeshGeometry.InitStaticVertexBuffer(vertices.data(), vertices.size(), uploadBuffer));
         SPIELER_RETURN_IF_FAILED(landMeshGeometry.InitStaticIndexBuffer(gridMeshData.Indices.data(), gridMeshData.Indices.size(), uploadBuffer));
 
-        landMeshGeometry.m_PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+        landMeshGeometry.m_PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
         auto& landMesh = landMeshGeometry.Submeshes["land"];
         landMesh.IndexCount = gridMeshData.Indices.size();
 
         // Render items
-        spieler::RenderItem& land{ m_LitRenderItems["land"] };
+        benzin::RenderItem& land{ m_LitRenderItems["land"] };
         land.MeshGeometry = &landMeshGeometry;
         land.SubmeshGeometry = &landMeshGeometry.Submeshes["land"];
         land.Material = &m_Materials["grass"];
@@ -495,7 +495,7 @@ namespace sandbox
         return true;
     }
 
-    bool LandLayer::InitWavesGeometry(spieler::UploadBuffer& uploadBuffer)
+    bool LandLayer::InitWavesGeometry(benzin::UploadBuffer& uploadBuffer)
     {
         std::vector<std::uint32_t> indices(m_Waves.GetTriangleCount() * 3);
 
@@ -525,7 +525,7 @@ namespace sandbox
         SPIELER_RETURN_IF_FAILED(wavesMeshGeometry.InitDynamicVertexBuffer<Vertex>(m_Waves.GetVertexCount()));
         SPIELER_RETURN_IF_FAILED(wavesMeshGeometry.InitStaticIndexBuffer(indices.data(), static_cast<std::uint32_t>(indices.size()), uploadBuffer));
 
-        wavesMeshGeometry.m_PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+        wavesMeshGeometry.m_PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
         auto& submesh{ wavesMeshGeometry.Submeshes["main"] };
         submesh.IndexCount = static_cast<std::uint32_t>(indices.size());
@@ -533,7 +533,7 @@ namespace sandbox
         submesh.BaseVertexLocation = 0;
 
         // Render Item
-        spieler::RenderItem& waves{ m_BlendedRenderItems["waves"] };
+        benzin::RenderItem& waves{ m_BlendedRenderItems["waves"] };
         waves.MeshGeometry = &wavesMeshGeometry;
         waves.SubmeshGeometry = &wavesMeshGeometry.Submeshes["main"];
         waves.Material = &m_Materials["water"];
@@ -547,40 +547,40 @@ namespace sandbox
 
     bool LandLayer::InitRootSignature()
     {
-        std::vector<spieler::RootParameter> rootParameters;
-        std::vector<spieler::StaticSampler> staticSamplers;
+        std::vector<benzin::RootParameter> rootParameters;
+        std::vector<benzin::StaticSampler> staticSamplers;
 
         // Init root parameters
         {
             rootParameters.resize(4);
 
-            rootParameters[0].Type = spieler::RootParameterType_ConstantBufferView;
-            rootParameters[0].ShaderVisibility = spieler::ShaderVisibility_All;
-            rootParameters[0].Child = spieler::RootDescriptor{ 0, 0 };
+            rootParameters[0].Type = benzin::RootParameterType_ConstantBufferView;
+            rootParameters[0].ShaderVisibility = benzin::ShaderVisibility_All;
+            rootParameters[0].Child = benzin::RootDescriptor{ 0, 0 };
 
-            rootParameters[1].Type = spieler::RootParameterType_ConstantBufferView;
-            rootParameters[1].ShaderVisibility = spieler::ShaderVisibility_All;
-            rootParameters[1].Child = spieler::RootDescriptor{ 1, 0 };
+            rootParameters[1].Type = benzin::RootParameterType_ConstantBufferView;
+            rootParameters[1].ShaderVisibility = benzin::ShaderVisibility_All;
+            rootParameters[1].Child = benzin::RootDescriptor{ 1, 0 };
 
-            rootParameters[2].Type = spieler::RootParameterType_ConstantBufferView;
-            rootParameters[2].ShaderVisibility = spieler::ShaderVisibility_All;
-            rootParameters[2].Child = spieler::RootDescriptor{ 2, 0 };
+            rootParameters[2].Type = benzin::RootParameterType_ConstantBufferView;
+            rootParameters[2].ShaderVisibility = benzin::ShaderVisibility_All;
+            rootParameters[2].Child = benzin::RootDescriptor{ 2, 0 };
 
-            rootParameters[3].Type = spieler::RootParameterType_DescriptorTable;
-            rootParameters[3].ShaderVisibility = spieler::ShaderVisibility_All;
-            rootParameters[3].Child = spieler::RootDescriptorTable{ { spieler::DescriptorRange{ spieler::DescriptorRangeType_SRV, 1 } } };
+            rootParameters[3].Type = benzin::RootParameterType_DescriptorTable;
+            rootParameters[3].ShaderVisibility = benzin::ShaderVisibility_All;
+            rootParameters[3].Child = benzin::RootDescriptorTable{ { benzin::DescriptorRange{ benzin::DescriptorRangeType_SRV, 1 } } };
         }
 
         // Init statis samplers
         {
             staticSamplers.resize(6);
 
-            staticSamplers[0] = spieler::StaticSampler(spieler::TextureFilterType_Point, spieler::TextureAddressMode_Wrap, 0);
-            staticSamplers[1] = spieler::StaticSampler(spieler::TextureFilterType_Point, spieler::TextureAddressMode_Clamp, 1);
-            staticSamplers[2] = spieler::StaticSampler(spieler::TextureFilterType_Linear, spieler::TextureAddressMode_Wrap, 2);
-            staticSamplers[3] = spieler::StaticSampler(spieler::TextureFilterType_Linear, spieler::TextureAddressMode_Clamp, 3);
-            staticSamplers[4] = spieler::StaticSampler(spieler::TextureFilterType_Anisotropic, spieler::TextureAddressMode_Wrap, 4);
-            staticSamplers[5] = spieler::StaticSampler(spieler::TextureFilterType_Anisotropic, spieler::TextureAddressMode_Clamp, 5);
+            staticSamplers[0] = benzin::StaticSampler(benzin::TextureFilterType_Point, benzin::TextureAddressMode_Wrap, 0);
+            staticSamplers[1] = benzin::StaticSampler(benzin::TextureFilterType_Point, benzin::TextureAddressMode_Clamp, 1);
+            staticSamplers[2] = benzin::StaticSampler(benzin::TextureFilterType_Linear, benzin::TextureAddressMode_Wrap, 2);
+            staticSamplers[3] = benzin::StaticSampler(benzin::TextureFilterType_Linear, benzin::TextureAddressMode_Clamp, 3);
+            staticSamplers[4] = benzin::StaticSampler(benzin::TextureFilterType_Anisotropic, benzin::TextureAddressMode_Wrap, 4);
+            staticSamplers[5] = benzin::StaticSampler(benzin::TextureFilterType_Anisotropic, benzin::TextureAddressMode_Clamp, 5);
         }
 
         SPIELER_RETURN_IF_FAILED(m_RootSignatures["default"].Init(rootParameters, staticSamplers));
@@ -595,34 +595,34 @@ namespace sandbox
             auto& vertexShader = m_VertexShaders["default"];
             auto& pixelShader = m_PixelShaders["default"];
 
-            const std::vector<spieler::ShaderDefine> defines
+            const std::vector<benzin::ShaderDefine> defines
             {
-                spieler::ShaderDefine{ "DIRECTIONAL_LIGHT_COUNT", "1" },
-                spieler::ShaderDefine{ "POINT_LIGHT_COUNT", "1" },
-                spieler::ShaderDefine{ "SPOT_LIGHT_COUNT", "1" },
+                benzin::ShaderDefine{ "DIRECTIONAL_LIGHT_COUNT", "1" },
+                benzin::ShaderDefine{ "POINT_LIGHT_COUNT", "1" },
+                benzin::ShaderDefine{ "SPOT_LIGHT_COUNT", "1" },
             };
 
             SPIELER_RETURN_IF_FAILED(vertexShader.LoadFromFile(L"assets/shaders/default.fx", "VS_Main", defines));
             SPIELER_RETURN_IF_FAILED(pixelShader.LoadFromFile(L"assets/shaders/default.fx", "PS_Main", defines));
 
-            spieler::RasterizerState rasterizerState;
-            rasterizerState.FillMode = spieler::FillMode::Solid;
-            rasterizerState.CullMode = spieler::CullMode::Back;
+            benzin::RasterizerState rasterizerState;
+            rasterizerState.FillMode = benzin::FillMode::Solid;
+            rasterizerState.CullMode = benzin::CullMode::Back;
 
-            spieler::InputLayout inputLayout
+            benzin::InputLayout inputLayout
             {
-                spieler::InputLayoutElement{ "Position", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
-                spieler::InputLayoutElement{ "Normal", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
-                spieler::InputLayoutElement{ "TexCoord", DXGI_FORMAT_R32G32_FLOAT, sizeof(DirectX::XMFLOAT2) }
+                benzin::InputLayoutElement{ "Position", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
+                benzin::InputLayoutElement{ "Normal", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
+                benzin::InputLayoutElement{ "TexCoord", DXGI_FORMAT_R32G32_FLOAT, sizeof(DirectX::XMFLOAT2) }
             };
 
-            spieler::PipelineStateProps pipelineStateProps;
+            benzin::PipelineStateProps pipelineStateProps;
             pipelineStateProps.RootSignature = &m_RootSignatures["default"];
             pipelineStateProps.VertexShader = &vertexShader;
             pipelineStateProps.PixelShader = &pixelShader;
             pipelineStateProps.RasterizerState = &rasterizerState;
             pipelineStateProps.InputLayout = &inputLayout;
-            pipelineStateProps.PrimitiveTopologyType = spieler::PrimitiveTopologyType::Triangle;
+            pipelineStateProps.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
             pipelineStateProps.RTVFormat = m_Renderer.GetSwapChainProps().BufferFormat;
             pipelineStateProps.DSVFormat = m_Renderer.GetDepthStencilFormat();
 
@@ -634,38 +634,38 @@ namespace sandbox
             auto& vertexShader = m_VertexShaders["default"];
             auto& pixelShader = m_PixelShaders["default"];
 
-            spieler::RasterizerState rasterizerState;
-            rasterizerState.FillMode = spieler::FillMode::Solid;
-            rasterizerState.CullMode = spieler::CullMode::Back;
+            benzin::RasterizerState rasterizerState;
+            rasterizerState.FillMode = benzin::FillMode::Solid;
+            rasterizerState.CullMode = benzin::CullMode::Back;
 
-            spieler::RenderTargetBlendProps renderTargetBlendProps;
-            renderTargetBlendProps.Type = spieler::RenderTargetBlendingType::Default;
-            renderTargetBlendProps.Channels = spieler::BlendChannel_All;
-            renderTargetBlendProps.ColorEquation.SourceFactor = spieler::BlendColorFactor::SourceAlpha;
-            renderTargetBlendProps.ColorEquation.DestinationFactor = spieler::BlendColorFactor::InverseSourceAlpha;
-            renderTargetBlendProps.ColorEquation.Operation = spieler::BlendOperation::Add;
-            renderTargetBlendProps.AlphaEquation.SourceFactor = spieler::BlendAlphaFactor::One;
-            renderTargetBlendProps.AlphaEquation.DestinationFactor = spieler::BlendAlphaFactor::Zero;
-            renderTargetBlendProps.AlphaEquation.Operation = spieler::BlendOperation::Add;
+            benzin::RenderTargetBlendProps renderTargetBlendProps;
+            renderTargetBlendProps.Type = benzin::RenderTargetBlendingType::Default;
+            renderTargetBlendProps.Channels = benzin::BlendChannel_All;
+            renderTargetBlendProps.ColorEquation.SourceFactor = benzin::BlendColorFactor::SourceAlpha;
+            renderTargetBlendProps.ColorEquation.DestinationFactor = benzin::BlendColorFactor::InverseSourceAlpha;
+            renderTargetBlendProps.ColorEquation.Operation = benzin::BlendOperation::Add;
+            renderTargetBlendProps.AlphaEquation.SourceFactor = benzin::BlendAlphaFactor::One;
+            renderTargetBlendProps.AlphaEquation.DestinationFactor = benzin::BlendAlphaFactor::Zero;
+            renderTargetBlendProps.AlphaEquation.Operation = benzin::BlendOperation::Add;
 
-            spieler::BlendState blendState;
+            benzin::BlendState blendState;
             blendState.RenderTargetProps.push_back(renderTargetBlendProps);
 
-            spieler::InputLayout inputLayout
+            benzin::InputLayout inputLayout
             {
-                spieler::InputLayoutElement{ "Position", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
-                spieler::InputLayoutElement{ "Normal", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
-                spieler::InputLayoutElement{ "TexCoord", DXGI_FORMAT_R32G32_FLOAT, sizeof(DirectX::XMFLOAT2) }
+                benzin::InputLayoutElement{ "Position", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
+                benzin::InputLayoutElement{ "Normal", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
+                benzin::InputLayoutElement{ "TexCoord", DXGI_FORMAT_R32G32_FLOAT, sizeof(DirectX::XMFLOAT2) }
             };
 
-            spieler::PipelineStateProps pipelineStateProps;
+            benzin::PipelineStateProps pipelineStateProps;
             pipelineStateProps.RootSignature = &m_RootSignatures["default"];
             pipelineStateProps.VertexShader = &vertexShader;
             pipelineStateProps.PixelShader = &pixelShader;
             pipelineStateProps.BlendState = &blendState;
             pipelineStateProps.RasterizerState = &rasterizerState;
             pipelineStateProps.InputLayout = &inputLayout;
-            pipelineStateProps.PrimitiveTopologyType = spieler::PrimitiveTopologyType::Triangle;
+            pipelineStateProps.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
             pipelineStateProps.RTVFormat = m_Renderer.GetSwapChainProps().BufferFormat;
             pipelineStateProps.DSVFormat = m_Renderer.GetDepthStencilFormat();
 
@@ -680,23 +680,23 @@ namespace sandbox
             SPIELER_RETURN_IF_FAILED(vertexShader.LoadFromFile(L"assets/shaders/color1.fx", "VS_Main"));
             SPIELER_RETURN_IF_FAILED(pixelShader.LoadFromFile(L"assets/shaders/color1.fx", "PS_Main"));
 
-            spieler::RasterizerState rasterzerState;
-            rasterzerState.FillMode = spieler::FillMode::Wireframe;
-            rasterzerState.CullMode = spieler::CullMode::None;
+            benzin::RasterizerState rasterzerState;
+            rasterzerState.FillMode = benzin::FillMode::Wireframe;
+            rasterzerState.CullMode = benzin::CullMode::None;
 
-            spieler::InputLayout inputLayout
+            benzin::InputLayout inputLayout
             {
-                spieler::InputLayoutElement{ "Position", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
-                spieler::InputLayoutElement{ "Color", DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(DirectX::XMFLOAT4) }
+                benzin::InputLayoutElement{ "Position", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(DirectX::XMFLOAT3) },
+                benzin::InputLayoutElement{ "Color", DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(DirectX::XMFLOAT4) }
             };
 
-            spieler::PipelineStateProps pipelineStateProps;
+            benzin::PipelineStateProps pipelineStateProps;
             pipelineStateProps.RootSignature = &m_RootSignatures["default"];
             pipelineStateProps.VertexShader = &vertexShader;
             pipelineStateProps.PixelShader = &pixelShader;
             pipelineStateProps.RasterizerState = &rasterzerState;
             pipelineStateProps.InputLayout = &inputLayout;
-            pipelineStateProps.PrimitiveTopologyType = spieler::PrimitiveTopologyType::Triangle;
+            pipelineStateProps.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
             pipelineStateProps.RTVFormat = m_Renderer.GetSwapChainProps().BufferFormat;
             pipelineStateProps.DSVFormat = m_Renderer.GetDepthStencilFormat();
 
@@ -723,7 +723,7 @@ namespace sandbox
 
         // Directional light
         {
-            spieler::LightConstants constants;
+            benzin::LightConstants constants;
             constants.Strength = DirectX::XMFLOAT3{ 1.0f, 1.0f, 0.7f };
 
             m_DirectionalLightController.SetConstants(&lightsConstants[0]);
@@ -734,7 +734,7 @@ namespace sandbox
 
         // Point light
         {
-            spieler::LightConstants constants;
+            benzin::LightConstants constants;
             constants.Strength = DirectX::XMFLOAT3{ 1.0f, 1.0f, 0.9f };
             constants.Position = DirectX::XMFLOAT3{ 60.0f, -7.0f, 30.0f };
             constants.FalloffStart = 35.0f;
@@ -748,7 +748,7 @@ namespace sandbox
 
         // Spot light
         {
-            spieler::LightConstants constants;
+            benzin::LightConstants constants;
             constants.Strength = DirectX::XMFLOAT3{ 1.0f, 1.0f, 0.9f };
             constants.Position = DirectX::XMFLOAT3{ -80.0f, 0.0f, 0.0f };
             constants.FalloffStart = 80.0f;
@@ -780,7 +780,7 @@ namespace sandbox
         m_ScissorRect.Height = static_cast<float>(m_Window.GetHeight());
     }
 
-    bool LandLayer::OnWindowResized(spieler::WindowResizedEvent& event)
+    bool LandLayer::OnWindowResized(benzin::WindowResizedEvent& event)
     {
         InitViewport();
         InitScissorRect();
@@ -790,7 +790,7 @@ namespace sandbox
 
     void LandLayer::UpdateWavesVertexBuffer(float dt)
     {
-        static spieler::MaterialConstants& waterMaterialConstants{ m_Materials["water"].ConstantBuffer.As<spieler::MaterialConstants>() };
+        static benzin::MaterialConstants& waterMaterialConstants{ m_Materials["water"].ConstantBuffer.As<benzin::MaterialConstants>() };
 
         waterMaterialConstants.Transform = DirectX::XMMatrixTranspose(waterMaterialConstants.Transform);
         float tu = DirectX::XMVectorGetX(waterMaterialConstants.Transform.r[3]);

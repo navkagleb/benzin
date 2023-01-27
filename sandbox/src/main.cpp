@@ -1,16 +1,16 @@
 #include "bootstrap.hpp"
 
-#include <spieler/core/entry_point.hpp>
-#include <spieler/core/timer.hpp>
-#include <spieler/core/layer_stack.hpp>
-#include <spieler/core/imgui_layer.hpp>
+#include <benzin/core/entry_point.hpp>
+#include <benzin/core/timer.hpp>
+#include <benzin/core/layer_stack.hpp>
+#include <benzin/core/imgui_layer.hpp>
 
-#include <spieler/system/key_event.hpp>
-#include <spieler/system/event_dispatcher.hpp>
+#include <benzin/system/key_event.hpp>
+#include <benzin/system/event_dispatcher.hpp>
 
-#include <spieler/graphics/device.hpp>
-#include <spieler/graphics/swap_chain.hpp>
-#include <spieler/graphics/command_queue.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/swap_chain.hpp>
+#include <benzin/graphics/command_queue.hpp>
 
 #include "layers/test_layer.hpp"
 #include "layers/tessellation_layer.hpp"
@@ -24,14 +24,14 @@ namespace sandbox
     public:
         Application()
         {
-            m_MainWindow = std::make_unique<spieler::Window>("Sandbox", 1280, 720);
-            m_MainWindow->SetEventCallbackFunction([&](spieler::Event& event) { WindowEventCallback(event); });
+            m_MainWindow = std::make_unique<benzin::Window>("Sandbox", 1280, 720);
+            m_MainWindow->SetEventCallbackFunction([&](benzin::Event& event) { WindowEventCallback(event); });
 
-            m_Device = std::make_unique<spieler::Device>();
-            m_CommandQueue = std::make_unique<spieler::CommandQueue>(*m_Device);
-            m_SwapChain = std::make_unique<spieler::SwapChain>(*m_MainWindow, *m_Device, *m_CommandQueue);
+            m_Device = std::make_unique<benzin::Device>();
+            m_CommandQueue = std::make_unique<benzin::CommandQueue>(*m_Device);
+            m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Device, *m_CommandQueue);
 
-            m_ImGuiLayer = m_LayerStack.PushOverlay<spieler::ImGuiLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);
+            m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);
             m_InstancingAndCullingLayer = m_LayerStack.Push<InstancingAndCullingLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);
         }
 
@@ -71,24 +71,24 @@ namespace sandbox
                     m_ImGuiLayer->End();
 
                     m_CommandQueue->Flush();
-                    m_SwapChain->Flip(spieler::VSyncState::Disabled);
+                    m_SwapChain->Flip(benzin::VSyncState::Disabled);
                 }
             }
         }
 
     private:
-        void WindowEventCallback(spieler::Event& event)
+        void WindowEventCallback(benzin::Event& event)
         {
-            spieler::EventDispatcher dispatcher{ event };
+            benzin::EventDispatcher dispatcher{ event };
 
-            dispatcher.Dispatch<spieler::WindowCloseEvent>([this](spieler::WindowCloseEvent& event)
+            dispatcher.Dispatch<benzin::WindowCloseEvent>([this](benzin::WindowCloseEvent& event)
             {
                 m_IsRunning = false;
 
                 return false;
             });
 
-            dispatcher.Dispatch<spieler::WindowEnterResizingEvent>([this](spieler::WindowEnterResizingEvent& event)
+            dispatcher.Dispatch<benzin::WindowEnterResizingEvent>([this](benzin::WindowEnterResizingEvent& event)
             {
                 m_IsPaused = true;
                 m_FrameTimer.Stop();
@@ -96,7 +96,7 @@ namespace sandbox
                 return false;
             });
 
-            dispatcher.Dispatch<spieler::WindowExitResizingEvent>([this](spieler::WindowExitResizingEvent& event)
+            dispatcher.Dispatch<benzin::WindowExitResizingEvent>([this](benzin::WindowExitResizingEvent& event)
             {
                 m_IsPaused = false;
                 m_FrameTimer.Start();
@@ -104,7 +104,7 @@ namespace sandbox
                 return false;
             });
 
-            dispatcher.Dispatch<spieler::WindowResizedEvent>([this](spieler::WindowResizedEvent& event)
+            dispatcher.Dispatch<benzin::WindowResizedEvent>([this](benzin::WindowResizedEvent& event)
             {
                 m_CommandQueue->Flush();
                 m_SwapChain->ResizeBackBuffers(*m_Device, event.GetWidth(), event.GetHeight());
@@ -112,7 +112,7 @@ namespace sandbox
                 return false;
             });
 
-            dispatcher.Dispatch<spieler::WindowFocusedEvent>([this](spieler::WindowFocusedEvent& event)
+            dispatcher.Dispatch<benzin::WindowFocusedEvent>([this](benzin::WindowFocusedEvent& event)
             {
                 m_IsPaused = false;
                 m_FrameTimer.Start();
@@ -120,7 +120,7 @@ namespace sandbox
                 return false;
             });
 
-            dispatcher.Dispatch<spieler::WindowUnfocusedEvent>([this](spieler::WindowUnfocusedEvent& event)
+            dispatcher.Dispatch<benzin::WindowUnfocusedEvent>([this](benzin::WindowUnfocusedEvent& event)
             {
                 m_IsPaused = true;
                 m_FrameTimer.Stop();
@@ -140,15 +140,15 @@ namespace sandbox
         }
 
     private:
-        std::unique_ptr<spieler::Window> m_MainWindow;
-        std::unique_ptr<spieler::Device> m_Device;
-        std::unique_ptr<spieler::CommandQueue> m_CommandQueue;
-        std::unique_ptr<spieler::SwapChain> m_SwapChain;
+        std::unique_ptr<benzin::Window> m_MainWindow;
+        std::unique_ptr<benzin::Device> m_Device;
+        std::unique_ptr<benzin::CommandQueue> m_CommandQueue;
+        std::unique_ptr<benzin::SwapChain> m_SwapChain;
 
-        spieler::Timer m_FrameTimer;
-        spieler::LayerStack m_LayerStack;
+        benzin::Timer m_FrameTimer;
+        benzin::LayerStack m_LayerStack;
 
-        std::shared_ptr<spieler::ImGuiLayer> m_ImGuiLayer;
+        std::shared_ptr<benzin::ImGuiLayer> m_ImGuiLayer;
         std::shared_ptr<InstancingAndCullingLayer> m_InstancingAndCullingLayer;
 
         bool m_IsRunning{ false };
@@ -157,7 +157,7 @@ namespace sandbox
 
 } // namespace sandbox
 
-int spieler::ClientMain()
+int benzin::ClientMain()
 {
     {
         sandbox::Application application;

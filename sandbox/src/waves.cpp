@@ -6,8 +6,8 @@
 
 #include <algorithm>
 
-#include <spieler/core/assert.hpp>
-#include <spieler/core/common.hpp>
+#include <benzin/core/assert.hpp>
+#include <benzin/core/common.hpp>
 
 namespace sandbox
 {
@@ -104,8 +104,8 @@ namespace sandbox
 
     void Waves::Disturb(uint32_t i, uint32_t j, float magnitude)
     {
-        SPIELER_ASSERT(i > 1 && i < m_RowCount - 2);
-        SPIELER_ASSERT(j > 1 && j < m_ColumnCount - 2);
+        BENZIN_ASSERT(i > 1 && i < m_RowCount - 2);
+        BENZIN_ASSERT(j > 1 && j < m_ColumnCount - 2);
 
         const float halfMagnitude{ 0.5f * magnitude };
 

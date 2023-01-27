@@ -2,12 +2,12 @@
 
 #include "tessellation_layer.hpp"
 
-#include <spieler/system/event_dispatcher.hpp>
+#include <benzin/system/event_dispatcher.hpp>
 
-#include <spieler/graphics/rasterizer_state.hpp>
-#include <spieler/graphics/mapped_data.hpp>
+#include <benzin/graphics/rasterizer_state.hpp>
+#include <benzin/graphics/mapped_data.hpp>
 
-#include <spieler/engine/geometry_generator.hpp>
+#include <benzin/engine/geometry_generator.hpp>
 
 #if 0
 
@@ -25,14 +25,14 @@ namespace sandbox
 
     bool TessellationLayer::OnAttach()
     {
-        auto& window{ spieler::Application::GetInstance().GetWindow() };
-        auto& renderer{ spieler::Renderer::GetInstance() };
+        auto& window{ benzin::Application::GetInstance().GetWindow() };
+        auto& renderer{ benzin::Renderer::GetInstance() };
         auto& swapChain{ renderer.GetSwapChain() };
         auto& device{ renderer.GetDevice() };
         auto& context{ renderer.GetContext() };
 
         {
-            spieler::Context::CommandListScope commandListScope{ context, true };
+            benzin::Context::CommandListScope commandListScope{ context, true };
 
             InitViewport();
             InitScissorRect();
@@ -44,26 +44,26 @@ namespace sandbox
 
                 // Pass
                 {
-                    const spieler::BufferResource::Config config
+                    const benzin::BufferResource::Config config
                     {
                         .ElementSize{ sizeof(PassConstants) },
                         .ElementCount{ 1 },
-                        .Flags{ spieler::BufferResource::Flags::ConstantBuffer }
+                        .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
                     };
 
-                    m_PassConstantBuffer = spieler::BufferResource::Create(device, config);
+                    m_PassConstantBuffer = benzin::BufferResource::Create(device, config);
                 }
             
                 // Object
                 {
-                    const spieler::BufferResource::Config config
+                    const benzin::BufferResource::Config config
                     {
                         .ElementSize{ sizeof(ObjectConstants) },
                         .ElementCount{ 2 },
-                        .Flags{ spieler::BufferResource::Flags::ConstantBuffer }
+                        .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
                     };
 
-                    m_ObjectConstantBuffer = spieler::BufferResource::Create(device, config);
+                    m_ObjectConstantBuffer = benzin::BufferResource::Create(device, config);
                 }
             }
 
@@ -117,38 +117,38 @@ namespace sandbox
 
                 // VertexBuffer
                 {
-                    const spieler::BufferResource::Config config
+                    const benzin::BufferResource::Config config
                     {
                         .ElementSize{ sizeof(DirectX::XMFLOAT3) },
                         .ElementCount{ static_cast<uint32_t>(vertices.size()) }
                     };
 
-                    m_MeshGeometry.VertexBuffer.SetBufferResource(spieler::BufferResource::Create(device, config));
+                    m_MeshGeometry.VertexBuffer.SetBufferResource(benzin::BufferResource::Create(device, config));
 
                     context.UploadToBuffer(*m_MeshGeometry.VertexBuffer.GetBufferResource(), vertices.data(), sizeof(DirectX::XMFLOAT3) * vertices.size());
                 }
 
                 // IndexBuffer
                 {
-                    const spieler::BufferResource::Config config
+                    const benzin::BufferResource::Config config
                     {
                         .ElementSize{ sizeof(uint16_t) },
                         .ElementCount{ static_cast<uint32_t>(indices.size()) },
                     };
 
-                    m_MeshGeometry.IndexBuffer.SetBufferResource(spieler::BufferResource::Create(device, config));
+                    m_MeshGeometry.IndexBuffer.SetBufferResource(benzin::BufferResource::Create(device, config));
 
                     context.UploadToBuffer(*m_MeshGeometry.IndexBuffer.GetBufferResource(), indices.data(), sizeof(uint16_t) * indices.size());
                 }
 
-                m_MeshGeometry.Submeshes["quad"] = spieler::SubmeshGeometry
+                m_MeshGeometry.Submeshes["quad"] = benzin::SubmeshGeometry
                 {
                     .IndexCount{ 4 },
                     .BaseVertexLocation{ 0 },
                     .StartIndexLocation{ 0 },
                 };
 
-                m_MeshGeometry.Submeshes["bezier_quad"] = spieler::SubmeshGeometry
+                m_MeshGeometry.Submeshes["bezier_quad"] = benzin::SubmeshGeometry
                 {
                     .IndexCount{ 16 },
                     .BaseVertexLocation{ 4 },
@@ -161,90 +161,90 @@ namespace sandbox
                 auto& quad{ m_RenderItems["quad"] };
                 quad.MeshGeometry = &m_MeshGeometry;
                 quad.SubmeshGeometry = &m_MeshGeometry.Submeshes["quad"];
-                quad.PrimitiveTopology = spieler::PrimitiveTopology::ControlPointPatchlist4;
+                quad.PrimitiveTopology = benzin::PrimitiveTopology::ControlPointPatchlist4;
                 quad.ConstantBufferIndex = 0;
                 quad.Transform.Scale = DirectX::XMFLOAT3{ 30.0f, 30.0f, 30.0f };
 
                 auto& bezierQuad{ m_RenderItems["bezier_quad"] };
                 bezierQuad.MeshGeometry = &m_MeshGeometry;
                 bezierQuad.SubmeshGeometry = &m_MeshGeometry.Submeshes["bezier_quad"];
-                bezierQuad.PrimitiveTopology = spieler::PrimitiveTopology::ControlPointPatchlist16;
+                bezierQuad.PrimitiveTopology = benzin::PrimitiveTopology::ControlPointPatchlist16;
                 bezierQuad.ConstantBufferIndex = 1;
                 bezierQuad.Transform.Translation = DirectX::XMFLOAT3{ 60.0f, 0.0f, 0.0f };
             }
 
             // Init RoogSignature
             {
-                const spieler::RootParameter::Descriptor pass
+                const benzin::RootParameter::Descriptor pass
                 {
-                    .Type{ spieler::RootParameter::DescriptorType::ConstantBufferView },
+                    .Type{ benzin::RootParameter::DescriptorType::ConstantBufferView },
                     .ShaderRegister{ 0 }
                 };
 
-                const spieler::RootParameter::Descriptor object
+                const benzin::RootParameter::Descriptor object
                 {
-                    .Type{ spieler::RootParameter::DescriptorType::ConstantBufferView },
+                    .Type{ benzin::RootParameter::DescriptorType::ConstantBufferView },
                     .ShaderRegister{ 1 }
                 };
 
-                spieler::RootSignature::Config rootSignatureConfig{ 2 };
+                benzin::RootSignature::Config rootSignatureConfig{ 2 };
                 rootSignatureConfig.RootParameters[0] = pass;
                 rootSignatureConfig.RootParameters[1] = object;
 
-                m_RootSignature = spieler::RootSignature{ device, rootSignatureConfig };
+                m_RootSignature = benzin::RootSignature{ device, rootSignatureConfig };
             }
 
             // Init PipelineState
             {
                 // Quad PipelineState
                 {
-                    const spieler::Shader* vs{ nullptr };
-                    const spieler::Shader* hs{ nullptr };
-                    const spieler::Shader* ds{ nullptr };
-                    const spieler::Shader* ps{ nullptr };
+                    const benzin::Shader* vs{ nullptr };
+                    const benzin::Shader* hs{ nullptr };
+                    const benzin::Shader* ds{ nullptr };
+                    const benzin::Shader* ps{ nullptr };
 
                     // Init Shaders
                     {
                         const std::wstring filename{ L"assets/shaders/tessellation.hlsl" };
 
-                        vs = &m_ShaderLibrary.CreateShader(spieler::ShaderType::Vertex, spieler::ShaderConfig<per::Tessellation>
+                        vs = &m_ShaderLibrary.CreateShader(benzin::ShaderType::Vertex, benzin::ShaderConfig<per::Tessellation>
                         {
                             .Filename{ filename },
                             .EntryPoint{ "VS_Main" },
                         });
 
-                        hs = &m_ShaderLibrary.CreateShader(spieler::ShaderType::Hull, spieler::ShaderConfig<per::Tessellation>
+                        hs = &m_ShaderLibrary.CreateShader(benzin::ShaderType::Hull, benzin::ShaderConfig<per::Tessellation>
                         {
                             .Filename{ filename },
                             .EntryPoint{ "HS_Main" },
                         });
 
-                        ds = &m_ShaderLibrary.CreateShader(spieler::ShaderType::Domain, spieler::ShaderConfig<per::Tessellation>
+                        ds = &m_ShaderLibrary.CreateShader(benzin::ShaderType::Domain, benzin::ShaderConfig<per::Tessellation>
                         {
                             .Filename{ filename },
                             .EntryPoint{ "DS_Main" },
                         });
 
-                        ps = &m_ShaderLibrary.CreateShader(spieler::ShaderType::Pixel, spieler::ShaderConfig<per::Tessellation>
+                        ps = &m_ShaderLibrary.CreateShader(benzin::ShaderType::Pixel, benzin::ShaderConfig<per::Tessellation>
                         {
                             .Filename{ filename },
                             .EntryPoint{ "PS_Main" },
                         });
                     }
 
-                    const spieler::RasterizerState rasterizerState
+                    const benzin::RasterizerState rasterizerState
                     {
-                        .FillMode{ spieler::FillMode::Wireframe },
-                        .CullMode{ spieler::CullMode::None },
-                        .TriangleOrder{ spieler::TriangleOrder::Clockwise }
+                        .FillMode{ benzin::FillMode::Wireframe },
+                        .CullMode{ benzin::CullMode::None },
+                        .TriangleOrder{ benzin::TriangleOrder::Clockwise }
                     };
 
-                    const spieler::InputLayout inputLayout
+                    const benzin::InputLayout inputLayout
                     {
-                        spieler::InputLayoutElement{ "Position", spieler::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) }
+                        benzin::InputLayoutElement{ "Position", benzin::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) }
                     };
 
-                    const spieler::GraphicsPipelineState::Config graphicsPipelineStateConfig
+                    const benzin::GraphicsPipelineState::Config graphicsPipelineStateConfig
                     {
                         .RootSignature{ &m_RootSignature },
                         .VertexShader{ vs },
@@ -253,63 +253,63 @@ namespace sandbox
                         .PixelShader{ ps },
                         .RasterizerState{ &rasterizerState },
                         .InputLayout{ &inputLayout },
-                        .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Patch },
+                        .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Patch },
                         .RTVFormat{ swapChain.GetBufferFormat() },
                         .DSVFormat{ m_DepthStencilFormat }
                     };
 
-                    m_PipelineStates["quad"] = spieler::GraphicsPipelineState{ device, graphicsPipelineStateConfig };
+                    m_PipelineStates["quad"] = benzin::GraphicsPipelineState{ device, graphicsPipelineStateConfig };
                 }
             
                 // Bezier quad PipelineState
                 {
-                    const spieler::Shader* vs{ nullptr };
-                    const spieler::Shader* hs{ nullptr };
-                    const spieler::Shader* ds{ nullptr };
-                    const spieler::Shader* ps{ nullptr };
+                    const benzin::Shader* vs{ nullptr };
+                    const benzin::Shader* hs{ nullptr };
+                    const benzin::Shader* ds{ nullptr };
+                    const benzin::Shader* ps{ nullptr };
 
                     // Init Shaders
                     {
                         const std::wstring filename{ L"assets/shaders/bezier_tessellation.hlsl" };
 
-                        vs = &m_ShaderLibrary.CreateShader(spieler::ShaderType::Vertex, spieler::ShaderConfig<per::BezierTessellation>
+                        vs = &m_ShaderLibrary.CreateShader(benzin::ShaderType::Vertex, benzin::ShaderConfig<per::BezierTessellation>
                         {
                             .Filename{ filename },
                             .EntryPoint{ "VS_Main" },
                         });
 
-                        hs = &m_ShaderLibrary.CreateShader(spieler::ShaderType::Hull, spieler::ShaderConfig<per::BezierTessellation>
+                        hs = &m_ShaderLibrary.CreateShader(benzin::ShaderType::Hull, benzin::ShaderConfig<per::BezierTessellation>
                         {
                             .Filename{ filename },
                             .EntryPoint{ "HS_Main" },
                         });
 
-                        ds = &m_ShaderLibrary.CreateShader(spieler::ShaderType::Domain, spieler::ShaderConfig<per::BezierTessellation>
+                        ds = &m_ShaderLibrary.CreateShader(benzin::ShaderType::Domain, benzin::ShaderConfig<per::BezierTessellation>
                         {
                             .Filename{ filename },
                             .EntryPoint{ "DS_Main" },
                         });
 
-                        ps = &m_ShaderLibrary.CreateShader(spieler::ShaderType::Pixel, spieler::ShaderConfig<per::BezierTessellation>
+                        ps = &m_ShaderLibrary.CreateShader(benzin::ShaderType::Pixel, benzin::ShaderConfig<per::BezierTessellation>
                         {
                             .Filename{ filename },
                             .EntryPoint{ "PS_Main" },
                         });
                     }
 
-                    const spieler::RasterizerState rasterizerState
+                    const benzin::RasterizerState rasterizerState
                     {
-                        .FillMode{ spieler::FillMode::Wireframe },
-                        .CullMode{ spieler::CullMode::None },
-                        .TriangleOrder{ spieler::TriangleOrder::Clockwise }
+                        .FillMode{ benzin::FillMode::Wireframe },
+                        .CullMode{ benzin::CullMode::None },
+                        .TriangleOrder{ benzin::TriangleOrder::Clockwise }
                     };
 
-                    const spieler::InputLayout inputLayout
+                    const benzin::InputLayout inputLayout
                     {
-                        spieler::InputLayoutElement{ "Position", spieler::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) }
+                        benzin::InputLayoutElement{ "Position", benzin::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) }
                     };
 
-                    const spieler::GraphicsPipelineState::Config graphicsPipelineStateConfig
+                    const benzin::GraphicsPipelineState::Config graphicsPipelineStateConfig
                     {
                         .RootSignature{ &m_RootSignature },
                         .VertexShader{ vs },
@@ -318,12 +318,12 @@ namespace sandbox
                         .PixelShader{ ps },
                         .RasterizerState{ &rasterizerState },
                         .InputLayout{ &inputLayout },
-                        .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Patch },
+                        .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Patch },
                         .RTVFormat{ swapChain.GetBufferFormat() },
                         .DSVFormat{ m_DepthStencilFormat }
                     };
 
-                    m_PipelineStates["bezier_quad"] = spieler::GraphicsPipelineState{ device, graphicsPipelineStateConfig };
+                    m_PipelineStates["bezier_quad"] = benzin::GraphicsPipelineState{ device, graphicsPipelineStateConfig };
                 }
             }
         }
@@ -331,12 +331,12 @@ namespace sandbox
         return true;
     }
 
-    void TessellationLayer::OnEvent(spieler::Event& event)
+    void TessellationLayer::OnEvent(benzin::Event& event)
     {
         m_CameraController.OnEvent(event);
 
-        spieler::EventDispatcher dispatcher{ event };
-        dispatcher.Dispatch<spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
+        benzin::EventDispatcher dispatcher{ event };
+        dispatcher.Dispatch<benzin::WindowResizedEvent>(BENZIN_BIND_EVENT_CALLBACK(OnWindowResized));
     }
 
     void TessellationLayer::OnUpdate(float dt)
@@ -345,7 +345,7 @@ namespace sandbox
 
         // Update Pass ConstantBuffer
         {
-            spieler::MappedData bufferData{ m_PassConstantBuffer, 0 };
+            benzin::MappedData bufferData{ m_PassConstantBuffer, 0 };
 
             m_PassConstants.View = DirectX::XMMatrixTranspose(m_Camera.GetView());
             m_PassConstants.Projection = DirectX::XMMatrixTranspose(m_Camera.GetProjection());
@@ -357,7 +357,7 @@ namespace sandbox
 
         // Update Object ConstantBuffer
         {
-            spieler::MappedData bufferData{ m_ObjectConstantBuffer, 0 };
+            benzin::MappedData bufferData{ m_ObjectConstantBuffer, 0 };
 
             for (const auto& [name, renderItem] : m_RenderItems)
             {
@@ -373,33 +373,33 @@ namespace sandbox
 
     void TessellationLayer::OnRender(float dt)
     {
-        auto& renderer{ spieler::Renderer::GetInstance() };
+        auto& renderer{ benzin::Renderer::GetInstance() };
         auto& swapChain{ renderer.GetSwapChain() };
         auto& context{ renderer.GetContext() };
 
         auto& backBuffer{ swapChain.GetCurrentBuffer() };
 
         {
-            spieler::Context::CommandListScope commandListScope{ context, true };
+            benzin::Context::CommandListScope commandListScope{ context, true };
 
-            context.SetResourceBarrier(spieler::TransitionResourceBarrier
+            context.SetResourceBarrier(benzin::TransitionResourceBarrier
             {
                 .Resource{ backBuffer.GetTextureResource().get() },
-                .From{ spieler::Resource::State::Present },
-                .To{ spieler::Resource::State::RenderTarget }
+                .From{ benzin::Resource::State::Present },
+                .To{ benzin::Resource::State::RenderTarget }
             });
 
-            context.SetResourceBarrier(spieler::TransitionResourceBarrier
+            context.SetResourceBarrier(benzin::TransitionResourceBarrier
             {
                 .Resource{ m_DepthStencil.GetTextureResource().get() },
-                .From{ spieler::Resource::State::Present },
-                .To{ spieler::Resource::State::DepthWrite }
+                .From{ benzin::Resource::State::Present },
+                .To{ benzin::Resource::State::DepthWrite }
             });
 
-            context.SetRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), m_DepthStencil.GetView<spieler::TextureDepthStencilView>());
+            context.SetRenderTarget(backBuffer.GetView<benzin::TextureRenderTargetView>(), m_DepthStencil.GetView<benzin::TextureDepthStencilView>());
 
-            context.ClearRenderTarget(backBuffer.GetView<spieler::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
-            context.ClearDepthStencil(m_DepthStencil.GetView<spieler::TextureDepthStencilView>(), 1.0f, 0);
+            context.ClearRenderTarget(backBuffer.GetView<benzin::TextureRenderTargetView>(), { 0.1f, 0.1f, 0.1f, 1.0f });
+            context.ClearDepthStencil(m_DepthStencil.GetView<benzin::TextureDepthStencilView>(), 1.0f, 0);
 
             context.SetViewport(m_Viewport);
             context.SetScissorRect(m_ScissorRect);
@@ -456,25 +456,25 @@ namespace sandbox
                 );
             }
             
-            context.SetResourceBarrier(spieler::TransitionResourceBarrier
+            context.SetResourceBarrier(benzin::TransitionResourceBarrier
             {
                 .Resource{ backBuffer.GetTextureResource().get() },
-                .From{ spieler::Resource::State::RenderTarget },
-                .To{ spieler::Resource::State::Present }
+                .From{ benzin::Resource::State::RenderTarget },
+                .To{ benzin::Resource::State::Present }
             });
 
-            context.SetResourceBarrier(spieler::TransitionResourceBarrier
+            context.SetResourceBarrier(benzin::TransitionResourceBarrier
             {
                 .Resource{ m_DepthStencil.GetTextureResource().get() },
-                .From{ spieler::Resource::State::DepthWrite },
-                .To{ spieler::Resource::State::Present }
+                .From{ benzin::Resource::State::DepthWrite },
+                .To{ benzin::Resource::State::Present }
             });
         }
     }
 
     void TessellationLayer::InitViewport()
     {
-        auto& window{ spieler::Application::GetInstance().GetWindow() };
+        auto& window{ benzin::Application::GetInstance().GetWindow() };
 
         m_Viewport.X = 0.0f;
         m_Viewport.Y = 0.0f;
@@ -486,7 +486,7 @@ namespace sandbox
 
     void TessellationLayer::InitScissorRect()
     {
-        auto& window{ spieler::Application::GetInstance().GetWindow() };
+        auto& window{ benzin::Application::GetInstance().GetWindow() };
 
         m_ScissorRect.X = 0.0f;
         m_ScissorRect.Y = 0.0f;
@@ -496,28 +496,28 @@ namespace sandbox
 
     void TessellationLayer::InitDepthStencil()
     {
-        auto& window{ spieler::Application::GetInstance().GetWindow() };
-        auto& device{ spieler::Renderer::GetInstance().GetDevice() };
+        auto& window{ benzin::Application::GetInstance().GetWindow() };
+        auto& device{ benzin::Renderer::GetInstance().GetDevice() };
 
-        const spieler::TextureResource::Config config
+        const benzin::TextureResource::Config config
         {
             .Width{ window.GetWidth() },
             .Height{ window.GetHeight() },
             .Format{ m_DepthStencilFormat },
-            .UsageFlags{ spieler::TextureResource::UsageFlags::DepthStencil }
+            .UsageFlags{ benzin::TextureResource::UsageFlags::DepthStencil }
         };
 
-        const spieler::TextureResource::ClearDepthStencil clearDepthStencil
+        const benzin::TextureResource::ClearDepthStencil clearDepthStencil
         {
             .Depth{ 1.0f },
             .Stencil{ 0 }
         };
 
-        m_DepthStencil.SetTextureResource(spieler::TextureResource::Create(device, config, clearDepthStencil));
-        m_DepthStencil.PushView<spieler::TextureDepthStencilView>(device);
+        m_DepthStencil.SetTextureResource(benzin::TextureResource::Create(device, config, clearDepthStencil));
+        m_DepthStencil.PushView<benzin::TextureDepthStencilView>(device);
     }
 
-    bool TessellationLayer::OnWindowResized(spieler::WindowResizedEvent& event)
+    bool TessellationLayer::OnWindowResized(benzin::WindowResizedEvent& event)
     {
         InitViewport();
         InitScissorRect();

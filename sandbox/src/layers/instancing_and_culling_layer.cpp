@@ -5,17 +5,17 @@
 #include <third_party/imgui/imgui.h>
 #include <third_party/magic_enum/magic_enum.hpp>
 
-#include <spieler/system/event_dispatcher.hpp>
+#include <benzin/system/event_dispatcher.hpp>
 
-#include <spieler/graphics/depth_stencil_state.hpp>
-#include <spieler/graphics/mapped_data.hpp>
-#include <spieler/graphics/rasterizer_state.hpp>
-#include <spieler/graphics/resource_view_builder.hpp>
-#include <spieler/graphics/resource_loader.hpp>
+#include <benzin/graphics/depth_stencil_state.hpp>
+#include <benzin/graphics/mapped_data.hpp>
+#include <benzin/graphics/rasterizer_state.hpp>
+#include <benzin/graphics/resource_view_builder.hpp>
+#include <benzin/graphics/resource_loader.hpp>
 
-#include <spieler/engine/geometry_generator.hpp>
+#include <benzin/engine/geometry_generator.hpp>
 
-#include <spieler/utility/random.hpp>
+#include <benzin/utility/random.hpp>
 
 #include "techniques/picking_technique.hpp"
 
@@ -32,7 +32,7 @@ namespace sandbox
             alignas(16) DirectX::XMMATRIX ViewProjection{};
             alignas(16) DirectX::XMFLOAT3 CameraPosition{};
             alignas(16) DirectX::XMFLOAT4 AmbientLight{};
-            alignas(16) std::array<spieler::Light, 16> Lights;
+            alignas(16) std::array<benzin::Light, 16> Lights;
         };
 
         struct Entity
@@ -68,13 +68,13 @@ namespace sandbox
     //////////////////////////////////////////////////////////////////////////
     //// PointLightController
     //////////////////////////////////////////////////////////////////////////
-    InstancingAndCullingLayer::PointLightController::PointLightController(spieler::Light* light)
+    InstancingAndCullingLayer::PointLightController::PointLightController(benzin::Light* light)
         : m_Light{ light }
     {}
 
     void InstancingAndCullingLayer::PointLightController::OnImGuiRender()
     {
-        SPIELER_ASSERT(m_Light);
+        BENZIN_ASSERT(m_Light);
 
         ImGui::Begin("Point Light Controller");
         {
@@ -107,10 +107,10 @@ namespace sandbox
     constexpr uint32_t g_RenderTargetCubeMapHeight = 200;
 
     InstancingAndCullingLayer::InstancingAndCullingLayer(
-        spieler::Window& window, 
-        spieler::Device& device, 
-        spieler::CommandQueue& commandQueue, 
-        spieler::SwapChain& swapChain
+        benzin::Window& window, 
+        benzin::Device& device, 
+        benzin::CommandQueue& commandQueue, 
+        benzin::SwapChain& swapChain
     )
         : m_Window{ window }
         , m_Device{ device }
@@ -161,13 +161,13 @@ namespace sandbox
         return true;
     }
 
-    void InstancingAndCullingLayer::OnEvent(spieler::Event& event)
+    void InstancingAndCullingLayer::OnEvent(benzin::Event& event)
     {
         m_FlyCameraController.OnEvent(event);
 
-        spieler::EventDispatcher dispatcher{ event };
-        dispatcher.Dispatch<spieler::WindowResizedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnWindowResized));
-        dispatcher.Dispatch<spieler::MouseButtonPressedEvent>(SPIELER_BIND_EVENT_CALLBACK(OnMouseButtonPressed));
+        benzin::EventDispatcher dispatcher{ event };
+        dispatcher.Dispatch<benzin::WindowResizedEvent>(BENZIN_BIND_EVENT_CALLBACK(OnWindowResized));
+        dispatcher.Dispatch<benzin::MouseButtonPressedEvent>(BENZIN_BIND_EVENT_CALLBACK(OnMouseButtonPressed));
     }
 
     void InstancingAndCullingLayer::OnUpdate(float dt)
@@ -176,7 +176,7 @@ namespace sandbox
 
         // Pass ConstantBuffer
         {
-            spieler::MappedData bufferData{ *m_Buffers["pass_constant_buffer"] };
+            benzin::MappedData bufferData{ *m_Buffers["pass_constant_buffer"] };
             
             // Main pass
             {
@@ -189,11 +189,11 @@ namespace sandbox
                     .AmbientLight{ m_AmbientLight }
                 };
 
-                const uint64_t lightSize = sizeof(spieler::Light);
+                const uint64_t lightSize = sizeof(benzin::Light);
 
                 for (size_t i = 0; i < m_LightSourceEntities.size(); ++i)
                 {
-                    const auto& lightComponent = m_LightSourceEntities[i]->GetComponent<spieler::Light>();
+                    const auto& lightComponent = m_LightSourceEntities[i]->GetComponent<benzin::Light>();
                     memcpy_s(constants.Lights.data() + lightSize * i, lightSize, &lightComponent, lightSize);
                 }
 
@@ -203,7 +203,7 @@ namespace sandbox
 
             for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
             {
-                const spieler::Camera& camera = m_RenderTargetCubeMap.GetCamera(faceIndex);
+                const benzin::Camera& camera = m_RenderTargetCubeMap.GetCamera(faceIndex);
 
                 cb::Pass constants
                 {
@@ -214,11 +214,11 @@ namespace sandbox
                     .AmbientLight{ m_AmbientLight }
                 };
 
-                const uint64_t lightSize = sizeof(spieler::Light);
+                const uint64_t lightSize = sizeof(benzin::Light);
 
                 for (size_t i = 0; i < m_LightSourceEntities.size(); ++i)
                 {
-                    const auto& lightComponent = m_LightSourceEntities[i]->GetComponent<spieler::Light>();
+                    const auto& lightComponent = m_LightSourceEntities[i]->GetComponent<benzin::Light>();
                     memcpy_s(constants.Lights.data() + lightSize * i, lightSize, &lightComponent, lightSize);
                 }
 
@@ -228,7 +228,7 @@ namespace sandbox
 
         // RenderItem StructuredBuffer
         {
-            spieler::MappedData bufferData{ *m_Buffers["render_item_structured_buffer"] };
+            benzin::MappedData bufferData{ *m_Buffers["render_item_structured_buffer"] };
 
             uint32_t offset = 0;
 
@@ -236,12 +236,12 @@ namespace sandbox
             {
                 uint32_t visibleInstanceCount = 0;
 
-                const auto& meshComponent = entity->GetComponent<spieler::MeshComponent>();
-                auto& instancesComponent = entity->GetComponent<spieler::InstancesComponent>();
+                const auto& meshComponent = entity->GetComponent<benzin::MeshComponent>();
+                auto& instancesComponent = entity->GetComponent<benzin::InstancesComponent>();
 
-                if (entity->HasComponent<spieler::Light>())
+                if (entity->HasComponent<benzin::Light>())
                 {
-                    const auto& lightComponent = entity->GetComponent<spieler::Light>();
+                    const auto& lightComponent = entity->GetComponent<benzin::Light>();
                     auto& instanceComponent = instancesComponent.Instances[0];
                     
                     DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&lightComponent.Direction);
@@ -272,7 +272,7 @@ namespace sandbox
                     }
                     else
                     {
-                        const auto& collisionComponent = entity->GetComponent<spieler::CollisionComponent>();
+                        const auto& collisionComponent = entity->GetComponent<benzin::CollisionComponent>();
 
                         if (collisionComponent.IsCollides(localSpaceFrustum))
                         {
@@ -290,8 +290,8 @@ namespace sandbox
                     if (!m_IsCullingEnabled || !instancesComponent.IsNeedCulling)
                     {
                         if (
-                            !entity->HasComponent<spieler::CollisionComponent>() ||
-                            entity->GetComponent<spieler::CollisionComponent>().IsCollides(localSpaceFrustum)
+                            !entity->HasComponent<benzin::CollisionComponent>() ||
+                            entity->GetComponent<benzin::CollisionComponent>().IsCollides(localSpaceFrustum)
                         )
                         {
                             const cb::Entity constants
@@ -315,7 +315,7 @@ namespace sandbox
 
         // Material StructuredBuffer
         {
-            spieler::MappedData bufferData{ *m_Buffers["material_structured_buffer"] };
+            benzin::MappedData bufferData{ *m_Buffers["material_structured_buffer"] };
 
             for (const auto& [name, material] : m_Materials)
             {
@@ -344,8 +344,8 @@ namespace sandbox
 
             // Render to cube map
             {
-                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), spieler::Resource::State::RenderTarget);
-                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetDepthStencil(), spieler::Resource::State::DepthWrite);
+                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), benzin::Resource::State::RenderTarget);
+                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetDepthStencil(), benzin::Resource::State::DepthWrite);
 
                 m_GraphicsCommandList.SetViewport(m_RenderTargetCubeMap.GetViewport());
                 m_GraphicsCommandList.SetScissorRect(m_RenderTargetCubeMap.GetScissorRect());
@@ -368,16 +368,16 @@ namespace sandbox
                     
                     RenderEntities(m_PipelineStates.at("default"), m_DefaultEntities);
 
-                    const spieler::Entity* environmentEntity = m_Entities.at("environment").get();
+                    const benzin::Entity* environmentEntity = m_Entities.at("environment").get();
                     RenderEntities(m_PipelineStates.at("environment"), std::span{ &environmentEntity, 1});
                 }
 
-                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), spieler::Resource::State::Present);
-                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetDepthStencil(), spieler::Resource::State::Present);
+                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), benzin::Resource::State::Present);
+                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetDepthStencil(), benzin::Resource::State::Present);
             }
 
-            m_GraphicsCommandList.SetResourceBarrier(*renderTarget, spieler::Resource::State::RenderTarget);
-            m_GraphicsCommandList.SetResourceBarrier(*depthStencil, spieler::Resource::State::DepthWrite);
+            m_GraphicsCommandList.SetResourceBarrier(*renderTarget, benzin::Resource::State::RenderTarget);
+            m_GraphicsCommandList.SetResourceBarrier(*depthStencil, benzin::Resource::State::DepthWrite);
 
             m_GraphicsCommandList.SetViewport(m_Window.GetViewport());
             m_GraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
@@ -393,23 +393,23 @@ namespace sandbox
             m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer"));
             m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_RenderTargetCubeMap.GetCubeMap()->GetShaderResourceView());
             
-            const spieler::Entity* dynamicSphereEntity = m_Entities.at("mirror_sphere").get();
+            const benzin::Entity* dynamicSphereEntity = m_Entities.at("mirror_sphere").get();
             RenderEntities(m_PipelineStates.at("default"), std::span{ &dynamicSphereEntity, 1 });
 
             m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("environment")->GetShaderResourceView());
             
             RenderEntities(m_PipelineStates.at("default"), m_DefaultEntities);
             
-            const spieler::Entity* pickedEntity = m_Entities.at("picked").get();
+            const benzin::Entity* pickedEntity = m_Entities.at("picked").get();
             RenderEntities(m_PipelineStates.at("picked"), std::span{ &pickedEntity, 1 });
 
             RenderEntities(m_PipelineStates.at("light_source"), m_LightSourceEntities);
 
-            const spieler::Entity* environmentEntity = m_Entities.at("environment").get();
+            const benzin::Entity* environmentEntity = m_Entities.at("environment").get();
             RenderEntities(m_PipelineStates.at("environment"), std::span{ &environmentEntity, 1});
 
-            m_GraphicsCommandList.SetResourceBarrier(*renderTarget, spieler::Resource::State::Present);
-            m_GraphicsCommandList.SetResourceBarrier(*depthStencil, spieler::Resource::State::Present);
+            m_GraphicsCommandList.SetResourceBarrier(*renderTarget, benzin::Resource::State::Present);
+            m_GraphicsCommandList.SetResourceBarrier(*depthStencil, benzin::Resource::State::Present);
 
             m_GraphicsCommandList.Close();
             m_CommandQueue.Submit(m_GraphicsCommandList);
@@ -440,7 +440,7 @@ namespace sandbox
 
             for (const auto& [name, entity] : m_Entities)
             {
-                const auto& instancesComponent = entity->GetComponent<spieler::InstancesComponent>();
+                const auto& instancesComponent = entity->GetComponent<benzin::InstancesComponent>();
                 ImGui::Text("%s visible instances: %d", name.c_str(), instancesComponent.VisibleInstanceCount);
             }
         }
@@ -449,7 +449,7 @@ namespace sandbox
         ImGui::Begin("Picked Entity");
         {
             const auto& pickedEntity = m_Entities["picked"];
-            const auto& instancesComponent = pickedEntity->GetComponent<spieler::InstancesComponent>();
+            const auto& instancesComponent = pickedEntity->GetComponent<benzin::InstancesComponent>();
 
             if (!instancesComponent.Instances[0].IsVisible)
             {
@@ -467,7 +467,7 @@ namespace sandbox
         ImGui::Begin("DynamicCube RenderItem");
         {
             auto& dynamicSphereEntity = m_Entities["mirror_sphere"];
-            auto& instanceComponent = dynamicSphereEntity->GetComponent<spieler::InstancesComponent>().Instances[0];
+            auto& instanceComponent = dynamicSphereEntity->GetComponent<benzin::InstancesComponent>().Instances[0];
 
             ImGui::DragFloat3("Position", reinterpret_cast<float*>(&instanceComponent.Transform.Translation), 0.1f);
             
@@ -503,7 +503,7 @@ namespace sandbox
             return texture.get();
         };
 
-        std::vector<spieler::TextureResource*> textures;
+        std::vector<benzin::TextureResource*> textures;
         textures.push_back(loadTextureFromDDSFile("red", L"assets/textures/red.dds"));
         textures.push_back(loadTextureFromDDSFile("green", L"assets/textures/green.dds"));
         textures.push_back(loadTextureFromDDSFile("blue", L"assets/textures/blue.dds"));
@@ -513,8 +513,8 @@ namespace sandbox
         textures.push_back(loadTextureFromDDSFile("bricks2_normalmap", L"assets/textures/bricks2_normalmap.dds"));
         textures.push_back(loadTextureFromDDSFile("default_normalmap", L"assets/textures/default_normalmap.dds"));
 
-        const std::vector<spieler::Descriptor> srvDescriptors = m_Device.GetDescriptorManager().AllocateDescriptors(
-            spieler::Descriptor::Type::ShaderResourceView,
+        const std::vector<benzin::Descriptor> srvDescriptors = m_Device.GetDescriptorManager().AllocateDescriptors(
+            benzin::Descriptor::Type::ShaderResourceView,
             static_cast<uint32_t>(textures.size())
         );
 
@@ -528,29 +528,29 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitMesh()
     {
-        const spieler::BoxGeometryConfig boxProps
+        const benzin::BoxGeometryConfig boxProps
         {
             .Width{ 1.0f },
             .Height{ 1.0f },
             .Depth{ 1.0f }
         };
 
-        const spieler::SphereGeometryConfig sphereProps
+        const benzin::SphereGeometryConfig sphereProps
         {
             .Radius{ 1.0f },
             .SliceCount{ 16 },
             .StackCount{ 16 }
         };
 
-        const std::unordered_map<std::string, spieler::MeshData> submeshes
+        const std::unordered_map<std::string, benzin::MeshData> submeshes
         {
-            { "box", spieler::GeometryGenerator::GenerateBox(boxProps) },
-            { "sphere", spieler::GeometryGenerator::GenerateSphere(sphereProps) }
+            { "box", benzin::GeometryGenerator::GenerateBox(boxProps) },
+            { "sphere", benzin::GeometryGenerator::GenerateSphere(sphereProps) }
         };
 
         m_Mesh.SetSubMeshes(m_Device, submeshes);
 
-        m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetVertexBuffer(), m_Mesh.GetVertices().data(), m_Mesh.GetVertices().size() * sizeof(spieler::Vertex));
+        m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetVertexBuffer(), m_Mesh.GetVertices().data(), m_Mesh.GetVertices().size() * sizeof(benzin::Vertex));
         m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetIndexBuffer(), m_Mesh.GetIndices().data(), m_Mesh.GetIndices().size() * sizeof(uint32_t));
     }
 
@@ -560,11 +560,11 @@ namespace sandbox
         {
             const std::string_view name = "pass_constant_buffer";
 
-            const spieler::BufferResource::Config config
+            const benzin::BufferResource::Config config
             {
                 .ElementSize{ sizeof(cb::Pass) },
                 .ElementCount{ 7 },
-                .Flags{ spieler::BufferResource::Flags::ConstantBuffer }
+                .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
             };
 
             auto& buffer = m_Buffers[name.data()];
@@ -576,11 +576,11 @@ namespace sandbox
         {
             const std::string_view name = "render_item_structured_buffer";
 
-            const spieler::BufferResource::Config config
+            const benzin::BufferResource::Config config
             {
                 .ElementSize{ sizeof(cb::Entity) },
                 .ElementCount{ 1004 },
-                .Flags{ spieler::BufferResource::Flags::Dynamic }
+                .Flags{ benzin::BufferResource::Flags::Dynamic }
             };
 
             auto& buffer = m_Buffers[name.data()];
@@ -592,11 +592,11 @@ namespace sandbox
         {
             const std::string_view name = "material_structured_buffer";
 
-            const spieler::BufferResource::Config config
+            const benzin::BufferResource::Config config
             {
                 .ElementSize{ sizeof(cb::Material) },
                 .ElementCount{ 7 },
-                .Flags{ spieler::BufferResource::Flags::Dynamic }
+                .Flags{ benzin::BufferResource::Flags::Dynamic }
             };
 
             auto& buffer = m_Buffers[name.data()];
@@ -607,43 +607,43 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitRootSignature()
     {
-        spieler::RootSignature::Config config{ 5, 2 };
+        benzin::RootSignature::Config config{ 5, 2 };
 
         // Root parameters
         {
-            const spieler::RootParameter::Descriptor passConstantBuffer
+            const benzin::RootParameter::Descriptor passConstantBuffer
             {
-                .Type{ spieler::RootParameter::DescriptorType::ConstantBufferView },
+                .Type{ benzin::RootParameter::DescriptorType::ConstantBufferView },
                 .ShaderRegister{ 0 }
             };
 
-            const spieler::RootParameter::Descriptor renderItemStructuredBuffer
+            const benzin::RootParameter::Descriptor renderItemStructuredBuffer
             {
-                .Type{ spieler::RootParameter::DescriptorType::ShaderResourceView },
+                .Type{ benzin::RootParameter::DescriptorType::ShaderResourceView },
                 .ShaderRegister{ 1, 1 }
             };
 
-            const spieler::RootParameter::Descriptor materialStructuredBuffer
+            const benzin::RootParameter::Descriptor materialStructuredBuffer
             {
-                .Type{ spieler::RootParameter::DescriptorType::ShaderResourceView },
+                .Type{ benzin::RootParameter::DescriptorType::ShaderResourceView },
                 .ShaderRegister{ 1, 2 }
             };
 
-            const spieler::RootParameter::SingleDescriptorTable cubeMap
+            const benzin::RootParameter::SingleDescriptorTable cubeMap
             {
                 .Range
                 {
-                    .Type{ spieler::RootParameter::DescriptorRangeType::ShaderResourceView },
+                    .Type{ benzin::RootParameter::DescriptorRangeType::ShaderResourceView },
                     .DescriptorCount{ 1 },
                     .BaseShaderRegister{ 0 }
                 }
             };
 
-            const spieler::RootParameter::SingleDescriptorTable textureTable
+            const benzin::RootParameter::SingleDescriptorTable textureTable
             {
                 .Range
                 {
-                    .Type{ spieler::RootParameter::DescriptorRangeType::ShaderResourceView },
+                    .Type{ benzin::RootParameter::DescriptorRangeType::ShaderResourceView },
                     .DescriptorCount{ 10 },
                     .BaseShaderRegister{ 1 }
                 }
@@ -658,32 +658,32 @@ namespace sandbox
 
         // Static samplers
         {
-            config.StaticSamplers[0] = spieler::StaticSampler{ spieler::TextureFilterType::Linear, spieler::TextureAddressMode::Wrap, 0 };
-            config.StaticSamplers[1] = spieler::StaticSampler{ spieler::TextureFilterType::Anisotropic, spieler::TextureAddressMode::Wrap, 1 };
+            config.StaticSamplers[0] = benzin::StaticSampler{ benzin::TextureFilterType::Linear, benzin::TextureAddressMode::Wrap, 0 };
+            config.StaticSamplers[1] = benzin::StaticSampler{ benzin::TextureFilterType::Anisotropic, benzin::TextureAddressMode::Wrap, 1 };
         }
 
-        m_RootSignature = spieler::RootSignature{ m_Device, config };
+        m_RootSignature = benzin::RootSignature{ m_Device, config };
     }
 
     void InstancingAndCullingLayer::InitPipelineState()
     {
-        const spieler::Shader* vertexShader = nullptr;
-        const spieler::Shader* pixelShader = nullptr;
+        const benzin::Shader* vertexShader = nullptr;
+        const benzin::Shader* pixelShader = nullptr;
 
         // Init Shaders
         {
             const std::wstring_view filepath = L"assets/shaders/default.hlsl";
 
-            const spieler::Shader::Config vertexShaderConfig
+            const benzin::Shader::Config vertexShaderConfig
             {
-                .Type{ spieler::Shader::Type::Vertex },
+                .Type{ benzin::Shader::Type::Vertex },
                 .Filepath{ filepath },
                 .EntryPoint{ "VS_Main" }
             };
 
-            const spieler::Shader::Config pixelShaderConfig
+            const benzin::Shader::Config pixelShaderConfig
             {
-                .Type{ spieler::Shader::Type::Pixel },
+                .Type{ benzin::Shader::Type::Pixel },
                 .Filepath{ filepath },
                 .EntryPoint{ "PS_Main" },
                 .Defines
@@ -694,45 +694,45 @@ namespace sandbox
                 }
             };
 
-            m_ShaderLibrary["default_vs"] = spieler::Shader::Create(vertexShaderConfig);
-            m_ShaderLibrary["default_ps"] = spieler::Shader::Create(pixelShaderConfig);
+            m_ShaderLibrary["default_vs"] = benzin::Shader::Create(vertexShaderConfig);
+            m_ShaderLibrary["default_ps"] = benzin::Shader::Create(pixelShaderConfig);
 
             vertexShader = m_ShaderLibrary["default_vs"].get();
             pixelShader = m_ShaderLibrary["default_ps"].get();
         }
 
-        const spieler::RasterizerState rasterizerState
+        const benzin::RasterizerState rasterizerState
         {
-            .FillMode{ spieler::FillMode::Solid },
-            .CullMode{ spieler::CullMode::None },
-            .TriangleOrder{ spieler::TriangleOrder::Clockwise }
+            .FillMode{ benzin::FillMode::Solid },
+            .CullMode{ benzin::CullMode::None },
+            .TriangleOrder{ benzin::TriangleOrder::Clockwise }
         };
 
-        const spieler::InputLayout inputLayout
+        const benzin::InputLayout inputLayout
         {
-            spieler::InputLayoutElement{ "Position", spieler::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
-            spieler::InputLayoutElement{ "Normal", spieler::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
-            spieler::InputLayoutElement{ "Tangent", spieler::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
-            spieler::InputLayoutElement{ "TexCoord", spieler::GraphicsFormat::R32G32Float, sizeof(DirectX::XMFLOAT2) }
+            benzin::InputLayoutElement{ "Position", benzin::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
+            benzin::InputLayoutElement{ "Normal", benzin::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
+            benzin::InputLayoutElement{ "Tangent", benzin::GraphicsFormat::R32G32B32Float, sizeof(DirectX::XMFLOAT3) },
+            benzin::InputLayoutElement{ "TexCoord", benzin::GraphicsFormat::R32G32Float, sizeof(DirectX::XMFLOAT2) }
         };
 
         // Default PSO
         {
-            const spieler::DepthStencilState depthStencilState
+            const benzin::DepthStencilState depthStencilState
             {
                 .DepthState
                 {
-                    .TestState{ spieler::DepthState::TestState::Enabled },
-                    .WriteState{ spieler::DepthState::WriteState::Enabled },
-                    .ComparisonFunction{ spieler::ComparisonFunction::Less }
+                    .TestState{ benzin::DepthState::TestState::Enabled },
+                    .WriteState{ benzin::DepthState::WriteState::Enabled },
+                    .ComparisonFunction{ benzin::ComparisonFunction::Less }
                 },
                 .StencilState
                 {
-                    .TestState{ spieler::StencilState::TestState::Disabled },
+                    .TestState{ benzin::StencilState::TestState::Disabled },
                 }
             };
 
-            const spieler::GraphicsPipelineState::Config config
+            const benzin::GraphicsPipelineState::Config config
             {
                 .RootSignature{ &m_RootSignature },
                 .VertexShader{ vertexShader },
@@ -741,31 +741,31 @@ namespace sandbox
                 .RasterizerState{ &rasterizerState },
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
-                .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
+                .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["default"] = spieler::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["default"] = benzin::GraphicsPipelineState{ m_Device, config };
         }
 
         // PSO for picked RenderItem
         {
-            const spieler::DepthStencilState depthStencilState
+            const benzin::DepthStencilState depthStencilState
             {
                 .DepthState
                 {
-                    .TestState{ spieler::DepthState::TestState::Enabled },
-                    .WriteState{ spieler::DepthState::WriteState::Enabled },
-                    .ComparisonFunction{ spieler::ComparisonFunction::LessEqual }
+                    .TestState{ benzin::DepthState::TestState::Enabled },
+                    .WriteState{ benzin::DepthState::WriteState::Enabled },
+                    .ComparisonFunction{ benzin::ComparisonFunction::LessEqual }
                 },
                     .StencilState
                 {
-                    .TestState{ spieler::StencilState::TestState::Disabled },
+                    .TestState{ benzin::StencilState::TestState::Disabled },
                 }
             };
 
-            const spieler::GraphicsPipelineState::Config config
+            const benzin::GraphicsPipelineState::Config config
             {
                 .RootSignature{ &m_RootSignature },
                 .VertexShader{ vertexShader },
@@ -774,51 +774,51 @@ namespace sandbox
                 .RasterizerState{ &rasterizerState },
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
-                .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
+                .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["picked"] = spieler::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["picked"] = benzin::GraphicsPipelineState{ m_Device, config };
         }
 
         // PSO for light sources
         {
-            const spieler::Shader* vertexShader = nullptr;
-            const spieler::Shader* pixelShader = nullptr;
+            const benzin::Shader* vertexShader = nullptr;
+            const benzin::Shader* pixelShader = nullptr;
 
             // Init Shaders
             {
                 const std::wstring_view filepath = L"assets/shaders/default.hlsl";
 
-                const spieler::Shader::Config pixelShaderConfig
+                const benzin::Shader::Config pixelShaderConfig
                 {
-                    .Type{ spieler::Shader::Type::Pixel },
+                    .Type{ benzin::Shader::Type::Pixel },
                     .Filepath{ filepath },
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["light_source_ps"] = spieler::Shader::Create(pixelShaderConfig);
+                m_ShaderLibrary["light_source_ps"] = benzin::Shader::Create(pixelShaderConfig);
 
                 vertexShader = m_ShaderLibrary["default_vs"].get();
                 pixelShader = m_ShaderLibrary["light_source_ps"].get();
             }
 
-            const spieler::DepthStencilState depthStencilState
+            const benzin::DepthStencilState depthStencilState
             {
                 .DepthState
                 {
-                    .TestState{ spieler::DepthState::TestState::Enabled },
-                    .WriteState{ spieler::DepthState::WriteState::Enabled },
-                    .ComparisonFunction{ spieler::ComparisonFunction::Less }
+                    .TestState{ benzin::DepthState::TestState::Enabled },
+                    .WriteState{ benzin::DepthState::WriteState::Enabled },
+                    .ComparisonFunction{ benzin::ComparisonFunction::Less }
                 },
                 .StencilState
                 {
-                    .TestState{ spieler::StencilState::TestState::Disabled },
+                    .TestState{ benzin::StencilState::TestState::Disabled },
                 }
             };
 
-            const spieler::GraphicsPipelineState::Config config
+            const benzin::GraphicsPipelineState::Config config
             {
                 .RootSignature{ &m_RootSignature },
                 .VertexShader{ vertexShader },
@@ -827,66 +827,66 @@ namespace sandbox
                 .RasterizerState{ &rasterizerState },
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
-                .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
+                .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["light_source"] = spieler::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["light_source"] = benzin::GraphicsPipelineState{ m_Device, config };
         }
 
         // PSO for CubeMap
         {
-            const spieler::Shader* vertexShader = nullptr;
-            const spieler::Shader* pixelShader = nullptr;
+            const benzin::Shader* vertexShader = nullptr;
+            const benzin::Shader* pixelShader = nullptr;
 
             // Init Shaders
             {
                 const std::wstring filepath{ L"assets/shaders/environment.hlsl" };
 
-                const spieler::Shader::Config vertexShaderConfig
+                const benzin::Shader::Config vertexShaderConfig
                 {
-                    .Type{ spieler::Shader::Type::Vertex },
+                    .Type{ benzin::Shader::Type::Vertex },
                     .Filepath{ filepath },
                     .EntryPoint{ "VS_Main" }
                 };
 
-                const spieler::Shader::Config pixelShaderConfig
+                const benzin::Shader::Config pixelShaderConfig
                 {
-                    .Type{ spieler::Shader::Type::Pixel },
+                    .Type{ benzin::Shader::Type::Pixel },
                     .Filepath{ filepath },
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["environment_vs"] = spieler::Shader::Create(vertexShaderConfig);
-                m_ShaderLibrary["environment_ps"] = spieler::Shader::Create(pixelShaderConfig);
+                m_ShaderLibrary["environment_vs"] = benzin::Shader::Create(vertexShaderConfig);
+                m_ShaderLibrary["environment_ps"] = benzin::Shader::Create(pixelShaderConfig);
 
                 vertexShader = m_ShaderLibrary["environment_vs"].get();
                 pixelShader = m_ShaderLibrary["environment_ps"].get();
             }
 
-            const spieler::RasterizerState rasterizerState
+            const benzin::RasterizerState rasterizerState
             {
-                .FillMode{ spieler::FillMode::Solid },
-                .CullMode{ spieler::CullMode::None },
-                .TriangleOrder{ spieler::TriangleOrder::Clockwise }
+                .FillMode{ benzin::FillMode::Solid },
+                .CullMode{ benzin::CullMode::None },
+                .TriangleOrder{ benzin::TriangleOrder::Clockwise }
             };
 
-            const spieler::DepthStencilState depthStencilState
+            const benzin::DepthStencilState depthStencilState
             {
                 .DepthState
                 {
-                    .TestState{ spieler::DepthState::TestState::Enabled },
-                    .WriteState{ spieler::DepthState::WriteState::Enabled },
-                    .ComparisonFunction{ spieler::ComparisonFunction::LessEqual }
+                    .TestState{ benzin::DepthState::TestState::Enabled },
+                    .WriteState{ benzin::DepthState::WriteState::Enabled },
+                    .ComparisonFunction{ benzin::ComparisonFunction::LessEqual }
                 },
                 .StencilState
                 {
-                    .TestState{ spieler::StencilState::TestState::Disabled },
+                    .TestState{ benzin::StencilState::TestState::Disabled },
                 }
             };
 
-            const spieler::GraphicsPipelineState::Config config
+            const benzin::GraphicsPipelineState::Config config
             {
                 .RootSignature{ &m_RootSignature },
                 .VertexShader{ vertexShader },
@@ -895,79 +895,79 @@ namespace sandbox
                 .RasterizerState{ &rasterizerState },
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
-                .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
+                .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["environment"] = spieler::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["environment"] = benzin::GraphicsPipelineState{ m_Device, config };
         }
 
         // Fullscreen
         {
-            const spieler::Shader* vertexShader = nullptr;
-            const spieler::Shader* pixelShader = nullptr;
+            const benzin::Shader* vertexShader = nullptr;
+            const benzin::Shader* pixelShader = nullptr;
 
             // Init Shaders
             {
                 const std::wstring_view filepath = L"assets/shaders/fullscreen.hlsl";
 
-                const spieler::Shader::Config vertexShaderConfig
+                const benzin::Shader::Config vertexShaderConfig
                 {
-                    .Type{ spieler::Shader::Type::Vertex },
+                    .Type{ benzin::Shader::Type::Vertex },
                     .Filepath{ filepath },
                     .EntryPoint{ "VS_Main" }
                 };
 
-                const spieler::Shader::Config pixelShaderConfig
+                const benzin::Shader::Config pixelShaderConfig
                 {
-                    .Type{ spieler::Shader::Type::Pixel },
+                    .Type{ benzin::Shader::Type::Pixel },
                     .Filepath{ filepath },
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["fullscreen_vs"] = spieler::Shader::Create(vertexShaderConfig);
-                m_ShaderLibrary["fullscreen_ps"] = spieler::Shader::Create(pixelShaderConfig);
+                m_ShaderLibrary["fullscreen_vs"] = benzin::Shader::Create(vertexShaderConfig);
+                m_ShaderLibrary["fullscreen_ps"] = benzin::Shader::Create(pixelShaderConfig);
 
                 vertexShader = m_ShaderLibrary["fullscreen_vs"].get();
                 pixelShader = m_ShaderLibrary["fullscreen_ps"].get();
             }
 
-            const spieler::RasterizerState rasterizerState
+            const benzin::RasterizerState rasterizerState
             {
-                .FillMode{ spieler::FillMode::Solid },
-                .CullMode{ spieler::CullMode::None },
+                .FillMode{ benzin::FillMode::Solid },
+                .CullMode{ benzin::CullMode::None },
             };
 
-            const spieler::InputLayout nullInputLayout;
+            const benzin::InputLayout nullInputLayout;
 
-            const spieler::GraphicsPipelineState::Config config
+            const benzin::GraphicsPipelineState::Config config
             {
                 .RootSignature{ &m_RootSignature },
                 .VertexShader{ vertexShader },
                 .PixelShader{ pixelShader },
                 .RasterizerState{ &rasterizerState },
                 .InputLayout{ &nullInputLayout },
-                .PrimitiveTopologyType{ spieler::PrimitiveTopologyType::Triangle },
+                .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
             };
 
-            m_PipelineStates["fullscreen"] = spieler::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["fullscreen"] = benzin::GraphicsPipelineState{ m_Device, config };
         }
     }
 
     void InstancingAndCullingLayer::InitRenderTarget()
     {
-        const spieler::TextureResource::Config config
+        const benzin::TextureResource::Config config
         {
-            .Type{ spieler::TextureResource::Type::Texture2D },
+            .Type{ benzin::TextureResource::Type::Texture2D },
             .Width{ m_Window.GetWidth() },
             .Height{ m_Window.GetHeight() },
-            .Format{ spieler::GraphicsFormat::R8G8B8A8UnsignedNorm },
-            .Flags{ spieler::TextureResource::Flags::BindAsRenderTarget }
+            .Format{ benzin::GraphicsFormat::R8G8B8A8UnsignedNorm },
+            .Flags{ benzin::TextureResource::Flags::BindAsRenderTarget }
         };
 
-        const spieler::TextureResource::ClearColor clearColor
+        const benzin::TextureResource::ClearColor clearColor
         {
             .Color{ 0.1f, 0.1f, 0.1f, 1.0f }
         };
@@ -980,16 +980,16 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitDepthStencil()
     {
-        const spieler::TextureResource::Config config
+        const benzin::TextureResource::Config config
         {
-            .Type{ spieler::TextureResource::Type::Texture2D },
+            .Type{ benzin::TextureResource::Type::Texture2D },
             .Width{ m_Window.GetWidth() },
             .Height{ m_Window.GetHeight() },
             .Format{ ms_DepthStencilFormat },
-            .Flags{ spieler::TextureResource::Flags::BindAsDepthStencil }
+            .Flags{ benzin::TextureResource::Flags::BindAsDepthStencil }
         };
 
-        const spieler::TextureResource::ClearDepthStencil clearDepthStencil
+        const benzin::TextureResource::ClearDepthStencil clearDepthStencil
         {
             .Depth{ 1.0f },
             .Stencil{ 0 }
@@ -1009,7 +1009,7 @@ namespace sandbox
 
         // Red
         {
-            m_Materials["red"] = spieler::Material
+            m_Materials["red"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -1022,7 +1022,7 @@ namespace sandbox
 
         // Green
         {
-            m_Materials["green"] = spieler::Material
+            m_Materials["green"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -1035,7 +1035,7 @@ namespace sandbox
 
         // Blue
         {
-            m_Materials["blue"] = spieler::Material
+            m_Materials["blue"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -1048,7 +1048,7 @@ namespace sandbox
 
         // White
         {
-            m_Materials["white"] = spieler::Material
+            m_Materials["white"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -1061,7 +1061,7 @@ namespace sandbox
 
         // Environment
         {
-            m_Materials["environment"] = spieler::Material
+            m_Materials["environment"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.1f, 0.1f, 0.1f },
@@ -1074,7 +1074,7 @@ namespace sandbox
 
         // Mirror
         {
-            m_Materials["mirror"] = spieler::Material
+            m_Materials["mirror"] = benzin::Material
             {
                 .DiffuseAlbedo{ 0.0f, 0.0f, 0.0f, 1.0f },
                 .FresnelR0{ 0.98f, 0.97f, 0.95f },
@@ -1087,7 +1087,7 @@ namespace sandbox
 
         // Bricks2
         {
-            m_Materials["bricks2"] = spieler::Material
+            m_Materials["bricks2"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -1104,17 +1104,17 @@ namespace sandbox
         // Environment CubeMap
         {
             auto& entity = m_Entities["environment"];
-            entity = std::make_unique<spieler::Entity>();
+            entity = std::make_unique<benzin::Entity>();
 
-            auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+            auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
             meshComponent.Mesh = &m_Mesh;
             meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
-            meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+            meshComponent.PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
-            auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+            auto& instancesComponent = entity->CreateComponent<benzin::InstancesComponent>();
             auto& instanceComponent = instancesComponent.Instances.emplace_back();
             instanceComponent.MaterialIndex = 4;
-            instanceComponent.Transform = spieler::Transform
+            instanceComponent.Transform = benzin::Transform
             {
                 .Scale{ 100.0f, 100.0f, 100.0f },
                 .Translation{ 2.0f, 0.0f, 0.0f }
@@ -1124,22 +1124,22 @@ namespace sandbox
         // Dynamic sphere
         {
             auto& entity = m_Entities["mirror_sphere"];
-            entity = std::make_unique<spieler::Entity>();
+            entity = std::make_unique<benzin::Entity>();
 
-            auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+            auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
             meshComponent.Mesh = &m_Mesh;
             meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
-            meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+            meshComponent.PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
-            auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
+            auto& collisionComponent = entity->CreateComponent<benzin::CollisionComponent>();
             collisionComponent.CreateBoundingSphere(meshComponent);
 
-            auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+            auto& instancesComponent = entity->CreateComponent<benzin::InstancesComponent>();
             instancesComponent.IsNeedCulling = true;
 
             auto& instanceComponent = instancesComponent.Instances.emplace_back();
             instanceComponent.MaterialIndex = 5;
-            instanceComponent.Transform = spieler::Transform
+            instanceComponent.Transform = benzin::Transform
             {
                 .Scale{ 2.5f, 2.5f, 2.5f },
                 .Translation{ -5.0f, 0.0f, 0.0f }
@@ -1157,17 +1157,17 @@ namespace sandbox
             const int32_t boxInDepthCount = 2;
 
             auto& entity = m_Entities["box"];
-            entity = std::make_unique<spieler::Entity>();
+            entity = std::make_unique<benzin::Entity>();
 
-            auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+            auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
             meshComponent.Mesh = &m_Mesh;
             meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
-            meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+            meshComponent.PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
-            auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
+            auto& collisionComponent = entity->CreateComponent<benzin::CollisionComponent>();
             collisionComponent.CreateBoundingBox(meshComponent);
 
-            auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+            auto& instancesComponent = entity->CreateComponent<benzin::InstancesComponent>();
             instancesComponent.IsNeedCulling = true;
             instancesComponent.Instances.resize(boxInRowCount * boxInColumnCount * boxInDepthCount);
 
@@ -1199,13 +1199,13 @@ namespace sandbox
         // Picked
         {
             auto& entity = m_Entities["picked"];
-            entity = std::make_unique<spieler::Entity>();
+            entity = std::make_unique<benzin::Entity>();
 
-            auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+            auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
             meshComponent.Mesh = &m_Mesh;
-            meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+            meshComponent.PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
-            auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+            auto& instancesComponent = entity->CreateComponent<benzin::InstancesComponent>();
             instancesComponent.IsNeedCulling = true;
 
             auto& instanceComponent = instancesComponent.Instances.emplace_back();
@@ -1218,17 +1218,17 @@ namespace sandbox
         // Light source
         {
             auto& entity = m_Entities["light"];
-            entity = std::make_unique<spieler::Entity>();
+            entity = std::make_unique<benzin::Entity>();
 
-            auto& meshComponent = entity->CreateComponent<spieler::MeshComponent>();
+            auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
             meshComponent.Mesh = &m_Mesh;
             meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
-            meshComponent.PrimitiveTopology = spieler::PrimitiveTopology::TriangleList;
+            meshComponent.PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
-            auto& collisionComponent = entity->CreateComponent<spieler::CollisionComponent>();
+            auto& collisionComponent = entity->CreateComponent<benzin::CollisionComponent>();
             collisionComponent.CreateBoundingSphere(meshComponent);
 
-            auto& instancesComponent = entity->CreateComponent<spieler::InstancesComponent>();
+            auto& instancesComponent = entity->CreateComponent<benzin::InstancesComponent>();
             instancesComponent.IsNeedCulling = true;
 
             const DirectX::XMFLOAT3 position{ 0.0f, 3.0f, 0.0f };
@@ -1237,7 +1237,7 @@ namespace sandbox
             instanceComponent.MaterialIndex = 3;
             instanceComponent.Transform.Translation = position;
 
-            auto& lightComponent = entity->CreateComponent<spieler::Light>();
+            auto& lightComponent = entity->CreateComponent<benzin::Light>();
             lightComponent.Direction = DirectX::XMFLOAT3{ -0.5f, -0.5f, -0.5f };
             lightComponent.Strength = DirectX::XMFLOAT3{ 1.0f, 1.0f, 0.9f };
             //lightComponent.FalloffStart = 20.0f;
@@ -1257,7 +1257,7 @@ namespace sandbox
         InitDepthStencil();
     }
 
-    void InstancingAndCullingLayer::RenderEntities(const spieler::PipelineState& pso, const std::span<const spieler::Entity*>& entities)
+    void InstancingAndCullingLayer::RenderEntities(const benzin::PipelineState& pso, const std::span<const benzin::Entity*>& entities)
     {
         m_GraphicsCommandList.SetPipelineState(pso);
 
@@ -1266,14 +1266,14 @@ namespace sandbox
 
         for (const auto& entity : entities)
         {
-            const auto& meshComponent = entity->GetComponent<spieler::MeshComponent>();
+            const auto& meshComponent = entity->GetComponent<benzin::MeshComponent>();
 
             if (!meshComponent.Mesh || !meshComponent.SubMesh)
             {
                 continue;
             }
 
-            const auto& instancesComponent = entity->GetComponent<spieler::InstancesComponent>();
+            const auto& instancesComponent = entity->GetComponent<benzin::InstancesComponent>();
 
             m_GraphicsCommandList.SetGraphicsRawShaderResource(
                 1, 
@@ -1294,11 +1294,11 @@ namespace sandbox
         }
     }
 
-    void InstancingAndCullingLayer::RenderFullscreenQuad(const spieler::Descriptor& srv)
+    void InstancingAndCullingLayer::RenderFullscreenQuad(const benzin::Descriptor& srv)
     {
         auto& backBuffer = m_SwapChain.GetCurrentBackBuffer();
 
-        m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, spieler::Resource::State::RenderTarget);
+        m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, benzin::Resource::State::RenderTarget);
 
         m_PostEffectsGraphicsCommandList.SetRenderTarget(backBuffer->GetRenderTargetView());
         m_PostEffectsGraphicsCommandList.ClearRenderTarget(backBuffer->GetRenderTargetView(), { 0.1f, 0.1f, 0.1f, 1.0f });
@@ -1309,14 +1309,14 @@ namespace sandbox
         m_PostEffectsGraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
         m_PostEffectsGraphicsCommandList.IASetVertexBuffer(nullptr);
         m_PostEffectsGraphicsCommandList.IASetIndexBuffer(nullptr);
-        m_PostEffectsGraphicsCommandList.IASetPrimitiveTopology(spieler::PrimitiveTopology::TriangleList);
+        m_PostEffectsGraphicsCommandList.IASetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
         m_PostEffectsGraphicsCommandList.SetGraphicsDescriptorTable(4, srv);
         m_PostEffectsGraphicsCommandList.DrawVertexed(6, 0);
 
-        m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, spieler::Resource::State::Present);
+        m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, benzin::Resource::State::Present);
     }
 
-    bool InstancingAndCullingLayer::OnWindowResized(spieler::WindowResizedEvent& event)
+    bool InstancingAndCullingLayer::OnWindowResized(benzin::WindowResizedEvent& event)
     {
         OnWindowResized();
         m_BlurPass->OnResize(m_Device, event.GetWidth(), event.GetHeight());
@@ -1324,15 +1324,15 @@ namespace sandbox
         return false;
     }
 
-    bool InstancingAndCullingLayer::OnMouseButtonPressed(spieler::MouseButtonPressedEvent& event)
+    bool InstancingAndCullingLayer::OnMouseButtonPressed(benzin::MouseButtonPressedEvent& event)
     {
-        if (event.GetButton() == spieler::MouseButton::Right)
+        if (event.GetButton() == benzin::MouseButton::Right)
         {
             const PickingTechnique::Result result = m_PickingTechnique->PickTriangle(event.GetX<float>(), event.GetY<float>());
-            const spieler::Entity* resultEntity = result.PickedEntity;
+            const benzin::Entity* resultEntity = result.PickedEntity;
 
             auto& pickedEntity = m_Entities["picked"];
-            auto& instanceComponent = pickedEntity->GetComponent<spieler::InstancesComponent>().Instances[0];
+            auto& instanceComponent = pickedEntity->GetComponent<benzin::InstancesComponent>().Instances[0];
 
             if (!result.PickedEntity)
             {
@@ -1340,21 +1340,21 @@ namespace sandbox
             }
             else
             {
-                auto& meshComponent = pickedEntity->GetComponent<spieler::MeshComponent>();
-                meshComponent.Mesh = result.PickedEntity->GetComponent<spieler::MeshComponent>().Mesh;
-                meshComponent.SubMesh = new spieler::SubMesh
+                auto& meshComponent = pickedEntity->GetComponent<benzin::MeshComponent>();
+                meshComponent.Mesh = result.PickedEntity->GetComponent<benzin::MeshComponent>().Mesh;
+                meshComponent.SubMesh = new benzin::SubMesh
                 {
                     .VertexCount{ 3 },
                     .IndexCount{ 3 },
-                    .BaseVertexLocation{ resultEntity->GetComponent<spieler::MeshComponent>().SubMesh->BaseVertexLocation },
-                    .StartIndexLocation{ resultEntity->GetComponent<spieler::MeshComponent>().SubMesh->StartIndexLocation + result.TriangleIndex * 3 }
+                    .BaseVertexLocation{ resultEntity->GetComponent<benzin::MeshComponent>().SubMesh->BaseVertexLocation },
+                    .StartIndexLocation{ resultEntity->GetComponent<benzin::MeshComponent>().SubMesh->StartIndexLocation + result.TriangleIndex * 3 }
                 };
 
-                auto& collisionComponent = pickedEntity->GetOrCreateComponent<spieler::CollisionComponent>();
+                auto& collisionComponent = pickedEntity->GetOrCreateComponent<benzin::CollisionComponent>();
                 collisionComponent.CreateBoundingBox(meshComponent);
 
                 instanceComponent.IsVisible = true;
-                instanceComponent.Transform = resultEntity->GetComponent<spieler::InstancesComponent>().Instances[result.InstanceIndex].Transform;
+                instanceComponent.Transform = resultEntity->GetComponent<benzin::InstancesComponent>().Instances[result.InstanceIndex].Transform;
 
                 auto& pickedEntityComponent = pickedEntity->GetComponent<PickedEntityComponent>();
                 pickedEntityComponent.InstanceIndex = result.InstanceIndex;

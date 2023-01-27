@@ -1,8 +1,8 @@
 #pragma once
 
-#include <spieler/system/window.hpp>
-#include <spieler/engine/mesh.hpp>
-#include <spieler/engine/camera.hpp>
+#include <benzin/system/window.hpp>
+#include <benzin/engine/mesh.hpp>
+#include <benzin/engine/camera.hpp>
 
 namespace sandbox
 {
@@ -12,7 +12,7 @@ namespace sandbox
 	public:
 		struct Result
 		{
-			const spieler::Entity* PickedEntity{ nullptr };
+			const benzin::Entity* PickedEntity{ nullptr };
 			uint32_t InstanceIndex{ 0 };
 			uint32_t TriangleIndex{ 0 };
 		};
@@ -25,32 +25,32 @@ namespace sandbox
 		};
 
 	public:
-		explicit PickingTechnique(const spieler::Window& window);
+		explicit PickingTechnique(const benzin::Window& window);
 
 	public:
-		void SetActiveCamera(const spieler::Camera* activeCamera);
-		void SetPickableEntities(const std::span<const spieler::Entity*>& pickableEntities);
+		void SetActiveCamera(const benzin::Camera* activeCamera);
+		void SetPickableEntities(const std::span<const benzin::Entity*>& pickableEntities);
 
 	public:
 		Result PickTriangle(float mouseX, float mouseY) const;
 
 	private:
 		Ray GetRayInViewSpace(float mouseX, float mouseY) const;
-		Ray GetRayInLocalSpace(const Ray& rayInViewSpace, const spieler::InstanceComponent& instanceComponent) const;
+		Ray GetRayInLocalSpace(const Ray& rayInViewSpace, const benzin::InstanceComponent& instanceComponent) const;
 
 		std::pair<float, uint32_t> PickEntityInstance(
 			const Ray& rayInViewSpace,
-			const spieler::InstancesComponent& instancesComponent,
-			const spieler::CollisionComponent* collisionComponent
+			const benzin::InstancesComponent& instancesComponent,
+			const benzin::CollisionComponent* collisionComponent
 		) const;
 
-		uint32_t PickEntityInstanceTriangle(const Ray& ray, const spieler::MeshComponent& meshComponent) const;
+		uint32_t PickEntityInstanceTriangle(const Ray& ray, const benzin::MeshComponent& meshComponent) const;
 
 	private:
-		const spieler::Window& m_Window;
+		const benzin::Window& m_Window;
 
-		std::span<const spieler::Entity*> m_PickableEntities;
-		const spieler::Camera* m_ActiveCamera{ nullptr };
+		std::span<const benzin::Entity*> m_PickableEntities;
+		const benzin::Camera* m_ActiveCamera{ nullptr };
 	};
 
 } // namespace sandbox

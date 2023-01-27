@@ -1,19 +1,19 @@
 #pragma once
 
-#include <spieler/core/layer.hpp>
+#include <benzin/core/layer.hpp>
 
-#include <spieler/system/window.hpp>
+#include <benzin/system/window.hpp>
 
-#include <spieler/graphics/shader.hpp>
-#include <spieler/graphics/root_signature.hpp>
-#include <spieler/graphics/pipeline_state.hpp>
-#include <spieler/graphics/texture.hpp>
-#include <spieler/graphics/sampler.hpp>
-#include <spieler/graphics/graphics_command_list.hpp>
+#include <benzin/graphics/shader.hpp>
+#include <benzin/graphics/root_signature.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/texture.hpp>
+#include <benzin/graphics/sampler.hpp>
+#include <benzin/graphics/graphics_command_list.hpp>
 
-#include <spieler/engine/mesh.hpp>
-#include <spieler/engine/light.hpp>
-#include <spieler/engine/camera.hpp>
+#include <benzin/engine/mesh.hpp>
+#include <benzin/engine/light.hpp>
+#include <benzin/engine/camera.hpp>
 
 #include "passes/blur_pass.hpp"
 #include "passes/sobel_filter_pass.hpp"
@@ -47,7 +47,7 @@ namespace sandbox
 
     } // namespace per
 
-    class TestLayer final : public spieler::Layer
+    class TestLayer final : public benzin::Layer
     {
     private:
         struct PassConstants
@@ -63,7 +63,7 @@ namespace sandbox
             DirectX::XMMATRIX Projection{};
             DirectX::XMFLOAT3 CameraPosition{};
             DirectX::XMFLOAT4 AmbientLight{};
-            std::array<spieler::LightConstants, g_MaxLightCount> Lights;
+            std::array<benzin::LightConstants, g_MaxLightCount> Lights;
 
             Fog Fog;
 
@@ -77,7 +77,7 @@ namespace sandbox
     public:
         bool OnAttach() override;
 
-        void OnEvent(spieler::Event& event) override;
+        void OnEvent(benzin::Event& event) override;
         void OnUpdate(float dt) override;
         void OnRender(float dt) override;
         void OnImGuiRender(float dt) override;
@@ -100,46 +100,46 @@ namespace sandbox
         void RenderFullscreenQuad();
 
         void Render(
-            std::vector<const spieler::RenderItem*> items,
-            const spieler::PipelineState& pso,
+            std::vector<const benzin::RenderItem*> items,
+            const benzin::PipelineState& pso,
             const PassConstants& passConstants,
-            const spieler::BufferResource* objectConstantBuffer = nullptr);
+            const benzin::BufferResource* objectConstantBuffer = nullptr);
 
-        bool OnWindowResized(spieler::WindowResizedEvent& event);
+        bool OnWindowResized(benzin::WindowResizedEvent& event);
 
     private:
-        spieler::GraphicsFormat m_DepthStencilFormat{ spieler::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
-        spieler::Texture m_DepthStencil;
+        benzin::GraphicsFormat m_DepthStencilFormat{ benzin::GraphicsFormat::D24UnsignedNormS8UnsignedInt };
+        benzin::Texture m_DepthStencil;
 
-        spieler::Viewport m_Viewport;
-        spieler::ScissorRect m_ScissorRect;
+        benzin::Viewport m_Viewport;
+        benzin::ScissorRect m_ScissorRect;
 
-        spieler::Camera m_Camera;
-        spieler::CameraController m_CameraController{ m_Camera };
+        benzin::Camera m_Camera;
+        benzin::CameraController m_CameraController{ m_Camera };
 
-        LookUpTable<spieler::Texture> m_Textures;
-        LookUpTable<spieler::SamplerConfig> m_Samplers;
-        //LookUpTable<spieler::SamplerView> m_SamplerViews;
-        LookUpTable<spieler::Material> m_Materials;
-        LookUpTable<spieler::MeshGeometry> m_MeshGeometries;
-        LookUpTable<spieler::RootSignature> m_RootSignatures;
+        LookUpTable<benzin::Texture> m_Textures;
+        LookUpTable<benzin::SamplerConfig> m_Samplers;
+        //LookUpTable<benzin::SamplerView> m_SamplerViews;
+        LookUpTable<benzin::Material> m_Materials;
+        LookUpTable<benzin::MeshGeometry> m_MeshGeometries;
+        LookUpTable<benzin::RootSignature> m_RootSignatures;
 
-        std::unordered_map<std::string, std::shared_ptr<spieler::Shader>> m_ShaderLibrary;
+        std::unordered_map<std::string, std::shared_ptr<benzin::Shader>> m_ShaderLibrary;
 
-        LookUpTable<spieler::GraphicsPipelineState> m_PipelineStates;
-        LookUpTable<std::shared_ptr<spieler::BufferResource>> m_ConstantBuffers;
+        LookUpTable<benzin::GraphicsPipelineState> m_PipelineStates;
+        LookUpTable<std::shared_ptr<benzin::BufferResource>> m_ConstantBuffers;
 
         // RenderItems
-        std::unordered_map<std::string, std::unique_ptr<spieler::RenderItem>> m_RenderItems;
-        std::vector<const spieler::RenderItem*> m_Lights;
-        std::vector<const spieler::RenderItem*> m_OpaqueObjects;
-        std::vector<const spieler::RenderItem*> m_Mirrors;
-        std::vector<const spieler::RenderItem*> m_ReflectedObjects;
-        std::vector<const spieler::RenderItem*> m_AlphaTestedObjects;
-        std::vector<const spieler::RenderItem*> m_AlphaTestedBillboards;
-        std::vector<const spieler::RenderItem*> m_TransparentObjects;
-        std::vector<const spieler::RenderItem*> m_Shadows;
-        std::vector<const spieler::RenderItem*> m_BillboardShadows;
+        std::unordered_map<std::string, std::unique_ptr<benzin::RenderItem>> m_RenderItems;
+        std::vector<const benzin::RenderItem*> m_Lights;
+        std::vector<const benzin::RenderItem*> m_OpaqueObjects;
+        std::vector<const benzin::RenderItem*> m_Mirrors;
+        std::vector<const benzin::RenderItem*> m_ReflectedObjects;
+        std::vector<const benzin::RenderItem*> m_AlphaTestedObjects;
+        std::vector<const benzin::RenderItem*> m_AlphaTestedBillboards;
+        std::vector<const benzin::RenderItem*> m_TransparentObjects;
+        std::vector<const benzin::RenderItem*> m_Shadows;
+        std::vector<const benzin::RenderItem*> m_BillboardShadows;
 
         LookUpTable<PassConstants> m_PassConstants;
 

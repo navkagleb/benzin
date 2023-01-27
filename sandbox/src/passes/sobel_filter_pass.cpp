@@ -2,20 +2,20 @@
 
 #include "sobel_filter_pass.hpp"
 
-#include <spieler/graphics/device.hpp>
-#include <spieler/graphics/resource_view_builder.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/resource_view_builder.hpp>
 
 namespace sandbox
 {
 
-    SobelFilterPass::SobelFilterPass(spieler::Device& device, uint32_t width, uint32_t height)
+    SobelFilterPass::SobelFilterPass(benzin::Device& device, uint32_t width, uint32_t height)
     {
         InitOutputTexture(device, width, height);
         InitRootSignature(device);
         InitPipelineState(device);
     }
 
-    void SobelFilterPass::Execute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input)
+    void SobelFilterPass::Execute(benzin::GraphicsCommandList& graphicsCommandList, benzin::TextureResource& input)
     {
         const uint32_t width = input.GetConfig().Width;
         const uint32_t height = input.GetConfig().Height;
@@ -31,20 +31,20 @@ namespace sandbox
         graphicsCommandList.Dispatch(threadGroupXCount, threadGroupYCount, 1);
     }
 
-    void SobelFilterPass::OnResize(spieler::Device& device, uint32_t width, uint32_t height)
+    void SobelFilterPass::OnResize(benzin::Device& device, uint32_t width, uint32_t height)
     {
         InitOutputTexture(device, width, height);
     }
 
-    void SobelFilterPass::InitOutputTexture(spieler::Device& device, uint32_t width, uint32_t height)
+    void SobelFilterPass::InitOutputTexture(benzin::Device& device, uint32_t width, uint32_t height)
     {
-        const spieler::TextureResource::Config config
+        const benzin::TextureResource::Config config
         {
-            .Type{ spieler::TextureResource::Type::Texture2D },
+            .Type{ benzin::TextureResource::Type::Texture2D },
             .Width{ width },
             .Height{ height },
-            .Format{ spieler::GraphicsFormat::R8G8B8A8UnsignedNorm },
-            .Flags{ spieler::TextureResource::Flags::BindAsUnorderedAccess }
+            .Format{ benzin::GraphicsFormat::R8G8B8A8UnsignedNorm },
+            .Flags{ benzin::TextureResource::Flags::BindAsUnorderedAccess }
         };
 
         m_OutputTexture = device.CreateTextureResource(config);
@@ -52,53 +52,53 @@ namespace sandbox
         m_OutputTexture->SetName("SobelFilterOutputTexture");
     }
 
-    void SobelFilterPass::InitRootSignature(spieler::Device& device)
+    void SobelFilterPass::InitRootSignature(benzin::Device& device)
     {
-        const spieler::RootParameter::SingleDescriptorTable srvTable
+        const benzin::RootParameter::SingleDescriptorTable srvTable
         {
             .Range
             {
-                .Type{ spieler::RootParameter::DescriptorRangeType::ShaderResourceView },
+                .Type{ benzin::RootParameter::DescriptorRangeType::ShaderResourceView },
                 .DescriptorCount{ 1 },
                 .BaseShaderRegister{ 0 }
             }
         };
 
-        const spieler::RootParameter::SingleDescriptorTable uavTable
+        const benzin::RootParameter::SingleDescriptorTable uavTable
         {
             .Range
             {
-                .Type{ spieler::RootParameter::DescriptorRangeType::UnorderedAccessView },
+                .Type{ benzin::RootParameter::DescriptorRangeType::UnorderedAccessView },
                 .DescriptorCount{ 1 },
                 .BaseShaderRegister{ 0 }
             }
         };
 
-        spieler::RootSignature::Config rootSignatureConfig{ 2 };
+        benzin::RootSignature::Config rootSignatureConfig{ 2 };
         rootSignatureConfig.RootParameters[0] = srvTable;
         rootSignatureConfig.RootParameters[1] = uavTable;
 
-        m_RootSignature = spieler::RootSignature{ device, rootSignatureConfig };
+        m_RootSignature = benzin::RootSignature{ device, rootSignatureConfig };
     }
 
-    void SobelFilterPass::InitPipelineState(spieler::Device& device)
+    void SobelFilterPass::InitPipelineState(benzin::Device& device)
     {
-        const spieler::Shader::Config shaderConfig
+        const benzin::Shader::Config shaderConfig
         {
-            .Type{ spieler::Shader::Type::Compute },
+            .Type{ benzin::Shader::Type::Compute },
             .Filepath{ L"assets/shaders/sobel_filter.hlsl" },
             .EntryPoint{ "CS_Main" }
         };
 
-        m_Shader = spieler::Shader::Create(shaderConfig);
+        m_Shader = benzin::Shader::Create(shaderConfig);
 
-        const spieler::ComputePipelineState::Config pipelineStateConfig
+        const benzin::ComputePipelineState::Config pipelineStateConfig
         {
             .RootSignature{ &m_RootSignature },
             .ComputeShader{ m_Shader.get() }
         };
 
-        m_PipelineState = spieler::ComputePipelineState(device, pipelineStateConfig);
+        m_PipelineState = benzin::ComputePipelineState(device, pipelineStateConfig);
     }
 
 } // namespace sandbox

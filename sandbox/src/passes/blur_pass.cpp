@@ -2,7 +2,7 @@
 
 #include "blur_pass.hpp"
 
-#include <spieler/graphics/resource_view_builder.hpp>
+#include <benzin/graphics/resource_view_builder.hpp>
 
 namespace sandbox
 {
@@ -18,7 +18,7 @@ namespace sandbox
             const float twoSigma2{ 2.0f * sigma * sigma };
             const auto blurRadius{ static_cast<int32_t>(std::ceil(2.0f * sigma)) };
 
-            SPIELER_ASSERT(blurRadius <= g_MaxBlurRadius);
+            BENZIN_ASSERT(blurRadius <= g_MaxBlurRadius);
 
             std::vector<float> weights;
             weights.reserve(2 * blurRadius + 1);
@@ -42,23 +42,23 @@ namespace sandbox
 
     } // anonymous namespace
 
-    BlurPass::BlurPass(spieler::Device& device, uint32_t width, uint32_t height)
+    BlurPass::BlurPass(benzin::Device& device, uint32_t width, uint32_t height)
     {
         InitTextures(device, width, height);
         InitRootSignature(device);
         InitPSOs(device);
     }
 
-    void BlurPass::OnExecute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input, const BlurPassExecuteProps& props)
+    void BlurPass::OnExecute(benzin::GraphicsCommandList& graphicsCommandList, benzin::TextureResource& input, const BlurPassExecuteProps& props)
     {
         const uint32_t width = input.GetConfig().Width;
         const uint32_t height = input.GetConfig().Height;
 
-        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], spieler::Resource::State::CopyDestination);
+        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], benzin::Resource::State::CopyDestination);
         graphicsCommandList.CopyResource(*m_BlurMaps[0], input);
 
-        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], spieler::Resource::State::GenericRead);
-        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], spieler::Resource::State::UnorderedAccess);
+        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], benzin::Resource::State::GenericRead);
+        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], benzin::Resource::State::UnorderedAccess);
 
         const std::vector<float> horizontalWeights = CalcGaussWeights(props.HorizontalBlurSigma);
         const uint32_t horizontalBlurRadius = horizontalWeights.size() / 2;
@@ -82,8 +82,8 @@ namespace sandbox
                 const uint32_t xGroupCount = width / g_ThreadPerGroupCount + 1;
                 graphicsCommandList.Dispatch(xGroupCount, height, 1);
 
-                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], spieler::Resource::State::UnorderedAccess);
-                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], spieler::Resource::State::GenericRead);
+                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], benzin::Resource::State::UnorderedAccess);
+                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], benzin::Resource::State::GenericRead);
             }
             
             // Vertical Blur pass
@@ -100,29 +100,29 @@ namespace sandbox
                 const uint32_t yGroupCount = height / g_ThreadPerGroupCount + 1;
                 graphicsCommandList.Dispatch(width, yGroupCount, 1);
 
-                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], spieler::Resource::State::GenericRead);
-                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], spieler::Resource::State::UnorderedAccess);
+                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], benzin::Resource::State::GenericRead);
+                graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], benzin::Resource::State::UnorderedAccess);
             }
         }
 
-        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], spieler::Resource::State::Present);
-        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], spieler::Resource::State::Present);
+        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], benzin::Resource::State::Present);
+        graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], benzin::Resource::State::Present);
     }
 
-    void BlurPass::OnResize(spieler::Device& device, uint32_t width, uint32_t height)
+    void BlurPass::OnResize(benzin::Device& device, uint32_t width, uint32_t height)
     {
         InitTextures(device, width, height);
     }
 
-    void BlurPass::InitTextures(spieler::Device& device, uint32_t width, uint32_t height)
+    void BlurPass::InitTextures(benzin::Device& device, uint32_t width, uint32_t height)
     {
-        const spieler::TextureResource::Config config
+        const benzin::TextureResource::Config config
         {
-            .Type{ spieler::TextureResource::Type::Texture2D },
+            .Type{ benzin::TextureResource::Type::Texture2D },
             .Width{ width },
             .Height{ height },
-            .Format{ spieler::GraphicsFormat::R8G8B8A8UnsignedNorm },
-            .Flags{ spieler::TextureResource::Flags::BindAsUnorderedAccess },
+            .Format{ benzin::GraphicsFormat::R8G8B8A8UnsignedNorm },
+            .Flags{ benzin::TextureResource::Flags::BindAsUnorderedAccess },
         };
 
         for (size_t i = 0; i < m_BlurMaps.size(); ++i)
@@ -135,49 +135,49 @@ namespace sandbox
         }
     }
 
-    void BlurPass::InitRootSignature(spieler::Device& device)
+    void BlurPass::InitRootSignature(benzin::Device& device)
     {
-        const spieler::RootParameter::_32BitConstants constants
+        const benzin::RootParameter::_32BitConstants constants
         {
             .ShaderRegister{ 0 },
             .Count{ 12 } // BlurRadius + 11 Weights
         };
 
-        const spieler::RootParameter::SingleDescriptorTable srvTable
+        const benzin::RootParameter::SingleDescriptorTable srvTable
         {
             .Range
             {
-                .Type{ spieler::RootParameter::DescriptorRangeType::ShaderResourceView },
+                .Type{ benzin::RootParameter::DescriptorRangeType::ShaderResourceView },
                 .DescriptorCount{ 1 },
                 .BaseShaderRegister{ 0 }
             }
         };
 
-        const spieler::RootParameter::SingleDescriptorTable uavTable
+        const benzin::RootParameter::SingleDescriptorTable uavTable
         {
             .Range
             {
-                .Type{ spieler::RootParameter::DescriptorRangeType::UnorderedAccessView },
+                .Type{ benzin::RootParameter::DescriptorRangeType::UnorderedAccessView },
                 .DescriptorCount{ 1 },
                 .BaseShaderRegister{ 0 }
             }
         };
 
-        spieler::RootSignature::Config config{ 3 };
+        benzin::RootSignature::Config config{ 3 };
         config.RootParameters[0] = constants;
         config.RootParameters[1] = srvTable;
         config.RootParameters[2] = uavTable;
 
-        m_RootSignature = spieler::RootSignature{ device, config };
+        m_RootSignature = benzin::RootSignature{ device, config };
     }
 
-    void BlurPass::InitPSOs(spieler::Device& device)
+    void BlurPass::InitPSOs(benzin::Device& device)
     {
         // Horizontal
         {
-            const spieler::Shader::Config shaderConfig
+            const benzin::Shader::Config shaderConfig
             {
-                .Type{ spieler::Shader::Type::Compute },
+                .Type{ benzin::Shader::Type::Compute },
                 .Filepath{ L"assets/shaders/blur.hlsl" },
                 .EntryPoint{ "CS_HorizontalBlur" },
                 .Defines
@@ -186,22 +186,22 @@ namespace sandbox
                 }
             };
 
-            m_ShaderLibrary["horizontal_cs"] = spieler::Shader::Create(shaderConfig);
+            m_ShaderLibrary["horizontal_cs"] = benzin::Shader::Create(shaderConfig);
 
-            const spieler::ComputePipelineState::Config horizontalPSOConfig
+            const benzin::ComputePipelineState::Config horizontalPSOConfig
             {
                 .RootSignature{ &m_RootSignature },
                 .ComputeShader{ m_ShaderLibrary["horizontal_cs"].get() }
             };
 
-            m_HorizontalPSO = spieler::ComputePipelineState{ device, horizontalPSOConfig };
+            m_HorizontalPSO = benzin::ComputePipelineState{ device, horizontalPSOConfig };
         }
 
         // Vertical
         {
-            const spieler::Shader::Config shaderConfig
+            const benzin::Shader::Config shaderConfig
             {
-                .Type{ spieler::Shader::Type::Compute },
+                .Type{ benzin::Shader::Type::Compute },
                 .Filepath{ L"assets/shaders/blur.hlsl" },
                 .EntryPoint{ "CS_VerticalBlur" },
                 .Defines
@@ -210,15 +210,15 @@ namespace sandbox
                 }
             };
 
-            m_ShaderLibrary["vertical_cs"] = spieler::Shader::Create(shaderConfig);
+            m_ShaderLibrary["vertical_cs"] = benzin::Shader::Create(shaderConfig);
 
-            const spieler::ComputePipelineState::Config verticalPSOConfig
+            const benzin::ComputePipelineState::Config verticalPSOConfig
             {
                 .RootSignature{ &m_RootSignature },
                 .ComputeShader{ m_ShaderLibrary["vertical_cs"].get() }
             };
 
-            m_VerticalPSO = spieler::ComputePipelineState{ device, verticalPSOConfig };
+            m_VerticalPSO = benzin::ComputePipelineState{ device, verticalPSOConfig };
         }
     }
 

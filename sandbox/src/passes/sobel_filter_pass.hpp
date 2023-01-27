@@ -1,10 +1,10 @@
 #pragma once
 
-#include <spieler/graphics/texture.hpp>
-#include <spieler/graphics/root_signature.hpp>
-#include <spieler/graphics/pipeline_state.hpp>
-#include <spieler/graphics/shader.hpp>
-#include <spieler/graphics/graphics_command_list.hpp>
+#include <benzin/graphics/texture.hpp>
+#include <benzin/graphics/root_signature.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/shader.hpp>
+#include <benzin/graphics/graphics_command_list.hpp>
 
 namespace sandbox
 {
@@ -12,26 +12,26 @@ namespace sandbox
     class SobelFilterPass
     {
     public:
-        SobelFilterPass(spieler::Device& device, uint32_t width, uint32_t height);
+        SobelFilterPass(benzin::Device& device, uint32_t width, uint32_t height);
 
     public:
-        const std::shared_ptr<spieler::TextureResource>& GetOutputTexture() const { return m_OutputTexture; }
+        const std::shared_ptr<benzin::TextureResource>& GetOutputTexture() const { return m_OutputTexture; }
 
     public:
-        void Execute(spieler::GraphicsCommandList& graphicsCommandList, spieler::TextureResource& input);
+        void Execute(benzin::GraphicsCommandList& graphicsCommandList, benzin::TextureResource& input);
 
-        void OnResize(spieler::Device& device, uint32_t width, uint32_t height);
-
-    private:
-        void InitOutputTexture(spieler::Device& device, uint32_t width, uint32_t height);
-        void InitRootSignature(spieler::Device& device);
-        void InitPipelineState(spieler::Device& device);
+        void OnResize(benzin::Device& device, uint32_t width, uint32_t height);
 
     private:
-        std::shared_ptr<spieler::TextureResource> m_OutputTexture;
-        spieler::RootSignature m_RootSignature;
-        spieler::ComputePipelineState m_PipelineState;
-        std::shared_ptr<spieler::Shader> m_Shader;
+        void InitOutputTexture(benzin::Device& device, uint32_t width, uint32_t height);
+        void InitRootSignature(benzin::Device& device);
+        void InitPipelineState(benzin::Device& device);
+
+    private:
+        std::shared_ptr<benzin::TextureResource> m_OutputTexture;
+        benzin::RootSignature m_RootSignature;
+        benzin::ComputePipelineState m_PipelineState;
+        std::shared_ptr<benzin::Shader> m_Shader;
     };
 
 } // namespace sandbox

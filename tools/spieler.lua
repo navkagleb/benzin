@@ -1,7 +1,7 @@
-workspace "spieler"
+workspace "benzin"
     location "../"
 
-    platforms { "win64_dx12" }
+    platforms { "Win64_D3D12" }
 
     configurations
     {
@@ -12,42 +12,43 @@ workspace "spieler"
 
     startproject "sandbox"
 
-    filter "platforms:win64_dx12"
+    filter "platforms:Win64_D3D12"
         system "windows"
         systemversion "latest"
         architecture "x64"
-        characterset "ASCII"
+        characterset "MBCS"
 
-        defines { "SPIELER_PLATFORM_WINDOWS", "WIN32", "SPIELER_GRAPHICS_API_DX12" }
+        linkoptions { "/ENTRY:mainCRTStartup" }
+        defines { "BENZIN_PLATFORM_WINDOWS", "WIN32", }
 
     filter "configurations:Debug"
-        defines { "DEBUG", "SPIELER_DEBUG" }
+        defines { "DEBUG", "BENZIN_DEBUG" }
         optimize "Off"
+
+    filter "files:**.hlsl"
+        buildaction "None"
 
 --[[
     filter "configurations:Release"
-        defines { "NDEBUG", "SPIELER_RELEASE" }
+        defines { "NDEBUG", "BENZIN_RELEASE" }
         optimize "On"
 
     filter "configurations:Final"
-        defines { "NDEBUG", "SPIELER_FINAL" }
+        defines { "NDEBUG", "BENZIN_FINAL" }
         optimize "On"
 
     filter { "files:**.hlsl" }
 		buildaction "None"
 --]]
 
-
-outputdir = "%{cfg.buildcfg}/%{cfg.system}/%{cfg.architecture}"
-
 project "third_party"
     kind "StaticLib"
     language "C++"
     cppdialect "C++20"
     location "../third_party"
-
-    targetdir ("../bin/" ..outputdir)
-    objdir ("../bin/int/" .. outputdir)
+    
+    targetdir "../build"
+    objdir "../build/third_party/%{cfg.platform}_%{cfg.buildcfg}"
 
     files
     {
@@ -67,32 +68,32 @@ project "third_party"
         "../third_party/magic_enum/*.hpp"
     }
 
-project "spieler"
+project "benzin"
     kind "StaticLib"
     language "C++"
     cppdialect "C++20"
-    location "../spieler"
+    location "../benzin"
 
-    targetdir ("../bin/" .. outputdir)
-    objdir ("../bin/int/" .. outputdir)
+    targetdir "../build"
+    objdir "../build/benzin/%{cfg.platform}_%{cfg.buildcfg}"
 
-    pchheader "spieler/config/bootstrap.hpp"
-    pchsource "../spieler/src/config/bootstrap.cpp"
+    pchheader "benzin/config/bootstrap.hpp"
+    pchsource "../benzin/src/config/bootstrap.cpp"
 
     files
     {
-        "../spieler/include/spieler/**.hpp",
-        "../spieler/include/spieler/**.inl",
-        "../spieler/src/**.hpp",
+        "../benzin/include/benzin/**.hpp",
+        "../benzin/include/benzin/**.inl",
+        "../benzin/src/**.hpp",
 
-        "../spieler/src/**.cpp"
+        "../benzin/src/**.cpp"
     }
 
     includedirs
     {
         "../",
-        "../spieler/include",
-        "../spieler/src"
+        "../benzin/include",
+        "../benzin/src"
     }
 
 project "sandbox"
@@ -101,13 +102,13 @@ project "sandbox"
     cppdialect "C++20"
     location "../sandbox"
 
-    targetdir ("../bin/" .. outputdir)
-    objdir ("../bin/int/" .. outputdir)
+    targetdir "../build"
+    objdir "../build/sandbox/%{cfg.platform}_%{cfg.buildcfg}"
 
     links
     {
         "third_party",
-        "spieler"
+        "benzin"
     }
 
     pchheader "bootstrap.hpp"
@@ -126,9 +127,6 @@ project "sandbox"
     includedirs
     {
         "../",
-        "../spieler/include",
+        "../benzin/include",
         "../sandbox/src"
     }
-
-    filter "files:**.hlsl"
-        buildaction "None"
