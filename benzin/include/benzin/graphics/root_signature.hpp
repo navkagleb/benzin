@@ -2,6 +2,7 @@
 
 #include "benzin/graphics/common.hpp"
 #include "benzin/graphics/sampler.hpp"
+#include "benzin/graphics/descriptor_manager.hpp"
 
 namespace benzin
 {
@@ -15,58 +16,40 @@ namespace benzin
         friend class RootSignature;
 
     public:
-        enum class DescriptorType : uint8_t
-        {
-            Unknown,
-
-            ConstantBufferView,
-            ShaderResourceView,
-            UnorderedAccessView
-        };
-
-        enum class DescriptorRangeType : uint8_t
-        {
-            Unknown,
-
-            ShaderResourceView,
-            UnorderedAccessView,
-            ConstantBufferView,
-        };
-
         struct ShaderRegister
         {
             uint32_t Register{ 0 };
             uint32_t Space{ 0 };
         };
 
-        struct _32BitConstants
+        struct Constants32BitConfig
         {
             ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
             ShaderRegister ShaderRegister;
             uint32_t Count{ 0 };
         };
 
-        struct Descriptor
+        struct DescriptorConfig
         {
             ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
-            DescriptorType Type{ DescriptorType::Unknown };
+            Descriptor::Type Type{ Descriptor::Type::Unknown };
             ShaderRegister ShaderRegister;
         };
 
         struct DescriptorRange
         {
-            DescriptorRangeType Type{ DescriptorRangeType::Unknown };
+            Descriptor::Type Type{ Descriptor::Type::Unknown };
             uint32_t DescriptorCount{ 0 };
             ShaderRegister BaseShaderRegister;
         };
 
-        struct DescriptorTable
+        struct DescriptorTableConfig
         {
             ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
             std::vector<DescriptorRange> Ranges;
         };
 
-        struct SingleDescriptorTable
+        struct SingleDescriptorTableConfig
         {
             ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
             DescriptorRange Range;
@@ -74,18 +57,18 @@ namespace benzin
 
     public:
         RootParameter() = default;
-        RootParameter(const _32BitConstants& constants);
-        RootParameter(const Descriptor& descriptor);
-        RootParameter(const DescriptorTable& descriptorTable);
-        RootParameter(const SingleDescriptorTable& singleDescriptorTable);
+        RootParameter(const Constants32BitConfig& constants32BitConfig);
+        RootParameter(const DescriptorConfig& descriptorConfig);
+        RootParameter(const DescriptorTableConfig& descriptorTableConfig);
+        RootParameter(const SingleDescriptorTableConfig& singleDescriptorTableConfig);
         RootParameter(RootParameter&& other) noexcept;
         ~RootParameter();
 
     private:
-        void InitAs32BitConstants(const _32BitConstants& constants);
-        void InitAsDescriptor(const Descriptor& descriptor);
-        void InitAsDescriptorTable(const DescriptorTable& descriptorTable);
-        void InitAsSingleDescriptorTable(const SingleDescriptorTable& singleDescriptorTable);
+        void InitAsConstants32Bit(const Constants32BitConfig& constants32BitConfig);
+        void InitAsDescriptor(const DescriptorConfig& descriptorConfig);
+        void InitAsDescriptorTable(const DescriptorTableConfig& descriptorTableConfig);
+        void InitAsSingleDescriptorTable(const SingleDescriptorTableConfig& singleDescriptorTableConfig);
 
         void Swap(RootParameter&& other) noexcept;
 

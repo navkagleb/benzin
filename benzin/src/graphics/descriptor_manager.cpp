@@ -26,6 +26,8 @@ namespace benzin
             }
 
             BENZIN_ASSERT(false);
+
+
         }
 
     } // anonymous namespace

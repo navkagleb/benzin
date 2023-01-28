@@ -600,59 +600,53 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitRootSignature()
     {
-        benzin::RootSignature::Config config{ 5, 2 };
+        benzin::RootSignature::Config config;
 
         // Root parameters
         {
-            const benzin::RootParameter::Descriptor passConstantBuffer
+            config.RootParameters.emplace_back(benzin::RootParameter::DescriptorConfig
             {
-                .Type{ benzin::RootParameter::DescriptorType::ConstantBufferView },
+                .Type{ benzin::Descriptor::Type::ConstantBufferView },
                 .ShaderRegister{ 0 }
-            };
+            });
 
-            const benzin::RootParameter::Descriptor renderItemStructuredBuffer
+            config.RootParameters.emplace_back(benzin::RootParameter::DescriptorConfig
             {
-                .Type{ benzin::RootParameter::DescriptorType::ShaderResourceView },
+                .Type{ benzin::Descriptor::Type::ShaderResourceView },
                 .ShaderRegister{ 1, 1 }
-            };
+            });
 
-            const benzin::RootParameter::Descriptor materialStructuredBuffer
+            config.RootParameters.emplace_back(benzin::RootParameter::DescriptorConfig
             {
-                .Type{ benzin::RootParameter::DescriptorType::ShaderResourceView },
+                .Type{ benzin::Descriptor::Type::ShaderResourceView },
                 .ShaderRegister{ 1, 2 }
-            };
+            });
 
-            const benzin::RootParameter::SingleDescriptorTable cubeMap
+            config.RootParameters.emplace_back(benzin::RootParameter::SingleDescriptorTableConfig
             {
                 .Range
                 {
-                    .Type{ benzin::RootParameter::DescriptorRangeType::ShaderResourceView },
+                    .Type{ benzin::Descriptor::Type::ShaderResourceView },
                     .DescriptorCount{ 1 },
                     .BaseShaderRegister{ 0 }
                 }
-            };
+            });
 
-            const benzin::RootParameter::SingleDescriptorTable textureTable
+            config.RootParameters.emplace_back(benzin::RootParameter::SingleDescriptorTableConfig
             {
                 .Range
                 {
-                    .Type{ benzin::RootParameter::DescriptorRangeType::ShaderResourceView },
+                    .Type{ benzin::Descriptor::Type::ShaderResourceView },
                     .DescriptorCount{ 10 },
                     .BaseShaderRegister{ 1 }
                 }
-            };
-
-            config.RootParameters[0] = passConstantBuffer;
-            config.RootParameters[1] = renderItemStructuredBuffer;
-            config.RootParameters[2] = materialStructuredBuffer;
-            config.RootParameters[3] = cubeMap;
-            config.RootParameters[4] = textureTable;
+            });
         }
 
         // Static samplers
         {
-            config.StaticSamplers[0] = benzin::StaticSampler{ benzin::TextureFilterType::Linear, benzin::TextureAddressMode::Wrap, 0 };
-            config.StaticSamplers[1] = benzin::StaticSampler{ benzin::TextureFilterType::Anisotropic, benzin::TextureAddressMode::Wrap, 1 };
+            config.StaticSamplers.emplace_back(benzin::TextureFilterType::Linear, benzin::TextureAddressMode::Wrap, 0);
+            config.StaticSamplers.emplace_back(benzin::TextureFilterType::Anisotropic, benzin::TextureAddressMode::Wrap, 1);
         }
 
         m_RootSignature = benzin::RootSignature{ m_Device, config };

@@ -57,17 +57,17 @@ namespace benzin
             return d3d12Filter;
         }
 
-        D3D12_ROOT_PARAMETER_TYPE ConvertToD3D12DescriptorType(RootParameter::DescriptorType descriptorType)
+        D3D12_ROOT_PARAMETER_TYPE ConvertToD3D12DescriptorType(Descriptor::Type descriptorType)
         {
             switch (descriptorType)
             {
-                case RootParameter::DescriptorType::ConstantBufferView: return D3D12_ROOT_PARAMETER_TYPE_CBV;
-                case RootParameter::DescriptorType::ShaderResourceView: return D3D12_ROOT_PARAMETER_TYPE_SRV;
-                case RootParameter::DescriptorType::UnorderedAccessView: return D3D12_ROOT_PARAMETER_TYPE_UAV;
+                case Descriptor::Type::ConstantBufferView: return D3D12_ROOT_PARAMETER_TYPE_CBV;
+                case Descriptor::Type::ShaderResourceView: return D3D12_ROOT_PARAMETER_TYPE_SRV;
+                case Descriptor::Type::UnorderedAccessView: return D3D12_ROOT_PARAMETER_TYPE_UAV;
 
                 default:
                 {
-                    BENZIN_WARNING("Unknown DescriptorType!");
+                    BENZIN_WARNING("Unknown DescriptorType for RootParameter!");
                     break;
                 }
             }
@@ -75,19 +75,20 @@ namespace benzin
             return D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         }
 
-        D3D12_DESCRIPTOR_RANGE_TYPE ConvertToD3D12RangeType(RootParameter::DescriptorRangeType descriptorRangeType)
+        D3D12_DESCRIPTOR_RANGE_TYPE ConvertToD3D12DescriptorRangeType(Descriptor::Type descriptorType)
         {
-            switch (descriptorRangeType)
+            switch (descriptorType)
             {
-                case RootParameter::DescriptorRangeType::ShaderResourceView: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-                case RootParameter::DescriptorRangeType::UnorderedAccessView: return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-                case RootParameter::DescriptorRangeType::ConstantBufferView: return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+            case Descriptor::Type::ConstantBufferView: return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+            case Descriptor::Type::ShaderResourceView: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+            case Descriptor::Type::UnorderedAccessView: return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+            case Descriptor::Type::Sampler: return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
 
-                default:
-                {
-                    BENZIN_WARNING("Unknown DescriptorRangeType!");
-                    break;
-                }
+            default:
+            {
+                BENZIN_WARNING("Unknown DescriptorType for RootParameter!");
+                break;
+            }
             }
 
             return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -131,24 +132,24 @@ namespace benzin
     //////////////////////////////////////////////////////////////////////////
     /// RootParameter
     //////////////////////////////////////////////////////////////////////////
-    RootParameter::RootParameter(const _32BitConstants& constants)
+    RootParameter::RootParameter(const Constants32BitConfig& constants32BitConfig)
     {
-        InitAs32BitConstants(constants);
+        InitAsConstants32Bit(constants32BitConfig);
     }
 
-    RootParameter::RootParameter(const Descriptor& descriptor)
+    RootParameter::RootParameter(const DescriptorConfig& descriptorConfig)
     {
-        InitAsDescriptor(descriptor);
+        InitAsDescriptor(descriptorConfig);
     }
 
-    RootParameter::RootParameter(const DescriptorTable& descriptorTable)
+    RootParameter::RootParameter(const DescriptorTableConfig& descriptorTableConfig)
     {
-        InitAsDescriptorTable(descriptorTable);
+        InitAsDescriptorTable(descriptorTableConfig);
     }
 
-    RootParameter::RootParameter(const SingleDescriptorTable& singleDescriptorTable)
+    RootParameter::RootParameter(const SingleDescriptorTableConfig& singleDescriptorTableConfig)
     {
-        InitAsSingleDescriptorTable(singleDescriptorTable);
+        InitAsSingleDescriptorTable(singleDescriptorTableConfig);
     }
 
     RootParameter::RootParameter(RootParameter&& other) noexcept
@@ -164,39 +165,40 @@ namespace benzin
         }
     }
 
-    void RootParameter::InitAs32BitConstants(const _32BitConstants& constants)
+    void RootParameter::InitAsConstants32Bit(const Constants32BitConfig& constants32BitConfig)
     {
         m_D3D12RootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        m_D3D12RootParameter.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(constants.ShaderVisibility);
+        m_D3D12RootParameter.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(constants32BitConfig.ShaderVisibility);
 
-        m_D3D12RootParameter.Constants.Num32BitValues = constants.Count;
-        m_D3D12RootParameter.Constants.ShaderRegister = constants.ShaderRegister.Register;
-        m_D3D12RootParameter.Constants.RegisterSpace = constants.ShaderRegister.Space;
+        m_D3D12RootParameter.Constants.Num32BitValues = constants32BitConfig.Count;
+
+        m_D3D12RootParameter.Constants.ShaderRegister = constants32BitConfig.ShaderRegister.Register;
+        m_D3D12RootParameter.Constants.RegisterSpace = constants32BitConfig.ShaderRegister.Space;
     }
 
-    void RootParameter::InitAsDescriptor(const Descriptor& descriptor)
+    void RootParameter::InitAsDescriptor(const DescriptorConfig& descriptorConfig)
     {
-        m_D3D12RootParameter.ParameterType = ConvertToD3D12DescriptorType(descriptor.Type);
-        m_D3D12RootParameter.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(descriptor.ShaderVisibility);
+        m_D3D12RootParameter.ParameterType = ConvertToD3D12DescriptorType(descriptorConfig.Type);
+        m_D3D12RootParameter.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(descriptorConfig.ShaderVisibility);
 
-        m_D3D12RootParameter.Descriptor.ShaderRegister = descriptor.ShaderRegister.Register;
-        m_D3D12RootParameter.Descriptor.RegisterSpace = descriptor.ShaderRegister.Space;
+        m_D3D12RootParameter.Descriptor.ShaderRegister = descriptorConfig.ShaderRegister.Register;
+        m_D3D12RootParameter.Descriptor.RegisterSpace = descriptorConfig.ShaderRegister.Space;
     }
 
-    void RootParameter::InitAsDescriptorTable(const DescriptorTable& descriptorTable)
+    void RootParameter::InitAsDescriptorTable(const DescriptorTableConfig& descriptorTableConfig)
     {
         m_D3D12RootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        m_D3D12RootParameter.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(descriptorTable.ShaderVisibility);
+        m_D3D12RootParameter.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(descriptorTableConfig.ShaderVisibility);
 
-        m_D3D12RootParameter.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(descriptorTable.Ranges.size());
-        m_D3D12RootParameter.DescriptorTable.pDescriptorRanges = new D3D12_DESCRIPTOR_RANGE[descriptorTable.Ranges.size()];
+        m_D3D12RootParameter.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(descriptorTableConfig.Ranges.size());
+        m_D3D12RootParameter.DescriptorTable.pDescriptorRanges = new D3D12_DESCRIPTOR_RANGE[descriptorTableConfig.Ranges.size()];
 
-        for (size_t i = 0; i < descriptorTable.Ranges.size(); ++i)
+        for (size_t i = 0; i < descriptorTableConfig.Ranges.size(); ++i)
         {
-            const DescriptorRange& range = descriptorTable.Ranges[i];
+            const DescriptorRange& range = descriptorTableConfig.Ranges[i];
             D3D12_DESCRIPTOR_RANGE& d3d12Range = const_cast<D3D12_DESCRIPTOR_RANGE&>(m_D3D12RootParameter.DescriptorTable.pDescriptorRanges[i]);
 
-            d3d12Range.RangeType = ConvertToD3D12RangeType(range.Type);
+            d3d12Range.RangeType = ConvertToD3D12DescriptorRangeType(range.Type);
             d3d12Range.NumDescriptors = range.DescriptorCount;
             d3d12Range.BaseShaderRegister = range.BaseShaderRegister.Register;
             d3d12Range.RegisterSpace = range.BaseShaderRegister.Space;
@@ -204,12 +206,12 @@ namespace benzin
         }
     }
 
-    void RootParameter::InitAsSingleDescriptorTable(const SingleDescriptorTable& singleDescriptorTable)
+    void RootParameter::InitAsSingleDescriptorTable(const SingleDescriptorTableConfig& singleDescriptorTableConfig)
     {
-        InitAsDescriptorTable(DescriptorTable
+        InitAsDescriptorTable(DescriptorTableConfig
         {
-            .ShaderVisibility{ singleDescriptorTable.ShaderVisibility },
-            .Ranges{ singleDescriptorTable.Range }
+            .ShaderVisibility{ singleDescriptorTableConfig.ShaderVisibility },
+            .Ranges{ singleDescriptorTableConfig.Range }
         });
     }
 

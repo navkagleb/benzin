@@ -53,31 +53,29 @@ namespace sandbox
 
     void SobelFilterPass::InitRootSignature(benzin::Device& device)
     {
-        const benzin::RootParameter::SingleDescriptorTable srvTable
+        benzin::RootSignature::Config config;
+
+        config.RootParameters.emplace_back(benzin::RootParameter::SingleDescriptorTableConfig
         {
             .Range
             {
-                .Type{ benzin::RootParameter::DescriptorRangeType::ShaderResourceView },
+                .Type{ benzin::Descriptor::Type::ShaderResourceView },
                 .DescriptorCount{ 1 },
                 .BaseShaderRegister{ 0 }
             }
-        };
+        });
 
-        const benzin::RootParameter::SingleDescriptorTable uavTable
+        config.RootParameters.emplace_back(benzin::RootParameter::SingleDescriptorTableConfig
         {
             .Range
             {
-                .Type{ benzin::RootParameter::DescriptorRangeType::UnorderedAccessView },
+                .Type{ benzin::Descriptor::Type::UnorderedAccessView },
                 .DescriptorCount{ 1 },
                 .BaseShaderRegister{ 0 }
             }
-        };
+        });
 
-        benzin::RootSignature::Config rootSignatureConfig{ 2 };
-        rootSignatureConfig.RootParameters[0] = srvTable;
-        rootSignatureConfig.RootParameters[1] = uavTable;
-
-        m_RootSignature = benzin::RootSignature{ device, rootSignatureConfig };
+        m_RootSignature = benzin::RootSignature{ device, config };
     }
 
     void SobelFilterPass::InitPipelineState(benzin::Device& device)

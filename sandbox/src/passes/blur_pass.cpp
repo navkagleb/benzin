@@ -136,36 +136,33 @@ namespace sandbox
 
     void BlurPass::InitRootSignature(benzin::Device& device)
     {
-        const benzin::RootParameter::_32BitConstants constants
+        benzin::RootSignature::Config config;
+
+        config.RootParameters.emplace_back(benzin::RootParameter::Constants32BitConfig
         {
             .ShaderRegister{ 0 },
             .Count{ 12 } // BlurRadius + 11 Weights
-        };
+        });
 
-        const benzin::RootParameter::SingleDescriptorTable srvTable
+        config.RootParameters.emplace_back(benzin::RootParameter::SingleDescriptorTableConfig
         {
             .Range
             {
-                .Type{ benzin::RootParameter::DescriptorRangeType::ShaderResourceView },
+                .Type{ benzin::Descriptor::Type::ShaderResourceView },
                 .DescriptorCount{ 1 },
                 .BaseShaderRegister{ 0 }
             }
-        };
+        });
 
-        const benzin::RootParameter::SingleDescriptorTable uavTable
+        config.RootParameters.emplace_back(benzin::RootParameter::SingleDescriptorTableConfig
         {
             .Range
             {
-                .Type{ benzin::RootParameter::DescriptorRangeType::UnorderedAccessView },
+                .Type{ benzin::Descriptor::Type::UnorderedAccessView },
                 .DescriptorCount{ 1 },
                 .BaseShaderRegister{ 0 }
             }
-        };
-
-        benzin::RootSignature::Config config{ 3 };
-        config.RootParameters[0] = constants;
-        config.RootParameters[1] = srvTable;
-        config.RootParameters[2] = uavTable;
+        });
 
         m_RootSignature = benzin::RootSignature{ device, config };
     }

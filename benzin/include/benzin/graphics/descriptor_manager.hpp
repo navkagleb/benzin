@@ -12,6 +12,8 @@ namespace benzin
     public:
         enum Type : uint8_t
         {
+            Unknown,
+
             RenderTargetView,
             DepthStencilView,
             ConstantBufferView,
