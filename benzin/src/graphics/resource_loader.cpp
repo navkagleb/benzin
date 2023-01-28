@@ -9,6 +9,52 @@
 namespace benzin
 {
 
+    namespace
+    {
+
+        std::string ConvertWideStringToString(const std::wstring& wideString)
+        {
+            if (wideString.empty())
+            {
+                return "";
+            }
+
+            const auto size = ::WideCharToMultiByte(
+                CP_UTF8,
+                0,
+                wideString.c_str(),
+                static_cast<int>(wideString.size()),
+                nullptr,
+                0,
+                nullptr,
+                nullptr
+            );
+
+            BENZIN_ASSERT(size);
+
+            std::string result;
+            result.resize(size);
+
+            ::WideCharToMultiByte(CP_UTF8, 0, wideString.c_str(), static_cast<int>(wideString.size()), result.data(), size, nullptr, nullptr);
+            
+            return result;
+        }
+
+        std::string GetFilenameFromFilepath(std::wstring_view filepath)
+        {
+            const size_t beginFilenameIndex = filepath.find_last_of('/') + 1;
+            const size_t endFilenameIndex = filepath.find_last_of('.');
+            const size_t filenameSize = endFilenameIndex - beginFilenameIndex;
+
+
+            const std::wstring_view wideFilenameView = filepath.substr(beginFilenameIndex, filenameSize);
+            const std::wstring filename{ wideFilenameView.begin(), wideFilenameView.end() };
+
+            return ConvertWideStringToString(filename);
+        }
+
+    } // anonymous namespece
+
     ResourceLoader::ResourceLoader(const Device& device)
         : m_Device{ device }
     {}
@@ -37,7 +83,7 @@ namespace benzin
             &isCubeMap
         ));
 
-        auto textureResource = m_Device.RegisterTextureResource(d3d12Resource);
+        auto textureResource = m_Device.RegisterTextureResource(d3d12Resource, GetFilenameFromFilepath(filepath));
         textureResource->m_Config.IsCubeMap = isCubeMap;
 
         graphicsCommandList.UploadToTexture(*textureResource, subResources);

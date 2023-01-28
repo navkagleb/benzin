@@ -16,6 +16,9 @@ namespace benzin
     class Resource
     {
     public:
+        friend class Device;
+
+    public:
         enum class State : uint16_t
         {
             Present = D3D12_RESOURCE_STATE_COMMON,
@@ -34,12 +37,6 @@ namespace benzin
             ResolveSource = D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
             GenericRead = D3D12_RESOURCE_STATE_GENERIC_READ
         };
-
-    public:
-        BENZIN_NAME_D3D12_OBJECT(m_D3D12Resource)
-
-    public:
-        friend class Device;
 
     public:
         Resource() = default;

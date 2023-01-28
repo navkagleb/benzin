@@ -18,6 +18,8 @@ namespace benzin
         size_t vertexOffset = 0;
         size_t indexOffset = 0;
 
+        std::string combinedName;
+
         for (const auto& [name, meshData] : subMeshes)
         {
             m_SubMeshes[name] = SubMesh
@@ -36,6 +38,8 @@ namespace benzin
 
             vertexOffset += meshData.Vertices.size();
             indexOffset += meshData.Indices.size();
+
+            combinedName += "_" + name;
         }
 
         // VertexBuffer
@@ -46,7 +50,7 @@ namespace benzin
                 .ElementCount{ static_cast<uint32_t>(m_Vertices.size()) },
             };
 
-            m_VertexBuffer = device.CreateBufferResource(config);
+            m_VertexBuffer = device.CreateBufferResource(config, "VertexBuffer" + combinedName);
         }
 
         // IndexBuffer
@@ -57,7 +61,7 @@ namespace benzin
                 .ElementCount{ static_cast<uint32_t>(m_Indices.size()) }
             };
 
-            m_IndexBuffer = device.CreateBufferResource(config);
+            m_IndexBuffer = device.CreateBufferResource(config, "IndexBuffer" + combinedName);
         }
     }
 

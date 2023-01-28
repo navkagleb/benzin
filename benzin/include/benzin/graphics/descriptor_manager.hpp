@@ -43,7 +43,7 @@ namespace benzin
     public:
         BENZIN_NON_COPYABLE(DescriptorHeap)
         BENZIN_NON_MOVEABLE(DescriptorHeap)
-        BENZIN_NAME_D3D12_OBJECT(m_D3D12DescriptorHeap)
+        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12DescriptorHeap, "DescriptorHeap")
 
     public:
         enum class Type : uint8_t

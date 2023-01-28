@@ -59,18 +59,17 @@ namespace benzin
         m_DescriptorCount = descriptorCount;
         m_DescriptorSize = device.GetD3D12Device()->GetDescriptorHandleIncrementSize(d3d12DescriptorHeapDesc.Type);
 
-        SetName("DescriptorHeap_" + std::string{ magic_enum::enum_name(type) });
+        SetDebugName(std::string{ magic_enum::enum_name(type) });
 
-        BENZIN_INFO("{} created", GetName());
+        BENZIN_INFO("{} created", GetDebugName());
     }
 
     DescriptorHeap::~DescriptorHeap()
     {
-        const std::string name = GetName();
+        BENZIN_INFO("{} destroyed", GetDebugName());
 
         SafeReleaseD3D12Object(m_D3D12DescriptorHeap);
 
-        BENZIN_INFO("{} destroyed", name);
     }
 
     Descriptor DescriptorHeap::AllocateDescriptor()

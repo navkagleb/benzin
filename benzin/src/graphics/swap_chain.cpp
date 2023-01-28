@@ -177,9 +177,8 @@ namespace benzin
             BENZIN_D3D12_ASSERT(m_DXGISwapChain3->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&d3d12BackBuffer)));
             
             auto& backBuffer = m_BackBuffers[i];
-            backBuffer = device.RegisterTextureResource(d3d12BackBuffer);
+            backBuffer = device.RegisterTextureResource(d3d12BackBuffer, "SwapChainBackBuffer" + std::to_string(i));
             backBuffer->PushRenderTargetView(device.GetResourceViewBuilder().CreateRenderTargetView(*backBuffer));
-            backBuffer->SetName("SwapChainBackBuffer" + std::to_string(i));
         }
     }
 

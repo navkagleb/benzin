@@ -19,7 +19,7 @@ namespace benzin
     public:
         BENZIN_NON_COPYABLE(SwapChain)
         BENZIN_NON_MOVEABLE(SwapChain)
-        BENZIN_NAME_D3D12_OBJECT(m_DXGISwapChain3)
+        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_DXGISwapChain3, "SwapChain")
 
     public:
         SwapChain(const Window& window, Device& device, CommandQueue& commandQueue);

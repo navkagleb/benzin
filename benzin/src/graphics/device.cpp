@@ -176,7 +176,7 @@ namespace benzin
         EnableD3D12DebugLayer();
 
         BENZIN_D3D12_ASSERT(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_D3D12Device)));
-        SetName("MainDevice");
+        SetDebugName("Main");
 
         BreakOnD3D12Error(m_D3D12Device, true);
 
@@ -209,7 +209,7 @@ namespace benzin
         BENZIN_INFO("Device destroyed");
     }
 
-    std::shared_ptr<BufferResource> Device::CreateBufferResource(const BufferResource::Config& config) const
+    std::shared_ptr<BufferResource> Device::CreateBufferResource(const BufferResource::Config& config, const std::string& debugName) const
     {
         BENZIN_ASSERT(config.ElementSize != 0);
         BENZIN_ASSERT(config.ElementCount != 0);
@@ -220,26 +220,28 @@ namespace benzin
         auto* rawBufferResource = new BufferResource
         {
             CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, nullptr),
-            ValidateBufferResourceConfig(config)
+            ValidateBufferResourceConfig(config),
+            debugName
         };
 
         return std::shared_ptr<BufferResource>{ rawBufferResource, m_ResourceReleaser };
     }
 
-    std::shared_ptr<TextureResource> Device::RegisterTextureResource(ID3D12Resource* d3d12Resource) const
+    std::shared_ptr<TextureResource> Device::RegisterTextureResource(ID3D12Resource* d3d12Resource, const std::string& debugName) const
     {
         BENZIN_ASSERT(d3d12Resource);
 
         auto* rawTextureResource = new TextureResource
         {
             d3d12Resource,
-            ConvertFromD3D12ResourceDesc(d3d12Resource->GetDesc())
+            ConvertFromD3D12ResourceDesc(d3d12Resource->GetDesc()),
+            debugName
         };
 
         return std::shared_ptr<TextureResource>{ rawTextureResource, m_ResourceReleaser };
     }
 
-    std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config) const
+    std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config, const std::string& debugName) const
     {
         const D3D12_HEAP_TYPE d3d12HeapType = D3D12_HEAP_TYPE_DEFAULT;
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ConvertToD3D12ResourceDesc(config);
@@ -247,13 +249,14 @@ namespace benzin
         auto* rawTextureResource = new TextureResource
         {
             CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, nullptr),
-            config
+            config,
+            debugName
         };
 
         return std::shared_ptr<TextureResource>{ rawTextureResource, m_ResourceReleaser };
     }
 
-    std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor) const
+    std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor, const std::string& debugName) const
     {
         const D3D12_HEAP_TYPE d3d12HeapType = D3D12_HEAP_TYPE_DEFAULT;
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ConvertToD3D12ResourceDesc(config);
@@ -262,13 +265,14 @@ namespace benzin
         auto* rawTextureResource = new TextureResource
         {
             CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, &d3d12ClearValue),
-            config
+            config,
+            debugName
         };
 
         return std::shared_ptr<TextureResource>{ rawTextureResource, m_ResourceReleaser };
     }
 
-    std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil) const
+    std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil, const std::string& debugName) const
     {
         const D3D12_HEAP_TYPE d3d12HeapType = D3D12_HEAP_TYPE_DEFAULT;
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ConvertToD3D12ResourceDesc(config);
@@ -277,7 +281,8 @@ namespace benzin
         auto* rawTextureResource = new TextureResource
         {
             CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, &d3d12ClearValue),
-            config
+            config,
+            debugName
         };
 
         return std::shared_ptr<TextureResource>{ rawTextureResource, m_ResourceReleaser };

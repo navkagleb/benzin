@@ -28,10 +28,10 @@ namespace benzin
     public:
         BENZIN_NON_COPYABLE(GraphicsCommandList)
         BENZIN_NON_MOVEABLE(GraphicsCommandList)
-        BENZIN_NAME_D3D12_OBJECT(m_D3D12GraphicsCommandList)
+        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12GraphicsCommandList, "GraphicsCommandList")
 
     public:
-        GraphicsCommandList(Device& device);
+        GraphicsCommandList(Device& device, const std::string& debugName = {});
         ~GraphicsCommandList();
 
     public:

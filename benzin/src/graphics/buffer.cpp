@@ -12,13 +12,13 @@ namespace benzin
 
     static uint32_t g_BufferResourceCounter = 0;
 
-    BufferResource::BufferResource(ID3D12Resource* d3d12Resource, const Config& config)
+    BufferResource::BufferResource(ID3D12Resource* d3d12Resource, const Config& config, const std::string& debugName)
         : Resource{ d3d12Resource }
         , m_Config{ config }
     {
-        SetName("BufferResource" + std::to_string(g_BufferResourceCounter));
+        SetDebugName(debugName.empty() ? std::to_string(g_BufferResourceCounter) : debugName);
 
-        BENZIN_INFO("{} created", GetName());
+        BENZIN_INFO("{} created", GetDebugName());
 
         g_BufferResourceCounter++;
     }

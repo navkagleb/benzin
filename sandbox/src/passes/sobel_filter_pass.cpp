@@ -47,9 +47,8 @@ namespace sandbox
             .Flags{ benzin::TextureResource::Flags::BindAsUnorderedAccess }
         };
 
-        m_OutputTexture = device.CreateTextureResource(config);
+        m_OutputTexture = device.CreateTextureResource(config, "SobelFilterOutput");
         m_OutputTexture->PushShaderResourceView(device.GetResourceViewBuilder().CreateUnorderedAccessView(*m_OutputTexture));
-        m_OutputTexture->SetName("SobelFilterOutputTexture");
     }
 
     void SobelFilterPass::InitRootSignature(benzin::Device& device)

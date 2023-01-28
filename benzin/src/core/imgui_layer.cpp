@@ -22,7 +22,7 @@ namespace benzin
         , m_Device{ device }
         , m_CommandQueue{ commandQueue }
         , m_SwapChain{ swapChain }
-        , m_GraphicsCommandList{ device }
+        , m_GraphicsCommandList{ device, "ImGuiLayer" }
     {}
 
     bool ImGuiLayer::OnAttach()

@@ -12,7 +12,7 @@ namespace benzin
 	public:
 		BENZIN_NON_COPYABLE(CommandQueue)
 		BENZIN_NON_MOVEABLE(CommandQueue)
-		BENZIN_NAME_D3D12_OBJECT(m_D3D12CommandQueue)
+		BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12CommandQueue, "CommandQueue")
 
 	public:
 		explicit CommandQueue(Device& device);

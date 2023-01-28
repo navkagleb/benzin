@@ -116,8 +116,8 @@ namespace sandbox
         , m_Device{ device }
         , m_CommandQueue{ commandQueue }
         , m_SwapChain{ swapChain }
-        , m_GraphicsCommandList{ device }
-        , m_PostEffectsGraphicsCommandList{ device }
+        , m_GraphicsCommandList{ device, "Default" }
+        , m_PostEffectsGraphicsCommandList{ device, "PostEffects" }
         , m_RenderTargetCubeMap{ device, g_RenderTargetCubeMapWidth, g_RenderTargetCubeMapHeight }
     {}
 
@@ -176,7 +176,7 @@ namespace sandbox
 
         // Pass ConstantBuffer
         {
-            benzin::MappedData bufferData{ *m_Buffers["pass_constant_buffer"] };
+            benzin::MappedData bufferData{ *m_Buffers["PassConstantBuffer"] };
             
             // Main pass
             {
@@ -222,13 +222,13 @@ namespace sandbox
                     memcpy_s(constants.Lights.data() + lightSize * i, lightSize, &lightComponent, lightSize);
                 }
 
-                bufferData.Write(&constants, sizeof(constants), m_Buffers["pass_constant_buffer"]->GetConfig().ElementSize * (faceIndex + 1));
+                bufferData.Write(&constants, sizeof(constants), m_Buffers["PassConstantBuffer"]->GetConfig().ElementSize * (faceIndex + 1));
             }
         }
 
         // RenderItem StructuredBuffer
         {
-            benzin::MappedData bufferData{ *m_Buffers["render_item_structured_buffer"] };
+            benzin::MappedData bufferData{ *m_Buffers["EntityStructuredBuffer"] };
 
             uint32_t offset = 0;
 
@@ -315,7 +315,7 @@ namespace sandbox
 
         // Material StructuredBuffer
         {
-            benzin::MappedData bufferData{ *m_Buffers["material_structured_buffer"] };
+            benzin::MappedData bufferData{ *m_Buffers["MaterialStructuredBuffer"] };
 
             for (const auto& [name, material] : m_Materials)
             {
@@ -363,7 +363,7 @@ namespace sandbox
                         m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView()
                     );
 
-                    m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer"), i + 1);
+                    m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("PassConstantBuffer"), i + 1);
                     m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("environment")->GetShaderResourceView());
                     
                     RenderEntities(m_PipelineStates.at("default"), m_DefaultEntities);
@@ -390,7 +390,7 @@ namespace sandbox
             m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
             m_GraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
 
-            m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("pass_constant_buffer"));
+            m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("PassConstantBuffer"));
             m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_RenderTargetCubeMap.GetCubeMap()->GetShaderResourceView());
             
             const benzin::Entity* dynamicSphereEntity = m_Entities.at("mirror_sphere").get();
@@ -498,7 +498,6 @@ namespace sandbox
         {
             auto& texture = m_Textures[name];
             texture = m_Device.GetResourceLoader().LoadTextureResourceFromDDSFile(filepath, m_GraphicsCommandList);
-            texture->SetName("Texture_" + name);
 
             return texture.get();
         };
@@ -558,7 +557,7 @@ namespace sandbox
     {
         // Pass ConstantBuffer
         {
-            const std::string_view name = "pass_constant_buffer";
+            const std::string name = "PassConstantBuffer";
 
             const benzin::BufferResource::Config config
             {
@@ -567,14 +566,12 @@ namespace sandbox
                 .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
             };
 
-            auto& buffer = m_Buffers[name.data()];
-            buffer = m_Device.CreateBufferResource(config);
-            buffer->SetName(name);
+            m_Buffers[name] = m_Device.CreateBufferResource(config, name);
         }
 
         // RenderItem StructuredBuffer
         {
-            const std::string_view name = "render_item_structured_buffer";
+            const std::string name = "EntityStructuredBuffer";
 
             const benzin::BufferResource::Config config
             {
@@ -583,14 +580,12 @@ namespace sandbox
                 .Flags{ benzin::BufferResource::Flags::Dynamic }
             };
 
-            auto& buffer = m_Buffers[name.data()];
-            buffer = m_Device.CreateBufferResource(config);
-            buffer->SetName(name);
+            m_Buffers[name] = m_Device.CreateBufferResource(config, name);
         }
 
         // Material StructuredBuffer
         {
-            const std::string_view name = "material_structured_buffer";
+            const std::string name = "MaterialStructuredBuffer";
 
             const benzin::BufferResource::Config config
             {
@@ -599,9 +594,7 @@ namespace sandbox
                 .Flags{ benzin::BufferResource::Flags::Dynamic }
             };
 
-            auto& buffer = m_Buffers[name.data()];
-            buffer = m_Device.CreateBufferResource(config);
-            buffer->SetName(name);
+            m_Buffers[name] = m_Device.CreateBufferResource(config, name);
         }
     }
 
@@ -973,7 +966,7 @@ namespace sandbox
         };
 
         auto& renderTarget = m_Textures["render_target"];
-        renderTarget = m_Device.CreateTextureResource(config, clearColor);
+        renderTarget = m_Device.CreateTextureResource(config, clearColor, "render_target");
         renderTarget->PushRenderTargetView(m_Device.GetResourceViewBuilder().CreateRenderTargetView(*renderTarget));
         renderTarget->PushShaderResourceView(m_Device.GetResourceViewBuilder().CreateShaderResourceView(*renderTarget));
     }
@@ -996,7 +989,7 @@ namespace sandbox
         };
 
         auto& depthStencil = m_Textures["depth_stencil"];
-        depthStencil = m_Device.CreateTextureResource(config, clearDepthStencil);
+        depthStencil = m_Device.CreateTextureResource(config, clearDepthStencil, "depth_stencil");
         depthStencil->PushDepthStencilView(m_Device.GetResourceViewBuilder().CreateDepthStencilView(*depthStencil));
     }
 
@@ -1261,7 +1254,7 @@ namespace sandbox
     {
         m_GraphicsCommandList.SetPipelineState(pso);
 
-        m_GraphicsCommandList.SetGraphicsRawShaderResource(2, *m_Buffers.at("material_structured_buffer"));
+        m_GraphicsCommandList.SetGraphicsRawShaderResource(2, *m_Buffers.at("MaterialStructuredBuffer"));
         m_GraphicsCommandList.SetGraphicsDescriptorTable(4, m_Textures.at("red")->GetShaderResourceView());
 
         for (const auto& entity : entities)
@@ -1277,7 +1270,7 @@ namespace sandbox
 
             m_GraphicsCommandList.SetGraphicsRawShaderResource(
                 1, 
-                *m_Buffers.at("render_item_structured_buffer"),
+                *m_Buffers.at("EntityStructuredBuffer"),
                 instancesComponent.StructuredBufferOffset
             );
 

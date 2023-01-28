@@ -25,9 +25,18 @@ namespace benzin
 
 #define BENZIN_D3D12_ASSERT(d3d12Call) BENZIN_ASSERT(SUCCEEDED(d3d12Call))
 
-#define BENZIN_NAME_D3D12_OBJECT(d3d12Object)												\
-	auto SetName(std::string_view name) { detail::SetD3D12ObjectName(d3d12Object, name); }	\
-	auto GetName() { return detail::GetD3D12ObjectName(d3d12Object); }
+#define BENZIN_DEBUG_NAME_D3D12_OBJECT(d3d12Object, prefix)                                     \
+	void SetDebugName(const std::string& name)                                                  \
+    {                                                                                           \
+        static std::string debugNamePrefix = prefix;                                            \
+                                                                                                \
+        detail::SetD3D12ObjectDebugName(d3d12Object, debugNamePrefix + "{" + name + "}");       \
+    }                                                                                           \
+                                                                                                \
+	std::string GetDebugName() const                                                            \
+    {                                                                                           \
+        return detail::GetD3D12ObjectDebugName(d3d12Object);                                    \
+    }
 
     namespace detail
     {
@@ -36,7 +45,7 @@ namespace benzin
         concept D3D12ObjectConcept = std::is_base_of_v<ID3D12Object, T> || std::is_base_of_v<IUnknown, T>;
 
         template <D3D12ObjectConcept T>
-        void SetD3D12ObjectName(T* d3d12Object, std::string_view name)
+        void SetD3D12ObjectDebugName(T* d3d12Object, std::string_view name)
         {
             BENZIN_ASSERT(d3d12Object);
 
@@ -44,16 +53,16 @@ namespace benzin
         }
 
         template <D3D12ObjectConcept T>
-        std::string GetD3D12ObjectName(T* d3d12Object)
+        std::string GetD3D12ObjectDebugName(T* d3d12Object)
         {
             BENZIN_ASSERT(d3d12Object);
 
-            UINT size = 64;
+            UINT bufferSize = 64;
             std::string name;
-            name.resize(size);
+            name.resize(bufferSize);
 
-            BENZIN_D3D12_ASSERT(d3d12Object->GetPrivateData(WKPDID_D3DDebugObjectName, &size, name.data()));
-            name.resize(size);
+            BENZIN_D3D12_ASSERT(d3d12Object->GetPrivateData(WKPDID_D3DDebugObjectName, &bufferSize, name.data()));
+            name.resize(bufferSize);
 
             return name;
         }

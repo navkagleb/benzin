@@ -10,7 +10,7 @@ namespace benzin
     public:
         BENZIN_NON_COPYABLE(Device)
         BENZIN_NON_MOVEABLE(Device)
-        BENZIN_NAME_D3D12_OBJECT(m_D3D12Device)
+        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12Device, "Device")
 
     public:
         Device();
@@ -24,12 +24,12 @@ namespace benzin
         ResourceViewBuilder& GetResourceViewBuilder() { return *m_ResourceViewBuilder; }
 
     public:
-        std::shared_ptr<BufferResource> CreateBufferResource(const BufferResource::Config& config) const;
+        std::shared_ptr<BufferResource> CreateBufferResource(const BufferResource::Config& config, const std::string& debugName = {}) const;
 
-        std::shared_ptr<TextureResource> RegisterTextureResource(ID3D12Resource* d3d12Resource) const;
-        std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config) const;
-        std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor) const;
-        std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil) const;
+        std::shared_ptr<TextureResource> RegisterTextureResource(ID3D12Resource* d3d12Resource, const std::string& debugName = {}) const;
+        std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config, const std::string& debugName = {}) const;
+        std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor, const std::string& debugName = {}) const;
+        std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil, const std::string& debugName = {}) const;
 
     private:
         ID3D12Resource* CreateD3D12CommittedResource(

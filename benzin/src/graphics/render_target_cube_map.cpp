@@ -50,7 +50,7 @@ namespace benzin
             .Color{ 0.1f, 0.1f, 0.1f, 1.0f }
         };
 
-        m_CubeMap = device.CreateTextureResource(config, clearColor);
+        m_CubeMap = device.CreateTextureResource(config, clearColor, "RenderTargetCubeMap");
         m_CubeMap->PushShaderResourceView(device.GetResourceViewBuilder().CreateShaderResourceView(*m_CubeMap));
 
         for (uint32_t i = 0; i < 6; ++i)
@@ -83,7 +83,7 @@ namespace benzin
             .Stencil{ 0 }
         };
 
-        m_DepthStencil = device.CreateTextureResource(config, clearDepthStencil);
+        m_DepthStencil = device.CreateTextureResource(config, clearDepthStencil, "RenderTargetCubeMapDepthBuffer");
         m_DepthStencil->PushDepthStencilView(device.GetResourceViewBuilder().CreateDepthStencilView(*m_DepthStencil));
     }
 

@@ -128,10 +128,9 @@ namespace sandbox
         for (size_t i = 0; i < m_BlurMaps.size(); ++i)
         {
             auto& blurMap = m_BlurMaps[i];
-            blurMap = device.CreateTextureResource(config);
+            blurMap = device.CreateTextureResource(config, "BlurMap" + std::to_string(i));
             blurMap->PushShaderResourceView(device.GetResourceViewBuilder().CreateShaderResourceView(*blurMap));
             blurMap->PushUnorderedAccessView(device.GetResourceViewBuilder().CreateUnorderedAccessView(*blurMap));
-            blurMap->SetName("BlurMap" + std::to_string(i));
         }
     }
 

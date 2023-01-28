@@ -11,6 +11,9 @@ namespace benzin
         friend class Device;
 
     public:
+        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12Resource, "Buffer")
+
+    public:
         enum class Flags : uint8_t
         {
             None = 0,
@@ -30,7 +33,7 @@ namespace benzin
         BufferResource() = default;
 
     private:
-        BufferResource(ID3D12Resource* d3d12Resource, const Config& config);
+        BufferResource(ID3D12Resource* d3d12Resource, const Config& config, const std::string& debugName);
 
     public:
         const Config& GetConfig() const { return m_Config; }

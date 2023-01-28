@@ -16,7 +16,9 @@
 namespace benzin
 {
 
-	GraphicsCommandList::GraphicsCommandList(Device& device)
+    static uint32_t g_GraphicsCommandListCounter = 0;
+
+	GraphicsCommandList::GraphicsCommandList(Device& device, const std::string& debugName)
 	{
 		const D3D12_COMMAND_LIST_TYPE commandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
@@ -30,6 +32,8 @@ namespace benzin
 			IID_PPV_ARGS(&m_D3D12GraphicsCommandList)
 		));
 
+        SetDebugName(debugName.empty() ? std::to_string(g_GraphicsCommandListCounter) : debugName);
+
 		Close();
 
         // Upload Buffer
@@ -41,12 +45,14 @@ namespace benzin
                 .Flags{ BufferResource::Flags::Dynamic }
             };
 
-            m_UploadBuffer = device.CreateBufferResource(uploadBufferConfig);
+            m_UploadBuffer = device.CreateBufferResource(uploadBufferConfig, "UploadBuffer_" + GetDebugName());
         }
 	}
 
     GraphicsCommandList::~GraphicsCommandList()
     {
+        BENZIN_INFO("{} destroyed", GetDebugName());
+
         SafeReleaseD3D12Object(m_D3D12GraphicsCommandList);
         SafeReleaseD3D12Object(m_D3D12CommandAllocator);
     }

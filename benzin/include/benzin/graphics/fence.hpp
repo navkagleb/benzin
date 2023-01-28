@@ -11,7 +11,7 @@ namespace benzin
     class Fence
     {
     public:
-        BENZIN_NAME_D3D12_OBJECT(m_D3D12Fence)
+        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12Fence, "Fence")
 
     public:
         explicit Fence(Device& device);
