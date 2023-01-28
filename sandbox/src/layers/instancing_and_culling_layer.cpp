@@ -681,8 +681,8 @@ namespace sandbox
                 }
             };
 
-            m_ShaderLibrary["default_vs"] = benzin::Shader::Create(vertexShaderConfig);
-            m_ShaderLibrary["default_ps"] = benzin::Shader::Create(pixelShaderConfig);
+            m_ShaderLibrary["default_vs"] = std::make_shared<benzin::Shader>(vertexShaderConfig);
+            m_ShaderLibrary["default_ps"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
 
             vertexShader = m_ShaderLibrary["default_vs"].get();
             pixelShader = m_ShaderLibrary["default_ps"].get();
@@ -785,7 +785,7 @@ namespace sandbox
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["light_source_ps"] = benzin::Shader::Create(pixelShaderConfig);
+                m_ShaderLibrary["light_source_ps"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
 
                 vertexShader = m_ShaderLibrary["default_vs"].get();
                 pixelShader = m_ShaderLibrary["light_source_ps"].get();
@@ -845,8 +845,8 @@ namespace sandbox
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["environment_vs"] = benzin::Shader::Create(vertexShaderConfig);
-                m_ShaderLibrary["environment_ps"] = benzin::Shader::Create(pixelShaderConfig);
+                m_ShaderLibrary["environment_vs"] = std::make_shared<benzin::Shader>(vertexShaderConfig);
+                m_ShaderLibrary["environment_ps"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
 
                 vertexShader = m_ShaderLibrary["environment_vs"].get();
                 pixelShader = m_ShaderLibrary["environment_ps"].get();
@@ -913,8 +913,8 @@ namespace sandbox
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["fullscreen_vs"] = benzin::Shader::Create(vertexShaderConfig);
-                m_ShaderLibrary["fullscreen_ps"] = benzin::Shader::Create(pixelShaderConfig);
+                m_ShaderLibrary["fullscreen_vs"] = std::make_shared<benzin::Shader>(vertexShaderConfig);
+                m_ShaderLibrary["fullscreen_ps"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
 
                 vertexShader = m_ShaderLibrary["fullscreen_vs"].get();
                 pixelShader = m_ShaderLibrary["fullscreen_ps"].get();

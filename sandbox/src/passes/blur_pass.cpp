@@ -182,7 +182,7 @@ namespace sandbox
                 }
             };
 
-            m_ShaderLibrary["horizontal_cs"] = benzin::Shader::Create(shaderConfig);
+            m_ShaderLibrary["horizontal_cs"] = std::make_unique<benzin::Shader>(shaderConfig);
 
             const benzin::ComputePipelineState::Config horizontalPSOConfig
             {
@@ -206,7 +206,7 @@ namespace sandbox
                 }
             };
 
-            m_ShaderLibrary["vertical_cs"] = benzin::Shader::Create(shaderConfig);
+            m_ShaderLibrary["vertical_cs"] = std::make_unique<benzin::Shader>(shaderConfig);
 
             const benzin::ComputePipelineState::Config verticalPSOConfig
             {

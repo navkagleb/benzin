@@ -31,11 +31,6 @@ namespace benzin
 
     } // anonymous namespace
 
-    std::shared_ptr<Shader> Shader::Create(const Config& config)
-    {
-        return std::make_shared<Shader>(config);
-    }
-
     Shader::Shader(const Config& config)
     {
         CompileFromFile(config.Type, config.Filepath, config.EntryPoint, config.Defines);

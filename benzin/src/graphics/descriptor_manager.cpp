@@ -27,7 +27,7 @@ namespace benzin
 
             BENZIN_ASSERT(false);
 
-
+            return DescriptorHeap::Type::RenderTargetView;
         }
 
     } // anonymous namespace

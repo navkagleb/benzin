@@ -87,7 +87,7 @@ namespace sandbox
             .EntryPoint{ "CS_Main" }
         };
 
-        m_Shader = benzin::Shader::Create(shaderConfig);
+        m_Shader = std::make_unique<benzin::Shader>(shaderConfig);
 
         const benzin::ComputePipelineState::Config pipelineStateConfig
         {

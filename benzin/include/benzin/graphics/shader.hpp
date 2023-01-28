@@ -36,9 +36,6 @@ namespace benzin
         };
 
     public:
-        static std::shared_ptr<Shader> Create(const Config& config);
-
-    public:
         Shader() = default;
         Shader(const Config& config);
         ~Shader();

@@ -45,7 +45,7 @@ namespace sandbox
         benzin::PipelineState m_VerticalPSO;
 
         std::array<std::shared_ptr<benzin::TextureResource>, 2> m_BlurMaps;
-        std::unordered_map<std::string, std::shared_ptr<benzin::Shader>> m_ShaderLibrary;
+        std::unordered_map<std::string, std::unique_ptr<benzin::Shader>> m_ShaderLibrary;
     };
 
 } // namespace sandbox

@@ -31,7 +31,7 @@ namespace sandbox
         std::shared_ptr<benzin::TextureResource> m_OutputTexture;
         benzin::RootSignature m_RootSignature;
         benzin::ComputePipelineState m_PipelineState;
-        std::shared_ptr<benzin::Shader> m_Shader;
+        std::unique_ptr<benzin::Shader> m_Shader;
     };
 
 } // namespace sandbox
