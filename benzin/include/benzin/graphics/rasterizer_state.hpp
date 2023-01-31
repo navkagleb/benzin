@@ -27,6 +27,9 @@ namespace benzin
         FillMode FillMode{ FillMode::Solid };
         CullMode CullMode{ CullMode::Back };
         TriangleOrder TriangleOrder{ TriangleOrder::Clockwise };
+        int32_t DepthBias{ D3D12_DEFAULT_DEPTH_BIAS };
+        float DepthBiasClamp{ D3D12_DEFAULT_DEPTH_BIAS_CLAMP };
+        float SlopeScaledDepthBias{ D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS };
     };
 
 } // namespace benzin
