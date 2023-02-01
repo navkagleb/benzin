@@ -219,6 +219,7 @@ namespace benzin
         BENZIN_ASSERT(config.PixelShader);
         BENZIN_ASSERT(config.RasterizerState);
         BENZIN_ASSERT(config.InputLayout);
+        BENZIN_ASSERT(config.RenderTargetViewFormats.size() <= 8);
 
         const D3D12_SHADER_BYTECODE vertexShaderDesc = ConvertToD3D12Shader(config.VertexShader);
         const D3D12_SHADER_BYTECODE pixelShaderDesc = ConvertToD3D12Shader(config.PixelShader);
@@ -234,7 +235,7 @@ namespace benzin
         const D3D12_CACHED_PIPELINE_STATE cachedPipelineState = GetDefauldD3D12CachedPipelineState();
         const D3D12_PIPELINE_STATE_FLAGS flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
-        const D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12GraphicsPipelineStateDesc
         {
             .pRootSignature{ config.RootSignature->GetD3D12RootSignature() },
             .VS{ vertexShaderDesc },
@@ -250,16 +251,20 @@ namespace benzin
             .InputLayout{ inputLayoutDesc },
             .IBStripCutValue{ D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED },
             .PrimitiveTopologyType{ static_cast<D3D12_PRIMITIVE_TOPOLOGY_TYPE>(config.PrimitiveTopologyType) },
-            .NumRenderTargets{ 1 },
-            .RTVFormats{ static_cast<DXGI_FORMAT>(config.RTVFormat) },
-            .DSVFormat{ static_cast<DXGI_FORMAT>(config.DSVFormat) },
+            .NumRenderTargets{ static_cast<UINT>(config.RenderTargetViewFormats.size()) },
+            .DSVFormat{ static_cast<DXGI_FORMAT>(config.DepthStencilViewFormat) },
             .SampleDesc{ 1, 0 },
             .NodeMask{ 0 },
             .CachedPSO{ cachedPipelineState },
             .Flags{ flags }
         };
 
-        BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateGraphicsPipelineState(&graphicsPipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+        for (size_t i = 0; i < config.RenderTargetViewFormats.size(); ++i)
+        {
+            d3d12GraphicsPipelineStateDesc.RTVFormats[i] = static_cast<DXGI_FORMAT>(config.RenderTargetViewFormats[i]);
+        }
+
+        BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateGraphicsPipelineState(&d3d12GraphicsPipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
     }
 
     ComputePipelineState::ComputePipelineState(Device& device, const Config& config)
@@ -271,7 +276,7 @@ namespace benzin
         const D3D12_CACHED_PIPELINE_STATE cachedPipelineState = GetDefauldD3D12CachedPipelineState();
         const D3D12_PIPELINE_STATE_FLAGS flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
-        const D3D12_COMPUTE_PIPELINE_STATE_DESC computePipelineStateDesc
+        const D3D12_COMPUTE_PIPELINE_STATE_DESC d3d12ComputePipelineStateDesc
         {
             .pRootSignature{ config.RootSignature->GetD3D12RootSignature() },
             .CS{ computeShaderDesc },
@@ -280,7 +285,7 @@ namespace benzin
             .Flags{ flags }
         };
 
-        BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateComputePipelineState(&computePipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+        BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateComputePipelineState(&d3d12ComputePipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
     }
 
 } // namespace benzin

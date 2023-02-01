@@ -731,6 +731,8 @@ namespace sandbox
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
+                .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
+                .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
             m_PipelineStates["default"] = benzin::GraphicsPipelineState{ m_Device, config };
@@ -764,6 +766,8 @@ namespace sandbox
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
+                .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
+                .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
             m_PipelineStates["picked"] = benzin::GraphicsPipelineState{ m_Device, config };
@@ -817,6 +821,8 @@ namespace sandbox
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
+                .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
+                .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
             m_PipelineStates["light_source"] = benzin::GraphicsPipelineState{ m_Device, config };
@@ -885,6 +891,8 @@ namespace sandbox
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .DSVFormat{ ms_DepthStencilFormat }
+                .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
+                .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
             m_PipelineStates["environment"] = benzin::GraphicsPipelineState{ m_Device, config };
@@ -937,6 +945,7 @@ namespace sandbox
                 .InputLayout{ &nullInputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
+                .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
             };
 
             m_PipelineStates["fullscreen"] = benzin::GraphicsPipelineState{ m_Device, config };

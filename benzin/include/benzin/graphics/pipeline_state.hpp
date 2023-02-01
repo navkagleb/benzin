@@ -51,8 +51,8 @@ namespace benzin
             const InputLayout* InputLayout{ nullptr };
 
             PrimitiveTopologyType PrimitiveTopologyType{ PrimitiveTopologyType::Unknown };
-            GraphicsFormat RTVFormat{ GraphicsFormat::Unknown };
-            GraphicsFormat DSVFormat{ GraphicsFormat::Unknown };
+            std::vector<GraphicsFormat> RenderTargetViewFormats;
+            GraphicsFormat DepthStencilViewFormat{ GraphicsFormat::Unknown };
         };
 
     public:
