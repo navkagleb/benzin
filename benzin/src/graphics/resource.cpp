@@ -50,12 +50,12 @@ namespace benzin
         return PushResourceView(Descriptor::Type::UnorderedAccessView, uav);
     }
 
-    Descriptor Resource::GetShaderResourceView(uint32_t index) const
+    const Descriptor& Resource::GetShaderResourceView(uint32_t index) const
     {
         return GetResourceView(Descriptor::Type::ShaderResourceView, index);
     }
 
-    Descriptor Resource::GetUnorderedAccessView(uint32_t index) const
+    const Descriptor& Resource::GetUnorderedAccessView(uint32_t index) const
     {
         return GetResourceView(Descriptor::Type::UnorderedAccessView, index);
     }
@@ -93,7 +93,7 @@ namespace benzin
         return static_cast<uint32_t>(descriptors.size()) - 1;
     }
 
-    Descriptor Resource::GetResourceView(Descriptor::Type descriptorType, uint32_t index) const
+    const Descriptor& Resource::GetResourceView(Descriptor::Type descriptorType, uint32_t index) const
     {
         BENZIN_ASSERT(m_Views.contains(descriptorType));
 

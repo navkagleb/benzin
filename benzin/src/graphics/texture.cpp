@@ -28,12 +28,12 @@ namespace benzin
         return PushResourceView(Descriptor::Type::DepthStencilView, dsv);
     }
 
-    Descriptor TextureResource::GetRenderTargetView(uint32_t index) const
+    const Descriptor& TextureResource::GetRenderTargetView(uint32_t index) const
     {
         return GetResourceView(Descriptor::Type::RenderTargetView, index);
     }
 
-    Descriptor TextureResource::GetDepthStencilView(uint32_t index) const
+    const Descriptor& TextureResource::GetDepthStencilView(uint32_t index) const
     {
         return GetResourceView(Descriptor::Type::DepthStencilView, index);
     }

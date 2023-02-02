@@ -62,15 +62,15 @@ namespace benzin
         uint32_t PushShaderResourceView(const Descriptor& srv);
         uint32_t PushUnorderedAccessView(const Descriptor& uav);
 
-        Descriptor GetShaderResourceView(uint32_t index = 0) const;
-        Descriptor GetUnorderedAccessView(uint32_t index = 0) const;
+        const Descriptor& GetShaderResourceView(uint32_t index = 0) const;
+        const Descriptor& GetUnorderedAccessView(uint32_t index = 0) const;
 
         void ReleaseViews(DescriptorManager& descriptorManager);
 
     protected:
         bool HasResourceView(Descriptor::Type descriptorType, uint32_t index) const;
         uint32_t PushResourceView(Descriptor::Type descriptorType, const Descriptor& descriptor);
-        Descriptor GetResourceView(Descriptor::Type descriptorType, uint32_t index) const;
+        const Descriptor& GetResourceView(Descriptor::Type descriptorType, uint32_t index) const;
 
     protected:
         ID3D12Resource* m_D3D12Resource{ nullptr };

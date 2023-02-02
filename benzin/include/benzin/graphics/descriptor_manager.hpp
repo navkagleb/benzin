@@ -10,6 +10,9 @@ namespace benzin
     class Descriptor
     {
     public:
+        friend class GraphicsCommandList;
+
+    public:
         enum Type : uint8_t
         {
             Unknown,

@@ -215,19 +215,27 @@ namespace benzin
         m_D3D12GraphicsCommandList->SetComputeRootDescriptorTable(rootParameterIndex, d3d12GPUDescriptorHandle);
     }
 
-    void GraphicsCommandList::SetRenderTarget(const Descriptor& rtv)
+    void GraphicsCommandList::SetRenderTarget(const Descriptor* rtv, const Descriptor* dsv)
     {
-        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RTVDescriptorHandle{ rtv.GetCPUHandle()};
+        const auto getD3D12CPUDescriptorHandle = [](const Descriptor* descriptor) -> const D3D12_CPU_DESCRIPTOR_HANDLE*
+        {
+            if (!descriptor)
+            {
+                return nullptr;
+            }
 
-        m_D3D12GraphicsCommandList->OMSetRenderTargets(1, &d3d12RTVDescriptorHandle, true, nullptr);
-    }
+            BENZIN_ASSERT(descriptor->IsValid());
 
-    void GraphicsCommandList::SetRenderTarget(const Descriptor& rtv, const Descriptor& dsv)
-    {
-        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RTVDescriptorHandle{ rtv.GetCPUHandle() };
-        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DSVDescriptorHandle{ dsv.GetCPUHandle() };
+            const auto* descriptorPtr = reinterpret_cast<const std::byte*>(descriptor);
+            const auto cpuHandleOffset = offsetof(Descriptor, m_CPUHandle);
 
-        m_D3D12GraphicsCommandList->OMSetRenderTargets(1, &d3d12RTVDescriptorHandle, true, &d3d12DSVDescriptorHandle);
+            return reinterpret_cast<const D3D12_CPU_DESCRIPTOR_HANDLE*>(descriptorPtr + cpuHandleOffset);
+        };
+
+        const D3D12_CPU_DESCRIPTOR_HANDLE* d3d12RTVDescriptorHandle = getD3D12CPUDescriptorHandle(rtv);
+        const D3D12_CPU_DESCRIPTOR_HANDLE* d3d12DSVDescriptorHandle = getD3D12CPUDescriptorHandle(dsv);
+
+        m_D3D12GraphicsCommandList->OMSetRenderTargets(d3d12RTVDescriptorHandle ? 1 : 0, d3d12RTVDescriptorHandle, true, d3d12DSVDescriptorHandle);
     }
 
     void GraphicsCommandList::ClearRenderTarget(const Descriptor& rtv, const DirectX::XMFLOAT4& color)

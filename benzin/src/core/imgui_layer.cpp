@@ -95,7 +95,7 @@ namespace benzin
             m_GraphicsCommandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::RenderTarget);
 
             m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
-            m_GraphicsCommandList.SetRenderTarget(m_SwapChain.GetCurrentBackBuffer()->GetRenderTargetView());
+            m_GraphicsCommandList.SetRenderTarget(&m_SwapChain.GetCurrentBackBuffer()->GetRenderTargetView());
 
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_GraphicsCommandList.GetD3D12GraphicsCommandList());
 

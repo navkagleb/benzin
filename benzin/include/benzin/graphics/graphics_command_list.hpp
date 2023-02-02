@@ -63,8 +63,7 @@ namespace benzin
         void SetGraphicsDescriptorTable(uint32_t rootParameterIndex, const Descriptor& firstDescriptor);
         void SetComputeDescriptorTable(uint32_t rootParameterIndex, const Descriptor& firstDescriptor);
 
-        void SetRenderTarget(const Descriptor& rtv);
-        void SetRenderTarget(const Descriptor& rtv, const Descriptor& dsv);
+        void SetRenderTarget(const Descriptor* rtv, const Descriptor* dsv = nullptr);
 
         void ClearRenderTarget(const Descriptor& rtv, const DirectX::XMFLOAT4& color);
         void ClearDepthStencil(const Descriptor& dsv, float depth, uint8_t stencil);

@@ -66,8 +66,8 @@ namespace benzin
         uint32_t PushRenderTargetView(const Descriptor& rtv);
         uint32_t PushDepthStencilView(const Descriptor& dsv);
 
-        Descriptor GetRenderTargetView(uint32_t index = 0) const;
-        Descriptor GetDepthStencilView(uint32_t index = 0) const;
+        const Descriptor& GetRenderTargetView(uint32_t index = 0) const;
+        const Descriptor& GetDepthStencilView(uint32_t index = 0) const;
 
     private:
         Config m_Config;

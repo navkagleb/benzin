@@ -359,8 +359,8 @@ namespace sandbox
                     m_GraphicsCommandList.ClearDepthStencil(m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView(), 1.0f, 0);
 
                     m_GraphicsCommandList.SetRenderTarget(
-                        m_RenderTargetCubeMap.GetCubeMap()->GetRenderTargetView(i),
-                        m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView()
+                        &m_RenderTargetCubeMap.GetCubeMap()->GetRenderTargetView(i),
+                        &m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView()
                     );
 
                     m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("PassConstantBuffer"), i + 1);
@@ -382,7 +382,7 @@ namespace sandbox
             m_GraphicsCommandList.SetViewport(m_Window.GetViewport());
             m_GraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
 
-            m_GraphicsCommandList.SetRenderTarget(renderTarget->GetRenderTargetView(), depthStencil->GetDepthStencilView());
+            m_GraphicsCommandList.SetRenderTarget(&renderTarget->GetRenderTargetView(), &depthStencil->GetDepthStencilView());
 
             m_GraphicsCommandList.ClearRenderTarget(renderTarget->GetRenderTargetView(), { 0.1f, 0.1f, 0.1f, 1.0f });
             m_GraphicsCommandList.ClearDepthStencil(depthStencil->GetDepthStencilView(), 1.0f, 0);
@@ -1296,7 +1296,7 @@ namespace sandbox
 
         m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, benzin::Resource::State::RenderTarget);
 
-        m_PostEffectsGraphicsCommandList.SetRenderTarget(backBuffer->GetRenderTargetView());
+        m_PostEffectsGraphicsCommandList.SetRenderTarget(&backBuffer->GetRenderTargetView());
         m_PostEffectsGraphicsCommandList.ClearRenderTarget(backBuffer->GetRenderTargetView(), { 0.1f, 0.1f, 0.1f, 1.0f });
 
         m_PostEffectsGraphicsCommandList.SetViewport(m_Window.GetViewport());
