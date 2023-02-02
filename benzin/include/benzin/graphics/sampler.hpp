@@ -85,6 +85,9 @@ namespace benzin
         uint32_t ShaderRegister{ 0 };
         uint32_t RegisterSpace{ 0 };
         ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
+        float MipLODBias{ 0.0f };
+        uint32_t MaxAnisotropy{ 1 };
+        ComparisonFunction ComparisonFunction{ ComparisonFunction::Always };
 
         StaticSampler() = default;
 
