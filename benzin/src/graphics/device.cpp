@@ -92,7 +92,7 @@ namespace benzin
         {
             using namespace magic_enum::bitwise_operators;
 
-            BufferResource::Config validatedConfig{ config };
+            BufferResource::Config validatedConfig = config;
 
             if ((validatedConfig.Flags & BufferResource::Flags::ConstantBuffer) != BufferResource::Flags::None)
             {
@@ -214,13 +214,15 @@ namespace benzin
         BENZIN_ASSERT(config.ElementSize != 0);
         BENZIN_ASSERT(config.ElementCount != 0);
 
+        const BufferResource::Config validatedConfig = ValidateBufferResourceConfig(config);
+
         const D3D12_HEAP_TYPE d3d12HeapType = config.Flags == BufferResource::Flags::None ? D3D12_HEAP_TYPE_DEFAULT : D3D12_HEAP_TYPE_UPLOAD;
-        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ConvertToD3D12ResourceDesc(config);
+        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ConvertToD3D12ResourceDesc(validatedConfig);
 
         auto* rawBufferResource = new BufferResource
         {
             CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, nullptr),
-            ValidateBufferResourceConfig(config),
+            ValidateBufferResourceConfig(validatedConfig),
             debugName
         };
 
