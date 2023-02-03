@@ -355,8 +355,8 @@ namespace sandbox
 
                 for (uint32_t i = 0; i < 6; ++i)
                 {
-                    m_GraphicsCommandList.ClearRenderTarget(m_RenderTargetCubeMap.GetCubeMap()->GetRenderTargetView(i), { 0.1f, 0.1f, 0.1f, 1.0f });
-                    m_GraphicsCommandList.ClearDepthStencil(m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView(), 1.0f, 0);
+                    m_GraphicsCommandList.ClearRenderTarget(m_RenderTargetCubeMap.GetCubeMap()->GetRenderTargetView(i));
+                    m_GraphicsCommandList.ClearDepthStencil(m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView());
 
                     m_GraphicsCommandList.SetRenderTarget(
                         &m_RenderTargetCubeMap.GetCubeMap()->GetRenderTargetView(i),
@@ -384,8 +384,8 @@ namespace sandbox
 
             m_GraphicsCommandList.SetRenderTarget(&renderTarget->GetRenderTargetView(), &depthStencil->GetDepthStencilView());
 
-            m_GraphicsCommandList.ClearRenderTarget(renderTarget->GetRenderTargetView(), { 0.1f, 0.1f, 0.1f, 1.0f });
-            m_GraphicsCommandList.ClearDepthStencil(depthStencil->GetDepthStencilView(), 1.0f, 0);
+            m_GraphicsCommandList.ClearRenderTarget(renderTarget->GetRenderTargetView());
+            m_GraphicsCommandList.ClearDepthStencil(depthStencil->GetDepthStencilView());
 
             m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
             m_GraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
@@ -963,13 +963,8 @@ namespace sandbox
             .Flags{ benzin::TextureResource::Flags::BindAsRenderTarget }
         };
 
-        const benzin::TextureResource::ClearColor clearColor
-        {
-            .Color{ 0.1f, 0.1f, 0.1f, 1.0f }
-        };
-
         auto& renderTarget = m_Textures["render_target"];
-        renderTarget = m_Device.CreateTextureResource(config, clearColor, "render_target");
+        renderTarget = m_Device.CreateTextureResource(config, "render_target");
         renderTarget->PushRenderTargetView(m_Device.GetResourceViewBuilder().CreateRenderTargetView(*renderTarget));
         renderTarget->PushShaderResourceView(m_Device.GetResourceViewBuilder().CreateShaderResourceView(*renderTarget));
     }
@@ -985,14 +980,8 @@ namespace sandbox
             .Flags{ benzin::TextureResource::Flags::BindAsDepthStencil }
         };
 
-        const benzin::TextureResource::ClearDepthStencil clearDepthStencil
-        {
-            .Depth{ 1.0f },
-            .Stencil{ 0 }
-        };
-
         auto& depthStencil = m_Textures["depth_stencil"];
-        depthStencil = m_Device.CreateTextureResource(config, clearDepthStencil, "depth_stencil");
+        depthStencil = m_Device.CreateTextureResource(config, "depth_stencil");
         depthStencil->PushDepthStencilView(m_Device.GetResourceViewBuilder().CreateDepthStencilView(*depthStencil));
     }
 
@@ -1297,7 +1286,7 @@ namespace sandbox
         m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, benzin::Resource::State::RenderTarget);
 
         m_PostEffectsGraphicsCommandList.SetRenderTarget(&backBuffer->GetRenderTargetView());
-        m_PostEffectsGraphicsCommandList.ClearRenderTarget(backBuffer->GetRenderTargetView(), { 0.1f, 0.1f, 0.1f, 1.0f });
+        m_PostEffectsGraphicsCommandList.ClearRenderTarget(backBuffer->GetRenderTargetView());
 
         m_PostEffectsGraphicsCommandList.SetViewport(m_Window.GetViewport());
         m_PostEffectsGraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());

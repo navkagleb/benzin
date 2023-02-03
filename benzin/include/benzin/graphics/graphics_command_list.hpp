@@ -65,8 +65,8 @@ namespace benzin
 
         void SetRenderTarget(const Descriptor* rtv, const Descriptor* dsv = nullptr);
 
-        void ClearRenderTarget(const Descriptor& rtv, const DirectX::XMFLOAT4& color);
-        void ClearDepthStencil(const Descriptor& dsv, float depth, uint8_t stencil);
+        void ClearRenderTarget(const Descriptor& rtv);
+        void ClearDepthStencil(const Descriptor& dsv);
 
         void SetResourceBarrier(Resource& resource, Resource::State resourceStateAfter);
         void SetStencilReferenceValue(uint8_t referenceValue);

@@ -42,16 +42,10 @@ namespace benzin
             Flags Flags{ Flags::None };
         };
 
-        struct ClearColor
-        {
-            DirectX::XMFLOAT4 Color{ 0.0f, 0.0f, 0.0f, 1.0f };
-        };
-
-        struct ClearDepthStencil
-        {
-            float Depth{ 0.0f };
-            uint8_t Stencil{ 0 };
-        };
+    public:
+        static DirectX::XMFLOAT4 GetDefaultClearColor() { return DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }; }
+        static float GetDefaultClearDepth() { return 1.0f; }
+        static uint8_t GetDefaultClearStencil() { return 0; }
 
     public:
         TextureResource() = default;

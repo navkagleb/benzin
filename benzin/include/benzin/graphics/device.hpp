@@ -28,8 +28,6 @@ namespace benzin
 
         std::shared_ptr<TextureResource> RegisterTextureResource(ID3D12Resource* d3d12Resource, const std::string& debugName = {}) const;
         std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config, const std::string& debugName = {}) const;
-        std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor, const std::string& debugName = {}) const;
-        std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil, const std::string& debugName = {}) const;
 
     private:
         ID3D12Resource* CreateD3D12CommittedResource(

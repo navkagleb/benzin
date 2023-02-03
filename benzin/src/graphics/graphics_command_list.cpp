@@ -238,22 +238,23 @@ namespace benzin
         m_D3D12GraphicsCommandList->OMSetRenderTargets(d3d12RTVDescriptorHandle ? 1 : 0, d3d12RTVDescriptorHandle, true, d3d12DSVDescriptorHandle);
     }
 
-    void GraphicsCommandList::ClearRenderTarget(const Descriptor& rtv, const DirectX::XMFLOAT4& color)
+    void GraphicsCommandList::ClearRenderTarget(const Descriptor& rtv)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RTVDescriptorHandle{ rtv.GetCPUHandle() };
+        const DirectX::XMFLOAT4 defaultClearColor = TextureResource::GetDefaultClearColor();
 
-        m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RTVDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
+        m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RTVDescriptorHandle, reinterpret_cast<const float*>(&defaultClearColor), 0, nullptr);
     }
 
-    void GraphicsCommandList::ClearDepthStencil(const Descriptor& dsv, float depth, uint8_t stencil)
+    void GraphicsCommandList::ClearDepthStencil(const Descriptor& dsv)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DSVDescriptorHandle{ dsv.GetCPUHandle() };
 
         m_D3D12GraphicsCommandList->ClearDepthStencilView(
             d3d12DSVDescriptorHandle,
             D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-            depth,
-            stencil,
+            TextureResource::GetDefaultClearDepth(),
+            TextureResource::GetDefaultClearStencil(),
             0,
             nullptr
         );

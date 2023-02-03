@@ -119,30 +119,30 @@ namespace benzin
             };
         }
 
-        D3D12_CLEAR_VALUE ConvertToD3D12ClearValue(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor)
+        D3D12_CLEAR_VALUE ConvertToD3D12ClearValue(const TextureResource::Config& config, const DirectX::XMFLOAT4& clearColor)
         {
             return D3D12_CLEAR_VALUE
             {
                 .Format{ static_cast<DXGI_FORMAT>(config.Format) },
                 .Color 
                 { 
-                    clearColor.Color.x,
-                    clearColor.Color.y,
-                    clearColor.Color.z,
-                    clearColor.Color.w
+                    clearColor.x,
+                    clearColor.y,
+                    clearColor.z,
+                    clearColor.w
                 }
             };
         }
 
-        D3D12_CLEAR_VALUE ConvertToD3D12ClearValue(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil)
+        D3D12_CLEAR_VALUE ConvertToD3D12ClearValue(const TextureResource::Config& config, float clearDepth, uint8_t clearStencil)
         {
             return D3D12_CLEAR_VALUE
             {
                 .Format{ static_cast<DXGI_FORMAT>(config.Format) },
                 .DepthStencil
                 {
-                    .Depth{ clearDepthStencil.Depth },
-                    .Stencil{ clearDepthStencil.Stencil }
+                    .Depth{ clearDepth },
+                    .Stencil{ clearStencil }
                 }
             };
         }
@@ -245,47 +245,34 @@ namespace benzin
 
     std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config, const std::string& debugName) const
     {
+        using namespace magic_enum::bitwise_operators;
+        using Flags = TextureResource::Flags;
+
         const D3D12_HEAP_TYPE d3d12HeapType = D3D12_HEAP_TYPE_DEFAULT;
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ConvertToD3D12ResourceDesc(config);
+        
+        ID3D12Resource* d3d12Resource = nullptr;
 
-        auto* rawTextureResource = new TextureResource
+        if ((config.Flags & Flags::BindAsRenderTarget) != Flags::None)
         {
-            CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, nullptr),
-            config,
-            debugName
-        };
+            const D3D12_CLEAR_VALUE d3d12ClearValue = ConvertToD3D12ClearValue(config, TextureResource::GetDefaultClearColor());
 
-        return std::shared_ptr<TextureResource>{ rawTextureResource, m_ResourceReleaser };
-    }
-
-    std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearColor& clearColor, const std::string& debugName) const
-    {
-        const D3D12_HEAP_TYPE d3d12HeapType = D3D12_HEAP_TYPE_DEFAULT;
-        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ConvertToD3D12ResourceDesc(config);
-        const D3D12_CLEAR_VALUE d3d12ClearValue = ConvertToD3D12ClearValue(config, clearColor);
-
-        auto* rawTextureResource = new TextureResource
+            d3d12Resource = CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, &d3d12ClearValue);
+        }
+        else if ((config.Flags & Flags::BindAsDepthStencil) != Flags::None)
         {
-            CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, &d3d12ClearValue),
-            config,
-            debugName
-        };
+            const D3D12_CLEAR_VALUE d3d12ClearValue = ConvertToD3D12ClearValue(config, TextureResource::GetDefaultClearDepth(), TextureResource::GetDefaultClearStencil());
 
-        return std::shared_ptr<TextureResource>{ rawTextureResource, m_ResourceReleaser };
-    }
-
-    std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config, const TextureResource::ClearDepthStencil& clearDepthStencil, const std::string& debugName) const
-    {
-        const D3D12_HEAP_TYPE d3d12HeapType = D3D12_HEAP_TYPE_DEFAULT;
-        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ConvertToD3D12ResourceDesc(config);
-        const D3D12_CLEAR_VALUE d3d12ClearValue = ConvertToD3D12ClearValue(config, clearDepthStencil);
-
-        auto* rawTextureResource = new TextureResource
+            d3d12Resource = CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, &d3d12ClearValue);
+        }
+        else
         {
-            CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, &d3d12ClearValue),
-            config,
-            debugName
-        };
+            d3d12Resource = CreateD3D12CommittedResource(d3d12HeapType, &d3d12ResourceDesc, nullptr);
+        }
+
+        BENZIN_ASSERT(d3d12Resource);
+
+        auto* rawTextureResource = new TextureResource{ d3d12Resource, config, debugName };
 
         return std::shared_ptr<TextureResource>{ rawTextureResource, m_ResourceReleaser };
     }
