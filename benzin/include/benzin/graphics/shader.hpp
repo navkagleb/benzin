@@ -27,6 +27,12 @@ namespace benzin
             Compute
         };
 
+        struct Register
+        {
+            uint32_t Index{ 0 };
+            uint32_t Space{ 0 };
+        };
+
         struct Config
         {
             Type Type{ Type::Unknown };

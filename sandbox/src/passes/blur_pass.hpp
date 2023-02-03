@@ -40,7 +40,7 @@ namespace sandbox
         void InitPSOs(benzin::Device& device);
 
     private:
-        benzin::RootSignature m_RootSignature;
+        std::unique_ptr<benzin::RootSignature> m_RootSignature;
         benzin::PipelineState m_HorizontalPSO;
         benzin::PipelineState m_VerticalPSO;
 

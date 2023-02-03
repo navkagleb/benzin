@@ -3,6 +3,7 @@
 #include "benzin/graphics/common.hpp"
 #include "benzin/graphics/sampler.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
+#include "benzin/graphics/shader.hpp"
 
 namespace benzin
 {
@@ -16,16 +17,10 @@ namespace benzin
         friend class RootSignature;
 
     public:
-        struct ShaderRegister
-        {
-            uint32_t Register{ 0 };
-            uint32_t Space{ 0 };
-        };
-
         struct Constants32BitConfig
         {
             ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
-            ShaderRegister ShaderRegister;
+            Shader::Register ShaderRegister;
             uint32_t Count{ 0 };
         };
 
@@ -33,14 +28,14 @@ namespace benzin
         {
             ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
             Descriptor::Type Type{ Descriptor::Type::Unknown };
-            ShaderRegister ShaderRegister;
+            Shader::Register ShaderRegister;
         };
 
         struct DescriptorRange
         {
             Descriptor::Type Type{ Descriptor::Type::Unknown };
             uint32_t DescriptorCount{ 0 };
-            ShaderRegister BaseShaderRegister;
+            Shader::Register BaseShaderRegister;
         };
 
         struct DescriptorTableConfig
@@ -82,35 +77,27 @@ namespace benzin
     class RootSignature
     {
     public:
+        BENZIN_NON_COPYABLE(RootSignature)
+        BENZIN_NON_MOVEABLE(RootSignature)
+        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12RootSignature, "RootSignature")
+
+    public:
         struct Config
         {
             std::vector<RootParameter> RootParameters;
             std::vector<StaticSampler> StaticSamplers;
-
-            Config() = default;
-            Config(size_t rootParametersSize, size_t staticSamplersSize = 0)
-            {
-                RootParameters.resize(rootParametersSize);
-                StaticSamplers.resize(staticSamplersSize);
-            }
         };
-
-    private:
-        BENZIN_NON_COPYABLE(RootSignature)
 
     public:
         RootSignature() = default;
-        RootSignature(Device& device, const Config& config);
-        RootSignature(RootSignature&& other) noexcept;
+        RootSignature(Device& device, const Config& config, const char* debugName = nullptr);
+        ~RootSignature();
 
     public:
-        ID3D12RootSignature* GetD3D12RootSignature() const { return m_D3D12RootSignature.Get(); }
-
-    public:
-        RootSignature& operator=(RootSignature&& other) noexcept;
+        ID3D12RootSignature* GetD3D12RootSignature() const { return m_D3D12RootSignature; }
 
     private:
-        ComPtr<ID3D12RootSignature> m_D3D12RootSignature;
+        ID3D12RootSignature* m_D3D12RootSignature{ nullptr };
     };
 
 

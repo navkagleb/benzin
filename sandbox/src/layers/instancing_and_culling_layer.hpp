@@ -89,7 +89,7 @@ namespace sandbox
         std::unordered_map<std::string, std::shared_ptr<benzin::TextureResource>> m_Textures;
 
         benzin::Mesh m_Mesh;
-        benzin::RootSignature m_RootSignature;
+        std::unique_ptr<benzin::RootSignature> m_RootSignature;
         std::unordered_map<std::string, std::shared_ptr<benzin::Shader>> m_ShaderLibrary;
         std::unordered_map<std::string, benzin::PipelineState> m_PipelineStates;
         

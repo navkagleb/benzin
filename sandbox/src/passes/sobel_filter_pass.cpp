@@ -21,7 +21,7 @@ namespace sandbox
         const uint32_t height = input.GetConfig().Height;
 
         graphicsCommandList.SetPipelineState(m_PipelineState);
-        graphicsCommandList.SetComputeRootSignature(m_RootSignature);
+        graphicsCommandList.SetComputeRootSignature(*m_RootSignature);
 
         graphicsCommandList.SetComputeDescriptorTable(0, input.GetShaderResourceView());
         graphicsCommandList.SetComputeDescriptorTable(1, m_OutputTexture->GetUnorderedAccessView());
@@ -75,7 +75,7 @@ namespace sandbox
             }
         });
 
-        m_RootSignature = benzin::RootSignature{ device, config };
+        m_RootSignature = std::make_unique<benzin::RootSignature>(device, config, "SobelFilter");
     }
 
     void SobelFilterPass::InitPipelineState(benzin::Device& device)
@@ -91,7 +91,7 @@ namespace sandbox
 
         const benzin::ComputePipelineState::Config pipelineStateConfig
         {
-            .RootSignature{ &m_RootSignature },
+            .RootSignature{ m_RootSignature.get() },
             .ComputeShader{ m_Shader.get() }
         };
 

@@ -71,7 +71,7 @@ namespace sandbox
             // Horizontal Blur pass
             {
                 graphicsCommandList.SetPipelineState(m_HorizontalPSO);
-                graphicsCommandList.SetComputeRootSignature(m_RootSignature);
+                graphicsCommandList.SetComputeRootSignature(*m_RootSignature);
 
                 graphicsCommandList.SetCompute32BitConstants(0, &horizontalBlurRadius, 1, 0);
                 graphicsCommandList.SetCompute32BitConstants(0, horizontalWeights.data(), horizontalWeights.size(), 1);
@@ -89,7 +89,7 @@ namespace sandbox
             // Vertical Blur pass
             {
                 graphicsCommandList.SetPipelineState(m_VerticalPSO);
-                graphicsCommandList.SetComputeRootSignature(m_RootSignature);
+                graphicsCommandList.SetComputeRootSignature(*m_RootSignature);
 
                 graphicsCommandList.SetCompute32BitConstants(0, &verticalBlurRadius, 1, 0);
                 graphicsCommandList.SetCompute32BitConstants(0, verticalWeights.data(), verticalWeights.size(), 1);
@@ -164,7 +164,7 @@ namespace sandbox
             }
         });
 
-        m_RootSignature = benzin::RootSignature{ device, config };
+        m_RootSignature = std::make_unique<benzin::RootSignature>(device, config, "BlurPass");
     }
 
     void BlurPass::InitPSOs(benzin::Device& device)
@@ -186,7 +186,7 @@ namespace sandbox
 
             const benzin::ComputePipelineState::Config horizontalPSOConfig
             {
-                .RootSignature{ &m_RootSignature },
+                .RootSignature{ m_RootSignature.get() },
                 .ComputeShader{ m_ShaderLibrary["horizontal_cs"].get() }
             };
 
@@ -210,7 +210,7 @@ namespace sandbox
 
             const benzin::ComputePipelineState::Config verticalPSOConfig
             {
-                .RootSignature{ &m_RootSignature },
+                .RootSignature{ m_RootSignature.get() },
                 .ComputeShader{ m_ShaderLibrary["vertical_cs"].get() }
             };
 

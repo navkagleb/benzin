@@ -13,45 +13,61 @@ namespace benzin
     namespace
     {
 
-        D3D12_FILTER ConvertToD3D12TextureFilter(const TextureFilter& filter)
+        uint32_t g_RootSignatureCounter = 0;
+
+        D3D12_FILTER ConvertToD3D12TextureFilter(const Sampler::TextureFilterType& minification, const Sampler::TextureFilterType& magnification, const Sampler::TextureFilterType& mipLevel)
         {
-            const TextureFilterType minification{ filter.Minification };
-            const TextureFilterType magnification{ filter.Magnification };
-            const TextureFilterType mipLevel{ filter.MipLevel };
+            using TextureFilterType = Sampler::TextureFilterType;
 
-            D3D12_FILTER d3d12Filter{ D3D12_FILTER_MIN_MAG_MIP_POINT };
+            D3D12_FILTER d3d12Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
 
-            if (minification == TextureFilterType::Point)
+            switch (minification)
             {
-                BENZIN_ASSERT(magnification != TextureFilterType::Anisotropic && mipLevel != TextureFilterType::Anisotropic);
+                case TextureFilterType::Point:
+                {
+                    BENZIN_ASSERT(magnification != TextureFilterType::Anisotropic && mipLevel != TextureFilterType::Anisotropic);
 
-                if (magnification == TextureFilterType::Point)
-                {
-                    d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_MAG_MIP_POINT : D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
-                }
-                else
-                {
-                    d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
-                }
-            }
-            else if (minification == TextureFilterType::Linear)
-            {
-                BENZIN_ASSERT(magnification != TextureFilterType::Anisotropic && mipLevel != TextureFilterType::Anisotropic);
+                    if (magnification == TextureFilterType::Point)
+                    {
+                        d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_MAG_MIP_POINT : D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+                    }
+                    else
+                    {
+                        d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+                    }
 
-                if (magnification == TextureFilterType::Point)
-                {
-                    d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT : D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+                    break;
                 }
-                else
+                case TextureFilterType::Linear:
                 {
-                    d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                }
-            }
-            else if (minification == TextureFilterType::Anisotropic)
-            {
-                BENZIN_ASSERT(magnification == TextureFilterType::Anisotropic && mipLevel == TextureFilterType::Anisotropic);
+                    BENZIN_ASSERT(magnification != TextureFilterType::Anisotropic && mipLevel != TextureFilterType::Anisotropic);
 
-                d3d12Filter = D3D12_FILTER_ANISOTROPIC;
+                    if (magnification == TextureFilterType::Point)
+                    {
+                        d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT : D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+                    }
+                    else
+                    {
+                        d3d12Filter = mipLevel == TextureFilterType::Point ? D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                    }
+
+                    break;
+                }
+                case TextureFilterType::Anisotropic:
+                {
+                    BENZIN_ASSERT(magnification == TextureFilterType::Anisotropic && mipLevel == TextureFilterType::Anisotropic);
+
+                    d3d12Filter = D3D12_FILTER_ANISOTROPIC;
+
+                    break;
+                }
+                default:
+                {
+                    BENZIN_CRITICAL("Unknown TextureFilterType");
+                    BENZIN_ASSERT(false);
+
+                    break;
+                }
             }
 
             return d3d12Filter;
@@ -108,18 +124,18 @@ namespace benzin
             {
                 d3d12StaticSamplers.push_back(D3D12_STATIC_SAMPLER_DESC
                 {
-                    .Filter{ ConvertToD3D12TextureFilter(staticSampler.TextureFilter) },
-                    .AddressU{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.AddressU) },
-                    .AddressV{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.AddressV) },
-                    .AddressW{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.AddressW) },
+                    .Filter{ ConvertToD3D12TextureFilter(staticSampler.Sampler.Minification, staticSampler.Sampler.Magnification, staticSampler.Sampler.MipLevel) },
+                    .AddressU{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.Sampler.AddressU) },
+                    .AddressV{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.Sampler.AddressV) },
+                    .AddressW{ static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.Sampler.AddressW) },
                     .MipLODBias{ staticSampler.MipLODBias },
                     .MaxAnisotropy{ staticSampler.MaxAnisotropy },
                     .ComparisonFunc{ static_cast<D3D12_COMPARISON_FUNC>(staticSampler.ComparisonFunction) },
                     .BorderColor{ static_cast<D3D12_STATIC_BORDER_COLOR>(staticSampler.BorderColor) },
                     .MinLOD{ 0.0f },
                     .MaxLOD{ D3D12_FLOAT32_MAX },
-                    .ShaderRegister{ static_cast<UINT>(staticSampler.ShaderRegister) },
-                    .RegisterSpace{ static_cast<UINT>(staticSampler.RegisterSpace) },
+                    .ShaderRegister{ static_cast<UINT>(staticSampler.ShaderRegister.Index) },
+                    .RegisterSpace{ static_cast<UINT>(staticSampler.ShaderRegister.Space) },
                     .ShaderVisibility{ static_cast<D3D12_SHADER_VISIBILITY>(staticSampler.ShaderVisibility) }
                 });
             }
@@ -172,7 +188,7 @@ namespace benzin
 
         m_D3D12RootParameter.Constants.Num32BitValues = constants32BitConfig.Count;
 
-        m_D3D12RootParameter.Constants.ShaderRegister = constants32BitConfig.ShaderRegister.Register;
+        m_D3D12RootParameter.Constants.ShaderRegister = constants32BitConfig.ShaderRegister.Index;
         m_D3D12RootParameter.Constants.RegisterSpace = constants32BitConfig.ShaderRegister.Space;
     }
 
@@ -181,7 +197,7 @@ namespace benzin
         m_D3D12RootParameter.ParameterType = ConvertToD3D12DescriptorType(descriptorConfig.Type);
         m_D3D12RootParameter.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(descriptorConfig.ShaderVisibility);
 
-        m_D3D12RootParameter.Descriptor.ShaderRegister = descriptorConfig.ShaderRegister.Register;
+        m_D3D12RootParameter.Descriptor.ShaderRegister = descriptorConfig.ShaderRegister.Index;
         m_D3D12RootParameter.Descriptor.RegisterSpace = descriptorConfig.ShaderRegister.Space;
     }
 
@@ -200,7 +216,7 @@ namespace benzin
 
             d3d12Range.RangeType = ConvertToD3D12DescriptorRangeType(range.Type);
             d3d12Range.NumDescriptors = range.DescriptorCount;
-            d3d12Range.BaseShaderRegister = range.BaseShaderRegister.Register;
+            d3d12Range.BaseShaderRegister = range.BaseShaderRegister.Index;
             d3d12Range.RegisterSpace = range.BaseShaderRegister.Space;
             d3d12Range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
         }
@@ -261,9 +277,10 @@ namespace benzin
     //////////////////////////////////////////////////////////////////////////
     /// RootSignature
     //////////////////////////////////////////////////////////////////////////
-    RootSignature::RootSignature(Device& device, const Config& config)
+    RootSignature::RootSignature(Device& device, const Config& config, const char* debugName)
     {
         BENZIN_ASSERT(!config.RootParameters.empty());
+        BENZIN_ASSERT(!m_D3D12RootSignature);
 
         const std::vector<D3D12_STATIC_SAMPLER_DESC> d3d12StaticSamplers = ConvertToD3D12StaticSamplers(config.StaticSamplers);
 
@@ -300,22 +317,19 @@ namespace benzin
             serializedRootSignature->GetBufferSize(),
             IID_PPV_ARGS(&m_D3D12RootSignature)
         ));
+
+        SetDebugName(!debugName ? std::to_string(g_RootSignatureCounter) : std::string{ debugName });
+
+        BENZIN_INFO("{} created", GetDebugName());
+
+        g_RootSignatureCounter++;
     }
 
-    RootSignature::RootSignature(RootSignature&& other) noexcept
-        : m_D3D12RootSignature{ std::exchange(other.m_D3D12RootSignature, nullptr) }
-    {}
-
-    RootSignature& RootSignature::operator=(RootSignature&& other) noexcept
+    RootSignature::~RootSignature()
     {
-        if (this == &other)
-        {
-            return *this;
-        }
+        BENZIN_INFO("{} destroyed", GetDebugName());
 
-        m_D3D12RootSignature = std::exchange(other.m_D3D12RootSignature, nullptr);
-
-        return *this;
+        SafeReleaseD3D12Object(m_D3D12RootSignature);
     }
 
 } // namespace benzin

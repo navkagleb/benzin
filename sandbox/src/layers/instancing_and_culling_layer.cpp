@@ -351,7 +351,7 @@ namespace sandbox
                 m_GraphicsCommandList.SetScissorRect(m_RenderTargetCubeMap.GetScissorRect());
 
                 m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
-                m_GraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
+                m_GraphicsCommandList.SetGraphicsRootSignature(*m_RootSignature);
 
                 for (uint32_t i = 0; i < 6; ++i)
                 {
@@ -388,7 +388,7 @@ namespace sandbox
             m_GraphicsCommandList.ClearDepthStencil(depthStencil->GetDepthStencilView());
 
             m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
-            m_GraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
+            m_GraphicsCommandList.SetGraphicsRootSignature(*m_RootSignature);
 
             m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("PassConstantBuffer"));
             m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_RenderTargetCubeMap.GetCubeMap()->GetShaderResourceView());
@@ -645,11 +645,15 @@ namespace sandbox
 
         // Static samplers
         {
-            config.StaticSamplers.emplace_back(benzin::TextureFilterType::Linear, benzin::TextureAddressMode::Wrap, 0);
-            config.StaticSamplers.emplace_back(benzin::TextureFilterType::Anisotropic, benzin::TextureAddressMode::Wrap, 1);
+            config.StaticSamplers.push_back(benzin::StaticSampler::GetPointWrap({ 0 }));
+            config.StaticSamplers.push_back(benzin::StaticSampler::GetPointClamp({ 1 }));
+            config.StaticSamplers.push_back(benzin::StaticSampler::GetLinearWrap({ 2 }));
+            config.StaticSamplers.push_back(benzin::StaticSampler::GetLinearClamp({ 3 }));
+            config.StaticSamplers.push_back(benzin::StaticSampler::GetAnisotropicWrap({ 4 }));
+            config.StaticSamplers.push_back(benzin::StaticSampler::GetAnisotropicClamp({ 5 }));
         }
 
-        m_RootSignature = benzin::RootSignature{ m_Device, config };
+        m_RootSignature = std::make_unique<benzin::RootSignature>(m_Device, config, "Default");
     }
 
     void InstancingAndCullingLayer::InitPipelineState()
@@ -721,7 +725,7 @@ namespace sandbox
 
             const benzin::GraphicsPipelineState::Config config
             {
-                .RootSignature{ &m_RootSignature },
+                .RootSignature{ m_RootSignature.get() },
                 .VertexShader{ vertexShader },
                 .PixelShader{ pixelShader },
                 .BlendState{ nullptr },
@@ -729,8 +733,6 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
-                .DSVFormat{ ms_DepthStencilFormat }
                 .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
@@ -756,7 +758,7 @@ namespace sandbox
 
             const benzin::GraphicsPipelineState::Config config
             {
-                .RootSignature{ &m_RootSignature },
+                .RootSignature{ m_RootSignature.get() },
                 .VertexShader{ vertexShader },
                 .PixelShader{ pixelShader },
                 .BlendState{ nullptr },
@@ -764,8 +766,6 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
-                .DSVFormat{ ms_DepthStencilFormat }
                 .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
@@ -811,7 +811,7 @@ namespace sandbox
 
             const benzin::GraphicsPipelineState::Config config
             {
-                .RootSignature{ &m_RootSignature },
+                .RootSignature{ m_RootSignature.get() },
                 .VertexShader{ vertexShader },
                 .PixelShader{ pixelShader },
                 .BlendState{ nullptr },
@@ -819,8 +819,6 @@ namespace sandbox
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
-                .DSVFormat{ ms_DepthStencilFormat }
                 .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
@@ -881,16 +879,13 @@ namespace sandbox
 
             const benzin::GraphicsPipelineState::Config config
             {
-                .RootSignature{ &m_RootSignature },
+                .RootSignature{ m_RootSignature.get() },
                 .VertexShader{ vertexShader },
                 .PixelShader{ pixelShader },
-                .BlendState{ nullptr },
                 .RasterizerState{ &rasterizerState },
                 .DepthStecilState{ &depthStencilState },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
-                .DSVFormat{ ms_DepthStencilFormat }
                 .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
@@ -938,13 +933,12 @@ namespace sandbox
 
             const benzin::GraphicsPipelineState::Config config
             {
-                .RootSignature{ &m_RootSignature },
+                .RootSignature{ m_RootSignature.get() },
                 .VertexShader{ vertexShader },
                 .PixelShader{ pixelShader },
                 .RasterizerState{ &rasterizerState },
                 .InputLayout{ &nullInputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RTVFormat{ m_SwapChain.GetBackBufferFormat() },
                 .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
             };
 
@@ -1291,7 +1285,7 @@ namespace sandbox
         m_PostEffectsGraphicsCommandList.SetViewport(m_Window.GetViewport());
         m_PostEffectsGraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
         m_PostEffectsGraphicsCommandList.SetPipelineState(m_PipelineStates["fullscreen"]);
-        m_PostEffectsGraphicsCommandList.SetGraphicsRootSignature(m_RootSignature);
+        m_PostEffectsGraphicsCommandList.SetGraphicsRootSignature(*m_RootSignature);
         m_PostEffectsGraphicsCommandList.IASetVertexBuffer(nullptr);
         m_PostEffectsGraphicsCommandList.IASetIndexBuffer(nullptr);
         m_PostEffectsGraphicsCommandList.IASetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
