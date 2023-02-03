@@ -133,6 +133,20 @@ namespace benzin
         m_Projection = projection;
     }
 
+    const DirectX::XMMATRIX& Camera::GetProjectionMatrix() const
+    {
+        BENZIN_ASSERT(m_Projection);
+
+        return m_Projection->GetMatrix();
+    }
+
+    const DirectX::XMMATRIX& Camera::GetInverseProjectionMatrix() const
+    {
+        BENZIN_ASSERT(m_Projection);
+
+        return m_Projection->GetInverseMatrix();
+    }
+
     DirectX::XMMATRIX Camera::GetViewProjectionMatrix() const
     {
         BENZIN_ASSERT(m_Projection);

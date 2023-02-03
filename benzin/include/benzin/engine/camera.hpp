@@ -88,7 +88,7 @@ namespace benzin
 
     public:
         Camera();
-        Camera(const Projection* projection);
+        explicit Camera(const Projection* projection);
 
     public:
         const DirectX::XMVECTOR& GetPosition() const { return m_Position; }
@@ -102,11 +102,14 @@ namespace benzin
 
         const DirectX::XMVECTOR& GetRightDirection() const { return m_RightDirection; }
 
+        const DirectX::XMMATRIX& GetViewMatrix() const { return m_ViewMatrix; }
+        const DirectX::XMMATRIX& GetInverseViewMatrix() const { return m_InverseViewMatrix; }
+
         const Projection* GetProjection() const { return m_Projection; }
         void SetProjection(const Projection* projection);
 
-        const DirectX::XMMATRIX& GetViewMatrix() const { return m_ViewMatrix; }
-        const DirectX::XMMATRIX& GetInverseViewMatrix() const { return m_InverseViewMatrix; }
+        const DirectX::XMMATRIX& GetProjectionMatrix() const;
+        const DirectX::XMMATRIX& GetInverseProjectionMatrix() const;
 
         DirectX::XMMATRIX GetViewProjectionMatrix() const;
 

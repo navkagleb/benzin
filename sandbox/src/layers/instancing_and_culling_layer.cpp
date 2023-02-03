@@ -183,7 +183,7 @@ namespace sandbox
                 cb::Pass constants
                 {
                     .View{ DirectX::XMMatrixTranspose(m_Camera.GetViewMatrix()) },
-                    .Projection{ DirectX::XMMatrixTranspose(m_Camera.GetProjection()->GetMatrix()) },
+                    .Projection{ DirectX::XMMatrixTranspose(m_Camera.GetProjectionMatrix()) },
                     .ViewProjection{ DirectX::XMMatrixTranspose(m_Camera.GetViewProjectionMatrix()) },
                     .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition()) },
                     .AmbientLight{ m_AmbientLight }
@@ -208,7 +208,7 @@ namespace sandbox
                 cb::Pass constants
                 {
                     .View{ DirectX::XMMatrixTranspose(camera.GetViewMatrix()) },
-                    .Projection{ DirectX::XMMatrixTranspose(camera.GetProjection()->GetMatrix()) },
+                    .Projection{ DirectX::XMMatrixTranspose(camera.GetProjectionMatrix()) },
                     .ViewProjection{ DirectX::XMMatrixTranspose(camera.GetViewProjectionMatrix()) },
                     .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()) },
                     .AmbientLight{ m_AmbientLight }
