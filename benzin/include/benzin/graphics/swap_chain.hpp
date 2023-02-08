@@ -22,7 +22,7 @@ namespace benzin
         BENZIN_DEBUG_NAME_D3D12_OBJECT(m_DXGISwapChain3, "SwapChain")
 
     public:
-        SwapChain(const Window& window, Device& device, CommandQueue& commandQueue);
+        SwapChain(const Window& window, Device& device, CommandQueue& commandQueue, const char* debugName = nullptr);
         ~SwapChain();
 
     public:

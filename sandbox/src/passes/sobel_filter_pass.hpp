@@ -30,7 +30,7 @@ namespace sandbox
     private:
         std::shared_ptr<benzin::TextureResource> m_OutputTexture;
         std::unique_ptr<benzin::RootSignature> m_RootSignature;
-        benzin::ComputePipelineState m_PipelineState;
+        std::unique_ptr<benzin::ComputePipelineState> m_PipelineState;
         std::unique_ptr<benzin::Shader> m_Shader;
     };
 

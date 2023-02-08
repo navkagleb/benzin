@@ -12,6 +12,7 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/render_target_cube_map.hpp>
+#include <benzin/graphics/shadow_map.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/camera.hpp>
 #include <benzin/engine/light.hpp>
@@ -24,20 +25,6 @@ namespace sandbox
 
     class InstancingAndCullingLayer final : public benzin::Layer
     {
-    public:
-        class PointLightController
-        {
-        public:
-            PointLightController() = default;
-            PointLightController(benzin::Light* light);
-
-        public:
-            void OnImGuiRender();
-
-        private:
-            benzin::Light* m_Light{ nullptr };
-        };
-
     public:
         InstancingAndCullingLayer(benzin::Window& window, benzin::Device& device, benzin::CommandQueue& commandQueue, benzin::SwapChain& swapChain);
 
@@ -91,12 +78,14 @@ namespace sandbox
         benzin::Mesh m_Mesh;
         std::unique_ptr<benzin::RootSignature> m_RootSignature;
         std::unordered_map<std::string, std::shared_ptr<benzin::Shader>> m_ShaderLibrary;
-        std::unordered_map<std::string, benzin::PipelineState> m_PipelineStates;
+        std::unordered_map<std::string, std::unique_ptr<benzin::PipelineState>> m_PipelineStates;
         
         std::unordered_map<std::string, std::unique_ptr<benzin::Entity>> m_Entities;
         std::vector<const benzin::Entity*> m_DefaultEntities;
         std::vector<const benzin::Entity*> m_LightSourceEntities;
         std::vector<const benzin::Entity*> m_PickableEntities;
+
+        benzin::Light* m_DirectionalLight{ nullptr };
 
         std::unordered_map<std::string, benzin::Material> m_Materials;
 
@@ -106,9 +95,8 @@ namespace sandbox
         benzin::Camera m_Camera{ &m_PerspectiveProjection };
         benzin::FlyCameraController m_FlyCameraController{ &m_Camera };
 
-        PointLightController m_PointLightController;
-
         benzin::RenderTargetCubeMap m_RenderTargetCubeMap;
+        benzin::ShadowMap m_ShadowMap;
 
         bool m_IsCullingEnabled{ true };
 

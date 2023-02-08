@@ -15,7 +15,7 @@ namespace benzin
 		BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12CommandQueue, "CommandQueue")
 
 	public:
-		explicit CommandQueue(Device& device);
+		explicit CommandQueue(Device& device, const char* debugName = nullptr);
 		~CommandQueue();
 
 	public:

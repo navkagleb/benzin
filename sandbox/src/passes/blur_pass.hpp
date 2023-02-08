@@ -41,8 +41,8 @@ namespace sandbox
 
     private:
         std::unique_ptr<benzin::RootSignature> m_RootSignature;
-        benzin::PipelineState m_HorizontalPSO;
-        benzin::PipelineState m_VerticalPSO;
+        std::unique_ptr<benzin::PipelineState> m_HorizontalPSO;
+        std::unique_ptr<benzin::PipelineState> m_VerticalPSO;
 
         std::array<std::shared_ptr<benzin::TextureResource>, 2> m_BlurMaps;
         std::unordered_map<std::string, std::unique_ptr<benzin::Shader>> m_ShaderLibrary;

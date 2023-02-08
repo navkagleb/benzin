@@ -36,14 +36,12 @@ namespace benzin
         void BreakOnD3D12Error(ID3D12Device* d3d12Device, bool isBreak)
         {
 #if defined(BENZIN_DEBUG)
-            {
-                ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
-                BENZIN_D3D12_ASSERT(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
+            ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
+            BENZIN_D3D12_ASSERT(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
 
-                d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, isBreak);
-                d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, isBreak);
-                d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, isBreak);
-            }
+            d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, isBreak);
+            d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, isBreak);
+            d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, isBreak);
 #endif // defined(BENZIN_DEBUG)
         }
 
@@ -171,12 +169,12 @@ namespace benzin
         .SamplerDescriptorCount{ 100 }
     };
 
-    Device::Device()
+    Device::Device(const char* debugName)
     {
         EnableD3D12DebugLayer();
 
         BENZIN_D3D12_ASSERT(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_D3D12Device)));
-        SetDebugName("Main");
+        SetDebugName(debugName, true);
 
         BreakOnD3D12Error(m_D3D12Device, true);
 
@@ -192,8 +190,6 @@ namespace benzin
 
             delete resource;
         };
-
-        BENZIN_INFO("Device created");
     }
 
     Device::~Device()
@@ -205,8 +201,6 @@ namespace benzin
         BreakOnD3D12Error(m_D3D12Device, false);
         ReportLiveD3D12Objects(m_D3D12Device);
         SafeReleaseD3D12Object(m_D3D12Device);
-
-        BENZIN_INFO("Device destroyed");
     }
 
     std::shared_ptr<BufferResource> Device::CreateBufferResource(const BufferResource::Config& config, const std::string& debugName) const

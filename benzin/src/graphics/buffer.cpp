@@ -16,18 +16,16 @@ namespace benzin
         : Resource{ d3d12Resource }
         , m_Config{ config }
     {
-        SetDebugName(debugName.empty() ? std::to_string(g_BufferResourceCounter) : debugName);
-
-        BENZIN_INFO("{} created", GetDebugName());
-
+        SetDebugName(debugName.empty() ? std::to_string(g_BufferResourceCounter) : debugName, true);
         g_BufferResourceCounter++;
     }
 
-    uint64_t BufferResource::GetGPUVirtualAddressWithOffset(uint64_t offset) const
+    uint64_t BufferResource::GetGPUVirtualAddressBeginWith(uint64_t beginElement) const
     {
         BENZIN_ASSERT(m_D3D12Resource);
+        BENZIN_ASSERT(beginElement < m_Config.ElementCount);
 
-        return m_D3D12Resource->GetGPUVirtualAddress() + offset * m_Config.ElementSize;
+        return m_D3D12Resource->GetGPUVirtualAddress() + beginElement * m_Config.ElementSize;
     }
 
 } // namespace benzin

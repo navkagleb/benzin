@@ -18,8 +18,6 @@ namespace benzin
 
     Resource::~Resource()
     {
-        BENZIN_INFO("{} destroyed", detail::GetD3D12ObjectDebugName(m_D3D12Resource));
-
         SafeReleaseD3D12Object(m_D3D12Resource);
     }
 

@@ -15,10 +15,11 @@
 namespace benzin
 {
 
-    SwapChain::SwapChain(const Window& window, Device& device, CommandQueue& commandQueue)
+    static size_t g_DefaultBackBufferCount = 2;
+
+    SwapChain::SwapChain(const Window& window, Device& device, CommandQueue& commandQueue, const char* debugName)
     {
-        const size_t backBufferCount = 2;
-        m_BackBuffers.resize(backBufferCount);
+        m_BackBuffers.resize(g_DefaultBackBufferCount);
 
         // DXGI Factory
         {
@@ -60,20 +61,18 @@ namespace benzin
             BENZIN_D3D12_ASSERT(dxgiSwapChain1->QueryInterface(IID_PPV_ARGS(&m_DXGISwapChain3)));
 
             m_DXGISwapChain3->SetMaximumFrameLatency(2);
+            
+            SetDebugName(debugName);
         }
 
         EnumerateAdapters();
         ResizeBackBuffers(device, window.GetWidth(), window.GetHeight());
-
-        BENZIN_INFO("SwapChain created");
     }
 
     SwapChain::~SwapChain()
     {
         SafeReleaseD3D12Object(m_DXGISwapChain3);
         SafeReleaseD3D12Object(m_DXGIFactory4);
-
-        BENZIN_INFO("SwapChain destroyed");
     }
 
     std::shared_ptr<TextureResource>& SwapChain::GetCurrentBackBuffer()

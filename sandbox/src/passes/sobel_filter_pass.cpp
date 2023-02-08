@@ -20,7 +20,7 @@ namespace sandbox
         const uint32_t width = input.GetConfig().Width;
         const uint32_t height = input.GetConfig().Height;
 
-        graphicsCommandList.SetPipelineState(m_PipelineState);
+        graphicsCommandList.SetPipelineState(*m_PipelineState);
         graphicsCommandList.SetComputeRootSignature(*m_RootSignature);
 
         graphicsCommandList.SetComputeDescriptorTable(0, input.GetShaderResourceView());
@@ -91,11 +91,11 @@ namespace sandbox
 
         const benzin::ComputePipelineState::Config pipelineStateConfig
         {
-            .RootSignature{ m_RootSignature.get() },
-            .ComputeShader{ m_Shader.get() }
+            .RootSignature{ *m_RootSignature },
+            .ComputeShader{ *m_Shader }
         };
 
-        m_PipelineState = benzin::ComputePipelineState(device, pipelineStateConfig);
+        m_PipelineState = std::make_unique<benzin::ComputePipelineState>(device, pipelineStateConfig, "SobelFilter");
     }
 
 } // namespace sandbox

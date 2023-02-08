@@ -10,24 +10,24 @@ namespace sandbox
     namespace
     {
 
-        constexpr int32_t g_ThreadPerGroupCount{ 256 };
-        constexpr int32_t g_MaxBlurRadius{ 5 };
+        constexpr int32_t g_ThreadPerGroupCount = 256;
+        constexpr int32_t g_MaxBlurRadius = 5;
 
         std::vector<float> CalcGaussWeights(float sigma)
         {
-            const float twoSigma2{ 2.0f * sigma * sigma };
-            const auto blurRadius{ static_cast<int32_t>(std::ceil(2.0f * sigma)) };
+            const auto twoSigma2 = 2.0f * sigma * sigma;
+            const auto blurRadius = static_cast<int32_t>(std::ceil(2.0f * sigma));
 
             BENZIN_ASSERT(blurRadius <= g_MaxBlurRadius);
 
             std::vector<float> weights;
             weights.reserve(2 * blurRadius + 1);
 
-            float weightSum{ 0.0f };
+            float weightSum = 0.0f;
 
             for (int32_t i = -blurRadius; i < blurRadius + 1; ++i)
             {
-                const auto x{ static_cast<float>(i) };
+                const auto x = static_cast<float>(i);
 
                 weightSum += weights.emplace_back(std::expf(-x * x / twoSigma2));
             }
@@ -60,17 +60,17 @@ namespace sandbox
         graphicsCommandList.SetResourceBarrier(*m_BlurMaps[0], benzin::Resource::State::GenericRead);
         graphicsCommandList.SetResourceBarrier(*m_BlurMaps[1], benzin::Resource::State::UnorderedAccess);
 
-        const std::vector<float> horizontalWeights = CalcGaussWeights(props.HorizontalBlurSigma);
-        const uint32_t horizontalBlurRadius = horizontalWeights.size() / 2;
+        const auto horizontalWeights = CalcGaussWeights(props.HorizontalBlurSigma);
+        const auto horizontalBlurRadius = static_cast<uint32_t>(horizontalWeights.size()) / 2;
 
-        const std::vector<float> verticalWeights = CalcGaussWeights(props.VerticalBlurSigma);
-        const uint32_t verticalBlurRadius = verticalWeights.size() / 2;
+        const auto verticalWeights = CalcGaussWeights(props.VerticalBlurSigma);
+        const auto verticalBlurRadius = static_cast<uint32_t>(verticalWeights.size()) / 2;
 
         for (uint32_t i = 0; i < props.BlurCount; ++i)
         {
             // Horizontal Blur pass
             {
-                graphicsCommandList.SetPipelineState(m_HorizontalPSO);
+                graphicsCommandList.SetPipelineState(*m_HorizontalPSO);
                 graphicsCommandList.SetComputeRootSignature(*m_RootSignature);
 
                 graphicsCommandList.SetCompute32BitConstants(0, &horizontalBlurRadius, 1, 0);
@@ -88,7 +88,7 @@ namespace sandbox
             
             // Vertical Blur pass
             {
-                graphicsCommandList.SetPipelineState(m_VerticalPSO);
+                graphicsCommandList.SetPipelineState(*m_VerticalPSO);
                 graphicsCommandList.SetComputeRootSignature(*m_RootSignature);
 
                 graphicsCommandList.SetCompute32BitConstants(0, &verticalBlurRadius, 1, 0);
@@ -182,15 +182,15 @@ namespace sandbox
                 }
             };
 
-            m_ShaderLibrary["horizontal_cs"] = std::make_unique<benzin::Shader>(shaderConfig);
+            m_ShaderLibrary["CS_Horizontal"] = std::make_unique<benzin::Shader>(shaderConfig);
 
             const benzin::ComputePipelineState::Config horizontalPSOConfig
             {
-                .RootSignature{ m_RootSignature.get() },
-                .ComputeShader{ m_ShaderLibrary["horizontal_cs"].get() }
+                .RootSignature{ *m_RootSignature },
+                .ComputeShader{ *m_ShaderLibrary.at("CS_Horizontal") }
             };
 
-            m_HorizontalPSO = benzin::ComputePipelineState{ device, horizontalPSOConfig };
+            m_HorizontalPSO = std::make_unique<benzin::ComputePipelineState>(device, horizontalPSOConfig, "HorizontalBlur");
         }
 
         // Vertical
@@ -206,15 +206,15 @@ namespace sandbox
                 }
             };
 
-            m_ShaderLibrary["vertical_cs"] = std::make_unique<benzin::Shader>(shaderConfig);
+            m_ShaderLibrary["CS_Vertical"] = std::make_unique<benzin::Shader>(shaderConfig);
 
             const benzin::ComputePipelineState::Config verticalPSOConfig
             {
-                .RootSignature{ m_RootSignature.get() },
-                .ComputeShader{ m_ShaderLibrary["vertical_cs"].get() }
+                .RootSignature{ *m_RootSignature },
+                .ComputeShader{ *m_ShaderLibrary.at("CS_Vertical") }
             };
 
-            m_VerticalPSO = benzin::ComputePipelineState{ device, verticalPSOConfig };
+            m_VerticalPSO = std::make_unique<benzin::ComputePipelineState>(device, verticalPSOConfig, "VerticalBlur");
         }
     }
 

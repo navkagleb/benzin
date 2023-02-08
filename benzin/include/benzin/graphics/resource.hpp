@@ -16,6 +16,10 @@ namespace benzin
     class Resource
     {
     public:
+        BENZIN_NON_COPYABLE(Resource)
+        BENZIN_NON_MOVEABLE(Resource)
+
+    public:
         friend class Device;
 
     public:

@@ -13,7 +13,7 @@ namespace benzin
         BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12Device, "Device")
 
     public:
-        Device();
+        explicit Device(const char* debugName = nullptr);
         ~Device();
 
     public:

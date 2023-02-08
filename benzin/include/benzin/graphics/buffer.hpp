@@ -39,7 +39,7 @@ namespace benzin
         const Config& GetConfig() const { return m_Config; }
 
     public:
-        uint64_t GetGPUVirtualAddressWithOffset(uint64_t offset) const;
+        uint64_t GetGPUVirtualAddressBeginWith(uint64_t beginElement) const;
 
     private:
         Config m_Config;

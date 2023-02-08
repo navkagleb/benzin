@@ -8,7 +8,7 @@
 namespace benzin
 {
 
-	CommandQueue::CommandQueue(Device& device)
+	CommandQueue::CommandQueue(Device& device, const char* debugName)
         : m_Fence{ device }
     {
         const D3D12_COMMAND_QUEUE_DESC commandQueueDesc
@@ -21,7 +21,7 @@ namespace benzin
 
         BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&m_D3D12CommandQueue)));
 
-        BENZIN_INFO("CommandQueue created");
+        SetDebugName(debugName);
 	}
 
     CommandQueue::~CommandQueue()
@@ -32,8 +32,6 @@ namespace benzin
         }
 
         SafeReleaseD3D12Object(m_D3D12CommandQueue);
-
-        BENZIN_INFO("CommandQueue destroyed");
     }
 
     void CommandQueue::Submit(GraphicsCommandList& commandList)

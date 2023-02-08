@@ -32,7 +32,7 @@ namespace benzin
 			IID_PPV_ARGS(&m_D3D12GraphicsCommandList)
 		));
 
-        SetDebugName(debugName.empty() ? std::to_string(g_GraphicsCommandListCounter) : debugName);
+        SetDebugName(debugName.empty() ? std::to_string(g_GraphicsCommandListCounter) : debugName, true);
 
 		Close();
 
@@ -51,8 +51,6 @@ namespace benzin
 
     GraphicsCommandList::~GraphicsCommandList()
     {
-        BENZIN_INFO("{} destroyed", GetDebugName());
-
         SafeReleaseD3D12Object(m_D3D12GraphicsCommandList);
         SafeReleaseD3D12Object(m_D3D12CommandAllocator);
     }
@@ -189,9 +187,7 @@ namespace benzin
 
     void GraphicsCommandList::SetGraphicsRawConstantBuffer(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement)
     {
-        const D3D12_GPU_VIRTUAL_ADDRESS d3d12GPUVirtualAddress{ bufferResource.GetD3D12Resource()->GetGPUVirtualAddress() + beginElement * bufferResource.GetConfig().ElementSize };
-
-        m_D3D12GraphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, d3d12GPUVirtualAddress);
+        m_D3D12GraphicsCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, bufferResource.GetGPUVirtualAddressBeginWith(beginElement));
     }
 
     void GraphicsCommandList::SetGraphicsRawShaderResource(uint32_t rootParameterIndex, const BufferResource& bufferResource, uint32_t beginElement)

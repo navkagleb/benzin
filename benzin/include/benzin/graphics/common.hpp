@@ -17,7 +17,8 @@ namespace benzin
     class Shader;
     struct BlendState;
     struct RasterizerState;
-    struct DepthStencilState;
+    struct DepthState;
+    struct StencilState;
 
     class Resource;
     class BufferResource;
@@ -25,35 +26,51 @@ namespace benzin
 
 #define BENZIN_D3D12_ASSERT(d3d12Call) BENZIN_ASSERT(SUCCEEDED(d3d12Call))
 
-#define BENZIN_DEBUG_NAME_D3D12_OBJECT(d3d12Object, prefix)                                     \
-	void SetDebugName(const std::string& name)                                                  \
-    {                                                                                           \
-        static std::string debugNamePrefix = prefix;                                            \
-                                                                                                \
-        detail::SetD3D12ObjectDebugName(d3d12Object, debugNamePrefix + "{" + name + "}");       \
-    }                                                                                           \
-                                                                                                \
-	std::string GetDebugName() const                                                            \
-    {                                                                                           \
-        return detail::GetD3D12ObjectDebugName(d3d12Object);                                    \
+#define BENZIN_DEBUG_NAME_D3D12_OBJECT(d3d12Object, prefix)                                                 \
+	void SetDebugName(const std::string& name, bool isCreated = false)                                      \
+    {                                                                                                       \
+        static std::string debugNamePrefix = prefix;                                                        \
+                                                                                                            \
+        detail::SetD3D12ObjectDebugName(d3d12Object, debugNamePrefix + "{" + name + "}", isCreated);        \
+    }                                                                                                       \
+                                                                                                            \
+	std::string GetDebugName() const                                                                        \
+    {                                                                                                       \
+        return detail::GetD3D12ObjectDebugName(d3d12Object);                                                \
     }
 
     namespace detail
     {
 
         template <typename T>
-        concept D3D12ObjectConcept = std::is_base_of_v<ID3D12Object, T> || std::is_base_of_v<IUnknown, T>;
+        concept IsD3D12Nameable = std::is_base_of_v<ID3D12Object, T> || std::is_base_of_v<IDXGIObject, T>;
 
-        template <D3D12ObjectConcept T>
-        void SetD3D12ObjectDebugName(T* d3d12Object, std::string_view name)
+        template <typename T>
+        concept IsD3D12Releasable = requires (T t)
         {
+            { t.Release() };
+        };
+
+        template <IsD3D12Nameable T>
+        inline void SetD3D12ObjectDebugName(T* d3d12Object, std::string_view name, bool isCreated)
+        {
+            if (name.empty())
+            {
+                return;
+            }
+
             BENZIN_ASSERT(d3d12Object);
 
             BENZIN_D3D12_ASSERT(d3d12Object->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(name.size()), name.data()));
+
+            if (isCreated)
+            {
+                BENZIN_INFO("D3D12 Object is created: {}", name.data());
+            }
         }
 
-        template <D3D12ObjectConcept T>
-        std::string GetD3D12ObjectDebugName(T* d3d12Object)
+        template <IsD3D12Nameable T>
+        inline std::string GetD3D12ObjectDebugName(T* d3d12Object)
         {
             BENZIN_ASSERT(d3d12Object);
 
@@ -61,19 +78,53 @@ namespace benzin
             std::string name;
             name.resize(bufferSize);
 
-            BENZIN_D3D12_ASSERT(d3d12Object->GetPrivateData(WKPDID_D3DDebugObjectName, &bufferSize, name.data()));
-            name.resize(bufferSize);
+            if (SUCCEEDED(d3d12Object->GetPrivateData(WKPDID_D3DDebugObjectName, &bufferSize, name.data())))
+            {
+                name.resize(bufferSize);
+                return name;
+            }
+            
+            name.clear();
 
             return name;
         }
 
+        template <IsD3D12Releasable T>
+        std::string_view GetD3D12ClassName()
+        {
+            const std::string_view d3d12ClassName = typeid(T).name();
+
+            size_t beginNameIndex = d3d12ClassName.find("ID3D12");
+
+            if (beginNameIndex == std::string_view::npos)
+            {
+                beginNameIndex = d3d12ClassName.find("IDXGI");
+            }
+
+            BENZIN_ASSERT(beginNameIndex != std::string_view::npos);
+
+            return d3d12ClassName.substr(beginNameIndex);
+        }
+
     } // namespace detail
 
-    template <detail::D3D12ObjectConcept T>
+    template <detail::IsD3D12Releasable T>
     inline void SafeReleaseD3D12Object(T*& d3d12Object)
     {
         if (d3d12Object)
         {
+            if constexpr (detail::IsD3D12Nameable<T>)
+            {
+                std::string debugName = detail::GetD3D12ObjectDebugName(d3d12Object);
+
+                if (debugName.empty())
+                {
+                    debugName = detail::GetD3D12ClassName<T>();
+                }
+
+                BENZIN_INFO("D3D12 Object is released: {}", debugName);
+            }
+
             d3d12Object->Release();
             d3d12Object = nullptr;
         }

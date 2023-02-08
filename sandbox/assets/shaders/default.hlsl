@@ -11,6 +11,7 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float4 PositionH : SV_Position;
+    float4 ShadowPositionH : ShadowPosition;
     float3 PositionW : Position;
     float3 NormalW : Normal;
     float3 TangentW : Tangent;
@@ -31,6 +32,8 @@ VS_OUTPUT VS_Main(VS_INPUT input, uint instanceID : SV_InstanceID)
     output.TangentW = mul(input.Tangent, (float3x3)entityData.World);
     output.TexCoord = mul(float4(input.TexCoord, 0.0f, 1.0f), materialData.Transform).xy;
     output.MaterialIndex = entityData.MaterialIndex;
+
+    output.ShadowPositionH = mul(float4(output.PositionW, 1.0f), g_Pass.ShadowTransform);
 
     return output;
 }
@@ -68,7 +71,9 @@ float4 PS_Main(VS_OUTPUT input) : SV_Target
     {
         const float4 ambientLight = g_Pass.AmbientLight * diffuseAlbedo;
 
-        const float3 shadowFactor = 1.0f;
+        float3 shadowFactor = 1.0f;
+        shadowFactor.x = CalculateShadowFactor(input.ShadowPositionH);
+
         const float4 light = light::ComputeLighting(
             g_Pass.Lights, 
             material, 

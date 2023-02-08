@@ -11,10 +11,7 @@ namespace benzin
         : Resource{ d3d12Resource }
         , m_Config{ config }
     {
-        SetDebugName(debugName.empty() ? std::to_string(g_TextureResourceCounter) : debugName);
-
-        BENZIN_INFO("{} created", GetDebugName());
-
+        SetDebugName(debugName.empty() ? std::to_string(g_TextureResourceCounter) : debugName, true);
         g_TextureResourceCounter++;
     }
 

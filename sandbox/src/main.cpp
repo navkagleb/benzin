@@ -27,9 +27,9 @@ namespace sandbox
             m_MainWindow = std::make_unique<benzin::Window>("Sandbox", 1280, 720);
             m_MainWindow->SetEventCallbackFunction([&](benzin::Event& event) { WindowEventCallback(event); });
 
-            m_Device = std::make_unique<benzin::Device>();
-            m_CommandQueue = std::make_unique<benzin::CommandQueue>(*m_Device);
-            m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Device, *m_CommandQueue);
+            m_Device = std::make_unique<benzin::Device>("Main");
+            m_CommandQueue = std::make_unique<benzin::CommandQueue>(*m_Device, "Main");
+            m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Device, *m_CommandQueue, "Main");
 
             m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);
             m_InstancingAndCullingLayer = m_LayerStack.Push<InstancingAndCullingLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);

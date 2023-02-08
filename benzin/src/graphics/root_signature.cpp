@@ -318,17 +318,12 @@ namespace benzin
             IID_PPV_ARGS(&m_D3D12RootSignature)
         ));
 
-        SetDebugName(!debugName ? std::to_string(g_RootSignatureCounter) : std::string{ debugName });
-
-        BENZIN_INFO("{} created", GetDebugName());
-
+        SetDebugName(!debugName ? std::to_string(g_RootSignatureCounter) : std::string{ debugName }, true);
         g_RootSignatureCounter++;
     }
 
     RootSignature::~RootSignature()
     {
-        BENZIN_INFO("{} destroyed", GetDebugName());
-
         SafeReleaseD3D12Object(m_D3D12RootSignature);
     }
 

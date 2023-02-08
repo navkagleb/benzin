@@ -1,5 +1,7 @@
 #pragma once
 
+#include "benzin/graphics/common.hpp"
+
 namespace benzin
 {
 
@@ -87,12 +89,107 @@ namespace benzin
             State State{ State::Disabled };
             ColorEquation ColorEquation;
             AlphaEquation AlphaEquation;
-            Channels Channels{ Channels::None };
+            Channels Channels{ Channels::All };
         };
 
         AlphaToCoverageState AlphaToCoverageState{ AlphaToCoverageState::Disabled };
         IndependentBlendState IndependentBlendState{ IndependentBlendState::Disabled };
         std::vector<RenderTargetState> RenderTargetStates;
+
+        static const BlendState& GetDefault();
+    };
+
+    struct DepthState
+    {
+        enum class TestState : bool
+        {
+            Disabled = false,
+            Enabled = true
+        };
+
+        enum class WriteState : bool
+        {
+            Disabled = D3D12_DEPTH_WRITE_MASK_ZERO,
+            Enabled = D3D12_DEPTH_WRITE_MASK_ALL
+        };
+
+        TestState TestState{ TestState::Enabled };
+        WriteState WriteState{ WriteState::Enabled };
+        ComparisonFunction ComparisonFunction{ ComparisonFunction::Less };
+
+        static const DepthState& GetDefault();
+        static const DepthState& GetLess();
+        static const DepthState& GetLessEqual();
+        static const DepthState& GetDisabled();
+    };
+
+    struct StencilState
+    {
+        enum class TestState : bool
+        {
+            Disabled = false,
+            Enabled = true
+        };
+
+        enum class Operation : uint8_t
+        {
+            Keep = D3D12_STENCIL_OP_KEEP,
+            Zero = D3D12_STENCIL_OP_ZERO,
+            Replace = D3D12_STENCIL_OP_REPLACE,
+            IncreateSatureated = D3D12_STENCIL_OP_INCR_SAT,
+            DescreaseSaturated = D3D12_STENCIL_OP_DECR_SAT,
+            Invert = D3D12_STENCIL_OP_INVERT,
+            Increase = D3D12_STENCIL_OP_INCR,
+            Decrease = D3D12_STENCIL_OP_DECR
+        };
+
+        struct Behaviour
+        {
+            Operation StencilFailOperation{ Operation::Keep };
+            Operation DepthFailOperation{ Operation::Keep };
+            Operation PassOperation{ Operation::Keep };
+            ComparisonFunction StencilFunction{ ComparisonFunction::Always };
+        };
+
+        TestState TestState{ TestState::Disabled };
+        uint8_t ReadMask{ 0xff };
+        uint8_t WriteMask{ 0xff };
+        Behaviour FrontFaceBehaviour;
+        Behaviour BackFaceBehaviour;
+
+        static const StencilState& GetDefault();
+    };
+
+    struct RasterizerState
+    {
+        enum class FillMode : uint8_t
+        {
+            Wireframe = D3D12_FILL_MODE_WIREFRAME,
+            Solid = D3D12_FILL_MODE_SOLID,
+        };
+
+        enum class CullMode : uint8_t
+        {
+            None = D3D12_CULL_MODE_NONE,
+            Front = D3D12_CULL_MODE_FRONT,
+            Back = D3D12_CULL_MODE_BACK
+        };
+
+        enum class TriangleOrder : bool
+        {
+            Clockwise = false,
+            Counterclockwise = true
+        };
+
+        FillMode FillMode{ FillMode::Solid };
+        CullMode CullMode{ CullMode::Back };
+        TriangleOrder TriangleOrder{ TriangleOrder::Clockwise };
+        int32_t DepthBias{ D3D12_DEFAULT_DEPTH_BIAS }; // In Shader = DepthBias / 2 ^ 24
+        float DepthBiasClamp{ D3D12_DEFAULT_DEPTH_BIAS_CLAMP };
+        float SlopeScaledDepthBias{ D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS };
+
+        static const RasterizerState& GetDefault();
+        static const RasterizerState& GetSolidNoCulling();
     };
 
 } // namespace benzin

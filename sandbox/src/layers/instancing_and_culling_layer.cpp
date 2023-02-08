@@ -7,9 +7,8 @@
 
 #include <benzin/system/event_dispatcher.hpp>
 
-#include <benzin/graphics/depth_stencil_state.hpp>
+#include <benzin/graphics/render_states.hpp>
 #include <benzin/graphics/mapped_data.hpp>
-#include <benzin/graphics/rasterizer_state.hpp>
 #include <benzin/graphics/resource_view_builder.hpp>
 #include <benzin/graphics/resource_loader.hpp>
 
@@ -30,6 +29,7 @@ namespace sandbox
             alignas(16) DirectX::XMMATRIX View{};
             alignas(16) DirectX::XMMATRIX Projection{};
             alignas(16) DirectX::XMMATRIX ViewProjection{};
+            alignas(16) DirectX::XMMATRIX ShadowTransform{};
             alignas(16) DirectX::XMFLOAT3 CameraPosition{};
             alignas(16) DirectX::XMFLOAT4 AmbientLight{};
             alignas(16) std::array<benzin::Light, 16> Lights;
@@ -65,40 +65,126 @@ namespace sandbox
 
     } // namespace per
 
-    //////////////////////////////////////////////////////////////////////////
-    //// PointLightController
-    //////////////////////////////////////////////////////////////////////////
-    InstancingAndCullingLayer::PointLightController::PointLightController(benzin::Light* light)
-        : m_Light{ light }
-    {}
-
-    void InstancingAndCullingLayer::PointLightController::OnImGuiRender()
+    namespace
     {
-        BENZIN_ASSERT(m_Light);
 
-        ImGui::Begin("Point Light Controller");
+        struct SphericalVector
         {
-            ImGui::DragFloat3("Position", reinterpret_cast<float*>(&m_Light->Position), 0.1f);
-            ImGui::ColorEdit3("Strength", reinterpret_cast<float*>(&m_Light->Strength));
+            float Theta{ 0.0f };    // XZ
+            float Phi{ 0.0f };      // Y
+            float Radius{ 1.0f };
+        };
 
-            ImGui::DragFloat("Falloff Start", &m_Light->FalloffStart, 0.1f, 0.0f, m_Light->FalloffEnd);
+        DirectX::XMVECTOR SphericalToCartesian(float theta, float phi, float radius = 1.0f)
+        {
+            return DirectX::XMVectorSet(
+                radius * DirectX::XMScalarSin(phi) * DirectX::XMScalarSin(theta),
+                radius * DirectX::XMScalarCos(phi),
+                radius * DirectX::XMScalarSin(phi) * DirectX::XMScalarCos(theta),
+                0.0f
+            );
+        }
 
-            if (ImGui::DragFloat("Falloff End", &m_Light->FalloffEnd, 0.1f, 0.0f))
+        DirectX::XMVECTOR SphericalToCartesian(const SphericalVector& sphericalVector)
+        {
+            return SphericalToCartesian(sphericalVector.Theta, sphericalVector.Phi, sphericalVector.Radius);
+        }
+
+        struct PickedEntityComponent
+        {
+            uint32_t InstanceIndex{ 0 };
+            uint32_t TriangleIndex{ 0 };
+        };
+
+        class DirectionalLightController
+        {
+        public:
+            void SetDirectionalLight(benzin::Light* directionalLight) { m_DirectionalLight = directionalLight; }
+
+        public:
+            DirectX::XMFLOAT3 GetPositionForMesh()
             {
-                if (m_Light->FalloffStart > m_Light->FalloffEnd)
+                DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&m_DirectionalLight->Direction);
+                position = DirectX::XMVectorScale(position, -m_SphericalCoordinates.Radius);
+
+                DirectX::XMFLOAT3 position3;
+                DirectX::XMStoreFloat3(&position3, position);
+
+                return position3;
+            }
+
+            void OnImGuiRender()
+            {
+                if (!m_DirectionalLight)
                 {
-                    m_Light->FalloffStart = m_Light->FalloffEnd;
+                    return;
+                }
+
+                ImGui::Begin("DirectionalLightController");
+                {
+                    ImGui::ColorEdit3("Strength", reinterpret_cast<float*>(&m_DirectionalLight->Strength));
+                    ImGui::DragFloat("Radius", &m_SphericalCoordinates.Radius, 1.0f, 10.0f);
+                    ImGui::SliderAngle("Theta (XZ)", &m_SphericalCoordinates.Theta, -180.0f, 180.0f);
+                    ImGui::SliderAngle("Phi (Y)", &m_SphericalCoordinates.Phi, -180.0f, 180.0f);
+
+                    DirectX::XMStoreFloat3(
+                        &m_DirectionalLight->Direction,
+                        DirectX::XMVectorSubtract(
+                            DirectX::XMVECTOR{},
+                            SphericalToCartesian(m_SphericalCoordinates.Theta, m_SphericalCoordinates.Phi)
+                        )
+                    );
+                }
+                ImGui::End();
+            }
+
+            void AddToTheta(float degrees)
+            {
+                float& threta = m_SphericalCoordinates.Theta;
+
+                threta += DirectX::XMConvertToRadians(degrees);
+
+                if (threta < -DirectX::XM_PI)
+                {
+                    threta += DirectX::XM_2PI;
+                }
+
+                if (threta > DirectX::XM_PI)
+                {
+                    threta -= DirectX::XM_2PI;
                 }
             }
-        }
-        ImGui::End();
-    }
 
-    struct PickedEntityComponent
-    {
-        uint32_t InstanceIndex{ 0 };
-        uint32_t TriangleIndex{ 0 };
-    };
+            void AddToPhi(float degrees)
+            {
+                float& phi = m_SphericalCoordinates.Phi;
+
+                phi += DirectX::XMConvertToRadians(degrees);
+
+                if (phi < -DirectX::XM_PI)
+                {
+                    phi += DirectX::XM_2PI;
+                }
+
+                if (phi > DirectX::XM_PI)
+                {
+                    phi -= DirectX::XM_2PI;
+                }
+            }
+
+        private:
+            benzin::Light* m_DirectionalLight{ nullptr };
+            SphericalVector m_SphericalCoordinates
+            {
+                .Theta{ DirectX::XMConvertToRadians(-132) },
+                .Phi{ DirectX::XMConvertToRadians(-68) },
+                .Radius{ 10.0f }
+            };
+        };
+
+        DirectionalLightController g_DirectionalLightController;
+
+    } // anonymous namespace
 
     //////////////////////////////////////////////////////////////////////////
     /// InstancingAndCullingLayer
@@ -119,6 +205,7 @@ namespace sandbox
         , m_GraphicsCommandList{ device, "Default" }
         , m_PostEffectsGraphicsCommandList{ device, "PostEffects" }
         , m_RenderTargetCubeMap{ device, g_RenderTargetCubeMapWidth, g_RenderTargetCubeMapHeight }
+        , m_ShadowMap{ device, 2048, 2048 }
     {}
 
     bool InstancingAndCullingLayer::OnAttach()
@@ -173,11 +260,33 @@ namespace sandbox
     void InstancingAndCullingLayer::OnUpdate(float dt)
     {
         m_FlyCameraController.OnUpdate(dt);
+        g_DirectionalLightController.AddToTheta(10.0f * dt);
 
         // Pass ConstantBuffer
         {
             benzin::MappedData bufferData{ *m_Buffers["PassConstantBuffer"] };
-            
+        
+            // ShadowMap
+            {
+                const DirectX::XMFLOAT3 scenePosition{ 0.0f, 0.0f, 0.0f };
+                const float sceneRadius = 18.0f;
+                m_ShadowMap.SetSceneBounds(scenePosition, sceneRadius);
+
+                const benzin::Camera& lightCamera = m_ShadowMap.GetCamera();
+
+                // Copy to Constant Buffer
+                const cb::Pass constants
+                {
+                    .View{ DirectX::XMMatrixTranspose(lightCamera.GetViewMatrix()) },
+                    .Projection{ DirectX::XMMatrixTranspose(lightCamera.GetProjectionMatrix()) },
+                    .ViewProjection{ DirectX::XMMatrixTranspose(lightCamera.GetViewProjectionMatrix()) },
+                    .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&lightCamera.GetPosition()) },
+                    .AmbientLight{ m_AmbientLight }
+                };
+
+                bufferData.Write(&constants, sizeof(constants), m_Buffers["PassConstantBuffer"]->GetConfig().ElementSize * 7);
+            }
+
             // Main pass
             {
                 cb::Pass constants
@@ -185,6 +294,7 @@ namespace sandbox
                     .View{ DirectX::XMMatrixTranspose(m_Camera.GetViewMatrix()) },
                     .Projection{ DirectX::XMMatrixTranspose(m_Camera.GetProjectionMatrix()) },
                     .ViewProjection{ DirectX::XMMatrixTranspose(m_Camera.GetViewProjectionMatrix()) },
+                    .ShadowTransform{ DirectX::XMMatrixTranspose(m_ShadowMap.GetShadowTransform()) },
                     .CameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition()) },
                     .AmbientLight{ m_AmbientLight }
                 };
@@ -200,7 +310,7 @@ namespace sandbox
                 bufferData.Write(&constants, sizeof(constants));
             }
             
-
+            // RenderTargetCubeMap
             for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
             {
                 const benzin::Camera& camera = m_RenderTargetCubeMap.GetCamera(faceIndex);
@@ -241,13 +351,8 @@ namespace sandbox
 
                 if (entity->HasComponent<benzin::Light>())
                 {
-                    const auto& lightComponent = entity->GetComponent<benzin::Light>();
                     auto& instanceComponent = instancesComponent.Instances[0];
-                    
-                    DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&lightComponent.Direction);
-                    position = DirectX::XMVectorScale(position, -100.0f);
-
-                    DirectX::XMStoreFloat3(&instanceComponent.Transform.Translation, position);
+                    instanceComponent.Transform.Translation = g_DirectionalLightController.GetPositionForMesh();
                 }
 
                 for (const auto& instanceComponent : instancesComponent.Instances)
@@ -342,6 +447,28 @@ namespace sandbox
         {
             m_GraphicsCommandList.Reset();
 
+            // ShadowMap
+            {
+                auto& shadowMap = m_ShadowMap.GetShadowMap();
+
+                m_GraphicsCommandList.SetViewport(m_ShadowMap.GetViewport());
+                m_GraphicsCommandList.SetScissorRect(m_ShadowMap.GetScissorRect());
+
+                m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
+                m_GraphicsCommandList.SetGraphicsRootSignature(*m_RootSignature);
+
+                m_GraphicsCommandList.SetResourceBarrier(*shadowMap, benzin::Resource::State::DepthWrite);
+
+                m_GraphicsCommandList.ClearDepthStencil(shadowMap->GetDepthStencilView());
+                m_GraphicsCommandList.SetRenderTarget(nullptr, &shadowMap->GetDepthStencilView());
+
+                m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("PassConstantBuffer"), 7);
+
+                RenderEntities(*m_PipelineStates.at("ShadowMap"), m_DefaultEntities);
+
+                m_GraphicsCommandList.SetResourceBarrier(*shadowMap, benzin::Resource::State::Present);
+            }
+
             // Render to cube map
             {
                 m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), benzin::Resource::State::RenderTarget);
@@ -364,12 +491,12 @@ namespace sandbox
                     );
 
                     m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("PassConstantBuffer"), i + 1);
-                    m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("environment")->GetShaderResourceView());
+                    m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("Environment")->GetShaderResourceView());
                     
-                    RenderEntities(m_PipelineStates.at("default"), m_DefaultEntities);
+                    RenderEntities(*m_PipelineStates.at("Default"), m_DefaultEntities);
 
-                    const benzin::Entity* environmentEntity = m_Entities.at("environment").get();
-                    RenderEntities(m_PipelineStates.at("environment"), std::span{ &environmentEntity, 1});
+                    const benzin::Entity* environmentEntity = m_Entities.at("Environment").get();
+                    RenderEntities(*m_PipelineStates.at("Environment"), std::span{ &environmentEntity, 1});
                 }
 
                 m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), benzin::Resource::State::Present);
@@ -392,21 +519,22 @@ namespace sandbox
 
             m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("PassConstantBuffer"));
             m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_RenderTargetCubeMap.GetCubeMap()->GetShaderResourceView());
+            m_GraphicsCommandList.SetGraphicsDescriptorTable(4, m_ShadowMap.GetShadowMap()->GetShaderResourceView());
             
             const benzin::Entity* dynamicSphereEntity = m_Entities.at("mirror_sphere").get();
-            RenderEntities(m_PipelineStates.at("default"), std::span{ &dynamicSphereEntity, 1 });
+            RenderEntities(*m_PipelineStates.at("Default"), std::span{ &dynamicSphereEntity, 1 });
 
-            m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("environment")->GetShaderResourceView());
+            m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("Environment")->GetShaderResourceView());
             
-            RenderEntities(m_PipelineStates.at("default"), m_DefaultEntities);
+            RenderEntities(*m_PipelineStates.at("Default"), m_DefaultEntities);
             
-            const benzin::Entity* pickedEntity = m_Entities.at("picked").get();
-            RenderEntities(m_PipelineStates.at("picked"), std::span{ &pickedEntity, 1 });
+            const benzin::Entity* pickedEntity = m_Entities.at("Picked").get();
+            RenderEntities(*m_PipelineStates.at("Picked"), std::span{ &pickedEntity, 1 });
 
-            RenderEntities(m_PipelineStates.at("light_source"), m_LightSourceEntities);
+            RenderEntities(*m_PipelineStates.at("LightSource"), m_LightSourceEntities);
 
-            const benzin::Entity* environmentEntity = m_Entities.at("environment").get();
-            RenderEntities(m_PipelineStates.at("environment"), std::span{ &environmentEntity, 1});
+            const benzin::Entity* environmentEntity = m_Entities.at("Environment").get();
+            RenderEntities(*m_PipelineStates.at("Environment"), std::span{ &environmentEntity, 1});
 
             m_GraphicsCommandList.SetResourceBarrier(*renderTarget, benzin::Resource::State::Present);
             m_GraphicsCommandList.SetResourceBarrier(*depthStencil, benzin::Resource::State::Present);
@@ -432,7 +560,7 @@ namespace sandbox
     void InstancingAndCullingLayer::OnImGuiRender(float dt)
     {
         m_FlyCameraController.OnImGuiRender(dt);
-        m_PointLightController.OnImGuiRender();
+        g_DirectionalLightController.OnImGuiRender();
 
         ImGui::Begin("Culling Data");
         {   
@@ -448,7 +576,7 @@ namespace sandbox
 
         ImGui::Begin("Picked Entity");
         {
-            const auto& pickedEntity = m_Entities["picked"];
+            const auto& pickedEntity = m_Entities["Picked"];
             const auto& instancesComponent = pickedEntity->GetComponent<benzin::InstancesComponent>();
 
             if (!instancesComponent.Instances[0].IsVisible)
@@ -464,30 +592,42 @@ namespace sandbox
         }
         ImGui::End();
 
-        ImGui::Begin("DynamicCube RenderItem");
-        {
-            auto& dynamicSphereEntity = m_Entities["mirror_sphere"];
-            auto& instanceComponent = dynamicSphereEntity->GetComponent<benzin::InstancesComponent>().Instances[0];
-
-            ImGui::DragFloat3("Position", reinterpret_cast<float*>(&instanceComponent.Transform.Translation), 0.1f);
-            
-            m_RenderTargetCubeMap.SetPosition(DirectX::XMLoadFloat3(&instanceComponent.Transform.Translation));
-        }
-        ImGui::End();
-
         ImGui::Begin("Textures");
         {
-            for (const auto& [name, texture] : m_Textures)
+            static const auto displayTexture = [&](float widgetWidth, const std::shared_ptr<benzin::TextureResource>& texture)
             {
-                if (texture->HasShaderResourceView())
-                {
-                    const uint64_t gpuHandle = texture->GetShaderResourceView().GetGPUHandle();
-                    const float width = texture->GetConfig().Width / 2.0f;
-                    const float height = texture->GetConfig().Height / 2.0f;
+                BENZIN_ASSERT(texture->HasShaderResourceView());
 
-                    ImGui::Image(reinterpret_cast<ImTextureID>(gpuHandle), ImVec2{ width, height });
+                const uint64_t gpuHandle = texture->GetShaderResourceView().GetGPUHandle();
+                const float textureAspectRatio = static_cast<float>(texture->GetConfig().Width) / static_cast<float>(texture->GetConfig().Height);
+
+                const ImVec2 textureSize
+                {
+                    widgetWidth,
+                    widgetWidth / textureAspectRatio
+                };
+
+                ImGui::Text("%s", texture->GetDebugName().c_str());
+                ImGui::Image(reinterpret_cast<ImTextureID>(gpuHandle), textureSize);
+            };
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
+
+            const float widgetWidth = ImGui::GetContentRegionAvail().x;
+
+            {
+                displayTexture(widgetWidth, m_ShadowMap.GetShadowMap());
+
+                for (const auto& [name, texture] : m_Textures)
+                {
+                    if (!texture->GetConfig().IsCubeMap && texture->HasShaderResourceView())
+                    {
+                        displayTexture(widgetWidth, texture);
+                    }
                 }
             }
+
+            ImGui::PopStyleVar();
         }
         ImGui::End();
     }
@@ -507,7 +647,7 @@ namespace sandbox
         textures.push_back(loadTextureFromDDSFile("green", L"assets/textures/green.dds"));
         textures.push_back(loadTextureFromDDSFile("blue", L"assets/textures/blue.dds"));
         textures.push_back(loadTextureFromDDSFile("white", L"assets/textures/white.dds"));
-        textures.push_back(loadTextureFromDDSFile("environment", L"assets/textures/environment.dds"));
+        textures.push_back(loadTextureFromDDSFile("Environment", L"assets/textures/environment.dds"));
         textures.push_back(loadTextureFromDDSFile("bricks2", L"assets/textures/bricks2.dds"));
         textures.push_back(loadTextureFromDDSFile("bricks2_normalmap", L"assets/textures/bricks2_normalmap.dds"));
         textures.push_back(loadTextureFromDDSFile("default_normalmap", L"assets/textures/default_normalmap.dds"));
@@ -527,24 +667,33 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitMesh()
     {
-        const benzin::BoxGeometryConfig boxProps
+        const benzin::BoxGeometryConfig boxConfig
         {
             .Width{ 1.0f },
             .Height{ 1.0f },
             .Depth{ 1.0f }
         };
 
-        const benzin::SphereGeometryConfig sphereProps
+        const benzin::SphereGeometryConfig sphereConfig
         {
             .Radius{ 1.0f },
             .SliceCount{ 16 },
             .StackCount{ 16 }
         };
 
+        const benzin::GridGeometryConfig gridConfig
+        {
+            .Width{ 10.0f },
+            .Depth{ 10.0f },
+            .RowCount{ 2 },
+            .ColumnCount{ 2 }
+        };
+
         const std::unordered_map<std::string, benzin::MeshData> submeshes
         {
-            { "box", benzin::GeometryGenerator::GenerateBox(boxProps) },
-            { "sphere", benzin::GeometryGenerator::GenerateSphere(sphereProps) }
+            { "Box", benzin::GeometryGenerator::GenerateBox(boxConfig) },
+            { "Sphere", benzin::GeometryGenerator::GenerateSphere(sphereConfig) },
+            { "Grid", benzin::GeometryGenerator::GenerateGrid(gridConfig) },
         };
 
         m_Mesh.SetSubMeshes(m_Device, submeshes);
@@ -562,7 +711,7 @@ namespace sandbox
             const benzin::BufferResource::Config config
             {
                 .ElementSize{ sizeof(cb::Pass) },
-                .ElementCount{ 7 },
+                .ElementCount{ 1 + 6 + 1 },
                 .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
             };
 
@@ -576,7 +725,7 @@ namespace sandbox
             const benzin::BufferResource::Config config
             {
                 .ElementSize{ sizeof(cb::Entity) },
-                .ElementCount{ 1004 },
+                .ElementCount{ 1005 },
                 .Flags{ benzin::BufferResource::Flags::Dynamic }
             };
 
@@ -637,8 +786,18 @@ namespace sandbox
                 .Range
                 {
                     .Type{ benzin::Descriptor::Type::ShaderResourceView },
-                    .DescriptorCount{ 10 },
+                    .DescriptorCount{ 1 },
                     .BaseShaderRegister{ 1 }
+                }
+            });
+
+            config.RootParameters.emplace_back(benzin::RootParameter::SingleDescriptorTableConfig
+            {
+                .Range
+                {
+                    .Type{ benzin::Descriptor::Type::ShaderResourceView },
+                    .DescriptorCount{ 10 },
+                    .BaseShaderRegister{ 2 }
                 }
             });
         }
@@ -651,6 +810,7 @@ namespace sandbox
             config.StaticSamplers.push_back(benzin::StaticSampler::GetLinearClamp({ 3 }));
             config.StaticSamplers.push_back(benzin::StaticSampler::GetAnisotropicWrap({ 4 }));
             config.StaticSamplers.push_back(benzin::StaticSampler::GetAnisotropicClamp({ 5 }));
+            config.StaticSamplers.push_back(benzin::StaticSampler::GetDefaultForShadow({ 6 }));
         }
 
         m_RootSignature = std::make_unique<benzin::RootSignature>(m_Device, config, "Default");
@@ -658,46 +818,7 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitPipelineState()
     {
-        const benzin::Shader* vertexShader = nullptr;
-        const benzin::Shader* pixelShader = nullptr;
-
-        // Init Shaders
-        {
-            const std::wstring_view filepath = L"assets/shaders/default.hlsl";
-
-            const benzin::Shader::Config vertexShaderConfig
-            {
-                .Type{ benzin::Shader::Type::Vertex },
-                .Filepath{ filepath },
-                .EntryPoint{ "VS_Main" }
-            };
-
-            const benzin::Shader::Config pixelShaderConfig
-            {
-                .Type{ benzin::Shader::Type::Pixel },
-                .Filepath{ filepath },
-                .EntryPoint{ "PS_Main" },
-                .Defines
-                {
-                    { magic_enum::enum_name(per::InstancingAndCulling::USE_LIGHTING), "" },
-                    { magic_enum::enum_name(per::InstancingAndCulling::DIRECTIONAL_LIGHT_COUNT), "1" },
-                    { magic_enum::enum_name(per::InstancingAndCulling::POINT_LIGHT_COUNT), "0" },
-                }
-            };
-
-            m_ShaderLibrary["default_vs"] = std::make_shared<benzin::Shader>(vertexShaderConfig);
-            m_ShaderLibrary["default_ps"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
-
-            vertexShader = m_ShaderLibrary["default_vs"].get();
-            pixelShader = m_ShaderLibrary["default_ps"].get();
-        }
-
-        const benzin::RasterizerState rasterizerState
-        {
-            .FillMode{ benzin::FillMode::Solid },
-            .CullMode{ benzin::CullMode::None },
-            .TriangleOrder{ benzin::TriangleOrder::Clockwise }
-        };
+        const auto& defaultRasterizerState = benzin::RasterizerState::GetSolidNoCulling();
 
         const benzin::InputLayout inputLayout
         {
@@ -709,68 +830,72 @@ namespace sandbox
 
         // Default PSO
         {
-            const benzin::DepthStencilState depthStencilState
+            const benzin::Shader* vertexShader = nullptr;
+            const benzin::Shader* pixelShader = nullptr;
+
+            // Init Shaders
             {
-                .DepthState
+                const std::wstring_view filepath = L"assets/shaders/default.hlsl";
+
+                const benzin::Shader::Config vertexShaderConfig
                 {
-                    .TestState{ benzin::DepthState::TestState::Enabled },
-                    .WriteState{ benzin::DepthState::WriteState::Enabled },
-                    .ComparisonFunction{ benzin::ComparisonFunction::Less }
-                },
-                .StencilState
+                    .Type{ benzin::Shader::Type::Vertex },
+                    .Filepath{ filepath },
+                    .EntryPoint{ "VS_Main" }
+                };
+
+                const benzin::Shader::Config pixelShaderConfig
                 {
-                    .TestState{ benzin::StencilState::TestState::Disabled },
-                }
-            };
+                    .Type{ benzin::Shader::Type::Pixel },
+                    .Filepath{ filepath },
+                    .EntryPoint{ "PS_Main" },
+                    .Defines
+                    {
+                        { magic_enum::enum_name(per::InstancingAndCulling::USE_LIGHTING), "" },
+                        { magic_enum::enum_name(per::InstancingAndCulling::DIRECTIONAL_LIGHT_COUNT), "1" },
+                        { magic_enum::enum_name(per::InstancingAndCulling::POINT_LIGHT_COUNT), "0" },
+                    }
+                };
+
+                m_ShaderLibrary["VS_Default"] = std::make_shared<benzin::Shader>(vertexShaderConfig);
+                m_ShaderLibrary["PS_Default"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
+
+                vertexShader = m_ShaderLibrary["VS_Default"].get();
+                pixelShader = m_ShaderLibrary["PS_Default"].get();
+            }
 
             const benzin::GraphicsPipelineState::Config config
             {
-                .RootSignature{ m_RootSignature.get() },
-                .VertexShader{ vertexShader },
+                .RootSignature{ *m_RootSignature },
+                .VertexShader{ *vertexShader },
                 .PixelShader{ pixelShader },
-                .BlendState{ nullptr },
-                .RasterizerState{ &rasterizerState },
-                .DepthStecilState{ &depthStencilState },
+                .RasterizerState{ &defaultRasterizerState },
+                .DepthState{ &benzin::DepthState::GetLess() },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["default"] = benzin::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["Default"] = std::make_unique<benzin::GraphicsPipelineState>(m_Device, config, "Default");
         }
 
-        // PSO for picked RenderItem
+        // PSO for picked entity
         {
-            const benzin::DepthStencilState depthStencilState
-            {
-                .DepthState
-                {
-                    .TestState{ benzin::DepthState::TestState::Enabled },
-                    .WriteState{ benzin::DepthState::WriteState::Enabled },
-                    .ComparisonFunction{ benzin::ComparisonFunction::LessEqual }
-                },
-                    .StencilState
-                {
-                    .TestState{ benzin::StencilState::TestState::Disabled },
-                }
-            };
-
             const benzin::GraphicsPipelineState::Config config
             {
-                .RootSignature{ m_RootSignature.get() },
-                .VertexShader{ vertexShader },
-                .PixelShader{ pixelShader },
-                .BlendState{ nullptr },
-                .RasterizerState{ &rasterizerState },
-                .DepthStecilState{ &depthStencilState },
+                .RootSignature{ *m_RootSignature },
+                .VertexShader{ *m_ShaderLibrary.at("VS_Default") },
+                .PixelShader{ m_ShaderLibrary.at("PS_Default").get() },
+                .RasterizerState{ &defaultRasterizerState },
+                .DepthState{ &benzin::DepthState::GetLessEqual() },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["picked"] = benzin::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["Picked"] = std::make_unique<benzin::GraphicsPipelineState>(m_Device, config, "Picked");
         }
 
         // PSO for light sources
@@ -789,51 +914,36 @@ namespace sandbox
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["light_source_ps"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
+                m_ShaderLibrary["PS_LightSource"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
 
-                vertexShader = m_ShaderLibrary["default_vs"].get();
-                pixelShader = m_ShaderLibrary["light_source_ps"].get();
+                vertexShader = m_ShaderLibrary["VS_Default"].get();
+                pixelShader = m_ShaderLibrary["PS_LightSource"].get();
             }
-
-            const benzin::DepthStencilState depthStencilState
-            {
-                .DepthState
-                {
-                    .TestState{ benzin::DepthState::TestState::Enabled },
-                    .WriteState{ benzin::DepthState::WriteState::Enabled },
-                    .ComparisonFunction{ benzin::ComparisonFunction::Less }
-                },
-                .StencilState
-                {
-                    .TestState{ benzin::StencilState::TestState::Disabled },
-                }
-            };
 
             const benzin::GraphicsPipelineState::Config config
             {
-                .RootSignature{ m_RootSignature.get() },
-                .VertexShader{ vertexShader },
+                .RootSignature{ *m_RootSignature },
+                .VertexShader{ *vertexShader },
                 .PixelShader{ pixelShader },
-                .BlendState{ nullptr },
-                .RasterizerState{ &rasterizerState },
-                .DepthStecilState{ &depthStencilState },
+                .RasterizerState{ &defaultRasterizerState },
+                .DepthState{ &benzin::DepthState::GetLess() },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["light_source"] = benzin::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["LightSource"] = std::make_unique<benzin::GraphicsPipelineState>(m_Device, config, "LightSource");
         }
 
-        // PSO for CubeMap
+        // PSO for Environment
         {
             const benzin::Shader* vertexShader = nullptr;
             const benzin::Shader* pixelShader = nullptr;
 
             // Init Shaders
             {
-                const std::wstring filepath{ L"assets/shaders/environment.hlsl" };
+                const std::wstring filepath = L"assets/shaders/environment.hlsl";
 
                 const benzin::Shader::Config vertexShaderConfig
                 {
@@ -849,48 +959,27 @@ namespace sandbox
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["environment_vs"] = std::make_shared<benzin::Shader>(vertexShaderConfig);
-                m_ShaderLibrary["environment_ps"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
+                m_ShaderLibrary["VS_Environment"] = std::make_shared<benzin::Shader>(vertexShaderConfig);
+                m_ShaderLibrary["PS_Environment"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
 
-                vertexShader = m_ShaderLibrary["environment_vs"].get();
-                pixelShader = m_ShaderLibrary["environment_ps"].get();
+                vertexShader = m_ShaderLibrary["VS_Environment"].get();
+                pixelShader = m_ShaderLibrary["PS_Environment"].get();
             }
-
-            const benzin::RasterizerState rasterizerState
-            {
-                .FillMode{ benzin::FillMode::Solid },
-                .CullMode{ benzin::CullMode::None },
-                .TriangleOrder{ benzin::TriangleOrder::Clockwise }
-            };
-
-            const benzin::DepthStencilState depthStencilState
-            {
-                .DepthState
-                {
-                    .TestState{ benzin::DepthState::TestState::Enabled },
-                    .WriteState{ benzin::DepthState::WriteState::Enabled },
-                    .ComparisonFunction{ benzin::ComparisonFunction::LessEqual }
-                },
-                .StencilState
-                {
-                    .TestState{ benzin::StencilState::TestState::Disabled },
-                }
-            };
 
             const benzin::GraphicsPipelineState::Config config
             {
-                .RootSignature{ m_RootSignature.get() },
-                .VertexShader{ vertexShader },
+                .RootSignature{ *m_RootSignature },
+                .VertexShader{ *vertexShader },
                 .PixelShader{ pixelShader },
-                .RasterizerState{ &rasterizerState },
-                .DepthStecilState{ &depthStencilState },
+                .RasterizerState{ &defaultRasterizerState },
+                .DepthState{ &benzin::DepthState::GetLessEqual() },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
-            m_PipelineStates["environment"] = benzin::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["Environment"] = std::make_unique<benzin::GraphicsPipelineState>(m_Device, config, "Environment");
         }
 
         // Fullscreen
@@ -916,33 +1005,77 @@ namespace sandbox
                     .EntryPoint{ "PS_Main" }
                 };
 
-                m_ShaderLibrary["fullscreen_vs"] = std::make_shared<benzin::Shader>(vertexShaderConfig);
-                m_ShaderLibrary["fullscreen_ps"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
+                m_ShaderLibrary["VS_Fullscreen"] = std::make_shared<benzin::Shader>(vertexShaderConfig);
+                m_ShaderLibrary["PS_Fullscreen"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
 
-                vertexShader = m_ShaderLibrary["fullscreen_vs"].get();
-                pixelShader = m_ShaderLibrary["fullscreen_ps"].get();
+                vertexShader = m_ShaderLibrary["VS_Fullscreen"].get();
+                pixelShader = m_ShaderLibrary["PS_Fullscreen"].get();
             }
-
-            const benzin::RasterizerState rasterizerState
-            {
-                .FillMode{ benzin::FillMode::Solid },
-                .CullMode{ benzin::CullMode::None },
-            };
-
-            const benzin::InputLayout nullInputLayout;
 
             const benzin::GraphicsPipelineState::Config config
             {
-                .RootSignature{ m_RootSignature.get() },
-                .VertexShader{ vertexShader },
+                .RootSignature{ *m_RootSignature },
+                .VertexShader{ *vertexShader },
                 .PixelShader{ pixelShader },
-                .RasterizerState{ &rasterizerState },
-                .InputLayout{ &nullInputLayout },
+                .RasterizerState{ &defaultRasterizerState },
+                .DepthState{ &benzin::DepthState::GetDisabled() },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
                 .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
             };
 
-            m_PipelineStates["fullscreen"] = benzin::GraphicsPipelineState{ m_Device, config };
+            m_PipelineStates["Fullscreen"] = std::make_unique<benzin::GraphicsPipelineState>(m_Device, config, "Fullscreen");
+        }
+
+        // ShadowMap
+        {
+            const benzin::Shader* vertexShader = nullptr;
+            const benzin::Shader* pixelShader = nullptr;
+
+            // Init Shaders
+            {
+                const std::wstring_view filepath = L"assets/shaders/shadow_mapping.hlsl";
+
+                const benzin::Shader::Config vertexShaderConfig
+                {
+                    .Type{ benzin::Shader::Type::Vertex },
+                    .Filepath{ filepath },
+                    .EntryPoint{ "VS_Main" }
+                };
+
+                const benzin::Shader::Config pixelShaderConfig
+                {
+                    .Type{ benzin::Shader::Type::Pixel },
+                    .Filepath{ filepath },
+                    .EntryPoint{ "PS_Main" }
+                };
+
+                m_ShaderLibrary["VS_ShadowMap"] = std::make_shared<benzin::Shader>(vertexShaderConfig);
+                m_ShaderLibrary["PS_ShadowMap"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
+
+                vertexShader = m_ShaderLibrary["VS_ShadowMap"].get();
+                pixelShader = m_ShaderLibrary["PS_ShadowMap"].get();
+            }
+
+            const benzin::RasterizerState rasterizerState
+            {
+                .DepthBias{ 100'000 },
+                .DepthBiasClamp{ 0.0f },
+                .SlopeScaledDepthBias{ 1.0f }
+            };
+
+            const benzin::GraphicsPipelineState::Config config
+            {
+                .RootSignature{ *m_RootSignature },
+                .VertexShader{ *vertexShader },
+                .PixelShader{ pixelShader },
+                .RasterizerState{ &rasterizerState },
+                .DepthState{ &benzin::DepthState::GetLess() },
+                .InputLayout{ &inputLayout },
+                .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
+                .DepthStencilViewFormat{ ms_DepthStencilFormat }
+            };
+
+            m_PipelineStates["ShadowMap"] = std::make_unique<benzin::GraphicsPipelineState>(m_Device, config, "ShadowMap");
         }
     }
 
@@ -1040,7 +1173,7 @@ namespace sandbox
 
         // Environment
         {
-            m_Materials["environment"] = benzin::Material
+            m_Materials["Environment"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.1f, 0.1f, 0.1f },
@@ -1082,12 +1215,12 @@ namespace sandbox
     {
         // Environment CubeMap
         {
-            auto& entity = m_Entities["environment"];
+            auto& entity = m_Entities["Environment"];
             entity = std::make_unique<benzin::Entity>();
 
             auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
             meshComponent.Mesh = &m_Mesh;
-            meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
+            meshComponent.SubMesh = &m_Mesh.GetSubMesh("Box");
             meshComponent.PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
             auto& instancesComponent = entity->CreateComponent<benzin::InstancesComponent>();
@@ -1100,6 +1233,33 @@ namespace sandbox
             };
         }
 
+        // Grid
+        {
+            auto& entity = m_Entities["Grid"];
+            entity = std::make_unique<benzin::Entity>();
+
+            auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
+            meshComponent.Mesh = &m_Mesh;
+            meshComponent.SubMesh = &m_Mesh.GetSubMesh("Grid");
+            meshComponent.PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
+
+            auto& collisionComponent = entity->CreateComponent<benzin::CollisionComponent>();
+            collisionComponent.CreateBoundingBox(meshComponent);
+
+            auto& instancesComponent = entity->CreateComponent<benzin::InstancesComponent>();
+            instancesComponent.IsNeedCulling = true;
+
+            auto& instanceComponent = instancesComponent.Instances.emplace_back();
+            instanceComponent.MaterialIndex = 0;
+            instanceComponent.Transform = benzin::Transform
+            {
+                .Scale{ 2.5f, 2.5f, 2.5f },
+                .Translation{ 0.0f, -3.0f, 0.0f }
+            };
+
+            m_DefaultEntities.push_back(entity.get());
+        }
+
         // Dynamic sphere
         {
             auto& entity = m_Entities["mirror_sphere"];
@@ -1107,7 +1267,7 @@ namespace sandbox
 
             auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
             meshComponent.Mesh = &m_Mesh;
-            meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
+            meshComponent.SubMesh = &m_Mesh.GetSubMesh("Sphere");
             meshComponent.PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
             auto& collisionComponent = entity->CreateComponent<benzin::CollisionComponent>();
@@ -1135,12 +1295,12 @@ namespace sandbox
             const int32_t boxInColumnCount = 2;
             const int32_t boxInDepthCount = 2;
 
-            auto& entity = m_Entities["box"];
+            auto& entity = m_Entities["Box"];
             entity = std::make_unique<benzin::Entity>();
 
             auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
             meshComponent.Mesh = &m_Mesh;
-            meshComponent.SubMesh = &m_Mesh.GetSubMesh("box");
+            meshComponent.SubMesh = &m_Mesh.GetSubMesh("Box");
             meshComponent.PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
             auto& collisionComponent = entity->CreateComponent<benzin::CollisionComponent>();
@@ -1177,7 +1337,7 @@ namespace sandbox
 
         // Picked
         {
-            auto& entity = m_Entities["picked"];
+            auto& entity = m_Entities["Picked"];
             entity = std::make_unique<benzin::Entity>();
 
             auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
@@ -1194,14 +1354,14 @@ namespace sandbox
             entity->CreateComponent<PickedEntityComponent>();
         }
 
-        // Light source
+        // Directional light source
         {
-            auto& entity = m_Entities["light"];
+            auto& entity = m_Entities["DirectionalLightSource"];
             entity = std::make_unique<benzin::Entity>();
 
             auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
             meshComponent.Mesh = &m_Mesh;
-            meshComponent.SubMesh = &m_Mesh.GetSubMesh("sphere");
+            meshComponent.SubMesh = &m_Mesh.GetSubMesh("Sphere");
             meshComponent.PrimitiveTopology = benzin::PrimitiveTopology::TriangleList;
 
             auto& collisionComponent = entity->CreateComponent<benzin::CollisionComponent>();
@@ -1210,23 +1370,30 @@ namespace sandbox
             auto& instancesComponent = entity->CreateComponent<benzin::InstancesComponent>();
             instancesComponent.IsNeedCulling = true;
 
-            const DirectX::XMFLOAT3 position{ 0.0f, 3.0f, 0.0f };
+            const DirectX::XMVECTOR direction{ -0.4f, -0.6f, -0.3f, 0.0f };
+            const DirectX::XMVECTOR position = DirectX::XMVectorScale(direction, 2.0f);
+
+            DirectX::XMFLOAT3 direction3;
+            DirectX::XMStoreFloat3(&direction3, direction);
+
+            DirectX::XMFLOAT3 position3;
+            DirectX::XMStoreFloat3(&position3, position);
 
             auto& instanceComponent = instancesComponent.Instances.emplace_back();
             instanceComponent.MaterialIndex = 3;
-            instanceComponent.Transform.Translation = position;
+            instanceComponent.Transform.Translation = position3;
 
             auto& lightComponent = entity->CreateComponent<benzin::Light>();
-            lightComponent.Direction = DirectX::XMFLOAT3{ -0.5f, -0.5f, -0.5f };
+            lightComponent.Direction = direction3;
             lightComponent.Strength = DirectX::XMFLOAT3{ 1.0f, 1.0f, 0.9f };
-            //lightComponent.FalloffStart = 20.0f;
-            //lightComponent.FalloffEnd = 23.0f;
-            //lightComponent.Position = position;
+
+            m_ShadowMap.SetDirectionalLight(&lightComponent);
 
             m_LightSourceEntities.push_back(entity.get());
             m_PickableEntities.push_back(entity.get());
 
-            m_PointLightController = PointLightController{ &lightComponent };
+            m_DirectionalLight = &lightComponent;
+            g_DirectionalLightController.SetDirectionalLight(&lightComponent);
         }
     }
 
@@ -1241,7 +1408,7 @@ namespace sandbox
         m_GraphicsCommandList.SetPipelineState(pso);
 
         m_GraphicsCommandList.SetGraphicsRawShaderResource(2, *m_Buffers.at("MaterialStructuredBuffer"));
-        m_GraphicsCommandList.SetGraphicsDescriptorTable(4, m_Textures.at("red")->GetShaderResourceView());
+        m_GraphicsCommandList.SetGraphicsDescriptorTable(5, m_Textures.at("red")->GetShaderResourceView());
 
         for (const auto& entity : entities)
         {
@@ -1284,12 +1451,12 @@ namespace sandbox
 
         m_PostEffectsGraphicsCommandList.SetViewport(m_Window.GetViewport());
         m_PostEffectsGraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
-        m_PostEffectsGraphicsCommandList.SetPipelineState(m_PipelineStates["fullscreen"]);
+        m_PostEffectsGraphicsCommandList.SetPipelineState(*m_PipelineStates.at("Fullscreen"));
         m_PostEffectsGraphicsCommandList.SetGraphicsRootSignature(*m_RootSignature);
         m_PostEffectsGraphicsCommandList.IASetVertexBuffer(nullptr);
         m_PostEffectsGraphicsCommandList.IASetIndexBuffer(nullptr);
         m_PostEffectsGraphicsCommandList.IASetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
-        m_PostEffectsGraphicsCommandList.SetGraphicsDescriptorTable(4, srv);
+        m_PostEffectsGraphicsCommandList.SetGraphicsDescriptorTable(5, srv);
         m_PostEffectsGraphicsCommandList.DrawVertexed(6, 0);
 
         m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, benzin::Resource::State::Present);
@@ -1310,7 +1477,7 @@ namespace sandbox
             const PickingTechnique::Result result = m_PickingTechnique->PickTriangle(event.GetX<float>(), event.GetY<float>());
             const benzin::Entity* resultEntity = result.PickedEntity;
 
-            auto& pickedEntity = m_Entities["picked"];
+            auto& pickedEntity = m_Entities["Picked"];
             auto& instanceComponent = pickedEntity->GetComponent<benzin::InstancesComponent>().Instances[0];
 
             if (!result.PickedEntity)
