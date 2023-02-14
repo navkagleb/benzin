@@ -1,9 +1,9 @@
 #pragma once
 
-#include "benzin/graphics/common.hpp"
-#include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/texture.hpp"
-#include "benzin/graphics/device.hpp"
+#include "benzin/graphics/api/common.hpp"
+#include "benzin/graphics/api/buffer.hpp"
+#include "benzin/graphics/api/texture.hpp"
+#include "benzin/graphics/api/device.hpp"
 
 #include "benzin/engine/geometry_generator.hpp"
 

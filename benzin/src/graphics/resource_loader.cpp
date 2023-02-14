@@ -2,9 +2,9 @@
 
 #include "benzin/graphics/resource_loader.hpp"
 
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/texture.hpp"
-#include "benzin/graphics/graphics_command_list.hpp"
+#include "benzin/graphics/api/device.hpp"
+#include "benzin/graphics/api/texture.hpp"
+#include "benzin/graphics/api/graphics_command_list.hpp"
 
 namespace benzin
 {

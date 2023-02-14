@@ -1,5 +1,7 @@
 #pragma once
 
+#if 0
+
 #include <benzin/core/layer.hpp>
 
 #include <benzin/system/window.hpp>
@@ -21,7 +23,6 @@
 namespace sandbox
 {
 
-#if 0
     constexpr uint32_t g_MaxLightCount{ 16 };
 
     namespace per
@@ -151,8 +152,9 @@ namespace sandbox
         std::unique_ptr<SobelFilterPass> m_SobelFilterPass;
         bool m_EnableSobelFilter{ true };
     };
-#endif
 
 } // namespace sandbox
 
 #include "test_layer.inl"
+
+#endif

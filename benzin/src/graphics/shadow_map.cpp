@@ -2,8 +2,8 @@
 
 #include "benzin/graphics/shadow_map.hpp"
 
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/resource_view_builder.hpp"
+#include "benzin/graphics/api/device.hpp"
+#include "benzin/graphics/api/resource_view_builder.hpp"
 
 namespace benzin
 {

@@ -1,5 +1,7 @@
 #pragma once
 
+#if 0
+
 #include <benzin/core/layer.hpp>
 #include <benzin/system/window.hpp>
 
@@ -14,7 +16,6 @@
 
 namespace sandbox
 {
-#if 0
 
     class TessellationLayer final : public benzin::Layer
     {
@@ -68,6 +69,6 @@ namespace sandbox
         benzin::CameraController m_CameraController{ m_Camera };
     };
 
-#endif
-
 } // namespace sandbox
+
+#endif

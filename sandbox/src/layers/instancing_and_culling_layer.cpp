@@ -7,9 +7,9 @@
 
 #include <benzin/system/event_dispatcher.hpp>
 
-#include <benzin/graphics/render_states.hpp>
+#include <benzin/graphics/api/render_states.hpp>
+#include <benzin/graphics/api/resource_view_builder.hpp>
 #include <benzin/graphics/mapped_data.hpp>
-#include <benzin/graphics/resource_view_builder.hpp>
 #include <benzin/graphics/resource_loader.hpp>
 
 #include <benzin/engine/geometry_generator.hpp>

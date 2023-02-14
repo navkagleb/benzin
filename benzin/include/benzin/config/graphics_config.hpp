@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benzin/graphics/format.hpp"
+#include "benzin/graphics/api/format.hpp"
 
 namespace benzin::config
 {

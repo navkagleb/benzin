@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benzin/graphics/resource.hpp"
+#include "benzin/graphics/api/resource.hpp"
 
 namespace benzin
 {

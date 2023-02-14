@@ -8,9 +8,9 @@
 #include <benzin/system/key_event.hpp>
 #include <benzin/system/event_dispatcher.hpp>
 
-#include <benzin/graphics/device.hpp>
-#include <benzin/graphics/swap_chain.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/api/device.hpp>
+#include <benzin/graphics/api/swap_chain.hpp>
+#include <benzin/graphics/api/command_queue.hpp>
 
 #include "layers/test_layer.hpp"
 #include "layers/tessellation_layer.hpp"

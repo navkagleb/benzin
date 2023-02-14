@@ -1,7 +1,6 @@
 #pragma once
 
-#include "benzin/graphics/texture.hpp"
-#include "benzin/graphics/graphics_command_list.hpp"
+#include "benzin/graphics/api/texture.hpp"
 #include "benzin/engine/camera.hpp"
 #include "benzin/engine/light.hpp"
 

@@ -1,10 +1,6 @@
 #pragma once
 
-#include <benzin/graphics/texture.hpp>
-#include <benzin/graphics/root_signature.hpp>
-#include <benzin/graphics/pipeline_state.hpp>
-#include <benzin/graphics/shader.hpp>
-#include <benzin/graphics/graphics_command_list.hpp>
+#include <benzin/graphics/api/common.hpp>
 
 namespace sandbox
 {

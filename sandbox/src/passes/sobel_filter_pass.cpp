@@ -2,8 +2,13 @@
 
 #include "sobel_filter_pass.hpp"
 
-#include <benzin/graphics/device.hpp>
-#include <benzin/graphics/resource_view_builder.hpp>
+#include <benzin/graphics/api/device.hpp>
+#include <benzin/graphics/api/resource_view_builder.hpp>
+#include <benzin/graphics/api/graphics_command_list.hpp>
+#include <benzin/graphics/api/texture.hpp>
+#include <benzin/graphics/api/root_signature.hpp>
+#include <benzin/graphics/api/pipeline_state.hpp>
+#include <benzin/graphics/api/shader.hpp>
 
 namespace sandbox
 {

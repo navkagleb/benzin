@@ -3,14 +3,14 @@
 #include <benzin/core/layer.hpp>
 
 #include <benzin/system/window.hpp>
-#include <benzin/graphics/buffer.hpp>
-#include <benzin/graphics/texture.hpp>
-#include <benzin/graphics/root_signature.hpp>
-#include <benzin/graphics/shader.hpp>
-#include <benzin/graphics/pipeline_state.hpp>
-#include <benzin/graphics/graphics_command_list.hpp>
-#include <benzin/graphics/command_queue.hpp>
-#include <benzin/graphics/swap_chain.hpp>
+#include <benzin/graphics/api/buffer.hpp>
+#include <benzin/graphics/api/texture.hpp>
+#include <benzin/graphics/api/root_signature.hpp>
+#include <benzin/graphics/api/shader.hpp>
+#include <benzin/graphics/api/pipeline_state.hpp>
+#include <benzin/graphics/api/graphics_command_list.hpp>
+#include <benzin/graphics/api/command_queue.hpp>
+#include <benzin/graphics/api/swap_chain.hpp>
 #include <benzin/graphics/render_target_cube_map.hpp>
 #include <benzin/graphics/shadow_map.hpp>
 #include <benzin/engine/mesh.hpp>

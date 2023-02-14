@@ -8,7 +8,7 @@
 #include "benzin/system/mouse_event.hpp"
 #include "benzin/system/key_event.hpp"
 
-#include "benzin/graphics/graphics_command_list.hpp"
+#include "benzin/graphics/api/common.hpp"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
