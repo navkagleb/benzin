@@ -13,8 +13,6 @@ namespace benzin
     namespace
     {
 
-        uint32_t g_RootSignatureCounter = 0;
-
         D3D12_FILTER ConvertToD3D12TextureFilter(const Sampler::TextureFilterType& minification, const Sampler::TextureFilterType& magnification, const Sampler::TextureFilterType& mipLevel)
         {
             using TextureFilterType = Sampler::TextureFilterType;
@@ -277,7 +275,7 @@ namespace benzin
     //////////////////////////////////////////////////////////////////////////
     /// RootSignature
     //////////////////////////////////////////////////////////////////////////
-    RootSignature::RootSignature(Device& device, const Config& config, const char* debugName)
+    RootSignature::RootSignature(Device& device, const Config& config, std::string_view debugName)
     {
         BENZIN_ASSERT(!config.RootParameters.empty());
         BENZIN_ASSERT(!m_D3D12RootSignature);
@@ -318,8 +316,7 @@ namespace benzin
             IID_PPV_ARGS(&m_D3D12RootSignature)
         ));
 
-        SetDebugName(!debugName ? std::to_string(g_RootSignatureCounter) : std::string{ debugName }, true);
-        g_RootSignatureCounter++;
+        SetDebugName(debugName, true);
     }
 
     RootSignature::~RootSignature()

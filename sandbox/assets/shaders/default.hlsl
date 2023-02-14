@@ -1,3 +1,6 @@
+// WRITE_ONLY_INTERPOLATED_NORMALS
+// USE_ONLY_DIFFUSEMAP_SAMPLE
+
 #include "common.hlsl"
 
 struct VS_INPUT
@@ -40,17 +43,25 @@ VS_OUTPUT VS_Main(VS_INPUT input, uint instanceID : SV_InstanceID)
 
 float4 PS_Main(VS_OUTPUT input) : SV_Target
 {
+#if defined(WRITE_ONLY_INTERPOLATED_NORMALS)
+
+    input.NormalW = normalize(input.NormalW);
+
+    const float3 normalV = mul(input.NormalW, (float3x3)g_Pass.View);
+    return float4(normalV, 1.0f);
+
+#else
+
     const MaterialData materialData = g_Materials[input.MaterialIndex];
     const Texture2D diffuseMap = g_Textures[NonUniformResourceIndex(materialData.DiffuseMapIndex)];
     const Texture2D normalMap = g_Textures[NonUniformResourceIndex(materialData.NormalMapIndex)];
 
     float4 diffuseAlbedo = diffuseMap.Sample(g_LinearWrapSampler, input.TexCoord);
 
-#if !defined(USE_LIGHTING)
-
+#if defined(USE_ONLY_DIFFUSEMAP_SAMPLE)
     return diffuseAlbedo;
+#endif
 
-#else
     float4 litColor = 0.0f;
 
     const float3 viewVector = normalize(g_Pass.CameraPositionW - input.PositionW);

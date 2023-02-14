@@ -31,17 +31,13 @@ namespace benzin
         BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12GraphicsCommandList, "GraphicsCommandList")
 
     public:
-        GraphicsCommandList(Device& device, const std::string& debugName = {});
+        GraphicsCommandList(Device& device, ID3D12CommandAllocator* d3d12CommandAllocator, std::string_view debugName);
         ~GraphicsCommandList();
 
     public:
         ID3D12GraphicsCommandList* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList; }
 
 	public:
-        void Close();
-        void Reset(const PipelineState* const pso = nullptr);
-
-        // Commands
         void SetDescriptorHeaps(const DescriptorManager& descriptorManager);
 
         void IASetVertexBuffer(const BufferResource* vertexBuffer);
@@ -84,7 +80,6 @@ namespace benzin
         uint64_t AllocateInUploadBuffer(uint64_t size, uint64_t alignment = 0);
 
 	private:
-        ID3D12CommandAllocator* m_D3D12CommandAllocator{ nullptr };
         ID3D12GraphicsCommandList* m_D3D12GraphicsCommandList{ nullptr };
 
         std::shared_ptr<BufferResource> m_UploadBuffer;

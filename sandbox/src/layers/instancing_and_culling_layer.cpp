@@ -202,26 +202,15 @@ namespace sandbox
         , m_Device{ device }
         , m_CommandQueue{ commandQueue }
         , m_SwapChain{ swapChain }
-        , m_GraphicsCommandList{ device, "Default" }
-        , m_PostEffectsGraphicsCommandList{ device, "PostEffects" }
         , m_RenderTargetCubeMap{ device, g_RenderTargetCubeMapWidth, g_RenderTargetCubeMapHeight }
         , m_ShadowMap{ device, 2048, 2048 }
     {}
 
     bool InstancingAndCullingLayer::OnAttach()
     {
-        //application.GetImGuiLayer()->SetCamera(&m_Camera);
-
         {
-            m_GraphicsCommandList.Reset();
-
             InitTextures();
             InitMesh();
-
-            m_GraphicsCommandList.Close();
-
-            m_CommandQueue.Submit(m_GraphicsCommandList);
-            m_CommandQueue.Flush();
         }
 
         m_BlurPass = std::make_unique<BlurPass>(m_Device, m_Window.GetWidth(), m_Window.GetHeight());
@@ -262,9 +251,11 @@ namespace sandbox
         m_FlyCameraController.OnUpdate(dt);
         g_DirectionalLightController.AddToTheta(10.0f * dt);
 
+        auto& frameContext = m_FrameContexts[m_SwapChain.GetCurrentBackBufferIndex()];
+
         // Pass ConstantBuffer
         {
-            benzin::MappedData bufferData{ *m_Buffers["PassConstantBuffer"] };
+            benzin::MappedData bufferData{ *frameContext.PassConstantBuffer };
         
             // ShadowMap
             {
@@ -284,7 +275,7 @@ namespace sandbox
                     .AmbientLight{ m_AmbientLight }
                 };
 
-                bufferData.Write(&constants, sizeof(constants), m_Buffers["PassConstantBuffer"]->GetConfig().ElementSize * 7);
+                bufferData.Write(&constants, sizeof(constants), frameContext.PassConstantBuffer->GetConfig().ElementSize * 7);
             }
 
             // Main pass
@@ -332,13 +323,13 @@ namespace sandbox
                     memcpy_s(constants.Lights.data() + lightSize * i, lightSize, &lightComponent, lightSize);
                 }
 
-                bufferData.Write(&constants, sizeof(constants), m_Buffers["PassConstantBuffer"]->GetConfig().ElementSize * (faceIndex + 1));
+                bufferData.Write(&constants, sizeof(constants), frameContext.PassConstantBuffer->GetConfig().ElementSize * (faceIndex + 1));
             }
         }
 
         // RenderItem StructuredBuffer
         {
-            benzin::MappedData bufferData{ *m_Buffers["EntityStructuredBuffer"] };
+            benzin::MappedData bufferData{ *frameContext.EntityStructuredBuffer };
 
             uint32_t offset = 0;
 
@@ -420,7 +411,7 @@ namespace sandbox
 
         // Material StructuredBuffer
         {
-            benzin::MappedData bufferData{ *m_Buffers["MaterialStructuredBuffer"] };
+            benzin::MappedData bufferData{ *frameContext.MaterialStructuredBuffer };
 
             for (const auto& [name, material] : m_Materials)
             {
@@ -441,57 +432,58 @@ namespace sandbox
 
     void InstancingAndCullingLayer::OnRender(float dt)
     {
-        auto& renderTarget = m_Textures["render_target"];
-        auto& depthStencil = m_Textures["depth_stencil"];
+        auto& commandList = m_CommandQueue.GetGraphicsCommandList();
+
+        auto& frameContext = m_FrameContexts[m_SwapChain.GetCurrentBackBufferIndex()];
+        auto& renderTarget = m_Textures.at("RenderTarget");
+        auto& depthStencil = m_Textures.at("DepthStencil");
 
         {
-            m_GraphicsCommandList.Reset();
-
             // ShadowMap
             {
                 auto& shadowMap = m_ShadowMap.GetShadowMap();
 
-                m_GraphicsCommandList.SetViewport(m_ShadowMap.GetViewport());
-                m_GraphicsCommandList.SetScissorRect(m_ShadowMap.GetScissorRect());
+                commandList.SetViewport(m_ShadowMap.GetViewport());
+                commandList.SetScissorRect(m_ShadowMap.GetScissorRect());
 
-                m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
-                m_GraphicsCommandList.SetGraphicsRootSignature(*m_RootSignature);
+                commandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
+                commandList.SetGraphicsRootSignature(*m_RootSignature);
 
-                m_GraphicsCommandList.SetResourceBarrier(*shadowMap, benzin::Resource::State::DepthWrite);
+                commandList.SetResourceBarrier(*shadowMap, benzin::Resource::State::DepthWrite);
 
-                m_GraphicsCommandList.ClearDepthStencil(shadowMap->GetDepthStencilView());
-                m_GraphicsCommandList.SetRenderTarget(nullptr, &shadowMap->GetDepthStencilView());
+                commandList.ClearDepthStencil(shadowMap->GetDepthStencilView());
+                commandList.SetRenderTarget(nullptr, &shadowMap->GetDepthStencilView());
 
-                m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("PassConstantBuffer"), 7);
+                commandList.SetGraphicsRawConstantBuffer(0, *frameContext.PassConstantBuffer, 7);
 
                 RenderEntities(*m_PipelineStates.at("ShadowMap"), m_DefaultEntities);
 
-                m_GraphicsCommandList.SetResourceBarrier(*shadowMap, benzin::Resource::State::Present);
+                commandList.SetResourceBarrier(*shadowMap, benzin::Resource::State::Present);
             }
 
             // Render to cube map
             {
-                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), benzin::Resource::State::RenderTarget);
-                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetDepthStencil(), benzin::Resource::State::DepthWrite);
+                commandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), benzin::Resource::State::RenderTarget);
+                commandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetDepthStencil(), benzin::Resource::State::DepthWrite);
 
-                m_GraphicsCommandList.SetViewport(m_RenderTargetCubeMap.GetViewport());
-                m_GraphicsCommandList.SetScissorRect(m_RenderTargetCubeMap.GetScissorRect());
+                commandList.SetViewport(m_RenderTargetCubeMap.GetViewport());
+                commandList.SetScissorRect(m_RenderTargetCubeMap.GetScissorRect());
 
-                m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
-                m_GraphicsCommandList.SetGraphicsRootSignature(*m_RootSignature);
+                commandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
+                commandList.SetGraphicsRootSignature(*m_RootSignature);
 
                 for (uint32_t i = 0; i < 6; ++i)
                 {
-                    m_GraphicsCommandList.ClearRenderTarget(m_RenderTargetCubeMap.GetCubeMap()->GetRenderTargetView(i));
-                    m_GraphicsCommandList.ClearDepthStencil(m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView());
+                    commandList.ClearRenderTarget(m_RenderTargetCubeMap.GetCubeMap()->GetRenderTargetView(i));
+                    commandList.ClearDepthStencil(m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView());
 
-                    m_GraphicsCommandList.SetRenderTarget(
+                    commandList.SetRenderTarget(
                         &m_RenderTargetCubeMap.GetCubeMap()->GetRenderTargetView(i),
                         &m_RenderTargetCubeMap.GetDepthStencil()->GetDepthStencilView()
                     );
 
-                    m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("PassConstantBuffer"), i + 1);
-                    m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("Environment")->GetShaderResourceView());
+                    commandList.SetGraphicsRawConstantBuffer(0, *frameContext.PassConstantBuffer, i + 1);
+                    commandList.SetGraphicsDescriptorTable(3, m_Textures.at("Environment")->GetShaderResourceView());
                     
                     RenderEntities(*m_PipelineStates.at("Default"), m_DefaultEntities);
 
@@ -499,32 +491,32 @@ namespace sandbox
                     RenderEntities(*m_PipelineStates.at("Environment"), std::span{ &environmentEntity, 1});
                 }
 
-                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), benzin::Resource::State::Present);
-                m_GraphicsCommandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetDepthStencil(), benzin::Resource::State::Present);
+                commandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetCubeMap(), benzin::Resource::State::Present);
+                commandList.SetResourceBarrier(*m_RenderTargetCubeMap.GetDepthStencil(), benzin::Resource::State::Present);
             }
 
-            m_GraphicsCommandList.SetResourceBarrier(*renderTarget, benzin::Resource::State::RenderTarget);
-            m_GraphicsCommandList.SetResourceBarrier(*depthStencil, benzin::Resource::State::DepthWrite);
+            commandList.SetResourceBarrier(*renderTarget, benzin::Resource::State::RenderTarget);
+            commandList.SetResourceBarrier(*depthStencil, benzin::Resource::State::DepthWrite);
 
-            m_GraphicsCommandList.SetViewport(m_Window.GetViewport());
-            m_GraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
+            commandList.SetViewport(m_Window.GetViewport());
+            commandList.SetScissorRect(m_Window.GetScissorRect());
 
-            m_GraphicsCommandList.SetRenderTarget(&renderTarget->GetRenderTargetView(), &depthStencil->GetDepthStencilView());
+            commandList.SetRenderTarget(&renderTarget->GetRenderTargetView(), &depthStencil->GetDepthStencilView());
 
-            m_GraphicsCommandList.ClearRenderTarget(renderTarget->GetRenderTargetView());
-            m_GraphicsCommandList.ClearDepthStencil(depthStencil->GetDepthStencilView());
+            commandList.ClearRenderTarget(renderTarget->GetRenderTargetView());
+            commandList.ClearDepthStencil(depthStencil->GetDepthStencilView());
 
-            m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
-            m_GraphicsCommandList.SetGraphicsRootSignature(*m_RootSignature);
+            commandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
+            commandList.SetGraphicsRootSignature(*m_RootSignature);
 
-            m_GraphicsCommandList.SetGraphicsRawConstantBuffer(0, *m_Buffers.at("PassConstantBuffer"));
-            m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_RenderTargetCubeMap.GetCubeMap()->GetShaderResourceView());
-            m_GraphicsCommandList.SetGraphicsDescriptorTable(4, m_ShadowMap.GetShadowMap()->GetShaderResourceView());
+            commandList.SetGraphicsRawConstantBuffer(0, *frameContext.PassConstantBuffer);
+            commandList.SetGraphicsDescriptorTable(3, m_RenderTargetCubeMap.GetCubeMap()->GetShaderResourceView());
+            commandList.SetGraphicsDescriptorTable(4, m_ShadowMap.GetShadowMap()->GetShaderResourceView());
             
-            const benzin::Entity* dynamicSphereEntity = m_Entities.at("mirror_sphere").get();
+            const benzin::Entity* dynamicSphereEntity = m_Entities.at("MirrorSphere").get();
             RenderEntities(*m_PipelineStates.at("Default"), std::span{ &dynamicSphereEntity, 1 });
 
-            m_GraphicsCommandList.SetGraphicsDescriptorTable(3, m_Textures.at("Environment")->GetShaderResourceView());
+            commandList.SetGraphicsDescriptorTable(3, m_Textures.at("Environment")->GetShaderResourceView());
             
             RenderEntities(*m_PipelineStates.at("Default"), m_DefaultEntities);
             
@@ -536,24 +528,16 @@ namespace sandbox
             const benzin::Entity* environmentEntity = m_Entities.at("Environment").get();
             RenderEntities(*m_PipelineStates.at("Environment"), std::span{ &environmentEntity, 1});
 
-            m_GraphicsCommandList.SetResourceBarrier(*renderTarget, benzin::Resource::State::Present);
-            m_GraphicsCommandList.SetResourceBarrier(*depthStencil, benzin::Resource::State::Present);
-
-            m_GraphicsCommandList.Close();
-            m_CommandQueue.Submit(m_GraphicsCommandList);
+            commandList.SetResourceBarrier(*renderTarget, benzin::Resource::State::Present);
+            commandList.SetResourceBarrier(*depthStencil, benzin::Resource::State::Present);
         }
 
         {
-            m_PostEffectsGraphicsCommandList.Reset();
+            commandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
 
-            m_PostEffectsGraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
-
-            m_BlurPass->OnExecute(m_PostEffectsGraphicsCommandList, *m_Textures["render_target"], BlurPassExecuteProps{ 2.5f, 2.5f, 0 });
+            m_BlurPass->OnExecute(commandList, *m_Textures.at("RenderTarget"), BlurPassExecuteProps{ 2.5f, 2.5f, 0 });
 
             RenderFullscreenQuad(m_BlurPass->GetOutput()->GetShaderResourceView());
-
-            m_PostEffectsGraphicsCommandList.Close();
-            m_CommandQueue.Submit(m_PostEffectsGraphicsCommandList);
         }
     }
 
@@ -634,10 +618,12 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitTextures()
     {
+        auto& commandList = m_CommandQueue.GetGraphicsCommandList();
+
         const auto loadTextureFromDDSFile = [&](const std::string& name, const std::wstring& filepath)
         {
             auto& texture = m_Textures[name];
-            texture = m_Device.GetResourceLoader().LoadTextureResourceFromDDSFile(filepath, m_GraphicsCommandList);
+            texture = m_Device.GetResourceLoader().LoadTextureResourceFromDDSFile(filepath, commandList);
 
             return texture.get();
         };
@@ -667,6 +653,8 @@ namespace sandbox
 
     void InstancingAndCullingLayer::InitMesh()
     {
+        auto& commandList = m_CommandQueue.GetGraphicsCommandList();
+
         const benzin::BoxGeometryConfig boxConfig
         {
             .Width{ 1.0f },
@@ -698,52 +686,41 @@ namespace sandbox
 
         m_Mesh.SetSubMeshes(m_Device, submeshes);
 
-        m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetVertexBuffer(), m_Mesh.GetVertices().data(), m_Mesh.GetVertices().size() * sizeof(benzin::Vertex));
-        m_GraphicsCommandList.UploadToBuffer(*m_Mesh.GetIndexBuffer(), m_Mesh.GetIndices().data(), m_Mesh.GetIndices().size() * sizeof(uint32_t));
+        commandList.UploadToBuffer(*m_Mesh.GetVertexBuffer(), m_Mesh.GetVertices().data(), m_Mesh.GetVertices().size() * sizeof(benzin::Vertex));
+        commandList.UploadToBuffer(*m_Mesh.GetIndexBuffer(), m_Mesh.GetIndices().data(), m_Mesh.GetIndices().size() * sizeof(uint32_t));
     }
 
     void InstancingAndCullingLayer::InitBuffers()
     {
-        // Pass ConstantBuffer
+        const benzin::BufferResource::Config passConstantBufferConfig
         {
-            const std::string name = "PassConstantBuffer";
+            .ElementSize{ sizeof(cb::Pass) },
+            .ElementCount{ 1 + 6 + 1 },
+            .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
+        };
 
-            const benzin::BufferResource::Config config
-            {
-                .ElementSize{ sizeof(cb::Pass) },
-                .ElementCount{ 1 + 6 + 1 },
-                .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
-            };
-
-            m_Buffers[name] = m_Device.CreateBufferResource(config, name);
-        }
-
-        // RenderItem StructuredBuffer
+        const benzin::BufferResource::Config entityStructuredBufferConfig
         {
-            const std::string name = "EntityStructuredBuffer";
+            .ElementSize{ sizeof(cb::Entity) },
+            .ElementCount{ 1005 },
+            .Flags{ benzin::BufferResource::Flags::Dynamic }
+        };
 
-            const benzin::BufferResource::Config config
-            {
-                .ElementSize{ sizeof(cb::Entity) },
-                .ElementCount{ 1005 },
-                .Flags{ benzin::BufferResource::Flags::Dynamic }
-            };
-
-            m_Buffers[name] = m_Device.CreateBufferResource(config, name);
-        }
-
-        // Material StructuredBuffer
+        const benzin::BufferResource::Config materialStructuredBufferConfig
         {
-            const std::string name = "MaterialStructuredBuffer";
+            .ElementSize{ sizeof(cb::Material) },
+            .ElementCount{ 7 },
+            .Flags{ benzin::BufferResource::Flags::Dynamic }
+        };
 
-            const benzin::BufferResource::Config config
-            {
-                .ElementSize{ sizeof(cb::Material) },
-                .ElementCount{ 7 },
-                .Flags{ benzin::BufferResource::Flags::Dynamic }
-            };
+        for (size_t i = 0; i < m_FrameContexts.size(); ++i)
+        {
+            const std::string indexString = std::to_string(i);
 
-            m_Buffers[name] = m_Device.CreateBufferResource(config, name);
+            auto& frameContext = m_FrameContexts[i];
+            frameContext.PassConstantBuffer = m_Device.CreateBufferResource(passConstantBufferConfig, "PassConstantBuffer" + indexString);
+            frameContext.EntityStructuredBuffer = m_Device.CreateBufferResource(entityStructuredBufferConfig, "EntityStructuredBuffer" + indexString);
+            frameContext.MaterialStructuredBuffer = m_Device.CreateBufferResource(materialStructuredBufferConfig, "MaterialStructuredBuffer" + indexString);
         }
     }
 
@@ -851,7 +828,8 @@ namespace sandbox
                     .EntryPoint{ "PS_Main" },
                     .Defines
                     {
-                        { magic_enum::enum_name(per::InstancingAndCulling::USE_LIGHTING), "" },
+                        //{ "USE_ONLY_DIFFUSEMAP_SAMPLE" },
+                        //{ "WRITE_ONLY_INTERPOLATED_NORMALS" },
                         { magic_enum::enum_name(per::InstancingAndCulling::DIRECTIONAL_LIGHT_COUNT), "1" },
                         { magic_enum::enum_name(per::InstancingAndCulling::POINT_LIGHT_COUNT), "0" },
                     }
@@ -873,7 +851,7 @@ namespace sandbox
                 .DepthState{ &benzin::DepthState::GetLess() },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
+                .RenderTargetViewFormats{ benzin::config::GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
@@ -891,7 +869,7 @@ namespace sandbox
                 .DepthState{ &benzin::DepthState::GetLessEqual() },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
+                .RenderTargetViewFormats{ benzin::config::GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
@@ -911,7 +889,11 @@ namespace sandbox
                 {
                     .Type{ benzin::Shader::Type::Pixel },
                     .Filepath{ filepath },
-                    .EntryPoint{ "PS_Main" }
+                    .EntryPoint{ "PS_Main" },
+                    .Defines
+                    {
+                        { "USE_ONLY_DIFFUSEMAP_SAMPLE" }
+                    }
                 };
 
                 m_ShaderLibrary["PS_LightSource"] = std::make_shared<benzin::Shader>(pixelShaderConfig);
@@ -929,7 +911,7 @@ namespace sandbox
                 .DepthState{ &benzin::DepthState::GetLess() },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
+                .RenderTargetViewFormats{ benzin::config::GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
@@ -975,7 +957,7 @@ namespace sandbox
                 .DepthState{ &benzin::DepthState::GetLessEqual() },
                 .InputLayout{ &inputLayout },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
+                .RenderTargetViewFormats{ benzin::config::GetBackBufferFormat() },
                 .DepthStencilViewFormat{ ms_DepthStencilFormat }
             };
 
@@ -1020,7 +1002,7 @@ namespace sandbox
                 .RasterizerState{ &defaultRasterizerState },
                 .DepthState{ &benzin::DepthState::GetDisabled() },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RenderTargetViewFormats{ m_SwapChain.GetBackBufferFormat() },
+                .RenderTargetViewFormats{ benzin::config::GetBackBufferFormat() },
             };
 
             m_PipelineStates["Fullscreen"] = std::make_unique<benzin::GraphicsPipelineState>(m_Device, config, "Fullscreen");
@@ -1090,8 +1072,8 @@ namespace sandbox
             .Flags{ benzin::TextureResource::Flags::BindAsRenderTarget }
         };
 
-        auto& renderTarget = m_Textures["render_target"];
-        renderTarget = m_Device.CreateTextureResource(config, "render_target");
+        auto& renderTarget = m_Textures["RenderTarget"];
+        renderTarget = m_Device.CreateTextureResource(config, "RenderTarget");
         renderTarget->PushRenderTargetView(m_Device.GetResourceViewBuilder().CreateRenderTargetView(*renderTarget));
         renderTarget->PushShaderResourceView(m_Device.GetResourceViewBuilder().CreateShaderResourceView(*renderTarget));
     }
@@ -1107,8 +1089,8 @@ namespace sandbox
             .Flags{ benzin::TextureResource::Flags::BindAsDepthStencil }
         };
 
-        auto& depthStencil = m_Textures["depth_stencil"];
-        depthStencil = m_Device.CreateTextureResource(config, "depth_stencil");
+        auto& depthStencil = m_Textures["DepthStencil"];
+        depthStencil = m_Device.CreateTextureResource(config, "DepthStencil");
         depthStencil->PushDepthStencilView(m_Device.GetResourceViewBuilder().CreateDepthStencilView(*depthStencil));
     }
 
@@ -1121,7 +1103,7 @@ namespace sandbox
 
         // Red
         {
-            m_Materials["red"] = benzin::Material
+            m_Materials["Red"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -1134,7 +1116,7 @@ namespace sandbox
 
         // Green
         {
-            m_Materials["green"] = benzin::Material
+            m_Materials["Green"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -1147,7 +1129,7 @@ namespace sandbox
 
         // Blue
         {
-            m_Materials["blue"] = benzin::Material
+            m_Materials["Blue"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -1160,7 +1142,7 @@ namespace sandbox
 
         // White
         {
-            m_Materials["white"] = benzin::Material
+            m_Materials["White"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -1186,7 +1168,7 @@ namespace sandbox
 
         // Mirror
         {
-            m_Materials["mirror"] = benzin::Material
+            m_Materials["Mirror"] = benzin::Material
             {
                 .DiffuseAlbedo{ 0.0f, 0.0f, 0.0f, 1.0f },
                 .FresnelR0{ 0.98f, 0.97f, 0.95f },
@@ -1199,7 +1181,7 @@ namespace sandbox
 
         // Bricks2
         {
-            m_Materials["bricks2"] = benzin::Material
+            m_Materials["Bricks2"] = benzin::Material
             {
                 .DiffuseAlbedo{ 1.0f, 1.0f, 1.0f, 1.0f },
                 .FresnelR0{ 0.05f, 0.05f, 0.05f },
@@ -1254,7 +1236,7 @@ namespace sandbox
             instanceComponent.Transform = benzin::Transform
             {
                 .Scale{ 2.5f, 2.5f, 2.5f },
-                .Translation{ 0.0f, -3.0f, 0.0f }
+                .Translation{ 0.0f, -2.5f, 0.0f }
             };
 
             m_DefaultEntities.push_back(entity.get());
@@ -1262,7 +1244,7 @@ namespace sandbox
 
         // Dynamic sphere
         {
-            auto& entity = m_Entities["mirror_sphere"];
+            auto& entity = m_Entities["MirrorSphere"];
             entity = std::make_unique<benzin::Entity>();
 
             auto& meshComponent = entity->CreateComponent<benzin::MeshComponent>();
@@ -1405,10 +1387,14 @@ namespace sandbox
 
     void InstancingAndCullingLayer::RenderEntities(const benzin::PipelineState& pso, const std::span<const benzin::Entity*>& entities)
     {
-        m_GraphicsCommandList.SetPipelineState(pso);
+        auto& commandList = m_CommandQueue.GetGraphicsCommandList();
 
-        m_GraphicsCommandList.SetGraphicsRawShaderResource(2, *m_Buffers.at("MaterialStructuredBuffer"));
-        m_GraphicsCommandList.SetGraphicsDescriptorTable(5, m_Textures.at("red")->GetShaderResourceView());
+        auto& frameContext = m_FrameContexts[m_SwapChain.GetCurrentBackBufferIndex()];
+
+        commandList.SetPipelineState(pso);
+
+        commandList.SetGraphicsRawShaderResource(2, *frameContext.MaterialStructuredBuffer);
+        commandList.SetGraphicsDescriptorTable(5, m_Textures.at("red")->GetShaderResourceView());
 
         for (const auto& entity : entities)
         {
@@ -1421,17 +1407,17 @@ namespace sandbox
 
             const auto& instancesComponent = entity->GetComponent<benzin::InstancesComponent>();
 
-            m_GraphicsCommandList.SetGraphicsRawShaderResource(
+            commandList.SetGraphicsRawShaderResource(
                 1, 
-                *m_Buffers.at("EntityStructuredBuffer"),
+                *frameContext.EntityStructuredBuffer,
                 instancesComponent.StructuredBufferOffset
             );
 
-            m_GraphicsCommandList.IASetVertexBuffer(meshComponent.Mesh->GetVertexBuffer().get());
-            m_GraphicsCommandList.IASetIndexBuffer(meshComponent.Mesh->GetIndexBuffer().get());
-            m_GraphicsCommandList.IASetPrimitiveTopology(meshComponent.PrimitiveTopology);
+            commandList.IASetVertexBuffer(meshComponent.Mesh->GetVertexBuffer().get());
+            commandList.IASetIndexBuffer(meshComponent.Mesh->GetIndexBuffer().get());
+            commandList.IASetPrimitiveTopology(meshComponent.PrimitiveTopology);
 
-            m_GraphicsCommandList.DrawIndexed(
+            commandList.DrawIndexed(
                 meshComponent.SubMesh->IndexCount,
                 meshComponent.SubMesh->StartIndexLocation,
                 meshComponent.SubMesh->BaseVertexLocation,
@@ -1442,24 +1428,25 @@ namespace sandbox
 
     void InstancingAndCullingLayer::RenderFullscreenQuad(const benzin::Descriptor& srv)
     {
+        auto& commandList = m_CommandQueue.GetGraphicsCommandList();
         auto& backBuffer = m_SwapChain.GetCurrentBackBuffer();
 
-        m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, benzin::Resource::State::RenderTarget);
+        commandList.SetResourceBarrier(*backBuffer, benzin::Resource::State::RenderTarget);
 
-        m_PostEffectsGraphicsCommandList.SetRenderTarget(&backBuffer->GetRenderTargetView());
-        m_PostEffectsGraphicsCommandList.ClearRenderTarget(backBuffer->GetRenderTargetView());
+        commandList.SetRenderTarget(&backBuffer->GetRenderTargetView());
+        commandList.ClearRenderTarget(backBuffer->GetRenderTargetView());
 
-        m_PostEffectsGraphicsCommandList.SetViewport(m_Window.GetViewport());
-        m_PostEffectsGraphicsCommandList.SetScissorRect(m_Window.GetScissorRect());
-        m_PostEffectsGraphicsCommandList.SetPipelineState(*m_PipelineStates.at("Fullscreen"));
-        m_PostEffectsGraphicsCommandList.SetGraphicsRootSignature(*m_RootSignature);
-        m_PostEffectsGraphicsCommandList.IASetVertexBuffer(nullptr);
-        m_PostEffectsGraphicsCommandList.IASetIndexBuffer(nullptr);
-        m_PostEffectsGraphicsCommandList.IASetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
-        m_PostEffectsGraphicsCommandList.SetGraphicsDescriptorTable(5, srv);
-        m_PostEffectsGraphicsCommandList.DrawVertexed(6, 0);
+        commandList.SetViewport(m_Window.GetViewport());
+        commandList.SetScissorRect(m_Window.GetScissorRect());
+        commandList.SetPipelineState(*m_PipelineStates.at("Fullscreen"));
+        commandList.SetGraphicsRootSignature(*m_RootSignature);
+        commandList.IASetVertexBuffer(nullptr);
+        commandList.IASetIndexBuffer(nullptr);
+        commandList.IASetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+        commandList.SetGraphicsDescriptorTable(5, srv);
+        commandList.DrawVertexed(6, 0);
 
-        m_PostEffectsGraphicsCommandList.SetResourceBarrier(*backBuffer, benzin::Resource::State::Present);
+        commandList.SetResourceBarrier(*backBuffer, benzin::Resource::State::Present);
     }
 
     bool InstancingAndCullingLayer::OnWindowResized(benzin::WindowResizedEvent& event)

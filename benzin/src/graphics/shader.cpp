@@ -55,7 +55,7 @@ namespace benzin
         return m_D3D12Shader->GetBufferSize();
     }
 
-    void Shader::CompileFromFile(Type type, const std::wstring_view& filepath, const std::string_view& entryPoint, const DefineContainer& defines)
+    void Shader::CompileFromFile(Type type, const std::wstring_view& filepath, const std::string_view& entryPoint, const std::vector<Define>& defines)
     {
         std::vector<D3D_SHADER_MACRO> d3d12Defines;
 

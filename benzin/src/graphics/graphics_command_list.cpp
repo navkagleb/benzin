@@ -16,59 +16,40 @@
 namespace benzin
 {
 
-    static uint32_t g_GraphicsCommandListCounter = 0;
-
-	GraphicsCommandList::GraphicsCommandList(Device& device, const std::string& debugName)
+	GraphicsCommandList::GraphicsCommandList(Device& device, ID3D12CommandAllocator* d3d12CommandAllocator, std::string_view debugName)
 	{
-		const D3D12_COMMAND_LIST_TYPE commandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+        BENZIN_ASSERT(d3d12CommandAllocator);
 
-        BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateCommandAllocator(commandListType, IID_PPV_ARGS(&m_D3D12CommandAllocator)));
+		const D3D12_COMMAND_LIST_TYPE commandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
         BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateCommandList(
 			0,
 			commandListType,
-			m_D3D12CommandAllocator,
+			d3d12CommandAllocator,
 			nullptr,
 			IID_PPV_ARGS(&m_D3D12GraphicsCommandList)
 		));
 
-        SetDebugName(debugName.empty() ? std::to_string(g_GraphicsCommandListCounter) : debugName, true);
-
-		Close();
+        SetDebugName(debugName, true);
+        BENZIN_D3D12_ASSERT(m_D3D12GraphicsCommandList->Close());
 
         // Upload Buffer
         {
-            const BufferResource::Config uploadBufferConfig
+            const BufferResource::Config config
             {
                 .ElementSize{ sizeof(std::byte) },
                 .ElementCount{ static_cast<uint32_t>(ConvertMBToBytes(120)) },
                 .Flags{ BufferResource::Flags::Dynamic }
             };
 
-            m_UploadBuffer = device.CreateBufferResource(uploadBufferConfig, "UploadBuffer_" + GetDebugName());
+            m_UploadBuffer = device.CreateBufferResource(config, "UploadBuffer_" + GetDebugName());
         }
 	}
 
     GraphicsCommandList::~GraphicsCommandList()
     {
         SafeReleaseD3D12Object(m_D3D12GraphicsCommandList);
-        SafeReleaseD3D12Object(m_D3D12CommandAllocator);
     }
-
-	void GraphicsCommandList::Close()
-	{
-        BENZIN_D3D12_ASSERT(m_D3D12GraphicsCommandList->Close());
-	}
-
-	void GraphicsCommandList::Reset(const PipelineState* const pso)
-	{
-        // Reset CommandAllocator
-        BENZIN_D3D12_ASSERT(m_D3D12CommandAllocator->Reset());
-        
-        // Reset GraphicsCommandList
-		ID3D12PipelineState* d3d12PSO = pso ? pso->GetD3D12PipelineState() : nullptr;
-		BENZIN_D3D12_ASSERT(m_D3D12GraphicsCommandList->Reset(m_D3D12CommandAllocator, d3d12PSO));
-	}
 
     void GraphicsCommandList::SetDescriptorHeaps(const DescriptorManager& descriptorManager)
     {

@@ -36,7 +36,7 @@
 #include "benzin/config/win64_includes.hpp"
 #include "benzin/config/d3d12_includes.hpp"
 
-#include "benzin/config/engine_config.hpp"
+#include "benzin/config/graphics_config.hpp"
 
 #include "benzin/utility/class_modifiers.hpp"
 

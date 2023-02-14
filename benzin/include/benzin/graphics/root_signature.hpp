@@ -90,7 +90,7 @@ namespace benzin
 
     public:
         RootSignature() = default;
-        RootSignature(Device& device, const Config& config, const char* debugName = nullptr);
+        RootSignature(Device& device, const Config& config, std::string_view debugName);
         ~RootSignature();
 
     public:

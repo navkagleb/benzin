@@ -33,7 +33,7 @@ namespace benzin
         BufferResource() = default;
 
     private:
-        BufferResource(ID3D12Resource* d3d12Resource, const Config& config, const std::string& debugName);
+        BufferResource(ID3D12Resource* d3d12Resource, const Config& config, std::string_view debugName);
 
     public:
         const Config& GetConfig() const { return m_Config; }

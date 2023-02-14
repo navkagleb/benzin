@@ -58,7 +58,7 @@ namespace benzin
 
     public:
         GraphicsPipelineState() = default;
-        GraphicsPipelineState(Device& device, const Config& config, const char* debugName = nullptr);
+        GraphicsPipelineState(Device& device, const Config& config, std::string_view debugName);
     };
 
     class ComputePipelineState final : public PipelineState
@@ -75,7 +75,7 @@ namespace benzin
 
     public:
         ComputePipelineState() = default;
-        ComputePipelineState(Device& device, const Config& config, const char* debugName = nullptr);
+        ComputePipelineState(Device& device, const Config& config, std::string_view debugName);
     };
 
 } // namespace benzin

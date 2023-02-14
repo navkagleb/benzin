@@ -15,9 +15,6 @@ namespace benzin
     namespace
     {
 
-        uint32_t g_GraphicsPipelineStateCounter = 0;
-        uint32_t g_ComputePipelineStateCounter = 0;
-
         D3D12_SHADER_BYTECODE ConvertToD3D12Shader(const Shader* const shader)
         {
             return D3D12_SHADER_BYTECODE
@@ -203,7 +200,7 @@ namespace benzin
         SafeReleaseD3D12Object(m_D3D12PipelineState);
     }
 
-    GraphicsPipelineState::GraphicsPipelineState(Device& device, const Config& config, const char* debugName)
+    GraphicsPipelineState::GraphicsPipelineState(Device& device, const Config& config, std::string_view debugName)
     {
         BENZIN_ASSERT(config.RootSignature.GetD3D12RootSignature());
         BENZIN_ASSERT(config.VertexShader.GetData());
@@ -254,12 +251,10 @@ namespace benzin
         }
 
         BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateGraphicsPipelineState(&d3d12GraphicsPipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
-    
-        SetDebugName(!debugName ? std::to_string(g_GraphicsPipelineStateCounter) : std::string{ debugName }, true);
-        g_GraphicsPipelineStateCounter++;
+        SetDebugName(debugName, true);
     }
 
-    ComputePipelineState::ComputePipelineState(Device& device, const Config& config, const char* debugName)
+    ComputePipelineState::ComputePipelineState(Device& device, const Config& config, std::string_view debugName)
     {
         BENZIN_ASSERT(config.RootSignature.GetD3D12RootSignature());
         BENZIN_ASSERT(config.ComputeShader.GetData());
@@ -278,9 +273,7 @@ namespace benzin
         };
 
         BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateComputePipelineState(&d3d12ComputePipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
-    
-        SetDebugName(!debugName ? std::to_string(g_ComputePipelineStateCounter) : std::string{ debugName }, true);
-        g_ComputePipelineStateCounter++;
+        SetDebugName(debugName, true);
     }
 
 } // namespace benzin

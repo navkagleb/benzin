@@ -12,7 +12,11 @@ namespace benzin
         BENZIN_NON_MOVEABLE(Shader)
 
     public:
-        using DefineContainer = std::unordered_map<std::string_view, std::string>;
+        struct Define
+        {
+            std::string_view Name;
+            std::string Value;
+        };
 
     public:
         enum class Type : uint8_t
@@ -38,7 +42,7 @@ namespace benzin
             Type Type{ Type::Unknown };
             std::wstring_view Filepath;
             std::string_view EntryPoint;
-            DefineContainer Defines;
+            std::vector<Define> Defines;
         };
 
     public:
@@ -47,7 +51,7 @@ namespace benzin
         ~Shader();
 
     private:
-        void CompileFromFile(Type type, const std::wstring_view& filepath, const std::string_view& entryPoint, const DefineContainer& defines);
+        void CompileFromFile(Type type, const std::wstring_view& filepath, const std::string_view& entryPoint, const std::vector<Define>& defines);
 
     public:
         const void* GetData() const;

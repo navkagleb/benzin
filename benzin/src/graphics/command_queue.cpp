@@ -8,8 +8,8 @@
 namespace benzin
 {
 
-	CommandQueue::CommandQueue(Device& device, const char* debugName)
-        : m_Fence{ device }
+	CommandQueue::CommandQueue(Device& device, std::string_view debugName)
+        : m_FlushFence{ device, "CommandQueueFlush" }
     {
         const D3D12_COMMAND_QUEUE_DESC commandQueueDesc
         {
@@ -20,32 +20,67 @@ namespace benzin
         };
 
         BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&m_D3D12CommandQueue)));
+        SetDebugName(debugName, true);
 
-        SetDebugName(debugName);
+        // Command Allocators
+        {
+            const D3D12_COMMAND_LIST_TYPE commandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+            for (size_t i = 0; i < m_D3D12CommandAllocators.size(); ++i)
+            {
+                ID3D12CommandAllocator*& d3d12CommandAllocator = m_D3D12CommandAllocators[i];
+
+                BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateCommandAllocator(commandListType, IID_PPV_ARGS(&d3d12CommandAllocator)));
+                
+                const std::string debugName = fmt::format("CommandAllocator[{}]", i);
+                detail::SetD3D12ObjectDebutName(d3d12CommandAllocator, debugName, true);
+            }
+        }
+
+        m_GraphicsCommandList = new GraphicsCommandList{ device, m_D3D12CommandAllocators[0], "CommandQueue" };
 	}
 
     CommandQueue::~CommandQueue()
     {
-        if (m_D3D12CommandQueue)
+        Flush();
+
+        delete m_GraphicsCommandList;
+
+        for (auto& d3d12CommandAllocator : m_D3D12CommandAllocators)
         {
-            Flush();
+            SafeReleaseD3D12Object(d3d12CommandAllocator);
         }
 
         SafeReleaseD3D12Object(m_D3D12CommandQueue);
     }
 
-    void CommandQueue::Submit(GraphicsCommandList& commandList)
+    void CommandQueue::ResetGraphicsCommandList(uint32_t commandAllocatorIndex)
     {
-        ID3D12CommandList* d3d12CommandLists[]{ commandList.GetD3D12GraphicsCommandList() };
-        m_D3D12CommandQueue->ExecuteCommandLists(1, d3d12CommandLists);
+        BENZIN_ASSERT(commandAllocatorIndex < m_D3D12CommandAllocators.size());
+
+        ID3D12CommandAllocator* d3d12CommandAllocator = m_D3D12CommandAllocators[commandAllocatorIndex];
+        BENZIN_D3D12_ASSERT(d3d12CommandAllocator->Reset());
+
+        ID3D12GraphicsCommandList* d3d12GraphicsCommandList = m_GraphicsCommandList->GetD3D12GraphicsCommandList();
+        ID3D12PipelineState* d3d12InitialPipelineState = nullptr;
+        BENZIN_D3D12_ASSERT(d3d12GraphicsCommandList->Reset(d3d12CommandAllocator, d3d12InitialPipelineState));
+    }
+
+    void CommandQueue::ExecuteGraphicsCommandList()
+    {
+        ID3D12GraphicsCommandList* d3d12GraphicsCommandList = m_GraphicsCommandList->GetD3D12GraphicsCommandList();
+        BENZIN_D3D12_ASSERT(d3d12GraphicsCommandList->Close());
+
+        ID3D12CommandList* const d3d12CommandLists[]{ m_GraphicsCommandList->GetD3D12GraphicsCommandList() };
+        m_D3D12CommandQueue->ExecuteCommandLists(static_cast<UINT>(std::size(d3d12CommandLists)), d3d12CommandLists);
     }
 
     void CommandQueue::Flush()
     {
-        m_Fence.Increment();
+        m_FlushCount++;
+        BENZIN_D3D12_ASSERT(m_D3D12CommandQueue->Signal(m_FlushFence.GetD3D12Fence(), m_FlushCount));
 
-        BENZIN_D3D12_ASSERT(m_D3D12CommandQueue->Signal(m_Fence.GetD3D12Fence(), m_Fence.GetValue()));
-        m_Fence.WaitForGPU();
+        m_FlushFence.WaitForGPU(m_FlushCount);
     }
 
 } // namespace benzin

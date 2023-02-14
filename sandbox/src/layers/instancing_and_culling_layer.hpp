@@ -25,6 +25,14 @@ namespace sandbox
 
     class InstancingAndCullingLayer final : public benzin::Layer
     {
+    private:
+        struct FrameContext
+        {
+            std::shared_ptr<benzin::BufferResource> PassConstantBuffer;
+            std::shared_ptr<benzin::BufferResource> EntityStructuredBuffer;
+            std::shared_ptr<benzin::BufferResource> MaterialStructuredBuffer;
+        };
+
     public:
         InstancingAndCullingLayer(benzin::Window& window, benzin::Device& device, benzin::CommandQueue& commandQueue, benzin::SwapChain& swapChain);
 
@@ -69,10 +77,8 @@ namespace sandbox
         benzin::CommandQueue& m_CommandQueue;
         benzin::SwapChain& m_SwapChain;
 
-        benzin::GraphicsCommandList m_GraphicsCommandList;
-        benzin::GraphicsCommandList m_PostEffectsGraphicsCommandList;
+        std::array<FrameContext, benzin::config::GetBackBufferCount()> m_FrameContexts;
 
-        std::unordered_map<std::string, std::shared_ptr<benzin::BufferResource>> m_Buffers;
         std::unordered_map<std::string, std::shared_ptr<benzin::TextureResource>> m_Textures;
 
         benzin::Mesh m_Mesh;

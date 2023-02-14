@@ -2,6 +2,7 @@
 
 #include "benzin/graphics/common.hpp"
 #include "benzin/graphics/texture.hpp"
+#include "benzin/graphics/fence.hpp"
 
 namespace benzin
 {
@@ -22,18 +23,14 @@ namespace benzin
         BENZIN_DEBUG_NAME_D3D12_OBJECT(m_DXGISwapChain3, "SwapChain")
 
     public:
-        SwapChain(const Window& window, Device& device, CommandQueue& commandQueue, const char* debugName = nullptr);
+        SwapChain(const Window& window, Device& device, CommandQueue& commandQueue, std::string_view debugName);
         ~SwapChain();
 
     public:
-        GraphicsFormat GetBackBufferFormat() const { return m_BackBufferFormat; }
+        uint32_t GetCurrentBackBufferIndex() const { return m_DXGISwapChain3->GetCurrentBackBufferIndex(); }
 
-    public:
-        std::shared_ptr<TextureResource>& GetCurrentBackBuffer();
-        const std::shared_ptr<TextureResource>& GetCurrentBackBuffer() const;
-
-    private:
-        uint32_t GetCurrentBufferIndex() const;
+        std::shared_ptr<TextureResource>& GetCurrentBackBuffer() { return m_BackBuffers[GetCurrentBackBufferIndex()]; }
+        const std::shared_ptr<TextureResource>& GetCurrentBackBuffer() const { return m_BackBuffers[GetCurrentBackBufferIndex()]; }
 
     public:
         void ResizeBackBuffers(Device& device, uint32_t width, uint32_t height);
@@ -42,14 +39,19 @@ namespace benzin
     private:
         void EnumerateAdapters();
 
-        void CreateBackBuffers(Device& device);
+        void RegisterBackBuffers(Device& device);
 
     private:
+        CommandQueue& m_CommandQueue;
+
         IDXGIFactory4* m_DXGIFactory4{ nullptr };
         IDXGISwapChain3* m_DXGISwapChain3{ nullptr };
 
-        GraphicsFormat m_BackBufferFormat{ GraphicsFormat::R8G8B8A8UnsignedNorm };
-        std::vector<std::shared_ptr<TextureResource>> m_BackBuffers;
+        std::array<std::shared_ptr<TextureResource>, config::GetBackBufferCount()> m_BackBuffers;
+
+        Fence m_FrameFence;
+        uint64_t m_CPUFrameIndex{ 0 };
+        uint64_t m_GPUFrameIndex{ 0 };
     };
 
 } // namespace benzin

@@ -13,7 +13,7 @@ namespace benzin
         BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12Device, "Device")
 
     public:
-        explicit Device(const char* debugName = nullptr);
+        explicit Device(std::string_view debugName);
         ~Device();
 
     public:
@@ -24,10 +24,10 @@ namespace benzin
         ResourceViewBuilder& GetResourceViewBuilder() { return *m_ResourceViewBuilder; }
 
     public:
-        std::shared_ptr<BufferResource> CreateBufferResource(const BufferResource::Config& config, const std::string& debugName = {}) const;
+        std::shared_ptr<BufferResource> CreateBufferResource(const BufferResource::Config& config, std::string_view debugName) const;
 
-        std::shared_ptr<TextureResource> RegisterTextureResource(ID3D12Resource* d3d12Resource, const std::string& debugName = {}) const;
-        std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config, const std::string& debugName = {}) const;
+        std::shared_ptr<TextureResource> RegisterTextureResource(ID3D12Resource* d3d12Resource, std::string_view debugName) const;
+        std::shared_ptr<TextureResource> CreateTextureResource(const TextureResource::Config& config, std::string_view debugName) const;
 
     private:
         ID3D12Resource* CreateD3D12CommittedResource(

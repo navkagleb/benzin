@@ -14,12 +14,6 @@ namespace benzin
 
     class Window;
 
-    class Device;
-    class CommandQueue;
-    class SwapChain;
-
-    class Camera;
-
     class ImGuiLayer final : public Layer
     {
     public:
@@ -39,22 +33,15 @@ namespace benzin
         void OnEvent(Event& event) override;
         void OnImGuiRender(float dt) override;
 
-    public:
-        void SetCamera(Camera* camera);
-
     private:
         Window& m_Window;
         Device& m_Device;
         CommandQueue& m_CommandQueue;
         SwapChain& m_SwapChain;
 
-        GraphicsCommandList m_GraphicsCommandList;
-
         bool m_IsEventsAreBlocked{ true };
         bool m_IsDemoWindowEnabled{ false };
         bool m_IsBottomPanelEnabled{ true };
-
-        Camera* m_Camera{ nullptr };
     };
 
 } // namespace benzin

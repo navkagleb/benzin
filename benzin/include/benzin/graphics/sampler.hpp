@@ -36,6 +36,8 @@ namespace benzin
         static const Sampler& GetLinearClamp();
         static const Sampler& GetAnisotropicWrap();
         static const Sampler& GetAnisotropicClamp();
+
+        static Sampler Get(TextureFilterType textureFilter, TextureAddressMode textureAddressMode);
     };
 
     struct StaticSampler
@@ -48,11 +50,11 @@ namespace benzin
         };
 
         Sampler Sampler;
-        Shader::Register ShaderRegister;
         BorderColor BorderColor{ BorderColor::TransparentBlack };
         float MipLODBias{ 0.0f };
         uint32_t MaxAnisotropy{ 1 };
         ComparisonFunction ComparisonFunction{ ComparisonFunction::Always };
+        Shader::Register ShaderRegister;
         ShaderVisibility ShaderVisibility{ ShaderVisibility::All };
 
         static StaticSampler GetPointWrap(const Shader::Register& shaderRegister);

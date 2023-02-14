@@ -11,27 +11,23 @@ namespace benzin
     class Fence
     {
     public:
+        BENZIN_NON_COPYABLE(Fence)
+        BENZIN_NON_MOVEABLE(Fence)
         BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12Fence, "Fence")
 
     public:
-        explicit Fence(Device& device);
+        explicit Fence(Device& device, std::string_view debugName);
         ~Fence();
-
-    public:
-        uint64_t GetValue() const { return m_Value; }
 
     public:
         ID3D12Fence* GetD3D12Fence() const { return m_D3D12Fence; }
         uint64_t GetCompletedValue() const { return m_D3D12Fence->GetCompletedValue(); }
 
-        void Increment();
-        void WaitForGPU() const;
+        void WaitForGPU(uint64_t value) const;
 
     private:
         ID3D12Fence* m_D3D12Fence{ nullptr };
         HANDLE m_WaitEvent{ nullptr };
-
-        uint64_t m_Value{ 0 };
     };
 
 } // namespace benzin

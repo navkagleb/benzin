@@ -22,7 +22,6 @@ namespace benzin
         , m_Device{ device }
         , m_CommandQueue{ commandQueue }
         , m_SwapChain{ swapChain }
-        , m_GraphicsCommandList{ device, "ImGuiLayer" }
     {}
 
     bool ImGuiLayer::OnAttach()
@@ -48,13 +47,13 @@ namespace benzin
         }
 
         const Descriptor fontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(Descriptor::Type::ShaderResourceView);
-        const uint32_t framesInFlightCount = 1;
+        const uint32_t framesInFlightCount = config::GetBackBufferCount();
 
         BENZIN_ASSERT(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
         BENZIN_ASSERT(ImGui_ImplDX12_Init(
             m_Device.GetD3D12Device(),
             framesInFlightCount,
-            static_cast<DXGI_FORMAT>(m_SwapChain.GetBackBufferFormat()),
+            static_cast<DXGI_FORMAT>(config::GetBackBufferFormat()),
             m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ fontDescriptor.GetCPUHandle() },
             D3D12_GPU_DESCRIPTOR_HANDLE{ fontDescriptor.GetGPUHandle() }
@@ -81,35 +80,25 @@ namespace benzin
 
     void ImGuiLayer::End()
     {
+        auto& commandList = m_CommandQueue.GetGraphicsCommandList();
+
         ImGui::Render();
 
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_GraphicsCommandList.GetD3D12GraphicsCommandList());
+            commandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::RenderTarget);
+
+            commandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
+            commandList.SetRenderTarget(&m_SwapChain.GetCurrentBackBuffer()->GetRenderTargetView());
+
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
+
+            commandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::Present);
         }
-
-        {
-            m_GraphicsCommandList.Reset();
-
-            m_GraphicsCommandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::RenderTarget);
-
-            m_GraphicsCommandList.SetDescriptorHeaps(m_Device.GetDescriptorManager());
-            m_GraphicsCommandList.SetRenderTarget(&m_SwapChain.GetCurrentBackBuffer()->GetRenderTargetView());
-
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_GraphicsCommandList.GetD3D12GraphicsCommandList());
-
-            m_GraphicsCommandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::Present);
-
-            m_GraphicsCommandList.Close();
-        }
-
-        m_CommandQueue.Submit(m_GraphicsCommandList);
     }
 
     void ImGuiLayer::OnEvent(Event& event)
     {
-        ImGuiIO& io{ ImGui::GetIO() };
+        ImGuiIO& io = ImGui::GetIO();
 
         if (m_IsEventsAreBlocked)
         {
@@ -162,29 +151,12 @@ namespace benzin
             if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, windowFlags))
             {
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-                if (m_Camera)
-                {
-                    ImGui::SameLine();
-                    ImGui::Text(
-                        "  |  Camera Position: { %.2f, %.2f, %.2f }",
-                        DirectX::XMVectorGetX(m_Camera->GetPosition()),
-                        DirectX::XMVectorGetY(m_Camera->GetPosition()),
-                        DirectX::XMVectorGetZ(m_Camera->GetPosition())
-                    );
-                }
-
                 ImGui::End();
             }
 
             ImGui::PopStyleColor();
             ImGui::PopStyleVar(3);
         }
-    }
-
-    void ImGuiLayer::SetCamera(Camera* camera)
-    {
-        m_Camera = camera;
     }
 
 } // namespace benzin

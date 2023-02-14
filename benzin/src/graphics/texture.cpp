@@ -5,14 +5,11 @@
 namespace benzin
 {
 
-    static uint32_t g_TextureResourceCounter = 0;
-
-    TextureResource::TextureResource(ID3D12Resource* d3d12Resource, const Config& config, const std::string& debugName)
+    TextureResource::TextureResource(ID3D12Resource* d3d12Resource, const Config& config, std::string_view debugName)
         : Resource{ d3d12Resource }
         , m_Config{ config }
     {
-        SetDebugName(debugName.empty() ? std::to_string(g_TextureResourceCounter) : debugName, true);
-        g_TextureResourceCounter++;
+        SetDebugName(debugName, true);
     }
 
     uint32_t TextureResource::PushRenderTargetView(const Descriptor& rtv)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "benzin/graphics/format.hpp"
+
 namespace benzin
 {
 
@@ -26,12 +28,11 @@ namespace benzin
 
 #define BENZIN_D3D12_ASSERT(d3d12Call) BENZIN_ASSERT(SUCCEEDED(d3d12Call))
 
-#define BENZIN_DEBUG_NAME_D3D12_OBJECT(d3d12Object, prefix)                                                 \
-	void SetDebugName(const std::string& name, bool isCreated = false)                                      \
+#define BENZIN_DEBUG_NAME_D3D12_OBJECT(d3d12Object, className)                                              \
+	void SetDebugName(std::string_view name, bool isCreated = false)                                        \
     {                                                                                                       \
-        static std::string debugNamePrefix = prefix;                                                        \
-                                                                                                            \
-        detail::SetD3D12ObjectDebugName(d3d12Object, debugNamePrefix + "{" + name + "}", isCreated);        \
+        const std::string formatedName = fmt::format("{}[{}]", className, name);                            \
+        detail::SetD3D12ObjectDebutName(d3d12Object, formatedName, isCreated);                              \
     }                                                                                                       \
                                                                                                             \
 	std::string GetDebugName() const                                                                        \
@@ -51,8 +52,25 @@ namespace benzin
             { t.Release() };
         };
 
+        template <IsD3D12Releasable T>
+        inline std::string_view GetD3D12ClassName()
+        {
+            const std::string_view d3d12ClassName = typeid(T).name();
+
+            size_t beginNameIndex = d3d12ClassName.find("ID3D12");
+
+            if (beginNameIndex == std::string_view::npos)
+            {
+                beginNameIndex = d3d12ClassName.find("IDXGI");
+            }
+
+            BENZIN_ASSERT(beginNameIndex != std::string_view::npos);
+
+            return d3d12ClassName.substr(beginNameIndex);
+        }
+
         template <IsD3D12Nameable T>
-        inline void SetD3D12ObjectDebugName(T* d3d12Object, std::string_view name, bool isCreated)
+        inline void SetD3D12ObjectDebutName(T* d3d12Object, std::string_view name, bool isCreated)
         {
             if (name.empty())
             {
@@ -87,23 +105,6 @@ namespace benzin
             name.clear();
 
             return name;
-        }
-
-        template <IsD3D12Releasable T>
-        std::string_view GetD3D12ClassName()
-        {
-            const std::string_view d3d12ClassName = typeid(T).name();
-
-            size_t beginNameIndex = d3d12ClassName.find("ID3D12");
-
-            if (beginNameIndex == std::string_view::npos)
-            {
-                beginNameIndex = d3d12ClassName.find("IDXGI");
-            }
-
-            BENZIN_ASSERT(beginNameIndex != std::string_view::npos);
-
-            return d3d12ClassName.substr(beginNameIndex);
         }
 
     } // namespace detail
@@ -162,69 +163,6 @@ namespace benzin
 
         ControlPointPatchlist4 = D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST,
         ControlPointPatchlist16 = D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST,
-    };
-
-    enum class GraphicsFormat : uint8_t
-    {
-        Unknown = DXGI_FORMAT_UNKNOWN,
-
-        R32G32B32A32Typeless = DXGI_FORMAT_R32G32B32A32_TYPELESS,
-        R32G32B32A32Float = DXGI_FORMAT_R32G32B32A32_FLOAT,
-        R32G32B32A32UnsignedInt = DXGI_FORMAT_R32G32B32A32_UINT,
-        R32G32B32A32SignedInt = DXGI_FORMAT_R32G32B32A32_SINT,
-
-        R32G32B32Typeless = DXGI_FORMAT_R32G32B32_TYPELESS,
-        R32G32B32Float = DXGI_FORMAT_R32G32B32_FLOAT,
-        R32G32B32UnsignedInt = DXGI_FORMAT_R32G32B32_UINT,
-        R32G32B32SignedInt = DXGI_FORMAT_R32G32B32_SINT,
-
-        R16G16B16A16Typeless = DXGI_FORMAT_R16G16B16A16_TYPELESS,
-        R16G16B16A16Float = DXGI_FORMAT_R16G16B16A16_FLOAT,
-        R16G16B16A16UnsignedNorm = DXGI_FORMAT_R16G16B16A16_UNORM,
-        R16G16B16A16UnsignedInt = DXGI_FORMAT_R16G16B16A16_UINT,
-        R16G16B16A16SignedNorm = DXGI_FORMAT_R16G16B16A16_SNORM,
-        R16G16B16A16SignedInt = DXGI_FORMAT_R16G16B16A16_SINT,
-
-        R32G32Typeless = DXGI_FORMAT_R32G32_TYPELESS,
-        R32G32Float = DXGI_FORMAT_R32G32_FLOAT,
-        R32G32UnsignedInt = DXGI_FORMAT_R32G32_UINT,
-        R32G32SignedInt = DXGI_FORMAT_R32G32_SINT,
-
-        R8G8B8A8Typeless = DXGI_FORMAT_R8G8B8A8_TYPELESS,
-        R8G8B8A8UnsignedNorm = DXGI_FORMAT_R8G8B8A8_UNORM,
-        R8G8B8A8UnsignedInt = DXGI_FORMAT_R8G8B8A8_UINT,
-        R8G8B8A8SignedNorm = DXGI_FORMAT_R8G8B8A8_SNORM,
-        R8G8B8A8SignedInt = DXGI_FORMAT_R8G8B8A8_SINT,
-
-        R16G16Typeless = DXGI_FORMAT_R16G16_TYPELESS,
-        R16G16Float = DXGI_FORMAT_R16G16_FLOAT,
-        R16G16UnsignedNorm = DXGI_FORMAT_R16G16_UNORM,
-        R16G16UnsignedInt = DXGI_FORMAT_R16G16_UINT,
-        R16G16SignedNorm = DXGI_FORMAT_R16G16_SNORM,
-        R16G16SignedInt = DXGI_FORMAT_R16G16_SINT,
-
-        R32Typeless = DXGI_FORMAT_R32_TYPELESS,
-        D32Float = DXGI_FORMAT_D32_FLOAT,
-        R32Float = DXGI_FORMAT_R32_FLOAT,
-        R32UnsignedInt = DXGI_FORMAT_R32_UINT,
-        R32SignedInt = DXGI_FORMAT_R32_SINT,
-
-        D24UnsignedNormS8UnsignedInt = DXGI_FORMAT_D24_UNORM_S8_UINT,
-        R24UnsignedNormX8Typeless = DXGI_FORMAT_R24_UNORM_X8_TYPELESS,
-
-        R16Typeless = DXGI_FORMAT_R16_TYPELESS,
-        R16Float = DXGI_FORMAT_R16_FLOAT,
-        D16UnsignedNorm = DXGI_FORMAT_D16_UNORM,
-        R16UnsignedNorm = DXGI_FORMAT_R16_UNORM,
-        R16UnsignedInt = DXGI_FORMAT_R16_UINT,
-        R16SignedNorm = DXGI_FORMAT_R16_SNORM,
-        R16SignedInt = DXGI_FORMAT_R16_SINT,
-
-        BC1UnsignedNormalized = DXGI_FORMAT_BC1_UNORM,
-        BC3UnsignedNormalized = DXGI_FORMAT_BC3_UNORM,
-        BC7UnsignedNormalized = DXGI_FORMAT_BC7_UNORM,
-
-        R8G8R8A8UnsignedNormalized = DXGI_FORMAT_B8G8R8A8_UNORM
     };
 
     enum class ComparisonFunction : uint8_t

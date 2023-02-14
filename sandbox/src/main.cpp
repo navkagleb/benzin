@@ -31,8 +31,12 @@ namespace sandbox
             m_CommandQueue = std::make_unique<benzin::CommandQueue>(*m_Device, "Main");
             m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Device, *m_CommandQueue, "Main");
 
-            m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);
-            m_InstancingAndCullingLayer = m_LayerStack.Push<InstancingAndCullingLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);
+            BeginFrame();
+            {
+                m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);
+                m_InstancingAndCullingLayer = m_LayerStack.Push<InstancingAndCullingLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);
+            }
+            EndFrame();
         }
 
         void Execute()
@@ -51,27 +55,9 @@ namespace sandbox
                 }
                 else
                 {
-                    m_FrameTimer.Tick();
-
-                    const float dt = m_FrameTimer.GetDeltaTime();
-
-                    for (auto& layer : m_LayerStack)
-                    {
-                        layer->OnUpdate(dt);
-                        layer->OnRender(dt);
-                    }
-
-                    m_ImGuiLayer->Begin();
-                    {
-                        for (auto& layer : m_LayerStack)
-                        {
-                            layer->OnImGuiRender(dt);
-                        }
-                    }
-                    m_ImGuiLayer->End();
-
-                    m_CommandQueue->Flush();
-                    m_SwapChain->Flip(benzin::VSyncState::Disabled);
+                    BeginFrame();
+                    ProcessFrame();
+                    EndFrame();
                 }
             }
         }
@@ -137,6 +123,39 @@ namespace sandbox
 
                 (*it)->OnEvent(event);
             }
+        }
+
+        void BeginFrame()
+        {
+            m_CommandQueue->ResetGraphicsCommandList(m_SwapChain->GetCurrentBackBufferIndex());
+        }
+
+        void ProcessFrame()
+        {
+            m_FrameTimer.Tick();
+
+            const float dt = m_FrameTimer.GetDeltaTime();
+
+            for (auto& layer : m_LayerStack)
+            {
+                layer->OnUpdate(dt);
+                layer->OnRender(dt);
+            }
+
+            m_ImGuiLayer->Begin();
+            {
+                for (auto& layer : m_LayerStack)
+                {
+                    layer->OnImGuiRender(dt);
+                }
+            }
+            m_ImGuiLayer->End();
+        }
+
+        void EndFrame()
+        {
+            m_CommandQueue->ExecuteGraphicsCommandList();
+            m_SwapChain->Flip(benzin::VSyncState::Enabled);
         }
 
     private:

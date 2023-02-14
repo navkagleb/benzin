@@ -169,7 +169,7 @@ namespace benzin
         .SamplerDescriptorCount{ 100 }
     };
 
-    Device::Device(const char* debugName)
+    Device::Device(std::string_view debugName)
     {
         EnableD3D12DebugLayer();
 
@@ -203,7 +203,7 @@ namespace benzin
         SafeReleaseD3D12Object(m_D3D12Device);
     }
 
-    std::shared_ptr<BufferResource> Device::CreateBufferResource(const BufferResource::Config& config, const std::string& debugName) const
+    std::shared_ptr<BufferResource> Device::CreateBufferResource(const BufferResource::Config& config, std::string_view debugName) const
     {
         BENZIN_ASSERT(config.ElementSize != 0);
         BENZIN_ASSERT(config.ElementCount != 0);
@@ -223,7 +223,7 @@ namespace benzin
         return std::shared_ptr<BufferResource>{ rawBufferResource, m_ResourceReleaser };
     }
 
-    std::shared_ptr<TextureResource> Device::RegisterTextureResource(ID3D12Resource* d3d12Resource, const std::string& debugName) const
+    std::shared_ptr<TextureResource> Device::RegisterTextureResource(ID3D12Resource* d3d12Resource, std::string_view debugName) const
     {
         BENZIN_ASSERT(d3d12Resource);
 
@@ -237,7 +237,7 @@ namespace benzin
         return std::shared_ptr<TextureResource>{ rawTextureResource, m_ResourceReleaser };
     }
 
-    std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config, const std::string& debugName) const
+    std::shared_ptr<TextureResource> Device::CreateTextureResource(const TextureResource::Config& config, std::string_view debugName) const
     {
         using namespace magic_enum::bitwise_operators;
         using Flags = TextureResource::Flags;

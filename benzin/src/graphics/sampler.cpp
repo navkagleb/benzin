@@ -100,6 +100,19 @@ namespace benzin
 		return g_AnisotropicClampSampler;
 	}
 
+	Sampler Sampler::Get(TextureFilterType textureFilter, TextureAddressMode textureAddressMode)
+	{
+		return Sampler
+		{
+			.Minification{ textureFilter },
+			.Magnification{ textureFilter },
+			.MipLevel{ textureFilter },
+			.AddressU{ textureAddressMode },
+			.AddressV{ textureAddressMode },
+			.AddressW{ textureAddressMode }
+		};
+	}
+
 	StaticSampler StaticSampler::GetPointWrap(const Shader::Register& shaderRegister)
 	{
 		return StaticSampler
@@ -167,11 +180,11 @@ namespace benzin
 				.AddressV{ Sampler::TextureAddressMode::Border },
 				.AddressW{ Sampler::TextureAddressMode::Border }
 			},
-			.ShaderRegister{ shaderRegister },
 			.BorderColor{ BorderColor::OpaqueBlack },
 			.MipLODBias{ 0.0f },
 			.MaxAnisotropy{ 16 },
-			.ComparisonFunction{ benzin::ComparisonFunction::LessEqual }
+			.ComparisonFunction{ benzin::ComparisonFunction::LessEqual },
+			.ShaderRegister{ shaderRegister }
 		};
 	}
 

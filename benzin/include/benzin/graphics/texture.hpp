@@ -51,7 +51,7 @@ namespace benzin
         TextureResource() = default;
 
     private:
-        TextureResource(ID3D12Resource* d3d12Resource, const Config& config, const std::string& debugName);
+        TextureResource(ID3D12Resource* d3d12Resource, const Config& config, std::string_view debugName);
 
     public:
         const Config& GetConfig() const { return m_Config; }
