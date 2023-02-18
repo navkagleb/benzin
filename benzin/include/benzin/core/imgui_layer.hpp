@@ -39,6 +39,8 @@ namespace benzin
         CommandQueue& m_CommandQueue;
         SwapChain& m_SwapChain;
 
+        Descriptor m_FontDescriptor;
+
         bool m_IsEventsAreBlocked{ true };
         bool m_IsDemoWindowEnabled{ false };
         bool m_IsBottomPanelEnabled{ true };

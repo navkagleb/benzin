@@ -46,7 +46,8 @@ namespace benzin
             style.Colors[ImGuiCol_WindowBg].w = 1.0f;
         }
 
-        const Descriptor fontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(Descriptor::Type::ShaderResourceView);
+        m_FontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(Descriptor::Type::ShaderResourceView);
+
         const uint32_t framesInFlightCount = config::GetBackBufferCount();
 
         BENZIN_ASSERT(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
@@ -55,8 +56,8 @@ namespace benzin
             framesInFlightCount,
             static_cast<DXGI_FORMAT>(config::GetBackBufferFormat()),
             m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
-            D3D12_CPU_DESCRIPTOR_HANDLE{ fontDescriptor.GetCPUHandle() },
-            D3D12_GPU_DESCRIPTOR_HANDLE{ fontDescriptor.GetGPUHandle() }
+            D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCPUHandle() },
+            D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGPUHandle() }
         ));
 
         return true;
@@ -64,6 +65,8 @@ namespace benzin
 
     bool ImGuiLayer::OnDetach()
     {
+        m_Device.GetDescriptorManager().DeallocateDescriptor(Descriptor::Type::ShaderResourceView, m_FontDescriptor);
+
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();

@@ -87,6 +87,8 @@ namespace benzin
 
         uint32_t m_Marker{ 0 };
         std::vector<uint32_t> m_FreeIndices;
+
+        uint32_t m_AllocatedIndexCount{ 0 };
     };
 
     class DescriptorManager

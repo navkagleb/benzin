@@ -66,6 +66,8 @@ namespace benzin
 
     DescriptorHeap::~DescriptorHeap()
     {
+        BENZIN_ASSERT(m_AllocatedIndexCount == 0);
+
         SafeReleaseD3D12Object(m_D3D12DescriptorHeap);
     }
 
@@ -100,6 +102,9 @@ namespace benzin
     {
         uint32_t beginIndex = 0;
 
+        // TODO: Add assertions and move accumulating of m_AllocatedIndexCount to another place
+        m_AllocatedIndexCount += count;
+
         if (m_FreeIndices.size() >= count)
         {
             beginIndex = m_FreeIndices.front();
@@ -133,6 +138,8 @@ namespace benzin
         {
             m_FreeIndices.push_back(index);
             std::sort(m_FreeIndices.begin(), m_FreeIndices.end());
+
+            m_AllocatedIndexCount--;
         }
     }
 
