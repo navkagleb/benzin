@@ -3,26 +3,26 @@
 namespace benzin
 {
 
-	class Logger
-	{
-	public:
-		BENZIN_NON_CONSTRUCTABLE(Logger)
+    class Logger
+    {
+    public:
+        BENZIN_NON_CONSTRUCTABLE(Logger)
 
-	public:
-		enum class Severity
-		{
-			Trace,
-			Warning,
-			Error,
-		};
+    public:
+        enum class Severity
+        {
+            Trace,
+            Warning,
+            Error,
+        };
 
-	public:
-		template <typename... Args>
-		static void Log(Severity severity, std::string_view filepath, uint32_t line, std::string_view format, Args&&... args);
+    public:
+        template <typename... Args>
+        static void Log(Severity severity, std::string_view filepath, uint32_t line, std::string_view format, Args&&... args);
 
-	private:
-		static void LogImpl(Severity severity, std::string_view filepath, uint32_t line, std::string_view message);
-	};
+    private:
+        static void LogImpl(Severity severity, std::string_view filepath, uint32_t line, std::string_view message);
+    };
 
 } // namespace benzin
 

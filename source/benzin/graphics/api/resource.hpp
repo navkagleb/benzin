@@ -21,10 +21,7 @@ namespace benzin
         BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12Resource)
 
     public:
-        friend class Device;
-
-    public:
-        enum class State : uint16_t
+        enum class State : std::underlying_type_t<D3D12_RESOURCE_STATES>
         {
             Present = D3D12_RESOURCE_STATE_COMMON,
             VertexBuffer = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
@@ -40,13 +37,11 @@ namespace benzin
             CopySource = D3D12_RESOURCE_STATE_COPY_SOURCE,
             ResolveDestination = D3D12_RESOURCE_STATE_RESOLVE_DEST,
             ResolveSource = D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
-            GenericRead = D3D12_RESOURCE_STATE_GENERIC_READ
+            GenericRead = D3D12_RESOURCE_STATE_GENERIC_READ,
         };
 
     protected:
         explicit Resource(Device& device);
-
-    public:
         virtual ~Resource();
 
     public:

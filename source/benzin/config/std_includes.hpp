@@ -5,7 +5,7 @@
 #include <cstdint>
 
 #if defined(BENZIN_DEBUG_BUILD)
-	#include <cassert>
+    #include <cassert>
 #endif
 
 #include <memory>

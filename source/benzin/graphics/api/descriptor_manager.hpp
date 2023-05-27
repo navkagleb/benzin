@@ -10,9 +10,6 @@ namespace benzin
     class Descriptor
     {
     public:
-        friend class GraphicsCommandList;
-
-    public:
         enum Type : uint8_t
         {
             RenderTargetView,
@@ -25,11 +22,11 @@ namespace benzin
 
     public:
         Descriptor() = default;
-        Descriptor(uint32_t heapIndex, uint64_t cpuHandle, uint64_t gpuHandle = 0);
+        Descriptor(uint32_t heapIndex, size_t cpuHandle, uint64_t gpuHandle = 0);
 
     public:
         uint32_t GetHeapIndex() const { BENZIN_ASSERT(IsValid()); return m_HeapIndex; }
-        uint64_t GetCPUHandle() const { BENZIN_ASSERT(IsValid());  return m_CPUHandle; }
+        size_t GetCPUHandle() const { BENZIN_ASSERT(IsValid());  return m_CPUHandle; }
         uint64_t GetGPUHandle() const { BENZIN_ASSERT(IsValid() && m_GPUHandle != 0); return m_GPUHandle; }
 
     public:
@@ -37,7 +34,7 @@ namespace benzin
 
     private:
         uint32_t m_HeapIndex{ 0 };
-        uint64_t m_CPUHandle{ 0 };
+        size_t m_CPUHandle{ 0 };
         uint64_t m_GPUHandle{ 0 };
     };
 

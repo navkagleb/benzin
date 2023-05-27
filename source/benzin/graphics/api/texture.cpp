@@ -48,7 +48,7 @@ namespace benzin
                 .Format{ static_cast<DXGI_FORMAT>(config.Format) },
                 .SampleDesc{ 1, 0 },
                 .Layout{ D3D12_TEXTURE_LAYOUT_UNKNOWN },
-                .Flags{ static_cast<D3D12_RESOURCE_FLAGS>(config.Flags) }
+                .Flags{ static_cast<D3D12_RESOURCE_FLAGS>(config.Flags) },
             };
         }
 
@@ -62,7 +62,7 @@ namespace benzin
                 .ArraySize{ d3d12ResourceDesc.DepthOrArraySize },
                 .MipCount{ d3d12ResourceDesc.MipLevels },
                 .Format{ static_cast<GraphicsFormat>(d3d12ResourceDesc.Format) },
-                .Flags{ static_cast<TextureResource::Flags>(d3d12ResourceDesc.Flags) }
+                .Flags{ static_cast<TextureResource::Flags>(d3d12ResourceDesc.Flags) },
             };
         }
 
@@ -70,7 +70,7 @@ namespace benzin
         {
             D3D12_CLEAR_VALUE d3d12ClearValue
             {
-                .Format{ static_cast<DXGI_FORMAT>(format) }
+                .Format{ static_cast<DXGI_FORMAT>(format) },
             };
 
             Visit(

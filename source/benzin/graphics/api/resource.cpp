@@ -38,7 +38,6 @@ namespace benzin
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = m_D3D12Resource->GetDesc();
 
         D3D12_RESOURCE_ALLOCATION_INFO1 d3d12ResourceAllocationInfo1;
-
         m_Device.GetD3D12Device()->GetResourceAllocationInfo1(0, 1, &d3d12ResourceDesc, &d3d12ResourceAllocationInfo1);
 
         return static_cast<uint32_t>(d3d12ResourceAllocationInfo1.SizeInBytes);

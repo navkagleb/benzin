@@ -7,15 +7,15 @@ namespace benzin
 
     struct BlendState
     {
-        enum class Operation : uint8_t
+        enum class Operation : std::underlying_type_t<D3D12_BLEND_OP>
         {
             Add = D3D12_BLEND_OP_ADD,
             Substract = D3D12_BLEND_OP_SUBTRACT,
             Min = D3D12_BLEND_OP_MIN,
-            Max = D3D12_BLEND_OP_MAX
+            Max = D3D12_BLEND_OP_MAX,
         };
 
-        enum class ColorFactor : uint8_t
+        enum class ColorFactor : std::underlying_type_t<D3D12_BLEND>
         {
             Zero = D3D12_BLEND_ZERO,
             One = D3D12_BLEND_ONE,
@@ -29,10 +29,10 @@ namespace benzin
             InverseDestinationColor = D3D12_BLEND_INV_DEST_COLOR,
             SourceAlphaSaturated = D3D12_BLEND_SRC_ALPHA_SAT,
             BlendFactor = D3D12_BLEND_BLEND_FACTOR,
-            InverseBlendFactor = D3D12_BLEND_INV_BLEND_FACTOR
+            InverseBlendFactor = D3D12_BLEND_INV_BLEND_FACTOR,
         };
 
-        enum class AlphaFactor : uint8_t
+        enum class AlphaFactor : std::underlying_type_t<D3D12_BLEND>
         {
             Zero = D3D12_BLEND_ZERO,
             One = D3D12_BLEND_ONE,
@@ -42,7 +42,7 @@ namespace benzin
             InverseDestinationAlpha = D3D12_BLEND_INV_DEST_ALPHA,
             SourceAlphaSaturated = D3D12_BLEND_SRC_ALPHA_SAT,
             BlendFactor = D3D12_BLEND_BLEND_FACTOR,
-            InverseBlendFactor = D3D12_BLEND_INV_BLEND_FACTOR
+            InverseBlendFactor = D3D12_BLEND_INV_BLEND_FACTOR,
         };
 
         enum class AlphaToCoverageState : bool
@@ -111,7 +111,7 @@ namespace benzin
 
     struct StencilState
     {
-        enum class Operation : uint8_t
+        enum class Operation : std::underlying_type_t<D3D12_STENCIL_OP>
         {
             Keep = D3D12_STENCIL_OP_KEEP,
             Zero = D3D12_STENCIL_OP_ZERO,
@@ -120,7 +120,7 @@ namespace benzin
             DescreaseSaturated = D3D12_STENCIL_OP_DECR_SAT,
             Invert = D3D12_STENCIL_OP_INVERT,
             Increase = D3D12_STENCIL_OP_INCR,
-            Decrease = D3D12_STENCIL_OP_DECR
+            Decrease = D3D12_STENCIL_OP_DECR,
         };
 
         struct Behaviour
@@ -142,23 +142,23 @@ namespace benzin
 
     struct RasterizerState
     {
-        enum class FillMode : uint8_t
+        enum class FillMode : std::underlying_type_t<D3D12_FILL_MODE>
         {
             Wireframe = D3D12_FILL_MODE_WIREFRAME,
             Solid = D3D12_FILL_MODE_SOLID,
         };
 
-        enum class CullMode : uint8_t
+        enum class CullMode : std::underlying_type_t<D3D12_CULL_MODE>
         {
             None = D3D12_CULL_MODE_NONE,
             Front = D3D12_CULL_MODE_FRONT,
-            Back = D3D12_CULL_MODE_BACK
+            Back = D3D12_CULL_MODE_BACK,
         };
 
         enum class TriangleOrder : bool
         {
             Clockwise = false,
-            Counterclockwise = true
+            Counterclockwise = true,
         };
 
         FillMode FillMode{ FillMode::Solid };

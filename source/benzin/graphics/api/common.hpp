@@ -29,7 +29,7 @@ namespace benzin
         Point = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT,
         Line = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,
         Triangle = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
-        Patch = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH
+        Patch = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH,
     };
 
     enum class PrimitiveTopology : std::underlying_type_t<D3D12_PRIMITIVE_TOPOLOGY>
@@ -55,7 +55,7 @@ namespace benzin
         Greater = D3D12_COMPARISON_FUNC_GREATER,
         NotEqual = D3D12_COMPARISON_FUNC_NOT_EQUAL,
         GreaterEqual = D3D12_COMPARISON_FUNC_GREATER_EQUAL,
-        Always = D3D12_COMPARISON_FUNC_ALWAYS
+        Always = D3D12_COMPARISON_FUNC_ALWAYS,
     };
 
     struct Viewport

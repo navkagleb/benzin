@@ -24,15 +24,15 @@ namespace internal
 
 enum : uint32_t
 {
-	g_InEquirectangularTextureIndex,
-	g_OutCubeTextureIndex,
+    g_InEquirectangularTextureIndex,
+    g_OutCubeTextureIndex,
 };
 
 [numthreads(8, 8, 1)]
 void CS_Main(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-	Texture2D<float4> inEquirectangularTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_InEquirectangularTextureIndex)];
-	RWTexture2DArray<float4> outCubeTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_OutCubeTextureIndex)];
+    Texture2D<float4> inEquirectangularTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_InEquirectangularTextureIndex)];
+    RWTexture2DArray<float4> outCubeTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_OutCubeTextureIndex)];
 
     float width;
     float height;

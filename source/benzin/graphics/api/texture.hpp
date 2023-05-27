@@ -48,7 +48,7 @@ namespace benzin
 
         using ClearValue = std::variant<ClearColor, ClearDepthStencil>;
 
-        enum class Flags
+        enum class Flags : std::underlying_type_t<D3D12_RESOURCE_FLAGS>
         {
             None = 0,
             BindAsRenderTarget = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
@@ -56,7 +56,7 @@ namespace benzin
             BindAsUnorderedAccess = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
         };
 
-        enum class Type
+        enum class Type : std::underlying_type_t<D3D12_RESOURCE_DIMENSION>
         {
             Unknown = D3D12_RESOURCE_DIMENSION_UNKNOWN,
             Texture2D = D3D12_RESOURCE_DIMENSION_TEXTURE2D,

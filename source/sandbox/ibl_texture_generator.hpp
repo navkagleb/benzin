@@ -7,18 +7,18 @@
 namespace sandbox
 {
 
-	class IBLTextureGenerator
-	{
-	public:
-		IBLTextureGenerator(benzin::Device& device);
+    class IBLTextureGenerator
+    {
+    public:
+        IBLTextureGenerator(benzin::Device& device);
 
-	public:
-		benzin::TextureResource* GenerateIrradianceTexture(const benzin::TextureResource& cubeTexture) const;
+    public:
+        benzin::TextureResource* GenerateIrradianceTexture(const benzin::TextureResource& cubeTexture) const;
 
-	private:
-		benzin::Device& m_Device;
+    private:
+        benzin::Device& m_Device;
 
-		std::unique_ptr<benzin::PipelineState> m_IrradiancePipelineState;
-	};
+        std::unique_ptr<benzin::PipelineState> m_IrradiancePipelineState;
+    };
 
 } // namespace sandbox

@@ -35,4 +35,10 @@ namespace benzin
         return (mb / 1024) + (mb % 1024 != 0);
     }
 
+    template <std::integral T>
+    constexpr inline T Align(T value, T alignment)
+    {
+        return (value + alignment - 1) & ~(alignment - 1);
+    }
+
 } // namespace benzin

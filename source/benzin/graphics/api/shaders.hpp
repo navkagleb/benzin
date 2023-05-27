@@ -12,11 +12,8 @@ namespace benzin
     enum class ShaderType : uint8_t
     {
         Vertex,
-        Hull,
-        Domain,
-        Geometry,
         Pixel,
-        Compute
+        Compute,
     };
 
     const std::vector<std::byte>& GetShaderBlob(

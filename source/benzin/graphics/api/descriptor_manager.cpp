@@ -36,7 +36,7 @@ namespace benzin
     //////////////////////////////////////////////////////////////////////////
     /// Descriptor
     //////////////////////////////////////////////////////////////////////////
-    Descriptor::Descriptor(uint32_t heapIndex, uint64_t cpuHandle, uint64_t gpuHandle)
+    Descriptor::Descriptor(uint32_t heapIndex, size_t cpuHandle, uint64_t gpuHandle)
         : m_HeapIndex{ heapIndex }
         , m_CPUHandle{ cpuHandle }
         , m_GPUHandle{ gpuHandle }

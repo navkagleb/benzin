@@ -365,12 +365,12 @@ namespace benzin
 
         for (const Descriptor& descriptor : rtvs)
         {
-            d3d12RTVDescriptorHandles.emplace_back(descriptor.m_CPUHandle);
+            d3d12RTVDescriptorHandles.emplace_back(descriptor.GetCPUHandle());
         }
 
         if (dsv)
         {
-            const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DSVDescriptorHandle{ dsv->m_CPUHandle };
+            const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DSVDescriptorHandle{ dsv->GetCPUHandle() };
 
             m_D3D12GraphicsCommandList->OMSetRenderTargets(
                 static_cast<uint32_t>(d3d12RTVDescriptorHandles.size()),

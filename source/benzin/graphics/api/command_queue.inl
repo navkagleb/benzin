@@ -33,8 +33,6 @@ namespace benzin
         , m_FlushFence{ device }
         , m_CommandList{ device }
     {
-        m_FlushFence.SetDebugName("CommandQueueFlush");
-
         const D3D12_COMMAND_LIST_TYPE d3d12CommandListType = GetD3D12CommandListType<T>();
 
         const D3D12_COMMAND_QUEUE_DESC d3d12CommandQueueDesc
@@ -51,13 +49,19 @@ namespace benzin
         ));
 
         m_D3D12CommandAllocators.resize(commandAllocatorCount, nullptr);
-        for (ID3D12CommandAllocator*& d3d12CommandAllocator : m_D3D12CommandAllocators)
+        for (size_t i = 0; i < m_D3D12CommandAllocators.size(); ++i)
         {
+            ID3D12CommandAllocator*& d3d12CommandAllocator = m_D3D12CommandAllocators[i];
+
             BENZIN_HR_ASSERT(device.GetD3D12Device()->CreateCommandAllocator(
                 d3d12CommandListType,
                 IID_PPV_ARGS(&d3d12CommandAllocator)
             ));
+
+            dx::SetDebugName(d3d12CommandAllocator, fmt::format("{}_{}", magic_enum::enum_name(d3d12CommandListType), i);
         }
+
+        m_FlushFence.SetDebugName("CommandQueueFlush");
     }
 
     template <typename T>

@@ -9,18 +9,18 @@ namespace benzin
     {
         enum class TextureFilterType : uint8_t
         {
-            Point = 0,
+            Point,
             Linear,
-            Anisotropic
+            Anisotropic,
         };
 
-        enum class TextureAddressMode : uint8_t
+        enum class TextureAddressMode : std::underlying_type_t<D3D12_TEXTURE_ADDRESS_MODE>
         {
             Wrap = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
             Mirror = D3D12_TEXTURE_ADDRESS_MODE_MIRROR,
             Clamp = D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
             Border = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
-            MirrorOnce = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE
+            MirrorOnce = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE,
         };
 
         TextureFilterType Minification{ TextureFilterType::Point };
@@ -42,11 +42,11 @@ namespace benzin
 
     struct StaticSampler
     {
-        enum class BorderColor : uint8_t
+        enum class BorderColor : std::underlying_type_t<D3D12_STATIC_BORDER_COLOR>
         {
             TransparentBlack = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
             OpaqueBlack = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
-            OpaqueWhite = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE
+            OpaqueWhite = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
         };
 
         Sampler Sampler;

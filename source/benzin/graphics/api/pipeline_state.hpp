@@ -52,7 +52,6 @@ namespace benzin
         };
 
     public:
-        PipelineState() = default;
         explicit PipelineState(Device& device, const GraphicsConfig& config);
         explicit PipelineState(Device& device, const ComputeConfig& config);
         ~PipelineState();

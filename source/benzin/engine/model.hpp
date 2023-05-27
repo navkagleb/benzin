@@ -163,7 +163,6 @@ namespace benzin
 
         std::vector<std::shared_ptr<TextureResource>> m_Textures;
         std::shared_ptr<BufferResource> m_MaterialBuffer;
-        std::vector<MaterialData> m_Materials;
     };
 
 } // namespace benzin
