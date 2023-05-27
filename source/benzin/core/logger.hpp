@@ -11,9 +11,9 @@ namespace benzin
 	public:
 		enum class Severity
 		{
-			Info,
+			Trace,
 			Warning,
-			Critical
+			Error,
 		};
 
 	public:
@@ -26,8 +26,8 @@ namespace benzin
 
 } // namespace benzin
 
-#define BENZIN_INFO(format, ...) ::benzin::Logger::Log(::benzin::Logger::Severity::Info, __FILE__, __LINE__, format, __VA_ARGS__)
+#define BENZIN_TRACE(format, ...) ::benzin::Logger::Log(::benzin::Logger::Severity::Trace, __FILE__, __LINE__, format, __VA_ARGS__)
 #define BENZIN_WARNING(format, ...) ::benzin::Logger::Log(::benzin::Logger::Severity::Warning, __FILE__, __LINE__, format, __VA_ARGS__)
-#define BENZIN_CRITICAL(format, ...) ::benzin::Logger::Log(::benzin::Logger::Severity::Critical, __FILE__, __LINE__, format, __VA_ARGS__)
+#define BENZIN_ERROR(format, ...) ::benzin::Logger::Log(::benzin::Logger::Severity::Error, __FILE__, __LINE__, format, __VA_ARGS__)
 
 #include "logger.inl"

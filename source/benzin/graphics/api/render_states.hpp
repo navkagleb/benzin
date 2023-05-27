@@ -80,13 +80,7 @@ namespace benzin
 
         struct RenderTargetState
         {
-            enum class State : bool
-            {
-                Disabled = false,
-                Enabled = true
-            };
-
-            State State{ State::Disabled };
+            bool IsEnabled{ false };
             ColorEquation ColorEquation;
             AlphaEquation AlphaEquation;
             Channels Channels{ Channels::All };
@@ -101,36 +95,22 @@ namespace benzin
 
     struct DepthState
     {
-        enum class TestState : bool
-        {
-            Disabled = false,
-            Enabled = true
-        };
+        static_assert(D3D12_DEPTH_WRITE_MASK_ZERO == false);
+        static_assert(D3D12_DEPTH_WRITE_MASK_ALL == true);
 
-        enum class WriteState : bool
-        {
-            Disabled = D3D12_DEPTH_WRITE_MASK_ZERO,
-            Enabled = D3D12_DEPTH_WRITE_MASK_ALL
-        };
-
-        TestState TestState{ TestState::Enabled };
-        WriteState WriteState{ WriteState::Enabled };
+        bool IsEnabled{ true };
+        bool IsWriteEnabled{ true };
         ComparisonFunction ComparisonFunction{ ComparisonFunction::Less };
 
         static const DepthState& GetDefault();
         static const DepthState& GetLess();
         static const DepthState& GetLessEqual();
+        static const DepthState& GetGreaterEqual();
         static const DepthState& GetDisabled();
     };
 
     struct StencilState
     {
-        enum class TestState : bool
-        {
-            Disabled = false,
-            Enabled = true
-        };
-
         enum class Operation : uint8_t
         {
             Keep = D3D12_STENCIL_OP_KEEP,
@@ -151,7 +131,7 @@ namespace benzin
             ComparisonFunction StencilFunction{ ComparisonFunction::Always };
         };
 
-        TestState TestState{ TestState::Disabled };
+        bool IsEnabled{ false };
         uint8_t ReadMask{ 0xff };
         uint8_t WriteMask{ 0xff };
         Behaviour FrontFaceBehaviour;

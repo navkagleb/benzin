@@ -6,20 +6,17 @@
 #include <third_party/imgui/backends/imgui_impl_dx12.h>
 #include <third_party/imgui/backends/imgui_impl_win32.h>
 
-#include "benzin/core/common.hpp"
-
+#include "benzin/graphics/api/command_queue.hpp"
+#include "benzin/graphics/api/texture.hpp"
 #include "benzin/system/event_dispatcher.hpp"
 #include "benzin/system/key_event.hpp"
-
-#include "benzin/engine/camera.hpp"
 
 namespace benzin
 {
 
-    ImGuiLayer::ImGuiLayer(Window& window, Device& device, CommandQueue& commandQueue, SwapChain& swapChain)
+    ImGuiLayer::ImGuiLayer(Window& window, Device& device, SwapChain& swapChain)
         : m_Window{ window }
         , m_Device{ device }
-        , m_CommandQueue{ commandQueue }
         , m_SwapChain{ swapChain }
     {}
 
@@ -89,11 +86,11 @@ namespace benzin
         }
 
         {
-            auto& commandList = m_CommandQueue.GetGraphicsCommandList();
+            auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
             commandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::RenderTarget);
 
-            commandList.SetRenderTarget(&m_SwapChain.GetCurrentBackBuffer()->GetRenderTargetView());
+            commandList.SetRenderTargets({ m_SwapChain.GetCurrentBackBuffer()->GetRenderTargetView() });
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
 
             commandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::Present);
@@ -113,6 +110,11 @@ namespace benzin
         EventDispatcher dispatcher{ event };
         dispatcher.Dispatch<KeyPressedEvent>([this](KeyPressedEvent event)
         {
+            if (event.GetKeyCode() == KeyCode::F1)
+            {
+                m_IsWidgetDrawingEnabled = !m_IsWidgetDrawingEnabled;
+            }
+
             if (event.GetKeyCode() == KeyCode::I)
             {
                 m_IsEventsAreBlocked = !m_IsEventsAreBlocked;
@@ -154,7 +156,7 @@ namespace benzin
             const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs;
             if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, windowFlags))
             {
-                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                ImGui::Text("FPS: %.1f (%.3f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
                 ImGui::End();
             }
 

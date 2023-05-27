@@ -7,12 +7,9 @@
 namespace benzin
 {
 
-    static constexpr uint64_t g_DefaultFenceValue = 0;
-
-    Fence::Fence(Device& device, std::string_view debugName)
+    Fence::Fence(Device& device)
     {
-        BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateFence(g_DefaultFenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_D3D12Fence)));
-        SetDebugName(debugName, true);
+        BENZIN_HR_ASSERT(device.GetD3D12Device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_D3D12Fence)));
 
         m_WaitEvent = CreateEvent(nullptr, false, false, nullptr);
         BENZIN_ASSERT(m_WaitEvent);
@@ -22,7 +19,7 @@ namespace benzin
     {
         ::CloseHandle(m_WaitEvent);
 
-        SafeReleaseD3D12Object(m_D3D12Fence);
+        dx::SafeRelease(m_D3D12Fence);
     }
 
     void Fence::WaitForGPU(uint64_t value) const

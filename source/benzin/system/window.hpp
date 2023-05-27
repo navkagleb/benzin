@@ -6,9 +6,6 @@
 namespace benzin
 {
 
-    struct Viewport;
-    struct ScissorRect;
-
     class Window
     {
     private:
@@ -18,7 +15,7 @@ namespace benzin
         using EventCallbackFunction = std::function<void(Event& event)>;
 
     public:
-        Window(const std::string& title, uint32_t width, uint32_t height);
+        Window(std::string_view title, uint32_t width, uint32_t height, const EventCallbackFunction& eventCallback);
         ~Window();
 
     public:
@@ -31,15 +28,10 @@ namespace benzin
         bool IsMinimized() const { return m_IsMinimized; }
         bool IsMaximized() const { return m_IsMaximized; }
 
-        float GetAspectRatio() const { return static_cast<float>(m_Width) / m_Height; }
-
-        Viewport GetViewport() const;
-        ScissorRect GetScissorRect() const;
-
     public:
         void ProcessEvents();
 
-        void SetTitle(const std::string_view& title);
+        void SetTitle(std::string_view title);
         void SetVisible(bool isVisible);
 
         void SetEventCallbackFunction(const EventCallbackFunction& callback);

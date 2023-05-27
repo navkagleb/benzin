@@ -3,10 +3,11 @@
 #include "sobel_filter_pass.hpp"
 
 #include <benzin/graphics/api/device.hpp>
-#include <benzin/graphics/api/resource_view_builder.hpp>
-#include <benzin/graphics/api/graphics_command_list.hpp>
-#include <benzin/graphics/api/texture.hpp>
+#include <benzin/graphics/api/command_list.hpp>
 #include <benzin/graphics/api/pipeline_state.hpp>
+#include <benzin/graphics/api/texture.hpp>
+
+#if 0
 
 namespace sandbox
 {
@@ -25,18 +26,18 @@ namespace sandbox
         BENZIN_ASSERT(input.HasRenderTargetView());
 
         {
-            enum : uint32_t
+            enum class RootConstant : uint32_t
             {
-                RootConstant_InputTextureIndex = 0,
-                RootConstant_OutputTextureIndex = 1
+                InputTextureIndex,
+                OutputTextureIndex,
             };
 
             const uint32_t width = input.GetConfig().Width;
             const uint32_t height = input.GetConfig().Height;
 
             commandList.SetPipelineState(*m_SobelFilterPSO);
-            commandList.SetRootConstant(RootConstant_InputTextureIndex, input.GetShaderResourceView().GetHeapIndex(), true);
-            commandList.SetRootConstant(RootConstant_OutputTextureIndex, m_EdgeMap->GetUnorderedAccessView().GetHeapIndex(), true);
+            commandList.SetRootShaderResourceC(RootConstant::InputTextureIndex, input.GetShaderResourceView());
+            commandList.SetRootUnorderedAccessC(RootConstant::OutputTextureIndex, m_EdgeMap->GetUnorderedAccessView());
 
             commandList.Dispatch(
                 benzin::AlignThreadGroupCount(width, g_ThreadPerGroupCount),
@@ -46,17 +47,17 @@ namespace sandbox
         }
         
         {
-            enum : uint32_t
+            enum class RootConstant : uint32_t
             {
-                RootConstant_BaseTextureMapIndex = 0,
-                RootConstant_EdgeTextureMapIndex = 1
+                BaseTextureMapIndex,
+                EdgeTextureMapIndex,
             };
 
             commandList.SetResourceBarrier(input, benzin::Resource::State::RenderTarget);
 
             commandList.SetPipelineState(*m_CompositePSO);
-            commandList.SetRootConstant(RootConstant_BaseTextureMapIndex, input.GetShaderResourceView().GetHeapIndex());
-            commandList.SetRootConstant(RootConstant_EdgeTextureMapIndex, m_EdgeMap->GetShaderResourceView().GetHeapIndex());
+            commandList.SetRootShaderResourceG(RootConstant::BaseTextureMapIndex, input.GetShaderResourceView());
+            commandList.SetRootShaderResourceG(RootConstant::EdgeTextureMapIndex, m_EdgeMap->GetShaderResourceView());
 
             commandList.DrawVertexed(6, 0);
 
@@ -76,13 +77,14 @@ namespace sandbox
             .Type{ benzin::TextureResource::Type::Texture2D },
             .Width{ width },
             .Height{ height },
-            .Format{ benzin::GraphicsFormat::R8G8B8A8UnsignedNorm },
+            .Format{ benzin::GraphicsFormat::RGBA8Unorm },
             .Flags{ benzin::TextureResource::Flags::BindAsUnorderedAccess }
         };
 
-        m_EdgeMap = device.CreateTextureResource(config, "SobelFilterEdgeMap");
-        m_EdgeMap->PushShaderResourceView(device.GetResourceViewBuilder().CreateShaderResourceView(*m_EdgeMap));
-        m_EdgeMap->PushUnorderedAccessView(device.GetResourceViewBuilder().CreateUnorderedAccessView(*m_EdgeMap));
+        m_EdgeMap = std::make_shared<benzin::TextureResource>(device, config);
+        m_EdgeMap->SetDebugName("SobelFilterEdgeMap");
+        m_EdgeMap->PushShaderResourceView();
+        m_EdgeMap->PushUnorderedAccessView();
     }
 
     void SobelFilterPass::InitPipelineStates(benzin::Device& device)
@@ -93,7 +95,8 @@ namespace sandbox
                 .ComputeShader{ "sobel_filter.hlsl", "CS_Main" }
             };
 
-            m_SobelFilterPSO = std::make_unique<benzin::ComputePipelineState>(device, config, "SobelFilter");
+            m_SobelFilterPSO = std::make_unique<benzin::ComputePipelineState>(device, config);
+            m_SobelFilterPSO->SetDebugName("SobelFilter");
         }
         
         {
@@ -111,3 +114,5 @@ namespace sandbox
     }
 
 } // namespace sandbox
+
+#endif

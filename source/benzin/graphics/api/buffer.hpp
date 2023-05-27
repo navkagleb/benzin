@@ -8,17 +8,11 @@ namespace benzin
     class BufferResource final : public Resource
     {
     public:
-        friend class Device;
-
-    public:
-        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12Resource, "Buffer")
-
-    public:
         enum class Flags : uint8_t
         {
             None = 0,
             Dynamic = 1 << 0,
-            ConstantBuffer = 1 << 1
+            ConstantBuffer = 1 << 1,
         };
 
         struct Config
@@ -29,20 +23,18 @@ namespace benzin
         };
 
     public:
-        BufferResource() = default;
-
-    private:
-        BufferResource(ID3D12Resource* d3d12Resource, const Config& config, std::string_view debugName);
+        BufferResource(Device& device, const Config& config);
 
     public:
         const Config& GetConfig() const { return m_Config; }
 
     public:
-        uint32_t PushConstantBufferView(const Descriptor& rtv);
+        bool HasConstantBufferView(uint32_t index = 0) const;
 
         const Descriptor& GetConstantBufferView(uint32_t index = 0) const;
 
-        uint64_t GetGPUVirtualAddressBeginWith(uint64_t beginElement) const;
+        uint32_t PushShaderResourceView();
+        uint32_t PushConstantBufferView();
 
     private:
         Config m_Config;

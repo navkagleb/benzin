@@ -341,7 +341,7 @@ namespace benzin
 
     static RegisterManager g_RegisterManager{ "SpielerRegisterClass", MessageHandler };
 
-    Window::Window(const std::string& title, uint32_t width, uint32_t height)
+    Window::Window(std::string_view title, uint32_t width, uint32_t height, const EventCallbackFunction& eventCallback)
         : m_Width{ width }
         , m_Height{ height }
     {
@@ -359,7 +359,7 @@ namespace benzin
 
         m_Win64Window = ::CreateWindow(
             g_RegisterManager.GetName().data(),
-            title.c_str(),
+            title.data(),
             m_Style,
             (::GetSystemMetrics(SM_CXSCREEN) - windowBounds.right) / 2,
             (::GetSystemMetrics(SM_CYSCREEN) - windowBounds.bottom) / 2,
@@ -374,40 +374,13 @@ namespace benzin
         BENZIN_ASSERT(m_Win64Window != nullptr);
 
         SetVisible(true);
-
-        BENZIN_INFO("Window created");
+        SetEventCallbackFunction(eventCallback);
     }
 
     Window::~Window()
     {
         ::SetWindowLongPtr(m_Win64Window, GWLP_USERDATA, 0);
         ::DestroyWindow(m_Win64Window);
-
-        BENZIN_INFO("Window destoroyed");
-    }
-
-    Viewport Window::GetViewport() const
-    {
-        return Viewport
-        {
-            .X{ 0.0f },
-            .Y{ 0.0f },
-            .Width{ static_cast<float>(m_Width) },
-            .Height{ static_cast<float>(m_Height) },
-            .MinDepth{ 0.0f },
-            .MaxDepth{ 1.0f }
-        };
-    }
-
-    ScissorRect Window::GetScissorRect() const
-    {
-        return ScissorRect
-        {
-            .X{ 0.0f },
-            .Y{ 0.0f },
-            .Width{ static_cast<float>(m_Width) },
-            .Height{ static_cast<float>(m_Height) }
-        };
     }
 
     void Window::ProcessEvents()
@@ -421,7 +394,7 @@ namespace benzin
         }
     }
 
-    void Window::SetTitle(const std::string_view& title)
+    void Window::SetTitle(std::string_view title)
     {
         ::SetWindowText(m_Win64Window, title.data());
     }

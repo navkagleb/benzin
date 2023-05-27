@@ -16,12 +16,14 @@ namespace benzin
         {
             switch (descripitorType)
             {
-                case Descriptor::Type::RenderTargetView: return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-                case Descriptor::Type::DepthStencilView: return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-                case Descriptor::Type::ConstantBufferView:
-                case Descriptor::Type::ShaderResourceView:
-                case Descriptor::Type::UnorderedAccessView: return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-                case Descriptor::Type::Sampler: return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+                using enum Descriptor::Type;
+
+                case RenderTargetView: return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+                case DepthStencilView: return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+                case ConstantBufferView:
+                case ShaderResourceView:
+                case UnorderedAccessView: return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+                case Sampler: return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
                 default: break;
             }
 
@@ -55,19 +57,19 @@ namespace benzin
             .NodeMask{ 0 }
         };
 
-        BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateDescriptorHeap(&d3d12DescriptorHeapDesc, IID_PPV_ARGS(&m_D3D12DescriptorHeap)));
+        BENZIN_HR_ASSERT(device.GetD3D12Device()->CreateDescriptorHeap(&d3d12DescriptorHeapDesc, IID_PPV_ARGS(&m_D3D12DescriptorHeap)));
 
         m_DescriptorCount = descriptorCount;
         m_DescriptorSize = device.GetD3D12Device()->GetDescriptorHandleIncrementSize(d3d12DescriptorHeapDesc.Type);
 
-        SetDebugName(magic_enum::enum_name(type), true);
+        SetDebugName(magic_enum::enum_name(type));
     }
 
     DescriptorManager::DescriptorHeap::~DescriptorHeap()
     {
         BENZIN_ASSERT(m_AllocatedIndexCount == 0);
 
-        SafeReleaseD3D12Object(m_D3D12DescriptorHeap);
+        dx::SafeRelease(m_D3D12DescriptorHeap);
     }
 
     Descriptor DescriptorManager::DescriptorHeap::AllocateDescriptor()

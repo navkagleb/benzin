@@ -5,8 +5,10 @@
 namespace benzin::config
 {
 
+    constexpr uint32_t GetMainAdapterIndex() { return 0; }
+
     constexpr uint32_t GetBackBufferCount() { return 3; }
-    constexpr GraphicsFormat GetBackBufferFormat() { return GraphicsFormat::R8G8B8A8UnsignedNorm; }
+    constexpr GraphicsFormat GetBackBufferFormat() { return GraphicsFormat::RGBA8Unorm; }
 
     constexpr const char* GetVertexShaderTarget() { return "vs_6_6"; }
     constexpr const char* GetHullShaderTarget() { return "hs_6_6"; }

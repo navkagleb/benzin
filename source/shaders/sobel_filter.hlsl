@@ -1,7 +1,10 @@
 #include "common.hlsli"
 
-uint GetInputTextureIndex() { return g_RootConstants.Constant0; }
-uint GetOutputTextureIndex() { return g_RootConstants.Constant1; }
+enum : uint
+{
+    InputTextureIndex = 0,
+    OutputTextureIndex = 1
+};
 
 // Approximates luminance ("brightness") from an RGB value. These weights are
 // derived from experiment based on eye sensitivity to different wavelengths
@@ -14,8 +17,8 @@ float CalcLuminance(float3 color)
 [numthreads(16, 16, 1)]
 void CS_Main(int3 dispatchThreadID : SV_DispatchThreadID)
 {
-    Texture2D inputTexture = ResourceDescriptorHeap[GetInputTextureIndex()];
-    RWTexture2D<float4> outputTexture = ResourceDescriptorHeap[GetOutputTextureIndex()];
+    Texture2D inputTexture = ResourceDescriptorHeap[g_RootConstants.Get(InputTextureIndex)];
+    RWTexture2D<float4> outputTexture = ResourceDescriptorHeap[g_RootConstants.Get(OutputTextureIndex)];
 
     float4 c[3][3];
     

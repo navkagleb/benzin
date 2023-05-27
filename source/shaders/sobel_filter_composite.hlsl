@@ -1,8 +1,11 @@
 #include "common.hlsli"
 #include "full_screen_helper.hlsli"
 
-uint GetBaseTextureMapIndex() { return g_RootConstants.Constant0; }
-uint GetEdgeTextureMapIndex() { return g_RootConstants.Constant1; }
+enum : uint
+{
+    BaseTextureMapIndex = 0,
+    EdgeTextureMapIndex = 1
+};
 
 struct VS_Output
 {
@@ -21,8 +24,8 @@ VS_Output VS_Main(uint vertexID : SV_VertexID)
 
 float4 PS_Main(VS_Output input) : SV_Target
 {
-    Texture2D baseTextureMap = ResourceDescriptorHeap[GetBaseTextureMapIndex()];
-    Texture2D edgeTextureMap = ResourceDescriptorHeap[GetEdgeTextureMapIndex()];
+    Texture2D baseTextureMap = ResourceDescriptorHeap[g_RootConstants.Get(BaseTextureMapIndex)];
+    Texture2D edgeTextureMap = ResourceDescriptorHeap[g_RootConstants.Get(EdgeTextureMapIndex)];
 
     const float4 baseSample = baseTextureMap.Sample(g_PointClampSampler, input.TexCoord);
     const float4 edgeSample = edgeTextureMap.Sample(g_PointClampSampler, input.TexCoord);

@@ -1,145 +1,12 @@
 #pragma once
 
 #include "benzin/graphics/api/format.hpp"
+#include "benzin/graphics/api/debug_name.hpp"
 
 namespace benzin
 {
 
-    class Device;
-
-    class SwapChain;
-
-    class CommandQueue;
-    class GraphicsCommandList;
-
-    class Descriptor;
-    class DescriptorHeap;
-    class DescriptorManager;
-
-    struct BlendState;
-    struct RasterizerState;
-    struct DepthState;
-    struct StencilState;
-
-    class PipelineState;
-    class GraphicsPipelineState;
-    class ComputePipelineState;
-
-    class Resource;
-    class BufferResource;
-    class TextureResource;
-
-    class ResourceViewBuilder;
-    class ResourceLoader;
-
-#define BENZIN_D3D12_ASSERT(d3d12Call) BENZIN_ASSERT(SUCCEEDED(d3d12Call))
-
-#define BENZIN_DEBUG_NAME_D3D12_OBJECT(d3d12Object, className)                                              \
-	void SetDebugName(std::string_view name, bool isCreated = false)                                        \
-    {                                                                                                       \
-        const std::string formatedName = fmt::format("{}[{}]", className, name);                            \
-        detail::SetD3D12ObjectDebutName(d3d12Object, formatedName, isCreated);                              \
-    }                                                                                                       \
-                                                                                                            \
-	std::string GetDebugName() const                                                                        \
-    {                                                                                                       \
-        return detail::GetD3D12ObjectDebugName(d3d12Object);                                                \
-    }
-
-    namespace detail
-    {
-
-        constexpr auto g_D3D12ObjectStyledString = fmt::styled("D3D12 Object", fmt::fg(fmt::color::cyan));
-
-        template <typename T>
-        concept IsD3D12Nameable = std::is_base_of_v<ID3D12Object, T> || std::is_base_of_v<IDXGIObject, T>;
-
-        template <typename T>
-        concept IsD3D12Releasable = requires (T t)
-        {
-            { t.Release() };
-        };
-
-        template <IsD3D12Releasable T>
-        inline std::string_view GetD3D12ClassName()
-        {
-            const std::string_view d3d12ClassName = typeid(T).name();
-
-            size_t beginNameIndex = d3d12ClassName.find("ID3D12");
-
-            if (beginNameIndex == std::string_view::npos)
-            {
-                beginNameIndex = d3d12ClassName.find("IDXGI");
-            }
-
-            BENZIN_ASSERT(beginNameIndex != std::string_view::npos);
-
-            return d3d12ClassName.substr(beginNameIndex);
-        }
-
-        template <IsD3D12Nameable T>
-        inline void SetD3D12ObjectDebutName(T* d3d12Object, std::string_view name, bool isCreated)
-        {
-            if (name.empty())
-            {
-                return;
-            }
-
-            BENZIN_ASSERT(d3d12Object);
-
-            BENZIN_D3D12_ASSERT(d3d12Object->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(name.size()), name.data()));
-
-            if (isCreated)
-            {
-                BENZIN_INFO("{} is created: {}", detail::g_D3D12ObjectStyledString, name.data());
-            }
-        }
-
-        template <IsD3D12Nameable T>
-        inline std::string GetD3D12ObjectDebugName(T* d3d12Object)
-        {
-            BENZIN_ASSERT(d3d12Object);
-
-            UINT bufferSize = 64;
-            std::string name;
-            name.resize(bufferSize);
-
-            if (SUCCEEDED(d3d12Object->GetPrivateData(WKPDID_D3DDebugObjectName, &bufferSize, name.data())))
-            {
-                name.resize(bufferSize);
-                return name;
-            }
-            
-            name.clear();
-
-            return name;
-        }
-
-    } // namespace detail
-
-    template <detail::IsD3D12Releasable T>
-    inline void SafeReleaseD3D12Object(T*& d3d12Object)
-    {
-        if (d3d12Object)
-        {
-            if constexpr (detail::IsD3D12Nameable<T>)
-            {
-                std::string debugName = detail::GetD3D12ObjectDebugName(d3d12Object);
-
-                if (debugName.empty())
-                {
-                    debugName = detail::GetD3D12ClassName<T>();
-                }
-
-                BENZIN_INFO("{} is released: {}", detail::g_D3D12ObjectStyledString, debugName);
-            }
-
-            d3d12Object->Release();
-            d3d12Object = nullptr;
-        }
-    }
-
-    enum class ShaderVisibility : uint8_t
+    enum class ShaderVisibility : std::underlying_type_t<D3D12_SHADER_VISIBILITY>
     {
         All = D3D12_SHADER_VISIBILITY_ALL,
         Vertex = D3D12_SHADER_VISIBILITY_VERTEX,
@@ -155,7 +22,7 @@ namespace benzin
         uint32_t Space{ 0 };
     };
 
-    enum class PrimitiveTopologyType : uint8_t
+    enum class PrimitiveTopologyType : std::underlying_type_t<D3D12_PRIMITIVE_TOPOLOGY_TYPE>
     {
         Unknown = D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED,
 
@@ -165,7 +32,7 @@ namespace benzin
         Patch = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH
     };
 
-    enum class PrimitiveTopology : uint8_t
+    enum class PrimitiveTopology : std::underlying_type_t<D3D12_PRIMITIVE_TOPOLOGY>
     {
         Unknown = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED,
 
@@ -179,15 +46,15 @@ namespace benzin
         ControlPointPatchlist16 = D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST,
     };
 
-    enum class ComparisonFunction : uint8_t
+    enum class ComparisonFunction : std::underlying_type_t<D3D12_COMPARISON_FUNC>
     {
         Never = D3D12_COMPARISON_FUNC_NEVER,
         Less = D3D12_COMPARISON_FUNC_LESS,
         Equal = D3D12_COMPARISON_FUNC_EQUAL,
         LessEqual = D3D12_COMPARISON_FUNC_LESS_EQUAL,
-        Greate = D3D12_COMPARISON_FUNC_GREATER,
+        Greater = D3D12_COMPARISON_FUNC_GREATER,
         NotEqual = D3D12_COMPARISON_FUNC_NOT_EQUAL,
-        GreateEqual = D3D12_COMPARISON_FUNC_GREATER_EQUAL,
+        GreaterEqual = D3D12_COMPARISON_FUNC_GREATER_EQUAL,
         Always = D3D12_COMPARISON_FUNC_ALWAYS
     };
 

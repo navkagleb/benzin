@@ -112,16 +112,19 @@ namespace benzin
         const DirectX::XMMATRIX& GetInverseProjectionMatrix() const;
 
         DirectX::XMMATRIX GetViewProjectionMatrix() const;
+        DirectX::XMMATRIX GetInverseViewProjectionMatrix() const;
+
+        DirectX::XMMATRIX GetInverseViewDirectionProjectionMatrix() const;
 
     private:
         void UpdateRightDirection();
         void UpdateViewMatrix();
 
     private:
-        DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, -4.0f, 1.0f };
-        DirectX::XMVECTOR m_FrontDirection{ 0.0f, 0.0f, 1.0f, 1.0f };
+        DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, 4.0f, 1.0f };
+        DirectX::XMVECTOR m_FrontDirection{ 0.0f, 0.0f, -1.0f, 1.0f };
         DirectX::XMVECTOR m_UpDirection{ 0.0f, 1.0f, 0.0f, 1.0f };
-        DirectX::XMVECTOR m_RightDirection{ -1.0f, 0.0f, 0.0f, 1.0f };
+        DirectX::XMVECTOR m_RightDirection{ 0.0f, 0.0f, 0.0f, 1.0f };
 
         DirectX::XMMATRIX m_ViewMatrix{ DirectX::XMMatrixIdentity() };
         DirectX::XMMATRIX m_InverseViewMatrix{ DirectX::XMMatrixIdentity() };
@@ -164,7 +167,7 @@ namespace benzin
         float m_MouseWheelSensitivity{ 0.04f };
 
         // For camera front direction
-        float m_Theta{ 0.0f };
+        float m_Theta{ DirectX::XMConvertToRadians(180.0f) };
         float m_Phi{ DirectX::XM_PIDIV2 };
         DirectX::XMFLOAT2 m_LastMousePosition{ 0.0f, 0.0f };
     };

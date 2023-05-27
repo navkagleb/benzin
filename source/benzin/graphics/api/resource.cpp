@@ -7,18 +7,21 @@
 namespace benzin
 {
 
-    Resource::Resource(ID3D12Resource* d3d12Resource)
-        : m_D3D12Resource{ d3d12Resource }
-    {
-        D3D12_HEAP_PROPERTIES d3d12HeapProperties{};
-        BENZIN_D3D12_ASSERT(m_D3D12Resource->GetHeapProperties(&d3d12HeapProperties, nullptr));
-
-        m_CurrentState = d3d12HeapProperties.Type == D3D12_HEAP_TYPE_UPLOAD ? State::GenericRead : State::Present;
-    }
+    Resource::Resource(Device& device)
+        : m_Device{ device }
+    {}
 
     Resource::~Resource()
     {
-        SafeReleaseD3D12Object(m_D3D12Resource);
+        for (const auto& [descriptorType, descriptors] : m_Views)
+        {
+            for (const auto& descriptor : descriptors)
+            {
+                m_Device.GetDescriptorManager().DeallocateDescriptor(descriptorType, descriptor);
+            }
+        }
+
+        dx::SafeRelease(m_D3D12Resource);
     }
 
     uint64_t Resource::GetGPUVirtualAddress() const
@@ -26,6 +29,19 @@ namespace benzin
         BENZIN_ASSERT(m_D3D12Resource);
 
         return m_D3D12Resource->GetGPUVirtualAddress();
+    }
+
+    uint32_t Resource::GetSizeInBytes() const
+    {
+        BENZIN_ASSERT(m_D3D12Resource);
+
+        const D3D12_RESOURCE_DESC d3d12ResourceDesc = m_D3D12Resource->GetDesc();
+
+        D3D12_RESOURCE_ALLOCATION_INFO1 d3d12ResourceAllocationInfo1;
+
+        m_Device.GetD3D12Device()->GetResourceAllocationInfo1(0, 1, &d3d12ResourceDesc, &d3d12ResourceAllocationInfo1);
+
+        return static_cast<uint32_t>(d3d12ResourceAllocationInfo1.SizeInBytes);
     }
 
     bool Resource::HasShaderResourceView(uint32_t index) const
@@ -38,16 +54,6 @@ namespace benzin
         return HasResourceView(Descriptor::Type::UnorderedAccessView, index);
     }
 
-    uint32_t Resource::PushShaderResourceView(const Descriptor& srv)
-    {
-        return PushResourceView(Descriptor::Type::ShaderResourceView, srv);
-    }
-
-    uint32_t Resource::PushUnorderedAccessView(const Descriptor& uav)
-    {
-        return PushResourceView(Descriptor::Type::UnorderedAccessView, uav);
-    }
-
     const Descriptor& Resource::GetShaderResourceView(uint32_t index) const
     {
         return GetResourceView(Descriptor::Type::ShaderResourceView, index);
@@ -56,24 +62,6 @@ namespace benzin
     const Descriptor& Resource::GetUnorderedAccessView(uint32_t index) const
     {
         return GetResourceView(Descriptor::Type::UnorderedAccessView, index);
-    }
-
-    void Resource::ReleaseViews(DescriptorManager& descriptorManager)
-    {
-        if (m_Views.empty())
-        {
-            return;
-        }
-
-        BENZIN_INFO("Release views of {}", detail::GetD3D12ObjectDebugName(m_D3D12Resource));
-
-        for (const auto& [descriptorType, descriptors] : m_Views)
-        {
-            for (const auto& descriptor : descriptors)
-            {
-                descriptorManager.DeallocateDescriptor(descriptorType, descriptor);
-            }
-        }
     }
 
     bool Resource::HasResourceView(Descriptor::Type descriptorType, uint32_t index) const
@@ -105,6 +93,5 @@ namespace benzin
 
         return descriptors[index];
     }
-
 
 } // namespace benzin

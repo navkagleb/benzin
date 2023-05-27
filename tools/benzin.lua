@@ -2,7 +2,7 @@ workspace "benzin"
     location "../"
 
     platforms { "win64" }
-    configurations { "debug" }
+    configurations { "debug", "release" }
 
     startproject "sandbox"
 
@@ -13,11 +13,24 @@ workspace "benzin"
         characterset "MBCS"
 		linkoptions { "/ENTRY:mainCRTStartup" }
 
-        defines { "BENZIN_PLATFORM_WINDOWS", "WIN32", }
+        defines {
+            "BENZIN_PLATFORM_WINDOWS",
+            "WIN32",
+        }
 
     filter "configurations:debug"
-        defines { "DEBUG", "BENZIN_DEBUG" }
+        defines {
+            "DEBUG",
+            "BENZIN_DEBUG_BUILD"
+        }
         optimize "Off"
+
+    filter "configurations:release"
+        defines {
+            "NDEBUG",
+            "BENZIN_RELEASE_BUILD",
+        }
+        optimize "On"
 
     filter "files:**.hlsl"
         buildaction "None"
@@ -36,11 +49,15 @@ project "third_party"
     targetdir "../lib"
     objdir "../build/third_party/%{cfg.buildcfg}"
 
-    files
-    {
+    files {
         -- directx
         "../source/third_party/directx/**.h",
         "../source/third_party/directx/**.cpp",
+
+        -- entt
+        "../source/third_party/entt/**.h",
+        "../source/third_party/entt/**.hpp",
+        "../source/third_party/entt/**.cpp",
 
         -- dxc
         -- "../source/third_party/dxc/**.h",
@@ -54,7 +71,12 @@ project "third_party"
         "../source/third_party/imgui/**.cpp",
 
         -- magic_enum
-        "../source/third_party/magic_enum/*.hpp"
+        "../source/third_party/magic_enum/*.hpp",
+
+        -- tinygltf
+        "../source/third_party/tinygltf/*.h",
+        "../source/third_party/tinygltf/*.hpp",
+        "../source/third_party/tinygltf/*.cc",
     }
 
 project "benzin"
@@ -73,18 +95,16 @@ project "benzin"
 
     defines { "BENZIN_PROJECT" }
 
-    files
-    {
+    files {
         "../source/benzin/**.hpp",
         "../source/benzin/**.inl",
-        "../source/benzin/**.cpp"
+        "../source/benzin/**.cpp",
     }
 
-    includedirs
-    {
+    includedirs {
         "../",
         "../source",
-        "../source/benzin"
+        "../source/benzin",
     }
 
 project "sandbox"
@@ -98,32 +118,28 @@ project "sandbox"
     targetdir "../bin"
     objdir "../build/sandbox/%{cfg.buildcfg}"
 
-    links
-    {
+    links {
         "third_party",
-        "benzin"
+        "benzin",
     }
 
     pchheader "bootstrap.hpp"
     pchsource "../source/sandbox/bootstrap.cpp"
 
-    files
-    {
+    files {
         "../source/sandbox/**.hpp",
         "../source/sandbox/**.inl",
         "../source/sandbox/**.cpp",
 
         "../source/shaders/**.hlsl",
-        "../source/shaders/**.hlsli"
+        "../source/shaders/**.hlsli",
     }
 
-    includedirs
-    {
+    includedirs {
         "../source/",
-        "../source/sandbox"
+        "../source/sandbox",
     }
 
-    vpaths
-    {
+    vpaths {
 	    ["shaders/*"] = { "../source/shaders/**.hlsl", "../source/shaders/**.hlsli" }
 	}

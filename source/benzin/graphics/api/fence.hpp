@@ -5,15 +5,17 @@
 namespace benzin
 {
 
+    class Device;
+
     class Fence
     {
     public:
         BENZIN_NON_COPYABLE(Fence)
         BENZIN_NON_MOVEABLE(Fence)
-        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12Fence, "Fence")
+        BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12Fence)
 
     public:
-        explicit Fence(Device& device, std::string_view debugName);
+        explicit Fence(Device& device);
         ~Fence();
 
     public:

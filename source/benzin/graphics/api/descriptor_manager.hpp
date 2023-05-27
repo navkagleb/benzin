@@ -5,6 +5,8 @@
 namespace benzin
 {
 
+    class Device;
+
     class Descriptor
     {
     public:
@@ -13,8 +15,6 @@ namespace benzin
     public:
         enum Type : uint8_t
         {
-            Unknown,
-
             RenderTargetView,
             DepthStencilView,
             ConstantBufferView,
@@ -49,7 +49,7 @@ namespace benzin
         public:
             BENZIN_NON_COPYABLE(DescriptorHeap)
             BENZIN_NON_MOVEABLE(DescriptorHeap)
-            BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12DescriptorHeap, "DescriptorHeap")
+            BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12DescriptorHeap)
 
         public:
             DescriptorHeap() = default;

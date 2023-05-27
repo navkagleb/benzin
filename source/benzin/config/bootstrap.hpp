@@ -1,54 +1,16 @@
 #pragma once
 
-#include <ctime>
-#include <cmath>
-#include <cstdint>
-
-#if defined(BENZIN_DEBUG)
-    #include <cassert>
-#endif
-
-#include <memory>
-#include <functional>
-#include <concepts>
-#include <format>
-#include <iomanip>
-#include <iostream>
-#include <chrono>
-#include <random>
-#include <utility>
-#include <numbers>
-#include <numeric>
-#include <type_traits>
-#include <filesystem>
-
-#include <string>
-#include <sstream>
-#include <fstream>
-#include <array>
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <variant>
-#include <any> // TODO: Remove any
-#include <bitset>
-#include <span>
-
-#include <third_party/fmt/format.h>
-#include <third_party/fmt/color.h>
-#include <third_party/fmt/compile.h>
-
-#include <third_party/magic_enum/magic_enum.hpp>
-#include <third_party/magic_enum/magic_enum_containers.hpp>
-
-#include <third_party/imgui/imgui.h>
-
+// Include win64 first of all because other dependencies uses #include <Windows.h>
 #include "benzin/config/win64_includes.hpp"
+
 #include "benzin/config/d3d12_includes.hpp"
+#include "benzin/config/std_includes.hpp"
+#include "benzin/config/third_party_includes.hpp"
 
 #include "benzin/config/graphics_config.hpp"
 
 #include "benzin/utility/class_modifiers.hpp"
+#include "benzin/utility/string_utils.h"
 
 #include "benzin/core/assert.hpp"
 #include "benzin/core/logger.hpp"

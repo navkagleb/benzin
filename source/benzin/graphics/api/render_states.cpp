@@ -17,13 +17,18 @@ namespace benzin
 
 		constexpr DepthState g_LessEqualDepthState
 		{
-			.ComparisonFunction{ ComparisonFunction::LessEqual }
+			.ComparisonFunction{ ComparisonFunction::LessEqual },
+		};
+
+		constexpr DepthState g_GreaterEqualDepthState
+		{
+			.ComparisonFunction{ ComparisonFunction::GreaterEqual },
 		};
 
 		constexpr DepthState g_DisabledDepthState
 		{
-			.TestState{ DepthState::TestState::Disabled },
-			.WriteState{ DepthState::WriteState::Disabled }
+			.IsEnabled{ false },
+			.IsWriteEnabled{ false },
 		};
 
 		constexpr StencilState g_DefaultStencilState;
@@ -55,6 +60,11 @@ namespace benzin
 	const DepthState& DepthState::GetLessEqual()
 	{
 		return g_LessEqualDepthState;
+	}
+
+	const DepthState& DepthState::GetGreaterEqual()
+	{
+		return g_GreaterEqualDepthState;
 	}
 
 	const DepthState& DepthState::GetDisabled()

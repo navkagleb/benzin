@@ -4,9 +4,12 @@
 
 #include "common.hlsli"
 
-uint GetSettingsBufferIndex() { return g_RootConstants.Constant0; }
-uint GetInputTextureIndex() { return g_RootConstants.Constant1; }
-uint GetOutputTextureIndex() { return g_RootConstants.Constant2; }
+enum RootConstant_ : uint
+{
+    SettingsBufferIndex = 0,
+    InputTextureIndex = 1,
+    OutputTextureIndex = 2
+};
 
 static const int g_MaxBlurRadius = 5;
 
@@ -39,9 +42,9 @@ struct CS_Input
 [numthreads(THREAD_PER_GROUP_COUNT, 1, 1)]
 void CS_HorizontalBlur(CS_Input input)
 {
-    ConstantBuffer<Settings> settings = ResourceDescriptorHeap[GetSettingsBufferIndex()];
-    Texture2D<float4> inputTexture = ResourceDescriptorHeap[GetInputTextureIndex()];
-    RWTexture2D<float4> outputTexture = ResourceDescriptorHeap[GetOutputTextureIndex()];
+    ConstantBuffer<Settings> settings = ResourceDescriptorHeap[g_RootConstants.Get(SettingsBufferIndex)];
+    Texture2D<float4> inputTexture = ResourceDescriptorHeap[g_RootConstants.Get(InputTextureIndex)];
+    RWTexture2D<float4> outputTexture = ResourceDescriptorHeap[g_RootConstants.Get(OutputTextureIndex)];
 
     const float weights[11] =
     { 
@@ -98,9 +101,9 @@ void CS_HorizontalBlur(CS_Input input)
 [numthreads(1, THREAD_PER_GROUP_COUNT, 1)]
 void CS_VerticalBlur(CS_Input input)
 {
-    ConstantBuffer<Settings> settings = ResourceDescriptorHeap[GetSettingsBufferIndex()];
-    Texture2D<float4> inputTexture = ResourceDescriptorHeap[GetInputTextureIndex()];
-    RWTexture2D<float4> outputTexture = ResourceDescriptorHeap[GetOutputTextureIndex()];
+    ConstantBuffer<Settings> settings = ResourceDescriptorHeap[g_RootConstants.Get(SettingsBufferIndex)];
+    Texture2D<float4> inputTexture = ResourceDescriptorHeap[g_RootConstants.Get(InputTextureIndex)];
+    RWTexture2D<float4> outputTexture = ResourceDescriptorHeap[g_RootConstants.Get(OutputTextureIndex)];
 
     const float weights[11] =
     {

@@ -8,16 +8,31 @@ namespace benzin
     class MappedData
     {
     public:
-        explicit MappedData(BufferResource& bufferResource);
+        explicit MappedData(const BufferResource& bufferResource);
         ~MappedData();
 
     public:
-        void Write(const void* data, uint64_t size, uint64_t offset = 0);
+        template <typename T>
+        void Write(const T& data, size_t startElement = 0)
+        {
+            Write(std::span{ &data, 1 }, startElement * sizeof(T));
+        }
 
-        std::byte* GetData() { return m_Data; }
+        template <typename T>
+        void Write(std::span<const T> data, size_t offsetInBytes = 0)
+        {
+            const size_t dataSizeInBytes = data.size_bytes();
+
+#if BENZIN_DEBUG_BUILD
+            const size_t bufferSizeInBytes = m_BufferResource.GetConfig().ElementSize * m_BufferResource.GetConfig().ElementCount;
+            BENZIN_ASSERT(offsetInBytes + dataSizeInBytes <= bufferSizeInBytes);
+#endif
+
+            memcpy(m_Data + offsetInBytes, data.data(), dataSizeInBytes);
+        }
 
     private:
-        BufferResource& m_BufferResource;
+        const BufferResource& m_BufferResource;
         std::byte* m_Data{ nullptr };
     };
 

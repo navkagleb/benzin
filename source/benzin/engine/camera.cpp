@@ -122,6 +122,7 @@ namespace benzin
     //////////////////////////////////////////////////////////////////////////
     Camera::Camera()
     {
+        UpdateRightDirection();
         UpdateViewMatrix();
     }
 
@@ -182,6 +183,25 @@ namespace benzin
         BENZIN_ASSERT(m_Projection);
 
         return m_ViewMatrix * m_Projection->GetMatrix();
+    }
+
+    DirectX::XMMATRIX Camera::GetInverseViewProjectionMatrix() const
+    {
+        const DirectX::XMMATRIX viewProjectionMatrix = GetViewProjectionMatrix();
+
+        DirectX::XMVECTOR viewProjectionDeterminant = DirectX::XMMatrixDeterminant(viewProjectionMatrix);
+        return DirectX::XMMatrixInverse(&viewProjectionDeterminant, viewProjectionMatrix);
+    }
+
+    DirectX::XMMATRIX Camera::GetInverseViewDirectionProjectionMatrix() const
+    {
+        DirectX::XMMATRIX viewDirectionMatrix = m_ViewMatrix;
+        viewDirectionMatrix.r[3] = DirectX::XMVECTOR{ 0.0f, 0.0f, 0.0f, 1.0f }; // Remove translation
+
+        const DirectX::XMMATRIX viewDirectionProjectionMatrix = viewDirectionMatrix * m_Projection->GetMatrix();
+
+        DirectX::XMVECTOR viewProjectionDeterminant = DirectX::XMMatrixDeterminant(viewDirectionProjectionMatrix);
+        return DirectX::XMMatrixInverse(&viewProjectionDeterminant, viewDirectionProjectionMatrix);
     }
 
     void Camera::UpdateRightDirection()

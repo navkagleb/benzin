@@ -1,6 +1,7 @@
 #pragma once
 
-#include <benzin/graphics/api/common.hpp>
+#include <benzin/graphics/api/device.hpp>
+#include <benzin/graphics/api/command_list.hpp>
 
 namespace sandbox
 {

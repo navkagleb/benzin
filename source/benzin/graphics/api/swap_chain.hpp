@@ -1,6 +1,5 @@
 #pragma once
 
-#include "benzin/graphics/api/texture.hpp"
 #include "benzin/graphics/api/fence.hpp"
 
 namespace benzin
@@ -8,49 +7,63 @@ namespace benzin
 
     class Window;
 
-    enum class VSyncState : bool
-    {
-        Enabled = true,
-        Disabled = false
-    };
+    class Backend;
+    class BufferResource;
+    class Device;
+    class TextureResource;
 
     class SwapChain
     {
     public:
         BENZIN_NON_COPYABLE(SwapChain)
         BENZIN_NON_MOVEABLE(SwapChain)
-        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_DXGISwapChain3, "SwapChain")
+        BENZIN_DX_DEBUG_NAME_IMPL(m_DXGISwapChain)
 
     public:
-        SwapChain(const Window& window, Device& device, CommandQueue& commandQueue, std::string_view debugName);
+        SwapChain(const Window& window, const Backend& backend, Device& device);
         ~SwapChain();
 
     public:
-        uint32_t GetCurrentBackBufferIndex() const { return m_DXGISwapChain3->GetCurrentBackBufferIndex(); }
+        IDXGISwapChain3* GetDXGISwapChain() const { return m_DXGISwapChain; }
+
+        uint32_t GetCurrentBackBufferIndex() const { return m_DXGISwapChain->GetCurrentBackBufferIndex(); }
 
         std::shared_ptr<TextureResource>& GetCurrentBackBuffer() { return m_BackBuffers[GetCurrentBackBufferIndex()]; }
         const std::shared_ptr<TextureResource>& GetCurrentBackBuffer() const { return m_BackBuffers[GetCurrentBackBufferIndex()]; }
 
+        bool IsVSyncEnabled() const { return m_IsVSyncEnabled; }
+        void SetVSyncEnabled(bool isEnabled) { m_IsVSyncEnabled = isEnabled; }
+
+        float GetAspectRatio() const { return m_AspectRatio; }
+        const Viewport& GetViewport() const { return m_Viewport; }
+        const ScissorRect& GetScissorRect() const { return m_ScissorRect; }
+
     public:
-        void ResizeBackBuffers(Device& device, uint32_t width, uint32_t height);
-        void Flip(VSyncState vsync);
+        void ResizeBackBuffers(uint32_t width, uint32_t height);
+        void Flip();
 
     private:
-        void EnumerateAdapters();
-
-        void RegisterBackBuffers(Device& device);
+        void RegisterBackBuffers();
+        void UpdateViewportDimensions(float width, float height);
 
     private:
-        CommandQueue& m_CommandQueue;
+        Device& m_Device;
 
-        IDXGIFactory4* m_DXGIFactory4{ nullptr };
-        IDXGISwapChain3* m_DXGISwapChain3{ nullptr };
+        IDXGISwapChain3* m_DXGISwapChain{ nullptr };
 
         std::array<std::shared_ptr<TextureResource>, config::GetBackBufferCount()> m_BackBuffers;
 
         Fence m_FrameFence;
         uint64_t m_CPUFrameIndex{ 0 };
         uint64_t m_GPUFrameIndex{ 0 };
+
+        uint32_t m_DXGISwapChainFlags{ 0 };
+        uint32_t m_DXGIPresentFlags{ 0 };
+        bool m_IsVSyncEnabled{ false };
+
+        float m_AspectRatio{ 0.0f };
+        Viewport m_Viewport;
+        ScissorRect m_ScissorRect;
     };
 
 } // namespace benzin

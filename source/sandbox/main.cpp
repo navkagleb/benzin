@@ -1,20 +1,17 @@
 #include "bootstrap.hpp"
 
 #include <benzin/core/entry_point.hpp>
-#include <benzin/core/timer.hpp>
-#include <benzin/core/layer_stack.hpp>
 #include <benzin/core/imgui_layer.hpp>
-
-#include <benzin/system/key_event.hpp>
-#include <benzin/system/event_dispatcher.hpp>
-
+#include <benzin/core/layer_stack.hpp>
+#include <benzin/core/timer.hpp>
+#include <benzin/graphics/api/backend.hpp>
+#include <benzin/graphics/api/command_queue.hpp>
 #include <benzin/graphics/api/device.hpp>
 #include <benzin/graphics/api/swap_chain.hpp>
-#include <benzin/graphics/api/command_queue.hpp>
+#include <benzin/system/event_dispatcher.hpp>
+#include <benzin/system/key_event.hpp>
 
-#include "layers/test_layer.hpp"
-#include "layers/tessellation_layer.hpp"
-#include "layers/instancing_and_culling_layer.hpp"
+#include "main_layer.hpp"
 
 namespace sandbox
 {
@@ -24,21 +21,24 @@ namespace sandbox
     public:
         Application()
         {
-            m_MainWindow = std::make_unique<benzin::Window>("Sandbox", 1280, 720);
-            m_MainWindow->SetEventCallbackFunction([&](benzin::Event& event) { WindowEventCallback(event); });
-
-            m_Device = std::make_unique<benzin::Device>("Main");
-            m_CommandQueue = std::make_unique<benzin::CommandQueue>(*m_Device, "Main");
-            m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Device, *m_CommandQueue, "Main");
+            m_MainWindow = std::make_unique<benzin::Window>("Sandbox", 1280, 720, [&](benzin::Event& event) { WindowEventCallback(event); });
+            m_Backend = std::make_unique<benzin::Backend>();
+            m_Device = std::make_unique<benzin::Device>(*m_Backend);
+            m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Backend, *m_Device);
 
             BeginFrame();
             {
-                m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);
-                m_InstancingAndCullingLayer = m_LayerStack.Push<InstancingAndCullingLayer>(*m_MainWindow, *m_Device, *m_CommandQueue, *m_SwapChain);
+                m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(*m_MainWindow, *m_Device, *m_SwapChain);
+                m_MainLayer = m_LayerStack.Push<sandbox::MainLayer>(*m_MainWindow, *m_Device, *m_SwapChain);
             }
             EndFrame();
         }
 
+        ~Application()
+        {
+            m_Device->GetGraphicsCommandQueue().Flush();
+        }
+        
         void Execute()
         {
             m_FrameTimer.Reset();
@@ -92,8 +92,8 @@ namespace sandbox
 
             dispatcher.Dispatch<benzin::WindowResizedEvent>([this](benzin::WindowResizedEvent& event)
             {
-                m_CommandQueue->Flush();
-                m_SwapChain->ResizeBackBuffers(*m_Device, event.GetWidth(), event.GetHeight());
+                m_Device->GetGraphicsCommandQueue().Flush();
+                m_SwapChain->ResizeBackBuffers(event.GetWidth(), event.GetHeight());
 
                 return false;
             });
@@ -127,7 +127,7 @@ namespace sandbox
 
         void BeginFrame()
         {
-            m_CommandQueue->ResetGraphicsCommandList(*m_Device, m_SwapChain->GetCurrentBackBufferIndex());
+            m_Device->GetGraphicsCommandQueue().ResetCommandList(m_SwapChain->GetCurrentBackBufferIndex());
         }
 
         void ProcessFrame()
@@ -142,33 +142,36 @@ namespace sandbox
                 layer->OnRender(dt);
             }
 
-            m_ImGuiLayer->Begin();
+            if (m_ImGuiLayer->IsWidgetDrawEnabled())
             {
-                for (auto& layer : m_LayerStack)
+                m_ImGuiLayer->Begin();
                 {
-                    layer->OnImGuiRender(dt);
+                    for (auto& layer : m_LayerStack)
+                    {
+                        layer->OnImGuiRender(dt);
+                    }
                 }
+                m_ImGuiLayer->End();
             }
-            m_ImGuiLayer->End();
         }
 
         void EndFrame()
         {
-            m_CommandQueue->ExecuteGraphicsCommandList();
-            m_SwapChain->Flip(benzin::VSyncState::Disabled);
+            m_Device->GetGraphicsCommandQueue().ExecuteCommandList();
+            m_SwapChain->Flip();
         }
 
     private:
         std::unique_ptr<benzin::Window> m_MainWindow;
+        std::unique_ptr<benzin::Backend> m_Backend;
         std::unique_ptr<benzin::Device> m_Device;
-        std::unique_ptr<benzin::CommandQueue> m_CommandQueue;
         std::unique_ptr<benzin::SwapChain> m_SwapChain;
 
         benzin::Timer m_FrameTimer;
         benzin::LayerStack m_LayerStack;
 
         std::shared_ptr<benzin::ImGuiLayer> m_ImGuiLayer;
-        std::shared_ptr<InstancingAndCullingLayer> m_InstancingAndCullingLayer;
+        std::shared_ptr<MainLayer> m_MainLayer;
 
         bool m_IsRunning{ false };
         bool m_IsPaused{ false };

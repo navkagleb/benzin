@@ -1,5 +1,6 @@
 #pragma once
 
+#include "benzin/graphics/api/device.hpp"
 #include "benzin/graphics/api/descriptor_manager.hpp"
 
 namespace benzin
@@ -8,8 +9,8 @@ namespace benzin
     struct SubResourceData
     {
         const std::byte* Data{ nullptr };
-        uint64_t RowPitch{ 0 };
-        uint64_t SlicePitch{ 0 };
+        size_t RowPitch{ 0 };
+        size_t SlicePitch{ 0 };
     };
 
     class Resource
@@ -17,6 +18,7 @@ namespace benzin
     public:
         BENZIN_NON_COPYABLE(Resource)
         BENZIN_NON_MOVEABLE(Resource)
+        BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12Resource)
 
     public:
         friend class Device;
@@ -41,41 +43,36 @@ namespace benzin
             GenericRead = D3D12_RESOURCE_STATE_GENERIC_READ
         };
 
-    public:
-        Resource() = default;
-
     protected:
-        Resource(ID3D12Resource* d3d12Resource);
+        explicit Resource(Device& device);
 
     public:
         virtual ~Resource();
 
     public:
-        ID3D12Resource* GetD3D12Resource() const { return m_D3D12Resource; }
+        ID3D12Resource* GetD3D12Resource() const { BENZIN_ASSERT(m_D3D12Resource); return m_D3D12Resource; }
 
         State GetCurrentState() const { return m_CurrentState; }
         void SetCurrentState(State resourceState) { m_CurrentState = resourceState; }
 
     public:
         uint64_t GetGPUVirtualAddress() const;
+        uint32_t GetSizeInBytes() const;
 
         bool HasShaderResourceView(uint32_t index = 0) const;
         bool HasUnorderedAccessView(uint32_t index = 0) const;
 
-        uint32_t PushShaderResourceView(const Descriptor& srv);
-        uint32_t PushUnorderedAccessView(const Descriptor& uav);
-
         const Descriptor& GetShaderResourceView(uint32_t index = 0) const;
         const Descriptor& GetUnorderedAccessView(uint32_t index = 0) const;
 
-        void ReleaseViews(DescriptorManager& descriptorManager);
-
     protected:
         bool HasResourceView(Descriptor::Type descriptorType, uint32_t index) const;
-        uint32_t PushResourceView(Descriptor::Type descriptorType, const Descriptor& descriptor);
         const Descriptor& GetResourceView(Descriptor::Type descriptorType, uint32_t index) const;
+        uint32_t PushResourceView(Descriptor::Type descriptorType, const Descriptor& descriptor);
 
     protected:
+        Device& m_Device;
+
         ID3D12Resource* m_D3D12Resource{ nullptr };
         State m_CurrentState{ State::Present };
 

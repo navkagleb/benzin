@@ -3,8 +3,8 @@
 #include "benzin/graphics/api/pipeline_state.hpp"
 
 #include "benzin/graphics/api/device.hpp"
-#include "benzin/graphics/api/shaders.hpp"
 #include "benzin/graphics/api/render_states.hpp"
+#include "benzin/graphics/api/shaders.hpp"
 
 namespace benzin
 {
@@ -28,18 +28,6 @@ namespace benzin
             };
         }
 
-        D3D12_STREAM_OUTPUT_DESC GetDefaultD3D12StreatOutput()
-        {
-            return D3D12_STREAM_OUTPUT_DESC
-            {
-                .pSODeclaration{ nullptr },
-                .NumEntries{ 0 },
-                .pBufferStrides{ nullptr },
-                .NumStrides{ 0 },
-                .RasterizedStream{ 0 }
-            };
-        }
-
         D3D12_BLEND_DESC ConvertToD3D12BlendState(const BlendState& blendState)
         {
             D3D12_BLEND_DESC d3d12BlendDesc
@@ -53,28 +41,21 @@ namespace benzin
                 const BlendState::RenderTargetState& renderTargetState = blendState.RenderTargetStates[i];
                 D3D12_RENDER_TARGET_BLEND_DESC& d3d12RenderTargetBlendDesc = d3d12BlendDesc.RenderTarget[i];
 
-                switch (renderTargetState.State)
+                if (!renderTargetState.IsEnabled)
                 {
-                    case BlendState::RenderTargetState::State::Disabled:
-                    {
-                        d3d12RenderTargetBlendDesc.BlendEnable = false;
-                        d3d12RenderTargetBlendDesc.LogicOpEnable = false;
-
-                        break;
-                    }
-                    case BlendState::RenderTargetState::State::Enabled:
-                    {
-                        d3d12RenderTargetBlendDesc.BlendEnable = true;
-                        d3d12RenderTargetBlendDesc.LogicOpEnable = false;
-                        d3d12RenderTargetBlendDesc.SrcBlend = static_cast<D3D12_BLEND>(renderTargetState.ColorEquation.SourceFactor);
-                        d3d12RenderTargetBlendDesc.DestBlend = static_cast<D3D12_BLEND>(renderTargetState.ColorEquation.DestinationFactor);
-                        d3d12RenderTargetBlendDesc.BlendOp = static_cast<D3D12_BLEND_OP>(renderTargetState.ColorEquation.Operation);
-                        d3d12RenderTargetBlendDesc.SrcBlendAlpha = static_cast<D3D12_BLEND>(renderTargetState.AlphaEquation.SourceFactor);
-                        d3d12RenderTargetBlendDesc.DestBlendAlpha = static_cast<D3D12_BLEND>(renderTargetState.AlphaEquation.DestinationFactor);
-                        d3d12RenderTargetBlendDesc.BlendOpAlpha = static_cast<D3D12_BLEND_OP>(renderTargetState.AlphaEquation.Operation);
-
-                        break;
-                    }
+                    d3d12RenderTargetBlendDesc.BlendEnable = false;
+                    d3d12RenderTargetBlendDesc.LogicOpEnable = false;
+                }
+                else
+                {
+                    d3d12RenderTargetBlendDesc.BlendEnable = true;
+                    d3d12RenderTargetBlendDesc.LogicOpEnable = false;
+                    d3d12RenderTargetBlendDesc.SrcBlend = static_cast<D3D12_BLEND>(renderTargetState.ColorEquation.SourceFactor);
+                    d3d12RenderTargetBlendDesc.DestBlend = static_cast<D3D12_BLEND>(renderTargetState.ColorEquation.DestinationFactor);
+                    d3d12RenderTargetBlendDesc.BlendOp = static_cast<D3D12_BLEND_OP>(renderTargetState.ColorEquation.Operation);
+                    d3d12RenderTargetBlendDesc.SrcBlendAlpha = static_cast<D3D12_BLEND>(renderTargetState.AlphaEquation.SourceFactor);
+                    d3d12RenderTargetBlendDesc.DestBlendAlpha = static_cast<D3D12_BLEND>(renderTargetState.AlphaEquation.DestinationFactor);
+                    d3d12RenderTargetBlendDesc.BlendOpAlpha = static_cast<D3D12_BLEND_OP>(renderTargetState.AlphaEquation.Operation);
                 }
 
                 d3d12RenderTargetBlendDesc.RenderTargetWriteMask = static_cast<UINT8>(renderTargetState.Channels);
@@ -105,10 +86,10 @@ namespace benzin
         {
             return D3D12_DEPTH_STENCIL_DESC
             {
-                .DepthEnable{ static_cast<BOOL>(depthState.TestState) },
-                .DepthWriteMask{ static_cast<D3D12_DEPTH_WRITE_MASK>(depthState.WriteState) },
+                .DepthEnable{ static_cast<BOOL>(depthState.IsEnabled) },
+                .DepthWriteMask{ static_cast<D3D12_DEPTH_WRITE_MASK>(depthState.IsWriteEnabled) },
                 .DepthFunc{ static_cast<D3D12_COMPARISON_FUNC>(depthState.ComparisonFunction) },
-                .StencilEnable{ static_cast<BOOL>(stencilState.TestState) },
+                .StencilEnable{ static_cast<BOOL>(stencilState.IsEnabled) },
                 .StencilReadMask{ stencilState.ReadMask },
                 .StencilWriteMask{ stencilState.WriteMask },
                 .FrontFace
@@ -128,63 +109,9 @@ namespace benzin
             };
         }
 
-        std::vector<D3D12_INPUT_ELEMENT_DESC> ConvertToD3D12InputLayoutElements(const std::vector<InputLayoutElement>* inputLayout)
-        {
-            if (!inputLayout || inputLayout->empty())
-            {
-                return {};
-            }
+    } // anonymous namespace
 
-            std::vector<D3D12_INPUT_ELEMENT_DESC> d3d12InputLayoutElements;
-            d3d12InputLayoutElements.reserve(inputLayout->size());
-
-            uint32_t offset = 0;
-
-            for (const InputLayoutElement& element : *inputLayout)
-            {
-                d3d12InputLayoutElements.push_back(D3D12_INPUT_ELEMENT_DESC
-                {
-                    .SemanticName{ element.Name },
-                    .SemanticIndex{ 0 },
-                    .Format{ static_cast<DXGI_FORMAT>(element.Format) },
-                    .InputSlot{ 0 },
-                    .AlignedByteOffset{ offset },
-                    .InputSlotClass{ D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA },
-                    .InstanceDataStepRate{ 0 }
-                });
-
-                offset += element.Size;
-            }
-
-            return d3d12InputLayoutElements;
-        }
-
-        D3D12_INPUT_LAYOUT_DESC ConvertToD3D12InputLayout(const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout)
-        {
-            return D3D12_INPUT_LAYOUT_DESC
-            {
-                .pInputElementDescs{ inputLayout.data() },
-                .NumElements{ static_cast<UINT>(inputLayout.size()) }
-            };
-        }
-
-        D3D12_CACHED_PIPELINE_STATE GetDefauldD3D12CachedPipelineState()
-        {
-            return D3D12_CACHED_PIPELINE_STATE
-            {
-                .pCachedBlob{ nullptr },
-                .CachedBlobSizeInBytes{ 0 }
-            };
-        }
-
-    } // namespace _internal
-
-    PipelineState::~PipelineState()
-    {
-        SafeReleaseD3D12Object(m_D3D12PipelineState);
-    }
-
-    GraphicsPipelineState::GraphicsPipelineState(Device& device, const Config& config, std::string_view debugName)
+    PipelineState::PipelineState(Device& device, const GraphicsConfig& config)
     {
         BENZIN_ASSERT(device.GetD3D12Device());
         BENZIN_ASSERT(device.GetD3D12BindlessRootSignature());
@@ -192,42 +119,43 @@ namespace benzin
         BENZIN_ASSERT(config.VertexShader.IsValid());
         BENZIN_ASSERT(config.RenderTargetViewFormats.size() <= 8);
 
-        const D3D12_SHADER_BYTECODE vertexShaderDesc = ConvertToD3D12Shader(config.VertexShader, ShaderType::Vertex);
-        const D3D12_SHADER_BYTECODE pixelShaderDesc = ConvertToD3D12Shader(config.PixelShader, ShaderType::Pixel);
-        const D3D12_SHADER_BYTECODE domainShaderDesc = ConvertToD3D12Shader(config.DomainShader, ShaderType::Domain);
-        const D3D12_SHADER_BYTECODE hullShaderDesc = ConvertToD3D12Shader(config.HullShader, ShaderType::Hull);
-        const D3D12_SHADER_BYTECODE geometryShaderDesc = ConvertToD3D12Shader(config.GeometryShader, ShaderType::Geometry);
-        const D3D12_STREAM_OUTPUT_DESC streamOutputDesc = GetDefaultD3D12StreatOutput();
-        const D3D12_BLEND_DESC blendDesc = ConvertToD3D12BlendState(config.BlendState);
-        const D3D12_RASTERIZER_DESC rasterizerDesc = ConvertToD3D12RasterizerState(config.RasterizerState);
-        const D3D12_DEPTH_STENCIL_DESC depthStencilDesc = ConvertToD3D12DepthStencilState(config.DepthState, config.StencilState);
-        const std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayoutElements = ConvertToD3D12InputLayoutElements(config.InputLayout);
-        const D3D12_INPUT_LAYOUT_DESC inputLayoutDesc = ConvertToD3D12InputLayout(inputLayoutElements);
-        const D3D12_CACHED_PIPELINE_STATE cachedPipelineState = GetDefauldD3D12CachedPipelineState();
-        const D3D12_PIPELINE_STATE_FLAGS flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-
         D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12GraphicsPipelineStateDesc
         {
             .pRootSignature{ device.GetD3D12BindlessRootSignature() },
-            .VS{ vertexShaderDesc },
-            .PS{ pixelShaderDesc },
-            .DS{ domainShaderDesc },
-            .HS{ hullShaderDesc },
-            .GS{ geometryShaderDesc },
-            .StreamOutput{ streamOutputDesc },
-            .BlendState{ blendDesc },
+            .VS{ ConvertToD3D12Shader(config.VertexShader, ShaderType::Vertex) },
+            .PS{ ConvertToD3D12Shader(config.PixelShader, ShaderType::Pixel) },
+            .DS{ ConvertToD3D12Shader(config.DomainShader, ShaderType::Domain) },
+            .HS{ ConvertToD3D12Shader(config.HullShader, ShaderType::Hull) },
+            .GS{ ConvertToD3D12Shader(config.GeometryShader, ShaderType::Geometry) },
+            .StreamOutput
+            {
+                .pSODeclaration{ nullptr },
+                .NumEntries{ 0 },
+                .pBufferStrides{ nullptr },
+                .NumStrides{ 0 },
+                .RasterizedStream{ 0 },
+            },
+            .BlendState{ ConvertToD3D12BlendState(config.BlendState) },
             .SampleMask{ 0xffffffff },
-            .RasterizerState{ rasterizerDesc },
-            .DepthStencilState{ depthStencilDesc },
-            .InputLayout{ inputLayoutDesc },
+            .RasterizerState{ ConvertToD3D12RasterizerState(config.RasterizerState) },
+            .DepthStencilState{ ConvertToD3D12DepthStencilState(config.DepthState, config.StencilState) },
+            .InputLayout
+            {
+                .pInputElementDescs{ nullptr },
+                .NumElements{ 0 },
+            },
             .IBStripCutValue{ D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED },
             .PrimitiveTopologyType{ static_cast<D3D12_PRIMITIVE_TOPOLOGY_TYPE>(config.PrimitiveTopologyType) },
             .NumRenderTargets{ static_cast<UINT>(config.RenderTargetViewFormats.size()) },
             .DSVFormat{ static_cast<DXGI_FORMAT>(config.DepthStencilViewFormat) },
             .SampleDesc{ 1, 0 },
             .NodeMask{ 0 },
-            .CachedPSO{ cachedPipelineState },
-            .Flags{ flags }
+            .CachedPSO
+            {
+                .pCachedBlob{ nullptr },
+                .CachedBlobSizeInBytes{ 0 },
+            },
+            .Flags{ D3D12_PIPELINE_STATE_FLAG_NONE },
         };
 
         for (size_t i = 0; i < config.RenderTargetViewFormats.size(); ++i)
@@ -235,32 +163,35 @@ namespace benzin
             d3d12GraphicsPipelineStateDesc.RTVFormats[i] = static_cast<DXGI_FORMAT>(config.RenderTargetViewFormats[i]);
         }
 
-        BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateGraphicsPipelineState(&d3d12GraphicsPipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
-        SetDebugName(debugName, true);
+        BENZIN_HR_ASSERT(device.GetD3D12Device()->CreateGraphicsPipelineState(&d3d12GraphicsPipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
     }
 
-    ComputePipelineState::ComputePipelineState(Device& device, const Config& config, std::string_view debugName)
+    PipelineState::PipelineState(Device& device, const ComputeConfig& config)
     {
         BENZIN_ASSERT(device.GetD3D12Device());
         BENZIN_ASSERT(device.GetD3D12BindlessRootSignature());
 
         BENZIN_ASSERT(config.ComputeShader.IsValid());
 
-        const D3D12_SHADER_BYTECODE d3d12ComputeShaderByteCode = ConvertToD3D12Shader(config.ComputeShader, ShaderType::Compute);
-        const D3D12_CACHED_PIPELINE_STATE d3d12CachedPipelineState = GetDefauldD3D12CachedPipelineState();
-        const D3D12_PIPELINE_STATE_FLAGS d3d12Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-
         const D3D12_COMPUTE_PIPELINE_STATE_DESC d3d12ComputePipelineStateDesc
         {
             .pRootSignature{ device.GetD3D12BindlessRootSignature() },
-            .CS{ d3d12ComputeShaderByteCode },
+            .CS{ ConvertToD3D12Shader(config.ComputeShader, ShaderType::Compute) },
             .NodeMask{ 0 },
-            .CachedPSO{ d3d12CachedPipelineState },
-            .Flags{ d3d12Flags }
+            .CachedPSO
+            {
+                .pCachedBlob{ nullptr },
+                .CachedBlobSizeInBytes{ 0 },
+            },
+            .Flags{ D3D12_PIPELINE_STATE_FLAG_NONE },
         };
 
-        BENZIN_D3D12_ASSERT(device.GetD3D12Device()->CreateComputePipelineState(&d3d12ComputePipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
-        SetDebugName(debugName, true);
+        BENZIN_HR_ASSERT(device.GetD3D12Device()->CreateComputePipelineState(&d3d12ComputePipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+    }
+
+    PipelineState::~PipelineState()
+    {
+        dx::SafeRelease(m_D3D12PipelineState);
     }
 
 } // namespace benzin

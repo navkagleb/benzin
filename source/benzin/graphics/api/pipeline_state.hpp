@@ -5,20 +5,14 @@
 namespace benzin
 {
 
-    struct InputLayoutElement
-    {
-        const char* Name;
-        GraphicsFormat Format{ GraphicsFormat::Unknown };
-        uint32_t Size{ 0 };
-    };
-
-    using InputLayout = std::vector<InputLayoutElement>;
+    class Device;
 
     class PipelineState
     {
     public:
         BENZIN_NON_COPYABLE(PipelineState)
         BENZIN_NON_MOVEABLE(PipelineState)
+        BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12PipelineState)
 
     public:
         struct Shader
@@ -33,60 +27,41 @@ namespace benzin
             }
         };
 
-    public:
-        PipelineState() = default;
-        virtual ~PipelineState();
-
-    public:
-        ID3D12PipelineState* GetD3D12PipelineState() const { return m_D3D12PipelineState; }
-
-    protected:
-        ID3D12PipelineState* m_D3D12PipelineState{ nullptr };
-    };
-
-    class GraphicsPipelineState final : public PipelineState
-    {
-    public:
-        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12PipelineState, "GraphicsPipelineState")
-
-    public:
-        struct Config
+        struct GraphicsConfig
         {
             Shader VertexShader;
             Shader HullShader;
             Shader DomainShader;
             Shader GeometryShader;
             Shader PixelShader;
-            BlendState BlendState{ BlendState::GetDefault() };
-            RasterizerState RasterizerState{ RasterizerState::GetDefault() };
-            DepthState DepthState{ DepthState::GetDefault() };
-            StencilState StencilState{ StencilState::GetDefault() };
-            const InputLayout* InputLayout{ nullptr };
 
             PrimitiveTopologyType PrimitiveTopologyType{ PrimitiveTopologyType::Unknown };
+            RasterizerState RasterizerState{ RasterizerState::GetDefault() };
+
+            DepthState DepthState{ DepthState::GetDefault() };
+            StencilState StencilState{ StencilState::GetDefault() };
+
             std::vector<GraphicsFormat> RenderTargetViewFormats;
             GraphicsFormat DepthStencilViewFormat{ GraphicsFormat::Unknown };
+            BlendState BlendState{ BlendState::GetDefault() };
         };
 
-    public:
-        GraphicsPipelineState() = default;
-        GraphicsPipelineState(Device& device, const Config& config, std::string_view debugName);
-    };
-
-    class ComputePipelineState final : public PipelineState
-    {
-    public:
-        BENZIN_DEBUG_NAME_D3D12_OBJECT(m_D3D12PipelineState, "ComputePipelineState")
-
-    public:
-        struct Config
+        struct ComputeConfig
         {
             Shader ComputeShader;
         };
 
     public:
-        ComputePipelineState() = default;
-        ComputePipelineState(Device& device, const Config& config, std::string_view debugName);
+        PipelineState() = default;
+        explicit PipelineState(Device& device, const GraphicsConfig& config);
+        explicit PipelineState(Device& device, const ComputeConfig& config);
+        ~PipelineState();
+
+    public:
+        ID3D12PipelineState* GetD3D12PipelineState() const { return m_D3D12PipelineState; }
+
+    private:
+        ID3D12PipelineState* m_D3D12PipelineState{ nullptr };
     };
 
 } // namespace benzin

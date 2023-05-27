@@ -26,10 +26,10 @@ namespace benzin
         public:
             ShaderCompiler()
             {
-                BENZIN_D3D12_ASSERT(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils)));
-                BENZIN_D3D12_ASSERT(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler3)));
+                BENZIN_HR_ASSERT(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils)));
+                BENZIN_HR_ASSERT(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler3)));
 
-                BENZIN_D3D12_ASSERT(m_DxcUtils->CreateDefaultIncludeHandler(&m_DxcIncludeHandler));
+                BENZIN_HR_ASSERT(m_DxcUtils->CreateDefaultIncludeHandler(&m_DxcIncludeHandler));
             }
 
             ComPtr<IDxcBlobEncoding> LoadShaderFromFile(const std::string& fileName) const
@@ -42,7 +42,7 @@ namespace benzin
 
                 uint32_t codePage = CP_UTF8;
                 ComPtr<IDxcBlobEncoding> dxcShaderSource;
-                BENZIN_D3D12_ASSERT(m_DxcUtils->LoadFile(wideFilePath.data(), &codePage, &dxcShaderSource));
+                BENZIN_HR_ASSERT(m_DxcUtils->LoadFile(wideFilePath.data(), &codePage, &dxcShaderSource));
 
                 return dxcShaderSource;
             }
@@ -83,6 +83,8 @@ namespace benzin
                 arguments.push_back(L"-Qstrip_debug");
                 arguments.push_back(L"-Qstrip_reflect");
                 arguments.push_back(L"-Qstrip_rootsignature");
+                arguments.push_back(L"-enable-16bit-types");
+                arguments.push_back(L"-HV 2021"); // Templates
 
                 arguments.push_back(DXC_ARG_WARNINGS_ARE_ERRORS);
                 arguments.push_back(DXC_ARG_DEBUG);
@@ -96,7 +98,7 @@ namespace benzin
                 };
 
                 ComPtr<IDxcResult> dxcCompileResult;
-                BENZIN_D3D12_ASSERT(m_DxcCompiler3->Compile(
+                BENZIN_HR_ASSERT(m_DxcCompiler3->Compile(
                     &dxcSourceBuffer,
                     arguments.data(),
                     static_cast<UINT32>(arguments.size()),
@@ -110,7 +112,7 @@ namespace benzin
                 dxcCompileResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&dxcErrorBlob), &dxcDummyName);
                 if (dxcErrorBlob && dxcErrorBlob->GetStringLength() > 0)
                 {
-                    BENZIN_CRITICAL("{}", static_cast<const char*>(dxcErrorBlob->GetBufferPointer()));
+                    BENZIN_ERROR("{}", static_cast<const char*>(dxcErrorBlob->GetBufferPointer()));
                     BENZIN_ASSERT(false);
                 }
 
@@ -165,11 +167,11 @@ namespace benzin
             
             if (defines.empty())
             {
-                BENZIN_INFO("Shader[{}] EntryPoint[{}] compiled!", fileName.data(), entryPoint.data());
+                BENZIN_TRACE("Shader[{}] EntryPoint[{}] compiled!", fileName.data(), entryPoint.data());
             }
             else
             {
-                BENZIN_INFO("Shader[{}] EntryPoint[{}] Defines[{}] compiled!", fileName.data(), entryPoint.data(), fmt::join(defines, ", "));
+                BENZIN_TRACE("Shader[{}] EntryPoint[{}] Defines[{}] compiled!", fileName.data(), entryPoint.data(), fmt::join(defines, ", "));
             }
 
             shaderIterator = g_Shaders.insert(std::make_pair(shaderKey, std::move(shaderByteCode))).first;

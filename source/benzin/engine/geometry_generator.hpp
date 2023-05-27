@@ -3,19 +3,7 @@
 namespace benzin
 {
 
-    struct Vertex
-    {
-        DirectX::XMFLOAT3 Position{};
-        DirectX::XMFLOAT3 Normal{};
-        DirectX::XMFLOAT3 Tangent{};
-        DirectX::XMFLOAT2 TexCoord{};
-    };
-
-    struct MeshData
-    {
-        std::vector<Vertex> Vertices;
-        std::vector<uint32_t> Indices;
-    };
+    struct MeshPrimitiveData;
 
     namespace geometry_generator
     {
@@ -58,12 +46,12 @@ namespace benzin
             uint32_t SubdivisionCount{ 6 };
         };
 
-        MeshData GenerateBox(const BoxConfig& config);
-        MeshData GenerateGrid(const GridConfig& config);
-        MeshData GenerateCylinder(const CylinderConfig& config);
-        MeshData GenerateSphere(const SphereConfig& config);
-        MeshData GenerateGeosphere(const GeosphereConfig& config);
+        MeshPrimitiveData GenerateBox(const BoxConfig& config);
+        MeshPrimitiveData GenerateGrid(const GridConfig& config);
+        MeshPrimitiveData GenerateCylinder(const CylinderConfig& config);
+        MeshPrimitiveData GenerateSphere(const SphereConfig& config);
+        MeshPrimitiveData GenerateGeosphere(const GeosphereConfig& config);
 
-    } // namesapce geometry_generator
+    } // namespace geometry_generator
 
 } // namespace benzin

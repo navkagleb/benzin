@@ -2,12 +2,13 @@
 
 #include "blur_pass.hpp"
 
-#include <benzin/graphics/api/resource_view_builder.hpp>
-#include <benzin/graphics/api/graphics_command_list.hpp>
 #include <benzin/graphics/api/device.hpp>
+#include <benzin/graphics/api/command_list.hpp>
 #include <benzin/graphics/api/pipeline_state.hpp>
 #include <benzin/graphics/api/texture.hpp>
 #include <benzin/graphics/mapped_data.hpp>
+
+#if 0
 
 namespace sandbox
 {
@@ -120,8 +121,6 @@ namespace sandbox
         static const auto initPass = [&](DirectionPass& pass, const std::string& passName)
         {
             {
-                auto& resourceViewBuilder = device.GetResourceViewBuilder();
-
                 const benzin::BufferResource::Config config
                 {
                     .ElementSize{ sizeof(Settings) },
@@ -129,8 +128,9 @@ namespace sandbox
                     .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
                 };
 
-                pass.SettingsBuffer = device.CreateBufferResource(config, passName + "BlurSettings");
-                pass.SettingsBuffer->PushConstantBufferView(resourceViewBuilder.CreateConstantBufferView(*pass.SettingsBuffer));
+                pass.SettingsBuffer = std::make_shared<benzin::BufferResource>(device, config);
+                pass.SettingsBuffer->SetDebugName(passName + "BlurSettings");
+                pass.SettingsBuffer->PushConstantBufferView();
             }
             
             {
@@ -141,7 +141,8 @@ namespace sandbox
                     .ComputeShader{ "blur.hlsl", shaderEntryPoint }
                 };
 
-                pass.PipelineState = std::make_unique<benzin::ComputePipelineState>(device, config, passName + "Blur");
+                pass.PipelineState = std::make_unique<benzin::ComputePipelineState>(device, config);
+                pass.PipelineState->SetDebugName(passName + "Blur");
             }
         };
 
@@ -156,16 +157,17 @@ namespace sandbox
             .Type{ benzin::TextureResource::Type::Texture2D },
             .Width{ width },
             .Height{ height },
-            .Format{ benzin::GraphicsFormat::R8G8B8A8UnsignedNorm },
+            .Format{ benzin::GraphicsFormat::RGBA8Unorm },
             .Flags{ benzin::TextureResource::Flags::BindAsUnorderedAccess },
         };
 
         for (size_t i = 0; i < m_BlurMaps.size(); ++i)
         {
             auto& blurMap = m_BlurMaps[i];
-            blurMap = device.CreateTextureResource(config, "BlurMap" + std::to_string(i));
-            blurMap->PushShaderResourceView(device.GetResourceViewBuilder().CreateShaderResourceView(*blurMap));
-            blurMap->PushUnorderedAccessView(device.GetResourceViewBuilder().CreateUnorderedAccessView(*blurMap));
+            blurMap = std::make_shared<benzin::TextureResource>(device, config);
+            blurMap->SetDebugName("BlurMap" + std::to_string(0));
+            blurMap->PushShaderResourceView();
+            blurMap->PushUnorderedAccessView();
         }
     }
     
@@ -178,17 +180,17 @@ namespace sandbox
         uint32_t threadGroupCountY
     )
     {
-        enum
+        enum class RootConstant : uint32_t
         {
-            RootConstant_SettingsBufferIndex = 0,
-            RootConstant_InputTextureIndex = 1,
-            RootConstant_OutputTextureIndex = 2
+            SettingsBufferIndex,
+            InputTextureIndex,
+            OutputTextureIndex
         };
 
         commandList.SetPipelineState(*pass.PipelineState);
-        commandList.SetRootConstant(RootConstant_SettingsBufferIndex, pass.SettingsBuffer->GetConstantBufferView().GetHeapIndex(), true);
-        commandList.SetRootConstant(RootConstant_InputTextureIndex, input.GetShaderResourceView().GetHeapIndex(), true);
-        commandList.SetRootConstant(RootConstant_OutputTextureIndex, output.GetUnorderedAccessView().GetHeapIndex(), true);
+        commandList.SetRootConstantBufferC(RootConstant::SettingsBufferIndex, pass.SettingsBuffer->GetConstantBufferView());
+        commandList.SetRootShaderResourceC(RootConstant::InputTextureIndex, input.GetShaderResourceView());
+        commandList.SetRootUnorderedAccessC(RootConstant::OutputTextureIndex, output.GetUnorderedAccessView());
 
         BENZIN_ASSERT(threadGroupCountX && threadGroupCountY);
         commandList.Dispatch(threadGroupCountX, threadGroupCountY, 1);
@@ -198,3 +200,5 @@ namespace sandbox
     }
 
 } // namespace sandbox
+
+#endif

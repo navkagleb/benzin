@@ -1,6 +1,7 @@
 #pragma once
 
-#include <benzin/graphics/api/common.hpp>
+#include <benzin/graphics/api/device.hpp>
+#include <benzin/graphics/api/command_list.hpp>
 
 namespace sandbox
 {
@@ -24,8 +25,8 @@ namespace sandbox
 
     private:
         std::shared_ptr<benzin::TextureResource> m_EdgeMap;
-        std::unique_ptr<benzin::ComputePipelineState> m_SobelFilterPSO;
-        std::unique_ptr<benzin::GraphicsPipelineState> m_CompositePSO;
+        std::unique_ptr<benzin::PipelineState> m_SobelFilterPSO;
+        std::unique_ptr<benzin::PipelineState> m_CompositePSO;
     };
 
 } // namespace sandbox
