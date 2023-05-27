@@ -14,9 +14,6 @@ namespace benzin
         constexpr magic_enum::containers::array<ShaderType, std::string_view> g_ShaderTargets
         {
             config::GetVertexShaderTarget(),
-            config::GetHullShaderTarget(),
-            config::GetDomainShaderTarget(),
-            config::GetGeometryShaderTarget(),
             config::GetPixelShaderTarget(),
             config::GetComputeShaderTarget()
         };

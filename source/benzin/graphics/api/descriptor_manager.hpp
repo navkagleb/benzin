@@ -44,8 +44,8 @@ namespace benzin
         class DescriptorHeap
         {
         public:
-            BENZIN_NON_COPYABLE(DescriptorHeap)
-            BENZIN_NON_MOVEABLE(DescriptorHeap)
+            BENZIN_NON_COPYABLE_IMPL(DescriptorHeap)
+            BENZIN_NON_MOVEABLE_IMPL(DescriptorHeap)
             BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12DescriptorHeap)
 
         public:
@@ -82,8 +82,8 @@ namespace benzin
         };
 
     public:
-        BENZIN_NON_COPYABLE(DescriptorManager)
-        BENZIN_NON_MOVEABLE(DescriptorManager)
+        BENZIN_NON_COPYABLE_IMPL(DescriptorManager)
+        BENZIN_NON_MOVEABLE_IMPL(DescriptorManager)
 
     public:
         explicit DescriptorManager(Device& device);

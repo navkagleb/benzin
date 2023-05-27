@@ -11,9 +11,6 @@ namespace benzin::config
     constexpr GraphicsFormat GetBackBufferFormat() { return GraphicsFormat::RGBA8Unorm; }
 
     constexpr const char* GetVertexShaderTarget() { return "vs_6_6"; }
-    constexpr const char* GetHullShaderTarget() { return "hs_6_6"; }
-    constexpr const char* GetDomainShaderTarget() { return "ds_6_6"; }
-    constexpr const char* GetGeometryShaderTarget() { return "gs_6_6"; }
     constexpr const char* GetPixelShaderTarget() { return "ps_6_6"; }
     constexpr const char* GetComputeShaderTarget() { return "cs_6_6"; }
 

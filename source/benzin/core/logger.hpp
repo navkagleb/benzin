@@ -6,7 +6,7 @@ namespace benzin
     class Logger
     {
     public:
-        BENZIN_NON_CONSTRUCTABLE(Logger)
+        BENZIN_NON_CONSTRUCTABLE_IMPL(Logger)
 
     public:
         enum class Severity

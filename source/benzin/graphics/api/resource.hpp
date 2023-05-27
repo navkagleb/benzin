@@ -16,8 +16,8 @@ namespace benzin
     class Resource
     {
     public:
-        BENZIN_NON_COPYABLE(Resource)
-        BENZIN_NON_MOVEABLE(Resource)
+        BENZIN_NON_COPYABLE_IMPL(Resource)
+        BENZIN_NON_MOVEABLE_IMPL(Resource)
         BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12Resource)
 
     public:

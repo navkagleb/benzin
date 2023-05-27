@@ -17,8 +17,8 @@ namespace benzin
     class Device
     {
     public:
-        BENZIN_NON_COPYABLE(Device)
-        BENZIN_NON_MOVEABLE(Device)
+        BENZIN_NON_COPYABLE_IMPL(Device)
+        BENZIN_NON_MOVEABLE_IMPL(Device)
         BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12Device)
 
     public:

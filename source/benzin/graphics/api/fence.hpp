@@ -10,8 +10,8 @@ namespace benzin
     class Fence
     {
     public:
-        BENZIN_NON_COPYABLE(Fence)
-        BENZIN_NON_MOVEABLE(Fence)
+        BENZIN_NON_COPYABLE_IMPL(Fence)
+        BENZIN_NON_MOVEABLE_IMPL(Fence)
         BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12Fence)
 
     public:

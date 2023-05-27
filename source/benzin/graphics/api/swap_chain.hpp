@@ -15,8 +15,8 @@ namespace benzin
     class SwapChain
     {
     public:
-        BENZIN_NON_COPYABLE(SwapChain)
-        BENZIN_NON_MOVEABLE(SwapChain)
+        BENZIN_NON_COPYABLE_IMPL(SwapChain)
+        BENZIN_NON_MOVEABLE_IMPL(SwapChain)
         BENZIN_DX_DEBUG_NAME_IMPL(m_DXGISwapChain)
 
     public:

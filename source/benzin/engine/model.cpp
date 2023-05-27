@@ -3,6 +3,7 @@
 #include "benzin/engine/model.hpp"
 
 #include <third_party/tinygltf/tiny_gltf.h>
+#include <third_party/tinygltf/stb_image.h>
 
 #include "benzin/graphics/api/command_queue.hpp"
 #include "benzin/graphics/api/device.hpp"
@@ -199,8 +200,6 @@ namespace benzin
                         break;
                     }
                 }
-
-
             }
         }
 
@@ -240,19 +239,6 @@ namespace benzin
             }
             else
             {
-                if (!gltfNode.translation.empty())
-                {
-                    BENZIN_ASSERT(gltfNode.translation.size() == 3);
-                    const DirectX::XMFLOAT3 translation
-                    {
-                        static_cast<float>(gltfNode.translation[0]),
-                        static_cast<float>(gltfNode.translation[1]),
-                        static_cast<float>(gltfNode.translation[2])
-                    };
-
-                    nodeTransform *= DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&translation));
-                }
-
                 if (!gltfNode.rotation.empty())
                 {
                     BENZIN_ASSERT(gltfNode.rotation.size() == 4);
@@ -278,6 +264,19 @@ namespace benzin
                     };
 
                     nodeTransform *= DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&scale));
+                }
+
+                if (!gltfNode.translation.empty())
+                {
+                    BENZIN_ASSERT(gltfNode.translation.size() == 3);
+                    const DirectX::XMFLOAT3 translation
+                    {
+                        static_cast<float>(gltfNode.translation[0]),
+                        static_cast<float>(gltfNode.translation[1]),
+                        static_cast<float>(gltfNode.translation[2])
+                    };
+
+                    nodeTransform *= DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&translation));
                 }
             }
 

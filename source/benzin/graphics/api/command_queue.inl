@@ -48,6 +48,8 @@ namespace benzin
             IID_PPV_ARGS(&m_D3D12CommandQueue)
         ));
 
+        dx::SetDebugName(m_D3D12CommandQueue, magic_enum::enum_name(d3d12CommandListType));
+
         m_D3D12CommandAllocators.resize(commandAllocatorCount, nullptr);
         for (size_t i = 0; i < m_D3D12CommandAllocators.size(); ++i)
         {
@@ -58,7 +60,7 @@ namespace benzin
                 IID_PPV_ARGS(&d3d12CommandAllocator)
             ));
 
-            dx::SetDebugName(d3d12CommandAllocator, fmt::format("{}_{}", magic_enum::enum_name(d3d12CommandListType), i);
+            dx::SetDebugName(d3d12CommandAllocator, fmt::format("{}_{}", magic_enum::enum_name(d3d12CommandListType), i));
         }
 
         m_FlushFence.SetDebugName("CommandQueueFlush");

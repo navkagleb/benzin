@@ -10,8 +10,8 @@ namespace benzin
     class PipelineState
     {
     public:
-        BENZIN_NON_COPYABLE(PipelineState)
-        BENZIN_NON_MOVEABLE(PipelineState)
+        BENZIN_NON_COPYABLE_IMPL(PipelineState)
+        BENZIN_NON_MOVEABLE_IMPL(PipelineState)
         BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12PipelineState)
 
     public:

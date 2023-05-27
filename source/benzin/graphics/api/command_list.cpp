@@ -2,15 +2,13 @@
 
 #include "benzin/graphics/api/command_list.hpp"
 
+#include "benzin/core/common.hpp"
+#include "benzin/graphics/api/buffer.hpp"
+#include "benzin/graphics/api/descriptor_manager.hpp"
 #include "benzin/graphics/api/device.hpp"
 #include "benzin/graphics/api/pipeline_state.hpp"
-#include "benzin/graphics/api/buffer.hpp"
 #include "benzin/graphics/api/texture.hpp"
-#include "benzin/graphics/api/descriptor_manager.hpp"
-#include "benzin/graphics/api/utils.hpp"
 #include "benzin/graphics/mapped_data.hpp"
-
-#include "benzin/core/common.hpp"
 
 namespace benzin
 {

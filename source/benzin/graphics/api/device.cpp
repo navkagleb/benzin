@@ -6,7 +6,6 @@
 #include "benzin/graphics/api/command_queue.hpp"
 #include "benzin/graphics/api/pipeline_state.hpp"
 #include "benzin/graphics/api/sampler.hpp"
-#include "benzin/graphics/api/utils.hpp"
 #include "benzin/graphics/texture_loader.hpp"
 
 namespace benzin
@@ -91,13 +90,8 @@ namespace benzin
 
         {
             m_CopyCommandQueue = new CopyCommandQueue{ *this };
-            m_CopyCommandQueue->SetDebugName("Copy");
-
             m_ComputeCommandQueue = new ComputeCommandQueue{ *this };
-            m_ComputeCommandQueue->SetDebugName("Compute");
-
             m_GraphicsCommandQueue = new GraphicsCommandQueue{ *this };
-            m_GraphicsCommandQueue->SetDebugName("Graphics");
         }
     }
 

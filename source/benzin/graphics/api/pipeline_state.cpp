@@ -124,9 +124,9 @@ namespace benzin
             .pRootSignature{ device.GetD3D12BindlessRootSignature() },
             .VS{ ConvertToD3D12Shader(config.VertexShader, ShaderType::Vertex) },
             .PS{ ConvertToD3D12Shader(config.PixelShader, ShaderType::Pixel) },
-            .DS{ ConvertToD3D12Shader(config.DomainShader, ShaderType::Domain) },
-            .HS{ ConvertToD3D12Shader(config.HullShader, ShaderType::Hull) },
-            .GS{ ConvertToD3D12Shader(config.GeometryShader, ShaderType::Geometry) },
+            .DS{ nullptr, 0 },
+            .HS{ nullptr, 0 },
+            .GS{ nullptr, 0 },
             .StreamOutput
             {
                 .pSODeclaration{ nullptr },

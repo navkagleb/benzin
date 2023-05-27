@@ -12,8 +12,8 @@ namespace benzin
     class CommandList
     {
     public:
-        BENZIN_NON_COPYABLE(CommandList)
-        BENZIN_NON_MOVEABLE(CommandList)
+        BENZIN_NON_COPYABLE_IMPL(CommandList)
+        BENZIN_NON_MOVEABLE_IMPL(CommandList)
         BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12GraphicsCommandList)
 
     public:

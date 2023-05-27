@@ -10,9 +10,9 @@ namespace benzin
     class CommandQueue
     {
     public:
-        BENZIN_NON_COPYABLE(CommandQueue)
-            BENZIN_NON_MOVEABLE(CommandQueue)
-            BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12CommandQueue)
+        BENZIN_NON_COPYABLE_IMPL(CommandQueue)
+        BENZIN_NON_MOVEABLE_IMPL(CommandQueue)
+        BENZIN_DX_DEBUG_NAME_IMPL(m_D3D12CommandQueue)
 
     public:
         CommandQueue(Device& device, size_t commandAllocatorCount);
