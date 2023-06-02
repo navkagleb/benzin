@@ -120,7 +120,7 @@ namespace benzin
         for (size_t i = 0; i < m_BackBuffers.size(); ++i)
         {
             ID3D12Resource* d3d12BackBuffer;
-            BENZIN_HR_ASSERT(m_DXGISwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&d3d12BackBuffer)));
+            BENZIN_HR_ASSERT(m_DXGISwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&d3d12BackBuffer))); // Increases reference count
             
             auto& backBuffer = m_BackBuffers[i];
             backBuffer = std::make_shared<TextureResource>(m_Device, d3d12BackBuffer);

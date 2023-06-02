@@ -128,9 +128,11 @@ namespace benzin
         const std::vector<DrawPrimitive>& GetDrawPrimitives() const { return m_DrawPrimitives; }
 
         const std::shared_ptr<BufferResource>& GetNodeBuffer() const { return m_NodeBuffer; }
-        const std::shared_ptr<BufferResource>& GetMaterialBuffer() const { return m_MaterialBuffer; }
-
         const std::vector<Node>& GetNodes() const { return m_Nodes; }
+
+        const std::shared_ptr<BufferResource>& GetMaterialBuffer() const { return m_MaterialBuffer; }
+        std::vector<MaterialData>& GetMaterials() { return m_Materials; }
+        const std::vector<MaterialData>& GetMaterials() const { return m_Materials; }
 
     public:
         bool LoadFromGLTFFile(std::string_view fileName);
@@ -163,6 +165,7 @@ namespace benzin
 
         std::vector<std::shared_ptr<TextureResource>> m_Textures;
         std::shared_ptr<BufferResource> m_MaterialBuffer;
+        std::vector<MaterialData> m_Materials;
     };
 
 } // namespace benzin

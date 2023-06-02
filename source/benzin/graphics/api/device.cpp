@@ -112,6 +112,7 @@ namespace benzin
         ReportLiveObjects();
 #endif
 
+        // TODO: There is reference count due to implicit heaps of resources
         dx::SafeRelease(m_D3D12Device);
     }
 
@@ -330,7 +331,7 @@ namespace benzin
         ComPtr<ID3D12DebugDevice2> d3d12DebugDevice;
         BENZIN_HR_ASSERT(m_D3D12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
 
-        d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_IGNORE_INTERNAL);
+        d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL);
     }
 #endif
 

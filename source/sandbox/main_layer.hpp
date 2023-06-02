@@ -170,13 +170,16 @@ namespace sandbox
 
         benzin::PerspectiveProjection m_PerspectiveProjection{ DirectX::XMConvertToRadians(60.0f), m_SwapChain.GetAspectRatio(), 0.1f, 1000.0f };
         benzin::Camera m_Camera{ &m_PerspectiveProjection };
-        benzin::FlyCameraController m_FlyCameraController{ &m_Camera };
+        benzin::FlyCameraController m_FlyCameraController{ m_Camera };
 
         entt::registry m_Registry;
 
         GeometryPass m_GeometryPass;
         DeferredLightingPass m_DeferredLightingPass;
         EnvironmentPass m_EnvironmentPass;
+
+        entt::entity m_DamagedHelmetEntity;
+        entt::entity m_BoomBoxEntity;
     };
 
 } // namespace sandbox

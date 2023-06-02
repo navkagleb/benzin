@@ -317,7 +317,10 @@ namespace benzin
         )
         {
             const int parentNodeIndex = -1;
-            const DirectX::XMMATRIX parentNodeTransform = DirectX::XMMatrixIdentity();
+
+            // From right-handed to left-handed
+            // Must be used with TriangleOrder::CounterClockwise in rasterizer state
+            const DirectX::XMMATRIX parentNodeTransform = DirectX::XMMatrixScaling(1.0f, 1.0f, -1.0f);
 
             for (const tinygltf::Scene& gltfScene : gltfModel.scenes)
             {
@@ -719,7 +722,14 @@ namespace benzin
             updateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(materialData.EmissiveTextureIndex));
         }
 
-        m_MaterialBuffer = std::make_shared<BufferResource>(m_Device, BufferResource::Config{ sizeof(GPUMaterial), static_cast<uint32_t>(materialsData.size()) });
+        m_Materials = materialsData;
+
+        m_MaterialBuffer = std::make_shared<BufferResource>(m_Device, BufferResource::Config
+        {
+            .ElementSize{ sizeof(GPUMaterial) },
+            .ElementCount{ static_cast<uint32_t>(materialsData.size()) },
+            .Flags{ BufferResource::Flags::Dynamic },
+        });
         m_MaterialBuffer->SetDebugName(fmt::format("{}_{}", m_Name, "MaterialBuffer"));
         m_MaterialBuffer->PushShaderResourceView();
 

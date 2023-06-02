@@ -196,7 +196,7 @@ namespace benzin
     DirectX::XMMATRIX Camera::GetInverseViewDirectionProjectionMatrix() const
     {
         DirectX::XMMATRIX viewDirectionMatrix = m_ViewMatrix;
-        viewDirectionMatrix.r[3] = DirectX::XMVECTOR{ 0.0f, 0.0f, 0.0f, 1.0f }; // Remove translation
+        viewDirectionMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
 
         const DirectX::XMMATRIX viewDirectionProjectionMatrix = viewDirectionMatrix * m_Projection->GetMatrix();
 
@@ -211,7 +211,7 @@ namespace benzin
 
     void Camera::UpdateViewMatrix()
     {
-        m_ViewMatrix = DirectX::XMMatrixLookAtLH(m_Position, DirectX::XMVectorAdd(m_Position, m_FrontDirection), m_UpDirection);
+        m_ViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
 
         DirectX::XMVECTOR viewDeterminant = DirectX::XMMatrixDeterminant(m_ViewMatrix);
         m_InverseViewMatrix = DirectX::XMMatrixInverse(&viewDeterminant, m_ViewMatrix);
@@ -220,14 +220,14 @@ namespace benzin
     //////////////////////////////////////////////////////////////////////////
     /// CameraController
     //////////////////////////////////////////////////////////////////////////
-    FlyCameraController::FlyCameraController(Camera* camera)
+    FlyCameraController::FlyCameraController(Camera& camera)
         : m_Camera{ camera }
-    {}
-
-    void FlyCameraController::SetCamera(Camera* camera)
     {
-        BENZIN_ASSERT(camera);
+        m_Camera.SetFrontDirection(GetCameraFrontDirection());
+    }
 
+    void FlyCameraController::SetCamera(Camera& camera)
+    {
         m_Camera = camera;
     }
 
@@ -243,13 +243,13 @@ namespace benzin
     void FlyCameraController::OnUpdate(float dt)
     {
         const float delta = m_CameraTranslationSpeed * dt;
-        const auto& position = m_Camera->GetPosition();
+        const auto& position = m_Camera.GetPosition();
 
         DirectX::XMVECTOR updatedPosition = DirectX::XMVectorZero();
 
         // Front / Back
         {
-            const auto& frontDirection = m_Camera->GetFrontDirection();
+            const auto& frontDirection = m_Camera.GetFrontDirection();
 
             if (Input::IsKeyPressed(KeyCode::W))
             {
@@ -263,7 +263,7 @@ namespace benzin
 
         // Left / Right
         {
-            const auto& rightDirection = m_Camera->GetRightDirection();
+            const auto& rightDirection = m_Camera.GetRightDirection();
 
             if (Input::IsKeyPressed(KeyCode::A))
             {
@@ -277,7 +277,7 @@ namespace benzin
 
         // Up / Down
         {
-            const auto& upDirection = m_Camera->GetUpDirection();
+            const auto& upDirection = m_Camera.GetUpDirection();
 
             if (Input::IsKeyPressed(KeyCode::Space))
             {
@@ -288,18 +288,15 @@ namespace benzin
                 updatedPosition = DirectX::XMVectorSubtract(position, DirectX::XMVectorScale(upDirection, delta));
             }
         }
-        
 
         if (!DirectX::XMVector4Equal(updatedPosition, DirectX::XMVectorZero()))
         {
-            m_Camera->SetPosition(updatedPosition);
+            m_Camera.SetPosition(updatedPosition);
         }
     }
 
     void FlyCameraController::OnImGuiRender(float dt)
     {
-        BENZIN_ASSERT(m_Camera);
-
         ImGui::Begin("Camera Controller");
         {
             RenderImGuiControllerProperties();
@@ -332,29 +329,29 @@ namespace benzin
 
     bool FlyCameraController::OnMouseMoved(MouseMovedEvent& event)
     {
-        BENZIN_ASSERT(m_Camera);
-
         if (Input::IsMouseButtonPressed(MouseButton::Left))
         {
             const float deltaX = event.GetX<float>() - m_LastMousePosition.x;
             const float deltaY = event.GetY<float>() - m_LastMousePosition.y;
 
-            m_Theta -= m_MouseSensitivity * deltaX;
-            m_Phi -= m_MouseSensitivity * deltaY;
+            m_Pitch += m_MouseSensitivity * deltaY;
+            m_Yaw += m_MouseSensitivity * deltaX;
 
-            m_Phi = std::clamp(m_Phi, 0.01f, DirectX::XM_PI - 0.01f);
+            // Clamp the up down view
+            m_Pitch = std::clamp(m_Pitch, -DirectX::XM_PIDIV2 + 0.01f, DirectX::XM_PIDIV2 - 0.01f);
 
-            if (m_Theta > DirectX::XM_PI)
+            // 360 rotation
+            if (m_Yaw > DirectX::XM_PI)
             {
-                m_Theta = -DirectX::XM_PI;
+                m_Yaw = -DirectX::XM_PI;
             }
 
-            if (m_Theta < -DirectX::XM_PI)
+            if (m_Yaw < -DirectX::XM_PI)
             {
-                m_Theta = DirectX::XM_PI;
+                m_Yaw = DirectX::XM_PI;
             }
 
-            m_Camera->SetFrontDirection(GetCameraFrontDirection());
+            m_Camera.SetFrontDirection(GetCameraFrontDirection());
         }
 
         m_LastMousePosition.x = event.GetX<float>();
@@ -388,32 +385,32 @@ namespace benzin
     {
         ImGui::Text("View Properties");
 
-        if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&m_Camera->m_Position)))
+        if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&m_Camera.m_Position)))
         {
-            m_Camera->UpdateViewMatrix();
+            m_Camera.UpdateViewMatrix();
         }
 
-        if (ImGui::DragFloat3("Front Direction", reinterpret_cast<float*>(&m_Camera->m_FrontDirection)))
+        if (ImGui::DragFloat3("Front Direction", reinterpret_cast<float*>(&m_Camera.m_FrontDirection)))
         {
-            m_Camera->UpdateViewMatrix();
+            m_Camera.UpdateViewMatrix();
         }
 
-        if (ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&m_Camera->m_UpDirection)))
+        if (ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&m_Camera.m_UpDirection)))
         {
-            m_Camera->UpdateViewMatrix();
+            m_Camera.UpdateViewMatrix();
         }
 
-        if (ImGui::SliderAngle("Theta (XZ)", &m_Theta, -180.0f, 180.0f))
+        if (ImGui::SliderAngle("Pitch (X)", &m_Pitch, -89.0f, 89.0f))
         {
-            m_Camera->SetFrontDirection(GetCameraFrontDirection());
+            m_Camera.SetFrontDirection(GetCameraFrontDirection());
         }
 
-        if (ImGui::SliderAngle("Phi (Y)", &m_Phi, 0.01f, 179.0f))
+        if (ImGui::SliderAngle("Yaw (Y)", &m_Yaw, -180.0f, 180.0f))
         {
-            m_Camera->SetFrontDirection(GetCameraFrontDirection());
+            m_Camera.SetFrontDirection(GetCameraFrontDirection());
         }
 
-        RenderImGuiMatrix4x4(m_Camera->GetViewMatrix());
+        RenderImGuiMatrix4x4(m_Camera.GetViewMatrix());
     }
 
     void FlyCameraController::RenderImGuiProjectionProperties()
@@ -432,7 +429,7 @@ namespace benzin
             ImGui::Text("FarPlane: %f", perspectiveProjection->m_FarPlane);
         }
 
-        RenderImGuiMatrix4x4(m_Camera->GetProjectionMatrix());
+        RenderImGuiMatrix4x4(m_Camera.GetProjectionMatrix());
     }
 
     DirectX::XMVECTOR FlyCameraController::GetCameraFrontDirection() const
@@ -441,9 +438,9 @@ namespace benzin
         const DirectX::XMVECTOR frontDirection
         {
             DirectX::XMVectorSet(
-                DirectX::XMScalarSin(m_Phi) * DirectX::XMScalarSin(m_Theta),
-                DirectX::XMScalarCos(m_Phi),
-                DirectX::XMScalarSin(m_Phi) * DirectX::XMScalarCos(m_Theta),
+                DirectX::XMScalarCos(m_Yaw) * DirectX::XMScalarCos(m_Pitch),
+                DirectX::XMScalarSin(m_Pitch),
+                DirectX::XMScalarSin(m_Yaw) * DirectX::XMScalarCos(m_Pitch),
                 0.0f
             )
         };
@@ -453,7 +450,7 @@ namespace benzin
 
     PerspectiveProjection* FlyCameraController::GetPerspectiveProjection()
     {
-        const auto* perspectiveProjection = dynamic_cast<const PerspectiveProjection*>(m_Camera->GetProjection());
+        const auto* perspectiveProjection = dynamic_cast<const PerspectiveProjection*>(m_Camera.GetProjection());
 
         if (!perspectiveProjection)
         {

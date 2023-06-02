@@ -66,11 +66,13 @@ namespace benzin
 
         D3D12_RASTERIZER_DESC ConvertToD3D12RasterizerState(const RasterizerState& rasterizerState)
         {
+            const BOOL isClockwise = rasterizerState.TriangleOrder == RasterizerState::TriangleOrder::Clockwise;
+
             return D3D12_RASTERIZER_DESC
             {
                 .FillMode{ static_cast<D3D12_FILL_MODE>(rasterizerState.FillMode) },
                 .CullMode{ static_cast<D3D12_CULL_MODE>(rasterizerState.CullMode) },
-                .FrontCounterClockwise{ static_cast<BOOL>(rasterizerState.TriangleOrder) },
+                .FrontCounterClockwise{ !isClockwise },
                 .DepthBias{ rasterizerState.DepthBias },
                 .DepthBiasClamp{ rasterizerState.DepthBiasClamp },
                 .SlopeScaledDepthBias{ rasterizerState.SlopeScaledDepthBias },

@@ -135,10 +135,10 @@ namespace benzin
     class FlyCameraController
     {
     public:
-        FlyCameraController(Camera* camera);
+        explicit FlyCameraController(Camera& camera);
 
     public:
-        void SetCamera(Camera* camera);
+        void SetCamera(Camera& camera);
 
     public:
         void OnEvent(Event& event);
@@ -160,15 +160,15 @@ namespace benzin
         PerspectiveProjection* GetPerspectiveProjection();
 
     private:
-        Camera* m_Camera{ nullptr };
+        Camera& m_Camera;
 
         float m_CameraTranslationSpeed{ 5.0f };
         float m_MouseSensitivity{ 0.003f };
         float m_MouseWheelSensitivity{ 0.04f };
 
         // For camera front direction
-        float m_Theta{ DirectX::XMConvertToRadians(180.0f) };
-        float m_Phi{ DirectX::XM_PIDIV2 };
+        float m_Pitch{ 0.0f }; // X axis (top-down)
+        float m_Yaw{ -DirectX::XM_PIDIV2 }; // Y axis (left-right)
         DirectX::XMFLOAT2 m_LastMousePosition{ 0.0f, 0.0f };
     };
 

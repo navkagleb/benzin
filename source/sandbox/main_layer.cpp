@@ -8,6 +8,7 @@
 #include <benzin/graphics/api/pipeline_state.hpp>
 #include <benzin/graphics/texture_loader.hpp>
 #include <benzin/system/event_dispatcher.hpp>
+#include <benzin/utility/random.hpp>
 
 #include "ibl_texture_generator.hpp"
 
@@ -86,7 +87,16 @@ namespace sandbox
                 .VertexShader{ "gbuffer.hlsl", "VS_Main" },
                 .PixelShader{ "gbuffer.hlsl", "PS_Main" },
                 .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .DepthState{ benzin::DepthState::GetLess() },
+                .RasterizerState
+                {
+                    .TriangleOrder{ benzin::RasterizerState::TriangleOrder::CounterClockwise },
+                },
+                .DepthState
+                {
+                    .IsEnabled{ true },
+                    .IsWriteEnabled{ true },
+                    .ComparisonFunction{ benzin::ComparisonFunction::Less },
+                },
                 .RenderTargetViewFormats
                 {
                     ms_Color0Format,
@@ -158,7 +168,7 @@ namespace sandbox
                 m_GBuffer.RoughnessMetalness->GetRenderTargetView(),
             },
             &m_GBuffer.DepthStencil->GetDepthStencilView()
-            );
+        );
 
         commandList.ClearRenderTarget(m_GBuffer.Albedo->GetRenderTargetView());
         commandList.ClearRenderTarget(m_GBuffer.WorldNormal->GetRenderTargetView());
@@ -241,7 +251,7 @@ namespace sandbox
             uint32_t height,
             std::string_view debugName,
             std::shared_ptr<benzin::TextureResource>& outRenderTarget
-            )
+        )
         {
             const benzin::TextureResource::Config config
             {
@@ -638,11 +648,19 @@ namespace sandbox
     {
         m_FlyCameraController.OnUpdate(dt);
 
-        m_GeometryPass.OnUpdate(m_Camera);
-        m_DeferredLightingPass.OnUpdate(m_Camera, m_Registry);
-        m_EnvironmentPass.OnUpdate(m_Camera);
-
         {
+            {
+                auto& tc = m_Registry.get<benzin::TransformComponent>(m_BoomBoxEntity);
+                tc.Rotation.x += 0.1f * dt;
+                tc.Rotation.z += 0.2f * dt;
+            }
+
+            {
+                auto& tc = m_Registry.get<benzin::TransformComponent>(m_DamagedHelmetEntity);
+                tc.Rotation.x += 0.1f * dt;
+                tc.Rotation.y -= 0.15f * dt;
+            }
+
             auto& resources = m_Resources[m_SwapChain.GetCurrentBackBufferIndex()];
             benzin::MappedData entityDataBuffer{ *resources.EntityDataBuffer };
 
@@ -661,6 +679,10 @@ namespace sandbox
                 entityDataBuffer.Write(entityData, magic_enum::enum_integer(entity));
             }
         }
+
+        m_GeometryPass.OnUpdate(m_Camera);
+        m_DeferredLightingPass.OnUpdate(m_Camera, m_Registry);
+        m_EnvironmentPass.OnUpdate(m_Camera);
     }
 
     void MainLayer::OnRender(float dt)
@@ -786,7 +808,8 @@ namespace sandbox
     {
         {
             const entt::entity entity = m_Registry.create();
-            m_Registry.emplace<benzin::TransformComponent>(entity);
+            auto& tc = m_Registry.emplace<benzin::TransformComponent>(entity);
+            tc.Rotation = { 0.0f, DirectX::XM_PI, 0.0f };
 
             auto& mc = m_Registry.emplace<benzin::ModelComponent>(entity);
             mc.Model = std::make_shared<benzin::Model>(m_Device);
@@ -796,23 +819,25 @@ namespace sandbox
         }
 
         {
-            const entt::entity entity = m_Registry.create();
-            auto& tc = m_Registry.emplace<benzin::TransformComponent>(entity);
+            m_BoomBoxEntity = m_Registry.create();
+            auto& tc = m_Registry.emplace<benzin::TransformComponent>(m_BoomBoxEntity);
+            tc.Rotation = { 0.0f, DirectX::XM_PI, 0.0f };
             tc.Scale = { 30.0f, 30.0f, 30.0f };
             tc.Translation = { 0.0f, 0.5f, 0.0f };
 
-            auto& mc = m_Registry.emplace<benzin::ModelComponent>(entity);
+            auto& mc = m_Registry.emplace<benzin::ModelComponent>(m_BoomBoxEntity);
             mc.Model = std::make_shared<benzin::Model>(m_Device);
             BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("BoomBox/glTF-Binary/BoomBox.glb"));
         }
 
         {
-            const entt::entity entity = m_Registry.create();
-            auto& tc = m_Registry.emplace<benzin::TransformComponent>(entity);
+            m_DamagedHelmetEntity = m_Registry.create();
+            auto& tc = m_Registry.emplace<benzin::TransformComponent>(m_DamagedHelmetEntity);
+            tc.Rotation = { 0.0f, DirectX::XM_PI, 0.0f };
             tc.Scale = { 0.4f, 0.4f, 0.4f };
             tc.Translation = { 1.0f, 0.6f, 0.0f };
 
-            auto& mc = m_Registry.emplace<benzin::ModelComponent>(entity);
+            auto& mc = m_Registry.emplace<benzin::ModelComponent>(m_DamagedHelmetEntity);
             mc.Model = std::make_shared<benzin::Model>(m_Device);
             BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("DamagedHelmet/glTF/DamagedHelmet.gltf"));
         }
@@ -828,7 +853,7 @@ namespace sandbox
                 m_Device,
                 std::vector{ benzin::geometry_generator::GenerateGeosphere(sphereConfig) },
                 "Sphere"
-                );
+            );
 
             const size_t rowCount = 32;
             const size_t columnCount = 6;
@@ -867,7 +892,7 @@ namespace sandbox
                 drawPrimitives,
                 materialsData,
                 "PointLightSpheres"
-                );
+            );
 
             for (size_t i = 0; i < rowCount; ++i)
             {
@@ -879,7 +904,8 @@ namespace sandbox
 
                     auto& tc = m_Registry.emplace<benzin::TransformComponent>(pointLightEntity);
                     tc.Scale = { 0.02f, 0.02f, 0.02f };
-                    tc.Translation = {
+                    tc.Translation =
+                    {
                         (static_cast<float>(rowCount) / -2.0f + static_cast<float>(i)) * 0.5f,
                         0.2f,
                         (static_cast<float>(columnCount) / -2.0f + static_cast<float>(j)) * 0.5f

@@ -157,8 +157,8 @@ namespace benzin
 
         enum class TriangleOrder : bool
         {
-            Clockwise = false,
-            Counterclockwise = true,
+            Clockwise,
+            CounterClockwise,
         };
 
         FillMode FillMode{ FillMode::Solid };
