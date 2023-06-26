@@ -79,6 +79,8 @@ namespace benzin
 
     void SwapChain::ResizeBackBuffers(uint32_t width, uint32_t height)
     {
+        m_Device.GetGraphicsCommandQueue().Flush();
+
         for (auto& backBuffer : m_BackBuffers)
         {
             backBuffer.reset();
@@ -124,7 +126,7 @@ namespace benzin
             
             auto& backBuffer = m_BackBuffers[i];
             backBuffer = std::make_shared<TextureResource>(m_Device, d3d12BackBuffer);
-            backBuffer->SetDebugName(fmt::format("SwapChainBackBuffer_{}", i));
+            backBuffer->SetDebugName("SwapChainBackBuffer", static_cast<uint32_t>(i));
             backBuffer->PushRenderTargetView();
         }
     }

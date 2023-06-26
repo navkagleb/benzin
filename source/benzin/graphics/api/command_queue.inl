@@ -60,7 +60,7 @@ namespace benzin
                 IID_PPV_ARGS(&d3d12CommandAllocator)
             ));
 
-            dx::SetDebugName(d3d12CommandAllocator, fmt::format("{}_{}", magic_enum::enum_name(d3d12CommandListType), i));
+            dx::SetDebugName(d3d12CommandAllocator, magic_enum::enum_name(d3d12CommandListType), static_cast<uint32_t>(i));
         }
 
         m_FlushFence.SetDebugName("CommandQueueFlush");

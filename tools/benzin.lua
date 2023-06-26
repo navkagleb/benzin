@@ -19,6 +19,7 @@ workspace "benzin"
         }
 
     filter "configurations:debug"
+        targetsuffix "_debug"
         defines {
             "DEBUG",
             "BENZIN_DEBUG_BUILD"
@@ -26,6 +27,7 @@ workspace "benzin"
         optimize "Off"
 
     filter "configurations:release"
+        targetsuffix "_release"
         defines {
             "NDEBUG",
             "BENZIN_RELEASE_BUILD",
@@ -44,9 +46,9 @@ project "third_party"
     cppdialect "C++20"
     location "../source/third_party"
 
-    targetname "third_party_%{cfg.buildcfg}"
+    -- targetname "third_party_%{cfg.buildcfg}"
 
-    targetdir "../lib"
+    targetdir "../bin"
     objdir "../build/third_party/%{cfg.buildcfg}"
 
     files {
@@ -58,9 +60,6 @@ project "third_party"
         "../source/third_party/entt/**.h",
         "../source/third_party/entt/**.hpp",
         "../source/third_party/entt/**.cpp",
-
-        -- dxc
-        -- "../source/third_party/dxc/**.h",
 
         --fmt
         "../source/third_party/fmt/**.h",
@@ -85,15 +84,20 @@ project "benzin"
     cppdialect "C++20"
     location "../source/benzin"
 
-    targetname "benzin_%{cfg.buildcfg}"
+    -- targetname "benzin_%{cfg.buildcfg}"
 
-    targetdir "../lib"
+    targetdir "../bin"
     objdir "../build/benzin/%{cfg.buildcfg}"
 
     pchheader "benzin/config/bootstrap.hpp"
     pchsource "../source/benzin/config/bootstrap.cpp"
 
     defines { "BENZIN_PROJECT" }
+
+    nuget {
+        "Microsoft.Direct3D.D3D12:1.610.3",
+        -- "WinPixEventRuntime:1.0.230302001"
+    }
 
     files {
         "../source/benzin/**.hpp",
@@ -107,13 +111,29 @@ project "benzin"
         "../source/benzin",
     }
 
+    prebuildcommands {
+        "powershell -ExecutionPolicy Bypass -File $(SolutionDir)/tools/get_latest_dxc.ps1 $(SolutionDir)packages/DXC"
+    }
+
+    postbuildcommands {
+        -- DirectX Agile SDK
+        "xcopy /f /Y \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/D3D12Core.dll\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/D3D12Core.pdb\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/d3d12SDKLayers.dll\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/d3d12SDKLayers.pdb\" \"$(SolutionDir)bin\"",
+
+        -- DXC
+        "xcopy /f /Y \"$(SolutionDir)packages/DXC/bin/x64/dxcompiler.dll\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y \"$(SolutionDir)packages/DXC/bin/x64/dxil.dll\" \"$(SolutionDir)bin\"",
+    }
+
 project "sandbox"
     kind "ConsoleApp"
     language "C++"
     cppdialect "C++20"
     location "../source/sandbox"
 
-    targetname "sandbox_%{cfg.buildcfg}"
+    -- targetname "sandbox_%{cfg.buildcfg}"
 
     targetdir "../bin"
     objdir "../build/sandbox/%{cfg.buildcfg}"

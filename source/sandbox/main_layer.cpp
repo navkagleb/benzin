@@ -77,7 +77,7 @@ namespace sandbox
             };
 
             resources.PassBuffer = std::make_unique<benzin::BufferResource>(m_Device, config);
-            resources.PassBuffer->SetDebugName(fmt::format("GeomtryPass_PassBuffer_{}", i));
+            resources.PassBuffer->SetDebugName("GeomtryPass_PassBuffer", i);
             resources.PassBuffer->PushConstantBufferView();
         }
 
@@ -311,7 +311,7 @@ namespace sandbox
                 };
 
                 resources.PassBuffer = std::make_unique<benzin::BufferResource>(m_Device, config);
-                resources.PassBuffer->SetDebugName(fmt::format("DeferredLightingPass_PassBuffer_{}", i));
+                resources.PassBuffer->SetDebugName("DeferredLightingPass_PassBuffer", i);
                 resources.PassBuffer->PushConstantBufferView();
             }
 
@@ -324,7 +324,7 @@ namespace sandbox
                 };
 
                 resources.PointLightBuffer = std::make_unique<benzin::BufferResource>(m_Device, config);
-                resources.PointLightBuffer->SetDebugName(fmt::format("DeferredLightingPass_PointLightBuffer_{}", i));
+                resources.PointLightBuffer->SetDebugName("DeferredLightingPass_PointLightBuffer", i);
                 resources.PointLightBuffer->PushShaderResourceView();
             }
         }
@@ -512,7 +512,7 @@ namespace sandbox
             };
 
             resources.PassBuffer = std::make_unique<benzin::BufferResource>(m_Device, config);
-            resources.PassBuffer->SetDebugName(fmt::format("EnvironmentPass_PassBuffer_{}", i));
+            resources.PassBuffer->SetDebugName("EnvironmentPass_PassBuffer", i);
             resources.PassBuffer->PushConstantBufferView();
         }
 
@@ -619,7 +619,7 @@ namespace sandbox
         }
     }
 
-    bool MainLayer::OnAttach()
+    bool MainLayer::OnAttach()  
     {
         return true;
     }
@@ -649,6 +649,7 @@ namespace sandbox
         m_FlyCameraController.OnUpdate(dt);
 
         {
+#if 1
             {
                 auto& tc = m_Registry.get<benzin::TransformComponent>(m_BoomBoxEntity);
                 tc.Rotation.x += 0.1f * dt;
@@ -660,6 +661,7 @@ namespace sandbox
                 tc.Rotation.x += 0.1f * dt;
                 tc.Rotation.y -= 0.15f * dt;
             }
+#endif
 
             auto& resources = m_Resources[m_SwapChain.GetCurrentBackBufferIndex()];
             benzin::MappedData entityDataBuffer{ *resources.EntityDataBuffer };
@@ -806,6 +808,7 @@ namespace sandbox
 
     void MainLayer::CreateEntities()
     {
+#if 1
         {
             const entt::entity entity = m_Registry.create();
             auto& tc = m_Registry.emplace<benzin::TransformComponent>(entity);
@@ -817,13 +820,15 @@ namespace sandbox
             //BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("CesiumMilkTruck/glTF/CesiumMilkTruck.gltf"));
             BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("Sponza/glTF/Sponza.gltf"));
         }
+#endif
 
         {
             m_BoomBoxEntity = m_Registry.create();
+
             auto& tc = m_Registry.emplace<benzin::TransformComponent>(m_BoomBoxEntity);
-            tc.Rotation = { 0.0f, DirectX::XM_PI, 0.0f };
+            tc.Rotation = { 0.0f, DirectX::XMConvertToRadians(-135.0f), 0.0f };
             tc.Scale = { 30.0f, 30.0f, 30.0f };
-            tc.Translation = { 0.0f, 0.5f, 0.0f };
+            tc.Translation = { 0.0f, 0.6f, 0.0f };
 
             auto& mc = m_Registry.emplace<benzin::ModelComponent>(m_BoomBoxEntity);
             mc.Model = std::make_shared<benzin::Model>(m_Device);
@@ -832,13 +837,15 @@ namespace sandbox
 
         {
             m_DamagedHelmetEntity = m_Registry.create();
+
             auto& tc = m_Registry.emplace<benzin::TransformComponent>(m_DamagedHelmetEntity);
-            tc.Rotation = { 0.0f, DirectX::XM_PI, 0.0f };
+            tc.Rotation = { 0.0f, DirectX::XMConvertToRadians(-135.0f), 0.0f };
             tc.Scale = { 0.4f, 0.4f, 0.4f };
-            tc.Translation = { 1.0f, 0.6f, 0.0f };
+            tc.Translation = { 1.0f, 0.6f, -0.5f };
 
             auto& mc = m_Registry.emplace<benzin::ModelComponent>(m_DamagedHelmetEntity);
             mc.Model = std::make_shared<benzin::Model>(m_Device);
+            //BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("TextureCoordinateTest/glTF/TextureCoordinateTest.gltf"));
             BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("DamagedHelmet/glTF/DamagedHelmet.gltf"));
         }
 
@@ -875,9 +882,9 @@ namespace sandbox
                     materialData.AlbedoFactor = { 0.0f, 0.0f, 0.0f, 0.0f };
                     materialData.EmissiveFactor =
                     {
-                        static_cast<float>((k * 37) % 256) / 255.0f,
-                        static_cast<float>((k * 71) % 256) / 255.0f,
-                        static_cast<float>((k * 97) % 256) / 255.0f,
+                        static_cast<float>(((k + 1) * 37) % 256) / 255.0f * 2.0f,
+                        static_cast<float>(((k + 1) * 71) % 256) / 255.0f * 2.0f,
+                        static_cast<float>(((k + 1) * 97) % 256) / 255.0f * 2.0f,
                     };
 
                     benzin::Model::DrawPrimitive& drawPrimitive = drawPrimitives.emplace_back();
@@ -911,8 +918,10 @@ namespace sandbox
                         (static_cast<float>(columnCount) / -2.0f + static_cast<float>(j)) * 0.5f
                     };
 
+                    const DirectX::XMVECTOR color = DirectX::XMVectorScale(DirectX::XMLoadFloat3(&materialsData[k].EmissiveFactor), 0.5f);
+
                     auto& pointLight = m_Registry.emplace<benzin::PointLightComponent>(pointLightEntity);
-                    pointLight.Color = materialsData[k].EmissiveFactor;
+                    DirectX::XMStoreFloat3(&pointLight.Color, color);
                     pointLight.Intensity = 4.0f;
                     pointLight.Range = 4.0f;
 

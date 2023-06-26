@@ -29,7 +29,7 @@ namespace benzin
                 BENZIN_HR_ASSERT(m_DxcUtils->CreateDefaultIncludeHandler(&m_DxcIncludeHandler));
             }
 
-            ComPtr<IDxcBlobEncoding> LoadShaderFromFile(const std::string& fileName) const
+            ComPtr<IDxcBlobEncoding> LoadShaderFromFile(std::string_view fileName) const
             {
                 static const std::filesystem::path shaderRootPath{ config::GetShaderPath() };
 
@@ -45,9 +45,9 @@ namespace benzin
             }
 
             std::vector<std::byte> CompileShader(
-                std::string_view entryPoint, 
-                ShaderType shaderType, 
-                const std::vector<std::string>& defines, 
+                ShaderType shaderType,
+                std::string_view entryPoint,
+                const std::vector<std::string>& defines,
                 const ComPtr<IDxcBlobEncoding>& dxcShaderSourceBlob
             ) const
             {
@@ -66,15 +66,10 @@ namespace benzin
                 arguments.push_back(L"-I");
                 arguments.push_back(wideIncludeDirectory.c_str());
 
-                std::vector<std::wstring> wideDefines;
-                wideDefines.reserve(defines.size());
-
                 for (const auto& define : defines)
                 {
-                    const auto& wideDefine = wideDefines.emplace_back(ToWideString(define));
-
                     arguments.push_back(L"-D");
-                    arguments.push_back(wideDefine.c_str());
+                    arguments.push_back(ToWideString(define).c_str());
                 }
 
                 arguments.push_back(L"-Qstrip_debug");
@@ -83,9 +78,14 @@ namespace benzin
                 arguments.push_back(L"-enable-16bit-types");
                 arguments.push_back(L"-HV 2021"); // Templates
 
-                arguments.push_back(DXC_ARG_WARNINGS_ARE_ERRORS);
+#if defined(BENZIN_DEBUG_BUILD)
                 arguments.push_back(DXC_ARG_DEBUG);
-                arguments.push_back(DXC_ARG_PACK_MATRIX_ROW_MAJOR);
+                arguments.push_back(DXC_ARG_DEBUG_NAME_FOR_SOURCE);
+                arguments.push_back(DXC_ARG_SKIP_OPTIMIZATIONS);
+#endif
+
+                arguments.push_back(DXC_ARG_WARNINGS_ARE_ERRORS);
+                arguments.push_back(DXC_ARG_PACK_MATRIX_ROW_MAJOR); // To prevent matrix transpose in CPU side
 
                 const DxcBuffer dxcSourceBuffer
                 {
@@ -109,7 +109,7 @@ namespace benzin
                 dxcCompileResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&dxcErrorBlob), &dxcDummyName);
                 if (dxcErrorBlob && dxcErrorBlob->GetStringLength() > 0)
                 {
-                    BENZIN_ERROR("{}", static_cast<const char*>(dxcErrorBlob->GetBufferPointer()));
+                    BENZIN_ERROR("Failed to compile shader: {}", static_cast<const char*>(dxcErrorBlob->GetBufferPointer()));
                     BENZIN_ASSERT(false);
                 }
 
@@ -119,7 +119,6 @@ namespace benzin
 
                 const auto* data = reinterpret_cast<std::byte*>(dxcShaderByteCode->GetBufferPointer());
                 const auto size = dxcShaderByteCode->GetBufferSize();
-
                 return std::vector<std::byte>{ data, data + size };
             }
 
@@ -130,45 +129,39 @@ namespace benzin
         };
 
         const ShaderCompiler g_ShaderCompiler;
-        std::unordered_map<std::string, std::vector<std::byte>> g_Shaders;
+        std::unordered_map<size_t, std::vector<std::byte>> g_Shaders;
 
-        std::string GetShaderKey(const std::string& fileName, const std::string& entryPoint, const std::vector<std::string>& defines)
+        size_t GetShaderKey(std::string_view fileName, std::string_view entryPoint, const std::vector<std::string>& defines)
         {
-            std::string shaderKey = fileName + entryPoint;
-
-            for (const auto& define : defines)
-            {
-                shaderKey += define;
-            }
-
-            return shaderKey;
+            const std::string key = std::accumulate(defines.begin(), defines.end(), fmt::format("{}{}", fileName, entryPoint));
+            return std::hash<std::string>{}(key);
         }
 
     } // anonymous namespace
 
-    const std::vector<std::byte>& GetShaderBlob(
-        const std::string& fileName, 
-        const std::string& entryPoint,
+    std::span<const std::byte> GetShaderBlob(
         ShaderType shaderType,
+        std::string_view fileName, 
+        std::string_view entryPoint,
         const std::vector<std::string>& defines
     )
     {
-        const std::string shaderKey = GetShaderKey(fileName, entryPoint, defines);
+        const size_t shaderKey = GetShaderKey(fileName, entryPoint, defines);
 
         auto shaderIterator = g_Shaders.find(shaderKey);
 
         if (shaderIterator == g_Shaders.end())
         {
             const ComPtr<IDxcBlobEncoding> dxcShaderSourceBlob = g_ShaderCompiler.LoadShaderFromFile(fileName);
-            std::vector<std::byte> shaderByteCode = g_ShaderCompiler.CompileShader(entryPoint, shaderType, defines, dxcShaderSourceBlob);
+            std::vector<std::byte> shaderByteCode = g_ShaderCompiler.CompileShader(shaderType, entryPoint, defines, dxcShaderSourceBlob);
             
             if (defines.empty())
             {
-                BENZIN_TRACE("Shader[{}] EntryPoint[{}] compiled!", fileName.data(), entryPoint.data());
+                BENZIN_TRACE("ShaderCompiled: {}! File: {}, EntryPoint: {}", shaderKey, fileName.data(), entryPoint.data());
             }
             else
             {
-                BENZIN_TRACE("Shader[{}] EntryPoint[{}] Defines[{}] compiled!", fileName.data(), entryPoint.data(), fmt::join(defines, ", "));
+                BENZIN_TRACE("ShaderCompiled: {}! File: {}, EntryPoint: {}, Defines: {}", shaderKey, fileName.data(), entryPoint.data(), fmt::join(defines, ", "));
             }
 
             shaderIterator = g_Shaders.insert(std::make_pair(shaderKey, std::move(shaderByteCode))).first;

@@ -218,7 +218,7 @@ PS_Output PS_Main(VS_Output input)
         float3 normalSample = normalTexture.Sample(common::g_LinearWrapSampler, input.TexCoord).xyz;
         normalSample = 2.0 * normalSample - 1.0;
         normalSample = normalize(normalSample * float3(material.NormalScale, material.NormalScale, 1.0));
-        //normalSample = ExpandNormal(normalSample.xy);
+        normalSample = ExpandNormal(normalSample.xy);
 
         const float3 worldViewDirection = normalize(passData.WorldCameraPosition - input.WorldPosition);
 

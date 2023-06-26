@@ -18,7 +18,7 @@ namespace benzin
             ComPtr<ID3D12Debug5> d3d12Debug;
             BENZIN_HR_ASSERT(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12Debug)));
             d3d12Debug->EnableDebugLayer();
-            d3d12Debug->SetEnableGPUBasedValidation(false);
+            d3d12Debug->SetEnableGPUBasedValidation(true);
             d3d12Debug->SetEnableSynchronizedCommandQueueValidation(true);
             d3d12Debug->SetEnableAutoName(true);
         }

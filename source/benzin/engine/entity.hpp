@@ -19,8 +19,8 @@ namespace benzin
 
         DirectX::XMMATRIX GetMatrix() const
         {
-            const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(Scale.x, Scale.y, Scale.z);
             const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(Rotation.x) * DirectX::XMMatrixRotationY(Rotation.y) * DirectX::XMMatrixRotationZ(Rotation.z);
+            const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(Scale.x, Scale.y, Scale.z);
             const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(Translation.x, Translation.y, Translation.z);
 
             return scaling * rotation * translation;

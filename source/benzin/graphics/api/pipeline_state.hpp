@@ -17,8 +17,8 @@ namespace benzin
     public:
         struct Shader
         {
-            std::string FileName;
-            std::string EntryPoint;
+            std::string_view FileName;
+            std::string_view EntryPoint;
             std::vector<std::string> Defines;
 
             bool IsValid() const

@@ -1,15 +1,10 @@
 .vs/
-build/
 *.vcxproj*
+*packages.config
 *.sln
 
-bin/*.exe
-bin/*.pdb
-bin/*.exp
-bin/*.lib
-
-lib/*.pdb
-lib/*.lib
-!lib/dxcompiler.lib
+bin/
+build/
+packages/
 
 *imgui.ini

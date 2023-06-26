@@ -233,7 +233,7 @@ namespace benzin
 
     uint64_t CopyCommandList::AllocateInUploadBuffer(size_t size, size_t alignment)
     {
-        const size_t offset = alignment == 0 ? m_UploadBufferOffset : Align(m_UploadBufferOffset, alignment);
+        const size_t offset = alignment == 0 ? m_UploadBufferOffset : AlignAbove(m_UploadBufferOffset, alignment);
 
         BENZIN_ASSERT(offset + size <= m_UploadBuffer->GetConfig().ElementCount);
         m_UploadBufferOffset = offset + size;

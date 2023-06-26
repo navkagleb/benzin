@@ -33,7 +33,7 @@ namespace benzin::dx
     }
 
     template <DXObject T>
-    void SetDebugName(T* dxObject, std::string_view debugName)
+    void SetDebugName(T* dxObject, std::string_view debugName, uint32_t index = std::numeric_limits<uint32_t>::max())
     {
         BENZIN_ASSERT(dxObject);
 
@@ -44,7 +44,11 @@ namespace benzin::dx
 
         const bool isCreated = GetDebugName(dxObject).empty();
 
-        const std::string formattedDebugName = fmt::format("{}[{}]", GetFormattedClassName<T>(), debugName);
+        const std::string formattedDebugName =
+            index == std::numeric_limits<uint32_t>::max() ?
+            fmt::format("{}[{}]", GetFormattedClassName<T>(), debugName) :
+            fmt::format("{}[{}{}]", GetFormattedClassName<T>(), debugName, index);
+
         BENZIN_HR_ASSERT(dxObject->SetPrivateData(
             WKPDID_D3DDebugObjectName,
             static_cast<UINT>(formattedDebugName.size()),
@@ -88,4 +92,5 @@ namespace benzin::dx
 
 #define BENZIN_DX_DEBUG_NAME_IMPL(d3d12Object) \
 	std::string GetDebugName() const { return ::benzin::dx::GetDebugName(d3d12Object); } \
-    void SetDebugName(std::string_view debugName) { ::benzin::dx::SetDebugName(d3d12Object, debugName); }   
+    void SetDebugName(std::string_view debugName) { ::benzin::dx::SetDebugName(d3d12Object, debugName); } \
+    void SetDebugName(std::string_view debugName, uint32_t index) { ::benzin::dx::SetDebugName(d3d12Object, debugName, index); }

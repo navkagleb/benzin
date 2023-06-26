@@ -30,12 +30,11 @@ namespace benzin
             DirectX::XMMATRIX InverseTransformMatrix;
         };
 
+        tinygltf::TinyGLTF g_GLTFContext;
         const std::filesystem::path g_ModelsRootPath{ "../../assets/models/" };
 
-        std::optional<tinygltf::Model> LoadGLTFModelFromFile(std::string_view fileName)
+        std::optional<tinygltf::Model> LoadGLTFModelFromFile(std::string_view fileName) 
         {
-            tinygltf::TinyGLTF g_GLTFContext;
-
             const std::filesystem::path filePath = g_ModelsRootPath / fileName;
             BENZIN_ASSERT(std::filesystem::exists(filePath));
             BENZIN_ASSERT(filePath.extension() == ".glb" || filePath.extension() == ".gltf");
@@ -132,6 +131,7 @@ namespace benzin
             const int positionAccessorIndex = gltfPrimitive.attributes.contains("POSITION") ? gltfPrimitive.attributes.at("POSITION") : -1;
             const int normalAccessorIndex = gltfPrimitive.attributes.contains("NORMAL") ? gltfPrimitive.attributes.at("NORMAL") : -1;
             const int texCoordAccessorIndex = gltfPrimitive.attributes.contains("TEXCOORD_0") ? gltfPrimitive.attributes.at("TEXCOORD_0") : -1;
+            BENZIN_ASSERT(!gltfPrimitive.attributes.contains("TEXCOORD_1")); // TODO
 
             const std::span<const IndexType> indices = GetBufferFromGLTFAccessor<IndexType>(gltfModel, indexAccessorIndex);
             const std::span<const DirectX::XMFLOAT3> positions = GetBufferFromGLTFAccessor<DirectX::XMFLOAT3>(gltfModel, positionAccessorIndex);
@@ -184,6 +184,11 @@ namespace benzin
 
                 switch (indexAccessor.componentType)
                 {
+                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+                    {
+                        ParseGLTFMeshPrimitive<uint8_t>(gltfModel, gltfPrimitive, meshPrimitivesData, drawPrimitives);
+                        break;
+                    }
                     case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
                     {
                         ParseGLTFMeshPrimitive<uint16_t>(gltfModel, gltfPrimitive, meshPrimitivesData, drawPrimitives);

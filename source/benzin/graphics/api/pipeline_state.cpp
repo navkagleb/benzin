@@ -12,14 +12,14 @@ namespace benzin
     namespace
     {
 
-        D3D12_SHADER_BYTECODE ConvertToD3D12Shader(const PipelineState::Shader& shader, ShaderType shaderType)
+        D3D12_SHADER_BYTECODE ConvertToD3D12Shader(ShaderType shaderType, const PipelineState::Shader& shader)
         {
             if (!shader.IsValid())
             {
                 return {};
             }
 
-            const std::vector<std::byte>& shaderByteCode = GetShaderBlob(shader.FileName, shader.EntryPoint, shaderType, shader.Defines);
+            const std::span<const std::byte> shaderByteCode = GetShaderBlob(shaderType, shader.FileName, shader.EntryPoint, shader.Defines);
 
             return D3D12_SHADER_BYTECODE
             {
@@ -124,8 +124,8 @@ namespace benzin
         D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12GraphicsPipelineStateDesc
         {
             .pRootSignature{ device.GetD3D12BindlessRootSignature() },
-            .VS{ ConvertToD3D12Shader(config.VertexShader, ShaderType::Vertex) },
-            .PS{ ConvertToD3D12Shader(config.PixelShader, ShaderType::Pixel) },
+            .VS{ ConvertToD3D12Shader(ShaderType::Vertex, config.VertexShader) },
+            .PS{ ConvertToD3D12Shader(ShaderType::Pixel, config.PixelShader) },
             .DS{ nullptr, 0 },
             .HS{ nullptr, 0 },
             .GS{ nullptr, 0 },
@@ -178,7 +178,7 @@ namespace benzin
         const D3D12_COMPUTE_PIPELINE_STATE_DESC d3d12ComputePipelineStateDesc
         {
             .pRootSignature{ device.GetD3D12BindlessRootSignature() },
-            .CS{ ConvertToD3D12Shader(config.ComputeShader, ShaderType::Compute) },
+            .CS{ ConvertToD3D12Shader(ShaderType::Compute, config.ComputeShader) },
             .NodeMask{ 0 },
             .CachedPSO
             {

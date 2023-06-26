@@ -92,7 +92,6 @@ namespace sandbox
 
             dispatcher.Dispatch<benzin::WindowResizedEvent>([this](benzin::WindowResizedEvent& event)
             {
-                m_Device->GetGraphicsCommandQueue().Flush();
                 m_SwapChain->ResizeBackBuffers(event.GetWidth(), event.GetHeight());
 
                 return false;

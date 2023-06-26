@@ -31,6 +31,9 @@ namespace benzin
         std::shared_ptr<TextureResource>& GetCurrentBackBuffer() { return m_BackBuffers[GetCurrentBackBufferIndex()]; }
         const std::shared_ptr<TextureResource>& GetCurrentBackBuffer() const { return m_BackBuffers[GetCurrentBackBufferIndex()]; }
 
+        uint64_t GetCPUFrameIndex() const { return m_CPUFrameIndex; }
+        uint64_t GetGPUFrameIndex() const { return m_GPUFrameIndex; }
+
         bool IsVSyncEnabled() const { return m_IsVSyncEnabled; }
         void SetVSyncEnabled(bool isEnabled) { m_IsVSyncEnabled = isEnabled; }
 

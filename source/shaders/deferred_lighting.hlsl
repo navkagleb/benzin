@@ -36,79 +36,22 @@ namespace internal
         float3 Direction;
     };
 
-    float3 UsePBRMaterialModel()
-    {
-        // Bidirectional
-        // Reflectance
-        // Distribution
-        // Function
-        // BRDF = kD * fDiffuse + kS * fSpecular
-        // kD + kS = 1.0f
-
-        // kS = Fresnel
-        // KD = 1.0f - kS
-
-        // F_Shlink = f0 + (1.0f - f0) * (1.0f - V * H) ^ 5
-        // f0 - base reflectivity
-        // V - view vector
-        // H - half-way vector
-
-        // -- Diffuse
-        // Lambertian Model
-        // Oren-Nayar Model - more realistic
-
-        // -- Lambertian Model
-        // f_Lambert = (Color / PI) * (L_n * N)
-        // Color - color of the object
-        // L_n - incoming light
-        // N - normal
-
-        // -- Specular
-        // Cook-Torrance Model or Torrance-Sparrow Model
-        // f_Cook-Torrance = DGF / ((V * N) * (L * N))
-        // f_Cook-Torrance = DGF / (4 * (V * N) * (L * N)) - correct version
-        // f_Cook-Torrance = DGF / (PI * (V * N) * (L * N))
-        // D - Normal Distribution Function
-        // G - Geometry Shadowing Function
-        // F - Fresnel Function
-        // BRDF = k_d * f_diffuse + <no k_s> * f_specular
-
-        // -- D - Normal Distribution Function
-        // Beckmann Model
-        // GGX / Trowbridge-Reitz
-        // GGX / Anisotropic
-
-        // -- GGX / Trowbridge-Reitz
-        // D_GGX/Trowbridge-Reitz = (A ^ 2) / (PI * ((N * H) ^ 2 * (A ^ 2 - 1) + 1) ^ 2
-        // A - roughness ^ 2
-
-        // G - Geometry Shadowing Function
-        // Neumann Model
-        // Kelemen Model
-        // Smith Model
-        // Schlick-Beckmann Model
-        // Smith + Schlick-Beckmann = Schlick-GGX
-
-        // G_Smith = G1(L, N) * G1(V, N)
-        // G_Schlick-Beckmann = (N * X) / ((N * X)(1 - k) + k)
-        // k = A / 2
-        // k = (roughness + 1) ^ 2 / 8 - Disney and UnrealEngine in the past
-        // X = V or L
-
-        return 0.0;
-    }
-
     namespace pbr
     {
 
         struct Material
         {
             float4 Albedo;
-            float3 Emissive;
             float Metalness;
             float3 F0;
             float Roughness;
         };
+
+        float3 GetF0(float3 albedo, float metalness)
+        {
+            const float3 fresnelR0 = float3(0.04f, 0.04f, 0.04f);
+            return lerp(fresnelR0, albedo, metalness);
+        }
 
         float3 NormalDistributionFunction(float3 normal, float3 halfDirection, float alpha)
         {
@@ -199,7 +142,7 @@ namespace internal
             return kD * diffuseFunction + specularFunction; // kS included in specularFunction
         }
 
-        float3 Apply(Light light, Material material, float3 viewDirection, float3 normal)
+        float3 Use(Light light, Material material, float3 viewDirection, float3 normal)
         {
             const float3 brdf = BidirectionalReflectanceDistributionFunction(light, material, viewDirection, normal);
             const float3 lDotN = max(dot(light.Direction, normal), 0.0f);
@@ -214,17 +157,17 @@ namespace internal
         return 1.0f / (attenuation.Constant + attenuation.Linear * distance + attenuation.Exponential * distance * distance);
     }
 
-    float3 ComputeDirectionalLightImpact(DirectionalLight directionalLight, pbr::Material material, float3 worldViewDirection, float3 worldNormal)
+    float3 UseDirectionalLight(DirectionalLight directionalLight, pbr::Material material, float3 worldViewDirection, float3 worldNormal)
     {
         Light light;
         light.Color = directionalLight.Color;
         light.Intensity = directionalLight.Intensity;
         light.Direction = normalize(-directionalLight.WorldDirection);
 
-        return pbr::Apply(light, material, worldViewDirection, worldNormal);
+        return pbr::Use(light, material, worldViewDirection, worldNormal);
     }
 
-    float3 ComputePointLightImpact(PointLight pointLight, pbr::Material material, float3 worldPosition, float3 worldViewDirection, float3 worldNormal)
+    float3 UsePointLight(PointLight pointLight, pbr::Material material, float3 worldPosition, float3 worldViewDirection, float3 worldNormal)
     {
         float3 lightDirection = pointLight.WorldPosition - worldPosition;
         const float distance = length(lightDirection);
@@ -237,7 +180,7 @@ namespace internal
         light.Direction = lightDirection;
 
         const float attenuation = CalculateAttenuation(distance, pointLight.Attenuation);
-        const float3 pbr = pbr::Apply(light, material, worldViewDirection, worldNormal);
+        const float3 pbr = pbr::Use(light, material, worldViewDirection, worldNormal);
 
         return attenuation * pbr;
     }
@@ -290,10 +233,10 @@ gbuffer::Unpacked ReadGBuffer(float2 uv)
     Texture2D<float4> roughnessMetalnessTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_RoughnessMetalnessTextureIndex)];
 
     gbuffer::Packed packed;
-    packed.Color0 = albedoTexture.Sample(common::g_PointWrapSampler, uv);
-    packed.Color1 = worldNormal.Sample(common::g_PointWrapSampler, uv);
-    packed.Color2 = emissiveTexture.Sample(common::g_PointWrapSampler, uv);
-    packed.Color3 = roughnessMetalnessTexture.Sample(common::g_PointWrapSampler, uv);
+    packed.Color0 = albedoTexture.Sample(common::g_LinearWrapSampler, uv);
+    packed.Color1 = worldNormal.Sample(common::g_LinearWrapSampler, uv);
+    packed.Color2 = emissiveTexture.Sample(common::g_LinearWrapSampler, uv);
+    packed.Color3 = roughnessMetalnessTexture.Sample(common::g_LinearWrapSampler, uv);
 
     return gbuffer::Unpack(packed);
 }
@@ -302,26 +245,27 @@ float ReadDepth(float2 uv)
 {
     Texture2D<float> depthTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_DepthTextureIndex)];
 
-    return depthTexture.Sample(common::g_PointWrapSampler, uv).r;
+    return depthTexture.Sample(common::g_LinearWrapSampler, uv).r;
 }
 
 float4 PS_Main(fullscreen_helper::VS_Output input) : SV_Target
 {
-    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PassBufferIndex)];
-    StructuredBuffer<internal::PointLight> pointLightBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PointLightBufferIndex)];
-
-    const uint32_t outputType = BENZIN_GET_ROOT_CONSTANT(g_OutputType);
-
-    const gbuffer::Unpacked gbuffer = ReadGBuffer(input.UV);
     const float depth = ReadDepth(input.UV);
-
-    const float3 worldPosition = gbuffer::ReconstructWorldPositionFromDepth(input.UV, depth, passData.InverseProjectionMatrix, passData.InverseViewMatrix);
 
     if (depth == 1.0f)
     {
         discard;
     }
 
+    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PassBufferIndex)];
+    StructuredBuffer<internal::PointLight> pointLightBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PointLightBufferIndex)];
+
+    const gbuffer::Unpacked gbuffer = ReadGBuffer(input.UV);
+
+    const float3 worldPosition = gbuffer::ReconstructWorldPositionFromDepth(input.UV, depth, passData.InverseProjectionMatrix, passData.InverseViewMatrix);
+    const float3 worldViewDirection = normalize(passData.WorldCameraPosition - worldPosition);
+
+    const uint32_t outputType = BENZIN_GET_ROOT_CONSTANT(g_OutputType);
     switch (outputType)
     {
         case OutputType::ReconsructedWorldPosition:
@@ -362,32 +306,32 @@ float4 PS_Main(fullscreen_helper::VS_Output input) : SV_Target
         }
     }
 
-    internal::DirectionalLight sunLight;
-    sunLight.Color = passData.SunColor;
-    sunLight.Intensity = passData.SunIntensity;
-    sunLight.WorldDirection = passData.SunDirection;
-
-    float3 fresnelR0 = float3(0.04f, 0.04f, 0.04f);
-    fresnelR0 = lerp(fresnelR0, gbuffer.Albedo.rgb, gbuffer.Metalness);
-
     internal::pbr::Material material;
     material.Albedo = gbuffer.Albedo;
-    material.Emissive = gbuffer.Emissive;
     material.Roughness = gbuffer.Roughness;
     material.Metalness = gbuffer.Metalness;
-    material.F0 = fresnelR0;
+    material.F0 = internal::pbr::GetF0(gbuffer.Albedo.rgb, gbuffer.Metalness);
 
-    const float3 worldViewDirection = normalize(passData.WorldCameraPosition - worldPosition);
     const float3 ambient = 0.1f * gbuffer.Albedo.rgb;
+    float3 color = 0.0f;
 
-    float3 color = internal::ComputeDirectionalLightImpact(sunLight, material, worldViewDirection, gbuffer.WorldNormal);
-
-    for (uint32_t i = 0; i < passData.PointLightCount; ++i)
     {
-        color += internal::ComputePointLightImpact(pointLightBuffer[i], material, worldPosition, worldViewDirection, gbuffer.WorldNormal);
+        internal::DirectionalLight sunLight;
+        sunLight.Color = passData.SunColor;
+        sunLight.Intensity = passData.SunIntensity;
+        sunLight.WorldDirection = passData.SunDirection;
+
+        color += internal::UseDirectionalLight(sunLight, material, worldViewDirection, gbuffer.WorldNormal);
     }
 
-    color = color + ambient + material.Emissive;
-    color = color / (color + 1.0f);
+    {
+        for (uint32_t i = 0; i < passData.PointLightCount; ++i)
+        {
+            color += internal::UsePointLight(pointLightBuffer[i], material, worldPosition, worldViewDirection, gbuffer.WorldNormal);
+        }
+    }
+
+    color += ambient + gbuffer.Emissive;
+    color /= color + 0.5f;
     return float4(color, 1.0f);
 }

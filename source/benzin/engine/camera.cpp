@@ -377,7 +377,7 @@ namespace benzin
     void FlyCameraController::RenderImGuiControllerProperties()
     {
         ImGui::Text("Controller Properties");
-        ImGui::SliderFloat("CameraTranslationSpeed", &m_CameraTranslationSpeed, 5.0f, 100.0f);
+        ImGui::SliderFloat("CameraTranslationSpeed", &m_CameraTranslationSpeed, 1.0f, 100.0f);
         ImGui::SliderFloat("MouseSensitivity", &m_MouseSensitivity, 0.001f, 0.007f, "%.3f");
     }
 
@@ -434,7 +434,6 @@ namespace benzin
 
     DirectX::XMVECTOR FlyCameraController::GetCameraFrontDirection() const
     {
-        // Spherical To Cartesian
         const DirectX::XMVECTOR frontDirection
         {
             DirectX::XMVectorSet(

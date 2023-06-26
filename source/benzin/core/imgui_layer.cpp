@@ -136,6 +136,13 @@ namespace benzin
 
     void ImGuiLayer::OnImGuiRender(float dt)
     {
+        static float currentFramerate = ImGui::GetIO().Framerate;
+
+        if (m_SwapChain.GetGPUFrameIndex() % 30 == 0)
+        {
+            currentFramerate = ImGui::GetIO().Framerate;
+        }
+
         if (m_IsDemoWindowEnabled)
         {
             ImGui::ShowDemoWindow(&m_IsDemoWindowEnabled);
@@ -156,7 +163,13 @@ namespace benzin
             const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs;
             if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, windowFlags))
             {
-                ImGui::Text("FPS: %.1f (%.3f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+                ImGui::Text(
+                    "FPS: %.1f (%.3f ms)"
+                    " | "
+                    "(%d x %d)",
+                    currentFramerate, 1000.0f / currentFramerate,
+                    m_Window.GetWidth(), m_Window.GetHeight()
+                );
                 ImGui::End();
             }
 

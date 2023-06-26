@@ -16,10 +16,10 @@ namespace benzin
         Compute,
     };
 
-    const std::vector<std::byte>& GetShaderBlob(
-        const std::string& fileName,
-        const std::string& entryPoint,
+    std::span<const std::byte> GetShaderBlob(
         ShaderType shaderType,
+        std::string_view fileName,
+        std::string_view entryPoint,
         const std::vector<std::string>& defines
     );
 

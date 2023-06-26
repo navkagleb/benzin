@@ -23,7 +23,7 @@
 #if defined(BENZIN_PROJECT)
 extern "C"
 {
-    __declspec(dllexport) extern const UINT D3D12SDKVersion = 608;
+    __declspec(dllexport) extern const UINT D3D12SDKVersion = 610;
     __declspec(dllexport) extern const char* D3D12SDKPath = "./";
 }
 #endif

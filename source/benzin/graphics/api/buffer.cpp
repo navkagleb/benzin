@@ -2,17 +2,13 @@
 
 #include "benzin/graphics/api/buffer.hpp"
 
+#include "benzin/core/common.hpp"
+
 namespace benzin
 {
 
     namespace
     {
-
-        template <std::integral T>
-        constexpr T Align(T value, T alignment)
-        {
-            return (value + alignment - 1) & ~(alignment - 1);
-        }
 
         void ValidateBufferResourceConfig(BufferResource::Config& config)
         {
@@ -21,7 +17,7 @@ namespace benzin
 
             if ((config.Flags & Flags::ConstantBuffer) != Flags::None)
             {
-                config.ElementSize = Align<uint32_t>(config.ElementSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+                config.ElementSize = AlignAbove<uint32_t>(config.ElementSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
             }
         }
 
