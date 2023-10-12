@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benzin/graphics/api/buffer.hpp"
+#include "benzin/graphics/buffer.hpp"
 
 namespace benzin
 {
@@ -8,7 +8,7 @@ namespace benzin
     class MappedData
     {
     public:
-        explicit MappedData(const BufferResource& bufferResource);
+        explicit MappedData(const Buffer& buffer);
         ~MappedData();
 
     public:
@@ -19,21 +19,23 @@ namespace benzin
         }
 
         template <typename T>
+        void WriteBytes(const T& data, size_t offsetInBytes = 0)
+        {
+            Write(std::span{ reinterpret_cast<const std::byte*>(&data), sizeof(T) }, offsetInBytes);
+        }
+
+        template <typename T>
         void Write(std::span<const T> data, size_t offsetInBytes = 0)
         {
             const size_t dataSizeInBytes = data.size_bytes();
 
-#if BENZIN_DEBUG_BUILD
-            const size_t bufferSizeInBytes = m_BufferResource.GetConfig().ElementSize * m_BufferResource.GetConfig().ElementCount;
-            BENZIN_ASSERT(offsetInBytes + dataSizeInBytes <= bufferSizeInBytes);
-#endif
-
+            BenzinAssert(offsetInBytes + dataSizeInBytes <= m_Buffer.GetSizeInBytes());
             memcpy(m_Data + offsetInBytes, data.data(), dataSizeInBytes);
         }
 
     private:
-        const BufferResource& m_BufferResource;
-        std::byte* m_Data{ nullptr };
+        const Buffer& m_Buffer;
+        std::byte* m_Data = nullptr;
     };
 
 } // namespace benzin

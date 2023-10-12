@@ -4,14 +4,14 @@
 #include <benzin/core/imgui_layer.hpp>
 #include <benzin/core/layer_stack.hpp>
 #include <benzin/core/timer.hpp>
-#include <benzin/graphics/api/backend.hpp>
-#include <benzin/graphics/api/command_queue.hpp>
-#include <benzin/graphics/api/device.hpp>
-#include <benzin/graphics/api/swap_chain.hpp>
-#include <benzin/system/event_dispatcher.hpp>
+#include <benzin/graphics/backend.hpp>
+#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/swap_chain.hpp>
 #include <benzin/system/key_event.hpp>
 
 #include "main_layer.hpp"
+#include "raytracing_layer.hpp"
 
 namespace sandbox
 {
@@ -21,22 +21,18 @@ namespace sandbox
     public:
         Application()
         {
-            m_MainWindow = std::make_unique<benzin::Window>("Sandbox", 1280, 720, [&](benzin::Event& event) { WindowEventCallback(event); });
+            m_MainWindow = std::make_unique<benzin::Window>("Benzin: Sandbox", 1280, 720, [&](benzin::Event& event) { WindowEventCallback(event); });
             m_Backend = std::make_unique<benzin::Backend>();
             m_Device = std::make_unique<benzin::Device>(*m_Backend);
             m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Backend, *m_Device);
 
             BeginFrame();
             {
-                m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(*m_MainWindow, *m_Device, *m_SwapChain);
-                m_MainLayer = m_LayerStack.Push<sandbox::MainLayer>(*m_MainWindow, *m_Device, *m_SwapChain);
+                m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(*m_MainWindow, *m_Backend, *m_Device, *m_SwapChain);
+                //m_MainLayer = m_LayerStack.Push<MainLayer>(*m_MainWindow, *m_Device, *m_SwapChain);
+                m_RaytracingLayer = m_LayerStack.Push<RaytracingLayer>(*m_MainWindow, *m_Device, *m_SwapChain);
             }
             EndFrame();
-        }
-
-        ~Application()
-        {
-            m_Device->GetGraphicsCommandQueue().Flush();
         }
         
         void Execute()
@@ -51,7 +47,7 @@ namespace sandbox
 
                 if (m_IsPaused)
                 {
-                    ::Sleep(100);
+                    std::this_thread::sleep_for(std::chrono::milliseconds{ 100 });
                 }
                 else
                 {
@@ -66,52 +62,12 @@ namespace sandbox
         void WindowEventCallback(benzin::Event& event)
         {
             benzin::EventDispatcher dispatcher{ event };
-
-            dispatcher.Dispatch<benzin::WindowCloseEvent>([this](benzin::WindowCloseEvent& event)
-            {
-                m_IsRunning = false;
-
-                return false;
-            });
-
-            dispatcher.Dispatch<benzin::WindowEnterResizingEvent>([this](benzin::WindowEnterResizingEvent& event)
-            {
-                m_IsPaused = true;
-                m_FrameTimer.Stop();
-
-                return false;
-            });
-
-            dispatcher.Dispatch<benzin::WindowExitResizingEvent>([this](benzin::WindowExitResizingEvent& event)
-            {
-                m_IsPaused = false;
-                m_FrameTimer.Start();
-
-                return false;
-            });
-
-            dispatcher.Dispatch<benzin::WindowResizedEvent>([this](benzin::WindowResizedEvent& event)
-            {
-                m_SwapChain->ResizeBackBuffers(event.GetWidth(), event.GetHeight());
-
-                return false;
-            });
-
-            dispatcher.Dispatch<benzin::WindowFocusedEvent>([this](benzin::WindowFocusedEvent& event)
-            {
-                m_IsPaused = false;
-                m_FrameTimer.Start();
-
-                return false;
-            });
-
-            dispatcher.Dispatch<benzin::WindowUnfocusedEvent>([this](benzin::WindowUnfocusedEvent& event)
-            {
-                m_IsPaused = true;
-                m_FrameTimer.Stop();
-
-                return false;
-            });
+            dispatcher.Dispatch(&Application::OnWindowClose, *this);
+            dispatcher.Dispatch(&Application::OnWindowEnterResizing, *this);
+            dispatcher.Dispatch(&Application::OnWindowExitResizing, *this);
+            dispatcher.Dispatch(&Application::OnWindowResized, *this);
+            dispatcher.Dispatch(&Application::OnWindowFocused, *this);
+            dispatcher.Dispatch(&Application::OnWindowUnfocused, *this);
 
             for (auto it = m_LayerStack.ReverseBegin(); it != m_LayerStack.ReverseEnd(); ++it)
             {
@@ -138,7 +94,7 @@ namespace sandbox
             for (auto& layer : m_LayerStack)
             {
                 layer->OnUpdate(dt);
-                layer->OnRender(dt);
+                layer->OnRender();
             }
 
             if (m_ImGuiLayer->IsWidgetDrawEnabled())
@@ -147,7 +103,7 @@ namespace sandbox
                 {
                     for (auto& layer : m_LayerStack)
                     {
-                        layer->OnImGuiRender(dt);
+                        layer->OnImGuiRender();
                     }
                 }
                 m_ImGuiLayer->End();
@@ -161,6 +117,51 @@ namespace sandbox
         }
 
     private:
+        bool OnWindowClose(benzin::WindowCloseEvent& event)
+        {
+            m_IsRunning = false;
+            return false;
+        };
+
+        bool OnWindowEnterResizing(benzin::WindowEnterResizingEvent& event)
+        {
+            m_IsPaused = true;
+            m_FrameTimer.Stop();
+
+            return false;
+        };
+
+        bool OnWindowExitResizing(benzin::WindowExitResizingEvent& event)
+        {
+            m_IsPaused = false;
+            m_FrameTimer.Start();
+
+            return false;
+        };
+
+        bool OnWindowResized(benzin::WindowResizedEvent& event)
+        {
+            m_SwapChain->ResizeBackBuffers(event.GetWidth(), event.GetHeight());
+            return false;
+        };
+
+        bool OnWindowFocused(benzin::WindowFocusedEvent& event)
+        {
+            m_IsPaused = false;
+            m_FrameTimer.Start();
+
+            return false;
+        };
+
+        bool OnWindowUnfocused(benzin::WindowUnfocusedEvent& event)
+        {
+            m_IsPaused = true;
+            m_FrameTimer.Stop();
+
+            return false;
+        };
+
+    private:
         std::unique_ptr<benzin::Window> m_MainWindow;
         std::unique_ptr<benzin::Backend> m_Backend;
         std::unique_ptr<benzin::Device> m_Device;
@@ -171,19 +172,18 @@ namespace sandbox
 
         std::shared_ptr<benzin::ImGuiLayer> m_ImGuiLayer;
         std::shared_ptr<MainLayer> m_MainLayer;
+        std::shared_ptr<RaytracingLayer> m_RaytracingLayer;
 
-        bool m_IsRunning{ false };
-        bool m_IsPaused{ false };
+        bool m_IsRunning = false;
+        bool m_IsPaused = false;
     };
 
 } // namespace sandbox
 
 int benzin::ClientMain()
 {
-    {
-        sandbox::Application application;
-        application.Execute();
-    }
+    sandbox::Application application;
+    application.Execute();
 
     return 0;
 }

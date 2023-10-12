@@ -17,43 +17,19 @@ namespace benzin
 
     public:
         template <std::integral T>
-        static T GetIntegral();
+        static T GetIntegral() { return GetIntegral(std::numeric_limits<T>::min(), std::numeric_limits<T>::max()); }
 
         template <std::integral T>
-        static T GetIntegral(T min, T max);
+        static T GetIntegral(T min, T max) { return IntegralDistribution<T>{ min, max }(ms_MersenneTwisterEngine); }
 
         template <std::floating_point T>
-        static T GetFloatingPoint();
+        static T GetFloatingPoint() { return GetFloatingPoint(std::numeric_limits<T>::min(), std::numeric_limits<T>::max()); }
 
         template <std::floating_point T>
-        static T GetFloatingPoint(T min, T max);
+        static T GetFloatingPoint(T min, T max) { return FloatingPointDistribution<T>{ min, max }(ms_MersenneTwisterEngine); }
 
     private:
         static std::mt19937_64 ms_MersenneTwisterEngine;
     };
-
-    template <std::integral T>
-    T Random::GetIntegral()
-    {
-        return GetIntegral(std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
-    }
-
-    template <std::integral T>
-    T Random::GetIntegral(T min, T max)
-    {
-        return IntegralDistribution<T>{ min, max }(ms_MersenneTwisterEngine);
-    }
-
-    template <std::floating_point T>
-    T Random::GetFloatingPoint()
-    {
-        return GetFloatingPoint(std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
-    }
-
-    template <std::floating_point T>
-    T Random::GetFloatingPoint(T min, T max)
-    {
-        return FloatingPointDistribution<T>{ min, max }(ms_MersenneTwisterEngine);
-    }
 
 } // namespace benzin

@@ -9,7 +9,7 @@ namespace benzin
     class Window
     {
     private:
-        friend LRESULT MessageHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+        friend LRESULT MessageHandler(HWND hwnd, UINT messageCode, WPARAM wparam, LPARAM lparam);
 
     public:
         using EventCallbackFunction = std::function<void(Event& event)>;
@@ -37,15 +37,29 @@ namespace benzin
         void SetEventCallbackFunction(const EventCallbackFunction& callback);
 
     private:
-        HWND m_Win64Window{ nullptr };
+        template <typename Event, typename... Args>
+        void CreateAndPushEvent(Args&&... args);
 
-        uint32_t m_Width{ 0 };
-        uint32_t m_Height{ 0 };
-        bool m_IsResizing{ false };
-        bool m_IsMinimized{ false };
-        bool m_IsMaximized{ false };
+    private:
+        HWND m_Win64Window = nullptr;
+
+        uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
+        bool m_IsResizing = false;
+        bool m_IsMinimized = false;
+        bool m_IsMaximized = false;
 
         EventCallbackFunction m_EventCallback;
     };
+
+    template <typename Event, typename... Args>
+    void Window::CreateAndPushEvent(Args&&... args)
+    {
+        if (m_EventCallback)
+        {
+            Event event{ std::forward<Args>(args)... };
+            m_EventCallback(event);
+        }
+    }
 
 } // namespace benzin

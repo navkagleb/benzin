@@ -1,21 +1,18 @@
 #pragma once
 
-#include "benzin/graphics/api/texture.hpp"
+#include "benzin/graphics/texture.hpp"
 
 namespace benzin
 {
     
-    class BufferResource;
-    class TextureResource;
+    class Buffer;
 
     template <std::integral T>
     using IterableRange = std::ranges::iota_view<T, T>;
 
     struct TextureResourceData
     {
-        std::string Name;
-
-        TextureResource::Config Config;
+        TextureCreation TextureCreation;
         std::vector<std::byte> ImageData;
     };
 
@@ -31,25 +28,25 @@ namespace benzin
         std::vector<MeshVertexData> Vertices;
         std::vector<uint32_t> Indices;
 
-        PrimitiveTopology PrimitiveTopology{ PrimitiveTopology::Unknown };
+        PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
     };
 
     struct MaterialData
     {
         static constexpr const uint32_t s_InvalidTextureIndex = std::numeric_limits<uint32_t>::max();
 
-        uint32_t AlbedoTextureIndex{ s_InvalidTextureIndex };
-        uint32_t NormalTextureIndex{ s_InvalidTextureIndex };
-        uint32_t MetalRoughnessTextureIndex{ s_InvalidTextureIndex };
-        uint32_t AOTextureIndex{ s_InvalidTextureIndex };
-        uint32_t EmissiveTextureIndex{ s_InvalidTextureIndex };
+        uint32_t AlbedoTextureIndex = s_InvalidTextureIndex;
+        uint32_t NormalTextureIndex = s_InvalidTextureIndex;
+        uint32_t MetalRoughnessTextureIndex = s_InvalidTextureIndex;
+        uint32_t AOTextureIndex = s_InvalidTextureIndex;
+        uint32_t EmissiveTextureIndex = s_InvalidTextureIndex;
 
         DirectX::XMFLOAT4 AlbedoFactor{ 1.0f, 1.0f, 1.0f, 1.0f };
-        float AlphaCutoff{ 0.0f };
-        float NormalScale{ 1.0f };
-        float MetalnessFactor{ 1.0f };
-        float RoughnessFactor{ 1.0f };
-        float OcclusionStrenght{ 1.0f };
+        float AlphaCutoff = 0.0f;
+        float NormalScale = 1.0f;
+        float MetalnessFactor = 1.0f;
+        float RoughnessFactor = 1.0f;
+        float OcclusionStrenght = 1.0f;
         DirectX::XMFLOAT3 EmissiveFactor{ 0.0f, 0.0f, 0.0f };
     };
 
@@ -58,8 +55,8 @@ namespace benzin
     public:
         struct Primitive
         {
-            uint32_t IndexCount{ 0 };
-            PrimitiveTopology PrimitiveTopology{ PrimitiveTopology::Unknown };
+            uint32_t IndexCount = 0;
+            PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
         };
 
     public:
@@ -67,9 +64,9 @@ namespace benzin
         Mesh(Device& device, const std::vector<MeshPrimitiveData>& meshPrimitivesData, std::string_view name);
 
     public:
-        const std::shared_ptr<BufferResource>& GetVertexBuffer() const { return m_VertexBuffer; }
-        const std::shared_ptr<BufferResource>& GetIndexBuffer() const { return m_IndexBuffer; }
-        const std::shared_ptr<BufferResource>& GetPrimitiveBuffer() const { return m_PrimitiveBuffer; }
+        const std::shared_ptr<Buffer>& GetVertexBuffer() const { return m_VertexBuffer; }
+        const std::shared_ptr<Buffer>& GetIndexBuffer() const { return m_IndexBuffer; }
+        const std::shared_ptr<Buffer>& GetPrimitiveBuffer() const { return m_PrimitiveBuffer; }
 
         const std::vector<Primitive>& GetPrimitives() const { return m_Primitives; }
 
@@ -83,9 +80,9 @@ namespace benzin
     private:
         Device& m_Device;
 
-        std::shared_ptr<BufferResource> m_VertexBuffer;
-        std::shared_ptr<BufferResource> m_IndexBuffer;
-        std::shared_ptr<BufferResource> m_PrimitiveBuffer;
+        std::shared_ptr<Buffer> m_VertexBuffer;
+        std::shared_ptr<Buffer> m_IndexBuffer;
+        std::shared_ptr<Buffer> m_PrimitiveBuffer;
 
         std::vector<Primitive> m_Primitives;
     };
@@ -93,7 +90,7 @@ namespace benzin
     struct NodeData
     {
         IterableRange<uint32_t> DrawPrimitiveRange;
-        DirectX::XMMATRIX Transform{ DirectX::XMMatrixIdentity() };
+        DirectX::XMMATRIX Transform = DirectX::XMMatrixIdentity();
     };
 
     class Model
@@ -106,8 +103,8 @@ namespace benzin
 
         struct DrawPrimitive
         {
-            uint32_t MeshPrimitiveIndex{ 0 };
-            uint32_t MaterialIndex{ 0 };
+            uint32_t MeshPrimitiveIndex = 0;
+            uint32_t MaterialIndex = 0;
         };
 
     public:
@@ -124,13 +121,13 @@ namespace benzin
     public:
         const std::shared_ptr<Mesh>& GetMesh() const { return m_Mesh; }
 
-        const std::unique_ptr<BufferResource>& GetDrawPrimitiveBuffer() const { return m_DrawPrimitiveBuffer; }
+        const std::unique_ptr<Buffer>& GetDrawPrimitiveBuffer() const { return m_DrawPrimitiveBuffer; }
         const std::vector<DrawPrimitive>& GetDrawPrimitives() const { return m_DrawPrimitives; }
 
-        const std::shared_ptr<BufferResource>& GetNodeBuffer() const { return m_NodeBuffer; }
+        const std::shared_ptr<Buffer>& GetNodeBuffer() const { return m_NodeBuffer; }
         const std::vector<Node>& GetNodes() const { return m_Nodes; }
 
-        const std::shared_ptr<BufferResource>& GetMaterialBuffer() const { return m_MaterialBuffer; }
+        const std::shared_ptr<Buffer>& GetMaterialBuffer() const { return m_MaterialBuffer; }
         std::vector<MaterialData>& GetMaterials() { return m_Materials; }
         const std::vector<MaterialData>& GetMaterials() const { return m_Materials; }
 
@@ -157,14 +154,14 @@ namespace benzin
 
         std::shared_ptr<Mesh> m_Mesh;
 
-        std::unique_ptr<BufferResource> m_DrawPrimitiveBuffer;
+        std::unique_ptr<Buffer> m_DrawPrimitiveBuffer;
         std::vector<DrawPrimitive> m_DrawPrimitives;
 
-        std::shared_ptr<BufferResource> m_NodeBuffer;
+        std::shared_ptr<Buffer> m_NodeBuffer;
         std::vector<Node> m_Nodes;
 
-        std::vector<std::shared_ptr<TextureResource>> m_Textures;
-        std::shared_ptr<BufferResource> m_MaterialBuffer;
+        std::vector<std::shared_ptr<Texture>> m_Textures;
+        std::shared_ptr<Buffer> m_MaterialBuffer;
         std::vector<MaterialData> m_Materials;
     };
 

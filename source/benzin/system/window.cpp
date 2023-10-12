@@ -1,5 +1,4 @@
 #include "benzin/config/bootstrap.hpp"
-
 #include "benzin/system/window.hpp"
 
 #include <third_party/imgui/backends/imgui_impl_win32.h>
@@ -8,13 +7,15 @@
 #include "benzin/system/mouse_event.hpp"
 #include "benzin/system/key_event.hpp"
 
-#include "benzin/graphics/api/common.hpp"
+#include "benzin/graphics/common.hpp"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 namespace benzin
 {
 
+    // Cannot move implementation of 'MessageHandle' and 'RegisterManager' to anonymous namespace
+    // because 'MessageHandler' is a friend of 'Window'
     LRESULT MessageHandler(HWND handle, UINT messageCode, WPARAM wparam, LPARAM lparam)
     {
         if (messageCode == WM_CREATE)
@@ -36,35 +37,32 @@ namespace benzin
             return ::DefWindowProc(handle, messageCode, wparam, lparam);
         }
 
-        static uint32_t width{ window->m_Width };
-        static uint32_t height{ window->m_Height };
+        static uint32_t width = window->m_Width;
+        static uint32_t height = window->m_Height;
 
         switch (messageCode)
         {
             // Window events
             case WM_CLOSE:
             {
-                WindowCloseEvent event;
-                window->m_EventCallback(event);
+                window->CreateAndPushEvent<WindowCloseEvent>();
 
                 //::DestroyWindow(handle);
 
-                return 0;
+                break;
             }
             case WM_ACTIVATE:
             {
                 if (LOWORD(wparam) == WA_INACTIVE)
                 {
-                    WindowUnfocusedEvent event;
-                    window->m_EventCallback(event);
+                    window->CreateAndPushEvent<WindowUnfocusedEvent>();
                 }
                 else
                 {
-                    WindowFocusedEvent event;
-                    window->m_EventCallback(event);
+                    window->CreateAndPushEvent<WindowFocusedEvent>();
                 }
 
-                return 0;
+                break;
             }
             case WM_SIZE:
             {
@@ -80,8 +78,7 @@ namespace benzin
                         window->m_IsMinimized = true;
                         window->m_IsMaximized = false;
 
-                        WindowMinimizedEvent event;
-                        window->m_EventCallback(event);
+                        window->CreateAndPushEvent<WindowMinimizedEvent>();
 
                         break;
                     }
@@ -92,15 +89,8 @@ namespace benzin
                         window->m_IsMinimized = false;
                         window->m_IsMaximized = true;
 
-                        {
-                            WindowMaximizedEvent event;
-                            window->m_EventCallback(event);
-                        }
-
-                        {
-                            WindowResizedEvent event(window->m_Width, window->m_Height);
-                            window->m_EventCallback(event);
-                        }
+                        window->CreateAndPushEvent<WindowMaximizedEvent>();
+                        window->CreateAndPushEvent<WindowResizedEvent>(window->m_Width, window->m_Height);
 
                         break;
                     }
@@ -108,56 +98,24 @@ namespace benzin
                     {
                         if (window->m_IsResizing)
                         {
-                            WindowResizingEvent event(window->m_Width, window->m_Height);
-                            window->m_EventCallback(event);
-                        }
-                        else if (window->m_IsMinimized)
-                        {
-                            window->m_Width = width;
-                            window->m_Height = height;
-                            window->m_IsMinimized = false;
-
-                            {
-                                WindowRestoredEvent event;
-                                window->m_EventCallback(event);
-                            }
-
-                            {
-                                WindowResizedEvent event(window->m_Width, window->m_Height);
-                                window->m_EventCallback(event);
-                            }
-                        }
-                        else if (window->m_IsMaximized)
-                        {
-                            window->m_Width = width;
-                            window->m_Height = height;
-                            window->m_IsMaximized = false;
-
-                            {
-                                WindowRestoredEvent event;
-                                window->m_EventCallback(event);
-                            }
-
-                            {
-                                WindowResizedEvent event(window->m_Width, window->m_Height);
-                                window->m_EventCallback(event);
-                            }
+                            window->CreateAndPushEvent<WindowResizingEvent>(window->m_Width, window->m_Height);
                         }
                         else
                         {
+                            if (window->m_IsMinimized)
+                            {
+                                window->m_IsMinimized = false;
+                            }
+                            else if (window->m_IsMaximized)
+                            {
+                                window->m_IsMaximized = false;
+                            }
+
                             window->m_Width = width;
                             window->m_Height = height;
 
-                            // API call such as ::SetWindowPos or IDXGISwapChain::SetFullscreenState
-                            {
-                                WindowRestoredEvent event;
-                                window->m_EventCallback(event);
-                            }
-
-                            {
-                                WindowResizedEvent event(window->m_Width, window->m_Height);
-                                window->m_EventCallback(event);
-                            }
+                            window->CreateAndPushEvent<WindowRestoredEvent>();
+                            window->CreateAndPushEvent<WindowResizedEvent>(window->m_Width, window->m_Height);
                         }
 
                         break;
@@ -168,126 +126,99 @@ namespace benzin
                     }
                 }
 
-                return 0;
+                break;
             }
             case WM_ENTERSIZEMOVE:
             {
                 window->m_IsResizing = true;
 
-                WindowEnterResizingEvent event;
-                window->m_EventCallback(event);
+                window->CreateAndPushEvent<WindowEnterResizingEvent>();
 
-                return 0;
+                break;
             }
             case WM_EXITSIZEMOVE:
             {
                 window->m_IsResizing = false;
 
-                {
-                    WindowExitResizingEvent event;
-                    window->m_EventCallback(event);
-                }
+                window->CreateAndPushEvent<WindowExitResizingEvent>();
 
                 if (window->m_Width != width || window->m_Height != height)
                 {
                     window->m_Width = width;
                     window->m_Height = height;
 
-                    WindowResizedEvent event(window->m_Width, window->m_Height);
-                    window->m_EventCallback(event);
+                    window->CreateAndPushEvent<WindowResizedEvent>(window->m_Width, window->m_Height);
                 }
 
-                return 0;
+                break;
             }
             case WM_GETMINMAXINFO:
             {
                 reinterpret_cast<MINMAXINFO*>(lparam)->ptMinTrackSize.x = 200;
                 reinterpret_cast<MINMAXINFO*>(lparam)->ptMinTrackSize.y = 200;
 
-                return 0;
+                break;
             }
 
             // Mouse events
             case WM_LBUTTONDOWN:
             {
-                MouseButtonPressedEvent event(MouseButton::Left, LOWORD(lparam), HIWORD(lparam));
-                window->m_EventCallback(event);
-
-                return 0;
+                window->CreateAndPushEvent<MouseButtonPressedEvent>(MouseButton::Left, LOWORD(lparam), HIWORD(lparam));
+                break;
             }
             case WM_RBUTTONDOWN:
             {
-                MouseButtonPressedEvent event(MouseButton::Right, LOWORD(lparam), HIWORD(lparam));
-                window->m_EventCallback(event);
-
-                return 0;
+                window->CreateAndPushEvent<MouseButtonPressedEvent>(MouseButton::Right, LOWORD(lparam), HIWORD(lparam));
+                break;
             }
             case WM_MBUTTONDOWN:
             {
-                MouseButtonPressedEvent event(MouseButton::Middle, LOWORD(lparam), HIWORD(lparam));
-                window->m_EventCallback(event);
-
-                return 0;
+                window->CreateAndPushEvent<MouseButtonPressedEvent>(MouseButton::Middle, LOWORD(lparam), HIWORD(lparam));
+                break;
             }
             case WM_LBUTTONUP:
             {
-                MouseButtonReleasedEvent event(MouseButton::Left, LOWORD(lparam), HIWORD(lparam));
-                window->m_EventCallback(event);
-
-                return 0;
+                window->CreateAndPushEvent<MouseButtonReleasedEvent>(MouseButton::Left, LOWORD(lparam), HIWORD(lparam));
+                break;
             }
             case WM_RBUTTONUP:
             {
-                MouseButtonReleasedEvent event(MouseButton::Right, LOWORD(lparam), HIWORD(lparam));
-                window->m_EventCallback(event);
-
-                return 0;
+                window->CreateAndPushEvent<MouseButtonReleasedEvent>(MouseButton::Right, LOWORD(lparam), HIWORD(lparam));
+                break;
             }
             case WM_MBUTTONUP:
             {
-                MouseButtonReleasedEvent event(MouseButton::Middle, LOWORD(lparam), HIWORD(lparam));
-                window->m_EventCallback(event);
-
-                return 0;
+                window->CreateAndPushEvent<MouseButtonReleasedEvent>(MouseButton::Middle, LOWORD(lparam), HIWORD(lparam));
+                break;
             }
             case WM_MOUSEMOVE:
             {
-                MouseMovedEvent event(LOWORD(lparam), HIWORD(lparam));
-                window->m_EventCallback(event);
-
-                return 0;
+                window->CreateAndPushEvent<MouseMovedEvent>(LOWORD(lparam), HIWORD(lparam));
+                break;
             }
             case WM_MOUSEWHEEL:
             {
-                MouseScrolledEvent event(GET_WHEEL_DELTA_WPARAM(wparam) > 0 ? 1 : -1);
-                window->m_EventCallback(event);
-
-                return 0;
+                window->CreateAndPushEvent<MouseScrolledEvent>(static_cast<int8_t>(GET_WHEEL_DELTA_WPARAM(wparam) > 0 ? 1 : -1));
+                break;
             }
 
             // Key event
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
             {
-                KeyPressedEvent event(static_cast<KeyCode>(wparam), static_cast<bool>(HIWORD(lparam) & KF_REPEAT));
-                window->m_EventCallback(event);
-
+                window->CreateAndPushEvent<KeyPressedEvent>(static_cast<KeyCode>(wparam), static_cast<bool>(HIWORD(lparam) & KF_REPEAT));
                 break;
             }
             case WM_KEYUP:
             case WM_SYSKEYUP:
             {
-                KeyReleasedEvent event(static_cast<KeyCode>(wparam));
-                window->m_EventCallback(event);
-
+                window->CreateAndPushEvent<KeyReleasedEvent>(static_cast<KeyCode>(wparam));
                 break;
             }
             case WM_CHAR:
             case WM_SYSCHAR:
             {
-                KeyTypedEvent event(static_cast<char>(wparam));
-                window->m_EventCallback(event);
-
+                window->CreateAndPushEvent<KeyTypedEvent>(static_cast<char>(wparam));
                 break;
             }
             default:
@@ -298,33 +229,33 @@ namespace benzin
 
         return ::DefWindowProc(handle, messageCode, wparam, lparam);
     }
-    
+
     class RegisterManager
     {
     public:
         typedef LRESULT(*MessageHandler)(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
     public:
-        RegisterManager(const std::string_view& name, MessageHandler messageHandler)
+        RegisterManager(std::string_view name, MessageHandler messageHandler)
             : m_Name{ name }
         {
             const WNDCLASSEX registerClass
             {
-                .cbSize{ sizeof(WNDCLASSEX) },
-                .style{ CS_VREDRAW | CS_HREDRAW | CS_OWNDC },
-                .lpfnWndProc{ messageHandler },
-                .cbClsExtra{ 0 },
-                .cbWndExtra{ 0 },
-                .hInstance{ ::GetModuleHandle(nullptr) },
-                .hIcon{ ::LoadIcon(nullptr, IDI_APPLICATION) },
-                .hCursor{ ::LoadCursor(nullptr, IDC_ARROW) },
-                .hbrBackground{ nullptr },
-                .lpszMenuName{ nullptr },
-                .lpszClassName{ m_Name.data() },
-                .hIconSm{ ::LoadIcon(nullptr, IDI_APPLICATION) },
+                .cbSize = sizeof(WNDCLASSEX),
+                .style = CS_VREDRAW | CS_HREDRAW | CS_OWNDC,
+                .lpfnWndProc = messageHandler,
+                .cbClsExtra = 0,
+                .cbWndExtra = 0,
+                .hInstance = ::GetModuleHandle(nullptr),
+                .hIcon = ::LoadIcon(nullptr, IDI_APPLICATION),
+                .hCursor = ::LoadCursor(nullptr, IDC_ARROW),
+                .hbrBackground = nullptr,
+                .lpszMenuName = nullptr,
+                .lpszClassName = m_Name.data(),
+                .hIconSm = ::LoadIcon(nullptr, IDI_APPLICATION),
             };
 
-            BENZIN_ASSERT(::RegisterClassEx(&registerClass) != 0);
+            BenzinAssert(::RegisterClassEx(&registerClass) != 0);
         }
 
         ~RegisterManager()
@@ -333,29 +264,29 @@ namespace benzin
         }
 
     public:
-        const std::string_view& GetName() const { return m_Name; }
+        std::string_view GetName() const { return m_Name; }
 
     private:
-        const std::string_view m_Name;
+        std::string_view m_Name;
     };
 
-    static RegisterManager g_RegisterManager{ "SpielerRegisterClass", MessageHandler };
+    static RegisterManager g_RegisterManager{ "BENZIN_WINDOW_REGISTER_MANAGER", MessageHandler };
 
     Window::Window(std::string_view title, uint32_t width, uint32_t height, const EventCallbackFunction& eventCallback)
         : m_Width{ width }
         , m_Height{ height }
     {
-        const LONG m_Style{ WS_OVERLAPPEDWINDOW };
+        const LONG m_Style = WS_OVERLAPPEDWINDOW;
 
         RECT windowBounds
         {
-            .left{ 0 },
-            .top{ 0 },
-            .right{ static_cast<LONG>(m_Width) },
-            .bottom{ static_cast<LONG>(m_Height) }
+            .left = 0,
+            .top = 0,
+            .right = static_cast<LONG>(m_Width),
+            .bottom = static_cast<LONG>(m_Height),
         };
 
-        BENZIN_ASSERT(::AdjustWindowRect(&windowBounds, m_Style, false));
+        BenzinAssert(::AdjustWindowRect(&windowBounds, m_Style, false) != 0);
 
         m_Win64Window = ::CreateWindow(
             g_RegisterManager.GetName().data(),
@@ -371,7 +302,7 @@ namespace benzin
             reinterpret_cast<void*>(this)
         );
 
-        BENZIN_ASSERT(m_Win64Window != nullptr);
+        BenzinAssert(m_Win64Window);
 
         SetVisible(true);
         SetEventCallbackFunction(eventCallback);

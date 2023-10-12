@@ -1,12 +1,11 @@
 #include "benzin/config/bootstrap.hpp"
-
 #include "benzin/engine/model.hpp"
 
 #include <third_party/tinygltf/tiny_gltf.h>
 #include <third_party/tinygltf/stb_image.h>
 
-#include "benzin/graphics/api/command_queue.hpp"
-#include "benzin/graphics/api/device.hpp"
+#include "benzin/graphics/command_queue.hpp"
+#include "benzin/graphics/device.hpp"
 #include "benzin/graphics/mapped_data.hpp"
 
 namespace benzin
@@ -31,13 +30,12 @@ namespace benzin
         };
 
         tinygltf::TinyGLTF g_GLTFContext;
-        const std::filesystem::path g_ModelsRootPath{ "../../assets/models/" };
 
         std::optional<tinygltf::Model> LoadGLTFModelFromFile(std::string_view fileName) 
         {
-            const std::filesystem::path filePath = g_ModelsRootPath / fileName;
-            BENZIN_ASSERT(std::filesystem::exists(filePath));
-            BENZIN_ASSERT(filePath.extension() == ".glb" || filePath.extension() == ".gltf");
+            const std::filesystem::path filePath = config::g_ModelDirPath / fileName;
+            BenzinAssert(std::filesystem::exists(filePath));
+            BenzinAssert(filePath.extension() == ".glb" || filePath.extension() == ".gltf");
 
             tinygltf::Model gltfModel;
             std::string error;
@@ -55,17 +53,17 @@ namespace benzin
 
             if (!warning.empty())
             {
-                BENZIN_WARNING("GLTF Loader: {}", warning);
+                BenzinWarning("GLTF Loader: {}", warning);
             }
 
             if (!error.empty())
             {
-                BENZIN_ERROR("GLTF Loader: {}", error);
+                BenzinError("GLTF Loader: {}", error);
             }
 
             if (!result)
             {
-                BENZIN_ERROR("Failed to parse glTF file!");
+                BenzinError("Failed to parse glTF file!");
                 return std::nullopt;
             }
 
@@ -104,7 +102,7 @@ namespace benzin
             MeshPrimitiveData& meshPrimitiveData = meshPrimitivesData.emplace_back();
             Model::DrawPrimitive& drawPrimitive = drawPrimitives.emplace_back();
 
-            BENZIN_ASSERT(gltfPrimitive.material != -1);
+            BenzinAssert(gltfPrimitive.material != -1);
             drawPrimitive.MeshPrimitiveIndex = static_cast<uint32_t>(meshPrimitivesData.size()) - 1; // Because 'meshPrimitivesData.emplace_back()'
             drawPrimitive.MaterialIndex = gltfPrimitive.material;
 
@@ -122,7 +120,7 @@ namespace benzin
                 }
                 default:
                 {
-                    BENZIN_ASSERT(false);
+                    BenzinAssert(false);
                     break;
                 }
             }
@@ -131,23 +129,23 @@ namespace benzin
             const int positionAccessorIndex = gltfPrimitive.attributes.contains("POSITION") ? gltfPrimitive.attributes.at("POSITION") : -1;
             const int normalAccessorIndex = gltfPrimitive.attributes.contains("NORMAL") ? gltfPrimitive.attributes.at("NORMAL") : -1;
             const int texCoordAccessorIndex = gltfPrimitive.attributes.contains("TEXCOORD_0") ? gltfPrimitive.attributes.at("TEXCOORD_0") : -1;
-            BENZIN_ASSERT(!gltfPrimitive.attributes.contains("TEXCOORD_1")); // TODO
+            BenzinAssert(!gltfPrimitive.attributes.contains("TEXCOORD_1")); // TODO
 
             const std::span<const IndexType> indices = GetBufferFromGLTFAccessor<IndexType>(gltfModel, indexAccessorIndex);
             const std::span<const DirectX::XMFLOAT3> positions = GetBufferFromGLTFAccessor<DirectX::XMFLOAT3>(gltfModel, positionAccessorIndex);
             const std::span<const DirectX::XMFLOAT3> normals = GetBufferFromGLTFAccessor<DirectX::XMFLOAT3>(gltfModel, normalAccessorIndex);
             const std::span<const DirectX::XMFLOAT2> texCoords = GetBufferFromGLTFAccessor<DirectX::XMFLOAT2>(gltfModel, texCoordAccessorIndex);
 
-            BENZIN_ASSERT(!positions.empty());
+            BenzinAssert(!positions.empty());
 
             if (!normals.empty())
             {
-                BENZIN_ASSERT(normals.size() == positions.size());
+                BenzinAssert(normals.size() == positions.size());
             }
 
             if (!texCoords.empty())
             {
-                BENZIN_ASSERT(texCoords.size() == positions.size());
+                BenzinAssert(texCoords.size() == positions.size());
             }
 
             meshPrimitiveData.Vertices.resize(positions.size());
@@ -179,7 +177,7 @@ namespace benzin
         {
             for (const tinygltf::Primitive& gltfPrimitive : gltfMesh.primitives)
             {
-                BENZIN_ASSERT(gltfPrimitive.indices != -1);
+                BenzinAssert(gltfPrimitive.indices != -1);
                 const tinygltf::Accessor& indexAccessor = gltfModel.accessors[gltfPrimitive.indices];
 
                 switch (indexAccessor.componentType)
@@ -201,7 +199,7 @@ namespace benzin
                     }
                     default:
                     {
-                        BENZIN_ASSERT(false);
+                        BenzinAssert(false);
                         break;
                     }
                 }
@@ -215,9 +213,9 @@ namespace benzin
             std::vector<IterableRange<uint32_t>>& meshPrimitivesRanges
         )
         {
-            BENZIN_ASSERT(meshPrimitivesData.empty());
-            BENZIN_ASSERT(drawPrimitives.empty());
-            BENZIN_ASSERT(meshPrimitivesRanges.empty());
+            BenzinAssert(meshPrimitivesData.empty());
+            BenzinAssert(drawPrimitives.empty());
+            BenzinAssert(meshPrimitivesRanges.empty());
 
             meshPrimitivesRanges.reserve(gltfModel.meshes.size());
 
@@ -238,7 +236,7 @@ namespace benzin
 
             if (!gltfNode.matrix.empty())
             {
-                BENZIN_ASSERT(gltfNode.matrix.size() == 16);
+                BenzinAssert(gltfNode.matrix.size() == 16);
                 memcpy(&nodeTransform, gltfNode.matrix.data(), sizeof(DirectX::XMMATRIX));
                 nodeTransform = DirectX::XMMatrixTranspose(nodeTransform);
             }
@@ -246,7 +244,7 @@ namespace benzin
             {
                 if (!gltfNode.rotation.empty())
                 {
-                    BENZIN_ASSERT(gltfNode.rotation.size() == 4);
+                    BenzinAssert(gltfNode.rotation.size() == 4);
                     const DirectX::XMFLOAT4 rotation
                     {
                         static_cast<float>(gltfNode.rotation[0]),
@@ -260,7 +258,7 @@ namespace benzin
 
                 if (!gltfNode.scale.empty())
                 {
-                    BENZIN_ASSERT(gltfNode.scale.size() == 3);
+                    BenzinAssert(gltfNode.scale.size() == 3);
                     const DirectX::XMFLOAT3 scale
                     {
                         static_cast<float>(gltfNode.scale[0]),
@@ -273,7 +271,7 @@ namespace benzin
 
                 if (!gltfNode.translation.empty())
                 {
-                    BENZIN_ASSERT(gltfNode.translation.size() == 3);
+                    BenzinAssert(gltfNode.translation.size() == 3);
                     const DirectX::XMFLOAT3 translation
                     {
                         static_cast<float>(gltfNode.translation[0]),
@@ -323,7 +321,7 @@ namespace benzin
         {
             const int parentNodeIndex = -1;
 
-            // From right-handed to left-handed
+            // Convert from right-handed to left-handed
             // Must be used with TriangleOrder::CounterClockwise in rasterizer state
             const DirectX::XMMATRIX parentNodeTransform = DirectX::XMMatrixScaling(1.0f, 1.0f, -1.0f);
 
@@ -338,48 +336,53 @@ namespace benzin
 
         void ParseGLTFTextures(const tinygltf::Model& gltfModel, std::vector<TextureResourceData>& textureResourcesData)
         {
-            BENZIN_ASSERT(textureResourcesData.empty());
+            BenzinAssert(textureResourcesData.empty());
             textureResourcesData.reserve(gltfModel.textures.size());
 
             for (const tinygltf::Texture& gltfTexture : gltfModel.textures)
             {
                 const tinygltf::Image& gltfImage = gltfModel.images[gltfTexture.source];
-                BENZIN_ASSERT(gltfImage.bits == 8);
-                BENZIN_ASSERT(gltfImage.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE);
+                BenzinAssert(gltfImage.bits == 8);
+                BenzinAssert(gltfImage.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE);
 
                 TextureResourceData& textureResourceData = textureResourcesData.emplace_back();
 
-                if (!gltfTexture.name.empty())
                 {
-                    textureResourceData.Name = gltfTexture.name;
-                }
-                else if (!gltfImage.name.empty())
-                {
-                    textureResourceData.Name = gltfImage.name;
-                }
-                else if (!gltfImage.uri.empty())
-                {
-                    textureResourceData.Name = gltfImage.uri;
-                }
+                    TextureCreation& textureCreation = textureResourceData.TextureCreation;
 
-                const TextureResource::Config config
-                {
-                    .Type{ TextureResource::Type::Texture2D },
-                    .Width{ static_cast<uint32_t>(gltfImage.width) },
-                    .Height{ static_cast<uint32_t>(gltfImage.height) },
-                    .MipCount{ 1 },
-                    .Format{ GraphicsFormat::RGBA8Unorm },
-                };
+                    textureCreation = TextureCreation
+                    {
+                        .Type = TextureType::Texture2D,
+                        .Format = GraphicsFormat::RGBA8Unorm,
+                        .Width = static_cast<uint32_t>(gltfImage.width),
+                        .Height = static_cast<uint32_t>(gltfImage.height),
+                        .MipCount = 1,
+                    };
 
-                textureResourceData.Config = config;
-                textureResourceData.ImageData.resize(gltfImage.image.size());
-                memcpy(textureResourceData.ImageData.data(), gltfImage.image.data(), gltfImage.image.size());
+                    if (!gltfTexture.name.empty())
+                    {
+                        textureCreation.DebugName.Chars = gltfTexture.name;
+                    }
+                    else if (!gltfImage.name.empty())
+                    {
+                        textureCreation.DebugName.Chars = gltfImage.name;
+                    }
+                    else if (!gltfImage.uri.empty())
+                    {
+                        textureCreation.DebugName.Chars = gltfImage.uri;
+                    }
+                }
+                
+                {
+                    textureResourceData.ImageData.resize(gltfImage.image.size());
+                    memcpy(textureResourceData.ImageData.data(), gltfImage.image.data(), gltfImage.image.size());
+                }
             }
         }
 
         void ParseGLTFMaterials(const tinygltf::Model& gltfModel, std::vector<MaterialData>& materialsData)
         {
-            BENZIN_ASSERT(materialsData.empty());
+            BenzinAssert(materialsData.empty());
             materialsData.reserve(gltfModel.materials.size());
 
             for (const tinygltf::Material& gltfMaterial : gltfModel.materials)
@@ -397,7 +400,7 @@ namespace benzin
                         material.AlbedoTextureIndex = static_cast<uint32_t>(albedoTextureIndex);
                     }
 
-                    BENZIN_ASSERT(gltfPbrMetallicRoughness.baseColorFactor.size() == 4);
+                    BenzinAssert(gltfPbrMetallicRoughness.baseColorFactor.size() == 4);
                     material.AlbedoFactor.x = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[0]);
                     material.AlbedoFactor.y = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[1]);
                     material.AlbedoFactor.z = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[2]);
@@ -450,7 +453,7 @@ namespace benzin
                         material.EmissiveTextureIndex = static_cast<uint32_t>(emissiveTextureIndex);
                     }
 
-                    BENZIN_ASSERT(gltfMaterial.emissiveFactor.size() == 3);
+                    BenzinAssert(gltfMaterial.emissiveFactor.size() == 3);
                     material.EmissiveFactor.x = static_cast<float>(gltfMaterial.emissiveFactor[0]);
                     material.EmissiveFactor.y = static_cast<float>(gltfMaterial.emissiveFactor[1]);
                     material.EmissiveFactor.z = static_cast<float>(gltfMaterial.emissiveFactor[2]);
@@ -472,7 +475,7 @@ namespace benzin
 
     void Mesh::CreateFromPrimitives(const std::vector<MeshPrimitiveData>& meshPrimitivesData, std::string_view name)
     {
-        BENZIN_ASSERT(!name.empty());
+        BenzinAssert(!name.empty());
 
         uint32_t vertexCount = 0;
         uint32_t indexCount = 0;
@@ -489,22 +492,34 @@ namespace benzin
 
     void Mesh::CreateBuffers(uint32_t vertexCount, uint32_t indexCount, uint32_t primitiveCount, std::string_view name)
     {
-        static constexpr auto getBufferDebugName = [](std::string_view meshName, std::string_view bufferDebugName)
+        static constexpr auto GetBufferDebugName = [](std::string_view meshName, std::string_view bufferDebugName)
         {
             return fmt::format("{}_{}", meshName, bufferDebugName);
         };
 
-        m_VertexBuffer = std::make_shared<BufferResource>(m_Device, BufferResource::Config{ sizeof(MeshVertexData), vertexCount });
-        m_VertexBuffer->SetDebugName(getBufferDebugName(name, "VertexBuffer"));
-        m_VertexBuffer->PushShaderResourceView();
+        m_VertexBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
+        {
+            .DebugName = GetBufferDebugName(name, "VertexBuffer"),
+            .ElementSize = sizeof(MeshVertexData),
+            .ElementCount = vertexCount,
+            .IsNeedShaderResourceView = true,
+        });
 
-        m_IndexBuffer = std::make_shared<BufferResource>(m_Device, BufferResource::Config{ sizeof(uint32_t), indexCount });
-        m_IndexBuffer->SetDebugName(getBufferDebugName(name, "IndexBuffer"));
-        m_IndexBuffer->PushShaderResourceView();
+        m_IndexBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
+        {
+            .DebugName = GetBufferDebugName(name, "IndexBuffer"),
+            .ElementSize = sizeof(uint32_t),
+            .ElementCount = indexCount,
+            .IsNeedShaderResourceView = true,
+        });
 
-        m_PrimitiveBuffer = std::make_shared<BufferResource>(m_Device, BufferResource::Config{ sizeof(GPUPrimitive), primitiveCount });
-        m_PrimitiveBuffer->SetDebugName(getBufferDebugName(name, "MeshPrimitiveBuffer"));
-        m_PrimitiveBuffer->PushShaderResourceView();
+        m_PrimitiveBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
+        {
+            .DebugName = GetBufferDebugName(name, "PrimitiveBuffer"),
+            .ElementSize = sizeof(GPUPrimitive),
+            .ElementCount = primitiveCount,
+            .IsNeedShaderResourceView = true,
+        });
     }
 
     void Mesh::FillBuffers(const std::vector<MeshPrimitiveData>& meshPrimitivesData)
@@ -523,17 +538,17 @@ namespace benzin
 
             const Primitive primitive
             {
-                .IndexCount{ static_cast<uint32_t>(meshPrimitiveData.Indices.size()) },
-                .PrimitiveTopology{ meshPrimitiveData.PrimitiveTopology },
+                .IndexCount = static_cast<uint32_t>(meshPrimitiveData.Indices.size()),
+                .PrimitiveTopology = meshPrimitiveData.PrimitiveTopology,
             };
 
             m_Primitives.push_back(primitive);
 
             const GPUPrimitive gpuPrimitive
             {
-                .StartVertex{ static_cast<uint32_t>(vertexOffset) },
-                .StartIndex{ static_cast<uint32_t>(indexOffset) },
-                .IndexCount{ static_cast<uint32_t>(meshPrimitiveData.Indices.size()) },
+                .StartVertex = static_cast<uint32_t>(vertexOffset),
+                .StartIndex = static_cast<uint32_t>(indexOffset),
+                .IndexCount = static_cast<uint32_t>(meshPrimitiveData.Indices.size()),
             };
 
             copyCommandList.UpdateBuffer(*m_VertexBuffer, std::span{ meshPrimitiveData.Vertices }, vertexOffset);
@@ -577,7 +592,7 @@ namespace benzin
         }
 
         // TODO
-        m_Name = std::filesystem::path{ fileName }.replace_extension().filename().string();
+        m_Name = CutExtension(fileName);
 
         std::vector<MeshPrimitiveData> meshPrimitivesData;
         std::vector<DrawPrimitive> drawPrimitives;
@@ -627,9 +642,13 @@ namespace benzin
 
     void Model::CreateDrawPrimitivesBuffer(const std::vector<DrawPrimitive>& drawPrimitives)
     {
-        m_DrawPrimitiveBuffer = std::make_unique<BufferResource>(m_Device, BufferResource::Config{ sizeof(DrawPrimitive), static_cast<uint32_t>(drawPrimitives.size()) });
-        m_DrawPrimitiveBuffer->SetDebugName(fmt::format("{}_{}", m_Name, "DrawPrimitive"));
-        m_DrawPrimitiveBuffer->PushShaderResourceView();
+        m_DrawPrimitiveBuffer = std::make_unique<Buffer>(m_Device, BufferCreation
+        {
+            .DebugName = fmt::format("{}_{}", m_Name, "DrawPrimitive"),
+            .ElementSize = sizeof(DrawPrimitive),
+            .ElementCount = static_cast<uint32_t>(drawPrimitives.size()),
+            .IsNeedShaderResourceView = true,
+        });
 
         {
             CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
@@ -644,9 +663,13 @@ namespace benzin
     {
         m_Nodes.reserve(nodesData.size());
 
-        m_NodeBuffer = std::make_shared<BufferResource>(m_Device, BufferResource::Config{ sizeof(GPUNode), static_cast<uint32_t>(nodesData.size()) });
-        m_NodeBuffer->SetDebugName(fmt::format("{}_{}", m_Name, "NodeBuffer"));
-        m_NodeBuffer->PushShaderResourceView();
+        m_NodeBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
+        {
+            .DebugName = fmt::format("{}_{}", m_Name, "NodeBuffer"),
+            .ElementSize = sizeof(GPUNode),
+            .ElementCount = static_cast<uint32_t>(nodesData.size()),
+            .IsNeedShaderResourceView = true,
+        });
 
         CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
         auto& copyCommandList = copyCommandQueue->GetCommandList(m_NodeBuffer->GetSizeInBytes());
@@ -679,19 +702,29 @@ namespace benzin
         m_Textures.reserve(textureResourcesData.size());
         for (const auto& textureResourceData : textureResourcesData)
         {
-            const TextureResource::Config& config = textureResourceData.Config;
-            BENZIN_ASSERT(config.Format == GraphicsFormat::RGBA8Unorm);
+            const TextureCreation& textureCreation = textureResourceData.TextureCreation;
+            BenzinAssert(textureCreation.Format == GraphicsFormat::RGBA8Unorm);
 
             auto& texture = m_Textures.emplace_back();
-            texture = std::make_shared<TextureResource>(m_Device, config);
-            texture->PushShaderResourceView();
 
-            if (!textureResourceData.Name.empty())
+            if (textureCreation.DebugName.IsEmpty())
             {
-                texture->SetDebugName(fmt::format("{}_{}", m_Name, textureResourceData.Name));
+                texture = std::make_shared<Texture>(m_Device, textureCreation);
+            }
+            else
+            {
+                // Because of life time 'TextureCreation::DebugName::Chars'
+                const std::string debugName = fmt::format("{}_{}", m_Name, textureCreation.DebugName.Chars);
+
+                TextureCreation validatedTextureCreation = textureCreation;
+                validatedTextureCreation.DebugName.Chars = debugName;
+
+                texture = std::make_shared<Texture>(m_Device, validatedTextureCreation);
             }
 
-            uploadBufferSize += texture->GetSizeInBytes();
+            texture->PushShaderResourceView();
+
+            uploadBufferSize += AlignAbove(texture->GetSizeInBytes(), config::g_TextureAlignment);
         }
 
         CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
@@ -708,12 +741,12 @@ namespace benzin
 
     void Model::CreateMaterialBuffer(const std::vector<MaterialData>& materialsData)
     {
-        // NOTE: If use static labmda don't use [&, this] in caputer
-        static constexpr auto updateMaterialTextureIndex = [](const std::vector<std::shared_ptr<TextureResource>>& textures, uint32_t& textureIndex)
+        // NOTE: If use static labmda don't use [&, this] in capture
+        static constexpr auto updateMaterialTextureIndex = [](const std::vector<std::shared_ptr<Texture>>& textures, uint32_t& textureIndex)
         {
             if (textureIndex != -1)
             {
-                BENZIN_ASSERT(textureIndex < textures.size());
+                BenzinAssert(textureIndex < textures.size());
                 textureIndex = textures[textureIndex]->GetShaderResourceView().GetHeapIndex();
             }
         };
@@ -729,14 +762,14 @@ namespace benzin
 
         m_Materials = materialsData;
 
-        m_MaterialBuffer = std::make_shared<BufferResource>(m_Device, BufferResource::Config
+        m_MaterialBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
         {
-            .ElementSize{ sizeof(GPUMaterial) },
-            .ElementCount{ static_cast<uint32_t>(materialsData.size()) },
-            .Flags{ BufferResource::Flags::Dynamic },
+            .DebugName = fmt::format("{}_{}", m_Name, "MaterialBuffer"),
+            .ElementSize = sizeof(GPUMaterial),
+            .ElementCount = static_cast<uint32_t>(materialsData.size()),
+            .Flags = BufferFlag::Upload,
+            .IsNeedShaderResourceView = true,
         });
-        m_MaterialBuffer->SetDebugName(fmt::format("{}_{}", m_Name, "MaterialBuffer"));
-        m_MaterialBuffer->PushShaderResourceView();
 
         {
             CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };

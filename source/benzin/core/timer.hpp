@@ -21,18 +21,17 @@ namespace benzin
         void Tick();
 
     private:
-        const float m_SecondsPerCount{ 0.0f };
+        const float m_SecondsPerCount = 0.0f;
 
-    private:
-        float m_DeltaTime{ -1.0f };
+        float m_DeltaTime = -1.0f;
 
-        uint64_t m_BaseTime{ 0 };
-        uint64_t m_PausedTime{ 0 };
-        uint64_t m_StopTime{ 0 };
-        uint64_t m_PreviousTime{ 0 };
-        uint64_t m_CurrentTime{ 0 };
+        uint64_t m_BaseTime = 0;
+        uint64_t m_PausedTime = 0;
+        uint64_t m_StopTime = 0;
+        uint64_t m_PreviousTime = 0;
+        uint64_t m_CurrentTime = 0;
 
-        bool m_IsStopped{ false };
+        bool m_IsStopped = false;
     };
 
 } // namespace benzin

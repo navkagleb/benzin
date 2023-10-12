@@ -3,21 +3,8 @@
 namespace benzin
 {
 
-#define EVENT_CLASS_TYPE(ClassName)                                                                     \
-public:                                                                                                 \
-    static EventType GetStaticEventType() { return EventType::ClassName; }                              \
-                                                                                                        \
-public:                                                                                                 \
-    EventType GetEventType() const override { return GetStaticEventType(); }                            \
-    std::string GetName() const override { return #ClassName; }                                         \
-
-#define EVENT_CLASS_CATEGORY(category)                                                                  \
-    int32_t GetCategoryFlags() const override { return category; }
-
     enum class EventType : uint8_t
     {
-        None = 0,
-
         // Window events
         WindowCloseEvent,
         WindowResizingEvent,
@@ -41,16 +28,17 @@ public:                                                                         
         KeyReleasedEvent,
         KeyTypedEvent,
     };
-
-    enum EventCategory : int32_t
+    
+    enum class EventCategoryFlag : int8_t
     {
-        EventCategory_None = 0,
-        EventCategory_Window = 1 << 0,
-        EventCategory_Input = 1 << 1,
-        EventCategory_Mouse = 1 << 2,
-        EventCategory_Keyboard = 1 << 3,
-        EventCategory_MouseButton = 1 << 4
+        Window,
+        Input,
+        Keyboard,
+        Mouse,
+        MouseButton,
     };
+    using EventCategoryFlags = magic_enum::containers::bitset<EventCategoryFlag>;
+    static_assert(sizeof(EventCategoryFlags) <= sizeof(EventCategoryFlag));
 
     class Event
     {
@@ -64,16 +52,61 @@ public:                                                                         
     public:
         bool IsHandled() const { return m_IsHandled; }
 
-    public:
         virtual EventType GetEventType() const = 0;
-        virtual std::string GetName() const = 0;
-        virtual int GetCategoryFlags() const = 0;
-        virtual std::string ToString() const = 0;
-
-        bool IsInCategory(EventCategory category) const { return (GetCategoryFlags() & category) != EventCategory_None; }
+        virtual bool IsInCategory(EventCategoryFlag flag) const = 0;
 
     protected:
-        bool m_IsHandled{ false };
+        bool m_IsHandled = false;
+    };
+
+    template <EventType EventTypeValue, EventCategoryFlag... Flags>
+    class EventInfo : public Event
+    {
+    public:
+        static EventType GetStaticEventType() { return EventTypeValue; }
+
+        static const EventCategoryFlags& GetStaticEventCategoryFlags()
+        {
+            static EventCategoryFlags flags{ Flags... };
+            return flags;
+        }
+
+    public:
+        EventType GetEventType() const override { return GetStaticEventType(); }
+        bool IsInCategory(EventCategoryFlag flag) const override { return GetStaticEventCategoryFlags()[flag]; }
+    };
+
+    class EventDispatcher
+    {
+    public:
+        explicit EventDispatcher(Event& event)
+            : m_Event{ event }
+        {}
+
+    public:
+        template <typename EventChild> requires std::is_base_of_v<Event, EventChild>
+        bool Dispatch(const std::function<bool(EventChild&)>& callback)
+        {
+            if (m_Event.GetEventType() == EventChild::GetStaticEventType())
+            {
+                m_Event.m_IsHandled = callback(static_cast<EventChild&>(m_Event));
+                return true;
+            }
+
+            return false;
+        }
+
+        template <typename ClassType, typename EventChild> requires std::is_base_of_v<Event, EventChild>
+        bool Dispatch(bool (ClassType::*Callback)(EventChild&), ClassType& classInstance)
+        {
+            return Dispatch<EventChild>([&](EventChild& event)
+            {
+                return (classInstance.*Callback)(event);
+            });
+        }
+
+    private:
+        Event& m_Event;
     };
 
 } // namespace benzin

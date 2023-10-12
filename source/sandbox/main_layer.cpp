@@ -1,13 +1,12 @@
 #include "bootstrap.hpp"
-
 #include "main_layer.hpp"
 
 #include <benzin/engine/geometry_generator.hpp>
-#include <benzin/graphics/api/command_list.hpp>
-#include <benzin/graphics/api/command_queue.hpp>
-#include <benzin/graphics/api/pipeline_state.hpp>
+#include <benzin/engine/model.hpp>
+#include <benzin/graphics/command_list.hpp>
+#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
 #include <benzin/graphics/texture_loader.hpp>
-#include <benzin/system/event_dispatcher.hpp>
 #include <benzin/utility/random.hpp>
 
 #include "ibl_texture_generator.hpp"
@@ -69,47 +68,35 @@ namespace sandbox
         {
             auto& resources = m_Resources[i];
 
-            const benzin::BufferResource::Config config
+            resources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
             {
-                .ElementSize{ sizeof(GBufferPassData) },
-                .ElementCount{ 1 },
-                .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
-            };
-
-            resources.PassBuffer = std::make_unique<benzin::BufferResource>(m_Device, config);
-            resources.PassBuffer->SetDebugName("GeomtryPass_PassBuffer", i);
-            resources.PassBuffer->PushConstantBufferView();
+                .DebugName{ "GeometryPass_PassBuffer", static_cast<uint32_t>(i) },
+                .ElementSize = sizeof(GBufferPassData),
+                .ElementCount = 1,
+                .Flags = benzin::BufferFlag::ConstantBuffer,
+                .IsNeedConstantBufferView = true,
+            });
         }
 
+        m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::GraphicsPipelineStateCreation
         {
-            const benzin::PipelineState::GraphicsConfig config
+            .DebugName = "GeometryPass",
+            .VertexShader{ "gbuffer.hlsl", "VS_Main" },
+            .PixelShader{ "gbuffer.hlsl", "PS_Main" },
+            .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
+            .RasterizerState
             {
-                .VertexShader{ "gbuffer.hlsl", "VS_Main" },
-                .PixelShader{ "gbuffer.hlsl", "PS_Main" },
-                .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .RasterizerState
-                {
-                    .TriangleOrder{ benzin::RasterizerState::TriangleOrder::CounterClockwise },
-                },
-                .DepthState
-                {
-                    .IsEnabled{ true },
-                    .IsWriteEnabled{ true },
-                    .ComparisonFunction{ benzin::ComparisonFunction::Less },
-                },
-                .RenderTargetViewFormats
-                {
-                    ms_Color0Format,
-                    ms_Color1Format,
-                    ms_Color2Format,
-                    ms_Color3Format,
-                },
-                .DepthStencilViewFormat{ ms_DepthStencilFormat },
-            };
-
-            m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, config);
-            m_PipelineState->SetDebugName("GeometryPass");
-        }
+                .TriangleOrder = benzin::TriangleOrder::CounterClockwise,
+            },
+            .RenderTargetFormats
+            {
+                ms_Color0Format,
+                ms_Color1Format,
+                ms_Color2Format,
+                ms_Color3Format,
+            },
+            .DepthStencilFormat = ms_DepthStencilFormat,
+        });
 
         OnResize(width, height);
     }
@@ -128,7 +115,7 @@ namespace sandbox
         passBuffer.Write(passData);
     }
 
-    void GeometryPass::OnExecute(const entt::registry& registry, const benzin::BufferResource& entityBuffer)
+    void GeometryPass::OnExecute(const entt::registry& registry, const benzin::Buffer& entityBuffer)
     {
         enum class RootConstant : uint32_t
         {
@@ -154,11 +141,11 @@ namespace sandbox
         commandList.SetViewport(m_SwapChain.GetViewport());
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
 
-        commandList.SetResourceBarrier(*m_GBuffer.Albedo, benzin::Resource::State::RenderTarget);
-        commandList.SetResourceBarrier(*m_GBuffer.WorldNormal, benzin::Resource::State::RenderTarget);
-        commandList.SetResourceBarrier(*m_GBuffer.Emissive, benzin::Resource::State::RenderTarget);
-        commandList.SetResourceBarrier(*m_GBuffer.RoughnessMetalness, benzin::Resource::State::RenderTarget);
-        commandList.SetResourceBarrier(*m_GBuffer.DepthStencil, benzin::Resource::State::DepthWrite);
+        commandList.SetResourceBarrier(*m_GBuffer.Albedo, benzin::ResourceState::RenderTarget);
+        commandList.SetResourceBarrier(*m_GBuffer.WorldNormal, benzin::ResourceState::RenderTarget);
+        commandList.SetResourceBarrier(*m_GBuffer.Emissive, benzin::ResourceState::RenderTarget);
+        commandList.SetResourceBarrier(*m_GBuffer.RoughnessMetalness, benzin::ResourceState::RenderTarget);
+        commandList.SetResourceBarrier(*m_GBuffer.DepthStencil, benzin::ResourceState::DepthWrite);
 
         commandList.SetRenderTargets(
             {
@@ -236,60 +223,57 @@ namespace sandbox
             }
         }
 
-        commandList.SetResourceBarrier(*m_GBuffer.Albedo, benzin::Resource::State::Present);
-        commandList.SetResourceBarrier(*m_GBuffer.WorldNormal, benzin::Resource::State::Present);
-        commandList.SetResourceBarrier(*m_GBuffer.Emissive, benzin::Resource::State::Present);
-        commandList.SetResourceBarrier(*m_GBuffer.RoughnessMetalness, benzin::Resource::State::Present);
-        commandList.SetResourceBarrier(*m_GBuffer.DepthStencil, benzin::Resource::State::Present);
+        commandList.SetResourceBarrier(*m_GBuffer.Albedo, benzin::ResourceState::Present);
+        commandList.SetResourceBarrier(*m_GBuffer.WorldNormal, benzin::ResourceState::Present);
+        commandList.SetResourceBarrier(*m_GBuffer.Emissive, benzin::ResourceState::Present);
+        commandList.SetResourceBarrier(*m_GBuffer.RoughnessMetalness, benzin::ResourceState::Present);
+        commandList.SetResourceBarrier(*m_GBuffer.DepthStencil, benzin::ResourceState::Present);
     }
 
     void GeometryPass::OnResize(uint32_t width, uint32_t height)
     {
-        static const auto createGBufferRenderTarget = [this](
+        static const auto CreateGBufferRenderTarget = [](
+            benzin::Device& device,
             benzin::GraphicsFormat format,
             uint32_t width,
             uint32_t height,
             std::string_view debugName,
-            std::shared_ptr<benzin::TextureResource>& outRenderTarget
+            std::shared_ptr<benzin::Texture>& outRenderTarget
         )
         {
-            const benzin::TextureResource::Config config
+            outRenderTarget = std::make_shared<benzin::Texture>(device, benzin::TextureCreation
             {
-                .Type{ benzin::TextureResource::Type::Texture2D },
-                .Width{ width },
-                .Height{ height },
-                .MipCount{ 1 },
-                .Format{ format },
-                .Flags{ benzin::TextureResource::Flags::BindAsRenderTarget }
-            };
-
-            outRenderTarget = std::make_shared<benzin::TextureResource>(m_Device, config);
-            outRenderTarget->SetDebugName(debugName);
-            outRenderTarget->PushRenderTargetView();
-            outRenderTarget->PushShaderResourceView();
+                .DebugName = debugName,
+                .Type = benzin::TextureType::Texture2D,
+                .Format = format,
+                .Width = width,
+                .Height = height,
+                .MipCount = 1,
+                .Flags = benzin::TextureFlag::AllowRenderTarget,
+                .IsNeedShaderResourceView = true,
+                .IsNeedRenderTargetView = true,
+            });
         };
 
-        createGBufferRenderTarget(ms_Color0Format, width, height, "GBuffer_Albedo", m_GBuffer.Albedo);
-        createGBufferRenderTarget(ms_Color1Format, width, height, "GBuffer_WorldNormal", m_GBuffer.WorldNormal);
-        createGBufferRenderTarget(ms_Color2Format, width, height, "GBuffer_Emissive", m_GBuffer.Emissive);
-        createGBufferRenderTarget(ms_Color3Format, width, height, "GBuffer_RoughnessMetalness", m_GBuffer.RoughnessMetalness);
+        CreateGBufferRenderTarget(m_Device, ms_Color0Format, width, height, "GBuffer_Albedo", m_GBuffer.Albedo);
+        CreateGBufferRenderTarget(m_Device, ms_Color1Format, width, height, "GBuffer_WorldNormal", m_GBuffer.WorldNormal);
+        CreateGBufferRenderTarget(m_Device, ms_Color2Format, width, height, "GBuffer_Emissive", m_GBuffer.Emissive);
+        CreateGBufferRenderTarget(m_Device, ms_Color3Format, width, height, "GBuffer_RoughnessMetalness", m_GBuffer.RoughnessMetalness);
 
         {
-            const benzin::TextureResource::Config config
+            m_GBuffer.DepthStencil = std::make_shared<benzin::Texture>(m_Device, benzin::TextureCreation
             {
-                .Type{ benzin::TextureResource::Type::Texture2D },
-                .Width{ width },
-                .Height{ height },
-                .MipCount{ 1 },
-                .Format{ ms_DepthStencilFormat },
-                .Flags{ benzin::TextureResource::Flags::BindAsDepthStencil }
-            };
+                .DebugName = "GBuffer_DepthStencil",
+                .Type = benzin::TextureType::Texture2D,
+                .Format = ms_DepthStencilFormat,
+                .Width = width,
+                .Height = height,
+                .MipCount = 1,
+                .Flags = benzin::TextureFlag::AllowDepthStencil,
+                .IsNeedDepthStencilView = true,
+            });
 
-            auto& depthStencil = m_GBuffer.DepthStencil;
-            depthStencil = std::make_shared<benzin::TextureResource>(m_Device, config);
-            depthStencil->SetDebugName("GBuffer_DepthStencil");
-            depthStencil->PushDepthStencilView();
-            depthStencil->PushShaderResourceView({ .Format{ benzin::GraphicsFormat::D24Unorm_X8Typeless } });
+            m_GBuffer.DepthStencil->PushShaderResourceView({ .Format{ benzin::GraphicsFormat::D24Unorm_X8Typeless } });
         }
     }
 
@@ -302,46 +286,34 @@ namespace sandbox
         {
             auto& resources = m_Resources[i];
 
+            resources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
             {
-                const benzin::BufferResource::Config config
-                {
-                    .ElementSize{ sizeof(DeferredLightingPassData) },
-                    .ElementCount{ 1 },
-                    .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
-                };
+                .DebugName{ "DeferredLightingPass_PassBuffer", static_cast<uint32_t>(i) },
+                .ElementSize = sizeof(DeferredLightingPassData),
+                .ElementCount = 1,
+                .Flags = benzin::BufferFlag::ConstantBuffer,
+                .IsNeedConstantBufferView = true,
+            });
 
-                resources.PassBuffer = std::make_unique<benzin::BufferResource>(m_Device, config);
-                resources.PassBuffer->SetDebugName("DeferredLightingPass_PassBuffer", i);
-                resources.PassBuffer->PushConstantBufferView();
-            }
-
+            resources.PointLightBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
             {
-                const benzin::BufferResource::Config config
-                {
-                    .ElementSize{ sizeof(PointLight) },
-                    .ElementCount{ 20 * 20 },
-                    .Flags{ benzin::BufferResource::Flags::Dynamic }
-                };
-
-                resources.PointLightBuffer = std::make_unique<benzin::BufferResource>(m_Device, config);
-                resources.PointLightBuffer->SetDebugName("DeferredLightingPass_PointLightBuffer", i);
-                resources.PointLightBuffer->PushShaderResourceView();
-            }
+                .DebugName{ "DeferredLightingPass_PointLightBuffer", static_cast<uint32_t>(i) },
+                .ElementSize = sizeof(PointLight),
+                .ElementCount = 20 * 20,
+                .Flags = benzin::BufferFlag::Upload,
+                .IsNeedShaderResourceView = true,
+            });
         }
 
+        m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::GraphicsPipelineStateCreation
         {
-            const benzin::PipelineState::GraphicsConfig config
-            {
-                .VertexShader{ "fullscreen_triangle.hlsl", "VS_Main" },
-                .PixelShader{ "deferred_lighting.hlsl", "PS_Main" },
-                .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .DepthState{ benzin::DepthState::GetDisabled() },
-                .RenderTargetViewFormats{ benzin::GraphicsFormat::RGBA8Unorm },
-            };
-
-            m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, config);
-            m_PipelineState->SetDebugName("DeferredLightingPass");
-        }
+            .DebugName = "DeferredLightingPass",
+            .VertexShader{ "fullscreen_triangle.hlsl", "VS_Main" },
+            .PixelShader{ "deferred_lighting.hlsl", "PS_Main" },
+            .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
+            .DepthState = benzin::DepthState::GetDisabled(),
+            .RenderTargetFormats{ benzin::GraphicsFormat::RGBA8Unorm },
+        });
 
         OnResize(width, height);
     }
@@ -413,7 +385,7 @@ namespace sandbox
         commandList.SetViewport(m_SwapChain.GetViewport());
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
 
-        commandList.SetResourceBarrier(*m_OutputTexture, benzin::Resource::State::RenderTarget);
+        commandList.SetResourceBarrier(*m_OutputTexture, benzin::ResourceState::RenderTarget);
 
         commandList.SetRenderTargets({ m_OutputTexture->GetRenderTargetView() });
         commandList.ClearRenderTarget(m_OutputTexture->GetRenderTargetView());
@@ -437,7 +409,7 @@ namespace sandbox
             commandList.DrawVertexed(3);
         }
 
-        commandList.SetResourceBarrier(*m_OutputTexture, benzin::Resource::State::Present);
+        commandList.SetResourceBarrier(*m_OutputTexture, benzin::ResourceState::Present);
     }
 
     void DeferredLightingPass::OnImGuiRender()
@@ -480,19 +452,17 @@ namespace sandbox
 
     void DeferredLightingPass::OnResize(uint32_t width, uint32_t height)
     {
-        const benzin::TextureResource::Config config
+        m_OutputTexture = std::make_unique<benzin::Texture>(m_Device, benzin::TextureCreation
         {
-            .Type{ benzin::TextureResource::Type::Texture2D },
-            .Width{ width },
-            .Height{ height },
-            .MipCount{ 1 },
-            .Format{ benzin::config::GetBackBufferFormat() },
-            .Flags{ benzin::TextureResource::Flags::BindAsRenderTarget }
-        };
-
-        m_OutputTexture = std::make_unique<benzin::TextureResource>(m_Device, config);
-        m_OutputTexture->SetDebugName("DeferredLightingPass_OutputTexture");
-        m_OutputTexture->PushRenderTargetView();
+            .DebugName = "DeferredLightingPass_OutputTexture",
+            .Type = benzin::TextureType::Texture2D,
+            .Format = benzin::config::g_BackBufferFormat,
+            .Width = width,
+            .Height = height,
+            .MipCount = 1,
+            .Flags = benzin::TextureFlag::AllowRenderTarget,
+            .IsNeedRenderTargetView = true,
+        });
     }
 
     // EnvironmentPass
@@ -504,47 +474,40 @@ namespace sandbox
         {
             auto& resources = m_Resources[i];
 
-            const benzin::BufferResource::Config config
+            resources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
             {
-                .ElementSize{ sizeof(EnvironmentPassData) },
-                .ElementCount{ 1 },
-                .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
-            };
-
-            resources.PassBuffer = std::make_unique<benzin::BufferResource>(m_Device, config);
-            resources.PassBuffer->SetDebugName("EnvironmentPass_PassBuffer", i);
-            resources.PassBuffer->PushConstantBufferView();
+                .DebugName{ "EnvironmentPass_PassBuffer", static_cast<uint32_t>(i) },
+                .ElementSize = sizeof(EnvironmentPassData),
+                .ElementCount = 1,
+                .Flags = benzin::BufferFlag::ConstantBuffer,
+                .IsNeedConstantBufferView = true,
+            });
         }
 
+        m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::GraphicsPipelineStateCreation
         {
-            const benzin::PipelineState::GraphicsConfig config
+            .DebugName = "EnvironmentPass",
+            .VertexShader{ "fullscreen_triangle.hlsl", "VS_MainDepth1" },
+            .PixelShader{ "environment.hlsl", "PS_Main" },
+            .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
+            .DepthState
             {
-                .VertexShader{ "fullscreen_triangle.hlsl", "VS_MainDepth1" },
-                .PixelShader{ "environment.hlsl", "PS_Main" },
-                .PrimitiveTopologyType{ benzin::PrimitiveTopologyType::Triangle },
-                .DepthState
-                {
-                    .IsEnabled{ true },
-                    .IsWriteEnabled{ false },
-                    .ComparisonFunction{ benzin::ComparisonFunction::Equal },
-                },
-                .RenderTargetViewFormats{ benzin::GraphicsFormat::RGBA8Unorm },
-                .DepthStencilViewFormat{ benzin::GraphicsFormat::D24Unorm_S8Uint },
-            };
-
-            m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, config);
-            m_PipelineState->SetDebugName("EnvironmentPass");
-        }
+                .IsWriteEnabled = false,
+                .ComparisonFunction = benzin::ComparisonFunction::Equal,
+            },
+            .RenderTargetFormats{ benzin::GraphicsFormat::RGBA8Unorm },
+            .DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint,
+        });
 
         {
-            m_CubeTexture = std::unique_ptr<benzin::TextureResource>{ m_Device.GetTextureLoader().LoadCubeMapFromHDRFile("scythian_tombs_2_4k.hdr", 1024) };
+            m_CubeTexture = std::unique_ptr<benzin::Texture>{ m_Device.GetTextureLoader().LoadCubeMapFromHDRFile("scythian_tombs_2_4k.hdr", 1024) };
             m_CubeTexture->PushShaderResourceView();
 
             IBLTextureGenerator iblTextureGenerator{ m_Device };
             auto* irradianceTexture = iblTextureGenerator.GenerateIrradianceTexture(*m_CubeTexture);
             irradianceTexture->PushShaderResourceView();
 
-            m_EnvironmentTexture = std::unique_ptr<benzin::TextureResource>{ irradianceTexture };
+            m_EnvironmentTexture = std::unique_ptr<benzin::Texture>{ irradianceTexture };
         }
     }
 
@@ -563,7 +526,7 @@ namespace sandbox
         }
     }
 
-    void EnvironmentPass::OnExecute(benzin::TextureResource& deferredLightingOutputTexture, benzin::TextureResource& gbufferDepthStecil)
+    void EnvironmentPass::OnExecute(benzin::Texture& deferredLightingOutputTexture, benzin::Texture& gbufferDepthStecil)
     {
         enum class RootConstant : uint32_t
         {
@@ -577,8 +540,8 @@ namespace sandbox
         commandList.SetViewport(m_SwapChain.GetViewport());
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
 
-        commandList.SetResourceBarrier(deferredLightingOutputTexture, benzin::Resource::State::RenderTarget);
-        commandList.SetResourceBarrier(gbufferDepthStecil, benzin::Resource::State::DepthWrite);
+        commandList.SetResourceBarrier(deferredLightingOutputTexture, benzin::ResourceState::RenderTarget);
+        commandList.SetResourceBarrier(gbufferDepthStecil, benzin::ResourceState::DepthWrite);
 
         commandList.SetRenderTargets({ deferredLightingOutputTexture.GetRenderTargetView() }, &gbufferDepthStecil.GetDepthStencilView());
 
@@ -592,8 +555,8 @@ namespace sandbox
             commandList.DrawVertexed(3);
         }
 
-        commandList.SetResourceBarrier(deferredLightingOutputTexture, benzin::Resource::State::Present);
-        commandList.SetResourceBarrier(gbufferDepthStecil, benzin::Resource::State::Present);
+        commandList.SetResourceBarrier(deferredLightingOutputTexture, benzin::ResourceState::Present);
+        commandList.SetResourceBarrier(gbufferDepthStecil, benzin::ResourceState::Present);
     }
 
     // MainLayer
@@ -619,16 +582,6 @@ namespace sandbox
         }
     }
 
-    bool MainLayer::OnAttach()  
-    {
-        return true;
-    }
-
-    bool MainLayer::OnDetach()
-    {
-        return true;
-    }
-
     void MainLayer::OnEvent(benzin::Event& event)
     {
         m_FlyCameraController.OnEvent(event);
@@ -649,7 +602,7 @@ namespace sandbox
         m_FlyCameraController.OnUpdate(dt);
 
         {
-#if 1
+#if 0
             {
                 auto& tc = m_Registry.get<benzin::TransformComponent>(m_BoomBoxEntity);
                 tc.Rotation.x += 0.1f * dt;
@@ -675,7 +628,7 @@ namespace sandbox
                 const EntityData entityData
                 {
                     .WorldMatrix{ tc.GetMatrix() },
-                    .InverseWorldMatrix{ tc.GetInverseMatrix() }
+                    .InverseWorldMatrix{ tc.GetInverseMatrix() },
                 };
 
                 entityDataBuffer.Write(entityData, magic_enum::enum_integer(entity));
@@ -687,7 +640,7 @@ namespace sandbox
         m_EnvironmentPass.OnUpdate(m_Camera);
     }
 
-    void MainLayer::OnRender(float dt)
+    void MainLayer::OnRender()
     {
         m_GeometryPass.OnExecute(m_Registry, *m_Resources[m_SwapChain.GetCurrentBackBufferIndex()].EntityDataBuffer);
         m_DeferredLightingPass.OnExecute(m_GeometryPass.GetGBuffer());
@@ -703,25 +656,25 @@ namespace sandbox
 
             auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
-            commandList.SetResourceBarrier(currentBackBuffer, benzin::Resource::State::CopyDestination);
-            commandList.SetResourceBarrier(deferredLightingOutputTexture, benzin::Resource::State::CopySource);
+            commandList.SetResourceBarrier(currentBackBuffer, benzin::ResourceState::CopyDestination);
+            commandList.SetResourceBarrier(deferredLightingOutputTexture, benzin::ResourceState::CopySource);
 
             commandList.CopyResource(*m_SwapChain.GetCurrentBackBuffer(), m_DeferredLightingPass.GetOutputTexture());
 
-            commandList.SetResourceBarrier(currentBackBuffer, benzin::Resource::State::Present);
-            commandList.SetResourceBarrier(deferredLightingOutputTexture, benzin::Resource::State::Present);
+            commandList.SetResourceBarrier(currentBackBuffer, benzin::ResourceState::Present);
+            commandList.SetResourceBarrier(deferredLightingOutputTexture, benzin::ResourceState::Present);
         }
     }
 
-    void MainLayer::OnImGuiRender(float dt)
+    void MainLayer::OnImGuiRender()
     {
-        m_FlyCameraController.OnImGuiRender(dt);
+        m_FlyCameraController.OnImGuiRender();
 
         m_DeferredLightingPass.OnImGuiRender();
 #if 0
         ImGui::Begin("GBuffer");
         {
-            static constexpr auto displayTexture = [&](const benzin::TextureResource& texture)
+            static constexpr auto displayTexture = [&](const benzin::Texture& texture)
             {
                 const float widgetWidth = ImGui::GetContentRegionAvail().x;
 
@@ -791,18 +744,14 @@ namespace sandbox
         {
             auto& frameResource = m_Resources[i];
 
+            frameResource.EntityDataBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
             {
-                const benzin::BufferResource::Config config
-                {
-                    .ElementSize{ sizeof(EntityData) },
-                    .ElementCount{ 20 * 20 + 1 },
-                    .Flags{ benzin::BufferResource::Flags::Dynamic }
-                };
-
-                frameResource.EntityDataBuffer = std::make_unique<benzin::BufferResource>(m_Device, config);
-                frameResource.EntityDataBuffer->SetDebugName(fmt::format("MainLayer_EntityBuffer_{}", i));
-                frameResource.EntityDataBuffer->PushShaderResourceView();
-            }
+                .DebugName{ "MainLayer_EntityBuffer", static_cast<uint32_t>(i) },
+                .ElementSize = sizeof(EntityData),
+                .ElementCount = 20 * 20 + 1,
+                .Flags = benzin::BufferFlag::Upload,
+                .IsNeedShaderResourceView = true,
+            });
         }
     }
 
@@ -816,12 +765,27 @@ namespace sandbox
 
             auto& mc = m_Registry.emplace<benzin::ModelComponent>(entity);
             mc.Model = std::make_shared<benzin::Model>(m_Device);
-            //BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("DamagedHelmet/glTF/DamagedHelmet.gltf"));
-            //BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("CesiumMilkTruck/glTF/CesiumMilkTruck.gltf"));
-            BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("Sponza/glTF/Sponza.gltf"));
+            //BenzinAssert(mc.Model->LoadFromGLTFFile("DamagedHelmet/glTF/DamagedHelmet.gltf"));
+            //BenzinAssert(mc.Model->LoadFromGLTFFile("CesiumMilkTruck/glTF/CesiumMilkTruck.gltf"));
+            BenzinAssert(mc.Model->LoadFromGLTFFile("Sponza/glTF/Sponza.gltf"));
         }
 #endif
 
+#if 0
+        {
+            const entt::entity entity = m_Registry.create();
+            auto& tc = m_Registry.emplace<benzin::TransformComponent>(entity);
+            tc.Rotation = { 0.0f, DirectX::XM_PI, 0.0f };
+            tc.Scale = { 0.4f, 0.4f, 0.4f };
+
+            auto& mc = m_Registry.emplace<benzin::MeshletModelComponent>(entity);
+            mc.MeshletModel = std::make_shared<benzin::MeshletModel>(m_Device);
+            //BenzinAssert(mc.MeshletModel->LoadFromGLTFFile("DamagedHelmet/glTF/DamagedHelmet.gltf"));
+            BenzinAssert(mc.MeshletModel->LoadFromGLTFFile("CesiumMilkTruck/glTF/CesiumMilkTruck.gltf"));
+        }
+#endif
+
+#if 1
         {
             m_BoomBoxEntity = m_Registry.create();
 
@@ -832,7 +796,7 @@ namespace sandbox
 
             auto& mc = m_Registry.emplace<benzin::ModelComponent>(m_BoomBoxEntity);
             mc.Model = std::make_shared<benzin::Model>(m_Device);
-            BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("BoomBox/glTF-Binary/BoomBox.glb"));
+            BenzinAssert(mc.Model->LoadFromGLTFFile("BoomBox/glTF-Binary/BoomBox.glb"));
         }
 
         {
@@ -841,14 +805,17 @@ namespace sandbox
             auto& tc = m_Registry.emplace<benzin::TransformComponent>(m_DamagedHelmetEntity);
             tc.Rotation = { 0.0f, DirectX::XMConvertToRadians(-135.0f), 0.0f };
             tc.Scale = { 0.4f, 0.4f, 0.4f };
-            tc.Translation = { 1.0f, 0.6f, -0.5f };
+            tc.Translation = { 1.0f, 0.0f, -0.5f };
 
             auto& mc = m_Registry.emplace<benzin::ModelComponent>(m_DamagedHelmetEntity);
             mc.Model = std::make_shared<benzin::Model>(m_Device);
-            //BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("TextureCoordinateTest/glTF/TextureCoordinateTest.gltf"));
-            BENZIN_ASSERT(mc.Model->LoadFromGLTFFile("DamagedHelmet/glTF/DamagedHelmet.gltf"));
+            //BenzinAssert(mc.Model->LoadFromGLTFFile("TextureCoordinateTest/glTF/TextureCoordinateTest.gltf"));
+            BenzinAssert(mc.Model->LoadFromGLTFFile("CesiumMilkTruck/glTF/CesiumMilkTruck.gltf"));
+            //BenzinAssert(mc.Model->LoadFromGLTFFile("DamagedHelmet/glTF/DamagedHelmet.gltf"));
         }
+#endif
 
+#if 1
         {
             const benzin::geometry_generator::GeosphereConfig sphereConfig
             {
@@ -931,6 +898,7 @@ namespace sandbox
                 }
             }
         }
+#endif
     }
 
 } // namespace sandbox

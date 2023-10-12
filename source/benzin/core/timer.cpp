@@ -1,33 +1,30 @@
 #include "benzin/config/bootstrap.hpp"
-
 #include "benzin/core/timer.hpp"
 
 namespace benzin
 {
 
-    namespace _internal
+    namespace
     {
 
         // Counts - measure unit
         uint64_t GetCounts()
         {
-            uint64_t result{};
-
+            uint64_t result;
             return ::QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&result)) ? result : -1;
         }
 
         // Frequency - Counts per Second
         uint64_t GetFrequency()
         {
-            uint64_t result{};
-
+            uint64_t result;
             return ::QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&result)) ? result : -1;
         }
 
     } // namespace _internal
 
     Timer::Timer()
-        : m_SecondsPerCount(1.0f / static_cast<float>(_internal::GetFrequency()))
+        : m_SecondsPerCount{ 1.0f / static_cast<float>(GetFrequency()) }
     {}
 
     float Timer::GetTotalTime() const
@@ -37,7 +34,7 @@ namespace benzin
 
     void Timer::Start() 
     {
-        const uint64_t startTime{ _internal::GetCounts() };
+        const uint64_t startTime = GetCounts();
 
         if (m_IsStopped)
         {
@@ -53,14 +50,14 @@ namespace benzin
     {
         if (!m_IsStopped)
         {
-            m_StopTime = _internal::GetCounts();
+            m_StopTime = GetCounts();
             m_IsStopped = true;
         }
     }
 
     void Timer::Reset()
     {
-        const uint64_t currentTime{ _internal::GetCounts() };
+        const uint64_t currentTime = GetCounts();
 
         m_BaseTime = currentTime;
         m_PreviousTime = currentTime;
@@ -76,7 +73,7 @@ namespace benzin
             return;
         }
 
-        m_CurrentTime = _internal::GetCounts();
+        m_CurrentTime = GetCounts();
         m_DeltaTime = static_cast<float>(m_CurrentTime - m_PreviousTime) * m_SecondsPerCount;
         m_PreviousTime = m_CurrentTime;
 

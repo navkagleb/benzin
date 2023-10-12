@@ -1,32 +1,27 @@
 #include "benzin/config/bootstrap.hpp"
-
 #include "benzin/core/imgui_layer.hpp"
 
 #include <third_party/imgui/imgui_internal.h>
 #include <third_party/imgui/backends/imgui_impl_dx12.h>
 #include <third_party/imgui/backends/imgui_impl_win32.h>
 
-#include "benzin/graphics/api/command_queue.hpp"
-#include "benzin/graphics/api/texture.hpp"
-#include "benzin/system/event_dispatcher.hpp"
-#include "benzin/system/key_event.hpp"
+#include "benzin/graphics/command_queue.hpp"
+#include "benzin/graphics/texture.hpp"
 
 namespace benzin
 {
 
-    ImGuiLayer::ImGuiLayer(Window& window, Device& device, SwapChain& swapChain)
+    ImGuiLayer::ImGuiLayer(Window& window, Backend& backend, Device& device, SwapChain& swapChain)
         : m_Window{ window }
+        , m_Backend{ backend }
         , m_Device{ device }
         , m_SwapChain{ swapChain }
-    {}
-
-    bool ImGuiLayer::OnAttach()
     {
         IMGUI_CHECKVERSION();
 
         ImGui::CreateContext();
 
-        auto& io = ImGui::GetIO();
+        ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
@@ -35,37 +30,33 @@ namespace benzin
 
         ImGui::StyleColorsClassic();
 
-        auto& style = ImGui::GetStyle();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
+            ImGuiStyle& style = ImGui::GetStyle();
             style.WindowRounding = 0.0f;
             style.Colors[ImGuiCol_WindowBg].w = 1.0f;
         }
 
-        m_FontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(Descriptor::Type::ShaderResourceView);
+        m_FontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::ShaderResourceView);
 
-        BENZIN_ASSERT(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
-        BENZIN_ASSERT(ImGui_ImplDX12_Init(
+        BenzinAssert(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
+        BenzinAssert(ImGui_ImplDX12_Init(
             m_Device.GetD3D12Device(),
-            config::GetBackBufferCount(),
-            static_cast<DXGI_FORMAT>(config::GetBackBufferFormat()),
+            config::g_BackBufferCount,
+            static_cast<DXGI_FORMAT>(config::g_BackBufferFormat),
             m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCPUHandle() },
             D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGPUHandle() }
         ));
-
-        return true;
     }
 
-    bool ImGuiLayer::OnDetach()
+    ImGuiLayer::~ImGuiLayer()
     {
-        m_Device.GetDescriptorManager().DeallocateDescriptor(Descriptor::Type::ShaderResourceView, m_FontDescriptor);
+        m_Device.GetDescriptorManager().DeallocateDescriptor(DescriptorType::ShaderResourceView, m_FontDescriptor);
 
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
-
-        return true;
     }
 
     void ImGuiLayer::Begin()
@@ -88,12 +79,12 @@ namespace benzin
         {
             auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
-            commandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::RenderTarget);
+            commandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), ResourceState::RenderTarget);
 
             commandList.SetRenderTargets({ m_SwapChain.GetCurrentBackBuffer()->GetRenderTargetView() });
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
 
-            commandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), Resource::State::Present);
+            commandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), ResourceState::Present);
         }
     }
 
@@ -103,38 +94,15 @@ namespace benzin
 
         if (m_IsEventsAreBlocked)
         {
-            event.m_IsHandled |= event.IsInCategory(EventCategory_Keyboard) & io.WantCaptureKeyboard;
-            event.m_IsHandled |= event.IsInCategory(EventCategory_Mouse) & io.WantCaptureMouse;
+            event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Keyboard) & io.WantCaptureKeyboard;
+            event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Mouse) & io.WantCaptureMouse;
         }
 
         EventDispatcher dispatcher{ event };
-        dispatcher.Dispatch<KeyPressedEvent>([this](KeyPressedEvent event)
-        {
-            if (event.GetKeyCode() == KeyCode::F1)
-            {
-                m_IsWidgetDrawingEnabled = !m_IsWidgetDrawingEnabled;
-            }
-
-            if (event.GetKeyCode() == KeyCode::I)
-            {
-                m_IsEventsAreBlocked = !m_IsEventsAreBlocked;
-            }
-
-            if (event.GetKeyCode() == KeyCode::O)
-            {
-                m_IsDemoWindowEnabled = !m_IsDemoWindowEnabled;
-            }
-
-            if (event.GetKeyCode() == KeyCode::P)
-            {
-                m_IsBottomPanelEnabled = !m_IsBottomPanelEnabled;
-            }
-
-            return false;
-        });
+        dispatcher.Dispatch(&ImGuiLayer::OnKeyPressed, *this);
     }
 
-    void ImGuiLayer::OnImGuiRender(float dt)
+    void ImGuiLayer::OnImGuiRender()
     {
         static float currentFramerate = ImGui::GetIO().Framerate;
 
@@ -164,9 +132,10 @@ namespace benzin
             if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, windowFlags))
             {
                 ImGui::Text(
-                    "FPS: %.1f (%.3f ms)"
-                    " | "
+                    "%s | "
+                    "FPS: %.1f (%.3f ms) | "
                     "(%d x %d)",
+                    m_Backend.GetMainAdapterName().c_str(),
                     currentFramerate, 1000.0f / currentFramerate,
                     m_Window.GetWidth(), m_Window.GetHeight()
                 );
@@ -176,6 +145,31 @@ namespace benzin
             ImGui::PopStyleColor();
             ImGui::PopStyleVar(3);
         }
+    }
+
+    bool ImGuiLayer::OnKeyPressed(KeyPressedEvent& event)
+    {
+        if (event.GetKeyCode() == KeyCode::F1)
+        {
+            m_IsWidgetDrawingEnabled = !m_IsWidgetDrawingEnabled;
+        }
+
+        if (event.GetKeyCode() == KeyCode::I)
+        {
+            m_IsEventsAreBlocked = !m_IsEventsAreBlocked;
+        }
+
+        if (event.GetKeyCode() == KeyCode::O)
+        {
+            m_IsDemoWindowEnabled = !m_IsDemoWindowEnabled;
+        }
+
+        if (event.GetKeyCode() == KeyCode::P)
+        {
+            m_IsBottomPanelEnabled = !m_IsBottomPanelEnabled;
+        }
+
+        return false;
     }
 
 } // namespace benzin

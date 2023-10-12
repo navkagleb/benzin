@@ -1,8 +1,8 @@
 #pragma once
 
-#include <benzin/graphics/api/device.hpp>
-#include <benzin/graphics/api/pipeline_state.hpp>
-#include <benzin/graphics/api/texture.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/texture.hpp>
 
 namespace sandbox
 {
@@ -13,7 +13,7 @@ namespace sandbox
         IBLTextureGenerator(benzin::Device& device);
 
     public:
-        benzin::TextureResource* GenerateIrradianceTexture(const benzin::TextureResource& cubeTexture) const;
+        benzin::Texture* GenerateIrradianceTexture(const benzin::Texture& cubeTexture) const;
 
     private:
         benzin::Device& m_Device;

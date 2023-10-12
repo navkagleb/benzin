@@ -1,10 +1,9 @@
 #include "bootstrap.hpp"
-
 #include "ibl_texture_generator.hpp"
 
-#include <benzin/graphics/api/command_queue.hpp>
-#include <benzin/graphics/api/pipeline_state.hpp>
-#include <benzin/graphics/api/texture.hpp>
+#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/texture.hpp>
 
 namespace sandbox
 {
@@ -12,35 +11,35 @@ namespace sandbox
     IBLTextureGenerator::IBLTextureGenerator(benzin::Device& device)
         : m_Device{ device }
     {
-        const benzin::PipelineState::ComputeConfig config
+        m_IrradiancePipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::ComputePipelineStateCreation
         {
+            .DebugName = "IrradianceGenerator",
             .ComputeShader{ "ibl_texture.hlsl", "CS_Main" },
-        };
-
-        m_IrradiancePipelineState = std::make_unique<benzin::PipelineState>(m_Device, config);
-        m_IrradiancePipelineState->SetDebugName("IrradianceGenerator");
+        });
     }
 
-    benzin::TextureResource* IBLTextureGenerator::GenerateIrradianceTexture(const benzin::TextureResource& cubeTexture) const
+    benzin::Texture* IBLTextureGenerator::GenerateIrradianceTexture(const benzin::Texture& cubeTexture) const
     {
         const uint32_t textureSize = 64;
         const uint32_t textureArraySize = 6;
 
-        const benzin::TextureResource::Config config
+        auto* irradianceTexture = new benzin::Texture
         {
-            .Type{ benzin::TextureResource::Type::Texture2D },
-            .Width{ textureSize },
-            .Height{ textureSize },
-            .ArraySize{ textureArraySize },
-            .MipCount{ 1 },
-            .IsCubeMap{ true },
-            .Format{ benzin::GraphicsFormat::RGBA32Float },
-            .Flags{ benzin::TextureResource::Flags::BindAsUnorderedAccess },
+            m_Device,
+            benzin::TextureCreation
+            {
+                .DebugName = "Irradiance",
+                .Type = benzin::TextureType::Texture2D,
+                .IsCubeMap = true,
+                .Format = benzin::GraphicsFormat::RGBA32Float,
+                .Width = textureSize,
+                .Height = textureSize,
+                .ArraySize = textureArraySize,
+                .MipCount = 1,
+                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .IsNeedUnorderedAccessView = true,
+            },
         };
-
-        auto* irradianceTexture = new benzin::TextureResource{ m_Device, config };
-        irradianceTexture->SetDebugName("Irradiance");
-        irradianceTexture->PushUnorderedAccessView({ .StartElementIndex{ 0 }, .ElementCount{ textureArraySize } });
 
         {
             enum class RootConstant : uint32_t
@@ -53,15 +52,15 @@ namespace sandbox
             auto& computeCommandList = computeCommandQueue->GetCommandList();
 
             computeCommandList.SetPipelineState(*m_IrradiancePipelineState);
-            computeCommandList.SetResourceBarrier(*irradianceTexture, benzin::Resource::State::UnorderedAccess);
+            computeCommandList.SetResourceBarrier(*irradianceTexture, benzin::ResourceState::UnorderedAccess);
 
-            BENZIN_ASSERT(cubeTexture.HasShaderResourceView());
+            BenzinAssert(cubeTexture.HasShaderResourceView());
             computeCommandList.SetRootShaderResource(RootConstant::InputCubeTextureIndex, cubeTexture.GetShaderResourceView());
             computeCommandList.SetRootUnorderedAccess(RootConstant::OutIrradianceTextureIndex, irradianceTexture->GetUnorderedAccessView());
 
-            computeCommandList.Dispatch({ textureSize, textureSize, 6 }, { 8, 8, 1 });
+            computeCommandList.Dispatch({ textureSize, textureSize, textureArraySize }, { 8, 8, 1 });
 
-            computeCommandList.SetResourceBarrier(*irradianceTexture, benzin::Resource::State::Present);
+            computeCommandList.SetResourceBarrier(*irradianceTexture, benzin::ResourceState::Present);
         }
 
         return irradianceTexture;

@@ -52,10 +52,10 @@ namespace benzin
         DirectX::XMMATRIX CreateMatrix() const override;
 
     private:
-        float m_FOV{ DirectX::XMConvertToRadians(60.0f) };
-        float m_AspectRatio{ 0.0f };
-        float m_NearPlane{ 0.1f };
-        float m_FarPlane{ 1000.0f };
+        float m_FOV = DirectX::XMConvertToRadians(60.0f);
+        float m_AspectRatio = 0.0f;
+        float m_NearPlane = 0.1f;
+        float m_FarPlane = 1000.0f;
     };
 
     class OrthographicProjection : public Projection
@@ -63,12 +63,12 @@ namespace benzin
     public:
         struct ViewRect
         {
-            float LeftPlane{ -1.0f };
-            float RightPlane{ 1.0f };
-            float BottomPlane{ -1.0f };
-            float TopPlane{ 1.0f };
-            float NearPlane{ -1.0f };
-            float FarPlane{ 1.0f };
+            float LeftPlane = -1.0f;
+            float RightPlane = 1.0f;
+            float BottomPlane = -1.0f;
+            float TopPlane = 1.0f;
+            float NearPlane = -1.0f;
+            float FarPlane = 1.0f;
         };
 
     public:
@@ -126,10 +126,10 @@ namespace benzin
         DirectX::XMVECTOR m_UpDirection{ 0.0f, 1.0f, 0.0f, 1.0f };
         DirectX::XMVECTOR m_RightDirection{ 0.0f, 0.0f, 0.0f, 1.0f };
 
-        DirectX::XMMATRIX m_ViewMatrix{ DirectX::XMMatrixIdentity() };
-        DirectX::XMMATRIX m_InverseViewMatrix{ DirectX::XMMatrixIdentity() };
+        DirectX::XMMATRIX m_ViewMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_InverseViewMatrix = DirectX::XMMatrixIdentity();
 
-        const Projection* m_Projection{ nullptr };
+        const Projection* m_Projection = nullptr;
     };
 
     class FlyCameraController
@@ -143,7 +143,7 @@ namespace benzin
     public:
         void OnEvent(Event& event);
         void OnUpdate(float dt);
-        void OnImGuiRender(float dt);
+        void OnImGuiRender();
 
     private:
         bool OnWindowResized(WindowResizedEvent& event);
@@ -162,13 +162,13 @@ namespace benzin
     private:
         Camera& m_Camera;
 
-        float m_CameraTranslationSpeed{ 2.0f };
-        float m_MouseSensitivity{ 0.003f };
-        float m_MouseWheelSensitivity{ 0.04f };
+        float m_CameraTranslationSpeed = 2.0f;
+        float m_MouseSensitivity = 0.003f;
+        float m_MouseWheelSensitivity = 0.04f;
 
         // For camera front direction
-        float m_Pitch{ 0.0f }; // X axis (top-down)
-        float m_Yaw{ -DirectX::XM_PIDIV2 }; // Y axis (left-right)
+        float m_Pitch = 0.0f; // X axis (top-down)
+        float m_Yaw = -DirectX::XM_PIDIV2; // Y axis (left-right)
         DirectX::XMFLOAT2 m_LastMousePosition{ 0.0f, 0.0f };
     };
 

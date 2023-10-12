@@ -1,7 +1,7 @@
 #pragma once
 
-#include <benzin/graphics/api/device.hpp>
-#include <benzin/graphics/api/command_list.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/command_list.hpp>
 
 namespace sandbox
 {
@@ -12,10 +12,10 @@ namespace sandbox
         SobelFilterPass(benzin::Device& device, uint32_t width, uint32_t height);
 
     public:
-        const std::shared_ptr<benzin::TextureResource>& GetEdgeMap() const { return m_EdgeMap; }
+        const std::shared_ptr<benzin::Texture>& GetEdgeMap() const { return m_EdgeMap; }
 
     public:
-        void OnExecute(benzin::GraphicsCommandList& commandList, benzin::TextureResource& input);
+        void OnExecute(benzin::GraphicsCommandList& commandList, benzin::Texture& input);
 
         void OnResize(benzin::Device& device, uint32_t width, uint32_t height);
 
@@ -24,7 +24,7 @@ namespace sandbox
         void InitPipelineStates(benzin::Device& device);
 
     private:
-        std::shared_ptr<benzin::TextureResource> m_EdgeMap;
+        std::shared_ptr<benzin::Texture> m_EdgeMap;
         std::unique_ptr<benzin::PipelineState> m_SobelFilterPSO;
         std::unique_ptr<benzin::PipelineState> m_CompositePSO;
     };

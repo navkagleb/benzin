@@ -1,11 +1,10 @@
 #include "bootstrap.hpp"
-
 #include "blur_pass.hpp"
 
-#include <benzin/graphics/api/device.hpp>
-#include <benzin/graphics/api/command_list.hpp>
-#include <benzin/graphics/api/pipeline_state.hpp>
-#include <benzin/graphics/api/texture.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/command_list.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/mapped_data.hpp>
 
 #if 0
@@ -55,7 +54,7 @@ namespace sandbox
         Settings CalcSettingsForSigma(float sigma)
         {
             const int32_t blurRadius = static_cast<int32_t>(std::ceil(2.0f * sigma));
-            BENZIN_ASSERT(blurRadius <= g_MaxBlurRadius);
+            BenzinAssert(blurRadius <= g_MaxBlurRadius);
 
             return Settings
             {
@@ -78,7 +77,7 @@ namespace sandbox
         InitTextures(device, width, height);
     }
 
-    void BlurPass::OnExecute(benzin::GraphicsCommandList& commandList, benzin::TextureResource& input, const ExecuteArgs& args)
+    void BlurPass::OnExecute(benzin::GraphicsCommandList& commandList, benzin::Texture& input, const ExecuteArgs& args)
     {
         UpdateSettingsBuffer(*m_HorizontalPass.SettingsBuffer, CalcSettingsForSigma(args.HorizontalBlurSigma));
         UpdateSettingsBuffer(*m_VerticalPass.SettingsBuffer, CalcSettingsForSigma(args.VerticalBlurSigma));
@@ -86,11 +85,11 @@ namespace sandbox
         const uint32_t width = input.GetConfig().Width;
         const uint32_t height = input.GetConfig().Height;
 
-        commandList.SetResourceBarrier(*m_BlurMaps[0], benzin::Resource::State::CopyDestination);
+        commandList.SetResourceBarrier(*m_BlurMaps[0], benzin::ResourceState::CopyDestination);
         commandList.CopyResource(*m_BlurMaps[0], input);
 
-        commandList.SetResourceBarrier(*m_BlurMaps[0], benzin::Resource::State::GenericRead);
-        commandList.SetResourceBarrier(*m_BlurMaps[1], benzin::Resource::State::UnorderedAccess);
+        commandList.SetResourceBarrier(*m_BlurMaps[0], benzin::ResourceState::GenericRead);
+        commandList.SetResourceBarrier(*m_BlurMaps[1], benzin::ResourceState::UnorderedAccess);
 
         for (uint32_t i = 0; i < args.BlurCount; ++i)
         {
@@ -107,8 +106,8 @@ namespace sandbox
             }
         }
 
-        commandList.SetResourceBarrier(*m_BlurMaps[0], benzin::Resource::State::Present);
-        commandList.SetResourceBarrier(*m_BlurMaps[1], benzin::Resource::State::Present);
+        commandList.SetResourceBarrier(*m_BlurMaps[0], benzin::ResourceState::Present);
+        commandList.SetResourceBarrier(*m_BlurMaps[1], benzin::ResourceState::Present);
     }
 
     void BlurPass::OnResize(benzin::Device& device, uint32_t width, uint32_t height)
@@ -121,11 +120,11 @@ namespace sandbox
         static const auto initPass = [&](DirectionPass& pass, const std::string& passName)
         {
             {
-                const benzin::BufferResource::Config config
+                const benzin::BufferConfig config
                 {
                     .ElementSize{ sizeof(Settings) },
                     .ElementCount{ 1 },
-                    .Flags{ benzin::BufferResource::Flags::ConstantBuffer }
+                    .Flags{ benzin::BufferFlag::ConstantBuffer }
                 };
 
                 pass.SettingsBuffer = std::make_shared<benzin::BufferResource>(device, config);
@@ -152,19 +151,19 @@ namespace sandbox
 
     void BlurPass::InitTextures(benzin::Device& device, uint32_t width, uint32_t height)
     {
-        const benzin::TextureResource::Config config
+        const benzin::Texture::Config config
         {
-            .Type{ benzin::TextureResource::Type::Texture2D },
+            .Type{ benzin::Texture::Type::Texture2D },
             .Width{ width },
             .Height{ height },
             .Format{ benzin::GraphicsFormat::RGBA8Unorm },
-            .Flags{ benzin::TextureResource::Flags::BindAsUnorderedAccess },
+            .Flags{ benzin::Texture::Flags::BindAsUnorderedAccess },
         };
 
         for (size_t i = 0; i < m_BlurMaps.size(); ++i)
         {
             auto& blurMap = m_BlurMaps[i];
-            blurMap = std::make_shared<benzin::TextureResource>(device, config);
+            blurMap = std::make_shared<benzin::Texture>(device, config);
             blurMap->SetDebugName("BlurMap" + std::to_string(0));
             blurMap->PushShaderResourceView();
             blurMap->PushUnorderedAccessView();
@@ -173,8 +172,8 @@ namespace sandbox
     
     void BlurPass::ExecuteDirectionPass(
         benzin::GraphicsCommandList& commandList,
-        benzin::TextureResource& input,
-        benzin::TextureResource& output,
+        benzin::Texture& input,
+        benzin::Texture& output,
         const DirectionPass& pass,
         uint32_t threadGroupCountX,
         uint32_t threadGroupCountY
@@ -192,11 +191,11 @@ namespace sandbox
         commandList.SetRootShaderResourceC(RootConstant::InputTextureIndex, input.GetShaderResourceView());
         commandList.SetRootUnorderedAccessC(RootConstant::OutputTextureIndex, output.GetUnorderedAccessView());
 
-        BENZIN_ASSERT(threadGroupCountX && threadGroupCountY);
+        BenzinAssert(threadGroupCountX && threadGroupCountY);
         commandList.Dispatch(threadGroupCountX, threadGroupCountY, 1);
 
-        commandList.SetResourceBarrier(input, benzin::Resource::State::UnorderedAccess);
-        commandList.SetResourceBarrier(output, benzin::Resource::State::GenericRead);
+        commandList.SetResourceBarrier(input, benzin::ResourceState::UnorderedAccess);
+        commandList.SetResourceBarrier(output, benzin::ResourceState::GenericRead);
     }
 
 } // namespace sandbox

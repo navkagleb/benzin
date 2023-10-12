@@ -46,8 +46,6 @@ project "third_party"
     cppdialect "C++20"
     location "../source/third_party"
 
-    -- targetname "third_party_%{cfg.buildcfg}"
-
     targetdir "../bin"
     objdir "../build/third_party/%{cfg.buildcfg}"
 
@@ -55,6 +53,8 @@ project "third_party"
         -- directx
         "../source/third_party/directx/**.h",
         "../source/third_party/directx/**.cpp",
+
+        -- directxmesh
 
         -- entt
         "../source/third_party/entt/**.h",
@@ -84,8 +84,6 @@ project "benzin"
     cppdialect "C++20"
     location "../source/benzin"
 
-    -- targetname "benzin_%{cfg.buildcfg}"
-
     targetdir "../bin"
     objdir "../build/benzin/%{cfg.buildcfg}"
 
@@ -96,6 +94,7 @@ project "benzin"
 
     nuget {
         "Microsoft.Direct3D.D3D12:1.610.3",
+        "directxmesh_desktop_win10:2023.4.28.1",
         -- "WinPixEventRuntime:1.0.230302001"
     }
 
@@ -112,19 +111,19 @@ project "benzin"
     }
 
     prebuildcommands {
-        "powershell -ExecutionPolicy Bypass -File $(SolutionDir)/tools/get_latest_dxc.ps1 $(SolutionDir)packages/DXC"
+        "powershell -ExecutionPolicy Bypass -File $(SolutionDir)/tools/get_latest_dxc.ps1 $(SolutionDir)packages/dxc"
     }
 
     postbuildcommands {
         -- DirectX Agile SDK
-        "xcopy /f /Y \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/D3D12Core.dll\" \"$(SolutionDir)bin\"",
-        "xcopy /f /Y \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/D3D12Core.pdb\" \"$(SolutionDir)bin\"",
-        "xcopy /f /Y \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/d3d12SDKLayers.dll\" \"$(SolutionDir)bin\"",
-        "xcopy /f /Y \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/d3d12SDKLayers.pdb\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/D3D12Core.dll\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/D3D12Core.pdb\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/d3d12SDKLayers.dll\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/d3d12SDKLayers.pdb\" \"$(SolutionDir)bin\"",
 
         -- DXC
-        "xcopy /f /Y \"$(SolutionDir)packages/DXC/bin/x64/dxcompiler.dll\" \"$(SolutionDir)bin\"",
-        "xcopy /f /Y \"$(SolutionDir)packages/DXC/bin/x64/dxil.dll\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y /D \"$(SolutionDir)packages/DXC/bin/x64/dxcompiler.dll\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y /D \"$(SolutionDir)packages/DXC/bin/x64/dxil.dll\" \"$(SolutionDir)bin\"",
     }
 
 project "sandbox"
@@ -133,10 +132,10 @@ project "sandbox"
     cppdialect "C++20"
     location "../source/sandbox"
 
-    -- targetname "sandbox_%{cfg.buildcfg}"
-
     targetdir "../bin"
     objdir "../build/sandbox/%{cfg.buildcfg}"
+
+    debugdir "$(SolutionDir)"
 
     links {
         "third_party",
@@ -145,6 +144,11 @@ project "sandbox"
 
     pchheader "bootstrap.hpp"
     pchsource "../source/sandbox/bootstrap.cpp"
+
+    nuget {
+        "Microsoft.Direct3D.D3D12:1.610.3",
+        "directxmesh_desktop_win10:2023.4.28.1",
+    }
 
     files {
         "../source/sandbox/**.hpp",
@@ -156,6 +160,7 @@ project "sandbox"
     }
 
     includedirs {
+        "../",
         "../source/",
         "../source/sandbox",
     }

@@ -3,6 +3,6 @@
 namespace benzin
 {
 
-	int ClientMain();
+    int ClientMain();
 
 } // namespace benzin

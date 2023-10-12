@@ -3,10 +3,9 @@
 #include <benzin/core/layer.hpp>
 #include <benzin/engine/camera.hpp>
 #include <benzin/engine/entity.hpp>
-#include <benzin/engine/model.hpp>
-#include <benzin/graphics/api/device.hpp>
-#include <benzin/graphics/api/pipeline_state.hpp>
-#include <benzin/graphics/api/swap_chain.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/swap_chain.hpp>
 #include <benzin/system/window.hpp>
 
 namespace sandbox
@@ -17,17 +16,17 @@ namespace sandbox
     public:
         struct GBuffer
         {
-            std::shared_ptr<benzin::TextureResource> Albedo;
-            std::shared_ptr<benzin::TextureResource> WorldNormal;
-            std::shared_ptr<benzin::TextureResource> Emissive;
-            std::shared_ptr<benzin::TextureResource> RoughnessMetalness;
-            std::shared_ptr<benzin::TextureResource> DepthStencil;
+            std::shared_ptr<benzin::Texture> Albedo;
+            std::shared_ptr<benzin::Texture> WorldNormal;
+            std::shared_ptr<benzin::Texture> Emissive;
+            std::shared_ptr<benzin::Texture> RoughnessMetalness;
+            std::shared_ptr<benzin::Texture> DepthStencil;
         };
 
     private:
         struct Resources
         {
-            std::unique_ptr<benzin::BufferResource> PassBuffer;
+            std::unique_ptr<benzin::Buffer> PassBuffer;
         };
 
     private:
@@ -45,7 +44,7 @@ namespace sandbox
 
     public:
         void OnUpdate(const benzin::Camera& camera);
-        void OnExecute(const entt::registry& registry, const benzin::BufferResource& entityBuffer);
+        void OnExecute(const entt::registry& registry, const benzin::Buffer& entityBuffer);
 
         void OnResize(uint32_t width, uint32_t height);
 
@@ -53,7 +52,7 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::array<Resources, benzin::config::GetBackBufferCount()> m_Resources;
+        std::array<Resources, benzin::config::g_BackBufferCount> m_Resources;
         std::unique_ptr<benzin::PipelineState> m_PipelineState;
         GBuffer m_GBuffer;
     };
@@ -76,15 +75,15 @@ namespace sandbox
     private:
         struct Resources
         {
-            std::unique_ptr<benzin::BufferResource> PassBuffer;
-            std::unique_ptr<benzin::BufferResource> PointLightBuffer;
+            std::unique_ptr<benzin::Buffer> PassBuffer;
+            std::unique_ptr<benzin::Buffer> PointLightBuffer;
         };
 
     public:
         DeferredLightingPass(benzin::Device& device, benzin::SwapChain& swapChain, uint32_t width, uint32_t height);
 
     public:
-        benzin::TextureResource& GetOutputTexture() { return *m_OutputTexture; }
+        benzin::Texture& GetOutputTexture() { return *m_OutputTexture; }
         OutputType GetOutputType() const { return m_OutputType; }
 
     public:
@@ -98,9 +97,9 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::array<Resources, benzin::config::GetBackBufferCount()> m_Resources;
+        std::array<Resources, benzin::config::g_BackBufferCount> m_Resources;
         std::unique_ptr<benzin::PipelineState> m_PipelineState;
-        std::unique_ptr<benzin::TextureResource> m_OutputTexture;
+        std::unique_ptr<benzin::Texture> m_OutputTexture;
 
         OutputType m_OutputType{ OutputType::Final };
 
@@ -114,7 +113,7 @@ namespace sandbox
     private:
         struct Resources
         {
-            std::unique_ptr<benzin::BufferResource> PassBuffer;
+            std::unique_ptr<benzin::Buffer> PassBuffer;
         };
 
     public:
@@ -122,18 +121,18 @@ namespace sandbox
 
     public:
         void OnUpdate(const benzin::Camera& camera);
-        void OnExecute(benzin::TextureResource& deferredLightingOutputTexture, benzin::TextureResource& gbufferDepthStecil);
+        void OnExecute(benzin::Texture& deferredLightingOutputTexture, benzin::Texture& gbufferDepthStecil);
 
     private:
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::array<Resources, benzin::config::GetBackBufferCount()> m_Resources;
+        std::array<Resources, benzin::config::g_BackBufferCount> m_Resources;
         std::unique_ptr<benzin::PipelineState> m_PipelineState;
-        std::unique_ptr<benzin::TextureResource> m_EnvironmentTexture;
-        std::unique_ptr<benzin::TextureResource> m_HDRTexture;
+        std::unique_ptr<benzin::Texture> m_EnvironmentTexture;
+        std::unique_ptr<benzin::Texture> m_HDRTexture;
 
-        std::unique_ptr<benzin::TextureResource> m_CubeTexture;
+        std::unique_ptr<benzin::Texture> m_CubeTexture;
     };
 
     class MainLayer : public benzin::Layer
@@ -141,7 +140,7 @@ namespace sandbox
     private:
         struct Resources
         {
-            std::unique_ptr<benzin::BufferResource> EntityDataBuffer;
+            std::unique_ptr<benzin::Buffer> EntityDataBuffer;
         };
 
     public:
@@ -149,13 +148,10 @@ namespace sandbox
         ~MainLayer();
 
     public:
-        bool OnAttach() override;
-        bool OnDetach() override;
-
         void OnEvent(benzin::Event& event) override;
         void OnUpdate(float dt) override;
-        void OnRender(float dt) override;
-        void OnImGuiRender(float dt) override;
+        void OnRender() override;
+        void OnImGuiRender() override;
 
     private:
         void CreateResources();
@@ -166,7 +162,7 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::array<Resources, benzin::config::GetBackBufferCount()> m_Resources;
+        std::array<Resources, benzin::config::g_BackBufferCount> m_Resources;
 
         benzin::PerspectiveProjection m_PerspectiveProjection{ DirectX::XMConvertToRadians(60.0f), m_SwapChain.GetAspectRatio(), 0.1f, 1000.0f };
         benzin::Camera m_Camera{ &m_PerspectiveProjection };

@@ -1,9 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
-
 #include "benzin/engine/camera.hpp"
 
 #include "benzin/system/input.hpp"
-#include "benzin/system/event_dispatcher.hpp"
 
 namespace benzin
 {
@@ -58,9 +56,7 @@ namespace benzin
         DirectX::BoundingFrustum::CreateFromMatrix(m_BoundingFrustum, m_Projection);
     };
 
-    //////////////////////////////////////////////////////////////////////////
-    /// PerspectiveProjection
-    //////////////////////////////////////////////////////////////////////////
+    // PerspectiveProjection
     PerspectiveProjection::PerspectiveProjection(float fov, float aspectRatio, float nearPlane, float farPlane)
     {
         SetLens(fov, aspectRatio, nearPlane, farPlane);
@@ -95,9 +91,7 @@ namespace benzin
         return DirectX::XMMatrixPerspectiveFovLH(m_FOV, m_AspectRatio, m_NearPlane, m_FarPlane);
     }
 
-    //////////////////////////////////////////////////////////////////////////
-    /// OrthographicProjection
-    //////////////////////////////////////////////////////////////////////////
+    // OrthographicProjection
     void OrthographicProjection::SetViewRect(const ViewRect& viewRect)
     {
         m_ViewRect = viewRect;
@@ -117,9 +111,7 @@ namespace benzin
         );
     }
 
-    //////////////////////////////////////////////////////////////////////////
-    /// Camera
-    //////////////////////////////////////////////////////////////////////////
+    // Camera
     Camera::Camera()
     {
         UpdateRightDirection();
@@ -159,28 +151,28 @@ namespace benzin
 
     void Camera::SetProjection(const Projection* projection)
     {
-        BENZIN_ASSERT(projection);
+        BenzinAssert(projection);
 
         m_Projection = projection;
     }
 
     const DirectX::XMMATRIX& Camera::GetProjectionMatrix() const
     {
-        BENZIN_ASSERT(m_Projection);
+        BenzinAssert(m_Projection);
 
         return m_Projection->GetMatrix();
     }
 
     const DirectX::XMMATRIX& Camera::GetInverseProjectionMatrix() const
     {
-        BENZIN_ASSERT(m_Projection);
+        BenzinAssert(m_Projection);
 
         return m_Projection->GetInverseMatrix();
     }
 
     DirectX::XMMATRIX Camera::GetViewProjectionMatrix() const
     {
-        BENZIN_ASSERT(m_Projection);
+        BenzinAssert(m_Projection);
 
         return m_ViewMatrix * m_Projection->GetMatrix();
     }
@@ -217,9 +209,7 @@ namespace benzin
         m_InverseViewMatrix = DirectX::XMMatrixInverse(&viewDeterminant, m_ViewMatrix);
     }
 
-    //////////////////////////////////////////////////////////////////////////
-    /// CameraController
-    //////////////////////////////////////////////////////////////////////////
+    // CameraController
     FlyCameraController::FlyCameraController(Camera& camera)
         : m_Camera{ camera }
     {
@@ -234,10 +224,10 @@ namespace benzin
     void FlyCameraController::OnEvent(Event& event)
     {
         EventDispatcher dispatcher{ event };
-        dispatcher.Dispatch<WindowResizedEvent>(BENZIN_BIND_EVENT_CALLBACK(OnWindowResized));
-        dispatcher.Dispatch<MouseButtonPressedEvent>(BENZIN_BIND_EVENT_CALLBACK(OnMouseButtonPressed));
-        dispatcher.Dispatch<MouseMovedEvent>(BENZIN_BIND_EVENT_CALLBACK(OnMouseMoved));
-        dispatcher.Dispatch<MouseScrolledEvent>(BENZIN_BIND_EVENT_CALLBACK(OnMouseScrolled));
+        dispatcher.Dispatch(&FlyCameraController::OnWindowResized, *this);
+        dispatcher.Dispatch(&FlyCameraController::OnMouseButtonPressed, *this);
+        dispatcher.Dispatch(&FlyCameraController::OnMouseMoved, *this);
+        dispatcher.Dispatch(&FlyCameraController::OnMouseScrolled, *this);
     }
 
     void FlyCameraController::OnUpdate(float dt)
@@ -295,9 +285,9 @@ namespace benzin
         }
     }
 
-    void FlyCameraController::OnImGuiRender(float dt)
+    void FlyCameraController::OnImGuiRender()
     {
-        ImGui::Begin("Camera Controller");
+        ImGui::Begin("FlyCameraController");
         {
             RenderImGuiControllerProperties();
             ImGui::Separator();
@@ -453,7 +443,7 @@ namespace benzin
 
         if (!perspectiveProjection)
         {
-            BENZIN_WARNING("Projection isn't Perspective! FlyCameraController supports only PerspectiveProjection");
+            BenzinWarning("Projection isn't Perspective! FlyCameraController supports only PerspectiveProjection");
             return nullptr;
         }
 

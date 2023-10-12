@@ -1,11 +1,10 @@
 #include "bootstrap.hpp"
-
 #include "sobel_filter_pass.hpp"
 
-#include <benzin/graphics/api/device.hpp>
-#include <benzin/graphics/api/command_list.hpp>
-#include <benzin/graphics/api/pipeline_state.hpp>
-#include <benzin/graphics/api/texture.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/command_list.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/texture.hpp>
 
 #if 0
 
@@ -20,10 +19,10 @@ namespace sandbox
         InitPipelineStates(device);
     }
 
-    void SobelFilterPass::OnExecute(benzin::GraphicsCommandList& commandList, benzin::TextureResource& input)
+    void SobelFilterPass::OnExecute(benzin::GraphicsCommandList& commandList, benzin::Texture& input)
     {
-        BENZIN_ASSERT(input.HasShaderResourceView());
-        BENZIN_ASSERT(input.HasRenderTargetView());
+        BenzinAssert(input.HasShaderResourceView());
+        BenzinAssert(input.HasRenderTargetView());
 
         {
             enum class RootConstant : uint32_t
@@ -53,7 +52,7 @@ namespace sandbox
                 EdgeTextureMapIndex,
             };
 
-            commandList.SetResourceBarrier(input, benzin::Resource::State::RenderTarget);
+            commandList.SetResourceBarrier(input, benzin::ResourceState::RenderTarget);
 
             commandList.SetPipelineState(*m_CompositePSO);
             commandList.SetRootShaderResourceG(RootConstant::BaseTextureMapIndex, input.GetShaderResourceView());
@@ -61,7 +60,7 @@ namespace sandbox
 
             commandList.DrawVertexed(6, 0);
 
-            commandList.SetResourceBarrier(input, benzin::Resource::State::Present);
+            commandList.SetResourceBarrier(input, benzin::ResourceState::Present);
         }
     }
 
@@ -72,16 +71,16 @@ namespace sandbox
 
     void SobelFilterPass::InitTextures(benzin::Device& device, uint32_t width, uint32_t height)
     {
-        const benzin::TextureResource::Config config
+        const benzin::Texture::Config config
         {
-            .Type{ benzin::TextureResource::Type::Texture2D },
+            .Type{ benzin::Texture::Type::Texture2D },
             .Width{ width },
             .Height{ height },
             .Format{ benzin::GraphicsFormat::RGBA8Unorm },
-            .Flags{ benzin::TextureResource::Flags::BindAsUnorderedAccess }
+            .Flags{ benzin::Texture::Flags::BindAsUnorderedAccess }
         };
 
-        m_EdgeMap = std::make_shared<benzin::TextureResource>(device, config);
+        m_EdgeMap = std::make_shared<benzin::Texture>(device, config);
         m_EdgeMap->SetDebugName("SobelFilterEdgeMap");
         m_EdgeMap->PushShaderResourceView();
         m_EdgeMap->PushUnorderedAccessView();

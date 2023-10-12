@@ -5,12 +5,12 @@
 
 namespace benzin
 {
-    class MousePosition
+    class MousePositionEvent
     {
     public:
-        MousePosition(uint32_t x, uint32_t y)
-            : m_X(x)
-            , m_Y(y)
+        MousePositionEvent(uint32_t x, uint32_t y)
+            : m_X{ x }
+            , m_Y{ y }
         {}
 
     public:
@@ -18,32 +18,35 @@ namespace benzin
         template <typename T = uint32_t> T GetY() const { return static_cast<T>(m_Y); }
 
     protected:
-        uint32_t m_X;
-        uint32_t m_Y;
+        uint32_t m_X = 0;
+        uint32_t m_Y = 0;
     };
 
-    class MouseMovedEvent : public Event, public MousePosition
+    class MouseButtonEvent : public MousePositionEvent
     {
-        EVENT_CLASS_TYPE(MouseMovedEvent)
-        EVENT_CLASS_CATEGORY(EventCategory_Input | EventCategory_Mouse)
-
     public:
-        MouseMovedEvent(int32_t x, int32_t y)
-            : MousePosition(x, y)
+        MouseButtonEvent(MouseButton button, int32_t x, int32_t y)
+            : MousePositionEvent{ x, y }
+            , m_Button{ button }
         {}
 
     public:
-        std::string ToString() const override
-        {
-            return GetName() + ": " + std::to_string(m_X) + ", " + std::to_string(m_Y);
-        }
+        MouseButton GetButton() const { return m_Button; }
+
+    protected:
+        MouseButton m_Button = MouseButton::Unknown;
     };
 
-    class MouseScrolledEvent : public Event
+    class MouseMovedEvent : public EventInfo<EventType::MouseMovedEvent, EventCategoryFlag::Input, EventCategoryFlag::Mouse>, public MousePositionEvent
     {
-        EVENT_CLASS_TYPE(MouseScrolledEvent)
-        EVENT_CLASS_CATEGORY(EventCategory_Input | EventCategory_Mouse)
+    public:
+        MouseMovedEvent(int32_t x, int32_t y)
+            : MousePositionEvent{ x, y }
+        {}
+    };
 
+    class MouseScrolledEvent : public EventInfo<EventType::MouseScrolledEvent, EventCategoryFlag::Input, EventCategoryFlag::Mouse>
+    {
     public:
         MouseScrolledEvent(int8_t offsetX)
             : m_OffsetX{ offsetX }
@@ -52,62 +55,28 @@ namespace benzin
     public:
         int8_t GetOffsetX() const { return m_OffsetX; }
 
-        std::string ToString() const override
-        {
-            return GetName() + ": " + std::to_string(m_OffsetX);
-        }
-
     private:
-        int8_t m_OffsetX{ 0 };
+        int8_t m_OffsetX = 0;
     };
 
-    class MouseButtonEvent : public Event, public MousePosition
+    class MouseButtonPressedEvent
+        : public EventInfo<EventType::MouseButtonPressedEvent, EventCategoryFlag::Input, EventCategoryFlag::Mouse, EventCategoryFlag::MouseButton>
+        , public MouseButtonEvent
     {
-        EVENT_CLASS_CATEGORY(EventCategory_Input | EventCategory_Mouse | EventCategory_MouseButton)
-
-    public:
-        MouseButtonEvent(MouseButton button, int32_t x, int32_t y)
-            : MousePosition(x, y)
-            , m_Button(button)
-        {}
-        
-    public:
-        MouseButton GetButton() const { return m_Button; }
-
-    protected:
-        MouseButton m_Button;
-    };
-
-    class MouseButtonPressedEvent : public MouseButtonEvent
-    {
-        EVENT_CLASS_TYPE(MouseButtonPressedEvent)
-
     public:
         MouseButtonPressedEvent(MouseButton button, int32_t x, int32_t y)
-            : MouseButtonEvent(button, x, y)
+            : MouseButtonEvent{ button, x, y }
         {}
-
-    public:
-        std::string ToString() const override
-        {
-            return GetName() + ": " + std::to_string(static_cast<int32_t>(m_Button)) + "(" + std::to_string(m_X) + ", " + std::to_string(m_Y) + ")";
-        }
     };
 
-    class MouseButtonReleasedEvent : public MouseButtonEvent
+    class MouseButtonReleasedEvent
+        : public EventInfo<EventType::MouseButtonReleasedEvent, EventCategoryFlag::Input, EventCategoryFlag::Mouse, EventCategoryFlag::MouseButton>
+        , public MouseButtonEvent
     {
-        EVENT_CLASS_TYPE(MouseButtonReleasedEvent);
-
     public:
         MouseButtonReleasedEvent(MouseButton button, int32_t x, int32_t y)
-            : MouseButtonEvent(button, x, y)
+            : MouseButtonEvent{ button, x, y }
         {}
-
-    public:
-        std::string ToString() const override
-        {
-            return GetName() + ": " + std::to_string(static_cast<uint32_t>(m_Button)) + "(" + std::to_string(m_X) + ", " + std::to_string(m_Y) + ")";
-        }
     };
 
 } // namespace benzin

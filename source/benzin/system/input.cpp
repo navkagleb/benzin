@@ -1,5 +1,4 @@
 #include "benzin/config/bootstrap.hpp"
-
 #include "benzin/system/input.hpp"
 
 #include "benzin/system/window.hpp"
@@ -19,12 +18,12 @@ namespace benzin
 
     POINT Input::GetMousePosition(const Window& window)
     {
-        BENZIN_ASSERT(window.GetWin64Window());
+        BenzinAssert(window.GetWin64Window());
 
         POINT mousePosition{ 0, 0 };
 
-        BENZIN_ASSERT(::GetCursorPos(&mousePosition));
-        BENZIN_ASSERT(::ScreenToClient(window.GetWin64Window(), &mousePosition));
+        BenzinAssert(::GetCursorPos(&mousePosition) != 0);
+        BenzinAssert(::ScreenToClient(window.GetWin64Window(), &mousePosition) != 0);
 
         return mousePosition;
     }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "benzin/engine/model.hpp"
-#include "benzin/graphics/api/common.hpp"
+#include "benzin/graphics/common.hpp"
 
 namespace benzin
 {
@@ -18,12 +18,12 @@ namespace benzin
         explicit TextureLoader(Device& device);
 
     public:
-        TextureResource* LoadFromDDSFile(std::string_view fileName) const;
-        TextureResource* LoadFromHDRFile(std::string_view fileName) const;
-        TextureResource* LoadCubeMapFromHDRFile(std::string_view fileName, uint32_t size) const;
+        Texture* LoadFromDDSFile(std::string_view fileName) const;
+        Texture* LoadFromHDRFile(std::string_view fileName) const;
+        Texture* LoadCubeMapFromHDRFile(std::string_view fileName, uint32_t size) const;
 
     private:
-        void ConvertEquirectangularToCube(const TextureResource& equireactangularTexture, TextureResource& outCubeTexture) const;
+        void ToEquirectangularToCube(const Texture& equireactangularTexture, Texture& outCubeTexture) const;
 
     private:
         Device& m_Device;

@@ -10,7 +10,7 @@ namespace benzin
 
         Left = 0x01,
         Right = 0x02,
-        Middle = 0x04
+        Middle = 0x04,
     };
 
 } // namespace benzin

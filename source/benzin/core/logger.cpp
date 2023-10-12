@@ -1,5 +1,4 @@
 #include "benzin/config/bootstrap.hpp"
-
 #include "benzin/core/logger.hpp"
 
 namespace benzin
@@ -8,14 +7,46 @@ namespace benzin
     namespace
     {
 
-        constexpr magic_enum::containers::array<Logger::Severity, fmt::color> g_SeverityColors
+        constexpr auto GetSeverityColors()
         {
-            fmt::color::green,
-            fmt::color::yellow,
-            fmt::color::red
-        };
+            magic_enum::containers::array<LogSeverity, fmt::color> severityColors;
+            severityColors[LogSeverity::Trace] = fmt::color::green;
+            severityColors[LogSeverity::Warning] = fmt::color::yellow;
+            severityColors[LogSeverity::Error] = fmt::color::red;
+
+            return severityColors;
+        }
+
+        constexpr auto g_SeverityColors = GetSeverityColors();
 
         const auto g_StartTimePoint = std::chrono::system_clock::now().time_since_epoch();
+
+        std::string GetSeverityFormat(LogSeverity severity)
+        {
+            return fmt::format("{}", fmt::styled(magic_enum::enum_name(severity), fmt::fg(g_SeverityColors[severity])));
+        }
+
+        std::string GetTimePointFormat()
+        {
+            using namespace std::chrono;
+
+            const auto logTimePoint = system_clock::now().time_since_epoch();
+            const auto passTime = duration_cast<milliseconds>(logTimePoint - g_StartTimePoint);
+
+            const uint64_t h = duration_cast<hours>(passTime).count();
+            const uint64_t m = duration_cast<minutes>(passTime).count() - h * 60;
+            const uint64_t s = duration_cast<seconds>(passTime).count() - h * 60 * 60 - m * 60;
+            const uint64_t ms = duration_cast<milliseconds>(passTime).count() - h * 60 * 60 * 1000 - m * 60 * 1000 - s * 1000;
+
+            return fmt::format("{}:{}:{:0>2}.{:0>3}", h, m, s, ms);
+        }
+
+        std::string GetFileNameFormat(const std::source_location& sourceLocation)
+        {
+            const std::string_view filePath = sourceLocation.file_name();
+
+            return fmt::format("{}:{}", filePath.substr(filePath.find_last_of("\\") + 1), sourceLocation.line());
+        }
 
         std::string GetOutput(std::string_view severity, std::string_view time, std::string_view fileName, std::string_view message)
         {
@@ -24,31 +55,17 @@ namespace benzin
 
     } // anonymous namespace
 
-    void Logger::LogImpl(Severity severity, std::string_view filepath, uint32_t line, std::string_view message)
+    void Logger::LogImpl(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
     {
-        using std::chrono::duration_cast;
-        using std::chrono::hours;
-        using std::chrono::minutes;
-        using std::chrono::seconds;
-        using std::chrono::milliseconds;
+        const auto severityFormat = GetSeverityFormat(severity);
+        const auto timePointFormat = GetTimePointFormat();
+        const auto fileNameFormat = GetFileNameFormat(sourceLocation);
 
-        const auto logTimePoint = std::chrono::system_clock::now().time_since_epoch();
-        const auto passTime = duration_cast<milliseconds>(logTimePoint - g_StartTimePoint);
-
-        const uint64_t h = duration_cast<hours>(passTime).count();
-        const uint64_t m = duration_cast<minutes>(passTime).count() - h * 60;
-        const uint64_t s = duration_cast<seconds>(passTime).count() - h * 60 * 60 - m * 60;
-        const uint64_t ms = duration_cast<milliseconds>(passTime).count() - h * 60 * 60 * 1000 - m * 60 * 1000 - s * 1000;
-
-        const auto fmtSeverity = fmt::format("{}", fmt::styled(magic_enum::enum_name(severity), fmt::fg(g_SeverityColors[severity])));
-        const auto fmtTime = fmt::format("{}:{}:{:0>2}.{:0>3}", h, m, s, ms);
-        const auto fmtFileName = fmt::format("{}:{}", filepath.substr(filepath.find_last_of("\\") + 1), line);
-
-        const auto consoleOutput = GetOutput(fmtSeverity, fmtTime, fmtFileName, message);
-        const auto ideOutput = GetOutput(magic_enum::enum_name(severity), fmtTime, fmtFileName, message);
+        const auto consoleOutput = GetOutput(severityFormat, timePointFormat, fileNameFormat, message);
+        const auto ideOutput = GetOutput(magic_enum::enum_name(severity), timePointFormat, fileNameFormat, message);
 
         fmt::print(consoleOutput);
-        OutputDebugString(ideOutput.c_str());
+        OutputDebugStringA(ideOutput.c_str());
     }
 
 } // namespace benzin

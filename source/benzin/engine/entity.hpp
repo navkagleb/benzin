@@ -4,11 +4,17 @@ namespace benzin
 {
 
     class Model;
+    class MeshletModel;
 
     struct ModelComponent
     {
         std::shared_ptr<Model> Model;
         std::optional<uint32_t> DrawPrimitiveIndex;
+    };
+
+    struct MeshletModelComponent
+    {
+        std::shared_ptr<MeshletModel> MeshletModel;
     };
 
     struct TransformComponent

@@ -6,76 +6,54 @@
 namespace benzin
 {
 
-    class KeyEvent : public Event
+    class KeyCodeEvent
     {
-        EVENT_CLASS_CATEGORY(EventCategory_Input | EventCategory_Keyboard)
-
     protected:
-        explicit KeyEvent(KeyCode keyCode)
-            : m_KeyCode(keyCode)
+        explicit KeyCodeEvent(KeyCode keyCode)
+            : m_KeyCode{ keyCode }
         {}
 
     public:
         KeyCode GetKeyCode() const { return m_KeyCode; }
 
     protected:
-        KeyCode m_KeyCode;
+        KeyCode m_KeyCode = KeyCode::Unknown;
     };
 
-    class KeyPressedEvent : public KeyEvent
+    class KeyPressedEvent : public EventInfo<EventType::KeyPressedEvent, EventCategoryFlag::Input, EventCategoryFlag::Keyboard>, public KeyCodeEvent
     {
-        EVENT_CLASS_TYPE(KeyPressedEvent)
-
     public:
         KeyPressedEvent(KeyCode keyCode, bool isRepeated)
-            : KeyEvent(keyCode)
-            , m_IsRepeated(isRepeated)
+            : KeyCodeEvent{ keyCode }
+            , m_IsRepeated{ isRepeated }
         {}
        
     public:
         bool IsRepeated() const { return m_IsRepeated; }
 
-        std::string ToString() const override
-        {
-            return GetName() + ": " + static_cast<char>(m_KeyCode) + "(" + std::to_string(static_cast<uint32_t>(m_KeyCode)) + ", " + std::to_string(m_IsRepeated) + ")";
-        }
-
     private:
-        bool m_IsRepeated;
+        bool m_IsRepeated = false;
     };
 
-    class KeyReleasedEvent : public KeyEvent
+    class KeyReleasedEvent : public EventInfo<EventType::KeyReleasedEvent, EventCategoryFlag::Input, EventCategoryFlag::Keyboard>, public KeyCodeEvent
     {
-        EVENT_CLASS_TYPE(KeyReleasedEvent)
-
     public:
         explicit KeyReleasedEvent(KeyCode keyCode)
-            : KeyEvent(keyCode)
+            : KeyCodeEvent{ keyCode }
         {}
-        
-    public:
-        std::string ToString() const override
-        {
-            return GetName() + ": " + static_cast<char>(m_KeyCode) + "(" + std::to_string(static_cast<uint32_t>(m_KeyCode)) + ")";
-        }
     };
 
-    class KeyTypedEvent : public Event
+    class KeyTypedEvent : public EventInfo<EventType::KeyTypedEvent, EventCategoryFlag::Input, EventCategoryFlag::Keyboard>
     {
-        EVENT_CLASS_TYPE(KeyTypedEvent);
-        EVENT_CLASS_CATEGORY(EventCategory_Input | EventCategory_Keyboard)
-
     public:
         explicit KeyTypedEvent(char character)
-            : m_Character(character)
+            : m_Character{ character }
         {}
-       
-        std::string ToString() const override
-        {
-            return GetName() + ": " + m_Character;
-        }
+
+        char GetCharacter() const { return m_Character; }
 
     private:
-        char m_Character;
+        char m_Character = '\0';
     };
+
 } // namespace benzin

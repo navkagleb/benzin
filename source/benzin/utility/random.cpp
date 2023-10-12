@@ -1,5 +1,4 @@
 #include "benzin/config/bootstrap.hpp"
-
 #include "benzin/utility/random.hpp"
 
 namespace benzin

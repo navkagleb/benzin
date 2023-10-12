@@ -1,5 +1,4 @@
 #include "benzin/config/bootstrap.hpp"
-
 #include "benzin/engine/geometry_generator.hpp"
 
 #include "benzin/engine/model.hpp"

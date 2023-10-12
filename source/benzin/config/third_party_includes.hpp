@@ -5,6 +5,7 @@
 #include <third_party/fmt/color.h>
 #include <third_party/fmt/compile.h>
 #include <third_party/fmt/format.h>
+#include <third_party/fmt/xchar.h>
 
 #include <third_party/imgui/imgui.h>
 #include <third_party/imgui/imgui_internal.h>

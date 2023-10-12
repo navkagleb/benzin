@@ -11,14 +11,23 @@ namespace benzin
         using LayerContainer = std::vector<std::shared_ptr<Layer>>;
 
     public:
-        ~LayerStack();
-
-    public:
         template <typename T, typename... Args>
-        std::shared_ptr<T> Push(Args&&... args);
+        std::shared_ptr<T> Push(Args&&... args)
+        {
+            const auto layer = std::make_shared<T>(std::forward<Args>(args)...);
+            m_Layers.insert(m_Layers.begin() + m_OverlayIndex++, layer);
+
+            return layer;
+        }
 
         template <typename T, typename... Args>
-        std::shared_ptr<T> PushOverlay(Args&&... args);
+        std::shared_ptr<T> PushOverlay(Args&&... args)
+        {
+            const auto layer = std::make_shared<T>(std::forward<Args>(args)...);
+            m_Layers.push_back(layer);
+
+            return layer;
+        }
 
         void Pop(const std::shared_ptr<Layer>& layer);
         void PopOverlay(const std::shared_ptr<Layer>& layer);
@@ -32,7 +41,7 @@ namespace benzin
 
     private:
         LayerContainer m_Layers;
-        size_t m_OverlayIndex{ 0 };
+        size_t m_OverlayIndex = 0;
     };
 
     // For range based for
@@ -40,5 +49,3 @@ namespace benzin
     inline auto end(LayerStack& layerStack) { return layerStack.End(); }
 
 } // namespace benzin
-
-#include "layer_stack.inl"
