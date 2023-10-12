@@ -17,7 +17,8 @@ namespace benzin
         ID3D12Resource* d3d12Resource = m_Buffer.GetD3D12Resource();
         BenzinAssert(d3d12Resource);
 
-        BenzinAssert(d3d12Resource->Map(g_DefaultSubresourceIndex, nullptr, reinterpret_cast<void**>(&m_Data)));
+        const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // The use of 'm_Data' is for writing only
+        BenzinAssert(d3d12Resource->Map(g_DefaultSubresourceIndex, &d3d12Range, reinterpret_cast<void**>(&m_Data)));
     }
 
     MappedData::~MappedData()

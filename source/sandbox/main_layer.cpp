@@ -64,18 +64,17 @@ namespace sandbox
         : m_Device{ device }
         , m_SwapChain{ swapChain }
     {
-        for (size_t i = 0; i < m_Resources.size(); ++i)
+        m_FrameResources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
         {
-            auto& resources = m_Resources[i];
+            .DebugName = "GeometryPass_PassBuffer",
+            .ElementSize = sizeof(GBufferPassData),
+            .ElementCount = benzin::config::g_BackBufferCount,
+            .Flags = benzin::BufferFlag::ConstantBuffer,
+        });
 
-            resources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
-            {
-                .DebugName{ "GeometryPass_PassBuffer", static_cast<uint32_t>(i) },
-                .ElementSize = sizeof(GBufferPassData),
-                .ElementCount = 1,
-                .Flags = benzin::BufferFlag::ConstantBuffer,
-                .IsNeedConstantBufferView = true,
-            });
+        for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
+        {
+            BenzinAssert(m_FrameResources.PassBuffer->PushConstantBufferView({ .ElementIndex = i }) == i);
         }
 
         m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::GraphicsPipelineStateCreation
@@ -105,14 +104,14 @@ namespace sandbox
     {
         const GBufferPassData passData
         {
-            .ViewMatrix{ camera.GetViewMatrix() },
-            .ProjectionMatrix{ camera.GetProjectionMatrix() },
-            .ViewProjectionMatrix{ camera.GetViewProjectionMatrix() },
-            .WorldCameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()) },
+            .ViewMatrix = camera.GetViewMatrix(),
+            .ProjectionMatrix = camera.GetProjectionMatrix(),
+            .ViewProjectionMatrix = camera.GetViewProjectionMatrix(),
+            .WorldCameraPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()),
         };
 
-        benzin::MappedData passBuffer{ *m_Resources[m_SwapChain.GetCurrentBackBufferIndex()].PassBuffer };
-        passBuffer.Write(passData);
+        benzin::MappedData passBuffer{ *m_FrameResources.PassBuffer };
+        passBuffer.Write(passData, m_SwapChain.GetCurrentBackBufferIndex());
     }
 
     void GeometryPass::OnExecute(const entt::registry& registry, const benzin::Buffer& entityBuffer)
@@ -136,7 +135,6 @@ namespace sandbox
         };
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
-        auto& resources = m_Resources[m_SwapChain.GetCurrentBackBufferIndex()];
 
         commandList.SetViewport(m_SwapChain.GetViewport());
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
@@ -165,7 +163,7 @@ namespace sandbox
 
         {
             commandList.SetPipelineState(*m_PipelineState);
-            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, resources.PassBuffer->GetConstantBufferView());
+            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, m_FrameResources.PassBuffer->GetConstantBufferView(m_SwapChain.GetCurrentBackBufferIndex()));
             commandList.SetRootShaderResource(RootConstant::EntityBufferIndex, entityBuffer.GetShaderResourceView());
 
             const auto view = registry.view<benzin::TransformComponent, benzin::ModelComponent>();
@@ -282,27 +280,26 @@ namespace sandbox
         : m_Device{ device }
         , m_SwapChain{ swapChain }
     {
-        for (size_t i = 0; i < m_Resources.size(); ++i)
+        m_FrameResources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
         {
-            auto& resources = m_Resources[i];
+            .DebugName = "DeferredLightingPass_PassBuffer",
+            .ElementSize = sizeof(DeferredLightingPassData),
+            .ElementCount = benzin::config::g_BackBufferCount,
+            .Flags = benzin::BufferFlag::ConstantBuffer,
+        });
 
-            resources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
-            {
-                .DebugName{ "DeferredLightingPass_PassBuffer", static_cast<uint32_t>(i) },
-                .ElementSize = sizeof(DeferredLightingPassData),
-                .ElementCount = 1,
-                .Flags = benzin::BufferFlag::ConstantBuffer,
-                .IsNeedConstantBufferView = true,
-            });
+        m_FrameResources.PointLightBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
+        {
+            .DebugName = "DeferredLightingPass_PointLightBuffer",
+            .ElementSize = sizeof(PointLight),
+            .ElementCount = ms_MaxPointLightCount * benzin::config::g_BackBufferCount,
+            .Flags = benzin::BufferFlag::Upload,
+        });
 
-            resources.PointLightBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
-            {
-                .DebugName{ "DeferredLightingPass_PointLightBuffer", static_cast<uint32_t>(i) },
-                .ElementSize = sizeof(PointLight),
-                .ElementCount = 20 * 20,
-                .Flags = benzin::BufferFlag::Upload,
-                .IsNeedShaderResourceView = true,
-            });
+        for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
+        {
+            BenzinAssert(m_FrameResources.PassBuffer->PushConstantBufferView({ .ElementIndex = i }) == i);
+            BenzinAssert(m_FrameResources.PointLightBuffer->PushShaderResourceView({ .FirstElementIndex = ms_MaxPointLightCount * i, .ElementCount = ms_MaxPointLightCount }) == i);
         }
 
         m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::GraphicsPipelineStateCreation
@@ -320,28 +317,27 @@ namespace sandbox
 
     void DeferredLightingPass::OnUpdate(const benzin::Camera& camera, const entt::registry& registry)
     {
-        auto& resources = m_Resources[m_SwapChain.GetCurrentBackBufferIndex()];
-
         const auto pointLightView = registry.view<const benzin::TransformComponent, const benzin::PointLightComponent>();
 
         {
             const DeferredLightingPassData passData
             {
-                .InverseViewMatrix{ camera.GetInverseViewMatrix() },
-                .InverseProjectionMatrix{ camera.GetInverseProjectionMatrix() },
-                .WorldCameraPosition{ *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()) },
-                .PointLightCount{ static_cast<uint32_t>(pointLightView.size_hint()) },
-                .SunColor{ m_SunColor },
-                .SunIntensity{ m_SunIntensity },
-                .SunDirection{ m_SunDirection },
+                .InverseViewMatrix = camera.GetInverseViewMatrix(),
+                .InverseProjectionMatrix = camera.GetInverseProjectionMatrix(),
+                .WorldCameraPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()),
+                .PointLightCount = static_cast<uint32_t>(pointLightView.size_hint()),
+                .SunColor = m_SunColor,
+                .SunIntensity = m_SunIntensity,
+                .SunDirection = m_SunDirection,
             };
 
-            benzin::MappedData passBuffer{ *resources.PassBuffer };
-            passBuffer.Write(passData);
+            benzin::MappedData passBuffer{ *m_FrameResources.PassBuffer };
+            passBuffer.Write(passData, m_SwapChain.GetCurrentBackBufferIndex());
         }
 
         {
-            benzin::MappedData pointLightBuffer{ *resources.PointLightBuffer };
+            const uint32_t startElementIndex = ms_MaxPointLightCount * m_SwapChain.GetCurrentBackBufferIndex();
+            benzin::MappedData pointLightBuffer{ *m_FrameResources.PointLightBuffer };
 
             size_t i = 0;
             for (auto&& [entity, tc, plc] : pointLightView.each())
@@ -349,15 +345,15 @@ namespace sandbox
                 // https://wiki.ogre3d.org/Light+Attenuation+Shortcut
                 const PointLight pointLight
                 {
-                    .Color{ plc.Color },
-                    .Intensity{ plc.Intensity },
-                    .WorldPosition{ tc.Translation },
-                    .ConstantAttenuation{ 1.0f },
-                    .LinearAttenuation{ 4.5f / plc.Range },
-                    .ExponentialAttenuation{ 75.0f / (plc.Range * plc.Range) },
+                    .Color = plc.Color,
+                    .Intensity = plc.Intensity,
+                    .WorldPosition = tc.Translation,
+                    .ConstantAttenuation = 1.0f,
+                    .LinearAttenuation = 4.5f / plc.Range,
+                    .ExponentialAttenuation = 75.0f / (plc.Range * plc.Range),
                 };
 
-                pointLightBuffer.Write(pointLight, i++);
+                pointLightBuffer.Write(pointLight, startElementIndex + i++);
             }
         }
     }
@@ -380,7 +376,6 @@ namespace sandbox
         };
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
-        auto& resources = m_Resources[m_SwapChain.GetCurrentBackBufferIndex()];
 
         commandList.SetViewport(m_SwapChain.GetViewport());
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
@@ -393,7 +388,7 @@ namespace sandbox
         {
             commandList.SetPipelineState(*m_PipelineState);
 
-            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, resources.PassBuffer->GetConstantBufferView());
+            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, m_FrameResources.PassBuffer->GetConstantBufferView(m_SwapChain.GetCurrentBackBufferIndex()));
 
             commandList.SetRootShaderResource(RootConstant::AlbedoTextureIndex, gbuffer.Albedo->GetShaderResourceView());
             commandList.SetRootShaderResource(RootConstant::WorldNormalTextureIndex, gbuffer.WorldNormal->GetShaderResourceView());
@@ -401,7 +396,7 @@ namespace sandbox
             commandList.SetRootShaderResource(RootConstant::RoughnessMetalnessTextureIndex, gbuffer.RoughnessMetalness->GetShaderResourceView());
             commandList.SetRootShaderResource(RootConstant::DepthTextureIndex, gbuffer.DepthStencil->GetShaderResourceView());
 
-            commandList.SetRootShaderResource(RootConstant::PointLightBufferIndex, resources.PointLightBuffer->GetShaderResourceView());
+            commandList.SetRootShaderResource(RootConstant::PointLightBufferIndex, m_FrameResources.PointLightBuffer->GetShaderResourceView(m_SwapChain.GetCurrentBackBufferIndex()));
 
             commandList.SetRootConstant(RootConstant::OutputType, magic_enum::enum_integer(m_OutputType));
 
@@ -470,18 +465,17 @@ namespace sandbox
         : m_Device{ device }
         , m_SwapChain{ swapChain }
     {
-        for (size_t i = 0; i < m_Resources.size(); ++i)
+        m_FrameResources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
         {
-            auto& resources = m_Resources[i];
+            .DebugName = "EnvironmentPass_PassBuffer",
+            .ElementSize = sizeof(EnvironmentPassData),
+            .ElementCount = benzin::config::g_BackBufferCount,
+            .Flags = benzin::BufferFlag::ConstantBuffer,
+        });
 
-            resources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
-            {
-                .DebugName{ "EnvironmentPass_PassBuffer", static_cast<uint32_t>(i) },
-                .ElementSize = sizeof(EnvironmentPassData),
-                .ElementCount = 1,
-                .Flags = benzin::BufferFlag::ConstantBuffer,
-                .IsNeedConstantBufferView = true,
-            });
+        for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
+        {
+            BenzinAssert(m_FrameResources.PassBuffer->PushConstantBufferView({ .ElementIndex = i }) == i);
         }
 
         m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::GraphicsPipelineStateCreation
@@ -513,17 +507,13 @@ namespace sandbox
 
     void EnvironmentPass::OnUpdate(const benzin::Camera& camera)
     {
-        auto& resources = m_Resources[m_SwapChain.GetCurrentBackBufferIndex()];
-
+        const EnvironmentPassData passData
         {
-            const EnvironmentPassData passData
-            {
-                .InverseViewProjectionMatrix{ camera.GetInverseViewDirectionProjectionMatrix() }
-            };
+            .InverseViewProjectionMatrix = camera.GetInverseViewDirectionProjectionMatrix(),
+        };
 
-            benzin::MappedData passBuffer{ *resources.PassBuffer };
-            passBuffer.Write(passData);
-        }
+        benzin::MappedData passBuffer{ *m_FrameResources.PassBuffer };
+        passBuffer.Write(passData, m_SwapChain.GetCurrentBackBufferIndex());
     }
 
     void EnvironmentPass::OnExecute(benzin::Texture& deferredLightingOutputTexture, benzin::Texture& gbufferDepthStecil)
@@ -535,7 +525,6 @@ namespace sandbox
         };
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
-        auto& resources = m_Resources[m_SwapChain.GetCurrentBackBufferIndex()];
 
         commandList.SetViewport(m_SwapChain.GetViewport());
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
@@ -548,7 +537,7 @@ namespace sandbox
         {
             commandList.SetPipelineState(*m_PipelineState);
 
-            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, resources.PassBuffer->GetConstantBufferView());
+            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, m_FrameResources.PassBuffer->GetConstantBufferView(m_SwapChain.GetCurrentBackBufferIndex()));
             commandList.SetRootConstantBuffer(RootConstant::CubeTextureIndex, m_CubeTexture->GetShaderResourceView());
 
             commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);

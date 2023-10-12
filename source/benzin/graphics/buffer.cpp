@@ -21,10 +21,12 @@ namespace benzin
 
         D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& bufferCreation)
         {
-            uint64_t sizeInBytes = bufferCreation.ElementSize * bufferCreation.ElementCount;
+            uint32_t alignedElementSize = bufferCreation.ElementSize;
             if (bufferCreation.Flags[BufferFlag::ConstantBuffer])
             {
-                sizeInBytes = AlignAbove(sizeInBytes, config::g_ConstantBufferAlignment);
+                // The 'BufferCreation::ElementSize' is aligned, not the entire buffer size 'BufferFlag::ConstantBuffer'.
+                // This is done so that each element can be used as a separate constant buffer using ConstantBufferView
+                alignedElementSize = AlignAbove(alignedElementSize, config::g_ConstantBufferAlignment);
             }
 
             D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
@@ -37,7 +39,7 @@ namespace benzin
             {
                 .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
                 .Alignment = 0,
-                .Width = sizeInBytes,
+                .Width = alignedElementSize * bufferCreation.ElementCount,
                 .Height = 1,
                 .DepthOrArraySize = 1,
                 .MipLevels = 1,
@@ -80,7 +82,8 @@ namespace benzin
         m_CurrentState = creation.InitialState; // 'InitialState' can updated in 'CreateD3D12Resource'
         m_ElementSize = creation.ElementSize;
         m_ElementCount = creation.ElementCount;
-        m_AlignedSizeInBytes = static_cast<uint32_t>(m_D3D12Resource->GetDesc().Width); // HACK
+
+        m_AlignedElementSize = static_cast<uint32_t>(m_D3D12Resource->GetDesc().Width) / creation.ElementCount; // HACK
 
         if (!creation.DebugName.IsEmpty())
         {
@@ -109,9 +112,13 @@ namespace benzin
         }
     }
 
-    uint32_t Buffer::PushShaderResourceView()
+    uint32_t Buffer::PushShaderResourceView(const BufferShaderResourceViewCreation& creation)
     {
         BenzinAssert(m_D3D12Resource);
+
+        BenzinAssert(creation.FirstElementIndex < m_ElementCount);
+        BufferShaderResourceViewCreation validatedCreation = creation;
+        validatedCreation.ElementCount = creation.ElementCount != 0 ? creation.ElementCount : m_ElementCount;
 
         const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc
         {
@@ -120,8 +127,8 @@ namespace benzin
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             .Buffer
             {
-                .FirstElement = 0,
-                .NumElements = m_ElementCount,
+                .FirstElement = validatedCreation.FirstElementIndex,
+                .NumElements = validatedCreation.ElementCount,
                 .StructureByteStride = m_ElementSize,
                 .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
             }
@@ -170,14 +177,21 @@ namespace benzin
         return PushResourceView(descriptorType, descriptor);
     }
 
-    uint32_t Buffer::PushConstantBufferView()
+    uint32_t Buffer::PushConstantBufferView(const ConstantBufferViewCreation& creation)
     {
         BenzinAssert(m_D3D12Resource);
 
+        uint64_t gpuVirtualAddress = GetGPUVirtualAddress();
+        if (creation.ElementIndex != ConstantBufferViewCreation::s_InvalidElementIndex)
+        {
+            BenzinAssert(creation.ElementIndex < m_ElementCount);
+            gpuVirtualAddress += creation.ElementIndex * m_AlignedElementSize;
+        }
+
         const D3D12_CONSTANT_BUFFER_VIEW_DESC d3d12ConstantBufferViewDesc
         {
-            .BufferLocation = GetGPUVirtualAddress(),
-            .SizeInBytes = static_cast<uint32_t>(m_AlignedSizeInBytes),
+            .BufferLocation = gpuVirtualAddress,
+            .SizeInBytes = m_AlignedElementSize,
         };
 
         const DescriptorType descriptorType = DescriptorType::ConstantBufferView;

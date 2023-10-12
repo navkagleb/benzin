@@ -24,7 +24,7 @@ namespace sandbox
         };
 
     private:
-        struct Resources
+        struct FrameResources
         {
             std::unique_ptr<benzin::Buffer> PassBuffer;
         };
@@ -52,7 +52,7 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::array<Resources, benzin::config::g_BackBufferCount> m_Resources;
+        FrameResources m_FrameResources;
         std::unique_ptr<benzin::PipelineState> m_PipelineState;
         GBuffer m_GBuffer;
     };
@@ -73,7 +73,7 @@ namespace sandbox
         };
 
     private:
-        struct Resources
+        struct FrameResources
         {
             std::unique_ptr<benzin::Buffer> PassBuffer;
             std::unique_ptr<benzin::Buffer> PointLightBuffer;
@@ -94,10 +94,12 @@ namespace sandbox
         void OnResize(uint32_t width, uint32_t height);
 
     private:
+        static inline const uint32_t ms_MaxPointLightCount = 20 * 20;
+
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::array<Resources, benzin::config::g_BackBufferCount> m_Resources;
+        FrameResources m_FrameResources;
         std::unique_ptr<benzin::PipelineState> m_PipelineState;
         std::unique_ptr<benzin::Texture> m_OutputTexture;
 
@@ -111,7 +113,7 @@ namespace sandbox
     class EnvironmentPass
     {
     private:
-        struct Resources
+        struct FrameResources
         {
             std::unique_ptr<benzin::Buffer> PassBuffer;
         };
@@ -127,7 +129,7 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::array<Resources, benzin::config::g_BackBufferCount> m_Resources;
+        FrameResources m_FrameResources;
         std::unique_ptr<benzin::PipelineState> m_PipelineState;
         std::unique_ptr<benzin::Texture> m_EnvironmentTexture;
         std::unique_ptr<benzin::Texture> m_HDRTexture;
