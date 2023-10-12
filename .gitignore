@@ -1,2 +1,10 @@
-.vs
-bin
+.vs/
+*.vcxproj*
+*packages.config
+*.sln
+
+bin/
+build/
+packages/
+
+*imgui.ini
