@@ -21,11 +21,8 @@ namespace benzin
                 case ShaderResourceView:
                 case UnorderedAccessView: return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
                 case Sampler: return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-                default: break;
+                default: std::unreachable();
             }
-
-            BenzinAssert(false);
-            __assume(false);
         }
 
     } // anonymous namespace

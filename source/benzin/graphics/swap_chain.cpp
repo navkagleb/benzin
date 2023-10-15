@@ -64,25 +64,15 @@ namespace benzin
 
     SwapChain::~SwapChain()
     {
-        m_Device.GetGraphicsCommandQueue().Flush();
-
         // Need to be released before 'm_DXGISwapChain' released
-        for (auto& backBuffer : m_BackBuffers)
-        {
-            backBuffer.reset();
-        }
+        FlushAndResetBackBuffers();
 
         SafeUnknownRelease(m_DXGISwapChain);
     }
 
     void SwapChain::ResizeBackBuffers(uint32_t width, uint32_t height)
     {
-        m_Device.GetGraphicsCommandQueue().Flush();
-
-        for (auto& backBuffer : m_BackBuffers)
-        {
-            backBuffer.reset();
-        }
+        FlushAndResetBackBuffers();
 
         BenzinAssert(m_DXGISwapChain->ResizeBuffers(
             static_cast<UINT>(m_BackBuffers.size()),
@@ -109,7 +99,7 @@ namespace benzin
 
     void SwapChain::RegisterBackBuffers()
     {
-        for (size_t i = 0; i < m_BackBuffers.size(); ++i)
+        for (const auto [i, backBuffer] : std::views::enumerate(m_BackBuffers))
         {
             ID3D12Resource* d3d12BackBuffer;
             BenzinAssert(m_DXGISwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&d3d12BackBuffer))); // Increases reference count
@@ -131,6 +121,16 @@ namespace benzin
 
         m_ScissorRect.Width = width;
         m_ScissorRect.Height = height;
+    }
+
+    void SwapChain::FlushAndResetBackBuffers()
+    {
+        m_Device.GetGraphicsCommandQueue().Flush();
+
+        for (auto& backBuffer : m_BackBuffers)
+        {
+            backBuffer.reset();
+        }
     }
 
     void SwapChain::WaitForGPU()

@@ -33,6 +33,8 @@ namespace sandbox
                 m_RaytracingLayer = m_LayerStack.Push<RaytracingLayer>(*m_MainWindow, *m_Device, *m_SwapChain);
             }
             EndFrame();
+
+            BenzinAssert(m_ImGuiLayer.get());
         }
         
         void Execute()
@@ -69,14 +71,14 @@ namespace sandbox
             dispatcher.Dispatch(&Application::OnWindowFocused, *this);
             dispatcher.Dispatch(&Application::OnWindowUnfocused, *this);
 
-            for (auto it = m_LayerStack.ReverseBegin(); it != m_LayerStack.ReverseEnd(); ++it)
+            for (auto& layer : m_LayerStack | std::views::reverse)
             {
                 if (event.IsHandled())
                 {
                     break;
                 }
 
-                (*it)->OnEvent(event);
+                layer->OnEvent(event);
             }
         }
 

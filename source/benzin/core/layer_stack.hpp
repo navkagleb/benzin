@@ -36,9 +36,6 @@ namespace benzin
         LayerContainer::iterator Begin() { return m_Layers.begin(); };
         LayerContainer::iterator End() { return m_Layers.end(); };
 
-        LayerContainer::reverse_iterator ReverseBegin() { return m_Layers.rbegin(); };
-        LayerContainer::reverse_iterator ReverseEnd() { return  m_Layers.rend(); }
-
     private:
         LayerContainer m_Layers;
         size_t m_OverlayIndex = 0;

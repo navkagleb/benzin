@@ -5,37 +5,25 @@ namespace benzin
     {
 
         template <typename T>
-        D3D12_COMMAND_LIST_TYPE GetD3D12CommandListType()
+        constexpr CommandListType GetCommandListType()
         {
             if constexpr (std::is_same_v<T, CopyCommandList>)
             {
-                return D3D12_COMMAND_LIST_TYPE_COPY;
+                return CommandListType::Copy;
             }
             else if constexpr (std::is_same_v<T, ComputeCommandList>)
             {
-                return D3D12_COMMAND_LIST_TYPE_COMPUTE;
+                return CommandListType::Compute;
             }
             else if constexpr (std::is_same_v<T, GraphicsCommandList>)
             {
-                return D3D12_COMMAND_LIST_TYPE_DIRECT;
+                return CommandListType::Direct;
             }
             else
             {
-                static_assert(false);
+                static_assert(g_DependentFalse<T>);
             }
         }
-
-        constexpr auto GetCommandListTypeStrings()
-        {
-            magic_enum::containers::array<D3D12_COMMAND_LIST_TYPE, std::string_view> commandQueueDebugNames;
-            commandQueueDebugNames[D3D12_COMMAND_LIST_TYPE_COPY] = "Copy";
-            commandQueueDebugNames[D3D12_COMMAND_LIST_TYPE_COMPUTE] = "Compute";
-            commandQueueDebugNames[D3D12_COMMAND_LIST_TYPE_DIRECT] = "Direct";
-
-            return commandQueueDebugNames;
-        }
-        
-        constexpr auto g_CommandListTypeStrings = GetCommandListTypeStrings();
 
     } // anonymous namespace
 
@@ -45,33 +33,28 @@ namespace benzin
         , m_FlushFence{ device }
         , m_CommandList{ device }
     {
-        const D3D12_COMMAND_LIST_TYPE d3d12CommandListType = GetD3D12CommandListType<T>();
+        const CommandListType commandListType = GetCommandListType<T>();
+        const char* commandListTypeName = magic_enum::enum_name(commandListType).data();
 
         const D3D12_COMMAND_QUEUE_DESC d3d12CommandQueueDesc
         {
-            .Type = d3d12CommandListType,
+            .Type = static_cast<D3D12_COMMAND_LIST_TYPE>(commandListType),
             .Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL,
             .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
             .NodeMask = 0,
         };
 
         BenzinAssert(device.GetD3D12Device()->CreateCommandQueue(&d3d12CommandQueueDesc, IID_PPV_ARGS(&m_D3D12CommandQueue)));
+        SetD3D12ObjectDebugName(m_D3D12CommandQueue, commandListTypeName + "CommandQueue"s);
 
         m_D3D12CommandAllocators.resize(commandAllocatorCount, nullptr);
-        for (size_t i = 0; i < m_D3D12CommandAllocators.size(); ++i)
+        for (const auto [i, d3d12CommandAllocator] : std::views::enumerate(m_D3D12CommandAllocators))
         {
-            ID3D12CommandAllocator*& d3d12CommandAllocator = m_D3D12CommandAllocators[i];
-
-            BenzinAssert(device.GetD3D12Device()->CreateCommandAllocator(
-                d3d12CommandListType,
-                IID_PPV_ARGS(&d3d12CommandAllocator)
-            ));
-
-            SetD3D12ObjectDebugName(d3d12CommandAllocator, fmt::format("{}CommandAllocator", g_CommandListTypeStrings[d3d12CommandListType]), static_cast<uint32_t>(i));
+            BenzinAssert(device.GetD3D12Device()->CreateCommandAllocator(static_cast<D3D12_COMMAND_LIST_TYPE>(commandListType), IID_PPV_ARGS(&d3d12CommandAllocator)));
+            SetD3D12ObjectDebugName(d3d12CommandAllocator, commandListTypeName + "CommandAllocator"s, static_cast<uint32_t>(i));
         }
 
-        SetD3D12ObjectDebugName(m_D3D12CommandQueue, fmt::format("{}CommandQueue", g_CommandListTypeStrings[d3d12CommandListType]));
-        SetD3D12ObjectDebugName(m_FlushFence.GetD3D12Fence(), fmt::format("{}_FlushFence", GetD3D12ObjectDebugName(m_D3D12CommandQueue)));
+        SetD3D12ObjectDebugName(m_FlushFence.GetD3D12Fence(), GetD3D12ObjectDebugName(m_D3D12CommandQueue) + "FlushFence");
     }
 
     template <typename T>

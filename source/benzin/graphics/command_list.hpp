@@ -9,6 +9,13 @@ namespace benzin
 
     class PipelineState;
 
+    enum class CommandListType : std::underlying_type_t<D3D12_COMMAND_LIST_TYPE>
+    {
+        Copy = D3D12_COMMAND_LIST_TYPE_COPY,
+        Compute = D3D12_COMMAND_LIST_TYPE_COMPUTE,
+        Direct = D3D12_COMMAND_LIST_TYPE_DIRECT,
+    };
+
     class CommandList
     {
     public:
@@ -16,7 +23,7 @@ namespace benzin
         BENZIN_NON_MOVEABLE_IMPL(CommandList)
 
     public:
-        CommandList(Device& device, D3D12_COMMAND_LIST_TYPE d3d12CommandListType);
+        CommandList(Device& device, CommandListType commandListType);
         virtual ~CommandList();
 
     public:

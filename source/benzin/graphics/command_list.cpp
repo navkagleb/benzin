@@ -12,14 +12,14 @@ namespace benzin
 {
 
     // CommandList
-    CommandList::CommandList(Device& device, D3D12_COMMAND_LIST_TYPE d3d12CommandListType)
+    CommandList::CommandList(Device& device, CommandListType commandListType)
     {
         BenzinAssert(device.GetD3D12Device());
 
         ComPtr<ID3D12GraphicsCommandList1> d3d12GraphicsCommandList1;
         BenzinAssert(device.GetD3D12Device()->CreateCommandList1(
             0,
-            d3d12CommandListType,
+            static_cast<D3D12_COMMAND_LIST_TYPE>(commandListType),
             D3D12_COMMAND_LIST_FLAG_NONE,
             IID_PPV_ARGS(&d3d12GraphicsCommandList1)
         ));
@@ -61,7 +61,7 @@ namespace benzin
 
     // CopyCommandList
     CopyCommandList::CopyCommandList(Device& device)
-        : CommandList{ device, D3D12_COMMAND_LIST_TYPE_COPY }
+        : CommandList{ device, CommandListType::Copy }
     {}
 
     void CopyCommandList::UpdateBuffer(Buffer& buffer, std::span<const std::byte> data, size_t offsetInBytes)
@@ -240,7 +240,7 @@ namespace benzin
 
     // ComputeCommandList
     ComputeCommandList::ComputeCommandList(Device& device)
-        : CommandList{ device, D3D12_COMMAND_LIST_TYPE_COMPUTE }
+        : CommandList{ device, CommandListType::Compute }
     {}
 
     void ComputeCommandList::SetRootConstant(uint32_t rootIndex, uint32_t value)
@@ -293,7 +293,7 @@ namespace benzin
 
     // GraphicsCommandList
 	GraphicsCommandList::GraphicsCommandList(Device& device)
-        : CommandList{ device, D3D12_COMMAND_LIST_TYPE_DIRECT }
+        : CommandList{ device, CommandListType::Direct }
     {}
 
     void GraphicsCommandList::SetRootConstant(uint32_t rootIndex, uint32_t value)

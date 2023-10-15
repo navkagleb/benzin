@@ -3,17 +3,25 @@
 namespace benzin
 {
 
+    inline void DebugBreak()
+    {
+        if (::IsDebuggerPresent())
+        {
+            ::DebugBreak();
+        }
+    }
+
     template <typename... Args>
-    inline void AssertFormat(const std::source_location& sourceLocation, std::string_view format, Args&&... args)
+    inline void AssertFormat(const std::source_location& sourceLocation, fmt::format_string<Args...> format, Args&&... args)
     {
         BenzinError("Assert failed | {}:{} | {}", sourceLocation.file_name(), sourceLocation.line(), sourceLocation.function_name());
 
-        if (!format.empty())
+        if (format.operator fmt::basic_string_view<char>().size() != 0)
         {
-            BenzinError("Message: {}", fmt::format(format, std::forward<Args>(args)...));
+            BenzinError("Message: {}", fmt::vformat(format, fmt::make_format_args(args...)));
         }
 
-        __debugbreak();
+        DebugBreak();
     }
 
     inline void AssertFormat(const std::source_location& sourceLocation)
@@ -22,19 +30,19 @@ namespace benzin
     }
 
     template <typename... Args>
-    inline void AssertFormat(HRESULT hr, const std::source_location& sourceLocation, std::string_view format, Args&&... args)
+    inline void AssertFormat(HRESULT hr, const std::source_location& sourceLocation, fmt::format_string<Args...> format, Args&&... args)
     {
         BenzinError("Assert failed | {}:{} | {}", sourceLocation.file_name(), sourceLocation.line(), sourceLocation.function_name());
 
-        if (!format.empty())
+        if (format.operator fmt::basic_string_view<char>().size() != 0)
         {
-            BenzinError("Message: {}", fmt::format(format, std::forward<Args>(args)...));
+            BenzinError("Message: {}", fmt::vformat(format, fmt::make_format_args(args...)));
         }
 
         _com_error comError{ hr };
         BenzinError("ComError message: {}", comError.ErrorMessage());
 
-        __debugbreak();
+        DebugBreak();
     }
 
     inline void AssertFormat(HRESULT hr, const std::source_location& sourceLocation)
@@ -66,26 +74,23 @@ namespace benzin
     {
         explicit Assert(bool condition, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-            if constexpr (BENZIN_IS_DEBUG_BUILD)
-            {
-                AssertImpl(condition, sourceLocation, std::forward<Args>(args)...);
-            }
+#if BENZIN_IS_DEBUG_BUILD
+            AssertImpl(condition, sourceLocation, std::forward<Args>(args)...);
+#endif
         }
 
         explicit Assert(const void* const pointer, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-            if constexpr (BENZIN_IS_DEBUG_BUILD)
-            {
-                AssertImpl(pointer != nullptr, sourceLocation, std::forward<Args>(args)...);
-            }
+#if BENZIN_IS_DEBUG_BUILD
+            AssertImpl(pointer != nullptr, sourceLocation, std::forward<Args>(args)...);
+#endif
         }
 
         explicit Assert(HRESULT hr, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-            if constexpr (BENZIN_IS_DEBUG_BUILD)
-            {
-                AssertImpl(hr, sourceLocation, std::forward<Args>(args)...);
-            }
+#if BENZIN_IS_DEBUG_BUILD
+            AssertImpl(hr, sourceLocation, std::forward<Args>(args)...);
+#endif
         }
     };
 

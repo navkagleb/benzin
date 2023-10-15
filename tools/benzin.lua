@@ -43,7 +43,7 @@ workspace "benzin"
 project "third_party"
     kind "StaticLib"
     language "C++"
-    cppdialect "C++20"
+    cppdialect "C++latest" -- Included C++23 features
     location "../source/third_party"
 
     targetdir "../bin"

@@ -150,8 +150,7 @@ namespace benzin
                 }
                 default:
                 {
-                    BenzinAssert(false);
-                    break;
+                    std::unreachable();
                 }
             }
 
@@ -195,8 +194,7 @@ namespace benzin
                 }
                 default:
                 {
-                    BenzinAssert(false);
-                    break;
+                    std::unreachable();
                 }
             }
 
@@ -240,8 +238,7 @@ namespace benzin
                 }
                 default:
                 {
-                    BenzinAssert(false);
-                    break;
+                    std::unreachable();
                 }
             }
 

@@ -22,11 +22,14 @@ namespace benzin
             case R16Uint: return 1 * (16 / 8);
             case R32Uint: return 1 * (32 / 8);
 
-            default: break;
+            default:
+            {
+                // TODO: make cases for all 'GraphicsFormat' values
+                BenzinEnsure(false);
+            };
         }
 
-        BenzinAssert(false);
-        __assume(false);
+        std::unreachable();
     }
 
 } // namespace benzin

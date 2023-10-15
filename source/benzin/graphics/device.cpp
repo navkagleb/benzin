@@ -14,8 +14,6 @@ namespace benzin
 
         D3D12_FILTER ToD3D12TextureFilter(const TextureFilterType& minification, const TextureFilterType& magnification, const TextureFilterType& mipLevel)
         {
-            D3D12_FILTER d3d12Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-
             switch (minification)
             {
                 using enum TextureFilterType;
@@ -23,49 +21,27 @@ namespace benzin
                 case Point:
                 {
                     BenzinAssert(magnification != Anisotropic && mipLevel != Anisotropic);
-
-                    if (magnification == Point)
-                    {
-                        d3d12Filter = mipLevel == Point ? D3D12_FILTER_MIN_MAG_MIP_POINT : D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
-                    }
-                    else
-                    {
-                        d3d12Filter = mipLevel == Point ? D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
-                    }
-
-                    break;
+                    return magnification == Point
+                        ? mipLevel == Point ? D3D12_FILTER_MIN_MAG_MIP_POINT : D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR
+                        : mipLevel == Point ? D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
                 }
                 case Linear:
                 {
                     BenzinAssert(magnification != Anisotropic && mipLevel != Anisotropic);
-
-                    if (magnification == Point)
-                    {
-                        d3d12Filter = mipLevel == Point ? D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT : D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-                    }
-                    else
-                    {
-                        d3d12Filter = mipLevel == Point ? D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                    }
-
-                    break;
+                    return magnification == Point 
+                        ? mipLevel == Point ? D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT : D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR
+                        : mipLevel == Point ? D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_MAG_MIP_LINEAR;
                 }
                 case Anisotropic:
                 {
                     BenzinAssert(magnification == Anisotropic && mipLevel == Anisotropic);
-
-                    d3d12Filter = D3D12_FILTER_ANISOTROPIC;
-
-                    break;
+                    return D3D12_FILTER_ANISOTROPIC;
                 }
                 default:
                 {
-                    BenzinAssert(false);
-                    break;
+                    std::unreachable();
                 }
             }
-
-            return d3d12Filter;
         }
 
         D3D12_STATIC_SAMPLER_DESC ToD3D12StaticSamplerDesc(const StaticSampler& staticSampler)
@@ -213,9 +189,9 @@ namespace benzin
         };
 
         std::array<D3D12_STATIC_SAMPLER_DESC, staticSamplerCount> d3d12StaticSamplerDescs;
-        for (size_t i = 0; i < staticSamplerCount; ++i)
+        for (const auto [d3d12StaticSamplerDesc, staticSampler] : std::views::zip(d3d12StaticSamplerDescs, staticSamplers))
         {
-            d3d12StaticSamplerDescs[i] = ToD3D12StaticSamplerDesc(staticSamplers[i]);
+            d3d12StaticSamplerDesc = ToD3D12StaticSamplerDesc(staticSampler);
         }
 
         const D3D12_VERSIONED_ROOT_SIGNATURE_DESC d3d12RootSignatureDesc

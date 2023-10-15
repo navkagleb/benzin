@@ -1,8 +1,5 @@
 #pragma once
 
-#if defined(BENZIN_DEBUG_BUILD)
-    #include <cassert>
-#endif
 #include <cmath>
 #include <cstdint>
 #include <ctime>
@@ -34,3 +31,6 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+
+using namespace std::literals::string_literals;
+using namespace std::literals::string_view_literals;

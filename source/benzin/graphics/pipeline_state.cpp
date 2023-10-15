@@ -113,9 +113,9 @@ namespace benzin
             }
             else
             {
-                for (size_t i = 0; i < blendState.RenderTargetStates.size(); ++i)
+                for (const auto [i, renderTargetState] : std::views::enumerate(blendState.RenderTargetStates))
                 {
-                    d3d12BlendDesc.RenderTarget[i] = ToRenderTargetBlendDesc(blendState.RenderTargetStates[i]);
+                    d3d12BlendDesc.RenderTarget[i] = ToRenderTargetBlendDesc(renderTargetState);
                 }
             }
 

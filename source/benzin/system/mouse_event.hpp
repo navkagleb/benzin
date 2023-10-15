@@ -8,18 +8,18 @@ namespace benzin
     class MousePositionEvent
     {
     public:
-        MousePositionEvent(uint32_t x, uint32_t y)
+        MousePositionEvent(int32_t x, int32_t y)
             : m_X{ x }
             , m_Y{ y }
         {}
 
     public:
-        template <typename T = uint32_t> T GetX() const { return static_cast<T>(m_X); }
-        template <typename T = uint32_t> T GetY() const { return static_cast<T>(m_Y); }
+        template <typename T = int32_t> T GetX() const { return static_cast<T>(m_X); }
+        template <typename T = int32_t> T GetY() const { return static_cast<T>(m_Y); }
 
     protected:
-        uint32_t m_X = 0;
-        uint32_t m_Y = 0;
+        int32_t m_X = 0;
+        int32_t m_Y = 0;
     };
 
     class MouseButtonEvent : public MousePositionEvent

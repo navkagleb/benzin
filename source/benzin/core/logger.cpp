@@ -17,13 +17,13 @@ namespace benzin
             return severityColors;
         }
 
-        constexpr auto g_SeverityColors = GetSeverityColors();
-
         const auto g_StartTimePoint = std::chrono::system_clock::now().time_since_epoch();
 
         std::string GetSeverityFormat(LogSeverity severity)
         {
-            return fmt::format("{}", fmt::styled(magic_enum::enum_name(severity), fmt::fg(g_SeverityColors[severity])));
+            static constexpr auto severityColors = GetSeverityColors();
+
+            return fmt::format("{}", fmt::styled(magic_enum::enum_name(severity), fmt::fg(severityColors[severity])));
         }
 
         std::string GetTimePointFormat()
@@ -50,7 +50,7 @@ namespace benzin
 
         std::string GetOutput(std::string_view severity, std::string_view time, std::string_view fileName, std::string_view message)
         {
-            return fmt::format(FMT_COMPILE("[{}][{}][{}]: {}\n"), severity, time, fileName, message);
+            return fmt::format("[{}][{}][{}]: {}\n", severity, time, fileName, message);
         }
 
     } // anonymous namespace
@@ -64,7 +64,7 @@ namespace benzin
         const auto consoleOutput = GetOutput(severityFormat, timePointFormat, fileNameFormat, message);
         const auto ideOutput = GetOutput(magic_enum::enum_name(severity), timePointFormat, fileNameFormat, message);
 
-        fmt::print(consoleOutput);
+        fmt::print("{}", consoleOutput);
         OutputDebugStringA(ideOutput.c_str());
     }
 

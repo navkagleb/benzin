@@ -48,6 +48,7 @@ namespace benzin
         void RegisterBackBuffers();
         void UpdateViewportDimensions(float width, float height);
 
+        void FlushAndResetBackBuffers();
         void WaitForGPU();
 
     private:

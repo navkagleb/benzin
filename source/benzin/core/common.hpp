@@ -3,6 +3,9 @@
 namespace benzin
 {
 
+    template <typename>
+    inline constexpr bool g_DependentFalse = false;
+
     constexpr uint64_t KBToBytes(uint64_t kb)
     {
         return kb * 1024;
