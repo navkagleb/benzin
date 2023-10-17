@@ -113,7 +113,7 @@ namespace benzin
             }
             else
             {
-                for (const auto [i, renderTargetState] : std::views::enumerate(blendState.RenderTargetStates))
+                for (const auto [i, renderTargetState] : blendState.RenderTargetStates | std::views::enumerate)
                 {
                     d3d12BlendDesc.RenderTarget[i] = ToRenderTargetBlendDesc(renderTargetState);
                 }
@@ -174,11 +174,7 @@ namespace benzin
         memcpy(d3d12GraphicsPipelineStateDesc.RTVFormats, creation.RenderTargetFormats.data(), creation.RenderTargetFormats.size() * sizeof(GraphicsFormat));
 
         BenzinAssert(device.GetD3D12Device()->CreateGraphicsPipelineState(&d3d12GraphicsPipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
-
-        if (!creation.DebugName.IsEmpty())
-        {
-            SetD3D12ObjectDebugName(m_D3D12PipelineState, creation.DebugName);
-        }
+        SetD3D12ObjectDebugName(m_D3D12PipelineState, creation.DebugName);
     }
 
     PipelineState::PipelineState(Device& device, const ComputePipelineStateCreation& creation)
@@ -202,11 +198,7 @@ namespace benzin
         };
 
         BenzinAssert(device.GetD3D12Device()->CreateComputePipelineState(&d3d12ComputePipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
-
-        if (!creation.DebugName.IsEmpty())
-        {
-            SetD3D12ObjectDebugName(m_D3D12PipelineState, creation.DebugName);
-        }
+        SetD3D12ObjectDebugName(m_D3D12PipelineState, creation.DebugName);
     }
 
     PipelineState::~PipelineState()

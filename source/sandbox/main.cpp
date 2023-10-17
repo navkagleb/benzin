@@ -70,6 +70,7 @@ namespace sandbox
             dispatcher.Dispatch(&Application::OnWindowResized, *this);
             dispatcher.Dispatch(&Application::OnWindowFocused, *this);
             dispatcher.Dispatch(&Application::OnWindowUnfocused, *this);
+            dispatcher.Dispatch(&Application::OnKeyPressed, *this);
 
             for (auto& layer : m_LayerStack | std::views::reverse)
             {
@@ -162,6 +163,16 @@ namespace sandbox
 
             return false;
         };
+
+        bool OnKeyPressed(benzin::KeyPressedEvent& event)
+        {
+            if (event.GetKeyCode() == benzin::KeyCode::Escape)
+            {
+                m_IsRunning = false;
+            }
+
+            return false;
+        }
 
     private:
         std::unique_ptr<benzin::Window> m_MainWindow;

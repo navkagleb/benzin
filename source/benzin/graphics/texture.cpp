@@ -251,6 +251,8 @@ namespace benzin
         : Resource{ device }
     {
         CreateD3D12Resource(creation, m_Device.GetD3D12Device(), m_D3D12Resource);
+        SetD3D12ObjectDebugName(m_D3D12Resource, creation.DebugName);
+
         m_Type = creation.Type;
         m_IsCubeMap = creation.IsCubeMap;
         m_Format = creation.Format;
@@ -258,11 +260,6 @@ namespace benzin
         m_Height = creation.Height;
         m_ArraySize = creation.ArraySize;
         m_MipCount = creation.MipCount;
-
-        if (!creation.DebugName.IsEmpty())
-        {
-            SetD3D12ObjectDebugName(m_D3D12Resource, creation.DebugName);
-        }
 
         if (creation.IsNeedShaderResourceView)
         {

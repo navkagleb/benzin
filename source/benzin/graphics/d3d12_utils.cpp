@@ -14,20 +14,29 @@ namespace benzin
 
     std::string GetD3D12ObjectDebugName(ID3D12Object* d3d12Object)
     {
+        static const size_t maxDebugNameSize = 128;
+
         BenzinAssert(d3d12Object);
 
-        uint32_t debugNameSize = 128;
         std::string debugName;
-        debugName.resize(debugNameSize);
+        debugName.resize_and_overwrite(maxDebugNameSize, [&](char* data, size_t size)
+        {
+            auto alignedSize = static_cast<uint32_t>(size);
 
-        BenzinAssert(d3d12Object->GetPrivateData(WKPDID_D3DDebugObjectName, &debugNameSize, debugName.data()));
-        
-        debugName.resize(debugNameSize);
+            BenzinAssert(d3d12Object->GetPrivateData(WKPDID_D3DDebugObjectName, &alignedSize, data));
+            return alignedSize;
+        });
+
         return debugName;
     }
 
     void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, const DebugName& debugName)
     {
+        if (debugName.IsEmpty())
+        {
+            return;
+        }
+
         if (!debugName.IsIndexValid())
         {
             SetD3D12ObjectDebugName(d3d12Object, debugName.Chars);
@@ -58,7 +67,7 @@ namespace benzin
 
     void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, std::string_view debugName, uint32_t index)
     {
-        SetD3D12ObjectDebugName(d3d12Object, std::format("{}{}", debugName, index));
+        SetD3D12ObjectDebugName(d3d12Object, fmt::format("{}{}", debugName, index));
     }
 
     D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType)

@@ -9,12 +9,16 @@ namespace benzin
     namespace
     {
 
-        constexpr magic_enum::containers::array<ShaderType, std::wstring_view> g_ShaderTargets
+        constexpr auto GetShaderTargets()
         {
-            config::g_VertexShaderTarget,
-            config::g_PixelShaderTarget,
-            config::g_ComputeShaderTarget,
-        };
+            magic_enum::containers::array<ShaderType, std::wstring_view> shaderTargets;
+            shaderTargets[ShaderType::Vertex] = config::g_VertexShaderTarget;
+            shaderTargets[ShaderType::Pixel] = config::g_PixelShaderTarget;
+            shaderTargets[ShaderType::Compute] = config::g_ComputeShaderTarget;
+            shaderTargets[ShaderType::Library] = config::g_ShaderLibraryTarget;
+
+            return shaderTargets;
+        }
 
         struct ShaderPaths
         {
@@ -25,32 +29,30 @@ namespace benzin
             ShaderPaths(size_t hash, std::string_view fileName)
                 : SourceFilePath{ GetShaderSourceFilePath(fileName) }
                 , BinaryFilePath{ GetShaderBinaryFilePath(hash) }
-                , DebugFilePath{ GetShaderDebugInfoFilePath(hash) }
+                , DebugFilePath{ GetShaderDebugFilePath(hash) }
             {}
         };
 
         struct ShaderArgs
         {
+            static constexpr auto s_ShaderTargets = GetShaderTargets();
+
             std::wstring_view Target;
             std::wstring EntryPoint;
             std::vector<std::wstring> Defines;
 
-            ShaderArgs(std::wstring_view target)
-                : Target{ target }
+            ShaderArgs() = default;
+
+            ShaderArgs(ShaderType shaderType)
+                : Target{ s_ShaderTargets[shaderType] }
             {}
 
-            ShaderArgs(std::string_view entryPoint, ShaderType shaderType, const std::span<const std::string>& defines)
-                : EntryPoint{ ToWideString(entryPoint) }
-                , Target{ g_ShaderTargets[shaderType] }
+            ShaderArgs(ShaderType shaderType, std::string_view entryPoint, const std::span<const std::string>& defines)
+                : Target{ s_ShaderTargets[shaderType] }
+                , EntryPoint{ ToWideString(entryPoint) }
             {
-                if (!defines.empty())
-                {
-                    Defines.reserve(defines.size());
-                    for (const auto& define : defines)
-                    {
-                        Defines.push_back(ToWideString(define));
-                    }
-                }
+                Defines.reserve(defines.size());
+                std::ranges::copy(defines | std::views::transform(ToWideString), std::back_inserter(Defines));
             }
         };
 
@@ -68,22 +70,17 @@ namespace benzin
                 compileArgs.push_back(config::g_AbsoluteShaderSourceDirectoryPath.c_str());
 
                 // Optimizations
-                if constexpr (BENZIN_IS_DEBUG_BUILD)
-                {
-                    compileArgs.push_back(DXC_ARG_SKIP_OPTIMIZATIONS);
+                compileArgs.push_back(config::g_IsShaderDebugEnabled ? DXC_ARG_SKIP_OPTIMIZATIONS : DXC_ARG_OPTIMIZATION_LEVEL3);
 
-                    // Generate symbols
-                    compileArgs.push_back(DXC_ARG_DEBUG);
+                if constexpr (config::g_IsShaderSymbolsEnabled)
+                {
+                    compileArgs.push_back(DXC_ARG_DEBUG); // Generate symbols
 
                     // PDB file
                     compileArgs.push_back(L"-Fd");
                     compileArgs.push_back(paths.DebugFilePath.c_str());
                 }
-                else
-                {
-                    compileArgs.push_back(DXC_ARG_OPTIMIZATION_LEVEL3);
-                }
-
+                
                 // Binary file
                 compileArgs.push_back(L"-Fo");
                 compileArgs.push_back(paths.BinaryFilePath.c_str());
@@ -192,10 +189,10 @@ namespace benzin
             {
                 CompileResult result;
 
-                // Get binary blob
                 {
                     ComPtr<IDxcBlob> dxcBinaryBlob;
                     BenzinAssert(dxcResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&dxcBinaryBlob), nullptr));
+                    BenzinAssert(dxcBinaryBlob.Get() && dxcBinaryBlob->GetBufferSize() != 0);
 
                     const auto* data = reinterpret_cast<const std::byte*>(dxcBinaryBlob->GetBufferPointer());
                     const size_t size = dxcBinaryBlob->GetBufferSize();
@@ -203,10 +200,11 @@ namespace benzin
                     result.BinaryBlob.assign(data, data + size);
                 }
 
-                // Get PDB
+                if constexpr (config::g_IsShaderSymbolsEnabled)
                 {
                     ComPtr<IDxcBlob> dxcDebugBlob;
                     BenzinAssert(dxcResult->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&dxcDebugBlob), nullptr));
+                    BenzinAssert(dxcDebugBlob.Get() && dxcDebugBlob->GetBufferPointer());
 
                     const auto* data = reinterpret_cast<const std::byte*>(dxcDebugBlob->GetBufferPointer());
                     const size_t size = dxcDebugBlob->GetBufferSize();
@@ -223,73 +221,68 @@ namespace benzin
             ComPtr<IDxcIncludeHandler> m_DxcIncludeHandler;
         };
 
-        size_t GetShaderHash(const ShaderCreation& shaderCreation)
+        size_t GetShaderHash(ShaderType shaderType, const ShaderCreation& shaderCreation)
         {
-            return std::hash<std::string>{}(fmt::format("{}{}{}", shaderCreation.FileName, shaderCreation.EntryPoint, fmt::join(shaderCreation.Defines, "")));
-        }
-
-        size_t GetLibraryHash(std::string_view fileName)
-        {
-            return std::hash<std::string_view>{}(fileName);
+            return std::hash<std::string>{}(fmt::format(
+                "{}{}{}{}",
+                magic_enum::enum_name(shaderType),
+                shaderCreation.FileName,
+                shaderCreation.EntryPoint,
+                fmt::join(shaderCreation.Defines, "")
+            ));
         }
 
         ShaderCompiler g_ShaderCompiler;
 
-        std::unordered_map<size_t, std::vector<std::byte>> g_ShaderDXILBinaries;
-        std::unordered_map<size_t, std::vector<std::byte>> g_LibraryDXILBinaries;
+        std::unordered_map<size_t, std::vector<std::byte>> g_ShaderBinaries;
 
     } // anonymous namespace
 
     std::span<const std::byte> GetShaderBinary(ShaderType shaderType, const ShaderCreation& shaderCreation)
     {
-        const size_t hash = GetShaderHash(shaderCreation);
+        const size_t hash = GetShaderHash(shaderType, shaderCreation);
 
-        if (g_ShaderDXILBinaries.contains(hash))
+        if (g_ShaderBinaries.contains(hash))
         {
-            return g_ShaderDXILBinaries.at(hash);
+            return g_ShaderBinaries.at(hash);
         }
 
         const ShaderPaths paths{ hash, shaderCreation.FileName };
-        const ShaderArgs args{ shaderCreation.EntryPoint, shaderType, shaderCreation.Defines };
 
         if (!IsDestinationFileOlder(paths.SourceFilePath, paths.BinaryFilePath))
         {
-            return g_ShaderDXILBinaries[hash] = ReadFromFile(paths.BinaryFilePath);
+            return g_ShaderBinaries[hash] = ReadFromFile(paths.BinaryFilePath);
+        }
+
+        const ShaderArgs args;
+        if (shaderType == ShaderType::Library)
+        {
+            new (&const_cast<ShaderArgs&>(args)) ShaderArgs{ shaderType };
+        }
+        else
+        {
+            new (&const_cast<ShaderArgs&>(args)) ShaderArgs{ shaderType, shaderCreation.EntryPoint, shaderCreation.Defines };
         }
 
         const ShaderCompiler::CompileResult result = g_ShaderCompiler.Compile(paths, args);
-        BenzinTrace("ShaderCompiled: {}! File: {}, EntryPoint: {}", hash, shaderCreation.FileName, shaderCreation.EntryPoint);
 
-        WriteToFile(paths.BinaryFilePath, result.BinaryBlob);
-        WriteToFile(paths.DebugFilePath, result.DebugBlob);
-
-        return g_ShaderDXILBinaries[hash] = result.BinaryBlob;
-    }
-
-    std::span<const std::byte> GetLibraryBinary(std::string_view fileName)
-    {
-        const size_t hash = GetLibraryHash(fileName);
-
-        if (g_LibraryDXILBinaries.contains(hash))
+        if (shaderType == ShaderType::Library)
         {
-            return g_LibraryDXILBinaries.at(hash);
+            BenzinTrace("LibraryCompiled: {}! File: {}", hash, shaderCreation.FileName);
+        }
+        else
+        {
+            BenzinTrace("ShaderCompiled: {}! File: {}, EntryPoint: {}", hash, shaderCreation.FileName, shaderCreation.EntryPoint);
         }
 
-        const ShaderPaths paths{ hash, fileName };
-        const ShaderArgs args{ config::g_LibraryTarget };
+        WriteToFile(paths.BinaryFilePath, result.BinaryBlob);
 
-        if (!IsDestinationFileOlder(paths.SourceFilePath, paths.BinaryFilePath))
+        if constexpr (config::g_IsShaderSymbolsEnabled)
         {
-            return g_LibraryDXILBinaries[hash] = ReadFromFile(paths.BinaryFilePath);
+            WriteToFile(paths.DebugFilePath, result.DebugBlob);
         }
 
-        const ShaderCompiler::CompileResult result = g_ShaderCompiler.Compile(paths, args);
-        BenzinTrace("LibraryCompiled: {}! File: {}", hash, fileName);
-
-        WriteToFile(paths.BinaryFilePath, result.BinaryBlob);
-        WriteToFile(paths.DebugFilePath, result.DebugBlob);
-
-        return g_LibraryDXILBinaries[hash] = result.BinaryBlob;
+        return g_ShaderBinaries[hash] = result.BinaryBlob;
     }
 
 } // namespace benzin

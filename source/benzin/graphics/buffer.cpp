@@ -79,19 +79,17 @@ namespace benzin
         : Resource{ device }
     {
         CreateD3D12Resource(creation, m_Device.GetD3D12Device(), m_D3D12Resource);
+        SetD3D12ObjectDebugName(m_D3D12Resource, creation.DebugName);
+
         m_CurrentState = creation.InitialState; // 'InitialState' can updated in 'CreateD3D12Resource'
         m_ElementSize = creation.ElementSize;
         m_ElementCount = creation.ElementCount;
-
         m_AlignedElementSize = static_cast<uint32_t>(m_D3D12Resource->GetDesc().Width) / creation.ElementCount; // HACK
-
-        if (!creation.DebugName.IsEmpty())
-        {
-            SetD3D12ObjectDebugName(m_D3D12Resource, creation.DebugName);
-        }
 
         if (!creation.InitialData.empty())
         {
+            BenzinAssert(creation.Flags[BufferFlag::Upload] || creation.Flags[BufferFlag::ConstantBuffer]);
+
             MappedData buffer{ *this };
             buffer.Write(creation.InitialData);
         }

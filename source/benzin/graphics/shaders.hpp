@@ -10,9 +10,9 @@ namespace benzin
         Vertex,
         Pixel,
         Compute,
+        Library,
     };
 
     std::span<const std::byte> GetShaderBinary(ShaderType shaderType, const ShaderCreation& shaderCreation);
-    std::span<const std::byte> GetLibraryBinary(std::string_view fileName);
 
 } // namespace benzin

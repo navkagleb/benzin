@@ -79,6 +79,9 @@ namespace sandbox
             std::unique_ptr<benzin::Buffer> PointLightBuffer;
         };
 
+    private:
+        static const uint32_t ms_MaxPointLightCount = 20 * 20;
+
     public:
         DeferredLightingPass(benzin::Device& device, benzin::SwapChain& swapChain, uint32_t width, uint32_t height);
 
@@ -94,8 +97,6 @@ namespace sandbox
         void OnResize(uint32_t width, uint32_t height);
 
     private:
-        static inline const uint32_t ms_MaxPointLightCount = 20 * 20;
-
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 

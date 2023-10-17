@@ -283,7 +283,7 @@ namespace sandbox
         d3d12StateSubObjects.emplace_back(D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE, &d3d12LocalRootSignature);
 
         // 3. D3D12_DXIL_LIBRARY_DESC
-        const std::span<const std::byte> libraryBinary = benzin::GetLibraryBinary("default_raytracing.hlsl");
+        const std::span<const std::byte> libraryBinary = benzin::GetShaderBinary(benzin::ShaderType::Library, { "default_raytracing.hlsl" });
 
         std::vector<D3D12_EXPORT_DESC> d3d12ExportDescs
         {

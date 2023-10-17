@@ -37,11 +37,9 @@ namespace benzin
                     BenzinAssert(magnification == Anisotropic && mipLevel == Anisotropic);
                     return D3D12_FILTER_ANISOTROPIC;
                 }
-                default:
-                {
-                    std::unreachable();
-                }
             }
+
+            std::unreachable();
         }
 
         D3D12_STATIC_SAMPLER_DESC ToD3D12StaticSamplerDesc(const StaticSampler& staticSampler)

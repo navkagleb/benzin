@@ -99,7 +99,7 @@ namespace benzin
 
     void SwapChain::RegisterBackBuffers()
     {
-        for (const auto [i, backBuffer] : std::views::enumerate(m_BackBuffers))
+        for (const auto [i, backBuffer] : m_BackBuffers | std::views::enumerate)
         {
             ID3D12Resource* d3d12BackBuffer;
             BenzinAssert(m_DXGISwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&d3d12BackBuffer))); // Increases reference count

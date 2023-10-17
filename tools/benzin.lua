@@ -1,12 +1,12 @@
 workspace "benzin"
     location "../"
 
-    platforms { "win64" }
-    configurations { "debug", "release" }
+    platforms { "Win64" }
+    configurations { "Debug", "Release" }
 
     startproject "sandbox"
 
-    filter "platforms:win64"
+    filter "platforms:Win64"
         -- From Windows SDK 10.0.20348.0 shader model 6.6 support started  
         systemversion "10.0.20348.0:latest"
         architecture "x64"
@@ -18,7 +18,7 @@ workspace "benzin"
             "WIN32",
         }
 
-    filter "configurations:debug"
+    filter "configurations:Debug"
         targetsuffix "_debug"
         defines {
             "DEBUG",
@@ -26,7 +26,7 @@ workspace "benzin"
         }
         optimize "Off"
 
-    filter "configurations:release"
+    filter "configurations:Release"
         targetsuffix "_release"
         defines {
             "NDEBUG",

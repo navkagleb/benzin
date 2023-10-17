@@ -48,7 +48,7 @@ namespace benzin
         SetD3D12ObjectDebugName(m_D3D12CommandQueue, commandListTypeName + "CommandQueue"s);
 
         m_D3D12CommandAllocators.resize(commandAllocatorCount, nullptr);
-        for (const auto [i, d3d12CommandAllocator] : std::views::enumerate(m_D3D12CommandAllocators))
+        for (const auto [i, d3d12CommandAllocator] : m_D3D12CommandAllocators | std::views::enumerate)
         {
             BenzinAssert(device.GetD3D12Device()->CreateCommandAllocator(static_cast<D3D12_COMMAND_LIST_TYPE>(commandListType), IID_PPV_ARGS(&d3d12CommandAllocator)));
             SetD3D12ObjectDebugName(d3d12CommandAllocator, commandListTypeName + "CommandAllocator"s, static_cast<uint32_t>(i));
