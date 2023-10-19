@@ -26,11 +26,19 @@ namespace sandbox
             m_Device = std::make_unique<benzin::Device>(*m_Backend);
             m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Backend, *m_Device);
 
+            const benzin::GraphicsRefs graphicsRefs
+            {
+                .WindowRef = *m_MainWindow,
+                .BackendRef = *m_Backend,
+                .DeviceRef = *m_Device,
+                .SwapChainRef = *m_SwapChain,
+            };
+
             BeginFrame();
             {
-                m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(*m_MainWindow, *m_Backend, *m_Device, *m_SwapChain);
-                //m_MainLayer = m_LayerStack.Push<MainLayer>(*m_MainWindow, *m_Device, *m_SwapChain);
-                m_RaytracingLayer = m_LayerStack.Push<RaytracingLayer>(*m_MainWindow, *m_Device, *m_SwapChain);
+                m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(graphicsRefs);
+                //m_MainLayer = m_LayerStack.Push<MainLayer>(graphicsRefs);
+                m_RaytracingLayer = m_LayerStack.Push<RaytracingLayer>(graphicsRefs);
             }
             EndFrame();
 
@@ -39,6 +47,8 @@ namespace sandbox
         
         void Execute()
         {
+            using namespace std::literals::chrono_literals;
+
             m_FrameTimer.Reset();
 
             m_IsRunning = true;
@@ -49,7 +59,7 @@ namespace sandbox
 
                 if (m_IsPaused)
                 {
-                    std::this_thread::sleep_for(std::chrono::milliseconds{ 100 });
+                    std::this_thread::sleep_for(100ms);
                 }
                 else
                 {
@@ -92,7 +102,7 @@ namespace sandbox
         {
             m_FrameTimer.Tick();
 
-            const float dt = m_FrameTimer.GetDeltaTime();
+            const float dt = m_FrameTimer.GetDeltaTimeInSeconds();
 
             for (auto& layer : m_LayerStack)
             {

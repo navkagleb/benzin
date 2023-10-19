@@ -29,7 +29,7 @@ namespace sandbox
         };
 
     public:
-        RaytracingLayer(benzin::Window& window, benzin::Device& device, benzin::SwapChain& swapChain);
+        explicit RaytracingLayer(const benzin::GraphicsRefs& graphicsRefs);
 
     public:
         void OnEvent(benzin::Event& event) override;

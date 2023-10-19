@@ -147,7 +147,7 @@ namespace sandbox
         };
 
     public:
-        MainLayer(benzin::Window& window, benzin::Device& device, benzin::SwapChain& swapChain);
+        explicit MainLayer(const benzin::GraphicsRefs& graphicsRefs);
         ~MainLayer();
 
     public:

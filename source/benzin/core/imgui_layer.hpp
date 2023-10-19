@@ -11,10 +11,26 @@
 namespace benzin
 {
 
-    class ImGuiLayer final : public Layer
+    class FrameStats
     {
     public:
-        ImGuiLayer(Window& window, Backend& backend, Device& device, SwapChain& swapChain);
+        float GetFrameRate() const { return m_FrameRate; }
+        float GetDeltaTimeMS() const { return 1000.0f / m_FrameRate; }
+
+        void OnUpdate(float dt);
+
+    private:
+        static constexpr float ms_ElapsedItervalInSeconds = 1.0f;
+
+        uint32_t m_ElapsedFrameCount = 0;
+        float m_ElapsedTimeInSeconds = 0.0f;
+        float m_FrameRate = 0.0f;
+    };
+
+    class ImGuiLayer : public Layer
+    {
+    public:
+        explicit ImGuiLayer(const GraphicsRefs& graphicsRefs);
         ~ImGuiLayer();
 
     public:
@@ -27,6 +43,7 @@ namespace benzin
         void End();
 
         void OnEvent(Event& event) override;
+        void OnUpdate(float dt) override;
         void OnImGuiRender() override;
 
     private:
@@ -39,6 +56,8 @@ namespace benzin
         SwapChain& m_SwapChain;
 
         Descriptor m_FontDescriptor;
+
+        FrameStats m_FrameStats;
 
         bool m_IsWidgetDrawingEnabled = false;
         bool m_IsEventsAreBlocked = true;

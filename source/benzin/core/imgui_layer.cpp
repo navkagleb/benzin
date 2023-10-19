@@ -11,11 +11,27 @@
 namespace benzin
 {
 
-    ImGuiLayer::ImGuiLayer(Window& window, Backend& backend, Device& device, SwapChain& swapChain)
-        : m_Window{ window }
-        , m_Backend{ backend }
-        , m_Device{ device }
-        , m_SwapChain{ swapChain }
+    // FrameStats
+    void FrameStats::OnUpdate(float dt)
+    {
+        m_ElapsedFrameCount++;
+        m_ElapsedTimeInSeconds += dt;
+
+        if (m_ElapsedTimeInSeconds >= ms_ElapsedItervalInSeconds)
+        {
+            m_FrameRate = static_cast<float>(m_ElapsedFrameCount) / m_ElapsedTimeInSeconds;
+
+            m_ElapsedFrameCount = 0;
+            m_ElapsedTimeInSeconds -= ms_ElapsedItervalInSeconds;
+        }
+    }
+
+    // ImGuiLayer
+    ImGuiLayer::ImGuiLayer(const GraphicsRefs& graphicsRefs)
+        : m_Window{ graphicsRefs.WindowRef }
+        , m_Backend{ graphicsRefs.BackendRef }
+        , m_Device{ graphicsRefs.DeviceRef }
+        , m_SwapChain{ graphicsRefs.SwapChainRef }
     {
         IMGUI_CHECKVERSION();
 
@@ -24,18 +40,8 @@ namespace benzin
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-        //io.IniFilename = "config/imgui.ini";
-
-        ImGui::StyleColorsClassic();
-
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-        {
-            ImGuiStyle& style = ImGui::GetStyle();
-            style.WindowRounding = 0.0f;
-            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-        }
+        ImGui::StyleColorsDark();
 
         m_FontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::ShaderResourceView);
 
@@ -70,12 +76,6 @@ namespace benzin
     {
         ImGui::Render();
 
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-        {
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
-        }
-
         {
             auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
@@ -102,15 +102,13 @@ namespace benzin
         dispatcher.Dispatch(&ImGuiLayer::OnKeyPressed, *this);
     }
 
+    void ImGuiLayer::OnUpdate(float dt)
+    {
+        m_FrameStats.OnUpdate(dt);
+    }
+
     void ImGuiLayer::OnImGuiRender()
     {
-        static float currentFramerate = ImGui::GetIO().Framerate;
-
-        if (m_SwapChain.GetGPUFrameIndex() % 30 == 0)
-        {
-            currentFramerate = ImGui::GetIO().Framerate;
-        }
-
         if (m_IsDemoWindowEnabled)
         {
             ImGui::ShowDemoWindow(&m_IsDemoWindowEnabled);
@@ -131,14 +129,16 @@ namespace benzin
             const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs;
             if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, windowFlags))
             {
-                ImGui::Text(
-                    "%s | "
-                    "FPS: %.1f (%.3f ms) | "
-                    "(%d x %d)",
-                    m_Backend.GetMainAdapterName().c_str(),
-                    currentFramerate, 1000.0f / currentFramerate,
+                const std::string text = fmt::format(
+                    "{} | "
+                    "FPS: {:.1f} ({:.3f} ms) | "
+                    "({} x {})",
+                    m_Backend.GetMainAdapterName(),
+                    m_FrameStats.GetFrameRate(), m_FrameStats.GetDeltaTimeMS(),
                     m_Window.GetWidth(), m_Window.GetHeight()
                 );
+
+                ImGui::Text(text.c_str());
                 ImGui::End();
             }
 

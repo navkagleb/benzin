@@ -11,48 +11,54 @@ namespace benzin
         uint64_t GetCounts()
         {
             uint64_t result;
-            return ::QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&result)) ? result : -1;
+            BenzinAssert(::QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&result)) != 0);
+
+            return result;
         }
 
         // Frequency - Counts per Second
         uint64_t GetFrequency()
         {
             uint64_t result;
-            return ::QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&result)) ? result : -1;
+            BenzinAssert(::QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&result)) != 0);
+
+            return result;
         }
 
-    } // namespace _internal
+        const auto g_SecondsPerCount = 1.0f / static_cast<float>(GetFrequency());
 
-    Timer::Timer()
-        : m_SecondsPerCount{ 1.0f / static_cast<float>(GetFrequency()) }
-    {}
+    } // anonymous namespace
 
-    float Timer::GetTotalTime() const
+    float Timer::GetTotalTimeInSeconds() const
     {
-        return static_cast<float>((m_IsStopped ? m_StopTime : m_CurrentTime) - m_PausedTime - m_BaseTime) * m_SecondsPerCount;
+        return static_cast<float>((m_IsStopped ? m_StopTime : m_CurrentTime) - m_PausedTime - m_BaseTime) * g_SecondsPerCount;
     }
 
     void Timer::Start() 
     {
+        if (!m_IsStopped)
+        {
+            return;
+        }
+
         const uint64_t startTime = GetCounts();
 
-        if (m_IsStopped)
-        {
-            m_PausedTime += (startTime - m_StopTime);
-            m_PreviousTime = startTime;
+        m_PausedTime += (startTime - m_StopTime);
+        m_PreviousTime = startTime;
 
-            m_StopTime = 0;
-            m_IsStopped = false;
-        }
+        m_StopTime = 0;
+        m_IsStopped = false;
     }
 
     void Timer::Stop()
     {
-        if (!m_IsStopped)
+        if (m_IsStopped)
         {
-            m_StopTime = GetCounts();
-            m_IsStopped = true;
+            return;
         }
+
+        m_StopTime = GetCounts();
+        m_IsStopped = true;
     }
 
     void Timer::Reset()
@@ -69,17 +75,17 @@ namespace benzin
     {
         if (m_IsStopped)
         {
-            m_DeltaTime = 0.0f;
+            m_DeltaTimeInSeconds = 0.0f;
             return;
         }
 
         m_CurrentTime = GetCounts();
-        m_DeltaTime = static_cast<float>(m_CurrentTime - m_PreviousTime) * m_SecondsPerCount;
+        m_DeltaTimeInSeconds = static_cast<float>(m_CurrentTime - m_PreviousTime) * g_SecondsPerCount;
         m_PreviousTime = m_CurrentTime;
 
-        if (m_DeltaTime < 0.0f)
+        if (m_DeltaTimeInSeconds < 0.0f)
         {
-            m_DeltaTime = 0.0f;
+            m_DeltaTimeInSeconds = 0.0f;
         }
     }
 

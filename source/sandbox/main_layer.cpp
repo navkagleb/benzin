@@ -549,13 +549,13 @@ namespace sandbox
     }
 
     // MainLayer
-    MainLayer::MainLayer(benzin::Window& window, benzin::Device& device, benzin::SwapChain& swapChain)
-        : m_Window{ window }
-        , m_Device{ device }
-        , m_SwapChain{ swapChain }
-        , m_GeometryPass{ device, swapChain, window.GetWidth(), window.GetHeight() }
-        , m_DeferredLightingPass{ device, swapChain, window.GetWidth(), window.GetHeight() }
-        , m_EnvironmentPass{ device, swapChain, window.GetWidth(), window.GetHeight() }
+    MainLayer::MainLayer(const benzin::GraphicsRefs& graphicsRefs)
+        : m_Window{ graphicsRefs.WindowRef }
+        , m_Device{ graphicsRefs.DeviceRef }
+        , m_SwapChain{ graphicsRefs.SwapChainRef }
+        , m_GeometryPass{ m_Device, m_SwapChain, m_Window.GetWidth(), m_Window.GetHeight() }
+        , m_DeferredLightingPass{ m_Device, m_SwapChain, m_Window.GetWidth(), m_Window.GetHeight() }
+        , m_EnvironmentPass{ m_Device, m_SwapChain, m_Window.GetWidth(), m_Window.GetHeight() }
     {
         CreateResources();
         CreateEntities();

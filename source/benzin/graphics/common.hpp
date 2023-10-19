@@ -6,6 +6,19 @@
 namespace benzin
 {
 
+    class Window;
+    class Backend;
+    class Device;
+    class SwapChain;
+
+    struct GraphicsRefs
+    {
+        Window& WindowRef;
+        Backend& BackendRef;
+        Device& DeviceRef;
+        SwapChain& SwapChainRef;
+    };
+
     enum class ShaderVisibility : std::underlying_type_t<D3D12_SHADER_VISIBILITY>
     {
         All = D3D12_SHADER_VISIBILITY_ALL,

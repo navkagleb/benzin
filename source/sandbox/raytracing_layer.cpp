@@ -24,10 +24,10 @@ namespace sandbox
 
     } // anonymous namespace
 
-    RaytracingLayer::RaytracingLayer(benzin::Window& window, benzin::Device& device, benzin::SwapChain& swapChain)
-        : m_Window{ window }
-        , m_Device{ device }
-        , m_SwapChain{ swapChain }
+    RaytracingLayer::RaytracingLayer(const benzin::GraphicsRefs& graphicsRefs)
+        : m_Window{ graphicsRefs.WindowRef }
+        , m_Device{ graphicsRefs.DeviceRef }
+        , m_SwapChain{ graphicsRefs.SwapChainRef }
     {
         CreateEntities();
 
