@@ -61,10 +61,6 @@ project "third_party"
         "../source/third_party/entt/**.hpp",
         "../source/third_party/entt/**.cpp",
 
-        --fmt
-        "../source/third_party/fmt/**.h",
-        "../source/third_party/fmt/**.cc",
-
         -- imgui
         "../source/third_party/imgui/**.h",
         "../source/third_party/imgui/**.cpp",

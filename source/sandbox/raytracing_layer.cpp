@@ -155,44 +155,31 @@ namespace sandbox
 
     void RaytracingLayer::CreateEntities()
     {
-        {
-            const uint32_t vertexSize = sizeof(DirectX::XMFLOAT3);
-            const uint32_t indexSize = sizeof(uint32_t);
+        const uint32_t vertexSize = sizeof(DirectX::XMFLOAT3);
+        const uint32_t indexSize = sizeof(uint32_t);
 
-            const float depthValue = 1.0f;
-            const float offset = 0.7f;
+        const float depthValue = 1.0f;
+        const float offset = 0.7f;
             
-            m_Vertices =
-            {
-                DirectX::XMFLOAT3{ 0.0f, -offset, depthValue },
-                DirectX::XMFLOAT3{ -offset, offset, depthValue },
-                DirectX::XMFLOAT3{ offset, offset, depthValue }
-            };
-
-            m_Indices = { 0, 1, 2 };
-
-            m_VertexBuffer = std::make_shared<benzin::Buffer>(m_Device, benzin::BufferCreation{ .ElementSize = vertexSize, .ElementCount = static_cast<uint32_t>(m_Vertices.size()) });
-            m_IndexBuffer = std::make_shared<benzin::Buffer>(m_Device, benzin::BufferCreation{ .ElementSize = indexSize, .ElementCount = static_cast<uint32_t>(m_Indices.size()) });
-
-            benzin::CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
-            auto& copyCommandList = copyCommandQueue->GetCommandList(m_VertexBuffer->GetSizeInBytes() + m_IndexBuffer->GetSizeInBytes());
-
-            copyCommandList.UpdateBuffer(*m_VertexBuffer, std::span<const DirectX::XMFLOAT3>{ m_Vertices });
-            copyCommandList.UpdateBuffer(*m_IndexBuffer, std::span<const uint32_t>{ m_Indices });
-        }
-
-        m_BoxEntity = m_EntityRegistry.create();
-
+        m_Vertices =
         {
-            auto& tc = m_EntityRegistry.emplace<benzin::TransformComponent>(m_BoxEntity);
-            tc.Rotation = { 0.0f, DirectX::XM_PI, 0.0f };
-        }
-        
-        {
-            auto& mc = m_EntityRegistry.emplace<benzin::ModelComponent>(m_BoxEntity);
-            mc.Model = std::make_shared<benzin::Model>(m_Device);
-            BenzinAssert(mc.Model->LoadFromGLTFFile("Box/glTF/Box.gltf"));
-        }
+            DirectX::XMFLOAT3{ 0.0f, -offset, depthValue },
+            DirectX::XMFLOAT3{ -offset, offset, depthValue },
+            DirectX::XMFLOAT3{ offset, offset, depthValue }
+        };
+
+        m_Indices = { 0, 1, 2 };
+
+        m_VertexBuffer = std::make_shared<benzin::Buffer>(m_Device, benzin::BufferCreation{ .ElementSize = vertexSize, .ElementCount = static_cast<uint32_t>(m_Vertices.size()) });
+        m_IndexBuffer = std::make_shared<benzin::Buffer>(m_Device, benzin::BufferCreation{ .ElementSize = indexSize, .ElementCount = static_cast<uint32_t>(m_Indices.size()) });
+
+        auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
+        BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
+
+        auto& copyCommandList = copyCommandQueue.GetCommandList(m_VertexBuffer->GetSizeInBytes() + m_IndexBuffer->GetSizeInBytes());
+
+        copyCommandList.UpdateBuffer(*m_VertexBuffer, std::span<const DirectX::XMFLOAT3>{ m_Vertices });
+        copyCommandList.UpdateBuffer(*m_IndexBuffer, std::span<const uint32_t>{ m_Indices });
     }
 
     void RaytracingLayer::CreateRootSignatures()
@@ -459,8 +446,10 @@ namespace sandbox
                 .AccelerationStructure = m_BLAS->GetGPUVirtualAddress(),
             };
 
-            benzin::CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
-            auto& copyCommandList = copyCommandQueue->GetCommandList(sizeof(d3d12RaytracingInstanceDesc));
+            auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
+            BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
+
+            auto& copyCommandList = copyCommandQueue.GetCommandList(sizeof(d3d12RaytracingInstanceDesc));
 
             copyCommandList.UpdateBuffer(*instanceBuffer, std::span{ &d3d12RaytracingInstanceDesc, 1 });
         }
@@ -525,7 +514,7 @@ namespace sandbox
             {
                 .DebugName = "RayGenShaderTable",
                 .ElementCount = alignedShaderRecordSize,
-                .Flags = benzin::BufferFlag::Upload,
+                .Flags = benzin::BufferFlag::UploadBuffer,
             });
 
             benzin::MappedData rayGenShaderTable{ *m_RayGenShaderTable };
@@ -544,7 +533,7 @@ namespace sandbox
             {
                 .DebugName = "MissShaderTable",
                 .ElementCount = alignedShaderRecordSize,
-                .Flags = benzin::BufferFlag::Upload,
+                .Flags = benzin::BufferFlag::UploadBuffer,
                 .InitialData = std::span{ missShaderIdentifier, shaderIdentifierSize },
             });
         }
@@ -560,7 +549,7 @@ namespace sandbox
             {
                 .DebugName = "HitGroupShaderTable",
                 .ElementCount = alignedShaderRecordSize,
-                .Flags = benzin::BufferFlag::Upload,
+                .Flags = benzin::BufferFlag::UploadBuffer,
                 .InitialData = std::span{ hitGroupShaderIdentifier, shaderIdentifierSize },
             });
         }

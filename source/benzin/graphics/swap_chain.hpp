@@ -15,8 +15,8 @@ namespace benzin
     class SwapChain
     {
     public:
-        BENZIN_NON_COPYABLE_IMPL(SwapChain)
-        BENZIN_NON_MOVEABLE_IMPL(SwapChain)
+        BenzinDefineNonCopyable(SwapChain);
+        BenzinDefineNonMoveable(SwapChain);
 
     public:
         SwapChain(const Window& window, const Backend& backend, Device& device);
@@ -25,10 +25,10 @@ namespace benzin
     public:
         IDXGISwapChain3* GetDXGISwapChain() const { return m_DXGISwapChain; }
 
-        uint32_t GetCurrentBackBufferIndex() const { return m_DXGISwapChain->GetCurrentBackBufferIndex(); }
+        uint32_t GetCurrentFrameIndex() const { return m_DXGISwapChain->GetCurrentBackBufferIndex(); }
 
-        std::shared_ptr<Texture>& GetCurrentBackBuffer() { return m_BackBuffers[GetCurrentBackBufferIndex()]; }
-        const std::shared_ptr<Texture>& GetCurrentBackBuffer() const { return m_BackBuffers[GetCurrentBackBufferIndex()]; }
+        std::shared_ptr<Texture>& GetCurrentBackBuffer() { return m_BackBuffers[GetCurrentFrameIndex()]; }
+        const std::shared_ptr<Texture>& GetCurrentBackBuffer() const { return m_BackBuffers[GetCurrentFrameIndex()]; }
 
         uint64_t GetCPUFrameIndex() const { return m_CPUFrameIndex; }
         uint64_t GetGPUFrameIndex() const { return m_GPUFrameIndex; }

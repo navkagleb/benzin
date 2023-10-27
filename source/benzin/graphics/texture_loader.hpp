@@ -11,8 +11,8 @@ namespace benzin
     class TextureLoader
     {
     public:
-        BENZIN_NON_COPYABLE_IMPL(TextureLoader)
-        BENZIN_NON_MOVEABLE_IMPL(TextureLoader)
+        BenzinDefineNonCopyable(TextureLoader);
+        BenzinDefineNonMoveable(TextureLoader);
 
     public:
         explicit TextureLoader(Device& device);

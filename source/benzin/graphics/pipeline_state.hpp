@@ -47,8 +47,8 @@ namespace benzin
     class PipelineState
     {
     public:
-        BENZIN_NON_COPYABLE_IMPL(PipelineState)
-        BENZIN_NON_MOVEABLE_IMPL(PipelineState)
+        BenzinDefineNonCopyable(PipelineState);
+        BenzinDefineNonMoveable(PipelineState);
 
     public:
         explicit PipelineState(Device& device, const GraphicsPipelineStateCreation& creation);

@@ -67,7 +67,7 @@ namespace benzin
 
     void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, std::string_view debugName, uint32_t index)
     {
-        SetD3D12ObjectDebugName(d3d12Object, fmt::format("{}{}", debugName, index));
+        SetD3D12ObjectDebugName(d3d12Object, std::format("{}{}", debugName, index));
     }
 
     D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType)

@@ -10,8 +10,8 @@ namespace benzin
     class CommandQueue
     {
     public:
-        BENZIN_NON_COPYABLE_IMPL(CommandQueue)
-        BENZIN_NON_MOVEABLE_IMPL(CommandQueue)
+        BenzinDefineNonCopyable(CommandQueue);
+        BenzinDefineNonMoveable(CommandQueue);
 
     public:
         CommandQueue(Device& device, size_t commandAllocatorCount);
@@ -42,28 +42,6 @@ namespace benzin
 
         bool m_IsCommandListExecuted = false;
         bool m_IsNeedFlush = false;
-    };
-
-    template <typename T>
-    class CommandQueueScope
-    {
-    public:
-        explicit CommandQueueScope(T& commandQueue)
-            : m_CommandQueue{ commandQueue }
-        {}
-
-        ~CommandQueueScope()
-        {
-            m_CommandQueue.ExecuteCommandList();
-            m_CommandQueue.Flush();
-        }
-
-    public:
-        T* operator->() { return &m_CommandQueue; }
-        T& operator*() { return m_CommandQueue; }
-
-    private:
-        T& m_CommandQueue;
     };
 
     class CopyCommandQueue : public CommandQueue<CopyCommandList>
@@ -106,5 +84,7 @@ namespace benzin
     };
 
 } // namespace benzin
+
+#define BenzinFlushCommandQueueOnScopeExit(commandQueue) BenzinExecuteOnScopeExit([&commandQueue] { commandQueue.ExecuteCommandList(); commandQueue.Flush(); })
 
 #include "benzin/graphics/command_queue.inl"

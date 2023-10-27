@@ -48,8 +48,10 @@ namespace sandbox
                 OutIrradianceTextureIndex,
             };
 
-            benzin::CommandQueueScope computeCommandQueue{ m_Device.GetComputeCommandQueue() };
-            auto& computeCommandList = computeCommandQueue->GetCommandList();
+            auto& computeCommandQueue = m_Device.GetComputeCommandQueue();
+            BenzinFlushCommandQueueOnScopeExit(computeCommandQueue);
+
+            auto& computeCommandList = computeCommandQueue.GetCommandList();
 
             computeCommandList.SetPipelineState(*m_IrradiancePipelineState);
             computeCommandList.SetResourceBarrier(*irradianceTexture, benzin::ResourceState::UnorderedAccess);

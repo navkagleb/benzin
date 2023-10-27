@@ -19,8 +19,8 @@ namespace benzin
     class CommandList
     {
     public:
-        BENZIN_NON_COPYABLE_IMPL(CommandList)
-        BENZIN_NON_MOVEABLE_IMPL(CommandList)
+        BenzinDefineNonCopyable(CommandList);
+        BenzinDefineNonMoveable(CommandList);
 
     public:
         CommandList(Device& device, CommandListType commandListType);
@@ -49,7 +49,7 @@ namespace benzin
 
     public:
         template <typename T>
-        void UpdateBuffer(Buffer& buffer, std::span<const T> data, size_t startElement = 0) { UpdateBuffer(buffer, std::span{ reinterpret_cast<const std::byte*>(data.data()), data.size_bytes() }, startElement * sizeof(T)); }
+        void UpdateBuffer(Buffer& buffer, std::span<const T> data, size_t startElement = 0) { UpdateBuffer(buffer, std::as_bytes(data), startElement * sizeof(T)); }
         void UpdateBuffer(Buffer& buffer, std::span<const std::byte> data, size_t offsetInBytes);
 
         void UpdateTexture(Texture& texture, const std::vector<SubResourceData>& subResources);

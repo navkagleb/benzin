@@ -52,7 +52,7 @@ namespace benzin
                 , EntryPoint{ ToWideString(entryPoint) }
             {
                 Defines.reserve(defines.size());
-                std::ranges::copy(defines | std::views::transform(ToWideString), std::back_inserter(Defines));
+                std::ranges::transform(defines, std::back_inserter(Defines), ToWideString);
             }
         };
 
@@ -223,12 +223,12 @@ namespace benzin
 
         size_t GetShaderHash(ShaderType shaderType, const ShaderCreation& shaderCreation)
         {
-            return std::hash<std::string>{}(fmt::format(
+            return std::hash<std::string>{}(std::format(
                 "{}{}{}{}",
                 magic_enum::enum_name(shaderType),
                 shaderCreation.FileName,
                 shaderCreation.EntryPoint,
-                fmt::join(shaderCreation.Defines, "")
+                std::ranges::fold_left(shaderCreation.Defines, "", std::plus<std::string>{})
             ));
         }
 

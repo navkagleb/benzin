@@ -9,9 +9,9 @@ namespace benzin
     namespace
     {
 
-        D3D12_HEAP_TYPE ResolveD3D12HeapType(magic_enum::containers::bitset<BufferFlag> flags)
+        D3D12_HEAP_TYPE ResolveD3D12HeapType(BufferFlags flags)
         {
-            if (flags[BufferFlag::Upload] || flags[BufferFlag::ConstantBuffer])
+            if (flags[BufferFlag::UploadBuffer] || flags[BufferFlag::ConstantBuffer])
             {
                 return D3D12_HEAP_TYPE_UPLOAD;
             }
@@ -27,6 +27,12 @@ namespace benzin
                 // The 'BufferCreation::ElementSize' is aligned, not the entire buffer size 'BufferFlag::ConstantBuffer'.
                 // This is done so that each element can be used as a separate constant buffer using ConstantBufferView
                 alignedElementSize = AlignAbove(alignedElementSize, config::g_ConstantBufferAlignment);
+            }
+            else if (bufferCreation.Flags[BufferFlag::StructuredBuffer])
+            {
+                // Performance tip: Align structures on sizeof(float4) boundary
+                // Ref: https://developer.nvidia.com/content/understanding-structured-buffer-performance
+                alignedElementSize = AlignAbove(alignedElementSize, config::g_StructuredBufferAlignment);
             }
 
             D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
@@ -88,7 +94,7 @@ namespace benzin
 
         if (!creation.InitialData.empty())
         {
-            BenzinAssert(creation.Flags[BufferFlag::Upload] || creation.Flags[BufferFlag::ConstantBuffer]);
+            BenzinAssert(creation.Flags[BufferFlag::UploadBuffer] || creation.Flags[BufferFlag::ConstantBuffer]);
 
             MappedData buffer{ *this };
             buffer.Write(creation.InitialData);
@@ -115,21 +121,29 @@ namespace benzin
         BenzinAssert(m_D3D12Resource);
 
         BenzinAssert(creation.FirstElementIndex < m_ElementCount);
+
+#if BENZIN_IS_ASSERTS_ENABLED
+        if (creation.IsByteAddressBuffer)
+        {
+            BenzinAssert(creation.ElementCount != 0, "When creating 'BufferShaderResourceViewCreation' as ByteAddressBuffer than 'ElementCount' must be specified");
+        }
+#endif
+
         BufferShaderResourceViewCreation validatedCreation = creation;
         validatedCreation.ElementCount = creation.ElementCount != 0 ? creation.ElementCount : m_ElementCount;
 
         const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc
         {
-            .Format = DXGI_FORMAT_UNKNOWN,
+            .Format = validatedCreation.IsByteAddressBuffer ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN,
             .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             .Buffer
             {
                 .FirstElement = validatedCreation.FirstElementIndex,
                 .NumElements = validatedCreation.ElementCount,
-                .StructureByteStride = m_ElementSize,
-                .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
-            }
+                .StructureByteStride = validatedCreation.IsByteAddressBuffer ? 0 : m_AlignedElementSize, // TODO: 'm_AlignedElementSize' when using 'StructuedBuffer'?
+                .Flags = validatedCreation.IsByteAddressBuffer ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE,
+            },
         };
 
         const DescriptorType descriptorType = DescriptorType::ShaderResourceView;

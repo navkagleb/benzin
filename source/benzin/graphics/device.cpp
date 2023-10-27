@@ -174,23 +174,16 @@ namespace benzin
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        constexpr uint32_t staticSamplerCount = 7;
-        const std::array<StaticSampler, staticSamplerCount> staticSamplers
+        const auto d3d12StaticSamplerDescs = std::to_array(
         {
-            StaticSampler::GetPointWrap({ 0, 0 }),
-            StaticSampler::GetPointClamp({ 1, 0 }),
-            StaticSampler::GetLinearWrap({ 2, 0 }),
-            StaticSampler::GetLinearClamp({ 3, 0 }),
-            StaticSampler::GetAnisotropicWrap({ 4, 0 }),
-            StaticSampler::GetAnisotropicClamp({ 5, 0 }),
-            StaticSampler::GetDefaultForShadow({ 6, 0 }),
-        };
-
-        std::array<D3D12_STATIC_SAMPLER_DESC, staticSamplerCount> d3d12StaticSamplerDescs;
-        for (const auto [d3d12StaticSamplerDesc, staticSampler] : std::views::zip(d3d12StaticSamplerDescs, staticSamplers))
-        {
-            d3d12StaticSamplerDesc = ToD3D12StaticSamplerDesc(staticSampler);
-        }
+            ToD3D12StaticSamplerDesc(StaticSampler::GetPointWrap({ 0, 0 })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetPointClamp({ 1, 0 })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetLinearWrap({ 2, 0 })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetLinearClamp({ 3, 0 })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetAnisotropicWrap({ 4, 0 })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetAnisotropicClamp({ 5, 0 })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetDefaultForShadow({ 6, 0 })),
+        });
 
         const D3D12_VERSIONED_ROOT_SIGNATURE_DESC d3d12RootSignatureDesc
         {
@@ -199,7 +192,7 @@ namespace benzin
             {
                 .NumParameters = 1,
                 .pParameters = &d3d12RootParameter,
-                .NumStaticSamplers = staticSamplerCount,
+                .NumStaticSamplers = static_cast<uint32_t>(d3d12StaticSamplerDescs.size()),
                 .pStaticSamplers = d3d12StaticSamplerDescs.data(),
                 .Flags
                 { 

@@ -129,7 +129,7 @@ namespace benzin
             const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs;
             if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, windowFlags))
             {
-                const std::string text = fmt::format(
+                const std::string text = std::format(
                     "{} | "
                     "FPS: {:.1f} ({:.3f} ms) | "
                     "({} x {})",
@@ -149,24 +149,32 @@ namespace benzin
 
     bool ImGuiLayer::OnKeyPressed(KeyPressedEvent& event)
     {
-        if (event.GetKeyCode() == KeyCode::F1)
+        switch (event.GetKeyCode())
         {
-            m_IsWidgetDrawingEnabled = !m_IsWidgetDrawingEnabled;
-        }
-
-        if (event.GetKeyCode() == KeyCode::I)
-        {
-            m_IsEventsAreBlocked = !m_IsEventsAreBlocked;
-        }
-
-        if (event.GetKeyCode() == KeyCode::O)
-        {
-            m_IsDemoWindowEnabled = !m_IsDemoWindowEnabled;
-        }
-
-        if (event.GetKeyCode() == KeyCode::P)
-        {
-            m_IsBottomPanelEnabled = !m_IsBottomPanelEnabled;
+            case KeyCode::F1:
+            {
+                m_IsWidgetDrawingEnabled = !m_IsWidgetDrawingEnabled;
+                break;
+            }
+            case KeyCode::I:
+            {
+                m_IsEventsAreBlocked = !m_IsEventsAreBlocked;
+                break;
+            }
+            case KeyCode::O:
+            {
+                m_IsDemoWindowEnabled = !m_IsDemoWindowEnabled;
+                break;
+            }
+            case KeyCode::P:
+            {
+                m_IsBottomPanelEnabled = !m_IsBottomPanelEnabled;
+                break;
+            }
+            case KeyCode::V:
+            {
+                m_SwapChain.SetVSyncEnabled(!m_SwapChain.IsVSyncEnabled());
+            }
         }
 
         return false;

@@ -14,7 +14,7 @@ namespace benzin
         ConstantBufferView,
         ShaderResourceView,
         UnorderedAccessView,
-        Sampler
+        Sampler,
     };
 
     class Descriptor
@@ -47,8 +47,8 @@ namespace benzin
         class DescriptorHeap
         {
         public:
-            BENZIN_NON_COPYABLE_IMPL(DescriptorHeap)
-            BENZIN_NON_MOVEABLE_IMPL(DescriptorHeap)
+            BenzinDefineNonCopyable(DescriptorHeap);
+            BenzinDefineNonMoveable(DescriptorHeap);
 
         public:
             DescriptorHeap() = default;
@@ -86,8 +86,8 @@ namespace benzin
         };
 
     public:
-        BENZIN_NON_COPYABLE_IMPL(DescriptorManager)
-        BENZIN_NON_MOVEABLE_IMPL(DescriptorManager)
+        BenzinDefineNonCopyable(DescriptorManager);
+        BenzinDefineNonMoveable(DescriptorManager);
 
     public:
         explicit DescriptorManager(Device& device);

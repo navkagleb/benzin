@@ -11,10 +11,10 @@ namespace benzin
     class Input
     {
     public:
-        template <typename T>
+        template <typename T = int32_t>
         static T GetMouseX(const Window& window) { return static_cast<T>(GetMousePosition(window).x); }
 
-        template <typename T>
+        template <typename T = int32_t>
         static T GetMouseY(const Window& window) { return static_cast<T>(GetMousePosition(window).y); }
 
         static bool IsMouseButtonPressed(MouseButton mouseButton);

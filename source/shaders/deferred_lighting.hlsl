@@ -227,10 +227,10 @@ struct PassData
 
 gbuffer::Unpacked ReadGBuffer(float2 uv)
 {
-    Texture2D<float4> albedoTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_AlbedoTextureIndex)];
-    Texture2D<float4> worldNormal = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_WorldNormalTextureIndex)];
-    Texture2D<float4> emissiveTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_EmissiveTextureIndex)];
-    Texture2D<float4> roughnessMetalnessTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_RoughnessMetalnessTextureIndex)];
+    Texture2D<float4> albedoTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_AlbedoTextureIndex)];
+    Texture2D<float4> worldNormal = ResourceDescriptorHeap[BenzinGetRootConstant(g_WorldNormalTextureIndex)];
+    Texture2D<float4> emissiveTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_EmissiveTextureIndex)];
+    Texture2D<float4> roughnessMetalnessTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_RoughnessMetalnessTextureIndex)];
 
     gbuffer::Packed packed;
     packed.Color0 = albedoTexture.Sample(common::g_LinearWrapSampler, uv);
@@ -243,7 +243,7 @@ gbuffer::Unpacked ReadGBuffer(float2 uv)
 
 float ReadDepth(float2 uv)
 {
-    Texture2D<float> depthTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_DepthTextureIndex)];
+    Texture2D<float> depthTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_DepthTextureIndex)];
 
     return depthTexture.Sample(common::g_LinearWrapSampler, uv).r;
 }
@@ -257,15 +257,15 @@ float4 PS_Main(fullscreen_helper::VS_Output input) : SV_Target
         discard;
     }
 
-    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PassBufferIndex)];
-    StructuredBuffer<internal::PointLight> pointLightBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PointLightBufferIndex)];
+    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BenzinGetRootConstant(g_PassBufferIndex)];
+    StructuredBuffer<internal::PointLight> pointLightBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_PointLightBufferIndex)];
 
     const gbuffer::Unpacked gbuffer = ReadGBuffer(input.UV);
 
     const float3 worldPosition = gbuffer::ReconstructWorldPositionFromDepth(input.UV, depth, passData.InverseProjectionMatrix, passData.InverseViewMatrix);
     const float3 worldViewDirection = normalize(passData.WorldCameraPosition - worldPosition);
 
-    const uint32_t outputType = BENZIN_GET_ROOT_CONSTANT(g_OutputType);
+    const uint32_t outputType = BenzinGetRootConstant(g_OutputType);
     switch (outputType)
     {
         case OutputType::ReconsructedWorldPosition:

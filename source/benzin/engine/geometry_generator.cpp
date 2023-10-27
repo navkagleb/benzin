@@ -1,21 +1,21 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/geometry_generator.hpp"
 
-#include "benzin/engine/model.hpp"
+#include "benzin/engine/mesh.hpp"
 
-namespace benzin::geometry_generator
+namespace benzin
 {
 
     namespace
     {
 
-        MeshVertexData MiddlePoint(const MeshVertexData& lhs, const MeshVertexData& rhs)
+        MeshVertex MiddlePoint(const MeshVertex& lhs, const MeshVertex& rhs)
         {
-            const DirectX::XMVECTOR positionLhs = DirectX::XMLoadFloat3(&lhs.LocalPosition);
-            const DirectX::XMVECTOR positionRhs = DirectX::XMLoadFloat3(&rhs.LocalPosition);
+            const DirectX::XMVECTOR positionLhs = DirectX::XMLoadFloat3(&lhs.Position);
+            const DirectX::XMVECTOR positionRhs = DirectX::XMLoadFloat3(&rhs.Position);
 
-            const DirectX::XMVECTOR normalLhs = DirectX::XMLoadFloat3(&lhs.LocalNormal);
-            const DirectX::XMVECTOR normalRhs = DirectX::XMLoadFloat3(&rhs.LocalNormal);
+            const DirectX::XMVECTOR normalLhs = DirectX::XMLoadFloat3(&lhs.Normal);
+            const DirectX::XMVECTOR normalRhs = DirectX::XMLoadFloat3(&rhs.Normal);
 
             const DirectX::XMVECTOR texCoordLhs = DirectX::XMLoadFloat2(&lhs.TexCoord);
             const DirectX::XMVECTOR texCoordRhs = DirectX::XMLoadFloat2(&rhs.TexCoord);
@@ -26,20 +26,20 @@ namespace benzin::geometry_generator
             const DirectX::XMVECTOR localNormal = DirectX::XMVector3Normalize(DirectX::XMVectorScale(DirectX::XMVectorAdd(normalLhs, normalRhs), 0.5f));
             const DirectX::XMVECTOR texCoord = DirectX::XMVectorScale(DirectX::XMVectorAdd(texCoordLhs, texCoordRhs), 0.5f);
 
-            MeshVertexData middle;
-            DirectX::XMStoreFloat3(&middle.LocalPosition, localPosition);
-            DirectX::XMStoreFloat3(&middle.LocalNormal, localNormal);
+            MeshVertex middle;
+            DirectX::XMStoreFloat3(&middle.Position, localPosition);
+            DirectX::XMStoreFloat3(&middle.Normal, localNormal);
             DirectX::XMStoreFloat2(&middle.TexCoord, texCoord);
 
             return middle;
         }
 
-        void Subdivide(MeshPrimitiveData& meshPrimitiveData)
+        void Subdivide(MeshData& meshData)
         {
-            MeshPrimitiveData copy = meshPrimitiveData;
+            MeshData copy = meshData;
 
-            meshPrimitiveData.Vertices.clear();
-            meshPrimitiveData.Indices.clear();
+            meshData.Vertices.clear();
+            meshData.Indices.clear();
 
             //       v1
             //       *
@@ -55,185 +55,185 @@ namespace benzin::geometry_generator
 
             for (uint32_t i = 0; i < triangleCount; ++i)
             {
-                const MeshVertexData vertex0 = copy.Vertices[copy.Indices[i * 3 + 0]];
-                const MeshVertexData vertex1 = copy.Vertices[copy.Indices[i * 3 + 1]];
-                const MeshVertexData vertex2 = copy.Vertices[copy.Indices[i * 3 + 2]];
+                const MeshVertex vertex0 = copy.Vertices[copy.Indices[i * 3 + 0]];
+                const MeshVertex vertex1 = copy.Vertices[copy.Indices[i * 3 + 1]];
+                const MeshVertex vertex2 = copy.Vertices[copy.Indices[i * 3 + 2]];
 
-                const MeshVertexData middle0 = MiddlePoint(vertex0, vertex1);
-                const MeshVertexData middle1 = MiddlePoint(vertex1, vertex2);
-                const MeshVertexData middle2 = MiddlePoint(vertex0, vertex2);
+                const MeshVertex middle0 = MiddlePoint(vertex0, vertex1);
+                const MeshVertex middle1 = MiddlePoint(vertex1, vertex2);
+                const MeshVertex middle2 = MiddlePoint(vertex0, vertex2);
 
-                meshPrimitiveData.Vertices.push_back(vertex0); // 0
-                meshPrimitiveData.Vertices.push_back(vertex1); // 1
-                meshPrimitiveData.Vertices.push_back(vertex2); // 2
-                meshPrimitiveData.Vertices.push_back(middle0); // 3
-                meshPrimitiveData.Vertices.push_back(middle1); // 4
-                meshPrimitiveData.Vertices.push_back(middle2); // 5
+                meshData.Vertices.push_back(vertex0); // 0
+                meshData.Vertices.push_back(vertex1); // 1
+                meshData.Vertices.push_back(vertex2); // 2
+                meshData.Vertices.push_back(middle0); // 3
+                meshData.Vertices.push_back(middle1); // 4
+                meshData.Vertices.push_back(middle2); // 5
 
-                meshPrimitiveData.Indices.push_back(i * 6 + 0);
-                meshPrimitiveData.Indices.push_back(i * 6 + 3);
-                meshPrimitiveData.Indices.push_back(i * 6 + 5);
+                meshData.Indices.push_back(i * 6 + 0);
+                meshData.Indices.push_back(i * 6 + 3);
+                meshData.Indices.push_back(i * 6 + 5);
 
-                meshPrimitiveData.Indices.push_back(i * 6 + 3);
-                meshPrimitiveData.Indices.push_back(i * 6 + 4);
-                meshPrimitiveData.Indices.push_back(i * 6 + 5);
+                meshData.Indices.push_back(i * 6 + 3);
+                meshData.Indices.push_back(i * 6 + 4);
+                meshData.Indices.push_back(i * 6 + 5);
 
-                meshPrimitiveData.Indices.push_back(i * 6 + 5);
-                meshPrimitiveData.Indices.push_back(i * 6 + 4);
-                meshPrimitiveData.Indices.push_back(i * 6 + 2);
+                meshData.Indices.push_back(i * 6 + 5);
+                meshData.Indices.push_back(i * 6 + 4);
+                meshData.Indices.push_back(i * 6 + 2);
 
-                meshPrimitiveData.Indices.push_back(i * 6 + 3);
-                meshPrimitiveData.Indices.push_back(i * 6 + 1);
-                meshPrimitiveData.Indices.push_back(i * 6 + 4);
+                meshData.Indices.push_back(i * 6 + 3);
+                meshData.Indices.push_back(i * 6 + 1);
+                meshData.Indices.push_back(i * 6 + 4);
             }
         }
 
-        void GenerateCylinderTopCap(const geometry_generator::CylinderConfig& config, MeshPrimitiveData& meshPrimitiveData)
+        void GenerateCylinderTopCap(const CylinderGeometryCreation& creation, MeshData& meshData)
         {
-            const uint32_t baseIndex = static_cast<uint32_t>(meshPrimitiveData.Vertices.size());
+            const uint32_t baseIndex = static_cast<uint32_t>(meshData.Vertices.size());
 
             // Vertices
             {
-                const float y = 0.5f * config.Height;
-                const float dTheta = DirectX::XM_2PI / config.SliceCount;
+                const float y = 0.5f * creation.Height;
+                const float dTheta = DirectX::XM_2PI / creation.SliceCount;
 
-                for (uint32_t i = 0; i <= config.SliceCount; ++i)
+                for (uint32_t i = 0; i <= creation.SliceCount; ++i)
                 {
-                    const float x = config.TopRadius * std::cos(i * dTheta);
-                    const float z = config.TopRadius * std::sin(i * dTheta);
-                    const float u = x / config.Height + 0.5f;
-                    const float v = z / config.Height + 0.5f;
+                    const float x = creation.TopRadius * std::cos(i * dTheta);
+                    const float z = creation.TopRadius * std::sin(i * dTheta);
+                    const float u = x / creation.Height + 0.5f;
+                    const float v = z / creation.Height + 0.5f;
 
-                    meshPrimitiveData.Vertices.push_back(MeshVertexData
+                    meshData.Vertices.push_back(MeshVertex
                     {
-                        .LocalPosition{ x, y, z },
-                        .LocalNormal{ 0.0f, 1.0f, 0.0f },
+                        .Position{ x, y, z },
+                        .Normal{ 0.0f, 1.0f, 0.0f },
                         .TexCoord{ u, v }
                     });
                 }
 
-                const MeshVertexData centerVertex
+                const MeshVertex centerVertex
                 {
-                    .LocalPosition{ 0.0f, y, 0.0f },
-                    .LocalNormal{ 0.0f, 1.0f, 0.0f },
+                    .Position{ 0.0f, y, 0.0f },
+                    .Normal{ 0.0f, 1.0f, 0.0f },
                     .TexCoord{ 0.5f, 0.5f }
                 };
 
-                meshPrimitiveData.Vertices.push_back(centerVertex);
+                meshData.Vertices.push_back(centerVertex);
             }
 
             // Indices
             {
-                const uint32_t centerIndex = static_cast<uint32_t>(meshPrimitiveData.Vertices.size() - 1);
+                const uint32_t centerIndex = static_cast<uint32_t>(meshData.Vertices.size() - 1);
 
-                for (uint32_t i = 0; i < config.SliceCount; ++i)
+                for (uint32_t i = 0; i < creation.SliceCount; ++i)
                 {
-                    meshPrimitiveData.Indices.push_back(centerIndex);
-                    meshPrimitiveData.Indices.push_back(baseIndex + i + 1);
-                    meshPrimitiveData.Indices.push_back(baseIndex + i);
+                    meshData.Indices.push_back(centerIndex);
+                    meshData.Indices.push_back(baseIndex + i + 1);
+                    meshData.Indices.push_back(baseIndex + i);
                 }
             }
         }
 
-        void GenerateCylinderBottomCap(const geometry_generator::CylinderConfig& config, MeshPrimitiveData& meshPrimitiveData)
+        void GenerateCylinderBottomCap(const CylinderGeometryCreation& creation, MeshData& meshData)
         {
-            const uint32_t baseIndex = static_cast<uint32_t>(meshPrimitiveData.Vertices.size());
+            const uint32_t baseIndex = static_cast<uint32_t>(meshData.Vertices.size());
 
             // Vertices
             {
-                const float y = -0.5f * config.Height;
-                const float dTheta = DirectX::XM_2PI / config.SliceCount;
+                const float y = -0.5f * creation.Height;
+                const float dTheta = DirectX::XM_2PI / creation.SliceCount;
 
-                for (uint32_t i = 0; i <= config.SliceCount; ++i)
+                for (uint32_t i = 0; i <= creation.SliceCount; ++i)
                 {
-                    const float x = config.BottomRadius * cosf(i * dTheta);
-                    const float z = config.BottomRadius * sinf(i * dTheta);
-                    const float u = x / config.Height + 0.5f;
-                    const float v = z / config.Height + 0.5f;
+                    const float x = creation.BottomRadius * cosf(i * dTheta);
+                    const float z = creation.BottomRadius * sinf(i * dTheta);
+                    const float u = x / creation.Height + 0.5f;
+                    const float v = z / creation.Height + 0.5f;
 
-                    meshPrimitiveData.Vertices.push_back(MeshVertexData
+                    meshData.Vertices.push_back(MeshVertex
                     {
-                        .LocalPosition{ x, y, z },
-                        .LocalNormal{ 0.0f, -1.0f, 0.0f },
+                        .Position{ x, y, z },
+                        .Normal{ 0.0f, -1.0f, 0.0f },
                         .TexCoord{ u, v }
                     });
                 }
 
-                const MeshVertexData centerVertex
+                const MeshVertex centerVertex
                 {
-                    .LocalPosition{ 0.0f, y, 0.0f },
-                    .LocalNormal{ 0.0f, -1.0f, 0.0f },
+                    .Position{ 0.0f, y, 0.0f },
+                    .Normal{ 0.0f, -1.0f, 0.0f },
                     .TexCoord{ 0.5f, 0.5f },
                 };
 
-                meshPrimitiveData.Vertices.push_back(centerVertex);
+                meshData.Vertices.push_back(centerVertex);
             }
 
             // Indices
             {
-                const uint32_t centerIndex = static_cast<uint32_t>(meshPrimitiveData.Vertices.size() - 1);
+                const uint32_t centerIndex = static_cast<uint32_t>(meshData.Vertices.size() - 1);
 
-                for (uint32_t i = 0; i < config.SliceCount; ++i)
+                for (uint32_t i = 0; i < creation.SliceCount; ++i)
                 {
-                    meshPrimitiveData.Indices.push_back(centerIndex);
-                    meshPrimitiveData.Indices.push_back(baseIndex + i);
-                    meshPrimitiveData.Indices.push_back(baseIndex + i + 1);
+                    meshData.Indices.push_back(centerIndex);
+                    meshData.Indices.push_back(baseIndex + i);
+                    meshData.Indices.push_back(baseIndex + i + 1);
                 }
             }
         }
 
     } // anonymous namespace
 
-    MeshPrimitiveData GenerateBox(const BoxConfig& config)
+    MeshData GenerateBox(const BoxGeometryCreation& creation)
     {
-        MeshPrimitiveData meshPrimitiveData;
-        meshPrimitiveData.PrimitiveTopology = PrimitiveTopology::TriangleList;
+        MeshData meshData;
+        meshData.PrimitiveTopology = PrimitiveTopology::TriangleList;
 
-        const float w2 = 0.5f * config.Width;
-        const float h2 = 0.5f * config.Height;
-        const float d2 = 0.5f * config.Depth;
+        const float w2 = 0.5f * creation.Width;
+        const float h2 = 0.5f * creation.Height;
+        const float d2 = 0.5f * creation.Depth;
 
-        auto& vertices = meshPrimitiveData.Vertices;
+        auto& vertices = meshData.Vertices;
         vertices.resize(24);
 
         // Front face
-        vertices[0] = MeshVertexData{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
-        vertices[1] = MeshVertexData{ DirectX::XMFLOAT3{ -w2,  h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
-        vertices[2] = MeshVertexData{ DirectX::XMFLOAT3{  w2,  h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
-        vertices[3] = MeshVertexData{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
+        vertices[0] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
+        vertices[1] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
+        vertices[2] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
+        vertices[3] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
 
         // Back face
-        vertices[4] = MeshVertexData{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
-        vertices[5] = MeshVertexData{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
-        vertices[6] = MeshVertexData{ DirectX::XMFLOAT3{  w2,  h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
-        vertices[7] = MeshVertexData{ DirectX::XMFLOAT3{ -w2,  h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
+        vertices[4] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
+        vertices[5] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
+        vertices[6] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
+        vertices[7] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
 
         // Top face
-        vertices[8] = MeshVertexData{ DirectX::XMFLOAT3{ -w2,  h2, -d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
-        vertices[9] = MeshVertexData{ DirectX::XMFLOAT3{ -w2,  h2,  d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
-        vertices[10] = MeshVertexData{ DirectX::XMFLOAT3{  w2,  h2,  d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
-        vertices[11] = MeshVertexData{ DirectX::XMFLOAT3{  w2,  h2, -d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
+        vertices[8] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2, -d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
+        vertices[9] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2,  d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
+        vertices[10] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2,  d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
+        vertices[11] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2, -d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
 
         // Bottom face
-        vertices[12] = MeshVertexData{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 1.0f, 1.0f} };
-        vertices[13] = MeshVertexData{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 0.0f, 1.0f} };
-        vertices[14] = MeshVertexData{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 0.0f, 0.0f} };
-        vertices[15] = MeshVertexData{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 1.0f, 0.0f} };
+        vertices[12] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 1.0f, 1.0f} };
+        vertices[13] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 0.0f, 1.0f} };
+        vertices[14] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 0.0f, 0.0f} };
+        vertices[15] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 1.0f, 0.0f} };
 
         // Left face
-        vertices[16] = MeshVertexData{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
-        vertices[17] = MeshVertexData{ DirectX::XMFLOAT3{ -w2,  h2,  d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
-        vertices[18] = MeshVertexData{ DirectX::XMFLOAT3{ -w2,  h2, -d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
-        vertices[19] = MeshVertexData{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
+        vertices[16] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
+        vertices[17] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2,  d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
+        vertices[18] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2, -d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
+        vertices[19] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
 
         // Right face
-        vertices[20] = MeshVertexData{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
-        vertices[21] = MeshVertexData{ DirectX::XMFLOAT3{  w2,  h2, -d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
-        vertices[22] = MeshVertexData{ DirectX::XMFLOAT3{  w2,  h2,  d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
-        vertices[23] = MeshVertexData{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
+        vertices[20] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
+        vertices[21] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2, -d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
+        vertices[22] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2,  d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
+        vertices[23] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
 
         // Indices
-        meshPrimitiveData.Indices =
+        meshData.Indices =
         {
             // Front face
             0, 1, 2,
@@ -260,250 +260,250 @@ namespace benzin::geometry_generator
             20, 22, 23
         };
 
-        const uint32_t subdivisionCount = std::min<uint32_t>(config.SubdivisionCount, 6);
+        const uint32_t subdivisionCount = std::min<uint32_t>(creation.SubdivisionCount, 6);
 
         for (uint32_t i = 0; i < subdivisionCount; ++i)
         {
-            Subdivide(meshPrimitiveData);
+            Subdivide(meshData);
         }
 
-        return meshPrimitiveData;
+        return meshData;
     }
 
-    MeshPrimitiveData GenerateGrid(const GridConfig& config)
+    MeshData GenerateGrid(const GridGeometryCreation& creation)
     {
-        MeshPrimitiveData meshPrimitiveData;
-        meshPrimitiveData.PrimitiveTopology = PrimitiveTopology::TriangleList;
+        MeshData meshData;
+        meshData.PrimitiveTopology = PrimitiveTopology::TriangleList;
 
-        const uint32_t vertexCount = config.RowCount * config.ColumnCount;
-        const uint32_t faceCount = (config.RowCount - 1) * (config.ColumnCount - 1) * 2;
+        const uint32_t vertexCount = creation.RowCount * creation.ColumnCount;
+        const uint32_t faceCount = (creation.RowCount - 1) * (creation.ColumnCount - 1) * 2;
 
         // Vertices
         {
-            const float halfWidth = 0.5f * config.Width;
-            const float halfDepth = 0.5f * config.Depth;
+            const float halfWidth = 0.5f * creation.Width;
+            const float halfDepth = 0.5f * creation.Depth;
 
-            const float dx = config.Width / (config.RowCount - 1);
-            const float dz = config.Depth / (config.ColumnCount - 1);
+            const float dx = creation.Width / (creation.RowCount - 1);
+            const float dz = creation.Depth / (creation.ColumnCount - 1);
 
-            const float du = 1.0f / (config.RowCount - 1);
-            const float dv = 1.0f / (config.ColumnCount - 1);
+            const float du = 1.0f / (creation.RowCount - 1);
+            const float dv = 1.0f / (creation.ColumnCount - 1);
 
-            auto& vertices = meshPrimitiveData.Vertices;
+            auto& vertices = meshData.Vertices;
             vertices.resize(vertexCount);
 
-            for (uint32_t i = 0; i < config.RowCount; ++i)
+            for (uint32_t i = 0; i < creation.RowCount; ++i)
             {
                 const float z = halfDepth - i * dz;
 
-                for (uint32_t j = 0; j < config.ColumnCount; ++j)
+                for (uint32_t j = 0; j < creation.ColumnCount; ++j)
                 {
                     const float x = -halfWidth + j * dx;
 
-                    vertices[i * config.ColumnCount + j].LocalPosition = DirectX::XMFLOAT3{ x, 0.0f, z };
-                    vertices[i * config.ColumnCount + j].LocalNormal = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
-                    vertices[i * config.ColumnCount + j].TexCoord = DirectX::XMFLOAT2{ j * du, i * dv };
+                    vertices[i * creation.ColumnCount + j].Position = DirectX::XMFLOAT3{ x, 0.0f, z };
+                    vertices[i * creation.ColumnCount + j].Normal = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
+                    vertices[i * creation.ColumnCount + j].TexCoord = DirectX::XMFLOAT2{ j * du, i * dv };
                 }
             }
         }
 
         // Indices
         {
-            auto& indices = meshPrimitiveData.Indices;
+            auto& indices = meshData.Indices;
             indices.resize(faceCount * 3);
 
             size_t baseIndex = 0;
 
-            for (uint32_t i = 0; i < config.RowCount - 1; ++i)
+            for (uint32_t i = 0; i < creation.RowCount - 1; ++i)
             {
-                for (uint32_t j = 0; j < config.ColumnCount - 1; ++j)
+                for (uint32_t j = 0; j < creation.ColumnCount - 1; ++j)
                 {
-                    indices[baseIndex + 0] = i * config.ColumnCount + j;
-                    indices[baseIndex + 1] = i * config.ColumnCount + j + 1;
-                    indices[baseIndex + 2] = (i + 1) * config.ColumnCount + j;
+                    indices[baseIndex + 0] = i * creation.ColumnCount + j;
+                    indices[baseIndex + 1] = i * creation.ColumnCount + j + 1;
+                    indices[baseIndex + 2] = (i + 1) * creation.ColumnCount + j;
 
-                    indices[baseIndex + 3] = (i + 1) * config.ColumnCount + j;
-                    indices[baseIndex + 4] = i * config.ColumnCount + j + 1;
-                    indices[baseIndex + 5] = (i + 1) * config.ColumnCount + j + 1;
+                    indices[baseIndex + 3] = (i + 1) * creation.ColumnCount + j;
+                    indices[baseIndex + 4] = i * creation.ColumnCount + j + 1;
+                    indices[baseIndex + 5] = (i + 1) * creation.ColumnCount + j + 1;
 
                     baseIndex += 6;
                 }
             }
         }
 
-        return meshPrimitiveData;
+        return meshData;
     }
 
-    MeshPrimitiveData GenerateCylinder(const CylinderConfig& config)
+    MeshData GenerateCylinder(const CylinderGeometryCreation& creation)
     {
-        MeshPrimitiveData meshPrimitiveData;
-        meshPrimitiveData.PrimitiveTopology = PrimitiveTopology::TriangleList;
+        MeshData meshData;
+        meshData.PrimitiveTopology = PrimitiveTopology::TriangleList;
 
         // Vertices
         {
-            const float stackHeight = config.Height / static_cast<float>(config.StackCount);
-            const float radiusStep = (config.TopRadius - config.BottomRadius) / static_cast<float>(config.StackCount);
+            const float stackHeight = creation.Height / static_cast<float>(creation.StackCount);
+            const float radiusStep = (creation.TopRadius - creation.BottomRadius) / static_cast<float>(creation.StackCount);
 
-            const uint32_t ringCount = config.StackCount + 1;
+            const uint32_t ringCount = creation.StackCount + 1;
 
             for (uint32_t i = 0; i < ringCount; ++i)
             {
-                const float y = -0.5f * config.Height + static_cast<float>(i) * stackHeight;
-                const float r = config.BottomRadius + static_cast<float>(i) * radiusStep;
+                const float y = -0.5f * creation.Height + static_cast<float>(i) * stackHeight;
+                const float r = creation.BottomRadius + static_cast<float>(i) * radiusStep;
 
-                const float dTheta = DirectX::XM_2PI / static_cast<float>(config.SliceCount);
+                const float dTheta = DirectX::XM_2PI / static_cast<float>(creation.SliceCount);
 
                 // Ring Vertices
-                for (uint32_t j = 0; j <= config.SliceCount; ++j)
+                for (uint32_t j = 0; j <= creation.SliceCount; ++j)
                 {
-                    MeshVertexData& vertex = meshPrimitiveData.Vertices.emplace_back();
+                    MeshVertex& vertex = meshData.Vertices.emplace_back();
 
                     const float c = std::cos(j * dTheta);
                     const float s = std::sin(j * dTheta);
 
-                    vertex.LocalPosition = DirectX::XMFLOAT3{ r * c, y, r * s };
+                    vertex.Position = DirectX::XMFLOAT3{ r * c, y, r * s };
 
-                    vertex.TexCoord.x = static_cast<float>(j) / config.SliceCount;
-                    vertex.TexCoord.y = 1.0f - static_cast<float>(i) / config.StackCount;
+                    vertex.TexCoord.x = static_cast<float>(j) / creation.SliceCount;
+                    vertex.TexCoord.y = 1.0f - static_cast<float>(i) / creation.StackCount;
 
                     const DirectX::XMFLOAT3 tangent{ -s, 0.0f, c };
 
-                    const float dr = config.BottomRadius - config.TopRadius;
-                    const DirectX::XMFLOAT3 bitangent{ dr * c, -config.Height, dr * s };
+                    const float dr = creation.BottomRadius - creation.TopRadius;
+                    const DirectX::XMFLOAT3 bitangent{ dr * c, -creation.Height, dr * s };
 
                     const DirectX::XMVECTOR t = DirectX::XMLoadFloat3(&tangent);
                     const DirectX::XMVECTOR b = DirectX::XMLoadFloat3(&bitangent);
                     const DirectX::XMVECTOR n = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(t, b));
 
-                    DirectX::XMStoreFloat3(&vertex.LocalNormal, n);
+                    DirectX::XMStoreFloat3(&vertex.Normal, n);
                 }
             }
         }
 
         // Indices
         {
-            const uint32_t ringVertexCount = config.SliceCount + 1;
+            const uint32_t ringVertexCount = creation.SliceCount + 1;
 
-            for (uint32_t i = 0; i < config.StackCount; ++i)
+            for (uint32_t i = 0; i < creation.StackCount; ++i)
             {
-                for (uint32_t j = 0; j < config.SliceCount; ++j)
+                for (uint32_t j = 0; j < creation.SliceCount; ++j)
                 {
-                    meshPrimitiveData.Indices.push_back(i * ringVertexCount + j);
-                    meshPrimitiveData.Indices.push_back((i + 1) * ringVertexCount + j);
-                    meshPrimitiveData.Indices.push_back((i + 1) * ringVertexCount + j + 1);
+                    meshData.Indices.push_back(i * ringVertexCount + j);
+                    meshData.Indices.push_back((i + 1) * ringVertexCount + j);
+                    meshData.Indices.push_back((i + 1) * ringVertexCount + j + 1);
 
-                    meshPrimitiveData.Indices.push_back(i * ringVertexCount + j);
-                    meshPrimitiveData.Indices.push_back((i + 1) * ringVertexCount + j + 1);
-                    meshPrimitiveData.Indices.push_back(i * ringVertexCount + j + 1);
+                    meshData.Indices.push_back(i * ringVertexCount + j);
+                    meshData.Indices.push_back((i + 1) * ringVertexCount + j + 1);
+                    meshData.Indices.push_back(i * ringVertexCount + j + 1);
                 }
             }
         }
 
-        GenerateCylinderTopCap(config, meshPrimitiveData);
-        GenerateCylinderBottomCap(config, meshPrimitiveData);
+        GenerateCylinderTopCap(creation, meshData);
+        GenerateCylinderBottomCap(creation, meshData);
 
-        return meshPrimitiveData;
+        return meshData;
     }
 
-    MeshPrimitiveData GenerateSphere(const SphereConfig& config)
+    MeshData GenerateSphere(const SphereGeometryCreation& creation)
     {
-        MeshPrimitiveData meshPrimitiveData;
-        meshPrimitiveData.PrimitiveTopology = PrimitiveTopology::TriangleList;
+        MeshData meshData;
+        meshData.PrimitiveTopology = PrimitiveTopology::TriangleList;
 
         // Vertices
         {
-            const MeshVertexData topVertex
+            const MeshVertex topVertex
             {
-                .LocalPosition{ 0.0f, config.Radius, 0.0f },
-                .LocalNormal{ 0.0f, 1.0f, 0.0f },
+                .Position{ 0.0f, creation.Radius, 0.0f },
+                .Normal{ 0.0f, 1.0f, 0.0f },
                 .TexCoord{ 0.0f, 0.0f }
             };
 
-            const MeshVertexData bottomVertex
+            const MeshVertex bottomVertex
             {
-                .LocalPosition{ 0.0f, -config.Radius, 0.0f },
-                .LocalNormal{ 0.0f, -1.0f, 0.0f },
+                .Position{ 0.0f, -creation.Radius, 0.0f },
+                .Normal{ 0.0f, -1.0f, 0.0f },
                 .TexCoord{ 0.0f, 1.0f },
             };
 
-            meshPrimitiveData.Vertices.push_back(topVertex);
+            meshData.Vertices.push_back(topVertex);
 
-            const float phiStep = DirectX::XM_PI / static_cast<float>(config.StackCount);
-            const float thetaStep = DirectX::XM_2PI / static_cast<float>(config.SliceCount);
+            const float phiStep = DirectX::XM_PI / static_cast<float>(creation.StackCount);
+            const float thetaStep = DirectX::XM_2PI / static_cast<float>(creation.SliceCount);
 
-            for (uint32_t i = 1; i < config.StackCount; ++i)
+            for (uint32_t i = 1; i < creation.StackCount; ++i)
             {
                 const float phi = i * phiStep;
 
-                for (uint32_t j = 0; j <= config.SliceCount; ++j)
+                for (uint32_t j = 0; j <= creation.SliceCount; ++j)
                 {
                     const float theta = j * thetaStep;
 
-                    MeshVertexData& vertex = meshPrimitiveData.Vertices.emplace_back();
+                    MeshVertex& vertex = meshData.Vertices.emplace_back();
 
                     // Spherical to cartesian
-                    vertex.LocalPosition.x = config.Radius * std::sin(phi) * std::cos(theta);
-                    vertex.LocalPosition.y = config.Radius * std::cos(phi);
-                    vertex.LocalPosition.z = config.Radius * std::sin(phi) * std::sin(theta);
+                    vertex.Position.x = creation.Radius * std::sin(phi) * std::cos(theta);
+                    vertex.Position.y = creation.Radius * std::cos(phi);
+                    vertex.Position.z = creation.Radius * std::sin(phi) * std::sin(theta);
 
-                    DirectX::XMStoreFloat3(&vertex.LocalNormal, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&vertex.LocalPosition)));
+                    DirectX::XMStoreFloat3(&vertex.Normal, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&vertex.Position)));
 
                     vertex.TexCoord.x = theta / DirectX::XM_2PI;
                     vertex.TexCoord.y = phi / DirectX::XM_PI;
                 }
             }
 
-            meshPrimitiveData.Vertices.push_back(bottomVertex);
+            meshData.Vertices.push_back(bottomVertex);
         }
 
         // Indices
         {
-            for (uint32_t i = 1; i <= config.SliceCount; ++i)
+            for (uint32_t i = 1; i <= creation.SliceCount; ++i)
             {
-                meshPrimitiveData.Indices.push_back(0);
-                meshPrimitiveData.Indices.push_back(i + 1);
-                meshPrimitiveData.Indices.push_back(i);
+                meshData.Indices.push_back(0);
+                meshData.Indices.push_back(i + 1);
+                meshData.Indices.push_back(i);
             }
 
-            const uint32_t ringVertexCount = config.SliceCount + 1;
+            const uint32_t ringVertexCount = creation.SliceCount + 1;
 
             uint32_t baseIndex = 1;
 
-            for (uint32_t i = 0; i < config.StackCount - 2; ++i)
+            for (uint32_t i = 0; i < creation.StackCount - 2; ++i)
             {
-                for (uint32_t j = 0; j < config.SliceCount; ++j)
+                for (uint32_t j = 0; j < creation.SliceCount; ++j)
                 {
-                    meshPrimitiveData.Indices.push_back(baseIndex + i * ringVertexCount + j);
-                    meshPrimitiveData.Indices.push_back(baseIndex + i * ringVertexCount + j + 1);
-                    meshPrimitiveData.Indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+                    meshData.Indices.push_back(baseIndex + i * ringVertexCount + j);
+                    meshData.Indices.push_back(baseIndex + i * ringVertexCount + j + 1);
+                    meshData.Indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
 
-                    meshPrimitiveData.Indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
-                    meshPrimitiveData.Indices.push_back(baseIndex + i * ringVertexCount + j + 1);
-                    meshPrimitiveData.Indices.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
+                    meshData.Indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+                    meshData.Indices.push_back(baseIndex + i * ringVertexCount + j + 1);
+                    meshData.Indices.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
                 }
             }
 
-            const uint32_t southPoleIndex = static_cast<uint32_t>(meshPrimitiveData.Vertices.size() - 1);
+            const uint32_t southPoleIndex = static_cast<uint32_t>(meshData.Vertices.size() - 1);
 
             baseIndex = southPoleIndex - ringVertexCount;
 
-            for (uint32_t i = 0; i < config.SliceCount; ++i)
+            for (uint32_t i = 0; i < creation.SliceCount; ++i)
             {
-                meshPrimitiveData.Indices.push_back(southPoleIndex);
-                meshPrimitiveData.Indices.push_back(baseIndex + i);
-                meshPrimitiveData.Indices.push_back(baseIndex + i + 1);
+                meshData.Indices.push_back(southPoleIndex);
+                meshData.Indices.push_back(baseIndex + i);
+                meshData.Indices.push_back(baseIndex + i + 1);
             }
         }
 
-        return meshPrimitiveData;
+        return meshData;
     }
 
-    MeshPrimitiveData GenerateGeosphere(const GeosphereConfig& config)
+    MeshData GenerateGeosphere(const GeosphereGeometryCreation& creation)
     {
         static constexpr float x = 0.525731f;
         static constexpr float z = 0.850651f;
 
-        static constexpr std::array<DirectX::XMFLOAT3, 12> positions
+        static constexpr auto positions = std::to_array(
         {
             DirectX::XMFLOAT3{ -x,     0.0f,  z    }, DirectX::XMFLOAT3{  x,     0.0f,  z    },
             DirectX::XMFLOAT3{ -x,     0.0f, -z    }, DirectX::XMFLOAT3{  x,     0.0f, -z    },
@@ -511,49 +511,49 @@ namespace benzin::geometry_generator
             DirectX::XMFLOAT3{  0.0f, -z,     x    }, DirectX::XMFLOAT3{  0.0f, -z,    -x    },
             DirectX::XMFLOAT3{  z,     x,     0.0f }, DirectX::XMFLOAT3{ -z,     x,     0.0f },
             DirectX::XMFLOAT3{  z,    -x,     0.0f }, DirectX::XMFLOAT3{ -z,    -x,     0.0f }
-        };
+        });
 
-        static constexpr std::array<uint32_t, 60> indicies
+        static constexpr auto indicies = std::to_array(
         {
             1,  4,  0,      4,  9, 0,       4, 5,  9,       8, 5, 4,        1,  8, 4,
             1,  10, 8,      10, 3, 8,       8, 3,  5,       3, 2, 5,        3,  7, 2,
             3,  10, 7,      10, 6, 7,       6, 11, 7,       6, 0, 11,       6,  1, 0,
             10, 1,  6,      11, 0, 9,       2, 11, 9,       5, 2, 9,        11, 2, 7
-        };
+        });
 
-        MeshPrimitiveData meshPrimitiveData;
-        meshPrimitiveData.PrimitiveTopology = PrimitiveTopology::TriangleList;
-        meshPrimitiveData.Vertices.insert(meshPrimitiveData.Vertices.begin(), positions.begin(), positions.end());
-        meshPrimitiveData.Indices.insert(meshPrimitiveData.Indices.begin(), indicies.begin(), indicies.end());
+        MeshData meshData;
+        meshData.PrimitiveTopology = PrimitiveTopology::TriangleList;
+        meshData.Vertices.insert(meshData.Vertices.begin(), positions.begin(), positions.end());
+        meshData.Indices.insert(meshData.Indices.begin(), indicies.begin(), indicies.end());
         
-        const uint32_t subdivisionCount = std::min<uint32_t>(config.SubdivisionCount, 6);
+        const uint32_t subdivisionCount = std::min<uint32_t>(creation.SubdivisionCount, 6);
         for (uint32_t i = 0; i < subdivisionCount; ++i)
         {
-            Subdivide(meshPrimitiveData);
+            Subdivide(meshData);
         }
 
-        for (uint32_t i = 0; i < meshPrimitiveData.Vertices.size(); ++i)
+        for (uint32_t i = 0; i < meshData.Vertices.size(); ++i)
         {
-            const DirectX::XMVECTOR normal = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&meshPrimitiveData.Vertices[i].LocalPosition));
-            const DirectX::XMVECTOR position = DirectX::XMVectorScale(normal, config.Radius);
+            const DirectX::XMVECTOR normal = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&meshData.Vertices[i].Position));
+            const DirectX::XMVECTOR position = DirectX::XMVectorScale(normal, creation.Radius);
 
-            DirectX::XMStoreFloat3(&meshPrimitiveData.Vertices[i].LocalPosition, position);
-            DirectX::XMStoreFloat3(&meshPrimitiveData.Vertices[i].LocalNormal, normal);
+            DirectX::XMStoreFloat3(&meshData.Vertices[i].Position, position);
+            DirectX::XMStoreFloat3(&meshData.Vertices[i].Normal, normal);
 
-            float theta = std::atan2(meshPrimitiveData.Vertices[i].LocalPosition.z, meshPrimitiveData.Vertices[i].LocalPosition.x);
+            float theta = std::atan2(meshData.Vertices[i].Position.z, meshData.Vertices[i].Position.x);
 
             if (theta < 0.0f)
             {
                 theta += DirectX::XM_2PI;
             }
 
-            const float phi = std::acosf(meshPrimitiveData.Vertices[i].LocalPosition.y / config.Radius);
+            const float phi = std::acosf(meshData.Vertices[i].Position.y / creation.Radius);
 
-            meshPrimitiveData.Vertices[i].TexCoord.x = theta / DirectX::XM_2PI;
-            meshPrimitiveData.Vertices[i].TexCoord.y = phi / DirectX::XM_PI;
+            meshData.Vertices[i].TexCoord.x = theta / DirectX::XM_2PI;
+            meshData.Vertices[i].TexCoord.y = phi / DirectX::XM_PI;
         }
 
-        return meshPrimitiveData;
+        return meshData;
     }
 
-} // namespace benzin::geometry_generator
+} // namespace benzin

@@ -78,8 +78,8 @@ struct DrawPrimitive
 
 struct MeshVertex
 {
-    float3 LocalPosition;
-    float3 LocalNormal;
+    float3 Position;
+    float3 Normal;
     float2 TexCoord;
 };
 
@@ -130,20 +130,20 @@ struct VS_Output
 
 VS_Output VS_Main(uint32_t vertexID : SV_VertexID)
 {
-    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PassBufferIndex)];
+    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BenzinGetRootConstant(g_PassBufferIndex)];
 
-    StructuredBuffer<MeshVertex> vertexBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_VertexBufferIndex)];
-    StructuredBuffer<uint32_t> indexBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_IndexBufferIndex)];
+    StructuredBuffer<MeshVertex> vertexBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_VertexBufferIndex)];
+    StructuredBuffer<uint32_t> indexBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_IndexBufferIndex)];
 
-    StructuredBuffer<DrawPrimitive> drawPrimitiveBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_DrawPrimitiveBufferIndex)];
-    StructuredBuffer<MeshPrimitive> meshPrimitiveBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_MeshPrimitiveBufferIndex)];
+    StructuredBuffer<DrawPrimitive> drawPrimitiveBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_DrawPrimitiveBufferIndex)];
+    StructuredBuffer<MeshPrimitive> meshPrimitiveBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_MeshPrimitiveBufferIndex)];
 
-    StructuredBuffer<NodeData> nodeBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_NodeBufferIndex)];
-    StructuredBuffer<EntityData> entityBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_EntityBufferIndex)];
+    StructuredBuffer<NodeData> nodeBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_NodeBufferIndex)];
+    StructuredBuffer<EntityData> entityBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_EntityBufferIndex)];
 
-    const uint32_t drawPrimitiveIndex = BENZIN_GET_ROOT_CONSTANT(g_DrawPrimitiveIndex);
-    const uint32_t nodeIndex = BENZIN_GET_ROOT_CONSTANT(g_NodeIndex);
-    const uint32_t entityIndex = BENZIN_GET_ROOT_CONSTANT(g_EntityIndex);
+    const uint32_t drawPrimitiveIndex = BenzinGetRootConstant(g_DrawPrimitiveIndex);
+    const uint32_t nodeIndex = BenzinGetRootConstant(g_NodeIndex);
+    const uint32_t entityIndex = BenzinGetRootConstant(g_EntityIndex);
 
     const DrawPrimitive drawPrimitive = drawPrimitiveBuffer[drawPrimitiveIndex];
     const MeshPrimitive meshPrimitive = meshPrimitiveBuffer[drawPrimitive.MeshPrimitiveIndex];
@@ -153,12 +153,12 @@ VS_Output VS_Main(uint32_t vertexID : SV_VertexID)
     const NodeData nodeData = nodeBuffer[nodeIndex];
     const EntityData entityData = entityBuffer[entityIndex];
 
-    const float4 localPosition = mul(float4(vertex.LocalPosition, 1.0f), nodeData.LocalMatrix);
+    const float4 localPosition = mul(float4(vertex.Position, 1.0f), nodeData.LocalMatrix);
     const float4 worldPosition = mul(localPosition, entityData.WorldMatrix);
 
     const float4x4 normalLocalMatrix = transpose(nodeData.InverseLocalMatrix);
     const float4x4 normalWorldMatrix = transpose(entityData.InverseWorldMatrix);
-    const float3 localNormal = mul(vertex.LocalNormal, (float3x3)normalLocalMatrix);
+    const float3 localNormal = mul(vertex.Normal, (float3x3)normalLocalMatrix);
     const float3 worldNormal = mul(localNormal, (float3x3)normalWorldMatrix);
 
     VS_Output output = (VS_Output)0;
@@ -180,13 +180,13 @@ struct PS_Output
 
 PS_Output PS_Main(VS_Output input)
 {
-    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PassBufferIndex)];
+    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BenzinGetRootConstant(g_PassBufferIndex)];
 
-    StructuredBuffer<DrawPrimitive> drawPrimitiveBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_DrawPrimitiveBufferIndex)];
-    StructuredBuffer<MeshPrimitive> meshPrimitiveBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_MeshPrimitiveBufferIndex)];
-    StructuredBuffer<Material> materialBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_MaterialBufferIndex)];
+    StructuredBuffer<DrawPrimitive> drawPrimitiveBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_DrawPrimitiveBufferIndex)];
+    StructuredBuffer<MeshPrimitive> meshPrimitiveBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_MeshPrimitiveBufferIndex)];
+    StructuredBuffer<Material> materialBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_MaterialBufferIndex)];
 
-    const uint32_t drawPrimitiveIndex = BENZIN_GET_ROOT_CONSTANT(g_DrawPrimitiveIndex);
+    const uint32_t drawPrimitiveIndex = BenzinGetRootConstant(g_DrawPrimitiveIndex);
 
     const DrawPrimitive drawPrimitive = drawPrimitiveBuffer[drawPrimitiveIndex];
     const Material material = materialBuffer[drawPrimitive.MaterialIndex];

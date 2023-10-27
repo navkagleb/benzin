@@ -55,8 +55,10 @@ namespace benzin
         texture->m_IsCubeMap = isCubeMap;
 
         {
-            CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
-            auto& copyCommandList = copyCommandQueue->GetCommandList(texture->GetSizeInBytes());
+            auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
+            BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
+
+            auto& copyCommandList = copyCommandQueue.GetCommandList(texture->GetSizeInBytes());
             copyCommandList.UpdateTexture(*texture, subResources);
         }
 
@@ -94,8 +96,10 @@ namespace benzin
         };
 
         {
-            CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
-            auto& copyCommandList = copyCommandQueue->GetCommandList(texture->GetSizeInBytes());
+            auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
+            BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
+
+            auto& copyCommandList = copyCommandQueue.GetCommandList(texture->GetSizeInBytes());
             copyCommandList.UpdateTextureTopMip(*texture, reinterpret_cast<const std::byte*>(imageData));
         }
 
@@ -145,8 +149,10 @@ namespace benzin
             OutCubeTextureIndex,
         };
 
-        CommandQueueScope computeCommandQueue{ m_Device.GetComputeCommandQueue() };
-        auto& computeCommandList = computeCommandQueue->GetCommandList();
+        auto& computeCommandQueue = m_Device.GetComputeCommandQueue();
+        BenzinFlushCommandQueueOnScopeExit(computeCommandQueue);
+
+        auto& computeCommandList = computeCommandQueue.GetCommandList();
 
         computeCommandList.SetPipelineState(*m_EquirectangularToCubePipelineState);
 

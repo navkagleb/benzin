@@ -3,55 +3,50 @@
 namespace benzin
 {
 
-    struct MeshPrimitiveData;
+    struct MeshData;
 
-    namespace geometry_generator
+    struct BoxGeometryCreation
     {
+        float Width = 0.0f;
+        float Height = 0.0f;
+        float Depth = 0.0f;
+        uint32_t SubdivisionCount = 0;
+    };
 
-        struct BoxConfig
-        {
-            float Width = 0.0f;
-            float Height = 0.0f;
-            float Depth = 0.0f;
-            uint32_t SubdivisionCount = 0;
-        };
+    struct GridGeometryCreation
+    {
+        float Width = 0.0f;
+        float Depth = 0.0f;
+        uint32_t RowCount = 0;
+        uint32_t ColumnCount = 0;
+    };
 
-        struct GridConfig
-        {
-            float Width = 0.0f;
-            float Depth = 0.0f;
-            uint32_t RowCount = 0;
-            uint32_t ColumnCount = 0;
-        };
+    struct CylinderGeometryCreation
+    {
+        float TopRadius = 0.0f;
+        float BottomRadius = 0.0f;
+        float Height = 0.0f;
+        uint32_t SliceCount = 0;
+        uint32_t StackCount = 0;
+    };
 
-        struct CylinderConfig
-        {
-            float TopRadius = 0.0f;
-            float BottomRadius = 0.0f;
-            float Height = 0.0f;
-            uint32_t SliceCount = 0;
-            uint32_t StackCount = 0;
-        };
+    struct SphereGeometryCreation
+    {
+        float Radius = 0.0f;
+        uint32_t SliceCount = 0;
+        uint32_t StackCount = 0;
+    };
 
-        struct SphereConfig
-        {
-            float Radius = 0.0f;
-            uint32_t SliceCount = 0;
-            uint32_t StackCount = 0;
-        };
+    struct GeosphereGeometryCreation
+    {
+        float Radius = 0.0f;
+        uint32_t SubdivisionCount = 6;
+    };
 
-        struct GeosphereConfig
-        {
-            float Radius = 0.0f;
-            uint32_t SubdivisionCount = 6;
-        };
-
-        MeshPrimitiveData GenerateBox(const BoxConfig& config);
-        MeshPrimitiveData GenerateGrid(const GridConfig& config);
-        MeshPrimitiveData GenerateCylinder(const CylinderConfig& config);
-        MeshPrimitiveData GenerateSphere(const SphereConfig& config);
-        MeshPrimitiveData GenerateGeosphere(const GeosphereConfig& config);
-
-    } // namespace geometry_generator
+    MeshData GenerateBox(const BoxGeometryCreation& creation);
+    MeshData GenerateGrid(const GridGeometryCreation& creation);
+    MeshData GenerateCylinder(const CylinderGeometryCreation& creation);
+    MeshData GenerateSphere(const SphereGeometryCreation& creation);
+    MeshData GenerateGeosphere(const GeosphereGeometryCreation& creation);
 
 } // namespace benzin

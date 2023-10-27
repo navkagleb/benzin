@@ -2,6 +2,7 @@
 #include "main_layer.hpp"
 
 #include <benzin/engine/geometry_generator.hpp>
+#include <benzin/engine/mesh.hpp>
 #include <benzin/engine/model.hpp>
 #include <benzin/graphics/command_list.hpp>
 #include <benzin/graphics/command_queue.hpp>
@@ -111,7 +112,7 @@ namespace sandbox
         };
 
         benzin::MappedData passBuffer{ *m_FrameResources.PassBuffer };
-        passBuffer.Write(passData, m_SwapChain.GetCurrentBackBufferIndex());
+        passBuffer.Write(passData, m_SwapChain.GetCurrentFrameIndex());
     }
 
     void GeometryPass::OnExecute(const entt::registry& registry, const benzin::Buffer& entityBuffer)
@@ -125,16 +126,26 @@ namespace sandbox
 
             VertexBufferIndex,
             IndexBufferIndex,
-            MeshPrimitiveBufferIndex,
+            SubMeshBufferIndex,
 
-            DrawPrimitiveBufferIndex,
-            DrawPrimitiveIndex,
+            DrawableMeshBufferIndex,
+            DrawableMeshIndex,
             NodeBufferIndex,
             NodeIndex,
             MaterialBufferIndex,
         };
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
+
+        const auto DrawSubMesh = [&](const benzin::Model& model, uint32_t drawableMeshIndex)
+        {
+            const auto& drawableMesh = model.GetDrawableMeshes()[drawableMeshIndex];
+            const auto& subMesh = model.GetMesh()->GetSubMeshes()[drawableMesh.MeshIndex];
+
+            commandList.SetRootConstant(RootConstant::DrawableMeshIndex, drawableMeshIndex);
+            commandList.SetPrimitiveTopology(subMesh.PrimitiveTopology);
+            commandList.DrawVertexed(subMesh.IndexCount);
+        };
 
         commandList.SetViewport(m_SwapChain.GetViewport());
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
@@ -163,8 +174,8 @@ namespace sandbox
 
         {
             commandList.SetPipelineState(*m_PipelineState);
-            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, m_FrameResources.PassBuffer->GetConstantBufferView(m_SwapChain.GetCurrentBackBufferIndex()));
-            commandList.SetRootShaderResource(RootConstant::EntityBufferIndex, entityBuffer.GetShaderResourceView());
+            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, m_FrameResources.PassBuffer->GetConstantBufferView(m_SwapChain.GetCurrentFrameIndex()));
+            commandList.SetRootShaderResource(RootConstant::EntityBufferIndex, entityBuffer.GetShaderResourceView(m_SwapChain.GetCurrentFrameIndex()));
 
             const auto view = registry.view<benzin::TransformComponent, benzin::ModelComponent>();
 
@@ -177,28 +188,22 @@ namespace sandbox
 
                 // Mesh
                 {
-                    commandList.SetRootShaderResource(RootConstant::MeshPrimitiveBufferIndex, mesh->GetPrimitiveBuffer()->GetShaderResourceView());
+                    commandList.SetRootShaderResource(RootConstant::SubMeshBufferIndex, mesh->GetSubMeshBuffer()->GetShaderResourceView());
                     commandList.SetRootShaderResource(RootConstant::VertexBufferIndex, mesh->GetVertexBuffer()->GetShaderResourceView());
                     commandList.SetRootShaderResource(RootConstant::IndexBufferIndex, mesh->GetIndexBuffer()->GetShaderResourceView());
                 }
 
                 // Model
                 {
-                    commandList.SetRootShaderResource(RootConstant::DrawPrimitiveBufferIndex, model->GetDrawPrimitiveBuffer()->GetShaderResourceView());
+                    commandList.SetRootShaderResource(RootConstant::DrawableMeshBufferIndex, model->GetDrawableMeshBuffer()->GetShaderResourceView());
                     commandList.SetRootShaderResource(RootConstant::NodeBufferIndex, model->GetNodeBuffer()->GetShaderResourceView());
                     commandList.SetRootShaderResource(RootConstant::MaterialBufferIndex, model->GetMaterialBuffer()->GetShaderResourceView());
                 }
 
                 // If there is no need to draw whole model
-                if (mc.DrawPrimitiveIndex)
+                if (mc.DrawableMeshIndex)
                 {
-                    const benzin::Model::DrawPrimitive& drawPrimitive = model->GetDrawPrimitives()[*mc.DrawPrimitiveIndex];
-                    const benzin::Mesh::Primitive& meshPrimitive = mesh->GetPrimitives()[drawPrimitive.MeshPrimitiveIndex];
-
-                    commandList.SetRootConstant(RootConstant::DrawPrimitiveIndex, *mc.DrawPrimitiveIndex);
-                    commandList.SetPrimitiveTopology(meshPrimitive.PrimitiveTopology);
-                    commandList.DrawVertexed(meshPrimitive.IndexCount);
-
+                    DrawSubMesh(*model, *mc.DrawableMeshIndex);
                     continue;
                 }
 
@@ -208,14 +213,9 @@ namespace sandbox
 
                     commandList.SetRootConstant(RootConstant::NodeIndex, static_cast<uint32_t>(nodeIndex));
 
-                    for (uint32_t drawPrimitiveIndex : node.DrawPrimitiveRange)
+                    for (uint32_t drawableMeshIndex : node.DrawableMeshIndexRange)
                     {
-                        const benzin::Model::DrawPrimitive& drawPrimitive = model->GetDrawPrimitives()[drawPrimitiveIndex];
-                        const benzin::Mesh::Primitive& meshPrimitive = mesh->GetPrimitives()[drawPrimitive.MeshPrimitiveIndex];
-
-                        commandList.SetRootConstant(RootConstant::DrawPrimitiveIndex, drawPrimitiveIndex);
-                        commandList.SetPrimitiveTopology(meshPrimitive.PrimitiveTopology);
-                        commandList.DrawVertexed(meshPrimitive.IndexCount);
+                        DrawSubMesh(*model, drawableMeshIndex);
                     }
                 }
             }
@@ -293,7 +293,7 @@ namespace sandbox
             .DebugName = "DeferredLightingPass_PointLightBuffer",
             .ElementSize = sizeof(PointLight),
             .ElementCount = ms_MaxPointLightCount * benzin::config::g_BackBufferCount,
-            .Flags = benzin::BufferFlag::Upload,
+            .Flags = benzin::BufferFlag::UploadBuffer,
         });
 
         for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
@@ -332,11 +332,11 @@ namespace sandbox
             };
 
             benzin::MappedData passBuffer{ *m_FrameResources.PassBuffer };
-            passBuffer.Write(passData, m_SwapChain.GetCurrentBackBufferIndex());
+            passBuffer.Write(passData, m_SwapChain.GetCurrentFrameIndex());
         }
 
         {
-            const uint32_t startElementIndex = ms_MaxPointLightCount * m_SwapChain.GetCurrentBackBufferIndex();
+            const uint32_t startElementIndex = ms_MaxPointLightCount * m_SwapChain.GetCurrentFrameIndex();
             benzin::MappedData pointLightBuffer{ *m_FrameResources.PointLightBuffer };
 
             size_t i = 0;
@@ -388,7 +388,7 @@ namespace sandbox
         {
             commandList.SetPipelineState(*m_PipelineState);
 
-            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, m_FrameResources.PassBuffer->GetConstantBufferView(m_SwapChain.GetCurrentBackBufferIndex()));
+            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, m_FrameResources.PassBuffer->GetConstantBufferView(m_SwapChain.GetCurrentFrameIndex()));
 
             commandList.SetRootShaderResource(RootConstant::AlbedoTextureIndex, gbuffer.Albedo->GetShaderResourceView());
             commandList.SetRootShaderResource(RootConstant::WorldNormalTextureIndex, gbuffer.WorldNormal->GetShaderResourceView());
@@ -396,7 +396,7 @@ namespace sandbox
             commandList.SetRootShaderResource(RootConstant::RoughnessMetalnessTextureIndex, gbuffer.RoughnessMetalness->GetShaderResourceView());
             commandList.SetRootShaderResource(RootConstant::DepthTextureIndex, gbuffer.DepthStencil->GetShaderResourceView());
 
-            commandList.SetRootShaderResource(RootConstant::PointLightBufferIndex, m_FrameResources.PointLightBuffer->GetShaderResourceView(m_SwapChain.GetCurrentBackBufferIndex()));
+            commandList.SetRootShaderResource(RootConstant::PointLightBufferIndex, m_FrameResources.PointLightBuffer->GetShaderResourceView(m_SwapChain.GetCurrentFrameIndex()));
 
             commandList.SetRootConstant(RootConstant::OutputType, magic_enum::enum_integer(m_OutputType));
 
@@ -513,7 +513,7 @@ namespace sandbox
         };
 
         benzin::MappedData passBuffer{ *m_FrameResources.PassBuffer };
-        passBuffer.Write(passData, m_SwapChain.GetCurrentBackBufferIndex());
+        passBuffer.Write(passData, m_SwapChain.GetCurrentFrameIndex());
     }
 
     void EnvironmentPass::OnExecute(benzin::Texture& deferredLightingOutputTexture, benzin::Texture& gbufferDepthStecil)
@@ -537,7 +537,7 @@ namespace sandbox
         {
             commandList.SetPipelineState(*m_PipelineState);
 
-            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, m_FrameResources.PassBuffer->GetConstantBufferView(m_SwapChain.GetCurrentBackBufferIndex()));
+            commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, m_FrameResources.PassBuffer->GetConstantBufferView(m_SwapChain.GetCurrentFrameIndex()));
             commandList.SetRootConstantBuffer(RootConstant::CubeTextureIndex, m_CubeTexture->GetShaderResourceView());
 
             commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
@@ -591,7 +591,7 @@ namespace sandbox
         m_FlyCameraController.OnUpdate(dt);
 
         {
-#if 0
+#if 1
             {
                 auto& tc = m_Registry.get<benzin::TransformComponent>(m_BoomBoxEntity);
                 tc.Rotation.x += 0.1f * dt;
@@ -605,22 +605,21 @@ namespace sandbox
             }
 #endif
 
-            auto& resources = m_Resources[m_SwapChain.GetCurrentBackBufferIndex()];
-            benzin::MappedData entityDataBuffer{ *resources.EntityDataBuffer };
+            const uint32_t startElementIndex = ms_MaxEntityCount * m_SwapChain.GetCurrentFrameIndex();
+            benzin::MappedData entityDataBuffer{ *m_FrameResources.EntityDataBuffer };
 
             const auto view = m_Registry.view<benzin::TransformComponent>();
-
             for (const auto& [entity, tc] : view.each())
             {
                 const auto& tc = view.get<benzin::TransformComponent>(entity);
 
                 const EntityData entityData
                 {
-                    .WorldMatrix{ tc.GetMatrix() },
-                    .InverseWorldMatrix{ tc.GetInverseMatrix() },
+                    .WorldMatrix = tc.GetMatrix(),
+                    .InverseWorldMatrix = tc.GetInverseMatrix(),
                 };
 
-                entityDataBuffer.Write(entityData, magic_enum::enum_integer(entity));
+                entityDataBuffer.Write(entityData, startElementIndex + magic_enum::enum_integer(entity));
             }
         }
 
@@ -631,7 +630,7 @@ namespace sandbox
 
     void MainLayer::OnRender()
     {
-        m_GeometryPass.OnExecute(m_Registry, *m_Resources[m_SwapChain.GetCurrentBackBufferIndex()].EntityDataBuffer);
+        m_GeometryPass.OnExecute(m_Registry, *m_FrameResources.EntityDataBuffer);
         m_DeferredLightingPass.OnExecute(m_GeometryPass.GetGBuffer());
 
         if (m_DeferredLightingPass.GetOutputType() == DeferredLightingPass::OutputType::Final)
@@ -729,52 +728,31 @@ namespace sandbox
 
     void MainLayer::CreateResources()
     {
-        for (size_t i = 0; i < m_Resources.size(); ++i)
+        m_FrameResources.EntityDataBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
         {
-            auto& frameResource = m_Resources[i];
+            .DebugName = "MainLayer_EntityBuffer",
+            .ElementSize = sizeof(EntityData),
+            .ElementCount = ms_MaxEntityCount * benzin::config::g_BackBufferCount,
+            .Flags = benzin::BufferFlag::UploadBuffer,
+        });
 
-            frameResource.EntityDataBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
-            {
-                .DebugName{ "MainLayer_EntityBuffer", static_cast<uint32_t>(i) },
-                .ElementSize = sizeof(EntityData),
-                .ElementCount = 20 * 20 + 1,
-                .Flags = benzin::BufferFlag::Upload,
-                .IsNeedShaderResourceView = true,
-            });
+        for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
+        {
+            BenzinAssert(m_FrameResources.EntityDataBuffer->PushShaderResourceView({ .FirstElementIndex = ms_MaxEntityCount * i, .ElementCount = ms_MaxEntityCount }) == i);
         }
     }
 
     void MainLayer::CreateEntities()
     {
-#if 1
         {
             const entt::entity entity = m_Registry.create();
             auto& tc = m_Registry.emplace<benzin::TransformComponent>(entity);
             tc.Rotation = { 0.0f, DirectX::XM_PI, 0.0f };
 
             auto& mc = m_Registry.emplace<benzin::ModelComponent>(entity);
-            mc.Model = std::make_shared<benzin::Model>(m_Device);
-            //BenzinAssert(mc.Model->LoadFromGLTFFile("DamagedHelmet/glTF/DamagedHelmet.gltf"));
-            //BenzinAssert(mc.Model->LoadFromGLTFFile("CesiumMilkTruck/glTF/CesiumMilkTruck.gltf"));
-            BenzinAssert(mc.Model->LoadFromGLTFFile("Sponza/glTF/Sponza.gltf"));
+            mc.Model = std::make_shared<benzin::Model>(m_Device, "Sponza/glTF/Sponza.gltf");
         }
-#endif
 
-#if 0
-        {
-            const entt::entity entity = m_Registry.create();
-            auto& tc = m_Registry.emplace<benzin::TransformComponent>(entity);
-            tc.Rotation = { 0.0f, DirectX::XM_PI, 0.0f };
-            tc.Scale = { 0.4f, 0.4f, 0.4f };
-
-            auto& mc = m_Registry.emplace<benzin::MeshletModelComponent>(entity);
-            mc.MeshletModel = std::make_shared<benzin::MeshletModel>(m_Device);
-            //BenzinAssert(mc.MeshletModel->LoadFromGLTFFile("DamagedHelmet/glTF/DamagedHelmet.gltf"));
-            BenzinAssert(mc.MeshletModel->LoadFromGLTFFile("CesiumMilkTruck/glTF/CesiumMilkTruck.gltf"));
-        }
-#endif
-
-#if 1
         {
             m_BoomBoxEntity = m_Registry.create();
 
@@ -784,8 +762,7 @@ namespace sandbox
             tc.Translation = { 0.0f, 0.6f, 0.0f };
 
             auto& mc = m_Registry.emplace<benzin::ModelComponent>(m_BoomBoxEntity);
-            mc.Model = std::make_shared<benzin::Model>(m_Device);
-            BenzinAssert(mc.Model->LoadFromGLTFFile("BoomBox/glTF-Binary/BoomBox.glb"));
+            mc.Model = std::make_shared<benzin::Model>(m_Device, "BoomBox/glTF-Binary/BoomBox.glb");
         }
 
         {
@@ -794,39 +771,34 @@ namespace sandbox
             auto& tc = m_Registry.emplace<benzin::TransformComponent>(m_DamagedHelmetEntity);
             tc.Rotation = { 0.0f, DirectX::XMConvertToRadians(-135.0f), 0.0f };
             tc.Scale = { 0.4f, 0.4f, 0.4f };
-            tc.Translation = { 1.0f, 0.0f, -0.5f };
+            tc.Translation = { 1.0f, 0.5f, -0.5f };
 
             auto& mc = m_Registry.emplace<benzin::ModelComponent>(m_DamagedHelmetEntity);
-            mc.Model = std::make_shared<benzin::Model>(m_Device);
-            //BenzinAssert(mc.Model->LoadFromGLTFFile("TextureCoordinateTest/glTF/TextureCoordinateTest.gltf"));
-            BenzinAssert(mc.Model->LoadFromGLTFFile("CesiumMilkTruck/glTF/CesiumMilkTruck.gltf"));
-            //BenzinAssert(mc.Model->LoadFromGLTFFile("DamagedHelmet/glTF/DamagedHelmet.gltf"));
+            mc.Model = std::make_shared<benzin::Model>(m_Device, "DamagedHelmet/glTF/DamagedHelmet.gltf");
         }
-#endif
 
-#if 1
         {
-            const benzin::geometry_generator::GeosphereConfig sphereConfig
+            const benzin::GeosphereGeometryCreation geosphereGeometryCreation
             {
-                .Radius{ 1.0f },
-                .SubdivisionCount{ 0 },
+                .Radius = 1.0f,
+                .SubdivisionCount = 0,
             };
 
-            const auto sphereMesh = std::make_shared<benzin::Mesh>(
-                m_Device,
-                std::vector{ benzin::geometry_generator::GenerateGeosphere(sphereConfig) },
-                "Sphere"
-            );
+            const auto sphereMesh = std::make_shared<benzin::Mesh>(m_Device, benzin::MeshCreation
+            {
+                .DebugName = "Geosphere",
+                .Meshes{ benzin::GenerateGeosphere(geosphereGeometryCreation) }
+            });
 
             const size_t rowCount = 32;
             const size_t columnCount = 6;
             const size_t count = rowCount * columnCount;
 
-            std::vector<benzin::MaterialData> materialsData;
-            materialsData.reserve(count);
+            std::vector<benzin::Material> materials;
+            materials.reserve(count);
 
-            std::vector<benzin::Model::DrawPrimitive> drawPrimitives;
-            drawPrimitives.reserve(count);
+            std::vector<benzin::DrawableMesh> drawableMeshes;
+            drawableMeshes.reserve(count);
 
             for (size_t i = 0; i < rowCount; ++i)
             {
@@ -834,28 +806,28 @@ namespace sandbox
                 {
                     const size_t k = i * columnCount + j;
 
-                    benzin::MaterialData& materialData = materialsData.emplace_back();
-                    materialData.AlbedoFactor = { 0.0f, 0.0f, 0.0f, 0.0f };
-                    materialData.EmissiveFactor =
+                    auto& material = materials.emplace_back();
+                    material.AlbedoFactor = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    material.EmissiveFactor =
                     {
                         static_cast<float>(((k + 1) * 37) % 256) / 255.0f * 2.0f,
                         static_cast<float>(((k + 1) * 71) % 256) / 255.0f * 2.0f,
                         static_cast<float>(((k + 1) * 97) % 256) / 255.0f * 2.0f,
                     };
 
-                    benzin::Model::DrawPrimitive& drawPrimitive = drawPrimitives.emplace_back();
-                    drawPrimitive.MeshPrimitiveIndex = 0;
+                    auto& drawPrimitive = drawableMeshes.emplace_back();
+                    drawPrimitive.MeshIndex = 0;
                     drawPrimitive.MaterialIndex = static_cast<uint32_t>(k);
                 }
             }
 
-            const auto model = std::make_shared<benzin::Model>(
-                m_Device,
-                sphereMesh,
-                drawPrimitives,
-                materialsData,
-                "PointLightSpheres"
-            );
+            const auto model = std::make_shared<benzin::Model>(m_Device, benzin::ModelCreation
+            {
+                .DebugName = "PointLightSpheres",
+                .Mesh = sphereMesh,
+                .DrawableMeshes = drawableMeshes,
+                .Materials = materials,
+            });
 
             for (size_t i = 0; i < rowCount; ++i)
             {
@@ -874,7 +846,7 @@ namespace sandbox
                         (static_cast<float>(columnCount) / -2.0f + static_cast<float>(j)) * 0.5f
                     };
 
-                    const DirectX::XMVECTOR color = DirectX::XMVectorScale(DirectX::XMLoadFloat3(&materialsData[k].EmissiveFactor), 0.5f);
+                    const DirectX::XMVECTOR color = DirectX::XMVectorScale(DirectX::XMLoadFloat3(&materials[k].EmissiveFactor), 0.5f);
 
                     auto& pointLight = m_Registry.emplace<benzin::PointLightComponent>(pointLightEntity);
                     DirectX::XMStoreFloat3(&pointLight.Color, color);
@@ -883,11 +855,10 @@ namespace sandbox
 
                     auto& modelComponent = m_Registry.emplace<benzin::ModelComponent>(pointLightEntity);
                     modelComponent.Model = model;
-                    modelComponent.DrawPrimitiveIndex = static_cast<uint32_t>(k);
+                    modelComponent.DrawableMeshIndex = static_cast<uint32_t>(k);
                 }
             }
         }
-#endif
     }
 
 } // namespace sandbox

@@ -14,8 +14,8 @@ struct PassData
 
 float4 PS_Main(fullscreen_helper::VS_Output input) : SV_Target
 {
-    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PassBufferIndex)];
-    TextureCube<float4> cubeMap = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_CubeTextureIndex)];
+    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BenzinGetRootConstant(g_PassBufferIndex)];
+    TextureCube<float4> cubeMap = ResourceDescriptorHeap[BenzinGetRootConstant(g_CubeTextureIndex)];
 
     const float4 worldPosition = mul(input.ClipPosition, passData.InverseViewDirectionProjectionMatrix);
     const float3 direction = normalize(worldPosition.xyz);

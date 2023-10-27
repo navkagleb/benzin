@@ -43,15 +43,15 @@ struct VS_Output
 
 VS_Output VS_Main(uint32_t vertexID : SV_VertexID)
 {
-    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PassBufferIndex)];
+    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BenzinGetRootConstant(g_PassBufferIndex)];
 
-    StructuredBuffer<MeshVertex> vertexBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_VertexBufferIndex)];
-    StructuredBuffer<uint32_t> indexBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_IndexBufferIndex)];
-    StructuredBuffer<EntityData> entityBuffer = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_EntityBufferIndex)];
+    StructuredBuffer<MeshVertex> vertexBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_VertexBufferIndex)];
+    StructuredBuffer<uint32_t> indexBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_IndexBufferIndex)];
+    StructuredBuffer<EntityData> entityBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_EntityBufferIndex)];
 
     const uint32_t index = indexBuffer[vertexID];
     const MeshVertex vertex = vertexBuffer[index];
-    const EntityData entityData = entityBuffer[BENZIN_GET_ROOT_CONSTANT(g_EntityIndex)];
+    const EntityData entityData = entityBuffer[BenzinGetRootConstant(g_EntityIndex)];
 
     const float4 worldPosition = mul(float4(vertex.Position, 1.0f), entityData.WorldMatrix);
 
@@ -74,7 +74,7 @@ struct PS_Output
 
 PS_Output PS_Main(VS_Output input)
 {
-    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_PassBufferIndex)];
+    ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BenzinGetRootConstant(g_PassBufferIndex)];
 
     gbuffer::Unpacked gbuffer;
     gbuffer.Albedo = float4(0.8f, 0.9f, 0.7f, 1.0f);

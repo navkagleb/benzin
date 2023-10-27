@@ -21,6 +21,7 @@ namespace benzin::config
     constexpr uint32_t g_MaxSamplerDescriptorCount = D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
 
     constexpr uint32_t g_ConstantBufferAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+    constexpr uint32_t g_StructuredBufferAlignment = sizeof(DirectX::XMFLOAT4);
     constexpr uint32_t g_TextureAlignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 
     constexpr bool g_IsShaderDebugEnabled = BENZIN_IS_DEBUG_BUILD;

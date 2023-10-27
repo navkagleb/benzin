@@ -4,6 +4,7 @@
 #include <third_party/tinygltf/tiny_gltf.h>
 #include <third_party/tinygltf/stb_image.h>
 
+#include "benzin/engine/mesh.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/mapped_data.hpp"
@@ -14,187 +15,113 @@ namespace benzin
     namespace
     {
 
-        struct GPUPrimitive
-        {
-            uint32_t StartVertex;
-            uint32_t StartIndex;
-            uint32_t IndexCount;
-        };
-
-        using GPUMaterial = MaterialData;
-
         struct GPUNode
         {
             DirectX::XMMATRIX TransformMatrix;
             DirectX::XMMATRIX InverseTransformMatrix;
         };
 
-        tinygltf::TinyGLTF g_GLTFContext;
-
-        std::optional<tinygltf::Model> LoadGLTFModelFromFile(std::string_view fileName) 
+        struct GLTFParserResult
         {
-            const std::filesystem::path filePath = config::g_ModelDirPath / fileName;
-            BenzinAssert(std::filesystem::exists(filePath));
-            BenzinAssert(filePath.extension() == ".glb" || filePath.extension() == ".gltf");
+            std::vector<MeshData> Meshes;
+            std::vector<DrawableMesh> DrawableMeshes;
+            std::vector<IterableRange<uint32_t>> DrawableMeshIndexRanges;
 
-            tinygltf::Model gltfModel;
-            std::string error;
-            std::string warning;
-            bool result = false;
+            std::vector<Model::Node> ModelNodes;
 
-            if (filePath.extension() == ".glb")
-            {
-                result = g_GLTFContext.LoadBinaryFromFile(&gltfModel, &error, &warning, filePath.string());
-            }
-            else if (filePath.extension() == ".gltf")
-            {
-                result = g_GLTFContext.LoadASCIIFromFile(&gltfModel, &error, &warning, filePath.string());
-            }
-
-            if (!warning.empty())
-            {
-                BenzinWarning("GLTF Loader: {}", warning);
-            }
-
-            if (!error.empty())
-            {
-                BenzinError("GLTF Loader: {}", error);
-            }
-
-            if (!result)
-            {
-                BenzinError("Failed to parse glTF file!");
-                return std::nullopt;
-            }
-
-            return gltfModel;
-        }
-
-        template <typename T>
-        std::span<const T> GetBufferFromGLTFAccessor(const tinygltf::Model& gltfModel, int accessorIndex)
-        {
-            if (accessorIndex == -1)
-            {
-                return {};
-            }
-
-            const tinygltf::Accessor& gltfAccessor = gltfModel.accessors[accessorIndex];
-            const tinygltf::BufferView& gltfBufferView = gltfModel.bufferViews[gltfAccessor.bufferView];
-            const tinygltf::Buffer& gltfBuffer = gltfModel.buffers[gltfBufferView.buffer];
-
-            const size_t offsetInBytes = gltfBufferView.byteOffset + gltfAccessor.byteOffset;
-
-            return std::span<const T>
-            {
-                reinterpret_cast<const T*>(gltfBuffer.data.data() + offsetInBytes),
-                    gltfAccessor.count
-            };
+            std::vector<TextureImage> TextureImages;
+            std::vector<Material> Materials;
         };
 
-        template <std::integral IndexType>
-        void ParseGLTFMeshPrimitive(
-            const tinygltf::Model& gltfModel,
-            const tinygltf::Primitive& gltfPrimitive,
-            std::vector<MeshPrimitiveData>& meshPrimitivesData,
-            std::vector<Model::DrawPrimitive>& drawPrimitives
-        )
+        class GLTFParser
         {
-            MeshPrimitiveData& meshPrimitiveData = meshPrimitivesData.emplace_back();
-            Model::DrawPrimitive& drawPrimitive = drawPrimitives.emplace_back();
+        private:
+            static inline tinygltf::TinyGLTF ms_GLTFContext;
 
-            BenzinAssert(gltfPrimitive.material != -1);
-            drawPrimitive.MeshPrimitiveIndex = static_cast<uint32_t>(meshPrimitivesData.size()) - 1; // Because 'meshPrimitivesData.emplace_back()'
-            drawPrimitive.MaterialIndex = gltfPrimitive.material;
-
-            switch (gltfPrimitive.mode)
+        public:
+            std::expected<GLTFParserResult, std::string> Parse(std::string_view fileName)
             {
-                case TINYGLTF_MODE_TRIANGLES:
+                const std::filesystem::path filePath = config::g_ModelDirPath / fileName;
+                BenzinAssert(std::filesystem::exists(filePath));
+                BenzinAssert(filePath.extension() == ".glb" || filePath.extension() == ".gltf");
+
+                std::string error;
+                std::string warning;
+                bool result = false;
+
+                if (filePath.extension() == ".glb")
                 {
-                    meshPrimitiveData.PrimitiveTopology = PrimitiveTopology::TriangleList;
-                    break;
+                    result = ms_GLTFContext.LoadBinaryFromFile(&m_GLTFModel, &error, &warning, filePath.string());
                 }
-                case TINYGLTF_MODE_TRIANGLE_STRIP:
+                else if (filePath.extension() == ".gltf")
                 {
-                    meshPrimitiveData.PrimitiveTopology = PrimitiveTopology::TriangleStrip;
-                    break;
+                    result = ms_GLTFContext.LoadASCIIFromFile(&m_GLTFModel, &error, &warning, filePath.string());
                 }
-                default:
+
+                if (!warning.empty())
                 {
-                    BenzinAssert(false);
-                    break;
+                    return std::unexpected{ warning };
                 }
+                else if (!error.empty())
+                {
+                    return std::unexpected{ error };
+                }
+                else if (!result)
+                {
+                    return std::unexpected{ "Failed to parse glTF file!"s };
+                }
+
+                GLTFParserResult gltfResult;
+                ParseGLTFMeshPrimitives(gltfResult);
+                ParseGLTFNodes(gltfResult);
+                ParseGLTFTextures(gltfResult);
+                ParseGLTFMaterials(gltfResult);
+
+                return gltfResult;
             }
 
-            const int indexAccessorIndex = gltfPrimitive.indices;
-            const int positionAccessorIndex = gltfPrimitive.attributes.contains("POSITION") ? gltfPrimitive.attributes.at("POSITION") : -1;
-            const int normalAccessorIndex = gltfPrimitive.attributes.contains("NORMAL") ? gltfPrimitive.attributes.at("NORMAL") : -1;
-            const int texCoordAccessorIndex = gltfPrimitive.attributes.contains("TEXCOORD_0") ? gltfPrimitive.attributes.at("TEXCOORD_0") : -1;
-            BenzinAssert(!gltfPrimitive.attributes.contains("TEXCOORD_1")); // TODO
-
-            const std::span<const IndexType> indices = GetBufferFromGLTFAccessor<IndexType>(gltfModel, indexAccessorIndex);
-            const std::span<const DirectX::XMFLOAT3> positions = GetBufferFromGLTFAccessor<DirectX::XMFLOAT3>(gltfModel, positionAccessorIndex);
-            const std::span<const DirectX::XMFLOAT3> normals = GetBufferFromGLTFAccessor<DirectX::XMFLOAT3>(gltfModel, normalAccessorIndex);
-            const std::span<const DirectX::XMFLOAT2> texCoords = GetBufferFromGLTFAccessor<DirectX::XMFLOAT2>(gltfModel, texCoordAccessorIndex);
-
-            BenzinAssert(!positions.empty());
-
-            if (!normals.empty())
+        private:
+            template <typename T>
+            std::span<const T> GetBufferFromGLTFAccessor(int accessorIndex)
             {
-                BenzinAssert(normals.size() == positions.size());
-            }
-
-            if (!texCoords.empty())
-            {
-                BenzinAssert(texCoords.size() == positions.size());
-            }
-
-            meshPrimitiveData.Vertices.resize(positions.size());
-            for (size_t i = 0; i < meshPrimitiveData.Vertices.size(); ++i)
-            {
-                MeshVertexData& meshVertexData = meshPrimitiveData.Vertices[i];
-                meshVertexData.LocalPosition = positions[i];
-
-                if (!normals.empty())
+                if (accessorIndex == -1)
                 {
-                    meshVertexData.LocalNormal = normals[i];
+                    return {};
                 }
 
-                if (!texCoords.empty())
-                {
-                    meshVertexData.TexCoord = texCoords[i];
-                }
-            }
+                const tinygltf::Accessor& gltfAccessor = m_GLTFModel.accessors[accessorIndex];
+                const tinygltf::BufferView& gltfBufferView = m_GLTFModel.bufferViews[gltfAccessor.bufferView];
+                const tinygltf::Buffer& gltfBuffer = m_GLTFModel.buffers[gltfBufferView.buffer];
 
-            meshPrimitiveData.Indices.assign(indices.begin(), indices.end());
-        }
+                const size_t offsetInBytes = gltfBufferView.byteOffset + gltfAccessor.byteOffset;
 
-        void ParseGLTFMesh(
-            const tinygltf::Model& gltfModel,
-            const tinygltf::Mesh& gltfMesh,
-            std::vector<MeshPrimitiveData>& meshPrimitivesData,
-            std::vector<Model::DrawPrimitive>& drawPrimitives
-        )
-        {
-            for (const tinygltf::Primitive& gltfPrimitive : gltfMesh.primitives)
+                return std::span
+                { 
+                    reinterpret_cast<const T*>(gltfBuffer.data.data() + offsetInBytes),
+                    gltfAccessor.count
+                };
+            };
+
+            template <std::integral IndexType>
+            void ParseGLTFMeshPrimitive(const tinygltf::Primitive& gltfPrimitive, GLTFParserResult& result)
             {
-                BenzinAssert(gltfPrimitive.indices != -1);
-                const tinygltf::Accessor& indexAccessor = gltfModel.accessors[gltfPrimitive.indices];
+                MeshData& mesh = result.Meshes.emplace_back();
+                DrawableMesh& drawableMesh = result.DrawableMeshes.emplace_back();
 
-                switch (indexAccessor.componentType)
+                BenzinAssert(gltfPrimitive.material != -1);
+                drawableMesh.MeshIndex = static_cast<uint32_t>(result.Meshes.size()) - 1;
+                drawableMesh.MaterialIndex = gltfPrimitive.material;
+
+                switch (gltfPrimitive.mode)
                 {
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+                    case TINYGLTF_MODE_TRIANGLES:
                     {
-                        ParseGLTFMeshPrimitive<uint8_t>(gltfModel, gltfPrimitive, meshPrimitivesData, drawPrimitives);
+                        mesh.PrimitiveTopology = PrimitiveTopology::TriangleList;
                         break;
                     }
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+                    case TINYGLTF_MODE_TRIANGLE_STRIP:
                     {
-                        ParseGLTFMeshPrimitive<uint16_t>(gltfModel, gltfPrimitive, meshPrimitivesData, drawPrimitives);
-                        break;
-                    }
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-                    {
-                        ParseGLTFMeshPrimitive<uint32_t>(gltfModel, gltfPrimitive, meshPrimitivesData, drawPrimitives);
+                        mesh.PrimitiveTopology = PrimitiveTopology::TriangleStrip;
                         break;
                     }
                     default:
@@ -203,160 +130,224 @@ namespace benzin
                         break;
                     }
                 }
-            }
-        }
 
-        void ParseGLTFMeshPrimitives(
-            const tinygltf::Model& gltfModel,
-            std::vector<MeshPrimitiveData>& meshPrimitivesData,
-            std::vector<Model::DrawPrimitive>& drawPrimitives,
-            std::vector<IterableRange<uint32_t>>& meshPrimitivesRanges
-        )
-        {
-            BenzinAssert(meshPrimitivesData.empty());
-            BenzinAssert(drawPrimitives.empty());
-            BenzinAssert(meshPrimitivesRanges.empty());
+                const int indexAccessorIndex = gltfPrimitive.indices;
+                const int positionAccessorIndex = gltfPrimitive.attributes.contains("POSITION") ? gltfPrimitive.attributes.at("POSITION") : -1;
+                const int normalAccessorIndex = gltfPrimitive.attributes.contains("NORMAL") ? gltfPrimitive.attributes.at("NORMAL") : -1;
+                const int texCoordAccessorIndex = gltfPrimitive.attributes.contains("TEXCOORD_0") ? gltfPrimitive.attributes.at("TEXCOORD_0") : -1;
+                BenzinAssert(!gltfPrimitive.attributes.contains("TEXCOORD_1")); // TODO
 
-            meshPrimitivesRanges.reserve(gltfModel.meshes.size());
+                const auto indices = GetBufferFromGLTFAccessor<IndexType>(indexAccessorIndex);
+                const auto positions = GetBufferFromGLTFAccessor<DirectX::XMFLOAT3>(positionAccessorIndex);
+                const auto normals = GetBufferFromGLTFAccessor<DirectX::XMFLOAT3>(normalAccessorIndex);
+                const auto uvs = GetBufferFromGLTFAccessor<DirectX::XMFLOAT2>(texCoordAccessorIndex);
 
-            for (const tinygltf::Mesh& gltfMesh : gltfModel.meshes)
-            {
-                meshPrimitivesRanges.emplace_back(
-                    static_cast<uint32_t>(meshPrimitivesData.size()),
-                    static_cast<uint32_t>(meshPrimitivesData.size() + gltfMesh.primitives.size())
-                );
+                BenzinAssert(!positions.empty());
 
-                ParseGLTFMesh(gltfModel, gltfMesh, meshPrimitivesData, drawPrimitives);
-            }
-        }
-
-        DirectX::XMMATRIX ParseGLTFNodeTransform(const tinygltf::Node& gltfNode, const DirectX::XMMATRIX& parentNodeTransform)
-        {
-            DirectX::XMMATRIX nodeTransform = DirectX::XMMatrixIdentity();
-
-            if (!gltfNode.matrix.empty())
-            {
-                BenzinAssert(gltfNode.matrix.size() == 16);
-                memcpy(&nodeTransform, gltfNode.matrix.data(), sizeof(DirectX::XMMATRIX));
-                nodeTransform = DirectX::XMMatrixTranspose(nodeTransform);
-            }
-            else
-            {
-                if (!gltfNode.rotation.empty())
+                if (!normals.empty())
                 {
-                    BenzinAssert(gltfNode.rotation.size() == 4);
-                    const DirectX::XMFLOAT4 rotation
+                    BenzinAssert(normals.size() == positions.size());
+                }
+
+                if (!uvs.empty())
+                {
+                    BenzinAssert(uvs.size() == positions.size());
+                }
+
+                // Fill vertices
+                mesh.Vertices.resize(positions.size());
+                for (const auto& [i, meshVertex] : mesh.Vertices | std::views::enumerate)
+                {
+                    meshVertex.Position = positions[i];
+
+                    if (!normals.empty())
                     {
-                        static_cast<float>(gltfNode.rotation[0]),
-                        static_cast<float>(gltfNode.rotation[1]),
-                        static_cast<float>(gltfNode.rotation[2]),
-                        static_cast<float>(gltfNode.rotation[3])
-                    };
+                        meshVertex.Normal = normals[i];
+                    }
 
-                    nodeTransform *= DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&rotation));
-                }
-
-                if (!gltfNode.scale.empty())
-                {
-                    BenzinAssert(gltfNode.scale.size() == 3);
-                    const DirectX::XMFLOAT3 scale
+                    if (!uvs.empty())
                     {
-                        static_cast<float>(gltfNode.scale[0]),
-                        static_cast<float>(gltfNode.scale[1]),
-                        static_cast<float>(gltfNode.scale[2])
-                    };
-
-                    nodeTransform *= DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&scale));
+                        meshVertex.TexCoord = uvs[i];
+                    }
                 }
 
-                if (!gltfNode.translation.empty())
+                // Fill indices
+                mesh.Indices.resize(indices.size());
+                if constexpr (std::is_same_v<IndexType, uint32_t>)
                 {
-                    BenzinAssert(gltfNode.translation.size() == 3);
-                    const DirectX::XMFLOAT3 translation
+                    memcpy(mesh.Indices.data(), indices.data(), indices.size());
+                }
+                else
+                {
+                    std::ranges::copy(indices, mesh.Indices.begin());
+                }
+            }
+
+            void ParseGLTFMesh(const tinygltf::Mesh& gltfMesh, GLTFParserResult& result)
+            {
+                for (const tinygltf::Primitive& gltfPrimitive : gltfMesh.primitives)
+                {
+                    BenzinAssert(gltfPrimitive.indices != -1);
+                    const tinygltf::Accessor& indexAccessor = m_GLTFModel.accessors[gltfPrimitive.indices];
+
+                    switch (indexAccessor.componentType)
                     {
-                        static_cast<float>(gltfNode.translation[0]),
-                        static_cast<float>(gltfNode.translation[1]),
-                        static_cast<float>(gltfNode.translation[2])
-                    };
-
-                    nodeTransform *= DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&translation));
+                        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+                        {
+                            ParseGLTFMeshPrimitive<uint8_t>(gltfPrimitive, result);
+                            break;
+                        }
+                        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+                        {
+                            ParseGLTFMeshPrimitive<uint16_t>(gltfPrimitive, result);
+                            break;
+                        }
+                        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+                        {
+                            ParseGLTFMeshPrimitive<uint32_t>(gltfPrimitive, result);
+                            break;
+                        }
+                        default:
+                        {
+                            BenzinAssert(false);
+                            break;
+                        }
+                    }
                 }
             }
 
-            return nodeTransform * parentNodeTransform;
-        }
-
-        void ParseGLTFNode(
-            const tinygltf::Model& gltfModel,
-            int nodeIndex,
-            int parentNodeIndex,
-            const DirectX::XMMATRIX& parentNodeTransform,
-            const std::vector<IterableRange<uint32_t>>& meshPrimitiveRanges,
-            std::vector<NodeData>& nodesData
-        )
-        {
-            const tinygltf::Node& gltfNode = gltfModel.nodes[nodeIndex];
-
-            const DirectX::XMMATRIX nodeTransform = ParseGLTFNodeTransform(gltfNode, parentNodeTransform);
-            const int meshIndex = gltfNode.mesh;
-
-            if (meshIndex != -1)
+            void ParseGLTFMeshPrimitives(GLTFParserResult& result)
             {
-                NodeData& nodeData = nodesData.emplace_back();
-                nodeData.DrawPrimitiveRange = meshPrimitiveRanges[meshIndex];
-                nodeData.Transform = nodeTransform;
-            }
+                BenzinAssert(result.Meshes.empty());
+                BenzinAssert(result.DrawableMeshes.empty());
+                BenzinAssert(result.DrawableMeshIndexRanges.empty());
 
-            for (const int childNodeIndex : gltfNode.children)
-            {
-                ParseGLTFNode(gltfModel, childNodeIndex, nodeIndex, nodeTransform, meshPrimitiveRanges, nodesData);
-            }
-        }
-
-        void ParseGLTFNodes(
-            const tinygltf::Model& gltfModel,
-            const std::vector<IterableRange<uint32_t>>& meshPrimitiveRanges,
-            std::vector<NodeData>& nodesData
-        )
-        {
-            const int parentNodeIndex = -1;
-
-            // Convert from right-handed to left-handed
-            // Must be used with TriangleOrder::CounterClockwise in rasterizer state
-            const DirectX::XMMATRIX parentNodeTransform = DirectX::XMMatrixScaling(1.0f, 1.0f, -1.0f);
-
-            for (const tinygltf::Scene& gltfScene : gltfModel.scenes)
-            {
-                for (const int nodeIndex : gltfScene.nodes)
+                result.DrawableMeshIndexRanges.reserve(m_GLTFModel.meshes.size());
+                for (const tinygltf::Mesh& gltfMesh : m_GLTFModel.meshes)
                 {
-                    ParseGLTFNode(gltfModel, nodeIndex, parentNodeIndex, parentNodeTransform, meshPrimitiveRanges, nodesData);
+                    const auto meshIndex = static_cast<uint32_t>(result.Meshes.size());
+                    const auto meshCount = static_cast<uint32_t>(gltfMesh.primitives.size());
+                    result.DrawableMeshIndexRanges.emplace_back(meshIndex, meshIndex + meshCount);
+
+                    ParseGLTFMesh(gltfMesh, result);
                 }
             }
-        }
 
-        void ParseGLTFTextures(const tinygltf::Model& gltfModel, std::vector<TextureResourceData>& textureResourcesData)
-        {
-            BenzinAssert(textureResourcesData.empty());
-            textureResourcesData.reserve(gltfModel.textures.size());
-
-            for (const tinygltf::Texture& gltfTexture : gltfModel.textures)
+            static DirectX::XMMATRIX ParseGLTFNodeTransform(const tinygltf::Node& gltfNode, const DirectX::XMMATRIX& parentNodeTransform)
             {
-                const tinygltf::Image& gltfImage = gltfModel.images[gltfTexture.source];
-                BenzinAssert(gltfImage.bits == 8);
-                BenzinAssert(gltfImage.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE);
+                DirectX::XMMATRIX nodeTransform = DirectX::XMMatrixIdentity();
 
-                TextureResourceData& textureResourceData = textureResourcesData.emplace_back();
-
+                if (!gltfNode.matrix.empty())
                 {
-                    TextureCreation& textureCreation = textureResourceData.TextureCreation;
+                    BenzinAssert(gltfNode.matrix.size() == 16);
+                    memcpy(&nodeTransform, gltfNode.matrix.data(), sizeof(DirectX::XMMATRIX));
+                    nodeTransform = DirectX::XMMatrixTranspose(nodeTransform);
+                }
+                else
+                {
+                    if (!gltfNode.rotation.empty())
+                    {
+                        BenzinAssert(gltfNode.rotation.size() == 4);
+                        const DirectX::XMFLOAT4 rotation
+                        {
+                            static_cast<float>(gltfNode.rotation[0]),
+                            static_cast<float>(gltfNode.rotation[1]),
+                            static_cast<float>(gltfNode.rotation[2]),
+                            static_cast<float>(gltfNode.rotation[3])
+                        };
 
+                        nodeTransform *= DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&rotation));
+                    }
+
+                    if (!gltfNode.scale.empty())
+                    {
+                        BenzinAssert(gltfNode.scale.size() == 3);
+                        const DirectX::XMFLOAT3 scale
+                        {
+                            static_cast<float>(gltfNode.scale[0]),
+                            static_cast<float>(gltfNode.scale[1]),
+                            static_cast<float>(gltfNode.scale[2])
+                        };
+
+                        nodeTransform *= DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&scale));
+                    }
+
+                    if (!gltfNode.translation.empty())
+                    {
+                        BenzinAssert(gltfNode.translation.size() == 3);
+                        const DirectX::XMFLOAT3 translation
+                        {
+                            static_cast<float>(gltfNode.translation[0]),
+                            static_cast<float>(gltfNode.translation[1]),
+                            static_cast<float>(gltfNode.translation[2])
+                        };
+
+                        nodeTransform *= DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&translation));
+                    }
+                }
+
+                return nodeTransform * parentNodeTransform;
+            }
+
+            void ParseGLTFNode(int nodeIndex, int parentNodeIndex, const DirectX::XMMATRIX& parentNodeTransform, GLTFParserResult& result)
+            {
+                const tinygltf::Node& gltfNode = m_GLTFModel.nodes[nodeIndex];
+
+                const DirectX::XMMATRIX nodeTransform = ParseGLTFNodeTransform(gltfNode, parentNodeTransform);
+                const int meshIndex = gltfNode.mesh;
+
+                if (meshIndex != -1)
+                {
+                    result.ModelNodes.emplace_back(result.DrawableMeshIndexRanges[meshIndex], nodeTransform);
+                }
+
+                for (const int childNodeIndex : gltfNode.children)
+                {
+                    ParseGLTFNode(childNodeIndex, nodeIndex, nodeTransform, result);
+                }
+            }
+
+            void ParseGLTFNodes(GLTFParserResult& result)
+            {
+                BenzinAssert(!result.DrawableMeshIndexRanges.empty());
+                BenzinAssert(result.ModelNodes.empty());
+
+                const int parentNodeIndex = -1;
+
+                // Convert from right-handed to left-handed
+                // Must be used with TriangleOrder::CounterClockwise in rasterizer state
+                const DirectX::XMMATRIX parentNodeTransform = DirectX::XMMatrixScaling(1.0f, 1.0f, -1.0f);
+
+                for (const tinygltf::Scene& gltfScene : m_GLTFModel.scenes)
+                {
+                    for (const int nodeIndex : gltfScene.nodes)
+                    {
+                        ParseGLTFNode(nodeIndex, parentNodeIndex, parentNodeTransform, result);
+                    }
+                }
+            }
+
+            void ParseGLTFTextures(GLTFParserResult& result)
+            {
+                BenzinAssert(result.TextureImages.empty());
+
+                result.TextureImages.resize(m_GLTFModel.textures.size());
+                for (const auto& [gltfTexture, textureImage] : std::views::zip(m_GLTFModel.textures, result.TextureImages))
+                {
+                    const tinygltf::Image& gltfImage = m_GLTFModel.images[gltfTexture.source];
+                    BenzinAssert(gltfImage.bits == 8);
+                    BenzinAssert(gltfImage.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE);
+
+                    TextureCreation& textureCreation = textureImage.TextureCreation;
+
+                    // Fill 'textureCreation'
                     textureCreation = TextureCreation
                     {
                         .Type = TextureType::Texture2D,
                         .Format = GraphicsFormat::RGBA8Unorm,
                         .Width = static_cast<uint32_t>(gltfImage.width),
                         .Height = static_cast<uint32_t>(gltfImage.height),
-                        .MipCount = 1,
+                        .MipCount = 1, // TODO: Mip generation
                     };
 
                     if (!gltfTexture.name.empty())
@@ -371,194 +362,99 @@ namespace benzin
                     {
                         textureCreation.DebugName.Chars = gltfImage.uri;
                     }
-                }
-                
-                {
-                    textureResourceData.ImageData.resize(gltfImage.image.size());
-                    memcpy(textureResourceData.ImageData.data(), gltfImage.image.data(), gltfImage.image.size());
+                    
+                    // Fill image
+                    textureImage.ImageData.resize(gltfImage.image.size());
+                    memcpy(textureImage.ImageData.data(), gltfImage.image.data(), gltfImage.image.size());
                 }
             }
-        }
 
-        void ParseGLTFMaterials(const tinygltf::Model& gltfModel, std::vector<MaterialData>& materialsData)
-        {
-            BenzinAssert(materialsData.empty());
-            materialsData.reserve(gltfModel.materials.size());
-
-            for (const tinygltf::Material& gltfMaterial : gltfModel.materials)
+            void ParseGLTFMaterials(GLTFParserResult& result)
             {
-                const tinygltf::PbrMetallicRoughness& gltfPbrMetallicRoughness = gltfMaterial.pbrMetallicRoughness;
+                BenzinAssert(result.Materials.empty());
 
-                MaterialData& material = materialsData.emplace_back();
-
-                // Albedo
+                result.Materials.resize(m_GLTFModel.materials.size());
+                for (const auto& [gltfMaterial, material] : std::views::zip(m_GLTFModel.materials, result.Materials))
                 {
-                    const int albedoTextureIndex = gltfPbrMetallicRoughness.baseColorTexture.index;
+                    const tinygltf::PbrMetallicRoughness& gltfPbrMetallicRoughness = gltfMaterial.pbrMetallicRoughness;
 
-                    if (albedoTextureIndex != -1)
+                    // Albedo
                     {
-                        material.AlbedoTextureIndex = static_cast<uint32_t>(albedoTextureIndex);
+                        const int albedoTextureIndex = gltfPbrMetallicRoughness.baseColorTexture.index;
+
+                        if (albedoTextureIndex != -1)
+                        {
+                            material.AlbedoTextureIndex = static_cast<uint32_t>(albedoTextureIndex);
+                        }
+
+                        BenzinAssert(gltfPbrMetallicRoughness.baseColorFactor.size() == 4);
+                        material.AlbedoFactor.x = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[0]);
+                        material.AlbedoFactor.y = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[1]);
+                        material.AlbedoFactor.z = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[2]);
+                        material.AlbedoFactor.w = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[3]);
+
+                        material.AlphaCutoff = static_cast<float>(gltfMaterial.alphaCutoff);
                     }
 
-                    BenzinAssert(gltfPbrMetallicRoughness.baseColorFactor.size() == 4);
-                    material.AlbedoFactor.x = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[0]);
-                    material.AlbedoFactor.y = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[1]);
-                    material.AlbedoFactor.z = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[2]);
-                    material.AlbedoFactor.w = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[3]);
-
-                    material.AlphaCutoff = static_cast<float>(gltfMaterial.alphaCutoff);
-                }
-
-                // Normal
-                {
-                    const int normalTextureIndex = gltfMaterial.normalTexture.index;
-
-                    if (normalTextureIndex != -1)
+                    // Normal
                     {
-                        material.NormalTextureIndex = static_cast<uint32_t>(normalTextureIndex);
+                        const int normalTextureIndex = gltfMaterial.normalTexture.index;
+
+                        if (normalTextureIndex != -1)
+                        {
+                            material.NormalTextureIndex = static_cast<uint32_t>(normalTextureIndex);
+                        }
+
+                        material.NormalScale = static_cast<float>(gltfMaterial.normalTexture.scale);
                     }
 
-                    material.NormalScale = static_cast<float>(gltfMaterial.normalTexture.scale);
-                }
-
-                // MetalRoughness
-                {
-                    const int metalRoughessTextureIndex = gltfPbrMetallicRoughness.metallicRoughnessTexture.index;
-
-                    if (metalRoughessTextureIndex != -1)
+                    // MetalRoughness
                     {
-                        material.MetalRoughnessTextureIndex = static_cast<uint32_t>(metalRoughessTextureIndex);
+                        const int metalRoughessTextureIndex = gltfPbrMetallicRoughness.metallicRoughnessTexture.index;
+
+                        if (metalRoughessTextureIndex != -1)
+                        {
+                            material.MetalRoughnessTextureIndex = static_cast<uint32_t>(metalRoughessTextureIndex);
+                        }
+
+                        material.MetalnessFactor = static_cast<float>(gltfPbrMetallicRoughness.metallicFactor);
+                        material.RoughnessFactor = static_cast<float>(gltfPbrMetallicRoughness.roughnessFactor);
                     }
 
-                    material.MetalnessFactor = static_cast<float>(gltfPbrMetallicRoughness.metallicFactor);
-                    material.RoughnessFactor = static_cast<float>(gltfPbrMetallicRoughness.roughnessFactor);
-                }
-
-                // AO
-                {
-                    const int aoTextureIndex = gltfMaterial.occlusionTexture.index;
-
-                    if (aoTextureIndex != -1)
+                    // AO
                     {
-                        material.AOTextureIndex = static_cast<uint32_t>(aoTextureIndex);
-                    }
-                }
+                        const int aoTextureIndex = gltfMaterial.occlusionTexture.index;
 
-                // Emissive
-                {
-                    const int emissiveTextureIndex = gltfMaterial.emissiveTexture.index;
-
-                    if (emissiveTextureIndex != -1)
-                    {
-                        material.EmissiveTextureIndex = static_cast<uint32_t>(emissiveTextureIndex);
+                        if (aoTextureIndex != -1)
+                        {
+                            material.AOTextureIndex = static_cast<uint32_t>(aoTextureIndex);
+                        }
                     }
 
-                    BenzinAssert(gltfMaterial.emissiveFactor.size() == 3);
-                    material.EmissiveFactor.x = static_cast<float>(gltfMaterial.emissiveFactor[0]);
-                    material.EmissiveFactor.y = static_cast<float>(gltfMaterial.emissiveFactor[1]);
-                    material.EmissiveFactor.z = static_cast<float>(gltfMaterial.emissiveFactor[2]);
+                    // Emissive
+                    {
+                        const int emissiveTextureIndex = gltfMaterial.emissiveTexture.index;
+
+                        if (emissiveTextureIndex != -1)
+                        {
+                            material.EmissiveTextureIndex = static_cast<uint32_t>(emissiveTextureIndex);
+                        }
+
+                        BenzinAssert(gltfMaterial.emissiveFactor.size() == 3);
+                        material.EmissiveFactor.x = static_cast<float>(gltfMaterial.emissiveFactor[0]);
+                        material.EmissiveFactor.y = static_cast<float>(gltfMaterial.emissiveFactor[1]);
+                        material.EmissiveFactor.z = static_cast<float>(gltfMaterial.emissiveFactor[2]);
+                    }
                 }
             }
-        }
 
-    } // anonymous namespace
-
-	Mesh::Mesh(Device& device)
-        : m_Device{ device }
-    {}
-
-    Mesh::Mesh(Device& device, const std::vector<MeshPrimitiveData>& meshPrimitivesData, std::string_view name)
-        : m_Device{ device }
-    {
-        CreateFromPrimitives(meshPrimitivesData, name);
-    }
-
-    void Mesh::CreateFromPrimitives(const std::vector<MeshPrimitiveData>& meshPrimitivesData, std::string_view name)
-    {
-        BenzinAssert(!name.empty());
-
-        uint32_t vertexCount = 0;
-        uint32_t indexCount = 0;
-
-        for (const auto& meshPrimitiveData : meshPrimitivesData)
-        {
-            vertexCount += static_cast<uint32_t>(meshPrimitiveData.Vertices.size());
-            indexCount += static_cast<uint32_t>(meshPrimitiveData.Indices.size());
-        }
-
-        CreateBuffers(vertexCount, indexCount, static_cast<uint32_t>(meshPrimitivesData.size()), name);
-        FillBuffers(meshPrimitivesData);
-    }
-
-    void Mesh::CreateBuffers(uint32_t vertexCount, uint32_t indexCount, uint32_t primitiveCount, std::string_view name)
-    {
-        static constexpr auto GetBufferDebugName = [](std::string_view meshName, std::string_view bufferDebugName)
-        {
-            return fmt::format("{}_{}", meshName, bufferDebugName);
+        private:
+            tinygltf::Model m_GLTFModel;
         };
 
-        m_VertexBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
-        {
-            .DebugName = GetBufferDebugName(name, "VertexBuffer"),
-            .ElementSize = sizeof(MeshVertexData),
-            .ElementCount = vertexCount,
-            .IsNeedShaderResourceView = true,
-        });
+        GLTFParser g_GLTFParser;
 
-        m_IndexBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
-        {
-            .DebugName = GetBufferDebugName(name, "IndexBuffer"),
-            .ElementSize = sizeof(uint32_t),
-            .ElementCount = indexCount,
-            .IsNeedShaderResourceView = true,
-        });
-
-        m_PrimitiveBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
-        {
-            .DebugName = GetBufferDebugName(name, "PrimitiveBuffer"),
-            .ElementSize = sizeof(GPUPrimitive),
-            .ElementCount = primitiveCount,
-            .IsNeedShaderResourceView = true,
-        });
-    }
-
-    void Mesh::FillBuffers(const std::vector<MeshPrimitiveData>& meshPrimitivesData)
-    {
-        const uint32_t uploadBufferSize = m_VertexBuffer->GetSizeInBytes() + m_IndexBuffer->GetSizeInBytes() + m_PrimitiveBuffer->GetSizeInBytes();
-
-        CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
-        auto& copyCommandList = copyCommandQueue->GetCommandList(uploadBufferSize);
-
-        size_t vertexOffset = 0;
-        size_t indexOffset = 0;
-
-        for (size_t i = 0; i < meshPrimitivesData.size(); ++i)
-        {
-            const auto& meshPrimitiveData = meshPrimitivesData[i];
-
-            const Primitive primitive
-            {
-                .IndexCount = static_cast<uint32_t>(meshPrimitiveData.Indices.size()),
-                .PrimitiveTopology = meshPrimitiveData.PrimitiveTopology,
-            };
-
-            m_Primitives.push_back(primitive);
-
-            const GPUPrimitive gpuPrimitive
-            {
-                .StartVertex = static_cast<uint32_t>(vertexOffset),
-                .StartIndex = static_cast<uint32_t>(indexOffset),
-                .IndexCount = static_cast<uint32_t>(meshPrimitiveData.Indices.size()),
-            };
-
-            copyCommandList.UpdateBuffer(*m_VertexBuffer, std::span{ meshPrimitiveData.Vertices }, vertexOffset);
-            copyCommandList.UpdateBuffer(*m_IndexBuffer, std::span{ meshPrimitiveData.Indices }, indexOffset);
-            copyCommandList.UpdateBuffer(*m_PrimitiveBuffer, std::span{ &gpuPrimitive, 1 }, i);
-
-            vertexOffset += meshPrimitiveData.Vertices.size();
-            indexOffset += meshPrimitiveData.Indices.size();
-        }
-    }
+    } // anonymous namespace
 
     Model::Model(Device& device)
         : m_Device{ device }
@@ -567,146 +463,131 @@ namespace benzin
     Model::Model(Device& device, std::string_view fileName)
         : Model{ device }
     {
-        LoadFromGLTFFile(fileName);
+        LoadFromFile(fileName);
     }
 
-    Model::Model(
-        Device& device,
-        const std::shared_ptr<Mesh>& mesh,
-        const std::vector<DrawPrimitive>& drawPrimitives,
-        const std::vector<MaterialData>& materialsData,
-        std::string_view name
-    )
+    Model::Model(Device& device, const ModelCreation& creation)
         : Model{ device }
     {
-        CreateFrom(mesh, drawPrimitives, materialsData, name);
+        Create(creation);
     }
 
-    bool Model::LoadFromGLTFFile(std::string_view fileName)
+    void Model::LoadFromFile(std::string_view fileName)
     {
-        std::optional<tinygltf::Model> gltfModel = LoadGLTFModelFromFile(fileName);
+        BenzinAssert(!m_Mesh.get());
+        BenzinAssert(m_DrawableMeshes.empty());
+        BenzinAssert(m_Nodes.empty());
+        BenzinAssert(m_Materials.empty());
 
-        if (!gltfModel)
+        GLTFParser gltfParser;
+        const auto gltfResult = gltfParser.Parse(fileName);
+
+        if (!gltfResult)
         {
-            return false;
+            BenzinError("GLTFParser Error: {}", gltfResult.error());
+            return;
         }
 
-        // TODO
-        m_Name = CutExtension(fileName);
+        m_DebugName = CutExtension(fileName);
 
-        std::vector<MeshPrimitiveData> meshPrimitivesData;
-        std::vector<DrawPrimitive> drawPrimitives;
-        std::vector<IterableRange<uint32_t>> meshPrimitiveRanges;
-        ParseGLTFMeshPrimitives(*gltfModel, meshPrimitivesData, drawPrimitives, meshPrimitiveRanges);
-
-        std::vector<NodeData> nodesData;
-        ParseGLTFNodes(*gltfModel, meshPrimitiveRanges, nodesData);
-
-        std::vector<TextureResourceData> textureResourcesData;
-        ParseGLTFTextures(*gltfModel, textureResourcesData);
-
-        std::vector<MaterialData> materialsData;
-        ParseGLTFMaterials(*gltfModel, materialsData);
-
+        m_Mesh = std::make_shared<Mesh>(m_Device, MeshCreation
         {
-            m_Mesh = std::make_shared<Mesh>(m_Device, meshPrimitivesData, m_Name);
-            
-            CreateDrawPrimitivesBuffer(drawPrimitives);
-            CreateNodes(nodesData);
-            CreateTextures(textureResourcesData);
-            CreateMaterialBuffer(materialsData);
-        }
-        
-        return true;
+            .DebugName = m_DebugName,
+            .Meshes = gltfResult->Meshes,
+            .IsNeedSplitByMeshes = true,
+        });
+
+        m_DrawableMeshes = std::move(gltfResult->DrawableMeshes);
+        m_Nodes = std::move(gltfResult->ModelNodes);
+        m_Materials = std::move(gltfResult->Materials);
+
+        CreateDrawableMeshBuffer();
+        CreateNodeBuffer();
+        CreateTextures(gltfResult->TextureImages);
+        CreateMaterialBuffer();
     }
 
-    void Model::CreateFrom(
-        const std::shared_ptr<Mesh>& mesh,
-        const std::vector<DrawPrimitive>& drawPrimitives,
-        const std::vector<MaterialData>& materialsData,
-        std::string_view name
-    )
+    void Model::Create(const ModelCreation& creation)
     {
-        m_Name = name;
+        BenzinAssert(!m_Mesh.get());
+        BenzinAssert(m_DrawableMeshes.empty());
+        BenzinAssert(m_Nodes.empty());
+        BenzinAssert(m_Materials.empty());
 
-        const NodeData singleNodeData
-        {
-            .DrawPrimitiveRange{ 0, static_cast<uint32_t>(drawPrimitives.size()) }
-        };
+        m_DebugName = creation.DebugName;
 
-        m_Mesh = mesh;
-        CreateDrawPrimitivesBuffer(drawPrimitives);
-        CreateNodes({ singleNodeData });
-        CreateMaterialBuffer(materialsData);
+        m_Mesh = creation.Mesh;
+        m_DrawableMeshes = creation.DrawableMeshes;
+        m_Nodes.emplace_back(IterableRange<uint32_t>{ 0, static_cast<uint32_t>(creation.DrawableMeshes.size()) });
+        m_Materials = creation.Materials;
+
+        CreateDrawableMeshBuffer();
+        CreateNodeBuffer();
+        CreateMaterialBuffer();
     }
 
-    void Model::CreateDrawPrimitivesBuffer(const std::vector<DrawPrimitive>& drawPrimitives)
+    void Model::CreateDrawableMeshBuffer()
     {
-        m_DrawPrimitiveBuffer = std::make_unique<Buffer>(m_Device, BufferCreation
+        BenzinAssert(!m_DrawableMeshes.empty());
+
+        m_DrawableMeshBuffer = std::make_unique<Buffer>(m_Device, BufferCreation
         {
-            .DebugName = fmt::format("{}_{}", m_Name, "DrawPrimitive"),
-            .ElementSize = sizeof(DrawPrimitive),
-            .ElementCount = static_cast<uint32_t>(drawPrimitives.size()),
+            .DebugName = std::format("{}_{}", m_DebugName, "DrawableMeshBuffer"),
+            .ElementSize = sizeof(DrawableMesh),
+            .ElementCount = static_cast<uint32_t>(m_DrawableMeshes.size()),
             .IsNeedShaderResourceView = true,
         });
 
-        {
-            CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
-            auto& copyCommandList = copyCommandQueue->GetCommandList(m_DrawPrimitiveBuffer->GetSizeInBytes());
-            copyCommandList.UpdateBuffer(*m_DrawPrimitiveBuffer, std::span{ drawPrimitives });
-        }
+        auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
+        BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
 
-        m_DrawPrimitives = drawPrimitives;
+        auto& copyCommandList = copyCommandQueue.GetCommandList(m_DrawableMeshBuffer->GetSizeInBytes());
+        copyCommandList.UpdateBuffer(*m_DrawableMeshBuffer, std::span<const DrawableMesh>{ m_DrawableMeshes });
     }
 
-    void Model::CreateNodes(const std::vector<NodeData>& nodesData)
+    void Model::CreateNodeBuffer()
     {
-        m_Nodes.reserve(nodesData.size());
+        BenzinAssert(!m_Nodes.empty());
 
         m_NodeBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
         {
-            .DebugName = fmt::format("{}_{}", m_Name, "NodeBuffer"),
+            .DebugName = std::format("{}_{}", m_DebugName, "NodeBuffer"),
             .ElementSize = sizeof(GPUNode),
-            .ElementCount = static_cast<uint32_t>(nodesData.size()),
+            .ElementCount = static_cast<uint32_t>(m_Nodes.size()),
             .IsNeedShaderResourceView = true,
         });
 
-        CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
-        auto& copyCommandList = copyCommandQueue->GetCommandList(m_NodeBuffer->GetSizeInBytes());
+        auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
+        BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
 
-        for (size_t i = 0; i < nodesData.size(); ++i)
+        auto& copyCommandList = copyCommandQueue.GetCommandList(m_NodeBuffer->GetSizeInBytes());
+
+        for (const auto& [i, node] : m_Nodes | std::views::enumerate)
         {
-            const auto& nodeData = nodesData[i];
+            DirectX::XMVECTOR transformDeterminant = DirectX::XMMatrixDeterminant(node.Transform);
+            const DirectX::XMMATRIX inverseTransform = DirectX::XMMatrixInverse(&transformDeterminant, node.Transform);
 
-            m_Nodes.emplace_back(nodeData.DrawPrimitiveRange);
-
+            const GPUNode gpuNode
             {
-                DirectX::XMVECTOR transformDeterminant = DirectX::XMMatrixDeterminant(nodeData.Transform);
-                const DirectX::XMMATRIX inverseTransform = DirectX::XMMatrixInverse(&transformDeterminant, nodeData.Transform);
+                .TransformMatrix = node.Transform,
+                .InverseTransformMatrix = inverseTransform,
+            };
 
-                const GPUNode gpuNode
-                {
-                    .TransformMatrix{ nodeData.Transform },
-                    .InverseTransformMatrix{ inverseTransform },
-                };
-
-                copyCommandList.UpdateBuffer(*m_NodeBuffer, std::span{ &gpuNode, 1 }, i);
-            }
+            copyCommandList.UpdateBuffer(*m_NodeBuffer, std::span{ &gpuNode, 1 }, i);
         }
     }
 
-    void Model::CreateTextures(const std::vector<TextureResourceData>& textureResourcesData)
+    void Model::CreateTextures(const std::vector<TextureImage>& textureImages)
     {
         uint32_t uploadBufferSize = 0;
 
-        m_Textures.reserve(textureResourcesData.size());
-        for (const auto& textureResourceData : textureResourcesData)
+        m_Textures.reserve(textureImages.size());
+        for (const auto& textureImage : textureImages)
         {
-            const TextureCreation& textureCreation = textureResourceData.TextureCreation;
+            const TextureCreation& textureCreation = textureImage.TextureCreation;
             BenzinAssert(textureCreation.Format == GraphicsFormat::RGBA8Unorm);
 
             auto& texture = m_Textures.emplace_back();
-
             if (textureCreation.DebugName.IsEmpty())
             {
                 texture = std::make_shared<Texture>(m_Device, textureCreation);
@@ -714,7 +595,7 @@ namespace benzin
             else
             {
                 // Because of life time 'TextureCreation::DebugName::Chars'
-                const std::string debugName = fmt::format("{}_{}", m_Name, textureCreation.DebugName.Chars);
+                const std::string debugName = std::format("{}_{}", m_DebugName, textureCreation.DebugName.Chars);
 
                 TextureCreation validatedTextureCreation = textureCreation;
                 validatedTextureCreation.DebugName.Chars = debugName;
@@ -727,22 +608,21 @@ namespace benzin
             uploadBufferSize += AlignAbove(texture->GetSizeInBytes(), config::g_TextureAlignment);
         }
 
-        CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
-        auto& copyCommandList = copyCommandQueue->GetCommandList(uploadBufferSize);
+        auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
+        BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
 
-        for (size_t i = 0; i < m_Textures.size(); ++i)
+        auto& copyCommandList = copyCommandQueue.GetCommandList(uploadBufferSize);
+
+        for (const auto& [textureImage, texture] : std::views::zip(textureImages, m_Textures))
         {
-            const auto& textureResourceData = textureResourcesData[i];
-            auto& texture = m_Textures[i];
-
-            copyCommandList.UpdateTextureTopMip(*texture, textureResourceData.ImageData.data());
+            copyCommandList.UpdateTextureTopMip(*texture, textureImage.ImageData.data());
         }
     }
 
-    void Model::CreateMaterialBuffer(const std::vector<MaterialData>& materialsData)
+    void Model::CreateMaterialBuffer()
     {
         // NOTE: If use static labmda don't use [&, this] in capture
-        static constexpr auto updateMaterialTextureIndex = [](const std::vector<std::shared_ptr<Texture>>& textures, uint32_t& textureIndex)
+        static constexpr auto UpdateMaterialTextureIndex = [](const std::vector<std::shared_ptr<Texture>>& textures, uint32_t& textureIndex)
         {
             if (textureIndex != -1)
             {
@@ -751,31 +631,30 @@ namespace benzin
             }
         };
 
-        for (const auto& materialData : materialsData)
-        {
-            updateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(materialData.AlbedoTextureIndex));
-            updateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(materialData.NormalTextureIndex));
-            updateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(materialData.MetalRoughnessTextureIndex));
-            updateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(materialData.AOTextureIndex));
-            updateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(materialData.EmissiveTextureIndex));
-        }
+        BenzinAssert(!m_Materials.empty());
 
-        m_Materials = materialsData;
+        for (const auto& material : m_Materials)
+        {
+            UpdateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(material.AlbedoTextureIndex));
+            UpdateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(material.NormalTextureIndex));
+            UpdateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(material.MetalRoughnessTextureIndex));
+            UpdateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(material.AOTextureIndex));
+            UpdateMaterialTextureIndex(m_Textures, const_cast<uint32_t&>(material.EmissiveTextureIndex));
+        }
 
         m_MaterialBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
         {
-            .DebugName = fmt::format("{}_{}", m_Name, "MaterialBuffer"),
-            .ElementSize = sizeof(GPUMaterial),
-            .ElementCount = static_cast<uint32_t>(materialsData.size()),
-            .Flags = BufferFlag::Upload,
+            .DebugName = std::format("{}_{}", m_DebugName, "MaterialBuffer"),
+            .ElementSize = sizeof(Material),
+            .ElementCount = static_cast<uint32_t>(m_Materials.size()),
             .IsNeedShaderResourceView = true,
         });
 
-        {
-            CommandQueueScope copyCommandQueue{ m_Device.GetCopyCommandQueue() };
-            auto& copyCommandList = copyCommandQueue->GetCommandList(m_MaterialBuffer->GetSizeInBytes());
-            copyCommandList.UpdateBuffer(*m_MaterialBuffer, std::span{ materialsData });
-        }
+        auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
+        BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
+
+        auto& copyCommandList = copyCommandQueue.GetCommandList(m_MaterialBuffer->GetSizeInBytes());
+        copyCommandList.UpdateBuffer(*m_MaterialBuffer, std::span<const Material>{ m_Materials });
     }
 
 } // namespace benzin

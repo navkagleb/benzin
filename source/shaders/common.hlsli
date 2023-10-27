@@ -33,4 +33,4 @@ namespace common
 
 } // namespace common
 
-#define BENZIN_GET_ROOT_CONSTANT(index) ::common::g_RootConstants.Get(index)
+#define BenzinGetRootConstant(index) ::common::g_RootConstants.Get(index)

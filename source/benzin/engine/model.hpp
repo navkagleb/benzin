@@ -6,32 +6,15 @@ namespace benzin
 {
     
     class Buffer;
+    class Mesh;
 
-    template <std::integral T>
-    using IterableRange = std::ranges::iota_view<T, T>;
-
-    struct TextureResourceData
+    struct TextureImage
     {
         TextureCreation TextureCreation;
         std::vector<std::byte> ImageData;
     };
 
-    struct MeshVertexData
-    {
-        DirectX::XMFLOAT3 LocalPosition{ 0.0f, 0.0f, 0.0f };
-        DirectX::XMFLOAT3 LocalNormal{ 0.0f, 0.0f, 0.0f };
-        DirectX::XMFLOAT2 TexCoord{ 0.0f, 0.0f };
-    };
-
-    struct MeshPrimitiveData
-    {
-        std::vector<MeshVertexData> Vertices;
-        std::vector<uint32_t> Indices;
-
-        PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
-    };
-
-    struct MaterialData
+    struct Material
     {
         static constexpr const uint32_t s_InvalidTextureIndex = std::numeric_limits<uint32_t>::max();
 
@@ -50,47 +33,19 @@ namespace benzin
         DirectX::XMFLOAT3 EmissiveFactor{ 0.0f, 0.0f, 0.0f };
     };
 
-    class Mesh
+    struct DrawableMesh
     {
-    public:
-        struct Primitive
-        {
-            uint32_t IndexCount = 0;
-            PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
-        };
-
-    public:
-        explicit Mesh(Device& device);
-        Mesh(Device& device, const std::vector<MeshPrimitiveData>& meshPrimitivesData, std::string_view name);
-
-    public:
-        const std::shared_ptr<Buffer>& GetVertexBuffer() const { return m_VertexBuffer; }
-        const std::shared_ptr<Buffer>& GetIndexBuffer() const { return m_IndexBuffer; }
-        const std::shared_ptr<Buffer>& GetPrimitiveBuffer() const { return m_PrimitiveBuffer; }
-
-        const std::vector<Primitive>& GetPrimitives() const { return m_Primitives; }
-
-    public:
-        void CreateFromPrimitives(const std::vector<MeshPrimitiveData>& meshPrimitivesData, std::string_view name);
-
-    private:
-        void CreateBuffers(uint32_t vertexCount, uint32_t indexCount, uint32_t primitiveCount, std::string_view name);
-        void FillBuffers(const std::vector<MeshPrimitiveData>& meshPrimitivesData);
-
-    private:
-        Device& m_Device;
-
-        std::shared_ptr<Buffer> m_VertexBuffer;
-        std::shared_ptr<Buffer> m_IndexBuffer;
-        std::shared_ptr<Buffer> m_PrimitiveBuffer;
-
-        std::vector<Primitive> m_Primitives;
+        uint32_t MeshIndex = 0;
+        uint32_t MaterialIndex = 0;
     };
 
-    struct NodeData
+    struct ModelCreation
     {
-        IterableRange<uint32_t> DrawPrimitiveRange;
-        DirectX::XMMATRIX Transform = DirectX::XMMatrixIdentity();
+        std::string_view DebugName;
+
+        std::shared_ptr<Mesh> Mesh;
+        std::vector<DrawableMesh> DrawableMeshes;
+        std::vector<Material> Materials;
     };
 
     class Model
@@ -98,71 +53,51 @@ namespace benzin
     public:
         struct Node
         {
-            IterableRange<uint32_t> DrawPrimitiveRange;
-        };
-
-        struct DrawPrimitive
-        {
-            uint32_t MeshPrimitiveIndex = 0;
-            uint32_t MaterialIndex = 0;
+            IterableRange<uint32_t> DrawableMeshIndexRange;
+            DirectX::XMMATRIX Transform = DirectX::XMMatrixIdentity();
         };
 
     public:
         explicit Model(Device& device);
         Model(Device& device, std::string_view fileName);
-        Model(
-            Device& device,
-            const std::shared_ptr<Mesh>& mesh,
-            const std::vector<DrawPrimitive>& drawPrimitives,
-            const std::vector<MaterialData>& materialsData,
-            std::string_view name
-        );
+        Model(Device& device, const ModelCreation& creation);
 
     public:
         const std::shared_ptr<Mesh>& GetMesh() const { return m_Mesh; }
 
-        const std::unique_ptr<Buffer>& GetDrawPrimitiveBuffer() const { return m_DrawPrimitiveBuffer; }
-        const std::vector<DrawPrimitive>& GetDrawPrimitives() const { return m_DrawPrimitives; }
-
-        const std::shared_ptr<Buffer>& GetNodeBuffer() const { return m_NodeBuffer; }
+        const std::vector<DrawableMesh>& GetDrawableMeshes() const { return m_DrawableMeshes; }
         const std::vector<Node>& GetNodes() const { return m_Nodes; }
+        const std::vector<Material>& GetMaterials() const { return m_Materials; }
 
+        const std::shared_ptr<Buffer>& GetDrawableMeshBuffer() const { return m_DrawableMeshBuffer; }
+        const std::shared_ptr<Buffer>& GetNodeBuffer() const { return m_NodeBuffer; }
         const std::shared_ptr<Buffer>& GetMaterialBuffer() const { return m_MaterialBuffer; }
-        std::vector<MaterialData>& GetMaterials() { return m_Materials; }
-        const std::vector<MaterialData>& GetMaterials() const { return m_Materials; }
 
     public:
-        bool LoadFromGLTFFile(std::string_view fileName);
-        
-        void CreateFrom(
-            const std::shared_ptr<Mesh>& mesh,
-            const std::vector<DrawPrimitive>& drawPrimitives,
-            const std::vector<MaterialData>& materialsData,
-            std::string_view name
-        );
+        void LoadFromFile(std::string_view fileName);
+        void Create(const ModelCreation& creation);
 
     private:
-        void CreateDrawPrimitivesBuffer(const std::vector<DrawPrimitive>& drawPrimitives);
-        void CreateNodes(const std::vector<NodeData>& nodesData);
-        void CreateTextures(const std::vector<TextureResourceData>& textureResourcesData);
-        void CreateMaterialBuffer(const std::vector<MaterialData>& materialsData);
+        void CreateDrawableMeshBuffer();
+        void CreateNodeBuffer();
+        void CreateTextures(const std::vector<TextureImage>& textureImages);
+        void CreateMaterialBuffer();
 
     private:
         Device& m_Device;
 
-        std::string m_Name;
+        std::string m_DebugName;
 
         std::shared_ptr<Mesh> m_Mesh;
 
-        std::unique_ptr<Buffer> m_DrawPrimitiveBuffer;
-        std::vector<DrawPrimitive> m_DrawPrimitives;
-
-        std::shared_ptr<Buffer> m_NodeBuffer;
+        std::vector<DrawableMesh> m_DrawableMeshes;
         std::vector<Node> m_Nodes;
+        std::vector<Material> m_Materials;
 
+        std::shared_ptr<Buffer> m_DrawableMeshBuffer;
+        std::shared_ptr<Buffer> m_NodeBuffer;
         std::vector<std::shared_ptr<Texture>> m_Textures;
         std::shared_ptr<Buffer> m_MaterialBuffer;
-        std::vector<MaterialData> m_Materials;
     };
 
 } // namespace benzin

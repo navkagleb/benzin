@@ -135,7 +135,7 @@ namespace benzin
         MediaNextTrack  = 0xB0,
         MediaPrevTrack  = 0xB1,
         MediaStop       = 0xB2,
-        MediaPlayPause  = 0xB3
-    }; // enum class KeyCode
+        MediaPlayPause  = 0xB3,
+    };
 
 } // namespace benzin

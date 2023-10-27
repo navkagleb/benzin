@@ -6,7 +6,7 @@ namespace benzin
     class Random
     {
     public:
-        BENZIN_NON_CONSTRUCTABLE_IMPL(Random)
+        BenzinDefineNonConstructable(Random);
 
     private:
         template <std::integral T>

@@ -13,12 +13,12 @@ namespace benzin
     class Logger
     {
     public:
-        BENZIN_NON_CONSTRUCTABLE_IMPL(Logger)
+        BenzinDefineNonConstructable(Logger);
 
     public:
-        static void Log(LogSeverity severity, const std::source_location& sourceLocation, fmt::string_view format, fmt::format_args args)
+        static void Log(LogSeverity severity, const std::source_location& sourceLocation, std::string_view format, std::format_args args)
         {
-            LogImpl(severity, sourceLocation, fmt::vformat(format, args));
+            LogImpl(severity, sourceLocation, std::vformat(format, args));
         }
 
     private:
@@ -28,9 +28,9 @@ namespace benzin
     template <typename... Args>
     struct Log
     {
-        explicit Log(LogSeverity severity, fmt::format_string<Args...> format, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
+        explicit Log(LogSeverity severity, std::format_string<Args...> format, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-            Logger::Log(severity, sourceLocation, format, fmt::make_format_args(args...));
+            Logger::Log(severity, sourceLocation, format.get(), std::make_format_args(args...));
         }
     };
 

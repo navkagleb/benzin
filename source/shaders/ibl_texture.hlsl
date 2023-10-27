@@ -50,8 +50,8 @@ enum RootConstant : uint32_t
 [numthreads(8, 8, 1)]
 void CS_Main(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-    TextureCube<float4> inCubeTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_InputCubeTextureIndex)];
-    RWTexture2DArray<float4> outIrradianceTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_OutIrradianceTextureIndex)];
+    TextureCube<float4> inCubeTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_InputCubeTextureIndex)];
+    RWTexture2DArray<float4> outIrradianceTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_OutIrradianceTextureIndex)];
 
     float width;
     float height;

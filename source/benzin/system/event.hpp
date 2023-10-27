@@ -84,7 +84,7 @@ namespace benzin
         {}
 
     public:
-        template <typename EventChild> requires std::is_base_of_v<Event, EventChild>
+        template <std::derived_from<Event> EventChild>
         bool Dispatch(const std::function<bool(EventChild&)>& callback)
         {
             if (m_Event.GetEventType() == EventChild::GetStaticEventType())
@@ -96,12 +96,12 @@ namespace benzin
             return false;
         }
 
-        template <typename ClassType, typename EventChild> requires std::is_base_of_v<Event, EventChild>
-        bool Dispatch(bool (ClassType::*Callback)(EventChild&), ClassType& classInstance)
+        template <std::derived_from<Event> EventChild, typename ClassType>
+        bool Dispatch(bool (ClassType::*MemberCallback)(EventChild&), ClassType& classInstance)
         {
             return Dispatch<EventChild>([&](EventChild& event)
             {
-                return (classInstance.*Callback)(event);
+                return std::invoke_r<bool>(MemberCallback, classInstance, event);
             });
         }
 

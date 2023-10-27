@@ -17,8 +17,8 @@ namespace benzin
     class Device
     {
     public:
-        BENZIN_NON_COPYABLE_IMPL(Device)
-        BENZIN_NON_MOVEABLE_IMPL(Device)
+        BenzinDefineNonCopyable(Device);
+        BenzinDefineNonMoveable(Device);
 
     public:
         explicit Device(const Backend& backend);

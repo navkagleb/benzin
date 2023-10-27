@@ -16,8 +16,8 @@ namespace benzin
     class Resource
     {
     public:
-        BENZIN_NON_COPYABLE_IMPL(Resource)
-        BENZIN_NON_MOVEABLE_IMPL(Resource)
+        BenzinDefineNonCopyable(Resource);
+        BenzinDefineNonMoveable(Resource);
 
     protected:
         explicit Resource(Device& device);

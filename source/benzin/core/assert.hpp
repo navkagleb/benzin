@@ -1,5 +1,7 @@
 #pragma once
 
+#define BENZIN_IS_ASSERTS_ENABLED BENZIN_IS_DEBUG_BUILD
+
 namespace benzin
 {
 
@@ -11,15 +13,21 @@ namespace benzin
         }
     }
 
-    template <typename... Args>
-    inline void AssertFormat(const std::source_location& sourceLocation, fmt::format_string<Args...> format, Args&&... args)
+    inline void AssertLog(const std::source_location& sourceLocation, std::string_view format, std::format_args&& args)
     {
-        BenzinError("Assert failed | {}:{} | {}", sourceLocation.file_name(), sourceLocation.line(), sourceLocation.function_name());
+        BenzinError("Assert failed | {}:{}", sourceLocation.file_name(), sourceLocation.line());
+        BenzinError("Function: {}", sourceLocation.function_name());
 
-        if (format.operator fmt::basic_string_view<char>().size() != 0)
+        if (!format.empty())
         {
-            BenzinError("Message: {}", fmt::vformat(format, fmt::make_format_args(args...)));
+            BenzinError("Message: {}", std::vformat(format, args));
         }
+    }
+
+    template <typename... Args>
+    inline void AssertFormat(const std::source_location& sourceLocation, std::string_view format, Args&&... args)
+    {
+        AssertLog(sourceLocation, format, std::make_format_args(args...));
 
         DebugBreak();
     }
@@ -30,14 +38,9 @@ namespace benzin
     }
 
     template <typename... Args>
-    inline void AssertFormat(HRESULT hr, const std::source_location& sourceLocation, fmt::format_string<Args...> format, Args&&... args)
+    inline void AssertFormat(HRESULT hr, const std::source_location& sourceLocation, std::string_view format, Args&&... args)
     {
-        BenzinError("Assert failed | {}:{} | {}", sourceLocation.file_name(), sourceLocation.line(), sourceLocation.function_name());
-
-        if (format.operator fmt::basic_string_view<char>().size() != 0)
-        {
-            BenzinError("Message: {}", fmt::vformat(format, fmt::make_format_args(args...)));
-        }
+        AssertLog(sourceLocation, format, std::make_format_args(args...));
 
         _com_error comError{ hr };
         BenzinError("ComError message: {}", comError.ErrorMessage());
@@ -74,21 +77,21 @@ namespace benzin
     {
         explicit Assert(bool condition, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-#if BENZIN_IS_DEBUG_BUILD
+#if BENZIN_IS_ASSERTS_ENABLED
             AssertImpl(condition, sourceLocation, std::forward<Args>(args)...);
 #endif
         }
 
         explicit Assert(const void* const pointer, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-#if BENZIN_IS_DEBUG_BUILD
+#if BENZIN_IS_ASSERTS_ENABLED
             AssertImpl(pointer != nullptr, sourceLocation, std::forward<Args>(args)...);
 #endif
         }
 
         explicit Assert(HRESULT hr, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-#if BENZIN_IS_DEBUG_BUILD
+#if BENZIN_IS_ASSERTS_ENABLED
             AssertImpl(hr, sourceLocation, std::forward<Args>(args)...);
 #endif
         }

@@ -218,7 +218,7 @@ namespace benzin
         m_UploadBuffer = std::make_unique<Buffer>(device, BufferCreation
         {
             .ElementCount = size,
-            .Flags = BufferFlag::Upload,
+            .Flags = BufferFlag::UploadBuffer,
         });
     }
 

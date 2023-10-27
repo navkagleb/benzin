@@ -141,10 +141,13 @@ namespace sandbox
     class MainLayer : public benzin::Layer
     {
     private:
-        struct Resources
+        struct FrameResources
         {
             std::unique_ptr<benzin::Buffer> EntityDataBuffer;
         };
+
+    private:
+        static const uint32_t ms_MaxEntityCount = 20 * 20 + 5; // TODO: Remove hardcoded value
 
     public:
         explicit MainLayer(const benzin::GraphicsRefs& graphicsRefs);
@@ -165,7 +168,7 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::array<Resources, benzin::config::g_BackBufferCount> m_Resources;
+        FrameResources m_FrameResources;
 
         benzin::PerspectiveProjection m_PerspectiveProjection{ DirectX::XMConvertToRadians(60.0f), m_SwapChain.GetAspectRatio(), 0.1f, 1000.0f };
         benzin::Camera m_Camera{ &m_PerspectiveProjection };

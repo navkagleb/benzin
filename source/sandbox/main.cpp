@@ -37,8 +37,8 @@ namespace sandbox
             BeginFrame();
             {
                 m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(graphicsRefs);
-                //m_MainLayer = m_LayerStack.Push<MainLayer>(graphicsRefs);
-                m_RaytracingLayer = m_LayerStack.Push<RaytracingLayer>(graphicsRefs);
+                m_MainLayer = m_LayerStack.Push<MainLayer>(graphicsRefs);
+                //m_RaytracingLayer = m_LayerStack.Push<RaytracingLayer>(graphicsRefs);
             }
             EndFrame();
 
@@ -95,7 +95,7 @@ namespace sandbox
 
         void BeginFrame()
         {
-            m_Device->GetGraphicsCommandQueue().ResetCommandList(m_SwapChain->GetCurrentBackBufferIndex());
+            m_Device->GetGraphicsCommandQueue().ResetCommandList(m_SwapChain->GetCurrentFrameIndex());
         }
 
         void ProcessFrame()
@@ -205,8 +205,22 @@ namespace sandbox
 
 int benzin::ClientMain()
 {
+#if 1
     sandbox::Application application;
     application.Execute();
+#else
+    uint8_t bits = ~3;
+
+    std::println("{}", std::bitset<8>(bits).to_string());
+
+    for (auto i : std::views::iota(0, 10))
+    {
+        std::println("i: {}, aligned i: {}", i, i & ~3);
+    }
+
+    BenzinExecuteOnScopeExit([] { std::println("out of scope"); });
+    std::println("before scope ends");
+#endif
 
     return 0;
 }

@@ -44,8 +44,8 @@ namespace benzin
     struct StencilState
     {
         bool IsEnabled = false;
-        uint8_t ReadMask = 0xff;
-        uint8_t WriteMask = 0xff;
+        uint8_t ReadMask = std::numeric_limits<uint8_t>::max();
+        uint8_t WriteMask = std::numeric_limits<uint8_t>::max();
         StencilBehaviour FrontFaceBehaviour;
         StencilBehaviour BackFaceBehaviour;
     };

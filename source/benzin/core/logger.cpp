@@ -7,24 +7,7 @@ namespace benzin
     namespace
     {
 
-        constexpr auto GetSeverityColors()
-        {
-            magic_enum::containers::array<LogSeverity, fmt::color> severityColors;
-            severityColors[LogSeverity::Trace] = fmt::color::green;
-            severityColors[LogSeverity::Warning] = fmt::color::yellow;
-            severityColors[LogSeverity::Error] = fmt::color::red;
-
-            return severityColors;
-        }
-
         const auto g_StartTimePoint = std::chrono::system_clock::now().time_since_epoch();
-
-        std::string GetSeverityFormat(LogSeverity severity)
-        {
-            static constexpr auto severityColors = GetSeverityColors();
-
-            return fmt::format("{}", fmt::styled(magic_enum::enum_name(severity), fmt::fg(severityColors[severity])));
-        }
 
         std::string GetTimePointFormat()
         {
@@ -38,34 +21,32 @@ namespace benzin
             const uint64_t s = duration_cast<seconds>(passTime).count() - h * 60 * 60 - m * 60;
             const uint64_t ms = duration_cast<milliseconds>(passTime).count() - h * 60 * 60 * 1000 - m * 60 * 1000 - s * 1000;
 
-            return fmt::format("{}:{}:{:0>2}.{:0>3}", h, m, s, ms);
+            return std::format("{}:{}:{:0>2}.{:0>3}", h, m, s, ms);
         }
 
         std::string GetFileNameFormat(const std::source_location& sourceLocation)
         {
             const std::string_view filePath = sourceLocation.file_name();
 
-            return fmt::format("{}:{}", filePath.substr(filePath.find_last_of("\\") + 1), sourceLocation.line());
+            return std::format("{}:{}", filePath.substr(filePath.find_last_of("\\") + 1), sourceLocation.line());
         }
 
-        std::string GetOutput(std::string_view severity, std::string_view time, std::string_view fileName, std::string_view message)
+        std::string GetOutput(LogSeverity severity, std::string_view time, std::string_view fileName, std::string_view message)
         {
-            return fmt::format("[{}][{}][{}]: {}\n", severity, time, fileName, message);
+            return std::format("[{}][{}][{}]: {}\n", magic_enum::enum_name(severity), time, fileName, message);
         }
 
     } // anonymous namespace
 
     void Logger::LogImpl(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
     {
-        const auto severityFormat = GetSeverityFormat(severity);
         const auto timePointFormat = GetTimePointFormat();
         const auto fileNameFormat = GetFileNameFormat(sourceLocation);
 
-        const auto consoleOutput = GetOutput(severityFormat, timePointFormat, fileNameFormat, message);
-        const auto ideOutput = GetOutput(magic_enum::enum_name(severity), timePointFormat, fileNameFormat, message);
+        const auto output = GetOutput(severity, timePointFormat, fileNameFormat, message);
 
-        fmt::print("{}", consoleOutput);
-        OutputDebugStringA(ideOutput.c_str());
+        std::print("{}", output);
+        OutputDebugStringA(output.c_str());
     }
 
 } // namespace benzin

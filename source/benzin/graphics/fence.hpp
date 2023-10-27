@@ -10,8 +10,8 @@ namespace benzin
     class Fence
     {
     public:
-        BENZIN_NON_COPYABLE_IMPL(Fence)
-        BENZIN_NON_MOVEABLE_IMPL(Fence)
+        BenzinDefineNonCopyable(Fence);
+        BenzinDefineNonMoveable(Fence);
 
     public:
         explicit Fence(Device& device);

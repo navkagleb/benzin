@@ -100,8 +100,8 @@ enum RootConstant : uint32_t
 [numthreads(8, 8, 1)]
 void CS_GenerateIrradianceTexture(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-    TextureCube<float4> inCubeTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_InputCubeTextureIndex)];
-    RWTexture2DArray<float4> outIrradianceTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_OutIrradianceTextureIndex)];
+    TextureCube<float4> inCubeTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_InputCubeTextureIndex)];
+    RWTexture2DArray<float4> outIrradianceTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_OutIrradianceTextureIndex)];
 
     float width;
     float height;
@@ -179,9 +179,9 @@ void CS_GenerateIrradianceTexture(uint3 dispatchThreadID : SV_DispatchThreadID)
 [numthreads(8, 8, 1)]
 void CsMain(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-    TextureCube<float4> cubeMapTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_InputCubeTextureIndex)];
+    TextureCube<float4> cubeMapTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_InputCubeTextureIndex)];
 
-    RWTexture2DArray<float4> outputIrradianceMap = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_OutIrradianceTextureIndex)];
+    RWTexture2DArray<float4> outputIrradianceMap = ResourceDescriptorHeap[BenzinGetRootConstant(g_OutIrradianceTextureIndex)];
 
     float textureWidth, textureHeight, textureDepth;
     outputIrradianceMap.GetDimensions(textureWidth, textureHeight, textureDepth);

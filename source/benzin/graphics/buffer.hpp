@@ -7,8 +7,9 @@ namespace benzin
 
     enum class BufferFlag : uint8_t
     {
-        Upload,
+        UploadBuffer,
         ConstantBuffer,
+        StructuredBuffer,
         AllowUnorderedAccess,
     };
     using BufferFlags = magic_enum::containers::bitset<BufferFlag>;
@@ -33,8 +34,11 @@ namespace benzin
 
     struct BufferShaderResourceViewCreation
     {
+        static const uint32_t s_ByteAddressBufferElementSize = sizeof(uint32_t); // DXGI_FORMAT_R32_TYPELESS
+
         uint32_t FirstElementIndex = 0;
         uint32_t ElementCount = 0;
+        bool IsByteAddressBuffer = false;
     };
 
     struct ConstantBufferViewCreation

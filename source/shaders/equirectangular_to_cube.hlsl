@@ -31,8 +31,8 @@ enum : uint32_t
 [numthreads(8, 8, 1)]
 void CS_Main(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-    Texture2D<float4> inEquirectangularTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_InEquirectangularTextureIndex)];
-    RWTexture2DArray<float4> outCubeTexture = ResourceDescriptorHeap[BENZIN_GET_ROOT_CONSTANT(g_OutCubeTextureIndex)];
+    Texture2D<float4> inEquirectangularTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_InEquirectangularTextureIndex)];
+    RWTexture2DArray<float4> outCubeTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_OutCubeTextureIndex)];
 
     float width;
     float height;

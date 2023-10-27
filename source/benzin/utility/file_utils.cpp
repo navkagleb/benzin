@@ -89,12 +89,12 @@ namespace benzin
 
     fs::path GetShaderBinaryFilePath(size_t shaderKey)
     {
-        return fs::path{ config::g_AbsoluteShaderBinaryDirectoryPath / fmt::format("{}.bin", shaderKey) };
+        return fs::path{ config::g_AbsoluteShaderBinaryDirectoryPath / std::format("{}.bin", shaderKey) };
     }
 
     fs::path GetShaderDebugFilePath(size_t shaderKey)
     {
-        return fs::path{ config::g_AbsoluteShaderDebugDirectoryPath / fmt::format("{}.pdb", shaderKey) };
+        return fs::path{ config::g_AbsoluteShaderDebugDirectoryPath / std::format("{}.pdb", shaderKey) };
     }
 
 } // namespace benzin
