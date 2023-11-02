@@ -23,8 +23,7 @@ namespace benzin
 
     D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType);
 
-    template <std::derived_from<IUnknown> T>
-    void SafeUnknownRelease(T*& unknown)
+    void SafeUnknownRelease(std::derived_from<IUnknown> auto*& unknown)
     {
         if (!unknown)
         {

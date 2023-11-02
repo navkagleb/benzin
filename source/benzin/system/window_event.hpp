@@ -17,6 +17,8 @@ namespace benzin
         template <typename T = uint32_t> T GetWidth() const { return static_cast<T>(m_Width); }
         template <typename T = uint32_t> T GetHeight() const { return static_cast<T>(m_Height); }
 
+        float GetAspectRatio() const { return GetWidth<float>() / GetHeight<float>(); }
+
     private:
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;

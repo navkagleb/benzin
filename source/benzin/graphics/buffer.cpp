@@ -15,6 +15,10 @@ namespace benzin
             {
                 return D3D12_HEAP_TYPE_UPLOAD;
             }
+            else if (flags[BufferFlag::ReadbackBuffer])
+            {
+                return D3D12_HEAP_TYPE_READBACK;
+            }
             
             return D3D12_HEAP_TYPE_DEFAULT;
         }

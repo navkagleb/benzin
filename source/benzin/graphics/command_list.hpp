@@ -76,21 +76,17 @@ namespace benzin
         explicit ComputeCommandList(Device& device);
 
     public:
-        template <typename T> requires std::is_enum_v<T>
-        void SetRootConstant(T rootIndexEnum, uint32_t value) { SetRootConstant(magic_enum::enum_integer(rootIndexEnum), value); }
         void SetRootConstant(uint32_t rootIndex, uint32_t value);
+        void SetRootConstant(Enum auto rootIndexEnum, uint32_t value) { SetRootConstant(magic_enum::enum_integer(rootIndexEnum), value); }
 
-        template <typename T> requires std::is_enum_v<T>
-        void SetRootConstantBuffer(T rootIndexEnum, const Descriptor& cbv) { SetRootConstantBuffer(magic_enum::enum_integer(rootIndexEnum), cbv); }
         void SetRootConstantBuffer(uint32_t rootIndex, const Descriptor& cbv);
+        void SetRootConstantBuffer(Enum auto rootIndexEnum, const Descriptor& cbv) { SetRootConstantBuffer(magic_enum::enum_integer(rootIndexEnum), cbv); }
 
-        template <typename T> requires std::is_enum_v<T>
-        void SetRootShaderResource(T rootIndexEnum, const Descriptor& srv) { SetRootShaderResource(magic_enum::enum_integer(rootIndexEnum), srv); }
         void SetRootShaderResource(uint32_t rootIndex, const Descriptor& srv);
+        void SetRootShaderResource(Enum auto rootIndexEnum, const Descriptor& srv) { SetRootShaderResource(magic_enum::enum_integer(rootIndexEnum), srv); }
 
-        template <typename T> requires std::is_enum_v<T>
-        void SetRootUnorderedAccess(T rootIndexEnum, const Descriptor& uav) { SetRootShaderResource(magic_enum::enum_integer(rootIndexEnum), uav); }
         void SetRootUnorderedAccess(uint32_t rootIndex, const Descriptor& uav);
+        void SetRootUnorderedAccess(Enum auto rootIndexEnum, const Descriptor& uav) { SetRootShaderResource(magic_enum::enum_integer(rootIndexEnum), uav); }
 
         void SetPipelineState(const PipelineState& pso); // TODO: Remove duplicate ComputeCommandList
 
@@ -104,17 +100,14 @@ namespace benzin
         explicit GraphicsCommandList(Device& device);
 
 	public:
-        template <typename T> requires std::is_enum_v<T>
-        void SetRootConstant(T rootIndexEnum, uint32_t value) { SetRootConstant(magic_enum::enum_integer(rootIndexEnum), value); }
         void SetRootConstant(uint32_t rootIndex, uint32_t value);
+        void SetRootConstant(Enum auto rootIndexEnum, uint32_t value) { SetRootConstant(magic_enum::enum_integer(rootIndexEnum), value); }
 
-        template <typename T> requires std::is_enum_v<T>
-        void SetRootConstantBuffer(T rootIndexEnum, const Descriptor& cbv) { SetRootConstantBuffer(magic_enum::enum_integer(rootIndexEnum), cbv); }
         void SetRootConstantBuffer(uint32_t rootIndex, const Descriptor& cbv);
+        void SetRootConstantBuffer(Enum auto rootIndexEnum, const Descriptor& cbv) { SetRootConstantBuffer(magic_enum::enum_integer(rootIndexEnum), cbv); }
 
-        template <typename T> requires std::is_enum_v<T>
-        void SetRootShaderResource(T rootIndexEnum, const Descriptor& srv) { SetRootShaderResource(magic_enum::enum_integer(rootIndexEnum), srv); }
         void SetRootShaderResource(uint32_t rootIndex, const Descriptor& srv);
+        void SetRootShaderResource(Enum auto rootIndexEnum, const Descriptor& srv) { SetRootShaderResource(magic_enum::enum_integer(rootIndexEnum), srv); }
 
         void SetPipelineState(const PipelineState& pso); // TODO: Remove duplicate ComputeCommandList
 

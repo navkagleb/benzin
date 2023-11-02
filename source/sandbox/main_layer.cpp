@@ -6,6 +6,7 @@
 #include <benzin/engine/model.hpp>
 #include <benzin/graphics/command_list.hpp>
 #include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/pipeline_state.hpp>
 #include <benzin/graphics/texture_loader.hpp>
 #include <benzin/utility/random.hpp>
@@ -58,12 +59,20 @@ namespace sandbox
             DirectX::XMMATRIX InverseWorldMatrix;
         };
 
+        enum class GPUTimerIndex
+        {
+            _GeometryPass,
+            _DeferredLightingPass,
+            _EnvironmentPass,
+        };
+
     } // anonymous namespace
 
     // GeometryPass
-    GeometryPass::GeometryPass(benzin::Device& device, benzin::SwapChain& swapChain, uint32_t width, uint32_t height)
+    GeometryPass::GeometryPass(benzin::Device& device, benzin::SwapChain& swapChain, benzin::GPUTimer& gpuTimer)
         : m_Device{ device }
         , m_SwapChain{ swapChain }
+        , m_GPUTimer{ gpuTimer }
     {
         m_FrameResources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
         {
@@ -98,7 +107,7 @@ namespace sandbox
             .DepthStencilFormat = ms_DepthStencilFormat,
         });
 
-        OnResize(width, height);
+        OnResize(static_cast<uint32_t>(m_SwapChain.GetViewport().Width), static_cast<uint32_t>(m_SwapChain.GetViewport().Height));
     }
 
     void GeometryPass::OnUpdate(const benzin::Camera& camera)
@@ -173,6 +182,8 @@ namespace sandbox
         commandList.ClearDepthStencil(m_GBuffer.DepthStencil->GetDepthStencilView());
 
         {
+            BenzinGPUTimerSlotScopeMeasurement(m_GPUTimer, commandList, GPUTimerIndex::_GeometryPass);
+
             commandList.SetPipelineState(*m_PipelineState);
             commandList.SetRootConstantBuffer(RootConstant::PassBufferIndex, m_FrameResources.PassBuffer->GetConstantBufferView(m_SwapChain.GetCurrentFrameIndex()));
             commandList.SetRootShaderResource(RootConstant::EntityBufferIndex, entityBuffer.GetShaderResourceView(m_SwapChain.GetCurrentFrameIndex()));
@@ -276,9 +287,10 @@ namespace sandbox
     }
 
     // DeferredLightingPass
-    DeferredLightingPass::DeferredLightingPass(benzin::Device& device, benzin::SwapChain& swapChain, uint32_t width, uint32_t height)
+    DeferredLightingPass::DeferredLightingPass(benzin::Device& device, benzin::SwapChain& swapChain, benzin::GPUTimer& gpuTimer)
         : m_Device{ device }
         , m_SwapChain{ swapChain }
+        , m_GPUTimer{ gpuTimer }
     {
         m_FrameResources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
         {
@@ -312,7 +324,7 @@ namespace sandbox
             .RenderTargetFormats{ benzin::GraphicsFormat::RGBA8Unorm },
         });
 
-        OnResize(width, height);
+        OnResize(static_cast<uint32_t>(m_SwapChain.GetViewport().Width), static_cast<uint32_t>(m_SwapChain.GetViewport().Height));
     }
 
     void DeferredLightingPass::OnUpdate(const benzin::Camera& camera, const entt::registry& registry)
@@ -401,6 +413,8 @@ namespace sandbox
             commandList.SetRootConstant(RootConstant::OutputType, magic_enum::enum_integer(m_OutputType));
 
             commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+
+            BenzinGPUTimerSlotScopeMeasurement(m_GPUTimer, commandList, GPUTimerIndex::_DeferredLightingPass);
             commandList.DrawVertexed(3);
         }
 
@@ -461,9 +475,10 @@ namespace sandbox
     }
 
     // EnvironmentPass
-    EnvironmentPass::EnvironmentPass(benzin::Device& device, benzin::SwapChain& swapChain, uint32_t width, uint32_t height)
+    EnvironmentPass::EnvironmentPass(benzin::Device& device, benzin::SwapChain& swapChain, benzin::GPUTimer& gpuTimer)
         : m_Device{ device }
         , m_SwapChain{ swapChain }
+        , m_GPUTimer{ gpuTimer }
     {
         m_FrameResources.PassBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
         {
@@ -541,6 +556,8 @@ namespace sandbox
             commandList.SetRootConstantBuffer(RootConstant::CubeTextureIndex, m_CubeTexture->GetShaderResourceView());
 
             commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+
+            BenzinGPUTimerSlotScopeMeasurement(m_GPUTimer, commandList, GPUTimerIndex::_EnvironmentPass);
             commandList.DrawVertexed(3);
         }
 
@@ -553,9 +570,10 @@ namespace sandbox
         : m_Window{ graphicsRefs.WindowRef }
         , m_Device{ graphicsRefs.DeviceRef }
         , m_SwapChain{ graphicsRefs.SwapChainRef }
-        , m_GeometryPass{ m_Device, m_SwapChain, m_Window.GetWidth(), m_Window.GetHeight() }
-        , m_DeferredLightingPass{ m_Device, m_SwapChain, m_Window.GetWidth(), m_Window.GetHeight() }
-        , m_EnvironmentPass{ m_Device, m_SwapChain, m_Window.GetWidth(), m_Window.GetHeight() }
+        , m_GPUTimer{ std::make_unique<benzin::GPUTimer>(m_Device, m_Device.GetGraphicsCommandQueue(), magic_enum::enum_count<GPUTimerIndex>()) }
+        , m_GeometryPass{ m_Device, m_SwapChain, *m_GPUTimer }
+        , m_DeferredLightingPass{ m_Device, m_SwapChain, *m_GPUTimer }
+        , m_EnvironmentPass{ m_Device, m_SwapChain, *m_GPUTimer }
     {
         CreateResources();
         CreateEntities();
@@ -571,23 +589,29 @@ namespace sandbox
         }
     }
 
+    void MainLayer::OnEndFrame()
+    {
+        m_GPUTimer->OnEndFrame(m_Device.GetGraphicsCommandQueue().GetCommandList());
+    }
+
     void MainLayer::OnEvent(benzin::Event& event)
     {
         m_FlyCameraController.OnEvent(event);
 
         benzin::EventDispatcher dispatcher{ event };
-
-        dispatcher.Dispatch<benzin::WindowResizedEvent>([&](benzin::WindowResizedEvent& event)
+        dispatcher.Dispatch<benzin::WindowResizedEvent>([&](auto& event)
         {
             m_GeometryPass.OnResize(event.GetWidth(), event.GetHeight());
             m_DeferredLightingPass.OnResize(event.GetWidth(), event.GetHeight());
-
+            
             return false;
         });
     }
 
-    void MainLayer::OnUpdate(float dt)
+    void MainLayer::OnUpdate()
     {
+        const float dt = s_FrameTimer.GetDeltaTimeInSeconds();
+
         m_FlyCameraController.OnUpdate(dt);
 
         {
@@ -722,6 +746,25 @@ namespace sandbox
 
                 ImGui::PopID();
             }
+        }
+        ImGui::End();
+
+        ImGui::Begin("MainLayer Stats");
+        {
+            static float geometryPassTime = 0.0f;
+            static float deferredLightingPassTime = 0.0f;
+            static float environmentPassPassTime = 0.0f;
+
+            if (s_FrameStats.IsReady())
+            {
+                geometryPassTime = m_GPUTimer->GetElapsedTimeInSeconds(GPUTimerIndex::_GeometryPass) * 1000.0f;
+                deferredLightingPassTime = m_GPUTimer->GetElapsedTimeInSeconds(GPUTimerIndex::_DeferredLightingPass) * 1000.0f;
+                environmentPassPassTime = m_GPUTimer->GetElapsedTimeInSeconds(GPUTimerIndex::_EnvironmentPass) * 1000.0f;
+            }
+
+            ImGui::Text(std::format("GeometryPass Time: {:.4f} ms", geometryPassTime).c_str());
+            ImGui::Text(std::format("DeferredLightingPass Time: {:.4f} ms", deferredLightingPassTime).c_str());
+            ImGui::Text(std::format("EnvironmentPass Time: {:.4f} ms", environmentPassPassTime).c_str());
         }
         ImGui::End();
     }

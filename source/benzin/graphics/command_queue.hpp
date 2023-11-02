@@ -20,7 +20,18 @@ namespace benzin
     public:
         ID3D12CommandQueue* GetD3D12CommandQueue() const { return m_D3D12CommandQueue; }
 
+        uint64_t GetTimestampFrequency() const
+        {
+            BenzinAssert(m_D3D12CommandQueue);
+
+            uint64_t frequency = 0;
+            BenzinAssert(m_D3D12CommandQueue->GetTimestampFrequency(&frequency));
+
+            return frequency;
+        }
+
     public:
+
         void ResetCommandList(uint32_t commandAllocatorIndex);
         void ExecuteCommandList();
         void Flush();

@@ -24,8 +24,8 @@ namespace benzin
         virtual DirectX::XMMATRIX CreateMatrix() const = 0;
 
     private:
-        DirectX::XMMATRIX m_Projection{ DirectX::XMMatrixIdentity() };
-        DirectX::XMMATRIX m_InverseProjection{ DirectX::XMMatrixIdentity() };
+        DirectX::XMMATRIX m_Projection = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_InverseProjection = DirectX::XMMatrixIdentity();
         DirectX::BoundingFrustum m_BoundingFrustum;
     };
 

@@ -11,22 +11,6 @@
 namespace benzin
 {
 
-    // FrameStats
-    void FrameStats::OnUpdate(float dt)
-    {
-        m_ElapsedFrameCount++;
-        m_ElapsedTimeInSeconds += dt;
-
-        if (m_ElapsedTimeInSeconds >= ms_ElapsedItervalInSeconds)
-        {
-            m_FrameRate = static_cast<float>(m_ElapsedFrameCount) / m_ElapsedTimeInSeconds;
-
-            m_ElapsedFrameCount = 0;
-            m_ElapsedTimeInSeconds -= ms_ElapsedItervalInSeconds;
-        }
-    }
-
-    // ImGuiLayer
     ImGuiLayer::ImGuiLayer(const GraphicsRefs& graphicsRefs)
         : m_Window{ graphicsRefs.WindowRef }
         , m_Backend{ graphicsRefs.BackendRef }
@@ -102,11 +86,6 @@ namespace benzin
         dispatcher.Dispatch(&ImGuiLayer::OnKeyPressed, *this);
     }
 
-    void ImGuiLayer::OnUpdate(float dt)
-    {
-        m_FrameStats.OnUpdate(dt);
-    }
-
     void ImGuiLayer::OnImGuiRender()
     {
         if (m_IsDemoWindowEnabled)
@@ -134,7 +113,7 @@ namespace benzin
                     "FPS: {:.1f} ({:.3f} ms) | "
                     "({} x {})",
                     m_Backend.GetMainAdapterName(),
-                    m_FrameStats.GetFrameRate(), m_FrameStats.GetDeltaTimeMS(),
+                    s_FrameStats.GetFrameRate(), s_FrameStats.GetDeltaTimeMS(),
                     m_Window.GetWidth(), m_Window.GetHeight()
                 );
 

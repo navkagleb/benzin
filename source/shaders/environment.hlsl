@@ -21,5 +21,6 @@ float4 PS_Main(fullscreen_helper::VS_Output input) : SV_Target
     const float3 direction = normalize(worldPosition.xyz);
 
     const float4 color = cubeMap.Sample(common::g_LinearWrapSampler, direction);
-    return color / (color + 0.5f);
+
+    return common::LinearToGamma(color);
 }

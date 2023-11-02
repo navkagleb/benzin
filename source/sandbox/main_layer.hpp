@@ -8,6 +8,13 @@
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/system/window.hpp>
 
+namespace benzin
+{
+
+    class GPUTimer;
+
+} // namespace benzin
+
 namespace sandbox
 {
 
@@ -37,7 +44,7 @@ namespace sandbox
         static constexpr auto ms_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
 
     public:
-        GeometryPass(benzin::Device& device, benzin::SwapChain& swapChain, uint32_t width, uint32_t height);
+        GeometryPass(benzin::Device& device, benzin::SwapChain& swapChain, benzin::GPUTimer& gpuTimer);
 
     public:
         GBuffer& GetGBuffer() { return m_GBuffer; }
@@ -51,6 +58,7 @@ namespace sandbox
     private:
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
+        benzin::GPUTimer& m_GPUTimer;
 
         FrameResources m_FrameResources;
         std::unique_ptr<benzin::PipelineState> m_PipelineState;
@@ -83,7 +91,7 @@ namespace sandbox
         static const uint32_t ms_MaxPointLightCount = 20 * 20;
 
     public:
-        DeferredLightingPass(benzin::Device& device, benzin::SwapChain& swapChain, uint32_t width, uint32_t height);
+        DeferredLightingPass(benzin::Device& device, benzin::SwapChain& swapChain, benzin::GPUTimer& gpuTimer);
 
     public:
         benzin::Texture& GetOutputTexture() { return *m_OutputTexture; }
@@ -99,6 +107,7 @@ namespace sandbox
     private:
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
+        benzin::GPUTimer& m_GPUTimer;
 
         FrameResources m_FrameResources;
         std::unique_ptr<benzin::PipelineState> m_PipelineState;
@@ -120,7 +129,7 @@ namespace sandbox
         };
 
     public:
-        EnvironmentPass(benzin::Device& device, benzin::SwapChain& swapChain, uint32_t width, uint32_t height);
+        EnvironmentPass(benzin::Device& device, benzin::SwapChain& swapChain, benzin::GPUTimer& gpuTimer);
 
     public:
         void OnUpdate(const benzin::Camera& camera);
@@ -129,6 +138,7 @@ namespace sandbox
     private:
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
+        benzin::GPUTimer& m_GPUTimer;
 
         FrameResources m_FrameResources;
         std::unique_ptr<benzin::PipelineState> m_PipelineState;
@@ -154,8 +164,10 @@ namespace sandbox
         ~MainLayer();
 
     public:
+        void OnEndFrame() override;
+
         void OnEvent(benzin::Event& event) override;
-        void OnUpdate(float dt) override;
+        void OnUpdate() override;
         void OnRender() override;
         void OnImGuiRender() override;
 
@@ -167,6 +179,8 @@ namespace sandbox
         benzin::Window& m_Window;
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
+
+        std::unique_ptr<benzin::GPUTimer> m_GPUTimer;
 
         FrameResources m_FrameResources;
 

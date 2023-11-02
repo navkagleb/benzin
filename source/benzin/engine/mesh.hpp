@@ -23,6 +23,8 @@ namespace benzin
         PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
     };
 
+    using MeshIndex = uint32_t;
+
     struct MeshCreation
     {
         std::string_view DebugName;

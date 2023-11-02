@@ -4,6 +4,7 @@
 #include <benzin/engine/camera.hpp>
 #include <benzin/engine/entity.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/pipeline_state.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/system/window.hpp>
@@ -32,8 +33,8 @@ namespace sandbox
         explicit RaytracingLayer(const benzin::GraphicsRefs& graphicsRefs);
 
     public:
-        void OnEvent(benzin::Event& event) override;
-        void OnUpdate(float dt) override;
+        void OnEndFrame() override;
+
         void OnRender() override;
         void OnImGuiRender() override;
 
@@ -51,8 +52,7 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        entt::registry m_EntityRegistry;
-        entt::entity m_BoxEntity{ 0 }; // Use brackets because entt::entity is enumm
+        std::shared_ptr<benzin::GPUTimer> m_GPUTimer;
 
         std::vector<DirectX::XMFLOAT3> m_Vertices;
         std::vector<uint32_t> m_Indices;

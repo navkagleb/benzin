@@ -4,6 +4,7 @@
 #include <benzin/engine/model.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/shaders.hpp>
 
 namespace sandbox
@@ -22,6 +23,11 @@ namespace sandbox
             ViewportConstant,
         };
 
+        enum class GPUTimerIndex
+        {
+            DispatchRays,
+        };
+
     } // anonymous namespace
 
     RaytracingLayer::RaytracingLayer(const benzin::GraphicsRefs& graphicsRefs)
@@ -29,6 +35,8 @@ namespace sandbox
         , m_Device{ graphicsRefs.DeviceRef }
         , m_SwapChain{ graphicsRefs.SwapChainRef }
     {
+        m_GPUTimer = std::make_shared<benzin::GPUTimer>(m_Device, m_Device.GetGraphicsCommandQueue(), magic_enum::enum_count<GPUTimerIndex>());
+
         CreateEntities();
 
         CreateRootSignatures();
@@ -38,14 +46,9 @@ namespace sandbox
         CreateRaytracingResources();
     }
 
-    void RaytracingLayer::OnEvent(benzin::Event& event)
+    void RaytracingLayer::OnEndFrame()
     {
-
-    }
-
-    void RaytracingLayer::OnUpdate(float dt)
-    {
-
+        m_GPUTimer->OnEndFrame(m_Device.GetGraphicsCommandQueue().GetCommandList());
     }
 
     void RaytracingLayer::OnRender()
@@ -99,7 +102,10 @@ namespace sandbox
                 .Depth = 1,
             };
 
-            d3d12CommandList->DispatchRays(&d3d12DispatchRayDesc);
+            {
+                BenzinGPUTimerSlotScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::DispatchRays);
+                d3d12CommandList->DispatchRays(&d3d12DispatchRayDesc);
+            }
         }
 
         {
@@ -150,7 +156,18 @@ namespace sandbox
 
     void RaytracingLayer::OnImGuiRender()
     {
+        ImGui::Begin("Stats");
+        {
+            static float dispatchRaysTime = 0.0f;
 
+            if (s_FrameStats.IsReady())
+            {
+                dispatchRaysTime = m_GPUTimer->GetElapsedTimeInSeconds(GPUTimerIndex::DispatchRays) * 1000.0f;
+            }
+
+            ImGui::Text(std::format("DispatchRays Time: {:.4f} ms", dispatchRaysTime).c_str());
+        }
+        ImGui::End();
     }
 
     void RaytracingLayer::CreateEntities()

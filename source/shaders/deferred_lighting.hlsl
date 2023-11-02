@@ -332,6 +332,6 @@ float4 PS_Main(fullscreen_helper::VS_Output input) : SV_Target
     }
 
     color += ambient + gbuffer.Emissive;
-    color /= color + 0.5f;
-    return float4(color, 1.0f);
+
+    return float4(common::LinearToGamma(color), 1.0f);
 }

@@ -30,6 +30,16 @@ namespace common
     static const float g_2PI = 2 * g_PI;
     static const float g_InvPI = 1.0f / g_PI;
     static const float g_Inv2PI = 1.0f / g_2PI;
+    
+    float3 LinearToGamma(float3 color)
+    {
+        return pow(color, 1.0f / 2.2f);
+    }
+    
+    float4 LinearToGamma(float4 color)
+    {
+        return pow(color, 1.0f / 2.2f);
+    }
 
 } // namespace common
 

@@ -35,14 +35,6 @@ namespace benzin
         BenzinAssert(!creation.DebugName.empty());
         m_DebugName = creation.DebugName;
 
-        // TODO: Is validation necessary?
-#if 0
-        if (creation.Meshes.size() == 1)
-        {
-            const_cast<MeshCreation&>(creation).IsNeedSplitByMeshes = false;
-        }
-#endif
-
         uint32_t totalVertexCount = 0;
         uint32_t totalIndexCount = 0;
         for (const auto& mesh : creation.Meshes)
@@ -62,7 +54,7 @@ namespace benzin
         m_IndexBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
         {
             .DebugName = std::format("{}_{}", m_DebugName, "IndexBuffer"),
-            .ElementSize = sizeof(uint32_t),
+            .ElementSize = sizeof(MeshIndex),
             .ElementCount = totalIndexCount,
             .IsNeedShaderResourceView = true,
         });

@@ -6,6 +6,9 @@ namespace benzin
     template <typename>
     inline constexpr bool g_DependentFalse = false;
 
+    template <typename T>
+    concept Enum = std::is_enum_v<T>;
+
     template <std::integral T>
     using IterableRange = std::ranges::iota_view<T, T>;
 

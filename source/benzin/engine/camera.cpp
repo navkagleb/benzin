@@ -11,20 +11,19 @@ namespace benzin
 
         void RenderImGuiMatrix4x4(const DirectX::XMMATRIX& matrix)
         {
-            const uint32_t rowCount = 4;
-            const uint32_t columnCount = 4;
+            const uint32_t matrixSize = 4;
 
             const ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
 
-            if (ImGui::BeginTable("View Matrix", columnCount, flags))
+            if (ImGui::BeginTable("View Matrix", matrixSize, flags))
             {
-                for (uint32_t rowIndex = 0; rowIndex < rowCount; ++rowIndex)
+                for (uint32_t rowIndex = 0; rowIndex < matrixSize; ++rowIndex)
                 {
                     ImGui::TableNextRow();
 
                     const DirectX::XMVECTOR row = matrix.r[rowIndex];
 
-                    for (uint32_t columnIndex = 0; columnIndex < columnCount; ++columnIndex)
+                    for (uint32_t columnIndex = 0; columnIndex < matrixSize; ++columnIndex)
                     {
                         ImGui::TableSetColumnIndex(columnIndex);
 
@@ -302,7 +301,7 @@ namespace benzin
     {
         if (auto* perspectiveProjection = GetPerspectiveProjection())
         {
-            const float aspectRatio = event.GetWidth<float>() / event.GetHeight<float>();
+            const float aspectRatio = event.GetAspectRatio();
             perspectiveProjection->SetAspectRatio(aspectRatio);
         }
 
@@ -424,15 +423,12 @@ namespace benzin
 
     DirectX::XMVECTOR FlyCameraController::GetCameraFrontDirection() const
     {
-        const DirectX::XMVECTOR frontDirection
-        {
-            DirectX::XMVectorSet(
-                DirectX::XMScalarCos(m_Yaw) * DirectX::XMScalarCos(m_Pitch),
-                DirectX::XMScalarSin(m_Pitch),
-                DirectX::XMScalarSin(m_Yaw) * DirectX::XMScalarCos(m_Pitch),
-                0.0f
-            )
-        };
+        const DirectX::XMVECTOR frontDirection = DirectX::XMVectorSet(
+            DirectX::XMScalarCos(m_Yaw) * DirectX::XMScalarCos(m_Pitch),
+            DirectX::XMScalarSin(m_Pitch),
+            DirectX::XMScalarSin(m_Yaw) * DirectX::XMScalarCos(m_Pitch),
+            0.0f
+        );
 
         return DirectX::XMVector3Normalize(frontDirection);
     }

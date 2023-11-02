@@ -9,6 +9,7 @@ namespace benzin
     {
         UploadBuffer,
         ConstantBuffer,
+        ReadbackBuffer,
         StructuredBuffer,
         AllowUnorderedAccess,
     };
@@ -58,6 +59,8 @@ namespace benzin
         uint32_t GetElementCount() const { return m_ElementCount; }
         uint32_t GetAlignedElementSize() const { return m_AlignedElementSize; }
         uint32_t GetSizeInBytes() const override { return m_AlignedElementSize * m_ElementCount; }
+
+        uint32_t GetNotAlignedSizeInBytes() const { return m_ElementSize * m_ElementCount; }
 
     public:
         bool HasConstantBufferView(uint32_t index = 0) const { return HasResourceView(DescriptorType::ConstantBufferView, index); }

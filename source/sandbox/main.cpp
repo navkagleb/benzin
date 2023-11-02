@@ -3,7 +3,6 @@
 #include <benzin/core/entry_point.hpp>
 #include <benzin/core/imgui_layer.hpp>
 #include <benzin/core/layer_stack.hpp>
-#include <benzin/core/timer.hpp>
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
@@ -49,7 +48,7 @@ namespace sandbox
         {
             using namespace std::literals::chrono_literals;
 
-            m_FrameTimer.Reset();
+            benzin::Layer::OnStaticBeforeMainLoop();
 
             m_IsRunning = true;
 
@@ -78,8 +77,6 @@ namespace sandbox
             dispatcher.Dispatch(&Application::OnWindowEnterResizing, *this);
             dispatcher.Dispatch(&Application::OnWindowExitResizing, *this);
             dispatcher.Dispatch(&Application::OnWindowResized, *this);
-            dispatcher.Dispatch(&Application::OnWindowFocused, *this);
-            dispatcher.Dispatch(&Application::OnWindowUnfocused, *this);
             dispatcher.Dispatch(&Application::OnKeyPressed, *this);
 
             for (auto& layer : m_LayerStack | std::views::reverse)
@@ -100,14 +97,14 @@ namespace sandbox
 
         void ProcessFrame()
         {
-            m_FrameTimer.Tick();
-
-            const float dt = m_FrameTimer.GetDeltaTimeInSeconds();
+            benzin::Layer::OnStaticUpdate();
 
             for (auto& layer : m_LayerStack)
             {
-                layer->OnUpdate(dt);
+                layer->OnBeginFrame();
+                layer->OnUpdate();
                 layer->OnRender();
+                layer->OnEndFrame();
             }
 
             if (m_ImGuiLayer->IsWidgetDrawEnabled())
@@ -125,6 +122,8 @@ namespace sandbox
 
         void EndFrame()
         {
+            benzin::Layer::OnStaticEndFrame();
+
             m_Device->GetGraphicsCommandQueue().ExecuteCommandList();
             m_SwapChain->Flip();
         }
@@ -139,7 +138,7 @@ namespace sandbox
         bool OnWindowEnterResizing(benzin::WindowEnterResizingEvent& event)
         {
             m_IsPaused = true;
-            m_FrameTimer.Stop();
+            benzin::Layer::s_FrameTimer.Stop();
 
             return false;
         };
@@ -147,7 +146,7 @@ namespace sandbox
         bool OnWindowExitResizing(benzin::WindowExitResizingEvent& event)
         {
             m_IsPaused = false;
-            m_FrameTimer.Start();
+            benzin::Layer::s_FrameTimer.Start();
 
             return false;
         };
@@ -155,22 +154,6 @@ namespace sandbox
         bool OnWindowResized(benzin::WindowResizedEvent& event)
         {
             m_SwapChain->ResizeBackBuffers(event.GetWidth(), event.GetHeight());
-            return false;
-        };
-
-        bool OnWindowFocused(benzin::WindowFocusedEvent& event)
-        {
-            m_IsPaused = false;
-            m_FrameTimer.Start();
-
-            return false;
-        };
-
-        bool OnWindowUnfocused(benzin::WindowUnfocusedEvent& event)
-        {
-            m_IsPaused = true;
-            m_FrameTimer.Stop();
-
             return false;
         };
 
@@ -190,7 +173,6 @@ namespace sandbox
         std::unique_ptr<benzin::Device> m_Device;
         std::unique_ptr<benzin::SwapChain> m_SwapChain;
 
-        benzin::Timer m_FrameTimer;
         benzin::LayerStack m_LayerStack;
 
         std::shared_ptr<benzin::ImGuiLayer> m_ImGuiLayer;
