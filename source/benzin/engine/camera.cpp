@@ -229,9 +229,9 @@ namespace benzin
         dispatcher.Dispatch(&FlyCameraController::OnMouseScrolled, *this);
     }
 
-    void FlyCameraController::OnUpdate(float dt)
+    void FlyCameraController::OnUpdate(MilliSeconds dt)
     {
-        const float delta = m_CameraTranslationSpeed * dt;
+        const float delta = m_CameraTranslationSpeed * dt.count();
         const auto& position = m_Camera.GetPosition();
 
         DirectX::XMVECTOR updatedPosition = DirectX::XMVectorZero();
@@ -366,7 +366,7 @@ namespace benzin
     void FlyCameraController::RenderImGuiControllerProperties()
     {
         ImGui::Text("Controller Properties");
-        ImGui::SliderFloat("CameraTranslationSpeed", &m_CameraTranslationSpeed, 1.0f, 100.0f);
+        ImGui::SliderFloat("CameraTranslationSpeed", &m_CameraTranslationSpeed, 0.001f, 0.01f);
         ImGui::SliderFloat("MouseSensitivity", &m_MouseSensitivity, 0.001f, 0.007f, "%.3f");
     }
 

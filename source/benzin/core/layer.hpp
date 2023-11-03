@@ -17,36 +17,37 @@ namespace benzin
         FrameStats() = default;
 
     public:
-        float GetElapsedIntervalInSeconds(float seconds) const { return m_ElapsedIntervalInSeconds; }
-        void SetElapsedIntervalInSeconds(float seconds) { m_ElapsedIntervalInSeconds = seconds; }
+        Seconds GetElapsedInterval() const { return m_ElapsedInterval; }
+        void SetElapsedIntervalInSeconds(Seconds seconds) { m_ElapsedInterval = seconds; }
 
         float GetFrameRate() const { return m_FrameRate; }
-        float GetDeltaTimeMS() const { return 1000.0f / m_FrameRate; }
+        MilliSeconds GetDeltaTime() const { return MilliSeconds{ 1000.0f / m_FrameRate}; }
 
-        bool IsReady() const { return m_ElapsedTimeInSeconds >= m_ElapsedIntervalInSeconds; }
+        bool IsReady() const { return m_ElapsedTime >= m_ElapsedInterval; }
 
         void OnEndFrame()
         {
             if (IsReady())
             {
-                m_FrameRate = static_cast<float>(m_ElapsedFrameCount) / m_ElapsedTimeInSeconds;
+                m_FrameRate = static_cast<float>(m_ElapsedFrameCount) / m_ElapsedTime.count();
 
+                m_ElapsedTime -= m_ElapsedInterval;
                 m_ElapsedFrameCount = 0;
-                m_ElapsedTimeInSeconds -= m_ElapsedIntervalInSeconds;
             }
         }
 
-        void OnUpdate(float dt)
+        void OnUpdate(MilliSeconds dt)
         {
+            m_ElapsedTime += ToS(dt);
             m_ElapsedFrameCount++;
-            m_ElapsedTimeInSeconds += dt;
         }
 
     private:
-        float m_ElapsedIntervalInSeconds = 1.0f;
+        Seconds m_ElapsedInterval{ 1.0f };
 
+        Seconds m_ElapsedTime = Seconds::zero();
         uint32_t m_ElapsedFrameCount = 0;
-        float m_ElapsedTimeInSeconds = 0.0f;
+
         float m_FrameRate = 0.0f;
     };
 
@@ -70,7 +71,7 @@ namespace benzin
         static void OnStaticUpdate()
         {
             s_FrameTimer.Tick();
-            s_FrameStats.OnUpdate(s_FrameTimer.GetDeltaTimeInSeconds());
+            s_FrameStats.OnUpdate(s_FrameTimer.GetDeltaTime());
         }
 
     public:

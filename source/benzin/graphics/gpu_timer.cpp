@@ -56,7 +56,7 @@ namespace benzin
         commandList.GetD3D12GraphicsCommandList()->EndQuery(m_D3D12TimestampQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, GetTimerSlotIndexOnStop(timerIndex));
     }
 
-    float GPUTimer::GetElapsedTimeInSeconds(uint32_t timerIndex) const
+    MilliSeconds GPUTimer::GetElapsedTime(uint32_t timerIndex) const
     {
         BenzinAssert(timerIndex < m_TimerSlotCount / 2);
 
@@ -64,9 +64,11 @@ namespace benzin
         const auto stop = m_TimeStamps[GetTimerSlotIndexOnStop(timerIndex)];
 
         if (stop < start)
-            return 0.0;
+        {
+            return MilliSeconds::zero();
+        }
 
-        return static_cast<float>(stop - start) * m_InverseFrequency;
+        return ToMS(static_cast<float>(stop - start) * m_InverseFrequency);
     }
 
     void GPUTimer::CreateResources(Device& device)

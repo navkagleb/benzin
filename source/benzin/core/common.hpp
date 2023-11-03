@@ -12,6 +12,29 @@ namespace benzin
     template <std::integral T>
     using IterableRange = std::ranges::iota_view<T, T>;
 
+    using Seconds = std::chrono::duration<float>;
+    using MilliSeconds = std::chrono::duration<float, std::milli>;
+
+    constexpr auto ToS(MilliSeconds milliSeconds)
+    {
+        return std::chrono::duration_cast<Seconds>(milliSeconds);
+    }
+
+    constexpr auto ToS(float milliSeconds)
+    {
+        return ToS(MilliSeconds{ milliSeconds });
+    }
+
+    constexpr auto ToMS(Seconds seconds)
+    {
+        return std::chrono::duration_cast<MilliSeconds>(seconds);
+    }
+
+    constexpr auto ToMS(float seconds)
+    {
+        return ToMS(Seconds{ seconds });
+    }
+
     constexpr uint64_t KBToBytes(uint64_t kb)
     {
         return kb * 1024;

@@ -142,7 +142,7 @@ namespace benzin
 
     public:
         void OnEvent(Event& event);
-        void OnUpdate(float dt);
+        void OnUpdate(MilliSeconds dt);
         void OnImGuiRender();
 
     private:
@@ -162,7 +162,7 @@ namespace benzin
     private:
         Camera& m_Camera;
 
-        float m_CameraTranslationSpeed = 2.0f;
+        float m_CameraTranslationSpeed = 0.002f;
         float m_MouseSensitivity = 0.003f;
         float m_MouseWheelSensitivity = 0.04f;
 

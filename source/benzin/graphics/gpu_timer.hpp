@@ -24,7 +24,7 @@ namespace benzin
     public:
         GPUTimer(Device& device, const auto& commandQueue, size_t timerCount)
             : m_TimerSlotCount{ static_cast<uint32_t>(timerCount) * 2 }
-            , m_InverseFrequency{ 1.0f / static_cast<float>(commandQueue.GetTimestampFrequency()) }
+            , m_InverseFrequency{ 1.0f / static_cast<float>(commandQueue.GetTimestampFrequency()) } // Counts per Second
         {
             CreateResources(device);
 
@@ -42,8 +42,8 @@ namespace benzin
         void Start(CommandList& commandList, Enum auto timerIndex) { Start(commandList, magic_enum::enum_integer(timerIndex)); }
         void Stop(CommandList& commandList, Enum auto timerIndex) { Stop(commandList, magic_enum::enum_integer(timerIndex)); }
 
-        float GetElapsedTimeInSeconds(uint32_t timerIndex) const;
-        float GetElapsedTimeInSeconds(Enum auto timerIndex) const { return GetElapsedTimeInSeconds(magic_enum::enum_integer(timerIndex)); }
+        MilliSeconds GetElapsedTime(uint32_t timerIndex) const;
+        MilliSeconds GetElapsedTime(Enum auto timerIndex) const { return GetElapsedTime(magic_enum::enum_integer(timerIndex)); }
 
     private:
         static uint32_t GetTimerSlotIndexOnStart(uint32_t timerIndex) { return timerIndex * 2; }

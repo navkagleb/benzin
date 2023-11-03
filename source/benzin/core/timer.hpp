@@ -6,8 +6,7 @@ namespace benzin
     class Timer
     {
     public:
-        float GetDeltaTimeInSeconds() const { return m_DeltaTimeInSeconds; }
-        float GetTotalTimeInSeconds() const;
+        Seconds GetDeltaTime() const { return m_DeltaTime; }
 
     public:
         void Start();
@@ -22,7 +21,7 @@ namespace benzin
         uint64_t m_PreviousTime = 0;
         uint64_t m_CurrentTime = 0;
 
-        float m_DeltaTimeInSeconds = -1.0f;
+        MilliSeconds m_DeltaTime = MilliSeconds::zero();
 
         bool m_IsStopped = true;
     };

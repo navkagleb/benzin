@@ -610,22 +610,22 @@ namespace sandbox
 
     void MainLayer::OnUpdate()
     {
-        const float dt = s_FrameTimer.GetDeltaTimeInSeconds();
+        m_FlyCameraController.OnUpdate(s_FrameTimer.GetDeltaTime());
 
-        m_FlyCameraController.OnUpdate(dt);
+        const benzin::MilliSeconds dt = s_FrameTimer.GetDeltaTime();
 
         {
 #if 1
             {
                 auto& tc = m_Registry.get<benzin::TransformComponent>(m_BoomBoxEntity);
-                tc.Rotation.x += 0.1f * dt;
-                tc.Rotation.z += 0.2f * dt;
+                tc.Rotation.x += 0.0001f * dt.count();
+                tc.Rotation.z += 0.0002f * dt.count();
             }
 
             {
                 auto& tc = m_Registry.get<benzin::TransformComponent>(m_DamagedHelmetEntity);
-                tc.Rotation.x += 0.1f * dt;
-                tc.Rotation.y -= 0.15f * dt;
+                tc.Rotation.x += 0.0001f * dt.count();
+                tc.Rotation.y -= 0.00015f * dt.count();
             }
 #endif
 
@@ -757,9 +757,9 @@ namespace sandbox
 
             if (s_FrameStats.IsReady())
             {
-                geometryPassTime = m_GPUTimer->GetElapsedTimeInSeconds(GPUTimerIndex::_GeometryPass) * 1000.0f;
-                deferredLightingPassTime = m_GPUTimer->GetElapsedTimeInSeconds(GPUTimerIndex::_DeferredLightingPass) * 1000.0f;
-                environmentPassPassTime = m_GPUTimer->GetElapsedTimeInSeconds(GPUTimerIndex::_EnvironmentPass) * 1000.0f;
+                geometryPassTime = m_GPUTimer->GetElapsedTime(GPUTimerIndex::_GeometryPass).count();
+                deferredLightingPassTime = m_GPUTimer->GetElapsedTime(GPUTimerIndex::_DeferredLightingPass).count();
+                environmentPassPassTime = m_GPUTimer->GetElapsedTime(GPUTimerIndex::_EnvironmentPass).count();
             }
 
             ImGui::Text(std::format("GeometryPass Time: {:.4f} ms", geometryPassTime).c_str());

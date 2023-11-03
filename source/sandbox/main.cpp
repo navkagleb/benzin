@@ -191,17 +191,10 @@ int benzin::ClientMain()
     sandbox::Application application;
     application.Execute();
 #else
-    uint8_t bits = ~3;
+    const benzin::Seconds s{ 1.0f };
+    const benzin::MilliSeconds ms = ToMS(s);
 
-    std::println("{}", std::bitset<8>(bits).to_string());
-
-    for (auto i : std::views::iota(0, 10))
-    {
-        std::println("i: {}, aligned i: {}", i, i & ~3);
-    }
-
-    BenzinExecuteOnScopeExit([] { std::println("out of scope"); });
-    std::println("before scope ends");
+    std::println("S: {}. MS: {}", s.count(), ms.count());
 #endif
 
     return 0;

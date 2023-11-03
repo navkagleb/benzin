@@ -24,8 +24,7 @@ namespace benzin
         }
     }
 
-    template <typename... Args>
-    inline void AssertFormat(const std::source_location& sourceLocation, std::string_view format, Args&&... args)
+    inline void AssertFormat(const std::source_location& sourceLocation, std::string_view format, auto&&... args)
     {
         AssertLog(sourceLocation, format, std::make_format_args(args...));
 
@@ -37,8 +36,7 @@ namespace benzin
         AssertFormat(sourceLocation, "");
     }
 
-    template <typename... Args>
-    inline void AssertFormat(HRESULT hr, const std::source_location& sourceLocation, std::string_view format, Args&&... args)
+    inline void AssertFormat(HRESULT hr, const std::source_location& sourceLocation, std::string_view format, auto&&... args)
     {
         AssertLog(sourceLocation, format, std::make_format_args(args...));
 

@@ -25,14 +25,9 @@ namespace benzin
             return result;
         }
 
-        const auto g_SecondsPerCount = 1.0f / static_cast<float>(GetFrequency());
+        const auto g_InverseFrequency = 1.0f / static_cast<float>(GetFrequency());
 
     } // anonymous namespace
-
-    float Timer::GetTotalTimeInSeconds() const
-    {
-        return static_cast<float>((m_IsStopped ? m_StopTime : m_CurrentTime) - m_PausedTime - m_BaseTime) * g_SecondsPerCount;
-    }
 
     void Timer::Start() 
     {
@@ -75,17 +70,17 @@ namespace benzin
     {
         if (m_IsStopped)
         {
-            m_DeltaTimeInSeconds = 0.0f;
+            m_DeltaTime = MilliSeconds::zero();
             return;
-        }
+        }   
 
         m_CurrentTime = GetCounts();
-        m_DeltaTimeInSeconds = static_cast<float>(m_CurrentTime - m_PreviousTime) * g_SecondsPerCount;
+        m_DeltaTime = ToMS(static_cast<float>(m_CurrentTime - m_PreviousTime) * g_InverseFrequency);
         m_PreviousTime = m_CurrentTime;
 
-        if (m_DeltaTimeInSeconds < 0.0f)
+        if (m_DeltaTime < MilliSeconds::zero())
         {
-            m_DeltaTimeInSeconds = 0.0f;
+            m_DeltaTime = MilliSeconds::zero();
         }
     }
 

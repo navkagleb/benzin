@@ -113,7 +113,7 @@ namespace benzin
                     "FPS: {:.1f} ({:.3f} ms) | "
                     "({} x {})",
                     m_Backend.GetMainAdapterName(),
-                    s_FrameStats.GetFrameRate(), s_FrameStats.GetDeltaTimeMS(),
+                    s_FrameStats.GetFrameRate(), s_FrameStats.GetDeltaTime().count(),
                     m_Window.GetWidth(), m_Window.GetHeight()
                 );
 

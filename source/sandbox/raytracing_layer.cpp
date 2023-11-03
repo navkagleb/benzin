@@ -162,7 +162,7 @@ namespace sandbox
 
             if (s_FrameStats.IsReady())
             {
-                dispatchRaysTime = m_GPUTimer->GetElapsedTimeInSeconds(GPUTimerIndex::DispatchRays) * 1000.0f;
+                dispatchRaysTime = m_GPUTimer->GetElapsedTime(GPUTimerIndex::DispatchRays).count();
             }
 
             ImGui::Text(std::format("DispatchRays Time: {:.4f} ms", dispatchRaysTime).c_str());
