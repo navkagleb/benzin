@@ -3,6 +3,7 @@
 enum RootConstant
 {
     g_TopLevelASIndex,
+    g_RayGenConstantBufferIndex,
     g_RaytracingOutputTextureIndex,
 };
 
@@ -14,13 +15,11 @@ struct ViewportRect
     float Bottom;
 };
 
-struct RayGenConstantBuffer
+struct RayGenConstants
 {
     ViewportRect Viewport;
     ViewportRect Stencil;
 };
-
-ConstantBuffer<RayGenConstantBuffer> g_RayGenConstants : register(b1);
 
 struct Ray
 {
@@ -42,11 +41,12 @@ bool IsInsideViewport(float2 p, ViewportRect viewport)
 void RayGen()
 {
     RaytracingAccelerationStructure topLevelAS = ResourceDescriptorHeap[BenzinGetRootConstant(g_TopLevelASIndex)];
+    ConstantBuffer<RayGenConstants> rayGenConstants = ResourceDescriptorHeap[BenzinGetRootConstant(g_RayGenConstantBufferIndex)];
     RWTexture2D<float4> raytracingOutputTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_RaytracingOutputTextureIndex)];
 
     const float2 lerpValues = (float2)DispatchRaysIndex() / (float2)DispatchRaysDimensions();
 
-    const ViewportRect viewport = g_RayGenConstants.Viewport;
+    const ViewportRect viewport = rayGenConstants.Viewport;
 
     // Orthographic projection since we're raytracing in screen space.
     RayDesc ray;
@@ -57,21 +57,22 @@ void RayGen()
         0.0f
     );
     ray.TMin = 0.001f;
-    ray.TMax = 10000.0f;
+    ray.TMax = 1000.0f;
 
-    if (IsInsideViewport(ray.Origin.xy, g_RayGenConstants.Stencil))
+    if (IsInsideViewport(ray.Origin.xy, rayGenConstants.Stencil))
     {
         const uint instanceInclusionMask = ~0;
-        const uint rayContributionToHitGroupIndex = 0;
+        const uint contributionToHitGroupIndex = 0;
         const uint multiplierForGeometryContributionToHitGroupIndex = 1;
         const uint missShaderIndex = 0;
 
         RayPayload payload = { float4(0.0f, 0.0f, 0.0f, 0.0f) };
+
         TraceRay(
             topLevelAS,
             RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
             instanceInclusionMask,
-            rayContributionToHitGroupIndex,
+            contributionToHitGroupIndex,
             multiplierForGeometryContributionToHitGroupIndex,
             missShaderIndex,
             ray,
@@ -100,5 +101,5 @@ void ClosestHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttribut
 [shader("miss")]
 void Miss(inout RayPayload payload)
 {
-    payload.Color = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    payload.Color = float4(0.1f, 0.1f, 0.1f, 1.0f);
 }

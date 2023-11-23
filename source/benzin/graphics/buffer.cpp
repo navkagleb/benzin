@@ -83,6 +83,61 @@ namespace benzin
             ));
         }
 
+        D3D12_SHADER_RESOURCE_VIEW_DESC CreateStructuredBufferView(const Buffer& buffer, const StructuredBufferViewCreation& creation)
+        {
+            BenzinAssert(creation.FirstElementIndex < buffer.GetElementCount());
+
+            StructuredBufferViewCreation validatedCreation = creation;
+            validatedCreation.ElementCount = creation.ElementCount != 0 ? creation.ElementCount : buffer.GetElementCount();
+
+            return D3D12_SHADER_RESOURCE_VIEW_DESC
+            {
+                .Format = DXGI_FORMAT_UNKNOWN,
+                .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+                .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+                .Buffer
+                {
+                    .FirstElement = validatedCreation.FirstElementIndex,
+                    .NumElements = validatedCreation.ElementCount,
+                    .StructureByteStride = buffer.GetAlignedElementSize(), // TODO: 'm_AlignedElementSize' when using 'StructuredBuffer'?
+                    .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
+                },
+            };
+        }
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC CreateByteAddressBufferView(const Buffer& buffer)
+        {
+            static constexpr uint32_t r32TypelessFormatSize = sizeof(uint32_t);
+
+            return D3D12_SHADER_RESOURCE_VIEW_DESC
+            {
+                .Format = DXGI_FORMAT_R32_TYPELESS, // TODO: More supported types for ByteAddressBuffer
+                .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+                .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+                .Buffer
+                {
+                    .FirstElement = 0,
+                    .NumElements = buffer.GetSizeInBytes() / r32TypelessFormatSize,
+                    .StructureByteStride = 0,
+                    .Flags = D3D12_BUFFER_SRV_FLAG_RAW,
+                },
+            };
+        }
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC CreateRaytracingAccelerationStructureView(const Buffer& buffer)
+        {
+            return D3D12_SHADER_RESOURCE_VIEW_DESC
+            {
+                .Format = DXGI_FORMAT_UNKNOWN,
+                .ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE,
+                .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+                .RaytracingAccelerationStructure
+                {
+                    .Location = buffer.GetGPUVirtualAddress(),
+                },
+            };
+        }
+
     } // anonymous namespace
 
     Buffer::Buffer(Device& device, const BufferCreation& creation)
@@ -104,9 +159,19 @@ namespace benzin
             buffer.Write(creation.InitialData);
         }
 
-        if (creation.IsNeedShaderResourceView)
+        if (creation.IsNeedStructuredBufferView)
         {
-            PushShaderResourceView();
+            PushStructureBufferView();
+        }
+
+        if (creation.IsNeedByteAddressBufferView)
+        {
+            PushByteAddressBufferView();
+        }
+
+        if (creation.IsNeedRaytracingAccelerationStructureView)
+        {
+            PushRaytracingAccelerationStructureView();
         }
 
         if (creation.IsNeedUnorderedAccessView)
@@ -120,46 +185,26 @@ namespace benzin
         }
     }
 
-    uint32_t Buffer::PushShaderResourceView(const BufferShaderResourceViewCreation& creation)
+    uint32_t Buffer::PushStructureBufferView(const StructuredBufferViewCreation& creation)
+    {
+        BenzinAssert(m_D3D12Resource);
+        
+        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateStructuredBufferView(*this, creation);
+        return PushShaderResourceView(d3d12ShaderResourceViewDesc, m_D3D12Resource);
+    }
+
+    uint32_t Buffer::PushByteAddressBufferView()
     {
         BenzinAssert(m_D3D12Resource);
 
-        BenzinAssert(creation.FirstElementIndex < m_ElementCount);
+        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateByteAddressBufferView(*this);
+        return PushShaderResourceView(d3d12ShaderResourceViewDesc, m_D3D12Resource);
+    }
 
-#if BENZIN_IS_ASSERTS_ENABLED
-        if (creation.IsByteAddressBuffer)
-        {
-            BenzinAssert(creation.ElementCount != 0, "When creating 'BufferShaderResourceViewCreation' as ByteAddressBuffer than 'ElementCount' must be specified");
-        }
-#endif
-
-        BufferShaderResourceViewCreation validatedCreation = creation;
-        validatedCreation.ElementCount = creation.ElementCount != 0 ? creation.ElementCount : m_ElementCount;
-
-        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc
-        {
-            .Format = validatedCreation.IsByteAddressBuffer ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN,
-            .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
-            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-            .Buffer
-            {
-                .FirstElement = validatedCreation.FirstElementIndex,
-                .NumElements = validatedCreation.ElementCount,
-                .StructureByteStride = validatedCreation.IsByteAddressBuffer ? 0 : m_AlignedElementSize, // TODO: 'm_AlignedElementSize' when using 'StructuedBuffer'?
-                .Flags = validatedCreation.IsByteAddressBuffer ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE,
-            },
-        };
-
-        const DescriptorType descriptorType = DescriptorType::ShaderResourceView;
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(descriptorType);
-
-        m_Device.GetD3D12Device()->CreateShaderResourceView(
-            m_D3D12Resource,
-            &d3d12ShaderResourceViewDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
-        );
-
-        return PushResourceView(descriptorType, descriptor);
+    uint32_t Buffer::PushRaytracingAccelerationStructureView()
+    {
+        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateRaytracingAccelerationStructureView(*this);
+        return PushShaderResourceView(d3d12ShaderResourceViewDesc, nullptr);
     }
 
     uint32_t Buffer::PushUnorderedAccessView()
@@ -217,6 +262,22 @@ namespace benzin
             &d3d12ConstantBufferViewDesc,
             D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
         );
+
+        return PushResourceView(descriptorType, descriptor);
+    }
+
+    uint32_t Buffer::PushShaderResourceView(const D3D12_SHADER_RESOURCE_VIEW_DESC& d3d12ShaderResourceViewDesc, ID3D12Resource* d3d12Resource)
+    {
+        const DescriptorType descriptorType = DescriptorType::ShaderResourceView;
+        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(descriptorType);
+
+        m_Device.GetD3D12Device()->CreateShaderResourceView(
+            d3d12Resource,
+            &d3d12ShaderResourceViewDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
+        );
+
+        BenzinTrace("Buffer ShaderResource VA: {:#x}", descriptor.GetGPUHandle());
 
         return PushResourceView(descriptorType, descriptor);
     }

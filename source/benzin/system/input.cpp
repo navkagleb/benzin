@@ -13,6 +13,11 @@ namespace benzin
 
     bool Input::IsKeyPressed(KeyCode keyCode)
     {
+        if (ms_IsKeyEventsBlocked)
+        {
+            return false;
+        }
+
         return ::GetAsyncKeyState(static_cast<int>(keyCode)) & 0x8000;
     }
 

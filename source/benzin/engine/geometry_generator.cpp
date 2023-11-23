@@ -1,7 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/geometry_generator.hpp"
 
-#include "benzin/engine/mesh.hpp"
+#include "benzin/engine/mesh_collection.hpp"
 
 namespace benzin
 {
@@ -553,6 +553,12 @@ namespace benzin
             meshData.Vertices[i].TexCoord.y = phi / DirectX::XM_PI;
         }
 
+        return meshData;
+    }
+
+    const MeshData& GetDefaultGeosphere()
+    {
+        static const MeshData meshData = GenerateGeosphere(GeosphereGeometryCreation{ .Radius = 1.0f, });
         return meshData;
     }
 

@@ -6,12 +6,11 @@ namespace benzin
 {
 
     class Backend;
-
-    class CopyCommandQueue;
     class ComputeCommandQueue;
-    class GraphicsCommandQueue;
-
+    class CopyCommandQueue;
     class DescriptorManager;
+    class Fence;
+    class GraphicsCommandQueue;
     class TextureLoader;
 
     class Device
@@ -42,11 +41,6 @@ namespace benzin
         void CheckFeaturesSupport();
         void CreateBindlessRootSignature();
 
-#if BENZIN_IS_DEBUG_BUILD
-        void BreakOnD3D12Error(bool isBreak);
-        void ReportLiveObjects();
-#endif
-
     private:
         // ID3D12Device5 supports RT
         ID3D12Device5* m_D3D12Device = nullptr;
@@ -59,6 +53,8 @@ namespace benzin
 
         DescriptorManager* m_DescriptorManager = nullptr;
         TextureLoader* m_TextureLoader = nullptr;
+
+        Fence* m_DeviceRemovedFence = nullptr;
     };
 
 } // namespace benzin

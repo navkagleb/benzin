@@ -25,6 +25,8 @@ namespace benzin
         ));
 
         BenzinAssert(d3d12GraphicsCommandList1->QueryInterface(IID_PPV_ARGS(&m_D3D12GraphicsCommandList)));
+
+        SetD3D12ObjectDebugName(m_D3D12GraphicsCommandList, magic_enum::enum_name((D3D12_COMMAND_LIST_TYPE)commandListType));
     }
 
     CommandList::~CommandList()

@@ -15,26 +15,6 @@ namespace benzin
     using Seconds = std::chrono::duration<float>;
     using MilliSeconds = std::chrono::duration<float, std::milli>;
 
-    constexpr auto ToS(MilliSeconds milliSeconds)
-    {
-        return std::chrono::duration_cast<Seconds>(milliSeconds);
-    }
-
-    constexpr auto ToS(float milliSeconds)
-    {
-        return ToS(MilliSeconds{ milliSeconds });
-    }
-
-    constexpr auto ToMS(Seconds seconds)
-    {
-        return std::chrono::duration_cast<MilliSeconds>(seconds);
-    }
-
-    constexpr auto ToMS(float seconds)
-    {
-        return ToMS(Seconds{ seconds });
-    }
-
     constexpr uint64_t KBToBytes(uint64_t kb)
     {
         return kb * 1024;
@@ -88,7 +68,7 @@ namespace benzin
     {
     public:
         ExecuteOnScopeExit(T&& lambda)
-            : m_Lambda{ std::forward<T>(lambda) }
+            : m_Lambda{ std::move(lambda) }
         {}
 
         ~ExecuteOnScopeExit()
@@ -97,7 +77,7 @@ namespace benzin
         }
 
     private:
-        T m_Lambda;
+        const T m_Lambda;
     };
 
 } // namespace benzin
@@ -107,4 +87,10 @@ namespace benzin
 
 #define BenzinUniqueVariableName(name) BenzinStringConcatenate2(name, __LINE__)
 
-#define BenzinExecuteOnScopeExit(labmda) ::benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ labmda }
+#define BenzinExecuteOnScopeExit(lambda) ::benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }
+
+// typeof(value) == float || MilliSecond
+#define BenzinAsS(value) ::benzin::Seconds{ value }
+
+// typeof(value) == float || Second
+#define BenzinAsMS(value) ::benzin::MilliSeconds{ value }

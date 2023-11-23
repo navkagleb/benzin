@@ -12,7 +12,7 @@
 namespace sandbox
 {
 
-    class RaytracingLayer : public benzin::Layer
+    class RaytracingHelloTriangleLayer : public benzin::Layer
     {
     private:
         struct RayGenConstants
@@ -30,7 +30,7 @@ namespace sandbox
         };
 
     public:
-        explicit RaytracingLayer(const benzin::GraphicsRefs& graphicsRefs);
+        explicit RaytracingHelloTriangleLayer(const benzin::GraphicsRefs& graphicsRefs);
 
     public:
         void OnEndFrame() override;
@@ -41,7 +41,6 @@ namespace sandbox
     private:
         void CreateEntities();
 
-        void CreateRootSignatures();
         void CreateRaytracingStateObject();
         void CreateAccelerationStructures();
         void CreateShaderTables();
@@ -61,8 +60,6 @@ namespace sandbox
         std::shared_ptr<benzin::Buffer> m_IndexBuffer;
 
         // Raytracing stuff
-        ComPtr<ID3D12RootSignature> m_D3D12LocalRootSignature;
-
         ComPtr<ID3D12StateObject> m_D3D12RaytracingStateObject;
 
         std::shared_ptr<benzin::Buffer> m_TLAS;
@@ -72,6 +69,7 @@ namespace sandbox
         std::shared_ptr<benzin::Buffer> m_MissShaderTable;
         std::shared_ptr<benzin::Buffer> m_HitGroupShaderTable;
 
+        std::shared_ptr<benzin::Buffer> m_RayGenConstantBuffer;
         std::shared_ptr<benzin::Texture> m_RaytracingOutput;
 
         RayGenConstants m_RayGenConstants

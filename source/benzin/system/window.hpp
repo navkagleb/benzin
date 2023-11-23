@@ -6,16 +6,23 @@
 namespace benzin
 {
 
+    using WindowEventCallback = std::function<void(Event& event)>;
+
+    struct WindowCreation
+    {
+        std::string_view Title;
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        WindowEventCallback EventCallback;
+    };
+
     class Window
     {
     private:
-        friend LRESULT MessageHandler(HWND hwnd, UINT messageCode, WPARAM wparam, LPARAM lparam);
+        friend WindowsMessageHandlerDeclaration();
 
     public:
-        using EventCallbackFunction = std::function<void(Event& event)>;
-
-    public:
-        Window(std::string_view title, uint32_t width, uint32_t height, const EventCallbackFunction& eventCallback);
+        Window(const WindowCreation& creation);
         ~Window();
 
     public:
@@ -27,14 +34,13 @@ namespace benzin
         bool IsResizing() const { return m_IsResizing; }
         bool IsMinimized() const { return m_IsMinimized; }
         bool IsMaximized() const { return m_IsMaximized; }
+        bool IsFocused() const { return m_IsFocused; }
 
     public:
         void ProcessEvents();
 
         void SetTitle(std::string_view title);
         void SetVisible(bool isVisible);
-
-        void SetEventCallbackFunction(const EventCallbackFunction& callback);
 
     private:
         template <typename Event, typename... Args>
@@ -48,8 +54,9 @@ namespace benzin
         bool m_IsResizing = false;
         bool m_IsMinimized = false;
         bool m_IsMaximized = false;
+        bool m_IsFocused = true;
 
-        EventCallbackFunction m_EventCallback;
+        WindowEventCallback m_EventCallback;
     };
 
     template <typename Event, typename... Args>

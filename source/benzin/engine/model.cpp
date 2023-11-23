@@ -4,7 +4,7 @@
 #include <third_party/tinygltf/tiny_gltf.h>
 #include <third_party/tinygltf/stb_image.h>
 
-#include "benzin/engine/mesh.hpp"
+#include "benzin/engine/mesh_collection.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/mapped_data.hpp"
@@ -15,7 +15,7 @@ namespace benzin
     namespace
     {
 
-        struct GPUNode
+        struct GPU_ModelNode
         {
             DirectX::XMMATRIX TransformMatrix;
             DirectX::XMMATRIX InverseTransformMatrix;
@@ -109,7 +109,7 @@ namespace benzin
                 DrawableMesh& drawableMesh = result.DrawableMeshes.emplace_back();
 
                 BenzinAssert(gltfPrimitive.material != -1);
-                drawableMesh.MeshIndex = static_cast<uint32_t>(result.Meshes.size()) - 1;
+                drawableMesh.MeshIndex = (uint32_t)result.Meshes.size() - 1;
                 drawableMesh.MaterialIndex = gltfPrimitive.material;
 
                 switch (gltfPrimitive.mode)
@@ -225,8 +225,8 @@ namespace benzin
                 result.DrawableMeshIndexRanges.reserve(m_GLTFModel.meshes.size());
                 for (const tinygltf::Mesh& gltfMesh : m_GLTFModel.meshes)
                 {
-                    const auto meshIndex = static_cast<uint32_t>(result.Meshes.size());
-                    const auto meshCount = static_cast<uint32_t>(gltfMesh.primitives.size());
+                    const auto meshIndex = (uint32_t)result.Meshes.size();
+                    const auto meshCount = (uint32_t)gltfMesh.primitives.size();
                     result.DrawableMeshIndexRanges.emplace_back(meshIndex, meshIndex + meshCount);
 
                     ParseGLTFMesh(gltfMesh, result);
@@ -250,10 +250,10 @@ namespace benzin
                         BenzinAssert(gltfNode.rotation.size() == 4);
                         const DirectX::XMFLOAT4 rotation
                         {
-                            static_cast<float>(gltfNode.rotation[0]),
-                            static_cast<float>(gltfNode.rotation[1]),
-                            static_cast<float>(gltfNode.rotation[2]),
-                            static_cast<float>(gltfNode.rotation[3])
+                            (float)gltfNode.rotation[0],
+                            (float)gltfNode.rotation[1],
+                            (float)gltfNode.rotation[2],
+                            (float)gltfNode.rotation[3],
                         };
 
                         nodeTransform *= DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&rotation));
@@ -264,9 +264,9 @@ namespace benzin
                         BenzinAssert(gltfNode.scale.size() == 3);
                         const DirectX::XMFLOAT3 scale
                         {
-                            static_cast<float>(gltfNode.scale[0]),
-                            static_cast<float>(gltfNode.scale[1]),
-                            static_cast<float>(gltfNode.scale[2])
+                            (float)gltfNode.scale[0],
+                            (float)gltfNode.scale[1],
+                            (float)gltfNode.scale[2],
                         };
 
                         nodeTransform *= DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&scale));
@@ -277,9 +277,9 @@ namespace benzin
                         BenzinAssert(gltfNode.translation.size() == 3);
                         const DirectX::XMFLOAT3 translation
                         {
-                            static_cast<float>(gltfNode.translation[0]),
-                            static_cast<float>(gltfNode.translation[1]),
-                            static_cast<float>(gltfNode.translation[2])
+                            (float)gltfNode.translation[0],
+                            (float)gltfNode.translation[1],
+                            (float)gltfNode.translation[2],
                         };
 
                         nodeTransform *= DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&translation));
@@ -345,8 +345,8 @@ namespace benzin
                     {
                         .Type = TextureType::Texture2D,
                         .Format = GraphicsFormat::RGBA8Unorm,
-                        .Width = static_cast<uint32_t>(gltfImage.width),
-                        .Height = static_cast<uint32_t>(gltfImage.height),
+                        .Width = (uint32_t)gltfImage.width,
+                        .Height = (uint32_t)gltfImage.height,
                         .MipCount = 1, // TODO: Mip generation
                     };
 
@@ -384,16 +384,16 @@ namespace benzin
 
                         if (albedoTextureIndex != -1)
                         {
-                            material.AlbedoTextureIndex = static_cast<uint32_t>(albedoTextureIndex);
+                            material.AlbedoTextureIndex = (uint32_t)albedoTextureIndex;
                         }
 
                         BenzinAssert(gltfPbrMetallicRoughness.baseColorFactor.size() == 4);
-                        material.AlbedoFactor.x = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[0]);
-                        material.AlbedoFactor.y = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[1]);
-                        material.AlbedoFactor.z = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[2]);
-                        material.AlbedoFactor.w = static_cast<float>(gltfPbrMetallicRoughness.baseColorFactor[3]);
+                        material.AlbedoFactor.x = (float)gltfPbrMetallicRoughness.baseColorFactor[0];
+                        material.AlbedoFactor.y = (float)gltfPbrMetallicRoughness.baseColorFactor[1];
+                        material.AlbedoFactor.z = (float)gltfPbrMetallicRoughness.baseColorFactor[2];
+                        material.AlbedoFactor.w = (float)gltfPbrMetallicRoughness.baseColorFactor[3];
 
-                        material.AlphaCutoff = static_cast<float>(gltfMaterial.alphaCutoff);
+                        material.AlphaCutoff = (float)gltfMaterial.alphaCutoff;
                     }
 
                     // Normal
@@ -402,10 +402,10 @@ namespace benzin
 
                         if (normalTextureIndex != -1)
                         {
-                            material.NormalTextureIndex = static_cast<uint32_t>(normalTextureIndex);
+                            material.NormalTextureIndex = (uint32_t)normalTextureIndex;
                         }
 
-                        material.NormalScale = static_cast<float>(gltfMaterial.normalTexture.scale);
+                        material.NormalScale = (float)gltfMaterial.normalTexture.scale;
                     }
 
                     // MetalRoughness
@@ -414,11 +414,11 @@ namespace benzin
 
                         if (metalRoughessTextureIndex != -1)
                         {
-                            material.MetalRoughnessTextureIndex = static_cast<uint32_t>(metalRoughessTextureIndex);
+                            material.MetalRoughnessTextureIndex = (uint32_t)metalRoughessTextureIndex;
                         }
 
-                        material.MetalnessFactor = static_cast<float>(gltfPbrMetallicRoughness.metallicFactor);
-                        material.RoughnessFactor = static_cast<float>(gltfPbrMetallicRoughness.roughnessFactor);
+                        material.MetalnessFactor = (float)gltfPbrMetallicRoughness.metallicFactor;
+                        material.RoughnessFactor = (float)gltfPbrMetallicRoughness.roughnessFactor;
                     }
 
                     // AO
@@ -427,7 +427,7 @@ namespace benzin
 
                         if (aoTextureIndex != -1)
                         {
-                            material.AOTextureIndex = static_cast<uint32_t>(aoTextureIndex);
+                            material.AOTextureIndex = (uint32_t)aoTextureIndex;
                         }
                     }
 
@@ -437,13 +437,13 @@ namespace benzin
 
                         if (emissiveTextureIndex != -1)
                         {
-                            material.EmissiveTextureIndex = static_cast<uint32_t>(emissiveTextureIndex);
+                            material.EmissiveTextureIndex = (uint32_t)emissiveTextureIndex;
                         }
 
                         BenzinAssert(gltfMaterial.emissiveFactor.size() == 3);
-                        material.EmissiveFactor.x = static_cast<float>(gltfMaterial.emissiveFactor[0]);
-                        material.EmissiveFactor.y = static_cast<float>(gltfMaterial.emissiveFactor[1]);
-                        material.EmissiveFactor.z = static_cast<float>(gltfMaterial.emissiveFactor[2]);
+                        material.EmissiveFactor.x = (float)gltfMaterial.emissiveFactor[0];
+                        material.EmissiveFactor.y = (float)gltfMaterial.emissiveFactor[1];
+                        material.EmissiveFactor.z = (float)gltfMaterial.emissiveFactor[2];
                     }
                 }
             }
@@ -474,7 +474,7 @@ namespace benzin
 
     void Model::LoadFromFile(std::string_view fileName)
     {
-        BenzinAssert(!m_Mesh.get());
+        BenzinAssert(!m_MeshCollection.get());
         BenzinAssert(m_DrawableMeshes.empty());
         BenzinAssert(m_Nodes.empty());
         BenzinAssert(m_Materials.empty());
@@ -490,7 +490,7 @@ namespace benzin
 
         m_DebugName = CutExtension(fileName);
 
-        m_Mesh = std::make_shared<Mesh>(m_Device, MeshCreation
+        m_MeshCollection = std::make_shared<MeshCollection>(m_Device, MeshCollectionCreation
         {
             .DebugName = m_DebugName,
             .Meshes = gltfResult->Meshes,
@@ -509,16 +509,16 @@ namespace benzin
 
     void Model::Create(const ModelCreation& creation)
     {
-        BenzinAssert(!m_Mesh.get());
+        BenzinAssert(!m_MeshCollection.get());
         BenzinAssert(m_DrawableMeshes.empty());
         BenzinAssert(m_Nodes.empty());
         BenzinAssert(m_Materials.empty());
 
         m_DebugName = creation.DebugName;
 
-        m_Mesh = creation.Mesh;
+        m_MeshCollection = creation.MeshCollection;
         m_DrawableMeshes = creation.DrawableMeshes;
-        m_Nodes.emplace_back(IterableRange<uint32_t>{ 0, static_cast<uint32_t>(creation.DrawableMeshes.size()) });
+        m_Nodes.emplace_back(IterableRange<uint32_t>{ 0, (uint32_t)creation.DrawableMeshes.size() });
         m_Materials = creation.Materials;
 
         CreateDrawableMeshBuffer();
@@ -534,8 +534,8 @@ namespace benzin
         {
             .DebugName = std::format("{}_{}", m_DebugName, "DrawableMeshBuffer"),
             .ElementSize = sizeof(DrawableMesh),
-            .ElementCount = static_cast<uint32_t>(m_DrawableMeshes.size()),
-            .IsNeedShaderResourceView = true,
+            .ElementCount = (uint32_t)m_DrawableMeshes.size(),
+            .IsNeedStructuredBufferView = true,
         });
 
         auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
@@ -552,9 +552,9 @@ namespace benzin
         m_NodeBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
         {
             .DebugName = std::format("{}_{}", m_DebugName, "NodeBuffer"),
-            .ElementSize = sizeof(GPUNode),
-            .ElementCount = static_cast<uint32_t>(m_Nodes.size()),
-            .IsNeedShaderResourceView = true,
+            .ElementSize = sizeof(GPU_ModelNode),
+            .ElementCount = (uint32_t)m_Nodes.size(),
+            .IsNeedStructuredBufferView = true,
         });
 
         auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
@@ -567,13 +567,13 @@ namespace benzin
             DirectX::XMVECTOR transformDeterminant = DirectX::XMMatrixDeterminant(node.Transform);
             const DirectX::XMMATRIX inverseTransform = DirectX::XMMatrixInverse(&transformDeterminant, node.Transform);
 
-            const GPUNode gpuNode
+            const GPU_ModelNode gpuModelNode
             {
                 .TransformMatrix = node.Transform,
                 .InverseTransformMatrix = inverseTransform,
             };
 
-            copyCommandList.UpdateBuffer(*m_NodeBuffer, std::span{ &gpuNode, 1 }, i);
+            copyCommandList.UpdateBuffer(*m_NodeBuffer, std::span{ &gpuModelNode, 1 }, i);
         }
     }
 
@@ -646,8 +646,8 @@ namespace benzin
         {
             .DebugName = std::format("{}_{}", m_DebugName, "MaterialBuffer"),
             .ElementSize = sizeof(Material),
-            .ElementCount = static_cast<uint32_t>(m_Materials.size()),
-            .IsNeedShaderResourceView = true,
+            .ElementCount = (uint32_t)m_Materials.size(),
+            .IsNeedStructuredBufferView = true,
         });
 
         auto& copyCommandQueue = m_Device.GetCopyCommandQueue();

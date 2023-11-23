@@ -3,6 +3,20 @@
 namespace benzin
 {
 
+    struct DebugLayerParams
+    {
+        bool IsGPUBasedValidationEnabled = true;
+        bool IsSynchronizedCommandQueueValidationEnabled = true;
+    };
+
+    void EnableD3D12DebugLayer(const DebugLayerParams& params);
+    void EnableDRED();
+
+    void OnD3D12DeviceRemoved(PVOID context, BOOLEAN);
+
+    void BreakOnD3D12Error(ID3D12Device* d3d12Device, bool isBreak);
+    void ReportLiveD3D12Objects(ID3D12Device* d3d12Device);
+
     struct DebugName
     {
         static const uint32_t s_InvalidIndex = std::numeric_limits<uint32_t>::max();

@@ -22,10 +22,12 @@ namespace benzin
         uint64_t GetCompletedValue() const { return m_D3D12Fence->GetCompletedValue(); }
 
         void WaitForGPU(uint64_t value) const;
+        void WaitForDeviceRemoving();
 
     private:
         ID3D12Fence* m_D3D12Fence = nullptr;
         HANDLE m_WaitEvent = nullptr;
+        HANDLE m_DeviceRemovedWaitEvent = nullptr;
     };
 
 } // namespace benzin

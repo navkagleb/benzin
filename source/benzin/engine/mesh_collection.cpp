@@ -1,5 +1,5 @@
 #include "benzin/config/bootstrap.hpp"
-#include "benzin/engine/mesh.hpp"
+#include "benzin/engine/mesh_collection.hpp"
 
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/command_queue.hpp"
@@ -11,7 +11,7 @@ namespace benzin
     namespace
     {
 
-        struct GPUSubMesh
+        struct GPU_MeshInfo
         {
             uint32_t StartVertex;
             uint32_t StartIndex;
@@ -20,17 +20,17 @@ namespace benzin
 
     } // anonymous namespace
 
-    Mesh::Mesh(Device& device)
+    MeshCollection::MeshCollection(Device& device)
         : m_Device{ device }
     {}
 
-    Mesh::Mesh(Device& device, const MeshCreation& creation)
-        : Mesh{ device }
+    MeshCollection::MeshCollection(Device& device, const MeshCollectionCreation& creation)
+        : MeshCollection{ device }
     {
         Create(creation);
     }
 
-    void Mesh::Create(const MeshCreation& creation)
+    void MeshCollection::Create(const MeshCollectionCreation& creation)
     {
         BenzinAssert(!creation.DebugName.empty());
         m_DebugName = creation.DebugName;
@@ -48,7 +48,7 @@ namespace benzin
             .DebugName = std::format("{}_{}", m_DebugName, "VertexBuffer"),
             .ElementSize = sizeof(MeshVertex),
             .ElementCount = totalVertexCount,
-            .IsNeedShaderResourceView = true,
+            .IsNeedStructuredBufferView = true,
         });
 
         m_IndexBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
@@ -56,17 +56,17 @@ namespace benzin
             .DebugName = std::format("{}_{}", m_DebugName, "IndexBuffer"),
             .ElementSize = sizeof(MeshIndex),
             .ElementCount = totalIndexCount,
-            .IsNeedShaderResourceView = true,
+            .IsNeedStructuredBufferView = true,
         });
 
         if (creation.IsNeedSplitByMeshes)
         {
-            m_SubMeshBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
+            m_MeshInfoBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
             {
                 .DebugName = std::format("{}_{}", m_DebugName, "SubMeshBuffer"),
-                .ElementSize = sizeof(GPUSubMesh),
+                .ElementSize = sizeof(GPU_MeshInfo),
                 .ElementCount = static_cast<uint32_t>(creation.Meshes.size()),
-                .IsNeedShaderResourceView = true,
+                .IsNeedStructuredBufferView = true,
             });
         }
 
@@ -74,7 +74,7 @@ namespace benzin
         uint32_t uploadBufferSize = m_VertexBuffer->GetSizeInBytes() + m_IndexBuffer->GetSizeInBytes();
         if (creation.IsNeedSplitByMeshes)
         {
-            uploadBufferSize += m_SubMeshBuffer->GetSizeInBytes();
+            uploadBufferSize += m_MeshInfoBuffer->GetSizeInBytes();
         }
 
         auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
@@ -82,28 +82,36 @@ namespace benzin
 
         auto& copyCommandList = copyCommandQueue.GetCommandList(uploadBufferSize);
 
+        m_MeshInfos.reserve(creation.Meshes.size());
+
         uint32_t vertexOffset = 0;
         uint32_t indexOffset = 0;
         for (const auto [i, mesh] : creation.Meshes | std::views::enumerate)
         {
-            const auto meshVertexCount = static_cast<uint32_t>(mesh.Vertices.size());
-            const auto meshIndexCount = static_cast<uint32_t>(mesh.Indices.size());
+            const auto meshVertexCount = (uint32_t)mesh.Vertices.size();
+            const auto meshIndexCount = (uint32_t)mesh.Indices.size();
 
-            m_SubMeshes.emplace_back(meshIndexCount, mesh.PrimitiveTopology);
+            m_MeshInfos.push_back(MeshInfo
+            {
+                .StartVertex = vertexOffset,
+                .StartIndex = indexOffset,
+                .IndexCount = meshIndexCount,
+                .PrimitiveTopology = mesh.PrimitiveTopology,
+            });
 
             copyCommandList.UpdateBuffer(*m_VertexBuffer, std::span{ mesh.Vertices }, vertexOffset);
             copyCommandList.UpdateBuffer(*m_IndexBuffer, std::span{ mesh.Indices }, indexOffset);
 
             if (creation.IsNeedSplitByMeshes)
             {
-                const GPUSubMesh gpuSubMesh
+                const GPU_MeshInfo gpuMeshInfo
                 {
                     .StartVertex = vertexOffset,
                     .StartIndex = indexOffset,
                     .IndexCount = meshIndexCount,
                 };
 
-                copyCommandList.UpdateBuffer(*m_SubMeshBuffer, std::span{ &gpuSubMesh, 1 }, i);
+                copyCommandList.UpdateBuffer(*m_MeshInfoBuffer, std::span{ &gpuMeshInfo, 1 }, i);
             }
 
             vertexOffset += meshVertexCount;

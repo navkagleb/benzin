@@ -68,7 +68,7 @@ namespace benzin
             return MilliSeconds::zero();
         }
 
-        return ToMS(static_cast<float>(stop - start) * m_InverseFrequency);
+        return BenzinAsS(static_cast<float>(stop - start) * m_InverseFrequency);
     }
 
     void GPUTimer::CreateResources(Device& device)

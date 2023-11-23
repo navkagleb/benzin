@@ -49,4 +49,6 @@ namespace benzin
     MeshData GenerateSphere(const SphereGeometryCreation& creation);
     MeshData GenerateGeosphere(const GeosphereGeometryCreation& creation);
 
+    const MeshData& GetDefaultGeosphere();
+
 } // namespace benzin

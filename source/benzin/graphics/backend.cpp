@@ -6,35 +6,11 @@
 namespace benzin
 {
 
-    namespace
-    {
-
-#if BENZIN_IS_DEBUG_BUILD
-        void EnableD3D12DebugLayer(const DebugLayerParams& params)
-        {
-            ComPtr<ID3D12Debug5> d3d12Debug;
-            BenzinAssert(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12Debug)));
-
-            d3d12Debug->EnableDebugLayer();
-            d3d12Debug->SetEnableGPUBasedValidation(params.IsGPUBasedValidationEnabled);
-            d3d12Debug->SetEnableSynchronizedCommandQueueValidation(params.IsSynchronizedCommandQueueValidationEnabled);
-            d3d12Debug->SetEnableAutoName(true);
-
-            BenzinTrace("------------------------------------------------------------------------");
-            BenzinTrace("D3D12DebugLayer enabled");
-            BenzinTrace("GPUBasedValidation enabled: {}", params.IsGPUBasedValidationEnabled);
-            BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", params.IsSynchronizedCommandQueueValidationEnabled);
-            BenzinTrace("AutoName enabled: true");
-            BenzinTrace("------------------------------------------------------------------------");
-        }
-#endif
-
-    } // anonymous namespace
-
     Backend::Backend(const BackendCreation& creation)
     {
 #if BENZIN_IS_DEBUG_BUILD
         EnableD3D12DebugLayer(creation.DebugLayerParams);
+        EnableDRED();
 #endif
 
         CreateDXGIFactory();
@@ -52,7 +28,6 @@ namespace benzin
     void Backend::CreateDXGIFactory()
     {
         uint32_t dxgiFactoryFlags = 0;
-
 #if BENZIN_IS_DEBUG_BUILD
         dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
 #endif
@@ -96,7 +71,7 @@ namespace benzin
 
         m_MainAdapterName = ToNarrowString(dxgiAdapterDesc.Description);
 
-        BenzinTrace("------------------------------------------------------------------------");
+        BenzinTrace("{}", Logger::s_LineSeparator);
         BenzinTrace("Main Adapter:");
         BenzinTrace("{}", m_MainAdapterName);
         BenzinTrace("VendorID: {}", dxgiAdapterDesc.VendorId);
@@ -104,7 +79,7 @@ namespace benzin
         BenzinTrace("DedicatedVideoMemory: {}MB, {}GB", BytesToMB(dxgiAdapterDesc.DedicatedVideoMemory), BytesToGB(dxgiAdapterDesc.DedicatedVideoMemory));
         BenzinTrace("DedicatedSystemMemory: {}MB, {}GB", BytesToMB(dxgiAdapterDesc.DedicatedSystemMemory), BytesToGB(dxgiAdapterDesc.DedicatedSystemMemory));
         BenzinTrace("SharedSystemMemory: {}MB, {}GB", BytesToMB(dxgiAdapterDesc.SharedSystemMemory), BytesToGB(dxgiAdapterDesc.SharedSystemMemory));
-        BenzinTrace("------------------------------------------------------------------------");
+        BenzinTrace("{}", Logger::s_LineSeparator);
     }
 
 } // namespace benzin

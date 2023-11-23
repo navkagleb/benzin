@@ -5,14 +5,6 @@
 namespace benzin
 {
 
-#if BENZIN_IS_DEBUG_BUILD
-    struct DebugLayerParams
-    {
-        bool IsGPUBasedValidationEnabled = true;
-        bool IsSynchronizedCommandQueueValidationEnabled = true;
-    };
-#endif
-
     struct BackendCreation
     {
         uint32_t MainAdapterIndex = config::g_MainAdapterIndex;

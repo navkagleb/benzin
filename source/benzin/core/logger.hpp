@@ -16,6 +16,9 @@ namespace benzin
         BenzinDefineNonConstructable(Logger);
 
     public:
+        static constexpr std::string_view s_LineSeparator = "------------------------------------------------------------------------";
+
+    public:
         static void Log(LogSeverity severity, const std::source_location& sourceLocation, std::string_view format, std::format_args args)
         {
             LogImpl(severity, sourceLocation, std::vformat(format, args));

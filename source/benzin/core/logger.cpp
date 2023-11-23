@@ -31,19 +31,20 @@ namespace benzin
             return std::format("{}:{}", filePath.substr(filePath.find_last_of("\\") + 1), sourceLocation.line());
         }
 
-        std::string GetOutput(LogSeverity severity, std::string_view time, std::string_view fileName, std::string_view message)
+        std::string GetOutput(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
         {
-            return std::format("[{}][{}][{}]: {}\n", magic_enum::enum_name(severity), time, fileName, message);
+            const auto time = GetTimePointFormat();
+            const auto fileName = GetFileNameFormat(sourceLocation);
+            const auto threadId = std::this_thread::get_id();
+
+            return std::format("[{}][{}][{}][{}]: {}\n", magic_enum::enum_name(severity), time, threadId, fileName, message);
         }
 
     } // anonymous namespace
 
     void Logger::LogImpl(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
     {
-        const auto timePointFormat = GetTimePointFormat();
-        const auto fileNameFormat = GetFileNameFormat(sourceLocation);
-
-        const auto output = GetOutput(severity, timePointFormat, fileNameFormat, message);
+        const auto output = GetOutput(severity, sourceLocation, message);
 
         std::print("{}", output);
         OutputDebugStringA(output.c_str());

@@ -23,13 +23,6 @@ namespace benzin
         SafeUnknownRelease(m_D3D12Resource);
     }
 
-    uint64_t Resource::GetGPUVirtualAddress() const
-    {
-        BenzinAssert(m_D3D12Resource);
-
-        return m_D3D12Resource->GetGPUVirtualAddress();
-    }
-
     uint32_t Resource::GetAllocationSizeInBytes() const
     {
         BenzinAssert(m_D3D12Resource);

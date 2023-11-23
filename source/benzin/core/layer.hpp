@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benzin/core/timer.hpp"
+#include "benzin/core/tick_timer.hpp"
 
 namespace benzin
 {
@@ -38,7 +38,7 @@ namespace benzin
 
         void OnUpdate(MilliSeconds dt)
         {
-            m_ElapsedTime += ToS(dt);
+            m_ElapsedTime += dt;
             m_ElapsedFrameCount++;
         }
 
@@ -54,7 +54,7 @@ namespace benzin
     class Layer
     {
     public:
-        static inline Timer s_FrameTimer;
+        static inline TickTimer s_FrameTimer;
         static inline FrameStats s_FrameStats;
 
     public:
@@ -62,6 +62,15 @@ namespace benzin
         {
             s_FrameTimer.Reset();
         }
+
+        static void OnStaticAfterMainLoop()
+        {
+            const auto elapsedTime = s_FrameTimer.GetElapsedTime();
+
+            BenzinTrace("ExecutionTime: {} ({})", BenzinAsS(elapsedTime), elapsedTime);
+        }
+
+        static void OnStaticBeginFrame() {}
 
         static void OnStaticEndFrame()
         {

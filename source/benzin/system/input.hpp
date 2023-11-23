@@ -10,6 +10,9 @@ namespace benzin
 
     class Input
     {
+    private:
+        friend WindowsMessageHandlerDeclaration();
+
     public:
         template <typename T = int32_t>
         static T GetMouseX(const Window& window) { return static_cast<T>(GetMousePosition(window).x); }
@@ -22,6 +25,9 @@ namespace benzin
 
     private:
         static POINT GetMousePosition(const Window& window);
+
+    private:
+        static inline bool ms_IsKeyEventsBlocked = false;
     };
 
 } // namespace benzin

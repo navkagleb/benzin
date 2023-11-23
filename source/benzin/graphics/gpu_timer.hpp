@@ -9,9 +9,6 @@ namespace benzin
     class CommandList;
     class Device;
 
-    //template <typename T>
-    //class CommandQueue;
-
     class GPUTimer
     {
     public:

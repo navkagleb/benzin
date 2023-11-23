@@ -10,7 +10,7 @@
 #include <benzin/system/key_event.hpp>
 
 #include "main_layer.hpp"
-#include "raytracing_layer.hpp"
+#include "raytracing_hello_triangle_layer.hpp"
 
 namespace sandbox
 {
@@ -20,8 +20,25 @@ namespace sandbox
     public:
         Application()
         {
-            m_MainWindow = std::make_unique<benzin::Window>("Benzin: Sandbox", 1280, 720, [&](benzin::Event& event) { WindowEventCallback(event); });
-            m_Backend = std::make_unique<benzin::Backend>();
+            const benzin::WindowCreation windowCreation
+            {
+                .Title = "Benzin: Sandbox",
+                .Width = 1280,
+                .Height = 720,
+                .EventCallback = [&](benzin::Event& event) { WindowEventCallback(event); },
+            };
+
+            const benzin::BackendCreation backendCreation
+            {
+                .MainAdapterIndex = 1,
+                .DebugLayerParams
+                {
+                    .IsGPUBasedValidationEnabled = true,
+                },
+            };
+
+            m_MainWindow = std::make_unique<benzin::Window>(windowCreation);
+            m_Backend = std::make_unique<benzin::Backend>(backendCreation);
             m_Device = std::make_unique<benzin::Device>(*m_Backend);
             m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Backend, *m_Device);
 
@@ -36,37 +53,35 @@ namespace sandbox
             BeginFrame();
             {
                 m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(graphicsRefs);
-                m_MainLayer = m_LayerStack.Push<MainLayer>(graphicsRefs);
-                //m_RaytracingLayer = m_LayerStack.Push<RaytracingLayer>(graphicsRefs);
+                //m_MainLayer = m_LayerStack.Push<MainLayer>(graphicsRefs);
+                m_RaytracingHelloTriangleLayer = m_LayerStack.Push<RaytracingHelloTriangleLayer>(graphicsRefs);
             }
             EndFrame();
 
-            BenzinAssert(m_ImGuiLayer.get());
+            BenzinEnsure(m_ImGuiLayer.get());
+        }
+
+        ~Application()
+        {
+            // TODO: Need to flush until deferred release is implemented
+            m_Device->GetGraphicsCommandQueue().Flush();
         }
         
-        void Execute()
+        void ExecuteMainLoop()
         {
-            using namespace std::literals::chrono_literals;
-
             benzin::Layer::OnStaticBeforeMainLoop();
 
             m_IsRunning = true;
-
             while (m_IsRunning)
             {
                 m_MainWindow->ProcessEvents();
 
-                if (m_IsPaused)
-                {
-                    std::this_thread::sleep_for(100ms);
-                }
-                else
-                {
-                    BeginFrame();
-                    ProcessFrame();
-                    EndFrame();
-                }
+                BeginFrame();
+                ProcessFrame();
+                EndFrame();
             }
+
+            benzin::Layer::OnStaticAfterMainLoop();
         }
 
     private:
@@ -74,8 +89,6 @@ namespace sandbox
         {
             benzin::EventDispatcher dispatcher{ event };
             dispatcher.Dispatch(&Application::OnWindowClose, *this);
-            dispatcher.Dispatch(&Application::OnWindowEnterResizing, *this);
-            dispatcher.Dispatch(&Application::OnWindowExitResizing, *this);
             dispatcher.Dispatch(&Application::OnWindowResized, *this);
             dispatcher.Dispatch(&Application::OnKeyPressed, *this);
 
@@ -93,6 +106,8 @@ namespace sandbox
         void BeginFrame()
         {
             m_Device->GetGraphicsCommandQueue().ResetCommandList(m_SwapChain->GetCurrentFrameIndex());
+
+            benzin::Layer::OnStaticBeginFrame();
         }
 
         void ProcessFrame()
@@ -135,22 +150,6 @@ namespace sandbox
             return false;
         };
 
-        bool OnWindowEnterResizing(benzin::WindowEnterResizingEvent& event)
-        {
-            m_IsPaused = true;
-            benzin::Layer::s_FrameTimer.Stop();
-
-            return false;
-        };
-
-        bool OnWindowExitResizing(benzin::WindowExitResizingEvent& event)
-        {
-            m_IsPaused = false;
-            benzin::Layer::s_FrameTimer.Start();
-
-            return false;
-        };
-
         bool OnWindowResized(benzin::WindowResizedEvent& event)
         {
             m_SwapChain->ResizeBackBuffers(event.GetWidth(), event.GetHeight());
@@ -177,10 +176,9 @@ namespace sandbox
 
         std::shared_ptr<benzin::ImGuiLayer> m_ImGuiLayer;
         std::shared_ptr<MainLayer> m_MainLayer;
-        std::shared_ptr<RaytracingLayer> m_RaytracingLayer;
+        std::shared_ptr<RaytracingHelloTriangleLayer> m_RaytracingHelloTriangleLayer;
 
         bool m_IsRunning = false;
-        bool m_IsPaused = false;
     };
 
 } // namespace sandbox
@@ -189,12 +187,13 @@ int benzin::ClientMain()
 {
 #if 1
     sandbox::Application application;
-    application.Execute();
+    application.ExecuteMainLoop();
 #else
-    const benzin::Seconds s{ 1.0f };
-    const benzin::MilliSeconds ms = ToMS(s);
+    const auto s = BenzinAsS(1.0f);
+    const auto ms = BenzinAsMS(s);
 
-    std::println("S: {}. MS: {}", s.count(), ms.count());
+    const benzin::MilliSeconds ms2{ 100.0f };
+    const benzin::Seconds s2 = ms2;
 #endif
 
     return 0;

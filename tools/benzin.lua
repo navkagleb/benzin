@@ -14,7 +14,7 @@ workspace "benzin"
 		linkoptions { "/ENTRY:mainCRTStartup" }
 
         defines {
-            "BENZIN_PLATFORM_WINDOWS",
+            "BENZIN_PLATFORM_WIN64",
             "WIN32",
         }
 
@@ -54,8 +54,6 @@ project "third_party"
         "../source/third_party/directx/**.h",
         "../source/third_party/directx/**.cpp",
 
-        -- directxmesh
-
         -- entt
         "../source/third_party/entt/**.h",
         "../source/third_party/entt/**.hpp",
@@ -90,7 +88,6 @@ project "benzin"
 
     nuget {
         "Microsoft.Direct3D.D3D12:1.610.3",
-        "directxmesh_desktop_win10:2023.4.28.1",
         -- "WinPixEventRuntime:1.0.230302001"
     }
 

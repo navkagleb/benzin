@@ -30,7 +30,6 @@ namespace benzin
         void SetCurrentState(ResourceState resourceState) { m_CurrentState = resourceState; }
 
     public:
-        uint64_t GetGPUVirtualAddress() const;
         uint32_t GetAllocationSizeInBytes() const;
 
         virtual uint32_t GetSizeInBytes() const = 0;

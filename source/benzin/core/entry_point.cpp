@@ -1,7 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/entry_point.hpp"
 
-#if BENZIN_IS_PLATFORM_WINDOWS
+#if BENZIN_IS_PLATFORM_WIN64
 
 namespace benzin
 {
@@ -19,4 +19,4 @@ int main(int argc, char** argv)
     return benzin::Main(argc, argv);
 }
 
-#endif // BENZIN_IS_PLATFORM_WINDOWS
+#endif // BENZIN_IS_PLATFORM_WIN64

@@ -25,39 +25,37 @@ namespace benzin
 
     using MeshIndex = uint32_t;
 
-    struct MeshCreation
+    struct MeshCollectionCreation
     {
         std::string_view DebugName;
         std::vector<MeshData> Meshes;
         bool IsNeedSplitByMeshes = true;
     };
 
-    class Mesh
+    class MeshCollection
     {
     public:
-        struct SubMesh
+        struct MeshInfo
         {
+            uint32_t StartVertex = 0;
+            uint32_t StartIndex = 0;
             uint32_t IndexCount = 0;
             PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
         };
 
     public:
-        explicit Mesh(Device& device);
-        Mesh(Device& device, const MeshCreation& creation);
+        explicit MeshCollection(Device& device);
+        MeshCollection(Device& device, const MeshCollectionCreation& creation);
 
     public:
         const std::shared_ptr<Buffer>& GetVertexBuffer() const { return m_VertexBuffer; }
         const std::shared_ptr<Buffer>& GetIndexBuffer() const { return m_IndexBuffer; }
-        const std::shared_ptr<Buffer>& GetSubMeshBuffer() const { return m_SubMeshBuffer; }
+        const std::shared_ptr<Buffer>& GetMeshInfoBuffer() const { return m_MeshInfoBuffer; }
 
-        const std::vector<SubMesh>& GetSubMeshes() const { return m_SubMeshes; }
+        std::span<const MeshInfo> GetMeshInfos() const { return m_MeshInfos; }
 
     public:
-        void Create(const MeshCreation& creation);
-
-    private:
-        void CreateBuffers(uint32_t vertexCount, uint32_t indexCount, uint32_t primitiveCount);
-        void FillBuffers(const std::vector<MeshData>& meshPrimitivesData);
+        void Create(const MeshCollectionCreation& creation);
 
     private:
         Device& m_Device;
@@ -66,9 +64,9 @@ namespace benzin
 
         std::shared_ptr<Buffer> m_VertexBuffer;
         std::shared_ptr<Buffer> m_IndexBuffer;
-        std::shared_ptr<Buffer> m_SubMeshBuffer;
+        std::shared_ptr<Buffer> m_MeshInfoBuffer;
 
-        std::vector<SubMesh> m_SubMeshes;
+        std::vector<MeshInfo> m_MeshInfos;
     };
 
-} // namespace
+} // namespace benzin

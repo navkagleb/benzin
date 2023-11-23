@@ -16,6 +16,11 @@ namespace benzin
 
     Fence::~Fence()
     {
+        if (m_DeviceRemovedWaitEvent)
+        {
+            ::UnregisterWait(m_DeviceRemovedWaitEvent);
+        }
+
         ::CloseHandle(m_WaitEvent);
 
         SafeUnknownRelease(m_D3D12Fence);
@@ -24,7 +29,17 @@ namespace benzin
     void Fence::WaitForGPU(uint64_t value) const
     {
         m_D3D12Fence->SetEventOnCompletion(value, m_WaitEvent);
-        ::WaitForSingleObject(m_WaitEvent, INFINITE);
+        BenzinAssert(::WaitForSingleObject(m_WaitEvent, INFINITE) == WAIT_OBJECT_0);
+    }
+
+    void Fence::WaitForDeviceRemoving()
+    {
+        m_D3D12Fence->SetEventOnCompletion(std::numeric_limits<uint64_t>::max(), m_WaitEvent);
+
+        ComPtr<ID3D12Device> d3d12Device;
+        BenzinAssert(m_D3D12Fence->GetDevice(IID_PPV_ARGS(&d3d12Device)));
+
+        BenzinAssert(::RegisterWaitForSingleObject(&m_DeviceRemovedWaitEvent, m_WaitEvent, OnD3D12DeviceRemoved, d3d12Device.Get(), INFINITE, 0) != 0);
     }
 
 } // namespace benzin

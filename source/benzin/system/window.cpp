@@ -3,9 +3,10 @@
 
 #include <third_party/imgui/backends/imgui_impl_win32.h>
 
-#include "benzin/system/window_event.hpp"
-#include "benzin/system/mouse_event.hpp"
+#include "benzin/system/input.hpp"
 #include "benzin/system/key_event.hpp"
+#include "benzin/system/mouse_event.hpp"
+#include "benzin/system/window_event.hpp"
 
 #include "benzin/graphics/common.hpp"
 
@@ -16,7 +17,7 @@ namespace benzin
 
     // Cannot move implementation of 'MessageHandle' and 'RegisterManager' to anonymous namespace
     // because 'MessageHandler' is a friend of 'Window'
-    LRESULT MessageHandler(HWND handle, UINT messageCode, WPARAM wparam, LPARAM lparam)
+    LRESULT WINDOWS_MESSAGE_HANDLER_FUNC_NAME(HWND handle, UINT messageCode, WPARAM wparam, LPARAM lparam)
     {
         if (messageCode == WM_CREATE)
         {
@@ -55,10 +56,16 @@ namespace benzin
             {
                 if (LOWORD(wparam) == WA_INACTIVE)
                 {
+                    Input::ms_IsKeyEventsBlocked = true;
+
+                    window->m_IsFocused = false;
                     window->CreateAndPushEvent<WindowUnfocusedEvent>();
                 }
                 else
                 {
+                    Input::ms_IsKeyEventsBlocked = false;
+
+                    window->m_IsFocused = true;
                     window->CreateAndPushEvent<WindowFocusedEvent>();
                 }
 
@@ -198,7 +205,7 @@ namespace benzin
             }
             case WM_MOUSEWHEEL:
             {
-                window->CreateAndPushEvent<MouseScrolledEvent>(static_cast<int8_t>(GET_WHEEL_DELTA_WPARAM(wparam) > 0 ? 1 : -1));
+                window->CreateAndPushEvent<MouseScrolledEvent>((int8_t)(GET_WHEEL_DELTA_WPARAM(wparam) > 0 ? 1 : -1));
                 break;
             }
 
@@ -206,19 +213,19 @@ namespace benzin
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
             {
-                window->CreateAndPushEvent<KeyPressedEvent>(static_cast<KeyCode>(wparam), static_cast<bool>(HIWORD(lparam) & KF_REPEAT));
+                window->CreateAndPushEvent<KeyPressedEvent>((KeyCode)wparam, (bool)(HIWORD(lparam) & KF_REPEAT));
                 break;
             }
             case WM_KEYUP:
             case WM_SYSKEYUP:
             {
-                window->CreateAndPushEvent<KeyReleasedEvent>(static_cast<KeyCode>(wparam));
+                window->CreateAndPushEvent<KeyReleasedEvent>((KeyCode)wparam);
                 break;
             }
             case WM_CHAR:
             case WM_SYSCHAR:
             {
-                window->CreateAndPushEvent<KeyTypedEvent>(static_cast<char>(wparam));
+                window->CreateAndPushEvent<KeyTypedEvent>((char)wparam);
                 break;
             }
             default:
@@ -233,17 +240,14 @@ namespace benzin
     class RegisterManager
     {
     public:
-        typedef LRESULT(*MessageHandler)(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
-
-    public:
-        RegisterManager(std::string_view name, MessageHandler messageHandler)
+        explicit RegisterManager(std::string_view name)
             : m_Name{ name }
         {
             const WNDCLASSEX registerClass
             {
                 .cbSize = sizeof(WNDCLASSEX),
                 .style = CS_VREDRAW | CS_HREDRAW | CS_OWNDC,
-                .lpfnWndProc = messageHandler,
+                .lpfnWndProc = WINDOWS_MESSAGE_HANDLER_FUNC_NAME,
                 .cbClsExtra = 0,
                 .cbWndExtra = 0,
                 .hInstance = ::GetModuleHandle(nullptr),
@@ -270,11 +274,11 @@ namespace benzin
         std::string_view m_Name;
     };
 
-    static RegisterManager g_RegisterManager{ "BENZIN_WINDOW_REGISTER_MANAGER", MessageHandler };
+    static RegisterManager g_RegisterManager{ "BenzinWindowRegisterManager" };
 
-    Window::Window(std::string_view title, uint32_t width, uint32_t height, const EventCallbackFunction& eventCallback)
-        : m_Width{ width }
-        , m_Height{ height }
+    Window::Window(const WindowCreation& creation)
+        : m_Width{ creation.Width }
+        , m_Height{ creation.Height }
     {
         const LONG m_Style = WS_OVERLAPPEDWINDOW;
 
@@ -282,15 +286,15 @@ namespace benzin
         {
             .left = 0,
             .top = 0,
-            .right = static_cast<LONG>(m_Width),
-            .bottom = static_cast<LONG>(m_Height),
+            .right = (LONG)m_Width,
+            .bottom = (LONG)m_Height,
         };
 
         BenzinAssert(::AdjustWindowRect(&windowBounds, m_Style, false) != 0);
 
         m_Win64Window = ::CreateWindow(
             g_RegisterManager.GetName().data(),
-            title.data(),
+            creation.Title.data(),
             m_Style,
             (::GetSystemMetrics(SM_CXSCREEN) - windowBounds.right) / 2,
             (::GetSystemMetrics(SM_CYSCREEN) - windowBounds.bottom) / 2,
@@ -299,13 +303,15 @@ namespace benzin
             nullptr,
             nullptr,
             ::GetModuleHandle(nullptr),
-            reinterpret_cast<void*>(this)
+            (void*)this
         );
 
         BenzinAssert(m_Win64Window);
 
         SetVisible(true);
-        SetEventCallbackFunction(eventCallback);
+
+        // Init 'm_EventCallback' after window creation to don't handle events before window is created
+        m_EventCallback = creation.EventCallback;
     }
 
     Window::~Window()
@@ -334,11 +340,6 @@ namespace benzin
     {
         ::ShowWindow(m_Win64Window, isVisible ? SW_SHOW : SW_HIDE);
         ::UpdateWindow(m_Win64Window);
-    }
-
-    void Window::SetEventCallbackFunction(const EventCallbackFunction& callback)
-    {
-        m_EventCallback = callback;
     }
 
 } // namespace benzin

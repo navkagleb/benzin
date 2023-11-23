@@ -10,8 +10,8 @@
     #error Unknown build type
 #endif
 
-#if defined(BENZIN_PLATFORM_WINDOWS)
-    #define BENZIN_IS_PLATFORM_WINDOWS 1
+#if defined(BENZIN_PLATFORM_WIN64)
+    #define BENZIN_IS_PLATFORM_WIN64 1
 #else
     #error Unknown platform
 #endif

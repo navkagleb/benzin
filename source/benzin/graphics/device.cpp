@@ -47,18 +47,18 @@ namespace benzin
             return D3D12_STATIC_SAMPLER_DESC
             {
                 .Filter = ToD3D12TextureFilter(staticSampler.Sampler.Minification, staticSampler.Sampler.Magnification, staticSampler.Sampler.MipLevel),
-                .AddressU = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.Sampler.AddressU),
-                .AddressV = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.Sampler.AddressV),
-                .AddressW = static_cast<D3D12_TEXTURE_ADDRESS_MODE>(staticSampler.Sampler.AddressW),
+                .AddressU = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressU,
+                .AddressV = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressV,
+                .AddressW = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressW,
                 .MipLODBias = staticSampler.MipLODBias,
                 .MaxAnisotropy = staticSampler.MaxAnisotropy,
-                .ComparisonFunc = static_cast<D3D12_COMPARISON_FUNC>(staticSampler.ComparisonFunction),
-                .BorderColor = static_cast<D3D12_STATIC_BORDER_COLOR>(staticSampler.BorderColor),
+                .ComparisonFunc = (D3D12_COMPARISON_FUNC)staticSampler.ComparisonFunction,
+                .BorderColor = (D3D12_STATIC_BORDER_COLOR)staticSampler.BorderColor,
                 .MinLOD = 0.0f,
                 .MaxLOD = D3D12_FLOAT32_MAX,
                 .ShaderRegister = staticSampler.ShaderRegister.Index,
                 .RegisterSpace = staticSampler.ShaderRegister.Space,
-                .ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(staticSampler.ShaderVisibility),
+                .ShaderVisibility = (D3D12_SHADER_VISIBILITY)staticSampler.ShaderVisibility,
             };
         }
 
@@ -71,7 +71,7 @@ namespace benzin
         BenzinAssert(d3d12Device->QueryInterface(&m_D3D12Device));
 
 #if BENZIN_IS_DEBUG_BUILD
-        BreakOnD3D12Error(true);
+        BreakOnD3D12Error(m_D3D12Device, true);
 #endif
         
         CheckFeaturesSupport();
@@ -87,10 +87,19 @@ namespace benzin
             m_ComputeCommandQueue = new ComputeCommandQueue{ *this };
             m_GraphicsCommandQueue = new GraphicsCommandQueue{ *this };
         }
+
+        {
+            m_DeviceRemovedFence = new Fence{ *this };
+            SetD3D12ObjectDebugName(m_DeviceRemovedFence->GetD3D12Fence(), "DeviceRemovedFence");
+
+            m_DeviceRemovedFence->WaitForDeviceRemoving();
+        }
     }
 
     Device::~Device()
     {
+        delete m_DeviceRemovedFence;
+
         delete m_TextureLoader;
         delete m_DescriptorManager;
 
@@ -101,9 +110,8 @@ namespace benzin
         SafeUnknownRelease(m_D3D12BindlessRootSignature);
 
 #if BENZIN_IS_DEBUG_BUILD
-        // Depends on m_D3D12Device
-        BreakOnD3D12Error(false);
-        ReportLiveObjects();
+        BreakOnD3D12Error(m_D3D12Device, false);
+        ReportLiveD3D12Objects(m_D3D12Device);
 #endif
 
         // TODO: There is reference count due to implicit heaps of resources
@@ -114,7 +122,7 @@ namespace benzin
     {
         BenzinAssert(format != GraphicsFormat::Unknown);
 
-        D3D12_FEATURE_DATA_FORMAT_INFO d3d12FormatInfo{ .Format = static_cast<DXGI_FORMAT>(format) };
+        D3D12_FEATURE_DATA_FORMAT_INFO d3d12FormatInfo{ .Format = (DXGI_FORMAT)format };
         BenzinAssert(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_INFO, &d3d12FormatInfo, sizeof(d3d12FormatInfo)));
 
         return d3d12FormatInfo.PlaneCount;
@@ -158,6 +166,15 @@ namespace benzin
 
             BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12Options.MeshShaderTier));
         }
+
+        // DRED Breadcrumb
+        {
+            D3D12_FEATURE_DATA_EXISTING_HEAPS d3d12Options;
+            BenzinAssert(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_EXISTING_HEAPS, &d3d12Options, sizeof(d3d12Options)));
+            BenzinEnsure(d3d12Options.Supported == 1);
+
+            BenzinTrace("Device supports D3D12_FEATURE_EXISTING_HEAPS");
+        }
     }
 
     void Device::CreateBindlessRootSignature()
@@ -192,12 +209,12 @@ namespace benzin
             {
                 .NumParameters = 1,
                 .pParameters = &d3d12RootParameter,
-                .NumStaticSamplers = static_cast<uint32_t>(d3d12StaticSamplerDescs.size()),
+                .NumStaticSamplers = (uint32_t)d3d12StaticSamplerDescs.size(),
                 .pStaticSamplers = d3d12StaticSamplerDescs.data(),
                 .Flags
-                { 
+                {
                     D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-                    D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | 
+                    D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
                     D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED
                 }
             }
@@ -205,19 +222,7 @@ namespace benzin
 
         ComPtr<ID3DBlob> d3d12Blob;
         ComPtr<ID3DBlob> d3d12Error;
-
-        const HRESULT result = D3D12SerializeVersionedRootSignature(&d3d12RootSignatureDesc, &d3d12Blob, &d3d12Error);
-        if (FAILED(result))
-        {
-            BenzinError("Failed to create BindlessRootSignature");
-
-            if (d3d12Error && d3d12Error->GetBufferSize() != 0)
-            {
-                BenzinError("Error: {}", reinterpret_cast<const char*>(d3d12Error->GetBufferPointer()));
-            }
-
-            BenzinAssert(false);
-        }
+        BenzinAssert(D3D12SerializeVersionedRootSignature(&d3d12RootSignatureDesc, &d3d12Blob, &d3d12Error), d3d12Error ? (const char*)d3d12Error->GetBufferPointer() : nullptr);
 
         BenzinAssert(m_D3D12Device->CreateRootSignature(
             0,
@@ -226,27 +231,7 @@ namespace benzin
             IID_PPV_ARGS(&m_D3D12BindlessRootSignature)
         ));
 
-        SetD3D12ObjectDebugName(m_D3D12BindlessRootSignature, "Bindless");
+        SetD3D12ObjectDebugName(m_D3D12BindlessRootSignature, "BindlessRootSignature");
     }
-
-#if BENZIN_IS_DEBUG_BUILD
-    void Device::BreakOnD3D12Error(bool isBreak)
-    {
-        ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
-        BenzinAssert(m_D3D12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
-
-        d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, isBreak);
-        d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, isBreak);
-        d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, isBreak);
-    }
-
-    void Device::ReportLiveObjects()
-    {
-        ComPtr<ID3D12DebugDevice2> d3d12DebugDevice;
-        BenzinAssert(m_D3D12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
-
-        d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL);
-    }
-#endif
 
 } // namespace benzin

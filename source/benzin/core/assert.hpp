@@ -5,50 +5,22 @@
 namespace benzin
 {
 
-    inline void DebugBreak()
+    void AssertFormat(const std::source_location& sourceLocation, std::string_view message);
+    void AssertFormat(HRESULT hr, const std::source_location& sourceLocation, std::string_view message);
+
+    inline std::string ArgsToFormat()
     {
-        if (::IsDebuggerPresent())
-        {
-            ::DebugBreak();
-        }
+        return ""s;
     }
 
-    inline void AssertLog(const std::source_location& sourceLocation, std::string_view format, std::format_args&& args)
+    inline std::string ArgsToFormat(std::nullptr_t)
     {
-        BenzinError("Assert failed | {}:{}", sourceLocation.file_name(), sourceLocation.line());
-        BenzinError("Function: {}", sourceLocation.function_name());
-
-        if (!format.empty())
-        {
-            BenzinError("Message: {}", std::vformat(format, args));
-        }
+        return ""s;
     }
 
-    inline void AssertFormat(const std::source_location& sourceLocation, std::string_view format, auto&&... args)
+    inline std::string ArgsToFormat(std::string_view format, auto&&... args)
     {
-        AssertLog(sourceLocation, format, std::make_format_args(args...));
-
-        DebugBreak();
-    }
-
-    inline void AssertFormat(const std::source_location& sourceLocation)
-    {
-        AssertFormat(sourceLocation, "");
-    }
-
-    inline void AssertFormat(HRESULT hr, const std::source_location& sourceLocation, std::string_view format, auto&&... args)
-    {
-        AssertLog(sourceLocation, format, std::make_format_args(args...));
-
-        _com_error comError{ hr };
-        BenzinError("ComError message: {}", comError.ErrorMessage());
-
-        DebugBreak();
-    }
-
-    inline void AssertFormat(HRESULT hr, const std::source_location& sourceLocation)
-    {
-        AssertFormat(hr, sourceLocation, "");
+        return std::vformat(format, std::make_format_args(args...));
     }
 
     template <typename... Args>
@@ -56,7 +28,7 @@ namespace benzin
     {
         if (!condition)
         {
-            AssertFormat(sourceLocation, std::forward<Args>(args)...);
+            AssertFormat(sourceLocation, ArgsToFormat(std::forward<Args>(args)...));
         }
     }
 
@@ -65,11 +37,10 @@ namespace benzin
     {
         if (FAILED(hr))
         {
-            AssertFormat(hr, sourceLocation, std::forward<Args>(args)...);
+            AssertFormat(hr, sourceLocation, ArgsToFormat(std::forward<Args>(args)...));
         }
     }
 
-    // Interface
     template <typename... Args>
     struct Assert
     {

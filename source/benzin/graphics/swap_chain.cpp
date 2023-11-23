@@ -14,7 +14,7 @@ namespace benzin
         : m_Device{ device }
         , m_FrameFence{ device }
     {
-        SetD3D12ObjectDebugName(m_FrameFence.GetD3D12Fence(), "SwapChainFrame");
+        SetD3D12ObjectDebugName(m_FrameFence.GetD3D12Fence(), "SwapChainFrameFence");
 
         m_DXGISwapChainFlags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 

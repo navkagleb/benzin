@@ -17,11 +17,6 @@
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
 
-#include <DirectXMesh.h>
-#pragma comment(lib, "DirectXMesh.lib")
-
-#include <third_party/directx/D3D12MeshShaders/MeshletGenerator/D3D12MeshletGenerator.h>
-
 #include <packages/dxc/inc/dxcapi.h>
 #include <packages/dxc/inc/d3d12shader.h>
 #pragma comment(lib, "dxcompiler.lib")

@@ -2,7 +2,7 @@
 #include "main_layer.hpp"
 
 #include <benzin/engine/geometry_generator.hpp>
-#include <benzin/engine/mesh.hpp>
+#include <benzin/engine/mesh_collection.hpp>
 #include <benzin/engine/model.hpp>
 #include <benzin/graphics/command_list.hpp>
 #include <benzin/graphics/command_queue.hpp>
@@ -61,9 +61,11 @@ namespace sandbox
 
         enum class GPUTimerIndex
         {
+            _Total,
             _GeometryPass,
             _DeferredLightingPass,
             _EnvironmentPass,
+            _BackBufferCopy,
         };
 
     } // anonymous namespace
@@ -107,7 +109,7 @@ namespace sandbox
             .DepthStencilFormat = ms_DepthStencilFormat,
         });
 
-        OnResize(static_cast<uint32_t>(m_SwapChain.GetViewport().Width), static_cast<uint32_t>(m_SwapChain.GetViewport().Height));
+        OnResize((uint32_t)m_SwapChain.GetViewport().Width, (uint32_t)m_SwapChain.GetViewport().Height);
     }
 
     void GeometryPass::OnUpdate(const benzin::Camera& camera)
@@ -146,14 +148,14 @@ namespace sandbox
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
-        const auto DrawSubMesh = [&](const benzin::Model& model, uint32_t drawableMeshIndex)
+        const auto DrawMesh = [&](const benzin::Model& model, uint32_t drawableMeshIndex)
         {
             const auto& drawableMesh = model.GetDrawableMeshes()[drawableMeshIndex];
-            const auto& subMesh = model.GetMesh()->GetSubMeshes()[drawableMesh.MeshIndex];
+            const auto& meshInfo = model.GetMeshCollection()->GetMeshInfos()[drawableMesh.MeshIndex];
 
             commandList.SetRootConstant(RootConstant::DrawableMeshIndex, drawableMeshIndex);
-            commandList.SetPrimitiveTopology(subMesh.PrimitiveTopology);
-            commandList.DrawVertexed(subMesh.IndexCount);
+            commandList.SetPrimitiveTopology(meshInfo.PrimitiveTopology);
+            commandList.DrawVertexed(meshInfo.IndexCount);
         };
 
         commandList.SetViewport(m_SwapChain.GetViewport());
@@ -195,13 +197,13 @@ namespace sandbox
                 commandList.SetRootConstant(RootConstant::EntityIndex, magic_enum::enum_integer(entity));
 
                 const auto& model = mc.Model;
-                const auto& mesh = model->GetMesh();
+                const auto& meshCollection = model->GetMeshCollection();
 
-                // Mesh
+                // MeshCollection
                 {
-                    commandList.SetRootShaderResource(RootConstant::SubMeshBufferIndex, mesh->GetSubMeshBuffer()->GetShaderResourceView());
-                    commandList.SetRootShaderResource(RootConstant::VertexBufferIndex, mesh->GetVertexBuffer()->GetShaderResourceView());
-                    commandList.SetRootShaderResource(RootConstant::IndexBufferIndex, mesh->GetIndexBuffer()->GetShaderResourceView());
+                    commandList.SetRootShaderResource(RootConstant::SubMeshBufferIndex, meshCollection->GetMeshInfoBuffer()->GetShaderResourceView());
+                    commandList.SetRootShaderResource(RootConstant::VertexBufferIndex, meshCollection->GetVertexBuffer()->GetShaderResourceView());
+                    commandList.SetRootShaderResource(RootConstant::IndexBufferIndex, meshCollection->GetIndexBuffer()->GetShaderResourceView());
                 }
 
                 // Model
@@ -214,19 +216,19 @@ namespace sandbox
                 // If there is no need to draw whole model
                 if (mc.DrawableMeshIndex)
                 {
-                    DrawSubMesh(*model, *mc.DrawableMeshIndex);
+                    DrawMesh(*model, *mc.DrawableMeshIndex);
                     continue;
                 }
 
                 for (size_t nodeIndex = 0; nodeIndex < model->GetNodes().size(); ++nodeIndex)
                 {
-                    const benzin::Model::Node& node = model->GetNodes()[nodeIndex];
+                    const auto& node = model->GetNodes()[nodeIndex];
 
-                    commandList.SetRootConstant(RootConstant::NodeIndex, static_cast<uint32_t>(nodeIndex));
+                    commandList.SetRootConstant(RootConstant::NodeIndex, (uint32_t)nodeIndex);
 
                     for (uint32_t drawableMeshIndex : node.DrawableMeshIndexRange)
                     {
-                        DrawSubMesh(*model, drawableMeshIndex);
+                        DrawMesh(*model, drawableMeshIndex);
                     }
                 }
             }
@@ -311,7 +313,7 @@ namespace sandbox
         for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
         {
             BenzinAssert(m_FrameResources.PassBuffer->PushConstantBufferView({ .ElementIndex = i }) == i);
-            BenzinAssert(m_FrameResources.PointLightBuffer->PushShaderResourceView({ .FirstElementIndex = ms_MaxPointLightCount * i, .ElementCount = ms_MaxPointLightCount }) == i);
+            BenzinAssert(m_FrameResources.PointLightBuffer->PushStructureBufferView({ .FirstElementIndex = ms_MaxPointLightCount * i, .ElementCount = ms_MaxPointLightCount }) == i);
         }
 
         m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::GraphicsPipelineStateCreation
@@ -324,7 +326,7 @@ namespace sandbox
             .RenderTargetFormats{ benzin::GraphicsFormat::RGBA8Unorm },
         });
 
-        OnResize(static_cast<uint32_t>(m_SwapChain.GetViewport().Width), static_cast<uint32_t>(m_SwapChain.GetViewport().Height));
+        OnResize((uint32_t)m_SwapChain.GetViewport().Width, (uint32_t)m_SwapChain.GetViewport().Height);
     }
 
     void DeferredLightingPass::OnUpdate(const benzin::Camera& camera, const entt::registry& registry)
@@ -337,7 +339,7 @@ namespace sandbox
                 .InverseViewMatrix = camera.GetInverseViewMatrix(),
                 .InverseProjectionMatrix = camera.GetInverseProjectionMatrix(),
                 .WorldCameraPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()),
-                .PointLightCount = static_cast<uint32_t>(pointLightView.size_hint()),
+                .PointLightCount = (uint32_t)pointLightView.size_hint(),
                 .SunColor = m_SunColor,
                 .SunIntensity = m_SunIntensity,
                 .SunDirection = m_SunDirection,
@@ -654,6 +656,10 @@ namespace sandbox
 
     void MainLayer::OnRender()
     {
+        auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
+
+        BenzinGPUTimerSlotScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_Total);
+
         m_GeometryPass.OnExecute(m_Registry, *m_FrameResources.EntityDataBuffer);
         m_DeferredLightingPass.OnExecute(m_GeometryPass.GetGBuffer());
 
@@ -666,12 +672,13 @@ namespace sandbox
             auto& currentBackBuffer = *m_SwapChain.GetCurrentBackBuffer();
             auto& deferredLightingOutputTexture = m_DeferredLightingPass.GetOutputTexture();
 
-            auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
-
             commandList.SetResourceBarrier(currentBackBuffer, benzin::ResourceState::CopyDestination);
             commandList.SetResourceBarrier(deferredLightingOutputTexture, benzin::ResourceState::CopySource);
 
-            commandList.CopyResource(*m_SwapChain.GetCurrentBackBuffer(), m_DeferredLightingPass.GetOutputTexture());
+            {
+                BenzinGPUTimerSlotScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_BackBufferCopy);
+                commandList.CopyResource(*m_SwapChain.GetCurrentBackBuffer(), m_DeferredLightingPass.GetOutputTexture());
+            }
 
             commandList.SetResourceBarrier(currentBackBuffer, benzin::ResourceState::Present);
             commandList.SetResourceBarrier(deferredLightingOutputTexture, benzin::ResourceState::Present);
@@ -690,10 +697,10 @@ namespace sandbox
             {
                 const float widgetWidth = ImGui::GetContentRegionAvail().x;
 
-                BENZIN_ASSERT(texture.HasShaderResourceView());
+                BenzinAssert(texture.HasShaderResourceView());
 
                 const uint64_t gpuHandle = texture.GetShaderResourceView().GetGPUHandle();
-                const float textureAspectRatio = static_cast<float>(texture.GetConfig().Width) / static_cast<float>(texture.GetConfig().Height);
+                const float textureAspectRatio = static_cast<float>(texture.GetWidth()) / static_cast<float>(texture.GetHeight());
 
                 const ImVec2 textureSize
                 {
@@ -751,20 +758,22 @@ namespace sandbox
 
         ImGui::Begin("MainLayer Stats");
         {
-            static float geometryPassTime = 0.0f;
-            static float deferredLightingPassTime = 0.0f;
-            static float environmentPassPassTime = 0.0f;
+            static magic_enum::containers::array<GPUTimerIndex, float> times;
 
             if (s_FrameStats.IsReady())
             {
-                geometryPassTime = m_GPUTimer->GetElapsedTime(GPUTimerIndex::_GeometryPass).count();
-                deferredLightingPassTime = m_GPUTimer->GetElapsedTime(GPUTimerIndex::_DeferredLightingPass).count();
-                environmentPassPassTime = m_GPUTimer->GetElapsedTime(GPUTimerIndex::_EnvironmentPass).count();
+                for (const auto [index, time] : times | std::views::enumerate)
+                {
+                    time = m_GPUTimer->GetElapsedTime((uint32_t)index).count();
+                }
             }
 
-            ImGui::Text(std::format("GeometryPass Time: {:.4f} ms", geometryPassTime).c_str());
-            ImGui::Text(std::format("DeferredLightingPass Time: {:.4f} ms", deferredLightingPassTime).c_str());
-            ImGui::Text(std::format("EnvironmentPass Time: {:.4f} ms", environmentPassPassTime).c_str());
+            for (const auto [index, time] : times | std::views::enumerate)
+            {
+                const auto indexName = magic_enum::enum_name(magic_enum::enum_value<GPUTimerIndex>(index)).substr(1);
+
+                ImGui::Text(std::format("GPU {} Time: {:.4f} ms", indexName, time).c_str());
+            }
         }
         ImGui::End();
     }
@@ -781,7 +790,7 @@ namespace sandbox
 
         for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
         {
-            BenzinAssert(m_FrameResources.EntityDataBuffer->PushShaderResourceView({ .FirstElementIndex = ms_MaxEntityCount * i, .ElementCount = ms_MaxEntityCount }) == i);
+            BenzinAssert(m_FrameResources.EntityDataBuffer->PushStructureBufferView({ .FirstElementIndex = ms_MaxEntityCount * i, .ElementCount = ms_MaxEntityCount }) == i);
         }
     }
 
@@ -821,19 +830,13 @@ namespace sandbox
         }
 
         {
-            const benzin::GeosphereGeometryCreation geosphereGeometryCreation
-            {
-                .Radius = 1.0f,
-                .SubdivisionCount = 0,
-            };
-
-            const auto sphereMesh = std::make_shared<benzin::Mesh>(m_Device, benzin::MeshCreation
+            const auto sphereMesh = std::make_shared<benzin::MeshCollection>(m_Device, benzin::MeshCollectionCreation
             {
                 .DebugName = "Geosphere",
-                .Meshes{ benzin::GenerateGeosphere(geosphereGeometryCreation) }
+                .Meshes{ benzin::GetDefaultGeosphere() }
             });
 
-            const size_t rowCount = 32;
+            const size_t rowCount = 20;
             const size_t columnCount = 6;
             const size_t count = rowCount * columnCount;
 
@@ -843,31 +846,30 @@ namespace sandbox
             std::vector<benzin::DrawableMesh> drawableMeshes;
             drawableMeshes.reserve(count);
 
-            for (size_t i = 0; i < rowCount; ++i)
+            for (size_t i = 0; i < count; ++i)
             {
-                for (size_t j = 0; j < columnCount; ++j)
+                materials.push_back(benzin::Material
                 {
-                    const size_t k = i * columnCount + j;
-
-                    auto& material = materials.emplace_back();
-                    material.AlbedoFactor = { 0.0f, 0.0f, 0.0f, 0.0f };
-                    material.EmissiveFactor =
+                    .AlbedoFactor{ 0.0f, 0.0f, 0.0f, 0.0f },
+                    .EmissiveFactor
                     {
-                        static_cast<float>(((k + 1) * 37) % 256) / 255.0f * 2.0f,
-                        static_cast<float>(((k + 1) * 71) % 256) / 255.0f * 2.0f,
-                        static_cast<float>(((k + 1) * 97) % 256) / 255.0f * 2.0f,
-                    };
+                        benzin::Random::GetNumber<float>(0.0f, 1.0f),
+                        benzin::Random::GetNumber<float>(0.0f, 1.0f),
+                        benzin::Random::GetNumber<float>(0.0f, 1.0f),
+                    },
+                });
 
-                    auto& drawPrimitive = drawableMeshes.emplace_back();
-                    drawPrimitive.MeshIndex = 0;
-                    drawPrimitive.MaterialIndex = static_cast<uint32_t>(k);
-                }
+                drawableMeshes.push_back(benzin::DrawableMesh
+                {
+                    .MeshIndex = 0,
+                    .MaterialIndex = (uint32_t)i,
+                });
             }
 
             const auto model = std::make_shared<benzin::Model>(m_Device, benzin::ModelCreation
             {
                 .DebugName = "PointLightSpheres",
-                .Mesh = sphereMesh,
+                .MeshCollection = sphereMesh,
                 .DrawableMeshes = drawableMeshes,
                 .Materials = materials,
             });
@@ -880,25 +882,24 @@ namespace sandbox
 
                     const entt::entity pointLightEntity = m_Registry.create();
 
+                    const float x = ((float)rowCount / -2.0f + (float)i) * 0.5f;
+                    const float y = 0.2f;
+                    const float z = ((float)columnCount / -2.0f + (float)j) * 0.5f;
+
                     auto& tc = m_Registry.emplace<benzin::TransformComponent>(pointLightEntity);
                     tc.Scale = { 0.02f, 0.02f, 0.02f };
-                    tc.Translation =
-                    {
-                        (static_cast<float>(rowCount) / -2.0f + static_cast<float>(i)) * 0.5f,
-                        0.2f,
-                        (static_cast<float>(columnCount) / -2.0f + static_cast<float>(j)) * 0.5f
-                    };
+                    tc.Translation = { x, y, z };
 
-                    const DirectX::XMVECTOR color = DirectX::XMVectorScale(DirectX::XMLoadFloat3(&materials[k].EmissiveFactor), 0.5f);
+                    const DirectX::XMVECTOR color = DirectX::XMLoadFloat3(&materials[k].EmissiveFactor);
 
                     auto& pointLight = m_Registry.emplace<benzin::PointLightComponent>(pointLightEntity);
                     DirectX::XMStoreFloat3(&pointLight.Color, color);
-                    pointLight.Intensity = 4.0f;
-                    pointLight.Range = 4.0f;
+                    pointLight.Intensity = 2.0f;
+                    pointLight.Range = 3.0f;
 
                     auto& modelComponent = m_Registry.emplace<benzin::ModelComponent>(pointLightEntity);
                     modelComponent.Model = model;
-                    modelComponent.DrawableMeshIndex = static_cast<uint32_t>(k);
+                    modelComponent.DrawableMeshIndex = (uint32_t)k;
                 }
             }
         }

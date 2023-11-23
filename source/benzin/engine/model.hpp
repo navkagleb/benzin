@@ -6,7 +6,7 @@ namespace benzin
 {
     
     class Buffer;
-    class Mesh;
+    class MeshCollection;
 
     struct TextureImage
     {
@@ -43,7 +43,7 @@ namespace benzin
     {
         std::string_view DebugName;
 
-        std::shared_ptr<Mesh> Mesh;
+        std::shared_ptr<MeshCollection> MeshCollection;
         std::vector<DrawableMesh> DrawableMeshes;
         std::vector<Material> Materials;
     };
@@ -63,7 +63,7 @@ namespace benzin
         Model(Device& device, const ModelCreation& creation);
 
     public:
-        const std::shared_ptr<Mesh>& GetMesh() const { return m_Mesh; }
+        const std::shared_ptr<MeshCollection>& GetMeshCollection() const { return m_MeshCollection; }
 
         const std::vector<DrawableMesh>& GetDrawableMeshes() const { return m_DrawableMeshes; }
         const std::vector<Node>& GetNodes() const { return m_Nodes; }
@@ -88,7 +88,7 @@ namespace benzin
 
         std::string m_DebugName;
 
-        std::shared_ptr<Mesh> m_Mesh;
+        std::shared_ptr<MeshCollection> m_MeshCollection;
 
         std::vector<DrawableMesh> m_DrawableMeshes;
         std::vector<Node> m_Nodes;

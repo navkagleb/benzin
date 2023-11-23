@@ -133,7 +133,7 @@ VS_Output VS_Main(uint32_t vertexID : SV_VertexID)
     ConstantBuffer<PassData> passData = ResourceDescriptorHeap[BenzinGetRootConstant(g_PassBufferIndex)];
 
     StructuredBuffer<MeshVertex> vertexBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_VertexBufferIndex)];
-    StructuredBuffer<uint32_t> indexBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_IndexBufferIndex)];
+    Buffer<uint32_t> indexBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_IndexBufferIndex)];
 
     StructuredBuffer<DrawPrimitive> drawPrimitiveBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_DrawPrimitiveBufferIndex)];
     StructuredBuffer<MeshPrimitive> meshPrimitiveBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_MeshPrimitiveBufferIndex)];
