@@ -32,8 +32,8 @@ namespace benzin
         BenzinAssert(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
         BenzinAssert(ImGui_ImplDX12_Init(
             m_Device.GetD3D12Device(),
-            config::g_BackBufferCount,
-            static_cast<DXGI_FORMAT>(config::g_BackBufferFormat),
+            g_GraphicsSettings.FrameInFlightCount,
+            (DXGI_FORMAT)g_GraphicsSettings.BackBufferFormat,
             m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCPUHandle() },
             D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGPUHandle() }
@@ -111,10 +111,12 @@ namespace benzin
                 const std::string text = std::format(
                     "{} | "
                     "FPS: {:.1f} ({:.3f} ms) | "
-                    "({} x {})",
+                    "({} x {}) | "
+                    "CPU Frame: {}, GPU Frame: {}",
                     m_Backend.GetMainAdapterName(),
                     s_FrameStats.GetFrameRate(), s_FrameStats.GetDeltaTime().count(),
-                    m_Window.GetWidth(), m_Window.GetHeight()
+                    m_Window.GetWidth(), m_Window.GetHeight(),
+                    m_SwapChain.GetCPUFrameIndex(), m_SwapChain.GetGPUFrameIndex()
                 );
 
                 ImGui::Text(text.c_str());

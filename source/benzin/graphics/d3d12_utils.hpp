@@ -3,12 +3,6 @@
 namespace benzin
 {
 
-    struct DebugLayerParams
-    {
-        bool IsGPUBasedValidationEnabled = true;
-        bool IsSynchronizedCommandQueueValidationEnabled = true;
-    };
-
     void EnableD3D12DebugLayer(const DebugLayerParams& params);
     void EnableDRED();
 

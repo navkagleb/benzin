@@ -15,9 +15,6 @@ namespace benzin
         BenzinDefineNonCopyable(GPUTimer);
         BenzinDefineNonMoveable(GPUTimer);
 
-    private:
-        static const uint32_t ms_BufferFrameCount = config::g_BackBufferCount + 1;
-
     public:
         GPUTimer(Device& device, const auto& commandQueue, size_t timerCount)
             : m_TimerSlotCount{ static_cast<uint32_t>(timerCount) * 2 }

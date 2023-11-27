@@ -10,7 +10,7 @@ namespace benzin
     {
         BenzinAssert(device.GetD3D12Device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_D3D12Fence)));
 
-        m_WaitEvent = CreateEvent(nullptr, false, false, nullptr);
+        m_WaitEvent = ::CreateEvent(nullptr, false, false, nullptr);
         BenzinAssert(m_WaitEvent);
     }
 
@@ -26,20 +26,28 @@ namespace benzin
         SafeUnknownRelease(m_D3D12Fence);
     }
 
-    void Fence::WaitForGPU(uint64_t value) const
+    uint64_t Fence::GetCompletedValue() const
+    {
+        BenzinAssert(m_D3D12Fence);
+
+        return m_D3D12Fence->GetCompletedValue();
+    }
+
+    void Fence::StallCurrentThreadUntilGPUCompletion(uint64_t value) const
     {
         m_D3D12Fence->SetEventOnCompletion(value, m_WaitEvent);
         BenzinAssert(::WaitForSingleObject(m_WaitEvent, INFINITE) == WAIT_OBJECT_0);
     }
 
-    void Fence::WaitForDeviceRemoving()
+    void Fence::SubsribeForDeviceRemoving()
     {
         m_D3D12Fence->SetEventOnCompletion(std::numeric_limits<uint64_t>::max(), m_WaitEvent);
 
-        ComPtr<ID3D12Device> d3d12Device;
+        ID3D12Device* d3d12Device = nullptr; // Releases in 'OnD3D12DeviceRemoved'
         BenzinAssert(m_D3D12Fence->GetDevice(IID_PPV_ARGS(&d3d12Device)));
 
-        BenzinAssert(::RegisterWaitForSingleObject(&m_DeviceRemovedWaitEvent, m_WaitEvent, OnD3D12DeviceRemoved, d3d12Device.Get(), INFINITE, 0) != 0);
+        // 'OnD3D12DeviceRemoved' will run in another thread
+        BenzinAssert(::RegisterWaitForSingleObject(&m_DeviceRemovedWaitEvent, m_WaitEvent, OnD3D12DeviceRemoved, d3d12Device, INFINITE, 0) != 0);
     }
 
 } // namespace benzin

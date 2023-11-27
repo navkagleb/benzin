@@ -92,7 +92,7 @@ namespace benzin
             m_DeviceRemovedFence = new Fence{ *this };
             SetD3D12ObjectDebugName(m_DeviceRemovedFence->GetD3D12Fence(), "DeviceRemovedFence");
 
-            m_DeviceRemovedFence->WaitForDeviceRemoving();
+            m_DeviceRemovedFence->SubsribeForDeviceRemoving();
         }
     }
 

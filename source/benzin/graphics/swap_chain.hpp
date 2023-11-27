@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benzin/graphics/fence.hpp"
+#include "benzin/graphics/common.hpp"
 
 namespace benzin
 {
@@ -10,7 +10,27 @@ namespace benzin
     class Backend;
     class Buffer;
     class Device;
+    class Fence;
     class Texture;
+
+    class FrameFence
+    {
+    public:
+        explicit FrameFence(Device& device);
+
+    public:
+        uint64_t GetCPUFrameIndex() const { return m_CPUFrameIndex; }
+        uint64_t GetGPUFrameIndex() const { return m_GPUFrameIndex; }
+
+
+
+    private:
+        Device& m_Device;
+
+        std::unique_ptr<Fence> m_Fence;
+        uint64_t m_CPUFrameIndex = 0;
+        uint64_t m_GPUFrameIndex = 0;
+    };
 
     class SwapChain
     {
@@ -41,30 +61,31 @@ namespace benzin
         const ScissorRect& GetScissorRect() const { return m_ScissorRect; }
 
     public:
+        void SwapBackBuffer();
+
         void ResizeBackBuffers(uint32_t width, uint32_t height);
-        void Flip();
 
     private:
         void RegisterBackBuffers();
         void UpdateViewportDimensions(float width, float height);
 
         void FlushAndResetBackBuffers();
-        void WaitForGPU();
 
     private:
         Device& m_Device;
 
         IDXGISwapChain3* m_DXGISwapChain = nullptr;
 
-        std::array<std::shared_ptr<Texture>, config::g_BackBufferCount> m_BackBuffers;
+        std::vector<std::shared_ptr<Texture>> m_BackBuffers;
 
-        Fence m_FrameFence;
+        uint32_t m_DXGISwapChainFlags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+        uint32_t m_DXGIPresentFlags = 0;
+
+        bool m_IsVSyncEnabled = false;
+
+        std::unique_ptr<Fence> m_FrameFence;
         uint64_t m_CPUFrameIndex = 0;
         uint64_t m_GPUFrameIndex = 0;
-
-        uint32_t m_DXGISwapChainFlags = 0;
-        uint32_t m_DXGIPresentFlags = 0;
-        bool m_IsVSyncEnabled = false;
 
         float m_AspectRatio = 0.0f;
         Viewport m_Viewport;

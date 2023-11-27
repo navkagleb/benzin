@@ -4,6 +4,7 @@
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/fence.hpp"
 #include "benzin/graphics/texture.hpp"
 #include "benzin/system/window.hpp"
 
@@ -12,12 +13,7 @@ namespace benzin
 
     SwapChain::SwapChain(const Window& window, const Backend& backend, Device& device)
         : m_Device{ device }
-        , m_FrameFence{ device }
     {
-        SetD3D12ObjectDebugName(m_FrameFence.GetD3D12Fence(), "SwapChainFrameFence");
-
-        m_DXGISwapChainFlags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
-
         uint32_t isAllowTearing = 0;
         BenzinAssert(backend.GetDXGIFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &isAllowTearing, sizeof(isAllowTearing)));
 
@@ -31,11 +27,11 @@ namespace benzin
         {
             .Width = window.GetWidth(),
             .Height = window.GetHeight(),
-            .Format = static_cast<DXGI_FORMAT>(config::g_BackBufferFormat),
+            .Format = (DXGI_FORMAT)g_GraphicsSettings.BackBufferFormat,
             .Stereo = false,
             .SampleDesc{ 1, 0 },
             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-            .BufferCount = static_cast<UINT>(config::g_BackBufferCount),
+            .BufferCount = g_GraphicsSettings.FrameInFlightCount,
             .Scaling = DXGI_SCALING_STRETCH,
             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
             .AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED,
@@ -51,15 +47,19 @@ namespace benzin
             nullptr,
             &dxgiSwapChain1
         ));
+        BenzinAssert(dxgiSwapChain1->QueryInterface(IID_PPV_ARGS(&m_DXGISwapChain)));
+        m_DXGISwapChain->SetMaximumFrameLatency(g_GraphicsSettings.FrameInFlightCount);
 
         // Disable fullscreen using Alt + Enter
         BenzinAssert(backend.GetDXGIFactory()->MakeWindowAssociation(window.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
 
-        BenzinAssert(dxgiSwapChain1->QueryInterface(IID_PPV_ARGS(&m_DXGISwapChain)));
-
-        m_DXGISwapChain->SetMaximumFrameLatency(config::g_BackBufferCount);
-
+        m_BackBuffers.resize(g_GraphicsSettings.FrameInFlightCount);
         ResizeBackBuffers(window.GetWidth(), window.GetHeight());
+
+        {
+            m_FrameFence = std::make_unique<Fence>(m_Device);
+            SetD3D12ObjectDebugName(m_FrameFence->GetD3D12Fence(), "SwapChainFrameFence");
+        }
     }
 
     SwapChain::~SwapChain()
@@ -75,38 +75,45 @@ namespace benzin
         FlushAndResetBackBuffers();
 
         BenzinAssert(m_DXGISwapChain->ResizeBuffers(
-            static_cast<UINT>(m_BackBuffers.size()),
+            (uint32_t)m_BackBuffers.size(),
             width,
             height,
-            static_cast<DXGI_FORMAT>(config::g_BackBufferFormat),
+            (DXGI_FORMAT)g_GraphicsSettings.BackBufferFormat,
             m_DXGISwapChainFlags
         ));
 
         RegisterBackBuffers();
-        UpdateViewportDimensions(static_cast<float>(width), static_cast<float>(height));
+        UpdateViewportDimensions((float)width, (float)height);
     }
 
-    void SwapChain::Flip()
+    void SwapChain::SwapBackBuffer()
     {
-        m_Device.GetGraphicsCommandQueue().UpdateFenceValue(m_FrameFence, ++m_CPUFrameIndex);
-
         BenzinAssert(m_DXGISwapChain->Present(m_IsVSyncEnabled, m_IsVSyncEnabled ? 0 : m_DXGIPresentFlags));
 
-        m_GPUFrameIndex = m_FrameFence.GetCompletedValue();
+        m_Device.GetGraphicsCommandQueue().SignalFence(*m_FrameFence, m_CPUFrameIndex);
 
-        WaitForGPU();
+        // Update FrameFence
+        m_CPUFrameIndex++;
+        m_GPUFrameIndex = m_FrameFence->GetCompletedValue();
+
+        if (m_CPUFrameIndex - m_GPUFrameIndex >= g_GraphicsSettings.FrameInFlightCount)
+        {
+            m_GPUFrameIndex = m_CPUFrameIndex - g_GraphicsSettings.FrameInFlightCount + 1;
+            m_FrameFence->StallCurrentThreadUntilGPUCompletion(m_GPUFrameIndex);
+        }
     }
 
     void SwapChain::RegisterBackBuffers()
     {
-        for (const auto [i, backBuffer] : m_BackBuffers | std::views::enumerate)
+        BenzinAssert(!m_BackBuffers.empty());
+
+        for (const auto& [i, backBuffer] : m_BackBuffers | std::views::enumerate)
         {
             ID3D12Resource* d3d12BackBuffer;
-            BenzinAssert(m_DXGISwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&d3d12BackBuffer))); // Increases reference count
+            BenzinAssert(m_DXGISwapChain->GetBuffer((uint32_t)i, IID_PPV_ARGS(&d3d12BackBuffer))); // Increases reference count
             
-            SetD3D12ObjectDebugName(d3d12BackBuffer, "SwapChainBackBuffer", static_cast<uint32_t>(i));
+            SetD3D12ObjectDebugName(d3d12BackBuffer, "SwapChainBackBuffer", (uint32_t)i);
 
-            auto& backBuffer = m_BackBuffers[i];
             backBuffer = std::make_shared<Texture>(m_Device, d3d12BackBuffer);
             backBuffer->PushRenderTargetView();
         }
@@ -125,24 +132,11 @@ namespace benzin
 
     void SwapChain::FlushAndResetBackBuffers()
     {
-        m_Device.GetGraphicsCommandQueue().Flush();
-
+        m_Device.GetGraphicsCommandQueue().Flush(false);
+        
         for (auto& backBuffer : m_BackBuffers)
         {
             backBuffer.reset();
-        }
-    }
-
-    void SwapChain::WaitForGPU()
-    {
-        const uint64_t frameDistance = m_CPUFrameIndex - m_GPUFrameIndex;
-
-        if (frameDistance >= config::g_BackBufferCount)
-        {
-            const uint64_t gpuFrameIndexToWait = m_CPUFrameIndex - config::g_BackBufferCount + 1;
-            m_FrameFence.WaitForGPU(gpuFrameIndexToWait);
-
-            m_GPUFrameIndex = m_FrameFence.GetCompletedValue();
         }
     }
 

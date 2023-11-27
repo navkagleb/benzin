@@ -373,7 +373,7 @@ namespace sandbox
             .ElementCount = (uint32_t)d3d12TopLevelPrebuildInfo.ResultDataMaxSizeInBytes,
             .Flags = benzin::BufferFlag::AllowUnorderedAccess,
             .InitialState = benzin::ResourceState::RaytracingAccelerationStructure,
-            // .IsNeedStructuredBufferView = true, This leads to 'DXGI_ERROR_DEVICE_HUNG' !!!
+            // .IsNeedStructuredBufferView = true, // This leads to 'DXGI_ERROR_DEVICE_HUNG' !!!
             .IsNeedRaytracingAccelerationStructureView = true,
         });
 
@@ -472,7 +472,7 @@ namespace sandbox
         {
             .DebugName = "RayTracingOutput",
             .Type = benzin::TextureType::Texture2D,
-            .Format = benzin::config::g_BackBufferFormat,
+            .Format = benzin::g_GraphicsSettings.BackBufferFormat,
             .Width = (uint32_t)m_SwapChain.GetViewport().Width,
             .Height = (uint32_t)m_SwapChain.GetViewport().Height,
             .MipCount = 1,

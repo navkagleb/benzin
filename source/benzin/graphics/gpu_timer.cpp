@@ -8,6 +8,8 @@
 namespace benzin
 {
 
+    static uint32_t g_ReadBackBufferFrameCount = g_GraphicsSettings.FrameInFlightCount + 1;
+
     GPUTimer::~GPUTimer()
     {
         SafeUnknownRelease(m_D3D12TimestampQueryHeap);
@@ -17,14 +19,14 @@ namespace benzin
     {
         static uint32_t currentFrameIndex = 0;
 
-        const uint32_t bufferSizePerFrame = m_Buffer->GetNotAlignedSizeInBytes() / ms_BufferFrameCount;
+        const uint32_t bufferSizePerFrame = m_Buffer->GetNotAlignedSizeInBytes() / g_ReadBackBufferFrameCount;
 
         // Resolve query for the current frame
         const uint64_t bufferOffset = currentFrameIndex * bufferSizePerFrame;
         commandList.GetD3D12GraphicsCommandList()->ResolveQueryData(m_D3D12TimestampQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, 0, m_TimerSlotCount, m_Buffer->GetD3D12Resource(), bufferOffset);
 
-        // Grab read-back data for the queries from a finished frame 'config::g_BackBufferCount' ago
-        const uint32_t readbackFrameIndex = (currentFrameIndex + 1) % ms_BufferFrameCount;
+        // Grab read-back data for the queries from a finished frame FrameInFlighCount ago
+        const uint32_t readbackFrameIndex = (currentFrameIndex + 1) % g_ReadBackBufferFrameCount;
         const size_t readbackBufferOffset = readbackFrameIndex * bufferSizePerFrame;
 
         const D3D12_RANGE d3d12BufferDataRange
@@ -89,7 +91,7 @@ namespace benzin
         {
             .DebugName = "GPUTimer_Buffer",
             .ElementSize = sizeof(uint64_t),
-            .ElementCount = ms_BufferFrameCount * m_TimerSlotCount,
+            .ElementCount = g_ReadBackBufferFrameCount * m_TimerSlotCount,
             .Flags = BufferFlag::ReadbackBuffer,
             .InitialState = ResourceState::CopyDestination,
         });

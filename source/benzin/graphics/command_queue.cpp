@@ -45,13 +45,13 @@ namespace benzin
         };
 
         ID3D12GraphicsCommandList* d3d12GraphicsCommandList = m_CommandList.GetD3D12GraphicsCommandList();
-        d3d12GraphicsCommandList->SetDescriptorHeaps(static_cast<uint32_t>(std::size(d3d12DescriptorHeaps)), d3d12DescriptorHeaps);
+        d3d12GraphicsCommandList->SetDescriptorHeaps((uint32_t)std::size(d3d12DescriptorHeaps), d3d12DescriptorHeaps);
         d3d12GraphicsCommandList->SetComputeRootSignature(m_Device.GetD3D12BindlessRootSignature());
     }
 
     // GraphicsCommandQueue
     GraphicsCommandQueue::GraphicsCommandQueue(Device& device)
-        : CommandQueue{ device, config::g_BackBufferCount }
+        : CommandQueue{ device, g_GraphicsSettings.FrameInFlightCount }
     {}
 
     void GraphicsCommandQueue::InitCommandList()
@@ -63,7 +63,7 @@ namespace benzin
         };
 
         ID3D12GraphicsCommandList* d3d12GraphicsCommandList = m_CommandList.GetD3D12GraphicsCommandList();
-        d3d12GraphicsCommandList->SetDescriptorHeaps(static_cast<uint32_t>(std::size(d3d12DescriptorHeaps)), d3d12DescriptorHeaps);
+        d3d12GraphicsCommandList->SetDescriptorHeaps((uint32_t)std::size(d3d12DescriptorHeaps), d3d12DescriptorHeaps);
         d3d12GraphicsCommandList->SetComputeRootSignature(m_Device.GetD3D12BindlessRootSignature());
         d3d12GraphicsCommandList->SetGraphicsRootSignature(m_Device.GetD3D12BindlessRootSignature());
     }

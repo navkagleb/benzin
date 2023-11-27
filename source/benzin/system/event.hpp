@@ -89,7 +89,7 @@ namespace benzin
         {
             if (m_Event.GetEventType() == EventChild::GetStaticEventType())
             {
-                m_Event.m_IsHandled = callback(static_cast<EventChild&>(m_Event));
+                m_Event.m_IsHandled = callback((EventChild&)m_Event);
                 return true;
             }
 

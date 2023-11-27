@@ -277,8 +277,6 @@ namespace benzin
             D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
         );
 
-        BenzinTrace("Buffer ShaderResource VA: {:#x}", descriptor.GetGPUHandle());
-
         return PushResourceView(descriptorType, descriptor);
     }
 

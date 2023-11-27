@@ -27,7 +27,7 @@ namespace benzin
     class WindowCloseEvent : public EventInfo<EventType::WindowCloseEvent, EventCategoryFlag::Window>
     {};
 
-    class WindowResizingEvent : public EventInfo<EventType::WindowResizedEvent, EventCategoryFlag::Window>, public WindowSizeEvent
+    class WindowResizingEvent : public EventInfo<EventType::WindowResizingEvent, EventCategoryFlag::Window>, public WindowSizeEvent
     {
     public:
         WindowResizingEvent(uint32_t width, uint32_t height)

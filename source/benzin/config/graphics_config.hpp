@@ -1,14 +1,9 @@
 #pragma once
 
-#include "benzin/graphics/format.hpp"
+#include "benzin/graphics/settings.hpp"
 
 namespace benzin::config
 {
-
-    constexpr uint32_t g_MainAdapterIndex = 0;
-
-    constexpr uint32_t g_BackBufferCount = 3;
-    constexpr GraphicsFormat g_BackBufferFormat = GraphicsFormat::RGBA8Unorm;
 
     constexpr std::wstring_view g_VertexShaderTarget = L"vs_6_6";
     constexpr std::wstring_view g_PixelShaderTarget = L"ps_6_6";

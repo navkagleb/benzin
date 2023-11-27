@@ -20,22 +20,14 @@ namespace benzin
     public:
         ID3D12CommandQueue* GetD3D12CommandQueue() const { return m_D3D12CommandQueue; }
 
-        uint64_t GetTimestampFrequency() const
-        {
-            BenzinAssert(m_D3D12CommandQueue);
-
-            uint64_t frequency = 0;
-            BenzinAssert(m_D3D12CommandQueue->GetTimestampFrequency(&frequency));
-
-            return frequency;
-        }
+        uint64_t GetTimestampFrequency() const;
 
     public:
-
         void ResetCommandList(uint32_t commandAllocatorIndex);
         void ExecuteCommandList();
-        void Flush();
-        void UpdateFenceValue(Fence& fence, uint64_t value);
+        void Flush(bool isforcedCommandListExecution = true);
+
+        void SignalFence(Fence& fence, uint64_t value);
 
     protected:
         virtual void InitCommandList() = 0;
@@ -52,7 +44,6 @@ namespace benzin
         uint64_t m_FlushCount = 0;
 
         bool m_IsCommandListExecuted = false;
-        bool m_IsNeedFlush = false;
     };
 
     class CopyCommandQueue : public CommandQueue<CopyCommandList>
@@ -96,6 +87,6 @@ namespace benzin
 
 } // namespace benzin
 
-#define BenzinFlushCommandQueueOnScopeExit(commandQueue) BenzinExecuteOnScopeExit([&commandQueue] { commandQueue.ExecuteCommandList(); commandQueue.Flush(); })
+#define BenzinFlushCommandQueueOnScopeExit(commandQueue) BenzinExecuteOnScopeExit([&commandQueue] { commandQueue.Flush(); })
 
 #include "benzin/graphics/command_queue.inl"

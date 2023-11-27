@@ -59,8 +59,13 @@ namespace benzin
 
         void FormatToBuffer(const D3D12_DRED_PAGE_FAULT_OUTPUT2& d3d12DREDPageFaultOutput, std::string& buffer)
         {
-            static const auto FormatToBuffer = [](const D3D12_DRED_ALLOCATION_NODE1* d3d12DREDAllocationNode, std::string& buffer)
+            static const auto FormatToBuffer = [](const D3D12_DRED_ALLOCATION_NODE1* d3d12DREDAllocationNode, std::string_view title, std::string& buffer)
             {
+                if (d3d12DREDAllocationNode)
+                {
+                    std::format_to(std::back_inserter(buffer), "{}\n", title);
+                }
+
                 while (d3d12DREDAllocationNode)
                 {
                     std::format_to(std::back_inserter(buffer), "  D3D12_DRED_ALLOCATION_NODE1: {}\n", (const void*)d3d12DREDAllocationNode);
@@ -79,11 +84,8 @@ namespace benzin
             std::format_to(std::back_inserter(buffer), "D3D12_DRED_PAGE_FAULT_OUTPUT2\n");
             std::format_to(std::back_inserter(buffer), "PageFaultVA: {:#x}\n", d3d12DREDPageFaultOutput.PageFaultVA);
 
-            std::format_to(std::back_inserter(buffer), "HeadExistingAllocationNode\n", d3d12DREDPageFaultOutput.PageFaultVA);
-            FormatToBuffer(d3d12DREDPageFaultOutput.pHeadExistingAllocationNode, buffer);
-
-            std::format_to(std::back_inserter(buffer), "HeadRecentFreedAllocationNode\n", d3d12DREDPageFaultOutput.PageFaultVA);
-            FormatToBuffer(d3d12DREDPageFaultOutput.pHeadRecentFreedAllocationNode, buffer);
+            FormatToBuffer(d3d12DREDPageFaultOutput.pHeadExistingAllocationNode, "HeadExistingAllocationNode", buffer);
+            FormatToBuffer(d3d12DREDPageFaultOutput.pHeadRecentFreedAllocationNode, "HeadRecentFreedAllocationNode", buffer);
         }
 
     } // anonymous namespace
@@ -118,15 +120,15 @@ namespace benzin
 
     void OnD3D12DeviceRemoved(PVOID context, BOOLEAN)
     {
-        auto* d3d12RemovedDevice = (ID3D12Device*)context;
+        auto* d3d12Device = (ID3D12Device*)context;
+        BenzinExecuteOnScopeExit([&d3d12Device] { d3d12Device->Release(); });
 
-        BreakOnD3D12Error(d3d12RemovedDevice, false);
+        BreakOnD3D12Error(d3d12Device, false);
 
         std::string buffer;
         buffer.reserve(2048);
 
-        const HRESULT removedReason = d3d12RemovedDevice->GetDeviceRemovedReason();
-
+        const HRESULT removedReason = d3d12Device->GetDeviceRemovedReason();
         switch (removedReason)
         {
             case DXGI_ERROR_DEVICE_HUNG: buffer += "DeviceRemovedReason: DXGI_ERROR_DEVICE_HUNG\n"; break;
@@ -138,7 +140,7 @@ namespace benzin
         }
 
         ComPtr<ID3D12DeviceRemovedExtendedData2> d3d12DRED;
-        BenzinAssert(d3d12RemovedDevice->QueryInterface(IID_PPV_ARGS(&d3d12DRED)));
+        BenzinAssert(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12DRED)));
 
         D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 d3d12DREDAutoBreadcrumbsOutput;
         BenzinAssert(d3d12DRED->GetAutoBreadcrumbsOutput1(&d3d12DREDAutoBreadcrumbsOutput));
@@ -191,7 +193,7 @@ namespace benzin
         std::string debugName;
         debugName.resize_and_overwrite(maxDebugNameSize, [&](char* data, size_t size)
         {
-            auto alignedSize = static_cast<uint32_t>(size);
+            auto alignedSize = (uint32_t)size;
 
             BenzinAssert(d3d12Object->GetPrivateData(WKPDID_D3DDebugObjectName, &alignedSize, data));
             return alignedSize;
@@ -227,7 +229,7 @@ namespace benzin
         }
 
         const bool isRegistered = !HasD3D12ObjectDebugName(d3d12Object);
-        BenzinAssert(d3d12Object->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<uint32_t>(debugName.size()), debugName.data()));
+        BenzinAssert(d3d12Object->SetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t)debugName.size(), debugName.data()));
 
         if (isRegistered)
         {

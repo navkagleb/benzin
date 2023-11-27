@@ -40,7 +40,7 @@ namespace benzin
 
         Descriptor m_FontDescriptor;
 
-        bool m_IsWidgetDrawingEnabled = false;
+        bool m_IsWidgetDrawingEnabled = true;
         bool m_IsEventsAreBlocked = true;
         bool m_IsDemoWindowEnabled = false;
         bool m_IsBottomPanelEnabled = true;

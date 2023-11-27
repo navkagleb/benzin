@@ -6,17 +6,17 @@
 namespace benzin
 {
 
-    Backend::Backend(const BackendCreation& creation)
+    Backend::Backend()
     {
 #if BENZIN_IS_DEBUG_BUILD
-        EnableD3D12DebugLayer(creation.DebugLayerParams);
+        EnableD3D12DebugLayer(g_GraphicsSettings.DebugLayerParams);
         EnableDRED();
 #endif
 
         CreateDXGIFactory();
 
         LogAdapters();
-        CreateDXGIMainAdapter(creation.MainAdapterIndex);
+        CreateDXGIMainAdapter();
     }
 
     Backend::~Backend()
@@ -56,11 +56,11 @@ namespace benzin
         }
     }
 
-    void Backend::CreateDXGIMainAdapter(uint32_t adapterIndex)
+    void Backend::CreateDXGIMainAdapter()
     {
         ComPtr<IDXGIAdapter> dxgiAdapter;
         BenzinAssert(m_DXGIFactory->EnumAdapterByGpuPreference(
-            adapterIndex,
+            g_GraphicsSettings.MainAdapterIndex,
             DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
             IID_PPV_ARGS(&dxgiAdapter)
         ));

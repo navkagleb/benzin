@@ -28,17 +28,8 @@ namespace sandbox
                 .EventCallback = [&](benzin::Event& event) { WindowEventCallback(event); },
             };
 
-            const benzin::BackendCreation backendCreation
-            {
-                .MainAdapterIndex = 1,
-                .DebugLayerParams
-                {
-                    .IsGPUBasedValidationEnabled = true,
-                },
-            };
-
             m_MainWindow = std::make_unique<benzin::Window>(windowCreation);
-            m_Backend = std::make_unique<benzin::Backend>(backendCreation);
+            m_Backend = std::make_unique<benzin::Backend>();
             m_Device = std::make_unique<benzin::Device>(*m_Backend);
             m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Backend, *m_Device);
 
@@ -53,12 +44,14 @@ namespace sandbox
             BeginFrame();
             {
                 m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(graphicsRefs);
-                //m_MainLayer = m_LayerStack.Push<MainLayer>(graphicsRefs);
+
+#if 0
+                m_MainLayer = m_LayerStack.Push<MainLayer>(graphicsRefs);
+#else
                 m_RaytracingHelloTriangleLayer = m_LayerStack.Push<RaytracingHelloTriangleLayer>(graphicsRefs);
+#endif
             }
             EndFrame();
-
-            BenzinEnsure(m_ImGuiLayer.get());
         }
 
         ~Application()
@@ -140,7 +133,7 @@ namespace sandbox
             benzin::Layer::OnStaticEndFrame();
 
             m_Device->GetGraphicsCommandQueue().ExecuteCommandList();
-            m_SwapChain->Flip();
+            m_SwapChain->SwapBackBuffer();
         }
 
     private:
@@ -186,6 +179,16 @@ namespace sandbox
 int benzin::ClientMain()
 {
 #if 1
+    benzin::GraphicsSettings::Initialize(
+    {
+        .MainAdapterIndex = 1,
+        .FrameInFlightCount = 3,
+        .DebugLayerParams
+        {
+            .IsGPUBasedValidationEnabled = true,
+        },
+    });
+
     sandbox::Application application;
     application.ExecuteMainLoop();
 #else

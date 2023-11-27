@@ -80,11 +80,11 @@ namespace sandbox
         {
             .DebugName = "GeometryPass_PassBuffer",
             .ElementSize = sizeof(GBufferPassData),
-            .ElementCount = benzin::config::g_BackBufferCount,
+            .ElementCount = benzin::g_GraphicsSettings.FrameInFlightCount,
             .Flags = benzin::BufferFlag::ConstantBuffer,
         });
 
-        for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
+        for (uint32_t i = 0; i < benzin::g_GraphicsSettings.FrameInFlightCount; ++i)
         {
             BenzinAssert(m_FrameResources.PassBuffer->PushConstantBufferView({ .ElementIndex = i }) == i);
         }
@@ -298,7 +298,7 @@ namespace sandbox
         {
             .DebugName = "DeferredLightingPass_PassBuffer",
             .ElementSize = sizeof(DeferredLightingPassData),
-            .ElementCount = benzin::config::g_BackBufferCount,
+            .ElementCount = benzin::g_GraphicsSettings.FrameInFlightCount,
             .Flags = benzin::BufferFlag::ConstantBuffer,
         });
 
@@ -306,11 +306,11 @@ namespace sandbox
         {
             .DebugName = "DeferredLightingPass_PointLightBuffer",
             .ElementSize = sizeof(PointLight),
-            .ElementCount = ms_MaxPointLightCount * benzin::config::g_BackBufferCount,
+            .ElementCount = ms_MaxPointLightCount * benzin::g_GraphicsSettings.FrameInFlightCount,
             .Flags = benzin::BufferFlag::UploadBuffer,
         });
 
-        for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
+        for (uint32_t i = 0; i < benzin::g_GraphicsSettings.FrameInFlightCount; ++i)
         {
             BenzinAssert(m_FrameResources.PassBuffer->PushConstantBufferView({ .ElementIndex = i }) == i);
             BenzinAssert(m_FrameResources.PointLightBuffer->PushStructureBufferView({ .FirstElementIndex = ms_MaxPointLightCount * i, .ElementCount = ms_MaxPointLightCount }) == i);
@@ -467,7 +467,7 @@ namespace sandbox
         {
             .DebugName = "DeferredLightingPass_OutputTexture",
             .Type = benzin::TextureType::Texture2D,
-            .Format = benzin::config::g_BackBufferFormat,
+            .Format = benzin::g_GraphicsSettings.BackBufferFormat,
             .Width = width,
             .Height = height,
             .MipCount = 1,
@@ -486,11 +486,11 @@ namespace sandbox
         {
             .DebugName = "EnvironmentPass_PassBuffer",
             .ElementSize = sizeof(EnvironmentPassData),
-            .ElementCount = benzin::config::g_BackBufferCount,
+            .ElementCount = benzin::g_GraphicsSettings.FrameInFlightCount,
             .Flags = benzin::BufferFlag::ConstantBuffer,
         });
 
-        for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
+        for (uint32_t i = 0; i < benzin::g_GraphicsSettings.FrameInFlightCount; ++i)
         {
             BenzinAssert(m_FrameResources.PassBuffer->PushConstantBufferView({ .ElementIndex = i }) == i);
         }
@@ -784,11 +784,11 @@ namespace sandbox
         {
             .DebugName = "MainLayer_EntityBuffer",
             .ElementSize = sizeof(EntityData),
-            .ElementCount = ms_MaxEntityCount * benzin::config::g_BackBufferCount,
+            .ElementCount = ms_MaxEntityCount * benzin::g_GraphicsSettings.FrameInFlightCount,
             .Flags = benzin::BufferFlag::UploadBuffer,
         });
 
-        for (uint32_t i = 0; i < benzin::config::g_BackBufferCount; ++i)
+        for (uint32_t i = 0; i < benzin::g_GraphicsSettings.FrameInFlightCount; ++i)
         {
             BenzinAssert(m_FrameResources.EntityDataBuffer->PushStructureBufferView({ .FirstElementIndex = ms_MaxEntityCount * i, .ElementCount = ms_MaxEntityCount }) == i);
         }
