@@ -15,21 +15,22 @@ namespace benzin
         DirectX::XMFLOAT2 TexCoord{ 0.0f, 0.0f };
     };
 
+    using MeshIndex = uint32_t;
+
     struct MeshData
     {
         std::vector<MeshVertex> Vertices;
-        std::vector<uint32_t> Indices;
+        std::vector<MeshIndex> Indices;
 
         PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
     };
-
-    using MeshIndex = uint32_t;
 
     struct MeshCollectionCreation
     {
         std::string_view DebugName;
         std::vector<MeshData> Meshes;
         bool IsNeedSplitByMeshes = true;
+        bool IsNeedDefaultBufferViews = true;
     };
 
     class MeshCollection

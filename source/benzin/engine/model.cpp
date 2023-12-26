@@ -27,7 +27,7 @@ namespace benzin
             std::vector<DrawableMesh> DrawableMeshes;
             std::vector<IterableRange<uint32_t>> DrawableMeshIndexRanges;
 
-            std::vector<Model::Node> ModelNodes;
+            std::vector<ModelNode> ModelNodes;
 
             std::vector<TextureImage> TextureImages;
             std::vector<Material> Materials;
@@ -239,9 +239,22 @@ namespace benzin
 
                 if (!gltfNode.matrix.empty())
                 {
+                    // #NOTE: Actually 'gltfNode.matrix' is already in row-major order. So there is no need to transpose it
+                    // #REFERENCE: glTF docs: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#transformations
+                    // #REFERENCE: Row-major vs column-major matrices: https://gamedev.stackexchange.com/questions/153816/why-do-these-directxmath-functions-seem-like-they-return-column-major-matrics
+
                     BenzinAssert(gltfNode.matrix.size() == 16);
-                    memcpy(&nodeTransform, gltfNode.matrix.data(), sizeof(DirectX::XMMATRIX));
-                    nodeTransform = DirectX::XMMatrixTranspose(nodeTransform);
+
+                    for (uint32_t i = 0; i < 4; ++i)
+                    {
+                        nodeTransform.r[i] = DirectX::XMVECTOR
+                        {
+                            (float)gltfNode.matrix[0 + i * 4],
+                            (float)gltfNode.matrix[1 + i * 4],
+                            (float)gltfNode.matrix[2 + i * 4],
+                            (float)gltfNode.matrix[3 + i * 4],
+                        };
+                    }
                 }
                 else
                 {
@@ -498,11 +511,12 @@ namespace benzin
         });
 
         m_DrawableMeshes = std::move(gltfResult->DrawableMeshes);
-        m_Nodes = std::move(gltfResult->ModelNodes);
-        m_Materials = std::move(gltfResult->Materials);
-
         CreateDrawableMeshBuffer();
+
+        m_Nodes = std::move(gltfResult->ModelNodes);
         CreateNodeBuffer();
+
+        m_Materials = std::move(gltfResult->Materials);
         CreateTextures(gltfResult->TextureImages);
         CreateMaterialBuffer();
     }
@@ -564,13 +578,10 @@ namespace benzin
 
         for (const auto& [i, node] : m_Nodes | std::views::enumerate)
         {
-            DirectX::XMVECTOR transformDeterminant = DirectX::XMMatrixDeterminant(node.Transform);
-            const DirectX::XMMATRIX inverseTransform = DirectX::XMMatrixInverse(&transformDeterminant, node.Transform);
-
             const GPU_ModelNode gpuModelNode
             {
                 .TransformMatrix = node.Transform,
-                .InverseTransformMatrix = inverseTransform,
+                .InverseTransformMatrix = DirectX::XMMatrixInverse(nullptr, node.Transform),
             };
 
             copyCommandList.UpdateBuffer(*m_NodeBuffer, std::span{ &gpuModelNode, 1 }, i);
@@ -579,6 +590,11 @@ namespace benzin
 
     void Model::CreateTextures(const std::vector<TextureImage>& textureImages)
     {
+        if (textureImages.empty())
+        {
+            return;
+        }
+
         uint32_t uploadBufferSize = 0;
 
         m_Textures.reserve(textureImages.size());
@@ -621,7 +637,9 @@ namespace benzin
 
     void Model::CreateMaterialBuffer()
     {
-        // NOTE: If use static labmda don't use [&, this] in capture
+        BenzinAssert(!m_Materials.empty());
+
+        // #NOTE: If use static lambda don't use [&, this] in capture
         static constexpr auto UpdateMaterialTextureIndex = [](const std::vector<std::shared_ptr<Texture>>& textures, uint32_t& textureIndex)
         {
             if (textureIndex != -1)

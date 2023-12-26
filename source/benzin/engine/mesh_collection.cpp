@@ -33,14 +33,16 @@ namespace benzin
     void MeshCollection::Create(const MeshCollectionCreation& creation)
     {
         BenzinAssert(!creation.DebugName.empty());
+        BenzinAssert(!creation.Meshes.empty());
+
         m_DebugName = creation.DebugName;
 
         uint32_t totalVertexCount = 0;
         uint32_t totalIndexCount = 0;
         for (const auto& mesh : creation.Meshes)
         {
-            totalVertexCount += static_cast<uint32_t>(mesh.Vertices.size());
-            totalIndexCount += static_cast<uint32_t>(mesh.Indices.size());
+            totalVertexCount += (uint32_t)mesh.Vertices.size();
+            totalIndexCount += (uint32_t)mesh.Indices.size();
         }
 
         m_VertexBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
@@ -48,7 +50,7 @@ namespace benzin
             .DebugName = std::format("{}_{}", m_DebugName, "VertexBuffer"),
             .ElementSize = sizeof(MeshVertex),
             .ElementCount = totalVertexCount,
-            .IsNeedStructuredBufferView = true,
+            .IsNeedStructuredBufferView = creation.IsNeedDefaultBufferViews,
         });
 
         m_IndexBuffer = std::make_shared<Buffer>(m_Device, BufferCreation
@@ -56,7 +58,7 @@ namespace benzin
             .DebugName = std::format("{}_{}", m_DebugName, "IndexBuffer"),
             .ElementSize = sizeof(MeshIndex),
             .ElementCount = totalIndexCount,
-            .IsNeedStructuredBufferView = true,
+            .IsNeedStructuredBufferView = creation.IsNeedDefaultBufferViews,
         });
 
         if (creation.IsNeedSplitByMeshes)
@@ -65,8 +67,8 @@ namespace benzin
             {
                 .DebugName = std::format("{}_{}", m_DebugName, "SubMeshBuffer"),
                 .ElementSize = sizeof(GPU_MeshInfo),
-                .ElementCount = static_cast<uint32_t>(creation.Meshes.size()),
-                .IsNeedStructuredBufferView = true,
+                .ElementCount = (uint32_t)creation.Meshes.size(),
+                .IsNeedStructuredBufferView = creation.IsNeedDefaultBufferViews,
             });
         }
 

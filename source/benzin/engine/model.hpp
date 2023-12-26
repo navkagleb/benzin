@@ -39,6 +39,12 @@ namespace benzin
         uint32_t MaterialIndex = 0;
     };
 
+    struct ModelNode
+    {
+        IterableRange<uint32_t> DrawableMeshIndexRange;
+        DirectX::XMMATRIX Transform = DirectX::XMMatrixIdentity();
+    };
+
     struct ModelCreation
     {
         std::string_view DebugName;
@@ -51,13 +57,6 @@ namespace benzin
     class Model
     {
     public:
-        struct Node
-        {
-            IterableRange<uint32_t> DrawableMeshIndexRange;
-            DirectX::XMMATRIX Transform = DirectX::XMMatrixIdentity();
-        };
-
-    public:
         explicit Model(Device& device);
         Model(Device& device, std::string_view fileName);
         Model(Device& device, const ModelCreation& creation);
@@ -66,7 +65,7 @@ namespace benzin
         const std::shared_ptr<MeshCollection>& GetMeshCollection() const { return m_MeshCollection; }
 
         const std::vector<DrawableMesh>& GetDrawableMeshes() const { return m_DrawableMeshes; }
-        const std::vector<Node>& GetNodes() const { return m_Nodes; }
+        const std::vector<ModelNode>& GetNodes() const { return m_Nodes; }
         const std::vector<Material>& GetMaterials() const { return m_Materials; }
 
         const std::shared_ptr<Buffer>& GetDrawableMeshBuffer() const { return m_DrawableMeshBuffer; }
@@ -91,11 +90,12 @@ namespace benzin
         std::shared_ptr<MeshCollection> m_MeshCollection;
 
         std::vector<DrawableMesh> m_DrawableMeshes;
-        std::vector<Node> m_Nodes;
-        std::vector<Material> m_Materials;
-
         std::shared_ptr<Buffer> m_DrawableMeshBuffer;
+
+        std::vector<ModelNode> m_Nodes;
         std::shared_ptr<Buffer> m_NodeBuffer;
+
+        std::vector<Material> m_Materials;
         std::vector<std::shared_ptr<Texture>> m_Textures;
         std::shared_ptr<Buffer> m_MaterialBuffer;
     };
