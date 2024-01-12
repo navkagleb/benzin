@@ -32,8 +32,8 @@ namespace benzin
         BenzinAssert(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
         BenzinAssert(ImGui_ImplDX12_Init(
             m_Device.GetD3D12Device(),
-            g_GraphicsSettings.FrameInFlightCount,
-            (DXGI_FORMAT)g_GraphicsSettings.BackBufferFormat,
+            GraphicsSettingsInstance::Get().FrameInFlightCount,
+            (DXGI_FORMAT)GraphicsSettingsInstance::Get().BackBufferFormat,
             m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCPUHandle() },
             D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGPUHandle() }
@@ -63,12 +63,12 @@ namespace benzin
         {
             auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
-            commandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), ResourceState::RenderTarget);
+            commandList.SetResourceBarrier(TransitionBarrier{ *m_SwapChain.GetCurrentBackBuffer(), ResourceState::RenderTarget });
 
             commandList.SetRenderTargets({ m_SwapChain.GetCurrentBackBuffer()->GetRenderTargetView() });
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
 
-            commandList.SetResourceBarrier(*m_SwapChain.GetCurrentBackBuffer(), ResourceState::Present);
+            commandList.SetResourceBarrier(TransitionBarrier{ *m_SwapChain.GetCurrentBackBuffer(), ResourceState::Present });
         }
     }
 

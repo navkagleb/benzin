@@ -35,6 +35,11 @@ namespace benzin
         bool IsNeedConstantBufferView = false;
     };
 
+    struct FormatBufferViewCreation
+    {
+        GraphicsFormat Format = GraphicsFormat::Unknown;
+    };
+
     struct StructuredBufferViewCreation
     {
         uint32_t FirstElementIndex = 0;
@@ -51,6 +56,7 @@ namespace benzin
     class Buffer : public Resource
     {
     public:
+        explicit Buffer(Device& device);
         Buffer(Device& device, const BufferCreation& creation);
 
     public:
@@ -62,12 +68,16 @@ namespace benzin
         uint32_t GetNotAlignedSizeInBytes() const { return m_ElementSize * m_ElementCount; }
 
         uint64_t GetGPUVirtualAddress() const { BenzinAssert(m_D3D12Resource); return m_D3D12Resource->GetGPUVirtualAddress(); }
+        uint64_t GetGPUVirtualAddress(uint32_t elementIndex) const { BenzinAssert(elementIndex < m_ElementCount); return GetGPUVirtualAddress() + elementIndex * m_AlignedElementSize; }
 
     public:
+        void Create(const BufferCreation& creation);
+
         bool HasConstantBufferView(uint32_t index = 0) const { return HasResourceView(DescriptorType::ConstantBufferView, index); }
 
         const Descriptor& GetConstantBufferView(uint32_t index = 0) const { return GetResourceView(DescriptorType::ConstantBufferView, index); }
 
+        uint32_t PushFormatBufferView(const FormatBufferViewCreation& creation);
         uint32_t PushStructureBufferView(const StructuredBufferViewCreation& creation = {});
         uint32_t PushByteAddressBufferView();
         uint32_t PushRaytracingAccelerationStructureView();

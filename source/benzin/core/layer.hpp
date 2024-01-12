@@ -67,7 +67,7 @@ namespace benzin
         {
             const auto elapsedTime = s_FrameTimer.GetElapsedTime();
 
-            BenzinTrace("ExecutionTime: {} ({})", BenzinAsS(elapsedTime), elapsedTime);
+            BenzinTrace("ExecutionTime: {} ({})", BenzinAsSeconds(elapsedTime), elapsedTime);
         }
 
         static void OnStaticBeginFrame() {}

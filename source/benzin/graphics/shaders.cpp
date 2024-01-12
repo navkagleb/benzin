@@ -50,10 +50,8 @@ namespace benzin
             ShaderArgs(ShaderType shaderType, std::string_view entryPoint, const std::span<const std::string>& defines)
                 : Target{ s_ShaderTargets[shaderType] }
                 , EntryPoint{ ToWideString(entryPoint) }
-            {
-                Defines.reserve(defines.size());
-                std::ranges::transform(defines, std::back_inserter(Defines), ToWideString);
-            }
+                , Defines{ std::from_range, defines | std::views::transform(ToWideString) }
+            {}
         };
 
         std::vector<const wchar_t*> GetCompileArgs(const ShaderPaths& paths, const ShaderArgs& args)
@@ -142,6 +140,7 @@ namespace benzin
             CompileResult Compile(const ShaderPaths& paths, const ShaderArgs& args) const
             {
                 const ComPtr<IDxcBlobEncoding> dxcShaderSource = LoadShaderFromFile(paths.SourceFilePath);
+                BenzinAssert(dxcShaderSource.Get());
 
                 const DxcBuffer dxcSourceBuffer
                 {
@@ -167,7 +166,7 @@ namespace benzin
                 if (dxcErrorBlob && dxcErrorBlob->GetStringLength() > 0)
                 {
                     BenzinError("Failed to compile shader: {}", paths.SourceFilePath.string());
-                    BenzinError("Error: {}", dxcErrorBlob->GetStringPointer());
+                    BenzinError("ErrorMessage: \n{}", dxcErrorBlob->GetStringPointer());
 
                     BenzinAssert(false);
                 }
@@ -223,13 +222,18 @@ namespace benzin
 
         size_t GetShaderHash(ShaderType shaderType, const ShaderCreation& shaderCreation)
         {
-            return std::hash<std::string>{}(std::format(
-                "{}{}{}{}",
-                magic_enum::enum_name(shaderType),
-                shaderCreation.FileName,
-                shaderCreation.EntryPoint,
-                std::ranges::fold_left(shaderCreation.Defines, "", std::plus<std::string>{})
-            ));
+            size_t hash = 0;
+
+            hash = HashCombine(magic_enum::enum_integer(shaderType), hash);
+            hash = HashCombine(shaderCreation.FileName, hash);
+            hash = HashCombine(shaderCreation.EntryPoint, hash);
+
+            for (const auto& define : shaderCreation.Defines)
+            {
+                hash = HashCombine(define, hash);
+            }
+
+            return hash;
         }
 
         ShaderCompiler g_ShaderCompiler;
@@ -249,10 +253,13 @@ namespace benzin
 
         const ShaderPaths paths{ hash, shaderCreation.FileName };
 
+#if 0
+        // #TODO: Don't work if change the included file
         if (!IsDestinationFileOlder(paths.SourceFilePath, paths.BinaryFilePath))
         {
             return g_ShaderBinaries[hash] = ReadFromFile(paths.BinaryFilePath);
         }
+#endif
 
         const ShaderArgs args;
         if (shaderType == ShaderType::Library)

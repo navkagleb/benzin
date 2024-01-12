@@ -17,8 +17,8 @@ namespace benzin
     {
         float Width = 0.0f;
         float Depth = 0.0f;
-        uint32_t RowCount = 0;
-        uint32_t ColumnCount = 0;
+        uint32_t WidthPointCount = 0;
+        uint32_t DepthPointCount = 0;
     };
 
     struct CylinderGeometryCreation
@@ -49,6 +49,7 @@ namespace benzin
     MeshData GenerateSphere(const SphereGeometryCreation& creation);
     MeshData GenerateGeosphere(const GeosphereGeometryCreation& creation);
 
-    const MeshData& GetDefaultGeosphere();
+    const MeshData& GetDefaultGridMesh();
+    const MeshData& GetDefaultGeosphereMesh();
 
 } // namespace benzin

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "benzin/graphics/d3d12_utils.hpp"
-#include "benzin/graphics/format.hpp"
 
 namespace benzin
 {
@@ -108,6 +107,17 @@ namespace benzin
         float Width = 0.0f;
         float Height = 0.0f;
     };
+
+    struct DepthStencil
+    {
+        float Depth = 1.0f;
+        uint8_t Stencil = 0;
+    };
+
+    using ClearValueVariant = std::variant<std::monostate, DirectX::XMFLOAT4, DepthStencil>;
+
+    constexpr DirectX::XMFLOAT4 g_DefaultClearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
+    constexpr DepthStencil g_DefaultClearDepthStencil;
 
     constexpr uint32_t AlignThreadGroupCount(uint32_t value, uint32_t threadPerGroupCount)
     {

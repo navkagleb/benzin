@@ -27,13 +27,13 @@ namespace benzin
             return result;
         }
 
-        const auto g_InverseFrequency = 1.0f / static_cast<float>(GetFrequency());
+        const auto g_InverseFrequency = 1.0f / (float)GetFrequency();
 
     } // anonymous namespace
 
     MilliSeconds TickTimer::GetElapsedTime() const
     {
-        return BenzinAsS(static_cast<float>((m_IsPaused ? m_PauseCounts : m_CurrentCounts) - m_PausedCounts - m_ResetCounts) * g_InverseFrequency);
+        return BenzinAsSeconds(((m_IsPaused ? m_PauseCounts : m_CurrentCounts) - m_PausedCounts - m_ResetCounts) * g_InverseFrequency);
     }
 
     void TickTimer::Continue()
@@ -82,7 +82,7 @@ namespace benzin
         }   
 
         m_CurrentCounts = GetCounts();
-        m_DeltaTime = BenzinAsS(static_cast<float>(m_CurrentCounts - m_PreviousCounts) * g_InverseFrequency);
+        m_DeltaTime = BenzinAsSeconds((m_CurrentCounts - m_PreviousCounts) * g_InverseFrequency);
         m_PreviousCounts = m_CurrentCounts;
 
         if (m_DeltaTime < MilliSeconds::zero())

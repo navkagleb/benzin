@@ -15,6 +15,8 @@ namespace benzin
 
     CopyCommandList& CopyCommandQueue::GetCommandList(uint32_t uploadBufferSize)
     {
+        BenzinAssert(uploadBufferSize != 0);
+
         ResetCommandList(0);
         BenzinAssert(m_CommandList.IsValid());
 
@@ -51,7 +53,7 @@ namespace benzin
 
     // GraphicsCommandQueue
     GraphicsCommandQueue::GraphicsCommandQueue(Device& device)
-        : CommandQueue{ device, g_GraphicsSettings.FrameInFlightCount }
+        : CommandQueue{ device, GraphicsSettingsInstance::Get().FrameInFlightCount }
     {}
 
     void GraphicsCommandQueue::InitCommandList()

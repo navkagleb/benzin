@@ -53,7 +53,7 @@ namespace benzin
         ~CopyCommandQueue() override = default;
 
     public:
-        CopyCommandList& GetCommandList(uint32_t uploadBufferSize = 0);
+        CopyCommandList& GetCommandList(uint32_t uploadBufferSize);
 
     private:
         void InitCommandList() override;

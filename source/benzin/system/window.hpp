@@ -13,6 +13,7 @@ namespace benzin
         std::string_view Title;
         uint32_t Width = 0;
         uint32_t Height = 0;
+        bool IsResizable = true;
         WindowEventCallback EventCallback;
     };
 

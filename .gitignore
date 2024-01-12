@@ -8,3 +8,6 @@ build/
 packages/
 
 *imgui.ini
+
+# For CommandLineArguments VS plugin
+*.args.json

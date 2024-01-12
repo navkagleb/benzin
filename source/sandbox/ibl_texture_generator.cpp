@@ -54,7 +54,7 @@ namespace sandbox
             auto& computeCommandList = computeCommandQueue.GetCommandList();
 
             computeCommandList.SetPipelineState(*m_IrradiancePipelineState);
-            computeCommandList.SetResourceBarrier(*irradianceTexture, benzin::ResourceState::UnorderedAccess);
+            computeCommandList.SetResourceBarrier(benzin::TransitionBarrier{ *irradianceTexture, benzin::ResourceState::UnorderedAccess });
 
             BenzinAssert(cubeTexture.HasShaderResourceView());
             computeCommandList.SetRootShaderResource(RootConstant::InputCubeTextureIndex, cubeTexture.GetShaderResourceView());
@@ -62,7 +62,7 @@ namespace sandbox
 
             computeCommandList.Dispatch({ textureSize, textureSize, textureArraySize }, { 8, 8, 1 });
 
-            computeCommandList.SetResourceBarrier(*irradianceTexture, benzin::ResourceState::Present);
+            computeCommandList.SetResourceBarrier(benzin::TransitionBarrier{ *irradianceTexture, benzin::ResourceState::Present });
         }
 
         return irradianceTexture;

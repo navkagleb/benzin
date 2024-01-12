@@ -47,15 +47,14 @@ namespace benzin
 
     void Projection::UpdateMatrix()
     {
-        m_Projection = CreateMatrix();
+        m_ProjectionMatrix = CreateMatrix();
+        m_InverseProjectionMatrix = DirectX::XMMatrixInverse(nullptr, m_ProjectionMatrix);
 
-        DirectX::XMVECTOR projectionDeterminant = DirectX::XMMatrixDeterminant(m_Projection);
-        m_InverseProjection = DirectX::XMMatrixInverse(&projectionDeterminant, m_Projection);
-
-        DirectX::BoundingFrustum::CreateFromMatrix(m_BoundingFrustum, m_Projection);
+        DirectX::BoundingFrustum::CreateFromMatrix(m_BoundingFrustum, m_ProjectionMatrix);
     };
 
     // PerspectiveProjection
+
     PerspectiveProjection::PerspectiveProjection(float fov, float aspectRatio, float nearPlane, float farPlane)
     {
         SetLens(fov, aspectRatio, nearPlane, farPlane);
@@ -91,6 +90,7 @@ namespace benzin
     }
 
     // OrthographicProjection
+
     void OrthographicProjection::SetViewRect(const ViewRect& viewRect)
     {
         m_ViewRect = viewRect;
@@ -111,15 +111,11 @@ namespace benzin
     }
 
     // Camera
-    Camera::Camera()
+
+    Camera::Camera(const Projection& projection)
+        : m_Projection{ projection }
     {
         UpdateRightDirection();
-        UpdateViewMatrix();
-    }
-
-    Camera::Camera(const Projection* projection)
-    {
-        SetProjection(projection);
         UpdateViewMatrix();
     }
 
@@ -148,40 +144,24 @@ namespace benzin
         UpdateViewMatrix();
     }
 
-    void Camera::SetProjection(const Projection* projection)
-    {
-        BenzinAssert(projection);
-
-        m_Projection = projection;
-    }
-
     const DirectX::XMMATRIX& Camera::GetProjectionMatrix() const
     {
-        BenzinAssert(m_Projection);
-
-        return m_Projection->GetMatrix();
+        return m_Projection.GetMatrix();
     }
 
     const DirectX::XMMATRIX& Camera::GetInverseProjectionMatrix() const
     {
-        BenzinAssert(m_Projection);
-
-        return m_Projection->GetInverseMatrix();
+        return m_Projection.GetInverseMatrix();
     }
 
     DirectX::XMMATRIX Camera::GetViewProjectionMatrix() const
     {
-        BenzinAssert(m_Projection);
-
-        return m_ViewMatrix * m_Projection->GetMatrix();
+        return m_ViewMatrix * GetProjectionMatrix();
     }
 
     DirectX::XMMATRIX Camera::GetInverseViewProjectionMatrix() const
     {
-        const DirectX::XMMATRIX viewProjectionMatrix = GetViewProjectionMatrix();
-
-        DirectX::XMVECTOR viewProjectionDeterminant = DirectX::XMMatrixDeterminant(viewProjectionMatrix);
-        return DirectX::XMMatrixInverse(&viewProjectionDeterminant, viewProjectionMatrix);
+        return DirectX::XMMatrixInverse(nullptr, GetViewProjectionMatrix());
     }
 
     DirectX::XMMATRIX Camera::GetInverseViewDirectionProjectionMatrix() const
@@ -189,10 +169,8 @@ namespace benzin
         DirectX::XMMATRIX viewDirectionMatrix = m_ViewMatrix;
         viewDirectionMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
 
-        const DirectX::XMMATRIX viewDirectionProjectionMatrix = viewDirectionMatrix * m_Projection->GetMatrix();
-
-        DirectX::XMVECTOR viewProjectionDeterminant = DirectX::XMMatrixDeterminant(viewDirectionProjectionMatrix);
-        return DirectX::XMMatrixInverse(&viewProjectionDeterminant, viewDirectionProjectionMatrix);
+        const DirectX::XMMATRIX viewDirectionProjectionMatrix = viewDirectionMatrix * GetProjectionMatrix();
+        return DirectX::XMMatrixInverse(nullptr, viewDirectionProjectionMatrix);
     }
 
     void Camera::UpdateRightDirection()
@@ -203,21 +181,23 @@ namespace benzin
     void Camera::UpdateViewMatrix()
     {
         m_ViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
-
-        DirectX::XMVECTOR viewDeterminant = DirectX::XMMatrixDeterminant(m_ViewMatrix);
-        m_InverseViewMatrix = DirectX::XMMatrixInverse(&viewDeterminant, m_ViewMatrix);
+        m_InverseViewMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewMatrix);
     }
 
     // CameraController
+
     FlyCameraController::FlyCameraController(Camera& camera)
         : m_Camera{ camera }
     {
         m_Camera.SetFrontDirection(GetCameraFrontDirection());
     }
 
-    void FlyCameraController::SetCamera(Camera& camera)
+    void FlyCameraController::SetCameraPitchYaw(float pitch, float yaw)
     {
-        m_Camera = camera;
+        m_Pitch = DirectX::XMConvertToRadians(pitch);
+        m_Yaw = DirectX::XMConvertToRadians(yaw);
+
+        m_Camera.SetFrontDirection(GetCameraFrontDirection());
     }
 
     void FlyCameraController::OnEvent(Event& event)
@@ -435,7 +415,7 @@ namespace benzin
 
     PerspectiveProjection* FlyCameraController::GetPerspectiveProjection()
     {
-        const auto* perspectiveProjection = dynamic_cast<const PerspectiveProjection*>(m_Camera.GetProjection());
+        const auto* perspectiveProjection = dynamic_cast<const PerspectiveProjection*>(&m_Camera.GetProjection());
 
         if (!perspectiveProjection)
         {

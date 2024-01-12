@@ -1,5 +1,5 @@
 #include "bootstrap.hpp"
-#include "raytracing_hello_triangle_layer.hpp"
+#include "rt_hello_triangle_layer.hpp"
 
 #include <benzin/engine/model.hpp>
 #include <benzin/graphics/buffer.hpp>
@@ -25,12 +25,14 @@ namespace sandbox
 
         enum class GPUTimerIndex
         {
-            DispatchRays,
+            _BuildBottomLevelAS,
+            _BuildTopLevelAS, 
+            _DispatchRays,
         };
 
     } // anonymous namespace
 
-    RaytracingHelloTriangleLayer::RaytracingHelloTriangleLayer(const benzin::GraphicsRefs& graphicsRefs)
+    RTHelloTriangleLayer::RTHelloTriangleLayer(const benzin::GraphicsRefs& graphicsRefs)
         : m_Window{ graphicsRefs.WindowRef }
         , m_Device{ graphicsRefs.DeviceRef }
         , m_SwapChain{ graphicsRefs.SwapChainRef }
@@ -45,12 +47,12 @@ namespace sandbox
         CreateRaytracingResources();
     }
 
-    void RaytracingHelloTriangleLayer::OnEndFrame()
+    void RTHelloTriangleLayer::OnEndFrame()
     {
         m_GPUTimer->OnEndFrame(m_Device.GetGraphicsCommandQueue().GetCommandList());
     }
 
-    void RaytracingHelloTriangleLayer::OnRender()
+    void RTHelloTriangleLayer::OnRender()
     {
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
@@ -104,74 +106,54 @@ namespace sandbox
             };
 
             {
-                BenzinGPUTimerSlotScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::DispatchRays);
+                BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_DispatchRays);
                 d3d12CommandList->DispatchRays(&d3d12DispatchRayDesc);
             }
         }
 
         {
-            const auto CreateD3D12TransitionBarrier = [](benzin::Resource& resource, benzin::ResourceState stateAfter)
-            {
-                const auto stateBefore = resource.GetCurrentState();
-                resource.SetCurrentState(stateAfter);
-
-                return D3D12_RESOURCE_BARRIER
-                {
-                    .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-                    .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                    .Transition
-                    {
-                        .pResource = resource.GetD3D12Resource(),
-                        .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                        .StateBefore = (D3D12_RESOURCE_STATES)stateBefore,
-                        .StateAfter = (D3D12_RESOURCE_STATES)stateAfter,
-                    },
-                };
-            };
-
             auto& backBuffer = m_SwapChain.GetCurrentBackBuffer();
 
+            commandList.SetResourceBarriers(
             {
-                const D3D12_RESOURCE_BARRIER d3d12ResourceBarriers[]
-                {
-                    CreateD3D12TransitionBarrier(*backBuffer, benzin::ResourceState::CopyDestination),
-                    CreateD3D12TransitionBarrier(*m_RaytracingOutput, benzin::ResourceState::CopySource),
-                };
+                benzin::TransitionBarrier{ *backBuffer, benzin::ResourceState::CopyDestination },
+                benzin::TransitionBarrier{ *m_RaytracingOutput, benzin::ResourceState::CopySource },
+            });
 
-                d3d12CommandList->ResourceBarrier((uint32_t)std::size(d3d12ResourceBarriers), d3d12ResourceBarriers);
-            }
+            commandList.CopyResource(*backBuffer, *m_RaytracingOutput);
 
-            d3d12CommandList->CopyResource(backBuffer->GetD3D12Resource(), m_RaytracingOutput->GetD3D12Resource());
-
+            commandList.SetResourceBarriers(
             {
-                const D3D12_RESOURCE_BARRIER d3d12ResourceBarriers[]
-                {
-                    CreateD3D12TransitionBarrier(*backBuffer, benzin::ResourceState::Present),
-                    CreateD3D12TransitionBarrier(*m_RaytracingOutput, benzin::ResourceState::UnorderedAccess),
-                };
-
-                d3d12CommandList->ResourceBarrier((uint32_t)std::size(d3d12ResourceBarriers), d3d12ResourceBarriers);
-            }
+                benzin::TransitionBarrier{ *backBuffer, benzin::ResourceState::Present },
+                benzin::TransitionBarrier{ *m_RaytracingOutput, benzin::ResourceState::UnorderedAccess },
+            });
         }
     }
 
-    void RaytracingHelloTriangleLayer::OnImGuiRender()
+    void RTHelloTriangleLayer::OnImGuiRender()
     {
         ImGui::Begin("Stats");
         {
-            static float dispatchRaysTime = 0.0f;
+            static magic_enum::containers::array<GPUTimerIndex, float> times;
 
             if (s_FrameStats.IsReady())
             {
-                dispatchRaysTime = m_GPUTimer->GetElapsedTime(GPUTimerIndex::DispatchRays).count();
+                for (const auto& [index, time] : times | std::views::enumerate)
+                {
+                    time = m_GPUTimer->GetElapsedTime((uint32_t)index).count();
+                }
             }
 
-            ImGui::Text(std::format("DispatchRays Time: {:.4f} ms", dispatchRaysTime).c_str());
+            for (const auto& [index, time] : times | std::views::enumerate)
+            {
+                const auto indexName = magic_enum::enum_name(magic_enum::enum_value<GPUTimerIndex>(index)).substr(1);
+                ImGui::Text(std::format("GPU {} Time: {:.4f} ms", indexName, time).c_str());
+            }
         }
         ImGui::End();
     }
 
-    void RaytracingHelloTriangleLayer::CreateEntities()
+    void RTHelloTriangleLayer::CreateEntities()
     {
         const uint32_t vertexSize = sizeof(DirectX::XMFLOAT3);
         const uint32_t indexSize = sizeof(uint32_t);
@@ -200,7 +182,7 @@ namespace sandbox
         copyCommandList.UpdateBuffer(*m_IndexBuffer, std::span<const uint32_t>{ m_Indices });
     }
 
-    void RaytracingHelloTriangleLayer::CreateRaytracingStateObject()
+    void RTHelloTriangleLayer::CreateRaytracingStateObject()
     {
         // D3D12_STATE_SUBOBJECT_TYPE_STATE_OBJECT_CONFIG
         // D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE
@@ -225,12 +207,14 @@ namespace sandbox
         // 2. D3D12_DXIL_LIBRARY_DESC
         const std::span<const std::byte> libraryBinary = benzin::GetShaderBinary(benzin::ShaderType::Library, { "raytracing_hello_triangle.hlsl" });
 
+#if 0 // Can use default 'D3D12_DXIL_LIBRARY_DESC::NumExports'
         std::vector<D3D12_EXPORT_DESC> d3d12ExportDescs
         {
             D3D12_EXPORT_DESC{ .Name = g_RayGenShaderName.data(), .ExportToRename = nullptr, .Flags = D3D12_EXPORT_FLAG_NONE },
             D3D12_EXPORT_DESC{ .Name = g_ClosestHitShaderName.data(), .ExportToRename = nullptr, .Flags = D3D12_EXPORT_FLAG_NONE },
             D3D12_EXPORT_DESC{ .Name = g_MissShaderName.data(), .ExportToRename = nullptr, .Flags = D3D12_EXPORT_FLAG_NONE },
         };
+#endif
 
         const D3D12_DXIL_LIBRARY_DESC d3d12DXILLibraryDesc
         {
@@ -239,8 +223,10 @@ namespace sandbox
                 .pShaderBytecode = libraryBinary.data(),
                 .BytecodeLength = libraryBinary.size(),
             },
+#if 0 // Can use default 'D3D12_DXIL_LIBRARY_DESC::NumExports'
             .NumExports = (uint32_t)d3d12ExportDescs.size(),
             .pExports = d3d12ExportDescs.data(),
+#endif
         };
 
         // 3. D3D12_HIT_GROUP_DESC
@@ -285,7 +271,7 @@ namespace sandbox
         BenzinAssert(m_Device.GetD3D12Device()->CreateStateObject(&d3d12StateObjectDesc, IID_PPV_ARGS(&m_D3D12RaytracingStateObject)));
     }
 
-    void RaytracingHelloTriangleLayer::CreateAccelerationStructures()
+    void RTHelloTriangleLayer::CreateAccelerationStructures()
     {
         const D3D12_RAYTRACING_GEOMETRY_DESC d3d12RaytracingGeometryDesc
         {
@@ -304,7 +290,7 @@ namespace sandbox
                     .StartAddress = m_VertexBuffer->GetGPUVirtualAddress(),
                     .StrideInBytes = sizeof(DirectX::XMFLOAT3),
                 },
-            }
+            },
         };
 
         // Create BottomLevel AS
@@ -389,13 +375,15 @@ namespace sandbox
         auto& graphicsCommandQueue = m_Device.GetGraphicsCommandQueue();
         BenzinFlushCommandQueueOnScopeExit(graphicsCommandQueue);
 
-        auto& graphicsCommandList = graphicsCommandQueue.GetCommandList();
-        ID3D12GraphicsCommandList4* d3d12CommandList = graphicsCommandList.GetD3D12GraphicsCommandList();
+        auto& commandList = graphicsCommandQueue.GetCommandList();
+        ID3D12GraphicsCommandList4* d3d12CommandList = commandList.GetD3D12GraphicsCommandList();
 
-        graphicsCommandList.SetResourceBarrier(*scratchResource, benzin::ResourceState::UnorderedAccess);
+        commandList.SetResourceBarriers({ benzin::TransitionBarrier{ *scratchResource, benzin::ResourceState::UnorderedAccess } });
 
         // Build BottomLevel AS
         {
+            BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_BuildBottomLevelAS);
+
             const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12BLASDesc
             {
                 .DestAccelerationStructureData = m_BLAS->GetGPUVirtualAddress(),
@@ -405,20 +393,13 @@ namespace sandbox
             };
             d3d12CommandList->BuildRaytracingAccelerationStructure(&d3d12BLASDesc, 0, nullptr);
 
-            const D3D12_RESOURCE_BARRIER d3d12ResourceBarrier
-            {
-                .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
-                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                .UAV
-                {
-                    .pResource = m_BLAS->GetD3D12Resource(),
-                },
-            };
-            d3d12CommandList->ResourceBarrier(1, &d3d12ResourceBarrier);
+            commandList.SetResourceBarrier(benzin::UnorderedAccessBarrier{ *m_BLAS });
         }
 
         // Build TopLevel AS
         {
+            BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_BuildTopLevelAS);
+
             const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12TLASDesc
             {
                 .DestAccelerationStructureData = m_TLAS->GetGPUVirtualAddress(),
@@ -431,7 +412,7 @@ namespace sandbox
         }
     }
 
-    void RaytracingHelloTriangleLayer::CreateShaderTables()
+    void RTHelloTriangleLayer::CreateShaderTables()
     {
         BenzinAssert(m_D3D12RaytracingStateObject.Get());
 
@@ -440,12 +421,12 @@ namespace sandbox
 
         const auto CreateShaderTable = [&](std::wstring_view shaderName)
         {
-            const auto shaderIdentifier = std::span{ (const std::byte*)d3d12StateObjectProperties->GetShaderIdentifier(shaderName.data()), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES };
+            const auto shaderIdentifier = std::span{ (const std::byte*)d3d12StateObjectProperties->GetShaderIdentifier(shaderName.data()), benzin::config::g_ShaderIdentifierSizeInBytes };
 
             return std::make_shared<benzin::Buffer>(m_Device, benzin::BufferCreation
             {
                 .DebugName = std::format("{}ShaderTable", benzin::ToNarrowString(shaderName)),
-                .ElementCount = benzin::AlignAbove((uint32_t)shaderIdentifier.size(), D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT),
+                .ElementCount = benzin::AlignAbove((uint32_t)shaderIdentifier.size(), benzin::config::g_RayTracingShaderRecordAlignment),
                 .Flags = benzin::BufferFlag::UploadBuffer,
                 .InitialData = shaderIdentifier,
             });
@@ -456,7 +437,7 @@ namespace sandbox
         m_HitGroupShaderTable = CreateShaderTable(g_HitGroupShaderName);
     }
 
-    void RaytracingHelloTriangleLayer::CreateRaytracingResources()
+    void RTHelloTriangleLayer::CreateRaytracingResources()
     {
         m_RayGenConstantBuffer = std::make_shared<benzin::Buffer>(m_Device, benzin::BufferCreation
         {
@@ -472,7 +453,7 @@ namespace sandbox
         {
             .DebugName = "RayTracingOutput",
             .Type = benzin::TextureType::Texture2D,
-            .Format = benzin::g_GraphicsSettings.BackBufferFormat,
+            .Format = benzin::GraphicsSettingsInstance::Get().BackBufferFormat,
             .Width = (uint32_t)m_SwapChain.GetViewport().Width,
             .Height = (uint32_t)m_SwapChain.GetViewport().Height,
             .MipCount = 1,

@@ -1,6 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/entry_point.hpp"
 
+#include "benzin/core/command_line_args.hpp"
+
 #if BENZIN_IS_PLATFORM_WIN64
 
 namespace benzin
@@ -8,7 +10,8 @@ namespace benzin
 
     int Main(int argc, char** argv)
     {
-        // TODO: Make abstraction for CommandArguments
+        CommandLineArgsInstance::Initialize(argc, argv);
+
         return ClientMain();
     }
 

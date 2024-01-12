@@ -1,5 +1,6 @@
 #include "bootstrap.hpp"
 
+#include <benzin/core/command_line_args.hpp>
 #include <benzin/core/entry_point.hpp>
 #include <benzin/core/imgui_layer.hpp>
 #include <benzin/core/layer_stack.hpp>
@@ -10,7 +11,8 @@
 #include <benzin/system/key_event.hpp>
 
 #include "main_layer.hpp"
-#include "raytracing_hello_triangle_layer.hpp"
+#include "rt_hello_triangle_layer.hpp"
+#include "rt_procedural_geometry_layer.hpp"
 
 namespace sandbox
 {
@@ -20,11 +22,14 @@ namespace sandbox
     public:
         Application()
         {
+            const auto commandLineArgs = benzin::CommandLineArgsInstance::Get();
+
             const benzin::WindowCreation windowCreation
             {
                 .Title = "Benzin: Sandbox",
-                .Width = 1280,
-                .Height = 720,
+                .Width = commandLineArgs.GetWindowWidth(),
+                .Height = commandLineArgs.GetWindowHeight(),
+                .IsResizable = commandLineArgs.IsWindowResizable(),
                 .EventCallback = [&](benzin::Event& event) { WindowEventCallback(event); },
             };
 
@@ -47,8 +52,10 @@ namespace sandbox
 
 #if 0
                 m_MainLayer = m_LayerStack.Push<MainLayer>(graphicsRefs);
+#elif 0
+                m_RTHelloTriangleLayer = m_LayerStack.Push<RTHelloTriangleLayer>(graphicsRefs);
 #else
-                m_RaytracingHelloTriangleLayer = m_LayerStack.Push<RaytracingHelloTriangleLayer>(graphicsRefs);
+                m_RTProceduralGeometryLayer = m_LayerStack.Push<RTProceduralGeometryLayer>(graphicsRefs);
 #endif
             }
             EndFrame();
@@ -169,7 +176,8 @@ namespace sandbox
 
         std::shared_ptr<benzin::ImGuiLayer> m_ImGuiLayer;
         std::shared_ptr<MainLayer> m_MainLayer;
-        std::shared_ptr<RaytracingHelloTriangleLayer> m_RaytracingHelloTriangleLayer;
+        std::shared_ptr<RTHelloTriangleLayer> m_RTHelloTriangleLayer;
+        std::shared_ptr<RTProceduralGeometryLayer> m_RTProceduralGeometryLayer;
 
         bool m_IsRunning = false;
     };
@@ -178,26 +186,19 @@ namespace sandbox
 
 int benzin::ClientMain()
 {
-#if 1
-    benzin::GraphicsSettings::Initialize(
+    const auto& commandLines = benzin::CommandLineArgsInstance::Get();
+
+    benzin::GraphicsSettingsInstance::Initialize(benzin::GraphicsSettings
     {
-        .MainAdapterIndex = 1,
-        .FrameInFlightCount = 3,
+        .MainAdapterIndex = commandLines.GetAdapterIndex().value_or(0),
+        .FrameInFlightCount = commandLines.GetFrameInFlightCount().value_or(3),
         .DebugLayerParams
         {
-            .IsGPUBasedValidationEnabled = true,
+            .IsGPUBasedValidationEnabled = commandLines.IsEnabledGPUBasedValidation(),
         },
     });
 
-    sandbox::Application application;
-    application.ExecuteMainLoop();
-#else
-    const auto s = BenzinAsS(1.0f);
-    const auto ms = BenzinAsMS(s);
-
-    const benzin::MilliSeconds ms2{ 100.0f };
-    const benzin::Seconds s2 = ms2;
-#endif
+    sandbox::Application{}.ExecuteMainLoop();
 
     return 0;
 }

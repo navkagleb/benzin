@@ -21,7 +21,9 @@ namespace benzin
         BC7Unorm = DXGI_FORMAT_BC7_UNORM,
 
         R16Uint = DXGI_FORMAT_R16_UINT,
+
         R32Uint = DXGI_FORMAT_R32_UINT,
+        R32Typeless = DXGI_FORMAT_R32_TYPELESS,
     };
 
     uint32_t GetFormatSizeInBytes(GraphicsFormat format);

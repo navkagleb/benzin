@@ -5,20 +5,6 @@
 namespace benzin
 {
 
-    struct DepthStencil
-    {
-        float Depth = 1.0f;
-        uint8_t Stencil = 0;
-    };
-
-    // TODO: Maybe can be implemented using union?
-    struct ClearValue
-    {
-
-        DirectX::XMFLOAT4 Color{ 0.0f, 0.0f, 0.0f, 0.0f };
-        DepthStencil DepthStencil;
-    };
-
     enum class TextureType : std::underlying_type_t<D3D12_RESOURCE_DIMENSION>
     {
         Unknown = D3D12_RESOURCE_DIMENSION_UNKNOWN,
@@ -49,7 +35,7 @@ namespace benzin
 
         TextureFlags Flags{};
 
-        ClearValue ClearValue;
+        ClearValueVariant ClearValue;
 
         ResourceState InitialState = ResourceState::Present;
 

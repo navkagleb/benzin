@@ -9,7 +9,7 @@ namespace benzin
     Backend::Backend()
     {
 #if BENZIN_IS_DEBUG_BUILD
-        EnableD3D12DebugLayer(g_GraphicsSettings.DebugLayerParams);
+        EnableD3D12DebugLayer(GraphicsSettingsInstance::Get().DebugLayerParams);
         EnableDRED();
 #endif
 
@@ -60,7 +60,7 @@ namespace benzin
     {
         ComPtr<IDXGIAdapter> dxgiAdapter;
         BenzinAssert(m_DXGIFactory->EnumAdapterByGpuPreference(
-            g_GraphicsSettings.MainAdapterIndex,
+            GraphicsSettingsInstance::Get().MainAdapterIndex,
             DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
             IID_PPV_ARGS(&dxgiAdapter)
         ));
@@ -76,9 +76,9 @@ namespace benzin
         BenzinTrace("{}", m_MainAdapterName);
         BenzinTrace("VendorID: {}", dxgiAdapterDesc.VendorId);
         BenzinTrace("DeviceID: {}", dxgiAdapterDesc.DeviceId);
-        BenzinTrace("DedicatedVideoMemory: {}MB, {}GB", BytesToMB(dxgiAdapterDesc.DedicatedVideoMemory), BytesToGB(dxgiAdapterDesc.DedicatedVideoMemory));
-        BenzinTrace("DedicatedSystemMemory: {}MB, {}GB", BytesToMB(dxgiAdapterDesc.DedicatedSystemMemory), BytesToGB(dxgiAdapterDesc.DedicatedSystemMemory));
-        BenzinTrace("SharedSystemMemory: {}MB, {}GB", BytesToMB(dxgiAdapterDesc.SharedSystemMemory), BytesToGB(dxgiAdapterDesc.SharedSystemMemory));
+        BenzinTrace("DedicatedVideoMemory: {}MB, {}GB", BytesToMebiBytes(dxgiAdapterDesc.DedicatedVideoMemory), BytesToGibiBytes(dxgiAdapterDesc.DedicatedVideoMemory));
+        BenzinTrace("DedicatedSystemMemory: {}MB, {}GB", BytesToMebiBytes(dxgiAdapterDesc.DedicatedSystemMemory), BytesToGibiBytes(dxgiAdapterDesc.DedicatedSystemMemory));
+        BenzinTrace("SharedSystemMemory: {}MB, {}GB", BytesToMebiBytes(dxgiAdapterDesc.SharedSystemMemory), BytesToGibiBytes(dxgiAdapterDesc.SharedSystemMemory));
         BenzinTrace("{}", Logger::s_LineSeparator);
     }
 

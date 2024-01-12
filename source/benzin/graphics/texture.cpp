@@ -66,11 +66,17 @@ namespace benzin
 
                 if (textureCreation.Flags[TextureFlag::AllowRenderTarget])
                 {
-                    memcpy(&d3d12ClearValue.Color, &textureCreation.ClearValue.Color, sizeof(textureCreation.ClearValue.Color));
+                    BenzinAssert(std::holds_alternative<DirectX::XMFLOAT4>(textureCreation.ClearValue));
+
+                    const auto& color = std::get<DirectX::XMFLOAT4>(textureCreation.ClearValue);
+                    memcpy(&d3d12ClearValue.Color, &color, sizeof(color));
                 }
                 else if (textureCreation.Flags[TextureFlag::AllowDepthStencil])
                 {
-                    memcpy(&d3d12ClearValue.DepthStencil, &textureCreation.ClearValue.DepthStencil, sizeof(textureCreation.ClearValue.DepthStencil));
+                    BenzinAssert(std::holds_alternative<DepthStencil>(textureCreation.ClearValue));
+
+                    const auto& depthStencil = std::get<DepthStencil>(textureCreation.ClearValue);
+                    memcpy(&d3d12ClearValue.DepthStencil, &depthStencil, sizeof(depthStencil));
                 }
 
                 BenzinAssert(d3d12Device->CreateCommittedResource(

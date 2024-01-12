@@ -186,51 +186,53 @@ namespace benzin
 
     MeshData GenerateBox(const BoxGeometryCreation& creation)
     {
-        MeshData meshData;
-        meshData.PrimitiveTopology = PrimitiveTopology::TriangleList;
+        MeshData meshData
+        {
+            .PrimitiveTopology = PrimitiveTopology::TriangleList,
+        };
 
         const float w2 = 0.5f * creation.Width;
         const float h2 = 0.5f * creation.Height;
         const float d2 = 0.5f * creation.Depth;
 
-        auto& vertices = meshData.Vertices;
-        vertices.resize(24);
+        meshData.Vertices =
+        {
+            // Front face
+            MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{  w2,  h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } },
 
-        // Front face
-        vertices[0] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
-        vertices[1] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
-        vertices[2] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
-        vertices[3] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, -1.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
+            // Back face
+            MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{  w2,  h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } },
 
-        // Back face
-        vertices[4] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
-        vertices[5] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
-        vertices[6] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
-        vertices[7] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, 0.0f, 1.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
+            // Top face
+            MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2, -d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2,  d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{  w2,  h2,  d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{  w2,  h2, -d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } },
 
-        // Top face
-        vertices[8] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2, -d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
-        vertices[9] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2,  d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
-        vertices[10] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2,  d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
-        vertices[11] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2, -d2}, DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
+            // Bottom face
+            MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 1.0f, 1.0f} },
+            MeshVertex{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 0.0f, 1.0f} },
+            MeshVertex{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 0.0f, 0.0f} },
+            MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 1.0f, 0.0f} },
 
-        // Bottom face
-        vertices[12] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 1.0f, 1.0f} };
-        vertices[13] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 0.0f, 1.0f} };
-        vertices[14] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 0.0f, 0.0f} };
-        vertices[15] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ 0.0f, -1.0f, 0.0f}, DirectX::XMFLOAT2{ 1.0f, 0.0f} };
+            // Left face
+            MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2,  d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2, -d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } },
 
-        // Left face
-        vertices[16] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2,  d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
-        vertices[17] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2,  d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
-        vertices[18] = MeshVertex{ DirectX::XMFLOAT3{ -w2,  h2, -d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
-        vertices[19] = MeshVertex{ DirectX::XMFLOAT3{ -w2, -h2, -d2 }, DirectX::XMFLOAT3{ -1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
-
-        // Right face
-        vertices[20] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } };
-        vertices[21] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2, -d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } };
-        vertices[22] = MeshVertex{ DirectX::XMFLOAT3{  w2,  h2,  d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } };
-        vertices[23] = MeshVertex{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } };
+            // Right face
+            MeshVertex{ DirectX::XMFLOAT3{  w2, -h2, -d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 1.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{  w2,  h2, -d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 0.0f, 0.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{  w2,  h2,  d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 0.0f } },
+            MeshVertex{ DirectX::XMFLOAT3{  w2, -h2,  d2 }, DirectX::XMFLOAT3{ 1.0f, 0.0f, 0.0f }, DirectX::XMFLOAT2{ 1.0f, 1.0f } },
+        };
 
         // Indices
         meshData.Indices =
@@ -260,7 +262,7 @@ namespace benzin
             20, 22, 23
         };
 
-        const uint32_t subdivisionCount = std::min<uint32_t>(creation.SubdivisionCount, 6);
+        const auto subdivisionCount = std::min<uint32_t>(creation.SubdivisionCount, 6);
 
         for (uint32_t i = 0; i < subdivisionCount; ++i)
         {
@@ -272,37 +274,40 @@ namespace benzin
 
     MeshData GenerateGrid(const GridGeometryCreation& creation)
     {
-        MeshData meshData;
-        meshData.PrimitiveTopology = PrimitiveTopology::TriangleList;
+        MeshData meshData
+        {
+            .PrimitiveTopology = PrimitiveTopology::TriangleList,
+        };
 
-        const uint32_t vertexCount = creation.RowCount * creation.ColumnCount;
-        const uint32_t faceCount = (creation.RowCount - 1) * (creation.ColumnCount - 1) * 2;
+        const uint32_t vertexCount = creation.WidthPointCount * creation.DepthPointCount;
+        const uint32_t faceCount = (creation.WidthPointCount - 1) * (creation.DepthPointCount - 1) * 2;
+        BenzinAssert(faceCount != 0);
 
         // Vertices
         {
             const float halfWidth = 0.5f * creation.Width;
             const float halfDepth = 0.5f * creation.Depth;
 
-            const float dx = creation.Width / (creation.RowCount - 1);
-            const float dz = creation.Depth / (creation.ColumnCount - 1);
+            const float dx = creation.Width / (creation.WidthPointCount - 1);
+            const float dz = creation.Depth / (creation.DepthPointCount - 1);
 
-            const float du = 1.0f / (creation.RowCount - 1);
-            const float dv = 1.0f / (creation.ColumnCount - 1);
+            const float du = 1.0f / (creation.WidthPointCount - 1);
+            const float dv = 1.0f / (creation.DepthPointCount - 1);
 
             auto& vertices = meshData.Vertices;
             vertices.resize(vertexCount);
 
-            for (uint32_t i = 0; i < creation.RowCount; ++i)
+            for (uint32_t i = 0; i < creation.WidthPointCount; ++i)
             {
                 const float z = halfDepth - i * dz;
 
-                for (uint32_t j = 0; j < creation.ColumnCount; ++j)
+                for (uint32_t j = 0; j < creation.DepthPointCount; ++j)
                 {
                     const float x = -halfWidth + j * dx;
 
-                    vertices[i * creation.ColumnCount + j].Position = DirectX::XMFLOAT3{ x, 0.0f, z };
-                    vertices[i * creation.ColumnCount + j].Normal = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
-                    vertices[i * creation.ColumnCount + j].TexCoord = DirectX::XMFLOAT2{ j * du, i * dv };
+                    vertices[i * creation.DepthPointCount + j].Position = DirectX::XMFLOAT3{ x, 0.0f, z };
+                    vertices[i * creation.DepthPointCount + j].Normal = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
+                    vertices[i * creation.DepthPointCount + j].TexCoord = DirectX::XMFLOAT2{ j * du, i * dv };
                 }
             }
         }
@@ -314,17 +319,17 @@ namespace benzin
 
             size_t baseIndex = 0;
 
-            for (uint32_t i = 0; i < creation.RowCount - 1; ++i)
+            for (uint32_t i = 0; i < creation.WidthPointCount - 1; ++i)
             {
-                for (uint32_t j = 0; j < creation.ColumnCount - 1; ++j)
+                for (uint32_t j = 0; j < creation.DepthPointCount - 1; ++j)
                 {
-                    indices[baseIndex + 0] = i * creation.ColumnCount + j;
-                    indices[baseIndex + 1] = i * creation.ColumnCount + j + 1;
-                    indices[baseIndex + 2] = (i + 1) * creation.ColumnCount + j;
+                    indices[baseIndex + 0] = i * creation.DepthPointCount + j;
+                    indices[baseIndex + 1] = i * creation.DepthPointCount + j + 1;
+                    indices[baseIndex + 2] = (i + 1) * creation.DepthPointCount + j;
 
-                    indices[baseIndex + 3] = (i + 1) * creation.ColumnCount + j;
-                    indices[baseIndex + 4] = i * creation.ColumnCount + j + 1;
-                    indices[baseIndex + 5] = (i + 1) * creation.ColumnCount + j + 1;
+                    indices[baseIndex + 3] = (i + 1) * creation.DepthPointCount + j;
+                    indices[baseIndex + 4] = i * creation.DepthPointCount + j + 1;
+                    indices[baseIndex + 5] = (i + 1) * creation.DepthPointCount + j + 1;
 
                     baseIndex += 6;
                 }
@@ -336,8 +341,10 @@ namespace benzin
 
     MeshData GenerateCylinder(const CylinderGeometryCreation& creation)
     {
-        MeshData meshData;
-        meshData.PrimitiveTopology = PrimitiveTopology::TriangleList;
+        MeshData meshData
+        {
+            .PrimitiveTopology = PrimitiveTopology::TriangleList,
+        };
 
         // Vertices
         {
@@ -407,8 +414,10 @@ namespace benzin
 
     MeshData GenerateSphere(const SphereGeometryCreation& creation)
     {
-        MeshData meshData;
-        meshData.PrimitiveTopology = PrimitiveTopology::TriangleList;
+        MeshData meshData
+        {
+            .PrimitiveTopology = PrimitiveTopology::TriangleList,
+        };
 
         // Vertices
         {
@@ -513,7 +522,7 @@ namespace benzin
             DirectX::XMFLOAT3{  z,    -x,     0.0f }, DirectX::XMFLOAT3{ -z,    -x,     0.0f }
         });
 
-        static constexpr auto indicies = std::to_array(
+        static constexpr auto indices = std::to_array(
         {
             1,  4,  0,      4,  9, 0,       4, 5,  9,       8, 5, 4,        1,  8, 4,
             1,  10, 8,      10, 3, 8,       8, 3,  5,       3, 2, 5,        3,  7, 2,
@@ -521,10 +530,12 @@ namespace benzin
             10, 1,  6,      11, 0, 9,       2, 11, 9,       5, 2, 9,        11, 2, 7
         });
 
-        MeshData meshData;
-        meshData.PrimitiveTopology = PrimitiveTopology::TriangleList;
-        meshData.Vertices.insert(meshData.Vertices.begin(), positions.begin(), positions.end());
-        meshData.Indices.insert(meshData.Indices.begin(), indicies.begin(), indicies.end());
+        MeshData meshData
+        {
+            .Vertices{ positions.begin(), positions.end() }, // Implicit cast from 'DirectX::XMFLOAT3' to 'MeshVertex'
+            .Indices{ std::from_range, indices },
+            .PrimitiveTopology = PrimitiveTopology::TriangleList,
+        };
         
         const uint32_t subdivisionCount = std::min<uint32_t>(creation.SubdivisionCount, 6);
         for (uint32_t i = 0; i < subdivisionCount; ++i)
@@ -556,9 +567,26 @@ namespace benzin
         return meshData;
     }
 
-    const MeshData& GetDefaultGeosphere()
+    const MeshData& GetDefaultGridMesh()
     {
-        static const MeshData meshData = GenerateGeosphere(GeosphereGeometryCreation{ .Radius = 1.0f, });
+        static const MeshData meshData = GenerateGrid(GridGeometryCreation
+        {
+            .Width = 1.0f,
+            .Depth = 1.0f,
+            .WidthPointCount = 2,
+            .DepthPointCount = 2,
+        });
+
+        return meshData;
+    }
+
+    const MeshData& GetDefaultGeosphereMesh()
+    {
+        static const MeshData meshData = GenerateGeosphere(GeosphereGeometryCreation
+        {
+            .Radius = 1.0f,
+        });
+
         return meshData;
     }
 

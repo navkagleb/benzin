@@ -25,14 +25,6 @@ namespace benzin
 
             return scaling * rotation * translation;
         }
-
-        DirectX::XMMATRIX GetInverseMatrix() const
-        {
-            const DirectX::XMMATRIX transform = GetMatrix();
-            DirectX::XMVECTOR transformDeterminant = DirectX::XMMatrixDeterminant(transform);
-
-            return DirectX::XMMatrixInverse(&transformDeterminant, transform);
-        }
     };
 
     struct DirectionalLightComponent

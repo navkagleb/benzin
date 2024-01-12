@@ -1,5 +1,9 @@
 #pragma once
 
+#if !defined(BENZIN_IS_DEBUG_BUILD)
+    #error
+#endif
+
 #define BENZIN_IS_ASSERTS_ENABLED BENZIN_IS_DEBUG_BUILD
 
 namespace benzin
@@ -23,21 +27,19 @@ namespace benzin
         return std::vformat(format, std::make_format_args(args...));
     }
 
-    template <typename... Args>
-    inline void AssertImpl(bool condition, const std::source_location& sourceLocation, Args&&... args)
+    inline void AssertImpl(bool condition, const std::source_location& sourceLocation, auto&&... args)
     {
         if (!condition)
         {
-            AssertFormat(sourceLocation, ArgsToFormat(std::forward<Args>(args)...));
+            AssertFormat(sourceLocation, ArgsToFormat(std::forward<decltype(args)>(args)...));
         }
     }
 
-    template <typename... Args>
-    inline void AssertImpl(HRESULT hr, const std::source_location& sourceLocation, Args&&... args)
+    inline void AssertImpl(HRESULT hr, const std::source_location& sourceLocation, auto&&... args)
     {
         if (FAILED(hr))
         {
-            AssertFormat(hr, sourceLocation, ArgsToFormat(std::forward<Args>(args)...));
+            AssertFormat(hr, sourceLocation, ArgsToFormat(std::forward<decltype(args)>(args)...));
         }
     }
 

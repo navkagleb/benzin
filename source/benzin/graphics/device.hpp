@@ -13,6 +13,14 @@ namespace benzin
     class GraphicsCommandQueue;
     class TextureLoader;
 
+    namespace rt
+    {
+
+        class AccelerationStructure;
+        struct AccelerationStructureSizes;
+
+    } // namespace rt
+
     class Device
     {
     public:
@@ -36,6 +44,8 @@ namespace benzin
 
     public:
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
+
+        rt::AccelerationStructureSizes GetAccelerationStructureSizes(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& d3d12BuildInputs);
 
     private:
         void CheckFeaturesSupport();

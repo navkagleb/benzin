@@ -17,8 +17,8 @@ namespace benzin
 
     public:
         GPUTimer(Device& device, const auto& commandQueue, size_t timerCount)
-            : m_TimerSlotCount{ static_cast<uint32_t>(timerCount) * 2 }
-            , m_InverseFrequency{ 1.0f / static_cast<float>(commandQueue.GetTimestampFrequency()) } // Counts per Second
+            : m_TimerSlotCount{ (uint32_t)timerCount * 2 }
+            , m_InverseFrequency{ 1.0f / (float)commandQueue.GetTimestampFrequency() } // Counts per Second
         {
             CreateResources(device);
 
@@ -47,6 +47,7 @@ namespace benzin
 
     private:
         const uint32_t m_TimerSlotCount = 0;
+        const uint32_t m_ReadBackBufferFrameCount = GraphicsSettingsInstance::Get().FrameInFlightCount + 1;
         const float m_InverseFrequency = 0.0f;
 
         ID3D12QueryHeap* m_D3D12TimestampQueryHeap = nullptr;
@@ -61,6 +62,6 @@ namespace benzin
     gpuTimer.Start(commandList); \
     BenzinExecuteOnScopeExit([&] { gpuTimer.Stop(commandList); })
 
-#define BenzinGPUTimerSlotScopeMeasurement(gpuTimer, commandList, timerIndex) \
+#define BenzinIndexedGPUTimerScopeMeasurement(gpuTimer, commandList, timerIndex) \
     (gpuTimer).Start(commandList, timerIndex); \
     BenzinExecuteOnScopeExit([&] { (gpuTimer).Stop(commandList, timerIndex); })

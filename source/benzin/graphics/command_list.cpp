@@ -4,12 +4,52 @@
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/pipeline_state.hpp"
-#include "benzin/graphics/texture.hpp"
 #include "benzin/graphics/mapped_data.hpp"
+#include "benzin/graphics/pipeline_state.hpp"
+#include "benzin/graphics/rt_acceleration_structures.hpp"
+#include "benzin/graphics/texture.hpp"
 
 namespace benzin
 {
+
+    namespace
+    {
+
+        D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrier(const TransitionBarrier& transitionBarrier)
+        {
+            return D3D12_RESOURCE_BARRIER
+            {
+                .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                .Transition
+                {
+                    .pResource = transitionBarrier.Resource.GetD3D12Resource(),
+                    .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                    .StateBefore = (D3D12_RESOURCE_STATES)transitionBarrier.Resource.GetCurrentState(),
+                    .StateAfter = (D3D12_RESOURCE_STATES)transitionBarrier.StateAfter,
+                },
+            };
+        }
+
+        D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrier(const UnorderedAccessBarrier& unorderedAccessBarrier)
+        {
+            return D3D12_RESOURCE_BARRIER
+            {
+                .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                .UAV
+                {
+                    .pResource = unorderedAccessBarrier.Resource.GetD3D12Resource(),
+                },
+            };
+        }
+
+        D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrierVariant(const ResourceBarrierVariant& resourceBarrier)
+        {
+            return std::visit([](auto&& resourceBarrier) { return ToD3D12ResourceBarrier(resourceBarrier); }, resourceBarrier);
+        };
+
+    } // anonymous namespace
 
     // CommandList
     CommandList::CommandList(Device& device, CommandListType commandListType)
@@ -34,26 +74,29 @@ namespace benzin
         SafeUnknownRelease(m_D3D12GraphicsCommandList);
     }
 
-    void CommandList::SetResourceBarrier(Resource& resource, ResourceState resourceStateAfter)
+    void CommandList::SetResourceBarrier(const ResourceBarrierVariant& resourceBarrier)
     {
-        BenzinAssert(resource.GetD3D12Resource());
-
-        const D3D12_RESOURCE_BARRIER d3d12ResourceBarrier
-        {
-            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            .Transition
-            {
-                .pResource = resource.GetD3D12Resource(),
-                .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                .StateBefore = static_cast<D3D12_RESOURCE_STATES>(resource.GetCurrentState()),
-                .StateAfter = static_cast<D3D12_RESOURCE_STATES>(resourceStateAfter),
-            }
-        };
-
+        const D3D12_RESOURCE_BARRIER d3d12ResourceBarrier = ToD3D12ResourceBarrierVariant(resourceBarrier);
         m_D3D12GraphicsCommandList->ResourceBarrier(1, &d3d12ResourceBarrier);
 
-        resource.SetCurrentState(resourceStateAfter);
+        if (const auto* transitionBarrier = std::get_if<TransitionBarrier>(&resourceBarrier))
+        {
+            transitionBarrier->Resource.SetCurrentState(transitionBarrier->StateAfter);
+        }
+    }
+
+    void CommandList::SetResourceBarriers(const std::vector<ResourceBarrierVariant>& resourceBarriers)
+    {
+        const auto d3d12ResourceBarriers = resourceBarriers | std::views::transform(ToD3D12ResourceBarrierVariant) | std::ranges::to<std::vector>();
+        m_D3D12GraphicsCommandList->ResourceBarrier((uint32_t)d3d12ResourceBarriers.size(), d3d12ResourceBarriers.data());
+
+        for (const auto& resourceBarrier : resourceBarriers)
+        {
+            if (const auto* transitionBarrier = std::get_if<TransitionBarrier>(&resourceBarrier))
+            {
+                transitionBarrier->Resource.SetCurrentState(transitionBarrier->StateAfter);
+            }
+        }
     }
 
     void CommandList::CopyResource(Resource& to, Resource& from)
@@ -230,7 +273,7 @@ namespace benzin
         m_UploadBufferOffset = 0;
     }
 
-    uint64_t CopyCommandList::AllocateInUploadBuffer(size_t size, size_t alignment)
+    size_t CopyCommandList::AllocateInUploadBuffer(size_t size, size_t alignment)
     {
         const size_t alignedOffset = alignment == 0 ? m_UploadBufferOffset : AlignAbove(m_UploadBufferOffset, alignment);
 
@@ -388,22 +431,22 @@ namespace benzin
         }
     }
 
-    void GraphicsCommandList::ClearRenderTarget(const Descriptor& rtv, const ClearValue& clearValue)
+    void GraphicsCommandList::ClearRenderTarget(const Descriptor& rtv, const DirectX::XMFLOAT4& color)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RTVDescriptorHandle{ rtv.GetCPUHandle() };
 
-        m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RTVDescriptorHandle, reinterpret_cast<const float*>(&clearValue.Color), 0, nullptr);
+        m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RTVDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
     }
 
-    void GraphicsCommandList::ClearDepthStencil(const Descriptor& dsv, const ClearValue& clearValue)
+    void GraphicsCommandList::ClearDepthStencil(const Descriptor& dsv, const DepthStencil& depthStencil)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DSVDescriptorHandle{ dsv.GetCPUHandle() };
 
         m_D3D12GraphicsCommandList->ClearDepthStencilView(
             d3d12DSVDescriptorHandle,
             D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-            clearValue.DepthStencil.Depth,
-            clearValue.DepthStencil.Stencil,
+            depthStencil.Depth,
+            depthStencil.Stencil,
             0,
             nullptr
         );
@@ -419,6 +462,21 @@ namespace benzin
     void GraphicsCommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount)
     {
         m_D3D12GraphicsCommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, 0);
+    }
+
+    void GraphicsCommandList::BuildRayTracingAccelerationStructure(const rt::AccelerationStructure& accelerationStructure)
+    {
+        BenzinAssert(accelerationStructure.GetScratchResource().GetCurrentState() == ResourceState::UnorderedAccess);
+
+        const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12BuildAccelerationStructureDesc
+        {
+            .DestAccelerationStructureData = accelerationStructure.GetBuffer().GetGPUVirtualAddress(),
+            .Inputs = accelerationStructure.GetD3D12BuildInputs(),
+            .SourceAccelerationStructureData = 0,
+            .ScratchAccelerationStructureData = accelerationStructure.GetScratchResource().GetGPUVirtualAddress(),
+        };
+
+        m_D3D12GraphicsCommandList->BuildRaytracingAccelerationStructure(&d3d12BuildAccelerationStructureDesc, 0, nullptr);
     }
 
 } // namespace benzin

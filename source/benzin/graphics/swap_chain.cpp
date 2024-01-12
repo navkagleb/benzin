@@ -27,11 +27,11 @@ namespace benzin
         {
             .Width = window.GetWidth(),
             .Height = window.GetHeight(),
-            .Format = (DXGI_FORMAT)g_GraphicsSettings.BackBufferFormat,
+            .Format = (DXGI_FORMAT)GraphicsSettingsInstance::Get().BackBufferFormat,
             .Stereo = false,
             .SampleDesc{ 1, 0 },
             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-            .BufferCount = g_GraphicsSettings.FrameInFlightCount,
+            .BufferCount = GraphicsSettingsInstance::Get().FrameInFlightCount,
             .Scaling = DXGI_SCALING_STRETCH,
             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
             .AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED,
@@ -48,12 +48,12 @@ namespace benzin
             &dxgiSwapChain1
         ));
         BenzinAssert(dxgiSwapChain1->QueryInterface(IID_PPV_ARGS(&m_DXGISwapChain)));
-        m_DXGISwapChain->SetMaximumFrameLatency(g_GraphicsSettings.FrameInFlightCount);
+        m_DXGISwapChain->SetMaximumFrameLatency(GraphicsSettingsInstance::Get().FrameInFlightCount);
 
         // Disable fullscreen using Alt + Enter
         BenzinAssert(backend.GetDXGIFactory()->MakeWindowAssociation(window.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
 
-        m_BackBuffers.resize(g_GraphicsSettings.FrameInFlightCount);
+        m_BackBuffers.resize(GraphicsSettingsInstance::Get().FrameInFlightCount);
         ResizeBackBuffers(window.GetWidth(), window.GetHeight());
 
         {
@@ -78,7 +78,7 @@ namespace benzin
             (uint32_t)m_BackBuffers.size(),
             width,
             height,
-            (DXGI_FORMAT)g_GraphicsSettings.BackBufferFormat,
+            (DXGI_FORMAT)GraphicsSettingsInstance::Get().BackBufferFormat,
             m_DXGISwapChainFlags
         ));
 
@@ -96,9 +96,9 @@ namespace benzin
         m_CPUFrameIndex++;
         m_GPUFrameIndex = m_FrameFence->GetCompletedValue();
 
-        if (m_CPUFrameIndex - m_GPUFrameIndex >= g_GraphicsSettings.FrameInFlightCount)
+        if (m_CPUFrameIndex - m_GPUFrameIndex >= GraphicsSettingsInstance::Get().FrameInFlightCount)
         {
-            m_GPUFrameIndex = m_CPUFrameIndex - g_GraphicsSettings.FrameInFlightCount + 1;
+            m_GPUFrameIndex = m_CPUFrameIndex - GraphicsSettingsInstance::Get().FrameInFlightCount + 1;
             m_FrameFence->StallCurrentThreadUntilGPUCompletion(m_GPUFrameIndex);
         }
     }

@@ -6,6 +6,7 @@
 
 #include <array>
 #include <bitset>
+#include <charconv>
 #include <chrono>
 #include <concepts>
 #include <expected>

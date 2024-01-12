@@ -26,10 +26,12 @@ namespace common
     SamplerState g_Anisotropic16ClampSampler : register(s5);
     SamplerComparisonState g_ShadowSampler : register(s6);
 
-    static const float g_PI = 3.141592653;
-    static const float g_2PI = 2 * g_PI;
+    static const float g_PI = 3.14159265359f;
+    static const float g_2PI = 2.0f * g_PI;
     static const float g_InvPI = 1.0f / g_PI;
     static const float g_Inv2PI = 1.0f / g_2PI;
+    
+    static const float g_FloatInfinity = 1.#INF;
     
     float3 LinearToGamma(float3 color)
     {
@@ -39,6 +41,23 @@ namespace common
     float4 LinearToGamma(float4 color)
     {
         return pow(color, 1.0f / 2.2f);
+    }
+
+    bool IsInRange(float val, float min, float max)
+    {
+        return val >= min && val <= max;
+    }
+    
+    void Swap(inout float lhs, inout float rhs)
+    {
+        const float temp = lhs;
+        lhs = rhs;
+        rhs = lhs;
+    }
+
+    float DegreesToRadians(float degrees)
+    {
+        return degrees * g_PI / 180.0f;
     }
 
 } // namespace common

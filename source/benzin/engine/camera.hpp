@@ -10,8 +10,8 @@ namespace benzin
     class Projection
     {
     public:
-        const DirectX::XMMATRIX& GetMatrix() const { return m_Projection; }
-        const DirectX::XMMATRIX& GetInverseMatrix() const { return m_InverseProjection; }
+        const DirectX::XMMATRIX& GetMatrix() const { return m_ProjectionMatrix; }
+        const DirectX::XMMATRIX& GetInverseMatrix() const { return m_InverseProjectionMatrix; }
 
         const DirectX::BoundingFrustum& GetBoundingFrustum() const { return m_BoundingFrustum; }
 
@@ -24,8 +24,8 @@ namespace benzin
         virtual DirectX::XMMATRIX CreateMatrix() const = 0;
 
     private:
-        DirectX::XMMATRIX m_Projection = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_InverseProjection = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_ProjectionMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_InverseProjectionMatrix = DirectX::XMMatrixIdentity();
         DirectX::BoundingFrustum m_BoundingFrustum;
     };
 
@@ -87,8 +87,7 @@ namespace benzin
         friend class FlyCameraController;
 
     public:
-        Camera();
-        explicit Camera(const Projection* projection);
+        explicit Camera(const Projection& projection);
 
     public:
         const DirectX::XMVECTOR& GetPosition() const { return m_Position; }
@@ -105,8 +104,7 @@ namespace benzin
         const DirectX::XMMATRIX& GetViewMatrix() const { return m_ViewMatrix; }
         const DirectX::XMMATRIX& GetInverseViewMatrix() const { return m_InverseViewMatrix; }
 
-        const Projection* GetProjection() const { return m_Projection; }
-        void SetProjection(const Projection* projection);
+        const Projection& GetProjection() const { return m_Projection; }
 
         const DirectX::XMMATRIX& GetProjectionMatrix() const;
         const DirectX::XMMATRIX& GetInverseProjectionMatrix() const;
@@ -114,6 +112,7 @@ namespace benzin
         DirectX::XMMATRIX GetViewProjectionMatrix() const;
         DirectX::XMMATRIX GetInverseViewProjectionMatrix() const;
 
+        // Used for normal transformation
         DirectX::XMMATRIX GetInverseViewDirectionProjectionMatrix() const;
 
     private:
@@ -121,7 +120,7 @@ namespace benzin
         void UpdateViewMatrix();
 
     private:
-        DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, 4.0f, 1.0f };
+        DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, 0.0f, 1.0f };
         DirectX::XMVECTOR m_FrontDirection{ 0.0f, 0.0f, -1.0f, 1.0f };
         DirectX::XMVECTOR m_UpDirection{ 0.0f, 1.0f, 0.0f, 1.0f };
         DirectX::XMVECTOR m_RightDirection{ 0.0f, 0.0f, 0.0f, 1.0f };
@@ -129,7 +128,7 @@ namespace benzin
         DirectX::XMMATRIX m_ViewMatrix = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX m_InverseViewMatrix = DirectX::XMMatrixIdentity();
 
-        const Projection* m_Projection = nullptr;
+        const Projection& m_Projection;
     };
 
     class FlyCameraController
@@ -139,6 +138,7 @@ namespace benzin
 
     public:
         void SetCamera(Camera& camera);
+        void SetCameraPitchYaw(float pitch, float yaw);
 
     public:
         void OnEvent(Event& event);
@@ -162,7 +162,7 @@ namespace benzin
     private:
         Camera& m_Camera;
 
-        float m_CameraTranslationSpeed = 0.002f;
+        float m_CameraTranslationSpeed = 0.005f;
         float m_MouseSensitivity = 0.003f;
         float m_MouseWheelSensitivity = 0.04f;
 

@@ -4,6 +4,7 @@
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/pipeline_state.hpp"
+#include "benzin/graphics/rt_acceleration_structures.hpp"
 #include "benzin/graphics/sampler.hpp"
 #include "benzin/graphics/texture_loader.hpp"
 
@@ -126,6 +127,19 @@ namespace benzin
         BenzinAssert(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_INFO, &d3d12FormatInfo, sizeof(d3d12FormatInfo)));
 
         return d3d12FormatInfo.PlaneCount;
+    }
+
+    rt::AccelerationStructureSizes Device::GetAccelerationStructureSizes(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& d3d12BuildInputs)
+    {
+        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO d3d12RTASPrebuildInfo{};
+        m_D3D12Device->GetRaytracingAccelerationStructurePrebuildInfo(&d3d12BuildInputs, &d3d12RTASPrebuildInfo);
+        BenzinEnsure(d3d12RTASPrebuildInfo.ResultDataMaxSizeInBytes > 0);
+
+        return rt::AccelerationStructureSizes
+        {
+            .BufferSizeInBytes = d3d12RTASPrebuildInfo.ResultDataMaxSizeInBytes,
+            .ScratchResourceSizeInBytes = d3d12RTASPrebuildInfo.ScratchDataSizeInBytes,
+        };
     }
 
     void Device::CheckFeaturesSupport()

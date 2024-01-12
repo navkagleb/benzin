@@ -280,7 +280,11 @@ namespace benzin
         : m_Width{ creation.Width }
         , m_Height{ creation.Height }
     {
-        const LONG m_Style = WS_OVERLAPPEDWINDOW;
+        auto style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+        if (creation.IsResizable)
+        {
+            style |= WS_MAXIMIZEBOX;
+        }
 
         RECT windowBounds
         {
@@ -290,12 +294,12 @@ namespace benzin
             .bottom = (LONG)m_Height,
         };
 
-        BenzinAssert(::AdjustWindowRect(&windowBounds, m_Style, false) != 0);
+        BenzinAssert(::AdjustWindowRect(&windowBounds, style, false) != 0);
 
         m_Win64Window = ::CreateWindow(
             g_RegisterManager.GetName().data(),
             creation.Title.data(),
-            m_Style,
+            style,
             (::GetSystemMetrics(SM_CXSCREEN) - windowBounds.right) / 2,
             (::GetSystemMetrics(SM_CYSCREEN) - windowBounds.bottom) / 2,
             windowBounds.right - windowBounds.left,

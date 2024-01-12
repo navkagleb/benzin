@@ -156,18 +156,17 @@ namespace benzin
 
         computeCommandList.SetPipelineState(*m_EquirectangularToCubePipelineState);
 
-        computeCommandList.SetResourceBarrier(outCubeTexture, ResourceState::UnorderedAccess);
-
         computeCommandList.SetRootShaderResource(RootConstant::InEquirectangularTextureIndex, equireactangularTexture.GetShaderResourceView());
         computeCommandList.SetRootUnorderedAccess(RootConstant::OutCubeTextureIndex, outCubeTexture.GetUnorderedAccessView());
 
+        computeCommandList.SetResourceBarrier(TransitionBarrier{ outCubeTexture, ResourceState::UnorderedAccess });
+
         const uint32_t size = outCubeTexture.GetWidth();
         const uint32_t arraySize = outCubeTexture.GetArraySize();
-
         BenzinAssert(arraySize == 6);
         computeCommandList.Dispatch({ size, size, arraySize }, { 8, 8, 1 });
 
-        computeCommandList.SetResourceBarrier(outCubeTexture, ResourceState::Present);
+        computeCommandList.SetResourceBarrier(TransitionBarrier{ outCubeTexture, ResourceState::Present });
     }
 
 } // namespace benzin

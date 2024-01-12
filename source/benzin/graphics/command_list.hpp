@@ -9,6 +9,26 @@ namespace benzin
 
     class PipelineState;
 
+    namespace rt
+    {
+
+        class AccelerationStructure;
+
+    } // namespace rt
+
+    struct TransitionBarrier
+    {
+        Resource& Resource;
+        ResourceState StateAfter;
+    };
+
+    struct UnorderedAccessBarrier
+    {
+        Resource& Resource;
+    };
+
+    using ResourceBarrierVariant = std::variant<TransitionBarrier, UnorderedAccessBarrier>;
+
     enum class CommandListType : std::underlying_type_t<D3D12_COMMAND_LIST_TYPE>
     {
         Copy = D3D12_COMMAND_LIST_TYPE_COPY,
@@ -30,7 +50,9 @@ namespace benzin
         ID3D12GraphicsCommandList4* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList; }
 
     public:
-        void SetResourceBarrier(Resource& resource, ResourceState resourceStateAfter);
+        void SetResourceBarrier(const ResourceBarrierVariant& resourceBarrier);
+        void SetResourceBarriers(const std::vector<ResourceBarrierVariant>& resourceBarriers);
+
         void CopyResource(Resource& to, Resource& from);
 
     protected:
@@ -118,11 +140,13 @@ namespace benzin
 
         void SetRenderTargets(const std::vector<Descriptor>& rtvs, const Descriptor* dsv = nullptr);
 
-        void ClearRenderTarget(const Descriptor& rtv, const ClearValue& clearValue = {});
-        void ClearDepthStencil(const Descriptor& dsv, const ClearValue& clearValue = {});
+        void ClearRenderTarget(const Descriptor& rtv, const DirectX::XMFLOAT4& color = g_DefaultClearColor);
+        void ClearDepthStencil(const Descriptor& dsv, const DepthStencil& depthStencil = g_DefaultClearDepthStencil);
 
         void DrawVertexed(uint32_t vertexCount, uint32_t instanceCount = 1);
         void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount = 1);
+
+        void BuildRayTracingAccelerationStructure(const rt::AccelerationStructure& accelerationStructure);
 	};
 
 } // namespace benzin

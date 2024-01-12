@@ -12,7 +12,7 @@
 namespace sandbox
 {
 
-    class RaytracingHelloTriangleLayer : public benzin::Layer
+    class RTHelloTriangleLayer : public benzin::Layer
     {
     private:
         struct RayGenConstants
@@ -30,7 +30,7 @@ namespace sandbox
         };
 
     public:
-        explicit RaytracingHelloTriangleLayer(const benzin::GraphicsRefs& graphicsRefs);
+        explicit RTHelloTriangleLayer(const benzin::GraphicsRefs& graphicsRefs);
 
     public:
         void OnEndFrame() override;
@@ -59,7 +59,7 @@ namespace sandbox
         std::shared_ptr<benzin::Buffer> m_VertexBuffer;
         std::shared_ptr<benzin::Buffer> m_IndexBuffer;
 
-        // Raytracing stuff
+        // RayTracing stuff
         ComPtr<ID3D12StateObject> m_D3D12RaytracingStateObject;
 
         std::shared_ptr<benzin::Buffer> m_TLAS;

@@ -83,8 +83,30 @@ namespace benzin
             ));
         }
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC CreateStructuredBufferView(const Buffer& buffer, const StructuredBufferViewCreation& creation)
+        D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12FormatBufferView(const Buffer& buffer, const FormatBufferViewCreation& creation)
         {
+            BenzinAssert(creation.Format != GraphicsFormat::Unknown);
+            BenzinAssert(buffer.GetElementSize() == GetFormatSizeInBytes(creation.Format));
+
+            return D3D12_SHADER_RESOURCE_VIEW_DESC
+            {
+                .Format = (DXGI_FORMAT)creation.Format,
+                .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+                .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+                .Buffer
+                {
+                    .FirstElement = 0,
+                    .NumElements = buffer.GetElementCount(),
+                    .StructureByteStride = 0,
+                    .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
+                },
+            };
+        }
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12StructuredBufferView(const Buffer& buffer, const StructuredBufferViewCreation& creation)
+        {
+            // #REFERENCE: https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_buffer_srv#remarks
+
             BenzinAssert(creation.FirstElementIndex < buffer.GetElementCount());
 
             StructuredBufferViewCreation validatedCreation = creation;
@@ -99,32 +121,38 @@ namespace benzin
                 {
                     .FirstElement = validatedCreation.FirstElementIndex,
                     .NumElements = validatedCreation.ElementCount,
-                    .StructureByteStride = buffer.GetAlignedElementSize(), // TODO: 'm_AlignedElementSize' when using 'StructuredBuffer'?
+                    .StructureByteStride = buffer.GetAlignedElementSize(), // #TODO: 'm_AlignedElementSize' when using 'StructuredBuffer'?
                     .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
                 },
             };
         }
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC CreateByteAddressBufferView(const Buffer& buffer)
+        D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12ByteAddressBufferView(const Buffer& buffer)
         {
-            static constexpr uint32_t r32TypelessFormatSize = sizeof(uint32_t);
+            // #NOTE: ByteAddressBuffers supports only 'DXGI_FORMAT_R32_TYPELESS' format 
+            // #REFERENCE: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
+
+            static const auto rawBufferFormat = GraphicsFormat::R32Typeless;
+            static const auto rawBufferFormatSizeInBytes = GetFormatSizeInBytes(rawBufferFormat);
+
+            BenzinAssert(buffer.GetSizeInBytes() % rawBufferFormatSizeInBytes == 0);
 
             return D3D12_SHADER_RESOURCE_VIEW_DESC
             {
-                .Format = DXGI_FORMAT_R32_TYPELESS, // TODO: More supported types for ByteAddressBuffer
+                .Format = (DXGI_FORMAT)rawBufferFormat,
                 .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
                 .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
                 .Buffer
                 {
                     .FirstElement = 0,
-                    .NumElements = buffer.GetSizeInBytes() / r32TypelessFormatSize,
+                    .NumElements = buffer.GetSizeInBytes() / rawBufferFormatSizeInBytes,
                     .StructureByteStride = 0,
                     .Flags = D3D12_BUFFER_SRV_FLAG_RAW,
                 },
             };
         }
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC CreateRaytracingAccelerationStructureView(const Buffer& buffer)
+        D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12RaytracingAccelerationStructureView(const Buffer& buffer)
         {
             return D3D12_SHADER_RESOURCE_VIEW_DESC
             {
@@ -140,9 +168,20 @@ namespace benzin
 
     } // anonymous namespace
 
-    Buffer::Buffer(Device& device, const BufferCreation& creation)
+    Buffer::Buffer(Device& device)
         : Resource{ device }
+    {}
+
+    Buffer::Buffer(Device& device, const BufferCreation& creation)
+        : Buffer{ device }
     {
+        Create(creation);
+    }
+
+    void Buffer::Create(const BufferCreation& creation)
+    {
+        BenzinAssert(!m_D3D12Resource);
+
         CreateD3D12Resource(creation, m_Device.GetD3D12Device(), m_D3D12Resource);
         SetD3D12ObjectDebugName(m_D3D12Resource, creation.DebugName);
 
@@ -185,11 +224,19 @@ namespace benzin
         }
     }
 
+    uint32_t Buffer::PushFormatBufferView(const FormatBufferViewCreation& creation)
+    {
+        BenzinAssert(m_D3D12Resource);
+
+        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateD3D12FormatBufferView(*this, creation);
+        return PushShaderResourceView(d3d12ShaderResourceViewDesc, m_D3D12Resource);
+    }
+
     uint32_t Buffer::PushStructureBufferView(const StructuredBufferViewCreation& creation)
     {
         BenzinAssert(m_D3D12Resource);
         
-        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateStructuredBufferView(*this, creation);
+        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateD3D12StructuredBufferView(*this, creation);
         return PushShaderResourceView(d3d12ShaderResourceViewDesc, m_D3D12Resource);
     }
 
@@ -197,13 +244,13 @@ namespace benzin
     {
         BenzinAssert(m_D3D12Resource);
 
-        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateByteAddressBufferView(*this);
+        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateD3D12ByteAddressBufferView(*this);
         return PushShaderResourceView(d3d12ShaderResourceViewDesc, m_D3D12Resource);
     }
 
     uint32_t Buffer::PushRaytracingAccelerationStructureView()
     {
-        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateRaytracingAccelerationStructureView(*this);
+        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateD3D12RaytracingAccelerationStructureView(*this);
         return PushShaderResourceView(d3d12ShaderResourceViewDesc, nullptr);
     }
 

@@ -66,7 +66,7 @@ namespace benzin
 
     bool IsDestinationFileOlder(const std::filesystem::path& sourceFilePath, const std::filesystem::path& destinationFilePath)
     {
-        BenzinAssert(fs::exists(sourceFilePath));
+        BenzinEnsure(fs::exists(sourceFilePath));
 
         if (!fs::exists(destinationFilePath))
         {
@@ -82,7 +82,7 @@ namespace benzin
     fs::path GetShaderSourceFilePath(std::string_view fileName)
     {
         const fs::path shaderSourceFilePath{ config::g_AbsoluteShaderSourceDirectoryPath / fileName };
-        BenzinAssert(fs::exists(shaderSourceFilePath));
+        BenzinEnsure(fs::exists(shaderSourceFilePath));
 
         return shaderSourceFilePath;
     }
