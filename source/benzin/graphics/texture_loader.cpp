@@ -30,7 +30,7 @@ namespace benzin
 
         ID3D12Resource* d3d12Resource = nullptr;
         std::unique_ptr<uint8_t[]> imageData;
-        std::vector<SubResourceData> subResources;
+        std::vector<SubResourceData> subResourcesData;
         bool isCubeMap = false;
 
         const HRESULT hr = DirectX::LoadDDSTextureFromFile(
@@ -38,7 +38,7 @@ namespace benzin
             filePath.c_str(),
             &d3d12Resource,
             imageData,
-            *reinterpret_cast<std::vector<D3D12_SUBRESOURCE_DATA>*>(&subResources),
+            *reinterpret_cast<std::vector<D3D12_SUBRESOURCE_DATA>*>(&subResourcesData),
             0,
             nullptr,
             &isCubeMap
@@ -59,7 +59,7 @@ namespace benzin
             BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
 
             auto& copyCommandList = copyCommandQueue.GetCommandList(texture->GetSizeInBytes());
-            copyCommandList.UpdateTexture(*texture, subResources);
+            copyCommandList.UpdateTexture(*texture, subResourcesData);
         }
 
         return texture;
@@ -74,7 +74,7 @@ namespace benzin
         int width;
         int height;
         const int componentCount = 4;
-        float* imageData = stbi_loadf(filePath.string().c_str(), &width, &height, nullptr, 4);
+        float* imageData = stbi_loadf(filePath.string().c_str(), &width, &height, nullptr, componentCount);
 
         if (!imageData)
         {
@@ -100,7 +100,7 @@ namespace benzin
             BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
 
             auto& copyCommandList = copyCommandQueue.GetCommandList(texture->GetSizeInBytes());
-            copyCommandList.UpdateTextureTopMip(*texture, reinterpret_cast<const std::byte*>(imageData));
+            copyCommandList.UpdateTextureTopMip(*texture, std::as_bytes(std::span{ imageData, (size_t)(width * height * componentCount) }));
         }
 
         stbi_image_free(imageData);
@@ -156,8 +156,8 @@ namespace benzin
 
         computeCommandList.SetPipelineState(*m_EquirectangularToCubePipelineState);
 
-        computeCommandList.SetRootShaderResource(RootConstant::InEquirectangularTextureIndex, equireactangularTexture.GetShaderResourceView());
-        computeCommandList.SetRootUnorderedAccess(RootConstant::OutCubeTextureIndex, outCubeTexture.GetUnorderedAccessView());
+        computeCommandList.SetRootResource(joint::EquirectangularToCubePassRC_EquirectangularTexture, equireactangularTexture.GetShaderResourceView());
+        computeCommandList.SetRootResource(joint::EquirectangularToCubePassRC_OutCubeTexture, outCubeTexture.GetUnorderedAccessView());
 
         computeCommandList.SetResourceBarrier(TransitionBarrier{ outCubeTexture, ResourceState::UnorderedAccess });
 

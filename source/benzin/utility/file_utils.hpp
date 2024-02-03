@@ -3,6 +3,8 @@
 namespace benzin
 {
 
+    uint64_t GetFileSize(std::string_view fileName);
+
     std::string CutExtension(std::string_view fileName);
 
     void WriteToFile(std::wstring_view fileName, std::span<const std::byte> data);

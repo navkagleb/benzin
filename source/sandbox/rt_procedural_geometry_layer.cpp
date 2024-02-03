@@ -2,10 +2,11 @@
 #include "rt_procedural_geometry_layer.hpp"
 
 #include <benzin/engine/geometry_generator.hpp>
-#include <benzin/engine/mesh_collection.hpp>
+#include <benzin/engine/resource_loader.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
+#include <benzin/graphics/mapped_data.hpp>
 #include <benzin/graphics/pipeline_state.hpp>
 #include <benzin/graphics/rt_acceleration_structures.hpp>
 #include <benzin/graphics/shaders.hpp>
@@ -237,24 +238,24 @@ namespace sandbox
         auto* d3d12CommandList = commandList.GetD3D12GraphicsCommandList();
 
         {
-            enum class RootConstant : uint32_t
+            enum RootConstant : uint32_t
             {
-                TopLevelASIndex,
-                SceneConstantBufferIndex,
-                TriangleVertexBufferIndex,
-                TriangleIndexBufferIndex,
-                MeshMaterialBufferIndex,
-                ProceduralGeometryBufferIndex,
-                RaytracingOutputTextureIndex,
+                RootConstant_TopLevelASIndex,
+                RootConstant_SceneConstantBufferIndex,
+                RootConstant_TriangleVertexBufferIndex,
+                RootConstant_TriangleIndexBufferIndex,
+                RootConstant_MeshMaterialBufferIndex,
+                RootConstant_ProceduralGeometryBufferIndex,
+                RootConstant_RaytracingOutputTextureIndex,
             };
 
-            commandList.SetRootConstant(RootConstant::TopLevelASIndex, m_TopLevelAS->GetBuffer().GetShaderResourceView().GetHeapIndex());
-            commandList.SetRootConstant(RootConstant::SceneConstantBufferIndex, m_SceneConstantBuffer->GetConstantBufferView().GetHeapIndex());
-            commandList.SetRootConstant(RootConstant::TriangleVertexBufferIndex, m_GridMesh->GetVertexBuffer()->GetShaderResourceView().GetHeapIndex());
-            commandList.SetRootConstant(RootConstant::TriangleIndexBufferIndex, m_GridMesh->GetIndexBuffer()->GetShaderResourceView().GetHeapIndex());
-            commandList.SetRootConstant(RootConstant::MeshMaterialBufferIndex, m_MeshMaterialBuffer->GetShaderResourceView().GetHeapIndex());
-            commandList.SetRootConstant(RootConstant::ProceduralGeometryBufferIndex, m_ProceduralGeometryBuffer->GetShaderResourceView().GetHeapIndex());
-            commandList.SetRootConstant(RootConstant::RaytracingOutputTextureIndex, m_RaytracingOutput->GetUnorderedAccessView().GetHeapIndex());
+            commandList.SetRootResource(RootConstant_TopLevelASIndex, m_TopLevelAS->GetBuffer().GetShaderResourceView());
+            commandList.SetRootResource(RootConstant_SceneConstantBufferIndex, m_SceneConstantBuffer->GetConstantBufferView());
+            commandList.SetRootResource(RootConstant_TriangleVertexBufferIndex, m_GridVertexBuffer->GetShaderResourceView());
+            commandList.SetRootResource(RootConstant_TriangleIndexBufferIndex, m_GridIndexBuffer->GetShaderResourceView());
+            commandList.SetRootResource(RootConstant_MeshMaterialBufferIndex, m_MeshMaterialBuffer->GetShaderResourceView());
+            commandList.SetRootResource(RootConstant_ProceduralGeometryBufferIndex, m_ProceduralGeometryBuffer->GetShaderResourceView());
+            commandList.SetRootResource(RootConstant_RaytracingOutputTextureIndex, m_RaytracingOutput->GetUnorderedAccessView());
 
             d3d12CommandList->SetPipelineState1(m_D3D12RaytracingStateObject.Get());
         }
@@ -297,22 +298,22 @@ namespace sandbox
         }
 
         {
-            auto& backBuffer = m_SwapChain.GetCurrentBackBuffer();
+            auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
 
             commandList.SetResourceBarriers(
             {
-                benzin::TransitionBarrier{ *backBuffer, benzin::ResourceState::CopyDestination },
+                benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::CopyDestination },
                 benzin::TransitionBarrier{ *m_RaytracingOutput, benzin::ResourceState::CopySource },
             });
 
             {
                 BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_CopyRaytracingOutput);
-                commandList.CopyResource(*backBuffer, *m_RaytracingOutput);
+                commandList.CopyResource(currentBackBuffer, *m_RaytracingOutput);
             }
 
             commandList.SetResourceBarriers(
             {
-                benzin::TransitionBarrier{ *backBuffer, benzin::ResourceState::Present },
+                benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::Present },
                 benzin::TransitionBarrier{ *m_RaytracingOutput, benzin::ResourceState::UnorderedAccess },
             });
         }
@@ -356,16 +357,33 @@ namespace sandbox
 
         // Triangular mesh
         {
-            m_GridMesh = std::make_unique<benzin::MeshCollection>(m_Device, benzin::MeshCollectionCreation
+            const benzin::MeshData gridMesh = benzin::GetDefaultGridMesh();
+
+            m_GridVertexBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
             {
-                .DebugName = "Grid",
-                .Meshes{ benzin::GetDefaultGridMesh() },
-                .IsNeedSplitByMeshes = false,
-                .IsNeedDefaultBufferViews = false,
+                .DebugName = "GridVertexBuffer",
+                .ElementSize = sizeof(joint::MeshVertex),
+                .ElementCount = (uint32_t)gridMesh.Vertices.size(),
+                .IsNeedStructuredBufferView = true,
             });
 
-            m_GridMesh->GetVertexBuffer()->PushStructureBufferView();
-            m_GridMesh->GetIndexBuffer()->PushFormatBufferView({ .Format = benzin::GraphicsFormat::R32Uint });
+            m_GridIndexBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
+            {
+                .DebugName = "GridIndexBuffer",
+                .ElementSize = sizeof(uint32_t),
+                .ElementCount = (uint32_t)gridMesh.Indices.size(),
+            });
+            m_GridIndexBuffer->PushFormatBufferView({ .Format = benzin::GraphicsFormat::R32Uint });
+
+            {
+                auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
+                BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
+
+                auto& copyCommandList = copyCommandQueue.GetCommandList(m_GridVertexBuffer->GetSizeInBytes() + m_GridIndexBuffer->GetSizeInBytes());
+
+                copyCommandList.UpdateBuffer(*m_GridVertexBuffer, std::span<const joint::MeshVertex>{ gridMesh.Vertices });
+                copyCommandList.UpdateBuffer(*m_GridIndexBuffer, std::span<const uint32_t>{ gridMesh.Indices });
+            }
 
             const MeshMaterial gridMaterial
             {
@@ -584,8 +602,8 @@ namespace sandbox
         {
             const benzin::rt::GeometryVariant gridGeometry = benzin::rt::TriangledGeometry
             {
-                .VertexBuffer = *m_GridMesh->GetVertexBuffer(),
-                .IndexBuffer = *m_GridMesh->GetIndexBuffer(),
+                .VertexBuffer = *m_GridVertexBuffer,
+                .IndexBuffer = *m_GridIndexBuffer,
             };
 
             m_BottomLevelASs[GeometryType::Triangle] = std::make_unique<benzin::rt::BottomLevelAccelerationStructure>(m_Device, benzin::rt::BottomLevelAccelerationStructureCreation

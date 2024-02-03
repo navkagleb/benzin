@@ -5,7 +5,39 @@
 namespace benzin
 {
 
+    // RasterizerState
+
+    enum class FillMode : std::underlying_type_t<D3D12_FILL_MODE>
+    {
+        Wireframe = D3D12_FILL_MODE_WIREFRAME,
+        Solid = D3D12_FILL_MODE_SOLID,
+    };
+
+    enum class CullMode : std::underlying_type_t<D3D12_CULL_MODE>
+    {
+        None = D3D12_CULL_MODE_NONE,
+        Front = D3D12_CULL_MODE_FRONT,
+        Back = D3D12_CULL_MODE_BACK,
+    };
+
+    enum class TriangleOrder : bool
+    {
+        Clockwise,
+        CounterClockwise,
+    };
+
+    struct RasterizerState
+    {
+        FillMode FillMode = FillMode::Solid;
+        CullMode CullMode = CullMode::Back;
+        TriangleOrder TriangleOrder = TriangleOrder::Clockwise;
+        int32_t DepthBias = D3D12_DEFAULT_DEPTH_BIAS; // In Shader = DepthBias / 2 ^ 24
+        float DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+        float SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+    };
+
     // DepthState
+
     struct DepthState
     {
         static_assert(D3D12_DEPTH_WRITE_MASK_ZERO == false);
@@ -14,13 +46,10 @@ namespace benzin
         bool IsEnabled = true;
         bool IsWriteEnabled = true;
         ComparisonFunction ComparisonFunction = ComparisonFunction::Less;
-
-        static const DepthState& GetLessEqual();
-        static const DepthState& GetGreaterEqual();
-        static const DepthState& GetDisabled();
     };
 
     // StencilState
+
     enum class StencilOperation : std::underlying_type_t<D3D12_STENCIL_OP>
     {
         Keep = D3D12_STENCIL_OP_KEEP,
@@ -50,39 +79,8 @@ namespace benzin
         StencilBehaviour BackFaceBehaviour;
     };
 
-    // RasterizerState
-    enum class FillMode : std::underlying_type_t<D3D12_FILL_MODE>
-    {
-        Wireframe = D3D12_FILL_MODE_WIREFRAME,
-        Solid = D3D12_FILL_MODE_SOLID,
-    };
-
-    enum class CullMode : std::underlying_type_t<D3D12_CULL_MODE>
-    {
-        None = D3D12_CULL_MODE_NONE,
-        Front = D3D12_CULL_MODE_FRONT,
-        Back = D3D12_CULL_MODE_BACK,
-    };
-
-    enum class TriangleOrder : bool
-    {
-        Clockwise,
-        CounterClockwise,
-    };
-
-    struct RasterizerState
-    {
-        FillMode FillMode = FillMode::Solid;
-        CullMode CullMode = CullMode::Back;
-        TriangleOrder TriangleOrder = TriangleOrder::Clockwise;
-        int32_t DepthBias = D3D12_DEFAULT_DEPTH_BIAS; // In Shader = DepthBias / 2 ^ 24
-        float DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-        float SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-
-        static const RasterizerState& GetSolidNoCulling();
-    };
-
     // BlendState
+
     enum class BlendOperation : std::underlying_type_t<D3D12_BLEND_OP>
     {
         Add = D3D12_BLEND_OP_ADD,

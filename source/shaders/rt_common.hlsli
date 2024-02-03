@@ -49,7 +49,7 @@ namespace rt_common
 
     bool IsValidHit(Ray ray, float thit, float3 hitSurfaceNormal)
     {
-        return common::IsInRange(thit, RayTMin(), RayTCurrent()) && !IsCulled(ray, hitSurfaceNormal);
+        return IsInRange(thit, RayTMin(), RayTCurrent()) && !IsCulled(ray, hitSurfaceNormal);
     }
     
 } // rt_common

@@ -109,6 +109,8 @@ namespace benzin
         : CommandList{ device, CommandListType::Copy }
     {}
 
+    CopyCommandList::~CopyCommandList() = default;
+
     void CopyCommandList::UpdateBuffer(Buffer& buffer, std::span<const std::byte> data, size_t offsetInBytes)
     {
         BenzinAssert(buffer.GetD3D12Resource());
@@ -244,17 +246,18 @@ namespace benzin
         //SetResourceBarrier(texture, ResourceState::Present);
     }
 
-    void CopyCommandList::UpdateTextureTopMip(Texture& texture, const std::byte* data)
+    void CopyCommandList::UpdateTextureTopMip(Texture& texture, std::span<const std::byte> data)
     {
         const uint32_t pixelSizeInBytes = GetFormatSizeInBytes(texture.GetFormat());
 
         const SubResourceData topMipSubResource
         {
-            .Data = data,
+            .Data = data.data(),
             .RowPitch = pixelSizeInBytes * texture.GetWidth(),
             .SlicePitch = pixelSizeInBytes * texture.GetWidth() * texture.GetHeight(),
         };
 
+        BenzinAssert(topMipSubResource.SlicePitch == data.size_bytes());
         UpdateTexture(texture, { topMipSubResource });
     }
 
@@ -295,25 +298,11 @@ namespace benzin
         m_D3D12GraphicsCommandList->SetComputeRoot32BitConstant(rootParameterIndex, value, rootIndex);
     }
 
-    void ComputeCommandList::SetRootConstantBuffer(uint32_t rootIndex, const Descriptor& cbv)
+    void ComputeCommandList::SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
     {
-        BenzinAssert(cbv.IsValid());
+        BenzinAssert(viewDescriptor.IsValid());
 
-        SetRootConstant(rootIndex, cbv.GetHeapIndex());
-    }
-
-    void ComputeCommandList::SetRootShaderResource(uint32_t rootIndex, const Descriptor& srv)
-    {
-        BenzinAssert(srv.IsValid());
-
-        SetRootConstant(rootIndex, srv.GetHeapIndex());
-    }
-
-    void ComputeCommandList::SetRootUnorderedAccess(uint32_t rootIndex, const Descriptor& uav)
-    {
-        BenzinAssert(uav.IsValid());
-
-        SetRootConstant(rootIndex, uav.GetHeapIndex());
+        SetRootConstant(rootIndex, viewDescriptor.GetHeapIndex());
     }
 
     void ComputeCommandList::SetPipelineState(const PipelineState& pso)
@@ -349,18 +338,11 @@ namespace benzin
         m_D3D12GraphicsCommandList->SetGraphicsRoot32BitConstant(rootParameterIndex, value, rootIndex);
     }
 
-    void GraphicsCommandList::SetRootConstantBuffer(uint32_t rootIndex, const Descriptor& cbv)
+    void GraphicsCommandList::SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
     {
-        BenzinAssert(cbv.IsValid());
+        BenzinAssert(viewDescriptor.IsValid());
 
-        SetRootConstant(rootIndex, cbv.GetHeapIndex());
-    }
-
-    void GraphicsCommandList::SetRootShaderResource(uint32_t rootIndex, const Descriptor& srv)
-    {
-        BenzinAssert(srv.IsValid());
-
-        SetRootConstant(rootIndex, srv.GetHeapIndex());
+        SetRootConstant(rootIndex, viewDescriptor.GetHeapIndex());
     }
 
     void GraphicsCommandList::SetPipelineState(const PipelineState& pso)

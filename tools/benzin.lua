@@ -148,6 +148,7 @@ project "sandbox"
         "../source/sandbox/**.inl",
         "../source/sandbox/**.cpp",
 
+        "../source/shaders/**.hpp",
         "../source/shaders/**.hlsl",
         "../source/shaders/**.hlsli",
     }

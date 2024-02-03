@@ -2,12 +2,21 @@
 
 #include <benzin/core/layer.hpp>
 #include <benzin/engine/camera.hpp>
-#include <benzin/engine/entity.hpp>
-#include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/pipeline_state.hpp>
-#include <benzin/graphics/swap_chain.hpp>
-#include <benzin/system/window.hpp>
+
+namespace benzin
+{
+
+    class Buffer;
+    class Device;
+    class GPUTimer;
+    class PipelineState;
+    class SwapChain;
+    class Texture;
+    class Window;
+
+    struct GraphicsRefs;
+
+} // namespace benzin
 
 namespace sandbox
 {
@@ -72,15 +81,7 @@ namespace sandbox
         std::shared_ptr<benzin::Buffer> m_RayGenConstantBuffer;
         std::shared_ptr<benzin::Texture> m_RaytracingOutput;
 
-        RayGenConstants m_RayGenConstants
-        {
-            .Viewport{ -1.0f, -1.0f, 1.0f, 1.0f },
-            .Stencil
-            {
-                -1.0f + 0.1f / m_SwapChain.GetAspectRatio(), -1.0f + 0.1f,
-                1.0f - 0.1f / m_SwapChain.GetAspectRatio(), 1.0f - 0.1f,
-            },
-        };
+        RayGenConstants m_RayGenConstants;
     };
 
 } // namespace sandbox

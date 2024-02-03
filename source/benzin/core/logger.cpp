@@ -37,7 +37,7 @@ namespace benzin
             const auto fileName = GetFileNameFormat(sourceLocation);
             const auto threadId = std::this_thread::get_id();
 
-            return std::format("[{}][{}][{}][{}]: {}\n", magic_enum::enum_name(severity), time, threadId, fileName, message);
+            return std::format("[{}][{}][{}][{}]: {}\n", time, threadId, magic_enum::enum_name(severity), fileName, message);
         }
 
     } // anonymous namespace

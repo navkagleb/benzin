@@ -1,3 +1,5 @@
+#include "benzin/graphics/device.hpp"
+
 namespace benzin
 {
 
@@ -27,13 +29,13 @@ namespace benzin
 
     } // anonymous namespace
 
-    template <typename T>
-    CommandQueue<T>::CommandQueue(Device& device, size_t commandAllocatorCount)
+    template <std::derived_from<CommandList> CommandListT>
+    CommandQueue<CommandListT>::CommandQueue(Device& device, size_t commandAllocatorCount)
         : m_Device{ device }
         , m_FlushFence{ device }
         , m_CommandList{ device }
     {
-        const CommandListType commandListType = GetCommandListType<T>();
+        const CommandListType commandListType = GetCommandListType<CommandListT>();
         const char* commandListTypeName = magic_enum::enum_name(commandListType).data();
 
         const D3D12_COMMAND_QUEUE_DESC d3d12CommandQueueDesc
@@ -57,8 +59,8 @@ namespace benzin
         SetD3D12ObjectDebugName(m_FlushFence.GetD3D12Fence(), GetD3D12ObjectDebugName(m_D3D12CommandQueue) + "FlushFence");
     }
 
-    template <typename T>
-    CommandQueue<T>::~CommandQueue()
+    template <std::derived_from<CommandList> CommandListT>
+    CommandQueue<CommandListT>::~CommandQueue()
     {
         Flush(false);
 
@@ -70,8 +72,8 @@ namespace benzin
         SafeUnknownRelease(m_D3D12CommandQueue);
     }
 
-    template <typename T>
-    uint64_t CommandQueue<T>::GetTimestampFrequency() const
+    template <std::derived_from<CommandList> CommandListT>
+    uint64_t CommandQueue<CommandListT>::GetTimestampFrequency() const
     {
         BenzinAssert(m_D3D12CommandQueue);
 
@@ -81,8 +83,8 @@ namespace benzin
         return frequency;
     }
 
-    template <typename T>
-    void CommandQueue<T>::ResetCommandList(uint32_t commandAllocatorIndex)
+    template <std::derived_from<CommandList> CommandListT>
+    void CommandQueue<CommandListT>::ResetCommandList(uint32_t commandAllocatorIndex)
     {
         BenzinAssert(commandAllocatorIndex < m_D3D12CommandAllocators.size());
 
@@ -96,8 +98,8 @@ namespace benzin
         m_IsCommandListExecuted = false;
     }
 
-    template <typename T>
-    void CommandQueue<T>::ExecuteCommandList()
+    template <std::derived_from<CommandList> CommandListT>
+    void CommandQueue<CommandListT>::ExecuteCommandList()
     {
         if (m_IsCommandListExecuted)
         {
@@ -113,8 +115,8 @@ namespace benzin
         m_IsCommandListExecuted = true;
     }
 
-    template <typename T>
-    void CommandQueue<T>::Flush(bool isforcedCommandListExecution)
+    template <std::derived_from<CommandList> CommandListT>
+    void CommandQueue<CommandListT>::Flush(bool isforcedCommandListExecution)
     {
         if (isforcedCommandListExecution && !m_IsCommandListExecuted)
         {
@@ -125,16 +127,12 @@ namespace benzin
 
         m_FlushCount++;
 
-        BenzinTrace("{}: Begin Flush {}", debugName, m_FlushCount);
-        
         SignalFence(m_FlushFence, m_FlushCount);
         m_FlushFence.StallCurrentThreadUntilGPUCompletion(m_FlushCount);
-
-        BenzinTrace("{}: End Flush {}", debugName, m_FlushCount);
     }
 
-    template <typename T>
-    void CommandQueue<T>::SignalFence(Fence& fence, uint64_t value)
+    template <std::derived_from<CommandList> CommandListT>
+    void CommandQueue<CommandListT>::SignalFence(Fence& fence, uint64_t value)
     {
         BenzinAssert(fence.GetD3D12Fence());
 

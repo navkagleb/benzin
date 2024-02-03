@@ -1,12 +1,12 @@
 #pragma once
 
-#include "benzin/engine/model.hpp"
 #include "benzin/graphics/common.hpp"
 
 namespace benzin
 {
 
     class PipelineState;
+    class Texture;
 
     class TextureLoader
     {

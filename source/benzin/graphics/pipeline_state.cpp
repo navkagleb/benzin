@@ -27,6 +27,51 @@ namespace benzin
             };
         }
 
+        D3D12_RASTERIZER_DESC ToD3D12RasterizerState(const RasterizerState& rasterizerState)
+        {
+            return D3D12_RASTERIZER_DESC
+            {
+                .FillMode = static_cast<D3D12_FILL_MODE>(rasterizerState.FillMode),
+                .CullMode = static_cast<D3D12_CULL_MODE>(rasterizerState.CullMode),
+                .FrontCounterClockwise = rasterizerState.TriangleOrder == TriangleOrder::CounterClockwise,
+                .DepthBias = rasterizerState.DepthBias,
+                .DepthBiasClamp = rasterizerState.DepthBiasClamp,
+                .SlopeScaledDepthBias = rasterizerState.SlopeScaledDepthBias,
+                .DepthClipEnable = true,
+                .MultisampleEnable = false,
+                .AntialiasedLineEnable = false,
+                .ForcedSampleCount = 0,
+                .ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
+            };
+        }
+
+        D3D12_DEPTH_STENCIL_DESC ToD3D12DepthStencilState(const DepthState& depthState, const StencilState& stencilState)
+        {
+            return D3D12_DEPTH_STENCIL_DESC
+            {
+                .DepthEnable = depthState.IsEnabled,
+                .DepthWriteMask = static_cast<D3D12_DEPTH_WRITE_MASK>(depthState.IsWriteEnabled),
+                .DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(depthState.ComparisonFunction),
+                .StencilEnable = stencilState.IsEnabled,
+                .StencilReadMask = stencilState.ReadMask,
+                .StencilWriteMask = stencilState.WriteMask,
+                .FrontFace
+                {
+                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.StencilFailOperation),
+                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.DepthFailOperation),
+                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.PassOperation),
+                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(stencilState.FrontFaceBehaviour.StencilFunction),
+                },
+                .BackFace
+                {
+                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.StencilFailOperation),
+                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.DepthFailOperation),
+                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.PassOperation),
+                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(stencilState.BackFaceBehaviour.StencilFunction),
+                },
+            };
+        }
+
         D3D12_RENDER_TARGET_BLEND_DESC ToRenderTargetBlendDesc(const BlendState::RenderTargetState& blendRenderTargetState)
         {
             D3D12_RENDER_TARGET_BLEND_DESC d3d12RenderTargetBlendDesc
@@ -75,51 +120,6 @@ namespace benzin
             }
 
             return d3d12BlendDesc;
-        }
-
-        D3D12_RASTERIZER_DESC ToD3D12RasterizerState(const RasterizerState& rasterizerState)
-        {
-            return D3D12_RASTERIZER_DESC
-            {
-                .FillMode = static_cast<D3D12_FILL_MODE>(rasterizerState.FillMode),
-                .CullMode = static_cast<D3D12_CULL_MODE>(rasterizerState.CullMode),
-                .FrontCounterClockwise = rasterizerState.TriangleOrder == TriangleOrder::CounterClockwise,
-                .DepthBias = rasterizerState.DepthBias,
-                .DepthBiasClamp = rasterizerState.DepthBiasClamp,
-                .SlopeScaledDepthBias = rasterizerState.SlopeScaledDepthBias,
-                .DepthClipEnable = true,
-                .MultisampleEnable = false,
-                .AntialiasedLineEnable = false,
-                .ForcedSampleCount = 0,
-                .ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
-            };
-        }
-
-        D3D12_DEPTH_STENCIL_DESC ToD3D12DepthStencilState(const DepthState& depthState, const StencilState& stencilState)
-        {
-            return D3D12_DEPTH_STENCIL_DESC
-            {
-                .DepthEnable = depthState.IsEnabled,
-                .DepthWriteMask = static_cast<D3D12_DEPTH_WRITE_MASK>(depthState.IsWriteEnabled),
-                .DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(depthState.ComparisonFunction),
-                .StencilEnable = stencilState.IsEnabled,
-                .StencilReadMask = stencilState.ReadMask,
-                .StencilWriteMask = stencilState.WriteMask,
-                .FrontFace
-                {
-                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.StencilFailOperation),
-                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.DepthFailOperation),
-                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.PassOperation),
-                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(stencilState.FrontFaceBehaviour.StencilFunction),
-                },
-                .BackFace
-                {
-                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.StencilFailOperation),
-                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.DepthFailOperation),
-                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.PassOperation),
-                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(stencilState.BackFaceBehaviour.StencilFunction),
-                },
-            };
         }
 
     } // anonymous namespace

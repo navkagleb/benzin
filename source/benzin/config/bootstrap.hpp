@@ -14,7 +14,13 @@
 #include "benzin/core/assert.hpp"
 #include "benzin/core/common.hpp"
 #include "benzin/core/logger.hpp"
+#include "benzin/core/scoped_log_timer.hpp"
 
 // Global configs
 #include "benzin/config/engine_config.hpp"
 #include "benzin/config/graphics_config.hpp"
+
+#include <shaders/joint/constant_buffer_types.hpp>
+#include <shaders/joint/enum_types.hpp>
+#include <shaders/joint/root_constants.hpp>
+#include <shaders/joint/structured_buffer_types.hpp>

@@ -10,7 +10,7 @@
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/system/key_event.hpp>
 
-#include "main_layer.hpp"
+#include "scene_layer.hpp"
 #include "rt_hello_triangle_layer.hpp"
 #include "rt_procedural_geometry_layer.hpp"
 
@@ -50,8 +50,8 @@ namespace sandbox
             {
                 m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(graphicsRefs);
 
-#if 0
-                m_MainLayer = m_LayerStack.Push<MainLayer>(graphicsRefs);
+#if 1
+                m_SceneLayer = m_LayerStack.Push<SceneLayer>(graphicsRefs);
 #elif 0
                 m_RTHelloTriangleLayer = m_LayerStack.Push<RTHelloTriangleLayer>(graphicsRefs);
 #else
@@ -105,7 +105,7 @@ namespace sandbox
 
         void BeginFrame()
         {
-            m_Device->GetGraphicsCommandQueue().ResetCommandList(m_SwapChain->GetCurrentFrameIndex());
+            m_Device->GetGraphicsCommandQueue().ResetCommandList(m_Device->GetActiveFrameIndex());
 
             benzin::Layer::OnStaticBeginFrame();
         }
@@ -140,7 +140,7 @@ namespace sandbox
             benzin::Layer::OnStaticEndFrame();
 
             m_Device->GetGraphicsCommandQueue().ExecuteCommandList();
-            m_SwapChain->SwapBackBuffer();
+            m_SwapChain->Flip();
         }
 
     private:
@@ -152,6 +152,7 @@ namespace sandbox
 
         bool OnWindowResized(benzin::WindowResizedEvent& event)
         {
+            m_Device->GetGraphicsCommandQueue().ExecuteCommandList(); // #TODO: Remove. Refactor in SwapChain::FlushAndResetBackBuffers
             m_SwapChain->ResizeBackBuffers(event.GetWidth(), event.GetHeight());
             return false;
         };
@@ -175,7 +176,7 @@ namespace sandbox
         benzin::LayerStack m_LayerStack;
 
         std::shared_ptr<benzin::ImGuiLayer> m_ImGuiLayer;
-        std::shared_ptr<MainLayer> m_MainLayer;
+        std::shared_ptr<SceneLayer> m_SceneLayer;
         std::shared_ptr<RTHelloTriangleLayer> m_RTHelloTriangleLayer;
         std::shared_ptr<RTProceduralGeometryLayer> m_RTProceduralGeometryLayer;
 

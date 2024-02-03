@@ -9,6 +9,7 @@ namespace benzin
     struct SubResourceData
     {
         const std::byte* Data = nullptr;
+
         size_t RowPitch = 0;
         size_t SlicePitch = 0;
     };

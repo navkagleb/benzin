@@ -6,7 +6,7 @@
 namespace benzin
 {
 
-    template <typename T>
+    template <std::derived_from<CommandList> CommandListT>
     class CommandQueue
     {
     public:
@@ -38,7 +38,7 @@ namespace benzin
         ID3D12CommandQueue* m_D3D12CommandQueue = nullptr;
         std::vector<ID3D12CommandAllocator*> m_D3D12CommandAllocators;
 
-        T m_CommandList;
+        CommandListT m_CommandList;
 
         Fence m_FlushFence;
         uint64_t m_FlushCount = 0;

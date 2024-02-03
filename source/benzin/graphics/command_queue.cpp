@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/command_queue.hpp"
 
-#include "benzin/graphics/command_list.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
 
@@ -9,6 +8,7 @@ namespace benzin
 {
 
     // CopyCommandQueue
+
     CopyCommandQueue::CopyCommandQueue(Device& device)
         : CommandQueue{ device, 1 }
     {}
@@ -34,6 +34,7 @@ namespace benzin
     }
 
     // ComputeCommandQueue
+
     ComputeCommandQueue::ComputeCommandQueue(Device& device)
         : CommandQueue{ device, 1 }
     {}
@@ -52,6 +53,7 @@ namespace benzin
     }
 
     // GraphicsCommandQueue
+
     GraphicsCommandQueue::GraphicsCommandQueue(Device& device)
         : CommandQueue{ device, GraphicsSettingsInstance::Get().FrameInFlightCount }
     {}

@@ -65,15 +65,15 @@ namespace benzin::rt
         D3D12_RAYTRACING_INSTANCE_DESC ToD3D12RaytracingInstanceDesc(const TopLevelInstance& instance)
         {
             // D3D12_RAYTRACING_INSTANCE_DESC::InstanceID - 24 bit
-            // D3D12_RAYTRACING_INSTANCE_DESC::InstanceMask - 8 bit
-            // D3D12_RAYTRACING_INSTANCE_DESC::InstanceContributionToHitGroupIndex - 24 bit
+            // D3D12_RAYTRACING_INSTANCE_DESC::InstanceMask - 8 bit - Bitwise AND with TraceRay() parameter
+            // D3D12_RAYTRACING_INSTANCE_DESC::InstanceContributionToHitGroupIndex - 24 bit - Chose hit group shader
             // D3D12_RAYTRACING_INSTANCE_DESC::Flags - 8 bit
 
             D3D12_RAYTRACING_INSTANCE_DESC d3d12InstanceDesc
             {
                 .InstanceID = 0,
                 .InstanceMask = 1,
-                .InstanceContributionToHitGroupIndex = instance.HitGroupIndex,
+                .InstanceContributionToHitGroupIndex = instance.HitGroupIndex, 
                 .Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE,
                 .AccelerationStructure = instance.BottomLevelAccelerationStructure.GetBuffer().GetGPUVirtualAddress(),
             };

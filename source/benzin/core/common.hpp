@@ -10,7 +10,12 @@ namespace benzin
     template <typename>
     inline constexpr bool g_DependentFalse = false;
 
-    template <typename... Fs>
+    template <std::unsigned_integral T>
+    inline constexpr auto g_InvalidIndex = std::numeric_limits<T>::max();
+
+    inline constexpr auto g_InvalidEntity = (entt::entity)g_InvalidIndex<std::underlying_type_t<entt::entity>>;
+
+    template <typename... Fs>   
     struct VisitorMatch : Fs...
     {
         using Fs::operator()...;
@@ -27,6 +32,14 @@ namespace benzin
 
     using Seconds = std::chrono::duration<float>;
     using MilliSeconds = std::chrono::duration<float, std::milli>;
+
+    struct IndexRange
+    {
+        size_t StartIndex = 0;
+        size_t Count = 0;
+    };
+
+    using ByteSpan = std::span<std::byte>;
 
     constexpr uint64_t KibiBytesToBytes(uint64_t kb)
     {

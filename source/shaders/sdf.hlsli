@@ -137,7 +137,7 @@ namespace sdf
         
         for (uint iterationIndex = 0; iterationIndex < iterationCount; ++iterationIndex)
         {
-            float minDistance = common::g_FloatInfinity;
+            float minDistance = g_FloatInfinity;
             uint minVertexIndex;
 
             for (uint i = 0; i < pyramidVertexCount; ++i)

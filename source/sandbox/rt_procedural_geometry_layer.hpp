@@ -10,9 +10,9 @@ namespace benzin
     class Buffer;
     class Device;
     class GPUTimer;
-    class MeshCollection;
     class Texture;
     class Window;
+
     struct GraphicsRefs;
 
     namespace rt
@@ -39,7 +39,7 @@ namespace sandbox
 
     public:
         explicit RTProceduralGeometryLayer(const benzin::GraphicsRefs& graphicsRefs);
-        ~RTProceduralGeometryLayer(); // For forward declaration of 'benzin::MeshCollection'
+        ~RTProceduralGeometryLayer();
 
     public:
         void OnEndFrame() override;
@@ -63,7 +63,8 @@ namespace sandbox
 
         std::unique_ptr<benzin::GPUTimer> m_GPUTimer;
 
-        std::unique_ptr<benzin::MeshCollection> m_GridMesh;
+        std::unique_ptr<benzin::Buffer> m_GridVertexBuffer;
+        std::unique_ptr<benzin::Buffer> m_GridIndexBuffer;
         std::unique_ptr<benzin::Buffer> m_MeshMaterialBuffer;
 
         std::unique_ptr<benzin::Buffer> m_AABBBuffer;

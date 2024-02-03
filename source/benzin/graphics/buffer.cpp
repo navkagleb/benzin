@@ -1,7 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/buffer.hpp"
 
-#include "benzin/graphics/command_queue.hpp"
+#include "benzin/graphics/mapped_data.hpp"
 
 namespace benzin
 {
@@ -25,6 +25,9 @@ namespace benzin
 
         D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& bufferCreation)
         {
+            BenzinAssert(bufferCreation.ElementSize != 0);
+            BenzinAssert(bufferCreation.ElementCount != 0);
+
             uint32_t alignedElementSize = bufferCreation.ElementSize;
             if (bufferCreation.Flags[BufferFlag::ConstantBuffer])
             {
@@ -36,7 +39,14 @@ namespace benzin
             {
                 // Performance tip: Align structures on sizeof(float4) boundary
                 // Ref: https://developer.nvidia.com/content/understanding-structured-buffer-performance
-                alignedElementSize = AlignAbove(alignedElementSize, config::g_StructuredBufferAlignment);
+
+                BenzinWarningIf(
+                    alignedElementSize % config::g_StructuredBufferAlignment != 0,
+                    "For better performance 'ElementSize' ({}) should be aligned to StructuredBufferAlignemnt ({}) in buffer: {}",
+                    alignedElementSize,
+                    config::g_StructuredBufferAlignment,
+                    bufferCreation.DebugName.Chars
+                );
             }
 
             D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
@@ -235,7 +245,7 @@ namespace benzin
     uint32_t Buffer::PushStructureBufferView(const StructuredBufferViewCreation& creation)
     {
         BenzinAssert(m_D3D12Resource);
-        
+
         const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateD3D12StructuredBufferView(*this, creation);
         return PushShaderResourceView(d3d12ShaderResourceViewDesc, m_D3D12Resource);
     }
@@ -251,7 +261,7 @@ namespace benzin
     uint32_t Buffer::PushRaytracingAccelerationStructureView()
     {
         const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateD3D12RaytracingAccelerationStructureView(*this);
-        return PushShaderResourceView(d3d12ShaderResourceViewDesc, nullptr);
+        return PushShaderResourceView(d3d12ShaderResourceViewDesc, nullptr); // RaytracingAccelerationStructureView creates with pResource == nullptr
     }
 
     uint32_t Buffer::PushUnorderedAccessView()
@@ -290,7 +300,7 @@ namespace benzin
         BenzinAssert(m_D3D12Resource);
 
         uint64_t gpuVirtualAddress = GetGPUVirtualAddress();
-        if (creation.ElementIndex != ConstantBufferViewCreation::s_InvalidElementIndex)
+        if (creation.ElementIndex != g_InvalidIndex<decltype(creation.ElementIndex)>)
         {
             BenzinAssert(creation.ElementIndex < m_ElementCount);
             gpuVirtualAddress += creation.ElementIndex * m_AlignedElementSize;

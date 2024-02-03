@@ -1,11 +1,14 @@
 #include "bootstrap.hpp"
 #include "rt_hello_triangle_layer.hpp"
 
-#include <benzin/engine/model.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
+#include <benzin/graphics/pipeline_state.hpp>
 #include <benzin/graphics/shaders.hpp>
+#include <benzin/graphics/swap_chain.hpp>
+#include <benzin/graphics/texture.hpp>
 
 namespace sandbox
 {
@@ -36,6 +39,15 @@ namespace sandbox
         : m_Window{ graphicsRefs.WindowRef }
         , m_Device{ graphicsRefs.DeviceRef }
         , m_SwapChain{ graphicsRefs.SwapChainRef }
+        , m_RayGenConstants
+        {
+            .Viewport{ -1.0f, -1.0f, 1.0f, 1.0f },
+            .Stencil
+            {
+                -1.0f + 0.1f / m_SwapChain.GetAspectRatio(), -1.0f + 0.1f,
+                1.0f - 0.1f / m_SwapChain.GetAspectRatio(), 1.0f - 0.1f,
+            },
+        }
     {
         m_GPUTimer = std::make_shared<benzin::GPUTimer>(m_Device, m_Device.GetGraphicsCommandQueue(), magic_enum::enum_count<GPUTimerIndex>());
 
@@ -60,16 +72,16 @@ namespace sandbox
         auto* d3d12CommandList = commandList.GetD3D12GraphicsCommandList();
 
         {
-            enum class RootConstant : uint32_t
+            enum RootConstant : uint32_t
             {
-                TopLevelASIndex,
-                RayGenConstantBufferIndex,
-                RaytracingOutputTextureIndex,
+                RootConstant_TopLevelASIndex,
+                RootConstant_RayGenConstantBufferIndex,
+                RootConstant_RaytracingOutputTextureIndex,
             };
 
-            commandList.SetRootConstant(RootConstant::TopLevelASIndex, m_TLAS->GetShaderResourceView().GetHeapIndex());
-            commandList.SetRootConstant(RootConstant::RayGenConstantBufferIndex, m_RayGenConstantBuffer->GetConstantBufferView().GetHeapIndex());
-            commandList.SetRootConstant(RootConstant::RaytracingOutputTextureIndex, m_RaytracingOutput->GetUnorderedAccessView().GetHeapIndex());
+            commandList.SetRootResource(RootConstant_TopLevelASIndex, m_TLAS->GetShaderResourceView());
+            commandList.SetRootResource(RootConstant_RayGenConstantBufferIndex, m_RayGenConstantBuffer->GetConstantBufferView());
+            commandList.SetRootResource(RootConstant_RaytracingOutputTextureIndex, m_RaytracingOutput->GetUnorderedAccessView());
 
             d3d12CommandList->SetPipelineState1(m_D3D12RaytracingStateObject.Get());
         }
@@ -112,19 +124,19 @@ namespace sandbox
         }
 
         {
-            auto& backBuffer = m_SwapChain.GetCurrentBackBuffer();
+            auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
 
             commandList.SetResourceBarriers(
             {
-                benzin::TransitionBarrier{ *backBuffer, benzin::ResourceState::CopyDestination },
+                benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::CopyDestination },
                 benzin::TransitionBarrier{ *m_RaytracingOutput, benzin::ResourceState::CopySource },
             });
 
-            commandList.CopyResource(*backBuffer, *m_RaytracingOutput);
+            commandList.CopyResource(currentBackBuffer, *m_RaytracingOutput);
 
             commandList.SetResourceBarriers(
             {
-                benzin::TransitionBarrier{ *backBuffer, benzin::ResourceState::Present },
+                benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::Present },
                 benzin::TransitionBarrier{ *m_RaytracingOutput, benzin::ResourceState::UnorderedAccess },
             });
         }

@@ -70,6 +70,43 @@ namespace benzin
         SafeUnknownRelease(m_DXGISwapChain);
     }
 
+    Texture& SwapChain::GetCurrentBackBuffer()
+    {
+        return *m_BackBuffers[m_Device.GetActiveFrameIndex()];
+    }
+
+    const Texture& SwapChain::GetCurrentBackBuffer() const
+    {
+        return *m_BackBuffers[m_Device.GetActiveFrameIndex()];
+    }
+
+    void SwapChain::Flip()
+    {
+        BenzinAssert(m_DXGISwapChain->Present(m_IsVSyncEnabled, m_IsVSyncEnabled ? 0 : m_DXGIPresentFlags));
+
+        const uint32_t frameInFlightCount = GraphicsSettingsInstance::Get().FrameInFlightCount;
+
+        uint64_t& cpuFrameIndex = m_Device.m_CPUFrameIndex;
+        uint64_t& gpuFrameIndex = m_Device.m_GPUFrameIndex;
+
+        // The GPU driver doesn't allow to do a flip if the back buffer is not ready
+        // So it doesn't matter when to signal the fence value on the command queue
+        m_Device.GetGraphicsCommandQueue().SignalFence(*m_FrameFence, cpuFrameIndex);
+
+        // Update FrameFence
+        cpuFrameIndex++;
+        gpuFrameIndex = m_FrameFence->GetCompletedValue();
+
+        if (cpuFrameIndex - gpuFrameIndex >= frameInFlightCount)
+        {
+            gpuFrameIndex = cpuFrameIndex - frameInFlightCount + 1;
+            m_FrameFence->StallCurrentThreadUntilGPUCompletion(gpuFrameIndex);
+        }
+
+        m_Device.m_ActiveFrameIndex = (uint8_t)(cpuFrameIndex % frameInFlightCount);
+        BenzinAssert(m_Device.m_ActiveFrameIndex == m_DXGISwapChain->GetCurrentBackBufferIndex());
+    }
+
     void SwapChain::ResizeBackBuffers(uint32_t width, uint32_t height)
     {
         FlushAndResetBackBuffers();
@@ -86,23 +123,6 @@ namespace benzin
         UpdateViewportDimensions((float)width, (float)height);
     }
 
-    void SwapChain::SwapBackBuffer()
-    {
-        BenzinAssert(m_DXGISwapChain->Present(m_IsVSyncEnabled, m_IsVSyncEnabled ? 0 : m_DXGIPresentFlags));
-
-        m_Device.GetGraphicsCommandQueue().SignalFence(*m_FrameFence, m_CPUFrameIndex);
-
-        // Update FrameFence
-        m_CPUFrameIndex++;
-        m_GPUFrameIndex = m_FrameFence->GetCompletedValue();
-
-        if (m_CPUFrameIndex - m_GPUFrameIndex >= GraphicsSettingsInstance::Get().FrameInFlightCount)
-        {
-            m_GPUFrameIndex = m_CPUFrameIndex - GraphicsSettingsInstance::Get().FrameInFlightCount + 1;
-            m_FrameFence->StallCurrentThreadUntilGPUCompletion(m_GPUFrameIndex);
-        }
-    }
-
     void SwapChain::RegisterBackBuffers()
     {
         BenzinAssert(!m_BackBuffers.empty());
@@ -114,7 +134,7 @@ namespace benzin
             
             SetD3D12ObjectDebugName(d3d12BackBuffer, "SwapChainBackBuffer", (uint32_t)i);
 
-            backBuffer = std::make_shared<Texture>(m_Device, d3d12BackBuffer);
+            backBuffer = std::make_unique<Texture>(m_Device, d3d12BackBuffer);
             backBuffer->PushRenderTargetView();
         }
     }

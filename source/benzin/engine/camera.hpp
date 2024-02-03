@@ -87,7 +87,7 @@ namespace benzin
         friend class FlyCameraController;
 
     public:
-        explicit Camera(const Projection& projection);
+        explicit Camera(Projection& projection);
 
     public:
         const DirectX::XMVECTOR& GetPosition() const { return m_Position; }
@@ -104,6 +104,7 @@ namespace benzin
         const DirectX::XMMATRIX& GetViewMatrix() const { return m_ViewMatrix; }
         const DirectX::XMMATRIX& GetInverseViewMatrix() const { return m_InverseViewMatrix; }
 
+        Projection& GetProjection() { return m_Projection; }
         const Projection& GetProjection() const { return m_Projection; }
 
         const DirectX::XMMATRIX& GetProjectionMatrix() const;
@@ -128,7 +129,7 @@ namespace benzin
         DirectX::XMMATRIX m_ViewMatrix = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX m_InverseViewMatrix = DirectX::XMMatrixIdentity();
 
-        const Projection& m_Projection;
+        Projection& m_Projection;
     };
 
     class FlyCameraController

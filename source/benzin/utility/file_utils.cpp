@@ -6,6 +6,11 @@ namespace benzin
 
     namespace fs = std::filesystem;
 
+    uint64_t GetFileSize(std::string_view fileName)
+    {
+        return fs::file_size(fileName);
+    }
+
     std::string CutExtension(std::string_view fileName)
     {
         return fs::path{ fileName }.replace_extension().filename().string();

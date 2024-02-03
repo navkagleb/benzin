@@ -48,9 +48,7 @@ namespace benzin
 
     struct ConstantBufferViewCreation
     {
-        static const uint32_t s_InvalidElementIndex = std::numeric_limits<uint32_t>::max();
-
-        uint32_t ElementIndex = s_InvalidElementIndex;
+        uint32_t ElementIndex = g_InvalidIndex<uint32_t>;
     };
 
     class Buffer : public Resource
@@ -92,5 +90,47 @@ namespace benzin
         uint32_t m_ElementCount = 0;
         uint32_t m_AlignedElementSize = 0; // For ConstantBufferView
     };
+
+    template <typename T>
+    std::unique_ptr<Buffer> CreateFrameDependentUploadStructuredBuffer(Device& device, std::string_view debugName, uint32_t elementCount = 1)
+    {
+        const uint32_t frameInFlightCount = GraphicsSettingsInstance::Get().FrameInFlightCount;
+
+        auto buffer = std::make_unique<Buffer>(device, BufferCreation
+        {
+            .DebugName = debugName,
+            .ElementSize = sizeof(T),
+            .ElementCount = elementCount * frameInFlightCount,
+            .Flags{ BufferFlag::UploadBuffer }, // #TODO: Add StructuredBuffer flag
+        });
+
+        for (auto i : std::views::iota(0u, frameInFlightCount))
+        {
+            BenzinAssert(buffer->PushStructureBufferView(StructuredBufferViewCreation{ .FirstElementIndex = i * elementCount, .ElementCount = elementCount }) == i);
+        }
+
+        return buffer;
+    }
+
+    template <typename T>
+    std::unique_ptr<Buffer> CreateFrameDependentConstantBuffer(Device& device, std::string_view debugName)
+    {
+        const uint32_t frameInFlightCount = GraphicsSettingsInstance::Get().FrameInFlightCount;
+
+        auto buffer = std::make_unique<Buffer>(device, BufferCreation
+        {
+            .DebugName = debugName,
+            .ElementSize = sizeof(T),
+            .ElementCount = frameInFlightCount,
+            .Flags = BufferFlag::ConstantBuffer,
+        });
+
+        for (auto i : std::views::iota(0u, frameInFlightCount))
+        {
+            BenzinAssert(buffer->PushConstantBufferView(ConstantBufferViewCreation{ .ElementIndex = i }) == i);
+        }
+
+        return buffer;
+    }
 
 } // namespace benzin

@@ -117,7 +117,7 @@ float4 TraceRadianceRay(rt_common::Ray ray, uint currentRayRecursionDepth)
     payload.Color = 0.0f;
     payload.RecursionDepth = currentRayRecursionDepth + 1;
 
-    RaytracingAccelerationStructure topLevelAS = ResourceDescriptorHeap[BenzinGetRootConstant(g_TopLevelASIndex)];
+    RaytracingAccelerationStructure topLevelAS = ResourceDescriptorHeap[GetRootConstant(g_TopLevelASIndex)];
 
     TraceRay(
         topLevelAS,
@@ -152,7 +152,7 @@ bool TraceShadowRay(rt_common::Ray ray, uint currentRayRecursionDepth)
     ShadowRayPayload payload;
     payload.IsHitted = true;
 
-    RaytracingAccelerationStructure topLevelAS = ResourceDescriptorHeap[BenzinGetRootConstant(g_TopLevelASIndex)];
+    RaytracingAccelerationStructure topLevelAS = ResourceDescriptorHeap[GetRootConstant(g_TopLevelASIndex)];
 
     TraceRay(
         topLevelAS,
@@ -187,7 +187,7 @@ float4 CalculateSpecularCoefficient(in float3 hitPosition, in float3 incidentLig
 
 float4 CalculatePhongLighting(in float4 albedo, in float3 normal, in bool isInShadow, in float diffuseCoef = 1.0, in float specularCoef = 1.0, in float specularPower = 50)
 {
-    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[BenzinGetRootConstant(g_SceneConstantBufferIndex)];
+    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[GetRootConstant(g_SceneConstantBufferIndex)];
 
     float3 hitPosition = GetWorldHitPosition();
     float3 lightPosition = sceneConstants.LightPosition.xyz;
@@ -290,24 +290,24 @@ float AnalyticalCheckersTexture(in float3 hitPosition, in float3 surfaceNormal, 
 [shader("raygeneration")]
 void RayGen()
 {
-    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[BenzinGetRootConstant(g_SceneConstantBufferIndex)];
+    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[GetRootConstant(g_SceneConstantBufferIndex)];
 
     const rt_common::Ray ray = GenerateCameraRay(DispatchRaysIndex().xy, sceneConstants.CameraPosition.xyz, sceneConstants.InverseViewProjectionMatrix);
     const uint currentRecursionDepth = 0;
 
     const float4 color = TraceRadianceRay(ray, currentRecursionDepth);
     
-    const RWTexture2D<float4> rayTracingOutputTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_RaytracingOutputTextureIndex)];
+    const RWTexture2D<float4> rayTracingOutputTexture = ResourceDescriptorHeap[GetRootConstant(g_RaytracingOutputTextureIndex)];
     rayTracingOutputTexture[DispatchRaysIndex().xy] = color;
 }
 
 [shader("closesthit")]
 void Triangle_RadianceRay_ClosestHit(inout RadianceRayPayload payload, in BuiltInTriangleIntersectionAttributes attributes)
 {
-    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[BenzinGetRootConstant(g_SceneConstantBufferIndex)];
-    const StructuredBuffer<Vertex> vertexBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_TriangleVertexBufferIndex)];
-    const Buffer<uint> indexBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_TriangleIndexBufferIndex)];
-    const StructuredBuffer<MeshMaterial> meshMaterialBufer = ResourceDescriptorHeap[BenzinGetRootConstant(g_MeshMaterialBufferIndex)];
+    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[GetRootConstant(g_SceneConstantBufferIndex)];
+    const StructuredBuffer<Vertex> vertexBuffer = ResourceDescriptorHeap[GetRootConstant(g_TriangleVertexBufferIndex)];
+    const Buffer<uint> indexBuffer = ResourceDescriptorHeap[GetRootConstant(g_TriangleIndexBufferIndex)];
+    const StructuredBuffer<MeshMaterial> meshMaterialBufer = ResourceDescriptorHeap[GetRootConstant(g_MeshMaterialBufferIndex)];
 
     const uint triangleIndexStride = 3;
     const uint indexOffset = PrimitiveIndex() * triangleIndexStride;
@@ -353,12 +353,12 @@ void Triangle_RadianceRay_ClosestHit(inout RadianceRayPayload payload, in BuiltI
 [shader("closesthit")]
 void AABB_RadianceRay_ClosestHit(inout RadianceRayPayload payload, ProceduralAttributes attrs)
 {
-    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[BenzinGetRootConstant(g_SceneConstantBufferIndex)];
+    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[GetRootConstant(g_SceneConstantBufferIndex)];
 
     const uint proceduralGeometryIndex = GeometryIndex();
 
-    const StructuredBuffer<ProceduralGeometryConstants> proceduralGeometryBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_ProceduralGeometryBufferIndex)];
-    const StructuredBuffer<MeshMaterial> meshMaterialBufer = ResourceDescriptorHeap[BenzinGetRootConstant(g_MeshMaterialBufferIndex)];
+    const StructuredBuffer<ProceduralGeometryConstants> proceduralGeometryBuffer = ResourceDescriptorHeap[GetRootConstant(g_ProceduralGeometryBufferIndex)];
+    const StructuredBuffer<MeshMaterial> meshMaterialBufer = ResourceDescriptorHeap[GetRootConstant(g_MeshMaterialBufferIndex)];
 
     const ProceduralGeometryConstants proceduralGeometryConstants = proceduralGeometryBuffer[proceduralGeometryIndex];
     const MeshMaterial meshMaterial = meshMaterialBufer[proceduralGeometryConstants.MaterialIndex];
@@ -399,8 +399,8 @@ void AnalyticAABB_Intersection()
 {
     const uint proceduralGeometryIndex = GeometryIndex();
 
-    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[BenzinGetRootConstant(g_SceneConstantBufferIndex)];
-    const StructuredBuffer<ProceduralGeometryConstants> proceduralGeometryBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_ProceduralGeometryBufferIndex)];
+    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[GetRootConstant(g_SceneConstantBufferIndex)];
+    const StructuredBuffer<ProceduralGeometryConstants> proceduralGeometryBuffer = ResourceDescriptorHeap[GetRootConstant(g_ProceduralGeometryBufferIndex)];
     const ProceduralGeometryConstants proceduralGeometryConstants = proceduralGeometryBuffer[proceduralGeometryIndex];
 
     const rt_common::Ray localRay = rt_common::TransformRay(rt_common::GetObjectRay(), proceduralGeometryConstants.BottomLevelASToLocalSpaceMatrix);
@@ -421,8 +421,8 @@ void VolumetricAABB_Intersection()
 {
     const uint proceduralGeometryIndex = GeometryIndex();
 
-    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[BenzinGetRootConstant(g_SceneConstantBufferIndex)];
-    const StructuredBuffer<ProceduralGeometryConstants> proceduralGeometryBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_ProceduralGeometryBufferIndex)];
+    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[GetRootConstant(g_SceneConstantBufferIndex)];
+    const StructuredBuffer<ProceduralGeometryConstants> proceduralGeometryBuffer = ResourceDescriptorHeap[GetRootConstant(g_ProceduralGeometryBufferIndex)];
     const ProceduralGeometryConstants proceduralGeometryConstants = proceduralGeometryBuffer[proceduralGeometryIndex];
 
     const rt_common::Ray localRay = rt_common::TransformRay(rt_common::GetObjectRay(), proceduralGeometryConstants.BottomLevelASToLocalSpaceMatrix);
@@ -443,8 +443,8 @@ void SignedDistanceAABB_Intersection()
 {
     const uint proceduralGeometryIndex = GeometryIndex();
 
-    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[BenzinGetRootConstant(g_SceneConstantBufferIndex)];
-    const StructuredBuffer<ProceduralGeometryConstants> proceduralGeometryBuffer = ResourceDescriptorHeap[BenzinGetRootConstant(g_ProceduralGeometryBufferIndex)];
+    const ConstantBuffer<SceneConstants> sceneConstants = ResourceDescriptorHeap[GetRootConstant(g_SceneConstantBufferIndex)];
+    const StructuredBuffer<ProceduralGeometryConstants> proceduralGeometryBuffer = ResourceDescriptorHeap[GetRootConstant(g_ProceduralGeometryBufferIndex)];
     const ProceduralGeometryConstants proceduralGeometryConstants = proceduralGeometryBuffer[proceduralGeometryIndex];
 
     const rt_common::Ray localRay = rt_common::TransformRay(rt_common::GetObjectRay(), proceduralGeometryConstants.BottomLevelASToLocalSpaceMatrix);

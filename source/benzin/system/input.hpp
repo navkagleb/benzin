@@ -11,7 +11,7 @@ namespace benzin
     class Input
     {
     private:
-        friend WindowsMessageHandlerDeclaration();
+        friend LRESULT Win64_MessageHandler(HWND windowHandle, UINT messageCode, WPARAM wparam, LPARAM lparam);
 
     public:
         template <typename T = int32_t>

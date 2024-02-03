@@ -221,20 +221,13 @@ namespace benzin
 
     void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, std::string_view debugName)
     {
-        BenzinAssert(d3d12Object);
-
         if (debugName.empty())
         {
             return;
         }
 
-        const bool isRegistered = !HasD3D12ObjectDebugName(d3d12Object);
+        BenzinAssert(d3d12Object);
         BenzinAssert(d3d12Object->SetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t)debugName.size(), debugName.data()));
-
-        if (isRegistered)
-        {
-            BenzinTrace("'{}' is registered", debugName);
-        }
     }
 
     void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, std::string_view debugName, uint32_t index)

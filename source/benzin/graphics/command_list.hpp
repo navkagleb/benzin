@@ -1,13 +1,17 @@
 #pragma once
 
-#include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/texture.hpp"
-#include "benzin/graphics/mapped_data.hpp"
+#include "benzin/graphics/common.hpp"
 
 namespace benzin
 {
 
+    class Buffer;
+    class Descriptor;
     class PipelineState;
+    class Resource;
+    class Texture;
+
+    struct SubResourceData;
 
     namespace rt
     {
@@ -68,6 +72,7 @@ namespace benzin
     public:
         CopyCommandList() = default;
         explicit CopyCommandList(Device& device);
+        ~CopyCommandList(); // For forward declaration of 'm_UploadBuffer'
 
     public:
         template <typename T>
@@ -76,7 +81,7 @@ namespace benzin
 
         void UpdateTexture(Texture& texture, const std::vector<SubResourceData>& subResources);
 
-        void UpdateTextureTopMip(Texture& texture, const std::byte* data);
+        void UpdateTextureTopMip(Texture& texture, std::span<const std::byte> data);
 
     private:
         bool IsValid() const { return m_UploadBuffer == nullptr; }
@@ -99,16 +104,7 @@ namespace benzin
 
     public:
         void SetRootConstant(uint32_t rootIndex, uint32_t value);
-        void SetRootConstant(Enum auto rootIndexEnum, uint32_t value) { SetRootConstant(magic_enum::enum_integer(rootIndexEnum), value); }
-
-        void SetRootConstantBuffer(uint32_t rootIndex, const Descriptor& cbv);
-        void SetRootConstantBuffer(Enum auto rootIndexEnum, const Descriptor& cbv) { SetRootConstantBuffer(magic_enum::enum_integer(rootIndexEnum), cbv); }
-
-        void SetRootShaderResource(uint32_t rootIndex, const Descriptor& srv);
-        void SetRootShaderResource(Enum auto rootIndexEnum, const Descriptor& srv) { SetRootShaderResource(magic_enum::enum_integer(rootIndexEnum), srv); }
-
-        void SetRootUnorderedAccess(uint32_t rootIndex, const Descriptor& uav);
-        void SetRootUnorderedAccess(Enum auto rootIndexEnum, const Descriptor& uav) { SetRootShaderResource(magic_enum::enum_integer(rootIndexEnum), uav); }
+        void SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
 
         void SetPipelineState(const PipelineState& pso); // TODO: Remove duplicate ComputeCommandList
 
@@ -123,13 +119,7 @@ namespace benzin
 
 	public:
         void SetRootConstant(uint32_t rootIndex, uint32_t value);
-        void SetRootConstant(Enum auto rootIndexEnum, uint32_t value) { SetRootConstant(magic_enum::enum_integer(rootIndexEnum), value); }
-
-        void SetRootConstantBuffer(uint32_t rootIndex, const Descriptor& cbv);
-        void SetRootConstantBuffer(Enum auto rootIndexEnum, const Descriptor& cbv) { SetRootConstantBuffer(magic_enum::enum_integer(rootIndexEnum), cbv); }
-
-        void SetRootShaderResource(uint32_t rootIndex, const Descriptor& srv);
-        void SetRootShaderResource(Enum auto rootIndexEnum, const Descriptor& srv) { SetRootShaderResource(magic_enum::enum_integer(rootIndexEnum), srv); }
+        void SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
 
         void SetPipelineState(const PipelineState& pso); // TODO: Remove duplicate ComputeCommandList
 

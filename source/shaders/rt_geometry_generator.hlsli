@@ -58,7 +58,7 @@ namespace rt_geometry_generator
         
         if (outX0 > outX1)
         {
-            common::Swap(outX0, outX1);
+            Swap(outX0, outX1);
         }
 
         return true;
@@ -204,7 +204,7 @@ namespace rt_geometry_generator
         }
         else
         {
-            invRayDirection = all(ray.Direction > 0.0f) ? common::g_FloatInfinity : -common::g_FloatInfinity;
+            invRayDirection = all(ray.Direction > 0.0f) ? g_FloatInfinity : -g_FloatInfinity;
         }
 
         tmin3.x = (aabb[1 - sign3.x].x - ray.Origin.x) * invRayDirection.x;
@@ -420,8 +420,8 @@ namespace rt_geometry_generator
         // Find all metaballs that ray intersects
         // The passed in array is sorted to the first activeMetaballCount
         
-        outTMin = common::g_FloatInfinity;
-        outTMax = -common::g_FloatInfinity;
+        outTMin = g_FloatInfinity;
+        outTMax = -g_FloatInfinity;
         activeMetaballCount = 0;
 
         for (uint i = 0; i < METABALL_COUNT; ++i)
@@ -552,7 +552,7 @@ namespace rt_geometry_generator
                 
                 return sdf::FractalPyramid(
                     position + float3(0.0f, 1.0f, 0.0f),
-                    common::DegreesToRadians(angleInDegrees),
+                    DegreesToRadians(angleInDegrees),
                     height,
                     iterationCount,
                     scale

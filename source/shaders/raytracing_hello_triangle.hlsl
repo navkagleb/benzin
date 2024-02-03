@@ -40,9 +40,9 @@ bool IsInsideViewport(float2 p, ViewportRect viewport)
 [shader("raygeneration")]
 void RayGen()
 {
-    RaytracingAccelerationStructure topLevelAS = ResourceDescriptorHeap[BenzinGetRootConstant(g_TopLevelASIndex)];
-    ConstantBuffer<RayGenConstants> rayGenConstants = ResourceDescriptorHeap[BenzinGetRootConstant(g_RayGenConstantBufferIndex)];
-    RWTexture2D<float4> raytracingOutputTexture = ResourceDescriptorHeap[BenzinGetRootConstant(g_RaytracingOutputTextureIndex)];
+    RaytracingAccelerationStructure topLevelAS = ResourceDescriptorHeap[GetRootConstant(g_TopLevelASIndex)];
+    ConstantBuffer<RayGenConstants> rayGenConstants = ResourceDescriptorHeap[GetRootConstant(g_RayGenConstantBufferIndex)];
+    RWTexture2D<float4> raytracingOutputTexture = ResourceDescriptorHeap[GetRootConstant(g_RaytracingOutputTextureIndex)];
 
     const float2 lerpValues = (float2)DispatchRaysIndex() / (float2)DispatchRaysDimensions();
 

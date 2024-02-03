@@ -3,16 +3,18 @@
 namespace benzin
 {
 
-    class Model;
+    class Buffer;
 
-    struct ModelComponent
+    struct MeshInstanceComponent
     {
-        std::shared_ptr<Model> Model;
-        std::optional<uint32_t> DrawableMeshIndex;
+        uint32_t MeshCollectionIndex = g_InvalidIndex<uint32_t>;
+        std::optional<std::pair<uint32_t, uint32_t>> MeshInstanceRange;
     };
 
     struct TransformComponent
     {
+        std::unique_ptr<Buffer> Buffer;
+
         DirectX::XMFLOAT3 Scale{ 1.0f, 1.0f, 1.0f };
         DirectX::XMFLOAT3 Rotation{ 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT3 Translation{ 0.0f, 0.0f, 0.0f };
@@ -25,13 +27,6 @@ namespace benzin
 
             return scaling * rotation * translation;
         }
-    };
-
-    struct DirectionalLightComponent
-    {
-        DirectX::XMFLOAT3 Direction;
-        DirectX::XMFLOAT3 Color;
-        float Intensity;
     };
 
     struct PointLightComponent

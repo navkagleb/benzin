@@ -1,10 +1,12 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/geometry_generator.hpp"
 
-#include "benzin/engine/mesh_collection.hpp"
+#include "benzin/engine/scene.hpp"
 
 namespace benzin
 {
+
+    using joint::MeshVertex;
 
     namespace
     {
@@ -17,19 +19,19 @@ namespace benzin
             const DirectX::XMVECTOR normalLhs = DirectX::XMLoadFloat3(&lhs.Normal);
             const DirectX::XMVECTOR normalRhs = DirectX::XMLoadFloat3(&rhs.Normal);
 
-            const DirectX::XMVECTOR texCoordLhs = DirectX::XMLoadFloat2(&lhs.TexCoord);
-            const DirectX::XMVECTOR texCoordRhs = DirectX::XMLoadFloat2(&rhs.TexCoord);
+            const DirectX::XMVECTOR uvLhs = DirectX::XMLoadFloat2(&lhs.UV);
+            const DirectX::XMVECTOR uvRhs = DirectX::XMLoadFloat2(&rhs.UV);
 
             // Compute the midpoints of all the attributes. Vectors need to be normalized
             // since linear interpolating can make them not unit length. 
             const DirectX::XMVECTOR localPosition = DirectX::XMVectorScale(DirectX::XMVectorAdd(positionLhs, positionRhs), 0.5f);
             const DirectX::XMVECTOR localNormal = DirectX::XMVector3Normalize(DirectX::XMVectorScale(DirectX::XMVectorAdd(normalLhs, normalRhs), 0.5f));
-            const DirectX::XMVECTOR texCoord = DirectX::XMVectorScale(DirectX::XMVectorAdd(texCoordLhs, texCoordRhs), 0.5f);
+            const DirectX::XMVECTOR uv = DirectX::XMVectorScale(DirectX::XMVectorAdd(uvLhs, uvRhs), 0.5f);
 
             MeshVertex middle;
             DirectX::XMStoreFloat3(&middle.Position, localPosition);
             DirectX::XMStoreFloat3(&middle.Normal, localNormal);
-            DirectX::XMStoreFloat2(&middle.TexCoord, texCoord);
+            DirectX::XMStoreFloat2(&middle.UV, uv);
 
             return middle;
         }
@@ -108,7 +110,7 @@ namespace benzin
                     {
                         .Position{ x, y, z },
                         .Normal{ 0.0f, 1.0f, 0.0f },
-                        .TexCoord{ u, v }
+                        .UV{ u, v }
                     });
                 }
 
@@ -116,7 +118,7 @@ namespace benzin
                 {
                     .Position{ 0.0f, y, 0.0f },
                     .Normal{ 0.0f, 1.0f, 0.0f },
-                    .TexCoord{ 0.5f, 0.5f }
+                    .UV{ 0.5f, 0.5f }
                 };
 
                 meshData.Vertices.push_back(centerVertex);
@@ -155,7 +157,7 @@ namespace benzin
                     {
                         .Position{ x, y, z },
                         .Normal{ 0.0f, -1.0f, 0.0f },
-                        .TexCoord{ u, v }
+                        .UV{ u, v }
                     });
                 }
 
@@ -163,7 +165,7 @@ namespace benzin
                 {
                     .Position{ 0.0f, y, 0.0f },
                     .Normal{ 0.0f, -1.0f, 0.0f },
-                    .TexCoord{ 0.5f, 0.5f },
+                    .UV{ 0.5f, 0.5f },
                 };
 
                 meshData.Vertices.push_back(centerVertex);
@@ -307,7 +309,7 @@ namespace benzin
 
                     vertices[i * creation.DepthPointCount + j].Position = DirectX::XMFLOAT3{ x, 0.0f, z };
                     vertices[i * creation.DepthPointCount + j].Normal = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
-                    vertices[i * creation.DepthPointCount + j].TexCoord = DirectX::XMFLOAT2{ j * du, i * dv };
+                    vertices[i * creation.DepthPointCount + j].UV = DirectX::XMFLOAT2{ j * du, i * dv };
                 }
             }
         }
@@ -370,8 +372,8 @@ namespace benzin
 
                     vertex.Position = DirectX::XMFLOAT3{ r * c, y, r * s };
 
-                    vertex.TexCoord.x = static_cast<float>(j) / creation.SliceCount;
-                    vertex.TexCoord.y = 1.0f - static_cast<float>(i) / creation.StackCount;
+                    vertex.UV.x = static_cast<float>(j) / creation.SliceCount;
+                    vertex.UV.y = 1.0f - static_cast<float>(i) / creation.StackCount;
 
                     const DirectX::XMFLOAT3 tangent{ -s, 0.0f, c };
 
@@ -425,14 +427,14 @@ namespace benzin
             {
                 .Position{ 0.0f, creation.Radius, 0.0f },
                 .Normal{ 0.0f, 1.0f, 0.0f },
-                .TexCoord{ 0.0f, 0.0f }
+                .UV{ 0.0f, 0.0f }
             };
 
             const MeshVertex bottomVertex
             {
                 .Position{ 0.0f, -creation.Radius, 0.0f },
                 .Normal{ 0.0f, -1.0f, 0.0f },
-                .TexCoord{ 0.0f, 1.0f },
+                .UV{ 0.0f, 1.0f },
             };
 
             meshData.Vertices.push_back(topVertex);
@@ -457,8 +459,8 @@ namespace benzin
 
                     DirectX::XMStoreFloat3(&vertex.Normal, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&vertex.Position)));
 
-                    vertex.TexCoord.x = theta / DirectX::XM_2PI;
-                    vertex.TexCoord.y = phi / DirectX::XM_PI;
+                    vertex.UV.x = theta / DirectX::XM_2PI;
+                    vertex.UV.y = phi / DirectX::XM_PI;
                 }
             }
 
@@ -507,7 +509,7 @@ namespace benzin
         return meshData;
     }
 
-    MeshData GenerateGeosphere(const GeosphereGeometryCreation& creation)
+    MeshData GenerateGeosphere(const GeoSphereGeometryCreation& creation)
     {
         static constexpr float x = 0.525731f;
         static constexpr float z = 0.850651f;
@@ -560,8 +562,8 @@ namespace benzin
 
             const float phi = std::acosf(meshData.Vertices[i].Position.y / creation.Radius);
 
-            meshData.Vertices[i].TexCoord.x = theta / DirectX::XM_2PI;
-            meshData.Vertices[i].TexCoord.y = phi / DirectX::XM_PI;
+            meshData.Vertices[i].UV.x = theta / DirectX::XM_2PI;
+            meshData.Vertices[i].UV.y = phi / DirectX::XM_PI;
         }
 
         return meshData;
@@ -580,9 +582,9 @@ namespace benzin
         return meshData;
     }
 
-    const MeshData& GetDefaultGeosphereMesh()
+    const MeshData& GetDefaultGeoSphereMesh()
     {
-        static const MeshData meshData = GenerateGeosphere(GeosphereGeometryCreation
+        static const MeshData meshData = GenerateGeosphere(GeoSphereGeometryCreation
         {
             .Radius = 1.0f,
         });

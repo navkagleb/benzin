@@ -28,11 +28,10 @@ namespace benzin
         {}
 
     public:
-        uint32_t GetHeapIndex() const { Assert{ IsValid() }; return m_HeapIndex; }
-        uint64_t GetCPUHandle() const { Assert{ IsValid() };  return m_CPUHandle; }
-        uint64_t GetGPUHandle() const { Assert{ IsValid() && m_GPUHandle != 0 }; return m_GPUHandle; }
+        uint32_t GetHeapIndex() const { BenzinAssert(IsValid()); return m_HeapIndex; }
+        uint64_t GetCPUHandle() const { BenzinAssert(IsValid()); return m_CPUHandle; }
+        uint64_t GetGPUHandle() const { BenzinAssert(IsValid() && m_GPUHandle != 0); return m_GPUHandle; }
 
-    public:
         bool IsValid() const { return m_CPUHandle != 0; }
 
     private:

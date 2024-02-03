@@ -24,6 +24,9 @@ namespace benzin
     class Device
     {
     public:
+        friend class SwapChain;
+
+    public:
         BenzinDefineNonCopyable(Device);
         BenzinDefineNonMoveable(Device);
 
@@ -41,6 +44,10 @@ namespace benzin
 
         DescriptorManager& GetDescriptorManager() { return *m_DescriptorManager; }
         TextureLoader& GetTextureLoader() { return *m_TextureLoader; }
+
+        uint64_t GetCPUFrameIndex() const { return m_CPUFrameIndex; }
+        uint64_t GetGPUFrameIndex() const { return m_GPUFrameIndex; }
+        uint8_t GetActiveFrameIndex() const { return m_ActiveFrameIndex; }
 
     public:
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
@@ -65,6 +72,10 @@ namespace benzin
         TextureLoader* m_TextureLoader = nullptr;
 
         Fence* m_DeviceRemovedFence = nullptr;
+
+        uint64_t m_CPUFrameIndex = 0;
+        uint64_t m_GPUFrameIndex = 0;
+        uint8_t m_ActiveFrameIndex = 0; // In range [0, FrameInFlightCount)
     };
 
 } // namespace benzin

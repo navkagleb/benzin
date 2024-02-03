@@ -14,6 +14,7 @@
 #include <format>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <iomanip>
 #include <ios>
 #include <iostream>

@@ -17,25 +17,25 @@ namespace benzin
 
     // Cannot move implementation of 'MessageHandle' and 'RegisterManager' to anonymous namespace
     // because 'MessageHandler' is a friend of 'Window'
-    LRESULT WINDOWS_MESSAGE_HANDLER_FUNC_NAME(HWND handle, UINT messageCode, WPARAM wparam, LPARAM lparam)
+    LRESULT Win64_MessageHandler(HWND windowHandle, UINT messageCode, WPARAM wparam, LPARAM lparam)
     {
         if (messageCode == WM_CREATE)
         {
-            ::SetWindowLongPtr(handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(reinterpret_cast<CREATESTRUCT*>(lparam)->lpCreateParams));
+            ::SetWindowLongPtr(windowHandle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(reinterpret_cast<CREATESTRUCT*>(lparam)->lpCreateParams));
 
             return 0;
         }
 
-        Window* window{ reinterpret_cast<Window*>(::GetWindowLongPtr(handle, GWLP_USERDATA)) };
+        Window* window{ reinterpret_cast<Window*>(::GetWindowLongPtr(windowHandle, GWLP_USERDATA)) };
 
-        if (ImGui_ImplWin32_WndProcHandler(handle, messageCode, wparam, lparam))
+        if (ImGui_ImplWin32_WndProcHandler(windowHandle, messageCode, wparam, lparam))
         {
             return 0;
         }
 
         if (!window || !window->m_EventCallback)
         {
-            return ::DefWindowProc(handle, messageCode, wparam, lparam);
+            return ::DefWindowProc(windowHandle, messageCode, wparam, lparam);
         }
 
         static uint32_t width = window->m_Width;
@@ -234,20 +234,21 @@ namespace benzin
             }
         }
 
-        return ::DefWindowProc(handle, messageCode, wparam, lparam);
+        return ::DefWindowProc(windowHandle, messageCode, wparam, lparam);
     }
 
-    class RegisterManager
+    struct RegisterManager
     {
-    public:
+        std::string_view Name;
+
         explicit RegisterManager(std::string_view name)
-            : m_Name{ name }
+            : Name{ name }
         {
             const WNDCLASSEX registerClass
             {
                 .cbSize = sizeof(WNDCLASSEX),
                 .style = CS_VREDRAW | CS_HREDRAW | CS_OWNDC,
-                .lpfnWndProc = WINDOWS_MESSAGE_HANDLER_FUNC_NAME,
+                .lpfnWndProc = Win64_MessageHandler,
                 .cbClsExtra = 0,
                 .cbWndExtra = 0,
                 .hInstance = ::GetModuleHandle(nullptr),
@@ -255,7 +256,7 @@ namespace benzin
                 .hCursor = ::LoadCursor(nullptr, IDC_ARROW),
                 .hbrBackground = nullptr,
                 .lpszMenuName = nullptr,
-                .lpszClassName = m_Name.data(),
+                .lpszClassName = Name.data(),
                 .hIconSm = ::LoadIcon(nullptr, IDI_APPLICATION),
             };
 
@@ -264,14 +265,8 @@ namespace benzin
 
         ~RegisterManager()
         {
-            ::UnregisterClass(m_Name.data(), ::GetModuleHandle(nullptr));
+            ::UnregisterClass(Name.data(), ::GetModuleHandle(nullptr));
         }
-
-    public:
-        std::string_view GetName() const { return m_Name; }
-
-    private:
-        std::string_view m_Name;
     };
 
     static RegisterManager g_RegisterManager{ "BenzinWindowRegisterManager" };
@@ -297,7 +292,7 @@ namespace benzin
         BenzinAssert(::AdjustWindowRect(&windowBounds, style, false) != 0);
 
         m_Win64Window = ::CreateWindow(
-            g_RegisterManager.GetName().data(),
+            g_RegisterManager.Name.data(),
             creation.Title.data(),
             style,
             (::GetSystemMetrics(SM_CXSCREEN) - windowBounds.right) / 2,

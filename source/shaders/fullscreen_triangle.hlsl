@@ -1,25 +1,21 @@
-#include "common.hlsli"
 #include "fullscreen_helper.hlsli"
 
-fullscreen_helper::VS_Output VS_Main(uint32_t vertexID : SV_VertexID)
+VS_FullScreenTriangleOutput CreateOutput(uint vertexIndex, float4 homogeneousPosition)
 {
-    fullscreen_helper::VS_Output output = (fullscreen_helper::VS_Output)0;
-    output.HomogeneousPosition = fullscreen_helper::GetTriangleHomogeneousPosition(vertexID);
+    VS_FullScreenTriangleOutput output = (VS_FullScreenTriangleOutput)0;
+    output.HomogeneousPosition = homogeneousPosition;
     output.ClipPosition = output.HomogeneousPosition;
-    output.UV = fullscreen_helper::GetTriangleUV(vertexID);
+    output.UV = GetFullScreenTriangleUV(vertexIndex);
 
     return output;
 }
 
-fullscreen_helper::VS_Output VS_MainDepth1(uint32_t vertexID : SV_VertexID)
+VS_FullScreenTriangleOutput VS_Main(uint vertexIndex : SV_VertexID)
 {
-    float4 homogeneousPosition = fullscreen_helper::GetTriangleHomogeneousPosition(vertexID);
-    homogeneousPosition.z = 1.0f;
+    return CreateOutput(vertexIndex, GetFullScreenTriangleHomogeneousPosition(vertexIndex));
+}
 
-    fullscreen_helper::VS_Output output = (fullscreen_helper::VS_Output)0;
-    output.HomogeneousPosition = homogeneousPosition;
-    output.ClipPosition = homogeneousPosition;
-    output.UV = fullscreen_helper::GetTriangleUV(vertexID);
-
-    return output;
+VS_FullScreenTriangleOutput VS_MainDepth1(uint vertexIndex : SV_VertexID)
+{
+    return CreateOutput(vertexIndex, GetFullScreenTriangleHomogeneousPositionDepth1(vertexIndex));
 }

@@ -61,14 +61,15 @@ namespace benzin
         ImGui::Render();
 
         {
+            auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
             auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
-            commandList.SetResourceBarrier(TransitionBarrier{ *m_SwapChain.GetCurrentBackBuffer(), ResourceState::RenderTarget });
+            commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::RenderTarget });
 
-            commandList.SetRenderTargets({ m_SwapChain.GetCurrentBackBuffer()->GetRenderTargetView() });
+            commandList.SetRenderTargets({ currentBackBuffer.GetRenderTargetView() });
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
 
-            commandList.SetResourceBarrier(TransitionBarrier{ *m_SwapChain.GetCurrentBackBuffer(), ResourceState::Present });
+            commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::Present });
         }
     }
 
@@ -112,11 +113,11 @@ namespace benzin
                     "{} | "
                     "FPS: {:.1f} ({:.3f} ms) | "
                     "({} x {}) | "
-                    "CPU Frame: {}, GPU Frame: {}",
+                    "CPU Frame: {}, GPU Frame: {}, CurrentFrame: {}",
                     m_Backend.GetMainAdapterName(),
                     s_FrameStats.GetFrameRate(), s_FrameStats.GetDeltaTime().count(),
                     m_Window.GetWidth(), m_Window.GetHeight(),
-                    m_SwapChain.GetCPUFrameIndex(), m_SwapChain.GetGPUFrameIndex()
+                    m_Device.GetCPUFrameIndex(), m_Device.GetGPUFrameIndex(), m_Device.GetActiveFrameIndex()
                 );
 
                 ImGui::Text(text.c_str());

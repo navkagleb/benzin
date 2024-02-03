@@ -112,7 +112,7 @@ namespace benzin
 
     // Camera
 
-    Camera::Camera(const Projection& projection)
+    Camera::Camera(Projection& projection)
         : m_Projection{ projection }
     {
         UpdateRightDirection();

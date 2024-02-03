@@ -20,7 +20,7 @@ namespace benzin
     class Window
     {
     private:
-        friend WindowsMessageHandlerDeclaration();
+        friend LRESULT Win64_MessageHandler(HWND windowHandle, UINT messageCode, WPARAM wparam, LPARAM lparam);
 
     public:
         Window(const WindowCreation& creation);

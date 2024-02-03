@@ -37,19 +37,19 @@ namespace benzin
         uint32_t StackCount = 0;
     };
 
-    struct GeosphereGeometryCreation
+    struct GeoSphereGeometryCreation
     {
         float Radius = 0.0f;
-        uint32_t SubdivisionCount = 6;
+        uint32_t SubdivisionCount = 1;
     };
 
     MeshData GenerateBox(const BoxGeometryCreation& creation);
     MeshData GenerateGrid(const GridGeometryCreation& creation);
     MeshData GenerateCylinder(const CylinderGeometryCreation& creation);
     MeshData GenerateSphere(const SphereGeometryCreation& creation);
-    MeshData GenerateGeosphere(const GeosphereGeometryCreation& creation);
+    MeshData GenerateGeosphere(const GeoSphereGeometryCreation& creation);
 
     const MeshData& GetDefaultGridMesh();
-    const MeshData& GetDefaultGeosphereMesh();
+    const MeshData& GetDefaultGeoSphereMesh();
 
 } // namespace benzin
