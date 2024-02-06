@@ -16,9 +16,6 @@
 #include <benzin/graphics/texture_loader.hpp>
 #include <benzin/utility/random.hpp>
 
-#include <shaders/joint/root_constants.hpp>
-#include <shaders/joint/constant_buffer_types.hpp>
-
 namespace sandbox
 {
 
@@ -44,29 +41,26 @@ namespace sandbox
             resultMeshCollection.Materials.reserve(totalCount);
             resultMeshCollection.MeshInstances.reserve(totalCount);
 
-            for (uint32_t i = 0; i < spheresPerRowCount; ++i)
+            for (const auto _ : std::views::iota(0u, spheresPerRowCount * spheresPerColumnCount))
             {
-                for (uint32_t j = 0; j < spheresPerColumnCount; ++j)
+                const DirectX::XMFLOAT3 emissiveFactor
                 {
-                    const DirectX::XMFLOAT3 emissiveFactor
-                    {
-                        benzin::Random::Get<float>(0.0f, 1.0f),
-                        benzin::Random::Get<float>(0.0f, 1.0f),
-                        benzin::Random::Get<float>(0.0f, 1.0f)
-                    };
+                    benzin::Random::Get<float>(0.0f, 1.0f),
+                    benzin::Random::Get<float>(0.0f, 1.0f),
+                    benzin::Random::Get<float>(0.0f, 1.0f)
+                };
 
-                    resultMeshCollection.Materials.push_back(benzin::Material
-                    {
-                        .AlbedoFactor{ 0.0f, 0.0f, 0.0f, 0.0f },
-                        .EmissiveFactor = emissiveFactor,
-                    });
+                resultMeshCollection.Materials.push_back(benzin::Material
+                {
+                    .AlbedoFactor{ 0.0f, 0.0f, 0.0f, 0.0f },
+                    .EmissiveFactor = emissiveFactor,
+                });
 
-                    resultMeshCollection.MeshInstances.push_back(benzin::MeshInstance
-                    {
-                        .MeshIndex = 0, // Only one mesh in MeshCollectionResource
-                        .MaterialIndex = (uint32_t)resultMeshCollection.Materials.size() - 1,
-                    });
-                }
+                resultMeshCollection.MeshInstances.push_back(benzin::MeshInstance
+                {
+                    .MeshIndex = 0, // Only one mesh in MeshCollectionResource
+                    .MaterialIndex = (uint32_t)resultMeshCollection.Materials.size() - 1,
+                });
             }
 
             return resultMeshCollection;
@@ -623,9 +617,9 @@ namespace sandbox
         }
 
         {
-            for (uint32_t i = 0; i < spheresPerRowCount; ++i)
+            for (const auto i : std::views::iota(0u, spheresPerRowCount))
             {
-                for (uint32_t j = 0; j < spheresPerColumnCount; ++j)
+                for (const auto j : std::views::iota(0u, spheresPerColumnCount))
                 {
                     const uint32_t currentPointLightIndex = i * spheresPerColumnCount + j;
 

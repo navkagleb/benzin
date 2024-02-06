@@ -14,7 +14,7 @@
 #include "benzin/core/assert.hpp"
 #include "benzin/core/common.hpp"
 #include "benzin/core/logger.hpp"
-#include "benzin/core/scoped_log_timer.hpp"
+#include "benzin/core/scoped_timer.hpp"
 
 // Global configs
 #include "benzin/config/engine_config.hpp"

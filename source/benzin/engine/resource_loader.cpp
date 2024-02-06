@@ -4,8 +4,6 @@
 #include <third_party/tinygltf/stb_image.h>
 #include <third_party/tinygltf/tiny_gltf.h>
 
-#include "benzin/core/scoped_log_timer.hpp"
-
 namespace benzin
 {
 
@@ -17,6 +15,8 @@ namespace benzin
         public:
             bool ReadFromFile(std::string_view fileName, MeshCollectionResource& outMeshCollection)
             {
+                BenzinLogTimeOnScopeExit("GLTF Reader: ReadFromFile");
+
                 static tinygltf::TinyGLTF context;
 
                 const std::filesystem::path filePath = config::g_ModelDirPath / fileName;
@@ -29,13 +29,17 @@ namespace benzin
 
                 const std::string filePathStr = filePath.string();
 
-                if (filePath.extension() == ".glb")
                 {
-                    isFileLoadingSucceed = context.LoadBinaryFromFile(&m_CurrentModel, &error, &warning, filePathStr);
-                }
-                else if (filePath.extension() == ".gltf")
-                {
-                    isFileLoadingSucceed = context.LoadASCIIFromFile(&m_CurrentModel, &error, &warning, filePathStr);
+                    BenzinLogTimeOnScopeExit("GLTF Reader: LoadFromFile {}", filePathStr);
+
+                    if (filePath.extension() == ".glb")
+                    {
+                        isFileLoadingSucceed = context.LoadBinaryFromFile(&m_CurrentModel, &error, &warning, filePathStr);
+                    }
+                    else if (filePath.extension() == ".gltf")
+                    {
+                        isFileLoadingSucceed = context.LoadASCIIFromFile(&m_CurrentModel, &error, &warning, filePathStr);
+                    }
                 }
 
                 if (!warning.empty())
@@ -55,10 +59,26 @@ namespace benzin
                 }
 
                 outMeshCollection.DebugName = CutExtension(fileName);
-                ParseMeshPrimitives(outMeshCollection);
-                ParseNodes(outMeshCollection);
-                ParseMaterials(outMeshCollection);
-                ParseTextures(outMeshCollection);
+
+                {
+                    BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseMeshPrimitives", outMeshCollection.DebugName);
+                    ParseMeshPrimitives(outMeshCollection);
+                }
+
+                {
+                    BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseNodes", outMeshCollection.DebugName);
+                    ParseNodes(outMeshCollection);
+                }
+
+                {
+                    BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseMaterials", outMeshCollection.DebugName);
+                    ParseMaterials(outMeshCollection);
+                }
+
+                {
+                    BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseTextures", outMeshCollection.DebugName);
+                    ParseTextures(outMeshCollection);
+                }
 
                 ResetState();
 
@@ -378,8 +398,11 @@ namespace benzin
             {
                 outMeshCollection.TextureImages.resize(m_TextureMappings.size());
 
-                for (const auto [gltfTextureIndex, mappedIndex] : m_TextureMappings)
+                std::for_each(std::execution::par, m_TextureMappings.begin(), m_TextureMappings.end(), [&](const auto textureMappingEntry)
                 {
+                    const uint32_t gltfTextureIndex = textureMappingEntry.first;
+                    const uint32_t mappedIndex = textureMappingEntry.second;
+
                     const tinygltf::Texture gltfTexture = m_CurrentModel.textures[gltfTextureIndex];
                     const tinygltf::Image& gltfImage = m_CurrentModel.images[gltfTexture.source];
                     BenzinAssert(gltfImage.bits == 8);
@@ -410,7 +433,7 @@ namespace benzin
                     memcpy(textureImage.ImageData.data(), gltfImage.image.data(), gltfImage.image.size());
 
                     outMeshCollection.TextureImages[mappedIndex] = std::move(textureImage);
-                }
+                });
             }
 
             uint32_t PushTextureMapping(int gltfTextureIndex)

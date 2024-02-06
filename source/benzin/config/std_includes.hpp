@@ -9,6 +9,7 @@
 #include <charconv>
 #include <chrono>
 #include <concepts>
+#include <execution>
 #include <expected>
 #include <filesystem>
 #include <format>

@@ -271,25 +271,26 @@ namespace benzin
             new (&const_cast<ShaderArgs&>(args)) ShaderArgs{ shaderType, shaderCreation.EntryPoint, shaderCreation.Defines };
         }
 
-        const ShaderCompiler::CompileResult result = g_ShaderCompiler.Compile(paths, args);
+        const auto [us, compileResult] = BenzinProfileFunction(g_ShaderCompiler.Compile(paths, args));
+        const float ms = us.count() / 1000.0f;
 
         if (shaderType == ShaderType::Library)
         {
-            BenzinTrace("LibraryCompiled: {}! File: {}", hash, shaderCreation.FileName);
+            BenzinTrace("LibraryCompiled: {}! File: {}. Time: {}ms", hash, shaderCreation.FileName, ms);
         }
         else
         {
-            BenzinTrace("ShaderCompiled: {}! File: {}, EntryPoint: {}", hash, shaderCreation.FileName, shaderCreation.EntryPoint);
+            BenzinTrace("ShaderCompiled: {}! File: {}, EntryPoint: {}. Time: {}ms", hash, shaderCreation.FileName, shaderCreation.EntryPoint, ms);
         }
 
-        WriteToFile(paths.BinaryFilePath, result.BinaryBlob);
+        WriteToFile(paths.BinaryFilePath, compileResult.BinaryBlob);
 
         if constexpr (config::g_IsShaderSymbolsEnabled)
         {
-            WriteToFile(paths.DebugFilePath, result.DebugBlob);
+            WriteToFile(paths.DebugFilePath, compileResult.DebugBlob);
         }
 
-        return g_ShaderBinaries[hash] = result.BinaryBlob;
+        return g_ShaderBinaries[hash] = compileResult.BinaryBlob;
     }
 
 } // namespace benzin

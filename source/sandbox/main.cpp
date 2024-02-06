@@ -22,6 +22,8 @@ namespace sandbox
     public:
         Application()
         {
+            BenzinLogTimeOnScopeExit("Create Application");
+
             const auto commandLineArgs = benzin::CommandLineArgsInstance::Get();
 
             const benzin::WindowCreation windowCreation
