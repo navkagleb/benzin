@@ -156,9 +156,9 @@ namespace benzin
         void RenderImGuiViewProperties();
         void RenderImGuiProjectionProperties();
 
-        DirectX::XMVECTOR GetCameraFrontDirection() const;
-
         PerspectiveProjection* GetPerspectiveProjection();
+
+        void UpdatePitchAndYawIfNeeded();
 
     private:
         Camera& m_Camera;

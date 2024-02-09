@@ -1,6 +1,7 @@
 #include "bootstrap.hpp"
 #include "scene_layer.hpp"
 
+#include <benzin/core/math.hpp>
 #include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/geometry_generator.hpp>
 #include <benzin/engine/resource_loader.hpp>
@@ -64,6 +65,32 @@ namespace sandbox
             }
 
             return resultMeshCollection;
+        }
+
+        bool IsMeshCulled(const benzin::Camera& camera, const benzin::MeshCollection& meshCollection, uint32_t meshInstanceIndex, const DirectX::XMMATRIX& worldMatrix)
+        {
+            const auto& meshInstance = meshCollection.MeshInstances[meshInstanceIndex];
+            const auto& mesh = meshCollection.Meshes[meshInstance.MeshIndex];
+
+            if (!mesh.BoundingBox)
+            {
+                return false;
+            }
+
+            const auto GetNodeTransform = [&]
+            {
+                if (meshInstance.MeshNodeIndex == benzin::g_InvalidIndex<uint32_t>)
+                {
+                    return DirectX::XMMatrixIdentity();
+                }
+
+                return meshCollection.MeshNodes[meshInstance.MeshNodeIndex].Transform;
+            };
+
+            const auto localToViewSpaceTransformMatrix = GetNodeTransform() * worldMatrix * camera.GetViewMatrix();
+            const auto viewSpaceMeshBoundingBox = benzin::TransformBoundingBox(*mesh.BoundingBox, localToViewSpaceTransformMatrix);
+
+            return camera.GetProjection().GetBoundingFrustum().Contains(viewSpaceMeshBoundingBox) == DirectX::DISJOINT;
         }
 
         constexpr auto g_GBuffer_Color0Format = benzin::GraphicsFormat::RGBA8Unorm;
@@ -154,6 +181,11 @@ namespace sandbox
             const auto meshInstanceRange = mic.MeshInstanceRange.value_or(std::pair{ 0u, (uint32_t)meshCollection.MeshInstances.size() });
             for (uint32_t i = meshInstanceRange.first; i < meshInstanceRange.second; ++i)
             {
+                if (IsMeshCulled(scene.GetCamera(), meshCollection, i, tc.GetMatrix()))
+                {
+                    continue;
+                }
+
                 commandList.SetRootConstant(joint::GeometryPassRC_MeshInstanceIndex, i);
 
                 const auto& meshInstance = meshCollection.MeshInstances[i];
@@ -252,7 +284,7 @@ namespace sandbox
             .SunColor = m_SunColor,
             .SunIntensity = m_SunIntensity,
             .SunDirection = m_SunDirection,
-            .ActivePointLightCount = scene.GetActivePointLightCount(),
+            .ActivePointLightCount = scene.GetStats().PointLightCount,
             .OutputType = magic_enum::enum_integer(m_OutputType),
         };
 
@@ -410,7 +442,8 @@ namespace sandbox
         m_CameraBuffer = benzin::CreateFrameDependentConstantBuffer<joint::CameraConstants>(m_Device, "CameraConstantBuffer");
 
         auto& camera = m_Scene.GetCamera();
-        camera.SetPosition({ 0.0f, 1.0f, 0.0f });
+        camera.SetPosition({ -3.0f, 2.0f, -0.25f });
+        camera.SetFrontDirection({ 1.0f, 0.0f, 0.0f });
 
         if (auto* perspectiveProjection = dynamic_cast<benzin::PerspectiveProjection*>(&camera.GetProjection()))
         {
@@ -497,16 +530,15 @@ namespace sandbox
         }
 
         {
+            BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex_BackBufferCopy);
+
             auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
             auto& deferredLightingOutputTexture = m_DeferredLightingPass.GetOutputTexture();
 
             commandList.SetResourceBarrier(benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::CopyDestination });
             commandList.SetResourceBarrier(benzin::TransitionBarrier{ deferredLightingOutputTexture, benzin::ResourceState::CopySource });
 
-            {
-                BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex_BackBufferCopy);
-                commandList.CopyResource(currentBackBuffer, m_DeferredLightingPass.GetOutputTexture());
-            }
+            commandList.CopyResource(currentBackBuffer, m_DeferredLightingPass.GetOutputTexture());
 
             commandList.SetResourceBarrier(benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::Present });
             commandList.SetResourceBarrier(benzin::TransitionBarrier{ deferredLightingOutputTexture, benzin::ResourceState::Present });
@@ -517,6 +549,27 @@ namespace sandbox
     {
         m_FlyCameraController.OnImGuiRender();
         m_DeferredLightingPass.OnImGuiRender();
+
+        ImGui::Begin("Scene Stats");
+        {
+            struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
+            {
+                char do_thousands_sep() const override { return '\''; }
+            
+                std::string do_grouping() const override { return "\3"; }
+            };
+
+            static const std::locale customLocale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
+
+            std::locale::global(customLocale);
+            BenzinExecuteOnScopeExit([]{ std::locale::global(std::locale::classic()); });
+
+            const auto& sceneStats = m_Scene.GetStats();
+            ImGui::Text(std::format("VertexCount: {:L}", sceneStats.VertexCount).c_str());
+            ImGui::Text(std::format("TriangleCount: {:L}", sceneStats.TriangleCount).c_str());
+            ImGui::Text(std::format("PointLightCount: {:L}", sceneStats.PointLightCount).c_str());
+        }
+        ImGui::End();
 
         ImGui::Begin("MainLayer TimeStats");
         {

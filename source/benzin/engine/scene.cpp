@@ -158,7 +158,7 @@ namespace benzin
                 pointLightBuffer.Write(entry, offset + i);
             }
 
-            m_ActivePointLightCount = (uint32_t)view.size_hint();
+            m_Stats.PointLightCount = (uint32_t)view.size_hint();
         }
     }
 
@@ -188,7 +188,7 @@ namespace benzin
             UpdateTextureIndexIfNeeded(material.EmissiveTextureIndex);
         }
 
-        MeshCollection meshCollection
+        MeshCollection meshCollectionToMove
         {
             .Meshes = std::move(meshCollectionResource.Meshes),
             .MeshNodes = std::move(meshCollectionResource.MeshNodes),
@@ -197,8 +197,17 @@ namespace benzin
         };
 
         m_MeshCollectionDebugNames.push_back(std::move(meshCollectionResource.DebugName));
-        m_MeshCollections.push_back(std::move(meshCollection));
-        m_MeshCollectionGPUStorages.push_back(CreateMeshCollectionGPUStorage(m_Device, m_MeshCollectionDebugNames.back(), m_MeshCollections.back()));
+        m_MeshCollections.push_back(std::move(meshCollectionToMove));
+
+        const auto& debugName = m_MeshCollectionDebugNames.back();
+        const auto& meshCollection = m_MeshCollections.back();
+        m_MeshCollectionGPUStorages.push_back(CreateMeshCollectionGPUStorage(m_Device, debugName, meshCollection));
+
+        for (const auto& mesh : meshCollection.Meshes)
+        {
+            m_Stats.VertexCount += (uint32_t)mesh.Vertices.size();
+            m_Stats.TriangleCount += (uint32_t)mesh.Indices.size() / 3;
+        }
 
         return (uint32_t)m_MeshCollections.size() - 1;
     }

@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/camera.hpp"
 
+#include "benzin/core/math.hpp"
 #include "benzin/system/input.hpp"
 
 namespace benzin
@@ -189,7 +190,7 @@ namespace benzin
     FlyCameraController::FlyCameraController(Camera& camera)
         : m_Camera{ camera }
     {
-        m_Camera.SetFrontDirection(GetCameraFrontDirection());
+        m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
     }
 
     void FlyCameraController::SetCameraPitchYaw(float pitch, float yaw)
@@ -197,7 +198,7 @@ namespace benzin
         m_Pitch = DirectX::XMConvertToRadians(pitch);
         m_Yaw = DirectX::XMConvertToRadians(yaw);
 
-        m_Camera.SetFrontDirection(GetCameraFrontDirection());
+        m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
     }
 
     void FlyCameraController::OnEvent(Event& event)
@@ -211,6 +212,8 @@ namespace benzin
 
     void FlyCameraController::OnUpdate(MilliSeconds dt)
     {
+        UpdatePitchAndYawIfNeeded();
+
         const float delta = m_CameraTranslationSpeed * dt.count();
         const auto& position = m_Camera.GetPosition();
 
@@ -320,7 +323,7 @@ namespace benzin
                 m_Yaw = DirectX::XM_PI;
             }
 
-            m_Camera.SetFrontDirection(GetCameraFrontDirection());
+            m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
         }
 
         m_LastMousePosition.x = event.GetX<float>();
@@ -336,7 +339,7 @@ namespace benzin
 
         if (auto* perspectiveProjection = GetPerspectiveProjection())
         {
-            const float fov = perspectiveProjection->GetFOV() - m_MouseWheelSensitivity * static_cast<float>(event.GetOffsetX());
+            const float fov = perspectiveProjection->GetFOV() - m_MouseWheelSensitivity * (float)event.GetOffsetX();
             perspectiveProjection->SetFOV(std::clamp(fov, minFOV, maxFOV));
         }
 
@@ -371,12 +374,12 @@ namespace benzin
 
         if (ImGui::SliderAngle("Pitch (X)", &m_Pitch, -89.0f, 89.0f))
         {
-            m_Camera.SetFrontDirection(GetCameraFrontDirection());
+            m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
         }
 
         if (ImGui::SliderAngle("Yaw (Y)", &m_Yaw, -180.0f, 180.0f))
         {
-            m_Camera.SetFrontDirection(GetCameraFrontDirection());
+            m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
         }
 
         RenderImGuiMatrix4x4(m_Camera.GetViewMatrix());
@@ -401,18 +404,6 @@ namespace benzin
         RenderImGuiMatrix4x4(m_Camera.GetProjectionMatrix());
     }
 
-    DirectX::XMVECTOR FlyCameraController::GetCameraFrontDirection() const
-    {
-        const DirectX::XMVECTOR frontDirection = DirectX::XMVectorSet(
-            DirectX::XMScalarCos(m_Yaw) * DirectX::XMScalarCos(m_Pitch),
-            DirectX::XMScalarSin(m_Pitch),
-            DirectX::XMScalarSin(m_Yaw) * DirectX::XMScalarCos(m_Pitch),
-            0.0f
-        );
-
-        return DirectX::XMVector3Normalize(frontDirection);
-    }
-
     PerspectiveProjection* FlyCameraController::GetPerspectiveProjection()
     {
         const auto* perspectiveProjection = dynamic_cast<const PerspectiveProjection*>(&m_Camera.GetProjection());
@@ -424,6 +415,21 @@ namespace benzin
         }
 
         return const_cast<PerspectiveProjection*>(perspectiveProjection);
+    }
+
+    void FlyCameraController::UpdatePitchAndYawIfNeeded()
+    {
+        static constexpr DirectX::XMVECTOR eplison3{ 0.0001f, 0.0001f, 0.0001f };
+
+        const auto& frontDirection = m_Camera.GetFrontDirection();
+
+        if (!DirectX::XMVector3NearEqual(frontDirection, GetDirectionFromPitchYaw(m_Pitch, m_Yaw), eplison3))
+        {
+            const auto [pitch, yaw] = GetPitchYawFromDirection(frontDirection);
+
+            m_Pitch = pitch;
+            m_Yaw = yaw;
+        }
     }
 
 } // namespace benzin

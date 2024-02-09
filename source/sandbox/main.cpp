@@ -189,6 +189,7 @@ namespace sandbox
 
 int benzin::ClientMain()
 {
+    BenzinAssert(benzin::CommandLineArgsInstance::IsInitialized());
     const auto& commandLines = benzin::CommandLineArgsInstance::Get();
 
     benzin::GraphicsSettingsInstance::Initialize(benzin::GraphicsSettings

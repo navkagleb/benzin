@@ -29,6 +29,14 @@ namespace benzin
         std::unique_ptr<Buffer> MaterialBuffer;
     };
 
+    struct SceneStats
+    {
+        uint32_t VertexCount = 0;
+        uint32_t TriangleCount = 0;
+
+        uint32_t PointLightCount = 0;
+    };
+
     class Scene
     {
     public:
@@ -36,11 +44,13 @@ namespace benzin
 
     public:
         auto& GetCamera() { return m_Camera; }
+        const auto& GetCamera() const { return m_Camera; }
+
+        const auto& GetStats() const { return m_Stats; }
 
         const auto& GetMeshCollection(uint32_t index) const { return m_MeshCollections[index]; };
         const auto& GetMeshCollectionGPUStorage(uint32_t index) const { return m_MeshCollectionGPUStorages[index]; }
 
-        auto GetActivePointLightCount() const { return m_ActivePointLightCount; };
         const auto& GetPointLightBuffer() const { return m_PointLightBuffer; }
 
         auto& GetEntityRegistry() { return m_EntityRegistry; }
@@ -66,6 +76,8 @@ namespace benzin
     private:
         Device& m_Device;
 
+        SceneStats m_Stats;
+
         PerspectiveProjection m_PerspectiveProjection;
         Camera m_Camera{ m_PerspectiveProjection };
 
@@ -76,7 +88,6 @@ namespace benzin
         std::vector<std::vector<std::byte>> m_TexturesData;
         std::vector<std::unique_ptr<Texture>> m_Textures;
 
-        uint32_t m_ActivePointLightCount = 0;
         std::unique_ptr<Buffer> m_PointLightBuffer;
 
         entt::registry m_EntityRegistry;

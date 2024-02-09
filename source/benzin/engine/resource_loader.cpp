@@ -4,6 +4,8 @@
 #include <third_party/tinygltf/stb_image.h>
 #include <third_party/tinygltf/tiny_gltf.h>
 
+#include "benzin/core/math.hpp"
+
 namespace benzin
 {
 
@@ -15,8 +17,6 @@ namespace benzin
         public:
             bool ReadFromFile(std::string_view fileName, MeshCollectionResource& outMeshCollection)
             {
-                BenzinLogTimeOnScopeExit("GLTF Reader: ReadFromFile");
-
                 static tinygltf::TinyGLTF context;
 
                 const std::filesystem::path filePath = config::g_ModelDirPath / fileName;
@@ -181,6 +181,8 @@ namespace benzin
                 {
                     std::ranges::copy(indices, mesh.Indices.begin());
                 }
+
+                mesh.BoundingBox = ComputeBoundingBox(mesh.Vertices);
 
                 outMeshCollection.Meshes.push_back(std::move(mesh));
             }

@@ -11,6 +11,8 @@ namespace benzin
         std::vector<uint32_t> Indices;
 
         PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
+
+        std::optional<DirectX::BoundingBox> BoundingBox;
     };
 
     struct MeshNode

@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/geometry_generator.hpp"
 
+#include "benzin/core/math.hpp"
 #include "benzin/engine/scene.hpp"
 
 namespace benzin
@@ -565,6 +566,8 @@ namespace benzin
             meshData.Vertices[i].UV.x = theta / DirectX::XM_2PI;
             meshData.Vertices[i].UV.y = phi / DirectX::XM_PI;
         }
+
+        meshData.BoundingBox = ComputeBoundingBox(meshData.Vertices);
 
         return meshData;
     }
