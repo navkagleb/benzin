@@ -11,6 +11,15 @@
 namespace benzin
 {
 
+    enum class ApplicationTiming : uint32_t
+    {
+        BeginFrame,
+        ProcessFrame,
+        EndFrame,
+    };
+
+    using ApplicationTimings = magic_enum::containers::array<ApplicationTiming, std::chrono::microseconds>;
+
     class ImGuiLayer : public Layer
     {
     public:
@@ -19,8 +28,9 @@ namespace benzin
 
     public:
         bool IsWidgetDrawEnabled() const { return m_IsWidgetDrawingEnabled; }
-        bool IsEventsAreBlocked() const { return m_IsEventsAreBlocked; }
-        void SetIsEventsAreBlocked(bool isEventsAreBlocked) { m_IsEventsAreBlocked = isEventsAreBlocked; }
+
+        void SetFrameRateStats(float frameRate, float dt) { m_FrameRate = frameRate; m_FrameDeltaTimeMS = dt; }
+        void SetApplicationTimings(const ApplicationTimings& timings) { m_ApplicationTimings = timings; }
 
     public:
         void Begin();
@@ -41,9 +51,12 @@ namespace benzin
         Descriptor m_FontDescriptor;
 
         bool m_IsWidgetDrawingEnabled = true;
-        bool m_IsEventsAreBlocked = true;
+        bool m_IsImGuiHandleEvents = true;
         bool m_IsDemoWindowEnabled = false;
-        bool m_IsBottomPanelEnabled = true;
+
+        float m_FrameRate = 0.0f;
+        float m_FrameDeltaTimeMS = 0.0f;
+        ApplicationTimings m_ApplicationTimings;
     };
 
 } // namespace benzin

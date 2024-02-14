@@ -193,17 +193,33 @@ namespace benzin
 
     void Device::CreateBindlessRootSignature()
     {
-        const D3D12_ROOT_PARAMETER1 d3d12RootParameter
+        const auto d3d12RootParameters = std::to_array(
         {
-            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
-            .Constants
+            // Root ConstantBuffer
+            D3D12_ROOT_PARAMETER1
             {
-                .ShaderRegister = 0,
-                .RegisterSpace = 0,
-                .Num32BitValues = 32,
+                .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
+                .Constants
+                {
+                    .ShaderRegister = 0,
+                    .RegisterSpace = 0,
+                    .Num32BitValues = 32,
+                },
+                .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
             },
-            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
+
+            // Root TopLevelAS
+            D3D12_ROOT_PARAMETER1
+            {
+                .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
+                .Descriptor
+                {
+                    .ShaderRegister = 0,
+                    .RegisterSpace = 0,
+                },
+                .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+            },
+        });
 
         const auto d3d12StaticSamplerDescs = std::to_array(
         {
@@ -221,8 +237,8 @@ namespace benzin
             .Version = D3D_ROOT_SIGNATURE_VERSION_1_1,
             .Desc_1_1
             {
-                .NumParameters = 1,
-                .pParameters = &d3d12RootParameter,
+                .NumParameters = (uint32_t)d3d12RootParameters.size(),
+                .pParameters = d3d12RootParameters.data(),
                 .NumStaticSamplers = (uint32_t)d3d12StaticSamplerDescs.size(),
                 .pStaticSamplers = d3d12StaticSamplerDescs.data(),
                 .Flags
@@ -230,7 +246,7 @@ namespace benzin
                     D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
                     D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
                     D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED
-                }
+                },
             }
         };
 

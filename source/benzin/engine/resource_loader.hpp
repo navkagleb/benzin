@@ -2,6 +2,13 @@
 
 #include "benzin/graphics/common.hpp"
 
+namespace joint
+{
+
+    struct MeshVertex;
+
+} // namespace joint
+
 namespace benzin
 {
 
@@ -15,17 +22,12 @@ namespace benzin
         std::optional<DirectX::BoundingBox> BoundingBox;
     };
 
-    struct MeshNode
-    {
-        DirectX::XMMATRIX Transform = DirectX::XMMatrixIdentity();
-    };
-
     struct MeshInstance
     {
         uint32_t MeshIndex = g_InvalidIndex<uint32_t>;
         uint32_t MaterialIndex = g_InvalidIndex<uint32_t>;
 
-        uint32_t MeshNodeIndex = g_InvalidIndex<uint32_t>; // Optional
+        uint32_t MeshParentTransformIndex = g_InvalidIndex<uint32_t>; // Optional
     };
 
     struct TextureImage
@@ -61,7 +63,7 @@ namespace benzin
         std::string DebugName;
 
         std::vector<MeshData> Meshes;
-        std::vector<MeshNode> MeshNodes;
+        std::vector<DirectX::XMMATRIX> MeshParentTransforms;
         std::vector<MeshInstance> MeshInstances;
 
         std::vector<TextureImage> TextureImages;

@@ -10,6 +10,7 @@
 #include "benzin/utility/benzin_defines.hpp"
 #include "benzin/utility/file_utils.hpp"
 #include "benzin/utility/string_utils.hpp"
+#include "benzin/utility/time_utils.hpp"
 
 #include "benzin/core/assert.hpp"
 #include "benzin/core/common.hpp"
@@ -19,8 +20,3 @@
 // Global configs
 #include "benzin/config/engine_config.hpp"
 #include "benzin/config/graphics_config.hpp"
-
-#include <shaders/joint/constant_buffer_types.hpp>
-#include <shaders/joint/enum_types.hpp>
-#include <shaders/joint/root_constants.hpp>
-#include <shaders/joint/structured_buffer_types.hpp>

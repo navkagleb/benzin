@@ -4,6 +4,8 @@
 #include <third_party/tinygltf/stb_image.h>
 #include <third_party/tinygltf/tiny_gltf.h>
 
+#include <shaders/joint/structured_buffer_types.hpp>
+
 #include "benzin/core/math.hpp"
 
 namespace benzin
@@ -307,8 +309,8 @@ namespace benzin
 
                 if (const int meshIndex = gltfNode.mesh; meshIndex != -1)
                 {
-                    const size_t currentNodeIndex = outMeshCollection.MeshNodes.size();
-                    outMeshCollection.MeshNodes.push_back(MeshNode{ nodeTransform });
+                    const size_t currentParentTransformIndex = outMeshCollection.MeshParentTransforms.size();
+                    outMeshCollection.MeshParentTransforms.push_back(nodeTransform);
 
                     for (const auto& [primitiveIndex, gltfPrimitive] : m_CurrentModel.meshes[meshIndex].primitives | std::views::enumerate)
                     {
@@ -318,7 +320,7 @@ namespace benzin
                         {
                             .MeshIndex = (uint32_t)(meshIndex + primitiveIndex),
                             .MaterialIndex = (uint32_t)gltfPrimitive.material,
-                            .MeshNodeIndex = (uint32_t)currentNodeIndex,
+                            .MeshParentTransformIndex = (uint32_t)currentParentTransformIndex,
                         });
                     }
                 }

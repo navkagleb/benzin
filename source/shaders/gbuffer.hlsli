@@ -21,9 +21,9 @@ PackedGBuffer PackGBuffer(UnpackedGBuffer unpacked)
 {
     PackedGBuffer packed = (PackedGBuffer)0;
     packed.Color0 = float4(unpacked.Albedo);
-    packed.Color1 = float4(unpacked.WorldNormal, 0.0f);
-    packed.Color2 = float4(unpacked.Emissive, 0.0f);
-    packed.Color3 = float4(unpacked.Roughness, unpacked.Metalness, 0.0f, 0.0f);
+    packed.Color1 = float4(unpacked.WorldNormal, 1.0f);
+    packed.Color2 = float4(unpacked.Emissive, 1.0f);
+    packed.Color3 = float4(unpacked.Roughness, unpacked.Metalness, 0.0f, 1.0f);
 
     return packed;
 }
@@ -38,6 +38,12 @@ UnpackedGBuffer UnpackGBuffer(PackedGBuffer packed)
     unpacked.Metalness = packed.Color3.g;
 
     return unpacked;
+}
+
+float FetchDepth(float2 uv, uint depthTextureIndex)
+{
+    Texture2D<float> depthTexture = ResourceDescriptorHeap[depthTextureIndex];
+    return depthTexture.SampleLevel(g_LinearWrapSampler, uv, 0).r;
 }
 
 float3 ReconstructViewPositionFromDepth(float2 uv, float depth, float4x4 inverseProjectionMatrix)
@@ -59,4 +65,12 @@ float3 ReconstructWorldPositionFromDepth(float2 uv, float depth, float4x4 invers
     const float3 worldPosition = mul(float4(viewPosition, 1.0f), inverseViewMatrix).xyz;
 
     return worldPosition;
+}
+
+float4 ReconstructWorldPositionFromDepth(float2 uv, uint depthTextureIndex, float4x4 inverseProjectionMatrix, float4x4 inverseViewMatrix)
+{
+    const float depth = FetchDepth(uv, depthTextureIndex);
+    const float3 worldPosition = ReconstructWorldPositionFromDepth(uv, depth, inverseProjectionMatrix, inverseViewMatrix);
+    
+    return float4(worldPosition, depth);
 }

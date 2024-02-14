@@ -3,6 +3,8 @@
 #include <benzin/core/layer.hpp>
 #include <benzin/engine/scene.hpp>
 
+#include <shaders/joint/enum_types.hpp>
+
 namespace benzin
 {
     
@@ -26,11 +28,11 @@ namespace sandbox
     public:
         struct GBuffer
         {
-            std::shared_ptr<benzin::Texture> Albedo;
-            std::shared_ptr<benzin::Texture> WorldNormal;
-            std::shared_ptr<benzin::Texture> Emissive;
-            std::shared_ptr<benzin::Texture> RoughnessMetalness;
-            std::shared_ptr<benzin::Texture> DepthStencil;
+            std::unique_ptr<benzin::Texture> Albedo;
+            std::unique_ptr<benzin::Texture> WorldNormal;
+            std::unique_ptr<benzin::Texture> Emissive;
+            std::unique_ptr<benzin::Texture> RoughnessMetalness;
+            std::unique_ptr<benzin::Texture> DepthStencil;
         };
 
     public:
@@ -52,6 +54,39 @@ namespace sandbox
         GBuffer m_GBuffer;
     };
 
+    class RTShadowPass
+    {
+    public:
+        RTShadowPass(benzin::Device& device, benzin::SwapChain& swapChain);
+
+    public:
+        const auto& GetOutputTexture() const { return *m_OutputTexture; }
+
+        void SetRaysPerPixel(uint32_t raysPerPixel) { m_RaysPerPixel = raysPerPixel; }
+
+    public:
+        void OnUpdate(std::chrono::microseconds dt, std::chrono::milliseconds elapsedTime);
+        void OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer);
+
+    private:
+        void CreatePipelineStateObject();
+        void CreateShaderTable();
+
+    private:
+        benzin::Device& m_Device;
+
+        ComPtr<ID3D12StateObject> m_D3D12RaytracingStateObject;
+
+        std::unique_ptr<benzin::Buffer> m_RayGenShaderTable;
+        std::unique_ptr<benzin::Buffer> m_MissShaderTable;
+        std::unique_ptr<benzin::Buffer> m_HitGroupShaderTable;
+
+        std::unique_ptr<benzin::Buffer> m_PassConstantBuffer;
+        std::unique_ptr<benzin::Texture> m_OutputTexture;
+
+        uint32_t m_RaysPerPixel = 1;
+    };
+
     class DeferredLightingPass
     {
     public:
@@ -63,7 +98,7 @@ namespace sandbox
 
     public:
         void OnUpdate(const benzin::Scene& scene);
-        void OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer);
+        void OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer, const benzin::Texture& shadowTexture);
         void OnImGuiRender();
 
         void OnResize(uint32_t width, uint32_t height);
@@ -115,7 +150,6 @@ namespace sandbox
 
     private:
         void CreateEntities();
-        void UpdateEntities(benzin::MilliSeconds dt);
 
     private:
         benzin::Window& m_Window;
@@ -130,11 +164,12 @@ namespace sandbox
         entt::entity m_DamagedHelmetEntity = benzin::g_InvalidEntity;
         entt::entity m_BoomBoxEntity = benzin::g_InvalidEntity;
 
-        std::unique_ptr<benzin::Buffer> m_CameraBuffer;
-
         GeometryPass m_GeometryPass;
+        RTShadowPass m_RTShadowPass;
         DeferredLightingPass m_DeferredLightingPass;
         EnvironmentPass m_EnvironmentPass;
+
+        bool m_IsAnimationEnabled = true;
     };
 
 } // namespace sandbox

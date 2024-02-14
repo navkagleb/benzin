@@ -205,16 +205,15 @@ namespace benzin
     {
         EventDispatcher dispatcher{ event };
         dispatcher.Dispatch(&FlyCameraController::OnWindowResized, *this);
-        dispatcher.Dispatch(&FlyCameraController::OnMouseButtonPressed, *this);
         dispatcher.Dispatch(&FlyCameraController::OnMouseMoved, *this);
         dispatcher.Dispatch(&FlyCameraController::OnMouseScrolled, *this);
     }
 
-    void FlyCameraController::OnUpdate(MilliSeconds dt)
+    void FlyCameraController::OnUpdate(std::chrono::microseconds dt)
     {
         UpdatePitchAndYawIfNeeded();
 
-        const float delta = m_CameraTranslationSpeed * dt.count();
+        const float delta = m_CameraTranslationSpeed * ToFloatMS(dt);
         const auto& position = m_Camera.GetPosition();
 
         DirectX::XMVECTOR updatedPosition = DirectX::XMVectorZero();
@@ -287,14 +286,6 @@ namespace benzin
             const float aspectRatio = event.GetAspectRatio();
             perspectiveProjection->SetAspectRatio(aspectRatio);
         }
-
-        return false;
-    }
-
-    bool FlyCameraController::OnMouseButtonPressed(MouseButtonPressedEvent& event)
-    {
-        m_LastMousePosition.x = event.GetX<float>();
-        m_LastMousePosition.y = event.GetY<float>();
 
         return false;
     }

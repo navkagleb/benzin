@@ -9,7 +9,7 @@ namespace benzin
         using Callback = std::function<void(std::chrono::microseconds us)>;
 
     public:
-        explicit ScopedTimer(Callback callback);
+        explicit ScopedTimer(Callback&& callback);
         ~ScopedTimer();
 
         void ForceDestroy() const;
@@ -21,43 +21,41 @@ namespace benzin
         mutable bool m_IsForceDestoyed = false;
     };
 
-    class ScopedLogTimer
+    class ScopedLogTimer : public ScopedTimer
     {
     public:
         template <typename... Args>
-        ScopedLogTimer(std::format_string<Args...> format, Args&&... args)
-            : ScopedLogTimer{ std::vformat(format.get(), std::make_format_args(args...)) }
+        ScopedLogTimer(std::format_string<Args...> fmt, Args&&... args)
+            : ScopedLogTimer{ std::format(fmt, std::forward<Args>(args)...) }
         {}
 
         explicit ScopedLogTimer(std::string&& scopeName);
+    };
 
-    private:
-        const std::string m_ScopeName;
-        const ScopedTimer m_ScopedTimer;
+    class ScopedGrabTimer : public ScopedTimer
+    {
+    public:
+        explicit ScopedGrabTimer(std::chrono::microseconds& outUS);
     };
 
     template <typename FunctionT>
     auto ProfileFunction(FunctionT&& function)
     {
         std::chrono::microseconds takedTime;
-        const auto TimerCallback = [&takedTime](std::chrono::microseconds scopedTime)
-        {
-            takedTime = scopedTime;
-        };
 
         if constexpr (std::is_same_v<decltype(function()), void>)
         {
             {
-                ScopedTimer timer{ TimerCallback };
-                std::forward<FunctionT>(function)();
+                const ScopedGrabTimer timer{ takedTime };
+                function();
             }
 
             return takedTime;
         }
         else
         {
-            const ScopedTimer timer{ TimerCallback };
-            decltype(auto) functionResult = std::forward<FunctionT>(function)();
+            const ScopedGrabTimer timer{ takedTime };
+            decltype(auto) functionResult = function();
             timer.ForceDestroy();
 
             return std::make_pair(takedTime, std::move(functionResult));
@@ -67,4 +65,6 @@ namespace benzin
 } // namespace benzin
 
 #define BenzinLogTimeOnScopeExit(...) const ::benzin::ScopedLogTimer BenzinUniqueVariableName(ScopedLogTimer){ __VA_ARGS__ }
+#define BenzinGrabTimeOnScopeExit(outTime) const ::benzin::ScopedGrabTimer BenzinUniqueVariableName(ScopedGrabTimer){ outTime }
+
 #define BenzinProfileFunction(function) ProfileFunction([&]{ return function; })

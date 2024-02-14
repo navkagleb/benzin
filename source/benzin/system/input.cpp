@@ -6,19 +6,26 @@
 namespace benzin
 {
 
+    static bool g_AreKeyEventsBlocked = false;
+
+    void Input::SetAreKeyEventsBlocked(bool areKeyEventsBlocked)
+    {
+        g_AreKeyEventsBlocked = areKeyEventsBlocked;
+    }
+
     bool Input::IsMouseButtonPressed(MouseButton mouseButton)
     {
-        return ::GetAsyncKeyState(static_cast<int>(mouseButton)) & 0x8000;
+        return ::GetAsyncKeyState((int)mouseButton) & 0x8000;
     }
 
     bool Input::IsKeyPressed(KeyCode keyCode)
     {
-        if (ms_IsKeyEventsBlocked)
+        if (g_AreKeyEventsBlocked)
         {
             return false;
         }
 
-        return ::GetAsyncKeyState(static_cast<int>(keyCode)) & 0x8000;
+        return ::GetAsyncKeyState((int)keyCode) & 0x8000;
     }
 
     POINT Input::GetMousePosition(const Window& window)

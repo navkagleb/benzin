@@ -9,21 +9,23 @@ namespace benzin
 
         void LogScopeTime(std::string_view scopeName, std::chrono::microseconds us)
         {
-            const auto ms = us.count() / 1000.0f;
-            const auto s = ms / 1000.0f;
+            BenzinTrace("Scope '{}' takes {:.3f}ms, {:.3f}s", scopeName, ToFloatMS(us), ToFloatSec(us));
+        }
 
-            BenzinTrace("Scope '{}' takes {:.3f}ms, {:.3f}s", scopeName, ms, s);
+        void GrabScopeTime(std::chrono::microseconds us, std::chrono::microseconds& outUS)
+        {
+            outUS = us;
         }
 
     } // anonymous namespace
 
     // ScopedTimer
 
-    ScopedTimer::ScopedTimer(Callback callback)
+    ScopedTimer::ScopedTimer(Callback&& callback)
         : m_StartTimePoint{ std::chrono::high_resolution_clock::now() }
-        , m_Callback{ callback }
+        , m_Callback{ std::move(callback) }
     {
-        BenzinAssert((bool)callback);
+        BenzinAssert((bool)m_Callback);
     }
 
     ScopedTimer::~ScopedTimer()
@@ -34,8 +36,7 @@ namespace benzin
         }
 
         const auto endTimePoint = std::chrono::high_resolution_clock::now();
-        const auto us = std::chrono::duration_cast<std::chrono::microseconds>(endTimePoint - m_StartTimePoint);
-
+        const auto us = ToUS(endTimePoint - m_StartTimePoint);
         m_Callback(us);
     }
 
@@ -48,8 +49,13 @@ namespace benzin
     // ScopedLogTimer
 
     ScopedLogTimer::ScopedLogTimer(std::string&& scopeName)
-        : m_ScopeName{ std::move(scopeName) }
-        , m_ScopedTimer{ [this](std::chrono::microseconds us){ LogScopeTime(m_ScopeName, us); } }
+        : ScopedTimer{ [scopeName](std::chrono::microseconds us) { LogScopeTime(scopeName, us); } }
+    {}
+
+    // ScopedGrabTimer
+
+    ScopedGrabTimer::ScopedGrabTimer(std::chrono::microseconds& outUS)
+        : ScopedTimer{ [&outUS](std::chrono::microseconds us){ GrabScopeTime(us, outUS); } }
     {}
 
 } // namespace benzin

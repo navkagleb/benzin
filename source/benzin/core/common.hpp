@@ -30,14 +30,20 @@ namespace benzin
     template <std::integral T>
     using IterableRange = std::ranges::iota_view<T, T>;
 
-    using Seconds = std::chrono::duration<float>;
-    using MilliSeconds = std::chrono::duration<float, std::milli>;
-
+    template <std::unsigned_integral T> 
     struct IndexRange
     {
-        size_t StartIndex = 0;
-        size_t Count = 0;
+        T StartIndex = 0;
+        T Count = 0;
     };
+
+    using IndexRangeU32 = IndexRange<uint32_t>;
+
+    template <std::unsigned_integral T>
+    constexpr auto IndexRangeToView(IndexRange<T> indexRange)
+    {
+        return std::ranges::iota_view{ indexRange.StartIndex, indexRange.StartIndex + indexRange.Count };
+    }
 
     using ByteSpan = std::span<std::byte>;
 
@@ -117,7 +123,7 @@ namespace benzin
             return *ms_Instance;
         }
 
-        static const T& Get()
+        static T& Get()
         {
             BenzinAssert(IsInitialized());
             return *ms_Instance;
@@ -177,12 +183,6 @@ namespace benzin
 } // namespace benzin
 
 #define BenzinExecuteOnScopeExit(lambda) ::benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }
-
-// typeof(value) == float || MilliSecond
-#define BenzinAsSeconds(value) ::benzin::Seconds{ value }
-
-// typeof(value) == float || Second
-#define BenzinAsMilliSeconds(value) ::benzin::MilliSeconds{ value }
 
 template <typename... Ts, typename... Fs>
 constexpr decltype(auto) operator |(const std::variant<Ts...>& variant, const benzin::VisitorMatch<Fs...>& visitorMatch)

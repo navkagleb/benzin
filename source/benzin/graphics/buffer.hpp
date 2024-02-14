@@ -20,6 +20,7 @@ namespace benzin
     {
         DebugName DebugName;
 
+        GraphicsFormat Format = GraphicsFormat::Unknown;
         uint32_t ElementSize = sizeof(std::byte);
         uint32_t ElementCount = 0;
 
@@ -28,6 +29,7 @@ namespace benzin
         ResourceState InitialState = ResourceState::Present;
         std::span<const std::byte> InitialData;
 
+        bool IsNeedFormatBufferView = false;
         bool IsNeedStructuredBufferView = false;
         bool IsNeedByteAddressBufferView = false;
         bool IsNeedRaytracingAccelerationStructureView = false;

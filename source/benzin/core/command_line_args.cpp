@@ -26,23 +26,10 @@ namespace benzin
             }
         }
 
-        template <typename T> requires std::is_arithmetic_v<T>
-        void ParseArithmeticOptional(std::string_view commandLineToParse, void* member)
+        template <>
+        void ParseArithmetic<bool>(std::string_view commandLineToParse, void* member)
         {
-            // #TODO: Duplication with 'ParseArithmetic'
-
-            BenzinAssert(member);
-
-            auto memberValue = std::numeric_limits<T>::max();
-            const auto result = std::from_chars(commandLineToParse.data(), commandLineToParse.data() + commandLineToParse.size(), memberValue);
-
-            if (result.ec == std::errc{})
-            {
-                BenzinAssert(memberValue != std::numeric_limits<T>::max());
-
-                auto& reinterpreMember = *reinterpret_cast<std::optional<T>*>(member);
-                reinterpreMember = memberValue;
-            }
+            return ParseArithmetic<uint32_t>(commandLineToParse, member);
         }
 
         void ParseBool(std::string_view commandLineToParse, void* member)
@@ -77,13 +64,13 @@ namespace benzin
     {
         const auto supportedArgs = std::to_array(
         {
-            SupportedCommandLineArg{ "-window_width:", &m_WindowWidth, ParseArithmetic<uint32_t> },
-            SupportedCommandLineArg{ "-window_height:", &m_WindowHeight, ParseArithmetic<uint32_t> },
-            SupportedCommandLineArg{ "-is_window_resizable:", &m_IsWindowResizable, ParseArithmetic<uint32_t> },
+            SupportedCommandLineArg{ "-window_width:", &m_WindowWidth, ParseArithmetic<decltype(m_WindowWidth)> },
+            SupportedCommandLineArg{ "-window_height:", &m_WindowHeight, ParseArithmetic<decltype(m_WindowHeight)> },
+            SupportedCommandLineArg{ "-is_window_resizable:", &m_IsWindowResizable, ParseArithmetic<decltype(m_IsWindowResizable)> },
 
-            SupportedCommandLineArg{ "-adapter_index:", &m_AdapterIndex, ParseArithmeticOptional<uint32_t> },
-            SupportedCommandLineArg{ "-frame_in_flight_count:", &m_FrameInFlightCount, ParseArithmeticOptional<uint32_t> },
-            SupportedCommandLineArg{ "-is_gpu_based_validation_enabled:", &m_IsEnabledGPUBasedValidation, ParseArithmetic<uint32_t> },
+            SupportedCommandLineArg{ "-adapter_index:", &m_AdapterIndex, ParseArithmetic<decltype(m_AdapterIndex)> },
+            SupportedCommandLineArg{ "-frame_in_flight_count:", &m_FrameInFlightCount, ParseArithmetic<decltype(m_FrameInFlightCount)> },
+            SupportedCommandLineArg{ "-is_gpu_based_validation_enabled:", &m_IsEnabledGPUBasedValidation, ParseArithmetic<decltype(m_IsEnabledGPUBasedValidation)> },
         });
 
         m_ExecutablePath = argv[0];

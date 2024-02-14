@@ -8,8 +8,24 @@
 namespace benzin
 {
 
+    BOOL WINAPI Wint64_ConsoleHandler(DWORD signal)
+    {
+        // Console close event should work like 'Stop Debugging'
+        // It's unplanned application closure
+
+        if (signal == CTRL_CLOSE_EVENT)
+        {
+            BenzinTrace("Console window is closing");
+            return true;
+        }
+
+        return false;
+    }
+
     int Main(int argc, char** argv)
     {
+        BenzinAssert(::SetConsoleCtrlHandler(Wint64_ConsoleHandler, true) != 0);
+
         CommandLineArgsInstance::Initialize(argc, argv);
 
         return ClientMain();

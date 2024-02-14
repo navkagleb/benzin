@@ -55,6 +55,12 @@ namespace benzin::rt
     {
         const Buffer& VertexBuffer;
         const Buffer& IndexBuffer;
+
+        uint32_t VertexOffset = 0;
+        uint32_t IndexOffset = 0;
+
+        uint32_t VertexCount = g_InvalidIndex<uint32_t>;
+        uint32_t IndexCount = g_InvalidIndex<uint32_t>;
     };
 
     struct ProceduralGeometry
@@ -63,7 +69,7 @@ namespace benzin::rt
         uint32_t AABBIndex = 0;
     };
 
-    using GeometryVariant = std::variant<std::monostate, TriangledGeometry, ProceduralGeometry>;
+    using GeometryVariant = std::variant<TriangledGeometry, ProceduralGeometry>;
 
     struct BottomLevelAccelerationStructureCreation
     {

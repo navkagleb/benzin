@@ -14,12 +14,22 @@ namespace joint
         GeometryPassRC_MeshVertexBuffer = GlobalRC_Count,
         GeometryPassRC_MeshIndexBuffer,
         GeometryPassRC_MeshInfoBuffer,
-        GeometryPassRC_MeshNodeBuffer,
+        GeometryPassRC_MeshParentTransformBuffer,
         GeometryPassRC_MeshInstanceBuffer,
         GeometryPassRC_MaterialBuffer,
-        GeometryPassRC_TransformBuffer,
+        GeometryPassRC_MeshTransformConstantBuffer,
         GeometryPassRC_MeshInstanceIndex,
         GeometryPassRC_Count,
+    };
+
+    enum RTShadowPassRC : uint32_t
+    {
+        RTShadowPassRC_PassConstantBuffer = GlobalRC_Count,
+        RTShadowPassRC_GBufferWorldNormalTexture,
+        RTShadowPassRC_GBufferDepthTexture,
+        RTShadowPassRC_PointLightBuffer,
+        RTShadowPassRC_OutputTexture,
+        RTShadowPassRC_Count,
     };
 
     enum DeferredLightingPassRC : uint32_t
@@ -31,6 +41,7 @@ namespace joint
         DeferredLightingPassRC_RoughnessMetalnessTexture,
         DeferredLightingPassRC_DepthStencilTexture,
         DeferredLightingPassRC_PointLightBuffer,
+        DeferredLightingPassRC_ShadowTexture,
         DeferredLightingPassRC_Count,
     };
 

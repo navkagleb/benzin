@@ -143,12 +143,11 @@ namespace benzin
 
     public:
         void OnEvent(Event& event);
-        void OnUpdate(MilliSeconds dt);
+        void OnUpdate(std::chrono::microseconds dt);
         void OnImGuiRender();
 
     private:
         bool OnWindowResized(WindowResizedEvent& event);
-        bool OnMouseButtonPressed(MouseButtonPressedEvent& event);
         bool OnMouseMoved(MouseMovedEvent& event);
         bool OnMouseScrolled(MouseScrolledEvent& event);
 
@@ -163,7 +162,7 @@ namespace benzin
     private:
         Camera& m_Camera;
 
-        float m_CameraTranslationSpeed = 0.005f;
+        float m_CameraTranslationSpeed = 0.002f;
         float m_MouseSensitivity = 0.003f;
         float m_MouseWheelSensitivity = 0.04f;
 

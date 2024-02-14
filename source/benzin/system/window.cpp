@@ -22,11 +22,10 @@ namespace benzin
         if (messageCode == WM_CREATE)
         {
             ::SetWindowLongPtr(windowHandle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(reinterpret_cast<CREATESTRUCT*>(lparam)->lpCreateParams));
-
             return 0;
         }
 
-        Window* window{ reinterpret_cast<Window*>(::GetWindowLongPtr(windowHandle, GWLP_USERDATA)) };
+        auto* window = reinterpret_cast<Window*>(::GetWindowLongPtr(windowHandle, GWLP_USERDATA));
 
         if (ImGui_ImplWin32_WndProcHandler(windowHandle, messageCode, wparam, lparam))
         {
@@ -47,23 +46,20 @@ namespace benzin
             case WM_CLOSE:
             {
                 window->CreateAndPushEvent<WindowCloseEvent>();
-
-                //::DestroyWindow(handle);
-
                 break;
             }
             case WM_ACTIVATE:
             {
                 if (LOWORD(wparam) == WA_INACTIVE)
                 {
-                    Input::ms_IsKeyEventsBlocked = true;
+                    Input::SetAreKeyEventsBlocked(true);
 
                     window->m_IsFocused = false;
                     window->CreateAndPushEvent<WindowUnfocusedEvent>();
                 }
                 else
                 {
-                    Input::ms_IsKeyEventsBlocked = false;
+                    Input::SetAreKeyEventsBlocked(false);
 
                     window->m_IsFocused = true;
                     window->CreateAndPushEvent<WindowFocusedEvent>();
@@ -138,7 +134,6 @@ namespace benzin
             case WM_ENTERSIZEMOVE:
             {
                 window->m_IsResizing = true;
-
                 window->CreateAndPushEvent<WindowEnterResizingEvent>();
 
                 break;
@@ -230,11 +225,11 @@ namespace benzin
             }
             default:
             {
-                break;
+                return ::DefWindowProc(windowHandle, messageCode, wparam, lparam);
             }
         }
 
-        return ::DefWindowProc(windowHandle, messageCode, wparam, lparam);
+        return 0;
     }
 
     struct RegisterManager
@@ -316,7 +311,11 @@ namespace benzin
     Window::~Window()
     {
         ::SetWindowLongPtr(m_Win64Window, GWLP_USERDATA, 0);
-        ::DestroyWindow(m_Win64Window);
+
+        if (m_Win64Window)
+        {
+            ::DestroyWindow(m_Win64Window);
+        }
     }
 
     void Window::ProcessEvents()

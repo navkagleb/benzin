@@ -99,6 +99,8 @@ namespace benzin
                     IID_PPV_ARGS(&d3d12Resource)
                 ));
             }
+
+            BenzinEnsure(d3d12Resource);
         }
 
         D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResourceViewDesc(TextureType textureType, const TextureShaderResourceViewCreation& creation)

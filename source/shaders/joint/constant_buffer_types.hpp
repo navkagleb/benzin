@@ -21,6 +21,14 @@ namespace joint
         float3 WorldPosition;
     };
 
+    struct RTShadowPassConstants
+    {
+        float DeltaTime;
+        float ElapsedTime;
+        float RandomFloat01;
+        uint RaysPerPixel;
+    };
+
     struct DeferredLightingPassConstants
     {
         float3 SunColor;

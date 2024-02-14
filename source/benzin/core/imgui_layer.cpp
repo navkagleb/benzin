@@ -5,6 +5,7 @@
 #include <third_party/imgui/backends/imgui_impl_dx12.h>
 #include <third_party/imgui/backends/imgui_impl_win32.h>
 
+#include "benzin/core/imgui_helper.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/texture.hpp"
 
@@ -60,25 +61,23 @@ namespace benzin
     {
         ImGui::Render();
 
-        {
-            auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
-            auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
+        auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
+        auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
-            commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::RenderTarget });
+        commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::RenderTarget });
 
-            commandList.SetRenderTargets({ currentBackBuffer.GetRenderTargetView() });
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
+        commandList.SetRenderTargets({ currentBackBuffer.GetRenderTargetView() });
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
 
-            commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::Present });
-        }
+        commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::Present });
     }
 
     void ImGuiLayer::OnEvent(Event& event)
     {
-        ImGuiIO& io = ImGui::GetIO();
-
-        if (m_IsEventsAreBlocked)
         {
+            // ImGui layer handle system events
+
+            ImGuiIO& io = ImGui::GetIO();
             event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Keyboard) & io.WantCaptureKeyboard;
             event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Mouse) & io.WantCaptureMouse;
         }
@@ -94,38 +93,39 @@ namespace benzin
             ImGui::ShowDemoWindow(&m_IsDemoWindowEnabled);
         }
 
-        if (m_IsBottomPanelEnabled)
+        // BottomPanel
         {
-            ImGuiContext& context = *ImGui::GetCurrentContext();
             ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 10.0f, 5.0f });
-            ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(184, 100, 0, 240));
+            BenzinExecuteOnScopeExit([&]{ ImGui::PopStyleVar(3); });
 
+            ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(184, 100, 0, 240));
+            BenzinExecuteOnScopeExit([&] { ImGui::PopStyleColor(); });
+
+            ImGuiContext& context = *ImGui::GetCurrentContext();
             const float panelHeight = context.FontBaseSize + context.Style.WindowPadding.y * 2.0f;
+
             ImGui::SetNextWindowPos(ImVec2{ 0.0f, context.IO.DisplaySize.y - panelHeight });
             ImGui::SetNextWindowSize(ImVec2{ context.IO.DisplaySize.x, panelHeight });
 
             const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs;
-            if (ImGui::Begin("Bottom Panel", &m_IsBottomPanelEnabled, windowFlags))
+            ImGui::Begin("Bottom Panel", nullptr, windowFlags);
             {
-                const std::string text = std::format(
+                ImGui_Text(
                     "{} | "
                     "FPS: {:.1f} ({:.3f} ms) | "
+                    "Begin: {:.3f}, Process: {:.3f}, End: {:.3f} | "
                     "({} x {}) | "
-                    "CPU Frame: {}, GPU Frame: {}, CurrentFrame: {}",
+                    "CPU: {}, GPU: {}, ActiveFrame: {}",
                     m_Backend.GetMainAdapterName(),
-                    s_FrameStats.GetFrameRate(), s_FrameStats.GetDeltaTime().count(),
+                    m_FrameRate, m_FrameDeltaTimeMS,
+                    ToFloatMS(m_ApplicationTimings[ApplicationTiming::BeginFrame]), ToFloatMS(m_ApplicationTimings[ApplicationTiming::ProcessFrame]), ToFloatMS(m_ApplicationTimings[ApplicationTiming::EndFrame]),
                     m_Window.GetWidth(), m_Window.GetHeight(),
                     m_Device.GetCPUFrameIndex(), m_Device.GetGPUFrameIndex(), m_Device.GetActiveFrameIndex()
                 );
-
-                ImGui::Text(text.c_str());
-                ImGui::End();
             }
-
-            ImGui::PopStyleColor();
-            ImGui::PopStyleVar(3);
+            ImGui::End();
         }
     }
 
@@ -138,19 +138,9 @@ namespace benzin
                 m_IsWidgetDrawingEnabled = !m_IsWidgetDrawingEnabled;
                 break;
             }
-            case KeyCode::I:
-            {
-                m_IsEventsAreBlocked = !m_IsEventsAreBlocked;
-                break;
-            }
             case KeyCode::O:
             {
                 m_IsDemoWindowEnabled = !m_IsDemoWindowEnabled;
-                break;
-            }
-            case KeyCode::P:
-            {
-                m_IsBottomPanelEnabled = !m_IsBottomPanelEnabled;
                 break;
             }
             case KeyCode::V:

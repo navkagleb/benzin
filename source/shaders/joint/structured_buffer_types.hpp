@@ -20,12 +20,6 @@ namespace joint
         uint IndexOffset;
     };
 
-    struct MeshNode
-    {
-        float4x4 WorldTransform;
-        float4x4 InverseWorldTransform;
-    };
-
     struct MeshInstance
     {
         uint MeshIndex;
@@ -33,10 +27,10 @@ namespace joint
         uint NodeIndex;
     };
 
-    struct Transform
+    struct MeshTransform
     {
-        float4x4 WorldMatrix;
-        float4x4 InverseWorldMatrix;
+        float4x4 Matrix;
+        float4x4 InverseMatrix;
     };
 
     struct Material
@@ -64,6 +58,13 @@ namespace joint
         float ConstantAttenuation;
         float LinearAttenuation;
         float ExponentialAttenuation;
+
+        float GeometryRadius;
+    };
+
+    struct ShadowRayPayload
+    {
+        bool IsHitted;
     };
 
 } // namespace joint

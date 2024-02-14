@@ -1,6 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/geometry_generator.hpp"
 
+#include <shaders/joint/structured_buffer_types.hpp>
+
 #include "benzin/core/math.hpp"
 #include "benzin/engine/scene.hpp"
 

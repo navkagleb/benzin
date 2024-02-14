@@ -1,7 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/texture_loader.hpp"
 
-#include <third_party/tinygltf/tiny_gltf.h>
+#include <shaders/joint/root_constants.hpp>
+
 #include <third_party/tinygltf/stb_image.h>
 
 #include "benzin/graphics/command_queue.hpp"

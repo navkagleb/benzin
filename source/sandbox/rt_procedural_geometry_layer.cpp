@@ -13,6 +13,8 @@
 #include <benzin/graphics/texture.hpp>
 #include <benzin/system/window.hpp>
 
+#include <shaders/joint/structured_buffer_types.hpp>
+
 namespace sandbox
 {
 
@@ -181,7 +183,12 @@ namespace sandbox
         , m_Device{ graphicsRefs.DeviceRef }
         , m_SwapChain{ graphicsRefs.SwapChainRef }
     {
-        m_GPUTimer = std::make_unique<benzin::GPUTimer>(m_Device, m_Device.GetGraphicsCommandQueue(), magic_enum::enum_count<GPUTimerIndex>());
+        m_GPUTimer = std::make_unique<benzin::GPUTimer>(m_Device, benzin::GPUTimerCreation
+        {
+            .CommandList = m_Device.GetGraphicsCommandQueue().GetCommandList(),
+            .TimestampFrequency = m_Device.GetGraphicsCommandQueue().GetTimestampFrequency(),
+            .TimerCount = (uint32_t)magic_enum::enum_count<GPUTimerIndex>(),
+        });
 
         CreateGeometry();
 
@@ -199,7 +206,7 @@ namespace sandbox
 
     void RTProceduralGeometryLayer::OnEndFrame()
     {
-        m_GPUTimer->OnEndFrame(m_Device.GetGraphicsCommandQueue().GetCommandList());
+        m_GPUTimer->ResolveTimestamps();
     }
 
     void RTProceduralGeometryLayer::OnEvent(benzin::Event& event)
@@ -222,7 +229,6 @@ namespace sandbox
                 .LightAmbientColor = DirectX::XMVECTOR{ 0.25f, 0.25f, 0.25f, 1.0f },
                 .LightDiffuseColor = DirectX::XMVECTOR{ 0.6f, 0.6f, 0.6f, 1.0f },
                 .Reflectance = 0.0f,
-                .ElapsedTime = BenzinAsSeconds(s_FrameTimer.GetElapsedTime()).count(),
             };
 
             benzin::MappedData sceneConstantBuffer{ *m_SceneConstantBuffer };
@@ -232,6 +238,8 @@ namespace sandbox
 
     void RTProceduralGeometryLayer::OnRender()
     {
+        using magic_enum::enum_integer;
+
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
         auto* d3d12Device = m_Device.GetD3D12Device();
@@ -292,7 +300,7 @@ namespace sandbox
             };
 
             {
-                BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_DispatchRays);
+                BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, enum_integer(GPUTimerIndex::_DispatchRays));
                 d3d12CommandList->DispatchRays(&d3d12DispatchRayDesc);
             }
         }
@@ -307,7 +315,7 @@ namespace sandbox
             });
 
             {
-                BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_CopyRaytracingOutput);
+                BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, enum_integer(GPUTimerIndex::_CopyRaytracingOutput));
                 commandList.CopyResource(currentBackBuffer, *m_RaytracingOutput);
             }
 
@@ -327,12 +335,9 @@ namespace sandbox
         {
             static magic_enum::containers::array<GPUTimerIndex, float> times;
 
-            if (s_FrameStats.IsReady())
+            for (const auto& [index, time] : times | std::views::enumerate)
             {
-                for (const auto& [index, time] : times | std::views::enumerate)
-                {
-                    time = m_GPUTimer->GetElapsedTime((uint32_t)index).count();
-                }
+                time = m_GPUTimer->GetElapsedTime((uint32_t)index).count() / 1000.0f;
             }
 
             for (const auto& [index, time] : times | std::views::enumerate)

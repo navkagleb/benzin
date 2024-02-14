@@ -91,6 +91,8 @@ namespace benzin
                 nullptr,
                 IID_PPV_ARGS(&d3d12Resource)
             ));
+
+            BenzinEnsure(d3d12Resource);
         }
 
         D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12FormatBufferView(const Buffer& buffer, const FormatBufferViewCreation& creation)
@@ -115,7 +117,7 @@ namespace benzin
 
         D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12StructuredBufferView(const Buffer& buffer, const StructuredBufferViewCreation& creation)
         {
-            // #REFERENCE: https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_buffer_srv#remarks
+            // Ref: https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_buffer_srv#remarks
 
             BenzinAssert(creation.FirstElementIndex < buffer.GetElementCount());
 
@@ -139,8 +141,8 @@ namespace benzin
 
         D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12ByteAddressBufferView(const Buffer& buffer)
         {
-            // #NOTE: ByteAddressBuffers supports only 'DXGI_FORMAT_R32_TYPELESS' format 
-            // #REFERENCE: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
+            // Note: ByteAddressBuffers supports only 'DXGI_FORMAT_R32_TYPELESS' format 
+            // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
 
             static const auto rawBufferFormat = GraphicsFormat::R32Typeless;
             static const auto rawBufferFormatSizeInBytes = GetFormatSizeInBytes(rawBufferFormat);
@@ -198,7 +200,7 @@ namespace benzin
         m_CurrentState = creation.InitialState; // 'InitialState' can updated in 'CreateD3D12Resource'
         m_ElementSize = creation.ElementSize;
         m_ElementCount = creation.ElementCount;
-        m_AlignedElementSize = static_cast<uint32_t>(m_D3D12Resource->GetDesc().Width) / creation.ElementCount; // HACK
+        m_AlignedElementSize = (uint32_t)m_D3D12Resource->GetDesc().Width / creation.ElementCount; // HACK
 
         if (!creation.InitialData.empty())
         {
@@ -206,6 +208,12 @@ namespace benzin
 
             MappedData buffer{ *this };
             buffer.Write(creation.InitialData);
+        }
+
+        if (creation.IsNeedFormatBufferView)
+        {
+            BenzinAssert(creation.Format != GraphicsFormat::Unknown);
+            PushFormatBufferView({ .Format = creation.Format });
         }
 
         if (creation.IsNeedStructuredBufferView)

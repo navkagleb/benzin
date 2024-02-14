@@ -272,15 +272,14 @@ namespace benzin
         }
 
         const auto [us, compileResult] = BenzinProfileFunction(g_ShaderCompiler.Compile(paths, args));
-        const float ms = us.count() / 1000.0f;
 
         if (shaderType == ShaderType::Library)
         {
-            BenzinTrace("LibraryCompiled: {}! File: {}. Time: {}ms", hash, shaderCreation.FileName, ms);
+            BenzinTrace("LibraryCompiled: {}! File: {}. Time: {} ms", hash, shaderCreation.FileName, ToFloatMS(us));
         }
         else
         {
-            BenzinTrace("ShaderCompiled: {}! File: {}, EntryPoint: {}. Time: {}ms", hash, shaderCreation.FileName, shaderCreation.EntryPoint, ms);
+            BenzinTrace("ShaderCompiled: {}! File: {}, EntryPoint: {}. Time: {} ms", hash, shaderCreation.FileName, shaderCreation.EntryPoint, ToFloatMS(us));
         }
 
         WriteToFile(paths.BinaryFilePath, compileResult.BinaryBlob);

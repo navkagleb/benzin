@@ -123,10 +123,12 @@ namespace benzin
         auto* d3d12Device = (ID3D12Device*)context;
         BenzinExecuteOnScopeExit([&d3d12Device] { d3d12Device->Release(); });
 
+#if BENZIN_IS_DEBUG_BUILD
         BreakOnD3D12Error(d3d12Device, false);
+#endif
 
         std::string buffer;
-        buffer.reserve(2048);
+        buffer.reserve(MebiBytesToBytes(1));
 
         const HRESULT removedReason = d3d12Device->GetDeviceRemovedReason();
         switch (removedReason)

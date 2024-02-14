@@ -26,8 +26,8 @@ namespace benzin
         uint32_t m_WindowHeight = 720;
         bool m_IsWindowResizable = true;
 
-        std::optional<uint32_t> m_AdapterIndex; // #TODO: Remove optional
-        std::optional<uint32_t> m_FrameInFlightCount; // #TODO: Remove optional
+        uint32_t m_AdapterIndex = 0;
+        uint32_t m_FrameInFlightCount = 3;
         bool m_IsEnabledGPUBasedValidation = false;
     };
 

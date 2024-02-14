@@ -17,10 +17,43 @@
 namespace sandbox
 {
 
+    class FrameRateCounter
+    {
+    public:
+        auto GetFrameRate() const { return m_FrameRate; }
+        auto GetDeltaTime() const { return benzin::SecToUS(1.0f / m_FrameRate); }
+
+        bool IsIntervalPassed() const { return m_ElapsedTime >= benzin::Layer::s_UpdateStatsInterval; }
+
+        void UpdateStats()
+        {
+            BenzinAssert(IsIntervalPassed());
+
+            m_FrameRate = m_ElapsedFrameCount / benzin::ToFloatSec(m_ElapsedTime);
+
+            m_ElapsedTime -= benzin::Layer::s_UpdateStatsInterval;
+            m_ElapsedFrameCount = 0;
+        }
+
+        void OnUpdate(std::chrono::microseconds dt)
+        {
+            m_ElapsedTime += benzin::ToMS(dt);
+            m_ElapsedFrameCount++;
+        }
+
+    private:
+        float m_FrameRate = 60.0f;
+
+        std::chrono::milliseconds m_ElapsedTime = std::chrono::milliseconds::zero();
+        uint32_t m_ElapsedFrameCount = 0;
+    };
+
     class Application
     {
     public:
         Application()
+            : m_FrameTimerRef{ benzin::Layer::s_FrameTimer }
+            , m_IsUpdateStatsIntervalPassedRef{ benzin::Layer::s_IsUpdateStatsIntervalPassed }
         {
             BenzinLogTimeOnScopeExit("Create Application");
 
@@ -71,9 +104,9 @@ namespace sandbox
         
         void ExecuteMainLoop()
         {
-            benzin::Layer::OnStaticBeforeMainLoop();
-
             m_IsRunning = true;
+            m_FrameTimerRef.Reset();
+
             while (m_IsRunning)
             {
                 m_MainWindow->ProcessEvents();
@@ -81,9 +114,15 @@ namespace sandbox
                 BeginFrame();
                 ProcessFrame();
                 EndFrame();
-            }
 
-            benzin::Layer::OnStaticAfterMainLoop();
+                if (m_IsUpdateStatsIntervalPassedRef = m_FrameRateCounter.IsIntervalPassed())
+                {
+                    m_FrameRateCounter.UpdateStats();
+
+                    m_ImGuiLayer->SetFrameRateStats(m_FrameRateCounter.GetFrameRate(), benzin::ToFloatMS(m_FrameRateCounter.GetDeltaTime()));
+                    m_ImGuiLayer->SetApplicationTimings(m_Timings);
+                }
+            }
         }
 
     private:
@@ -107,14 +146,18 @@ namespace sandbox
 
         void BeginFrame()
         {
-            m_Device->GetGraphicsCommandQueue().ResetCommandList(m_Device->GetActiveFrameIndex());
+            BenzinGrabTimeOnScopeExit(m_Timings[benzin::ApplicationTiming::BeginFrame]);
 
-            benzin::Layer::OnStaticBeginFrame();
+            m_Device->GetGraphicsCommandQueue().ResetCommandList(m_Device->GetActiveFrameIndex());
         }
 
         void ProcessFrame()
         {
-            benzin::Layer::OnStaticUpdate();
+            BenzinGrabTimeOnScopeExit(m_Timings[benzin::ApplicationTiming::ProcessFrame]);
+
+            m_FrameTimerRef.Tick();
+
+            m_FrameRateCounter.OnUpdate(m_FrameTimerRef.GetDeltaTime());
 
             for (auto& layer : m_LayerStack)
             {
@@ -139,7 +182,7 @@ namespace sandbox
 
         void EndFrame()
         {
-            benzin::Layer::OnStaticEndFrame();
+            BenzinGrabTimeOnScopeExit(m_Timings[benzin::ApplicationTiming::EndFrame]);
 
             m_Device->GetGraphicsCommandQueue().ExecuteCommandList();
             m_SwapChain->Flip();
@@ -148,7 +191,7 @@ namespace sandbox
     private:
         bool OnWindowClose(benzin::WindowCloseEvent& event)
         {
-            m_IsRunning = false;
+            RequestShutdow();
             return false;
         };
 
@@ -163,17 +206,25 @@ namespace sandbox
         {
             if (event.GetKeyCode() == benzin::KeyCode::Escape)
             {
-                m_IsRunning = false;
+                RequestShutdow();
             }
 
             return false;
         }
 
-    private:
+        void RequestShutdow()
+        {
+            m_IsRunning = false;
+        }
+
+    public:
         std::unique_ptr<benzin::Window> m_MainWindow;
         std::unique_ptr<benzin::Backend> m_Backend;
         std::unique_ptr<benzin::Device> m_Device;
         std::unique_ptr<benzin::SwapChain> m_SwapChain;
+
+        benzin::TickTimer& m_FrameTimerRef;
+        bool& m_IsUpdateStatsIntervalPassedRef;
 
         benzin::LayerStack m_LayerStack;
 
@@ -183,6 +234,9 @@ namespace sandbox
         std::shared_ptr<RTProceduralGeometryLayer> m_RTProceduralGeometryLayer;
 
         bool m_IsRunning = false;
+
+        FrameRateCounter m_FrameRateCounter;
+        benzin::ApplicationTimings m_Timings;
     };
 
 } // namespace sandbox
@@ -194,15 +248,18 @@ int benzin::ClientMain()
 
     benzin::GraphicsSettingsInstance::Initialize(benzin::GraphicsSettings
     {
-        .MainAdapterIndex = commandLines.GetAdapterIndex().value_or(0),
-        .FrameInFlightCount = commandLines.GetFrameInFlightCount().value_or(3),
+        .MainAdapterIndex = commandLines.GetAdapterIndex(),
+        .FrameInFlightCount = commandLines.GetFrameInFlightCount(),
         .DebugLayerParams
         {
             .IsGPUBasedValidationEnabled = commandLines.IsEnabledGPUBasedValidation(),
         },
     });
 
-    sandbox::Application{}.ExecuteMainLoop();
+    {
+        sandbox::Application application;
+        application.ExecuteMainLoop();
+    }
 
     return 0;
 }

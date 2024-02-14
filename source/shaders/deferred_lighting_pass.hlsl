@@ -43,12 +43,6 @@ float3 GetLitColorForPointLight(joint::PointLight pointLight, PBRMaterial materi
     return attenuation * pbr;
 }
 
-float FetchDepth(float2 uv)
-{
-    Texture2D<float> depthTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRC_DepthStencilTexture)];
-    return depthTexture.Sample(g_LinearWrapSampler, uv).r;
-}
-
 UnpackedGBuffer FetchGBuffer(float2 uv)
 {
     Texture2D<float4> albedoTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRC_AlbedoTexture)];
@@ -73,7 +67,7 @@ joint::DeferredLightingPassConstants FetchPassConstants()
 
 float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
 {
-    const float depth = FetchDepth(input.UV);
+    const float depth = FetchDepth(input.UV, GetRootConstant(joint::DeferredLightingPassRC_DepthStencilTexture));
     if (depth == 1.0f)
     {
         discard;
@@ -134,7 +128,7 @@ float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
     material.Metalness = gbuffer.Metalness;
     material.F0 = GetF0(gbuffer.Albedo.rgb, gbuffer.Metalness);
 
-    const float3 ambientColor = 0.1f * gbuffer.Albedo.rgb;
+    const float3 ambientColor = 0.3f * gbuffer.Albedo.rgb;
 
     float3 directColor = 0.0f;
 
@@ -154,6 +148,8 @@ float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
         }
     }
     
-    const float3 finalLitColor = ambientColor + directColor + gbuffer.Emissive;
+    Texture2D<float4> shadowTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRC_ShadowTexture)];
+
+    const float3 finalLitColor = ambientColor + gbuffer.Emissive + directColor * (1.0 - shadowTexture.Sample(g_LinearWrapSampler, input.UV).r);
     return float4(saturate(finalLitColor), 1.0f);
 }

@@ -1,5 +1,12 @@
 #pragma once
 
+namespace joint
+{
+
+    struct MeshVertex;
+
+} // namespace joint
+
 namespace benzin
 {
 

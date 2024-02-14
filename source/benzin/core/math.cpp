@@ -1,6 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/math.hpp"
 
+#include <shaders/joint/structured_buffer_types.hpp>
+
 namespace benzin
 {
 

@@ -49,7 +49,12 @@ namespace sandbox
             },
         }
     {
-        m_GPUTimer = std::make_shared<benzin::GPUTimer>(m_Device, m_Device.GetGraphicsCommandQueue(), magic_enum::enum_count<GPUTimerIndex>());
+        m_GPUTimer = std::make_shared<benzin::GPUTimer>(m_Device, benzin::GPUTimerCreation
+        {
+            .CommandList = m_Device.GetGraphicsCommandQueue().GetCommandList(),
+            .TimestampFrequency = m_Device.GetGraphicsCommandQueue().GetTimestampFrequency(),
+            .TimerCount = (uint32_t)magic_enum::enum_count<GPUTimerIndex>(),
+        });
 
         CreateEntities();
 
@@ -61,7 +66,7 @@ namespace sandbox
 
     void RTHelloTriangleLayer::OnEndFrame()
     {
-        m_GPUTimer->OnEndFrame(m_Device.GetGraphicsCommandQueue().GetCommandList());
+        m_GPUTimer->ResolveTimestamps();
     }
 
     void RTHelloTriangleLayer::OnRender()
@@ -118,7 +123,7 @@ namespace sandbox
             };
 
             {
-                BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_DispatchRays);
+                BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, magic_enum::enum_integer(GPUTimerIndex::_DispatchRays));
                 d3d12CommandList->DispatchRays(&d3d12DispatchRayDesc);
             }
         }
@@ -148,12 +153,9 @@ namespace sandbox
         {
             static magic_enum::containers::array<GPUTimerIndex, float> times;
 
-            if (s_FrameStats.IsReady())
+            for (const auto& [index, time] : times | std::views::enumerate)
             {
-                for (const auto& [index, time] : times | std::views::enumerate)
-                {
-                    time = m_GPUTimer->GetElapsedTime((uint32_t)index).count();
-                }
+                time = m_GPUTimer->GetElapsedTime((uint32_t)index).count() / 1000.0f;
             }
 
             for (const auto& [index, time] : times | std::views::enumerate)
@@ -394,7 +396,7 @@ namespace sandbox
 
         // Build BottomLevel AS
         {
-            BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_BuildBottomLevelAS);
+            BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, magic_enum::enum_integer(GPUTimerIndex::_BuildBottomLevelAS));
 
             const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12BLASDesc
             {
@@ -410,7 +412,7 @@ namespace sandbox
 
         // Build TopLevel AS
         {
-            BenzinIndexedGPUTimerScopeMeasurement(*m_GPUTimer, commandList, GPUTimerIndex::_BuildTopLevelAS);
+            BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, magic_enum::enum_integer(GPUTimerIndex::_BuildTopLevelAS));
 
             const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12TLASDesc
             {

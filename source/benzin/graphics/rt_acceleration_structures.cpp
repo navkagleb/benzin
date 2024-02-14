@@ -9,56 +9,57 @@ namespace benzin::rt
     namespace
     {
 
-        D3D12_RAYTRACING_GEOMETRY_DESC ToD3D12RaytracingGeometryDesc(const GeometryVariant& geometryVariant)
+        D3D12_RAYTRACING_GEOMETRY_DESC ToD3D12RaytracingGeometryDesc(const TriangledGeometry& geometry)
+        {
+            const uint32_t validatedVertexCount = geometry.VertexCount == g_InvalidIndex<uint32_t> && geometry.VertexOffset == 0 ? geometry.VertexBuffer.GetElementCount() : geometry.VertexCount;
+            const uint32_t validatedIndexCount = geometry.IndexCount == g_InvalidIndex<uint32_t> && geometry.IndexOffset == 0 ? geometry.IndexBuffer.GetElementCount() : geometry.IndexCount;
+
+            return D3D12_RAYTRACING_GEOMETRY_DESC
+            {
+                .Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES,
+                .Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE,
+                .Triangles
+                {
+                    .Transform3x4 = 0,
+                    .IndexFormat = DXGI_FORMAT_R32_UINT,
+                    .VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT,
+                    .IndexCount = validatedIndexCount,
+                    .VertexCount = validatedVertexCount,
+                    .IndexBuffer = geometry.IndexBuffer.GetGPUVirtualAddress(geometry.IndexOffset),
+                    .VertexBuffer
+                    {
+                        .StartAddress = geometry.VertexBuffer.GetGPUVirtualAddress(geometry.VertexOffset),
+                        .StrideInBytes = geometry.VertexBuffer.GetElementSize(),
+                    },
+                },
+            };
+        }
+
+        D3D12_RAYTRACING_GEOMETRY_DESC ToD3D12RaytracingGeometryDesc(const ProceduralGeometry& geometry)
+        {
+            BenzinAssert(geometry.AABBBuffer.GetElementSize() == sizeof(D3D12_RAYTRACING_AABB));
+
+            return D3D12_RAYTRACING_GEOMETRY_DESC
+            {
+                .Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS,
+                .Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE,
+                .AABBs
+                {
+                    .AABBCount = 1,
+                    .AABBs
+                    {
+                        .StartAddress = geometry.AABBBuffer.GetGPUVirtualAddress(geometry.AABBIndex),
+                        .StrideInBytes = geometry.AABBBuffer.GetElementSize(),
+                    },
+                },
+            };
+        }
+
+        D3D12_RAYTRACING_GEOMETRY_DESC ToD3D12RaytracingGeometryDescVariant(const GeometryVariant& geometryVariant)
         {
             return geometryVariant | VisitorMatch
             {
-                [](std::monostate)
-                {
-                    BenzinAssert(false);
-                    return D3D12_RAYTRACING_GEOMETRY_DESC{};
-                },
-                [](const TriangledGeometry& geometry)
-                {
-                    return D3D12_RAYTRACING_GEOMETRY_DESC
-                    {
-                        .Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES,
-                        .Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE,
-                        .Triangles
-                        {
-                            .Transform3x4 = 0,
-                            .IndexFormat = DXGI_FORMAT_R32_UINT,
-                            .VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT,
-                            .IndexCount = geometry.IndexBuffer.GetElementCount(),
-                            .VertexCount = geometry.VertexBuffer.GetElementCount(),
-                            .IndexBuffer = geometry.IndexBuffer.GetGPUVirtualAddress(),
-                            .VertexBuffer
-                            {
-                                .StartAddress = geometry.VertexBuffer.GetGPUVirtualAddress(),
-                                .StrideInBytes = geometry.VertexBuffer.GetElementSize(),
-                            },
-                        },
-                    };
-                },
-                [](const ProceduralGeometry& geometry)
-                {
-                    BenzinAssert(geometry.AABBBuffer.GetElementSize() == sizeof(D3D12_RAYTRACING_AABB));
-
-                    return D3D12_RAYTRACING_GEOMETRY_DESC
-                    {
-                        .Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS,
-                        .Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE,
-                        .AABBs
-                        {
-                            .AABBCount = 1,
-                            .AABBs
-                            {
-                                .StartAddress = geometry.AABBBuffer.GetGPUVirtualAddress(geometry.AABBIndex),
-                                .StrideInBytes = geometry.AABBBuffer.GetElementSize(),
-                            },
-                        },
-                    };
-                },
+                [](auto&& geometry) { return ToD3D12RaytracingGeometryDesc(geometry); },
             };
         }
 
@@ -77,7 +78,9 @@ namespace benzin::rt
                 .Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE,
                 .AccelerationStructure = instance.BottomLevelAccelerationStructure.GetBuffer().GetGPUVirtualAddress(),
             };
-            memcpy(&d3d12InstanceDesc.Transform, &instance.Transform, sizeof(DirectX::XMFLOAT3X4));
+
+            const DirectX::XMMATRIX transposedMatrix = DirectX::XMMatrixTranspose(instance.Transform);
+            memcpy(&d3d12InstanceDesc.Transform, &transposedMatrix, sizeof(DirectX::XMFLOAT3X4));
 
             return d3d12InstanceDesc;
         }
@@ -96,7 +99,7 @@ namespace benzin::rt
         m_D3D12BuildInputs = creation.D3D12BuildInputs;
 
         const bool isTopLevelAS = m_D3D12BuildInputs.Type == D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-        const std::string_view accelerationStructureTypeDebugName = isTopLevelAS ? "TopLevel" : "BottomLevel";
+        const std::string_view asTypeName = isTopLevelAS ? "TopLevel" : "BottomLevel";
 
         m_Buffer.Create(BufferCreation
         {
@@ -114,8 +117,8 @@ namespace benzin::rt
 
         if (!creation.DebugName.empty())
         {
-            SetD3D12ObjectDebugName(m_Buffer.GetD3D12Resource(), std::format("{}_{}AccelerationStructure", creation.DebugName, accelerationStructureTypeDebugName));
-            SetD3D12ObjectDebugName(m_ScratchResource.GetD3D12Resource(), std::format("{}_{}ScratchResource", creation.DebugName, accelerationStructureTypeDebugName));
+            SetD3D12ObjectDebugName(m_Buffer.GetD3D12Resource(), std::format("{}_{}AccelerationStructure", creation.DebugName, asTypeName));
+            SetD3D12ObjectDebugName(m_ScratchResource.GetD3D12Resource(), std::format("{}_{}ScratchResource", creation.DebugName, asTypeName));
         }
     }
 
@@ -123,12 +126,12 @@ namespace benzin::rt
 
     BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(Device& device, const BottomLevelAccelerationStructureCreation& creation)
         : AccelerationStructure{ device }
-        , m_D3D12GeometryDescs{ std::from_range, creation.Geometries | std::views::transform(ToD3D12RaytracingGeometryDesc) }
+        , m_D3D12GeometryDescs{ std::from_range, creation.Geometries | std::views::transform(ToD3D12RaytracingGeometryDescVariant) }
     {
         const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS d3d12BuildInputs
         {
             .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-            .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+            // .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
             .NumDescs = (uint32_t)m_D3D12GeometryDescs.size(),
             .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
             .pGeometryDescs = m_D3D12GeometryDescs.data(),
@@ -165,7 +168,7 @@ namespace benzin::rt
         const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS d3d12BuildInputs
         {
             .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-            .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+            .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD,
             .NumDescs = (uint32_t)m_D3D12InstanceDescs.size(),
             .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
             .InstanceDescs = m_InstanceBuffer.GetGPUVirtualAddress(),

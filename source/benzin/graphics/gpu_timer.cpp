@@ -8,91 +8,114 @@
 namespace benzin
 {
 
+    GPUTimer::GPUTimer(Device& device, const GPUTimerCreation& creation)
+        : m_InverseFrequency{ 1.0f / creation.TimestampFrequency }
+        , m_ProfiledD3D12GraphicsCommandList{ creation.CommandList.GetD3D12GraphicsCommandList() }
+        , m_ReadbackBuffer{ device }
+    {
+        m_Timestamps.resize(creation.TimerCount * 2);
+
+        {
+            const D3D12_QUERY_HEAP_DESC d3d12QueryHeapDesc
+            {
+                .Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP,
+                .Count = (uint32_t)m_Timestamps.size(),
+                .NodeMask = 0,
+            };
+
+            BenzinAssert(device.GetD3D12Device()->CreateQueryHeap(&d3d12QueryHeapDesc, IID_PPV_ARGS(&m_D3D12TimestampQueryHeap)));
+            SetD3D12ObjectDebugName(m_D3D12TimestampQueryHeap, "GPUTimer_TimestampQueryHeap");
+        }
+
+        m_ReadbackBuffer.Create(BufferCreation
+        {
+            .DebugName = "GPUTimer_ReadbackBuffer",
+            .ElementSize = sizeof(uint64_t),
+            .ElementCount = (uint32_t)m_Timestamps.size() * (GraphicsSettingsInstance::Get().FrameInFlightCount + 1),
+            .Flags = BufferFlag::ReadbackBuffer,
+            .InitialState = ResourceState::CopyDestination,
+        });
+    }
+
     GPUTimer::~GPUTimer()
     {
         SafeUnknownRelease(m_D3D12TimestampQueryHeap);
     }
 
-    void GPUTimer::OnEndFrame(CommandList& commandList)
+    void GPUTimer::BeginProfile(uint32_t timerIndex)
     {
-        static uint32_t currentFrameIndex = 0;
+        BenzinAssert(timerIndex < m_Timestamps.size() / 2);
+        EndQuery(timerIndex * 2);
+    }
 
-        const uint32_t bufferSizePerFrame = m_Buffer->GetNotAlignedSizeInBytes() / m_ReadBackBufferFrameCount;
+    void GPUTimer::EndProfile(uint32_t timerIndex)
+    {
+        BenzinAssert(timerIndex < m_Timestamps.size() / 2);
+        EndQuery(timerIndex * 2 + 1);
+    }
 
-        // Resolve query for the current frame
-        const uint64_t bufferOffset = currentFrameIndex * bufferSizePerFrame;
-        commandList.GetD3D12GraphicsCommandList()->ResolveQueryData(m_D3D12TimestampQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, 0, m_TimerSlotCount, m_Buffer->GetD3D12Resource(), bufferOffset);
+    std::chrono::microseconds GPUTimer::GetElapsedTime(uint32_t timerIndex) const
+    {
+        BenzinAssert(timerIndex < m_Timestamps.size() / 2);
 
-        // Grab read-back data for the queries from a finished frame FrameInFlighCount ago
-        const uint32_t readbackFrameIndex = (currentFrameIndex + 1) % m_ReadBackBufferFrameCount;
-        const size_t readbackBufferOffset = readbackFrameIndex * bufferSizePerFrame;
+        const auto startTimeStamp = m_Timestamps[timerIndex * 2];
+        const auto endTimeStamp = m_Timestamps[timerIndex * 2 + 1];
 
-        const D3D12_RANGE d3d12BufferDataRange
+        if (endTimeStamp < startTimeStamp)
         {
-            .Begin = readbackBufferOffset,
-            .End = readbackBufferOffset + bufferSizePerFrame,
-        };
-
-        uint64_t* timeStampsData;
-        BenzinAssert(m_Buffer->GetD3D12Resource()->Map(0, &d3d12BufferDataRange, reinterpret_cast<void**>(&timeStampsData)));
-        BenzinExecuteOnScopeExit([this] { m_Buffer->GetD3D12Resource()->Unmap(0, nullptr); });
-
-        memcpy(m_TimeStamps.data(), timeStampsData, bufferSizePerFrame);
-
-        currentFrameIndex = readbackFrameIndex;
-    }
-
-    void GPUTimer::Start(CommandList& commandList, uint32_t timerIndex)
-    {
-        BenzinAssert(timerIndex < m_TimerSlotCount / 2);
-
-        commandList.GetD3D12GraphicsCommandList()->EndQuery(m_D3D12TimestampQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, GetTimerSlotIndexOnStart(timerIndex));
-    }
-
-    void GPUTimer::Stop(CommandList& commandList, uint32_t timerIndex)
-    {
-        BenzinAssert(timerIndex < m_TimerSlotCount / 2);
-
-        commandList.GetD3D12GraphicsCommandList()->EndQuery(m_D3D12TimestampQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, GetTimerSlotIndexOnStop(timerIndex));
-    }
-
-    MilliSeconds GPUTimer::GetElapsedTime(uint32_t timerIndex) const
-    {
-        BenzinAssert(timerIndex < m_TimerSlotCount / 2);
-
-        const auto start = m_TimeStamps[GetTimerSlotIndexOnStart(timerIndex)];
-        const auto stop = m_TimeStamps[GetTimerSlotIndexOnStop(timerIndex)];
-
-        if (stop < start)
-        {
-            return MilliSeconds::zero();
+            return std::chrono::microseconds::zero();
         }
 
-        return BenzinAsSeconds(static_cast<float>(stop - start) * m_InverseFrequency);
+        return SecToUS((endTimeStamp - startTimeStamp) * m_InverseFrequency);
     }
 
-    void GPUTimer::CreateResources(Device& device)
+    void GPUTimer::ResolveTimestamps()
     {
-        BenzinAssert(device.GetD3D12Device());
+        static const auto readbackBufferSizePerFrame = (uint32_t)m_Timestamps.size() * sizeof(uint64_t);
+        static uint32_t currentFrameIndex = 0;
 
-        const D3D12_QUERY_HEAP_DESC d3d12QueryHeapDesc
+        const auto GetReadbackBufferOffsetForCurrentFrame = [&]
         {
-            .Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP,
-            .Count = m_TimerSlotCount,
-            .NodeMask = 0,
+            return currentFrameIndex * readbackBufferSizePerFrame;
         };
 
-        BenzinAssert(device.GetD3D12Device()->CreateQueryHeap(&d3d12QueryHeapDesc, IID_PPV_ARGS(&m_D3D12TimestampQueryHeap)));
-        SetD3D12ObjectDebugName(m_D3D12TimestampQueryHeap, "GPUTimer_TimestampQueryHeap");
-
-        m_Buffer = std::make_unique<Buffer>(device, BufferCreation
         {
-            .DebugName = "GPUTimer_Buffer",
-            .ElementSize = sizeof(uint64_t),
-            .ElementCount = m_ReadBackBufferFrameCount * m_TimerSlotCount,
-            .Flags = BufferFlag::ReadbackBuffer,
-            .InitialState = ResourceState::CopyDestination,
-        });
+            // Resolve query for the current frame
+
+            m_ProfiledD3D12GraphicsCommandList->ResolveQueryData(
+                m_D3D12TimestampQueryHeap,
+                D3D12_QUERY_TYPE_TIMESTAMP,
+                0,
+                (uint32_t)m_Timestamps.size(),
+                m_ReadbackBuffer.GetD3D12Resource(),
+                GetReadbackBufferOffsetForCurrentFrame()
+            );
+        }
+
+        {
+            // Grab readback data from a finished frame FrameInFlighCount ago
+
+            currentFrameIndex = (currentFrameIndex + 1) % (GraphicsSettingsInstance::Get().FrameInFlightCount + 1);
+
+            const size_t readbackBufferOffset = GetReadbackBufferOffsetForCurrentFrame();
+
+            const D3D12_RANGE d3d12ReadbackRange
+            {
+                .Begin = readbackBufferOffset,
+                .End = readbackBufferOffset + readbackBufferSizePerFrame,
+            };
+
+            uint64_t* timestampData = nullptr;
+            BenzinAssert(m_ReadbackBuffer.GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&timestampData)));
+            BenzinExecuteOnScopeExit([this] { m_ReadbackBuffer.GetD3D12Resource()->Unmap(0, nullptr); });
+
+            memcpy(m_Timestamps.data(), timestampData, readbackBufferSizePerFrame);
+        }
+    }
+
+    void GPUTimer::EndQuery(uint32_t timestampIndex)
+    {
+        m_ProfiledD3D12GraphicsCommandList->EndQuery(m_D3D12TimestampQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, timestampIndex);
     }
 
 } // namespace benzin

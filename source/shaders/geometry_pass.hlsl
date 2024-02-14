@@ -43,7 +43,7 @@ float3x3 GetTBNBasis(float3 position, float3 normal, float2 uv)
     return float3x3(tangent, bitangent, normal);
 }
 
-static joint::MeshNode g_IdentityMeshNode = { g_IdentityMatrix, g_IdentityMatrix };
+static joint::MeshTransform g_IdentityTransform = { g_IdentityMatrix, g_IdentityMatrix };
 
 joint::MeshInstance FetchMeshInstance()
 {
@@ -67,23 +67,23 @@ joint::MeshVertex FetchVertex(uint indexIndex, uint meshIndex)
     return vertex;
 }
 
-joint::MeshNode FetchMeshNode(uint meshNodeIndex)
+joint::MeshTransform FetchMeshParentTransform(uint transformIndex)
 {
-    const uint meshNodeBufferIndex = GetRootConstant(joint::GeometryPassRC_MeshNodeBuffer);
+    const uint transformBufferIndex = GetRootConstant(joint::GeometryPassRC_MeshParentTransformBuffer);
 
-    if (meshNodeBufferIndex == g_InvalidIndex || meshNodeIndex == g_InvalidIndex)
+    if (transformIndex == g_InvalidIndex || transformBufferIndex == g_InvalidIndex)
     {
-        return g_IdentityMeshNode;
+        return g_IdentityTransform;
     }
 
-    StructuredBuffer<joint::MeshNode> meshNodeBuffer = ResourceDescriptorHeap[meshNodeBufferIndex];
-    return meshNodeBuffer[meshNodeIndex];
+    StructuredBuffer<joint::MeshTransform> parentTransform = ResourceDescriptorHeap[transformBufferIndex];
+    return parentTransform[transformIndex];
 }
 
-joint::Transform FetchTransform()
+joint::MeshTransform FetchMeshWorldTransform()
 {
-    ConstantBuffer<joint::Transform> transformBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRC_TransformBuffer)];
-    return transformBuffer;
+    ConstantBuffer<joint::MeshTransform> transformConstantBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRC_MeshTransformConstantBuffer)];
+    return transformConstantBuffer;
 }
 
 joint::Material FetchMaterial(uint materialIndex)
@@ -94,7 +94,7 @@ joint::Material FetchMaterial(uint materialIndex)
 
 struct VS_Output
 {
-    float4 HomogeneousPosition : SV_Position;
+    float4 ClipPosition : SV_Position;
     float3 WorldPosition : WorldPosition;
     float3 WorldNormal : WorldNormal;
     float2 UV : UV;
@@ -106,20 +106,19 @@ VS_Output VS_Main(uint indexIndex : SV_VertexID)
 
     const joint::MeshInstance meshInstance = FetchMeshInstance();
     const joint::MeshVertex vertex = FetchVertex(indexIndex, meshInstance.MeshIndex);
-    const joint::MeshNode meshNode = FetchMeshNode(meshInstance.NodeIndex);
-    const joint::Transform transform = FetchTransform();
+    const joint::MeshTransform parentTransform = FetchMeshParentTransform(meshInstance.NodeIndex);
+    const joint::MeshTransform worldTransform = FetchMeshWorldTransform();
     
-    // #TODO: Maybe can joint meshNode.WorldTransform with transform.WorldMatrix?
-    const float4 worldPosition = mul(float4(vertex.Position, 1.0f), meshNode.WorldTransform);
-    const float3 worldNormal = mul(vertex.Normal, (float3x3)transpose(meshNode.InverseWorldTransform));
+    const float4 objectPosition = mul(float4(vertex.Position, 1.0f), parentTransform.Matrix);
+    const float3 objectNormal = mul(vertex.Normal, (float3x3)transpose(parentTransform.InverseMatrix));
 
-    const float4 worldPosition1 = mul(worldPosition, transform.WorldMatrix);
-    const float3 worldNormal1 = mul(worldNormal, (float3x3)transpose(transform.InverseWorldMatrix));
+    const float4 worldPosition = mul(objectPosition, worldTransform.Matrix);
+    const float3 worldNormal = mul(objectNormal, (float3x3)transpose(worldTransform.InverseMatrix));
 
     VS_Output output = (VS_Output)0;
-    output.HomogeneousPosition = mul(worldPosition1, cameraConstants.ViewProjection);
-    output.WorldPosition = worldPosition1.xyz;
-    output.WorldNormal = worldNormal1;
+    output.ClipPosition = mul(worldPosition, cameraConstants.ViewProjection);
+    output.WorldPosition = worldPosition.xyz;
+    output.WorldNormal = worldNormal;
     output.UV = vertex.UV;
 
     return output;

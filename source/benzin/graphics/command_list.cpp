@@ -46,7 +46,10 @@ namespace benzin
 
         D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrierVariant(const ResourceBarrierVariant& resourceBarrier)
         {
-            return std::visit([](auto&& resourceBarrier) { return ToD3D12ResourceBarrier(resourceBarrier); }, resourceBarrier);
+            return resourceBarrier | VisitorMatch
+            {
+                [](auto&& resourceBarrier) { return ToD3D12ResourceBarrier(resourceBarrier); },
+            };
         };
 
     } // anonymous namespace

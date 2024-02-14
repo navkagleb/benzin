@@ -6,30 +6,18 @@ namespace benzin
     class TickTimer
     {
     public:
-        MilliSeconds GetDeltaTime() const { return m_DeltaTime; }
-        MilliSeconds GetElapsedTime() const;
-
-        bool IsPaused() const { return m_IsPaused; }
-
-    public:
-        void Continue();
-        void Pause();
+        auto GetDeltaTime() const { return m_DeltaTime; }
+        auto GetElapsedTime() const { return m_ElapsedTime; }
 
         void Reset();
-
         void Tick();
 
     private:
-        uint64_t m_ResetCounts = 0;
-        uint64_t m_PauseCounts = 0;
-        uint64_t m_PausedCounts = 0;
+        std::chrono::high_resolution_clock::time_point m_CurrentTimePoint;
+        std::chrono::high_resolution_clock::time_point m_PreviousTimePoint;
 
-        uint64_t m_PreviousCounts = 0;
-        uint64_t m_CurrentCounts = 0;
-
-        MilliSeconds m_DeltaTime = MilliSeconds::zero();
-
-        bool m_IsPaused = true;
+        std::chrono::microseconds m_DeltaTime;
+        std::chrono::milliseconds m_ElapsedTime;
     };
 
 } // namespace benzin
