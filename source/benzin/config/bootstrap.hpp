@@ -12,9 +12,11 @@
 #include "benzin/utility/string_utils.hpp"
 #include "benzin/utility/time_utils.hpp"
 
-#include "benzin/core/assert.hpp"
-#include "benzin/core/common.hpp"
+#include "benzin/core/singleton_instance_wrapper.hpp"
 #include "benzin/core/logger.hpp"
+#include "benzin/core/assert.hpp"
+
+#include "benzin/core/common.hpp"
 #include "benzin/core/scoped_timer.hpp"
 
 // Global configs

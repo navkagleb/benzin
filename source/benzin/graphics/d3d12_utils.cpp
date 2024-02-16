@@ -100,12 +100,12 @@ namespace benzin
         d3d12Debug->SetEnableSynchronizedCommandQueueValidation(params.IsSynchronizedCommandQueueValidationEnabled);
         d3d12Debug->SetEnableAutoName(true);
 
-        BenzinTrace("{}", Logger::s_LineSeparator);
+        BenzinTrace("----------------------------------------------");
         BenzinTrace("D3D12DebugLayer enabled");
         BenzinTrace("GPUBasedValidation enabled: {}", params.IsGPUBasedValidationEnabled);
         BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", params.IsSynchronizedCommandQueueValidationEnabled);
         BenzinTrace("AutoName enabled: true");
-        BenzinTrace("{}", Logger::s_LineSeparator);
+        BenzinTrace("----------------------------------------------");
     }
 
     void EnableDRED()

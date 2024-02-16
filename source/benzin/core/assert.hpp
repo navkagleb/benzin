@@ -1,111 +1,60 @@
 #pragma once
 
-#if !defined(BENZIN_IS_DEBUG_BUILD)
-    #error
-#endif
-
-#define BENZIN_IS_ASSERTS_ENABLED BENZIN_IS_DEBUG_BUILD
-
 namespace benzin
 {
 
-    void AssertFormat(const std::source_location& sourceLocation, std::string_view message);
-    void AssertFormat(HRESULT hr, const std::source_location& sourceLocation, std::string_view message);
-
-    inline std::string ArgsToFormat()
+    class Asserter
     {
-        return ""s;
-    }
+    public:
+        template <typename... Args>
+        friend struct Assert;
 
-    inline std::string ArgsToFormat(std::nullptr_t)
-    {
-        return ""s;
-    }
+        Asserter() = default;
 
-    inline std::string ArgsToFormat(std::string_view format, auto&&... args)
-    {
-        return std::vformat(format, std::make_format_args(args...));
-    }
+        BenzinDefineNonCopyable(Asserter);
+        BenzinDefineNonMoveable(Asserter);
 
-    inline void AssertImpl(bool condition, const std::source_location& sourceLocation, auto&&... args)
-    {
-        if (!condition)
-        {
-            AssertFormat(sourceLocation, ArgsToFormat(std::forward<decltype(args)>(args)...));
-        }
-    }
+    private:
+        void AssertImpl(bool isPassed, const std::source_location& sourceLocation, std::string_view message) const;
+        void AssertImpl(HRESULT hr, const std::source_location& sourceLocation, std::string_view message) const;
+    };
 
-    inline void AssertImpl(HRESULT hr, const std::source_location& sourceLocation, auto&&... args)
-    {
-        if (FAILED(hr))
-        {
-            AssertFormat(hr, sourceLocation, ArgsToFormat(std::forward<decltype(args)>(args)...));
-        }
-    }
+    using AsserterInstance = SingletonInstanceWrapper<Asserter>;
 
     template <typename... Args>
     struct Assert
     {
-        explicit Assert(bool condition, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
+        explicit Assert(bool isPassed, std::format_string<Args...> format = "", Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-#if BENZIN_IS_ASSERTS_ENABLED
-            AssertImpl(condition, sourceLocation, std::forward<Args>(args)...);
-#endif
+            AsserterInstance::Get().AssertImpl(isPassed, sourceLocation, std::format(format, std::forward<Args>(args)...));
         }
 
-        explicit Assert(const void* const pointer, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
+        explicit Assert(const void* const pointer, std::format_string<Args...> format = "", Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-#if BENZIN_IS_ASSERTS_ENABLED
-            AssertImpl(pointer != nullptr, sourceLocation, std::forward<Args>(args)...);
-#endif
+            AsserterInstance::Get().AssertImpl(pointer != nullptr, sourceLocation, std::format(format, std::forward<Args>(args)...));
         }
 
-        explicit Assert(HRESULT hr, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
+        explicit Assert(HRESULT hr, std::format_string<Args...> format = "", Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-#if BENZIN_IS_ASSERTS_ENABLED
-            AssertImpl(hr, sourceLocation, std::forward<Args>(args)...);
-#endif
+            AsserterInstance::Get().AssertImpl(hr, sourceLocation, std::format(format, std::forward<Args>(args)...));
         }
     };
 
     template <typename... Args>
-    struct Ensure
-    {
-        explicit Ensure(bool condition, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
-        {
-            AssertImpl(condition, sourceLocation, std::forward<Args>(args)...);
-        }
-
-        explicit Ensure(const void* const pointer, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
-        {
-            AssertImpl(pointer != nullptr, sourceLocation, std::forward<Args>(args)...);
-        }
-
-        explicit Ensure(HRESULT hr, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
-        {
-            AssertImpl(hr, sourceLocation, std::forward<Args>(args)...);
-        }
-    };
+    Assert(bool, std::format_string<Args...>, Args&&...) -> Assert<Args...>;
 
     template <typename... Args>
-    Assert(bool, Args&&...) -> Assert<Args...>;
+    Assert(const void* const, std::format_string<Args...>, Args&&...) -> Assert<Args...>;
 
     template <typename... Args>
-    Assert(const void* const, Args&&...) -> Assert<Args...>;
-
-    template <typename... Args>
-    Assert(HRESULT, Args&&...) -> Assert<Args...>;
-
-    template <typename... Args>
-    Ensure(bool, Args&&...) -> Ensure<Args...>;
-
-    template <typename... Args>
-    Ensure(const void* const, Args&&...) -> Ensure<Args...>;
-
-    template <typename... Args>
-    Ensure(HRESULT, Args&&...) -> Ensure<Args...>;
+    Assert(HRESULT, std::format_string<Args...>, Args&&...) -> Assert<Args...>;
 
 } // namespace benzin
 
-#define BenzinAssert(condition, ...) ::benzin::Assert{ condition, __VA_ARGS__ }
-#define BenzinEnsure(condition, ...) ::benzin::Ensure{ condition, __VA_ARGS__ }
+#if BENZIN_IS_DEBUG_BUILD
+  #define BenzinAssert(condition, ...) ::benzin::Assert{ condition, __VA_ARGS__ }
+#else
+  #define BenzinAssert(condition, ...) (void)(condition) // The condition can be an expression
+#endif
+
+#define BenzinEnsure(condition, ...) ::benzin::Assert{ condition, __VA_ARGS__ }

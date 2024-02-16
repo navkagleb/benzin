@@ -26,6 +26,8 @@ namespace benzin
     {
         BenzinAssert(::SetConsoleCtrlHandler(Wint64_ConsoleHandler, true) != 0);
 
+        LoggerInstance::Initialize();
+        AsserterInstance::Initialize();
         CommandLineArgsInstance::Initialize(argc, argv);
 
         return ClientMain();

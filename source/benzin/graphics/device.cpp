@@ -252,7 +252,8 @@ namespace benzin
 
         ComPtr<ID3DBlob> d3d12Blob;
         ComPtr<ID3DBlob> d3d12Error;
-        BenzinAssert(D3D12SerializeVersionedRootSignature(&d3d12RootSignatureDesc, &d3d12Blob, &d3d12Error), d3d12Error ? (const char*)d3d12Error->GetBufferPointer() : nullptr);
+        BenzinAssert(D3D12SerializeVersionedRootSignature(&d3d12RootSignatureDesc, &d3d12Blob, &d3d12Error));
+        BenzinErrorIf(d3d12Error, "Failed to Serialize RootSignature. Error: {}", (const char*)d3d12Error->GetBufferPointer());
 
         BenzinAssert(m_D3D12Device->CreateRootSignature(
             0,

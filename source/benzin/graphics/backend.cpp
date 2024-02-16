@@ -71,7 +71,7 @@ namespace benzin
 
         m_MainAdapterName = ToNarrowString(dxgiAdapterDesc.Description);
 
-        BenzinTrace("{}", Logger::s_LineSeparator);
+        BenzinTrace("----------------------------------------------");
         BenzinTrace("Main Adapter:");
         BenzinTrace("{}", m_MainAdapterName);
         BenzinTrace("VendorID: {}", dxgiAdapterDesc.VendorId);
@@ -79,7 +79,7 @@ namespace benzin
         BenzinTrace("DedicatedVideoMemory: {}MB, {}GB", BytesToMebiBytes(dxgiAdapterDesc.DedicatedVideoMemory), BytesToGibiBytes(dxgiAdapterDesc.DedicatedVideoMemory));
         BenzinTrace("DedicatedSystemMemory: {}MB, {}GB", BytesToMebiBytes(dxgiAdapterDesc.DedicatedSystemMemory), BytesToGibiBytes(dxgiAdapterDesc.DedicatedSystemMemory));
         BenzinTrace("SharedSystemMemory: {}MB, {}GB", BytesToMebiBytes(dxgiAdapterDesc.SharedSystemMemory), BytesToGibiBytes(dxgiAdapterDesc.SharedSystemMemory));
-        BenzinTrace("{}", Logger::s_LineSeparator);
+        BenzinTrace("----------------------------------------------");
     }
 
 } // namespace benzin

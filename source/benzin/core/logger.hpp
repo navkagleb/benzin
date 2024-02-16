@@ -13,32 +13,31 @@ namespace benzin
     class Logger
     {
     public:
-        BenzinDefineNonConstructable(Logger);
+        template <typename... Args>
+        friend struct Log;
 
-    public:
-        static constexpr std::string_view s_LineSeparator = "------------------------------------------------------------------------";
+        Logger() = default;
 
-    public:
-        static void Log(LogSeverity severity, const std::source_location& sourceLocation, std::string_view format, std::format_args args)
-        {
-            LogImpl(severity, sourceLocation, std::vformat(format, args));
-        }
+        BenzinDefineNonCopyable(Logger);
+        BenzinDefineNonMoveable(Logger);
 
     private:
-        static void LogImpl(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message);
+        void LogImpl(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message) const;
     };
+
+    using LoggerInstance = SingletonInstanceWrapper<Logger>;
 
     template <typename... Args>
     struct Log
     {
         explicit Log(LogSeverity severity, std::format_string<Args...> format, Args&&... args, const std::source_location& sourceLocation = std::source_location::current())
         {
-            Logger::Log(severity, sourceLocation, format.get(), std::make_format_args(args...));
+            LoggerInstance::Get().LogImpl(severity, sourceLocation, std::format(format, std::forward<Args>(args)...));
         }
     };
 
     template <typename... Args>
-    Log(LogSeverity, std::string_view, Args&&...) -> Log<Args...>;
+    Log(LogSeverity, std::format_string<Args...>, Args&&...) -> Log<Args...>;
 
 } // namespace benzin
 

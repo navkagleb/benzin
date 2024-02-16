@@ -7,7 +7,7 @@ namespace benzin
     namespace
     {
 
-        void DebugBreak()
+        inline void DebugBreak()
         {
             if (::IsDebuggerPresent())
             {
@@ -22,11 +22,10 @@ namespace benzin
 
             std::format_to(
                 std::back_inserter(buffer),
-                "{}\n"
+                "--------------------------------------------------\n"
                 "Assert failed !!!\n"
                 "{}:{}\n"
                 "Function: {}\n",
-                Logger::s_LineSeparator,
                 sourceLocation.file_name(), sourceLocation.line(),
                 sourceLocation.function_name()
             );
@@ -41,24 +40,35 @@ namespace benzin
                 std::format_to(std::back_inserter(buffer), "ComError message: {}\n", comErrorMessage);
             }
 
-            std::format_to(std::back_inserter(buffer), "{}", Logger::s_LineSeparator);
+            std::format_to(std::back_inserter(buffer), "--------------------------------------------------");
 
             BenzinError("\n{}", buffer);
         }
 
     } // anonymous namespace
 
-    void AssertFormat(const std::source_location& sourceLocation, std::string_view message)
+    void Asserter::AssertImpl(bool isPassed, const std::source_location& sourceLocation, std::string_view message) const
     {
+        if (isPassed)
+        {
+            return;
+        }
+
         AssertLog(sourceLocation, message);
         DebugBreak();
     }
 
-    void AssertFormat(HRESULT hr, const std::source_location& sourceLocation, std::string_view message)
+    void Asserter::AssertImpl(HRESULT hr, const std::source_location& sourceLocation, std::string_view message) const
     {
+        if (SUCCEEDED(hr))
+        {
+            return;
+        }
+
         _com_error comError{ hr };
         AssertLog(sourceLocation, message, comError.ErrorMessage());
-        
+
+#if 0
         switch (hr)
         {
             case DXGI_ERROR_DEVICE_HUNG:
@@ -71,6 +81,7 @@ namespace benzin
                 return;
             }
         }
+#endif
 
         DebugBreak();
     }
