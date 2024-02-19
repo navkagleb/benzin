@@ -88,6 +88,7 @@ project "benzin"
 
     nuget {
         "Microsoft.Direct3D.D3D12:1.610.3",
+        "Microsoft.Direct3D.DXC:1.7.2308.12"
         -- "WinPixEventRuntime:1.0.230302001"
     }
 
@@ -103,20 +104,20 @@ project "benzin"
         "../source/benzin",
     }
 
-    prebuildcommands {
-        "powershell -ExecutionPolicy Bypass -File $(SolutionDir)/tools/get_latest_dxc.ps1 $(SolutionDir)packages/dxc"
-    }
-
     postbuildcommands {
         -- DirectX Agile SDK
         "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/D3D12Core.dll\" \"$(SolutionDir)bin\"",
         "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/D3D12Core.pdb\" \"$(SolutionDir)bin\"",
+
         "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/d3d12SDKLayers.dll\" \"$(SolutionDir)bin\"",
         "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/d3d12SDKLayers.pdb\" \"$(SolutionDir)bin\"",
 
         -- DXC
-        "xcopy /f /Y /D \"$(SolutionDir)packages/DXC/bin/x64/dxcompiler.dll\" \"$(SolutionDir)bin\"",
-        "xcopy /f /Y /D \"$(SolutionDir)packages/DXC/bin/x64/dxil.dll\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/bin/x64/dxcompiler.dll\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/bin/x64/dxcompiler.pdb\" \"$(SolutionDir)bin\"",
+
+        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/bin/x64/dxil.dll\" \"$(SolutionDir)bin\"",
+        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/bin/x64/dxil.pdb\" \"$(SolutionDir)bin\"",
     }
 
 project "sandbox"

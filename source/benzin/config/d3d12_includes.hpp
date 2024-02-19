@@ -17,10 +17,7 @@
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
 
-#include <packages/dxc/inc/dxcapi.h>
-#include <packages/dxc/inc/d3d12shader.h>
-#pragma comment(lib, "dxcompiler.lib")
-
+// DirectX Agile SDK
 #if defined(BENZIN_PROJECT)
 extern "C"
 {
@@ -28,3 +25,10 @@ extern "C"
     __declspec(dllexport) extern const char* D3D12SDKPath = "./";
 }
 #endif
+
+// DXC
+#include <packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/include/d3d12shader.h>
+#include <packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/include/dxcapi.h>
+#include <packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/include/dxcerrors.h>
+
+#pragma comment(lib, "dxcompiler.lib")
