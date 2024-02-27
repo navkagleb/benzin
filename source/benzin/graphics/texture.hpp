@@ -22,7 +22,7 @@ namespace benzin
 
     struct TextureCreation
     {
-        DebugName DebugName;
+        std::string_view DebugName;
 
         TextureType Type = TextureType::Unknown;
         bool IsCubeMap = false;
@@ -37,7 +37,7 @@ namespace benzin
 
         ClearValueVariant ClearValue;
 
-        ResourceState InitialState = ResourceState::Present;
+        ResourceState InitialState = ResourceState::Common;
 
         bool IsNeedShaderResourceView = false;
         bool IsNeedUnorderedAccessView = false;
@@ -79,19 +79,19 @@ namespace benzin
         Texture(Device& device, ID3D12Resource* d3d12Resource);
 
     public:
-        TextureType GetType() const { return m_Type; }
-        bool IsCubeMap() const { return m_IsCubeMap; }
+        auto GetType() const { return m_Type; }
+        auto IsCubeMap() const { return m_IsCubeMap; }
 
-        GraphicsFormat GetFormat() const { return m_Format; }
-        uint32_t GetWidth() const { return m_Width; }
-        uint32_t GetHeight() const { return m_Height; }
-        uint16_t GetArraySize() const { return m_ArraySize; }
-        uint16_t GetMipCount() const { return m_MipCount; }
+        auto GetFormat() const { return m_Format; }
+        auto GetWidth() const { return m_Width; }
+        auto GetHeight() const { return m_Height; }
+        auto GetArraySize() const { return m_ArraySize; }
+        auto GetMipCount() const { return m_MipCount; }
 
-    public:
         uint32_t GetSizeInBytes() const override;
         uint32_t GetSubResourceCount() const;
 
+    public:
         bool HasRenderTargetView(uint32_t index = 0) const { return HasResourceView(DescriptorType::RenderTargetView, index); }
         bool HasDepthStencilView(uint32_t index = 0) const { return HasResourceView(DescriptorType::DepthStencilView, index); }
 

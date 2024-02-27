@@ -1,23 +1,21 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/scoped_timer.hpp"
 
+#include "benzin/core/asserter.hpp"
+#include "benzin/core/logger.hpp"
+
 namespace benzin
 {
 
-    namespace
+    static void LogScopeTime(std::string_view scopeName, std::chrono::microseconds us)
     {
+        BenzinTrace("Scope '{}' takes {:.3f}ms, {:.3f}s", scopeName, ToFloatMS(us), ToFloatSec(us));
+    }
 
-        void LogScopeTime(std::string_view scopeName, std::chrono::microseconds us)
-        {
-            BenzinTrace("Scope '{}' takes {:.3f}ms, {:.3f}s", scopeName, ToFloatMS(us), ToFloatSec(us));
-        }
-
-        void GrabScopeTime(std::chrono::microseconds us, std::chrono::microseconds& outUS)
-        {
-            outUS = us;
-        }
-
-    } // anonymous namespace
+    static void GrabScopeTime(std::chrono::microseconds us, std::chrono::microseconds& outUS)
+    {
+        outUS = us;
+    }
 
     // ScopedTimer
 

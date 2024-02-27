@@ -19,14 +19,29 @@ namespace joint
         float4x4 InverseViewDirectionProjection;
 
         float3 WorldPosition;
+
+        float __UnusedPadding;
+    };
+
+    struct DoubleFrameCameraConstants
+    {
+        CameraConstants CurrentFrame;
+        CameraConstants PreviousFrame;
     };
 
     struct RTShadowPassConstants
     {
         float DeltaTime;
-        float ElapsedTime;
-        float RandomFloat01;
+        uint CurrentTextureSlot;
         uint RaysPerPixel;
+    };
+
+    struct RTShadowDenoisingPassConstants
+    {
+        float2 TextureDimensions;
+        uint CurrentTextureSlot;
+        uint PreviousTextureSlot;
+        bool IsForceCurrentVisiblity;
     };
 
     struct DeferredLightingPassConstants

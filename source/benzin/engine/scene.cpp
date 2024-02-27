@@ -2,8 +2,10 @@
 #include "benzin/engine/scene.hpp"
 
 #include <shaders/joint/structured_buffer_types.hpp>
-#include <shaders/joint/constant_buffer_types.hpp>
 
+#include "benzin/core/asserter.hpp"
+#include "benzin/core/logger.hpp"
+#include "benzin/core/math.hpp"
 #include "benzin/engine/entity_components.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/command_queue.hpp"
@@ -15,12 +17,9 @@
 namespace benzin
 {
 
-    namespace
-    {
+    static constexpr uint32_t g_MaxPointLightCount = 200;
 
-        constexpr uint32_t g_MaxPointLightCount = 200;
-
-        MeshCollectionGPUStorage CreateMeshCollectionGPUStorage(Device& device, std::string_view debugName, const MeshCollection& meshCollection)
+    static MeshCollectionGPUStorage CreateMeshCollectionGPUStorage(Device& device, std::string_view debugName, const MeshCollection& meshCollection)
         {
             size_t totalVertexCount = 0;
             size_t totalIndexCount = 0;
@@ -107,8 +106,6 @@ namespace benzin
             };
         }
 
-    } // anonymous namespace
-
     // Scene
 
     Scene::Scene(Device& device)
@@ -116,9 +113,9 @@ namespace benzin
     {
         m_EntityRegistry.on_construct<TransformComponent>().connect<&Scene::OnTransformComponentConstuct>(this);
 
-        m_TopLevelASs.resize(GraphicsSettingsInstance::Get().FrameInFlightCount);
+        m_TopLevelASs.resize(CommandLineArgs::GetFrameInFlightCount());
 
-        m_CameraConstantBuffer = CreateFrameDependentConstantBuffer<joint::CameraConstants>(m_Device, "CameraConstantBuffer");
+        m_CameraConstantBuffer = CreateFrameDependentConstantBuffer<joint::DoubleFrameCameraConstants>(m_Device, "DoubleFrameCameraConstantBuffer");
         m_PointLightBuffer = CreateFrameDependentUploadStructuredBuffer<joint::PointLight>(m_Device, "PointLightBuffer", g_MaxPointLightCount);
     }
 
@@ -159,21 +156,12 @@ namespace benzin
             for (const auto entityHandle : view)
             {
                 auto& tc = view.get<TransformComponent>(entityHandle);
-
-                const DirectX::XMMATRIX worldMatrix = tc.GetWorldMatrix();
-                const joint::MeshTransform transform
-                {
-                    .Matrix = worldMatrix,
-                    .InverseMatrix = DirectX::XMMatrixInverse(nullptr, worldMatrix),
-                };
-
-                MappedData transformBuffer{ *tc.Buffer };
-                transformBuffer.Write(transform, m_Device.GetActiveFrameIndex());
+                tc.UpdateTransformConstantBuffer(m_Device);
             }
         }
 
         {
-            const joint::CameraConstants constants
+            const joint::CameraConstants currentCameraConstants
             {
                 .View = m_Camera.GetViewMatrix(),
                 .InverseView = m_Camera.GetInverseViewMatrix(),
@@ -185,8 +173,16 @@ namespace benzin
                 .WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition()),
             };
 
+            const joint::DoubleFrameCameraConstants constants
+            {
+                .CurrentFrame = currentCameraConstants,
+                .PreviousFrame = m_PreviousCameraConstants.value_or(currentCameraConstants),
+            };
+
             MappedData cameraConstantBuffer{ *m_CameraConstantBuffer };
             cameraConstantBuffer.Write(constants, m_Device.GetActiveFrameIndex());
+
+            m_PreviousCameraConstants = constants.CurrentFrame;
         }
 
         {
@@ -203,7 +199,7 @@ namespace benzin
                 {
                     .Color = plc.Color,
                     .Intensity = plc.Intensity,
-                    .WorldPosition = tc.Translation,
+                    .WorldPosition = tc.GetTranslation(),
                     .ConstantAttenuation = 1.0f,
                     .LinearAttenuation = 4.5f / plc.Range,
                     .ExponentialAttenuation = 75.0f / (plc.Range * plc.Range),
@@ -305,6 +301,7 @@ namespace benzin
         auto& activeTopLevelAS = GetActiveTopLevelAS();
         commandList.SetResourceBarrier(TransitionBarrier{ activeTopLevelAS->GetScratchResource(), ResourceState::UnorderedAccess });
         commandList.BuildRayTracingAccelerationStructure(*activeTopLevelAS);
+        commandList.SetResourceBarrier(UnorderedAccessBarrier{ activeTopLevelAS->GetBuffer() });
     }
 
     std::unique_ptr<rt::TopLevelAccelerationStructure>& Scene::GetActiveTopLevelAS()
@@ -315,7 +312,7 @@ namespace benzin
     void Scene::OnTransformComponentConstuct(entt::registry& registry, entt::entity entityHandle)
     {
         auto& tc = registry.get<TransformComponent>(entityHandle);
-        tc.Buffer = CreateFrameDependentConstantBuffer<joint::MeshTransform>(m_Device, std::format("TransformBuffer_{}", magic_enum::enum_integer(entityHandle)));
+        tc.CreateTransformConstantBuffer(m_Device, std::format("TransformBuffer_{}", magic_enum::enum_integer(entityHandle)));
     }
 
     void Scene::PushTextures(std::span<const TextureImage> textureImages)
@@ -402,6 +399,7 @@ namespace benzin
             }
         }
 
+        BenzinAssert(!topLevelInstances.empty());
         GetActiveTopLevelAS() = std::make_unique<rt::TopLevelAccelerationStructure>(m_Device, rt::TopLevelAccelerationStructureCreation
         {
             .DebugName = "SceneTopLevelAS",
@@ -459,6 +457,11 @@ namespace benzin
             uploadBufferSize += meshUnion.GPUStorage.MeshParentTransformBuffer->GetSizeInBytes();
         }
 
+        if (uploadBufferSize == 0)
+        {
+            return;
+        }
+
         auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
         BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
 
@@ -476,7 +479,7 @@ namespace benzin
                 const joint::MeshTransform transform 
                 {
                     .Matrix = parentTransform,
-                    .InverseMatrix = DirectX::XMMatrixInverse(nullptr, parentTransform),
+                    .MatrixForNormals = GetMatrixForNormals(parentTransform),
                 };
                 copyCommandList.UpdateBuffer(*meshUnion.GPUStorage.MeshParentTransformBuffer, std::span{ &transform, 1 }, i);
             }
@@ -507,6 +510,11 @@ namespace benzin
 
     void Scene::UploadAllTextures()
     {
+        if (m_Textures.empty())
+        {
+            return;
+        }
+
         uint64_t uploadBufferSize = 0;
         for (const auto& texture : m_Textures)
         {

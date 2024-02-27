@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/pipeline_state.hpp"
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/render_states.hpp"
 #include "benzin/graphics/shaders.hpp"
@@ -8,121 +9,118 @@
 namespace benzin
 {
 
-    namespace
+    static D3D12_SHADER_BYTECODE ToD3D12Shader(ShaderType shaderType, const ShaderCreation& shaderCreation)
     {
-
-        D3D12_SHADER_BYTECODE ToD3D12Shader(ShaderType shaderType, const ShaderCreation& shaderCreation)
+        if (!shaderCreation.IsValid())
         {
-            if (!shaderCreation.IsValid())
-            {
-                return { nullptr, 0 };
-            }
-
-            const std::span<const std::byte> shaderBinary = GetShaderBinary(shaderType, shaderCreation);
-
-            return D3D12_SHADER_BYTECODE
-            {
-                .pShaderBytecode = shaderBinary.data(),
-                .BytecodeLength = shaderBinary.size(),
-            };
+            return { nullptr, 0 };
         }
 
-        D3D12_RASTERIZER_DESC ToD3D12RasterizerState(const RasterizerState& rasterizerState)
+        const std::span<const std::byte> shaderBinary = GetShaderBinary(shaderType, shaderCreation);
+
+        return D3D12_SHADER_BYTECODE
         {
-            return D3D12_RASTERIZER_DESC
+            .pShaderBytecode = shaderBinary.data(),
+            .BytecodeLength = shaderBinary.size(),
+        };
+    }
+
+    static D3D12_RASTERIZER_DESC ToD3D12RasterizerState(const RasterizerState& rasterizerState)
+    {
+        return D3D12_RASTERIZER_DESC
+        {
+            .FillMode = static_cast<D3D12_FILL_MODE>(rasterizerState.FillMode),
+            .CullMode = static_cast<D3D12_CULL_MODE>(rasterizerState.CullMode),
+            .FrontCounterClockwise = rasterizerState.TriangleOrder == TriangleOrder::CounterClockwise,
+            .DepthBias = rasterizerState.DepthBias,
+            .DepthBiasClamp = rasterizerState.DepthBiasClamp,
+            .SlopeScaledDepthBias = rasterizerState.SlopeScaledDepthBias,
+            .DepthClipEnable = true,
+            .MultisampleEnable = false,
+            .AntialiasedLineEnable = false,
+            .ForcedSampleCount = 0,
+            .ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
+        };
+    }
+
+    static D3D12_DEPTH_STENCIL_DESC ToD3D12DepthStencilState(const DepthState& depthState, const StencilState& stencilState)
+    {
+        return D3D12_DEPTH_STENCIL_DESC
+        {
+            .DepthEnable = depthState.IsEnabled,
+            .DepthWriteMask = static_cast<D3D12_DEPTH_WRITE_MASK>(depthState.IsWriteEnabled),
+            .DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(depthState.ComparisonFunction),
+            .StencilEnable = stencilState.IsEnabled,
+            .StencilReadMask = stencilState.ReadMask,
+            .StencilWriteMask = stencilState.WriteMask,
+            .FrontFace
             {
-                .FillMode = static_cast<D3D12_FILL_MODE>(rasterizerState.FillMode),
-                .CullMode = static_cast<D3D12_CULL_MODE>(rasterizerState.CullMode),
-                .FrontCounterClockwise = rasterizerState.TriangleOrder == TriangleOrder::CounterClockwise,
-                .DepthBias = rasterizerState.DepthBias,
-                .DepthBiasClamp = rasterizerState.DepthBiasClamp,
-                .SlopeScaledDepthBias = rasterizerState.SlopeScaledDepthBias,
-                .DepthClipEnable = true,
-                .MultisampleEnable = false,
-                .AntialiasedLineEnable = false,
-                .ForcedSampleCount = 0,
-                .ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
-            };
+                .StencilFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.StencilFailOperation),
+                .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.DepthFailOperation),
+                .StencilPassOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.PassOperation),
+                .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(stencilState.FrontFaceBehaviour.StencilFunction),
+            },
+            .BackFace
+            {
+                .StencilFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.StencilFailOperation),
+                .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.DepthFailOperation),
+                .StencilPassOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.PassOperation),
+                .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(stencilState.BackFaceBehaviour.StencilFunction),
+            },
+        };
+    }
+
+    static D3D12_RENDER_TARGET_BLEND_DESC ToRenderTargetBlendDesc(const BlendState::RenderTargetState& blendRenderTargetState)
+    {
+        D3D12_RENDER_TARGET_BLEND_DESC d3d12RenderTargetBlendDesc
+        {
+            .RenderTargetWriteMask = static_cast<UINT8>(blendRenderTargetState.ColorChannelFlags),
+        };
+
+        if (!blendRenderTargetState.IsEnabled)
+        {
+            d3d12RenderTargetBlendDesc.BlendEnable = false;
+            d3d12RenderTargetBlendDesc.LogicOpEnable = false;
+        }
+        else
+        {
+            d3d12RenderTargetBlendDesc.BlendEnable = true;
+            d3d12RenderTargetBlendDesc.LogicOpEnable = false;
+            d3d12RenderTargetBlendDesc.SrcBlend = static_cast<D3D12_BLEND>(blendRenderTargetState.ColorEquation.SourceFactor);
+            d3d12RenderTargetBlendDesc.DestBlend = static_cast<D3D12_BLEND>(blendRenderTargetState.ColorEquation.DestinationFactor);
+            d3d12RenderTargetBlendDesc.BlendOp = static_cast<D3D12_BLEND_OP>(blendRenderTargetState.ColorEquation.Operation);
+            d3d12RenderTargetBlendDesc.SrcBlendAlpha = static_cast<D3D12_BLEND>(blendRenderTargetState.AlphaEquation.SourceFactor);
+            d3d12RenderTargetBlendDesc.DestBlendAlpha = static_cast<D3D12_BLEND>(blendRenderTargetState.AlphaEquation.DestinationFactor);
+            d3d12RenderTargetBlendDesc.BlendOpAlpha = static_cast<D3D12_BLEND_OP>(blendRenderTargetState.AlphaEquation.Operation);
         }
 
-        D3D12_DEPTH_STENCIL_DESC ToD3D12DepthStencilState(const DepthState& depthState, const StencilState& stencilState)
+        return d3d12RenderTargetBlendDesc;
+    }
+
+    static D3D12_BLEND_DESC ToD3D12BlendState(const BlendState& blendState)
+    {
+        D3D12_BLEND_DESC d3d12BlendDesc
         {
-            return D3D12_DEPTH_STENCIL_DESC
+            .AlphaToCoverageEnable = blendState.IsAlphaToCoverageStateEnabled,
+            .IndependentBlendEnable = blendState.IsIndependentBlendStateEnabled,
+        };
+
+        if (blendState.RenderTargetStates.empty())
+        {
+            d3d12BlendDesc.RenderTarget[0] = ToRenderTargetBlendDesc(BlendState::RenderTargetState{});
+        }
+        else
+        {
+            for (const auto [i, renderTargetState] : blendState.RenderTargetStates | std::views::enumerate)
             {
-                .DepthEnable = depthState.IsEnabled,
-                .DepthWriteMask = static_cast<D3D12_DEPTH_WRITE_MASK>(depthState.IsWriteEnabled),
-                .DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(depthState.ComparisonFunction),
-                .StencilEnable = stencilState.IsEnabled,
-                .StencilReadMask = stencilState.ReadMask,
-                .StencilWriteMask = stencilState.WriteMask,
-                .FrontFace
-                {
-                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.StencilFailOperation),
-                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.DepthFailOperation),
-                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.PassOperation),
-                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(stencilState.FrontFaceBehaviour.StencilFunction),
-                },
-                .BackFace
-                {
-                    .StencilFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.StencilFailOperation),
-                    .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.DepthFailOperation),
-                    .StencilPassOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.PassOperation),
-                    .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(stencilState.BackFaceBehaviour.StencilFunction),
-                },
-            };
+                d3d12BlendDesc.RenderTarget[i] = ToRenderTargetBlendDesc(renderTargetState);
+            }
         }
 
-        D3D12_RENDER_TARGET_BLEND_DESC ToRenderTargetBlendDesc(const BlendState::RenderTargetState& blendRenderTargetState)
-        {
-            D3D12_RENDER_TARGET_BLEND_DESC d3d12RenderTargetBlendDesc
-            {
-                .RenderTargetWriteMask = static_cast<UINT8>(blendRenderTargetState.ColorChannelFlags),
-            };
+        return d3d12BlendDesc;
+    }
 
-            if (!blendRenderTargetState.IsEnabled)
-            {
-                d3d12RenderTargetBlendDesc.BlendEnable = false;
-                d3d12RenderTargetBlendDesc.LogicOpEnable = false;
-            }
-            else
-            {
-                d3d12RenderTargetBlendDesc.BlendEnable = true;
-                d3d12RenderTargetBlendDesc.LogicOpEnable = false;
-                d3d12RenderTargetBlendDesc.SrcBlend = static_cast<D3D12_BLEND>(blendRenderTargetState.ColorEquation.SourceFactor);
-                d3d12RenderTargetBlendDesc.DestBlend = static_cast<D3D12_BLEND>(blendRenderTargetState.ColorEquation.DestinationFactor);
-                d3d12RenderTargetBlendDesc.BlendOp = static_cast<D3D12_BLEND_OP>(blendRenderTargetState.ColorEquation.Operation);
-                d3d12RenderTargetBlendDesc.SrcBlendAlpha = static_cast<D3D12_BLEND>(blendRenderTargetState.AlphaEquation.SourceFactor);
-                d3d12RenderTargetBlendDesc.DestBlendAlpha = static_cast<D3D12_BLEND>(blendRenderTargetState.AlphaEquation.DestinationFactor);
-                d3d12RenderTargetBlendDesc.BlendOpAlpha = static_cast<D3D12_BLEND_OP>(blendRenderTargetState.AlphaEquation.Operation);
-            }
-
-            return d3d12RenderTargetBlendDesc;
-        }
-
-        D3D12_BLEND_DESC ToD3D12BlendState(const BlendState& blendState)
-        {
-            D3D12_BLEND_DESC d3d12BlendDesc
-            {
-                .AlphaToCoverageEnable = blendState.IsAlphaToCoverageStateEnabled,
-                .IndependentBlendEnable = blendState.IsIndependentBlendStateEnabled,
-            };
-
-            if (blendState.RenderTargetStates.empty())
-            {
-                d3d12BlendDesc.RenderTarget[0] = ToRenderTargetBlendDesc(BlendState::RenderTargetState{});
-            }
-            else
-            {
-                for (const auto [i, renderTargetState] : blendState.RenderTargetStates | std::views::enumerate)
-                {
-                    d3d12BlendDesc.RenderTarget[i] = ToRenderTargetBlendDesc(renderTargetState);
-                }
-            }
-
-            return d3d12BlendDesc;
-        }
-
-    } // anonymous namespace
+    //
 
     PipelineState::PipelineState(Device& device, const GraphicsPipelineStateCreation& creation)
     {

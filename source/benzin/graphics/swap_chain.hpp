@@ -8,9 +8,8 @@ namespace benzin
     class Window;
 
     class Backend;
-    class Buffer;
     class Device;
-    class Fence;
+    class StalledFence;
     class Texture;
 
     class SwapChain
@@ -24,42 +23,33 @@ namespace benzin
         ~SwapChain();
 
     public:
-        IDXGISwapChain3* GetDXGISwapChain() const { return m_DXGISwapChain; }
-
         Texture& GetCurrentBackBuffer();
         const Texture& GetCurrentBackBuffer() const;
 
-        bool IsVSyncEnabled() const { return m_IsVSyncEnabled; }
-        void SetVSyncEnabled(bool isEnabled) { m_IsVSyncEnabled = isEnabled; }
-
-        float GetAspectRatio() const { return m_AspectRatio; }
-        const Viewport& GetViewport() const { return m_Viewport; }
-        const ScissorRect& GetScissorRect() const { return m_ScissorRect; }
+        auto GetAspectRatio() const { return m_AspectRatio; }
+        const auto& GetViewport() const { return m_Viewport; }
+        const auto& GetScissorRect() const { return m_ScissorRect; }
 
     public:
-        void Flip();
-
-        void ResizeBackBuffers(uint32_t width, uint32_t height);
+        void OnFlip(bool isVerticalSyncEnabled);
+        void RequestResize(uint32_t width, uint32_t height);
 
     private:
         void RegisterBackBuffers();
-        void UpdateViewportDimensions(float width, float height);
+        void ReleaseBackBuffers();
+        void ResizeBackBuffers(uint32_t width, uint32_t height);
 
-        void FlushAndResetBackBuffers();
+        void UpdateViewportDimensions(float width, float height);
 
     private:
         Device& m_Device;
 
-        IDXGISwapChain3* m_DXGISwapChain = nullptr;
-
-        uint32_t m_DXGISwapChainFlags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
-        uint32_t m_DXGIPresentFlags = 0;
-
+        IDXGISwapChain3* m_DxgiSwapChain = nullptr;
         std::vector<std::unique_ptr<Texture>> m_BackBuffers;
+        std::unique_ptr<StalledFence> m_FrameFence;
 
-        std::unique_ptr<Fence> m_FrameFence;
-
-        bool m_IsVSyncEnabled = false;
+        uint32_t m_PendingWidth = 0;
+        uint32_t m_PendingHeight = 0;
 
         float m_AspectRatio = 0.0f;
         Viewport m_Viewport;

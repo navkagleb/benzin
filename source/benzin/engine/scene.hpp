@@ -3,6 +3,8 @@
 #include "benzin/engine/camera.hpp"
 #include "benzin/engine/resource_loader.hpp"
 
+#include <shaders/joint/constant_buffer_types.hpp>
+
 namespace benzin
 {
 
@@ -131,7 +133,9 @@ namespace benzin
         std::vector<std::vector<std::byte>> m_TexturesData;
         std::vector<std::unique_ptr<Texture>> m_Textures;
 
+        std::optional<joint::CameraConstants> m_PreviousCameraConstants;
         std::unique_ptr<benzin::Buffer> m_CameraConstantBuffer;
+
         std::unique_ptr<Buffer> m_PointLightBuffer;
 
         entt::registry m_EntityRegistry;

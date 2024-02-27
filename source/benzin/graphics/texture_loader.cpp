@@ -167,7 +167,7 @@ namespace benzin
         BenzinAssert(arraySize == 6);
         computeCommandList.Dispatch({ size, size, arraySize }, { 8, 8, 1 });
 
-        computeCommandList.SetResourceBarrier(TransitionBarrier{ outCubeTexture, ResourceState::Present });
+        computeCommandList.SetResourceBarrier(TransitionBarrier{ outCubeTexture, ResourceState::Common });
     }
 
 } // namespace benzin

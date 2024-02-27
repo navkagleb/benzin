@@ -4,70 +4,67 @@
 namespace benzin
 {
 
-    namespace
+    static constexpr Sampler g_PointWrapSampler
     {
+        .Minification = TextureFilterType::Point,
+        .Magnification = TextureFilterType::Point,
+        .MipLevel = TextureFilterType::Point,
+        .AddressU = TextureAddressMode::Wrap,
+        .AddressV = TextureAddressMode::Wrap,
+        .AddressW = TextureAddressMode::Wrap,
+    };
 
-        constexpr Sampler g_PointWrapSampler
-        {
-            .Minification = TextureFilterType::Point,
-            .Magnification = TextureFilterType::Point,
-            .MipLevel = TextureFilterType::Point,
-            .AddressU = TextureAddressMode::Wrap,
-            .AddressV = TextureAddressMode::Wrap,
-            .AddressW = TextureAddressMode::Wrap,
-        };
+    static constexpr Sampler g_PointClampSampler
+    {
+        .Minification = TextureFilterType::Point,
+        .Magnification = TextureFilterType::Point,
+        .MipLevel = TextureFilterType::Point,
+        .AddressU = TextureAddressMode::Clamp,
+        .AddressV = TextureAddressMode::Clamp,
+        .AddressW = TextureAddressMode::Clamp,
+    };
 
-        constexpr Sampler g_PointClampSampler
-        {
-            .Minification = TextureFilterType::Point,
-            .Magnification = TextureFilterType::Point,
-            .MipLevel = TextureFilterType::Point,
-            .AddressU = TextureAddressMode::Clamp,
-            .AddressV = TextureAddressMode::Clamp,
-            .AddressW = TextureAddressMode::Clamp,
-        };
+    static constexpr Sampler g_LinearWrapSampler
+    {
+        .Minification = TextureFilterType::Linear,
+        .Magnification = TextureFilterType::Linear,
+        .MipLevel = TextureFilterType::Linear,
+        .AddressU = TextureAddressMode::Wrap,
+        .AddressV = TextureAddressMode::Wrap,
+        .AddressW = TextureAddressMode::Wrap,
+    };
 
-        constexpr Sampler g_LinearWrapSampler
-        {
-            .Minification = TextureFilterType::Linear,
-            .Magnification = TextureFilterType::Linear,
-            .MipLevel = TextureFilterType::Linear,
-            .AddressU = TextureAddressMode::Wrap,
-            .AddressV = TextureAddressMode::Wrap,
-            .AddressW = TextureAddressMode::Wrap,
-        };
+    static constexpr Sampler g_LinearClampSampler
+    {
+        .Minification = TextureFilterType::Linear,
+        .Magnification = TextureFilterType::Linear,
+        .MipLevel = TextureFilterType::Linear,
+        .AddressU = TextureAddressMode::Clamp,
+        .AddressV = TextureAddressMode::Clamp,
+        .AddressW = TextureAddressMode::Clamp,
+    };
 
-        constexpr Sampler g_LinearClampSampler
-        {
-            .Minification = TextureFilterType::Linear,
-            .Magnification = TextureFilterType::Linear,
-            .MipLevel = TextureFilterType::Linear,
-            .AddressU = TextureAddressMode::Clamp,
-            .AddressV = TextureAddressMode::Clamp,
-            .AddressW = TextureAddressMode::Clamp,
-        };
+    static constexpr Sampler g_AnisotropicWrapSampler
+    {
+        .Minification = TextureFilterType::Anisotropic,
+        .Magnification = TextureFilterType::Anisotropic,
+        .MipLevel = TextureFilterType::Anisotropic,
+        .AddressU = TextureAddressMode::Clamp,
+        .AddressV = TextureAddressMode::Clamp,
+        .AddressW = TextureAddressMode::Clamp,
+    };
 
-        constexpr Sampler g_AnisotropicWrapSampler
-        {
-            .Minification = TextureFilterType::Anisotropic,
-            .Magnification = TextureFilterType::Anisotropic,
-            .MipLevel = TextureFilterType::Anisotropic,
-            .AddressU = TextureAddressMode::Clamp,
-            .AddressV = TextureAddressMode::Clamp,
-            .AddressW = TextureAddressMode::Clamp,
-        };
+    static constexpr Sampler g_AnisotropicClampSampler
+    {
+        .Minification = TextureFilterType::Anisotropic,
+        .Magnification = TextureFilterType::Anisotropic,
+        .MipLevel = TextureFilterType::Anisotropic,
+        .AddressU = TextureAddressMode::Clamp,
+        .AddressV = TextureAddressMode::Clamp,
+        .AddressW = TextureAddressMode::Clamp,
+    };
 
-        constexpr Sampler g_AnisotropicClampSampler
-        {
-            .Minification = TextureFilterType::Anisotropic,
-            .Magnification = TextureFilterType::Anisotropic,
-            .MipLevel = TextureFilterType::Anisotropic,
-            .AddressU = TextureAddressMode::Clamp,
-            .AddressV = TextureAddressMode::Clamp,
-            .AddressW = TextureAddressMode::Clamp,
-        };
-
-    } // anonymous namespace
+    // Sampler
 
     const Sampler& Sampler::GetPointWrap()
     {
@@ -111,6 +108,8 @@ namespace benzin
             .AddressW = textureAddressMode,
         };
     }
+
+    // StaticSampler
 
     StaticSampler StaticSampler::GetPointWrap(const struct ShaderRegister& shaderRegister)
     {

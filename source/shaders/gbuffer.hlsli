@@ -6,6 +6,7 @@ struct PackedGBuffer
     float4 Color1; // WorldNormal, WorldNormal, WorldNormal, None
     float4 Color2; // Emissive, Emissive, Emissive, None
     float4 Color3; // Roughness, Metalness, None, None
+    float4 Color4; // MotionVector, MotionVector, None, None
 };
 
 struct UnpackedGBuffer
@@ -15,6 +16,7 @@ struct UnpackedGBuffer
     float Roughness;
     float3 Emissive;
     float Metalness;
+    float2 MotionVector;
 };
 
 PackedGBuffer PackGBuffer(UnpackedGBuffer unpacked)
@@ -24,6 +26,7 @@ PackedGBuffer PackGBuffer(UnpackedGBuffer unpacked)
     packed.Color1 = float4(unpacked.WorldNormal, 1.0f);
     packed.Color2 = float4(unpacked.Emissive, 1.0f);
     packed.Color3 = float4(unpacked.Roughness, unpacked.Metalness, 0.0f, 1.0f);
+    packed.Color4 = float4(unpacked.MotionVector, 0.0f, 1.0f);
 
     return packed;
 }
@@ -36,6 +39,7 @@ UnpackedGBuffer UnpackGBuffer(PackedGBuffer packed)
     unpacked.Emissive = packed.Color2.rgb;
     unpacked.Roughness = packed.Color3.r;
     unpacked.Metalness = packed.Color3.g;
+    unpacked.MotionVector = packed.Color4.xy;
 
     return unpacked;
 }

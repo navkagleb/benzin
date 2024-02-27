@@ -1,6 +1,7 @@
 #include "bootstrap.hpp"
 #include "rt_hello_triangle_layer.hpp"
 
+#include <benzin/core/command_line_args.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
@@ -62,11 +63,6 @@ namespace sandbox
         CreateAccelerationStructures();
         CreateShaderTables();
         CreateRaytracingResources();
-    }
-
-    void RTHelloTriangleLayer::OnEndFrame()
-    {
-        m_GPUTimer->ResolveTimestamps();
     }
 
     void RTHelloTriangleLayer::OnRender()
@@ -141,10 +137,12 @@ namespace sandbox
 
             commandList.SetResourceBarriers(
             {
-                benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::Present },
+                benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::Common },
                 benzin::TransitionBarrier{ *m_RaytracingOutput, benzin::ResourceState::UnorderedAccess },
             });
         }
+
+        m_GPUTimer->ResolveTimestamps();
     }
 
     void RTHelloTriangleLayer::OnImGuiRender()
@@ -467,7 +465,7 @@ namespace sandbox
         {
             .DebugName = "RayTracingOutput",
             .Type = benzin::TextureType::Texture2D,
-            .Format = benzin::GraphicsSettingsInstance::Get().BackBufferFormat,
+            .Format = benzin::CommandLineArgs::GetBackBufferFormat(),
             .Width = (uint32_t)m_SwapChain.GetViewport().Width,
             .Height = (uint32_t)m_SwapChain.GetViewport().Height,
             .MipCount = 1,

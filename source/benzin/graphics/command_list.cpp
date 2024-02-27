@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/command_list.hpp"
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
@@ -12,49 +13,45 @@
 namespace benzin
 {
 
-    namespace
+    static D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrier(const TransitionBarrier& transitionBarrier)
     {
-
-        D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrier(const TransitionBarrier& transitionBarrier)
+        return D3D12_RESOURCE_BARRIER
         {
-            return D3D12_RESOURCE_BARRIER
+            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+            .Transition
             {
-                .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                .Transition
-                {
-                    .pResource = transitionBarrier.Resource.GetD3D12Resource(),
-                    .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                    .StateBefore = (D3D12_RESOURCE_STATES)transitionBarrier.Resource.GetCurrentState(),
-                    .StateAfter = (D3D12_RESOURCE_STATES)transitionBarrier.StateAfter,
-                },
-            };
-        }
-
-        D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrier(const UnorderedAccessBarrier& unorderedAccessBarrier)
-        {
-            return D3D12_RESOURCE_BARRIER
-            {
-                .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
-                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                .UAV
-                {
-                    .pResource = unorderedAccessBarrier.Resource.GetD3D12Resource(),
-                },
-            };
-        }
-
-        D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrierVariant(const ResourceBarrierVariant& resourceBarrier)
-        {
-            return resourceBarrier | VisitorMatch
-            {
-                [](auto&& resourceBarrier) { return ToD3D12ResourceBarrier(resourceBarrier); },
-            };
+                .pResource = transitionBarrier.Resource.GetD3D12Resource(),
+                .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                .StateBefore = (D3D12_RESOURCE_STATES)transitionBarrier.Resource.GetCurrentState(),
+                .StateAfter = (D3D12_RESOURCE_STATES)transitionBarrier.StateAfter,
+            },
         };
+    }
 
-    } // anonymous namespace
+    static D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrier(const UnorderedAccessBarrier& unorderedAccessBarrier)
+    {
+        return D3D12_RESOURCE_BARRIER
+        {
+            .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+            .UAV
+            {
+                .pResource = unorderedAccessBarrier.Resource.GetD3D12Resource(),
+            },
+        };
+    }
+
+    static D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrierVariant(const ResourceBarrierVariant& resourceBarrier)
+    {
+        return resourceBarrier | VisitorMatch
+        {
+            [](auto&& resourceBarrier) { return ToD3D12ResourceBarrier(resourceBarrier); },
+        };
+    };
 
     // CommandList
+
     CommandList::CommandList(Device& device, CommandListType commandListType)
     {
         BenzinAssert(device.GetD3D12Device());
@@ -79,10 +76,17 @@ namespace benzin
 
     void CommandList::SetResourceBarrier(const ResourceBarrierVariant& resourceBarrier)
     {
+        const auto* transitionBarrier = std::get_if<TransitionBarrier>(&resourceBarrier);
+
+        if (transitionBarrier != nullptr && transitionBarrier->Resource.GetCurrentState() == transitionBarrier->StateAfter)
+        {
+            return;
+        }
+
         const D3D12_RESOURCE_BARRIER d3d12ResourceBarrier = ToD3D12ResourceBarrierVariant(resourceBarrier);
         m_D3D12GraphicsCommandList->ResourceBarrier(1, &d3d12ResourceBarrier);
 
-        if (const auto* transitionBarrier = std::get_if<TransitionBarrier>(&resourceBarrier))
+        if (transitionBarrier != nullptr)
         {
             transitionBarrier->Resource.SetCurrentState(transitionBarrier->StateAfter);
         }
@@ -108,6 +112,7 @@ namespace benzin
     }
 
     // CopyCommandList
+
     CopyCommandList::CopyCommandList(Device& device)
         : CommandList{ device, CommandListType::Copy }
     {}
@@ -246,7 +251,7 @@ namespace benzin
             m_D3D12GraphicsCommandList->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
         }
 
-        //SetResourceBarrier(texture, ResourceState::Present);
+        //SetResourceBarrier(texture, ResourceState::Common);
     }
 
     void CopyCommandList::UpdateTextureTopMip(Texture& texture, std::span<const std::byte> data)
@@ -290,6 +295,7 @@ namespace benzin
     }
 
     // ComputeCommandList
+
     ComputeCommandList::ComputeCommandList(Device& device)
         : CommandList{ device, CommandListType::Compute }
     {}
@@ -447,6 +453,19 @@ namespace benzin
     void GraphicsCommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount)
     {
         m_D3D12GraphicsCommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, 0);
+    }
+
+    void GraphicsCommandList::Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadPerGroupCount)
+    {
+        BenzinAssert(threadPerGroupCount.x != 0);
+        BenzinAssert(threadPerGroupCount.y != 0);
+        BenzinAssert(threadPerGroupCount.z != 0);
+
+        const uint32_t groupCountX = AlignThreadGroupCount(dimension.x, threadPerGroupCount.x);
+        const uint32_t groupCountY = AlignThreadGroupCount(dimension.y, threadPerGroupCount.y);
+        const uint32_t groupCountZ = AlignThreadGroupCount(dimension.z, threadPerGroupCount.z);
+
+        m_D3D12GraphicsCommandList->Dispatch(groupCountX, groupCountY, groupCountZ);
     }
 
     void GraphicsCommandList::BuildRayTracingAccelerationStructure(const rt::AccelerationStructure& accelerationStructure)

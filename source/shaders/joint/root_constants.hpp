@@ -28,8 +28,17 @@ namespace joint
         RTShadowPassRC_GBufferWorldNormalTexture,
         RTShadowPassRC_GBufferDepthTexture,
         RTShadowPassRC_PointLightBuffer,
-        RTShadowPassRC_OutputTexture,
+        RTShadowPassRC_NoisyVisiblityBuffer,
         RTShadowPassRC_Count,
+    };
+
+    enum RTShadowDenoisingPass : uint32_t
+    {
+        RTShadowDenoisingPass_PassConstantBuffer = GlobalRC_Count,
+        RTShadowDenoisingPass_NoisyVisibilityBuffer,
+        RTShadowDenoisingPass_GBufferMotionVectorsTexture,
+        RTShadowDenoisingPass_GBufferAlbedoTexture,
+        RTShadowDenoisingPass_Count,
     };
 
     enum DeferredLightingPassRC : uint32_t
@@ -39,6 +48,7 @@ namespace joint
         DeferredLightingPassRC_WorldNormalTexture,
         DeferredLightingPassRC_EmissiveTexture,
         DeferredLightingPassRC_RoughnessMetalnessTexture,
+        DeferredLightingPassRC_MotionVectorsTexture,
         DeferredLightingPassRC_DepthStencilTexture,
         DeferredLightingPassRC_PointLightBuffer,
         DeferredLightingPassRC_ShadowTexture,

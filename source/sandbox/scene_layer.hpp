@@ -32,6 +32,7 @@ namespace sandbox
             std::unique_ptr<benzin::Texture> WorldNormal;
             std::unique_ptr<benzin::Texture> Emissive;
             std::unique_ptr<benzin::Texture> RoughnessMetalness;
+            std::unique_ptr<benzin::Texture> MotionVectors;
             std::unique_ptr<benzin::Texture> DepthStencil;
         };
 
@@ -42,7 +43,7 @@ namespace sandbox
         auto& GetGBuffer() { return m_GBuffer; }
 
     public:
-        void OnRender(const benzin::Scene& scene);
+        void OnRender(const benzin::Scene& scene) const;
 
         void OnResize(uint32_t width, uint32_t height);
 
@@ -60,13 +61,16 @@ namespace sandbox
         RTShadowPass(benzin::Device& device, benzin::SwapChain& swapChain);
 
     public:
-        const auto& GetOutputTexture() const { return *m_OutputTexture; }
+        auto& GetNoisyVisibilityBuffer() const { return *m_NoisyVisibilityBuffer; }
+        auto GetCurrentTextureSlot() const { return m_CurrentTextureSlot; }
 
         void SetRaysPerPixel(uint32_t raysPerPixel) { m_RaysPerPixel = raysPerPixel; }
 
     public:
         void OnUpdate(std::chrono::microseconds dt, std::chrono::milliseconds elapsedTime);
-        void OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer);
+        void OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer) const;
+
+        void OnResize(uint32_t width, uint32_t height);
 
     private:
         void CreatePipelineStateObject();
@@ -82,9 +86,32 @@ namespace sandbox
         std::unique_ptr<benzin::Buffer> m_HitGroupShaderTable;
 
         std::unique_ptr<benzin::Buffer> m_PassConstantBuffer;
-        std::unique_ptr<benzin::Texture> m_OutputTexture;
+        std::unique_ptr<benzin::Texture> m_NoisyVisibilityBuffer;
 
+        uint32_t m_CurrentTextureSlot = 1; // First call of OnUpdate update the value to 0
         uint32_t m_RaysPerPixel = 1;
+    };
+
+    class RTShadowDenoisingPass
+    {
+    public:
+        RTShadowDenoisingPass(benzin::Device& device, benzin::SwapChain& swapChain);
+
+    public:
+        void SetIsForceCurrentVisibility(bool isForceCurrentVisibility) { m_IsForceCurrentVisibility = isForceCurrentVisibility; }
+
+    public:
+        void OnUpdate(uint32_t currentTextureSlot);
+        void OnRender(benzin::Texture& noisyVisiblityBuffer, const benzin::Texture& motionVectorsTexture, const benzin::Texture& albedo) const;
+
+    private:
+        benzin::Device& m_Device;
+        benzin::SwapChain& m_SwapChain;
+
+        std::unique_ptr<benzin::Buffer> m_PassConstantBuffer;
+        std::unique_ptr<benzin::PipelineState> m_PipelineState;
+
+        bool m_IsForceCurrentVisibility = false;
     };
 
     class DeferredLightingPass
@@ -98,7 +125,7 @@ namespace sandbox
 
     public:
         void OnUpdate(const benzin::Scene& scene);
-        void OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer, const benzin::Texture& shadowTexture);
+        void OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer, benzin::Texture& shadowTexture) const;
         void OnImGuiRender();
 
         void OnResize(uint32_t width, uint32_t height);
@@ -124,7 +151,7 @@ namespace sandbox
         EnvironmentPass(benzin::Device& device, benzin::SwapChain& swapChain);
 
     public:
-        void OnRender(const benzin::Scene& scene, benzin::Texture& deferredLightingOutputTexture, benzin::Texture& gbufferDepthStecil);
+        void OnRender(const benzin::Scene& scene, benzin::Texture& deferredLightingOutputTexture, benzin::Texture& gbufferDepthStecil) const;
 
     private:
         benzin::Device& m_Device;
@@ -141,12 +168,12 @@ namespace sandbox
         ~SceneLayer();
 
     public:
-        void OnEndFrame() override;
-
         void OnEvent(benzin::Event& event) override;
         void OnUpdate() override;
         void OnRender() override;
         void OnImGuiRender() override;
+
+        void OnResize(uint32_t width, uint32_t height);
 
     private:
         void CreateEntities();
@@ -158,18 +185,16 @@ namespace sandbox
 
         std::unique_ptr<benzin::GPUTimer> m_GPUTimer;
 
-        benzin::Scene m_Scene{ m_Device };
-        benzin::FlyCameraController m_FlyCameraController{ m_Scene.GetCamera() };
-
-        entt::entity m_DamagedHelmetEntity = benzin::g_InvalidEntity;
-        entt::entity m_BoomBoxEntity = benzin::g_InvalidEntity;
-
         GeometryPass m_GeometryPass;
         RTShadowPass m_RTShadowPass;
+        RTShadowDenoisingPass m_RTShadowDenoisingPass;
         DeferredLightingPass m_DeferredLightingPass;
         EnvironmentPass m_EnvironmentPass;
 
         bool m_IsAnimationEnabled = true;
+
+        benzin::Scene m_Scene{ m_Device };
+        benzin::FlyCameraController m_FlyCameraController{ m_Scene.GetCamera() };
     };
 
 } // namespace sandbox

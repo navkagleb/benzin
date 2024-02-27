@@ -50,6 +50,9 @@ project "third_party"
     objdir "../build/third_party/%{cfg.buildcfg}"
 
     files {
+        -- adl
+        "../source/third_party/adl/*.h",
+
         -- directx
         "../source/third_party/directx/**.h",
         "../source/third_party/directx/**.cpp",
@@ -66,6 +69,9 @@ project "third_party"
         -- magic_enum
         "../source/third_party/magic_enum/*.hpp",
 
+        -- nviapi
+        "../source/third_party/nvapi/*.h",
+
         -- tinygltf
         "../source/third_party/tinygltf/*.h",
         "../source/third_party/tinygltf/*.hpp",
@@ -75,7 +81,7 @@ project "third_party"
 project "benzin"
     kind "StaticLib"
     language "C++"
-    cppdialect "C++20"
+    cppdialect "C++latest" -- Included C++23 features
     location "../source/benzin"
 
     targetdir "../bin"
@@ -134,6 +140,10 @@ project "sandbox"
     links {
         "third_party",
         "benzin",
+    }
+
+    libdirs {
+        "$(SolutionDir)source/third_party/nvapi/amd64", -- nvapi
     }
 
     pchheader "bootstrap.hpp"

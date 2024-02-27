@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/system/input.hpp"
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/system/window.hpp"
 
 namespace benzin

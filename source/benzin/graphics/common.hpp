@@ -72,7 +72,7 @@ namespace benzin
 
     enum class ResourceState : std::underlying_type_t<D3D12_RESOURCE_STATES>
     {
-        Present = D3D12_RESOURCE_STATE_COMMON,
+        Common = D3D12_RESOURCE_STATE_COMMON,
         VertexBuffer = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
         ConstantBuffer = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
         IndexBuffer = D3D12_RESOURCE_STATE_INDEX_BUFFER,

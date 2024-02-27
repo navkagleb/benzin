@@ -6,8 +6,11 @@
         return From(std::forward<decltype(args)>(args)...); \
     }
 
-#define BenzinStringConcatenate(string1, string2) string1##string2
-#define BenzinStringConcatenate2(string1, string2) BenzinStringConcatenate(string1, string2)
+#define BenzinStringify(str) #str
+#define BenzinStringify2(value) BenzinStringify(value)
+
+#define BenzinStringConcatenate(str1, str2) str1##str2
+#define BenzinStringConcatenate2(str1, str2) BenzinStringConcatenate(str1, str2)
 
 #define BenzinUniqueVariableName(name) BenzinStringConcatenate2(name, __LINE__)
 

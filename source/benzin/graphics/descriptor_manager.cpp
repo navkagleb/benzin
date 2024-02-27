@@ -1,15 +1,13 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/device.hpp"
 
 namespace benzin
 {
  
-    namespace
-    {
-
-        D3D12_DESCRIPTOR_HEAP_TYPE GetDescriptorHeapType(DescriptorType descripitorType)
+    static D3D12_DESCRIPTOR_HEAP_TYPE GetDescriptorHeapType(DescriptorType descripitorType)
         {
             switch (descripitorType)
             {
@@ -26,9 +24,28 @@ namespace benzin
             std::unreachable();
         }
 
-    } // anonymous namespace
+    // Descriptor
+
+    uint32_t Descriptor::GetHeapIndex() const
+    {
+        BenzinAssert(IsValid());
+        return m_HeapIndex;
+    }
+
+    uint64_t Descriptor::GetCPUHandle() const
+    {
+        BenzinAssert(IsValid());
+        return m_CPUHandle;
+    }
+
+    uint64_t Descriptor::GetGPUHandle() const
+    {
+        BenzinAssert(IsValid() && m_GPUHandle != 0);
+        return m_GPUHandle;
+    }
 
     // DescriptorManager::DescriptorHeap
+
     DescriptorManager::DescriptorHeap::DescriptorHeap(Device& device, D3D12_DESCRIPTOR_HEAP_TYPE d3d12DescriptorHeapType, uint32_t descriptorCount)
         : m_IsAccessableByShader{ d3d12DescriptorHeapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || d3d12DescriptorHeapType == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER }
         , m_DescriptorCount{ descriptorCount }
@@ -42,10 +59,9 @@ namespace benzin
         };
 
         BenzinAssert(device.GetD3D12Device()->CreateDescriptorHeap(&d3d12DescriptorHeapDesc, IID_PPV_ARGS(&m_D3D12DescriptorHeap)));
+        SetD3D12ObjectDebugName(m_D3D12DescriptorHeap, magic_enum::enum_name(d3d12DescriptorHeapType));
 
         m_DescriptorSize = device.GetD3D12Device()->GetDescriptorHandleIncrementSize(d3d12DescriptorHeapDesc.Type);
-
-        SetD3D12ObjectDebugName(m_D3D12DescriptorHeap, magic_enum::enum_name(d3d12DescriptorHeapType));
     }
 
     DescriptorManager::DescriptorHeap::~DescriptorHeap()
@@ -122,6 +138,7 @@ namespace benzin
     }
 
     // DescriptorManager
+
     DescriptorManager::DescriptorManager(Device& device)
     {
         const auto& createDescriptorHeap = [&](D3D12_DESCRIPTOR_HEAP_TYPE d3d12DescriptorHeapType, uint32_t descriptorCount)

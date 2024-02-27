@@ -1,5 +1,6 @@
 #pragma once
 
+#include "benzin/core/command_line_args.hpp"
 #include "benzin/graphics/resource.hpp"
 
 namespace benzin
@@ -18,7 +19,7 @@ namespace benzin
 
     struct BufferCreation
     {
-        DebugName DebugName;
+        std::string_view DebugName;
 
         GraphicsFormat Format = GraphicsFormat::Unknown;
         uint32_t ElementSize = sizeof(std::byte);
@@ -26,7 +27,7 @@ namespace benzin
 
         BufferFlags Flags{};
 
-        ResourceState InitialState = ResourceState::Present;
+        ResourceState InitialState = ResourceState::Common;
         std::span<const std::byte> InitialData;
 
         bool IsNeedFormatBufferView = false;
@@ -60,15 +61,15 @@ namespace benzin
         Buffer(Device& device, const BufferCreation& creation);
 
     public:
-        uint32_t GetElementSize() const { return m_ElementSize; }
-        uint32_t GetElementCount() const { return m_ElementCount; }
-        uint32_t GetAlignedElementSize() const { return m_AlignedElementSize; }
+        auto GetElementSize() const { return m_ElementSize; }
+        auto GetElementCount() const { return m_ElementCount; }
+        auto GetAlignedElementSize() const { return m_AlignedElementSize; }
+        auto GetNotAlignedSizeInBytes() const { return m_ElementSize * m_ElementCount; }
+
         uint32_t GetSizeInBytes() const override { return m_AlignedElementSize * m_ElementCount; }
 
-        uint32_t GetNotAlignedSizeInBytes() const { return m_ElementSize * m_ElementCount; }
-
-        uint64_t GetGPUVirtualAddress() const { BenzinAssert(m_D3D12Resource); return m_D3D12Resource->GetGPUVirtualAddress(); }
-        uint64_t GetGPUVirtualAddress(uint32_t elementIndex) const { BenzinAssert(elementIndex < m_ElementCount); return GetGPUVirtualAddress() + elementIndex * m_AlignedElementSize; }
+        uint64_t GetGPUVirtualAddress() const;
+        uint64_t GetGPUVirtualAddress(uint32_t elementIndex) const;
 
     public:
         void Create(const BufferCreation& creation);
@@ -89,14 +90,14 @@ namespace benzin
 
     private:
         uint32_t m_ElementSize = 0;
-        uint32_t m_ElementCount = 0;
         uint32_t m_AlignedElementSize = 0; // For ConstantBufferView
+        uint32_t m_ElementCount = 0;
     };
 
     template <typename T>
     std::unique_ptr<Buffer> CreateFrameDependentUploadStructuredBuffer(Device& device, std::string_view debugName, uint32_t elementCount = 1)
     {
-        const uint32_t frameInFlightCount = GraphicsSettingsInstance::Get().FrameInFlightCount;
+        const uint32_t frameInFlightCount = CommandLineArgs::GetFrameInFlightCount();
 
         auto buffer = std::make_unique<Buffer>(device, BufferCreation
         {
@@ -117,7 +118,7 @@ namespace benzin
     template <typename T>
     std::unique_ptr<Buffer> CreateFrameDependentConstantBuffer(Device& device, std::string_view debugName)
     {
-        const uint32_t frameInFlightCount = GraphicsSettingsInstance::Get().FrameInFlightCount;
+        const uint32_t frameInFlightCount = CommandLineArgs::GetFrameInFlightCount();
 
         auto buffer = std::make_unique<Buffer>(device, BufferCreation
         {

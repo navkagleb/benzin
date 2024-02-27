@@ -16,4 +16,6 @@ namespace benzin
     DirectX::BoundingBox ComputeBoundingBox(std::span<const joint::MeshVertex> vertices);
     DirectX::BoundingBox TransformBoundingBox(const DirectX::BoundingBox& boundingBox, const DirectX::XMMATRIX& transformMatrix);
 
+    DirectX::XMMATRIX GetMatrixForNormals(const DirectX::XMMATRIX& worldMatrix);
+
 } // namespace benzin

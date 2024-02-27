@@ -5,9 +5,20 @@
 #include <third_party/imgui/backends/imgui_impl_dx12.h>
 #include <third_party/imgui/backends/imgui_impl_win32.h>
 
+#include "benzin/core/asserter.hpp"
+#include "benzin/core/command_line_args.hpp"
 #include "benzin/core/imgui_helper.hpp"
+#include "benzin/core/logger.hpp"
+#include "benzin/graphics/adl_wrapper.hpp"
+#include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
+#include "benzin/graphics/device.hpp"
+#include "benzin/graphics/nvapi_wrapper.hpp"
+#include "benzin/graphics/swap_chain.hpp"
 #include "benzin/graphics/texture.hpp"
+#include "benzin/system/window.hpp"
+
+#include "benzin/graphics/buffer.hpp"
 
 namespace benzin
 {
@@ -33,8 +44,8 @@ namespace benzin
         BenzinAssert(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
         BenzinAssert(ImGui_ImplDX12_Init(
             m_Device.GetD3D12Device(),
-            GraphicsSettingsInstance::Get().FrameInFlightCount,
-            (DXGI_FORMAT)GraphicsSettingsInstance::Get().BackBufferFormat,
+            CommandLineArgs::GetFrameInFlightCount(),
+            (DXGI_FORMAT)CommandLineArgs::GetBackBufferFormat(),
             m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCPUHandle() },
             D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGPUHandle() }
@@ -57,19 +68,34 @@ namespace benzin
         ImGui::NewFrame();
     }
 
-    void ImGuiLayer::End()
+    void ImGuiLayer::End(bool isNeedToClearBackBuffer)
     {
+        if (m_Device.GetCpuFrameIndex() % 200 == 0)
+        {
+            m_BigBuffers.push_back(std::make_unique<Buffer>(m_Device, BufferCreation
+            {
+                .DebugName = std::format("BigBuffer_{}", m_Device.GetCpuFrameIndex()),
+                .ElementCount = (uint32_t)GbToBytes(1),
+            }));
+        }
+
         ImGui::Render();
 
         auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
         commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::RenderTarget });
+        {
+            commandList.SetRenderTargets({ currentBackBuffer.GetRenderTargetView() });
 
-        commandList.SetRenderTargets({ currentBackBuffer.GetRenderTargetView() });
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
+            if (isNeedToClearBackBuffer)
+            {
+                commandList.ClearRenderTarget(currentBackBuffer.GetRenderTargetView());
+            }
 
-        commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::Present });
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
+        }
+        commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::Common });
     }
 
     void ImGuiLayer::OnEvent(Event& event)
@@ -77,7 +103,7 @@ namespace benzin
         {
             // ImGui layer handle system events
 
-            ImGuiIO& io = ImGui::GetIO();
+            const auto& io = ImGui::GetIO();
             event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Keyboard) & io.WantCaptureKeyboard;
             event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Mouse) & io.WantCaptureMouse;
         }
@@ -93,36 +119,131 @@ namespace benzin
             ImGui::ShowDemoWindow(&m_IsDemoWindowEnabled);
         }
 
+        ImGui::Begin("GPU Memory Info");
+        {
+            static constexpr auto vendorLibNames = std::to_array({ "ADL", "NvAPI" });
+
+            if (ImGui::TreeNode("CpuVisibleVram"))
+            {
+                const auto [totalSize, freeSize] = NvApiWrapper::GetCpuVisibleVramInBytes(m_Device.GetD3D12Device());
+                ImGui_Text("- TotalSize: {} b, {:.2f} mb, {:.2f} gb", totalSize, BytesToFloatMb(totalSize), BytesToFloatGb(totalSize));
+                ImGui_Text("- FreeSize: {} b, {:.2f} mb, {:.2f} gb", freeSize, BytesToFloatMb(freeSize), BytesToFloatGb(freeSize));
+
+                ImGui::TreePop();
+            }
+
+            ImGui::Separator();
+            for (const auto adapterIndex : std::views::iota(0u, m_Backend.GetAdapterCount()))
+            {
+                const AdapterInfo& adapterInfo = m_Backend.GetAdaptersInfo(adapterIndex);
+                const AdapterMemoryInfo adapterMemoryInfo = m_Backend.GetAdapterMemoryInfo(adapterIndex);
+                
+                const uint64_t usedVram = adapterMemoryInfo.ProcessUsedDedicatedVramInBytes;
+                const uint64_t availableVram = adapterInfo.TotalDedicatedVramInBytes - usedVram;
+                const uint64_t availableVramRelativeToOsBudget = adapterMemoryInfo.DedicatedVramOsBudgetInBytes < usedVram ? 0 : adapterMemoryInfo.DedicatedVramOsBudgetInBytes - usedVram;
+
+                ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_None;
+                if (adapterIndex == m_Backend.GetMainAdapterIndex())
+                {
+                    nodeFlags |= ImGuiTreeNodeFlags_DefaultOpen;
+                }
+
+                if (ImGui::TreeNodeEx(&adapterInfo.Name, nodeFlags, adapterInfo.Name.c_str()))
+                {
+                    const auto nodeFlags = ImGuiTreeNodeFlags_DefaultOpen;
+
+                    ImGui_Text("- Total DedicatedVram: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterInfo.TotalDedicatedVramInBytes), BytesToFloatGb(adapterInfo.TotalDedicatedVramInBytes));
+                    ImGui_Text("- Total DedicatedRam: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterInfo.TotalDedicatedRamInBytes), BytesToFloatGb(adapterInfo.TotalDedicatedRamInBytes));
+                    ImGui_Text("- Total SharedRam: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterInfo.TotalSharedRamInBytes), BytesToFloatGb(adapterInfo.TotalSharedRamInBytes));
+                    ImGui::NewLine();
+
+                    if (ImGui::TreeNodeEx("##treenode0", nodeFlags, "Dxgi Dedicated Vram"))
+                    {   
+                        ImGui_Text("- OsBudget: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.DedicatedVramOsBudgetInBytes), BytesToFloatGb(adapterMemoryInfo.DedicatedVramOsBudgetInBytes));
+                        ImGui_Text("- Used: {:.2f} mb, {:.2f} gb", BytesToFloatMb(usedVram), BytesToFloatGb(usedVram));
+                        ImGui_Text("- Available: {:.2f} mb, {:.2f} gb", BytesToFloatMb(availableVram), BytesToFloatGb(availableVram));
+                        ImGui_Text("- Available (relative to OS-budget): {:.2f} mb, {:.2f} gb", BytesToFloatMb(availableVramRelativeToOsBudget), BytesToFloatGb(availableVramRelativeToOsBudget));
+                        ImGui::NewLine();
+                        
+                        ImGui::TreePop();
+                    }
+
+                    if (ImGui::TreeNodeEx("##treenode1", nodeFlags, "Dxgi Shared Ram"))
+                    {
+                        ImGui_Text("- OsBudget: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.SharedRamOsBudgetInBytes), BytesToFloatGb(adapterMemoryInfo.SharedRamOsBudgetInBytes));
+                        ImGui_Text("- Used: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.ProcessUsedSharedRamInBytes), BytesToFloatGb(adapterMemoryInfo.ProcessUsedSharedRamInBytes));
+                        ImGui::NewLine();
+
+                        ImGui::TreePop();
+                    }
+
+                    if (adapterInfo.IsOther())
+                    {
+                        continue;
+                    }
+
+                    const auto vendorLibName = vendorLibNames[magic_enum::enum_integer(adapterInfo.VendorType)];
+
+                    if (ImGui::TreeNodeEx("##treenode2", nodeFlags, "%s Dedicated Vram", vendorLibName))
+                    {
+                        ImGui_Text("- TotalUsed: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.TotalUsedDedicatedVramInBytes), BytesToFloatGb(adapterMemoryInfo.TotalUsedDedicatedVramInBytes));
+                        ImGui_Text("- TotalAvailable: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.AvailableDedicatedVramInBytes), BytesToFloatGb(adapterMemoryInfo.AvailableDedicatedVramInBytes));
+                        ImGui_Text("- TotalAvailable (relative to OS-budget): {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.AvailableDedicatedVramRelativeToOsBudgetInBytes), BytesToFloatGb(adapterMemoryInfo.AvailableDedicatedVramRelativeToOsBudgetInBytes));
+                        ImGui::NewLine();
+
+                        ImGui::TreePop();
+                    }
+
+                    ImGui::TreePop();
+                }
+            }
+        }
+        ImGui::End();
+
         // BottomPanel
         {
+            static constexpr uint32_t rowCount = 2;
+
             ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 10.0f, 5.0f });
-            BenzinExecuteOnScopeExit([&]{ ImGui::PopStyleVar(3); });
+            BenzinExecuteOnScopeExit([]{ ImGui::PopStyleVar(3); });
 
             ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(184, 100, 0, 240));
-            BenzinExecuteOnScopeExit([&] { ImGui::PopStyleColor(); });
+            BenzinExecuteOnScopeExit([] { ImGui::PopStyleColor(); });
 
-            ImGuiContext& context = *ImGui::GetCurrentContext();
-            const float panelHeight = context.FontBaseSize + context.Style.WindowPadding.y * 2.0f;
+            const auto& context = *ImGui::GetCurrentContext();
+            const float panelHeight =
+                context.FontBaseSize * rowCount + // Base panel height
+                context.Style.WindowPadding.y * 2.0f + // Add padding to top and bottom
+                context.Style.ItemSpacing.y * (rowCount - 1); // Add spacing between rows
 
             ImGui::SetNextWindowPos(ImVec2{ 0.0f, context.IO.DisplaySize.y - panelHeight });
             ImGui::SetNextWindowSize(ImVec2{ context.IO.DisplaySize.x, panelHeight });
 
-            const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs;
+            const auto windowFlags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs;
             ImGui::Begin("Bottom Panel", nullptr, windowFlags);
             {
+                const auto adapterMemoryInfo = m_Backend.GetMainAdapterMemoryInfo();
+
                 ImGui_Text(
                     "{} | "
-                    "FPS: {:.1f} ({:.3f} ms) | "
-                    "Begin: {:.3f}, Process: {:.3f}, End: {:.3f} | "
-                    "({} x {}) | "
+                    "VRAM Local: {:.0f} / {:.0f} mb | "
+                    "VRAM NonLocal: {:.0f} / {:.0f} mb | "
                     "CPU: {}, GPU: {}, ActiveFrame: {}",
-                    m_Backend.GetMainAdapterName(),
-                    m_FrameRate, m_FrameDeltaTimeMS,
-                    ToFloatMS(m_ApplicationTimings[ApplicationTiming::BeginFrame]), ToFloatMS(m_ApplicationTimings[ApplicationTiming::ProcessFrame]), ToFloatMS(m_ApplicationTimings[ApplicationTiming::EndFrame]),
+                    m_Backend.GetMainAdapterInfo().Name,
+                    BytesToFloatMb(adapterMemoryInfo.ProcessUsedDedicatedVramInBytes), BytesToFloatMb(adapterMemoryInfo.DedicatedVramOsBudgetInBytes),
+                    BytesToFloatMb(adapterMemoryInfo.ProcessUsedSharedRamInBytes), BytesToFloatMb(adapterMemoryInfo.SharedRamOsBudgetInBytes),
+                    m_Device.GetCpuFrameIndex(), m_Device.GetGpuFrameIndex(), m_Device.GetActiveFrameIndex()
+                );
+
+                ImGui_Text(
+                    "({} x {}) | "
+                    "FPS: {:.1f} ({:.3f} ms) | "
+                    "Begin: {:.3f}, Process: {:.3f}, End: {:.3f}",
                     m_Window.GetWidth(), m_Window.GetHeight(),
-                    m_Device.GetCPUFrameIndex(), m_Device.GetGPUFrameIndex(), m_Device.GetActiveFrameIndex()
+                    m_FrameRate, m_FrameDeltaTimeMS,
+                    ToFloatMS(m_ApplicationTimings[ApplicationTiming::BeginFrame]), ToFloatMS(m_ApplicationTimings[ApplicationTiming::ProcessFrame]), ToFloatMS(m_ApplicationTimings[ApplicationTiming::EndFrame])
                 );
             }
             ImGui::End();
@@ -142,10 +263,6 @@ namespace benzin
             {
                 m_IsDemoWindowEnabled = !m_IsDemoWindowEnabled;
                 break;
-            }
-            case KeyCode::V:
-            {
-                m_SwapChain.SetVSyncEnabled(!m_SwapChain.IsVSyncEnabled());
             }
         }
 

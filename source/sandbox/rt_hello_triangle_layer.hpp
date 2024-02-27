@@ -42,8 +42,6 @@ namespace sandbox
         explicit RTHelloTriangleLayer(const benzin::GraphicsRefs& graphicsRefs);
 
     public:
-        void OnEndFrame() override;
-
         void OnRender() override;
         void OnImGuiRender() override;
 

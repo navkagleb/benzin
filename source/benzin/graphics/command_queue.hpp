@@ -1,10 +1,11 @@
 #pragma once
 
-#include "benzin/graphics/fence.hpp"
 #include "benzin/graphics/command_list.hpp"
 
 namespace benzin
 {
+
+    class StalledFence;
 
     template <std::derived_from<CommandList> CommandListT>
     class CommandQueue
@@ -24,10 +25,10 @@ namespace benzin
 
     public:
         void ResetCommandList(uint32_t commandAllocatorIndex);
-        void ExecuteCommandList();
-        void Flush(bool isforcedCommandListExecution = true);
+        void SumbitCommandList();
+        void Flush();
 
-        void SignalFence(Fence& fence, uint64_t value);
+        void SignalFence(StalledFence& fence, uint64_t value);
 
     protected:
         virtual void InitCommandList() = 0;
@@ -40,7 +41,7 @@ namespace benzin
 
         CommandListT m_CommandList;
 
-        Fence m_FlushFence;
+        std::unique_ptr<StalledFence> m_FlushFence;
         uint64_t m_FlushCount = 0;
 
         bool m_IsCommandListExecuted = false;
@@ -87,6 +88,6 @@ namespace benzin
 
 } // namespace benzin
 
-#define BenzinFlushCommandQueueOnScopeExit(commandQueue) BenzinExecuteOnScopeExit([&commandQueue] { commandQueue.Flush(); })
+#define BenzinFlushCommandQueueOnScopeExit(commandQueue) BenzinExecuteOnScopeExit([&commandQueue] { commandQueue.SumbitCommandList(); commandQueue.Flush(); })
 
 #include "benzin/graphics/command_queue.inl"

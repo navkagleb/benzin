@@ -1,16 +1,14 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/camera.hpp"
 
+#include "benzin/core/logger.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/system/input.hpp"
 
 namespace benzin
 {
 
-    namespace
-    {
-
-        void RenderImGuiMatrix4x4(const DirectX::XMMATRIX& matrix)
+    static void RenderImGuiMatrix4x4(const DirectX::XMMATRIX& matrix)
         {
             const uint32_t matrixSize = 4;
 
@@ -36,7 +34,7 @@ namespace benzin
             }
         }
 
-    } // anonymous namespace
+    // Projection
 
     DirectX::BoundingFrustum Projection::GetTransformedBoundingFrustum(const DirectX::XMMATRIX& transform) const
     {

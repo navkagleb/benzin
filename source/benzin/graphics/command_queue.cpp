@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/command_queue.hpp"
 
+#include "benzin/core/command_line_args.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
 
@@ -55,7 +56,7 @@ namespace benzin
     // GraphicsCommandQueue
 
     GraphicsCommandQueue::GraphicsCommandQueue(Device& device)
-        : CommandQueue{ device, GraphicsSettingsInstance::Get().FrameInFlightCount }
+        : CommandQueue{ device, CommandLineArgs::GetFrameInFlightCount() }
     {}
 
     void GraphicsCommandQueue::InitCommandList()

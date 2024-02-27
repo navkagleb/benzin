@@ -3,29 +3,18 @@
 namespace benzin
 {
 
-    void EnableD3D12DebugLayer(const DebugLayerParams& params);
-    void EnableDRED();
+    std::string_view DxgiErrorToString(HRESULT hr);
 
-    void OnD3D12DeviceRemoved(PVOID context, BOOLEAN);
-
-    void BreakOnD3D12Error(ID3D12Device* d3d12Device, bool isBreak);
+#if BENZIN_IS_DEBUG_BUILD
+    void EnableD3D12DebugLayer();
     void ReportLiveD3D12Objects(ID3D12Device* d3d12Device);
+#endif
 
-    struct DebugName
-    {
-        static const uint32_t s_InvalidIndex = std::numeric_limits<uint32_t>::max();
-
-        std::string_view Chars;
-        uint32_t Index = s_InvalidIndex;
-
-        bool IsEmpty() const { return Chars.empty(); }
-        bool IsIndexValid() const { return Index != s_InvalidIndex; }
-    };
+    void EnableDred();
+    std::string GetDredMessages(ID3D12Device* d3d12Device);
 
     bool HasD3D12ObjectDebugName(ID3D12Object* d3d12Object);
     std::string GetD3D12ObjectDebugName(ID3D12Object* d3d12Object);
-
-    void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, const DebugName& debugName);
     void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, std::string_view debugName);
     void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, std::string_view debugName, uint32_t index);
 
@@ -39,7 +28,7 @@ namespace benzin
         }
 
         const uint32_t referenceCount = unknown->Release();
-        //BenzinAssert(referenceCount == 0);
+        // BenzinAssert(referenceCount == 0);
         unknown = nullptr;
     }
 

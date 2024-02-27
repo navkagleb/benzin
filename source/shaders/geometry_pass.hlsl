@@ -1,6 +1,19 @@
 #include "common.hlsli"
 #include "gbuffer.hlsli"
 
+float3 ClipPositionToNDCPosition(float4 clipPosition)
+{
+    return clipPosition.xyz / clipPosition.w;
+}
+
+float2 NDCPositionToUV(float3 ndcPosition)
+{
+    float2 uv = ndcPosition.xy * 0.5f + 0.5f; // [-1, 1] -> [0, 1]
+    uv.y = 1.0f - uv.y; // Invert for DirectX
+
+    return uv;
+}
+
 float3 ExpandNormal(float2 xyNormal)
 {
     return float3(xyNormal.x, xyNormal.y, sqrt(1.0 - xyNormal.x * xyNormal.x - xyNormal.y * xyNormal.y));
@@ -43,7 +56,7 @@ float3x3 GetTBNBasis(float3 position, float3 normal, float2 uv)
     return float3x3(tangent, bitangent, normal);
 }
 
-static joint::MeshTransform g_IdentityTransform = { g_IdentityMatrix, g_IdentityMatrix };
+static joint::MeshTransform g_IdentityTransform = { g_IdentityMatrix, g_IdentityMatrix, g_IdentityMatrix };
 
 joint::MeshInstance FetchMeshInstance()
 {
@@ -95,6 +108,8 @@ joint::Material FetchMaterial(uint materialIndex)
 struct VS_Output
 {
     float4 ClipPosition : SV_Position;
+    float4 CurrentClipPosition : CurrentClipPosition;
+    float4 PreviousClipPosition : PreviousClipPosition;
     float3 WorldPosition : WorldPosition;
     float3 WorldNormal : WorldNormal;
     float2 UV : UV;
@@ -102,7 +117,7 @@ struct VS_Output
 
 VS_Output VS_Main(uint indexIndex : SV_VertexID)
 {
-    const joint::CameraConstants cameraConstants = FetchCameraConstants();
+    const joint::DoubleFrameCameraConstants cameraConstants = FetchDoubleFrameCameraConstants();
 
     const joint::MeshInstance meshInstance = FetchMeshInstance();
     const joint::MeshVertex vertex = FetchVertex(indexIndex, meshInstance.MeshIndex);
@@ -110,13 +125,16 @@ VS_Output VS_Main(uint indexIndex : SV_VertexID)
     const joint::MeshTransform worldTransform = FetchMeshWorldTransform();
     
     const float4 objectPosition = mul(float4(vertex.Position, 1.0f), parentTransform.Matrix);
-    const float3 objectNormal = mul(vertex.Normal, (float3x3)transpose(parentTransform.InverseMatrix));
+    const float3 objectNormal = mul(vertex.Normal, (float3x3)parentTransform.MatrixForNormals);
 
     const float4 worldPosition = mul(objectPosition, worldTransform.Matrix);
-    const float3 worldNormal = mul(objectNormal, (float3x3)transpose(worldTransform.InverseMatrix));
+    const float4 previousWorldPosition = mul(objectPosition, worldTransform.PreviousMatrix);
+    const float3 worldNormal = mul(objectNormal, (float3x3)worldTransform.MatrixForNormals);
 
     VS_Output output = (VS_Output)0;
-    output.ClipPosition = mul(worldPosition, cameraConstants.ViewProjection);
+    output.ClipPosition = mul(worldPosition, cameraConstants.CurrentFrame.ViewProjection);
+    output.CurrentClipPosition = output.ClipPosition;
+    output.PreviousClipPosition = mul(previousWorldPosition, cameraConstants.PreviousFrame.ViewProjection);
     output.WorldPosition = worldPosition.xyz;
     output.WorldNormal = worldNormal;
     output.UV = vertex.UV;
@@ -130,11 +148,12 @@ struct PS_Output
     float4 Color1 : SV_Target1;
     float4 Color2 : SV_Target2;
     float4 Color3 : SV_Target3;
+    float4 Color4 : SV_Target4;
 };
 
 PS_Output PS_Main(VS_Output input)
 {
-    const joint::CameraConstants cameraConstants = FetchCameraConstants();
+    const joint::CameraConstants cameraConstants = FetchCurrentCameraConstants();
 
     const joint::MeshInstance meshInstance = FetchMeshInstance();
     const joint::Material material = FetchMaterial(meshInstance.MaterialIndex);
@@ -194,13 +213,21 @@ PS_Output PS_Main(VS_Output input)
         gbuffer.Metalness *= metalnessSample;
     }
 
-    PackedGBuffer packedGBuffer = PackGBuffer(gbuffer);
+    {
+        const float2 currentUV = NDCPositionToUV(ClipPositionToNDCPosition(input.CurrentClipPosition));
+        const float2 previousUV = NDCPositionToUV(ClipPositionToNDCPosition(input.PreviousClipPosition));
+
+        gbuffer.MotionVector = currentUV - previousUV;
+    }
+
+    const PackedGBuffer packedGBuffer = PackGBuffer(gbuffer);
 
     PS_Output output = (PS_Output)0;
     output.Color0 = packedGBuffer.Color0;
     output.Color1 = packedGBuffer.Color1;
     output.Color2 = packedGBuffer.Color2;
     output.Color3 = packedGBuffer.Color3;
+    output.Color4 = packedGBuffer.Color4;
 
     return output;
 }

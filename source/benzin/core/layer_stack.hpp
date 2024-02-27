@@ -1,36 +1,70 @@
 #pragma once
 
-#include "benzin/core/layer.hpp"
-
 namespace benzin
 {
 
-    class LayerStack final
+    class Layer;
+
+    class LayerStack
     {
     private:
-        using LayerContainer = std::vector<std::shared_ptr<Layer>>;
+        using LayerContainer = std::vector<std::unique_ptr<Layer>>;
 
     public:
-        template <typename T, typename... Args>
-        std::shared_ptr<T> Push(Args&&... args)
+        template <std::derived_from<Layer> LayerT, typename... Args>
+        LayerT* const Push(Args&&... args)
         {
-            const auto layer = std::make_shared<T>(std::forward<Args>(args)...);
-            m_Layers.insert(m_Layers.begin() + m_OverlayIndex++, layer);
+            auto layer = std::make_unique<LayerT>(std::forward<Args>(args)...);
+            auto* rawLayer = layer.get();
 
-            return layer;
+            m_Layers.insert(m_Layers.begin() + m_OverlayIndex++, std::move(layer));
+
+            return rawLayer;
         }
 
-        template <typename T, typename... Args>
-        std::shared_ptr<T> PushOverlay(Args&&... args)
+        template <std::derived_from<Layer> LayerT, typename... Args>
+        LayerT* const PushOverlay(Args&&... args)
         {
-            const auto layer = std::make_shared<T>(std::forward<Args>(args)...);
-            m_Layers.push_back(layer);
+            auto layer = std::make_unique<LayerT>(std::forward<Args>(args)...);
+            auto* rawLayer = layer.get();
 
-            return layer;
+            m_Layers.push_back(std::move(layer));
+
+            return rawLayer;
         }
 
-        void Pop(const std::shared_ptr<Layer>& layer);
-        void PopOverlay(const std::shared_ptr<Layer>& layer);
+        template <std::derived_from<Layer> LayerT>
+        void Pop(LayerT*& rawLayer)
+        {
+            const auto layerIterator = std::find_if(m_Layers.begin(), m_Layers.begin() + m_OverlayIndex, [rawLayer](const auto& layer)
+            {
+                return layer.get() == rawLayer;
+            });
+
+            if (layerIterator != m_Layers.end())
+            {
+                m_Layers.erase(layerIterator);
+                m_OverlayIndex--;
+
+                rawLayer = nullptr;
+            }
+        }
+
+        template <std::derived_from<Layer> LayerT>
+        void PopOverlay(LayerT*& rawLayer)
+        {
+            const auto layerIterator = std::find_if(m_Layers.begin() + m_OverlayIndex, m_Layers.end(), [rawLayer](const auto& layer)
+            {
+                return layer.get() == rawLayer;
+            });
+
+            if (layerIterator != m_Layers.end())
+            {
+                m_Layers.erase(layerIterator);
+
+                rawLayer = nullptr;
+            }
+        }
 
     public:
         LayerContainer::iterator Begin() { return m_Layers.begin(); };

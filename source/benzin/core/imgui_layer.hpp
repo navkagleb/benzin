@@ -1,15 +1,17 @@
 #pragma once
 
 #include "benzin/core/layer.hpp"
-#include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/swap_chain.hpp"
 #include "benzin/system/key_event.hpp"
-#include "benzin/system/window.hpp"
 
 namespace benzin
 {
+
+    class Backend;
+    class Buffer;
+    class Device;
+    class SwapChain;
+    class Window;
 
     enum class ApplicationTiming : uint32_t
     {
@@ -34,7 +36,7 @@ namespace benzin
 
     public:
         void Begin();
-        void End();
+        void End(bool isNeedToClearBackBuffer);
 
         void OnEvent(Event& event) override;
         void OnImGuiRender() override;
@@ -56,7 +58,9 @@ namespace benzin
 
         float m_FrameRate = 0.0f;
         float m_FrameDeltaTimeMS = 0.0f;
-        ApplicationTimings m_ApplicationTimings;
+        ApplicationTimings m_ApplicationTimings = { std::chrono::microseconds::zero() };
+
+        std::vector<std::unique_ptr<Buffer>> m_BigBuffers;
     };
 
 } // namespace benzin

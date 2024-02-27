@@ -1,6 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/format.hpp"
 
+#include "benzin/core/asserter.hpp"
+
 namespace benzin
 {
 
@@ -16,6 +18,9 @@ namespace benzin
 
             case RGB32Float: return 3 * (32 / 8);
 
+            case RG16Float: return 2 * (16 / 8);
+            case RG8Unorm: return 2 * (8 / 8);
+
             case D24Unorm_S8Uint:
             case D24Unorm_X8Typeless: return 1 * (32 / 8);
 
@@ -26,7 +31,6 @@ namespace benzin
 
             default:
             {
-                // TODO: make cases for all 'GraphicsFormat' values
                 BenzinEnsure(false);
             };
         }

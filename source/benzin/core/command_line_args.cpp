@@ -1,96 +1,116 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/command_line_args.hpp"
 
+#include "benzin/core/asserter.hpp"
+#include "benzin/core/logger.hpp"
+
 namespace benzin
 {
 
-    namespace
+    using ParseCallback = void (*)(std::string_view commandLineToParse, void* member);
+
+    template <typename T> requires std::is_arithmetic_v<T>
+    static void ParseArithmetic(std::string_view commandLineToParse, void* member)
     {
+        BenzinAssert(member);
 
-        using ParseCallback = void (*)(std::string_view commandLineToParse, void* member);
+        auto memberValue = std::numeric_limits<T>::max();
+        const auto result = std::from_chars(commandLineToParse.data(), commandLineToParse.data() + commandLineToParse.size(), memberValue);
 
-        template <typename T> requires std::is_arithmetic_v<T>
-        void ParseArithmetic(std::string_view commandLineToParse, void* member)
+        if (result.ec == std::errc{})
         {
-            BenzinAssert(member);
+            BenzinAssert(memberValue != std::numeric_limits<T>::max());
 
-            auto memberValue = std::numeric_limits<T>::max();
-            const auto result = std::from_chars(commandLineToParse.data(), commandLineToParse.data() + commandLineToParse.size(), memberValue);
-
-            if (result.ec == std::errc{})
-            {
-                BenzinAssert(memberValue != std::numeric_limits<T>::max());
-
-                auto& reinterpreMember = *reinterpret_cast<T*>(member);
-                reinterpreMember = memberValue;
-            }
-        }
-
-        template <>
-        void ParseArithmetic<bool>(std::string_view commandLineToParse, void* member)
-        {
-            return ParseArithmetic<uint32_t>(commandLineToParse, member);
-        }
-
-        void ParseBool(std::string_view commandLineToParse, void* member)
-        {
-            BenzinAssert(member);
-
-            if (commandLineToParse.empty())
-            {
-                auto& reinterpreMember = *reinterpret_cast<bool*>(member);
-                reinterpreMember = true;
-            }
-        }
-
-        struct SupportedCommandLineArg
-        {
-            std::string_view Name;
-            void* Member = nullptr;
-            ParseCallback Callback = nullptr;
-
-            void InvokeIfMatches(std::string_view currentCommandLine) const
-            {
-                if (currentCommandLine.starts_with(Name))
-                {
-                    Callback(currentCommandLine.substr(Name.size()), Member);
-                }
-            }
-        };
-
-    } // anonymous namespace
-
-    CommandLineArgs::CommandLineArgs(int argc, char** argv)
-    {
-        const auto supportedArgs = std::to_array(
-        {
-            SupportedCommandLineArg{ "-window_width:", &m_WindowWidth, ParseArithmetic<decltype(m_WindowWidth)> },
-            SupportedCommandLineArg{ "-window_height:", &m_WindowHeight, ParseArithmetic<decltype(m_WindowHeight)> },
-            SupportedCommandLineArg{ "-is_window_resizable:", &m_IsWindowResizable, ParseArithmetic<decltype(m_IsWindowResizable)> },
-
-            SupportedCommandLineArg{ "-adapter_index:", &m_AdapterIndex, ParseArithmetic<decltype(m_AdapterIndex)> },
-            SupportedCommandLineArg{ "-frame_in_flight_count:", &m_FrameInFlightCount, ParseArithmetic<decltype(m_FrameInFlightCount)> },
-            SupportedCommandLineArg{ "-is_gpu_based_validation_enabled:", &m_IsEnabledGPUBasedValidation, ParseArithmetic<decltype(m_IsEnabledGPUBasedValidation)> },
-        });
-
-        m_ExecutablePath = argv[0];
-
-        for (int i = 1; i < argc; ++i)
-        {
-            const std::string_view currentArg = argv[i];
-
-            if (!currentArg.starts_with('-'))
-            {
-                continue;
-            }
-
-            for (const auto& supportedArg : supportedArgs)
-            {
-                supportedArg.InvokeIfMatches(currentArg);
-            }
-
-            BenzinTrace("CommandLineArg {}: {}", i, currentArg);
+            auto& reinterpreMember = *reinterpret_cast<T*>(member);
+            reinterpreMember = memberValue;
         }
     }
+
+    template <>
+    static void ParseArithmetic<bool>(std::string_view commandLineToParse, void* member)
+    {
+        return ParseArithmetic<uint32_t>(commandLineToParse, member);
+    }
+
+    struct SupportedCommandLineArg
+    {
+        std::string_view Name;
+        void* Member = nullptr;
+        ParseCallback Callback = nullptr;
+
+        void InvokeIfMatches(std::string_view currentCommandLine) const
+        {
+            if (currentCommandLine.starts_with(Name))
+            {
+                Callback(currentCommandLine.substr(Name.size()), Member);
+            }
+        }
+    };
+
+    struct CommandLineArgsState
+    {
+        std::filesystem::path ExecutablePath;
+
+        uint32_t WindowWidth = 1280;
+        uint32_t WindowHeight = 720;
+        bool IsWindowResizable = true;
+
+        uint32_t AdapterIndex = 0;
+        uint32_t FrameInFlightCount = 3;
+        GraphicsFormat BackBufferFormat = GraphicsFormat::RGBA8Unorm;
+
+        GraphicsDebugLayerParams GraphicsDebugLayerParams;
+
+        CommandLineArgsState(int argc, char** argv)
+        {
+            const auto supportedArgs = std::to_array(
+            {
+                SupportedCommandLineArg{ "-window_width:", &WindowWidth, ParseArithmetic<decltype(WindowWidth)> },
+                SupportedCommandLineArg{ "-window_height:", &WindowHeight, ParseArithmetic<decltype(WindowHeight)> },
+                SupportedCommandLineArg{ "-is_window_resizable:", &IsWindowResizable, ParseArithmetic<decltype(IsWindowResizable)> },
+
+                SupportedCommandLineArg{ "-adapter_index:", &AdapterIndex, ParseArithmetic<decltype(AdapterIndex)> },
+                SupportedCommandLineArg{ "-frame_in_flight_count:", &FrameInFlightCount, ParseArithmetic<decltype(FrameInFlightCount)> },
+                SupportedCommandLineArg{ "-is_gpu_based_validation_enabled:", &GraphicsDebugLayerParams.IsGPUBasedValidationEnabled, ParseArithmetic<decltype(GraphicsDebugLayerParams.IsGPUBasedValidationEnabled)> },
+                SupportedCommandLineArg{ "-is_sync_command_queue_validation_enabled:", &GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled, ParseArithmetic<decltype(GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled)> },
+            });
+
+            ExecutablePath = argv[0];
+
+            for (int i = 1; i < argc; ++i)
+            {
+                const std::string_view currentArg = argv[i];
+
+                if (!currentArg.starts_with('-'))
+                {
+                    continue;
+                }
+
+                for (const auto& supportedArg : supportedArgs)
+                {
+                    supportedArg.InvokeIfMatches(currentArg);
+                }
+
+                BenzinTrace("CommandLineArg {}: {}", i, currentArg);
+            }
+        }
+    };
+
+    static std::unique_ptr<CommandLineArgsState> g_CommandLineArgsState;
+
+    //
+
+    void CommandLineArgs::Initialize(int argc, char** argv)
+    {
+        g_CommandLineArgsState = std::make_unique<CommandLineArgsState>(argc, argv);
+    }
+
+    uint32_t CommandLineArgs::GetWindowWidth() { return g_CommandLineArgsState->WindowWidth; }
+    uint32_t CommandLineArgs::GetWindowHeight() { return g_CommandLineArgsState->WindowHeight; }
+    bool CommandLineArgs::IsWindowResizable() { return g_CommandLineArgsState->IsWindowResizable; }
+    uint32_t CommandLineArgs::GetAdapterIndex() { return g_CommandLineArgsState->AdapterIndex; }
+    uint32_t CommandLineArgs::GetFrameInFlightCount() { return g_CommandLineArgsState->FrameInFlightCount; }
+    GraphicsFormat CommandLineArgs::GetBackBufferFormat() { return g_CommandLineArgsState->BackBufferFormat; }
+    GraphicsDebugLayerParams CommandLineArgs::GetGraphicsDebugLayerParams() { return g_CommandLineArgsState->GraphicsDebugLayerParams; }
 
 } // namespace benzin

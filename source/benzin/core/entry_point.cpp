@@ -1,7 +1,9 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/entry_point.hpp"
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
+#include "benzin/core/logger.hpp"
 
 #if BENZIN_IS_PLATFORM_WIN64
 
@@ -26,9 +28,7 @@ namespace benzin
     {
         BenzinAssert(::SetConsoleCtrlHandler(Wint64_ConsoleHandler, true) != 0);
 
-        LoggerInstance::Initialize();
-        AsserterInstance::Initialize();
-        CommandLineArgsInstance::Initialize(argc, argv);
+        CommandLineArgs::Initialize(argc, argv);
 
         return ClientMain();
     }

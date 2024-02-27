@@ -141,7 +141,7 @@ joint::RTShadowPassConstants FetchPassConstants()
 [shader("raygeneration")]
 void RayGen()
 {
-    const joint::CameraConstants cameraConstants = FetchCameraConstants();
+    const joint::CameraConstants cameraConstants = FetchCurrentCameraConstants();
     const joint::RTShadowPassConstants passConstants = FetchPassConstants();
 
     StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowPassRC_PointLightBuffer)];
@@ -156,11 +156,15 @@ void RayGen()
     uint hittedSum = 0;
     for (uint i = 0; i < passConstants.RaysPerPixel; ++i)
     {
-        hittedSum += TraceShadowRay(worldPosition, worldNormal, pointLight, GetRayUV() * pow(passConstants.DeltaTime, (i + 1)));
+        const float2 uvSeed = (GetRayUV() + i * passConstants.DeltaTime) * passConstants.DeltaTime;
+        hittedSum += TraceShadowRay(worldPosition, worldNormal, pointLight, uvSeed);
     }
 
-    RWTexture2D<float4> outputTexture = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowPassRC_OutputTexture)];
-    outputTexture[DispatchRaysIndex().xy] = float4(hittedSum, 0.0f, 0.0f, 1.0f);
+    RWTexture2D<float4> outputTexture = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowPassRC_NoisyVisiblityBuffer)];
+    // outputTexture[DispatchRaysIndex().xy][passConstants.CurrentTextureSlot] = (float)hittedSum / passConstants.RaysPerPixel;
+    // outputTexture[DispatchRaysIndex().xy].r = (float)hittedSum / passConstants.RaysPerPixel;
+    // outputTexture[DispatchRaysIndex().xy][3] = 1.0f;
+    SetFloatByIndex((float)hittedSum / passConstants.RaysPerPixel, passConstants.CurrentTextureSlot, outputTexture[DispatchRaysIndex().xy]);
 }
 
 [shader("miss")]

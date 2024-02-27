@@ -3,6 +3,7 @@
 
 #include <shaders/joint/structured_buffer_types.hpp>
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/engine/scene.hpp"
 
@@ -11,183 +12,180 @@ namespace benzin
 
     using joint::MeshVertex;
 
-    namespace
+    static MeshVertex MiddlePoint(const MeshVertex& lhs, const MeshVertex& rhs)
     {
+        const DirectX::XMVECTOR positionLhs = DirectX::XMLoadFloat3(&lhs.Position);
+        const DirectX::XMVECTOR positionRhs = DirectX::XMLoadFloat3(&rhs.Position);
 
-        MeshVertex MiddlePoint(const MeshVertex& lhs, const MeshVertex& rhs)
+        const DirectX::XMVECTOR normalLhs = DirectX::XMLoadFloat3(&lhs.Normal);
+        const DirectX::XMVECTOR normalRhs = DirectX::XMLoadFloat3(&rhs.Normal);
+
+        const DirectX::XMVECTOR uvLhs = DirectX::XMLoadFloat2(&lhs.UV);
+        const DirectX::XMVECTOR uvRhs = DirectX::XMLoadFloat2(&rhs.UV);
+
+        // Compute the midpoints of all the attributes. Vectors need to be normalized
+        // since linear interpolating can make them not unit length. 
+        const DirectX::XMVECTOR localPosition = DirectX::XMVectorScale(DirectX::XMVectorAdd(positionLhs, positionRhs), 0.5f);
+        const DirectX::XMVECTOR localNormal = DirectX::XMVector3Normalize(DirectX::XMVectorScale(DirectX::XMVectorAdd(normalLhs, normalRhs), 0.5f));
+        const DirectX::XMVECTOR uv = DirectX::XMVectorScale(DirectX::XMVectorAdd(uvLhs, uvRhs), 0.5f);
+
+        MeshVertex middle;
+        DirectX::XMStoreFloat3(&middle.Position, localPosition);
+        DirectX::XMStoreFloat3(&middle.Normal, localNormal);
+        DirectX::XMStoreFloat2(&middle.UV, uv);
+
+        return middle;
+    }
+
+    static void Subdivide(MeshData& meshData)
+    {
+        MeshData copy = meshData;
+
+        meshData.Vertices.clear();
+        meshData.Indices.clear();
+
+        //       v1
+        //       *
+        //      / \
+        //     /   \
+        //  m0*-----*m1
+        //   / \   / \
+        //  /   \ /   \
+        // *-----*-----*
+        // v0    m2     v2
+
+        const uint32_t triangleCount = static_cast<uint32_t>(copy.Indices.size() / 3);
+
+        for (uint32_t i = 0; i < triangleCount; ++i)
         {
-            const DirectX::XMVECTOR positionLhs = DirectX::XMLoadFloat3(&lhs.Position);
-            const DirectX::XMVECTOR positionRhs = DirectX::XMLoadFloat3(&rhs.Position);
+            const MeshVertex vertex0 = copy.Vertices[copy.Indices[i * 3 + 0]];
+            const MeshVertex vertex1 = copy.Vertices[copy.Indices[i * 3 + 1]];
+            const MeshVertex vertex2 = copy.Vertices[copy.Indices[i * 3 + 2]];
 
-            const DirectX::XMVECTOR normalLhs = DirectX::XMLoadFloat3(&lhs.Normal);
-            const DirectX::XMVECTOR normalRhs = DirectX::XMLoadFloat3(&rhs.Normal);
+            const MeshVertex middle0 = MiddlePoint(vertex0, vertex1);
+            const MeshVertex middle1 = MiddlePoint(vertex1, vertex2);
+            const MeshVertex middle2 = MiddlePoint(vertex0, vertex2);
 
-            const DirectX::XMVECTOR uvLhs = DirectX::XMLoadFloat2(&lhs.UV);
-            const DirectX::XMVECTOR uvRhs = DirectX::XMLoadFloat2(&rhs.UV);
+            meshData.Vertices.push_back(vertex0); // 0
+            meshData.Vertices.push_back(vertex1); // 1
+            meshData.Vertices.push_back(vertex2); // 2
+            meshData.Vertices.push_back(middle0); // 3
+            meshData.Vertices.push_back(middle1); // 4
+            meshData.Vertices.push_back(middle2); // 5
 
-            // Compute the midpoints of all the attributes. Vectors need to be normalized
-            // since linear interpolating can make them not unit length. 
-            const DirectX::XMVECTOR localPosition = DirectX::XMVectorScale(DirectX::XMVectorAdd(positionLhs, positionRhs), 0.5f);
-            const DirectX::XMVECTOR localNormal = DirectX::XMVector3Normalize(DirectX::XMVectorScale(DirectX::XMVectorAdd(normalLhs, normalRhs), 0.5f));
-            const DirectX::XMVECTOR uv = DirectX::XMVectorScale(DirectX::XMVectorAdd(uvLhs, uvRhs), 0.5f);
+            meshData.Indices.push_back(i * 6 + 0);
+            meshData.Indices.push_back(i * 6 + 3);
+            meshData.Indices.push_back(i * 6 + 5);
 
-            MeshVertex middle;
-            DirectX::XMStoreFloat3(&middle.Position, localPosition);
-            DirectX::XMStoreFloat3(&middle.Normal, localNormal);
-            DirectX::XMStoreFloat2(&middle.UV, uv);
+            meshData.Indices.push_back(i * 6 + 3);
+            meshData.Indices.push_back(i * 6 + 4);
+            meshData.Indices.push_back(i * 6 + 5);
 
-            return middle;
+            meshData.Indices.push_back(i * 6 + 5);
+            meshData.Indices.push_back(i * 6 + 4);
+            meshData.Indices.push_back(i * 6 + 2);
+
+            meshData.Indices.push_back(i * 6 + 3);
+            meshData.Indices.push_back(i * 6 + 1);
+            meshData.Indices.push_back(i * 6 + 4);
         }
+    }
 
-        void Subdivide(MeshData& meshData)
+    static void GenerateCylinderTopCap(const CylinderGeometryCreation& creation, MeshData& meshData)
+    {
+        const uint32_t baseIndex = static_cast<uint32_t>(meshData.Vertices.size());
+
+        // Vertices
         {
-            MeshData copy = meshData;
+            const float y = 0.5f * creation.Height;
+            const float dTheta = DirectX::XM_2PI / creation.SliceCount;
 
-            meshData.Vertices.clear();
-            meshData.Indices.clear();
-
-            //       v1
-            //       *
-            //      / \
-            //     /   \
-            //  m0*-----*m1
-            //   / \   / \
-            //  /   \ /   \
-            // *-----*-----*
-            // v0    m2     v2
-
-            const uint32_t triangleCount = static_cast<uint32_t>(copy.Indices.size() / 3);
-
-            for (uint32_t i = 0; i < triangleCount; ++i)
+            for (uint32_t i = 0; i <= creation.SliceCount; ++i)
             {
-                const MeshVertex vertex0 = copy.Vertices[copy.Indices[i * 3 + 0]];
-                const MeshVertex vertex1 = copy.Vertices[copy.Indices[i * 3 + 1]];
-                const MeshVertex vertex2 = copy.Vertices[copy.Indices[i * 3 + 2]];
+                const float x = creation.TopRadius * std::cos(i * dTheta);
+                const float z = creation.TopRadius * std::sin(i * dTheta);
+                const float u = x / creation.Height + 0.5f;
+                const float v = z / creation.Height + 0.5f;
 
-                const MeshVertex middle0 = MiddlePoint(vertex0, vertex1);
-                const MeshVertex middle1 = MiddlePoint(vertex1, vertex2);
-                const MeshVertex middle2 = MiddlePoint(vertex0, vertex2);
-
-                meshData.Vertices.push_back(vertex0); // 0
-                meshData.Vertices.push_back(vertex1); // 1
-                meshData.Vertices.push_back(vertex2); // 2
-                meshData.Vertices.push_back(middle0); // 3
-                meshData.Vertices.push_back(middle1); // 4
-                meshData.Vertices.push_back(middle2); // 5
-
-                meshData.Indices.push_back(i * 6 + 0);
-                meshData.Indices.push_back(i * 6 + 3);
-                meshData.Indices.push_back(i * 6 + 5);
-
-                meshData.Indices.push_back(i * 6 + 3);
-                meshData.Indices.push_back(i * 6 + 4);
-                meshData.Indices.push_back(i * 6 + 5);
-
-                meshData.Indices.push_back(i * 6 + 5);
-                meshData.Indices.push_back(i * 6 + 4);
-                meshData.Indices.push_back(i * 6 + 2);
-
-                meshData.Indices.push_back(i * 6 + 3);
-                meshData.Indices.push_back(i * 6 + 1);
-                meshData.Indices.push_back(i * 6 + 4);
-            }
-        }
-
-        void GenerateCylinderTopCap(const CylinderGeometryCreation& creation, MeshData& meshData)
-        {
-            const uint32_t baseIndex = static_cast<uint32_t>(meshData.Vertices.size());
-
-            // Vertices
-            {
-                const float y = 0.5f * creation.Height;
-                const float dTheta = DirectX::XM_2PI / creation.SliceCount;
-
-                for (uint32_t i = 0; i <= creation.SliceCount; ++i)
+                meshData.Vertices.push_back(MeshVertex
                 {
-                    const float x = creation.TopRadius * std::cos(i * dTheta);
-                    const float z = creation.TopRadius * std::sin(i * dTheta);
-                    const float u = x / creation.Height + 0.5f;
-                    const float v = z / creation.Height + 0.5f;
-
-                    meshData.Vertices.push_back(MeshVertex
-                    {
-                        .Position{ x, y, z },
-                        .Normal{ 0.0f, 1.0f, 0.0f },
-                        .UV{ u, v }
-                    });
-                }
-
-                const MeshVertex centerVertex
-                {
-                    .Position{ 0.0f, y, 0.0f },
+                    .Position{ x, y, z },
                     .Normal{ 0.0f, 1.0f, 0.0f },
-                    .UV{ 0.5f, 0.5f }
-                };
-
-                meshData.Vertices.push_back(centerVertex);
+                    .UV{ u, v }
+                });
             }
 
-            // Indices
+            const MeshVertex centerVertex
             {
-                const uint32_t centerIndex = static_cast<uint32_t>(meshData.Vertices.size() - 1);
+                .Position{ 0.0f, y, 0.0f },
+                .Normal{ 0.0f, 1.0f, 0.0f },
+                .UV{ 0.5f, 0.5f }
+            };
 
-                for (uint32_t i = 0; i < creation.SliceCount; ++i)
-                {
-                    meshData.Indices.push_back(centerIndex);
-                    meshData.Indices.push_back(baseIndex + i + 1);
-                    meshData.Indices.push_back(baseIndex + i);
-                }
-            }
+            meshData.Vertices.push_back(centerVertex);
         }
 
-        void GenerateCylinderBottomCap(const CylinderGeometryCreation& creation, MeshData& meshData)
+        // Indices
         {
-            const uint32_t baseIndex = static_cast<uint32_t>(meshData.Vertices.size());
+            const uint32_t centerIndex = static_cast<uint32_t>(meshData.Vertices.size() - 1);
 
-            // Vertices
+            for (uint32_t i = 0; i < creation.SliceCount; ++i)
             {
-                const float y = -0.5f * creation.Height;
-                const float dTheta = DirectX::XM_2PI / creation.SliceCount;
-
-                for (uint32_t i = 0; i <= creation.SliceCount; ++i)
-                {
-                    const float x = creation.BottomRadius * cosf(i * dTheta);
-                    const float z = creation.BottomRadius * sinf(i * dTheta);
-                    const float u = x / creation.Height + 0.5f;
-                    const float v = z / creation.Height + 0.5f;
-
-                    meshData.Vertices.push_back(MeshVertex
-                    {
-                        .Position{ x, y, z },
-                        .Normal{ 0.0f, -1.0f, 0.0f },
-                        .UV{ u, v }
-                    });
-                }
-
-                const MeshVertex centerVertex
-                {
-                    .Position{ 0.0f, y, 0.0f },
-                    .Normal{ 0.0f, -1.0f, 0.0f },
-                    .UV{ 0.5f, 0.5f },
-                };
-
-                meshData.Vertices.push_back(centerVertex);
-            }
-
-            // Indices
-            {
-                const uint32_t centerIndex = static_cast<uint32_t>(meshData.Vertices.size() - 1);
-
-                for (uint32_t i = 0; i < creation.SliceCount; ++i)
-                {
-                    meshData.Indices.push_back(centerIndex);
-                    meshData.Indices.push_back(baseIndex + i);
-                    meshData.Indices.push_back(baseIndex + i + 1);
-                }
+                meshData.Indices.push_back(centerIndex);
+                meshData.Indices.push_back(baseIndex + i + 1);
+                meshData.Indices.push_back(baseIndex + i);
             }
         }
+    }
 
-    } // anonymous namespace
+    static void GenerateCylinderBottomCap(const CylinderGeometryCreation& creation, MeshData& meshData)
+    {
+        const uint32_t baseIndex = static_cast<uint32_t>(meshData.Vertices.size());
+
+        // Vertices
+        {
+            const float y = -0.5f * creation.Height;
+            const float dTheta = DirectX::XM_2PI / creation.SliceCount;
+
+            for (uint32_t i = 0; i <= creation.SliceCount; ++i)
+            {
+                const float x = creation.BottomRadius * cosf(i * dTheta);
+                const float z = creation.BottomRadius * sinf(i * dTheta);
+                const float u = x / creation.Height + 0.5f;
+                const float v = z / creation.Height + 0.5f;
+
+                meshData.Vertices.push_back(MeshVertex
+                {
+                    .Position{ x, y, z },
+                    .Normal{ 0.0f, -1.0f, 0.0f },
+                    .UV{ u, v }
+                });
+            }
+
+            const MeshVertex centerVertex
+            {
+                .Position{ 0.0f, y, 0.0f },
+                .Normal{ 0.0f, -1.0f, 0.0f },
+                .UV{ 0.5f, 0.5f },
+            };
+
+            meshData.Vertices.push_back(centerVertex);
+        }
+
+        // Indices
+        {
+            const uint32_t centerIndex = static_cast<uint32_t>(meshData.Vertices.size() - 1);
+
+            for (uint32_t i = 0; i < creation.SliceCount; ++i)
+            {
+                meshData.Indices.push_back(centerIndex);
+                meshData.Indices.push_back(baseIndex + i);
+                meshData.Indices.push_back(baseIndex + i + 1);
+            }
+        }
+    }
+
+    //
 
     MeshData GenerateBox(const BoxGeometryCreation& creation)
     {
@@ -582,6 +580,20 @@ namespace benzin
             .Depth = 1.0f,
             .WidthPointCount = 2,
             .DepthPointCount = 2,
+        });
+
+        return meshData;
+    }
+
+    const MeshData& GetDefaultCyliderMesh()
+    {
+        static const MeshData meshData = GenerateCylinder(CylinderGeometryCreation
+        {
+            .TopRadius = 0.5f,
+            .BottomRadius = 0.5f,
+            .Height = 1.0f,
+            .SliceCount = 10,
+            .StackCount = 2,
         });
 
         return meshData;

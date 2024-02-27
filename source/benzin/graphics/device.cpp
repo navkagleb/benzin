@@ -1,6 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/device.hpp"
 
+#include "benzin/core/asserter.hpp"
+#include "benzin/core/logger.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/pipeline_state.hpp"
@@ -10,108 +12,99 @@
 
 namespace benzin
 {
-    namespace
+
+    static D3D12_FILTER ToD3D12TextureFilter(const TextureFilterType& minification, const TextureFilterType& magnification, const TextureFilterType& mipLevel)
     {
-
-        D3D12_FILTER ToD3D12TextureFilter(const TextureFilterType& minification, const TextureFilterType& magnification, const TextureFilterType& mipLevel)
+        switch (minification)
         {
-            switch (minification)
-            {
-                using enum TextureFilterType;
+            using enum TextureFilterType;
 
-                case Point:
-                {
-                    BenzinAssert(magnification != Anisotropic && mipLevel != Anisotropic);
-                    return magnification == Point
-                        ? mipLevel == Point ? D3D12_FILTER_MIN_MAG_MIP_POINT : D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR
-                        : mipLevel == Point ? D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
-                }
-                case Linear:
-                {
-                    BenzinAssert(magnification != Anisotropic && mipLevel != Anisotropic);
-                    return magnification == Point 
-                        ? mipLevel == Point ? D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT : D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR
-                        : mipLevel == Point ? D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                }
-                case Anisotropic:
-                {
-                    BenzinAssert(magnification == Anisotropic && mipLevel == Anisotropic);
-                    return D3D12_FILTER_ANISOTROPIC;
-                }
+            case Point:
+            {
+                BenzinAssert(magnification != Anisotropic && mipLevel != Anisotropic);
+                return magnification == Point
+                    ? mipLevel == Point ? D3D12_FILTER_MIN_MAG_MIP_POINT : D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR
+                    : mipLevel == Point ? D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
             }
-
-            std::unreachable();
-        }
-
-        D3D12_STATIC_SAMPLER_DESC ToD3D12StaticSamplerDesc(const StaticSampler& staticSampler)
-        {
-            return D3D12_STATIC_SAMPLER_DESC
+            case Linear:
             {
-                .Filter = ToD3D12TextureFilter(staticSampler.Sampler.Minification, staticSampler.Sampler.Magnification, staticSampler.Sampler.MipLevel),
-                .AddressU = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressU,
-                .AddressV = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressV,
-                .AddressW = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressW,
-                .MipLODBias = staticSampler.MipLODBias,
-                .MaxAnisotropy = staticSampler.MaxAnisotropy,
-                .ComparisonFunc = (D3D12_COMPARISON_FUNC)staticSampler.ComparisonFunction,
-                .BorderColor = (D3D12_STATIC_BORDER_COLOR)staticSampler.BorderColor,
-                .MinLOD = 0.0f,
-                .MaxLOD = D3D12_FLOAT32_MAX,
-                .ShaderRegister = staticSampler.ShaderRegister.Index,
-                .RegisterSpace = staticSampler.ShaderRegister.Space,
-                .ShaderVisibility = (D3D12_SHADER_VISIBILITY)staticSampler.ShaderVisibility,
-            };
+                BenzinAssert(magnification != Anisotropic && mipLevel != Anisotropic);
+                return magnification == Point 
+                    ? mipLevel == Point ? D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT : D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR
+                    : mipLevel == Point ? D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+            }
+            case Anisotropic:
+            {
+                BenzinAssert(magnification == Anisotropic && mipLevel == Anisotropic);
+                return D3D12_FILTER_ANISOTROPIC;
+            }
         }
 
-    } // anonymous namespace
+        std::unreachable();
+    }
+
+    static D3D12_STATIC_SAMPLER_DESC ToD3D12StaticSamplerDesc(const StaticSampler& staticSampler)
+    {
+        return D3D12_STATIC_SAMPLER_DESC
+        {
+            .Filter = ToD3D12TextureFilter(staticSampler.Sampler.Minification, staticSampler.Sampler.Magnification, staticSampler.Sampler.MipLevel),
+            .AddressU = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressU,
+            .AddressV = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressV,
+            .AddressW = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressW,
+            .MipLODBias = staticSampler.MipLODBias,
+            .MaxAnisotropy = staticSampler.MaxAnisotropy,
+            .ComparisonFunc = (D3D12_COMPARISON_FUNC)staticSampler.ComparisonFunction,
+            .BorderColor = (D3D12_STATIC_BORDER_COLOR)staticSampler.BorderColor,
+            .MinLOD = 0.0f,
+            .MaxLOD = D3D12_FLOAT32_MAX,
+            .ShaderRegister = staticSampler.ShaderRegister.Index,
+            .RegisterSpace = staticSampler.ShaderRegister.Space,
+            .ShaderVisibility = (D3D12_SHADER_VISIBILITY)staticSampler.ShaderVisibility,
+        };
+    }
+
+    //
 
     Device::Device(const Backend& backend)
     {
+        EnableDred();
+
         ComPtr<ID3D12Device> d3d12Device;
-        BenzinAssert(D3D12CreateDevice(backend.GetDXGIMainAdapter(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&d3d12Device)));
+        BenzinEnsure(::D3D12CreateDevice(backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&d3d12Device)));
         BenzinAssert(d3d12Device->QueryInterface(&m_D3D12Device));
 
-#if BENZIN_IS_DEBUG_BUILD
-        BreakOnD3D12Error(m_D3D12Device, true);
-#endif
+        Asserter::SetDeviceRemovedCallback([this]
+        {
+            const HRESULT removedReason = m_D3D12Device->GetDeviceRemovedReason();
+            BenzinError(
+                "\n"
+                "{}\n"
+                "CPUFrameIndex: {}, GPUFrameIndex: {}, ActiveFrameIndex: {}\n"
+                "RemoveDevice was trigerred. DeviceRemovedReason: ({:#0x}) {}\n",
+                GetDredMessages(m_D3D12Device),
+                m_CpuFrameIndex, m_GpuFrameIndex, m_ActiveFrameIndex,
+                (uint32_t)removedReason, DxgiErrorToString(removedReason)
+            );
+
+            return removedReason;
+        });
         
         CheckFeaturesSupport();
         CreateBindlessRootSignature();
 
-        {
-            m_DescriptorManager = new DescriptorManager{ *this };
-            m_TextureLoader = new TextureLoader{ *this };
-        }
+        m_CopyCommandQueue = std::make_unique<CopyCommandQueue>(*this);
+        m_ComputeCommandQueue = std::make_unique<ComputeCommandQueue>(*this);
+        m_GraphicsCommandQueue = std::make_unique<GraphicsCommandQueue>(*this);
 
-        {
-            m_CopyCommandQueue = new CopyCommandQueue{ *this };
-            m_ComputeCommandQueue = new ComputeCommandQueue{ *this };
-            m_GraphicsCommandQueue = new GraphicsCommandQueue{ *this };
-        }
-
-        {
-            m_DeviceRemovedFence = new Fence{ *this };
-            SetD3D12ObjectDebugName(m_DeviceRemovedFence->GetD3D12Fence(), "DeviceRemovedFence");
-
-            m_DeviceRemovedFence->SubsribeForDeviceRemoving();
-        }
+        m_DescriptorManager = std::make_unique<DescriptorManager>(*this);
+        m_TextureLoader = std::make_unique<TextureLoader>(*this);
     }
 
     Device::~Device()
     {
-        delete m_DeviceRemovedFence;
-
-        delete m_TextureLoader;
-        delete m_DescriptorManager;
-
-        delete m_GraphicsCommandQueue;
-        delete m_ComputeCommandQueue;
-        delete m_CopyCommandQueue;
-
         SafeUnknownRelease(m_D3D12BindlessRootSignature);
 
 #if BENZIN_IS_DEBUG_BUILD
-        BreakOnD3D12Error(m_D3D12Device, false);
         ReportLiveD3D12Objects(m_D3D12Device);
 #endif
 
@@ -170,15 +163,6 @@ namespace benzin
             BenzinEnsure(d3d12Options.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
 
             BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12Options.RaytracingTier));
-        }
-
-        // Mesh Shaders
-        {
-            D3D12_FEATURE_DATA_D3D12_OPTIONS7 d3d12Options;
-            BenzinAssert(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &d3d12Options, sizeof(d3d12Options)));
-            BenzinEnsure(d3d12Options.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1);
-
-            BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12Options.MeshShaderTier));
         }
 
         // DRED Breadcrumb
@@ -252,10 +236,13 @@ namespace benzin
 
         ComPtr<ID3DBlob> d3d12Blob;
         ComPtr<ID3DBlob> d3d12Error;
-        BenzinAssert(D3D12SerializeVersionedRootSignature(&d3d12RootSignatureDesc, &d3d12Blob, &d3d12Error));
-        BenzinErrorIf(d3d12Error, "Failed to Serialize RootSignature. Error: {}", (const char*)d3d12Error->GetBufferPointer());
+        const HRESULT hr = ::D3D12SerializeVersionedRootSignature(&d3d12RootSignatureDesc, &d3d12Blob, &d3d12Error);
+        if (FAILED(hr))
+        {
+            BenzinEnsure(hr, "Failed to Serialize RootSignature. Error: {}", (const char*)d3d12Error->GetBufferPointer());
+        }
 
-        BenzinAssert(m_D3D12Device->CreateRootSignature(
+        BenzinEnsure(m_D3D12Device->CreateRootSignature(
             0,
             d3d12Blob->GetBufferPointer(),
             d3d12Blob->GetBufferSize(),

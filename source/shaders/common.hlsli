@@ -38,6 +38,7 @@ static const float g_Inv2PI = 1.0f / g_2PI;
 
 static const float g_FloatEpsilon = 0.00001f;
 static const float g_FloatInfinity = 1.#INF;
+static const float g_NaN = 0.0f / 0.0f;
 
 static const float4x4 g_IdentityMatrix =
 {
@@ -79,8 +80,46 @@ uint GetRootConstant(uint index)
     return g_RootConstants.Get(index);
 }
 
-joint::CameraConstants FetchCameraConstants()
+float GetFloatByIndex(uint index, float4 values)
 {
-    ConstantBuffer<joint::CameraConstants> cameraConstants = ResourceDescriptorHeap[GetRootConstant(joint::GlobalRC_CameraConstantBuffer)];
+    switch (index)
+    {
+        case 0: return values.x;
+        case 1: return values.y;
+        case 2: return values.z;
+        case 3: return values.w;
+    }
+
+    return g_NaN;
+}
+
+
+float SetFloatByIndex(float value, uint index, out float4 values)
+{
+    switch (index)
+    {
+        case 0: return values.x = value;
+        case 1: return values.y = value;
+        case 2: return values.z = value;
+        case 3: return values.w = value;
+    }
+
+    return g_NaN;
+}
+
+joint::CameraConstants FetchCurrentCameraConstants()
+{
+    ConstantBuffer<joint::DoubleFrameCameraConstants> cameraConstants = ResourceDescriptorHeap[GetRootConstant(joint::GlobalRC_CameraConstantBuffer)];
+    return cameraConstants.CurrentFrame;
+}
+
+joint::DoubleFrameCameraConstants FetchDoubleFrameCameraConstants()
+{
+    ConstantBuffer<joint::DoubleFrameCameraConstants> cameraConstants = ResourceDescriptorHeap[GetRootConstant(joint::GlobalRC_CameraConstantBuffer)];
+    // joint::DoubleFrameCameraConstants result;
+    // result.CurrentFrame = cameraConstants.PreviousFrame;
+    // result.PreviousFrame = cameraConstants.PreviousFrame;
+    // 
+    // return result;
     return cameraConstants;
 }

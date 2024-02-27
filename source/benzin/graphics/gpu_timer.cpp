@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/gpu_timer.hpp"
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/command_list.hpp"
 #include "benzin/graphics/device.hpp"
@@ -30,8 +31,8 @@ namespace benzin
         m_ReadbackBuffer.Create(BufferCreation
         {
             .DebugName = "GPUTimer_ReadbackBuffer",
-            .ElementSize = sizeof(uint64_t),
-            .ElementCount = (uint32_t)m_Timestamps.size() * (GraphicsSettingsInstance::Get().FrameInFlightCount + 1),
+            .ElementSize = sizeof(uint64_t) * (uint32_t)m_Timestamps.size(),
+            .ElementCount = CommandLineArgs::GetFrameInFlightCount() + 1,
             .Flags = BufferFlag::ReadbackBuffer,
             .InitialState = ResourceState::CopyDestination,
         });
@@ -71,12 +72,11 @@ namespace benzin
 
     void GPUTimer::ResolveTimestamps()
     {
-        static const auto readbackBufferSizePerFrame = (uint32_t)m_Timestamps.size() * sizeof(uint64_t);
         static uint32_t currentFrameIndex = 0;
 
         const auto GetReadbackBufferOffsetForCurrentFrame = [&]
         {
-            return currentFrameIndex * readbackBufferSizePerFrame;
+            return currentFrameIndex * m_ReadbackBuffer.GetElementSize();
         };
 
         {
@@ -95,21 +95,21 @@ namespace benzin
         {
             // Grab readback data from a finished frame FrameInFlighCount ago
 
-            currentFrameIndex = (currentFrameIndex + 1) % (GraphicsSettingsInstance::Get().FrameInFlightCount + 1);
+            currentFrameIndex = (currentFrameIndex + 1) % m_ReadbackBuffer.GetElementCount();
 
             const size_t readbackBufferOffset = GetReadbackBufferOffsetForCurrentFrame();
 
             const D3D12_RANGE d3d12ReadbackRange
             {
                 .Begin = readbackBufferOffset,
-                .End = readbackBufferOffset + readbackBufferSizePerFrame,
+                .End = readbackBufferOffset + m_ReadbackBuffer.GetElementSize(),
             };
 
             uint64_t* timestampData = nullptr;
             BenzinAssert(m_ReadbackBuffer.GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&timestampData)));
             BenzinExecuteOnScopeExit([this] { m_ReadbackBuffer.GetD3D12Resource()->Unmap(0, nullptr); });
 
-            memcpy(m_Timestamps.data(), timestampData, readbackBufferSizePerFrame);
+            memcpy(m_Timestamps.data(), timestampData, m_ReadbackBuffer.GetElementSize());
         }
     }
 

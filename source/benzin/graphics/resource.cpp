@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/resource.hpp"
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 
 namespace benzin
@@ -31,7 +32,7 @@ namespace benzin
         const D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo = m_Device.GetD3D12Device()->GetResourceAllocationInfo(0, 1, &d3d12ResourceDesc);
 
         BenzinAssert(d3d12ResourceAllocationInfo.SizeInBytes <= std::numeric_limits<uint32_t>::max());
-        return static_cast<uint32_t>(d3d12ResourceAllocationInfo.SizeInBytes);
+        return (uint32_t)d3d12ResourceAllocationInfo.SizeInBytes;
     }
 
     bool Resource::HasResourceView(DescriptorType descriptorType, uint32_t index) const

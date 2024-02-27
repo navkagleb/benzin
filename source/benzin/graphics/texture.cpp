@@ -1,259 +1,258 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/texture.hpp"
 
+#include "benzin/core/asserter.hpp"
+
 namespace benzin
 {
 
-    namespace
+    static D3D12_HEAP_PROPERTIES GetDefaultD3D12HeapProperties()
     {
-
-        D3D12_HEAP_PROPERTIES GetDefaultD3D12HeapProperties()
+        return D3D12_HEAP_PROPERTIES
         {
-            return D3D12_HEAP_PROPERTIES
-            {
-                .Type = D3D12_HEAP_TYPE_DEFAULT,
-                .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-                .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-                .CreationNodeMask = 1,
-                .VisibleNodeMask = 1,
-            };
+            .Type = D3D12_HEAP_TYPE_DEFAULT,
+            .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+            .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+            .CreationNodeMask = 1,
+            .VisibleNodeMask = 1,
+        };
+    }
+
+    static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const TextureCreation& textureCreation)
+    {
+        D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
+
+        if (textureCreation.Flags[TextureFlag::AllowRenderTarget])
+        {
+            d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         }
 
-        D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const TextureCreation& textureCreation)
+        if (textureCreation.Flags[TextureFlag::AllowDepthStencil])
         {
-            D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
+            d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+        }
+
+        if (textureCreation.Flags[TextureFlag::AllowUnorderedAccess])
+        {
+            d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        }
+
+        return D3D12_RESOURCE_DESC
+        {
+            .Dimension = (D3D12_RESOURCE_DIMENSION)textureCreation.Type,
+            .Alignment = 0,
+            .Width = (uint64_t)textureCreation.Width,
+            .Height = textureCreation.Height,
+            .DepthOrArraySize = textureCreation.ArraySize,
+            .MipLevels = textureCreation.MipCount,
+            .Format = (DXGI_FORMAT)textureCreation.Format,
+            .SampleDesc{ 1, 0 },
+            .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
+            .Flags = d3d12ResourceFlags,
+        };
+    }
+
+    static void CreateD3D12Resource(const TextureCreation& textureCreation, ID3D12Device* d3d12Device, ID3D12Resource*& d3d12Resource)
+    {
+        BenzinAssert(d3d12Device);
+
+        const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
+        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(textureCreation);
+
+        if (textureCreation.Flags[TextureFlag::AllowRenderTarget] || textureCreation.Flags[TextureFlag::AllowDepthStencil])
+        {
+            D3D12_CLEAR_VALUE d3d12ClearValue{ .Format = (DXGI_FORMAT)textureCreation.Format };
 
             if (textureCreation.Flags[TextureFlag::AllowRenderTarget])
             {
-                d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+                BenzinAssert(std::holds_alternative<DirectX::XMFLOAT4>(textureCreation.ClearValue));
+
+                const auto& color = std::get<DirectX::XMFLOAT4>(textureCreation.ClearValue);
+                memcpy(&d3d12ClearValue.Color, &color, sizeof(color));
+            }
+            else if (textureCreation.Flags[TextureFlag::AllowDepthStencil])
+            {
+                BenzinAssert(std::holds_alternative<DepthStencil>(textureCreation.ClearValue));
+
+                const auto& depthStencil = std::get<DepthStencil>(textureCreation.ClearValue);
+                memcpy(&d3d12ClearValue.DepthStencil, &depthStencil, sizeof(depthStencil));
             }
 
-            if (textureCreation.Flags[TextureFlag::AllowDepthStencil])
-            {
-                d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-            }
-
-            if (textureCreation.Flags[TextureFlag::AllowUnorderedAccess])
-            {
-                d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-            }
-
-            return D3D12_RESOURCE_DESC
-            {
-                .Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(textureCreation.Type),
-                .Alignment = 0,
-                .Width = static_cast<uint64_t>(textureCreation.Width),
-                .Height = textureCreation.Height,
-                .DepthOrArraySize = textureCreation.ArraySize,
-                .MipLevels = textureCreation.MipCount,
-                .Format = static_cast<DXGI_FORMAT>(textureCreation.Format),
-                .SampleDesc{ 1, 0 },
-                .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
-                .Flags = d3d12ResourceFlags,
-            };
+            BenzinAssert(d3d12Device->CreateCommittedResource(
+                &d3d12HeapProperties,
+                D3D12_HEAP_FLAG_NONE,
+                &d3d12ResourceDesc,
+                (D3D12_RESOURCE_STATES)textureCreation.InitialState,
+                &d3d12ClearValue,
+                IID_PPV_ARGS(&d3d12Resource)
+            ));
         }
-
-        void CreateD3D12Resource(const TextureCreation& textureCreation, ID3D12Device* d3d12Device, ID3D12Resource*& d3d12Resource)
+        else
         {
-            BenzinAssert(d3d12Device);
-
-            const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
-            const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(textureCreation);
-
-            if (textureCreation.Flags[TextureFlag::AllowRenderTarget] || textureCreation.Flags[TextureFlag::AllowDepthStencil])
-            {
-                D3D12_CLEAR_VALUE d3d12ClearValue{ .Format = static_cast<DXGI_FORMAT>(textureCreation.Format) };
-
-                if (textureCreation.Flags[TextureFlag::AllowRenderTarget])
-                {
-                    BenzinAssert(std::holds_alternative<DirectX::XMFLOAT4>(textureCreation.ClearValue));
-
-                    const auto& color = std::get<DirectX::XMFLOAT4>(textureCreation.ClearValue);
-                    memcpy(&d3d12ClearValue.Color, &color, sizeof(color));
-                }
-                else if (textureCreation.Flags[TextureFlag::AllowDepthStencil])
-                {
-                    BenzinAssert(std::holds_alternative<DepthStencil>(textureCreation.ClearValue));
-
-                    const auto& depthStencil = std::get<DepthStencil>(textureCreation.ClearValue);
-                    memcpy(&d3d12ClearValue.DepthStencil, &depthStencil, sizeof(depthStencil));
-                }
-
-                BenzinAssert(d3d12Device->CreateCommittedResource(
-                    &d3d12HeapProperties,
-                    D3D12_HEAP_FLAG_NONE,
-                    &d3d12ResourceDesc,
-                    static_cast<D3D12_RESOURCE_STATES>(textureCreation.InitialState),
-                    &d3d12ClearValue,
-                    IID_PPV_ARGS(&d3d12Resource)
-                ));
-            }
-            else
-            {
-                BenzinAssert(d3d12Device->CreateCommittedResource(
-                    &d3d12HeapProperties,
-                    D3D12_HEAP_FLAG_NONE,
-                    &d3d12ResourceDesc,
-                    static_cast<D3D12_RESOURCE_STATES>(textureCreation.InitialState),
-                    nullptr,
-                    IID_PPV_ARGS(&d3d12Resource)
-                ));
-            }
-
-            BenzinEnsure(d3d12Resource);
+            BenzinAssert(d3d12Device->CreateCommittedResource(
+                &d3d12HeapProperties,
+                D3D12_HEAP_FLAG_NONE,
+                &d3d12ResourceDesc,
+                (D3D12_RESOURCE_STATES)textureCreation.InitialState,
+                nullptr,
+                IID_PPV_ARGS(&d3d12Resource)
+            ));
         }
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResourceViewDesc(TextureType textureType, const TextureShaderResourceViewCreation& creation)
+        BenzinEnsure(d3d12Resource);
+    }
+
+    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResourceViewDesc(TextureType textureType, const TextureShaderResourceViewCreation& creation)
+    {
+        const bool isArrayTexture = creation.ArraySize > 1;
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc
         {
-            const bool isArrayTexture = creation.ArraySize > 1;
+            .Format = (DXGI_FORMAT)creation.Format,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+        };
 
-            D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc
-            {
-                .Format = static_cast<DXGI_FORMAT>(creation.Format),
-                .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-            };
-
-            switch (textureType)
-            {
-                using enum TextureType;
-
-                case Texture2D:
-                {
-                    if (!isArrayTexture)
-                    {
-                        d3d12ShaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-                        d3d12ShaderResourceViewDesc.Texture2D = D3D12_TEX2D_SRV
-                        {
-                            .MostDetailedMip = creation.MostDetailedMipIndex,
-                            .MipLevels = creation.MipCount,
-                            .PlaneSlice = 0,
-                            .ResourceMinLODClamp = 0.0f,
-                        };
-                    }
-                    else if (creation.IsCubeMap)
-                    {
-                        d3d12ShaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-                        d3d12ShaderResourceViewDesc.TextureCube = D3D12_TEXCUBE_SRV
-                        {
-                            .MostDetailedMip = creation.MostDetailedMipIndex,
-                            .MipLevels = creation.MipCount,
-                            .ResourceMinLODClamp = 0.0f,
-                        };
-                    }
-                    else
-                    {
-                        d3d12ShaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-                        d3d12ShaderResourceViewDesc.Texture2DArray = D3D12_TEX2D_ARRAY_SRV
-                        {
-                            .MostDetailedMip = creation.MostDetailedMipIndex,
-                            .MipLevels = creation.MipCount,
-                            .FirstArraySlice = creation.FirstArrayIndex,
-                            .ArraySize = creation.ArraySize,
-                            .PlaneSlice = 0,
-                            .ResourceMinLODClamp = 0.0f,
-                        };
-                    }
-
-                    break;
-                }
-                default:
-                {
-                    std::unreachable();
-                }
-            }
-
-            return d3d12ShaderResourceViewDesc;
-        }
-
-        D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(TextureType textureType, const TextureUnorderedAccessViewCreation& creation)
+        switch (textureType)
         {
-            const bool isArrayTexture = creation.ArraySize > 1;
+            using enum TextureType;
 
-            D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UnorderedAccessViewDesc{ .Format = static_cast<DXGI_FORMAT>(creation.Format) };
-
-            switch (textureType)
+            case Texture2D:
             {
-                using enum TextureType;
-
-                case Texture2D:
+                if (!isArrayTexture)
                 {
-                    if (!isArrayTexture)
+                    d3d12ShaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                    d3d12ShaderResourceViewDesc.Texture2D = D3D12_TEX2D_SRV
                     {
-                        d3d12UnorderedAccessViewDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-                        d3d12UnorderedAccessViewDesc.Texture2D = D3D12_TEX2D_UAV
-                        {
-                            .MipSlice = 0,
-                            .PlaneSlice = 0,
-                        };
-                    }
-                    else
-                    {
-                        d3d12UnorderedAccessViewDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-                        d3d12UnorderedAccessViewDesc.Texture2DArray = D3D12_TEX2D_ARRAY_UAV
-                        {
-                            .MipSlice = 0,
-                            .FirstArraySlice = creation.FirstArrayIndex,
-                            .ArraySize = creation.ArraySize,
-                            .PlaneSlice = 0,
-                        };
-                    }
-
-                    break;
+                        .MostDetailedMip = creation.MostDetailedMipIndex,
+                        .MipLevels = creation.MipCount,
+                        .PlaneSlice = 0,
+                        .ResourceMinLODClamp = 0.0f,
+                    };
                 }
-                default:
+                else if (creation.IsCubeMap)
                 {
-                    std::unreachable();
+                    d3d12ShaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+                    d3d12ShaderResourceViewDesc.TextureCube = D3D12_TEXCUBE_SRV
+                    {
+                        .MostDetailedMip = creation.MostDetailedMipIndex,
+                        .MipLevels = creation.MipCount,
+                        .ResourceMinLODClamp = 0.0f,
+                    };
                 }
+                else
+                {
+                    d3d12ShaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                    d3d12ShaderResourceViewDesc.Texture2DArray = D3D12_TEX2D_ARRAY_SRV
+                    {
+                        .MostDetailedMip = creation.MostDetailedMipIndex,
+                        .MipLevels = creation.MipCount,
+                        .FirstArraySlice = creation.FirstArrayIndex,
+                        .ArraySize = creation.ArraySize,
+                        .PlaneSlice = 0,
+                        .ResourceMinLODClamp = 0.0f,
+                    };
+                }
+
+                break;
             }
-
-            return d3d12UnorderedAccessViewDesc;
+            default:
+            {
+                std::unreachable();
+            }
         }
 
-        D3D12_RENDER_TARGET_VIEW_DESC ToD3D12RenderTargetViewDesc(TextureType textureType, const TextureRenderTargetViewCreation& creation)
+        return d3d12ShaderResourceViewDesc;
+    }
+
+    static D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(TextureType textureType, const TextureUnorderedAccessViewCreation& creation)
+    {
+        const bool isArrayTexture = creation.ArraySize > 1;
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UnorderedAccessViewDesc{ .Format = (DXGI_FORMAT)creation.Format };
+
+        switch (textureType)
         {
-            const bool isArrayTexture = creation.ArraySize > 1;
+            using enum TextureType;
 
-            D3D12_RENDER_TARGET_VIEW_DESC d3d12RenderTargetViewDesc{ .Format = static_cast<DXGI_FORMAT>(creation.Format) };
-
-            switch (textureType)
+            case Texture2D:
             {
-                using enum TextureType;
-
-                case Texture2D:
+                if (!isArrayTexture)
                 {
-                    if (!isArrayTexture)
+                    d3d12UnorderedAccessViewDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+                    d3d12UnorderedAccessViewDesc.Texture2D = D3D12_TEX2D_UAV
                     {
-                        d3d12RenderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-                        d3d12RenderTargetViewDesc.Texture2D = D3D12_TEX2D_RTV
-                        {
-                            .MipSlice = 0,
-                            .PlaneSlice = 0,
-                        };
-                    }
-                    else
-                    {
-                        d3d12RenderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-                        d3d12RenderTargetViewDesc.Texture2DArray = D3D12_TEX2D_ARRAY_RTV
-                        {
-                            .MipSlice = 0,
-                            .FirstArraySlice = creation.FirstArrayIndex,
-                            .ArraySize = creation.ArraySize,
-                            .PlaneSlice = 0,
-                        };
-                    }
-
-                    break;
+                        .MipSlice = 0,
+                        .PlaneSlice = 0,
+                    };
                 }
-                default:
+                else
                 {
-                    std::unreachable();
+                    d3d12UnorderedAccessViewDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                    d3d12UnorderedAccessViewDesc.Texture2DArray = D3D12_TEX2D_ARRAY_UAV
+                    {
+                        .MipSlice = 0,
+                        .FirstArraySlice = creation.FirstArrayIndex,
+                        .ArraySize = creation.ArraySize,
+                        .PlaneSlice = 0,
+                    };
                 }
+
+                break;
             }
-
-            return d3d12RenderTargetViewDesc;
+            default:
+            {
+                std::unreachable();
+            }
         }
 
-    } // anonymous namespace
+        return d3d12UnorderedAccessViewDesc;
+    }
+
+    static D3D12_RENDER_TARGET_VIEW_DESC ToD3D12RenderTargetViewDesc(TextureType textureType, const TextureRenderTargetViewCreation& creation)
+    {
+        const bool isArrayTexture = creation.ArraySize > 1;
+
+        D3D12_RENDER_TARGET_VIEW_DESC d3d12RenderTargetViewDesc{ .Format = (DXGI_FORMAT)creation.Format };
+
+        switch (textureType)
+        {
+            using enum TextureType;
+
+            case Texture2D:
+            {
+                if (!isArrayTexture)
+                {
+                    d3d12RenderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                    d3d12RenderTargetViewDesc.Texture2D = D3D12_TEX2D_RTV
+                    {
+                        .MipSlice = 0,
+                        .PlaneSlice = 0,
+                    };
+                }
+                else
+                {
+                    d3d12RenderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                    d3d12RenderTargetViewDesc.Texture2DArray = D3D12_TEX2D_ARRAY_RTV
+                    {
+                        .MipSlice = 0,
+                        .FirstArraySlice = creation.FirstArrayIndex,
+                        .ArraySize = creation.ArraySize,
+                        .PlaneSlice = 0,
+                    };
+                }
+
+                break;
+            }
+            default:
+            {
+                std::unreachable();
+            }
+        }
+
+        return d3d12RenderTargetViewDesc;
+    }
+
+    //
 
     Texture::Texture(Device& device, const TextureCreation& creation)
         : Resource{ device }
@@ -298,9 +297,9 @@ namespace benzin
 
         {
             const D3D12_RESOURCE_DESC d3d12ResourceDesc = d3d12Resource->GetDesc();
-            m_Type = TextureType{ d3d12ResourceDesc.Dimension };
-            m_Format = GraphicsFormat{ d3d12ResourceDesc.Format };
-            m_Width = static_cast<uint32_t>(d3d12ResourceDesc.Width);
+            m_Type = (TextureType)d3d12ResourceDesc.Dimension;
+            m_Format = (GraphicsFormat)d3d12ResourceDesc.Format;
+            m_Width = (uint32_t)d3d12ResourceDesc.Width;
             m_Height = d3d12ResourceDesc.Height;
             m_ArraySize = d3d12ResourceDesc.DepthOrArraySize;
             m_MipCount = d3d12ResourceDesc.MipLevels;
@@ -327,9 +326,8 @@ namespace benzin
             &sizeInBytes
         );
 
-        BenzinAssert(sizeInBytes != 0);
-        BenzinAssert(sizeInBytes <= std::numeric_limits<uint32_t>::max());
-        return static_cast<uint32_t>(sizeInBytes);
+        BenzinAssert(sizeInBytes != 0 && sizeInBytes <= std::numeric_limits<uint32_t>::max());
+        return (uint32_t)sizeInBytes;
     }
 
     uint32_t Texture::GetSubResourceCount() const

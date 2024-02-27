@@ -3,7 +3,7 @@
 
 float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
 {
-    const joint::CameraConstants cameraConstants = FetchCameraConstants();
+    const joint::CameraConstants cameraConstants = FetchCurrentCameraConstants();
     TextureCube<float4> cubeMap = ResourceDescriptorHeap[GetRootConstant(joint::EnvironmentPassRC_CubeMapTexture)];
 
     const float4 worldPosition = mul(input.ClipPosition, cameraConstants.InverseViewDirectionProjection);

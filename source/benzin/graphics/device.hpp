@@ -9,7 +9,7 @@ namespace benzin
     class ComputeCommandQueue;
     class CopyCommandQueue;
     class DescriptorManager;
-    class Fence;
+    class DeviceRemovedFence;
     class GraphicsCommandQueue;
     class TextureLoader;
 
@@ -45,8 +45,8 @@ namespace benzin
         DescriptorManager& GetDescriptorManager() { return *m_DescriptorManager; }
         TextureLoader& GetTextureLoader() { return *m_TextureLoader; }
 
-        uint64_t GetCPUFrameIndex() const { return m_CPUFrameIndex; }
-        uint64_t GetGPUFrameIndex() const { return m_GPUFrameIndex; }
+        uint64_t GetCpuFrameIndex() const { return m_CpuFrameIndex; }
+        uint64_t GetGpuFrameIndex() const { return m_GpuFrameIndex; }
         uint8_t GetActiveFrameIndex() const { return m_ActiveFrameIndex; }
 
     public:
@@ -64,17 +64,15 @@ namespace benzin
 
         ID3D12RootSignature* m_D3D12BindlessRootSignature = nullptr;
 
-        CopyCommandQueue* m_CopyCommandQueue = nullptr;
-        ComputeCommandQueue* m_ComputeCommandQueue = nullptr;
-        GraphicsCommandQueue* m_GraphicsCommandQueue = nullptr;
+        std::unique_ptr<CopyCommandQueue> m_CopyCommandQueue;
+        std::unique_ptr<ComputeCommandQueue> m_ComputeCommandQueue;
+        std::unique_ptr<GraphicsCommandQueue> m_GraphicsCommandQueue;
 
-        DescriptorManager* m_DescriptorManager = nullptr;
-        TextureLoader* m_TextureLoader = nullptr;
+        std::unique_ptr<DescriptorManager> m_DescriptorManager;
+        std::unique_ptr<TextureLoader> m_TextureLoader;
 
-        Fence* m_DeviceRemovedFence = nullptr;
-
-        uint64_t m_CPUFrameIndex = 0;
-        uint64_t m_GPUFrameIndex = 0;
+        uint64_t m_CpuFrameIndex = 0;
+        uint64_t m_GpuFrameIndex = 0;
         uint8_t m_ActiveFrameIndex = 0; // In range [0, FrameInFlightCount)
     };
 

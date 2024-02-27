@@ -21,7 +21,7 @@ namespace benzin
 
     struct GraphicsPipelineStateCreation
     {
-        DebugName DebugName;
+        std::string_view DebugName;
 
         ShaderCreation VertexShader;
         ShaderCreation PixelShader;
@@ -39,7 +39,7 @@ namespace benzin
 
     struct ComputePipelineStateCreation
     {
-        DebugName DebugName;
+        std::string_view DebugName;
 
         ShaderCreation ComputeShader;
     };

@@ -1,15 +1,14 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/mapped_data.hpp"
 
+#include "benzin/core/asserter.hpp"
+
 namespace benzin
 {
 
-    namespace
-    {
+    static constexpr uint32_t g_DefaultSubresourceIndex = 0;
 
-        constexpr uint32_t g_DefaultSubresourceIndex = 0;
-
-    } // anonymous namespace
+    //
 
     MappedData::MappedData(const Buffer& buffer)
         : m_Buffer{ buffer }

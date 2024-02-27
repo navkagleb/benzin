@@ -3,34 +3,28 @@
 namespace benzin
 {
 
+    struct GraphicsDebugLayerParams
+    {
+        bool IsGPUBasedValidationEnabled = false;
+        bool IsSynchronizedCommandQueueValidationEnabled = false;
+    };
+
     class CommandLineArgs
     {
     public:
-        CommandLineArgs(int argc, char** argv);
+        BenzinDefineNonConstructable(CommandLineArgs);
 
-    public:
-        const auto& GetExecutablePath() const { return m_ExecutablePath; }
+        static void Initialize(int argc, char** argv);
 
-        auto GetWindowWidth() const { return m_WindowWidth; }
-        auto GetWindowHeight() const { return m_WindowHeight; }
-        auto IsWindowResizable() const { return m_IsWindowResizable; }
+        static uint32_t GetWindowWidth();
+        static uint32_t GetWindowHeight();
+        static bool IsWindowResizable();
 
-        auto GetAdapterIndex() const { return m_AdapterIndex; }
-        auto GetFrameInFlightCount() const { return m_FrameInFlightCount; }
-        auto IsEnabledGPUBasedValidation() const { return m_IsEnabledGPUBasedValidation; }
+        static uint32_t GetAdapterIndex();
+        static uint32_t GetFrameInFlightCount();
+        static GraphicsFormat GetBackBufferFormat();
 
-    private:
-        std::filesystem::path m_ExecutablePath;
-
-        uint32_t m_WindowWidth = 1280;
-        uint32_t m_WindowHeight = 720;
-        bool m_IsWindowResizable = true;
-
-        uint32_t m_AdapterIndex = 0;
-        uint32_t m_FrameInFlightCount = 3;
-        bool m_IsEnabledGPUBasedValidation = false;
+        static GraphicsDebugLayerParams GetGraphicsDebugLayerParams();
     };
-
-    using CommandLineArgsInstance = SingletonInstanceWrapper<CommandLineArgs>;
 
 } // namespace benzin

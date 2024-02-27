@@ -13,6 +13,9 @@ namespace benzin
 
         RGB32Float = DXGI_FORMAT_R32G32B32_FLOAT,
 
+        RG16Float = DXGI_FORMAT_R16G16_FLOAT,
+        RG8Unorm = DXGI_FORMAT_R8G8_UNORM,
+
         D24Unorm_S8Uint = DXGI_FORMAT_D24_UNORM_S8_UINT,
         D24Unorm_X8Typeless = DXGI_FORMAT_R24_UNORM_X8_TYPELESS,
 

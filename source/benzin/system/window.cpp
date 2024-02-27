@@ -3,12 +3,12 @@
 
 #include <third_party/imgui/backends/imgui_impl_win32.h>
 
+#include "benzin/core/asserter.hpp"
+#include "benzin/graphics/common.hpp"
 #include "benzin/system/input.hpp"
 #include "benzin/system/key_event.hpp"
 #include "benzin/system/mouse_event.hpp"
 #include "benzin/system/window_event.hpp"
-
-#include "benzin/graphics/common.hpp"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
@@ -266,6 +266,8 @@ namespace benzin
 
     static RegisterManager g_RegisterManager{ "BenzinWindowRegisterManager" };
 
+    //
+
     Window::Window(const WindowCreation& creation)
         : m_Width{ creation.Width }
         , m_Height{ creation.Height }
@@ -273,6 +275,7 @@ namespace benzin
         auto style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
         if (creation.IsResizable)
         {
+            style |= WS_THICKFRAME;
             style |= WS_MAXIMIZEBOX;
         }
 
@@ -336,6 +339,8 @@ namespace benzin
 
     void Window::SetVisible(bool isVisible)
     {
+        // #TODO: Add assertions
+
         ::ShowWindow(m_Win64Window, isVisible ? SW_SHOW : SW_HIDE);
         ::UpdateWindow(m_Win64Window);
     }

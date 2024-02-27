@@ -1,4 +1,7 @@
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/fence.hpp"
+
+#include "benzin/core/asserter.hpp"
 
 namespace benzin
 {
@@ -32,7 +35,6 @@ namespace benzin
     template <std::derived_from<CommandList> CommandListT>
     CommandQueue<CommandListT>::CommandQueue(Device& device, size_t commandAllocatorCount)
         : m_Device{ device }
-        , m_FlushFence{ device }
         , m_CommandList{ device }
     {
         const CommandListType commandListType = GetCommandListType<CommandListT>();
@@ -46,23 +48,23 @@ namespace benzin
             .NodeMask = 0,
         };
 
-        BenzinAssert(device.GetD3D12Device()->CreateCommandQueue(&d3d12CommandQueueDesc, IID_PPV_ARGS(&m_D3D12CommandQueue)));
+        BenzinEnsure(device.GetD3D12Device()->CreateCommandQueue(&d3d12CommandQueueDesc, IID_PPV_ARGS(&m_D3D12CommandQueue)));
         SetD3D12ObjectDebugName(m_D3D12CommandQueue, commandListTypeName + "CommandQueue"s);
 
         m_D3D12CommandAllocators.resize(commandAllocatorCount, nullptr);
         for (const auto [i, d3d12CommandAllocator] : m_D3D12CommandAllocators | std::views::enumerate)
         {
-            BenzinAssert(device.GetD3D12Device()->CreateCommandAllocator((D3D12_COMMAND_LIST_TYPE)commandListType, IID_PPV_ARGS(&d3d12CommandAllocator)));
+            BenzinEnsure(device.GetD3D12Device()->CreateCommandAllocator((D3D12_COMMAND_LIST_TYPE)commandListType, IID_PPV_ARGS(&d3d12CommandAllocator)));
             SetD3D12ObjectDebugName(d3d12CommandAllocator, commandListTypeName + "CommandAllocator"s, (uint32_t)i);
         }
 
-        SetD3D12ObjectDebugName(m_FlushFence.GetD3D12Fence(), GetD3D12ObjectDebugName(m_D3D12CommandQueue) + "FlushFence");
+        m_FlushFence = std::make_unique<StalledFence>(device, GetD3D12ObjectDebugName(m_D3D12CommandQueue) + "FlushFence");
     }
 
     template <std::derived_from<CommandList> CommandListT>
     CommandQueue<CommandListT>::~CommandQueue()
     {
-        Flush(false);
+        Flush();
 
         for (auto& d3d12CommandAllocator : m_D3D12CommandAllocators)
         {
@@ -78,7 +80,7 @@ namespace benzin
         BenzinAssert(m_D3D12CommandQueue);
 
         uint64_t frequency = 0;
-        BenzinAssert(m_D3D12CommandQueue->GetTimestampFrequency(&frequency));
+        BenzinEnsure(m_D3D12CommandQueue->GetTimestampFrequency(&frequency));
 
         return frequency;
     }
@@ -89,17 +91,17 @@ namespace benzin
         BenzinAssert(commandAllocatorIndex < m_D3D12CommandAllocators.size());
 
         ID3D12CommandAllocator* d3d12CommandAllocator = m_D3D12CommandAllocators[commandAllocatorIndex];
-        BenzinAssert(d3d12CommandAllocator->Reset());
+        BenzinEnsure(d3d12CommandAllocator->Reset());
 
         ID3D12GraphicsCommandList1* d3d12GraphicsCommandList = m_CommandList.GetD3D12GraphicsCommandList();
-        BenzinAssert(d3d12GraphicsCommandList->Reset(d3d12CommandAllocator, nullptr));
+        BenzinEnsure(d3d12GraphicsCommandList->Reset(d3d12CommandAllocator, nullptr));
 
         InitCommandList();
         m_IsCommandListExecuted = false;
     }
 
     template <std::derived_from<CommandList> CommandListT>
-    void CommandQueue<CommandListT>::ExecuteCommandList()
+    void CommandQueue<CommandListT>::SumbitCommandList()
     {
         if (m_IsCommandListExecuted)
         {
@@ -107,7 +109,7 @@ namespace benzin
         }
 
         ID3D12GraphicsCommandList* d3d12GraphicsCommandList = m_CommandList.GetD3D12GraphicsCommandList();
-        BenzinAssert(d3d12GraphicsCommandList->Close());
+        BenzinEnsure(d3d12GraphicsCommandList->Close());
 
         ID3D12CommandList* const d3d12CommandLists[]{ d3d12GraphicsCommandList };
         m_D3D12CommandQueue->ExecuteCommandLists((uint32_t)std::size(d3d12CommandLists), d3d12CommandLists);
@@ -116,27 +118,20 @@ namespace benzin
     }
 
     template <std::derived_from<CommandList> CommandListT>
-    void CommandQueue<CommandListT>::Flush(bool isforcedCommandListExecution)
+    void CommandQueue<CommandListT>::Flush()
     {
-        if (isforcedCommandListExecution && !m_IsCommandListExecuted)
-        {
-            ExecuteCommandList();
-        }
-
-        const std::string debugName = GetD3D12ObjectDebugName(m_D3D12CommandQueue);
-
         m_FlushCount++;
 
-        SignalFence(m_FlushFence, m_FlushCount);
-        m_FlushFence.StallCurrentThreadUntilGPUCompletion(m_FlushCount);
+        BenzinLogTimeOnScopeExit("Flush Command queue {}. Probably Need to wait. FlushCount: {}", GetD3D12ObjectDebugName(m_D3D12CommandQueue), m_FlushCount);
+
+        SignalFence(*m_FlushFence, m_FlushCount);
+        m_FlushFence->StallCurrentThreadUntilGPUCompletion(m_FlushCount);
     }
 
     template <std::derived_from<CommandList> CommandListT>
-    void CommandQueue<CommandListT>::SignalFence(Fence& fence, uint64_t value)
+    void CommandQueue<CommandListT>::SignalFence(StalledFence& fence, uint64_t value)
     {
-        BenzinAssert(fence.GetD3D12Fence());
-
-        BenzinAssert(m_D3D12CommandQueue->Signal(fence.GetD3D12Fence(), value));
+        BenzinEnsure(m_D3D12CommandQueue->Signal(fence.GetD3D12Fence(), value));
     }
 
 } // namespace benzin

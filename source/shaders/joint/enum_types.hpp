@@ -13,6 +13,7 @@ namespace joint
         DeferredLightingOutputType_GBuffer_Albedo,
         DeferredLightingOutputType_GBuffer_WorldNormal,
         DeferredLightingOutputType_GBuffer_Emissive,
+        DeferredLightingOutputType_GBuffer_MotionVectors,
         DeferredLightingOutputType_GBuffer_Roughness,
         DeferredLightingOutputType_GBuffer_Metalness,
         DeferredLightingOutputType_Count,

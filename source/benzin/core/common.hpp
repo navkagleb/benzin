@@ -41,39 +41,13 @@ namespace benzin
         return std::ranges::iota_view{ indexRange.StartIndex, indexRange.StartIndex + indexRange.Count };
     }
 
-    using ByteSpan = std::span<std::byte>;
+    constexpr uint64_t KbToBytes(uint64_t kb) { return kb * 1024; }
+    constexpr uint64_t MbToBytes(uint64_t mb) { return KbToBytes(mb * 1024); }
+    constexpr uint64_t GbToBytes(uint64_t gb) { return MbToBytes(gb * 1024); }
 
-    constexpr uint64_t KibiBytesToBytes(uint64_t kb)
-    {
-        return kb * 1024;
-    }
-
-    constexpr uint64_t MebiBytesToBytes(uint64_t mb)
-    {
-        return mb * 1024 * 1024;
-    }
-
-    constexpr uint64_t GibiBytesToBytes(uint64_t gb)
-    {
-        return gb * 1024 * 1024 * 1024;
-    }
-
-    constexpr uint64_t BytesToKibiBytes(uint64_t bytes)
-    {
-        return (bytes / 1024) + (bytes % 1024 != 0);
-    }
-
-    constexpr uint64_t BytesToMebiBytes(uint64_t bytes)
-    {
-        const uint64_t kb = BytesToKibiBytes(bytes);
-        return (kb / 1024) + (kb % 1024 != 0);
-    }
-
-    constexpr uint64_t BytesToGibiBytes(uint64_t bytes)
-    {
-        const uint64_t mb = BytesToMebiBytes(bytes);
-        return (mb / 1024) + (mb % 1024 != 0);
-    }
+    constexpr float BytesToFloatKb(uint64_t bytes) { return (float)bytes / KbToBytes(1); }
+    constexpr float BytesToFloatMb(uint64_t bytes) { return (float)bytes / MbToBytes(1); }
+    constexpr float BytesToFloatGb(uint64_t bytes) { return (float)bytes / GbToBytes(1); }
 
     template <std::integral T, std::integral U>
     constexpr auto AlignAbove(T value, U alignment)
@@ -91,7 +65,7 @@ namespace benzin
         return 1 << bitPosition;
     }
 
-    constexpr size_t HashCombine(const auto& value, size_t resultHash)
+    constexpr size_t HashCombine(size_t resultHash, const auto& value)
     {
         const auto hashedValue = std::hash<std::decay_t<decltype(value)>>{}(value);
         const auto combinedHash = resultHash ^ hashedValue + 0x9e3779b9 + (resultHash << 6) + (resultHash >> 2);

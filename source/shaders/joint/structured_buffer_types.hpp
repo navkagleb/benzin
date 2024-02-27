@@ -30,7 +30,8 @@ namespace joint
     struct MeshTransform
     {
         float4x4 Matrix;
-        float4x4 InverseMatrix;
+        float4x4 PreviousMatrix;
+        float4x4 MatrixForNormals;
     };
 
     struct Material

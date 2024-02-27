@@ -42,8 +42,6 @@ namespace sandbox
         ~RTProceduralGeometryLayer();
 
     public:
-        void OnEndFrame() override;
-        
         void OnEvent(benzin::Event& event) override;
         void OnUpdate() override;
         void OnRender() override;

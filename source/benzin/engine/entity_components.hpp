@@ -4,6 +4,8 @@ namespace benzin
 {
 
     class Buffer;
+    class Descriptor;
+    class Device;
 
     struct MeshInstanceComponent
     {
@@ -11,22 +13,42 @@ namespace benzin
         std::optional<IndexRangeU32> MeshInstanceRange;
     };
 
-    struct TransformComponent
+    class TransformComponent
     {
-        std::unique_ptr<Buffer> Buffer;
+    public:
+        friend class Scene;
 
-        DirectX::XMFLOAT3 Scale{ 1.0f, 1.0f, 1.0f };
-        DirectX::XMFLOAT3 Rotation{ 0.0f, 0.0f, 0.0f };
-        DirectX::XMFLOAT3 Translation{ 0.0f, 0.0f, 0.0f };
+    public:
+        const auto& GetScale() const { return m_Scale; }
+        void SetScale(const DirectX::XMFLOAT3& scale);
 
-        DirectX::XMMATRIX GetWorldMatrix() const
-        {
-            const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(Rotation.x) * DirectX::XMMatrixRotationY(Rotation.y) * DirectX::XMMatrixRotationZ(Rotation.z);
-            const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(Scale.x, Scale.y, Scale.z);
-            const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(Translation.x, Translation.y, Translation.z);
+        const auto& GetRotation() const { return m_Rotation; }
+        void SetRotation(const DirectX::XMFLOAT3& rotation);
 
-            return scaling * rotation * translation;
-        }
+        const auto& GetTranslation() const { return m_Translation; }
+        void SetTranslation(const DirectX::XMFLOAT3& translation);
+
+        const DirectX::XMMATRIX& GetWorldMatrix() const;
+
+        const Descriptor& GetActiveTransformConstantBufferCBV(const Device& device) const;
+
+    private:
+        void UpdateMatricesIfNeeded();
+
+        void CreateTransformConstantBuffer(Device& device, std::string_view debugName);
+        void UpdateTransformConstantBuffer(const Device& device);
+
+    private:
+        DirectX::XMFLOAT3 m_Scale{ 1.0f, 1.0f, 1.0f };
+        DirectX::XMFLOAT3 m_Rotation{ 0.0f, 0.0f, 0.0f };
+        DirectX::XMFLOAT3 m_Translation{ 0.0f, 0.0f, 0.0f };
+
+        bool m_IsDirty = true;
+        DirectX::XMMATRIX m_WorldMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_PreviousWorldMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_WorldMatrixForNormals = DirectX::XMMatrixIdentity();
+
+        std::unique_ptr<Buffer> m_TransformConstantBuffer;
     };
 
     struct UpdateComponent

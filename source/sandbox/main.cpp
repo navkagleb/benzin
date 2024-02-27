@@ -1,14 +1,19 @@
 #include "bootstrap.hpp"
 
+#include <benzin/core/asserter.hpp>
 #include <benzin/core/command_line_args.hpp>
 #include <benzin/core/entry_point.hpp>
 #include <benzin/core/imgui_layer.hpp>
 #include <benzin/core/layer_stack.hpp>
+#include <benzin/core/logger.hpp>
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/swap_chain.hpp>
+#include <benzin/graphics/texture.hpp>
 #include <benzin/system/key_event.hpp>
+#include <benzin/system/window.hpp>
+#include <benzin/utility/debug_utils.hpp>
 
 #include "scene_layer.hpp"
 #include "rt_hello_triangle_layer.hpp"
@@ -37,14 +42,14 @@ namespace sandbox
 
         void OnUpdate(std::chrono::microseconds dt)
         {
-            m_ElapsedTime += benzin::ToMS(dt);
+            m_ElapsedTime += dt;
             m_ElapsedFrameCount++;
         }
 
     private:
-        float m_FrameRate = 60.0f;
+        float m_FrameRate = 0.0f;
 
-        std::chrono::milliseconds m_ElapsedTime = std::chrono::milliseconds::zero();
+        std::chrono::microseconds m_ElapsedTime = std::chrono::microseconds::zero();
         uint32_t m_ElapsedFrameCount = 0;
     };
 
@@ -57,14 +62,12 @@ namespace sandbox
         {
             BenzinLogTimeOnScopeExit("Create Application");
 
-            const auto commandLineArgs = benzin::CommandLineArgsInstance::Get();
-
             const benzin::WindowCreation windowCreation
             {
                 .Title = "Benzin: Sandbox",
-                .Width = commandLineArgs.GetWindowWidth(),
-                .Height = commandLineArgs.GetWindowHeight(),
-                .IsResizable = commandLineArgs.IsWindowResizable(),
+                .Width = benzin::CommandLineArgs::GetWindowWidth(),
+                .Height = benzin::CommandLineArgs::GetWindowHeight(),
+                .IsResizable = benzin::CommandLineArgs::IsWindowResizable(),
                 .EventCallback = [&](benzin::Event& event) { WindowEventCallback(event); },
             };
 
@@ -84,20 +87,15 @@ namespace sandbox
             BeginFrame();
             {
                 m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(graphicsRefs);
-
-#if 1
-                m_SceneLayer = m_LayerStack.Push<SceneLayer>(graphicsRefs);
-#elif 0
-                m_RTHelloTriangleLayer = m_LayerStack.Push<RTHelloTriangleLayer>(graphicsRefs);
-#else
-                m_RTProceduralGeometryLayer = m_LayerStack.Push<RTProceduralGeometryLayer>(graphicsRefs);
-#endif
+                // m_SceneLayer = m_LayerStack.Push<SceneLayer>(graphicsRefs);
             }
             EndFrame();
         }
 
         ~Application()
         {
+            BenzinLogTimeOnScopeExit("Shutdown Application");
+
             // TODO: Need to flush until deferred release is implemented
             m_Device->GetGraphicsCommandQueue().Flush();
         }
@@ -161,10 +159,8 @@ namespace sandbox
 
             for (auto& layer : m_LayerStack)
             {
-                layer->OnBeginFrame();
                 layer->OnUpdate();
                 layer->OnRender();
-                layer->OnEndFrame();
             }
 
             if (m_ImGuiLayer->IsWidgetDrawEnabled())
@@ -176,7 +172,7 @@ namespace sandbox
                         layer->OnImGuiRender();
                     }
                 }
-                m_ImGuiLayer->End();
+                m_ImGuiLayer->End(m_IsImGuiLayerClearsBackBuffer);
             }
         }
 
@@ -184,35 +180,67 @@ namespace sandbox
         {
             BenzinGrabTimeOnScopeExit(m_Timings[benzin::ApplicationTiming::EndFrame]);
 
-            m_Device->GetGraphicsCommandQueue().ExecuteCommandList();
-            m_SwapChain->Flip();
+            // 'SwapChain::OnFlip' can update viewport dimenions, so if statemend below will be invalid
+            const auto oldSwapChainWidth = (uint32_t)m_SwapChain->GetViewport().Width;
+            const auto oldSwapChainHeight = (uint32_t)m_SwapChain->GetViewport().Height;
+
+            m_Device->GetGraphicsCommandQueue().SumbitCommandList();
+            m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
+
+            if (m_PendingWidth != 0 && m_PendingHeight != 0 && (m_PendingWidth != oldSwapChainWidth || m_PendingHeight != oldSwapChainHeight))
+            {
+                for (auto& layer : m_LayerStack)
+                {
+                    layer->OnResize(m_PendingWidth, m_PendingHeight);
+                }
+
+                m_PendingWidth = 0;
+                m_PendingHeight = 0;
+            }
         }
 
     private:
         bool OnWindowClose(benzin::WindowCloseEvent& event)
         {
-            RequestShutdow();
+            RequestShutdown();
             return false;
         };
 
         bool OnWindowResized(benzin::WindowResizedEvent& event)
         {
-            m_Device->GetGraphicsCommandQueue().ExecuteCommandList(); // #TODO: Remove. Refactor in SwapChain::FlushAndResetBackBuffers
-            m_SwapChain->ResizeBackBuffers(event.GetWidth(), event.GetHeight());
+            m_PendingWidth = event.GetWidth();
+            m_PendingHeight = event.GetHeight();
+
+            m_SwapChain->RequestResize(m_PendingWidth, m_PendingHeight);
+
             return false;
         };
 
         bool OnKeyPressed(benzin::KeyPressedEvent& event)
         {
-            if (event.GetKeyCode() == benzin::KeyCode::Escape)
+            switch (event.GetKeyCode())
             {
-                RequestShutdow();
+                case benzin::KeyCode::Escape:
+                {
+                    RequestShutdown();
+                    break;
+                }
+                case benzin::KeyCode::V:
+                {
+                    m_IsVerticalSyncEnabled = !m_IsVerticalSyncEnabled;
+                    break;
+                }
+                case benzin::KeyCode::B:
+                {
+                    m_IsImGuiLayerClearsBackBuffer = !m_IsImGuiLayerClearsBackBuffer;
+                    break;
+                }
             }
 
             return false;
         }
 
-        void RequestShutdow()
+        void RequestShutdown()
         {
             m_IsRunning = false;
         }
@@ -227,13 +255,15 @@ namespace sandbox
         bool& m_IsUpdateStatsIntervalPassedRef;
 
         benzin::LayerStack m_LayerStack;
-
-        std::shared_ptr<benzin::ImGuiLayer> m_ImGuiLayer;
-        std::shared_ptr<SceneLayer> m_SceneLayer;
-        std::shared_ptr<RTHelloTriangleLayer> m_RTHelloTriangleLayer;
-        std::shared_ptr<RTProceduralGeometryLayer> m_RTProceduralGeometryLayer;
+        benzin::ImGuiLayer* m_ImGuiLayer = nullptr;
+        SceneLayer* m_SceneLayer = nullptr;
 
         bool m_IsRunning = false;
+        bool m_IsVerticalSyncEnabled = true;
+        bool m_IsImGuiLayerClearsBackBuffer = false;
+
+        uint32_t m_PendingWidth = 0;
+        uint32_t m_PendingHeight = 0;
 
         FrameRateCounter m_FrameRateCounter;
         benzin::ApplicationTimings m_Timings;
@@ -243,19 +273,6 @@ namespace sandbox
 
 int benzin::ClientMain()
 {
-    BenzinAssert(benzin::CommandLineArgsInstance::IsInitialized());
-    const auto& commandLines = benzin::CommandLineArgsInstance::Get();
-
-    benzin::GraphicsSettingsInstance::Initialize(benzin::GraphicsSettings
-    {
-        .MainAdapterIndex = commandLines.GetAdapterIndex(),
-        .FrameInFlightCount = commandLines.GetFrameInFlightCount(),
-        .DebugLayerParams
-        {
-            .IsGPUBasedValidationEnabled = commandLines.IsEnabledGPUBasedValidation(),
-        },
-    });
-
     {
         sandbox::Application application;
         application.ExecuteMainLoop();

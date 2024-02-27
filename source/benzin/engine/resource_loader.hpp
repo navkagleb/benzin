@@ -70,6 +70,6 @@ namespace benzin
         std::vector<Material> Materials;
     };
 
-    bool LoadMeshCollectionFromGLTFFile(std::string_view fileName, MeshCollectionResource& outMeshCollection);
+    bool LoadMeshCollectionFromGltfFile(std::string_view fileName, MeshCollectionResource& outMeshCollection);
 
 } // namespace benzin

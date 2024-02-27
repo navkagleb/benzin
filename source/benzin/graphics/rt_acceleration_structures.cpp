@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/rt_acceleration_structures.hpp"
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/device.hpp"
 
 namespace benzin::rt

@@ -42,7 +42,7 @@ namespace benzin
 
     } // anonymous namespace
 
-    void Logger::LogImpl(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message) const
+    void Logger::LogImpl(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
     {
         const auto output = GetOutput(severity, sourceLocation, message);
 

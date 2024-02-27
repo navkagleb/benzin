@@ -1,6 +1,7 @@
 #include "bootstrap.hpp"
 #include "rt_procedural_geometry_layer.hpp"
 
+#include <benzin/core/command_line_args.hpp>
 #include <benzin/engine/geometry_generator.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/graphics/buffer.hpp>
@@ -204,11 +205,6 @@ namespace sandbox
 
     RTProceduralGeometryLayer::~RTProceduralGeometryLayer() = default;
 
-    void RTProceduralGeometryLayer::OnEndFrame()
-    {
-        m_GPUTimer->ResolveTimestamps();
-    }
-
     void RTProceduralGeometryLayer::OnEvent(benzin::Event& event)
     {
         m_FlyCameraController.OnEvent(event);
@@ -321,10 +317,12 @@ namespace sandbox
 
             commandList.SetResourceBarriers(
             {
-                benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::Present },
+                benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::Common },
                 benzin::TransitionBarrier{ *m_RaytracingOutput, benzin::ResourceState::UnorderedAccess },
             });
         }
+
+        m_GPUTimer->ResolveTimestamps();
     }
 
     void RTProceduralGeometryLayer::OnImGuiRender()
@@ -775,7 +773,7 @@ namespace sandbox
         {
             .DebugName = "RayTracingOutput",
             .Type = benzin::TextureType::Texture2D,
-            .Format = benzin::GraphicsSettingsInstance::Get().BackBufferFormat,
+            .Format = benzin::CommandLineArgs::GetBackBufferFormat(),
             .Width = m_Window.GetWidth(),
             .Height = m_Window.GetHeight(),
             .MipCount = 1,

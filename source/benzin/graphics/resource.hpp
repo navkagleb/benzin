@@ -16,13 +16,13 @@ namespace benzin
 
     class Resource
     {
-    public:
-        BenzinDefineNonCopyable(Resource);
-        BenzinDefineNonMoveable(Resource);
 
     protected:
         explicit Resource(Device& device);
         virtual ~Resource();
+
+        BenzinDefineNonCopyable(Resource);
+        BenzinDefineNonMoveable(Resource);
 
     public:
         ID3D12Resource* GetD3D12Resource() const { return m_D3D12Resource; }
@@ -51,7 +51,7 @@ namespace benzin
         Device& m_Device;
 
         ID3D12Resource* m_D3D12Resource = nullptr;
-        ResourceState m_CurrentState = ResourceState::Present;
+        ResourceState m_CurrentState = ResourceState::Common;
 
         std::unordered_map<DescriptorType, std::vector<Descriptor>> m_Views;
     };

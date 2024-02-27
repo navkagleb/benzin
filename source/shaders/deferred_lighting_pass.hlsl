@@ -49,12 +49,14 @@ UnpackedGBuffer FetchGBuffer(float2 uv)
     Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRC_WorldNormalTexture)];
     Texture2D<float4> emissiveTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRC_EmissiveTexture)];
     Texture2D<float4> roughnessMetalnessTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRC_RoughnessMetalnessTexture)];
+    Texture2D<float4> motionVectorsTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRC_MotionVectorsTexture)];
 
     PackedGBuffer packedGBuffer;
-    packedGBuffer.Color0 = albedoTexture.Sample(g_LinearWrapSampler, uv);
-    packedGBuffer.Color1 = worldNormalTexture.Sample(g_LinearWrapSampler, uv);
-    packedGBuffer.Color2 = emissiveTexture.Sample(g_LinearWrapSampler, uv);
-    packedGBuffer.Color3 = roughnessMetalnessTexture.Sample(g_LinearWrapSampler, uv);
+    packedGBuffer.Color0 = albedoTexture.SampleLevel(g_PointWrapSampler, uv, 0);
+    packedGBuffer.Color1 = worldNormalTexture.SampleLevel(g_PointWrapSampler, uv, 0);
+    packedGBuffer.Color2 = emissiveTexture.SampleLevel(g_PointWrapSampler, uv, 0);
+    packedGBuffer.Color3 = roughnessMetalnessTexture.SampleLevel(g_PointWrapSampler, uv, 0);
+    packedGBuffer.Color4 = motionVectorsTexture.SampleLevel(g_PointWrapSampler, uv, 0);
 
     return UnpackGBuffer(packedGBuffer);
 }
@@ -73,7 +75,7 @@ float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
         discard;
     }
 
-    const joint::CameraConstants cameraConstants = FetchCameraConstants();
+    const joint::CameraConstants cameraConstants = FetchCurrentCameraConstants();
     const joint::DeferredLightingPassConstants passConstants = FetchPassConstants();
     const UnpackedGBuffer gbuffer = FetchGBuffer(input.UV);
 
@@ -107,6 +109,10 @@ float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
         case joint::DeferredLightingOutputType_GBuffer_Emissive:
         {
             return float4(gbuffer.Emissive, 1.0f);
+        }
+        case joint::DeferredLightingOutputType_GBuffer_MotionVectors:
+        {
+            return float4(gbuffer.MotionVector, 0.0, 1.0f);
         }
         case joint::DeferredLightingOutputType_GBuffer_Roughness:
         {
@@ -151,5 +157,7 @@ float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
     Texture2D<float4> shadowTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRC_ShadowTexture)];
 
     const float3 finalLitColor = ambientColor + gbuffer.Emissive + directColor * (1.0 - shadowTexture.Sample(g_LinearWrapSampler, input.UV).r);
+    // return float4(shadowTexture.Sample(g_LinearWrapSampler, input.UV).zw * 1000.0f, 0.0f, 1.0f);
     return float4(saturate(finalLitColor), 1.0f);
+
 }
