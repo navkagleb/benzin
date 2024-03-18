@@ -58,7 +58,7 @@ namespace benzin
             SetD3D12ObjectDebugName(d3d12CommandAllocator, commandListTypeName + "CommandAllocator"s, (uint32_t)i);
         }
 
-        m_FlushFence = std::make_unique<StalledFence>(device, GetD3D12ObjectDebugName(m_D3D12CommandQueue) + "FlushFence");
+        MakeUniquePtr(m_FlushFence, device, GetD3D12ObjectDebugName(m_D3D12CommandQueue) + "FlushFence");
     }
 
     template <std::derived_from<CommandList> CommandListT>
@@ -122,14 +122,14 @@ namespace benzin
     {
         m_FlushCount++;
 
-        BenzinLogTimeOnScopeExit("Flush Command queue {}. Probably Need to wait. FlushCount: {}", GetD3D12ObjectDebugName(m_D3D12CommandQueue), m_FlushCount);
+        BenzinLogTimeOnScopeExit("Flush Command queue {}. FlushCount: {}", GetD3D12ObjectDebugName(m_D3D12CommandQueue), m_FlushCount);
 
         SignalFence(*m_FlushFence, m_FlushCount);
-        m_FlushFence->StallCurrentThreadUntilGPUCompletion(m_FlushCount);
+        m_FlushFence->StopCurrentThreadBeforeGpuFinish(m_FlushCount);
     }
 
     template <std::derived_from<CommandList> CommandListT>
-    void CommandQueue<CommandListT>::SignalFence(StalledFence& fence, uint64_t value)
+    void CommandQueue<CommandListT>::SignalFence(Fence& fence, uint64_t value)
     {
         BenzinEnsure(m_D3D12CommandQueue->Signal(fence.GetD3D12Fence(), value));
     }

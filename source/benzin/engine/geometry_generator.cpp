@@ -20,8 +20,8 @@ namespace benzin
         const DirectX::XMVECTOR normalLhs = DirectX::XMLoadFloat3(&lhs.Normal);
         const DirectX::XMVECTOR normalRhs = DirectX::XMLoadFloat3(&rhs.Normal);
 
-        const DirectX::XMVECTOR uvLhs = DirectX::XMLoadFloat2(&lhs.UV);
-        const DirectX::XMVECTOR uvRhs = DirectX::XMLoadFloat2(&rhs.UV);
+        const DirectX::XMVECTOR uvLhs = DirectX::XMLoadFloat2(&lhs.Uv);
+        const DirectX::XMVECTOR uvRhs = DirectX::XMLoadFloat2(&rhs.Uv);
 
         // Compute the midpoints of all the attributes. Vectors need to be normalized
         // since linear interpolating can make them not unit length. 
@@ -32,7 +32,7 @@ namespace benzin
         MeshVertex middle;
         DirectX::XMStoreFloat3(&middle.Position, localPosition);
         DirectX::XMStoreFloat3(&middle.Normal, localNormal);
-        DirectX::XMStoreFloat2(&middle.UV, uv);
+        DirectX::XMStoreFloat2(&middle.Uv, uv);
 
         return middle;
     }
@@ -111,7 +111,7 @@ namespace benzin
                 {
                     .Position{ x, y, z },
                     .Normal{ 0.0f, 1.0f, 0.0f },
-                    .UV{ u, v }
+                    .Uv{ u, v }
                 });
             }
 
@@ -119,7 +119,7 @@ namespace benzin
             {
                 .Position{ 0.0f, y, 0.0f },
                 .Normal{ 0.0f, 1.0f, 0.0f },
-                .UV{ 0.5f, 0.5f }
+                .Uv{ 0.5f, 0.5f }
             };
 
             meshData.Vertices.push_back(centerVertex);
@@ -158,7 +158,7 @@ namespace benzin
                 {
                     .Position{ x, y, z },
                     .Normal{ 0.0f, -1.0f, 0.0f },
-                    .UV{ u, v }
+                    .Uv{ u, v }
                 });
             }
 
@@ -166,7 +166,7 @@ namespace benzin
             {
                 .Position{ 0.0f, y, 0.0f },
                 .Normal{ 0.0f, -1.0f, 0.0f },
-                .UV{ 0.5f, 0.5f },
+                .Uv{ 0.5f, 0.5f },
             };
 
             meshData.Vertices.push_back(centerVertex);
@@ -310,7 +310,7 @@ namespace benzin
 
                     vertices[i * creation.DepthPointCount + j].Position = DirectX::XMFLOAT3{ x, 0.0f, z };
                     vertices[i * creation.DepthPointCount + j].Normal = DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
-                    vertices[i * creation.DepthPointCount + j].UV = DirectX::XMFLOAT2{ j * du, i * dv };
+                    vertices[i * creation.DepthPointCount + j].Uv = DirectX::XMFLOAT2{ j * du, i * dv };
                 }
             }
         }
@@ -373,8 +373,8 @@ namespace benzin
 
                     vertex.Position = DirectX::XMFLOAT3{ r * c, y, r * s };
 
-                    vertex.UV.x = static_cast<float>(j) / creation.SliceCount;
-                    vertex.UV.y = 1.0f - static_cast<float>(i) / creation.StackCount;
+                    vertex.Uv.x = static_cast<float>(j) / creation.SliceCount;
+                    vertex.Uv.y = 1.0f - static_cast<float>(i) / creation.StackCount;
 
                     const DirectX::XMFLOAT3 tangent{ -s, 0.0f, c };
 
@@ -428,14 +428,14 @@ namespace benzin
             {
                 .Position{ 0.0f, creation.Radius, 0.0f },
                 .Normal{ 0.0f, 1.0f, 0.0f },
-                .UV{ 0.0f, 0.0f }
+                .Uv{ 0.0f, 0.0f }
             };
 
             const MeshVertex bottomVertex
             {
                 .Position{ 0.0f, -creation.Radius, 0.0f },
                 .Normal{ 0.0f, -1.0f, 0.0f },
-                .UV{ 0.0f, 1.0f },
+                .Uv{ 0.0f, 1.0f },
             };
 
             meshData.Vertices.push_back(topVertex);
@@ -460,8 +460,8 @@ namespace benzin
 
                     DirectX::XMStoreFloat3(&vertex.Normal, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&vertex.Position)));
 
-                    vertex.UV.x = theta / DirectX::XM_2PI;
-                    vertex.UV.y = phi / DirectX::XM_PI;
+                    vertex.Uv.x = theta / DirectX::XM_2PI;
+                    vertex.Uv.y = phi / DirectX::XM_PI;
                 }
             }
 
@@ -563,8 +563,8 @@ namespace benzin
 
             const float phi = std::acosf(meshData.Vertices[i].Position.y / creation.Radius);
 
-            meshData.Vertices[i].UV.x = theta / DirectX::XM_2PI;
-            meshData.Vertices[i].UV.y = phi / DirectX::XM_PI;
+            meshData.Vertices[i].Uv.x = theta / DirectX::XM_2PI;
+            meshData.Vertices[i].Uv.y = phi / DirectX::XM_PI;
         }
 
         meshData.BoundingBox = ComputeBoundingBox(meshData.Vertices);

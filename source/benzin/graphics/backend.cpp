@@ -80,17 +80,17 @@ namespace benzin
         uint64_t vendorTotalUsedDedicatedVramInBytes = g_InvalidIndex<uint64_t>;
         if (adapterInfo.IsAmd())
         {
-            vendorTotalUsedDedicatedVramInBytes = AdlWrapper::GetUsedDedicatedVramInBytes(adapterInfo.PciIdentifiers);
+            vendorTotalUsedDedicatedVramInBytes = AdlWrapper::GetUsedDedicatedVramInBytes(adapterInfo.DeviceId);
         }
         else if (adapterInfo.IsNvidia())
         {
-            const uint64_t totalUsedDedicatedVram = NvApiWrapper::GetTotalDedicatedVramInBytes(adapterInfo.PciIdentifiers);
+            const uint64_t totalUsedDedicatedVram = NvApiWrapper::GetTotalDedicatedVramInBytes(adapterInfo.DeviceId);
             BenzinAssert(totalUsedDedicatedVram == adapterInfo.TotalDedicatedVramInBytes, "UsedDedicatedVram calculates relative to TotalDedicatedVram");
 
-            vendorTotalUsedDedicatedVramInBytes = NvApiWrapper::GetUsedDedicatedVramInBytes(adapterInfo.PciIdentifiers);
+            vendorTotalUsedDedicatedVramInBytes = NvApiWrapper::GetUsedDedicatedVramInBytes(adapterInfo.DeviceId);
         }
 
-        const bool isVendorDataValid = vendorTotalUsedDedicatedVramInBytes != g_InvalidIndex<uint64_t>;
+        const bool isVendorDataValid = IsValidIndex(vendorTotalUsedDedicatedVramInBytes);
         return AdapterMemoryInfo
         {
             .DedicatedVramOsBudgetInBytes = dedicatedVramOsBudget,
@@ -141,13 +141,7 @@ namespace benzin
             {
                 .Name = ToNarrowString(dxgiAdapterDesc.Description),
                 .VendorType = AdapterVendorIdToType(dxgiAdapterDesc.VendorId),
-                .PciIdentifiers
-                {
-                    .VendorId = dxgiAdapterDesc.VendorId,
-                    .DeviceId = dxgiAdapterDesc.DeviceId,
-                    .SubSysId = dxgiAdapterDesc.SubSysId,
-                    .RevisionId = dxgiAdapterDesc.Revision,
-                },
+                .DeviceId = dxgiAdapterDesc.DeviceId,
                 .TotalDedicatedVramInBytes = dxgiAdapterDesc.DedicatedVideoMemory,
                 .TotalDedicatedRamInBytes = dxgiAdapterDesc.DedicatedSystemMemory,
                 .TotalSharedRamInBytes = dxgiAdapterDesc.SharedSystemMemory,
@@ -157,10 +151,10 @@ namespace benzin
                 "Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
                 adapterIndex,
                 adapterInfo.Name,
-                adapterInfo.PciIdentifiers.VendorId,
-                adapterInfo.PciIdentifiers.DeviceId,
-                adapterInfo.PciIdentifiers.SubSysId,
-                adapterInfo.PciIdentifiers.RevisionId
+                dxgiAdapterDesc.VendorId,
+                dxgiAdapterDesc.DeviceId,
+                dxgiAdapterDesc.SubSysId,
+                dxgiAdapterDesc.Revision
             );
 
             BenzinEnsure(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&m_MainDxgiAdapter)));
@@ -177,7 +171,7 @@ namespace benzin
     {
         BenzinAssert(m_MainAdapterIndex < m_DxgiAdapters.size());
 
-        IDXGIAdapter* dxgiAdapter = m_DxgiAdapters[m_MainAdapterIndex];
+        auto* dxgiAdapter = m_DxgiAdapters[m_MainAdapterIndex];
         BenzinEnsure(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&m_MainDxgiAdapter)));
 
         const auto& mainAdapterInfo = m_AdaptersInfo[m_MainAdapterIndex];
@@ -191,14 +185,3 @@ namespace benzin
     }
 
 } // namespace benzin
-
-size_t std::hash<benzin::PciIdentifiers>::operator()(const benzin::PciIdentifiers& pciIdentifiers) const
-{
-    size_t result = 0;
-    result = benzin::HashCombine(result, pciIdentifiers.VendorId);
-    result = benzin::HashCombine(result, pciIdentifiers.DeviceId);
-    result = benzin::HashCombine(result, pciIdentifiers.SubSysId);
-    result = benzin::HashCombine(result, pciIdentifiers.RevisionId);
-
-    return result;
-}

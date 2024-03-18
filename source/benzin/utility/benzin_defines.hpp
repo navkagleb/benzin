@@ -1,11 +1,5 @@
 #pragma once
 
-#define BenzinDefineFunctionAlias(To, From) \
-    inline decltype(auto) To(auto&&... args) \
-    { \
-        return From(std::forward<decltype(args)>(args)...); \
-    }
-
 #define BenzinStringify(str) #str
 #define BenzinStringify2(value) BenzinStringify(value)
 

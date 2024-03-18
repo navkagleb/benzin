@@ -8,21 +8,21 @@ namespace benzin
 {
  
     static D3D12_DESCRIPTOR_HEAP_TYPE GetDescriptorHeapType(DescriptorType descripitorType)
+    {
+        switch (descripitorType)
         {
-            switch (descripitorType)
-            {
-                using enum DescriptorType;
+            using enum DescriptorType;
 
-                case RenderTargetView: return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-                case DepthStencilView: return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-                case ConstantBufferView:
-                case ShaderResourceView:
-                case UnorderedAccessView: return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-                case Sampler: return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-            }
-
-            std::unreachable();
+            case RenderTargetView: return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+            case DepthStencilView: return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+            case ConstantBufferView:
+            case ShaderResourceView:
+            case UnorderedAccessView: return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            case Sampler: return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
         }
+
+        std::unreachable();
+    }
 
     // Descriptor
 
@@ -32,16 +32,16 @@ namespace benzin
         return m_HeapIndex;
     }
 
-    uint64_t Descriptor::GetCPUHandle() const
+    uint64_t Descriptor::GetCpuHandle() const
     {
         BenzinAssert(IsValid());
-        return m_CPUHandle;
+        return m_CpuHandle;
     }
 
-    uint64_t Descriptor::GetGPUHandle() const
+    uint64_t Descriptor::GetGpuHandle() const
     {
-        BenzinAssert(IsValid() && m_GPUHandle != 0);
-        return m_GPUHandle;
+        BenzinAssert(IsValid() && m_GpuHandle != 0);
+        return m_GpuHandle;
     }
 
     // DescriptorManager::DescriptorHeap
@@ -122,19 +122,19 @@ namespace benzin
         return Descriptor
         {
             index,
-            GetCPUHandle(index),
-            m_IsAccessableByShader ? GetGPUHandle(index) : 0
+            GetCpuHandle(index),
+            m_IsAccessableByShader ? GetGpuHandle(index) : 0
         };
     }
 
-    uint64_t DescriptorManager::DescriptorHeap::GetCPUHandle(uint32_t index) const
+    uint64_t DescriptorManager::DescriptorHeap::GetCpuHandle(uint32_t index) const
     {
-        return m_D3D12DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
+        return m_D3D12DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + (uint64_t)index * m_DescriptorSize;
     }
 
-    uint64_t DescriptorManager::DescriptorHeap::GetGPUHandle(uint32_t index) const
+    uint64_t DescriptorManager::DescriptorHeap::GetGpuHandle(uint32_t index) const
     {
-        return m_D3D12DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + static_cast<uint64_t>(index) * m_DescriptorSize;
+        return m_D3D12DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + (uint64_t)index * m_DescriptorSize;
     }
 
     // DescriptorManager
@@ -143,7 +143,7 @@ namespace benzin
     {
         const auto& createDescriptorHeap = [&](D3D12_DESCRIPTOR_HEAP_TYPE d3d12DescriptorHeapType, uint32_t descriptorCount)
         {
-            m_DescriptorHeaps[d3d12DescriptorHeapType] = std::make_unique<DescriptorHeap>(device, d3d12DescriptorHeapType, descriptorCount);
+            MakeUniquePtr(m_DescriptorHeaps[magic_enum::enum_integer(d3d12DescriptorHeapType)], device, d3d12DescriptorHeapType, descriptorCount);
         };
 
         createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, config::g_MaxRenderTargetViewDescriptorCount);

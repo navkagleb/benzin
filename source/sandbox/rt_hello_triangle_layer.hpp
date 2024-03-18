@@ -8,7 +8,7 @@ namespace benzin
 
     class Buffer;
     class Device;
-    class GPUTimer;
+    class GpuTimer;
     class PipelineState;
     class SwapChain;
     class Texture;
@@ -58,7 +58,7 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::shared_ptr<benzin::GPUTimer> m_GPUTimer;
+        std::shared_ptr<benzin::GpuTimer> m_GPUTimer;
 
         std::vector<DirectX::XMFLOAT3> m_Vertices;
         std::vector<uint32_t> m_Indices;

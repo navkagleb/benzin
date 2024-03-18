@@ -82,7 +82,7 @@ namespace benzin
         }
     }
 
-    static PciIdentifiers ParseUniqueDeviceIdString(std::string_view udid)
+    static void ParseUniqueDeviceIdString(std::string_view udid, uint32_t& outVendorId, uint32_t& outDeviceId, uint32_t& outSubSysId, uint32_t& outRevisionId)
     {
         static constexpr std::string_view vendorKey = "VEN_";
         static constexpr std::string_view deviceKey = "DEV_";
@@ -112,7 +112,7 @@ namespace benzin
         {
             uint32_t value = g_InvalidIndex<uint32_t>;
             const auto result = std::from_chars(valueString.data(), valueString.data() + valueString.size(), value, 16);
-            BenzinAssert(result.ec == std::errc{} && value != g_InvalidIndex<uint32_t>);
+            BenzinAssert(result.ec == std::errc{} && IsValidIndex(value));
 
             return value;
         };
@@ -122,13 +122,10 @@ namespace benzin
         const auto subSysString = GetValue(udid, subSysKey);
         const auto revisionString = GetValue(udid, revisionKey);
 
-        return PciIdentifiers
-        {
-            .VendorId = ConvertFrom16to10Base(vendorString),
-            .DeviceId = ConvertFrom16to10Base(deviceString),
-            .SubSysId = ConvertFrom16to10Base(subSysString),
-            .RevisionId = ConvertFrom16to10Base(revisionString),
-        };
+        outVendorId = ConvertFrom16to10Base(vendorString);
+        outDeviceId = ConvertFrom16to10Base(deviceString);
+        outSubSysId = ConvertFrom16to10Base(subSysString);
+        outRevisionId = ConvertFrom16to10Base(revisionString);
     }
 
     class AdlState
@@ -167,10 +164,10 @@ namespace benzin
             ::FreeLibrary(m_DllHandle);
         }
 
-        uint32_t GetAdapterIndex(const PciIdentifiers& id) const
+        int GetAdapterIndex(uint32_t deviceId) const
         {
-            BenzinAssert(m_AdlAdapterIndices.contains(id));
-            return m_AdlAdapterIndices.at(id);
+            BenzinAssert(m_AdlAdapterIndices.contains(deviceId));
+            return m_AdlAdapterIndices.at(deviceId);
         }
 
         uint64_t GetUsedVramInBytes(int adlAdapterIndex)
@@ -211,18 +208,23 @@ namespace benzin
 
                 existedBusIndices.insert(adapterInfo.iBusNumber);
 
-                const PciIdentifiers id = ParseUniqueDeviceIdString(adapterInfo.strUDID);
-                m_AdlAdapterIndices[id] = adlAdapterIndex;
+                uint32_t vendorId;
+                uint32_t deviceId;
+                uint32_t subSysId;
+                uint32_t revisionId;
+                ParseUniqueDeviceIdString(adapterInfo.strUDID, vendorId, deviceId, subSysId, revisionId);
 
                 BenzinTrace(
                     "Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
                     i,
                     adapterInfo.strAdapterName,
-                    id.VendorId,
-                    id.DeviceId,
-                    id.SubSysId,
-                    id.RevisionId
+                    vendorId,
+                    deviceId,
+                    subSysId,
+                    revisionId
                 );
+
+                m_AdlAdapterIndices[deviceId] = adlAdapterIndex;
             }
 
             ADL_Main_Memory_Free(adapterInfoData);
@@ -244,7 +246,7 @@ namespace benzin
         HINSTANCE m_DllHandle = nullptr;
         ADL_CONTEXT_HANDLE m_Context = nullptr;
 
-        std::unordered_map<PciIdentifiers, int> m_AdlAdapterIndices;
+        std::unordered_map<uint32_t, int> m_AdlAdapterIndices;
     };
 
     static std::unique_ptr<AdlState> g_AdlState;
@@ -253,7 +255,7 @@ namespace benzin
 
     void AdlWrapper::Initialize()
     {
-        g_AdlState = std::make_unique<AdlState>();
+        MakeUniquePtr(g_AdlState);
     }
 
     void AdlWrapper::Shutdown()
@@ -261,15 +263,15 @@ namespace benzin
         g_AdlState.reset();
     }
 
-    uint64_t AdlWrapper::GetUsedVramInBytes(const PciIdentifiers& id)
+    uint64_t AdlWrapper::GetUsedVramInBytes(uint32_t deviceId)
     {
-        const uint32_t internalAdapterIndex = g_AdlState->GetAdapterIndex(id);
+        const uint32_t internalAdapterIndex = g_AdlState->GetAdapterIndex(deviceId);
         return g_AdlState->GetUsedVramInBytes(internalAdapterIndex);
     }
 
-    uint64_t AdlWrapper::GetUsedDedicatedVramInBytes(const PciIdentifiers& id)
+    uint64_t AdlWrapper::GetUsedDedicatedVramInBytes(uint32_t deviceId)
     {
-        const uint32_t internalAdapterIndex = g_AdlState->GetAdapterIndex(id);
+        const uint32_t internalAdapterIndex = g_AdlState->GetAdapterIndex(deviceId);
         return g_AdlState->GetUsedDedicatedVramInBytes(internalAdapterIndex);
     }
 

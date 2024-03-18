@@ -13,26 +13,17 @@ namespace benzin
 
     public:
         explicit Fence(Device& device, std::string_view debugName);
-        virtual ~Fence();
+        ~Fence();
 
     public:
-        ID3D12Fence* GetD3D12Fence() const { return m_D3D12Fence; }
+        auto* GetD3D12Fence() const { return m_D3D12Fence; }
 
-    protected:
-        ID3D12Fence* m_D3D12Fence = nullptr;
-
-        HANDLE m_WaitEvent = nullptr;
-    };
-
-    class StalledFence : public Fence
-    {
-    public:
-        explicit StalledFence(Device& device, std::string_view debugName);
-
-    public:
         uint64_t GetCompletedValue() const;
+        void StopCurrentThreadBeforeGpuFinish(uint64_t value) const;
 
-        void StallCurrentThreadUntilGPUCompletion(uint64_t value) const;
+    private:
+        ID3D12Fence* m_D3D12Fence = nullptr;
+        HANDLE m_WaitEvent = nullptr;
     };
 
 } // namespace benzin

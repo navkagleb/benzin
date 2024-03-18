@@ -12,22 +12,12 @@ namespace benzin
         Other,
     };
 
-    struct PciIdentifiers
-    {
-        uint32_t VendorId = g_InvalidIndex<uint32_t>;
-        uint32_t DeviceId = g_InvalidIndex<uint32_t>;
-        uint32_t SubSysId = g_InvalidIndex<uint32_t>;
-        uint32_t RevisionId = g_InvalidIndex<uint32_t>;
-
-        auto operator<=>(const PciIdentifiers&) const = default;
-    };
-
     struct AdapterInfo
     {
         std::string Name;
 
-        AdapterVendorType VendorType;
-        PciIdentifiers PciIdentifiers;
+        AdapterVendorType VendorType = AdapterVendorType::Other;
+        uint32_t DeviceId = g_InvalidIndex<uint32_t>;
 
         uint64_t TotalDedicatedVramInBytes = 0;
         uint64_t TotalDedicatedRamInBytes = 0;
@@ -89,14 +79,3 @@ namespace benzin
     };
 
 } // namespace benzin
-
-namespace std
-{
-
-    template<>
-    struct hash<benzin::PciIdentifiers>
-    {
-        size_t operator()(const benzin::PciIdentifiers& pciIdentifiers) const;
-    };
-
-} // namespace std

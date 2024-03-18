@@ -35,10 +35,10 @@ namespace benzin
             BenzinNvApiEnsure(NvAPI_Unload());
         }
 
-        NvPhysicalGpuHandle GetPhysicalGpuHandle(const PciIdentifiers& id) const
+        NvPhysicalGpuHandle GetPhysicalGpuHandle(uint32_t deviceId) const
         {
-            BenzinAssert(m_PhysicalGpuHandles.contains(id));
-            return m_PhysicalGpuHandles.at(id);
+            BenzinAssert(m_PhysicalGpuHandles.contains(deviceId));
+            return m_PhysicalGpuHandles.at(deviceId);
         }
 
         NV_GPU_MEMORY_INFO_EX GetGpuMemoryInfo(NvPhysicalGpuHandle gpuHandle)
@@ -70,30 +70,22 @@ namespace benzin
                 NvU32 extDeviceId = 0;
                 BenzinNvApiEnsure(NvAPI_GPU_GetPCIIdentifiers(physicalGpuHandle, &deviceId, &subSystemId, &revisionId, &extDeviceId));
 
-                const PciIdentifiers id
-                {
-                    .VendorId = 0x10DE, // Force set VendorId for NvAPI
-                    .DeviceId = extDeviceId,
-                    .SubSysId = subSystemId,
-                    .RevisionId = revisionId,
-                };
-
                 BenzinTrace(
                     "Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
                     i,
                     gpuName,
-                    id.VendorId,
-                    id.DeviceId,
-                    id.SubSysId,
-                    id.RevisionId
+                    0x10DE, // Force set VendorId for NvAPI,
+                    extDeviceId,
+                    subSystemId,
+                    revisionId
                 );
 
-                m_PhysicalGpuHandles[id] = physicalGpuHandle;
+                m_PhysicalGpuHandles[extDeviceId] = physicalGpuHandle;
             }
         }
 
     private:
-        std::unordered_map<PciIdentifiers, NvPhysicalGpuHandle> m_PhysicalGpuHandles;
+        std::unordered_map<uint32_t, NvPhysicalGpuHandle> m_PhysicalGpuHandles;
     };
 
     static std::unique_ptr<NvApiState> g_NvApiState;
@@ -103,7 +95,7 @@ namespace benzin
     void NvApiWrapper::Initialize()
     {
         BenzinAssert(g_NvApiState.get() == nullptr);
-        g_NvApiState = std::make_unique<NvApiState>();
+        MakeUniquePtr(g_NvApiState);
     }
 
     void NvApiWrapper::Shutdown()
@@ -112,17 +104,17 @@ namespace benzin
         g_NvApiState.reset();
     }
 
-    uint64_t NvApiWrapper::GetTotalDedicatedVramInBytes(const PciIdentifiers& id)
+    uint64_t NvApiWrapper::GetTotalDedicatedVramInBytes(uint32_t deviceId)
     {
-        const NvPhysicalGpuHandle gpuHandle = g_NvApiState->GetPhysicalGpuHandle(id);
+        const NvPhysicalGpuHandle gpuHandle = g_NvApiState->GetPhysicalGpuHandle(deviceId);
         const NV_GPU_MEMORY_INFO_EX gpuMemoryInfo = g_NvApiState->GetGpuMemoryInfo(gpuHandle);
 
         return gpuMemoryInfo.availableDedicatedVideoMemory;
     }
 
-    uint64_t NvApiWrapper::GetUsedDedicatedVramInBytes(const PciIdentifiers& id)
+    uint64_t NvApiWrapper::GetUsedDedicatedVramInBytes(uint32_t deviceId)
     {
-        const NvPhysicalGpuHandle gpuHandle = g_NvApiState->GetPhysicalGpuHandle(id);
+        const NvPhysicalGpuHandle gpuHandle = g_NvApiState->GetPhysicalGpuHandle(deviceId);
         const NV_GPU_MEMORY_INFO_EX gpuMemoryInfo = g_NvApiState->GetGpuMemoryInfo(gpuHandle);
 
         return gpuMemoryInfo.availableDedicatedVideoMemory - gpuMemoryInfo.curAvailableDedicatedVideoMemory;

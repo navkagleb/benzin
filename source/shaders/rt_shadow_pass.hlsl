@@ -112,15 +112,18 @@ bool TraceShadowRay(float3 worldPosition, float3 worldNormal, joint::PointLight 
     rayDesc.TMin = 0.01f;
     rayDesc.TMax = distanceToLight;
 
+    const uint rayFlags =
+        // RAY_FLAG_CULL_BACK_FACING_TRIANGLES |
+        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH |
+        RAY_FLAG_FORCE_OPAQUE | // Skip any hit shaders
+        RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
+
     joint::ShadowRayPayload payload;
     payload.IsHitted = true;
 
     TraceRay(
         g_TopLevelAS,
-        // RAY_FLAG_CULL_BACK_FACING_TRIANGLES |
-        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH |
-        RAY_FLAG_FORCE_OPAQUE | // Skip any hit shaders
-        RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
+        rayFlags,
         g_InstanceMask,
         g_HitGroupIndex,
         g_HitGroupStride,
@@ -132,39 +135,36 @@ bool TraceShadowRay(float3 worldPosition, float3 worldNormal, joint::PointLight 
     return payload.IsHitted;
 }
 
-joint::RTShadowPassConstants FetchPassConstants()
-{
-    ConstantBuffer<joint::RTShadowPassConstants> passConstants = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowPassRC_PassConstantBuffer)];
-    return passConstants;
-}
-
 [shader("raygeneration")]
 void RayGen()
 {
+    const joint::FrameConstants frameConstants = FetchFrameConstants();
     const joint::CameraConstants cameraConstants = FetchCurrentCameraConstants();
-    const joint::RTShadowPassConstants passConstants = FetchPassConstants();
+    const joint::RtShadowPassConstants passConstants = FetchConstantBuffer<joint::RtShadowPassConstants>(joint::RtShadowPassRc_PassConstantBuffer);
 
-    StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowPassRC_PointLightBuffer)];
+    Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_GBufferWorldNormalTexture)];
+    Texture2D<float> depthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_GBufferDepthTexture)];
+
+    StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_PointLightBuffer)];
+
+    RWTexture2D<float4> visibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_VisiblityBuffer)];
+
+    const float2 uv = GetRayUv();
+    const float3 worldNormal = worldNormalTexture.SampleLevel(g_PointWrapSampler, uv, 0).xyz;
+    const float depth = depthBuffer.SampleLevel(g_PointWrapSampler, uv, 0);
+
     const joint::PointLight pointLight = pointLightBuffer[0];
 
-    Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowPassRC_GBufferWorldNormalTexture)];
-
-    const uint depthTextureIndex = GetRootConstant(joint::RTShadowPassRC_GBufferDepthTexture);
-    const float3 worldPosition = ReconstructWorldPositionFromDepth(GetRayUV(), depthTextureIndex, cameraConstants.InverseProjection, cameraConstants.InverseView).xyz;
-    const float3 worldNormal = worldNormalTexture.SampleLevel(g_PointWrapSampler, GetRayUV(), 0).xyz;
+    const float3 worldPosition = ReconstructWorldPositionFromDepth(uv, depth, cameraConstants.InverseProjection, cameraConstants.InverseView).xyz;
 
     uint hittedSum = 0;
     for (uint i = 0; i < passConstants.RaysPerPixel; ++i)
     {
-        const float2 uvSeed = (GetRayUV() + i * passConstants.DeltaTime) * passConstants.DeltaTime;
+        const float2 uvSeed = (uv + i * frameConstants.DeltaTime) * frameConstants.DeltaTime;
         hittedSum += TraceShadowRay(worldPosition, worldNormal, pointLight, uvSeed);
     }
 
-    RWTexture2D<float4> outputTexture = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowPassRC_NoisyVisiblityBuffer)];
-    // outputTexture[DispatchRaysIndex().xy][passConstants.CurrentTextureSlot] = (float)hittedSum / passConstants.RaysPerPixel;
-    // outputTexture[DispatchRaysIndex().xy].r = (float)hittedSum / passConstants.RaysPerPixel;
-    // outputTexture[DispatchRaysIndex().xy][3] = 1.0f;
-    SetFloatByIndex((float)hittedSum / passConstants.RaysPerPixel, passConstants.CurrentTextureSlot, outputTexture[DispatchRaysIndex().xy]);
+    visibilityBuffer[DispatchRaysIndex().xy][passConstants.CurrentTextureSlot] = (float)hittedSum / passConstants.RaysPerPixel;
 }
 
 [shader("miss")]

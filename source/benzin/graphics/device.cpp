@@ -8,7 +8,6 @@
 #include "benzin/graphics/pipeline_state.hpp"
 #include "benzin/graphics/rt_acceleration_structures.hpp"
 #include "benzin/graphics/sampler.hpp"
-#include "benzin/graphics/texture_loader.hpp"
 
 namespace benzin
 {
@@ -71,7 +70,11 @@ namespace benzin
 
         ComPtr<ID3D12Device> d3d12Device;
         BenzinEnsure(::D3D12CreateDevice(backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&d3d12Device)));
-        BenzinAssert(d3d12Device->QueryInterface(&m_D3D12Device));
+        BenzinEnsure(d3d12Device->QueryInterface(&m_D3D12Device));
+
+#if BENZIN_IS_DEBUG_BUILD
+        EnableD3D12DebugBreakOn(m_D3D12Device, true, { D3D12BreakReasonFlag::Warning, D3D12BreakReasonFlag::Error, D3D12BreakReasonFlag::Corruption });
+#endif
 
         Asserter::SetDeviceRemovedCallback([this]
         {
@@ -92,12 +95,10 @@ namespace benzin
         CheckFeaturesSupport();
         CreateBindlessRootSignature();
 
-        m_CopyCommandQueue = std::make_unique<CopyCommandQueue>(*this);
-        m_ComputeCommandQueue = std::make_unique<ComputeCommandQueue>(*this);
-        m_GraphicsCommandQueue = std::make_unique<GraphicsCommandQueue>(*this);
-
-        m_DescriptorManager = std::make_unique<DescriptorManager>(*this);
-        m_TextureLoader = std::make_unique<TextureLoader>(*this);
+        MakeUniquePtr(m_DescriptorManager, *this);
+        MakeUniquePtr(m_CopyCommandQueue, *this);
+        MakeUniquePtr(m_ComputeCommandQueue, *this);
+        MakeUniquePtr(m_GraphicsCommandQueue, *this);
     }
 
     Device::~Device()
@@ -105,6 +106,7 @@ namespace benzin
         SafeUnknownRelease(m_D3D12BindlessRootSignature);
 
 #if BENZIN_IS_DEBUG_BUILD
+        EnableD3D12DebugBreakOn(m_D3D12Device, false, { D3D12BreakReasonFlag::Warning });
         ReportLiveD3D12Objects(m_D3D12Device);
 #endif
 
@@ -122,25 +124,12 @@ namespace benzin
         return d3d12FormatInfo.PlaneCount;
     }
 
-    rt::AccelerationStructureSizes Device::GetAccelerationStructureSizes(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& d3d12BuildInputs)
-    {
-        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO d3d12RTASPrebuildInfo{};
-        m_D3D12Device->GetRaytracingAccelerationStructurePrebuildInfo(&d3d12BuildInputs, &d3d12RTASPrebuildInfo);
-        BenzinEnsure(d3d12RTASPrebuildInfo.ResultDataMaxSizeInBytes > 0);
-
-        return rt::AccelerationStructureSizes
-        {
-            .BufferSizeInBytes = d3d12RTASPrebuildInfo.ResultDataMaxSizeInBytes,
-            .ScratchResourceSizeInBytes = d3d12RTASPrebuildInfo.ScratchDataSizeInBytes,
-        };
-    }
-
     void Device::CheckFeaturesSupport()
     {
         // Dynamic Resources
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS d3d12Options{};
-            BenzinAssert(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &d3d12Options, sizeof(d3d12Options)));
+            BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &d3d12Options, sizeof(d3d12Options)));
             BenzinEnsure(d3d12Options.ResourceBindingTier >= D3D12_RESOURCE_BINDING_TIER_3);
 
             BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12Options.ResourceBindingTier));
@@ -150,7 +139,7 @@ namespace benzin
                 .HighestShaderModel{ D3D_SHADER_MODEL_6_6 }
             };
 
-            BenzinAssert(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &d3d12FeatureDataShaderModel, sizeof(d3d12FeatureDataShaderModel)));
+            BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &d3d12FeatureDataShaderModel, sizeof(d3d12FeatureDataShaderModel)));
             BenzinEnsure(d3d12FeatureDataShaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_6);
 
             BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12FeatureDataShaderModel.HighestShaderModel));
@@ -159,7 +148,7 @@ namespace benzin
         // Ray Tracing
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS5 d3d12Options;
-            BenzinAssert(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &d3d12Options, sizeof(d3d12Options)));
+            BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &d3d12Options, sizeof(d3d12Options)));
             BenzinEnsure(d3d12Options.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
 
             BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12Options.RaytracingTier));
@@ -168,10 +157,22 @@ namespace benzin
         // DRED Breadcrumb
         {
             D3D12_FEATURE_DATA_EXISTING_HEAPS d3d12Options;
-            BenzinAssert(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_EXISTING_HEAPS, &d3d12Options, sizeof(d3d12Options)));
+            BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_EXISTING_HEAPS, &d3d12Options, sizeof(d3d12Options)));
             BenzinEnsure(d3d12Options.Supported == 1);
 
             BenzinTrace("Device supports D3D12_FEATURE_EXISTING_HEAPS");
+        }
+
+        // GPU Upload Heaps
+        {
+            D3D12_FEATURE_DATA_D3D12_OPTIONS16 d3d12Options;
+            BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS16, &d3d12Options, sizeof(d3d12Options)));
+
+            m_IsGpuUploadHeapsSupported = d3d12Options.GPUUploadHeapSupported == 1;
+            BenzinTrace("Is GpuUploadHeaps supported: {}", m_IsGpuUploadHeapsSupported);
+
+            m_IsGpuUploadHeapsSupported &= CommandLineArgs::IsGpuUploadHeapsEnabled();
+            BenzinTrace("Is GpuUploadHeaps enabled: {}", m_IsGpuUploadHeapsSupported);
         }
     }
 
@@ -205,15 +206,29 @@ namespace benzin
             },
         });
 
+        uint32_t samplerSpaceIndex = 0;
         const auto d3d12StaticSamplerDescs = std::to_array(
         {
-            ToD3D12StaticSamplerDesc(StaticSampler::GetPointWrap({ 0, 0 })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetPointClamp({ 1, 0 })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetLinearWrap({ 2, 0 })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetLinearClamp({ 3, 0 })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetAnisotropicWrap({ 4, 0 })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetAnisotropicClamp({ 5, 0 })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetDefaultForShadow({ 6, 0 })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetPointWrap({ 0, samplerSpaceIndex++ })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetPointClamp({ 0, samplerSpaceIndex++ })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetLinearWrap({ 0, samplerSpaceIndex++ })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetLinearClamp({ 0, samplerSpaceIndex++ })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetAnisotropicWrap({ 0, samplerSpaceIndex++ })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetAnisotropicClamp({ 0, samplerSpaceIndex++ })),
+            ToD3D12StaticSamplerDesc(StaticSampler
+            {
+                .Sampler
+                {
+                    .Minification = TextureFilterType::Point,
+                    .Magnification = TextureFilterType::Point,
+                    .MipLevel = TextureFilterType::Point,
+                    .AddressU = TextureAddressMode::Border,
+                    .AddressV = TextureAddressMode::Border,
+                    .AddressW = TextureAddressMode::Border,
+                },
+                .BorderColor = TextureBorderColor::TransparentBlack,
+                .ShaderRegister{ 0, samplerSpaceIndex++ },
+            }),
         });
 
         const D3D12_VERSIONED_ROOT_SIGNATURE_DESC d3d12RootSignatureDesc

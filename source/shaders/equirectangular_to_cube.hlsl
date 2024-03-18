@@ -61,8 +61,8 @@ float2 ConvertSphericalToUV(float phi, float theta)
 [numthreads(8, 8, 1)]
 void CS_Main(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-    Texture2D<float4> inEquirectangularTexture = ResourceDescriptorHeap[GetRootConstant(joint::EquirectangularToCubePassRC_EquirectangularTexture)];
-    RWTexture2DArray<float4> outCubeTexture = ResourceDescriptorHeap[GetRootConstant(joint::EquirectangularToCubePassRC_OutCubeTexture)];
+    Texture2D<float4> inEquirectangularTexture = ResourceDescriptorHeap[GetRootConstant(joint::EquirectangularToCubePassRc_EquirectangularTexture)];
+    RWTexture2DArray<float4> outCubeTexture = ResourceDescriptorHeap[GetRootConstant(joint::EquirectangularToCubePassRc_OutCubeTexture)];
 
     float width;
     float height;

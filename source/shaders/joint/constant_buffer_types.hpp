@@ -5,6 +5,15 @@
 namespace joint
 {
 
+    struct FrameConstants
+    {
+        float2 RenderResolution;
+        float2 InvRenderResolution;
+        uint CpuFrameIndex;
+        float DeltaTime;
+        uint MaxTemporalAccumulationCount;
+    };
+
     struct CameraConstants
     {
         float4x4 View;
@@ -29,19 +38,16 @@ namespace joint
         CameraConstants PreviousFrame;
     };
 
-    struct RTShadowPassConstants
+    struct RtShadowPassConstants
     {
-        float DeltaTime;
         uint CurrentTextureSlot;
         uint RaysPerPixel;
     };
 
-    struct RTShadowDenoisingPassConstants
+    struct RtShadowDenoisingPassConstants
     {
-        float2 TextureDimensions;
         uint CurrentTextureSlot;
         uint PreviousTextureSlot;
-        bool IsForceCurrentVisiblity;
     };
 
     struct DeferredLightingPassConstants
@@ -51,6 +57,13 @@ namespace joint
         float3 SunDirection;
         uint ActivePointLightCount;
         uint OutputType;
+    };
+
+    struct FullScreenDebugConstants
+    {
+        uint OutputType;
+        uint CurrentShadowVisibilityBufferSlot;
+        uint PreviousShadowVisibilityBufferSlot;
     };
 
 } // namespace joint

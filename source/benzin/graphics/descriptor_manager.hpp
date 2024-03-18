@@ -23,21 +23,21 @@ namespace benzin
         Descriptor() = default;
         Descriptor(uint32_t heapIndex, uint64_t cpuHandle, uint64_t gpuHandle = 0)
             : m_HeapIndex{ heapIndex }
-            , m_CPUHandle{ cpuHandle }
-            , m_GPUHandle{ gpuHandle }
+            , m_CpuHandle{ cpuHandle }
+            , m_GpuHandle{ gpuHandle }
         {}
 
     public:
         uint32_t GetHeapIndex() const;
-        uint64_t GetCPUHandle() const;
-        uint64_t GetGPUHandle() const;
+        uint64_t GetCpuHandle() const;
+        uint64_t GetGpuHandle() const;
 
-        bool IsValid() const { return m_CPUHandle != 0; }
+        bool IsValid() const { return m_CpuHandle != 0; }
 
     private:
         uint32_t m_HeapIndex = 0;
-        uint64_t m_CPUHandle = 0;
-        uint64_t m_GPUHandle = 0;
+        uint64_t m_CpuHandle = 0;
+        uint64_t m_GpuHandle = 0;
     };
 
     class DescriptorManager
@@ -65,8 +65,8 @@ namespace benzin
             void DeallocateIndex(uint32_t index);
 
             Descriptor GetDescriptor(uint32_t index) const;
-            uint64_t GetCPUHandle(uint32_t index) const;
-            uint64_t GetGPUHandle(uint32_t index) const;
+            uint64_t GetCpuHandle(uint32_t index) const;
+            uint64_t GetGpuHandle(uint32_t index) const;
 
         private:
             ID3D12DescriptorHeap* m_D3D12DescriptorHeap = nullptr;
@@ -98,7 +98,7 @@ namespace benzin
         void DeallocateDescriptor(DescriptorType descriptorType, const Descriptor& descriptor);
 
     private:
-        magic_enum::containers::array<D3D12_DESCRIPTOR_HEAP_TYPE, std::unique_ptr<DescriptorHeap>> m_DescriptorHeaps;
+        std::array<std::unique_ptr<DescriptorHeap>, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> m_DescriptorHeaps;
     };
 
 } // namespace benzin

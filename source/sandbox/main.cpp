@@ -26,7 +26,7 @@ namespace sandbox
     {
     public:
         auto GetFrameRate() const { return m_FrameRate; }
-        auto GetDeltaTime() const { return benzin::SecToUS(1.0f / m_FrameRate); }
+        auto GetDeltaTime() const { return benzin::SecToUs(1.0f / m_FrameRate); }
 
         bool IsIntervalPassed() const { return m_ElapsedTime >= benzin::Layer::s_UpdateStatsInterval; }
 
@@ -71,10 +71,10 @@ namespace sandbox
                 .EventCallback = [&](benzin::Event& event) { WindowEventCallback(event); },
             };
 
-            m_MainWindow = std::make_unique<benzin::Window>(windowCreation);
-            m_Backend = std::make_unique<benzin::Backend>();
-            m_Device = std::make_unique<benzin::Device>(*m_Backend);
-            m_SwapChain = std::make_unique<benzin::SwapChain>(*m_MainWindow, *m_Backend, *m_Device);
+            benzin::MakeUniquePtr(m_MainWindow, windowCreation);
+            benzin::MakeUniquePtr(m_Backend);
+            benzin::MakeUniquePtr(m_Device, *m_Backend);
+            benzin::MakeUniquePtr(m_SwapChain, *m_MainWindow, *m_Backend, *m_Device);
 
             const benzin::GraphicsRefs graphicsRefs
             {
@@ -87,7 +87,7 @@ namespace sandbox
             BeginFrame();
             {
                 m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(graphicsRefs);
-                // m_SceneLayer = m_LayerStack.Push<SceneLayer>(graphicsRefs);
+                m_SceneLayer = m_LayerStack.Push<SceneLayer>(graphicsRefs);
             }
             EndFrame();
         }
@@ -117,7 +117,7 @@ namespace sandbox
                 {
                     m_FrameRateCounter.UpdateStats();
 
-                    m_ImGuiLayer->SetFrameRateStats(m_FrameRateCounter.GetFrameRate(), benzin::ToFloatMS(m_FrameRateCounter.GetDeltaTime()));
+                    m_ImGuiLayer->SetFrameRateStats(m_FrameRateCounter.GetFrameRate(), benzin::ToFloatMs(m_FrameRateCounter.GetDeltaTime()));
                     m_ImGuiLayer->SetApplicationTimings(m_Timings);
                 }
             }
@@ -273,10 +273,53 @@ namespace sandbox
 
 int benzin::ClientMain()
 {
+#if 1
     {
         sandbox::Application application;
         application.ExecuteMainLoop();
     }
+#else
 
+    enum class BufferBindFlags
+    {
+        None = (0 << 0),  ///< None
+        VertexBuffer = (1 << 0),  ///< Can bind as a vertex buffer
+        IndexBuffer = (1 << 1),  ///< Can bind as an index buffer
+        ConstantBuffer = (1 << 2),  ///< Can bind as a constant buffer.
+        StructuredBuffer = (1 << 3),  ///< Can bind as a structured buffer.
+        ByteAddressBuffer = (1 << 4),  ///< Can bind as a byte address buffer.
+        FormattedBuffer = (1 << 5),  ///< Can bind as a formatted buffer.
+        CopySrc = (1 << 6),  ///< Can bind as a copy source.
+        CopyDst = (1 << 7),  ///< Can bind as a copy destination.
+        ShaderReadWrite = (1 << 8),  ///< Can bind for usage as ReadWrite buffer for any shader stage (UAV on D3D12).
+        PredicationExt = (1 << 9), ///< Can use the buffer for SetPredicationEx calls (must have AdapterFeatures::Predication requested feature enabled)
+        AccelerationStructureExt = (1 << 10)  ///< Can bind as a ray tracing acceleration structure (require AdapterFeatures::RayTracing)
+    };
+
+    enum class AccessFlags
+    {
+        None             = (0 << 0),            ///< None
+        CPURead          = (1 << 0),            ///< CPU read access allowed.  Cannot be set as input or outputs to the pipeline.
+        CPUWrite         = (1 << 1),            ///< CPU write access allowed.  Cannot be set as outputs to the pipeline.
+        CPUReadWrite     = CPURead | CPUWrite,  ///< CPU read write access allowed.
+        GPURead          = (1 << 2),            ///< GPU read access allowed.
+        GPUWrite         = (1 << 3),            ///< GPU write access allowed.
+        GPUReadWrite     = GPURead | GPUWrite,  ///< GPU read write access allowed.
+        GPUExecute       = (1 << 4),            ///< GPU execute access allowed.  Needed for indirect or counter buffer.
+        GPULocal         = (1 << 5),            ///< GPU local memory. Needed to target CPU-visible VRAM
+        CPUWriteCombined = (1 << 6),            ///< CPU write combined memory.
+        IORead           = (1 << 7),            ///< IO read access allowed (PS5 only).
+        IOWrite          = (1 << 8),            ///< IO write access allowed (PS5 only).
+        MaxAccessFlags   = (1 << 9),            ///< Max value for access flags.
+    };
+
+    benzin::PrintEnumFlags(AccessFlags{ 100 });
+    benzin::PrintEnumFlags(AccessFlags{ 68 });
+
+    uint32_t errorCode = 0;
+
+    *((volatile uint32_t*)2) = errorCode;
+
+#endif
     return 0;
 }

@@ -5,18 +5,20 @@
 namespace joint
 {
 
-    enum DeferredLightingOutputType : uint
+    enum DebugOutputType : uint32_t
     {
-        DeferredLightingOutputType_Final,
-        DeferredLightingOutputType_ReconsructedWorldPosition,
-        DeferredLightingOutputType_GBuffer_Depth,
-        DeferredLightingOutputType_GBuffer_Albedo,
-        DeferredLightingOutputType_GBuffer_WorldNormal,
-        DeferredLightingOutputType_GBuffer_Emissive,
-        DeferredLightingOutputType_GBuffer_MotionVectors,
-        DeferredLightingOutputType_GBuffer_Roughness,
-        DeferredLightingOutputType_GBuffer_Metalness,
-        DeferredLightingOutputType_Count,
+        DebugOutputType_None,
+        DebugOutputType_ReconsructedWorldPosition,
+        DebugOutputType_GBufferAlbedo,
+        DebugOutputType_GBufferRoughness,
+        DebugOutputType_GBufferEmissive,
+        DebugOutputType_GBufferMetallic,
+        DebugOutputType_GBufferWorldNormal,
+        DebugOutputType_GBufferVelocityBuffer,
+        DebugOutputType_CurrentShadowVisibility,
+        DebugOutputType_PreviousShadowVisibility,
+        DebugOutputType_TemporalAccumulationBuffer,
+        DebugOutputType_Count,
     };
 
 } // namespace joint

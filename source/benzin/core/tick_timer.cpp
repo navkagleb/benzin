@@ -1,6 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/tick_timer.hpp"
 
+#include "benzin/utility/time_utils.hpp"
+
 namespace benzin
 {
 
@@ -13,7 +15,7 @@ namespace benzin
     {
         m_CurrentTimePoint = std::chrono::high_resolution_clock::now();
 
-        m_DeltaTime = ToUS(m_CurrentTimePoint - m_PreviousTimePoint);
+        m_DeltaTime = ToUs(m_CurrentTimePoint - m_PreviousTimePoint);
         if (m_DeltaTime < std::chrono::microseconds::zero())
         {
             m_DeltaTime = std::chrono::microseconds::zero();
@@ -21,7 +23,7 @@ namespace benzin
 
         m_PreviousTimePoint = m_CurrentTimePoint;
 
-        m_ElapsedTime += ToMS(m_DeltaTime);
+        m_ElapsedTime += ToMs(m_DeltaTime);
     }
 
 } // namespace benzin

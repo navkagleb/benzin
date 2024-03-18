@@ -8,7 +8,7 @@ namespace benzin
     class CommandList;
     class Device;
 
-    struct GPUTimerCreation
+    struct GpuTimerCreation
     {
         CommandList& CommandList;
 
@@ -16,15 +16,14 @@ namespace benzin
         uint32_t TimerCount = 0;
     };
 
-    class GPUTimer
+    class GpuTimer
     {
     public:
-        BenzinDefineNonCopyable(GPUTimer);
-        BenzinDefineNonMoveable(GPUTimer);
+        BenzinDefineNonCopyable(GpuTimer);
+        BenzinDefineNonMoveable(GpuTimer);
 
-    public:
-        GPUTimer(Device& device, const GPUTimerCreation& creation);
-        ~GPUTimer();
+        GpuTimer(Device& device, const GpuTimerCreation& creation);
+        ~GpuTimer();
 
     public:
         void BeginProfile(uint32_t timerIndex);
@@ -32,13 +31,15 @@ namespace benzin
 
         std::chrono::microseconds GetElapsedTime(uint32_t timerIndex) const;
 
-        void ResolveTimestamps();
+        void ResolveTimestamps(uint64_t cpuFrameIndex);
 
     private:
         void EndQuery(uint32_t timeStampIndex);
+        void ForceProfileUnprofiledTimers();
 
     private:
         const float m_InverseFrequency = 0.0f;
+        const uint32_t m_ReadbackLatency = g_InvalidIndex<uint32_t>;
 
         ID3D12GraphicsCommandList* m_ProfiledD3D12GraphicsCommandList = nullptr;
 
@@ -46,10 +47,11 @@ namespace benzin
         Buffer m_ReadbackBuffer;
 
         std::vector<uint64_t> m_Timestamps;
+        uint32_t m_ProfiledTimers = 0;
     };
 
 } // namespace benzin
 
-#define BenzinGrabGPUTimeOnScopeExit(gpuTimer, timerIndex) \
+#define BenzinGrabGpuTimeOnScopeExit(gpuTimer, timerIndex) \
     (gpuTimer).BeginProfile(timerIndex); \
     BenzinExecuteOnScopeExit([&] { (gpuTimer).EndProfile(timerIndex); })

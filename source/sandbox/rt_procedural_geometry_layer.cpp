@@ -2,12 +2,12 @@
 #include "rt_procedural_geometry_layer.hpp"
 
 #include <benzin/core/command_line_args.hpp>
+#include <benzin/core/memory_writer.hpp>
 #include <benzin/engine/geometry_generator.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/mapped_data.hpp>
 #include <benzin/graphics/pipeline_state.hpp>
 #include <benzin/graphics/rt_acceleration_structures.hpp>
 #include <benzin/graphics/shaders.hpp>
@@ -19,172 +19,169 @@
 namespace sandbox
 {
 
-    namespace
+    enum class RayType : uint8_t
     {
+        Radiance,
+        Shadow,
+    };
 
-        enum class RayType : uint8_t
+    enum class AABBAnalyticGeometryType : uint8_t
+    {
+        AABB,
+        Spheres,
+    };
+
+    enum class AABBVolumetricGeometryType : uint8_t
+    {
+        Metaballs,
+    };
+
+    enum class AABBSignedDistanceGeometryType : uint8_t
+    {
+        MiniSpheres,
+        IntersectedRoundCube,
+        SquareTorus,
+        TwistedTorus,
+        Cog,
+        Cylinder,
+        FractalPyramid,
+    };
+
+    enum class AABBGeometryType : uint32_t
+    {
+        Analytic,
+        Volumetric,
+        SignedDistance,
+    };
+
+    constexpr auto g_AABBGeometryCounts = magic_enum::containers::to_array<AABBGeometryType>(
+    {
+        magic_enum::enum_count<AABBAnalyticGeometryType>(),
+        magic_enum::enum_count<AABBVolumetricGeometryType>(),
+        magic_enum::enum_count<AABBSignedDistanceGeometryType>(),
+    });
+
+    constexpr auto g_TotalAABBGeometryCount = std::ranges::fold_left(g_AABBGeometryCounts, 0, std::plus{});
+
+    using GeometryType = RtProceduralGeometryLayer::GeometryType;
+
+    constexpr auto g_GeometryCounts = magic_enum::containers::to_array<GeometryType>(
+    {
+        1ull,
+        magic_enum::enum_count<AABBGeometryType>(),
+    });
+
+    constexpr auto g_TotalGeometryCount = std::ranges::fold_left(g_GeometryCounts, 0, std::plus{});
+
+    constexpr auto g_RayGenShaderName = L"RayGen";
+
+    constexpr auto g_ClosestHitShaderNames = magic_enum::containers::to_array<GeometryType>(
+    {
+        L"Triangle_RadianceRay_ClosestHit",
+        L"AABB_RadianceRay_ClosestHit",
+    });
+
+    constexpr auto g_MissShaderNames = magic_enum::containers::to_array<GeometryType>(
+    {
+        L"RadianceRay_Miss",
+        L"ShadowRay_Miss",
+    });
+
+    constexpr auto g_AABBIntersectionShaderNames = magic_enum::containers::to_array<AABBGeometryType>(
+    {
+        L"AnalyticAABB_Intersection",
+        L"VolumetricAABB_Intersection",
+        L"SignedDistanceAABB_Intersection",
+    });
+
+    constexpr auto g_TriangleHitGroupNames = magic_enum::containers::to_array<RayType>(
+    {
+        L"Triangle_RadianceRay_HitGroup",
+        L"Triangle_ShadowRay_HitGroup",
+    });
+
+    constexpr auto g_AABBHitGroupNames = magic_enum::containers::to_array<AABBGeometryType>(
+    {
+        magic_enum::containers::to_array<RayType>(
         {
-            Radiance,
-            Shadow,
-        };
-
-        enum class AABBAnalyticGeometryType : uint8_t
+            L"AnalyticAABB_RadianceRay_HitGroup",
+            L"AnalyticAABB_ShadowRay_HitGroup",
+        }),
+        magic_enum::containers::to_array<RayType>(
         {
-            AABB,
-            Spheres,
-        };
-
-        enum class AABBVolumetricGeometryType : uint8_t
+            L"VolumetricAABB_RadianceRay_HitGroup",
+            L"VolumetricAABB_ShadowRay_HitGroup",
+        }),
+        magic_enum::containers::to_array<RayType>(
         {
-            Metaballs,
-        };
+            L"SignedDistanceAABB_RadianceRay_HitGroup",
+            L"SignedDistanceAABB_ShadowRay_HitGroup",
+        }),
+    });
 
-        enum class AABBSignedDistanceGeometryType : uint8_t
-        {
-            MiniSpheres,
-            IntersectedRoundCube,
-            SquareTorus,
-            TwistedTorus,
-            Cog,
-            Cylinder,
-            FractalPyramid,
-        };
+    constexpr auto g_TotalHitGroupCount = g_TotalGeometryCount * magic_enum::enum_count<RayType>();
 
-        enum class AABBGeometryType : uint32_t
-        {
-            Analytic,
-            Volumetric,
-            SignedDistance,
-        };
+    struct RadianceRayPayload
+    {
+        DirectX::XMFLOAT4 Color;
+        uint32_t RecursionDepth = 0;
+    };
 
-        constexpr auto g_AABBGeometryCounts = magic_enum::containers::to_array<AABBGeometryType>(
-        {
-            magic_enum::enum_count<AABBAnalyticGeometryType>(),
-            magic_enum::enum_count<AABBVolumetricGeometryType>(),
-            magic_enum::enum_count<AABBSignedDistanceGeometryType>(),
-        });
+    struct ShadowRayPayload
+    {
+        bool IsHitted = false;
+    };
 
-        constexpr auto g_TotalAABBGeometryCount = std::ranges::fold_left(g_AABBGeometryCounts, 0, std::plus{});
+    struct ProceduralPrimitiveAttributes
+    {
+        DirectX::XMFLOAT3 Normal;
+    };
 
-        using GeometryType = RTProceduralGeometryLayer::GeometryType;
+    struct SceneConstants
+    {
+        DirectX::XMMATRIX InverseViewProjectionMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMVECTOR CameraPosition = DirectX::XMVectorZero();
+        DirectX::XMVECTOR LightPosition = DirectX::XMVectorZero();
+        DirectX::XMVECTOR LightAmbientColor = DirectX::XMVectorZero();
+        DirectX::XMVECTOR LightDiffuseColor = DirectX::XMVectorZero();
+        float Reflectance = 0.0f;
+        float ElapsedTime = 0.0f;
+    };
 
-        constexpr auto g_GeometryCounts = magic_enum::containers::to_array<GeometryType>(
-        {
-            1ull,
-            magic_enum::enum_count<AABBGeometryType>(),
-        });
+    struct MeshMaterial
+    {
+        DirectX::XMFLOAT4 Albedo{ 0.0f, 0.0f, 0.0f, 0.0f };
+        float ReflectanceCoefficient = 0.0f;
+        float DiffuseCoefficient = 0.0f;
+        float SpecularCoefficient = 0.0f;
+        float SpecularPower = 0.0f;
+        float StepScale = 0.0f;
+    };
 
-        constexpr auto g_TotalGeometryCount = std::ranges::fold_left(g_GeometryCounts, 0, std::plus{});
+    struct ProceduralGeometryConstants
+    {
+        DirectX::XMMATRIX LocalSpaceToBottomLevelASMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX BottomLevelASToLocalSpaceMatrix = DirectX::XMMatrixIdentity();
+        uint32_t MaterialIndex = 0;
+        AABBGeometryType AABBGeometryType = AABBGeometryType::Analytic;
 
-        constexpr auto g_RayGenShaderName = L"RayGen";
+        DirectX::XMFLOAT2 __UnusedPadding;
+    };
 
-        constexpr auto g_ClosestHitShaderNames = magic_enum::containers::to_array<GeometryType>(
-        {
-            L"Triangle_RadianceRay_ClosestHit",
-            L"AABB_RadianceRay_ClosestHit",
-        });
+    enum class GPUTimerIndex
+    {
+        _DispatchRays,
+        _CopyRaytracingOutput,
+    };
 
-        constexpr auto g_MissShaderNames = magic_enum::containers::to_array<GeometryType>(
-        {
-            L"RadianceRay_Miss",
-            L"ShadowRay_Miss",
-        });
+    //
 
-        constexpr auto g_AABBIntersectionShaderNames = magic_enum::containers::to_array<AABBGeometryType>(
-        {
-            L"AnalyticAABB_Intersection",
-            L"VolumetricAABB_Intersection",
-            L"SignedDistanceAABB_Intersection",
-        });
-
-        constexpr auto g_TriangleHitGroupNames = magic_enum::containers::to_array<RayType>(
-        {
-            L"Triangle_RadianceRay_HitGroup",
-            L"Triangle_ShadowRay_HitGroup",
-        });
-
-        constexpr auto g_AABBHitGroupNames = magic_enum::containers::to_array<AABBGeometryType>(
-        {
-            magic_enum::containers::to_array<RayType>(
-            {
-                L"AnalyticAABB_RadianceRay_HitGroup",
-                L"AnalyticAABB_ShadowRay_HitGroup",
-            }),
-            magic_enum::containers::to_array<RayType>(
-            {
-                L"VolumetricAABB_RadianceRay_HitGroup",
-                L"VolumetricAABB_ShadowRay_HitGroup",
-            }),
-            magic_enum::containers::to_array<RayType>(
-            {
-                L"SignedDistanceAABB_RadianceRay_HitGroup",
-                L"SignedDistanceAABB_ShadowRay_HitGroup",
-            }),
-        });
-
-        constexpr auto g_TotalHitGroupCount = g_TotalGeometryCount * magic_enum::enum_count<RayType>();
-
-        struct RadianceRayPayload
-        {
-            DirectX::XMFLOAT4 Color;
-            uint32_t RecursionDepth = 0;
-        };
-
-        struct ShadowRayPayload
-        {
-            bool IsHitted = false;
-        };
-
-        struct ProceduralPrimitiveAttributes
-        {
-            DirectX::XMFLOAT3 Normal;
-        };
-
-        struct SceneConstants
-        {
-            DirectX::XMMATRIX InverseViewProjectionMatrix = DirectX::XMMatrixIdentity();
-            DirectX::XMVECTOR CameraPosition = DirectX::XMVectorZero();
-            DirectX::XMVECTOR LightPosition = DirectX::XMVectorZero();
-            DirectX::XMVECTOR LightAmbientColor = DirectX::XMVectorZero();
-            DirectX::XMVECTOR LightDiffuseColor = DirectX::XMVectorZero();
-            float Reflectance = 0.0f;
-            float ElapsedTime = 0.0f;
-        };
-
-        struct MeshMaterial
-        {
-            DirectX::XMFLOAT4 Albedo{ 0.0f, 0.0f, 0.0f, 0.0f };
-            float ReflectanceCoefficient = 0.0f;
-            float DiffuseCoefficient = 0.0f;
-            float SpecularCoefficient = 0.0f;
-            float SpecularPower = 0.0f;
-            float StepScale = 0.0f;
-        };
-
-        struct ProceduralGeometryConstants
-        {
-            DirectX::XMMATRIX LocalSpaceToBottomLevelASMatrix = DirectX::XMMatrixIdentity();
-            DirectX::XMMATRIX BottomLevelASToLocalSpaceMatrix = DirectX::XMMatrixIdentity();
-            uint32_t MaterialIndex = 0;
-            AABBGeometryType AABBGeometryType = AABBGeometryType::Analytic;
-
-            DirectX::XMFLOAT2 __UnusedPadding;
-        };
-
-        enum class GPUTimerIndex
-        {
-            _DispatchRays,
-            _CopyRaytracingOutput,
-        };
-
-    } // anonymous namespace
-
-    RTProceduralGeometryLayer::RTProceduralGeometryLayer(const benzin::GraphicsRefs& graphicsRefs)
+    RtProceduralGeometryLayer::RtProceduralGeometryLayer(const benzin::GraphicsRefs& graphicsRefs)
         : m_Window{ graphicsRefs.WindowRef }
         , m_Device{ graphicsRefs.DeviceRef }
         , m_SwapChain{ graphicsRefs.SwapChainRef }
     {
-        m_GPUTimer = std::make_unique<benzin::GPUTimer>(m_Device, benzin::GPUTimerCreation
+        m_GPUTimer = std::make_unique<benzin::GpuTimer>(m_Device, benzin::GpuTimerCreation
         {
             .CommandList = m_Device.GetGraphicsCommandQueue().GetCommandList(),
             .TimestampFrequency = m_Device.GetGraphicsCommandQueue().GetTimestampFrequency(),
@@ -203,14 +200,14 @@ namespace sandbox
         m_FlyCameraController.SetCameraPitchYaw(-18.0f, 22.0f);
     }
 
-    RTProceduralGeometryLayer::~RTProceduralGeometryLayer() = default;
+    RtProceduralGeometryLayer::~RtProceduralGeometryLayer() = default;
 
-    void RTProceduralGeometryLayer::OnEvent(benzin::Event& event)
+    void RtProceduralGeometryLayer::OnEvent(benzin::Event& event)
     {
         m_FlyCameraController.OnEvent(event);
     }
 
-    void RTProceduralGeometryLayer::OnUpdate()
+    void RtProceduralGeometryLayer::OnUpdate()
     {
         const auto dt = s_FrameTimer.GetDeltaTime();
 
@@ -227,12 +224,12 @@ namespace sandbox
                 .Reflectance = 0.0f,
             };
 
-            benzin::MappedData sceneConstantBuffer{ *m_SceneConstantBuffer };
-            sceneConstantBuffer.Write(constants);
+            const benzin::MemoryWriter writer{ m_SceneConstantBuffer->GetMappedData(), m_SceneConstantBuffer->GetSizeInBytes() };
+            writer.Write(constants);
         }
     }
 
-    void RTProceduralGeometryLayer::OnRender()
+    void RtProceduralGeometryLayer::OnRender()
     {
         using magic_enum::enum_integer;
 
@@ -269,18 +266,18 @@ namespace sandbox
             {
                 .RayGenerationShaderRecord
                 {
-                    .StartAddress = m_RayGenShaderTable->GetGPUVirtualAddress(),
+                    .StartAddress = m_RayGenShaderTable->GetGpuVirtualAddress(),
                     .SizeInBytes = m_RayGenShaderTable->GetNotAlignedSizeInBytes(),
                 },
                 .MissShaderTable
                 {
-                    .StartAddress = m_MissShaderTable->GetGPUVirtualAddress(),
+                    .StartAddress = m_MissShaderTable->GetGpuVirtualAddress(),
                     .SizeInBytes = m_MissShaderTable->GetNotAlignedSizeInBytes(),
                     .StrideInBytes = m_MissShaderTable->GetElementSize(),
                 },
                 .HitGroupTable
                 {
-                    .StartAddress = m_HitGroupShaderTable->GetGPUVirtualAddress(),
+                    .StartAddress = m_HitGroupShaderTable->GetGpuVirtualAddress(),
                     .SizeInBytes = m_HitGroupShaderTable->GetNotAlignedSizeInBytes(),
                     .StrideInBytes = m_HitGroupShaderTable->GetElementSize(),
                 },
@@ -296,7 +293,7 @@ namespace sandbox
             };
 
             {
-                BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, enum_integer(GPUTimerIndex::_DispatchRays));
+                BenzinGrabGpuTimeOnScopeExit(*m_GPUTimer, enum_integer(GPUTimerIndex::_DispatchRays));
                 d3d12CommandList->DispatchRays(&d3d12DispatchRayDesc);
             }
         }
@@ -311,7 +308,7 @@ namespace sandbox
             });
 
             {
-                BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, enum_integer(GPUTimerIndex::_CopyRaytracingOutput));
+                BenzinGrabGpuTimeOnScopeExit(*m_GPUTimer, enum_integer(GPUTimerIndex::_CopyRaytracingOutput));
                 commandList.CopyResource(currentBackBuffer, *m_RaytracingOutput);
             }
 
@@ -322,10 +319,10 @@ namespace sandbox
             });
         }
 
-        m_GPUTimer->ResolveTimestamps();
+        m_GPUTimer->ResolveTimestamps(m_Device.GetCpuFrameIndex());
     }
 
-    void RTProceduralGeometryLayer::OnImGuiRender()
+    void RtProceduralGeometryLayer::OnImGuiRender()
     {
         m_FlyCameraController.OnImGuiRender();
 
@@ -347,7 +344,7 @@ namespace sandbox
         ImGui::End();
     }
 
-    void RTProceduralGeometryLayer::CreateGeometry()
+    void RtProceduralGeometryLayer::CreateGeometry()
     {
         m_MeshMaterialBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
         {
@@ -398,8 +395,8 @@ namespace sandbox
                 .StepScale = 1.0f,
             };
 
-            benzin::MappedData meshMaterialBuffer{ *m_MeshMaterialBuffer };
-            meshMaterialBuffer.Write(gridMaterial, 0);
+            const benzin::MemoryWriter writer{ m_MeshMaterialBuffer->GetMappedData(), m_MeshMaterialBuffer->GetSizeInBytes() };
+            writer.Write(gridMaterial, 0);
         }
 
         // AABB meshes
@@ -452,7 +449,7 @@ namespace sandbox
 
             const DirectX::XMFLOAT4 chromiumReflectance{ 0.549f, 0.556f, 0.554f, 1.0f };
 
-            benzin::MappedData meshMaterialBuffer{ *m_MeshMaterialBuffer };
+            const benzin::MemoryWriter meshMaterialWriter{ m_MeshMaterialBuffer->GetMappedData(), m_MeshMaterialBuffer->GetSizeInBytes() };
             for (uint32_t i = 0; i < g_TotalAABBGeometryCount; ++i)
             {
                 const float albedoChannelValue = (float)i / 9.0f;
@@ -467,10 +464,10 @@ namespace sandbox
                     .StepScale = 1.0f,
                 };
 
-                meshMaterialBuffer.Write(material, 1 + i);
+                meshMaterialWriter.Write(material, 1 + i);
             }
 
-            benzin::MappedData proceduralGeometryBuffer{ *m_ProceduralGeometryBuffer };
+            const benzin::MemoryWriter proceduralGeometryWriter{ m_ProceduralGeometryBuffer->GetMappedData(), m_ProceduralGeometryBuffer->GetSizeInBytes() };
             for (uint32_t i = 0; i < g_TotalAABBGeometryCount; ++i)
             {
                 using namespace DirectX;
@@ -489,12 +486,12 @@ namespace sandbox
                     // .AABBGeometryType = AABBGeometryType::Analytic,
                 };
 
-                proceduralGeometryBuffer.Write(constants, i);
+                proceduralGeometryWriter.Write(constants, i);
             }
         }
     }
 
-    void RTProceduralGeometryLayer::CreatePipelineStateObject()
+    void RtProceduralGeometryLayer::CreatePipelineStateObject()
     {
         static const auto CreateD3D12TriangleHitGroupDesc = [](RayType ray)
         {
@@ -594,7 +591,7 @@ namespace sandbox
         BenzinAssert(m_Device.GetD3D12Device()->CreateStateObject(&d3d12StateObjectDesc, IID_PPV_ARGS(&m_D3D12RaytracingStateObject)));
     }
 
-    void RTProceduralGeometryLayer::CreateAccelerationStructures()
+    void RtProceduralGeometryLayer::CreateAccelerationStructures()
     {
         auto& graphicsCommandQueue = m_Device.GetGraphicsCommandQueue();
         BenzinFlushCommandQueueOnScopeExit(graphicsCommandQueue);
@@ -603,13 +600,13 @@ namespace sandbox
 
         // BottomLevel Triangles
         {
-            const benzin::rt::GeometryVariant gridGeometry = benzin::rt::TriangledGeometry
+            const benzin::RtGeometryVariant gridGeometry = benzin::RtTriangledGeometry
             {
                 .VertexBuffer = *m_GridVertexBuffer,
                 .IndexBuffer = *m_GridIndexBuffer,
             };
 
-            m_BottomLevelASs[GeometryType::Triangle] = std::make_unique<benzin::rt::BottomLevelAccelerationStructure>(m_Device, benzin::rt::BottomLevelAccelerationStructureCreation
+            m_BottomLevelASs[GeometryType::Triangle] = std::make_unique<benzin::BottomLevelAccelerationStructure>(m_Device, benzin::BottomLevelAccelerationStructureCreation
             {
                 .DebugName = "Grid",
                 .Geometries = std::span{ &gridGeometry, 1 },
@@ -618,19 +615,19 @@ namespace sandbox
         
         // BottomLevel Procedural
         {
-            std::vector<benzin::rt::GeometryVariant> proceduralGeometries;
+            std::vector<benzin::RtGeometryVariant> proceduralGeometries;
             proceduralGeometries.reserve(g_TotalAABBGeometryCount);
 
             for (size_t i = 0; i < g_TotalAABBGeometryCount; ++i)
             {
-                proceduralGeometries.push_back(benzin::rt::ProceduralGeometry
+                proceduralGeometries.push_back(benzin::RtProceduralGeometry
                 {
                     .AABBBuffer = *m_AABBBuffer,
                     .AABBIndex = (uint32_t)i,
                 });
             }
 
-            m_BottomLevelASs[GeometryType::AABB] = std::make_unique<benzin::rt::BottomLevelAccelerationStructure>(m_Device, benzin::rt::BottomLevelAccelerationStructureCreation
+            m_BottomLevelASs[GeometryType::AABB] = std::make_unique<benzin::BottomLevelAccelerationStructure>(m_Device, benzin::BottomLevelAccelerationStructureCreation
             {
                 .DebugName = "Procedural",
                 .Geometries = proceduralGeometries,
@@ -639,7 +636,7 @@ namespace sandbox
 
         // TopLevel
         {
-            const auto instanceCollection = std::to_array<benzin::rt::TopLevelInstance>(
+            const auto instanceCollection = std::to_array<benzin::TopLevelInstance>(
             {
                 {
                     .BottomLevelAccelerationStructure = *m_BottomLevelASs[GeometryType::Triangle],
@@ -652,7 +649,7 @@ namespace sandbox
                 },
             });
 
-            m_TopLevelAS = std::make_unique<benzin::rt::TopLevelAccelerationStructure>(m_Device, benzin::rt::TopLevelAccelerationStructureCreation
+            m_TopLevelAS = std::make_unique<benzin::TopLevelAccelerationStructure>(m_Device, benzin::TopLevelAccelerationStructureCreation
             {
                 .Instances = instanceCollection,
             });
@@ -677,7 +674,7 @@ namespace sandbox
         }
     }
 
-    void RTProceduralGeometryLayer::CreateShaderTables()
+    void RtProceduralGeometryLayer::CreateShaderTables()
     {
     #if 1
         using ShaderID = std::span<const std::byte>;
@@ -758,7 +755,7 @@ namespace sandbox
     #endif
     }
 
-    void RTProceduralGeometryLayer::CreateRaytracingResources()
+    void RtProceduralGeometryLayer::CreateRaytracingResources()
     {
         m_SceneConstantBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
         {

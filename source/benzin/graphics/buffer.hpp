@@ -1,6 +1,8 @@
 #pragma once
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
+#include "benzin/core/memory_writer.hpp"
 #include "benzin/graphics/resource.hpp"
 
 namespace benzin
@@ -57,8 +59,15 @@ namespace benzin
     class Buffer : public Resource
     {
     public:
+        friend class RtAccelerationStructure;
+
+        template <typename ConstantsT>
+        friend class ConstantBuffer;
+
+    public:
         explicit Buffer(Device& device);
         Buffer(Device& device, const BufferCreation& creation);
+        ~Buffer() override;
 
     public:
         auto GetElementSize() const { return m_ElementSize; }
@@ -68,8 +77,10 @@ namespace benzin
 
         uint32_t GetSizeInBytes() const override { return m_AlignedElementSize * m_ElementCount; }
 
-        uint64_t GetGPUVirtualAddress() const;
-        uint64_t GetGPUVirtualAddress(uint32_t elementIndex) const;
+        uint64_t GetGpuVirtualAddress() const;
+        uint64_t GetGpuVirtualAddress(uint32_t elementIndex) const;
+
+        auto* GetMappedData() const { return m_MappedData; }
 
     public:
         void Create(const BufferCreation& creation);
@@ -92,6 +103,8 @@ namespace benzin
         uint32_t m_ElementSize = 0;
         uint32_t m_AlignedElementSize = 0; // For ConstantBufferView
         uint32_t m_ElementCount = 0;
+
+        std::byte* m_MappedData = nullptr;
     };
 
     template <typename T>
@@ -104,7 +117,7 @@ namespace benzin
             .DebugName = debugName,
             .ElementSize = sizeof(T),
             .ElementCount = elementCount * frameInFlightCount,
-            .Flags{ BufferFlag::UploadBuffer }, // #TODO: Add StructuredBuffer flag
+            .Flags = BufferFlag::UploadBuffer, // #TODO: Add StructuredBuffer flag
         });
 
         for (auto i : std::views::iota(0u, frameInFlightCount))
@@ -115,25 +128,42 @@ namespace benzin
         return buffer;
     }
 
-    template <typename T>
-    std::unique_ptr<Buffer> CreateFrameDependentConstantBuffer(Device& device, std::string_view debugName)
+    template <typename ConstantsT>
+    class ConstantBuffer
     {
-        const uint32_t frameInFlightCount = CommandLineArgs::GetFrameInFlightCount();
-
-        auto buffer = std::make_unique<Buffer>(device, BufferCreation
+    public:
+        ConstantBuffer(Device& device, std::string_view debugName)
+            : m_Buffer{ device }
         {
-            .DebugName = debugName,
-            .ElementSize = sizeof(T),
-            .ElementCount = frameInFlightCount,
-            .Flags = BufferFlag::ConstantBuffer,
-        });
+            m_Buffer.Create(BufferCreation
+            {
+                .DebugName = debugName,
+                .ElementSize = sizeof(ConstantsT),
+                .ElementCount = CommandLineArgs::GetFrameInFlightCount(),
+                .Flags = BufferFlag::ConstantBuffer,
+            });
 
-        for (auto i : std::views::iota(0u, frameInFlightCount))
-        {
-            BenzinAssert(buffer->PushConstantBufferView(ConstantBufferViewCreation{ .ElementIndex = i }) == i);
+            for (auto i : std::views::iota(0u, m_Buffer.GetElementCount()))
+            {
+                BenzinAssert(m_Buffer.PushConstantBufferView(ConstantBufferViewCreation{ .ElementIndex = i }) == i);
+            }
+
+            m_MappedDataWriter = MemoryWriter{ m_Buffer.GetMappedData(), m_Buffer.GetSizeInBytes() };
         }
 
-        return buffer;
-    }
+        const Descriptor& GetActiveCbv() const
+        {
+            return m_Buffer.GetConstantBufferView(m_Buffer.m_Device.GetActiveFrameIndex());
+        }
+
+        void UpdateConstants(const ConstantsT& constants)
+        {
+            m_MappedDataWriter.WriteSized(constants, m_Buffer.GetAlignedElementSize(), m_Buffer.m_Device.GetActiveFrameIndex());
+        }
+
+    private:
+        Buffer m_Buffer;
+        MemoryWriter m_MappedDataWriter;
+    };
 
 } // namespace benzin

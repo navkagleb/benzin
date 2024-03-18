@@ -43,9 +43,9 @@ namespace benzin
         return transformedBoundingBox;
     }
 
-    DirectX::XMMATRIX GetMatrixForNormals(const DirectX::XMMATRIX& worldMatrix)
+    DirectX::XMMATRIX GetMatrixForNormals(const DirectX::XMMATRIX& transform)
     {
-        return DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, worldMatrix));
+        return DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, transform));
     }
 
 } // namespace benzin

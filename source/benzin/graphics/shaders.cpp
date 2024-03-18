@@ -4,6 +4,7 @@
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/pipeline_state.hpp"
+#include "benzin/utility/time_utils.hpp"
 
 namespace benzin
 {
@@ -162,15 +163,16 @@ namespace benzin
             ComPtr<IDxcBlobUtf8> dxcErrorBlob;
             ComPtr<IDxcBlobWide> dummyName; // To avoid warning
             dxcResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&dxcErrorBlob), &dummyName);
+
             if (dxcErrorBlob && dxcErrorBlob->GetStringLength() > 0)
             {
-                BenzinError("Failed to compile shader: {}", paths.SourceFilePath.string());
+                BenzinError("Failed to compile shader: {} ({})", paths.SourceFilePath.string(), ToNarrowString(args.EntryPoint));
                 BenzinError("ErrorMessage: \n{}", dxcErrorBlob->GetStringPointer());
 
                 BenzinEnsure(false);
             }
 
-            return ParseDXCResult(dxcResult);
+            return ParseDxcResult(dxcResult);
         }
 
     private:
@@ -183,7 +185,7 @@ namespace benzin
             return dxcShaderSource;
         }
 
-        CompileResult ParseDXCResult(const ComPtr<IDxcResult>& dxcResult) const
+        CompileResult ParseDxcResult(const ComPtr<IDxcResult>& dxcResult) const
         {
             CompileResult result;
 
@@ -273,11 +275,11 @@ namespace benzin
 
         if (shaderType == ShaderType::Library)
         {
-            BenzinTrace("LibraryCompiled: {}! File: {}. Time: {} ms", hash, shaderCreation.FileName, ToFloatMS(us));
+            BenzinTrace("LibraryCompiled: {}! File: {}. Time: {} ms", hash, shaderCreation.FileName, ToFloatMs(us));
         }
         else
         {
-            BenzinTrace("ShaderCompiled: {}! File: {}, EntryPoint: {}. Time: {} ms", hash, shaderCreation.FileName, shaderCreation.EntryPoint, ToFloatMS(us));
+            BenzinTrace("ShaderCompiled: {}! File: {}, EntryPoint: {}. Time: {} ms", hash, shaderCreation.FileName, shaderCreation.EntryPoint, ToFloatMs(us));
         }
 
         WriteToFile(paths.BinaryFilePath, compileResult.BinaryBlob);

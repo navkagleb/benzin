@@ -20,19 +20,21 @@ workspace "benzin"
 
     filter "configurations:Debug"
         targetsuffix "_debug"
+        optimize "Off"
+
         defines {
             "DEBUG",
             "BENZIN_DEBUG_BUILD"
         }
-        optimize "Off"
 
     filter "configurations:Release"
         targetsuffix "_release"
+        optimize "On"
+
         defines {
             "NDEBUG",
             "BENZIN_RELEASE_BUILD",
         }
-        optimize "On"
 
     filter "files:**.hlsl"
         buildaction "None"
@@ -40,102 +42,121 @@ workspace "benzin"
     filter "files:**.hlsli"
         buildaction "None"
 
+local solution_dir = "../"
+local bin_dir = solution_dir .. "bin/"
+local build_dir = solution_dir .. "build/"
+local source_dir = solution_dir .. "source/"
+
+local third_party_source_dir = source_dir .. "third_party/"
+local benzin_source_dir = source_dir .. "benzin/"
+local sandbox_source_dir = source_dir .. "sandbox/"
+local shaders_source_dir = source_dir .. "shaders/"
+
+-- Included C++23 features
+local cpp_version = "C++latest"
+
 project "third_party"
     kind "StaticLib"
     language "C++"
-    cppdialect "C++latest" -- Included C++23 features
-    location "../source/third_party"
+    cppdialect(cpp_version)
+    location(third_party_source_dir)
 
-    targetdir "../bin"
-    objdir "../build/third_party/%{cfg.buildcfg}"
+    targetdir(bin_dir)
+    objdir(build_dir .. "/%{prj.name}/%{cfg.buildcfg}")
 
     files {
-        -- adl
-        "../source/third_party/adl/*.h",
-
-        -- directx
-        "../source/third_party/directx/**.h",
-        "../source/third_party/directx/**.cpp",
-
-        -- entt
-        "../source/third_party/entt/**.h",
-        "../source/third_party/entt/**.hpp",
-        "../source/third_party/entt/**.cpp",
-
-        -- imgui
-        "../source/third_party/imgui/**.h",
-        "../source/third_party/imgui/**.cpp",
-
-        -- magic_enum
-        "../source/third_party/magic_enum/*.hpp",
-
-        -- nviapi
-        "../source/third_party/nvapi/*.h",
-
-        -- tinygltf
-        "../source/third_party/tinygltf/*.h",
-        "../source/third_party/tinygltf/*.hpp",
-        "../source/third_party/tinygltf/*.cc",
+        third_party_source_dir .. "adl/**.h",
+        third_party_source_dir .. "directx/**.cpp",
+        third_party_source_dir .. "directx/**.h",
+        third_party_source_dir .. "entt/**.cpp",
+        third_party_source_dir .. "entt/**.h",
+        third_party_source_dir .. "entt/**.hpp",
+        third_party_source_dir .. "imgui/**.cpp",
+        third_party_source_dir .. "imgui/**.h",
+        third_party_source_dir .. "magic_enum/**.hpp",
+        third_party_source_dir .. "nvapi/**.h",
+        third_party_source_dir .. "tinygltf/**.cc",
+        third_party_source_dir .. "tinygltf/**.h",
+        third_party_source_dir .. "tinygltf/**.hpp",
     }
+
+local vs_solution_dir = "$(SolutionDir)"
+local vs_bin_dir = vs_solution_dir .. "bin/"
+local vs_packages_dir = vs_solution_dir .. "packages/"
+
+function create_nuget(name, version)
+    return {
+        id =  name .. ":" .. version,
+        vs_dir = vs_packages_dir .. name .. "." .. version .. "/",
+    }
+end
+
+function vs_copy_file_command(dir, file_path)
+    string.format('xcopy /f /Y /D "%s" "%s"', file_path, dir)
+end
 
 project "benzin"
     kind "StaticLib"
     language "C++"
-    cppdialect "C++latest" -- Included C++23 features
-    location "../source/benzin"
+    cppdialect(cpp_version)
+    location(benzin_source_dir)
 
-    targetdir "../bin"
-    objdir "../build/benzin/%{cfg.buildcfg}"
+    targetdir(bin_dir)
+    objdir(build_dir .. "%{prj.name}/%{cfg.buildcfg}")
 
     pchheader "benzin/config/bootstrap.hpp"
-    pchsource "../source/benzin/config/bootstrap.cpp"
+    pchsource(benzin_source_dir .. "config/bootstrap.cpp")
 
-    defines { "BENZIN_PROJECT" }
-
-    nuget {
-        "Microsoft.Direct3D.D3D12:1.610.3",
-        "Microsoft.Direct3D.DXC:1.7.2308.12"
-        -- "WinPixEventRuntime:1.0.230302001"
+    defines {
+        "BENZIN_PROJECT",
+        "BENZIN_AGILE_SDK_VERSION=711",
+        "BENZIN_AGILE_SDK_PATH=\"./\"",
     }
 
     files {
-        "../source/benzin/**.hpp",
-        "../source/benzin/**.inl",
-        "../source/benzin/**.cpp",
+        benzin_source_dir .. "**.hpp",
+        benzin_source_dir .. "**.inl",
+        benzin_source_dir .. "**.cpp",
     }
 
     includedirs {
-        "../",
-        "../source",
-        "../source/benzin",
+        solution_dir,
+        source_dir,
+        location_dir,
     }
 
+    local agile_sdk_nuget = create_nuget("Microsoft.Direct3D.D3D12", "1.711.3-preview")
+    local dxc_nuget = create_nuget("Microsoft.Direct3D.DXC", "1.7.2308.12")
+
+    nuget {
+        agile_sdk_nuget.id,
+        dxc_nuget.id,
+    }
+
+    local agile_sdk_bin_path = agile_sdk_nuget.vs_dir .. "build/native/bin/x64/"
+    local dxc_bin_path = dxc_nuget.vs_dir .. "build/native/bin/x64/"
+
     postbuildcommands {
-        -- DirectX Agile SDK
-        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/D3D12Core.dll\" \"$(SolutionDir)bin\"",
-        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/D3D12Core.pdb\" \"$(SolutionDir)bin\"",
-
-        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/d3d12SDKLayers.dll\" \"$(SolutionDir)bin\"",
-        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.D3D12.1.610.3/build/native/bin/x64/d3d12SDKLayers.pdb\" \"$(SolutionDir)bin\"",
-
-        -- DXC
-        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/bin/x64/dxcompiler.dll\" \"$(SolutionDir)bin\"",
-        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/bin/x64/dxcompiler.pdb\" \"$(SolutionDir)bin\"",
-
-        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/bin/x64/dxil.dll\" \"$(SolutionDir)bin\"",
-        "xcopy /f /Y /D \"$(SolutionDir)packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/bin/x64/dxil.pdb\" \"$(SolutionDir)bin\"",
+        vs_copy_file_command(vs_bin_dir, agile_sdk_bin_path .. "D3D12Core.dll"),
+        vs_copy_file_command(vs_bin_dir, agile_sdk_bin_path .. "D3D12Core.pdb"),
+        vs_copy_file_command(vs_bin_dir, agile_sdk_bin_path .. "d3d12SDKLayers.dll"),
+        vs_copy_file_command(vs_bin_dir, agile_sdk_bin_path .. "d3d12SDKLayers.pdb"),
+        vs_copy_file_command(vs_bin_dir, dxc_bin_path .. "dxcompiler.dll"),
+        vs_copy_file_command(vs_bin_dir, dxc_bin_path .. "dxcompiler.pdb"),
+        vs_copy_file_command(vs_bin_dir, dxc_bin_path .. "dxil.dll"),
+        vs_copy_file_command(vs_bin_dir, dxc_bin_path .. "dxil.pdb"),
     }
 
 project "sandbox"
     kind "ConsoleApp"
     language "C++"
-    cppdialect "C++20"
-    location "../source/sandbox"
+    cppdialect(cpp_version)
+    location(sandbox_source_dir)
 
-    targetdir "../bin"
-    objdir "../build/sandbox/%{cfg.buildcfg}"
+    targetdir(bin_dir)
+    objdir(build_dir .. "%{prj.name}/%{cfg.buildcfg}")
 
-    debugdir "$(SolutionDir)"
+    debugdir(solution_abs_dir)
 
     links {
         "third_party",
@@ -143,33 +164,31 @@ project "sandbox"
     }
 
     libdirs {
-        "$(SolutionDir)source/third_party/nvapi/amd64", -- nvapi
+        third_party_source_dir .. "nvapi/amd64",
     }
 
     pchheader "bootstrap.hpp"
-    pchsource "../source/sandbox/bootstrap.cpp"
-
-    nuget {
-        "Microsoft.Direct3D.D3D12:1.610.3",
-        "directxmesh_desktop_win10:2023.4.28.1",
-    }
+    pchsource(sandbox_source_dir .. "bootstrap.cpp")
 
     files {
-        "../source/sandbox/**.hpp",
-        "../source/sandbox/**.inl",
-        "../source/sandbox/**.cpp",
+        sandbox_source_dir .. "**.hpp",
+        sandbox_source_dir .. "**.inl",
+        sandbox_source_dir .. "**.cpp",
 
-        "../source/shaders/**.hpp",
-        "../source/shaders/**.hlsl",
-        "../source/shaders/**.hlsli",
+        shaders_source_dir .. "**.hpp",
+        shaders_source_dir .. "**.hlsl",
+        shaders_source_dir .. "**.hlsli",
     }
 
     includedirs {
-        "../",
-        "../source/",
-        "../source/sandbox",
+        solution_dir,
+        source_dir,
+        sandbox_source_dir,
     }
 
     vpaths {
-	    ["shaders/*"] = { "../source/shaders/**.hlsl", "../source/shaders/**.hlsli" }
+	    ["shaders/*"] = {
+            shaders_source_dir .. "**.hlsl",
+            shaders_source_dir .. "**.hlsli"
+        }
 	}

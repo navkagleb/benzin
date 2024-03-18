@@ -27,7 +27,7 @@ namespace benzin
         uint32_t MeshIndex = g_InvalidIndex<uint32_t>;
         uint32_t MaterialIndex = g_InvalidIndex<uint32_t>;
 
-        uint32_t MeshParentTransformIndex = g_InvalidIndex<uint32_t>; // Optional
+        DirectX::XMMATRIX Transform = DirectX::XMMatrixIdentity();
     };
 
     struct TextureImage
@@ -46,7 +46,7 @@ namespace benzin
     {
         uint32_t AlbedoTextureIndex = g_InvalidIndex<uint32_t>;
         uint32_t NormalTextureIndex = g_InvalidIndex<uint32_t>;
-        uint32_t MetalRoughnessTextureIndex = g_InvalidIndex<uint32_t>;
+        uint32_t MetallicRoughnessTextureIndex = g_InvalidIndex<uint32_t>;
         uint32_t EmissiveTextureIndex = g_InvalidIndex<uint32_t>;
 
         DirectX::XMFLOAT4 AlbedoFactor{ 1.0f, 1.0f, 1.0f, 1.0f };
@@ -63,13 +63,13 @@ namespace benzin
         std::string DebugName;
 
         std::vector<MeshData> Meshes;
-        std::vector<DirectX::XMMATRIX> MeshParentTransforms;
         std::vector<MeshInstance> MeshInstances;
 
         std::vector<TextureImage> TextureImages;
         std::vector<Material> Materials;
     };
 
+    bool LoadTextureImageFromHdrFile(std::string_view fileName, TextureImage& textureImage);
     bool LoadMeshCollectionFromGltfFile(std::string_view fileName, MeshCollectionResource& outMeshCollection);
 
 } // namespace benzin

@@ -14,7 +14,6 @@ namespace benzin
 
     SwapChain::SwapChain(const Window& window, const Backend& backend, Device& device)
         : m_Device{ device }
-        , m_FrameFence{ std::make_unique<StalledFence>(m_Device, "SwapChainFrameFence") }
     {
         const uint32_t frameInFlightCount = CommandLineArgs::GetFrameInFlightCount();
 
@@ -58,6 +57,8 @@ namespace benzin
 
         m_BackBuffers.resize(frameInFlightCount);
         ResizeBackBuffers(window.GetWidth(), window.GetHeight());
+
+        MakeUniquePtr(m_FrameFence, m_Device, "SwapChainFrameFence");
     }
 
     SwapChain::~SwapChain()
@@ -101,7 +102,7 @@ namespace benzin
             if (cpuFrameIndex - gpuFrameIndex >= frameInFlightCount)
             {
                 const uint64_t gpuFrameIndexToWait = cpuFrameIndex - frameInFlightCount + 1;
-                m_FrameFence->StallCurrentThreadUntilGPUCompletion(gpuFrameIndexToWait);
+                m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
 
                 // 'm_FrameFence' completed value may differ from 'gpuFrameIndexToWait'
                 // Therefore, save 'm_FrameFence' completed value because it's may be updated during the waiting time
@@ -148,7 +149,7 @@ namespace benzin
             
             SetD3D12ObjectDebugName(d3d12BackBuffer, "SwapChainBackBuffer", (uint32_t)i);
 
-            backBuffer = std::make_unique<Texture>(m_Device, d3d12BackBuffer);
+            MakeUniquePtr(backBuffer, m_Device, d3d12BackBuffer);
             backBuffer->PushRenderTargetView();
         }
     }

@@ -3,13 +3,14 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
+#include "benzin/utility/time_utils.hpp"
 
 namespace benzin
 {
 
     static void LogScopeTime(std::string_view scopeName, std::chrono::microseconds us)
     {
-        BenzinTrace("Scope '{}' takes {:.3f}ms, {:.3f}s", scopeName, ToFloatMS(us), ToFloatSec(us));
+        BenzinTrace("Scope '{}' takes {:.3f}ms, {:.3f}s", scopeName, ToFloatMs(us), ToFloatSec(us));
     }
 
     static void GrabScopeTime(std::chrono::microseconds us, std::chrono::microseconds& outUS)
@@ -34,7 +35,7 @@ namespace benzin
         }
 
         const auto endTimePoint = std::chrono::high_resolution_clock::now();
-        const auto us = ToUS(endTimePoint - m_StartTimePoint);
+        const auto us = ToUs(endTimePoint - m_StartTimePoint);
         m_Callback(us);
     }
 

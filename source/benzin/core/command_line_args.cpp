@@ -26,10 +26,9 @@ namespace benzin
         }
     }
 
-    template <>
-    static void ParseArithmetic<bool>(std::string_view commandLineToParse, void* member)
+    static void SetFalseIfExists([[maybe_unused]] std::string_view commandLineToParse, void* member)
     {
-        return ParseArithmetic<uint32_t>(commandLineToParse, member);
+        *reinterpret_cast<bool*>(member) = false;
     }
 
     struct SupportedCommandLineArg
@@ -57,7 +56,8 @@ namespace benzin
 
         uint32_t AdapterIndex = 0;
         uint32_t FrameInFlightCount = 3;
-        GraphicsFormat BackBufferFormat = GraphicsFormat::RGBA8Unorm;
+        GraphicsFormat BackBufferFormat = GraphicsFormat::Rgba8Unorm;
+        bool IsGpuUploadHeapsEnabled = true;
 
         GraphicsDebugLayerParams GraphicsDebugLayerParams;
 
@@ -67,12 +67,14 @@ namespace benzin
             {
                 SupportedCommandLineArg{ "-window_width:", &WindowWidth, ParseArithmetic<decltype(WindowWidth)> },
                 SupportedCommandLineArg{ "-window_height:", &WindowHeight, ParseArithmetic<decltype(WindowHeight)> },
-                SupportedCommandLineArg{ "-is_window_resizable:", &IsWindowResizable, ParseArithmetic<decltype(IsWindowResizable)> },
+                SupportedCommandLineArg{ "-disable_window_resizing", &IsWindowResizable, SetFalseIfExists },
 
                 SupportedCommandLineArg{ "-adapter_index:", &AdapterIndex, ParseArithmetic<decltype(AdapterIndex)> },
                 SupportedCommandLineArg{ "-frame_in_flight_count:", &FrameInFlightCount, ParseArithmetic<decltype(FrameInFlightCount)> },
-                SupportedCommandLineArg{ "-is_gpu_based_validation_enabled:", &GraphicsDebugLayerParams.IsGPUBasedValidationEnabled, ParseArithmetic<decltype(GraphicsDebugLayerParams.IsGPUBasedValidationEnabled)> },
-                SupportedCommandLineArg{ "-is_sync_command_queue_validation_enabled:", &GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled, ParseArithmetic<decltype(GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled)> },
+                SupportedCommandLineArg{ "-force_disable_gpu_upload_heaps", &IsGpuUploadHeapsEnabled, SetFalseIfExists },
+
+                SupportedCommandLineArg{ "-force_disable_gpu_based_validation", &GraphicsDebugLayerParams.IsGpuBasedValidationEnabled, SetFalseIfExists },
+                SupportedCommandLineArg{ "-force_disable_sync_command_queue_validation", &GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled, SetFalseIfExists },
             });
 
             ExecutablePath = argv[0];
@@ -102,7 +104,7 @@ namespace benzin
 
     void CommandLineArgs::Initialize(int argc, char** argv)
     {
-        g_CommandLineArgsState = std::make_unique<CommandLineArgsState>(argc, argv);
+        MakeUniquePtr(g_CommandLineArgsState, argc, argv);
     }
 
     uint32_t CommandLineArgs::GetWindowWidth() { return g_CommandLineArgsState->WindowWidth; }
@@ -111,6 +113,7 @@ namespace benzin
     uint32_t CommandLineArgs::GetAdapterIndex() { return g_CommandLineArgsState->AdapterIndex; }
     uint32_t CommandLineArgs::GetFrameInFlightCount() { return g_CommandLineArgsState->FrameInFlightCount; }
     GraphicsFormat CommandLineArgs::GetBackBufferFormat() { return g_CommandLineArgsState->BackBufferFormat; }
+    bool CommandLineArgs::IsGpuUploadHeapsEnabled() { return g_CommandLineArgsState->IsGpuUploadHeapsEnabled; }
     GraphicsDebugLayerParams CommandLineArgs::GetGraphicsDebugLayerParams() { return g_CommandLineArgsState->GraphicsDebugLayerParams; }
 
 } // namespace benzin

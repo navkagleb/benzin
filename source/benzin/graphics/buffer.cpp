@@ -3,16 +3,15 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
-#include "benzin/graphics/mapped_data.hpp"
 
 namespace benzin
 {
 
-    static D3D12_HEAP_TYPE ResolveD3D12HeapType(BufferFlags flags)
+    static D3D12_HEAP_TYPE ResolveD3D12HeapType(const Device& device, BufferFlags flags)
     {
         if (flags[BufferFlag::UploadBuffer] || flags[BufferFlag::ConstantBuffer])
         {
-            return D3D12_HEAP_TYPE_UPLOAD;
+            return device.IsGpuUploadHeapsSupported() ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD;
         }
         else if (flags[BufferFlag::ReadbackBuffer])
         {
@@ -70,11 +69,9 @@ namespace benzin
         };
     }
 
-    static void CreateD3D12Resource(const BufferCreation& bufferCreation, ID3D12Device* d3d12Device, ID3D12Resource*& d3d12Resource)
+    static void CreateD3D12Resource(const BufferCreation& bufferCreation, const Device& device, ID3D12Resource*& d3d12Resource)
     {
-        BenzinAssert(d3d12Device);
-
-        const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(ResolveD3D12HeapType(bufferCreation.Flags));
+        const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(ResolveD3D12HeapType(device, bufferCreation.Flags));
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(bufferCreation);
 
         if (d3d12HeapProperties.Type == D3D12_HEAP_TYPE_UPLOAD && bufferCreation.InitialState != ResourceState::GenericRead)
@@ -83,7 +80,7 @@ namespace benzin
             const_cast<BufferCreation&>(bufferCreation).InitialState = ResourceState::GenericRead;
         }
 
-        BenzinAssert(d3d12Device->CreateCommittedResource(
+        BenzinEnsure(device.GetD3D12Device()->CreateCommittedResource(
             &d3d12HeapProperties,
             D3D12_HEAP_FLAG_NONE,
             &d3d12ResourceDesc,
@@ -173,7 +170,7 @@ namespace benzin
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             .RaytracingAccelerationStructure
             {
-                .Location = buffer.GetGPUVirtualAddress(),
+                .Location = buffer.GetGpuVirtualAddress(),
             },
         };
     }
@@ -190,23 +187,31 @@ namespace benzin
         Create(creation);
     }
 
-    uint64_t Buffer::GetGPUVirtualAddress() const
+    Buffer::~Buffer()
+    {
+        if (m_MappedData != nullptr)
+        {
+            m_D3D12Resource->Unmap(0, nullptr);
+        }
+    }
+
+    uint64_t Buffer::GetGpuVirtualAddress() const
     {
         BenzinAssert(m_D3D12Resource);
         return m_D3D12Resource->GetGPUVirtualAddress();
     }
 
-    uint64_t Buffer::GetGPUVirtualAddress(uint32_t elementIndex) const
+    uint64_t Buffer::GetGpuVirtualAddress(uint32_t elementIndex) const
     {
         BenzinAssert(elementIndex < m_ElementCount);
-        return GetGPUVirtualAddress() + elementIndex * m_AlignedElementSize;
+        return GetGpuVirtualAddress() + elementIndex * m_AlignedElementSize;
     }
 
     void Buffer::Create(const BufferCreation& creation)
     {
         BenzinAssert(!m_D3D12Resource);
 
-        CreateD3D12Resource(creation, m_Device.GetD3D12Device(), m_D3D12Resource);
+        CreateD3D12Resource(creation, m_Device, m_D3D12Resource);
         SetD3D12ObjectDebugName(m_D3D12Resource, creation.DebugName);
 
         m_CurrentState = creation.InitialState; // 'InitialState' can updated in 'CreateD3D12Resource'
@@ -214,12 +219,18 @@ namespace benzin
         m_ElementCount = creation.ElementCount;
         m_AlignedElementSize = (uint32_t)m_D3D12Resource->GetDesc().Width / creation.ElementCount; // HACK
 
+        if (creation.Flags[BufferFlag::UploadBuffer] || creation.Flags[BufferFlag::ConstantBuffer])
+        {
+            const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // Writing only range
+            BenzinAssert(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_MappedData)));
+        }
+
         if (!creation.InitialData.empty())
         {
             BenzinAssert(creation.Flags[BufferFlag::UploadBuffer] || creation.Flags[BufferFlag::ConstantBuffer]);
 
-            MappedData buffer{ *this };
-            buffer.Write(creation.InitialData);
+            const MemoryWriter writer{ GetMappedData(), GetSizeInBytes() };
+            writer.WriteBytes(creation.InitialData);
         }
 
         if (creation.IsNeedFormatBufferView)
@@ -309,7 +320,7 @@ namespace benzin
             m_D3D12Resource,
             nullptr,
             &d3d12UnorderedAccessViewDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
         );
 
         return PushResourceView(descriptorType, descriptor);
@@ -319,12 +330,7 @@ namespace benzin
     {
         BenzinAssert(m_D3D12Resource);
 
-        uint64_t gpuVirtualAddress = GetGPUVirtualAddress();
-        if (creation.ElementIndex != g_InvalidIndex<decltype(creation.ElementIndex)>)
-        {
-            BenzinAssert(creation.ElementIndex < m_ElementCount);
-            gpuVirtualAddress += creation.ElementIndex * m_AlignedElementSize;
-        }
+        const uint64_t gpuVirtualAddress = IsValidIndex(creation.ElementIndex) ? GetGpuVirtualAddress(creation.ElementIndex) : GetGpuVirtualAddress();
 
         const D3D12_CONSTANT_BUFFER_VIEW_DESC d3d12ConstantBufferViewDesc
         {
@@ -337,7 +343,7 @@ namespace benzin
 
         m_Device.GetD3D12Device()->CreateConstantBufferView(
             &d3d12ConstantBufferViewDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
         );
 
         return PushResourceView(descriptorType, descriptor);
@@ -351,7 +357,7 @@ namespace benzin
         m_Device.GetD3D12Device()->CreateShaderResourceView(
             d3d12Resource,
             &d3d12ShaderResourceViewDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
         );
 
         return PushResourceView(descriptorType, descriptor);

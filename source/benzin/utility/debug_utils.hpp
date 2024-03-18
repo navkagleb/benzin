@@ -11,12 +11,12 @@ namespace benzin
         const auto names = magic_enum::enum_names<EnumT>();
         const auto values = magic_enum::enum_values<EnumT>();
 
-        const auto rawFlags = std::to_underlying(flags);
+        const auto rawFlags = magic_enum::enum_integer(flags);
         BenzinTrace("{:08b}: {}", rawFlags, rawFlags);
 
         for (const auto i : std::views::iota(0u, magic_enum::enum_count<EnumT>()))
         {
-            const auto rawFlag = std::to_underlying(values[i]);
+            const auto rawFlag = magic_enum::enum_integer(values[i]);
             if ((rawFlags & rawFlag) == rawFlag && rawFlag != 0)
             {
                 BenzinTrace("{:08b}: ({}) {}", rawFlag, names[i], rawFlag);

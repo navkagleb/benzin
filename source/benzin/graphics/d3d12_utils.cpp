@@ -8,38 +8,6 @@
 namespace benzin
 {
 
-#if BENZIN_IS_DEBUG_BUILD
-    enum class D3D12BreakReasonFlag
-    {
-        Warning,
-        Error,
-        Corruption,
-    };
-    using D3D12BreakReasonFlags = magic_enum::containers::bitset<D3D12BreakReasonFlag>;
-    static_assert(sizeof(D3D12BreakReasonFlags) <= sizeof(D3D12BreakReasonFlag));
-
-    static void EnableD3D12DebugBreakOn(bool isEnabled, D3D12BreakReasonFlags flags)
-    {
-        ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
-        BenzinAssert(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));
-
-        if (flags[D3D12BreakReasonFlag::Warning])
-        {
-            dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_WARNING, isEnabled);
-        }
-
-        if (flags[D3D12BreakReasonFlag::Error])
-        {
-            dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, isEnabled);
-        }
-
-        if (flags[D3D12BreakReasonFlag::Corruption])
-        {
-            dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, isEnabled);
-        }
-    }
-#endif // BENZIN_IS_DEBUG_BUILD
-
     static void FormatToBuffer(D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 d3d12DredAutoBreadcrumbsOutput, std::string& buffer)
     {
         std::format_to(std::back_inserter(buffer), "D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1\n");
@@ -123,6 +91,67 @@ namespace benzin
 
     //
 
+#if BENZIN_IS_DEBUG_BUILD
+
+    void EnableD3D12DebugLayer()
+    {
+        // Note: Enabling the debug layer after device creation will invalidate the active device
+
+        ComPtr<ID3D12Debug5> d3d12Debug;
+        BenzinAssert(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12Debug)));
+
+        d3d12Debug->EnableDebugLayer();
+
+        const auto& params = CommandLineArgs::GetGraphicsDebugLayerParams();
+        d3d12Debug->SetEnableGPUBasedValidation(params.IsGpuBasedValidationEnabled);
+        d3d12Debug->SetEnableSynchronizedCommandQueueValidation(params.IsSynchronizedCommandQueueValidationEnabled);
+        d3d12Debug->SetEnableAutoName(true);
+
+        BenzinTrace("----------------------------------------------");
+        BenzinTrace("D3D12DebugLayer enabled");
+        BenzinTrace("GPUBasedValidation enabled: {}", params.IsGpuBasedValidationEnabled);
+        BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", params.IsSynchronizedCommandQueueValidationEnabled);
+        BenzinTrace("AutoName enabled: true");
+        BenzinTrace("----------------------------------------------");
+    }
+
+    void EnableD3D12DebugBreakOn(ID3D12Device* d3d12Device, bool isEnabled, D3D12BreakReasonFlags flags)
+    {
+        ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
+        BenzinAssert(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));
+        
+        ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
+        BenzinAssert(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
+        
+        if (flags[D3D12BreakReasonFlag::Warning])
+        {
+            dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_WARNING, isEnabled);
+            d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, isEnabled);
+        }
+        
+        if (flags[D3D12BreakReasonFlag::Error])
+        {
+            dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, isEnabled);
+            d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, isEnabled);
+        }
+        
+        if (flags[D3D12BreakReasonFlag::Corruption])
+        {
+            dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, isEnabled);
+            d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, isEnabled);
+        }
+    }
+
+    void ReportLiveD3D12Objects(ID3D12Device* d3d12Device)
+    {
+        ComPtr<ID3D12DebugDevice2> d3d12DebugDevice;
+        BenzinAssert(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
+
+        d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL);
+    }
+
+#endif // BENZIN_IS_DEBUG_BUILD
+
     std::string_view DxgiErrorToString(HRESULT hr)
     {
         switch (hr)
@@ -138,42 +167,6 @@ namespace benzin
 
         return std::string_view{};
     }
-
-#if BENZIN_IS_DEBUG_BUILD
-    void EnableD3D12DebugLayer()
-    {
-        // Note: Enabling the debug layer after device creation will invalidate the active device
-
-        ComPtr<ID3D12Debug5> d3d12Debug;
-        BenzinAssert(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12Debug)));
-
-        d3d12Debug->EnableDebugLayer();
-
-        const auto& params = CommandLineArgs::GetGraphicsDebugLayerParams();
-        d3d12Debug->SetEnableGPUBasedValidation(params.IsGPUBasedValidationEnabled);
-        d3d12Debug->SetEnableSynchronizedCommandQueueValidation(params.IsSynchronizedCommandQueueValidationEnabled);
-        d3d12Debug->SetEnableAutoName(true);
-
-        BenzinTrace("----------------------------------------------");
-        BenzinTrace("D3D12DebugLayer enabled");
-        BenzinTrace("GPUBasedValidation enabled: {}", params.IsGPUBasedValidationEnabled);
-        BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", params.IsSynchronizedCommandQueueValidationEnabled);
-        BenzinTrace("AutoName enabled: true");
-        BenzinTrace("----------------------------------------------");
-
-        EnableD3D12DebugBreakOn(true, { D3D12BreakReasonFlag::Warning, D3D12BreakReasonFlag::Error, D3D12BreakReasonFlag::Corruption });
-    }
-
-    void ReportLiveD3D12Objects(ID3D12Device* d3d12Device)
-    {
-        EnableD3D12DebugBreakOn(false, { D3D12BreakReasonFlag::Warning });
-
-        ComPtr<ID3D12DebugDevice2> d3d12DebugDevice;
-        BenzinAssert(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
-
-        d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL);
-    }
-#endif // BENZIN_IS_DEBUG_BUILD
 
     void EnableDred()
     {

@@ -3,12 +3,22 @@
 namespace benzin
 {
 
-    std::string_view DxgiErrorToString(HRESULT hr);
-
 #if BENZIN_IS_DEBUG_BUILD
+    enum class D3D12BreakReasonFlag
+    {
+        Warning,
+        Error,
+        Corruption,
+    };
+    using D3D12BreakReasonFlags = magic_enum::containers::bitset<D3D12BreakReasonFlag>;
+    static_assert(sizeof(D3D12BreakReasonFlags) <= sizeof(D3D12BreakReasonFlag));
+
     void EnableD3D12DebugLayer();
+    void EnableD3D12DebugBreakOn(ID3D12Device* d3d12Device, bool isEnabled, D3D12BreakReasonFlags flags);
     void ReportLiveD3D12Objects(ID3D12Device* d3d12Device);
 #endif
+
+    std::string_view DxgiErrorToString(HRESULT hr);
 
     void EnableDred();
     std::string GetDredMessages(ID3D12Device* d3d12Device);

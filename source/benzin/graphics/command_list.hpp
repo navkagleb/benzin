@@ -9,16 +9,10 @@ namespace benzin
     class Descriptor;
     class PipelineState;
     class Resource;
+    class RtAccelerationStructure;
     class Texture;
 
     struct SubResourceData;
-
-    namespace rt
-    {
-
-        class AccelerationStructure;
-
-    } // namespace rt
 
     struct TransitionBarrier
     {
@@ -138,7 +132,7 @@ namespace benzin
 
         void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadPerGroupCount); // #TODO: Duplication
 
-        void BuildRayTracingAccelerationStructure(const rt::AccelerationStructure& accelerationStructure);
+        void BuildRayTracingAccelerationStructure(const RtAccelerationStructure& accelerationStructure);
 	};
 
 } // namespace benzin

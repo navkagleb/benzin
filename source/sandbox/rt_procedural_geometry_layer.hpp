@@ -7,28 +7,22 @@
 namespace benzin
 {
 
+    class BottomLevelAccelerationStructure;
     class Buffer;
     class Device;
-    class GPUTimer;
+    class GpuTimer;
     class Texture;
+    class TopLevelAccelerationStructure;
     class Window;
 
     struct GraphicsRefs;
-
-    namespace rt
-    {
-
-        class BottomLevelAccelerationStructure;
-        class TopLevelAccelerationStructure;
-
-    } // namespace rt
 
 } // namespace benzin
 
 namespace sandbox
 {
 
-    class RTProceduralGeometryLayer : public benzin::Layer
+    class RtProceduralGeometryLayer : public benzin::Layer
     {
     public:
         enum class GeometryType : uint8_t
@@ -38,8 +32,8 @@ namespace sandbox
         };
 
     public:
-        explicit RTProceduralGeometryLayer(const benzin::GraphicsRefs& graphicsRefs);
-        ~RTProceduralGeometryLayer();
+        explicit RtProceduralGeometryLayer(const benzin::GraphicsRefs& graphicsRefs);
+        ~RtProceduralGeometryLayer();
 
     public:
         void OnEvent(benzin::Event& event) override;
@@ -59,7 +53,7 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::unique_ptr<benzin::GPUTimer> m_GPUTimer;
+        std::unique_ptr<benzin::GpuTimer> m_GPUTimer;
 
         std::unique_ptr<benzin::Buffer> m_GridVertexBuffer;
         std::unique_ptr<benzin::Buffer> m_GridIndexBuffer;
@@ -70,8 +64,8 @@ namespace sandbox
 
         ComPtr<ID3D12StateObject> m_D3D12RaytracingStateObject;
 
-        magic_enum::containers::array<GeometryType, std::unique_ptr<benzin::rt::BottomLevelAccelerationStructure>> m_BottomLevelASs;
-        std::unique_ptr<benzin::rt::TopLevelAccelerationStructure> m_TopLevelAS;
+        magic_enum::containers::array<GeometryType, std::unique_ptr<benzin::BottomLevelAccelerationStructure>> m_BottomLevelASs;
+        std::unique_ptr<benzin::TopLevelAccelerationStructure> m_TopLevelAS;
 
         std::unique_ptr<benzin::Buffer> m_RayGenShaderTable;
         std::unique_ptr<benzin::Buffer> m_MissShaderTable;

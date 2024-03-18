@@ -11,7 +11,7 @@ namespace joint
     {
         float3 Position;
         float3 Normal;
-        float2 UV;
+        float2 Uv;
     };
 
     struct MeshInfo
@@ -24,21 +24,23 @@ namespace joint
     {
         uint MeshIndex;
         uint MaterialIndex;
-        uint NodeIndex;
+        float2 __UnusedPadding0;
+        float4x4 Transform;
+        float4x4 TransformForNormals;
     };
 
     struct MeshTransform
     {
-        float4x4 Matrix;
-        float4x4 PreviousMatrix;
-        float4x4 MatrixForNormals;
+        float4x4 WorldMatrix;
+        float4x4 PreviousWorldMatrix;
+        float4x4 WorldMatrixForNormals;
     };
 
     struct Material
     {
         uint AlbedoTextureIndex;
         uint NormalTextureIndex;
-        uint MetalRoughnessTextureIndex;
+        uint MetallicRoughnessTextureIndex;
         uint EmissiveTextureIndex;
 
         float4 AlbedoFactor;

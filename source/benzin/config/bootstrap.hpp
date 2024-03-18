@@ -10,7 +10,6 @@
 #include "benzin/utility/benzin_defines.hpp"
 #include "benzin/utility/file_utils.hpp"
 #include "benzin/utility/string_utils.hpp"
-#include "benzin/utility/time_utils.hpp"
 
 #include "benzin/core/common.hpp"
 #include "benzin/core/scoped_timer.hpp"

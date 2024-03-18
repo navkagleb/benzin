@@ -63,7 +63,6 @@ namespace benzin
         static StaticSampler GetLinearClamp(const struct ShaderRegister& shaderRegister);
         static StaticSampler GetAnisotropicWrap(const struct ShaderRegister& shaderRegister);
         static StaticSampler GetAnisotropicClamp(const struct ShaderRegister& shaderRegister);
-        static StaticSampler GetDefaultForShadow(const struct ShaderRegister& shaderRegister);
     };
 
 } // namespace benzin

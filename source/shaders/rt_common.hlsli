@@ -31,9 +31,9 @@ float3 GetRayHitPosition(Ray ray, float t)
     return ray.Origin + t * ray.Direction;
 }
 
-float2 GetRayUV()
+float2 GetRayUv()
 {
-    return (float2)DispatchRaysIndex().xy / DispatchRaysDimensions().xy;
+    return (DispatchRaysIndex().xy + 0.5f) / DispatchRaysDimensions().xy;
 }
 
 float2 GetRayScreenPosition()

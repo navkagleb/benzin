@@ -7,7 +7,6 @@
 #include "benzin/core/math.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/mapped_data.hpp"
 
 namespace benzin
 {
@@ -36,13 +35,16 @@ namespace benzin
         return m_WorldMatrix;
     }
 
-    const Descriptor& TransformComponent::GetActiveTransformConstantBufferCBV(const Device& device) const
+    const Descriptor& TransformComponent::GetActiveTransformCbv() const
     {
-        return m_TransformConstantBuffer->GetConstantBufferView(device.GetActiveFrameIndex());
+        return m_TransformConstantBuffer->GetActiveCbv();
     }
 
     void TransformComponent::UpdateMatricesIfNeeded()
     {
+        // Force update 'm_PreviousWorldMatrix'
+        m_PreviousWorldMatrix = m_WorldMatrix;
+
         if (!m_IsDirty)
         {
             return;
@@ -53,7 +55,6 @@ namespace benzin
         const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(m_Translation.x, m_Translation.y, m_Translation.z);
         const DirectX::XMMATRIX currentWorldMatrix = scaling * rotation * translation;
 
-        m_PreviousWorldMatrix = DirectX::XMMatrixIsIdentity(m_PreviousWorldMatrix) ? currentWorldMatrix : m_WorldMatrix;
         m_WorldMatrix = currentWorldMatrix;
         m_WorldMatrixForNormals = GetMatrixForNormals(m_WorldMatrix);
 
@@ -62,24 +63,20 @@ namespace benzin
 
     void TransformComponent::CreateTransformConstantBuffer(Device& device, std::string_view debugName)
     {
-        m_TransformConstantBuffer = CreateFrameDependentConstantBuffer<joint::MeshTransform>(device, debugName);
+        MakeUniquePtr(m_TransformConstantBuffer, device, debugName);
     }
 
-    void TransformComponent::UpdateTransformConstantBuffer(const Device& device)
+    void TransformComponent::UpdateTransformConstantBuffer()
     {
         UpdateMatricesIfNeeded();
 
         // #TODO: Can skip writing if matrix is not updated
-
-        const joint::MeshTransform transform
+        m_TransformConstantBuffer->UpdateConstants(joint::MeshTransform
         {
-            .Matrix = m_WorldMatrix,
-            .PreviousMatrix = m_PreviousWorldMatrix,
-            .MatrixForNormals = m_WorldMatrixForNormals,
-        };
-
-        MappedData transformConstantBuffer{ *m_TransformConstantBuffer };
-        transformConstantBuffer.Write(transform, device.GetActiveFrameIndex());
+            .WorldMatrix = m_WorldMatrix,
+            .PreviousWorldMatrix = m_PreviousWorldMatrix,
+            .WorldMatrixForNormals = m_WorldMatrixForNormals,
+        });
     }
 
 } // namespace benzin

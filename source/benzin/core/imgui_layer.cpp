@@ -7,7 +7,6 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
-#include "benzin/core/imgui_helper.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/adl_wrapper.hpp"
 #include "benzin/graphics/backend.hpp"
@@ -47,8 +46,8 @@ namespace benzin
             CommandLineArgs::GetFrameInFlightCount(),
             (DXGI_FORMAT)CommandLineArgs::GetBackBufferFormat(),
             m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
-            D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCPUHandle() },
-            D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGPUHandle() }
+            D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCpuHandle() },
+            D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGpuHandle() }
         ));
     }
 
@@ -70,15 +69,6 @@ namespace benzin
 
     void ImGuiLayer::End(bool isNeedToClearBackBuffer)
     {
-        if (m_Device.GetCpuFrameIndex() % 200 == 0)
-        {
-            m_BigBuffers.push_back(std::make_unique<Buffer>(m_Device, BufferCreation
-            {
-                .DebugName = std::format("BigBuffer_{}", m_Device.GetCpuFrameIndex()),
-                .ElementCount = (uint32_t)GbToBytes(1),
-            }));
-        }
-
         ImGui::Render();
 
         auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
@@ -123,11 +113,11 @@ namespace benzin
         {
             static constexpr auto vendorLibNames = std::to_array({ "ADL", "NvAPI" });
 
-            if (ImGui::TreeNode("CpuVisibleVram"))
+            if (ImGui::TreeNode("NvAPI CpuVisibleVram"))
             {
                 const auto [totalSize, freeSize] = NvApiWrapper::GetCpuVisibleVramInBytes(m_Device.GetD3D12Device());
-                ImGui_Text("- TotalSize: {} b, {:.2f} mb, {:.2f} gb", totalSize, BytesToFloatMb(totalSize), BytesToFloatGb(totalSize));
-                ImGui_Text("- FreeSize: {} b, {:.2f} mb, {:.2f} gb", freeSize, BytesToFloatMb(freeSize), BytesToFloatGb(freeSize));
+                ImGui::Text(BenzinFormatCstr("- TotalSize: {} b, {:.2f} mb, {:.2f} gb", totalSize, BytesToFloatMb(totalSize), BytesToFloatGb(totalSize)));
+                ImGui::Text(BenzinFormatCstr("- FreeSize: {} b, {:.2f} mb, {:.2f} gb", freeSize, BytesToFloatMb(freeSize), BytesToFloatGb(freeSize)));
 
                 ImGui::TreePop();
             }
@@ -152,17 +142,17 @@ namespace benzin
                 {
                     const auto nodeFlags = ImGuiTreeNodeFlags_DefaultOpen;
 
-                    ImGui_Text("- Total DedicatedVram: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterInfo.TotalDedicatedVramInBytes), BytesToFloatGb(adapterInfo.TotalDedicatedVramInBytes));
-                    ImGui_Text("- Total DedicatedRam: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterInfo.TotalDedicatedRamInBytes), BytesToFloatGb(adapterInfo.TotalDedicatedRamInBytes));
-                    ImGui_Text("- Total SharedRam: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterInfo.TotalSharedRamInBytes), BytesToFloatGb(adapterInfo.TotalSharedRamInBytes));
+                    ImGui::Text(BenzinFormatCstr("- Total DedicatedVram: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterInfo.TotalDedicatedVramInBytes), BytesToFloatGb(adapterInfo.TotalDedicatedVramInBytes)));
+                    ImGui::Text(BenzinFormatCstr("- Total DedicatedRam: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterInfo.TotalDedicatedRamInBytes), BytesToFloatGb(adapterInfo.TotalDedicatedRamInBytes)));
+                    ImGui::Text(BenzinFormatCstr("- Total SharedRam: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterInfo.TotalSharedRamInBytes), BytesToFloatGb(adapterInfo.TotalSharedRamInBytes)));
                     ImGui::NewLine();
 
                     if (ImGui::TreeNodeEx("##treenode0", nodeFlags, "Dxgi Dedicated Vram"))
                     {   
-                        ImGui_Text("- OsBudget: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.DedicatedVramOsBudgetInBytes), BytesToFloatGb(adapterMemoryInfo.DedicatedVramOsBudgetInBytes));
-                        ImGui_Text("- Used: {:.2f} mb, {:.2f} gb", BytesToFloatMb(usedVram), BytesToFloatGb(usedVram));
-                        ImGui_Text("- Available: {:.2f} mb, {:.2f} gb", BytesToFloatMb(availableVram), BytesToFloatGb(availableVram));
-                        ImGui_Text("- Available (relative to OS-budget): {:.2f} mb, {:.2f} gb", BytesToFloatMb(availableVramRelativeToOsBudget), BytesToFloatGb(availableVramRelativeToOsBudget));
+                        ImGui::Text(BenzinFormatCstr("- OsBudget: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.DedicatedVramOsBudgetInBytes), BytesToFloatGb(adapterMemoryInfo.DedicatedVramOsBudgetInBytes)));
+                        ImGui::Text(BenzinFormatCstr("- Used: {:.2f} mb, {:.2f} gb", BytesToFloatMb(usedVram), BytesToFloatGb(usedVram)));
+                        ImGui::Text(BenzinFormatCstr("- Available: {:.2f} mb, {:.2f} gb", BytesToFloatMb(availableVram), BytesToFloatGb(availableVram)));
+                        ImGui::Text(BenzinFormatCstr("- Available (relative to OS-budget): {:.2f} mb, {:.2f} gb", BytesToFloatMb(availableVramRelativeToOsBudget), BytesToFloatGb(availableVramRelativeToOsBudget)));
                         ImGui::NewLine();
                         
                         ImGui::TreePop();
@@ -170,8 +160,8 @@ namespace benzin
 
                     if (ImGui::TreeNodeEx("##treenode1", nodeFlags, "Dxgi Shared Ram"))
                     {
-                        ImGui_Text("- OsBudget: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.SharedRamOsBudgetInBytes), BytesToFloatGb(adapterMemoryInfo.SharedRamOsBudgetInBytes));
-                        ImGui_Text("- Used: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.ProcessUsedSharedRamInBytes), BytesToFloatGb(adapterMemoryInfo.ProcessUsedSharedRamInBytes));
+                        ImGui::Text(BenzinFormatCstr("- OsBudget: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.SharedRamOsBudgetInBytes), BytesToFloatGb(adapterMemoryInfo.SharedRamOsBudgetInBytes)));
+                        ImGui::Text(BenzinFormatCstr("- Used: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.ProcessUsedSharedRamInBytes), BytesToFloatGb(adapterMemoryInfo.ProcessUsedSharedRamInBytes)));
                         ImGui::NewLine();
 
                         ImGui::TreePop();
@@ -186,9 +176,9 @@ namespace benzin
 
                     if (ImGui::TreeNodeEx("##treenode2", nodeFlags, "%s Dedicated Vram", vendorLibName))
                     {
-                        ImGui_Text("- TotalUsed: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.TotalUsedDedicatedVramInBytes), BytesToFloatGb(adapterMemoryInfo.TotalUsedDedicatedVramInBytes));
-                        ImGui_Text("- TotalAvailable: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.AvailableDedicatedVramInBytes), BytesToFloatGb(adapterMemoryInfo.AvailableDedicatedVramInBytes));
-                        ImGui_Text("- TotalAvailable (relative to OS-budget): {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.AvailableDedicatedVramRelativeToOsBudgetInBytes), BytesToFloatGb(adapterMemoryInfo.AvailableDedicatedVramRelativeToOsBudgetInBytes));
+                        ImGui::Text(BenzinFormatCstr("- TotalUsed: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.TotalUsedDedicatedVramInBytes), BytesToFloatGb(adapterMemoryInfo.TotalUsedDedicatedVramInBytes)));
+                        ImGui::Text(BenzinFormatCstr("- TotalAvailable: {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.AvailableDedicatedVramInBytes), BytesToFloatGb(adapterMemoryInfo.AvailableDedicatedVramInBytes)));
+                        ImGui::Text(BenzinFormatCstr("- TotalAvailable (relative to OS-budget): {:.2f} mb, {:.2f} gb", BytesToFloatMb(adapterMemoryInfo.AvailableDedicatedVramRelativeToOsBudgetInBytes), BytesToFloatGb(adapterMemoryInfo.AvailableDedicatedVramRelativeToOsBudgetInBytes)));
                         ImGui::NewLine();
 
                         ImGui::TreePop();
@@ -226,7 +216,7 @@ namespace benzin
             {
                 const auto adapterMemoryInfo = m_Backend.GetMainAdapterMemoryInfo();
 
-                ImGui_Text(
+                ImGui::Text(BenzinFormatCstr(
                     "{} | "
                     "VRAM Local: {:.0f} / {:.0f} mb | "
                     "VRAM NonLocal: {:.0f} / {:.0f} mb | "
@@ -235,16 +225,16 @@ namespace benzin
                     BytesToFloatMb(adapterMemoryInfo.ProcessUsedDedicatedVramInBytes), BytesToFloatMb(adapterMemoryInfo.DedicatedVramOsBudgetInBytes),
                     BytesToFloatMb(adapterMemoryInfo.ProcessUsedSharedRamInBytes), BytesToFloatMb(adapterMemoryInfo.SharedRamOsBudgetInBytes),
                     m_Device.GetCpuFrameIndex(), m_Device.GetGpuFrameIndex(), m_Device.GetActiveFrameIndex()
-                );
+                ));
 
-                ImGui_Text(
+                ImGui::Text(BenzinFormatCstr(
                     "({} x {}) | "
                     "FPS: {:.1f} ({:.3f} ms) | "
                     "Begin: {:.3f}, Process: {:.3f}, End: {:.3f}",
                     m_Window.GetWidth(), m_Window.GetHeight(),
                     m_FrameRate, m_FrameDeltaTimeMS,
-                    ToFloatMS(m_ApplicationTimings[ApplicationTiming::BeginFrame]), ToFloatMS(m_ApplicationTimings[ApplicationTiming::ProcessFrame]), ToFloatMS(m_ApplicationTimings[ApplicationTiming::EndFrame])
-                );
+                    ToFloatMs(m_ApplicationTimings[ApplicationTiming::BeginFrame]), ToFloatMs(m_ApplicationTimings[ApplicationTiming::ProcessFrame]), ToFloatMs(m_ApplicationTimings[ApplicationTiming::EndFrame])
+                ));
             }
             ImGui::End();
         }

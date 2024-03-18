@@ -5,7 +5,6 @@
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/mapped_data.hpp"
 #include "benzin/graphics/pipeline_state.hpp"
 #include "benzin/graphics/rt_acceleration_structures.hpp"
 #include "benzin/graphics/texture.hpp"
@@ -44,10 +43,10 @@ namespace benzin
 
     static D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrierVariant(const ResourceBarrierVariant& resourceBarrier)
     {
-        return resourceBarrier | VisitorMatch
+        return std::visit(VisitorMatch
         {
             [](auto&& resourceBarrier) { return ToD3D12ResourceBarrier(resourceBarrier); },
-        };
+        }, resourceBarrier);
     };
 
     // CommandList
@@ -127,12 +126,11 @@ namespace benzin
         BenzinAssert(m_UploadBuffer->GetD3D12Resource());
 
         const size_t uploadBufferOffset = AllocateInUploadBuffer(data.size_bytes());
+        
+        const MemoryWriter writer{ m_UploadBuffer->GetMappedData(), m_UploadBuffer->GetSizeInBytes() };
+        writer.WriteBytes(data, uploadBufferOffset);
 
-        {
-            MappedData uploadBuffer{ *m_UploadBuffer };
-            uploadBuffer.Write(data, uploadBufferOffset);
-        }
-
+        SetResourceBarrier(TransitionBarrier{ buffer, ResourceState::CopyDestination });
         m_D3D12GraphicsCommandList->CopyBufferRegion(
             buffer.GetD3D12Resource(),
             offsetInBytes,
@@ -140,6 +138,7 @@ namespace benzin
             uploadBufferOffset,
             data.size_bytes()
         );
+        SetResourceBarrier(TransitionBarrier{ buffer, ResourceState::Common });
     }
 
     void CopyCommandList::UpdateTexture(Texture& texture, const std::vector<SubResourceData>& subResources)
@@ -194,7 +193,7 @@ namespace benzin
         // Copying subresources to UploadBuffer
         // Go down to rows and copy it
         {
-            MappedData uploadBuffer{ *m_UploadBuffer };
+            const MemoryWriter writer{ m_UploadBuffer->GetMappedData(), m_UploadBuffer->GetSizeInBytes() };
 
             for (size_t subResourceIndex = 0; subResourceIndex < subResources.size(); ++subResourceIndex)
             {
@@ -223,13 +222,12 @@ namespace benzin
                         const std::byte* sourceRowData = sourceSliceData + subResource.RowPitch * rowIndex;
 
                         const size_t rowSizeInBytes = copyableFootprits.RowSizes[subResourceIndex];
-                        uploadBuffer.Write(std::span{ sourceRowData, rowSizeInBytes }, destinationRowOffset);
+                        writer.WriteBytes(std::span{ sourceRowData, rowSizeInBytes }, destinationRowOffset);
                     }
                 }
             }
         }
 
-        //SetResourceBarrier(texture, ResourceState::CopyDestination);
 
         // Copy to texture
         for (size_t i = 0; i < subResources.size(); ++i)
@@ -248,10 +246,10 @@ namespace benzin
                 .PlacedFootprint = copyableFootprits.D3D12Layouts[i],
             };
 
+            SetResourceBarrier(TransitionBarrier{ texture, ResourceState::CopyDestination });
             m_D3D12GraphicsCommandList->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
+            SetResourceBarrier(TransitionBarrier{ texture, ResourceState::Common });
         }
-
-        //SetResourceBarrier(texture, ResourceState::Common);
     }
 
     void CopyCommandList::UpdateTextureTopMip(Texture& texture, std::span<const std::byte> data)
@@ -271,7 +269,7 @@ namespace benzin
 
     void CopyCommandList::CreateUploadBuffer(Device& device, uint32_t size)
     {
-        m_UploadBuffer = std::make_unique<Buffer>(device, BufferCreation
+        MakeUniquePtr(m_UploadBuffer, device, BufferCreation
         {
             .ElementCount = size,
             .Flags = BufferFlag::UploadBuffer,
@@ -392,30 +390,30 @@ namespace benzin
 
         BenzinAssert(rtvs.size() <= D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
 
-        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> d3d12RTVDescriptorHandles;
-        d3d12RTVDescriptorHandles.reserve(rtvs.size());
+        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> d3d12RtvDescriptorHandles;
+        d3d12RtvDescriptorHandles.reserve(rtvs.size());
 
         for (const Descriptor& descriptor : rtvs)
         {
-            d3d12RTVDescriptorHandles.emplace_back(descriptor.GetCPUHandle());
+            d3d12RtvDescriptorHandles.emplace_back(descriptor.GetCpuHandle());
         }
 
         if (dsv)
         {
-            const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DSVDescriptorHandle{ dsv->GetCPUHandle() };
+            const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DsvDescriptorHandle{ dsv->GetCpuHandle() };
 
             m_D3D12GraphicsCommandList->OMSetRenderTargets(
-                static_cast<uint32_t>(d3d12RTVDescriptorHandles.size()),
-                d3d12RTVDescriptorHandles.data(),
+                (uint32_t)d3d12RtvDescriptorHandles.size(),
+                d3d12RtvDescriptorHandles.data(),
                 isRenderTargetContiguous,
-                &d3d12DSVDescriptorHandle
+                &d3d12DsvDescriptorHandle
             );
         }
         else
         {
             m_D3D12GraphicsCommandList->OMSetRenderTargets(
-                static_cast<uint32_t>(d3d12RTVDescriptorHandles.size()),
-                d3d12RTVDescriptorHandles.data(),
+                (uint32_t)d3d12RtvDescriptorHandles.size(),
+                d3d12RtvDescriptorHandles.data(),
                 isRenderTargetContiguous,
                 nullptr
             );
@@ -424,17 +422,17 @@ namespace benzin
 
     void GraphicsCommandList::ClearRenderTarget(const Descriptor& rtv, const DirectX::XMFLOAT4& color)
     {
-        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RTVDescriptorHandle{ rtv.GetCPUHandle() };
+        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RtvDescriptorHandle{ rtv.GetCpuHandle() };
 
-        m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RTVDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
+        m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RtvDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
     }
 
     void GraphicsCommandList::ClearDepthStencil(const Descriptor& dsv, const DepthStencil& depthStencil)
     {
-        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DSVDescriptorHandle{ dsv.GetCPUHandle() };
+        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DsvDescriptorHandle{ dsv.GetCpuHandle() };
 
         m_D3D12GraphicsCommandList->ClearDepthStencilView(
-            d3d12DSVDescriptorHandle,
+            d3d12DsvDescriptorHandle,
             D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
             depthStencil.Depth,
             depthStencil.Stencil,
@@ -468,16 +466,16 @@ namespace benzin
         m_D3D12GraphicsCommandList->Dispatch(groupCountX, groupCountY, groupCountZ);
     }
 
-    void GraphicsCommandList::BuildRayTracingAccelerationStructure(const rt::AccelerationStructure& accelerationStructure)
+    void GraphicsCommandList::BuildRayTracingAccelerationStructure(const RtAccelerationStructure& accelerationStructure)
     {
         BenzinAssert(accelerationStructure.GetScratchResource().GetCurrentState() == ResourceState::UnorderedAccess);
 
         const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12BuildAccelerationStructureDesc
         {
-            .DestAccelerationStructureData = accelerationStructure.GetBuffer().GetGPUVirtualAddress(),
+            .DestAccelerationStructureData = accelerationStructure.GetBuffer().GetGpuVirtualAddress(),
             .Inputs = accelerationStructure.GetD3D12BuildInputs(),
             .SourceAccelerationStructureData = 0,
-            .ScratchAccelerationStructureData = accelerationStructure.GetScratchResource().GetGPUVirtualAddress(),
+            .ScratchAccelerationStructureData = accelerationStructure.GetScratchResource().GetGpuVirtualAddress(),
         };
 
         m_D3D12GraphicsCommandList->BuildRaytracingAccelerationStructure(&d3d12BuildAccelerationStructureDesc, 0, nullptr);

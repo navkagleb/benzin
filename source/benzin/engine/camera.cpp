@@ -4,6 +4,7 @@
 #include "benzin/core/logger.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/system/input.hpp"
+#include "benzin/utility/time_utils.hpp"
 
 namespace benzin
 {
@@ -211,7 +212,7 @@ namespace benzin
     {
         UpdatePitchAndYawIfNeeded();
 
-        const float delta = m_CameraTranslationSpeed * ToFloatMS(dt);
+        const float delta = m_CameraTranslationSpeed * ToFloatMs(dt);
         const auto& position = m_Camera.GetPosition();
 
         DirectX::XMVECTOR updatedPosition = DirectX::XMVectorZero();

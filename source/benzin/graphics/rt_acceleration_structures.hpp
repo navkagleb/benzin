@@ -7,30 +7,13 @@ namespace benzin
 
     class Device;
 
-} // namespace benzin
+    struct RtAccelerationStructureCreation;
 
-namespace benzin::rt
-{
-
-    struct AccelerationStructureSizes
-    {
-        uint64_t BufferSizeInBytes = 0;
-        uint64_t ScratchResourceSizeInBytes = 0;
-    };
-
-    struct AccelerationStructureCreation
-    {
-        std::string_view DebugName;
-
-        AccelerationStructureSizes Sizes;
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS D3D12BuildInputs;
-    };
-
-    class AccelerationStructure
+    class RtAccelerationStructure
     {
     protected:
-        AccelerationStructure() = delete;
-        explicit AccelerationStructure(Device& device);
+        RtAccelerationStructure() = delete;
+        explicit RtAccelerationStructure(Device& device);
 
     public:
         const auto& GetD3D12BuildInputs() const { return m_D3D12BuildInputs; }
@@ -42,7 +25,7 @@ namespace benzin::rt
         const auto& GetScratchResource() const { return m_ScratchResource; }
 
     protected:
-        void Create(const AccelerationStructureCreation& creation);
+        void Create(const RtAccelerationStructureCreation& creation);
 
     protected:
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS m_D3D12BuildInputs;
@@ -51,7 +34,7 @@ namespace benzin::rt
         Buffer m_ScratchResource;
     };
 
-    struct TriangledGeometry
+    struct RtTriangledGeometry
     {
         const Buffer& VertexBuffer;
         const Buffer& IndexBuffer;
@@ -63,21 +46,21 @@ namespace benzin::rt
         uint32_t IndexCount = g_InvalidIndex<uint32_t>;
     };
 
-    struct ProceduralGeometry
+    struct RtProceduralGeometry
     {
         const Buffer& AABBBuffer;
         uint32_t AABBIndex = 0;
     };
 
-    using GeometryVariant = std::variant<TriangledGeometry, ProceduralGeometry>;
+    using RtGeometryVariant = std::variant<RtTriangledGeometry, RtProceduralGeometry>;
 
     struct BottomLevelAccelerationStructureCreation
     {
         std::string_view DebugName;
-        std::span<const GeometryVariant> Geometries;
+        std::span<const RtGeometryVariant> Geometries;
     };
 
-    class BottomLevelAccelerationStructure : public AccelerationStructure
+    class BottomLevelAccelerationStructure : public RtAccelerationStructure
     {
     public:
         BottomLevelAccelerationStructure(Device& device, const BottomLevelAccelerationStructureCreation& creation);
@@ -100,7 +83,7 @@ namespace benzin::rt
         std::span<const TopLevelInstance> Instances;
     };
 
-    class TopLevelAccelerationStructure : public AccelerationStructure
+    class TopLevelAccelerationStructure : public RtAccelerationStructure
     {
     public:
         TopLevelAccelerationStructure(Device& device, const TopLevelAccelerationStructureCreation& creation);
@@ -110,4 +93,4 @@ namespace benzin::rt
         Buffer m_InstanceBuffer;
     };
 
-} // namespace benzin::rt
+} // namespace benzin

@@ -59,8 +59,6 @@ namespace benzin
         float m_FrameRate = 0.0f;
         float m_FrameDeltaTimeMS = 0.0f;
         ApplicationTimings m_ApplicationTimings = { std::chrono::microseconds::zero() };
-
-        std::vector<std::unique_ptr<Buffer>> m_BigBuffers;
     };
 
 } // namespace benzin

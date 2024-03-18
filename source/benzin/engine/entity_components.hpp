@@ -1,11 +1,20 @@
 #pragma once
 
+namespace joint
+{
+
+    struct MeshTransform;
+
+} // namespace joint
+
 namespace benzin
 {
 
-    class Buffer;
     class Descriptor;
     class Device;
+
+    template <typename ConstantsT>
+    class ConstantBuffer;
 
     struct MeshInstanceComponent
     {
@@ -30,13 +39,13 @@ namespace benzin
 
         const DirectX::XMMATRIX& GetWorldMatrix() const;
 
-        const Descriptor& GetActiveTransformConstantBufferCBV(const Device& device) const;
+        const Descriptor& GetActiveTransformCbv() const;
 
     private:
         void UpdateMatricesIfNeeded();
 
         void CreateTransformConstantBuffer(Device& device, std::string_view debugName);
-        void UpdateTransformConstantBuffer(const Device& device);
+        void UpdateTransformConstantBuffer();
 
     private:
         DirectX::XMFLOAT3 m_Scale{ 1.0f, 1.0f, 1.0f };
@@ -48,7 +57,7 @@ namespace benzin
         DirectX::XMMATRIX m_PreviousWorldMatrix = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX m_WorldMatrixForNormals = DirectX::XMMatrixIdentity();
 
-        std::unique_ptr<Buffer> m_TransformConstantBuffer;
+        std::unique_ptr<ConstantBuffer<joint::MeshTransform>> m_TransformConstantBuffer;
     };
 
     struct UpdateComponent

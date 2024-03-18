@@ -72,9 +72,6 @@ namespace benzin
     class Texture : public Resource
     {
     public:
-        friend class TextureLoader;
-
-    public:
         Texture(Device& device, const TextureCreation& creation);
         Texture(Device& device, ID3D12Resource* d3d12Resource);
 

@@ -50,7 +50,7 @@ namespace sandbox
             },
         }
     {
-        m_GPUTimer = std::make_shared<benzin::GPUTimer>(m_Device, benzin::GPUTimerCreation
+        m_GPUTimer = std::make_shared<benzin::GpuTimer>(m_Device, benzin::GpuTimerCreation
         {
             .CommandList = m_Device.GetGraphicsCommandQueue().GetCommandList(),
             .TimestampFrequency = m_Device.GetGraphicsCommandQueue().GetTimestampFrequency(),
@@ -92,18 +92,18 @@ namespace sandbox
             {
                 .RayGenerationShaderRecord
                 {
-                    .StartAddress = m_RayGenShaderTable->GetGPUVirtualAddress(),
+                    .StartAddress = m_RayGenShaderTable->GetGpuVirtualAddress(),
                     .SizeInBytes = m_RayGenShaderTable->GetNotAlignedSizeInBytes(),
                 },
                 .MissShaderTable
                 {
-                    .StartAddress = m_MissShaderTable->GetGPUVirtualAddress(),
+                    .StartAddress = m_MissShaderTable->GetGpuVirtualAddress(),
                     .SizeInBytes = m_MissShaderTable->GetNotAlignedSizeInBytes(),
                     .StrideInBytes = m_MissShaderTable->GetNotAlignedSizeInBytes(),
                 },
                 .HitGroupTable
                 {
-                    .StartAddress = m_HitGroupShaderTable->GetGPUVirtualAddress(),
+                    .StartAddress = m_HitGroupShaderTable->GetGpuVirtualAddress(),
                     .SizeInBytes = m_HitGroupShaderTable->GetNotAlignedSizeInBytes(),
                     .StrideInBytes = m_HitGroupShaderTable->GetNotAlignedSizeInBytes(),
                 },
@@ -119,7 +119,7 @@ namespace sandbox
             };
 
             {
-                BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, magic_enum::enum_integer(GPUTimerIndex::_DispatchRays));
+                BenzinGrabGpuTimeOnScopeExit(*m_GPUTimer, magic_enum::enum_integer(GPUTimerIndex::_DispatchRays));
                 d3d12CommandList->DispatchRays(&d3d12DispatchRayDesc);
             }
         }
@@ -142,7 +142,7 @@ namespace sandbox
             });
         }
 
-        m_GPUTimer->ResolveTimestamps();
+        m_GPUTimer->ResolveTimestamps(m_Device.GetCpuFrameIndex());
     }
 
     void RTHelloTriangleLayer::OnImGuiRender()
@@ -296,10 +296,10 @@ namespace sandbox
                 .VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT,
                 .IndexCount = (uint32_t)m_Indices.size(),
                 .VertexCount = (uint32_t)m_Vertices.size(),
-                .IndexBuffer = m_IndexBuffer->GetGPUVirtualAddress(),
+                .IndexBuffer = m_IndexBuffer->GetGpuVirtualAddress(),
                 .VertexBuffer
                 {
-                    .StartAddress = m_VertexBuffer->GetGPUVirtualAddress(),
+                    .StartAddress = m_VertexBuffer->GetGpuVirtualAddress(),
                     .StrideInBytes = sizeof(DirectX::XMFLOAT3),
                 },
             },
@@ -340,7 +340,7 @@ namespace sandbox
             .InstanceMask = 1, // 8 bit
             .InstanceContributionToHitGroupIndex = 0, // 24 bit
             .Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE, // 8 bit
-            .AccelerationStructure = m_BLAS->GetGPUVirtualAddress(),
+            .AccelerationStructure = m_BLAS->GetGpuVirtualAddress(),
         };
 
         const auto instanceBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
@@ -358,7 +358,7 @@ namespace sandbox
             .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
             .NumDescs = 1,
             .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
-            .InstanceDescs = instanceBuffer->GetGPUVirtualAddress(),
+            .InstanceDescs = instanceBuffer->GetGpuVirtualAddress(),
         };
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO d3d12TopLevelPrebuildInfo{};
@@ -394,14 +394,14 @@ namespace sandbox
 
         // Build BottomLevel AS
         {
-            BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, magic_enum::enum_integer(GPUTimerIndex::_BuildBottomLevelAS));
+            BenzinGrabGpuTimeOnScopeExit(*m_GPUTimer, magic_enum::enum_integer(GPUTimerIndex::_BuildBottomLevelAS));
 
             const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12BLASDesc
             {
-                .DestAccelerationStructureData = m_BLAS->GetGPUVirtualAddress(),
+                .DestAccelerationStructureData = m_BLAS->GetGpuVirtualAddress(),
                 .Inputs = d3d12BottomLevelInputs,
                 .SourceAccelerationStructureData = 0,
-                .ScratchAccelerationStructureData = scratchResource->GetGPUVirtualAddress(),
+                .ScratchAccelerationStructureData = scratchResource->GetGpuVirtualAddress(),
             };
             d3d12CommandList->BuildRaytracingAccelerationStructure(&d3d12BLASDesc, 0, nullptr);
 
@@ -410,14 +410,14 @@ namespace sandbox
 
         // Build TopLevel AS
         {
-            BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, magic_enum::enum_integer(GPUTimerIndex::_BuildTopLevelAS));
+            BenzinGrabGpuTimeOnScopeExit(*m_GPUTimer, magic_enum::enum_integer(GPUTimerIndex::_BuildTopLevelAS));
 
             const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12TLASDesc
             {
-                .DestAccelerationStructureData = m_TLAS->GetGPUVirtualAddress(),
+                .DestAccelerationStructureData = m_TLAS->GetGpuVirtualAddress(),
                 .Inputs = d3d12TopLevelInputs,
                 .SourceAccelerationStructureData = 0,
-                .ScratchAccelerationStructureData = scratchResource->GetGPUVirtualAddress(),
+                .ScratchAccelerationStructureData = scratchResource->GetGpuVirtualAddress(),
             };
 
             d3d12CommandList->BuildRaytracingAccelerationStructure(&d3d12TLASDesc, 0, nullptr);

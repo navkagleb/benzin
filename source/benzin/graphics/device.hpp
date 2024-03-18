@@ -9,17 +9,7 @@ namespace benzin
     class ComputeCommandQueue;
     class CopyCommandQueue;
     class DescriptorManager;
-    class DeviceRemovedFence;
     class GraphicsCommandQueue;
-    class TextureLoader;
-
-    namespace rt
-    {
-
-        class AccelerationStructure;
-        struct AccelerationStructureSizes;
-
-    } // namespace rt
 
     class Device
     {
@@ -35,24 +25,23 @@ namespace benzin
         ~Device();
 
     public:
-        ID3D12Device5* GetD3D12Device() const { return m_D3D12Device; }
-        ID3D12RootSignature* GetD3D12BindlessRootSignature() const { return m_D3D12BindlessRootSignature; }
+        auto* GetD3D12Device() const { return m_D3D12Device; }
+        auto* GetD3D12BindlessRootSignature() const { return m_D3D12BindlessRootSignature; }
 
-        CopyCommandQueue& GetCopyCommandQueue() { return *m_CopyCommandQueue; }
-        ComputeCommandQueue& GetComputeCommandQueue() { return *m_ComputeCommandQueue; }
-        GraphicsCommandQueue& GetGraphicsCommandQueue() { return *m_GraphicsCommandQueue; }
+        auto& GetDescriptorManager() { return *m_DescriptorManager; }
 
-        DescriptorManager& GetDescriptorManager() { return *m_DescriptorManager; }
-        TextureLoader& GetTextureLoader() { return *m_TextureLoader; }
+        auto& GetCopyCommandQueue() { return *m_CopyCommandQueue; }
+        auto& GetComputeCommandQueue() { return *m_ComputeCommandQueue; }
+        auto& GetGraphicsCommandQueue() { return *m_GraphicsCommandQueue; }
 
-        uint64_t GetCpuFrameIndex() const { return m_CpuFrameIndex; }
-        uint64_t GetGpuFrameIndex() const { return m_GpuFrameIndex; }
-        uint8_t GetActiveFrameIndex() const { return m_ActiveFrameIndex; }
+        auto GetCpuFrameIndex() const { return m_CpuFrameIndex; }
+        auto GetGpuFrameIndex() const { return m_GpuFrameIndex; }
+        auto GetActiveFrameIndex() const { return m_ActiveFrameIndex; }
+
+        auto IsGpuUploadHeapsSupported() const { return m_IsGpuUploadHeapsSupported; }
 
     public:
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
-
-        rt::AccelerationStructureSizes GetAccelerationStructureSizes(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& d3d12BuildInputs);
 
     private:
         void CheckFeaturesSupport();
@@ -64,16 +53,17 @@ namespace benzin
 
         ID3D12RootSignature* m_D3D12BindlessRootSignature = nullptr;
 
+        std::unique_ptr<DescriptorManager> m_DescriptorManager;
+
         std::unique_ptr<CopyCommandQueue> m_CopyCommandQueue;
         std::unique_ptr<ComputeCommandQueue> m_ComputeCommandQueue;
         std::unique_ptr<GraphicsCommandQueue> m_GraphicsCommandQueue;
 
-        std::unique_ptr<DescriptorManager> m_DescriptorManager;
-        std::unique_ptr<TextureLoader> m_TextureLoader;
-
         uint64_t m_CpuFrameIndex = 0;
         uint64_t m_GpuFrameIndex = 0;
         uint8_t m_ActiveFrameIndex = 0; // In range [0, FrameInFlightCount)
+
+        bool m_IsGpuUploadHeapsSupported = false;
     };
 
 } // namespace benzin

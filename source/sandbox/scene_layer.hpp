@@ -10,7 +10,7 @@ namespace benzin
     
     class Buffer;
     class Device;
-    class GPUTimer;
+    class GpuTimer;
     class PipelineState;
     class SwapChain;
     class Texture;
@@ -18,22 +18,61 @@ namespace benzin
 
     struct GraphicsRefs;
 
+    template <typename ConstnatsT>
+    class ConstantBuffer;
+
 } // namespace benzin
 
 namespace sandbox
 {
+
+    template <typename T, uint32_t Size>
+    class PingPongWrapper
+    {
+    public:
+        auto GetSize() const { return Size; }
+
+        auto& GetCurrent() { return m_Data[m_CurrentIndex]; }
+        const auto& GetCurrent() const { return m_Data[m_CurrentIndex]; }
+
+        auto& GetPrevious() { return m_Data[m_PreviousIndex]; }
+        const auto& GetPrevious() const { return m_Data[m_PreviousIndex]; }
+
+
+        void InitializeAll(std::function<void(uint32_t, T&)>&& callback)
+        {
+            for (const auto& [i, data] : m_Data | std::views::enumerate)
+            {
+                callback((uint32_t)i, data);
+            }
+        }
+
+        void GoToNext()
+        {
+            m_PreviousIndex = m_CurrentIndex;
+            m_CurrentIndex = (m_CurrentIndex + 1) % Size;
+        }
+
+    private:
+        static_assert(Size >= 2);
+
+        std::array<T, Size> m_Data;
+        uint32_t m_PreviousIndex = 0;
+        uint32_t m_CurrentIndex = 1;
+    };
 
     class GeometryPass
     {
     public:
         struct GBuffer
         {
-            std::unique_ptr<benzin::Texture> Albedo;
+            std::unique_ptr<benzin::Texture> AlbedoAndRoughness;
+            std::unique_ptr<benzin::Texture> EmissiveAndMetallic;
             std::unique_ptr<benzin::Texture> WorldNormal;
-            std::unique_ptr<benzin::Texture> Emissive;
-            std::unique_ptr<benzin::Texture> RoughnessMetalness;
-            std::unique_ptr<benzin::Texture> MotionVectors;
+            std::unique_ptr<benzin::Texture> VelocityBuffer; // Motion vectors
             std::unique_ptr<benzin::Texture> DepthStencil;
+
+            PingPongWrapper<std::unique_ptr<benzin::Texture>, 2> ViewDepths;
         };
 
     public:
@@ -43,6 +82,7 @@ namespace sandbox
         auto& GetGBuffer() { return m_GBuffer; }
 
     public:
+        void OnUpdate();
         void OnRender(const benzin::Scene& scene) const;
 
         void OnResize(uint32_t width, uint32_t height);
@@ -51,20 +91,17 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::unique_ptr<benzin::PipelineState> m_PipelineState;
+        std::unique_ptr<benzin::PipelineState> m_Pso;
         GBuffer m_GBuffer;
     };
 
-    class RTShadowPass
+    class RtShadowPass
     {
     public:
-        RTShadowPass(benzin::Device& device, benzin::SwapChain& swapChain);
+        RtShadowPass(benzin::Device& device, benzin::SwapChain& swapChain);
 
     public:
-        auto& GetNoisyVisibilityBuffer() const { return *m_NoisyVisibilityBuffer; }
-        auto GetCurrentTextureSlot() const { return m_CurrentTextureSlot; }
-
-        void SetRaysPerPixel(uint32_t raysPerPixel) { m_RaysPerPixel = raysPerPixel; }
+        auto& GetVisibilityBuffer() const { return *m_VisibilityBuffer; }
 
     public:
         void OnUpdate(std::chrono::microseconds dt, std::chrono::milliseconds elapsedTime);
@@ -77,6 +114,8 @@ namespace sandbox
         void CreateShaderTable();
 
     private:
+        using PassConstantBuffer = benzin::ConstantBuffer<joint::RtShadowPassConstants>;
+
         benzin::Device& m_Device;
 
         ComPtr<ID3D12StateObject> m_D3D12RaytracingStateObject;
@@ -85,33 +124,33 @@ namespace sandbox
         std::unique_ptr<benzin::Buffer> m_MissShaderTable;
         std::unique_ptr<benzin::Buffer> m_HitGroupShaderTable;
 
-        std::unique_ptr<benzin::Buffer> m_PassConstantBuffer;
-        std::unique_ptr<benzin::Texture> m_NoisyVisibilityBuffer;
-
-        uint32_t m_CurrentTextureSlot = 1; // First call of OnUpdate update the value to 0
-        uint32_t m_RaysPerPixel = 1;
+        std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
+        std::unique_ptr<benzin::Texture> m_VisibilityBuffer;
     };
 
-    class RTShadowDenoisingPass
+    class RtShadowDenoisingPass
     {
     public:
-        RTShadowDenoisingPass(benzin::Device& device, benzin::SwapChain& swapChain);
+        RtShadowDenoisingPass(benzin::Device& device, benzin::SwapChain& swapChain);
 
     public:
-        void SetIsForceCurrentVisibility(bool isForceCurrentVisibility) { m_IsForceCurrentVisibility = isForceCurrentVisibility; }
+        auto& GetTemporalAccumulationBuffers() { return m_TemporalAccumulationBuffers; }
 
     public:
-        void OnUpdate(uint32_t currentTextureSlot);
-        void OnRender(benzin::Texture& noisyVisiblityBuffer, const benzin::Texture& motionVectorsTexture, const benzin::Texture& albedo) const;
+        void OnUpdate();
+        void OnRender(benzin::Texture& shadowVisiblityBuffer, const GeometryPass::GBuffer& gbuffer) const;
+
+        void OnResize(uint32_t width, uint32_t height);
 
     private:
+        using PassConstantBuffer = benzin::ConstantBuffer<joint::RtShadowDenoisingPassConstants>;
+
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::unique_ptr<benzin::Buffer> m_PassConstantBuffer;
-        std::unique_ptr<benzin::PipelineState> m_PipelineState;
-
-        bool m_IsForceCurrentVisibility = false;
+        std::unique_ptr<benzin::PipelineState> m_Pso;
+        std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
+        PingPongWrapper<std::unique_ptr<benzin::Texture>, 2> m_TemporalAccumulationBuffers;
     };
 
     class DeferredLightingPass
@@ -121,28 +160,22 @@ namespace sandbox
 
     public:
         auto& GetOutputTexture() { return *m_OutputTexture; }
-        auto GetOutputType() const { return m_OutputType; }
 
     public:
         void OnUpdate(const benzin::Scene& scene);
-        void OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer, benzin::Texture& shadowTexture) const;
-        void OnImGuiRender();
+        void OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer, benzin::Texture& shadowVisiblityBuffer) const;
 
         void OnResize(uint32_t width, uint32_t height);
 
     private:
+        using PassConstantBuffer = benzin::ConstantBuffer<joint::DeferredLightingPassConstants>;
+
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::unique_ptr<benzin::Buffer> m_PassConstantBuffer;
-        std::unique_ptr<benzin::PipelineState> m_PipelineState;
+        std::unique_ptr<benzin::PipelineState> m_Pso;
+        std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
         std::unique_ptr<benzin::Texture> m_OutputTexture;
-
-        joint::DeferredLightingOutputType m_OutputType = joint::DeferredLightingOutputType_Final;
-
-        DirectX::XMFLOAT3 m_SunColor{ 1.0f, 1.0f, 1.0f };
-        float m_SunIntensity{ 0.0f, };
-        DirectX::XMFLOAT3 m_SunDirection{ -0.5f, -0.5f, -0.5f };
     };
 
     class EnvironmentPass
@@ -157,8 +190,27 @@ namespace sandbox
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::unique_ptr<benzin::PipelineState> m_PipelineState;
+        std::unique_ptr<benzin::PipelineState> m_Pso;
         std::unique_ptr<benzin::Texture> m_CubeTexture;
+    };
+
+    class FullScreenDebugPass
+    {
+    public:
+        FullScreenDebugPass(benzin::Device& device, benzin::SwapChain& swapChain);
+
+    public:
+        void OnUpdate();
+        void OnRender(benzin::Texture& finalOutput, const GeometryPass::GBuffer& gbuffer, benzin::Texture& shadowVisiblityBuffer, benzin::Texture& temporalAccumulationBuffer) const;
+
+    private:
+        using PassConstantBuffer = benzin::ConstantBuffer<joint::FullScreenDebugConstants>;
+
+        benzin::Device& m_Device;
+        benzin::SwapChain& m_SwapChain;
+
+        std::unique_ptr<benzin::PipelineState> m_Pso;
+        std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
     };
 
     class SceneLayer : public benzin::Layer
@@ -179,17 +231,21 @@ namespace sandbox
         void CreateEntities();
 
     private:
+        using FrameConstantBuffer = benzin::ConstantBuffer<joint::FrameConstants>;
+
         benzin::Window& m_Window;
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
-        std::unique_ptr<benzin::GPUTimer> m_GPUTimer;
+        std::unique_ptr<benzin::GpuTimer> m_GpuTimer;
+        std::unique_ptr<FrameConstantBuffer> m_FrameConstantBuffer;
 
         GeometryPass m_GeometryPass;
-        RTShadowPass m_RTShadowPass;
-        RTShadowDenoisingPass m_RTShadowDenoisingPass;
+        RtShadowPass m_RtShadowPass;
+        RtShadowDenoisingPass m_RtShadowDenoisingPass;
         DeferredLightingPass m_DeferredLightingPass;
         EnvironmentPass m_EnvironmentPass;
+        FullScreenDebugPass m_FullScreenDebugPass;
 
         bool m_IsAnimationEnabled = true;
 

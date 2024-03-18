@@ -1,6 +1,7 @@
 #pragma once
 
 #include "benzin/core/tick_timer.hpp"
+#include "benzin/utility/time_utils.hpp"
 
 namespace benzin
 {
@@ -12,7 +13,7 @@ namespace benzin
     public:
         inline static TickTimer s_FrameTimer;
 
-        inline static const std::chrono::microseconds s_UpdateStatsInterval = SecToUS(1.0f);
+        inline static const std::chrono::microseconds s_UpdateStatsInterval = SecToUs(1.0f);
         inline static bool s_IsUpdateStatsIntervalPassed = false;
 
     public:

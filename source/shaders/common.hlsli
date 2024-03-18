@@ -21,13 +21,13 @@ struct RootConstants
 ConstantBuffer<RootConstants> g_RootConstants : register(b0, space0);
 RaytracingAccelerationStructure g_TopLevelAS : register(t0, space0);
 
-SamplerState g_PointWrapSampler : register(s0);
-SamplerState g_PointClampSampler : register(s1);
-SamplerState g_LinearWrapSampler : register(s2);
-SamplerState g_LinearClampSampler : register(s3);
-SamplerState g_Anisotropic16WrapSampler : register(s4);
-SamplerState g_Anisotropic16ClampSampler : register(s5);
-SamplerComparisonState g_ShadowSampler : register(s6);
+SamplerState g_PointWrapSampler : register(s0, space0);
+SamplerState g_PointClampSampler : register(s0, space1);
+SamplerState g_LinearWrapSampler : register(s0, space2);
+SamplerState g_LinearClampSampler : register(s0, space3);
+SamplerState g_Anisotropic16WrapSampler : register(s0, space4);
+SamplerState g_Anisotropic16ClampSampler : register(s0, space5);
+SamplerState g_PointWithTransparentBlackBorderSampler : register(s0, space6);
 
 static const uint g_InvalidIndex = -1;
     
@@ -36,7 +36,7 @@ static const float g_2PI = 2.0f * g_PI;
 static const float g_InvPI = 1.0f / g_PI;
 static const float g_Inv2PI = 1.0f / g_2PI;
 
-static const float g_FloatEpsilon = 0.00001f;
+static const float g_Epsilon = 0.0001;
 static const float g_FloatInfinity = 1.#INF;
 static const float g_NaN = 0.0f / 0.0f;
 
@@ -58,9 +58,10 @@ float4 LinearToGamma(float4 color)
     return pow(color, 1.0f / 2.2f);
 }
 
-bool IsInRange(float val, float min, float max)
+template <typename T>
+bool IsInRange(T value, T min, T max)
 {
-    return val >= min && val <= max;
+    return all(value >= min) && all(value <= max);
 }
 
 void Swap(inout float lhs, inout float rhs)
@@ -80,46 +81,29 @@ uint GetRootConstant(uint index)
     return g_RootConstants.Get(index);
 }
 
-float GetFloatByIndex(uint index, float4 values)
+ConstantBuffer<joint::FrameConstants> FetchFrameConstantBuffer()
 {
-    switch (index)
-    {
-        case 0: return values.x;
-        case 1: return values.y;
-        case 2: return values.z;
-        case 3: return values.w;
-    }
-
-    return g_NaN;
+    return ResourceDescriptorHeap[GetRootConstant(joint::GlobalRc_FrameConstantBuffer)];
+}
+        
+template <typename ConstantsT>
+ConstantsT FetchConstantBuffer(uint rootConstantIndex)
+{
+    ConstantBuffer<ConstantsT> constants = ResourceDescriptorHeap[GetRootConstant(rootConstantIndex)];
+    return constants;
 }
 
-
-float SetFloatByIndex(float value, uint index, out float4 values)
+joint::FrameConstants FetchFrameConstants()
 {
-    switch (index)
-    {
-        case 0: return values.x = value;
-        case 1: return values.y = value;
-        case 2: return values.z = value;
-        case 3: return values.w = value;
-    }
-
-    return g_NaN;
+    return FetchConstantBuffer<joint::FrameConstants>(joint::GlobalRc_FrameConstantBuffer);
 }
 
 joint::CameraConstants FetchCurrentCameraConstants()
 {
-    ConstantBuffer<joint::DoubleFrameCameraConstants> cameraConstants = ResourceDescriptorHeap[GetRootConstant(joint::GlobalRC_CameraConstantBuffer)];
-    return cameraConstants.CurrentFrame;
+    return FetchConstantBuffer<joint::DoubleFrameCameraConstants>(joint::GlobalRc_CameraConstantBuffer).CurrentFrame;
 }
 
-joint::DoubleFrameCameraConstants FetchDoubleFrameCameraConstants()
+ConstantBuffer<joint::DoubleFrameCameraConstants> FetchDoubleFrameCameraConstants()
 {
-    ConstantBuffer<joint::DoubleFrameCameraConstants> cameraConstants = ResourceDescriptorHeap[GetRootConstant(joint::GlobalRC_CameraConstantBuffer)];
-    // joint::DoubleFrameCameraConstants result;
-    // result.CurrentFrame = cameraConstants.PreviousFrame;
-    // result.PreviousFrame = cameraConstants.PreviousFrame;
-    // 
-    // return result;
-    return cameraConstants;
+    return ResourceDescriptorHeap[GetRootConstant(joint::GlobalRc_CameraConstantBuffer)];
 }

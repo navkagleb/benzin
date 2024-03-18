@@ -1,8 +1,8 @@
 #include "bootstrap.hpp"
 #include "scene_layer.hpp"
 
-#include <benzin/core/imgui_helper.hpp>
 #include <benzin/core/math.hpp>
+#include <benzin/core/logger.hpp>
 #include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/geometry_generator.hpp>
 #include <benzin/engine/resource_loader.hpp>
@@ -11,15 +11,14 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/mapped_data.hpp>
 #include <benzin/graphics/pipeline_state.hpp>
 #include <benzin/graphics/rt_acceleration_structures.hpp>
 #include <benzin/graphics/shaders.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
-#include <benzin/graphics/texture_loader.hpp>
 #include <benzin/system/key_event.hpp>
 #include <benzin/utility/random.hpp>
+#include <benzin/utility/time_utils.hpp>
 
 #include <shaders/joint/constant_buffer_types.hpp>
 #include <shaders/joint/root_constants.hpp>
@@ -28,127 +27,161 @@
 namespace sandbox
 {
 
-    namespace
+    enum class CpuTiming : uint32_t
     {
+        _BuildTopLevelAs,
+        _GeometryPass,
+        _RtShadowPass,
+        _RtShadowDenoisingPass,
+        _DeferredLightingPass,
+        _EnvironmentPass,
+        _FullScreenDebugPass,
+        _BackBufferCopy,
+        _SceneLayerOnUpdate,
+        _SceneLayerOnRender,
+    };
 
-        enum CPUTiming : uint32_t
+    enum class GpuTiming : uint32_t
+    {
+        _BuildTopLevelAs,
+        _GeometryPass,
+        _RtShadowPass,
+        _RtShadowDenoisingPass,
+        _DeferredLightingPass,
+        _EnvironmentPass,
+        _FullScreenDebugPass,
+        _BackBufferCopy,
+        _Total,
+    };
+
+    static void ImGuiDisplayTexture(const benzin::Texture& texture)
+    {
+        BenzinAssert(texture.HasShaderResourceView());
+
+        const float widgetWidth = ImGui::GetContentRegionAvail().x;
+
+        const uint64_t gpuHandle = texture.GetShaderResourceView().GetGpuHandle();
+        const float textureAspectRatio = (float)texture.GetWidth() / (float)texture.GetHeight();
+
+        const ImVec2 textureSize{ widgetWidth, widgetWidth / textureAspectRatio };
+
+        const ImVec2 uv0{ 0.0f, 0.0f };
+        const ImVec2 uv1{ 1.0f, 1.0f };
+        const ImVec4 tintColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+        const ImVec4 borderColor{ 1.0f, 1.0f, 1.0f, 0.3f };
+
+        ImGui::Image((ImTextureID)gpuHandle, textureSize, uv0, uv1, tintColor, borderColor);
+    };
+
+    static benzin::MeshCollectionResource CreateCylinderMeshCollection()
+    {
+        const benzin::Material material
         {
-            CPUTiming_BuildTopLevelAS,
-            CPUTiming_GeometryPass,
-            CPUTiming_RTShadowPass,
-            CPUTiming_RTShadowDenoisingPass,
-            CPUTiming_DeferredLightingPass,
-            CPUTiming_EnvironmentPass,
-            CPUTiming_BackBufferCopy,
-            CPUTiming_SceneLayerOnUpdate,
-            CPUTiming_SceneLayerOnRender,
+            .AlbedoFactor{ 0.7f, 0.7f, 0.7f, 1.0f },
         };
 
-        enum GPUTiming : uint32_t
+        const benzin::MeshInstance meshInstance
         {
-            GPUTiming_GeometryPass,
-            GPUTiming_RTShadowPass,
-            GPUTiming_RTShadowDenoisingPass,
-            GPUTiming_DeferredLightingPass,
-            GPUTiming_EnvironmentPass,
-            GPUTiming_BackBufferCopy,
-            GPUTiming_Total,
+            .MeshIndex = 0,
+            .MaterialIndex = 0,
         };
 
-        void ImGuiDisplayTexture(const benzin::Texture& texture)
+        return benzin::MeshCollectionResource
         {
-            BenzinAssert(texture.HasShaderResourceView());
+            .DebugName = "Cylinder",
+            .Meshes{ benzin::GetDefaultCyliderMesh() },
+            .MeshInstances{ meshInstance },
+            .Materials{ material },
+        };
+    }
 
-            const float widgetWidth = ImGui::GetContentRegionAvail().x;
-
-            const uint64_t gpuHandle = texture.GetShaderResourceView().GetGPUHandle();
-            const float textureAspectRatio = (float)texture.GetWidth() / (float)texture.GetHeight();
-
-            const ImVec2 textureSize{ widgetWidth, widgetWidth / textureAspectRatio };
-
-            const ImVec2 uv0{ 0.0f, 0.0f };
-            const ImVec2 uv1{ 1.0f, 1.0f };
-            const ImVec4 tintColor{ 1.0f, 1.0f, 1.0f, 1.0f };
-            const ImVec4 borderColor{ 1.0f, 1.0f, 1.0f, 0.3f };
-
-            ImGui::Image((ImTextureID)gpuHandle, textureSize, uv0, uv1, tintColor, borderColor);
+    static benzin::MeshCollectionResource CreateSphereLightMeshCollection()
+    {
+        const benzin::Material material
+        {
+            .AlbedoFactor{ 0.0f, 0.0f, 0.0f, 0.0f },
+            .EmissiveFactor{ 1.0f, 1.0f, 1.0f },
         };
 
-        benzin::MeshCollectionResource CreateCylinderMeshCollection()
+        const benzin::MeshInstance meshInstance
         {
-            const benzin::Material material
-            {
-                .AlbedoFactor{ 0.7f, 0.7f, 0.7f, 1.0f },
-            };
+            .MeshIndex = 0,
+            .MaterialIndex = 0,
+        };
 
-            const benzin::MeshInstance meshInstance
-            {
-                .MeshIndex = 0,
-                .MaterialIndex = 0,
-            };
+        return benzin::MeshCollectionResource
+        {
+            .DebugName = "Cylinder",
+            .Meshes{ benzin::GetDefaultGeoSphereMesh() },
+            .MeshInstances{ meshInstance },
+            .Materials{ material },
+        };
+    }
 
-            return benzin::MeshCollectionResource
-            {
-                .DebugName = "Cylinder",
-                .Meshes{ benzin::GetDefaultCyliderMesh() },
-                .MeshInstances{ meshInstance },
-                .Materials{ material },
-            };
+    static bool IsMeshCulled(const benzin::Camera& camera, const benzin::MeshCollection& meshCollection, uint32_t meshInstanceIndex, const DirectX::XMMATRIX& worldMatrix)
+    {
+        const auto& meshInstance = meshCollection.MeshInstances[meshInstanceIndex];
+        const auto& mesh = meshCollection.Meshes[meshInstance.MeshIndex];
+
+        if (!mesh.BoundingBox)
+        {
+            return false;
         }
 
-        benzin::MeshCollectionResource CreateSphereLightMeshCollection()
-        {
-            const benzin::Material material
-            {
-                .AlbedoFactor{ 0.0f, 0.0f, 0.0f, 0.0f },
-                .EmissiveFactor{ 1.0f, 1.0f, 1.0f },
-            };
+        const auto localToViewSpaceTransformMatrix = meshInstance.Transform * worldMatrix * camera.GetViewMatrix();
+        const auto viewSpaceMeshBoundingBox = benzin::TransformBoundingBox(*mesh.BoundingBox, localToViewSpaceTransformMatrix);
 
-            const benzin::MeshInstance meshInstance
-            {
-                .MeshIndex = 0,
-                .MaterialIndex = 0,
-            };
+        return camera.GetProjection().GetBoundingFrustum().Contains(viewSpaceMeshBoundingBox) == DirectX::DISJOINT;
+    }
 
-            return benzin::MeshCollectionResource
-            {
-                .DebugName = "Cylinder",
-                .Meshes{ benzin::GetDefaultGeoSphereMesh() },
-                .MeshInstances{ meshInstance },
-                .Materials{ material },
-            };
-        }
+    struct GBufferConfig
+    {
+        const benzin::GraphicsFormat Color0Format = benzin::GraphicsFormat::Rgba8Unorm; // Albedo, Albedo, Albedo, Roughness
+        const benzin::GraphicsFormat Color1Format = benzin::GraphicsFormat::Rgba8Unorm; // Emissive, Emissive, Emissive, Metallic
+        const benzin::GraphicsFormat Color2Format = benzin::GraphicsFormat::Rgba16Float; // WorldNormal, WorldNormal, WorldNormal, None
+        const benzin::GraphicsFormat Color3Format = benzin::GraphicsFormat::Rgba16Float; // UvMotionVector, UvMotionVector, DepthMotionVector, None
+        const benzin::GraphicsFormat Color4Format = benzin::GraphicsFormat::R32Float; // ViewDepth
+        const benzin::GraphicsFormat DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
+    };
 
-        bool IsMeshCulled(const benzin::Camera& camera, const benzin::MeshCollection& meshCollection, uint32_t meshInstanceIndex, const DirectX::XMMATRIX& worldMatrix)
-        {
-            const auto& meshInstance = meshCollection.MeshInstances[meshInstanceIndex];
-            const auto& mesh = meshCollection.Meshes[meshInstance.MeshIndex];
+    struct RtShadowConfig
+    {
+        const std::wstring_view RayGenShaderName = L"RayGen";
+        const std::wstring_view MissShaderName = L"Miss";
+        const std::wstring_view HitGroupName = L"HitGroup";
+    };
 
-            if (!mesh.BoundingBox)
-            {
-                return false;
-            }
+    struct RtShadowParams
+    {
+        const uint32_t TextureSlotCount = 2;
 
-            const auto localToViewSpaceTransformMatrix = meshCollection.GetMeshParentTransform(meshInstance.MeshParentTransformIndex) * worldMatrix * camera.GetViewMatrix();
-            const auto viewSpaceMeshBoundingBox = benzin::TransformBoundingBox(*mesh.BoundingBox, localToViewSpaceTransformMatrix);
+        uint32_t PreviousTextureSlot = 0;
+        uint32_t CurrentTextureSlot = 1;
 
-            return camera.GetProjection().GetBoundingFrustum().Contains(viewSpaceMeshBoundingBox) == DirectX::DISJOINT;
-        }
+        uint32_t RaysPerPixel = 1;
+        uint32_t MaxTemporalAccumulationCount = 32;
+    };
 
-        std::array<std::chrono::microseconds, magic_enum::enum_count<CPUTiming>()> g_CPUTimings;
+    struct DeferredLightingParams
+    {
+        float SunIntensity = 0.0f;
+        DirectX::XMFLOAT3 SunColor{ 1.0f, 1.0f, 1.0f };
+        DirectX::XMFLOAT3 SunDirection{ -0.5f, -0.5f, -0.5f };
+    };
 
-        constexpr auto g_GBuffer_Color0Format = benzin::GraphicsFormat::RGBA8Unorm;
-        constexpr auto g_GBuffer_Color1Format = benzin::GraphicsFormat::RGBA16Float;
-        constexpr auto g_GBuffer_Color2Format = benzin::GraphicsFormat::RGBA8Unorm;
-        constexpr auto g_GBuffer_Color3Format = benzin::GraphicsFormat::RG8Unorm;
-        constexpr auto g_GBuffer_Color4Format = benzin::GraphicsFormat::RG16Float;
-        constexpr auto g_GBuffer_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
+    struct FullScreenDebugParams
+    {
+        joint::DebugOutputType OutputType = joint::DebugOutputType_None;
+    };
 
-        constexpr std::wstring_view g_RTShadowPass_RayGenShaderName = L"RayGen";
-        constexpr std::wstring_view g_RTShadowPass_MissShaderName = L"Miss";
-        constexpr std::wstring_view g_RTShadowPass_HitGroupName = L"HitGroup";
+    static constexpr GBufferConfig g_GBufferConfig;
+    static constexpr RtShadowConfig g_RtShadowConfig;
 
-    } // anonymous namespace
+    static RtShadowParams g_RtShadowParams;
+    static DeferredLightingParams g_DeferredLightingParams;
+    static FullScreenDebugParams g_FullScreenDebugParams;
+
+    static magic_enum::containers::array<CpuTiming, std::chrono::microseconds> g_CpuTimings;
 
     // GeometryPass
 
@@ -156,7 +189,7 @@ namespace sandbox
         : m_Device{ device }
         , m_SwapChain{ swapChain }
     {
-        m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::GraphicsPipelineStateCreation
+        benzin::MakeUniquePtr(m_Pso, m_Device, benzin::GraphicsPipelineStateCreation
         {
             .DebugName = "GeometryPass",
             .VertexShader{ "geometry_pass.hlsl", "VS_Main" },
@@ -169,16 +202,21 @@ namespace sandbox
             },
             .RenderTargetFormats
             {
-                g_GBuffer_Color0Format,
-                g_GBuffer_Color1Format,
-                g_GBuffer_Color2Format,
-                g_GBuffer_Color3Format,
-                g_GBuffer_Color4Format,
+                g_GBufferConfig.Color0Format,
+                g_GBufferConfig.Color1Format,
+                g_GBufferConfig.Color2Format,
+                g_GBufferConfig.Color3Format,
+                g_GBufferConfig.Color4Format,
             },
-            .DepthStencilFormat = g_GBuffer_DepthStencilFormat,
+            .DepthStencilFormat = g_GBufferConfig.DepthStencilFormat,
         });
 
-        OnResize((uint32_t)m_SwapChain.GetViewport().Width, (uint32_t)m_SwapChain.GetViewport().Height);
+        OnResize((uint32_t)m_SwapChain.GetViewportWidth(), (uint32_t)m_SwapChain.GetViewportHeight());
+    }
+
+    void GeometryPass::OnUpdate()
+    {
+        m_GBuffer.ViewDepths.GoToNext();
     }
 
     void GeometryPass::OnRender(const benzin::Scene& scene) const
@@ -188,32 +226,43 @@ namespace sandbox
         commandList.SetViewport(m_SwapChain.GetViewport());
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
 
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.Albedo, benzin::ResourceState::RenderTarget });
+        auto& currentViewDepth = m_GBuffer.ViewDepths.GetCurrent();
+
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.AlbedoAndRoughness, benzin::ResourceState::RenderTarget });
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.EmissiveAndMetallic, benzin::ResourceState::RenderTarget });
         commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.WorldNormal, benzin::ResourceState::RenderTarget });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.Emissive, benzin::ResourceState::RenderTarget });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.RoughnessMetalness, benzin::ResourceState::RenderTarget });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.MotionVectors, benzin::ResourceState::RenderTarget });
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.VelocityBuffer, benzin::ResourceState::RenderTarget });
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *currentViewDepth, benzin::ResourceState::RenderTarget });
         commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.DepthStencil, benzin::ResourceState::DepthWrite });
+        BenzinExecuteOnScopeExit([&]
+        {
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.AlbedoAndRoughness, benzin::ResourceState::Common });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.EmissiveAndMetallic, benzin::ResourceState::Common });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.WorldNormal, benzin::ResourceState::Common });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.VelocityBuffer, benzin::ResourceState::Common });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ *currentViewDepth, benzin::ResourceState::Common });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.DepthStencil, benzin::ResourceState::Common });
+        });
 
         commandList.SetRenderTargets(
             {
-                m_GBuffer.Albedo->GetRenderTargetView(),
+                m_GBuffer.AlbedoAndRoughness->GetRenderTargetView(),
+                m_GBuffer.EmissiveAndMetallic->GetRenderTargetView(),
                 m_GBuffer.WorldNormal->GetRenderTargetView(),
-                m_GBuffer.Emissive->GetRenderTargetView(),
-                m_GBuffer.RoughnessMetalness->GetRenderTargetView(),
-                m_GBuffer.MotionVectors->GetRenderTargetView(),
+                m_GBuffer.VelocityBuffer->GetRenderTargetView(),
+                currentViewDepth->GetRenderTargetView(),
             },
             &m_GBuffer.DepthStencil->GetDepthStencilView()
         );
 
-        commandList.ClearRenderTarget(m_GBuffer.Albedo->GetRenderTargetView());
+        commandList.ClearRenderTarget(m_GBuffer.AlbedoAndRoughness->GetRenderTargetView());
+        commandList.ClearRenderTarget(m_GBuffer.EmissiveAndMetallic->GetRenderTargetView());
         commandList.ClearRenderTarget(m_GBuffer.WorldNormal->GetRenderTargetView());
-        commandList.ClearRenderTarget(m_GBuffer.Emissive->GetRenderTargetView());
-        commandList.ClearRenderTarget(m_GBuffer.RoughnessMetalness->GetRenderTargetView());
-        commandList.ClearRenderTarget(m_GBuffer.MotionVectors->GetRenderTargetView());
+        commandList.ClearRenderTarget(m_GBuffer.VelocityBuffer->GetRenderTargetView());
+        commandList.ClearRenderTarget(currentViewDepth->GetRenderTargetView());
         commandList.ClearDepthStencil(m_GBuffer.DepthStencil->GetDepthStencilView());
 
-        commandList.SetPipelineState(*m_PipelineState);
+        commandList.SetPipelineState(*m_Pso);
 
         const auto view = scene.GetEntityRegistry().view<benzin::TransformComponent, benzin::MeshInstanceComponent>();
         for (const auto entityHandle : view)
@@ -222,15 +271,14 @@ namespace sandbox
             const auto& mic = view.get<benzin::MeshInstanceComponent>(entityHandle);
 
             const auto& meshCollection = scene.GetMeshCollection(mic.MeshUnionIndex);
-            const auto& meshCollectionGPUStorage = scene.GetMeshCollectionGPUStorage(mic.MeshUnionIndex);
+            const auto& meshCollectionGpuStorage = scene.GetMeshCollectionGpuStorage(mic.MeshUnionIndex);
 
-            commandList.SetRootResource(joint::GeometryPassRC_MeshVertexBuffer, meshCollectionGPUStorage.VertexBuffer->GetShaderResourceView());
-            commandList.SetRootResource(joint::GeometryPassRC_MeshIndexBuffer, meshCollectionGPUStorage.IndexBuffer->GetShaderResourceView());
-            commandList.SetRootResource(joint::GeometryPassRC_MeshInfoBuffer, meshCollectionGPUStorage.MeshInfoBuffer->GetShaderResourceView());
-            commandList.SetRootConstant(joint::GeometryPassRC_MeshParentTransformBuffer, meshCollectionGPUStorage.MeshParentTransformBuffer ? meshCollectionGPUStorage.MeshParentTransformBuffer->GetShaderResourceView().GetHeapIndex() : benzin::g_InvalidIndex<uint32_t>);
-            commandList.SetRootResource(joint::GeometryPassRC_MeshInstanceBuffer, meshCollectionGPUStorage.MeshInstanceBuffer->GetShaderResourceView());
-            commandList.SetRootResource(joint::GeometryPassRC_MaterialBuffer, meshCollectionGPUStorage.MaterialBuffer->GetShaderResourceView());
-            commandList.SetRootResource(joint::GeometryPassRC_MeshTransformConstantBuffer, tc.GetActiveTransformConstantBufferCBV(m_Device));
+            commandList.SetRootResource(joint::GeometryPassRc_MeshVertexBuffer, meshCollectionGpuStorage.VertexBuffer->GetShaderResourceView());
+            commandList.SetRootResource(joint::GeometryPassRc_MeshIndexBuffer, meshCollectionGpuStorage.IndexBuffer->GetShaderResourceView());
+            commandList.SetRootResource(joint::GeometryPassRc_MeshInfoBuffer, meshCollectionGpuStorage.MeshInfoBuffer->GetShaderResourceView());
+            commandList.SetRootResource(joint::GeometryPassRc_MeshInstanceBuffer, meshCollectionGpuStorage.MeshInstanceBuffer->GetShaderResourceView());
+            commandList.SetRootResource(joint::GeometryPassRc_MaterialBuffer, meshCollectionGpuStorage.MaterialBuffer->GetShaderResourceView());
+            commandList.SetRootResource(joint::GeometryPassRc_MeshTransformConstantBuffer, tc.GetActiveTransformCbv());
 
             const auto meshInstanceRange = mic.MeshInstanceRange.value_or(meshCollection.GetFullMeshInstanceRange());
             for (const auto i : benzin::IndexRangeToView(meshInstanceRange))
@@ -240,7 +288,7 @@ namespace sandbox
                     continue;
                 }
 
-                commandList.SetRootConstant(joint::GeometryPassRC_MeshInstanceIndex, i);
+                commandList.SetRootConstant(joint::GeometryPassRc_MeshInstanceIndex, i);
 
                 const auto& meshInstance = meshCollection.MeshInstances[i];
                 const auto& mesh = meshCollection.Meshes[meshInstance.MeshIndex];
@@ -249,26 +297,20 @@ namespace sandbox
                 commandList.DrawVertexed((uint32_t)mesh.Indices.size());
             }
         }
-
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.Albedo, benzin::ResourceState::Common });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.WorldNormal, benzin::ResourceState::Common });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.Emissive, benzin::ResourceState::Common });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.RoughnessMetalness, benzin::ResourceState::Common });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.MotionVectors, benzin::ResourceState::Common });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_GBuffer.DepthStencil, benzin::ResourceState::Common });
     }
 
     void GeometryPass::OnResize(uint32_t width, uint32_t height)
     {
-        static const auto CreateGBufferRenderTarget = [](
-            benzin::Device& device,
+        const auto CreateGBufferTexture = [this](
+            std::unique_ptr<benzin::Texture>& outGBufferTexture,
             benzin::GraphicsFormat format,
             uint32_t width,
             uint32_t height,
+            benzin::TextureFlag flag,
             std::string_view debugName
         )
         {
-            return std::make_unique<benzin::Texture>(device, benzin::TextureCreation
+            benzin::MakeUniquePtr(outGBufferTexture, m_Device, benzin::TextureCreation
             {
                 .DebugName = debugName,
                 .Type = benzin::TextureType::Texture2D,
@@ -276,97 +318,104 @@ namespace sandbox
                 .Width = width,
                 .Height = height,
                 .MipCount = 1,
-                .Flags = benzin::TextureFlag::AllowRenderTarget,
-                .ClearValue = benzin::g_DefaultClearColor,
-                .IsNeedShaderResourceView = true,
-                .IsNeedRenderTargetView = true,
+                .Flags = flag,
             });
+
+            switch (flag)
+            {
+                case benzin::TextureFlag::AllowRenderTarget:
+                {
+                    outGBufferTexture->PushShaderResourceView();
+                    outGBufferTexture->PushRenderTargetView();
+
+                    break;
+                }
+                case benzin::TextureFlag::AllowDepthStencil:
+                {
+                    outGBufferTexture->PushShaderResourceView({ .Format{ benzin::GraphicsFormat::D24Unorm_X8Typeless } });
+                    outGBufferTexture->PushDepthStencilView();
+
+                    break;
+                }
+            }
         };
 
-        m_GBuffer.Albedo = CreateGBufferRenderTarget(m_Device, g_GBuffer_Color0Format, width, height, "GBuffer_Albedo");
-        m_GBuffer.WorldNormal = CreateGBufferRenderTarget(m_Device, g_GBuffer_Color1Format, width, height, "GBuffer_WorldNormal");
-        m_GBuffer.Emissive = CreateGBufferRenderTarget(m_Device, g_GBuffer_Color2Format, width, height, "GBuffer_Emissive");
-        m_GBuffer.RoughnessMetalness = CreateGBufferRenderTarget(m_Device, g_GBuffer_Color3Format, width, height, "GBuffer_RoughnessMetalness");
-        m_GBuffer.MotionVectors = CreateGBufferRenderTarget(m_Device, g_GBuffer_Color4Format, width, height, "GBuffer_MotionVectors");
+        CreateGBufferTexture(m_GBuffer.AlbedoAndRoughness, g_GBufferConfig.Color0Format, width, height, benzin::TextureFlag::AllowRenderTarget, "GBuffer_AlbedoAndRoughness");
+        CreateGBufferTexture(m_GBuffer.EmissiveAndMetallic, g_GBufferConfig.Color1Format, width, height, benzin::TextureFlag::AllowRenderTarget, "GBuffer_EmissiveAndMetallic");
+        CreateGBufferTexture(m_GBuffer.WorldNormal, g_GBufferConfig.Color2Format, width, height, benzin::TextureFlag::AllowRenderTarget, "GBuffer_WorldNormal");
+        CreateGBufferTexture(m_GBuffer.VelocityBuffer, g_GBufferConfig.Color3Format, width, height, benzin::TextureFlag::AllowRenderTarget, "GBuffer_VelocityBuffer");
+        CreateGBufferTexture(m_GBuffer.DepthStencil, g_GBufferConfig.DepthStencilFormat, width, height, benzin::TextureFlag::AllowDepthStencil, "GBuffer_DepthStencil");
 
-        m_GBuffer.DepthStencil = std::make_unique<benzin::Texture>(m_Device, benzin::TextureCreation
+        m_GBuffer.ViewDepths.InitializeAll([&](uint32_t i, std::unique_ptr<benzin::Texture>& viewDepth)
         {
-            .DebugName = "GBuffer_DepthStencil",
-            .Type = benzin::TextureType::Texture2D,
-            .Format = g_GBuffer_DepthStencilFormat,
-            .Width = width,
-            .Height = height,
-            .MipCount = 1,
-            .Flags = benzin::TextureFlag::AllowDepthStencil,
-            .ClearValue = benzin::g_DefaultClearDepthStencil,
-            .IsNeedDepthStencilView = true,
+            CreateGBufferTexture(viewDepth, g_GBufferConfig.Color4Format, width, height, benzin::TextureFlag::AllowRenderTarget, std::format("GBuffer_ViewDepth{}", i));
         });
-        m_GBuffer.DepthStencil->PushShaderResourceView({ .Format{ benzin::GraphicsFormat::D24Unorm_X8Typeless } });
     }
 
-    // RTShadowPass
+    // RtShadowPass
 
-    RTShadowPass::RTShadowPass(benzin::Device& device, benzin::SwapChain& swapChain)
+    RtShadowPass::RtShadowPass(benzin::Device& device, benzin::SwapChain& swapChain)
         : m_Device{ device }
     {
         CreatePipelineStateObject();
         CreateShaderTable();
 
-        m_PassConstantBuffer = benzin::CreateFrameDependentConstantBuffer<joint::RTShadowPassConstants>(m_Device, "RTShadowPassConstantBuffer");
+        benzin::MakeUniquePtr(m_PassConstantBuffer, m_Device, "RtShadowPassConstantBuffer");
 
         OnResize((uint32_t)swapChain.GetViewport().Width, (uint32_t)swapChain.GetViewport().Height);
     }
 
-    void RTShadowPass::OnUpdate(std::chrono::microseconds dt, std::chrono::milliseconds elapsedTime)
+    void RtShadowPass::OnUpdate(std::chrono::microseconds dt, std::chrono::milliseconds elapsedTime)
     {
-        m_CurrentTextureSlot = (m_CurrentTextureSlot + 1) % 2;
+        g_RtShadowParams.PreviousTextureSlot = g_RtShadowParams.CurrentTextureSlot;
+        g_RtShadowParams.CurrentTextureSlot = (g_RtShadowParams.CurrentTextureSlot + 1) % g_RtShadowParams.TextureSlotCount;
 
-        const joint::RTShadowPassConstants constants
+        m_PassConstantBuffer->UpdateConstants(joint::RtShadowPassConstants
         {
-            .DeltaTime = benzin::ToFloatMS(dt),
-            .CurrentTextureSlot = m_CurrentTextureSlot,
-            .RaysPerPixel = m_RaysPerPixel,
-        };
-
-        benzin::MappedData passConstantBuffer{ *m_PassConstantBuffer };
-        passConstantBuffer.Write(constants, m_Device.GetActiveFrameIndex());
+            .CurrentTextureSlot = g_RtShadowParams.CurrentTextureSlot,
+            .RaysPerPixel = g_RtShadowParams.RaysPerPixel,
+        });
     }
 
-    void RTShadowPass::OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer) const
+    void RtShadowPass::OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer) const
     {
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
         auto* d3d12CommandList = commandList.GetD3D12GraphicsCommandList();
 
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_NoisyVisibilityBuffer, benzin::ResourceState::UnorderedAccess });
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_VisibilityBuffer, benzin::ResourceState::UnorderedAccess });
+        BenzinExecuteOnScopeExit([&]
+        {
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_VisibilityBuffer, benzin::ResourceState::Common });
+        });
 
         d3d12CommandList->SetPipelineState1(m_D3D12RaytracingStateObject.Get());
 
         const auto& activeTopLevelAS = scene.GetActiveTopLevelAS();
 
-        commandList.SetRootResource(joint::RTShadowPassRC_PassConstantBuffer, m_PassConstantBuffer->GetConstantBufferView(m_Device.GetActiveFrameIndex()));
-        commandList.SetRootResource(joint::RTShadowPassRC_GBufferWorldNormalTexture, gbuffer.WorldNormal->GetShaderResourceView());
-        commandList.SetRootResource(joint::RTShadowPassRC_GBufferDepthTexture, gbuffer.DepthStencil->GetShaderResourceView());
-        commandList.SetRootResource(joint::RTShadowPassRC_PointLightBuffer, scene.GetPointLightBufferSRV());
-        commandList.SetRootResource(joint::RTShadowPassRC_NoisyVisiblityBuffer, m_NoisyVisibilityBuffer->GetUnorderedAccessView());
+        commandList.SetRootResource(joint::RtShadowPassRc_PassConstantBuffer, m_PassConstantBuffer->GetActiveCbv());
+        commandList.SetRootResource(joint::RtShadowPassRc_GBufferWorldNormalTexture, gbuffer.WorldNormal->GetShaderResourceView());
+        commandList.SetRootResource(joint::RtShadowPassRc_GBufferDepthTexture, gbuffer.DepthStencil->GetShaderResourceView());
+        commandList.SetRootResource(joint::RtShadowPassRc_PointLightBuffer, scene.GetPointLightBufferSRV());
+        commandList.SetRootResource(joint::RtShadowPassRc_VisiblityBuffer, m_VisibilityBuffer->GetUnorderedAccessView());
 
-        d3d12CommandList->SetComputeRootShaderResourceView(1, activeTopLevelAS.GetBuffer().GetGPUVirtualAddress());
+        d3d12CommandList->SetComputeRootShaderResourceView(1, activeTopLevelAS.GetBuffer().GetGpuVirtualAddress());
 
         const D3D12_DISPATCH_RAYS_DESC d3d12DispatchRayDesc
         {
             .RayGenerationShaderRecord
             {
-                .StartAddress = m_RayGenShaderTable->GetGPUVirtualAddress(),
+                .StartAddress = m_RayGenShaderTable->GetGpuVirtualAddress(),
                 .SizeInBytes = m_RayGenShaderTable->GetNotAlignedSizeInBytes(),
             },
             .MissShaderTable
             {
-                .StartAddress = m_MissShaderTable->GetGPUVirtualAddress(),
+                .StartAddress = m_MissShaderTable->GetGpuVirtualAddress(),
                 .SizeInBytes = m_MissShaderTable->GetNotAlignedSizeInBytes(),
                 .StrideInBytes = m_MissShaderTable->GetElementSize(),
             },
             .HitGroupTable
             {
-                .StartAddress = m_HitGroupShaderTable->GetGPUVirtualAddress(),
+                .StartAddress = m_HitGroupShaderTable->GetGpuVirtualAddress(),
                 .SizeInBytes = m_HitGroupShaderTable->GetNotAlignedSizeInBytes(),
                 .StrideInBytes = m_HitGroupShaderTable->GetElementSize(),
             },
@@ -376,23 +425,21 @@ namespace sandbox
                 .SizeInBytes = 0,
                 .StrideInBytes = 0,
             },
-            .Width = m_NoisyVisibilityBuffer->GetWidth(),
-            .Height = m_NoisyVisibilityBuffer->GetHeight(),
+            .Width = m_VisibilityBuffer->GetWidth(),
+            .Height = m_VisibilityBuffer->GetHeight(),
             .Depth = 1,
         };
 
         d3d12CommandList->DispatchRays(&d3d12DispatchRayDesc);
-
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_NoisyVisibilityBuffer, benzin::ResourceState::Common });
     }
 
-    void RTShadowPass::OnResize(uint32_t width, uint32_t height)
+    void RtShadowPass::OnResize(uint32_t width, uint32_t height)
     {
-        m_NoisyVisibilityBuffer = std::make_unique<benzin::Texture>(m_Device, benzin::TextureCreation
+        benzin::MakeUniquePtr(m_VisibilityBuffer, m_Device, benzin::TextureCreation
         {
-            .DebugName = "RTShadowPass_NoisyVisibilityBuffer",
+            .DebugName = "RtShadowPass_VisibilityBuffer",
             .Type = benzin::TextureType::Texture2D,
-            .Format = benzin::GraphicsFormat::RGBA16Float,
+            .Format = benzin::GraphicsFormat::Rgba16Float,
             .Width = width,
             .Height = height,
             .MipCount = 1,
@@ -402,7 +449,7 @@ namespace sandbox
         });
     }
 
-    void RTShadowPass::CreatePipelineStateObject()
+    void RtShadowPass::CreatePipelineStateObject()
     {
         // 1. D3D12_GLOBAL_ROOT_SIGNATURE
         const D3D12_GLOBAL_ROOT_SIGNATURE d3d12GlobalRootSignature
@@ -427,7 +474,7 @@ namespace sandbox
         // 3. D3D12_HIT_GROUP_DESC
         const D3D12_HIT_GROUP_DESC d3d12HitGroupDesc
         {
-            .HitGroupExport = g_RTShadowPass_HitGroupName.data(),
+            .HitGroupExport = g_RtShadowConfig.HitGroupName.data(),
             .Type = D3D12_HIT_GROUP_TYPE_TRIANGLES,
             .AnyHitShaderImport = nullptr,
             .ClosestHitShaderImport = nullptr,
@@ -467,7 +514,7 @@ namespace sandbox
         BenzinAssert(m_Device.GetD3D12Device()->CreateStateObject(&d3d12StateObjectDesc, IID_PPV_ARGS(&m_D3D12RaytracingStateObject)));
     }
 
-    void RTShadowPass::CreateShaderTable()
+    void RtShadowPass::CreateShaderTable()
     {
         BenzinAssert(m_D3D12RaytracingStateObject.Get());
 
@@ -489,64 +536,90 @@ namespace sandbox
             });
         };
 
-        m_RayGenShaderTable = CreateShaderTable(g_RTShadowPass_RayGenShaderName);
-        m_MissShaderTable = CreateShaderTable(g_RTShadowPass_MissShaderName);
-        m_HitGroupShaderTable = CreateShaderTable(g_RTShadowPass_HitGroupName);
+        m_RayGenShaderTable = CreateShaderTable(g_RtShadowConfig.RayGenShaderName);
+        m_MissShaderTable = CreateShaderTable(g_RtShadowConfig.MissShaderName);
+        m_HitGroupShaderTable = CreateShaderTable(g_RtShadowConfig.HitGroupName);
     }
 
-    // RTShadowDenoisingPass
+    // RtShadowDenoisingPass
 
-    RTShadowDenoisingPass::RTShadowDenoisingPass(benzin::Device& device, benzin::SwapChain& swapChain)
+    RtShadowDenoisingPass::RtShadowDenoisingPass(benzin::Device& device, benzin::SwapChain& swapChain)
         : m_Device{ device }
         , m_SwapChain{ swapChain }
     {
-        m_PassConstantBuffer = benzin::CreateFrameDependentConstantBuffer<joint::RTShadowDenoisingPassConstants>(m_Device, "RTShadowDenoisingPassConstantBuffer");
-
-        m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::ComputePipelineStateCreation
+        benzin::MakeUniquePtr(m_Pso, m_Device, benzin::ComputePipelineStateCreation
         {
             .DebugName = "RTShadowDenoisingPass",
             .ComputeShader{ "rt_shadow_denoising_pass.hlsl", "CS_Main" },
         });
+
+        benzin::MakeUniquePtr(m_PassConstantBuffer, m_Device, "RtShadowDenoisingPassConstantBuffer");
+
+        OnResize((uint32_t)swapChain.GetViewportWidth(), (uint32_t)swapChain.GetViewportHeight());
     }
 
-    void RTShadowDenoisingPass::OnUpdate(uint32_t currentTextureSlot)
+    void RtShadowDenoisingPass::OnUpdate()
     {
-        const joint::RTShadowDenoisingPassConstants constants
+        m_PassConstantBuffer->UpdateConstants(joint::RtShadowDenoisingPassConstants
         {
-            .TextureDimensions{ (float)m_SwapChain.GetViewport().Width, (float)m_SwapChain.GetViewport().Height },
-            .CurrentTextureSlot = currentTextureSlot,
-            .PreviousTextureSlot = (currentTextureSlot + 1) % 2,
-            .IsForceCurrentVisiblity = m_IsForceCurrentVisibility,
-        };
+            .CurrentTextureSlot = g_RtShadowParams.CurrentTextureSlot,
+            .PreviousTextureSlot = g_RtShadowParams.PreviousTextureSlot,
+        });
 
-        benzin::MappedData passConstantBuffer{ *m_PassConstantBuffer };
-        passConstantBuffer.Write(constants, m_Device.GetActiveFrameIndex());
+        m_TemporalAccumulationBuffers.GoToNext();
     }
 
-    void RTShadowDenoisingPass::OnRender(benzin::Texture& noisyVisiblityBuffer, const benzin::Texture& motionVectorsTexture, const benzin::Texture& albedo) const
+    void RtShadowDenoisingPass::OnRender(benzin::Texture& shadowVisiblityBuffer, const GeometryPass::GBuffer& gbuffer) const
     {
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
+
+        auto& previousTemporalAccumulationBuffer = *m_TemporalAccumulationBuffers.GetPrevious();
+        auto& currentTemporalAccumulationBuffer = *m_TemporalAccumulationBuffers.GetCurrent();
 
         commandList.SetViewport(m_SwapChain.GetViewport());
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
 
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ noisyVisiblityBuffer, benzin::ResourceState::UnorderedAccess });
-
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ shadowVisiblityBuffer, benzin::ResourceState::UnorderedAccess });
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ currentTemporalAccumulationBuffer, benzin::ResourceState::UnorderedAccess });
+        BenzinExecuteOnScopeExit([&]
         {
-            commandList.SetPipelineState(*m_PipelineState);
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ shadowVisiblityBuffer, benzin::ResourceState::Common });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ currentTemporalAccumulationBuffer, benzin::ResourceState::Common });
+        });
 
-            commandList.SetRootResource(joint::RTShadowDenoisingPass_PassConstantBuffer, m_PassConstantBuffer->GetConstantBufferView(m_Device.GetActiveFrameIndex()));
-            commandList.SetRootResource(joint::RTShadowDenoisingPass_NoisyVisibilityBuffer, noisyVisiblityBuffer.GetUnorderedAccessView());
-            commandList.SetRootResource(joint::RTShadowDenoisingPass_GBufferMotionVectorsTexture, motionVectorsTexture.GetShaderResourceView());
+        commandList.SetPipelineState(*m_Pso);
 
-            commandList.SetRootResource(joint::RTShadowDenoisingPass_GBufferAlbedoTexture, albedo.GetShaderResourceView());
+        commandList.SetRootResource(joint::RtShadowDenoisingRc_PassConstantBuffer, m_PassConstantBuffer->GetActiveCbv());
+        commandList.SetRootResource(joint::RtShadowDenoisingRc_WorldNormalTexture, gbuffer.WorldNormal->GetShaderResourceView());
+        commandList.SetRootResource(joint::RtShadowDenoisingRc_VelocityBuffer, gbuffer.VelocityBuffer->GetShaderResourceView());
+        commandList.SetRootResource(joint::RtShadowDenoisingRc_DepthBuffer, gbuffer.DepthStencil->GetShaderResourceView());
+        commandList.SetRootResource(joint::RtShadowDenoisingRc_PreviousViewDepthBuffer, gbuffer.ViewDepths.GetPrevious()->GetShaderResourceView());
+        commandList.SetRootResource(joint::RtShadowDenoisingRc_ShadowVisibilityBuffer, shadowVisiblityBuffer.GetUnorderedAccessView());
+        commandList.SetRootResource(joint::RtShadowDenoisingRc_PreviousTemporalAccumulationBuffer, previousTemporalAccumulationBuffer.GetUnorderedAccessView());
+        commandList.SetRootResource(joint::RtShadowDenoisingRc_CurrentTemporalAccumulationBuffer, currentTemporalAccumulationBuffer.GetUnorderedAccessView());
 
-            const DirectX::XMUINT3 dimensions{ noisyVisiblityBuffer.GetWidth(), noisyVisiblityBuffer.GetHeight(), noisyVisiblityBuffer.GetArraySize() };
-            const DirectX::XMUINT3 threadPerGroupCount{ 8, 8, 1 };
-            commandList.Dispatch(dimensions, threadPerGroupCount);
-        }
+        const DirectX::XMUINT3 dimensions{ (uint32_t)m_SwapChain.GetViewportWidth(), (uint32_t)m_SwapChain.GetViewportHeight(), 1 };
+        const DirectX::XMUINT3 threadPerGroupCount{ 8, 8, 1 };
+        commandList.Dispatch(dimensions, threadPerGroupCount);
+    }
 
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ noisyVisiblityBuffer, benzin::ResourceState::Common });
+    void RtShadowDenoisingPass::OnResize(uint32_t width, uint32_t height)
+    {
+        m_TemporalAccumulationBuffers.InitializeAll([&](uint32_t i, std::unique_ptr<benzin::Texture>& temporalAccumulationBuffer)
+        {
+            benzin::MakeUniquePtr(temporalAccumulationBuffer, m_Device, benzin::TextureCreation
+            {
+                .DebugName = std::format("RtShadowDenoisingPass_TemporalAccumulationBuffer{}", i),
+                .Type = benzin::TextureType::Texture2D,
+                .Format = benzin::GraphicsFormat::R32Float,
+                .Width = width,
+                .Height = height,
+                .MipCount = 1,
+                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .IsNeedShaderResourceView = true,
+                .IsNeedUnorderedAccessView = true,
+            });
+        });
     }
 
     // DeferredLightingPass
@@ -555,9 +628,7 @@ namespace sandbox
         : m_Device{ device }
         , m_SwapChain{ swapChain }
     {
-        m_PassConstantBuffer = benzin::CreateFrameDependentConstantBuffer<joint::DeferredLightingPassConstants>(m_Device, "DeferredLightingPassConstantBuffer");
-
-        m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::GraphicsPipelineStateCreation
+        benzin::MakeUniquePtr(m_Pso, m_Device, benzin::GraphicsPipelineStateCreation
         {
             .DebugName = "DeferredLightingPass",
             .VertexShader{ "fullscreen_triangle.hlsl", "VS_Main" },
@@ -568,28 +639,26 @@ namespace sandbox
                 .IsEnabled = false,
                 .IsWriteEnabled = false,
             },
-            .RenderTargetFormats{ benzin::GraphicsFormat::RGBA8Unorm },
+            .RenderTargetFormats{ benzin::GraphicsFormat::Rgba8Unorm },
         });
 
-        OnResize((uint32_t)m_SwapChain.GetViewport().Width, (uint32_t)m_SwapChain.GetViewport().Height);
+        benzin::MakeUniquePtr(m_PassConstantBuffer, m_Device, "DeferredLightingPassConstantBuffer");
+
+        OnResize((uint32_t)m_SwapChain.GetViewportWidth(), (uint32_t)m_SwapChain.GetViewportHeight());
     }
 
     void DeferredLightingPass::OnUpdate(const benzin::Scene& scene)
     {
-        const joint::DeferredLightingPassConstants constants
+        m_PassConstantBuffer->UpdateConstants(joint::DeferredLightingPassConstants
         {
-            .SunColor = m_SunColor,
-            .SunIntensity = m_SunIntensity,
-            .SunDirection = m_SunDirection,
+            .SunColor = g_DeferredLightingParams.SunColor,
+            .SunIntensity = g_DeferredLightingParams.SunIntensity,
+            .SunDirection = g_DeferredLightingParams.SunDirection,
             .ActivePointLightCount = scene.GetStats().PointLightCount,
-            .OutputType = magic_enum::enum_integer(m_OutputType),
-        };
-
-        benzin::MappedData passConstantBuffer{ *m_PassConstantBuffer };
-        passConstantBuffer.Write(constants, m_Device.GetActiveFrameIndex());
+        });
     }
 
-    void DeferredLightingPass::OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer, benzin::Texture& shadowTexture) const
+    void DeferredLightingPass::OnRender(const benzin::Scene& scene, const GeometryPass::GBuffer& gbuffer, benzin::Texture& shadowVisiblityBuffer) const
     {
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
@@ -597,73 +666,34 @@ namespace sandbox
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
 
         commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_OutputTexture, benzin::ResourceState::RenderTarget });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ shadowTexture, benzin::ResourceState::PixelShaderResource });
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ shadowVisiblityBuffer, benzin::ResourceState::PixelShaderResource });
+        BenzinExecuteOnScopeExit([&]
+        {
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_OutputTexture, benzin::ResourceState::Common });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ shadowVisiblityBuffer, benzin::ResourceState::Common });
+        });
 
         commandList.SetRenderTargets({ m_OutputTexture->GetRenderTargetView() });
         commandList.ClearRenderTarget(m_OutputTexture->GetRenderTargetView());
 
-        {
-            commandList.SetPipelineState(*m_PipelineState);
+        commandList.SetPipelineState(*m_Pso);
 
-            commandList.SetRootResource(joint::DeferredLightingPassRC_PassConstantBuffer, m_PassConstantBuffer->GetConstantBufferView(m_Device.GetActiveFrameIndex()));
-            commandList.SetRootResource(joint::DeferredLightingPassRC_AlbedoTexture, gbuffer.Albedo->GetShaderResourceView());
-            commandList.SetRootResource(joint::DeferredLightingPassRC_WorldNormalTexture, gbuffer.WorldNormal->GetShaderResourceView());
-            commandList.SetRootResource(joint::DeferredLightingPassRC_EmissiveTexture, gbuffer.Emissive->GetShaderResourceView());
-            commandList.SetRootResource(joint::DeferredLightingPassRC_RoughnessMetalnessTexture, gbuffer.RoughnessMetalness->GetShaderResourceView());
-            commandList.SetRootResource(joint::DeferredLightingPassRC_MotionVectorsTexture, gbuffer.MotionVectors->GetShaderResourceView());
-            commandList.SetRootResource(joint::DeferredLightingPassRC_DepthStencilTexture, gbuffer.DepthStencil->GetShaderResourceView());
-            commandList.SetRootResource(joint::DeferredLightingPassRC_ShadowTexture, shadowTexture.GetShaderResourceView());
-            commandList.SetRootResource(joint::DeferredLightingPassRC_PointLightBuffer, scene.GetPointLightBufferSRV());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_PassConstantBuffer, m_PassConstantBuffer->GetActiveCbv());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_AlbedoAndRoughnessTexture, gbuffer.AlbedoAndRoughness->GetShaderResourceView());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_EmissiveAndMetallicTexture, gbuffer.EmissiveAndMetallic->GetShaderResourceView());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_WorldNormalTexture, gbuffer.WorldNormal->GetShaderResourceView());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_VelocityBuffer, gbuffer.VelocityBuffer->GetShaderResourceView());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_DepthStencilTexture, gbuffer.DepthStencil->GetShaderResourceView());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_PointLightBuffer, scene.GetPointLightBufferSRV());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_ShadowVisibilityBuffer, shadowVisiblityBuffer.GetShaderResourceView());
 
-            commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
-            commandList.DrawVertexed(3);
-        }
-
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_OutputTexture, benzin::ResourceState::Common });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ shadowTexture, benzin::ResourceState::Common });
-    }
-
-    void DeferredLightingPass::OnImGuiRender()
-    {
-        ImGui::Begin("DeferredLightingPass");
-        {
-            ImGui::ColorEdit3("SunColor", reinterpret_cast<float*>(&m_SunColor));
-            ImGui::DragFloat("SunIntensity", &m_SunIntensity, 0.1f, 0.0f, 100.0f);
-
-            if (ImGui::DragFloat3("SunDirection", reinterpret_cast<float*>(&m_SunDirection), 0.01f, -1.0f, 1.0f))
-            {
-                DirectX::XMStoreFloat3(&m_SunDirection, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&m_SunDirection)));
-            }
-
-            ImGui::Separator();
-
-            static constexpr auto names = magic_enum::enum_names<joint::DeferredLightingOutputType>();
-
-            if (ImGui::BeginListBox("##listbox", ImVec2{ -FLT_MIN, 0.0f }))
-            {
-                for (const auto i : std::views::iota(0u, joint::DeferredLightingOutputType_Count))
-                {
-                    const bool isSelected = m_OutputType == i;
-
-                    if (ImGui::Selectable(names[i].data(), isSelected))
-                    {
-                        m_OutputType = (joint::DeferredLightingOutputType)i;
-                    }
-
-                    if (isSelected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndListBox();
-            }
-        }
-        ImGui::End();
+        commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+        commandList.DrawVertexed(3);
     }
 
     void DeferredLightingPass::OnResize(uint32_t width, uint32_t height)
     {
-        m_OutputTexture = std::make_unique<benzin::Texture>(m_Device, benzin::TextureCreation
+        benzin::MakeUniquePtr(m_OutputTexture, m_Device, benzin::TextureCreation
         {
             .DebugName = "DeferredLightingPass_OutputTexture",
             .Type = benzin::TextureType::Texture2D,
@@ -683,7 +713,7 @@ namespace sandbox
         : m_Device{ device }
         , m_SwapChain{ swapChain }
     {
-        m_PipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::GraphicsPipelineStateCreation
+        benzin::MakeUniquePtr(m_Pso, m_Device, benzin::GraphicsPipelineStateCreation
         {
             .DebugName = "EnvironmentPass",
             .VertexShader{ "fullscreen_triangle.hlsl", "VS_MainDepth1" },
@@ -694,13 +724,76 @@ namespace sandbox
                 .IsWriteEnabled = false,
                 .ComparisonFunction = benzin::ComparisonFunction::Equal,
             },
-            .RenderTargetFormats{ benzin::GraphicsFormat::RGBA8Unorm },
+            .RenderTargetFormats{ benzin::GraphicsFormat::Rgba8Unorm },
             .DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint,
         });
 
         {
-            m_CubeTexture = std::unique_ptr<benzin::Texture>{ m_Device.GetTextureLoader().LoadCubeMapFromHDRFile("scythian_tombs_2_4k.hdr", 1024) };
-            m_CubeTexture->PushShaderResourceView();
+            // Load environment texture
+
+            benzin::TextureImage equirectangularTextureImage;
+            BenzinAssert(benzin::LoadTextureImageFromHdrFile("scythian_tombs_2_4k.hdr", equirectangularTextureImage));
+
+            const auto equirectangularTexture = std::make_unique<benzin::Texture>(m_Device, benzin::TextureCreation
+            {
+                .DebugName = equirectangularTextureImage.DebugName,
+                .Type = benzin::TextureType::Texture2D,
+                .Format = equirectangularTextureImage.Format,
+                .Width = equirectangularTextureImage.Width,
+                .Height = equirectangularTextureImage.Height,
+                .MipCount = 1,
+                .IsNeedShaderResourceView = true,
+            });
+
+            {
+                auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
+                BenzinFlushCommandQueueOnScopeExit(copyCommandQueue);
+
+                auto& commandList = copyCommandQueue.GetCommandList(equirectangularTexture->GetSizeInBytes());
+                commandList.UpdateTextureTopMip(*equirectangularTexture, std::as_bytes(std::span{ equirectangularTextureImage.ImageData }));
+            }
+
+            // Convert equirectangular to cube map texture
+
+            const auto equirectangularToCubePipelineState = std::make_unique<benzin::PipelineState>(m_Device, benzin::ComputePipelineStateCreation
+            {
+                .DebugName = "EquirectangularToCube",
+                .ComputeShader{ "equirectangular_to_cube.hlsl", "CS_Main" },
+            });
+
+            const uint32_t cubeMapSize = 1024;
+            benzin::MakeUniquePtr(m_CubeTexture, m_Device, benzin::TextureCreation
+            {
+                .DebugName = equirectangularTextureImage.DebugName,
+                .Type = benzin::TextureType::Texture2D,
+                .IsCubeMap = true,
+                .Format = benzin::GraphicsFormat::Rgba32Float,
+                .Width = cubeMapSize,
+                .Height = cubeMapSize,
+                .ArraySize = 6,
+                .MipCount = 1,
+                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .IsNeedShaderResourceView = true,
+                .IsNeedUnorderedAccessView = true,
+            });
+
+            {
+                auto& computeCommandQueue = m_Device.GetComputeCommandQueue();
+                BenzinFlushCommandQueueOnScopeExit(computeCommandQueue);
+
+                auto& commandList = computeCommandQueue.GetCommandList();
+
+                commandList.SetPipelineState(*equirectangularToCubePipelineState);
+
+                commandList.SetRootResource(joint::EquirectangularToCubePassRc_EquirectangularTexture, equirectangularTexture->GetShaderResourceView());
+                commandList.SetRootResource(joint::EquirectangularToCubePassRc_OutCubeTexture, m_CubeTexture->GetUnorderedAccessView());
+
+                commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::UnorderedAccess });
+
+                commandList.Dispatch({ cubeMapSize, cubeMapSize, m_CubeTexture->GetArraySize() }, { 8, 8, 1 });
+
+                commandList.SetResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::Common });
+            }
         }
     }
 
@@ -712,21 +805,89 @@ namespace sandbox
         commandList.SetScissorRect(m_SwapChain.GetScissorRect());
 
         commandList.SetResourceBarrier(benzin::TransitionBarrier{ deferredLightingOutputTexture, benzin::ResourceState::RenderTarget });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ gbufferDepthStecil, benzin::ResourceState::DepthWrite });
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ gbufferDepthStecil, benzin::ResourceState::DepthRead });
+        BenzinExecuteOnScopeExit([&]
+        {
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ deferredLightingOutputTexture, benzin::ResourceState::Common });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ gbufferDepthStecil, benzin::ResourceState::Common });
+        });
 
         commandList.SetRenderTargets({ deferredLightingOutputTexture.GetRenderTargetView() }, &gbufferDepthStecil.GetDepthStencilView());
 
+        commandList.SetPipelineState(*m_Pso);
+
+        commandList.SetRootResource(joint::EnvironmentPassRc_CubeMapTexture, m_CubeTexture->GetShaderResourceView());
+
+        commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+        commandList.DrawVertexed(3);
+    }
+
+    // FullScreenDebugPass
+
+    FullScreenDebugPass::FullScreenDebugPass(benzin::Device& device, benzin::SwapChain& swapChain)
+        : m_Device{ device }
+        , m_SwapChain{ swapChain }
+    {
+        benzin::MakeUniquePtr(m_Pso, m_Device, benzin::GraphicsPipelineStateCreation
         {
-            commandList.SetPipelineState(*m_PipelineState);
+            .DebugName = "FullScreenDebugPass",
+            .VertexShader{ "fullscreen_triangle.hlsl", "VS_Main" },
+            .PixelShader{ "fullscreen_debug_pass.hlsl", "PS_Main" },
+            .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
+            .DepthState
+            {
+                .IsEnabled = false,
+                .IsWriteEnabled = false,
+            },
+            .RenderTargetFormats{ benzin::GraphicsFormat::Rgba8Unorm },
+        });
 
-            commandList.SetRootResource(joint::EnvironmentPassRC_CubeMapTexture, m_CubeTexture->GetShaderResourceView());
+        benzin::MakeUniquePtr(m_PassConstantBuffer, m_Device, "FullScreenDebugPass_PassConstantBuffer");
+    }
 
-            commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
-            commandList.DrawVertexed(3);
-        }
+    void FullScreenDebugPass::OnUpdate()
+    {
+        m_PassConstantBuffer->UpdateConstants(joint::FullScreenDebugConstants
+        {
+            .OutputType = magic_enum::enum_integer(g_FullScreenDebugParams.OutputType),
+            .CurrentShadowVisibilityBufferSlot = g_RtShadowParams.CurrentTextureSlot,
+            .PreviousShadowVisibilityBufferSlot = g_RtShadowParams.PreviousTextureSlot,
+        });
+    }
 
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ deferredLightingOutputTexture, benzin::ResourceState::Common });
-        commandList.SetResourceBarrier(benzin::TransitionBarrier{ gbufferDepthStecil, benzin::ResourceState::Common });
+    void FullScreenDebugPass::OnRender(benzin::Texture& finalOutput, const GeometryPass::GBuffer& gbuffer, benzin::Texture& shadowVisiblityBuffer, benzin::Texture& temporalAccumulationBuffer) const
+    {
+        auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
+
+        commandList.SetViewport(m_SwapChain.GetViewport());
+        commandList.SetScissorRect(m_SwapChain.GetScissorRect());
+
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ finalOutput, benzin::ResourceState::RenderTarget });
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ shadowVisiblityBuffer, benzin::ResourceState::PixelShaderResource });
+        commandList.SetResourceBarrier(benzin::TransitionBarrier{ temporalAccumulationBuffer, benzin::ResourceState::PixelShaderResource });
+        BenzinExecuteOnScopeExit([&]
+        {
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ finalOutput, benzin::ResourceState::Common });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ shadowVisiblityBuffer, benzin::ResourceState::Common });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ temporalAccumulationBuffer, benzin::ResourceState::Common });
+        });
+
+        commandList.SetRenderTargets({ finalOutput.GetRenderTargetView() });
+        commandList.ClearRenderTarget(finalOutput.GetRenderTargetView());
+
+        commandList.SetPipelineState(*m_Pso);
+
+        commandList.SetRootResource(joint::FullScreenDebugRc_PassConstantBuffer, m_PassConstantBuffer->GetActiveCbv());
+        commandList.SetRootResource(joint::FullScreenDebugRc_AlbedoAndRoughnessTexture, gbuffer.AlbedoAndRoughness->GetShaderResourceView());
+        commandList.SetRootResource(joint::FullScreenDebugRc_EmissiveAndMetallicTexture, gbuffer.EmissiveAndMetallic->GetShaderResourceView());
+        commandList.SetRootResource(joint::FullScreenDebugRc_WorldNormalTexture, gbuffer.WorldNormal->GetShaderResourceView());
+        commandList.SetRootResource(joint::FullScreenDebugRc_VelocityBuffer, gbuffer.VelocityBuffer->GetShaderResourceView());
+        commandList.SetRootResource(joint::FullScreenDebugRc_DepthBuffer, gbuffer.DepthStencil->GetShaderResourceView());
+        commandList.SetRootResource(joint::FullScreenDebugRc_ShadowVisiblityBuffer, shadowVisiblityBuffer.GetShaderResourceView());
+        commandList.SetRootResource(joint::FullScreenDebugRc_TemporalAccumulationBuffer, temporalAccumulationBuffer.GetShaderResourceView());
+
+        commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+        commandList.DrawVertexed(3);
     }
 
     // SceneLayer
@@ -736,24 +897,29 @@ namespace sandbox
         , m_Device{ graphicsRefs.DeviceRef }
         , m_SwapChain{ graphicsRefs.SwapChainRef }
         , m_GeometryPass{ m_Device, m_SwapChain }
-        , m_RTShadowPass{ m_Device, m_SwapChain }
-        , m_RTShadowDenoisingPass{ m_Device, m_SwapChain }
+        , m_RtShadowPass{ m_Device, m_SwapChain }
+        , m_RtShadowDenoisingPass{ m_Device, m_SwapChain }
         , m_DeferredLightingPass{ m_Device, m_SwapChain }
         , m_EnvironmentPass{ m_Device, m_SwapChain }
+        , m_FullScreenDebugPass{ m_Device, m_SwapChain }
     {
-        m_GPUTimer = std::make_unique<benzin::GPUTimer>(m_Device, benzin::GPUTimerCreation
+        benzin::MakeUniquePtr(m_GpuTimer, m_Device, benzin::GpuTimerCreation
         {
             .CommandList = m_Device.GetGraphicsCommandQueue().GetCommandList(),
             .TimestampFrequency = m_Device.GetGraphicsCommandQueue().GetTimestampFrequency(),
-            .TimerCount = (uint32_t)magic_enum::enum_count<GPUTiming>(),
+            .TimerCount = (uint32_t)magic_enum::enum_count<GpuTiming>(),
         });
 
-        auto& perspectiveProjection = m_Scene.GetPerspectiveProjection();
-        perspectiveProjection.SetLens(DirectX::XMConvertToRadians(60.0f), m_SwapChain.GetAspectRatio(), 0.1f, 1000.0f);
+        benzin::MakeUniquePtr(m_FrameConstantBuffer, m_Device, "FrameConstantBuffer");
 
-        auto& camera = m_Scene.GetCamera();
-        camera.SetPosition({ -3.0f, 2.0f, -0.25f });
-        camera.SetFrontDirection({ 1.0f, 0.0f, 0.0f });
+        {
+            auto& perspectiveProjection = m_Scene.GetPerspectiveProjection();
+            perspectiveProjection.SetLens(DirectX::XMConvertToRadians(60.0f), m_SwapChain.GetAspectRatio(), 0.1f, 1000.0f);
+
+            auto& camera = m_Scene.GetCamera();
+            camera.SetPosition({ -3.0f, 2.0f, -0.25f });
+            camera.SetFrontDirection({ 1.0f, 0.0f, 0.0f });
+        }
 
         CreateEntities();
 
@@ -790,10 +956,19 @@ namespace sandbox
 
     void SceneLayer::OnUpdate()
     {
-        BenzinGrabTimeOnScopeExit(g_CPUTimings[CPUTiming_SceneLayerOnUpdate]);
+        BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_SceneLayerOnUpdate]);
 
         const auto dt = s_FrameTimer.GetDeltaTime();
         const auto elapsedTime = s_FrameTimer.GetElapsedTime();
+
+        m_FrameConstantBuffer->UpdateConstants(joint::FrameConstants
+        {
+            .RenderResolution{ m_SwapChain.GetViewportWidth(), m_SwapChain.GetViewportHeight() },
+            .InvRenderResolution{ 1.0f / m_SwapChain.GetViewportWidth(), 1.0f / m_SwapChain.GetViewportHeight(), },
+            .CpuFrameIndex = (uint32_t)m_Device.GetCpuFrameIndex(),
+            .DeltaTime = benzin::ToFloatMs(dt),
+            .MaxTemporalAccumulationCount = g_RtShadowParams.MaxTemporalAccumulationCount,
+        });
 
         m_FlyCameraController.OnUpdate(dt);
         m_Scene.OnUpdate(dt);
@@ -801,110 +976,163 @@ namespace sandbox
         {
             // Note: Before updating TopLevelAS the TransformComponents must be updated
 
-            BenzinGrabTimeOnScopeExit(g_CPUTimings[CPUTiming_BuildTopLevelAS]);
+            BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_BuildTopLevelAs]);
+            BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_BuildTopLevelAs));
+
             m_Scene.BuildTopLevelAccelerationStructure();
         }
 
-        m_RTShadowPass.OnUpdate(dt, elapsedTime);
-        m_RTShadowDenoisingPass.OnUpdate(m_RTShadowPass.GetCurrentTextureSlot());
+        m_GeometryPass.OnUpdate();
+        m_RtShadowPass.OnUpdate(dt, elapsedTime);
+        m_RtShadowDenoisingPass.OnUpdate();
         m_DeferredLightingPass.OnUpdate(m_Scene);
+        m_FullScreenDebugPass.OnUpdate();
     }
 
     void SceneLayer::OnRender()
     {
-        BenzinGrabTimeOnScopeExit(g_CPUTimings[CPUTiming_SceneLayerOnRender]);
+        BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_SceneLayerOnRender]);
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
-        BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, GPUTiming_Total);
+        BenzinExecuteOnScopeExit([this] { m_GpuTimer->ResolveTimestamps(m_Device.GetCpuFrameIndex()); });
+        BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_Total));
 
-        commandList.SetRootResource(joint::GlobalRC_CameraConstantBuffer, m_Scene.GetCameraConstantBufferCBV());
+        commandList.SetRootResource(joint::GlobalRc_FrameConstantBuffer, m_FrameConstantBuffer->GetActiveCbv());
+        commandList.SetRootResource(joint::GlobalRc_CameraConstantBuffer, m_Scene.GetCameraConstantBufferActiveCbv());
+
+        auto& gbuffer = m_GeometryPass.GetGBuffer();
+        auto& shadowVisibilityBuffer = m_RtShadowPass.GetVisibilityBuffer();
+        auto& finalOutput = m_DeferredLightingPass.GetOutputTexture();
+        auto& temporalAccumulationBuffer = *m_RtShadowDenoisingPass.GetTemporalAccumulationBuffers().GetCurrent();
 
         {
-            BenzinGrabTimeOnScopeExit(g_CPUTimings[CPUTiming_GeometryPass]);
-            BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, GPUTiming_GeometryPass);
+            BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_GeometryPass]);
+            BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_GeometryPass));
 
             m_GeometryPass.OnRender(m_Scene);
         }
 
         {
-            BenzinGrabTimeOnScopeExit(g_CPUTimings[CPUTiming_RTShadowPass]);
-            BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, GPUTiming_RTShadowPass);
+            BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_RtShadowPass]);
+            BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_RtShadowPass));
 
-            m_RTShadowPass.OnRender(m_Scene, m_GeometryPass.GetGBuffer());
+            m_RtShadowPass.OnRender(m_Scene, gbuffer);
         }
 
         {
-            BenzinGrabTimeOnScopeExit(g_CPUTimings[CPUTiming_RTShadowDenoisingPass]);
-            BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, GPUTiming_RTShadowDenoisingPass);
+            BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_RtShadowDenoisingPass]);
+            BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_RtShadowDenoisingPass));
 
-            m_RTShadowDenoisingPass.OnRender(m_RTShadowPass.GetNoisyVisibilityBuffer(), *m_GeometryPass.GetGBuffer().MotionVectors, *m_GeometryPass.GetGBuffer().Albedo);
+            m_RtShadowDenoisingPass.OnRender(shadowVisibilityBuffer, gbuffer);
+        }
+
+        if (g_FullScreenDebugParams.OutputType != joint::DebugOutputType_None)
+        {
+            BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_FullScreenDebugPass]);
+            BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_FullScreenDebugPass));
+
+            m_FullScreenDebugPass.OnRender(finalOutput, gbuffer, shadowVisibilityBuffer, temporalAccumulationBuffer);
+        }
+        else
+        {
+            {
+                BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_DeferredLightingPass]);
+                BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_DeferredLightingPass));
+
+                m_DeferredLightingPass.OnRender(m_Scene, gbuffer, shadowVisibilityBuffer);
+            }
+
+            {
+                BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_EnvironmentPass]);
+                BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_EnvironmentPass));
+
+                m_EnvironmentPass.OnRender(m_Scene, finalOutput, *gbuffer.DepthStencil);
+            }
         }
 
         {
-            BenzinGrabTimeOnScopeExit(g_CPUTimings[CPUTiming_DeferredLightingPass]);
-            BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, GPUTiming_DeferredLightingPass);
-
-            m_DeferredLightingPass.OnRender(m_Scene, m_GeometryPass.GetGBuffer(), m_RTShadowPass.GetNoisyVisibilityBuffer());
-        }
-
-        if (m_DeferredLightingPass.GetOutputType() == joint::DeferredLightingOutputType_Final)
-        {
-            BenzinGrabTimeOnScopeExit(g_CPUTimings[CPUTiming_EnvironmentPass]);
-            BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, GPUTiming_EnvironmentPass);
-            m_EnvironmentPass.OnRender(m_Scene, m_DeferredLightingPass.GetOutputTexture(), *m_GeometryPass.GetGBuffer().DepthStencil);
-        }
-
-        {
-            BenzinGrabTimeOnScopeExit(g_CPUTimings[CPUTiming_BackBufferCopy]);
-            BenzinGrabGPUTimeOnScopeExit(*m_GPUTimer, GPUTiming_BackBufferCopy);
+            BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_BackBufferCopy]);
+            BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_BackBufferCopy));
 
             auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
-            auto& deferredLightingOutputTexture = m_DeferredLightingPass.GetOutputTexture();
 
             commandList.SetResourceBarrier(benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::CopyDestination });
-            commandList.SetResourceBarrier(benzin::TransitionBarrier{ deferredLightingOutputTexture, benzin::ResourceState::CopySource });
+            commandList.SetResourceBarrier(benzin::TransitionBarrier{ finalOutput, benzin::ResourceState::CopySource });
+            BenzinExecuteOnScopeExit([&]
+            {
+                commandList.SetResourceBarrier(benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::Common });
+                commandList.SetResourceBarrier(benzin::TransitionBarrier{ finalOutput, benzin::ResourceState::Common });
+            });
 
-            commandList.CopyResource(currentBackBuffer, m_DeferredLightingPass.GetOutputTexture());
-
-            commandList.SetResourceBarrier(benzin::TransitionBarrier{ currentBackBuffer, benzin::ResourceState::Common });
-            commandList.SetResourceBarrier(benzin::TransitionBarrier{ deferredLightingOutputTexture, benzin::ResourceState::Common });
+            commandList.CopyResource(currentBackBuffer, finalOutput);
         }
-
-        m_GPUTimer->ResolveTimestamps();
     }
 
     void SceneLayer::OnResize(uint32_t width, uint32_t height)
     {
         m_GeometryPass.OnResize(width, height);
-        m_RTShadowPass.OnResize(width, height);
+        m_RtShadowPass.OnResize(width, height);
+        m_RtShadowDenoisingPass.OnResize(width, height);
         m_DeferredLightingPass.OnResize(width, height);
     }
 
     void SceneLayer::OnImGuiRender()
     {
         m_FlyCameraController.OnImGuiRender();
-        m_DeferredLightingPass.OnImGuiRender();
 
         ImGui::Begin("Misc");
         {
-            ImGuiDisplayTexture(*m_GeometryPass.GetGBuffer().MotionVectors);
-            ImGuiDisplayTexture(*m_GeometryPass.GetGBuffer().Albedo);
-            ImGuiDisplayTexture(*m_GeometryPass.GetGBuffer().WorldNormal);
-            ImGuiDisplayTexture(m_RTShadowPass.GetNoisyVisibilityBuffer());
+            const ImVec4 titleColor{ 0.72f, 39.0f, 0.0f, 1.0f };
 
-            ImGui::Separator();
-
-            static int raysPerPixel = 1; 
-            if (ImGui::SliderInt("RTShadows RaysPerPixel", &raysPerPixel, 0, 100))
             {
-                m_RTShadowPass.SetRaysPerPixel(raysPerPixel);
+                ImGui::TextColored(titleColor, "RtShadowParams");
+
+                ImGui::SliderInt("RtShadows RaysPerPixel", (int*)&g_RtShadowParams.RaysPerPixel, 0, 100);
+                ImGui::DragInt("MaxTemporalAccumulationCount", (int*)&g_RtShadowParams.MaxTemporalAccumulationCount, 1.0f, 1, 64);
+
+                ImGui::Separator();
+                ImGui::NewLine();
             }
 
-            static bool isForceCurrentVisibility = false;
-            if (ImGui::Checkbox("IsForceCurrentVisibility", &isForceCurrentVisibility))
             {
-                m_RTShadowDenoisingPass.SetIsForceCurrentVisibility(isForceCurrentVisibility);
+                ImGui::TextColored(titleColor, "DeferredLightingParams");
+
+                ImGui::DragFloat("SunIntensity", &g_DeferredLightingParams.SunIntensity, 0.1f, 0.0f, 100.0f);
+                ImGui::ColorEdit3("SunColor", reinterpret_cast<float*>(&g_DeferredLightingParams.SunColor));
+
+                if (ImGui::DragFloat3("SunDirection", reinterpret_cast<float*>(&g_DeferredLightingParams.SunDirection), 0.01f, -1.0f, 1.0f))
+                {
+                    DirectX::XMStoreFloat3(&g_DeferredLightingParams.SunDirection, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&g_DeferredLightingParams.SunDirection)));
+                }
+
+                ImGui::Separator();
+                ImGui::NewLine();
+            }
+
+            {
+                ImGui::TextColored(titleColor, "FullScreenDebugParams");
+
+                ImGui::Text("DebugOutputType");
+                if (ImGui::BeginListBox("##emtpy", ImVec2{ -FLT_MIN, 200.0f })) // #TODO: Calculate item height
+                {
+                    for (const auto i : std::views::iota(0u, joint::DebugOutputType_Count))
+                    {
+                        const bool isSelected = g_FullScreenDebugParams.OutputType == i;
+
+                        const auto name = magic_enum::enum_name((joint::DebugOutputType)i).substr("DebugOutputType_"sv.size());
+                        if (ImGui::Selectable(name.data(), isSelected))
+                        {
+                            g_FullScreenDebugParams.OutputType = (joint::DebugOutputType)i;
+                        }
+
+                        if (isSelected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndListBox();
+                }
             }
         }
         ImGui::End();
@@ -924,56 +1152,57 @@ namespace sandbox
             BenzinExecuteOnScopeExit([]{ std::locale::global(std::locale::classic()); });
 
             const auto& sceneStats = m_Scene.GetStats();
-            benzin::ImGui_Text("VertexCount: {:L}", sceneStats.VertexCount);
-            benzin::ImGui_Text("TriangleCount: {:L}", sceneStats.TriangleCount);
-            benzin::ImGui_Text("PointLightCount: {:L}", sceneStats.PointLightCount);
+            ImGui::Text(BenzinFormatCstr("VertexCount: {:L}", sceneStats.VertexCount));
+            ImGui::Text(BenzinFormatCstr("TriangleCount: {:L}", sceneStats.TriangleCount));
+            ImGui::Text(BenzinFormatCstr("PointLightCount: {:L}", sceneStats.PointLightCount));
         }
         ImGui::End();
 
         ImGui::Begin("CPU Timings");
         {
-            static auto cpuTimings = g_CPUTimings;
+            static auto cpuTimings = g_CpuTimings;
 
             if (s_IsUpdateStatsIntervalPassed)
             {
-                cpuTimings = g_CPUTimings;
+                cpuTimings = g_CpuTimings;
             }
 
             for (const auto [i, timing] : cpuTimings | std::views::enumerate)
             {
-                benzin::ImGui_Text("{}: {:.4f} ms", magic_enum::enum_name((CPUTiming)i).substr("CPUTiming"sv.size() + 1), benzin::ToFloatMS(timing));
+                ImGui::Text(BenzinFormatCstr("{}: {:.4f} ms", magic_enum::enum_name((CpuTiming)i).substr(1), benzin::ToFloatMs(timing)));
             }
         }
         ImGui::End();
 
         ImGui::Begin("GPU Timings");
         {
-            static constexpr size_t gpuTimingCount = magic_enum::enum_count<GPUTiming>();
-            static constexpr size_t enumNameOffset = "GPUTiming"sv.size() + 1;
-
-            static std::array<std::chrono::microseconds, gpuTimingCount> gpuTimings;
+            static magic_enum::containers::array<GpuTiming, std::chrono::microseconds> gpuTimings;
 
             if (s_IsUpdateStatsIntervalPassed)
             {
                 for (const auto& [i, timing] : gpuTimings | std::views::enumerate)
                 {
-                    timing = m_GPUTimer->GetElapsedTime((uint32_t)i);
+                    timing = m_GpuTimer->GetElapsedTime((uint32_t)i);
                 }
             }
 
             for (const auto [i, timing] : gpuTimings | std::views::enumerate)
             {
-                benzin::ImGui_Text("{}: {:.4f} ms", magic_enum::enum_name((GPUTiming)i).substr("GPUTiming"sv.size() + 1), benzin::ToFloatMS(timing));
+                ImGui::Text(BenzinFormatCstr("{}: {:.4f} ms", magic_enum::enum_name((GpuTiming)i).substr(1), benzin::ToFloatMs(timing)));
             }
         }
         ImGui::End();
     }
+
+// #TODO: Application is hang when using std::async
+#define SANDBOX_IS_PIX_WORKAROUND_ENABLED 1
 
     void SceneLayer::CreateEntities()
     {
         auto& entityRegistry = m_Scene.GetEntityRegistry();
 
         benzin::MeshCollectionResource sponzaMeshCollection;
+#if !SANDBOX_IS_PIX_WORKAROUND_ENABLED
         const auto sponzaFuture = std::async(std::launch::async, [&]
         {
             const std::string_view fileName = "Sponza/glTF/Sponza.gltf";
@@ -981,6 +1210,14 @@ namespace sandbox
             BenzinLogTimeOnScopeExit("Loading MeshCollection from {}", fileName);
             BenzinAssert(LoadMeshCollectionFromGltfFile(fileName, sponzaMeshCollection));
         });
+#else
+        {
+            const std::string_view fileName = "Sponza/glTF/Sponza.gltf";
+
+            BenzinLogTimeOnScopeExit("Loading MeshCollection from {}", fileName);
+            BenzinAssert(LoadMeshCollectionFromGltfFile(fileName, sponzaMeshCollection));
+        }
+#endif
 
         benzin::MeshCollectionResource boomBooxMeshCollection;
         {
@@ -1001,7 +1238,9 @@ namespace sandbox
         benzin::MeshCollectionResource cylinderMeshCollection = CreateCylinderMeshCollection();
         benzin::MeshCollectionResource sphereLightMeshCollection = CreateSphereLightMeshCollection();
 
+#if !SANDBOX_IS_PIX_WORKAROUND_ENABLED
         sponzaFuture.wait();
+#endif
 
         const uint32_t sponzaMeshUnionIndex = m_Scene.PushMeshCollection(std::move(sponzaMeshCollection));
         const uint32_t boomBooxMeshUnionIndex = m_Scene.PushMeshCollection(std::move(boomBooxMeshCollection));
@@ -1044,8 +1283,8 @@ namespace sandbox
                 auto& tc = entityRegistry.get<benzin::TransformComponent>(entityHandle);
 
                 auto rotation = tc.GetRotation();
-                rotation.x += 0.0001f * benzin::ToFloatMS(dt);
-                rotation.z += 0.0002f * benzin::ToFloatMS(dt);
+                rotation.x += 0.0001f * benzin::ToFloatMs(dt);
+                rotation.z += 0.0002f * benzin::ToFloatMs(dt);
 
                 tc.SetRotation(rotation);
             };
@@ -1074,8 +1313,8 @@ namespace sandbox
                 auto& tc = entityRegistry.get<benzin::TransformComponent>(entityHandle);
 
                 auto rotation = tc.GetRotation();
-                rotation.x += 0.0001f * benzin::ToFloatMS(dt);
-                rotation.y -= 0.00015f * benzin::ToFloatMS(dt);
+                rotation.x += 0.0001f * benzin::ToFloatMs(dt);
+                rotation.y -= 0.00015f * benzin::ToFloatMs(dt);
 
                 tc.SetRotation(rotation);
             };
@@ -1130,8 +1369,8 @@ namespace sandbox
                     elapsedTime += dt;
 
                     auto translation = tc.GetTranslation();
-                    translation.x = startX + travelRadius * std::cos(travelSpeed * benzin::ToFloatMS(elapsedTime));
-                    translation.z = startZ + travelRadius * std::sin(travelSpeed * benzin::ToFloatMS(elapsedTime));
+                    translation.x = startX + travelRadius * std::cos(travelSpeed * benzin::ToFloatMs(elapsedTime));
+                    translation.z = startZ + travelRadius * std::sin(travelSpeed * benzin::ToFloatMs(elapsedTime));
 
                     tc.SetTranslation(translation);
                 }

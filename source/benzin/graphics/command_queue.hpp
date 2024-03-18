@@ -5,7 +5,7 @@
 namespace benzin
 {
 
-    class StalledFence;
+    class Fence;
 
     template <std::derived_from<CommandList> CommandListT>
     class CommandQueue
@@ -28,7 +28,7 @@ namespace benzin
         void SumbitCommandList();
         void Flush();
 
-        void SignalFence(StalledFence& fence, uint64_t value);
+        void SignalFence(Fence& fence, uint64_t value);
 
     protected:
         virtual void InitCommandList() = 0;
@@ -41,7 +41,7 @@ namespace benzin
 
         CommandListT m_CommandList;
 
-        std::unique_ptr<StalledFence> m_FlushFence;
+        std::unique_ptr<Fence> m_FlushFence;
         uint64_t m_FlushCount = 0;
 
         bool m_IsCommandListExecuted = false;

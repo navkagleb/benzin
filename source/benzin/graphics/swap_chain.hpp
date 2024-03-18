@@ -9,7 +9,7 @@ namespace benzin
 
     class Backend;
     class Device;
-    class StalledFence;
+    class Fence;
     class Texture;
 
     class SwapChain
@@ -30,6 +30,9 @@ namespace benzin
         const auto& GetViewport() const { return m_Viewport; }
         const auto& GetScissorRect() const { return m_ScissorRect; }
 
+        auto GetViewportWidth() const { return m_Viewport.Width; }
+        auto GetViewportHeight() const { return m_Viewport.Height; }
+
     public:
         void OnFlip(bool isVerticalSyncEnabled);
         void RequestResize(uint32_t width, uint32_t height);
@@ -46,7 +49,7 @@ namespace benzin
 
         IDXGISwapChain3* m_DxgiSwapChain = nullptr;
         std::vector<std::unique_ptr<Texture>> m_BackBuffers;
-        std::unique_ptr<StalledFence> m_FrameFence;
+        std::unique_ptr<Fence> m_FrameFence;
 
         uint32_t m_PendingWidth = 0;
         uint32_t m_PendingHeight = 0;

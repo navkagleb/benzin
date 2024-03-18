@@ -4,24 +4,19 @@
 namespace benzin
 {
 
-    namespace
+    static size_t GetNarrowSize(std::wstring_view wideString)
     {
+        const auto wideSize = (int)wideString.size();
+        return ::WideCharToMultiByte(CP_UTF8, 0, wideString.data(), wideSize, nullptr, 0, nullptr, nullptr);
+    }
 
-        size_t GetNarrowSize(std::wstring_view wideString)
-        {
-            const auto wideSize = (int)wideString.size();
+    static size_t GetWideSize(std::string_view narrowString)
+    {
+        const auto narrowSize = (int)narrowString.size();
+        return ::MultiByteToWideChar(CP_UTF8, 0, narrowString.data(), narrowSize, nullptr, 0);
+    }
 
-            return ::WideCharToMultiByte(CP_UTF8, 0, wideString.data(), wideSize, nullptr, 0, nullptr, nullptr);
-        }
-
-        size_t GetWideSize(std::string_view narrowString)
-        {
-            const auto narrowSize = (int)narrowString.size();
-
-            return ::MultiByteToWideChar(CP_UTF8, 0, narrowString.data(), narrowSize, nullptr, 0);
-        }
-
-    } // anonymous namespace
+    //
 
     std::string ToNarrowString(std::wstring_view wideString)
     {

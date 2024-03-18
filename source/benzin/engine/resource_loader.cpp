@@ -18,8 +18,6 @@ namespace benzin
     public:
         bool ReadFromFile(std::string_view fileName, MeshCollectionResource& outMeshCollection)
         {
-            static tinygltf::TinyGLTF context;
-
             const std::filesystem::path filePath = config::g_ModelDirPath / fileName;
             BenzinAssert(std::filesystem::exists(filePath));
             BenzinAssert(filePath.extension() == ".glb" || filePath.extension() == ".gltf");
@@ -35,11 +33,11 @@ namespace benzin
 
                 if (filePath.extension() == ".glb")
                 {
-                    isFileLoadingSucceed = context.LoadBinaryFromFile(&m_CurrentModel, &error, &warning, filePathStr);
+                    isFileLoadingSucceed = m_Context.LoadBinaryFromFile(&m_CurrentModel, &error, &warning, filePathStr);
                 }
                 else if (filePath.extension() == ".gltf")
                 {
-                    isFileLoadingSucceed = context.LoadASCIIFromFile(&m_CurrentModel, &error, &warning, filePathStr);
+                    isFileLoadingSucceed = m_Context.LoadASCIIFromFile(&m_CurrentModel, &error, &warning, filePathStr);
                 }
             }
 
@@ -168,7 +166,7 @@ namespace benzin
 
                 if (!uvs.empty())
                 {
-                    meshVertex.UV = uvs[i];
+                    meshVertex.Uv = uvs[i];
                 }
             }
 
@@ -308,9 +306,6 @@ namespace benzin
 
             if (const int meshIndex = gltfNode.mesh; meshIndex != -1)
             {
-                const size_t currentParentTransformIndex = outMeshCollection.MeshParentTransforms.size();
-                outMeshCollection.MeshParentTransforms.push_back(nodeTransform);
-
                 for (const auto& [primitiveIndex, gltfPrimitive] : m_CurrentModel.meshes[meshIndex].primitives | std::views::enumerate)
                 {
                     BenzinAssert(gltfPrimitive.material != -1);
@@ -319,7 +314,7 @@ namespace benzin
                     {
                         .MeshIndex = (uint32_t)(meshIndex + primitiveIndex),
                         .MaterialIndex = (uint32_t)gltfPrimitive.material,
-                        .MeshParentTransformIndex = (uint32_t)currentParentTransformIndex,
+                        .Transform = nodeTransform,
                     });
                 }
             }
@@ -378,7 +373,7 @@ namespace benzin
 
                 // MetalRoughness
                 {
-                    material.MetalRoughnessTextureIndex = PushTextureMapping(gltfPbrMetallicRoughness.metallicRoughnessTexture.index);
+                    material.MetallicRoughnessTextureIndex = PushTextureMapping(gltfPbrMetallicRoughness.metallicRoughnessTexture.index);
                     material.MetalnessFactor = (float)gltfPbrMetallicRoughness.metallicFactor;
                     material.RoughnessFactor = (float)gltfPbrMetallicRoughness.roughnessFactor;
                 }
@@ -413,7 +408,7 @@ namespace benzin
 
                 TextureImage textureImage
                 {
-                    .Format = GraphicsFormat::RGBA8Unorm,
+                    .Format = GraphicsFormat::Rgba8Unorm,
                     .Width = (uint32_t)gltfImage.width,
                     .Height = (uint32_t)gltfImage.height,
                 };
@@ -461,17 +456,48 @@ namespace benzin
         }
 
     private:
+        tinygltf::TinyGLTF m_Context;
         tinygltf::Model m_CurrentModel;
         std::unordered_map<uint32_t, uint32_t> m_TextureMappings;
     };
 
-    static thread_local GltfReader g_GltfReader;
-
     //
+
+    bool LoadTextureImageFromHdrFile(std::string_view fileName, TextureImage& textureImage)
+    {
+        const std::filesystem::path filePath = config::g_TextureDirPath / fileName;
+        BenzinAssert(std::filesystem::exists(filePath));
+        BenzinAssert(filePath.extension() == ".hdr");
+
+        int width;
+        int height;
+        const int componentCount = 4;
+        float* imageData = stbi_loadf(filePath.string().c_str(), &width, &height, nullptr, componentCount);
+
+        if (!imageData)
+        {
+            return false;
+        }
+
+        textureImage.DebugName = fileName;
+        textureImage.Format = GraphicsFormat::Rgba32Float;
+        textureImage.Width = (uint32_t)width;
+        textureImage.Height = (uint32_t)height;
+
+        const uint64_t imageSizeInBytes = width * height * GetFormatSizeInBytes(textureImage.Format);
+        textureImage.ImageData.resize(imageSizeInBytes);
+        memcpy(textureImage.ImageData.data(), imageData, imageSizeInBytes);
+
+        stbi_image_free(imageData);
+
+        return true;
+    }
 
     bool LoadMeshCollectionFromGltfFile(std::string_view fileName, MeshCollectionResource& outMeshCollection)
     {
-        return g_GltfReader.ReadFromFile(fileName, outMeshCollection);
+        static thread_local GltfReader gltfReader;
+
+        return gltfReader.ReadFromFile(fileName, outMeshCollection);
     }
 
 } // namespace benzin

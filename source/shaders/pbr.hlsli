@@ -4,25 +4,25 @@
 
 // Ref: https://learnopengl.com/PBR/Theory
 
-struct PBRLight
+struct PbrLight
 {
     float3 Color;
     float Intensity;
     float3 Direction;
 };
 
-struct PBRMaterial
+struct PbrMaterial
 {
-    float4 Albedo;
-    float Metalness;
+    float3 Albedo;
+    float Metallic;
     float3 F0;
     float Roughness;
 };
 
-float3 GetF0(float3 albedo, float metalness)
+float3 GetF0(float3 albedo, float metallic)
 {
     const float3 fresnelR0 = 0.04f;
-    return lerp(fresnelR0, albedo, metalness);
+    return lerp(fresnelR0, albedo, metallic);
 }
 
 float3 NormalDistributionFunction(float3 normal, float3 halfDirection, float alpha)
@@ -51,7 +51,7 @@ float ShlickBeckmann(float3 normal, float3 x, float alpha)
     const float numerator = normalDotX;
     const float denominator = normalDotX * (1.0f - k) + k;
 
-    return numerator / max(g_FloatEpsilon, denominator);
+    return numerator / max(g_Epsilon, denominator);
 }
 
 float GeometryShadowingFunction(float3 normal, float3 viewDirection, float3 lightDirection, float alpha)
@@ -82,7 +82,7 @@ float3 DiffuseFunction(float3 albedo)
     return albedo / g_PI;
 }
 
-float3 SpecularFunction(PBRLight light, PBRMaterial material, float3 viewDirection, float3 normal, float3 halfDirection)
+float3 SpecularFunction(PbrLight light, PbrMaterial material, float3 viewDirection, float3 normal, float3 halfDirection)
 {
     // Cook-Torrance
 
@@ -98,23 +98,23 @@ float3 SpecularFunction(PBRLight light, PBRMaterial material, float3 viewDirecti
     const float3 numerator = d * g * f;
     const float3 denominator = 4.0f * vDotN * lDotN;
 
-    return numerator / max(g_FloatEpsilon, denominator);
+    return numerator / max(g_Epsilon, denominator);
 }
 
-float3 BidirectionalReflectanceDistributionFunction(PBRLight light, PBRMaterial material, float3 viewDirection, float3 normal)
+float3 BidirectionalReflectanceDistributionFunction(PbrLight light, PbrMaterial material, float3 viewDirection, float3 normal)
 {
     const float3 halfDirection = normalize(light.Direction + viewDirection);
 
     const float3 kS = FresnelFunction(material.F0, viewDirection, halfDirection); // Specular Factor
-    const float3 kD = (1.0f - kS) * (1.0f - material.Metalness); // Diffuse Factor
+    const float3 kD = (1.0f - kS) * (1.0f - material.Metallic); // Diffuse Factor
 
-    const float3 diffuseFunction = DiffuseFunction(material.Albedo.rgb);
+    const float3 diffuseFunction = DiffuseFunction(material.Albedo);
     const float3 specularFunction = SpecularFunction(light, material, viewDirection, normal, halfDirection);
 
     return kD * diffuseFunction + specularFunction; // kS included in specularFunction
 }
 
-float3 GetPBRLitColor(PBRLight light, PBRMaterial material, float3 viewDirection, float3 normal)
+float3 GetPbrLitColor(PbrLight light, PbrMaterial material, float3 viewDirection, float3 normal)
 {
     const float3 brdf = BidirectionalReflectanceDistributionFunction(light, material, viewDirection, normal);
     const float3 lDotN = max(0.0f, dot(light.Direction, normal));

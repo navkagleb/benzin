@@ -7,8 +7,6 @@
 namespace benzin
 {
 
-    // Fence
-
     Fence::Fence(Device& device, std::string_view debugName)
     {
         BenzinEnsure(device.GetD3D12Device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_D3D12Fence)));
@@ -25,20 +23,14 @@ namespace benzin
         SafeUnknownRelease(m_D3D12Fence);
     }
 
-    // StalledFence
-
-    StalledFence::StalledFence(Device& device, std::string_view debugName)
-        : Fence{ device, debugName }
-    {}
-
-    uint64_t StalledFence::GetCompletedValue() const
+    uint64_t Fence::GetCompletedValue() const
     {
         BenzinAssert(m_D3D12Fence);
 
         return m_D3D12Fence->GetCompletedValue();
     }
 
-    void StalledFence::StallCurrentThreadUntilGPUCompletion(uint64_t value) const
+    void Fence::StopCurrentThreadBeforeGpuFinish(uint64_t value) const
     {
         m_D3D12Fence->SetEventOnCompletion(value, m_WaitEvent);
         BenzinEnsure(::WaitForSingleObject(m_WaitEvent, INFINITE) == WAIT_OBJECT_0);

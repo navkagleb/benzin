@@ -167,24 +167,4 @@ namespace benzin
         };
     }
 
-    StaticSampler StaticSampler::GetDefaultForShadow(const struct ShaderRegister& shaderRegister)
-    {
-        return StaticSampler
-        {
-            .Sampler
-            {
-                .Minification = TextureFilterType::Linear,
-                .Magnification = TextureFilterType::Linear,
-                .MipLevel = TextureFilterType::Linear,
-                .AddressU = TextureAddressMode::Border,
-                .AddressV = TextureAddressMode::Border,
-                .AddressW = TextureAddressMode::Border,
-            },
-            .BorderColor = TextureBorderColor::OpaqueBlack,
-            .MaxAnisotropy = 16,
-            .ComparisonFunction = ComparisonFunction::LessEqual,
-            .ShaderRegister = shaderRegister,
-        };
-    }
-
 } // namespace benzin

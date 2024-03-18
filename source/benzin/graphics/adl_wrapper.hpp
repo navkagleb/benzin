@@ -13,8 +13,8 @@ namespace benzin
         static void Initialize();
         static void Shutdown();
 
-        static uint64_t GetUsedVramInBytes(const PciIdentifiers& id); // ???
-        static uint64_t GetUsedDedicatedVramInBytes(const PciIdentifiers& id);
+        static uint64_t GetUsedVramInBytes(uint32_t deviceId); // ???
+        static uint64_t GetUsedDedicatedVramInBytes(uint32_t deviceId);
     };
 
 } // namespace benzin

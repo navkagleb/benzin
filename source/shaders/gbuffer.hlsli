@@ -2,31 +2,33 @@
 
 struct PackedGBuffer
 {
-    float4 Color0; // Albedo, Albedo, Albedo, Albedo
-    float4 Color1; // WorldNormal, WorldNormal, WorldNormal, None
-    float4 Color2; // Emissive, Emissive, Emissive, None
-    float4 Color3; // Roughness, Metalness, None, None
-    float4 Color4; // MotionVector, MotionVector, None, None
+    float4 Color0; // Albedo, Albedo, Albedo, Roughness
+    float4 Color1; // Emissive, Emissive, Emissive, Metallic
+    float4 Color2; // WorldNormal, WorldNormal, WorldNormal, None
+    float4 Color3; // UvMotionVector, UvMotionVector, DepthMotionVector, None
+    float4 Color4; // ViewDepth
 };
 
 struct UnpackedGBuffer
 {
-    float4 Albedo;
-    float3 WorldNormal;
+    float3 Albedo;
     float Roughness;
     float3 Emissive;
-    float Metalness;
-    float2 MotionVector;
+    float Metallic;
+    float3 WorldNormal;
+    float2 UvMotionVector;
+    float DepthMotionVector;
+    float ViewDepth;
 };
 
 PackedGBuffer PackGBuffer(UnpackedGBuffer unpacked)
 {
     PackedGBuffer packed = (PackedGBuffer)0;
-    packed.Color0 = float4(unpacked.Albedo);
-    packed.Color1 = float4(unpacked.WorldNormal, 1.0f);
-    packed.Color2 = float4(unpacked.Emissive, 1.0f);
-    packed.Color3 = float4(unpacked.Roughness, unpacked.Metalness, 0.0f, 1.0f);
-    packed.Color4 = float4(unpacked.MotionVector, 0.0f, 1.0f);
+    packed.Color0 = float4(unpacked.Albedo, unpacked.Roughness);
+    packed.Color1 = float4(unpacked.Emissive, unpacked.Metallic);
+    packed.Color2 = float4(unpacked.WorldNormal, 0.0f);
+    packed.Color3 = float4(unpacked.UvMotionVector, unpacked.DepthMotionVector, 0.0f);
+    packed.Color4 = float4(unpacked.ViewDepth, 0.0f, 0.0f, 0.0f);
 
     return packed;
 }
@@ -34,12 +36,14 @@ PackedGBuffer PackGBuffer(UnpackedGBuffer unpacked)
 UnpackedGBuffer UnpackGBuffer(PackedGBuffer packed)
 {
     UnpackedGBuffer unpacked = (UnpackedGBuffer)0;
-    unpacked.Albedo = packed.Color0;
-    unpacked.WorldNormal = packed.Color1.xyz;
-    unpacked.Emissive = packed.Color2.rgb;
-    unpacked.Roughness = packed.Color3.r;
-    unpacked.Metalness = packed.Color3.g;
-    unpacked.MotionVector = packed.Color4.xy;
+    unpacked.Albedo = packed.Color0.rgb;
+    unpacked.Roughness = packed.Color0.a;
+    unpacked.Emissive = packed.Color1.rgb;
+    unpacked.Metallic = packed.Color1.a;
+    unpacked.WorldNormal = packed.Color2.rgb;
+    unpacked.UvMotionVector = packed.Color3.rg;
+    unpacked.DepthMotionVector = packed.Color3.b;
+    unpacked.ViewDepth = packed.Color4.r;
 
     return unpacked;
 }
@@ -71,10 +75,9 @@ float3 ReconstructWorldPositionFromDepth(float2 uv, float depth, float4x4 invers
     return worldPosition;
 }
 
-float4 ReconstructWorldPositionFromDepth(float2 uv, uint depthTextureIndex, float4x4 inverseProjectionMatrix, float4x4 inverseViewMatrix)
+float3 ReconstructWorldPositionFromViewPosition(float3 viewPosition, float4x4 inverseViewMatrix)
 {
-    const float depth = FetchDepth(uv, depthTextureIndex);
-    const float3 worldPosition = ReconstructWorldPositionFromDepth(uv, depth, inverseProjectionMatrix, inverseViewMatrix);
-    
-    return float4(worldPosition, depth);
+    const float3 worldPosition = mul(float4(viewPosition, 1.0f), inverseViewMatrix).xyz;
+    return worldPosition;
 }
+

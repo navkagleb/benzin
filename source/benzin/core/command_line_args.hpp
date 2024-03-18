@@ -5,8 +5,8 @@ namespace benzin
 
     struct GraphicsDebugLayerParams
     {
-        bool IsGPUBasedValidationEnabled = false;
-        bool IsSynchronizedCommandQueueValidationEnabled = false;
+        bool IsGpuBasedValidationEnabled = true;
+        bool IsSynchronizedCommandQueueValidationEnabled = true;
     };
 
     class CommandLineArgs
@@ -23,6 +23,7 @@ namespace benzin
         static uint32_t GetAdapterIndex();
         static uint32_t GetFrameInFlightCount();
         static GraphicsFormat GetBackBufferFormat();
+        static bool IsGpuUploadHeapsEnabled();
 
         static GraphicsDebugLayerParams GetGraphicsDebugLayerParams();
     };

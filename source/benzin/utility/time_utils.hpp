@@ -3,14 +3,14 @@
 namespace benzin
 {
 
-    std::chrono::microseconds SecToUS(float sec);
-    std::chrono::microseconds MSToUS(float ms);
-    std::chrono::milliseconds SecToMS(float sec);
+    std::chrono::microseconds SecToUs(float sec);
+    std::chrono::microseconds MsToUs(float ms);
+    std::chrono::milliseconds SecToMs(float sec);
 
-    std::chrono::milliseconds ToMS(std::chrono::microseconds us);
-    std::chrono::microseconds ToUS(std::chrono::nanoseconds ns);
+    std::chrono::milliseconds ToMs(std::chrono::microseconds us);
+    std::chrono::microseconds ToUs(std::chrono::nanoseconds ns);
 
-    float ToFloatMS(std::chrono::microseconds us);
+    float ToFloatMs(std::chrono::microseconds us);
     float ToFloatSec(std::chrono::microseconds us);
 
 } // namespace benzin

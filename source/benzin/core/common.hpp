@@ -3,11 +3,27 @@
 namespace benzin
 {
 
+    template <typename T>
+    using UniquePtrInnerType = T::element_type;
+
+    template <typename UniquePtrT, typename... Args>
+    void MakeUniquePtr(UniquePtrT& outUniquePtr, Args&&... args)
+    {
+        using InnerType = std::decay_t<UniquePtrT>::element_type;
+        outUniquePtr = std::make_unique<InnerType>(std::forward<Args>(args)...);
+    }
+
     template <typename>
     inline constexpr bool g_DependentFalse = false;
 
     template <std::unsigned_integral T>
     inline constexpr auto g_InvalidIndex = std::numeric_limits<T>::max();
+
+    template <std::unsigned_integral T>
+    constexpr bool IsValidIndex(T index)
+    {
+        return index != g_InvalidIndex<T>;
+    }
 
     inline constexpr auto g_InvalidEntity = (entt::entity)g_InvalidIndex<std::underlying_type_t<entt::entity>>;
 
@@ -22,9 +38,6 @@ namespace benzin
 
     template <typename T>
     concept Enum = std::is_enum_v<T>;
-
-    template <std::integral T>
-    using IterableRange = std::ranges::iota_view<T, T>;
 
     template <std::unsigned_integral T> 
     struct IndexRange
@@ -122,10 +135,4 @@ namespace benzin
 
 } // namespace benzin
 
-#define BenzinExecuteOnScopeExit(lambda) ::benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }
-
-template <typename... Ts, typename... Fs>
-constexpr decltype(auto) operator |(const std::variant<Ts...>& variant, const benzin::VisitorMatch<Fs...>& visitorMatch)
-{
-    return std::visit(visitorMatch, variant);
-}
+#define BenzinExecuteOnScopeExit(lambda) const ::benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }

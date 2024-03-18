@@ -1,54 +1,152 @@
 #include "common.hlsli"
 
-#include "joint/constant_buffer_types.hpp"
+#include "gbuffer.hlsli"
 
-[numthreads(8, 8, 1)]
-void CS_Main(uint3 dispatchThreadID : SV_DispatchThreadID)
+// Ref: https://wojtsterna.blogspot.com/2018/02/directx-11-hlsl-gatherred.html
+// Ref: https://developer.nvidia.com/gtc/2020/video/s22699
+// Ref: https://developer.download.nvidia.com/video/gputechconf/gtc/2020/presentations/s22699-fast-denoising-with-self-stabilizing-recurrent-blurs.pdf
+
+struct BilinearFilter
 {
-    ConstantBuffer<joint::RTShadowDenoisingPassConstants> passConstants = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowDenoisingPass_PassConstantBuffer)];
-    RWTexture2D<float4> noisyVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowDenoisingPass_NoisyVisibilityBuffer)];
-    Texture2D<float2> motionVectors = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowDenoisingPass_GBufferMotionVectorsTexture)];
+    float2 TexelSize;
+    float2 TopLeftTexelPosition;
+    float2 Weights;
+};
 
-    Texture2D<float4> albedo = ResourceDescriptorHeap[GetRootConstant(joint::RTShadowDenoisingPass_GBufferAlbedoTexture)];
+BilinearFilter CreateBilinearFilter(float2 uv, float2 textureSize)
+{
+    const float2 textureOffsetEpsilon = textureSize * 0.000001;
+    const float2 texelPosition = (uv * textureSize) - 0.5 + textureOffsetEpsilon; // Force jump to the correct texel
 
-    const float2 motionVector = motionVectors.SampleLevel(g_PointWrapSampler, dispatchThreadID.xy / passConstants.TextureDimensions, 0) * passConstants.TextureDimensions;
+    BilinearFilter filter;
+    filter.TexelSize = 1.0 / textureSize;
+    filter.TopLeftTexelPosition = floor(texelPosition);
+    filter.Weights = frac(texelPosition);
 
-    uint2 previousShadowPosition = dispatchThreadID.xy + motionVector;
-    if (!IsInRange(previousShadowPosition.x, 0.0f, 1280.0f) || !IsInRange(previousShadowPosition.y, 0.0f, 720.0f))
+    return filter;
+};
+
+float4 GatherRedManually(Texture2D<float> texture, BilinearFilter filter, float2 uv)
+{
+    // w z
+    // x y
+    // uv - points to 'w' texel
+    // For gathering uv should point to 'y' texel
+
+    const float2 gatherUv = (filter.TopLeftTexelPosition + 1.0) * filter.TexelSize; // Move to right bottom
+    const float4 samples = texture.GatherRed(g_PointWithTransparentBlackBorderSampler, gatherUv).wzxy;
+
+    return samples;
+}
+
+float4 ExpandBilinearWeights(BilinearFilter filter)
+{
+    const float2 weights = filter.Weights;
+
+    // Expand 3 lerps into separate weights for each sample of the 2x2 footprint
+    // lerp(
+    //     lerp(w, z, weights.x),
+    //     lerp(x, y, weights.x),
+    //     weights.y
+    // )
+
+    float4 expandedWeights;
+    expandedWeights.x = (1.0f - weights.x) * (1.0f - weights.y);
+    expandedWeights.y = weights.x * (1.0f - weights.y);
+    expandedWeights.z = (1.0f - weights.x) * weights.y;
+    expandedWeights.w = weights.x * weights.y;
+
+    return expandedWeights;
+}
+
+float ApplyBilinearCustomWeights(BilinearFilter filter, float4 gatheredValues, float4 customWeights)
+{
+    const float4 weights = ExpandBilinearWeights(filter) * customWeights;
+    const float weightSum = dot(weights, 1.0);
+
+    if (abs(weightSum) < 1.0e-5)
     {
-        previousShadowPosition = dispatchThreadID.xy;
+        return 0.0;
     }
 
-    const float4x1 dxShit = albedo.SampleLevel(g_PointWrapSampler, dispatchThreadID.xy / passConstants.TextureDimensions, 0);
+    const float gatheredSum = dot(gatheredValues * weights, 1.0);
+    return gatheredSum * rcp(weightSum); // Normalization
+}
 
-    const float dxShit0 = dxShit[0][0];
-    const float dxShit1 = dxShit[1][0];
-    const float dxShit2 = dxShit[2][0];
-    const float dxShit3 = dxShit[3][0];
+static const float g_DisocclusionThresholdInPercentages = 0.05;
 
-    const uint currentIndex = passConstants.CurrentTextureSlot;
-    const uint previousIndex = passConstants.PreviousTextureSlot;
+bool4 IsOccludedByPlaneDistance(float3 surfaceNormal, float3 previousWorldPosition, float3 previousViewPosition, float4 previousViewDepthSamples)
+{
+    const float distanceToPlane = abs(dot(surfaceNormal, previousWorldPosition));
 
-    const float dxShit00 = dxShit[currentIndex];
-    const float dxShit11 = dxShit[previousIndex];
+    const float distanceToDepthRatio = distanceToPlane / previousViewPosition.z; // previousViewPosition.z always positive
+    const float4 distancesToPlane = distanceToDepthRatio * previousViewDepthSamples;
 
-    const float4 currentVisibility4 = noisyVisibilityBuffer[dispatchThreadID.xy];
-    const float4 previousVisibility4 = noisyVisibilityBuffer[previousShadowPosition];
+    const float4 distancesDelta = abs(distancesToPlane - distanceToPlane);
 
-    const float currentVisibility = GetFloatByIndex(currentIndex, currentVisibility4);
-    const float previousVisibility = GetFloatByIndex(previousIndex, previousVisibility4);
+    return step(g_DisocclusionThresholdInPercentages * distanceToPlane, distancesDelta);
+}
 
-    const float4 dxShitJoin0 = { dxShit0, dxShit1, dxShit2, dxShit3 };
-    const float2 dxShitJoin1 = { dxShit00, dxShit11 };
+[numthreads(8, 8, 1)]
+void CS_Main(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    ConstantBuffer<joint::FrameConstants> frameConstants = FetchFrameConstantBuffer();
+    ConstantBuffer<joint::DoubleFrameCameraConstants> doubleCameraConstants = FetchDoubleFrameCameraConstants();
+    ConstantBuffer<joint::RtShadowDenoisingPassConstants> passConstants = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_PassConstantBuffer)];
+
+    Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_WorldNormalTexture)];
+    Texture2D<float> depthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_DepthBuffer)];
+    Texture2D<float4> velocityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_VelocityBuffer)];
+    Texture2D<float> previousViewDepthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_PreviousViewDepthBuffer)];
+    Texture2D<float> previousTemporalAccumulationBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_PreviousTemporalAccumulationBuffer)];
+
+    RWTexture2D<float4> shadowVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_ShadowVisibilityBuffer)];
+    RWTexture2D<float> temporalAccumulationBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_CurrentTemporalAccumulationBuffer)];
+
+    if (any(dispatchThreadId.xy >= frameConstants.RenderResolution))
+    {
+        return;
+    }
+
+    const float2 uv = (dispatchThreadId.xy + 0.5) * frameConstants.InvRenderResolution;
+
+    const float3 worldNormal = worldNormalTexture.SampleLevel(g_PointWrapSampler, uv, 0).xyz;
+    const float depth = depthBuffer.SampleLevel(g_PointWrapSampler, uv, 0);
+    const float3 motionVector = velocityBuffer.SampleLevel(g_PointWrapSampler, uv, 0).xyz;
+
+    const float2 previousUv = uv - motionVector.xy;
+    const float previousDepth = depth - motionVector.z;
+    const float3 previousViewPosition = ReconstructViewPositionFromDepth(previousUv, previousDepth, doubleCameraConstants.PreviousFrame.InverseProjection);
+    const float3 previousWorldPosition = ReconstructWorldPositionFromViewPosition(previousViewPosition, doubleCameraConstants.PreviousFrame.InverseView);
+
+    const BilinearFilter filterAtPreviousUv = CreateBilinearFilter(previousUv, frameConstants.RenderResolution);
+    const float4 previousViewDepthSamples = GatherRedManually(previousViewDepthBuffer, filterAtPreviousUv, previousUv);
+    const float4 previousAccumulationCounts = GatherRedManually(previousTemporalAccumulationBuffer, filterAtPreviousUv, previousUv);
+ 
+    const bool4 isGatherOnScreen = bool4(filterAtPreviousUv.TopLeftTexelPosition >= 0.0, (filterAtPreviousUv.TopLeftTexelPosition + 1.0) < frameConstants.RenderResolution);
+    const bool4 isOccludedByPlaneDistance = IsOccludedByPlaneDistance(worldNormal, previousWorldPosition, previousViewPosition, previousViewDepthSamples);
+    const bool4 isGatherValid = isGatherOnScreen & !isOccludedByPlaneDistance;
+
+    const float newAccumulationCount = ApplyBilinearCustomWeights(filterAtPreviousUv, previousAccumulationCounts + 1.0, isGatherValid);
+
+    const float accumulationCount = isGatherValid.x <= 0.0 ? 0.0 : min(newAccumulationCount, frameConstants.MaxTemporalAccumulationCount);
+    temporalAccumulationBuffer[dispatchThreadId.xy] = accumulationCount;
+
+    // ----------------
+
+    const uint currentSlot = passConstants.CurrentTextureSlot;
+    const uint previousSlot = passConstants.PreviousTextureSlot;
+
+    const int2 previousPixelPosition = previousUv * frameConstants.RenderResolution;
+
+    const bool isPreviousPixelInScreen = IsInRange(previousPixelPosition, (int2)0, (int2)frameConstants.RenderResolution);
+
+    const float currentVisibility = shadowVisibilityBuffer[dispatchThreadId.xy][currentSlot];
+    const float previousVisibility = isPreviousPixelInScreen ? shadowVisibilityBuffer[previousPixelPosition][previousSlot] : 0.0f;
 
     const float alpha = 0.3f; // Temporal fade, trading temporal stability for lag
-    const float filteredVisiblity = alpha * (1.0f - previousVisibility) + (1.0f - alpha) * currentVisibility;
-    // const float filteredVisiblity = 0.5f * (currentVisibility + previousVisibility);
+    float filteredVisiblity = alpha * (1.0 - previousVisibility) + (1.0 - alpha) * currentVisibility;
+    // filteredVisiblity = 0.5f * (previousVisibility + currentVisibility);
 
-    const float dxShitMul = dxShitJoin0.x * dxShitJoin0.y * dxShitJoin0.z * dxShitJoin0.w;
-    const float dxShitSub = dxShitJoin1.x - dxShitJoin1.y;
-    const float dxShitResult = dxShitMul + dxShitSub;
-
-    // noisyVisibilityBuffer[dispatchThreadID.xy][2] = dxShitResult;
-    // noisyVisibilityBuffer[dispatchThreadID.xy][2] = passConstants.IsForceCurrentVisiblity ? previousVisibility : filteredVisiblity;
+    shadowVisibilityBuffer[dispatchThreadId.xy].z = filteredVisiblity;
 }

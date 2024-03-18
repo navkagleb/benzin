@@ -52,10 +52,8 @@ namespace benzin
         };
     }
 
-    static void CreateD3D12Resource(const TextureCreation& textureCreation, ID3D12Device* d3d12Device, ID3D12Resource*& d3d12Resource)
+    static void CreateD3D12Resource(const TextureCreation& textureCreation, const Device& device, ID3D12Resource*& d3d12Resource)
     {
-        BenzinAssert(d3d12Device);
-
         const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(textureCreation);
 
@@ -65,20 +63,26 @@ namespace benzin
 
             if (textureCreation.Flags[TextureFlag::AllowRenderTarget])
             {
-                BenzinAssert(std::holds_alternative<DirectX::XMFLOAT4>(textureCreation.ClearValue));
+                if (!std::holds_alternative<DirectX::XMFLOAT4>(textureCreation.ClearValue))
+                {
+                    const_cast<TextureCreation&>(textureCreation).ClearValue = g_DefaultClearColor;
+                }
 
                 const auto& color = std::get<DirectX::XMFLOAT4>(textureCreation.ClearValue);
                 memcpy(&d3d12ClearValue.Color, &color, sizeof(color));
             }
             else if (textureCreation.Flags[TextureFlag::AllowDepthStencil])
             {
-                BenzinAssert(std::holds_alternative<DepthStencil>(textureCreation.ClearValue));
+                if (!std::holds_alternative<DepthStencil>(textureCreation.ClearValue))
+                {
+                    const_cast<TextureCreation&>(textureCreation).ClearValue = g_DefaultClearDepthStencil;
+                }
 
                 const auto& depthStencil = std::get<DepthStencil>(textureCreation.ClearValue);
                 memcpy(&d3d12ClearValue.DepthStencil, &depthStencil, sizeof(depthStencil));
             }
 
-            BenzinAssert(d3d12Device->CreateCommittedResource(
+            BenzinAssert(device.GetD3D12Device()->CreateCommittedResource(
                 &d3d12HeapProperties,
                 D3D12_HEAP_FLAG_NONE,
                 &d3d12ResourceDesc,
@@ -89,7 +93,7 @@ namespace benzin
         }
         else
         {
-            BenzinAssert(d3d12Device->CreateCommittedResource(
+            BenzinAssert(device.GetD3D12Device()->CreateCommittedResource(
                 &d3d12HeapProperties,
                 D3D12_HEAP_FLAG_NONE,
                 &d3d12ResourceDesc,
@@ -257,7 +261,7 @@ namespace benzin
     Texture::Texture(Device& device, const TextureCreation& creation)
         : Resource{ device }
     {
-        CreateD3D12Resource(creation, m_Device.GetD3D12Device(), m_D3D12Resource);
+        CreateD3D12Resource(creation, m_Device, m_D3D12Resource);
         SetD3D12ObjectDebugName(m_D3D12Resource, creation.DebugName);
 
         m_Type = creation.Type;
@@ -352,7 +356,7 @@ namespace benzin
         m_Device.GetD3D12Device()->CreateShaderResourceView(
             m_D3D12Resource,
             &d3d12ShaderResourceViewDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
         );
 
         return PushResourceView(descriptorType, descriptor);
@@ -375,7 +379,7 @@ namespace benzin
             m_D3D12Resource,
             nullptr,
             &d3d12UnorderedAccessViewDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
         );
 
         return PushResourceView(descriptorType, descriptor);
@@ -397,7 +401,7 @@ namespace benzin
         m_Device.GetD3D12Device()->CreateRenderTargetView(
             m_D3D12Resource,
             &d3d12RenderTargetViewDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
         );
 
         return PushResourceView(descriptorType, descriptor);
@@ -413,7 +417,7 @@ namespace benzin
         m_Device.GetD3D12Device()->CreateDepthStencilView(
             m_D3D12Resource,
             nullptr, // Default D3D12_DEPTH_STENCIL_VIEW_DESC
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCPUHandle() }
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
         );
 
         return PushResourceView(descriptorType, descriptor);
