@@ -9,11 +9,11 @@ namespace benzin
 
     static D3D12_HEAP_TYPE ResolveD3D12HeapType(const Device& device, BufferFlags flags)
     {
-        if (flags[BufferFlag::UploadBuffer] || flags[BufferFlag::ConstantBuffer])
+        if (flags.IsAnySet(BufferFlag::UploadBuffer | BufferFlag::ConstantBuffer))
         {
             return device.IsGpuUploadHeapsSupported() ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD;
         }
-        else if (flags[BufferFlag::ReadbackBuffer])
+        else if (flags.IsSet(BufferFlag::ReadbackBuffer))
         {
             return D3D12_HEAP_TYPE_READBACK;
         }
@@ -27,13 +27,13 @@ namespace benzin
         BenzinAssert(bufferCreation.ElementCount != 0);
 
         uint32_t alignedElementSize = bufferCreation.ElementSize;
-        if (bufferCreation.Flags[BufferFlag::ConstantBuffer])
+        if (bufferCreation.Flags.IsSet(BufferFlag::ConstantBuffer))
         {
             // The 'BufferCreation::ElementSize' is aligned, not the entire buffer size 'BufferFlag::ConstantBuffer'.
             // This is done so that each element can be used as a separate constant buffer using ConstantBufferView
             alignedElementSize = AlignAbove(alignedElementSize, config::g_ConstantBufferAlignment);
         }
-        else if (bufferCreation.Flags[BufferFlag::StructuredBuffer])
+        else if (bufferCreation.Flags.IsSet(BufferFlag::StructuredBuffer))
         {
             // Performance tip: Align structures on sizeof(float4) boundary
             // Ref: https://developer.nvidia.com/content/understanding-structured-buffer-performance
@@ -49,7 +49,7 @@ namespace benzin
         }
 
         D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
-        if (bufferCreation.Flags[BufferFlag::AllowUnorderedAccess])
+        if (bufferCreation.Flags.IsSet(BufferFlag::AllowUnorderedAccess))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
@@ -219,7 +219,7 @@ namespace benzin
         m_ElementCount = creation.ElementCount;
         m_AlignedElementSize = (uint32_t)m_D3D12Resource->GetDesc().Width / creation.ElementCount; // HACK
 
-        if (creation.Flags[BufferFlag::UploadBuffer] || creation.Flags[BufferFlag::ConstantBuffer])
+        if (creation.Flags.IsAnySet(BufferFlag::UploadBuffer | BufferFlag::ConstantBuffer))
         {
             const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // Writing only range
             BenzinAssert(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_MappedData)));
@@ -227,7 +227,7 @@ namespace benzin
 
         if (!creation.InitialData.empty())
         {
-            BenzinAssert(creation.Flags[BufferFlag::UploadBuffer] || creation.Flags[BufferFlag::ConstantBuffer]);
+            BenzinAssert(creation.Flags.IsAnySet(BufferFlag::UploadBuffer | BufferFlag::ConstantBuffer));
 
             const MemoryWriter writer{ GetMappedData(), GetSizeInBytes() };
             writer.WriteBytes(creation.InitialData);

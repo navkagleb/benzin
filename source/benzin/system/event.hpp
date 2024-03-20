@@ -1,35 +1,34 @@
 #pragma once
 
+#include "benzin/core/enum_flags.hpp"
+
 namespace benzin
 {
 
     enum class EventType : uint8_t
     {
-        // Window events
         WindowCloseEvent,
-        WindowResizingEvent,
-        WindowEnterResizingEvent,
-        WindowExitResizingEvent,
         WindowMaximizedEvent,
         WindowMinimizedEvent,
         WindowRestoredEvent,
         WindowFocusedEvent,
         WindowUnfocusedEvent,
+        WindowEnterResizingEvent,
+        WindowExitResizingEvent,
+        WindowResizingEvent,
         WindowResizedEvent,
 
-        // Mouse events
         MouseMovedEvent,
         MouseScrolledEvent,
         MouseButtonPressedEvent,
         MouseButtonReleasedEvent,
 
-        // Key events
         KeyPressedEvent,
         KeyReleasedEvent,
         KeyTypedEvent,
     };
     
-    enum class EventCategoryFlag : int8_t
+    enum class EventCategoryFlag : uint8_t
     {
         Window,
         Input,
@@ -37,8 +36,7 @@ namespace benzin
         Mouse,
         MouseButton,
     };
-    using EventCategoryFlags = magic_enum::containers::bitset<EventCategoryFlag>;
-    static_assert(sizeof(EventCategoryFlags) <= sizeof(EventCategoryFlag));
+    BenzinDefineFlagsForEnum(EventCategoryFlag);
 
     class Event
     {
@@ -59,21 +57,31 @@ namespace benzin
         bool m_IsHandled = false;
     };
 
-    template <EventType EventTypeValue, EventCategoryFlag... Flags>
+    template <EventType T>
     class EventInfo : public Event
     {
     public:
-        static EventType GetStaticEventType() { return EventTypeValue; }
-
-        static const EventCategoryFlags& GetStaticEventCategoryFlags()
+        static auto GetStaticEventType()
         {
-            static EventCategoryFlags flags{ Flags... };
-            return flags;
+            return T;
         }
 
-    public:
-        EventType GetEventType() const override { return GetStaticEventType(); }
-        bool IsInCategory(EventCategoryFlag flag) const override { return GetStaticEventCategoryFlags()[flag]; }
+        EventInfo(EventCategoryFlags flags)
+            : m_CategoryFlags{ flags }
+        {}
+
+        EventType GetEventType() const override
+        {
+            return GetStaticEventType();
+        }
+
+        bool IsInCategory(EventCategoryFlag flag) const override
+        {
+            return m_CategoryFlags.IsSet(flag);
+        }
+
+    private:
+        EventCategoryFlags m_CategoryFlags;
     };
 
     class EventDispatcher

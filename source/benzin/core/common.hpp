@@ -3,9 +3,6 @@
 namespace benzin
 {
 
-    template <typename T>
-    using UniquePtrInnerType = T::element_type;
-
     template <typename UniquePtrT, typename... Args>
     void MakeUniquePtr(UniquePtrT& outUniquePtr, Args&&... args)
     {
@@ -25,8 +22,6 @@ namespace benzin
         return index != g_InvalidIndex<T>;
     }
 
-    inline constexpr auto g_InvalidEntity = (entt::entity)g_InvalidIndex<std::underlying_type_t<entt::entity>>;
-
     template <typename... Fs>   
     struct VisitorMatch : Fs...
     {
@@ -35,9 +30,6 @@ namespace benzin
 
     template <typename... Fs>
     VisitorMatch(Fs...) -> VisitorMatch<Fs...>;
-
-    template <typename T>
-    concept Enum = std::is_enum_v<T>;
 
     template <std::unsigned_integral T> 
     struct IndexRange
@@ -103,11 +95,6 @@ namespace benzin
         const T m_Lambda;
     };
 
-    template <Enum T>
-    auto EnumIota()
-    {
-        return std::views::iota(0u, magic_enum::enum_count<T>());
-    }
 
     template <typename From, size_t Size, typename Transformator, size_t... Is>
     auto TransformArray(const std::array<From, Size>& from, Transformator&& transformator, std::index_sequence<Is...>)
@@ -121,18 +108,6 @@ namespace benzin
         return TransformArray(from, transformator, std::make_index_sequence<Size>());
     }
 
-    template <Enum Enum, typename From, typename Transformator, size_t... Is>
-    auto TransformArray(const magic_enum::containers::array<Enum, From>& from, Transformator&& transformator, std::index_sequence<Is...>)
-    {
-        return magic_enum::containers::to_array<Enum>({ transformator(from.a[Is])... });
-    }
-
-    template <Enum Enum, typename From, typename Transformator, size_t... Is>
-    auto TransformArray(const magic_enum::containers::array<Enum, From>& from, Transformator&& transformator)
-    {
-        return TransformArray(from, transformator, std::make_index_sequence<magic_enum::enum_count<Enum>()>());
-    }
-
 } // namespace benzin
 
-#define BenzinExecuteOnScopeExit(lambda) const ::benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }
+#define BenzinExecuteOnScopeExit(lambda) const benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }

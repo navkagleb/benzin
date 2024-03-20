@@ -73,7 +73,7 @@ namespace benzin
         BenzinEnsure(d3d12Device->QueryInterface(&m_D3D12Device));
 
 #if BENZIN_IS_DEBUG_BUILD
-        EnableD3D12DebugBreakOn(m_D3D12Device, true, { D3D12BreakReasonFlag::Warning, D3D12BreakReasonFlag::Error, D3D12BreakReasonFlag::Corruption });
+        EnableD3D12DebugBreakOn(m_D3D12Device, true, D3D12BreakReasonFlag::Warning | D3D12BreakReasonFlag::Error | D3D12BreakReasonFlag::Corruption);
 #endif
 
         Asserter::SetDeviceRemovedCallback([this]

@@ -5,12 +5,10 @@
 #include <benzin/core/entry_point.hpp>
 #include <benzin/core/imgui_layer.hpp>
 #include <benzin/core/layer_stack.hpp>
-#include <benzin/core/logger.hpp>
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/swap_chain.hpp>
-#include <benzin/graphics/texture.hpp>
 #include <benzin/system/key_event.hpp>
 #include <benzin/system/window.hpp>
 #include <benzin/utility/debug_utils.hpp>
@@ -181,8 +179,8 @@ namespace sandbox
             BenzinGrabTimeOnScopeExit(m_Timings[benzin::ApplicationTiming::EndFrame]);
 
             // 'SwapChain::OnFlip' can update viewport dimenions, so if statemend below will be invalid
-            const auto oldSwapChainWidth = (uint32_t)m_SwapChain->GetViewport().Width;
-            const auto oldSwapChainHeight = (uint32_t)m_SwapChain->GetViewport().Height;
+            const auto oldSwapChainWidth = m_SwapChain->GetViewportWidth();
+            const auto oldSwapChainHeight = m_SwapChain->GetViewportHeight();
 
             m_Device->GetGraphicsCommandQueue().SumbitCommandList();
             m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
@@ -273,53 +271,10 @@ namespace sandbox
 
 int benzin::ClientMain()
 {
-#if 1
     {
         sandbox::Application application;
         application.ExecuteMainLoop();
     }
-#else
 
-    enum class BufferBindFlags
-    {
-        None = (0 << 0),  ///< None
-        VertexBuffer = (1 << 0),  ///< Can bind as a vertex buffer
-        IndexBuffer = (1 << 1),  ///< Can bind as an index buffer
-        ConstantBuffer = (1 << 2),  ///< Can bind as a constant buffer.
-        StructuredBuffer = (1 << 3),  ///< Can bind as a structured buffer.
-        ByteAddressBuffer = (1 << 4),  ///< Can bind as a byte address buffer.
-        FormattedBuffer = (1 << 5),  ///< Can bind as a formatted buffer.
-        CopySrc = (1 << 6),  ///< Can bind as a copy source.
-        CopyDst = (1 << 7),  ///< Can bind as a copy destination.
-        ShaderReadWrite = (1 << 8),  ///< Can bind for usage as ReadWrite buffer for any shader stage (UAV on D3D12).
-        PredicationExt = (1 << 9), ///< Can use the buffer for SetPredicationEx calls (must have AdapterFeatures::Predication requested feature enabled)
-        AccelerationStructureExt = (1 << 10)  ///< Can bind as a ray tracing acceleration structure (require AdapterFeatures::RayTracing)
-    };
-
-    enum class AccessFlags
-    {
-        None             = (0 << 0),            ///< None
-        CPURead          = (1 << 0),            ///< CPU read access allowed.  Cannot be set as input or outputs to the pipeline.
-        CPUWrite         = (1 << 1),            ///< CPU write access allowed.  Cannot be set as outputs to the pipeline.
-        CPUReadWrite     = CPURead | CPUWrite,  ///< CPU read write access allowed.
-        GPURead          = (1 << 2),            ///< GPU read access allowed.
-        GPUWrite         = (1 << 3),            ///< GPU write access allowed.
-        GPUReadWrite     = GPURead | GPUWrite,  ///< GPU read write access allowed.
-        GPUExecute       = (1 << 4),            ///< GPU execute access allowed.  Needed for indirect or counter buffer.
-        GPULocal         = (1 << 5),            ///< GPU local memory. Needed to target CPU-visible VRAM
-        CPUWriteCombined = (1 << 6),            ///< CPU write combined memory.
-        IORead           = (1 << 7),            ///< IO read access allowed (PS5 only).
-        IOWrite          = (1 << 8),            ///< IO write access allowed (PS5 only).
-        MaxAccessFlags   = (1 << 9),            ///< Max value for access flags.
-    };
-
-    benzin::PrintEnumFlags(AccessFlags{ 100 });
-    benzin::PrintEnumFlags(AccessFlags{ 68 });
-
-    uint32_t errorCode = 0;
-
-    *((volatile uint32_t*)2) = errorCode;
-
-#endif
     return 0;
 }

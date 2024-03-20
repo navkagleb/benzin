@@ -52,9 +52,9 @@ namespace benzin
 } // namespace benzin
 
 #if BENZIN_IS_DEBUG_BUILD
-  #define BenzinAssert(condition, ...) ::benzin::Assert{ condition, #condition, __VA_ARGS__ }
+  #define BenzinAssert(condition, ...) benzin::Assert{ condition, #condition, __VA_ARGS__ }
 #else
   #define BenzinAssert(condition, ...) (void)(condition) // The condition can be an expression
 #endif
 
-#define BenzinEnsure(condition, ...) ::benzin::Assert{ condition, #condition, __VA_ARGS__ }
+#define BenzinEnsure(condition, ...) benzin::Assert{ condition, #condition, __VA_ARGS__ }

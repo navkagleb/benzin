@@ -6,6 +6,15 @@
 namespace benzin
 {
 
+    template <EventType T>
+    class KeyEventInfo : public EventInfo<T>
+    {
+    public:
+        KeyEventInfo()
+            : EventInfo<T>{ EventCategoryFlag::Input | EventCategoryFlag::Keyboard }
+        {}
+    };
+
     class KeyCodeEvent
     {
     protected:
@@ -14,13 +23,15 @@ namespace benzin
         {}
 
     public:
-        KeyCode GetKeyCode() const { return m_KeyCode; }
+        auto GetKeyCode() const { return m_KeyCode; }
 
     protected:
         KeyCode m_KeyCode = KeyCode::Unknown;
     };
 
-    class KeyPressedEvent : public EventInfo<EventType::KeyPressedEvent, EventCategoryFlag::Input, EventCategoryFlag::Keyboard>, public KeyCodeEvent
+    class KeyPressedEvent
+        : public KeyEventInfo<EventType::KeyPressedEvent>
+        , public KeyCodeEvent
     {
     public:
         KeyPressedEvent(KeyCode keyCode, bool isRepeated)
@@ -29,13 +40,15 @@ namespace benzin
         {}
        
     public:
-        bool IsRepeated() const { return m_IsRepeated; }
+        auto IsRepeated() const { return m_IsRepeated; }
 
     private:
         bool m_IsRepeated = false;
     };
 
-    class KeyReleasedEvent : public EventInfo<EventType::KeyReleasedEvent, EventCategoryFlag::Input, EventCategoryFlag::Keyboard>, public KeyCodeEvent
+    class KeyReleasedEvent
+        : public KeyEventInfo<EventType::KeyReleasedEvent>
+        , public KeyCodeEvent
     {
     public:
         explicit KeyReleasedEvent(KeyCode keyCode)
@@ -43,14 +56,14 @@ namespace benzin
         {}
     };
 
-    class KeyTypedEvent : public EventInfo<EventType::KeyTypedEvent, EventCategoryFlag::Input, EventCategoryFlag::Keyboard>
+    class KeyTypedEvent : public KeyEventInfo<EventType::KeyTypedEvent>
     {
     public:
         explicit KeyTypedEvent(char character)
             : m_Character{ character }
         {}
 
-        char GetCharacter() const { return m_Character; }
+        auto GetCharacter() const { return m_Character; }
 
     private:
         char m_Character = '\0';

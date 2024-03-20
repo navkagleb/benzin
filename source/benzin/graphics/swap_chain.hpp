@@ -30,8 +30,8 @@ namespace benzin
         const auto& GetViewport() const { return m_Viewport; }
         const auto& GetScissorRect() const { return m_ScissorRect; }
 
-        auto GetViewportWidth() const { return m_Viewport.Width; }
-        auto GetViewportHeight() const { return m_Viewport.Height; }
+        auto GetViewportWidth() const { return (uint32_t)m_Viewport.Width; }
+        auto GetViewportHeight() const { return (uint32_t)m_Viewport.Height; }
 
     public:
         void OnFlip(bool isVerticalSyncEnabled);

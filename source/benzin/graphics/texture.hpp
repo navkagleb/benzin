@@ -1,5 +1,6 @@
 #pragma once
 
+#include "benzin/core/enum_flags.hpp"
 #include "benzin/graphics/resource.hpp"
 
 namespace benzin
@@ -17,8 +18,7 @@ namespace benzin
         AllowDepthStencil,
         AllowUnorderedAccess,
     };
-    using TextureFlags = magic_enum::containers::bitset<TextureFlag>;
-    static_assert(sizeof(TextureFlags) <= sizeof(TextureFlag));
+    BenzinDefineFlagsForEnum(TextureFlag);
 
     struct TextureCreation
     {
@@ -33,7 +33,7 @@ namespace benzin
         uint16_t ArraySize = 1;
         uint16_t MipCount = 0; // 0 - all mip levels
 
-        TextureFlags Flags{};
+        TextureFlags Flags;
 
         ClearValueVariant ClearValue;
 

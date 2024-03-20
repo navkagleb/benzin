@@ -22,17 +22,17 @@ namespace benzin
     {
         D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
 
-        if (textureCreation.Flags[TextureFlag::AllowRenderTarget])
+        if (textureCreation.Flags.IsSet(TextureFlag::AllowRenderTarget))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         }
 
-        if (textureCreation.Flags[TextureFlag::AllowDepthStencil])
+        if (textureCreation.Flags.IsSet(TextureFlag::AllowDepthStencil))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
         }
 
-        if (textureCreation.Flags[TextureFlag::AllowUnorderedAccess])
+        if (textureCreation.Flags.IsSet(TextureFlag::AllowUnorderedAccess))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
@@ -57,11 +57,11 @@ namespace benzin
         const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(textureCreation);
 
-        if (textureCreation.Flags[TextureFlag::AllowRenderTarget] || textureCreation.Flags[TextureFlag::AllowDepthStencil])
+        if (textureCreation.Flags.IsAnySet(TextureFlag::AllowRenderTarget | TextureFlag::AllowDepthStencil))
         {
             D3D12_CLEAR_VALUE d3d12ClearValue{ .Format = (DXGI_FORMAT)textureCreation.Format };
 
-            if (textureCreation.Flags[TextureFlag::AllowRenderTarget])
+            if (textureCreation.Flags.IsSet(TextureFlag::AllowRenderTarget))
             {
                 if (!std::holds_alternative<DirectX::XMFLOAT4>(textureCreation.ClearValue))
                 {
@@ -71,7 +71,7 @@ namespace benzin
                 const auto& color = std::get<DirectX::XMFLOAT4>(textureCreation.ClearValue);
                 memcpy(&d3d12ClearValue.Color, &color, sizeof(color));
             }
-            else if (textureCreation.Flags[TextureFlag::AllowDepthStencil])
+            else if (textureCreation.Flags.IsSet(TextureFlag::AllowDepthStencil))
             {
                 if (!std::holds_alternative<DepthStencil>(textureCreation.ClearValue))
                 {

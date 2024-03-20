@@ -29,8 +29,8 @@ namespace benzin
     {
         return D3D12_RASTERIZER_DESC
         {
-            .FillMode = static_cast<D3D12_FILL_MODE>(rasterizerState.FillMode),
-            .CullMode = static_cast<D3D12_CULL_MODE>(rasterizerState.CullMode),
+            .FillMode = (D3D12_FILL_MODE)rasterizerState.FillMode,
+            .CullMode = (D3D12_CULL_MODE)rasterizerState.CullMode,
             .FrontCounterClockwise = rasterizerState.TriangleOrder == TriangleOrder::CounterClockwise,
             .DepthBias = rasterizerState.DepthBias,
             .DepthBiasClamp = rasterizerState.DepthBiasClamp,
@@ -48,24 +48,24 @@ namespace benzin
         return D3D12_DEPTH_STENCIL_DESC
         {
             .DepthEnable = depthState.IsEnabled,
-            .DepthWriteMask = static_cast<D3D12_DEPTH_WRITE_MASK>(depthState.IsWriteEnabled),
-            .DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(depthState.ComparisonFunction),
+            .DepthWriteMask = (D3D12_DEPTH_WRITE_MASK)depthState.IsWriteEnabled,
+            .DepthFunc = (D3D12_COMPARISON_FUNC)depthState.ComparisonFunction,
             .StencilEnable = stencilState.IsEnabled,
             .StencilReadMask = stencilState.ReadMask,
             .StencilWriteMask = stencilState.WriteMask,
             .FrontFace
             {
-                .StencilFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.StencilFailOperation),
-                .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.DepthFailOperation),
-                .StencilPassOp = static_cast<D3D12_STENCIL_OP>(stencilState.FrontFaceBehaviour.PassOperation),
-                .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(stencilState.FrontFaceBehaviour.StencilFunction),
+                .StencilFailOp = (D3D12_STENCIL_OP)stencilState.FrontFaceBehaviour.StencilFailOperation,
+                .StencilDepthFailOp = (D3D12_STENCIL_OP)stencilState.FrontFaceBehaviour.DepthFailOperation,
+                .StencilPassOp = (D3D12_STENCIL_OP)stencilState.FrontFaceBehaviour.PassOperation,
+                .StencilFunc = (D3D12_COMPARISON_FUNC)stencilState.FrontFaceBehaviour.StencilFunction,
             },
             .BackFace
             {
-                .StencilFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.StencilFailOperation),
-                .StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.DepthFailOperation),
-                .StencilPassOp = static_cast<D3D12_STENCIL_OP>(stencilState.BackFaceBehaviour.PassOperation),
-                .StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(stencilState.BackFaceBehaviour.StencilFunction),
+                .StencilFailOp = (D3D12_STENCIL_OP)stencilState.BackFaceBehaviour.StencilFailOperation,
+                .StencilDepthFailOp = (D3D12_STENCIL_OP)stencilState.BackFaceBehaviour.DepthFailOperation,
+                .StencilPassOp = (D3D12_STENCIL_OP)stencilState.BackFaceBehaviour.PassOperation,
+                .StencilFunc = (D3D12_COMPARISON_FUNC)stencilState.BackFaceBehaviour.StencilFunction,
             },
         };
     }
@@ -74,7 +74,7 @@ namespace benzin
     {
         D3D12_RENDER_TARGET_BLEND_DESC d3d12RenderTargetBlendDesc
         {
-            .RenderTargetWriteMask = static_cast<UINT8>(blendRenderTargetState.ColorChannelFlags),
+            .RenderTargetWriteMask = blendRenderTargetState.ColorChannelFlags.GetRawBits(),
         };
 
         if (!blendRenderTargetState.IsEnabled)
@@ -86,12 +86,12 @@ namespace benzin
         {
             d3d12RenderTargetBlendDesc.BlendEnable = true;
             d3d12RenderTargetBlendDesc.LogicOpEnable = false;
-            d3d12RenderTargetBlendDesc.SrcBlend = static_cast<D3D12_BLEND>(blendRenderTargetState.ColorEquation.SourceFactor);
-            d3d12RenderTargetBlendDesc.DestBlend = static_cast<D3D12_BLEND>(blendRenderTargetState.ColorEquation.DestinationFactor);
-            d3d12RenderTargetBlendDesc.BlendOp = static_cast<D3D12_BLEND_OP>(blendRenderTargetState.ColorEquation.Operation);
-            d3d12RenderTargetBlendDesc.SrcBlendAlpha = static_cast<D3D12_BLEND>(blendRenderTargetState.AlphaEquation.SourceFactor);
-            d3d12RenderTargetBlendDesc.DestBlendAlpha = static_cast<D3D12_BLEND>(blendRenderTargetState.AlphaEquation.DestinationFactor);
-            d3d12RenderTargetBlendDesc.BlendOpAlpha = static_cast<D3D12_BLEND_OP>(blendRenderTargetState.AlphaEquation.Operation);
+            d3d12RenderTargetBlendDesc.SrcBlend = (D3D12_BLEND)blendRenderTargetState.ColorEquation.SourceFactor;
+            d3d12RenderTargetBlendDesc.DestBlend = (D3D12_BLEND)blendRenderTargetState.ColorEquation.DestinationFactor;
+            d3d12RenderTargetBlendDesc.BlendOp = (D3D12_BLEND_OP)blendRenderTargetState.ColorEquation.Operation;
+            d3d12RenderTargetBlendDesc.SrcBlendAlpha = (D3D12_BLEND)blendRenderTargetState.AlphaEquation.SourceFactor;
+            d3d12RenderTargetBlendDesc.DestBlendAlpha = (D3D12_BLEND)blendRenderTargetState.AlphaEquation.DestinationFactor;
+            d3d12RenderTargetBlendDesc.BlendOpAlpha = (D3D12_BLEND_OP)blendRenderTargetState.AlphaEquation.Operation;
         }
 
         return d3d12RenderTargetBlendDesc;
@@ -156,9 +156,9 @@ namespace benzin
                 .NumElements = 0,
             },
             .IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
-            .PrimitiveTopologyType = static_cast<D3D12_PRIMITIVE_TOPOLOGY_TYPE>(creation.PrimitiveTopologyType),
-            .NumRenderTargets = static_cast<uint32_t>(creation.RenderTargetFormats.size()),
-            .DSVFormat = static_cast<DXGI_FORMAT>(creation.DepthStencilFormat),
+            .PrimitiveTopologyType = (D3D12_PRIMITIVE_TOPOLOGY_TYPE)creation.PrimitiveTopologyType,
+            .NumRenderTargets = (UINT)creation.RenderTargetFormats.size(),
+            .DSVFormat = (DXGI_FORMAT)creation.DepthStencilFormat,
             .SampleDesc{ 1, 0 },
             .NodeMask = 0,
             .CachedPSO

@@ -211,7 +211,7 @@ namespace sandbox
             .DepthStencilFormat = g_GBufferConfig.DepthStencilFormat,
         });
 
-        OnResize((uint32_t)m_SwapChain.GetViewportWidth(), (uint32_t)m_SwapChain.GetViewportHeight());
+        OnResize(m_SwapChain.GetViewportWidth(), m_SwapChain.GetViewportHeight());
     }
 
     void GeometryPass::OnUpdate()
@@ -598,7 +598,7 @@ namespace sandbox
         commandList.SetRootResource(joint::RtShadowDenoisingRc_PreviousTemporalAccumulationBuffer, previousTemporalAccumulationBuffer.GetUnorderedAccessView());
         commandList.SetRootResource(joint::RtShadowDenoisingRc_CurrentTemporalAccumulationBuffer, currentTemporalAccumulationBuffer.GetUnorderedAccessView());
 
-        const DirectX::XMUINT3 dimensions{ (uint32_t)m_SwapChain.GetViewportWidth(), (uint32_t)m_SwapChain.GetViewportHeight(), 1 };
+        const DirectX::XMUINT3 dimensions{ m_SwapChain.GetViewportWidth(), m_SwapChain.GetViewportHeight(), 1 };
         const DirectX::XMUINT3 threadPerGroupCount{ 8, 8, 1 };
         commandList.Dispatch(dimensions, threadPerGroupCount);
     }
@@ -644,7 +644,7 @@ namespace sandbox
 
         benzin::MakeUniquePtr(m_PassConstantBuffer, m_Device, "DeferredLightingPassConstantBuffer");
 
-        OnResize((uint32_t)m_SwapChain.GetViewportWidth(), (uint32_t)m_SwapChain.GetViewportHeight());
+        OnResize(m_SwapChain.GetViewportWidth(), m_SwapChain.GetViewportHeight());
     }
 
     void DeferredLightingPass::OnUpdate(const benzin::Scene& scene)
@@ -963,7 +963,7 @@ namespace sandbox
 
         m_FrameConstantBuffer->UpdateConstants(joint::FrameConstants
         {
-            .RenderResolution{ m_SwapChain.GetViewportWidth(), m_SwapChain.GetViewportHeight() },
+            .RenderResolution{ (float)m_SwapChain.GetViewportWidth(), (float)m_SwapChain.GetViewportHeight() },
             .InvRenderResolution{ 1.0f / m_SwapChain.GetViewportWidth(), 1.0f / m_SwapChain.GetViewportHeight(), },
             .CpuFrameIndex = (uint32_t)m_Device.GetCpuFrameIndex(),
             .DeltaTime = benzin::ToFloatMs(dt),

@@ -36,9 +36,9 @@ namespace benzin
 
 } // namespace benzin
 
-#define BenzinTrace(format, ...) ::benzin::Log{ ::benzin::LogSeverity::Trace, format, __VA_ARGS__ }
-#define BenzinWarning(format, ...) ::benzin::Log{ ::benzin::LogSeverity::Warning, format, __VA_ARGS__ }
-#define BenzinError(format, ...) ::benzin::Log{ ::benzin::LogSeverity::Error, format, __VA_ARGS__ }
+#define BenzinTrace(format, ...) benzin::Log{ benzin::LogSeverity::Trace, format, __VA_ARGS__ }
+#define BenzinWarning(format, ...) benzin::Log{ benzin::LogSeverity::Warning, format, __VA_ARGS__ }
+#define BenzinError(format, ...) benzin::Log{ benzin::LogSeverity::Error, format, __VA_ARGS__ }
 
 #define BenzinTraceIf(condition, format, ...) if (condition) { BenzinTrace(format, __VA_ARGS__); }
 #define BenzinWarningIf(condition, format, ...) if (condition) { BenzinWarning(format, __VA_ARGS__); }

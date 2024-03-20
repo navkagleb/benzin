@@ -123,19 +123,19 @@ namespace benzin
         ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
         BenzinAssert(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
         
-        if (flags[D3D12BreakReasonFlag::Warning])
+        if (flags.IsSet(D3D12BreakReasonFlag::Warning))
         {
             dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_WARNING, isEnabled);
             d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, isEnabled);
         }
         
-        if (flags[D3D12BreakReasonFlag::Error])
+        if (flags.IsSet(D3D12BreakReasonFlag::Error))
         {
             dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, isEnabled);
             d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, isEnabled);
         }
         
-        if (flags[D3D12BreakReasonFlag::Corruption])
+        if (flags.IsSet(D3D12BreakReasonFlag::Corruption))
         {
             dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, isEnabled);
             d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, isEnabled);

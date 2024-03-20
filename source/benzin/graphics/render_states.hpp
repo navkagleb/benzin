@@ -1,5 +1,6 @@
 #pragma once
 
+#include "benzin/core/enum_flags.hpp"
 #include "benzin/graphics/common.hpp"
 
 namespace benzin
@@ -132,13 +133,13 @@ namespace benzin
 
     enum class ColorChannelFlag : uint8_t
     {
-        None = 0,
         Red = ToBit(0),
         Green = ToBit(1),
         Blue = ToBit(2),
         Alpha = ToBit(3),
-        All = None | Red | Green | Blue | Alpha,
+        All = Red | Green | Blue | Alpha,
     };
+    BenzinDefineFlagsForBitEnum(ColorChannelFlag);
 
     struct BlendState
     {
@@ -147,7 +148,7 @@ namespace benzin
             bool IsEnabled = false;
             BlendColorEquation ColorEquation;
             BlendAlphaEquation AlphaEquation;
-            ColorChannelFlag ColorChannelFlags = ColorChannelFlag::All;
+            ColorChannelFlags ColorChannelFlags = ColorChannelFlag::All;
         };
 
         bool IsAlphaToCoverageStateEnabled = false;

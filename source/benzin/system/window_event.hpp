@@ -5,6 +5,15 @@
 namespace benzin
 {
 
+    template <EventType T>
+    class WindowEventInfo : public EventInfo<T>
+    {
+    public:
+        WindowEventInfo()
+            : EventInfo<T>{ EventCategoryFlag::Window }
+        {}
+    };
+
     class WindowSizeEvent
     {
     public:
@@ -14,8 +23,8 @@ namespace benzin
         {}
 
     public:
-        template <typename T = uint32_t> T GetWidth() const { return static_cast<T>(m_Width); }
-        template <typename T = uint32_t> T GetHeight() const { return static_cast<T>(m_Height); }
+        template <typename T = uint32_t> T GetWidth() const { return (T)m_Width; }
+        template <typename T = uint32_t> T GetHeight() const { return (T)m_Height; }
 
         float GetAspectRatio() const { return GetWidth<float>() / GetHeight<float>(); }
 
@@ -24,10 +33,25 @@ namespace benzin
         uint32_t m_Height = 0;
     };
 
-    class WindowCloseEvent : public EventInfo<EventType::WindowCloseEvent, EventCategoryFlag::Window>
-    {};
+    class WindowCloseEvent : public WindowEventInfo<EventType::WindowCloseEvent> {};
 
-    class WindowResizingEvent : public EventInfo<EventType::WindowResizingEvent, EventCategoryFlag::Window>, public WindowSizeEvent
+    class WindowMaximizedEvent : public WindowEventInfo<EventType::WindowMaximizedEvent> {};
+
+    class WindowMinimizedEvent : public WindowEventInfo<EventType::WindowMinimizedEvent> {};
+
+    class WindowRestoredEvent : public WindowEventInfo<EventType::WindowRestoredEvent> {};
+
+    class WindowFocusedEvent : public WindowEventInfo<EventType::WindowFocusedEvent> {};
+
+    class WindowUnfocusedEvent : public WindowEventInfo<EventType::WindowUnfocusedEvent> {};
+
+    class WindowEnterResizingEvent : public WindowEventInfo<EventType::WindowEnterResizingEvent> {};
+
+    class WindowExitResizingEvent : public WindowEventInfo<EventType::WindowExitResizingEvent> {};
+
+    class WindowResizingEvent
+        : public WindowEventInfo<EventType::WindowResizingEvent>
+        , public WindowSizeEvent
     {
     public:
         WindowResizingEvent(uint32_t width, uint32_t height)
@@ -35,28 +59,9 @@ namespace benzin
         {}
     };
 
-    class WindowEnterResizingEvent : public EventInfo<EventType::WindowEnterResizingEvent, EventCategoryFlag::Window>
-    {};
-
-    class WindowExitResizingEvent : public EventInfo<EventType::WindowExitResizingEvent, EventCategoryFlag::Window>
-    {};
-
-    class WindowMaximizedEvent : public EventInfo<EventType::WindowMaximizedEvent, EventCategoryFlag::Window>
-    {};
-
-    class WindowMinimizedEvent : public EventInfo<EventType::WindowMinimizedEvent, EventCategoryFlag::Window>
-    {};
-
-    class WindowRestoredEvent : public EventInfo<EventType::WindowRestoredEvent, EventCategoryFlag::Window>
-    {};
-
-    class WindowFocusedEvent : public EventInfo<EventType::WindowFocusedEvent, EventCategoryFlag::Window>
-    {};
-
-    class WindowUnfocusedEvent : public EventInfo<EventType::WindowUnfocusedEvent, EventCategoryFlag::Window>
-    {};
-
-    class WindowResizedEvent : public EventInfo<EventType::WindowResizedEvent, EventCategoryFlag::Window>, public WindowSizeEvent
+    class WindowResizedEvent
+        : public WindowEventInfo<EventType::WindowResizedEvent>
+        , public WindowSizeEvent
     {
     public:
         WindowResizedEvent(uint32_t width, uint32_t height)

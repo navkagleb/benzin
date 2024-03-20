@@ -2,6 +2,7 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
+#include "benzin/core/enum_flags.hpp"
 #include "benzin/core/memory_writer.hpp"
 #include "benzin/graphics/resource.hpp"
 
@@ -16,8 +17,7 @@ namespace benzin
         StructuredBuffer,
         AllowUnorderedAccess,
     };
-    using BufferFlags = magic_enum::containers::bitset<BufferFlag>;
-    static_assert(sizeof(BufferFlags) <= sizeof(BufferFlag));
+    BenzinDefineFlagsForEnum(BufferFlag);
 
     struct BufferCreation
     {
@@ -27,7 +27,7 @@ namespace benzin
         uint32_t ElementSize = sizeof(std::byte);
         uint32_t ElementCount = 0;
 
-        BufferFlags Flags{};
+        BufferFlags Flags;
 
         ResourceState InitialState = ResourceState::Common;
         std::span<const std::byte> InitialData;
