@@ -7,17 +7,14 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
-#include "benzin/core/logger.hpp"
-#include "benzin/graphics/adl_wrapper.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/gpu_timer.hpp"
 #include "benzin/graphics/nvapi_wrapper.hpp"
 #include "benzin/graphics/swap_chain.hpp"
 #include "benzin/graphics/texture.hpp"
 #include "benzin/system/window.hpp"
-
-#include "benzin/graphics/buffer.hpp"
 
 namespace benzin
 {
@@ -69,10 +66,12 @@ namespace benzin
 
     void ImGuiLayer::End(bool isNeedToClearBackBuffer)
     {
-        ImGui::Render();
-
         auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
+
+        BenzinPushGpuEvent(commandList, "ImGuiLayer");
+
+        ImGui::Render();
 
         commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::RenderTarget });
         {

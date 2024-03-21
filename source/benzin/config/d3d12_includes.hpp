@@ -18,6 +18,7 @@
 #include <DirectXPackedVector.h>
 
 // DirectX Agile SDK
+// Ref: https://devblogs.microsoft.com/directx/gettingstarted-dx12agility/
 #if defined(BENZIN_PROJECT)
 extern "C"
 {
@@ -27,8 +28,8 @@ extern "C"
 #endif
 
 // DXC
-#include <packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/include/d3d12shader.h>
-#include <packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/include/dxcapi.h>
-#include <packages/Microsoft.Direct3D.DXC.1.7.2308.12/build/native/include/dxcerrors.h>
+#include <d3d12shader.h>
+#include <dxcapi.h>
+#include <dxcerrors.h>
 
 #pragma comment(lib, "dxcompiler.lib")

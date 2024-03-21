@@ -1,8 +1,11 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/gpu_timer.hpp"
 
+// Ref: https://devblogs.microsoft.com/pix/winpixeventruntime/
+#include <pix3.h>
+#pragma comment(lib, "WinPixEventRuntime.lib")
+
 #include "benzin/core/asserter.hpp"
-#include "benzin/core/logger.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/command_list.hpp"
 #include "benzin/graphics/device.hpp"
@@ -11,10 +14,12 @@
 namespace benzin
 {
 
+    // GpuTimer
+
     GpuTimer::GpuTimer(Device& device, const GpuTimerCreation& creation)
         : m_InverseFrequency{ 1.0f / creation.TimestampFrequency }
         , m_ReadbackLatency{ CommandLineArgs::GetFrameInFlightCount() + 1 }
-        , m_ProfiledD3D12GraphicsCommandList{ creation.CommandList.GetD3D12GraphicsCommandList() }
+        , m_ProfiledCommandList{ creation.CommandList }
         , m_ReadbackBuffer{ device }
     {
         BenzinAssert(creation.TimerCount < 32);
@@ -80,17 +85,21 @@ namespace benzin
         const uint32_t resolveFrameIndex = cpuFrameIndex % m_ReadbackLatency;
         const uint32_t readbackFrameIndex = (cpuFrameIndex + 1) % m_ReadbackLatency;
 
-        // Otherwise 'ResolveQueryData' will send Error message
-        ForceProfileUnprofiledTimers(); 
+        {
+            BenzinPushGpuEvent(m_ProfiledCommandList, "ResolveGpuTimestamps");
 
-        m_ProfiledD3D12GraphicsCommandList->ResolveQueryData(
-            m_D3D12TimestampQueryHeap,
-            D3D12_QUERY_TYPE_TIMESTAMP,
-            0,
-            (uint32_t)m_Timestamps.size(),
-            m_ReadbackBuffer.GetD3D12Resource(),
-            resolveFrameIndex * m_ReadbackBuffer.GetElementSize()
-        );
+            // Otherwise 'ResolveQueryData' will send Error message
+            ForceProfileUnprofiledTimers();
+
+            m_ProfiledCommandList.GetD3D12GraphicsCommandList()->ResolveQueryData(
+                m_D3D12TimestampQueryHeap,
+                D3D12_QUERY_TYPE_TIMESTAMP,
+                0,
+                (uint32_t)m_Timestamps.size(),
+                m_ReadbackBuffer.GetD3D12Resource(),
+                resolveFrameIndex * m_ReadbackBuffer.GetElementSize()
+            );
+        }
 
         const size_t readbackBufferOffset = readbackFrameIndex * m_ReadbackBuffer.GetElementSize();
         const D3D12_RANGE d3d12ReadbackRange
@@ -108,7 +117,7 @@ namespace benzin
 
     void GpuTimer::EndQuery(uint32_t timestampIndex)
     {
-        m_ProfiledD3D12GraphicsCommandList->EndQuery(m_D3D12TimestampQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, timestampIndex);
+        m_ProfiledCommandList.GetD3D12GraphicsCommandList()->EndQuery(m_D3D12TimestampQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, timestampIndex);
     }
 
     void GpuTimer::ForceProfileUnprofiledTimers()
@@ -124,6 +133,18 @@ namespace benzin
         }
 
         m_ProfiledTimers = 0;
+    }
+
+    // GpuEventTracker
+
+    void GpuEventTracker::BeginEvent(const CommandList& commandList, std::string_view eventName)
+    {
+        PIXBeginEvent(commandList.GetD3D12GraphicsCommandList(), PIX_COLOR_DEFAULT, "%s", eventName.data());
+    }
+
+    void GpuEventTracker::EndEvent(const CommandList& commandList)
+    {
+        PIXEndEvent(commandList.GetD3D12GraphicsCommandList());
     }
 
 } // namespace benzin

@@ -1,3 +1,6 @@
+-- Fix missing targets file issue in some C++ nuget packages
+-- Ref: https://github.com/premake/premake-core/pull/2025
+
 workspace "benzin"
     location "../"
 
@@ -11,11 +14,12 @@ workspace "benzin"
         systemversion "10.0.20348.0:latest"
         architecture "x64"
         characterset "MBCS"
-		linkoptions { "/ENTRY:mainCRTStartup" }
+        linkoptions { "/ENTRY:mainCRTStartup" }
 
         defines {
             "BENZIN_PLATFORM_WIN64",
             "WIN32",
+            "USE_PIX", -- For WinPixEventRuntime
         }
 
     filter "configurations:Debug"
@@ -46,6 +50,7 @@ local solution_dir = "../"
 local bin_dir = solution_dir .. "bin/"
 local build_dir = solution_dir .. "build/"
 local source_dir = solution_dir .. "source/"
+local packages_dir = solution_dir .. "packages/"
 
 local third_party_source_dir = source_dir .. "third_party/"
 local benzin_source_dir = source_dir .. "benzin/"
@@ -80,21 +85,6 @@ project "third_party"
         third_party_source_dir .. "tinygltf/**.hpp",
     }
 
-local vs_solution_dir = "$(SolutionDir)"
-local vs_bin_dir = vs_solution_dir .. "bin/"
-local vs_packages_dir = vs_solution_dir .. "packages/"
-
-function create_nuget(name, version)
-    return {
-        id =  name .. ":" .. version,
-        vs_dir = vs_packages_dir .. name .. "." .. version .. "/",
-    }
-end
-
-function vs_copy_file_command(dir, file_path)
-    string.format('xcopy /f /Y /D "%s" "%s"', file_path, dir)
-end
-
 project "benzin"
     kind "StaticLib"
     language "C++"
@@ -110,7 +100,7 @@ project "benzin"
     defines {
         "BENZIN_PROJECT",
         "BENZIN_AGILE_SDK_VERSION=711",
-        "BENZIN_AGILE_SDK_PATH=\"./\"",
+        "BENZIN_AGILE_SDK_PATH=\"./D3D12\"",
     }
 
     files {
@@ -122,29 +112,16 @@ project "benzin"
     includedirs {
         solution_dir,
         source_dir,
-        location_dir,
     }
-
-    local agile_sdk_nuget = create_nuget("Microsoft.Direct3D.D3D12", "1.711.3-preview")
-    local dxc_nuget = create_nuget("Microsoft.Direct3D.DXC", "1.7.2308.12")
 
     nuget {
-        agile_sdk_nuget.id,
-        dxc_nuget.id,
+        "Microsoft.Direct3D.D3D12:1.711.3-preview",
+        "Microsoft.Direct3D.DXC:1.7.2308.12",
+        "WinPixEventRuntime:1.0.231030001",
     }
 
-    local agile_sdk_bin_path = agile_sdk_nuget.vs_dir .. "build/native/bin/x64/"
-    local dxc_bin_path = dxc_nuget.vs_dir .. "build/native/bin/x64/"
-
-    postbuildcommands {
-        vs_copy_file_command(vs_bin_dir, agile_sdk_bin_path .. "D3D12Core.dll"),
-        vs_copy_file_command(vs_bin_dir, agile_sdk_bin_path .. "D3D12Core.pdb"),
-        vs_copy_file_command(vs_bin_dir, agile_sdk_bin_path .. "d3d12SDKLayers.dll"),
-        vs_copy_file_command(vs_bin_dir, agile_sdk_bin_path .. "d3d12SDKLayers.pdb"),
-        vs_copy_file_command(vs_bin_dir, dxc_bin_path .. "dxcompiler.dll"),
-        vs_copy_file_command(vs_bin_dir, dxc_bin_path .. "dxcompiler.pdb"),
-        vs_copy_file_command(vs_bin_dir, dxc_bin_path .. "dxil.dll"),
-        vs_copy_file_command(vs_bin_dir, dxc_bin_path .. "dxil.pdb"),
+    externalincludedirs {
+        packages_dir .. "**/include",
     }
 
 project "sandbox"
@@ -156,14 +133,13 @@ project "sandbox"
     targetdir(bin_dir)
     objdir(build_dir .. "%{prj.name}/%{cfg.buildcfg}")
 
-    debugdir(solution_abs_dir)
-
     links {
         "third_party",
         "benzin",
     }
 
     libdirs {
+        packages_dir .. "**/bin/x64/",
         third_party_source_dir .. "nvapi/amd64",
     }
 
@@ -184,6 +160,10 @@ project "sandbox"
         solution_dir,
         source_dir,
         sandbox_source_dir,
+    }
+
+    externalincludedirs {
+        packages_dir .. "**/include",
     }
 
     vpaths {

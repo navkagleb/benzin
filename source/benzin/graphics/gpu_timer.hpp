@@ -41,7 +41,7 @@ namespace benzin
         const float m_InverseFrequency = 0.0f;
         const uint32_t m_ReadbackLatency = g_InvalidIndex<uint32_t>;
 
-        ID3D12GraphicsCommandList* m_ProfiledD3D12GraphicsCommandList = nullptr;
+        CommandList& m_ProfiledCommandList;
 
         ID3D12QueryHeap* m_D3D12TimestampQueryHeap = nullptr;
         Buffer m_ReadbackBuffer;
@@ -50,8 +50,21 @@ namespace benzin
         uint32_t m_ProfiledTimers = 0;
     };
 
+    class GpuEventTracker
+    {
+    public:
+        BenzinDefineNonConstructable(GpuEventTracker);
+
+        static void BeginEvent(const CommandList& commandList, std::string_view eventName);
+        static void EndEvent(const CommandList& commandList);
+    };
+
 } // namespace benzin
 
 #define BenzinGrabGpuTimeOnScopeExit(gpuTimer, timerIndex) \
     (gpuTimer).BeginProfile(timerIndex); \
     BenzinExecuteOnScopeExit([&] { (gpuTimer).EndProfile(timerIndex); })
+
+#define BenzinPushGpuEvent(commandList, eventName) \
+    benzin::GpuEventTracker::BeginEvent(commandList, eventName); \
+    BenzinExecuteOnScopeExit([&] { benzin::GpuEventTracker::EndEvent(commandList); })

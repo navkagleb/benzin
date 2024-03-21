@@ -973,15 +973,6 @@ namespace sandbox
         m_FlyCameraController.OnUpdate(dt);
         m_Scene.OnUpdate(dt);
 
-        {
-            // Note: Before updating TopLevelAS the TransformComponents must be updated
-
-            BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_BuildTopLevelAs]);
-            BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_BuildTopLevelAs));
-
-            m_Scene.BuildTopLevelAccelerationStructure();
-        }
-
         m_GeometryPass.OnUpdate();
         m_RtShadowPass.OnUpdate(dt, elapsedTime);
         m_RtShadowDenoisingPass.OnUpdate();
@@ -991,12 +982,23 @@ namespace sandbox
 
     void SceneLayer::OnRender()
     {
-        BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_SceneLayerOnRender]);
-
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
+        {
+            // Before updating TopLevel AccelerationStructure the TransformComponents must be updated
+
+            BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_BuildTopLevelAs]);
+            BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_BuildTopLevelAs));
+            BenzinPushGpuEvent(commandList, magic_enum::enum_name(GpuTiming::_BuildTopLevelAs));
+
+            m_Scene.BuildTopLevelAccelerationStructure();
+        }
+
         BenzinExecuteOnScopeExit([this] { m_GpuTimer->ResolveTimestamps(m_Device.GetCpuFrameIndex()); });
+
+        BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_SceneLayerOnRender]);
         BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_Total));
+        BenzinPushGpuEvent(commandList, magic_enum::enum_name(GpuTiming::_Total));
 
         commandList.SetRootResource(joint::GlobalRc_FrameConstantBuffer, m_FrameConstantBuffer->GetActiveCbv());
         commandList.SetRootResource(joint::GlobalRc_CameraConstantBuffer, m_Scene.GetCameraConstantBufferActiveCbv());
@@ -1009,6 +1011,7 @@ namespace sandbox
         {
             BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_GeometryPass]);
             BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_GeometryPass));
+            BenzinPushGpuEvent(commandList, magic_enum::enum_name(GpuTiming::_GeometryPass));
 
             m_GeometryPass.OnRender(m_Scene);
         }
@@ -1016,6 +1019,7 @@ namespace sandbox
         {
             BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_RtShadowPass]);
             BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_RtShadowPass));
+            BenzinPushGpuEvent(commandList, magic_enum::enum_name(GpuTiming::_RtShadowPass));
 
             m_RtShadowPass.OnRender(m_Scene, gbuffer);
         }
@@ -1023,6 +1027,7 @@ namespace sandbox
         {
             BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_RtShadowDenoisingPass]);
             BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_RtShadowDenoisingPass));
+            BenzinPushGpuEvent(commandList, magic_enum::enum_name(GpuTiming::_RtShadowDenoisingPass));
 
             m_RtShadowDenoisingPass.OnRender(shadowVisibilityBuffer, gbuffer);
         }
@@ -1031,6 +1036,7 @@ namespace sandbox
         {
             BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_FullScreenDebugPass]);
             BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_FullScreenDebugPass));
+            BenzinPushGpuEvent(commandList, magic_enum::enum_name(GpuTiming::_FullScreenDebugPass));
 
             m_FullScreenDebugPass.OnRender(finalOutput, gbuffer, shadowVisibilityBuffer, temporalAccumulationBuffer);
         }
@@ -1039,6 +1045,7 @@ namespace sandbox
             {
                 BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_DeferredLightingPass]);
                 BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_DeferredLightingPass));
+                BenzinPushGpuEvent(commandList, magic_enum::enum_name(GpuTiming::_DeferredLightingPass));
 
                 m_DeferredLightingPass.OnRender(m_Scene, gbuffer, shadowVisibilityBuffer);
             }
@@ -1046,6 +1053,7 @@ namespace sandbox
             {
                 BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_EnvironmentPass]);
                 BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_EnvironmentPass));
+                BenzinPushGpuEvent(commandList, magic_enum::enum_name(GpuTiming::_EnvironmentPass));
 
                 m_EnvironmentPass.OnRender(m_Scene, finalOutput, *gbuffer.DepthStencil);
             }
@@ -1054,6 +1062,7 @@ namespace sandbox
         {
             BenzinGrabTimeOnScopeExit(g_CpuTimings[CpuTiming::_BackBufferCopy]);
             BenzinGrabGpuTimeOnScopeExit(*m_GpuTimer, magic_enum::enum_integer(GpuTiming::_BackBufferCopy));
+            BenzinPushGpuEvent(commandList, magic_enum::enum_name(GpuTiming::_BackBufferCopy));
 
             auto& currentBackBuffer = m_SwapChain.GetCurrentBackBuffer();
 
