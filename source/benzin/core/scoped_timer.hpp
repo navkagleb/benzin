@@ -43,7 +43,7 @@ namespace benzin
     {
         std::chrono::microseconds takedTime;
 
-        if constexpr (std::is_same_v<decltype(function()), void>)
+        if constexpr (std::is_void_v<decltype(function())>)
         {
             {
                 const ScopedGrabTimer timer{ takedTime };

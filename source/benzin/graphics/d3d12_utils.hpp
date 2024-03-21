@@ -12,7 +12,7 @@ namespace benzin
         Error,
         Corruption,
     };
-    BenzinDefineFlagsForEnum(D3D12BreakReasonFlag);
+    BenzinEnableFlagsForEnum(D3D12BreakReasonFlag);
 
     void EnableD3D12DebugLayer();
     void EnableD3D12DebugBreakOn(ID3D12Device* d3d12Device, bool isEnabled, D3D12BreakReasonFlags flags);
@@ -31,7 +31,8 @@ namespace benzin
 
     D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType);
 
-    void SafeUnknownRelease(std::derived_from<IUnknown> auto*& unknown)
+    template <std::derived_from<IUnknown> T>
+    void SafeUnknownRelease(T*& unknown)
     {
         if (!unknown)
         {

@@ -139,7 +139,7 @@ namespace benzin
         Alpha = ToBit(3),
         All = Red | Green | Blue | Alpha,
     };
-    BenzinDefineFlagsForBitEnum(ColorChannelFlag);
+    BenzinEnableFlagsForBitEnum(ColorChannelFlag);
 
     struct BlendState
     {

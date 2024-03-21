@@ -17,7 +17,7 @@ namespace benzin
         StructuredBuffer,
         AllowUnorderedAccess,
     };
-    BenzinDefineFlagsForEnum(BufferFlag);
+    BenzinEnableFlagsForEnum(BufferFlag);
 
     struct BufferCreation
     {

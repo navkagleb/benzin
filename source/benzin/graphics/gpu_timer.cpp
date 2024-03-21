@@ -17,6 +17,8 @@ namespace benzin
         , m_ProfiledD3D12GraphicsCommandList{ creation.CommandList.GetD3D12GraphicsCommandList() }
         , m_ReadbackBuffer{ device }
     {
+        BenzinAssert(creation.TimerCount < 32);
+
         m_Timestamps.resize(creation.TimerCount * 2);
 
         const D3D12_QUERY_HEAP_DESC d3d12QueryHeapDesc
@@ -102,8 +104,6 @@ namespace benzin
         BenzinExecuteOnScopeExit([this] { m_ReadbackBuffer.GetD3D12Resource()->Unmap(0, nullptr); });
 
         memcpy(m_Timestamps.data(), timestampData, m_ReadbackBuffer.GetElementSize());
-
-        m_ProfiledTimers = 0;
     }
 
     void GpuTimer::EndQuery(uint32_t timestampIndex)

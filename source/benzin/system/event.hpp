@@ -36,7 +36,7 @@ namespace benzin
         Mouse,
         MouseButton,
     };
-    BenzinDefineFlagsForEnum(EventCategoryFlag);
+    BenzinEnableFlagsForEnum(EventCategoryFlag);
 
     class Event
     {

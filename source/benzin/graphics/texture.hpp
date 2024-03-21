@@ -18,7 +18,7 @@ namespace benzin
         AllowDepthStencil,
         AllowUnorderedAccess,
     };
-    BenzinDefineFlagsForEnum(TextureFlag);
+    BenzinEnableFlagsForEnum(TextureFlag);
 
     struct TextureCreation
     {

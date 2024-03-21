@@ -7,17 +7,15 @@ namespace benzin
     concept EnumConcept = std::is_enum_v<T>;
 
     template <EnumConcept T>
-    struct IsAllowedFlagsForEnum : std::false_type {};
+    struct IsFlagsEnabledForEnum : std::false_type {};
 
     template <EnumConcept T>
-    struct IsAllowedFlagsForBitEnum : std::false_type {};
+    struct IsFlagsEnabledForBitEnum : std::false_type {};
 
     template <EnumConcept T>
     class EnumFlags
     {
     public:
-        using UnderlyingT = std::underlying_type_t<T>;
-
         EnumFlags() = default;
 
         EnumFlags(T flag)
@@ -40,7 +38,7 @@ namespace benzin
             return (m_Bits & bit) == bit;
         }
 
-        bool IsAnySet(EnumFlags<T> flags) const
+        bool IsAnySet(EnumFlags flags) const
         {
             return (m_Bits & flags.m_Bits) != 0;
         }
@@ -54,35 +52,37 @@ namespace benzin
         }
 
     private:
-        static UnderlyingT ToBit(T flag)
+        using UnderlyingTypeT = std::underlying_type_t<T>;
+
+        static UnderlyingTypeT ToBit(T flag)
         {
-            if constexpr (IsAllowedFlagsForBitEnum<T>::value)
+            if constexpr (IsFlagsEnabledForBitEnum<T>::value)
             {
-                return (UnderlyingT)flag;
+                return (UnderlyingTypeT)flag;
             }
             else
             {
-                return (UnderlyingT)1 << (UnderlyingT)flag;
+                return (UnderlyingTypeT)1 << (UnderlyingTypeT)flag;
             }
         }
 
-        UnderlyingT m_Bits = 0;
+        UnderlyingTypeT m_Bits = 0;
     };
 
 } // namespace benzin
 
-template <benzin::EnumConcept T> requires benzin::IsAllowedFlagsForEnum<T>::value
+template <typename T> requires benzin::IsFlagsEnabledForEnum<T>::value
 auto operator|(T first, T second)
 {
     return benzin::EnumFlags<T>{ first } | benzin::EnumFlags<T>{ second };
 }
 
-#define BenzinDefineFlagsForEnum(EnumTypeName) \
+#define BenzinEnableFlagsForEnum(EnumTypeName) \
     template <> \
-    struct benzin::IsAllowedFlagsForEnum<EnumTypeName> : std::true_type {}; \
+    struct benzin::IsFlagsEnabledForEnum<EnumTypeName> : std::true_type {}; \
     using BenzinStringConcatenate2(EnumTypeName, s) = benzin::EnumFlags<EnumTypeName>
 
-#define BenzinDefineFlagsForBitEnum(EnumTypeName) \
+#define BenzinEnableFlagsForBitEnum(EnumTypeName) \
     template <> \
-    struct benzin::IsAllowedFlagsForBitEnum<EnumTypeName> : std::true_type {}; \
-    BenzinDefineFlagsForEnum(EnumTypeName)
+    struct benzin::IsFlagsEnabledForBitEnum<EnumTypeName> : std::true_type {}; \
+    BenzinEnableFlagsForEnum(EnumTypeName)
