@@ -307,7 +307,7 @@ namespace benzin
 
     void ComputeCommandList::SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
     {
-        BenzinAssert(viewDescriptor.IsValid());
+        BenzinAssert(viewDescriptor.IsGpuValid());
 
         SetRootConstant(rootIndex, viewDescriptor.GetHeapIndex());
     }
@@ -347,7 +347,7 @@ namespace benzin
 
     void GraphicsCommandList::SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
     {
-        BenzinAssert(viewDescriptor.IsValid());
+        BenzinAssert(viewDescriptor.IsGpuValid());
 
         SetRootConstant(rootIndex, viewDescriptor.GetHeapIndex());
     }

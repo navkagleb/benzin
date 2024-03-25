@@ -44,7 +44,7 @@ namespace benzin
     {
         ID3D12DescriptorHeap* const d3d12DescriptorHeaps[]
         {
-            m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
+            m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap(),
             m_Device.GetDescriptorManager().GetD3D12SamplerDescriptorHeap()
         };
 
@@ -63,7 +63,7 @@ namespace benzin
     {
         ID3D12DescriptorHeap* const d3d12DescriptorHeaps[]
         {
-            m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
+            m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap(),
             m_Device.GetDescriptorManager().GetD3D12SamplerDescriptorHeap()
         };
 

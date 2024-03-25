@@ -147,10 +147,8 @@ namespace benzin
             ID3D12Resource* d3d12BackBuffer;
             BenzinEnsure(m_DxgiSwapChain->GetBuffer((uint32_t)i, IID_PPV_ARGS(&d3d12BackBuffer))); // Increases reference count
             
-            SetD3D12ObjectDebugName(d3d12BackBuffer, "SwapChainBackBuffer", (uint32_t)i);
-
             MakeUniquePtr(backBuffer, m_Device, d3d12BackBuffer);
-            backBuffer->PushRenderTargetView();
+            SetD3D12ObjectDebugName(d3d12BackBuffer, "SwapChainBackBuffer", (uint32_t)i);
         }
     }
 

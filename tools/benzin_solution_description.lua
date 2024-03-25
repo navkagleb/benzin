@@ -57,12 +57,12 @@ local benzin_source_dir = source_dir .. "benzin/"
 local sandbox_source_dir = source_dir .. "sandbox/"
 local shaders_source_dir = source_dir .. "shaders/"
 
--- Included C++23 features
-local cpp_version = "C++latest"
+local cpp_language = "C++"
+local cpp_version = "C++latest" -- Included C++23 features
 
 project "third_party"
     kind "StaticLib"
-    language "C++"
+    language(cpp_language)
     cppdialect(cpp_version)
     location(third_party_source_dir)
 
@@ -71,8 +71,6 @@ project "third_party"
 
     files {
         third_party_source_dir .. "adl/**.h",
-        third_party_source_dir .. "directx/**.cpp",
-        third_party_source_dir .. "directx/**.h",
         third_party_source_dir .. "entt/**.cpp",
         third_party_source_dir .. "entt/**.h",
         third_party_source_dir .. "entt/**.hpp",
@@ -87,7 +85,7 @@ project "third_party"
 
 project "benzin"
     kind "StaticLib"
-    language "C++"
+    language(cpp_language)
     cppdialect(cpp_version)
     location(benzin_source_dir)
 
@@ -96,6 +94,16 @@ project "benzin"
 
     pchheader "benzin/config/bootstrap.hpp"
     pchsource(benzin_source_dir .. "config/bootstrap.cpp")
+
+    links {
+        "third_party",
+    }
+
+    nuget {
+        "Microsoft.Direct3D.D3D12:1.711.3-preview",
+        "Microsoft.Direct3D.DXC:1.7.2308.12",
+        "WinPixEventRuntime:1.0.231030001",
+    }
 
     defines {
         "BENZIN_PROJECT",
@@ -110,41 +118,25 @@ project "benzin"
     }
 
     includedirs {
-        solution_dir,
-        source_dir,
-    }
-
-    nuget {
-        "Microsoft.Direct3D.D3D12:1.711.3-preview",
-        "Microsoft.Direct3D.DXC:1.7.2308.12",
-        "WinPixEventRuntime:1.0.231030001",
-    }
-
-    externalincludedirs {
         packages_dir .. "**/include",
+        source_dir,
     }
 
 project "sandbox"
     kind "ConsoleApp"
-    language "C++"
+    language(cpp_language)
     cppdialect(cpp_version)
     location(sandbox_source_dir)
 
     targetdir(bin_dir)
     objdir(build_dir .. "%{prj.name}/%{cfg.buildcfg}")
 
-    links {
-        "third_party",
-        "benzin",
-    }
-
-    libdirs {
-        packages_dir .. "**/bin/x64/",
-        third_party_source_dir .. "nvapi/amd64",
-    }
-
     pchheader "bootstrap.hpp"
     pchsource(sandbox_source_dir .. "bootstrap.cpp")
+
+    links {
+        "benzin",
+    }
 
     files {
         sandbox_source_dir .. "**.hpp",
@@ -157,13 +149,13 @@ project "sandbox"
     }
 
     includedirs {
-        solution_dir,
+        packages_dir .. "**/include",
         source_dir,
-        sandbox_source_dir,
     }
 
-    externalincludedirs {
-        packages_dir .. "**/include",
+    libdirs {
+        packages_dir .. "**/bin/x64/",
+        third_party_source_dir .. "nvapi/amd64",
     }
 
     vpaths {

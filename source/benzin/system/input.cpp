@@ -7,11 +7,16 @@
 namespace benzin
 {
 
-    static bool g_AreKeyEventsBlocked = false;
+    static bool g_IsAllKeyEventsBlocked = false;
 
-    void Input::SetAreKeyEventsBlocked(bool areKeyEventsBlocked)
+    void Input::BlockKeyEvents()
     {
-        g_AreKeyEventsBlocked = areKeyEventsBlocked;
+        g_IsAllKeyEventsBlocked = true;
+    }
+
+    void Input::UnblockKeyEvents()
+    {
+        g_IsAllKeyEventsBlocked = false;
     }
 
     bool Input::IsMouseButtonPressed(MouseButton mouseButton)
@@ -21,7 +26,7 @@ namespace benzin
 
     bool Input::IsKeyPressed(KeyCode keyCode)
     {
-        if (g_AreKeyEventsBlocked)
+        if (g_IsAllKeyEventsBlocked)
         {
             return false;
         }
@@ -29,7 +34,7 @@ namespace benzin
         return ::GetAsyncKeyState((int)keyCode) & 0x8000;
     }
 
-    POINT Input::GetMousePosition(const Window& window)
+    DirectX::XMINT2 Input::GetMousePosition(const Window& window)
     {
         BenzinAssert(window.GetWin64Window());
 
@@ -38,7 +43,7 @@ namespace benzin
         BenzinAssert(::GetCursorPos(&mousePosition) != 0);
         BenzinAssert(::ScreenToClient(window.GetWin64Window(), &mousePosition) != 0);
 
-        return mousePosition;
+        return { mousePosition.x, mousePosition.y };
     }
 
 } // namespace benzin

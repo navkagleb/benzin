@@ -5,7 +5,6 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
-#include "benzin/graphics/backend.hpp"
 
 static constexpr std::string_view AdlReturnCodeToString(int adlReturnCode)
 {

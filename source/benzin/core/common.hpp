@@ -16,13 +16,16 @@ namespace benzin
     template <std::unsigned_integral T>
     inline constexpr auto g_InvalidIndex = std::numeric_limits<T>::max();
 
+    template <typename T> requires std::is_enum_v<T>
+    inline constexpr auto g_InvalidEnumValue = (T)g_InvalidIndex<std::underlying_type_t<T>>;
+
     template <std::unsigned_integral T>
     constexpr bool IsValidIndex(T index)
     {
         return index != g_InvalidIndex<T>;
     }
 
-    template <typename... Fs>   
+    template <typename... Fs>
     struct VisitorMatch : Fs...
     {
         using Fs::operator()...;
@@ -31,13 +34,14 @@ namespace benzin
     template <typename... Fs>
     VisitorMatch(Fs...) -> VisitorMatch<Fs...>;
 
-    template <std::unsigned_integral T> 
+    template <std::unsigned_integral T>
     struct IndexRange
     {
         T StartIndex = 0;
         T Count = 0;
     };
 
+    using IndexRangeU16 = IndexRange<uint16_t>;
     using IndexRangeU32 = IndexRange<uint32_t>;
 
     template <std::unsigned_integral T>
@@ -74,7 +78,7 @@ namespace benzin
     {
         const auto hashedValue = std::hash<std::decay_t<decltype(value)>>{}(value);
         const auto combinedHash = resultHash ^ hashedValue + 0x9e3779b9 + (resultHash << 6) + (resultHash >> 2);
-        
+
         return combinedHash;
     }
 

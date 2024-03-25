@@ -3,6 +3,7 @@
 #include "gbuffer.hlsli"
 
 // Ref: https://wojtsterna.blogspot.com/2018/02/directx-11-hlsl-gatherred.html
+// Ref: https://www.gdcvault.com/play/1026701/Fast-Denoising-With-Self-Stabilizing
 // Ref: https://developer.nvidia.com/gtc/2020/video/s22699
 // Ref: https://developer.download.nvidia.com/video/gputechconf/gtc/2020/presentations/s22699-fast-denoising-with-self-stabilizing-recurrent-blurs.pdf
 
@@ -92,16 +93,17 @@ void CS_Main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     ConstantBuffer<joint::FrameConstants> frameConstants = FetchFrameConstantBuffer();
     ConstantBuffer<joint::DoubleFrameCameraConstants> doubleCameraConstants = FetchDoubleFrameCameraConstants();
-    ConstantBuffer<joint::RtShadowDenoisingPassConstants> passConstants = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_PassConstantBuffer)];
 
     Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_WorldNormalTexture)];
     Texture2D<float> depthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_DepthBuffer)];
     Texture2D<float4> velocityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_VelocityBuffer)];
     Texture2D<float> previousViewDepthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_PreviousViewDepthBuffer)];
     Texture2D<float> previousTemporalAccumulationBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_PreviousTemporalAccumulationBuffer)];
+    Texture2D<float> previousVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_PreviousVisibilityBuffer)];
+    Texture2D<float> currentVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_CurrentVisibilityBuffer)];
 
-    RWTexture2D<float4> shadowVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_ShadowVisibilityBuffer)];
     RWTexture2D<float> temporalAccumulationBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_CurrentTemporalAccumulationBuffer)];
+    RWTexture2D<float> denoisedVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowDenoisingRc_DenoisedVisiblityBuffer)];
 
     if (any(dispatchThreadId.xy >= frameConstants.RenderResolution))
     {
@@ -127,26 +129,22 @@ void CS_Main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const bool4 isOccludedByPlaneDistance = IsOccludedByPlaneDistance(worldNormal, previousWorldPosition, previousViewPosition, previousViewDepthSamples);
     const bool4 isGatherValid = isGatherOnScreen & !isOccludedByPlaneDistance;
 
-    const float newAccumulationCount = ApplyBilinearCustomWeights(filterAtPreviousUv, previousAccumulationCounts + 1.0, isGatherValid);
+    const float newAccumulationCount = ApplyBilinearCustomWeights(filterAtPreviousUv, min(previousAccumulationCounts + 1.0, frameConstants.MaxTemporalAccumulationCount), isGatherValid);
 
-    const float accumulationCount = isGatherValid.x <= 0.0 ? 0.0 : min(newAccumulationCount, frameConstants.MaxTemporalAccumulationCount);
+    const float accumulationCount = isGatherValid.x <= 0.0 ? 0.0 : newAccumulationCount;
     temporalAccumulationBuffer[dispatchThreadId.xy] = accumulationCount;
 
     // ----------------
-
-    const uint currentSlot = passConstants.CurrentTextureSlot;
-    const uint previousSlot = passConstants.PreviousTextureSlot;
 
     const int2 previousPixelPosition = previousUv * frameConstants.RenderResolution;
 
     const bool isPreviousPixelInScreen = IsInRange(previousPixelPosition, (int2)0, (int2)frameConstants.RenderResolution);
 
-    const float currentVisibility = shadowVisibilityBuffer[dispatchThreadId.xy][currentSlot];
-    const float previousVisibility = isPreviousPixelInScreen ? shadowVisibilityBuffer[previousPixelPosition][previousSlot] : 0.0f;
+    const float currentVisibility = currentVisibilityBuffer[dispatchThreadId.xy];
+    const float previousVisibility = isPreviousPixelInScreen ? previousVisibilityBuffer[previousPixelPosition] : 0.0f;
 
     const float alpha = 0.3f; // Temporal fade, trading temporal stability for lag
     float filteredVisiblity = alpha * (1.0 - previousVisibility) + (1.0 - alpha) * currentVisibility;
-    // filteredVisiblity = 0.5f * (previousVisibility + currentVisibility);
 
-    shadowVisibilityBuffer[dispatchThreadId.xy].z = filteredVisiblity;
+    denoisedVisibilityBuffer[dispatchThreadId.xy] = filteredVisiblity;
 }

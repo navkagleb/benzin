@@ -250,13 +250,13 @@ namespace sandbox
                 RootConstant_RaytracingOutputTextureIndex,
             };
 
-            commandList.SetRootResource(RootConstant_TopLevelASIndex, m_TopLevelAS->GetBuffer().GetShaderResourceView());
-            commandList.SetRootResource(RootConstant_SceneConstantBufferIndex, m_SceneConstantBuffer->GetConstantBufferView());
-            commandList.SetRootResource(RootConstant_TriangleVertexBufferIndex, m_GridVertexBuffer->GetShaderResourceView());
-            commandList.SetRootResource(RootConstant_TriangleIndexBufferIndex, m_GridIndexBuffer->GetShaderResourceView());
-            commandList.SetRootResource(RootConstant_MeshMaterialBufferIndex, m_MeshMaterialBuffer->GetShaderResourceView());
-            commandList.SetRootResource(RootConstant_ProceduralGeometryBufferIndex, m_ProceduralGeometryBuffer->GetShaderResourceView());
-            commandList.SetRootResource(RootConstant_RaytracingOutputTextureIndex, m_RaytracingOutput->GetUnorderedAccessView());
+            commandList.SetRootResource(RootConstant_TopLevelASIndex, m_TopLevelAS->GetBuffer().GetRtAsSrv());
+            commandList.SetRootResource(RootConstant_SceneConstantBufferIndex, m_SceneConstantBuffer->GetCbv());
+            commandList.SetRootResource(RootConstant_TriangleVertexBufferIndex, m_GridVertexBuffer->GetStructuredSrv());
+            commandList.SetRootResource(RootConstant_TriangleIndexBufferIndex, m_GridIndexBuffer->GetFormatSrv(benzin::GraphicsFormat::R32Uint));
+            commandList.SetRootResource(RootConstant_MeshMaterialBufferIndex, m_MeshMaterialBuffer->GetStructuredSrv());
+            commandList.SetRootResource(RootConstant_ProceduralGeometryBufferIndex, m_ProceduralGeometryBuffer->GetStructuredSrv());
+            commandList.SetRootResource(RootConstant_RaytracingOutputTextureIndex, m_RaytracingOutput->GetUav());
 
             d3d12CommandList->SetPipelineState1(m_D3D12RaytracingStateObject.Get());
         }
@@ -352,7 +352,6 @@ namespace sandbox
             .ElementSize = sizeof(MeshMaterial),
             .ElementCount = 1 + g_TotalAABBGeometryCount,
             .Flags = benzin::BufferFlag::UploadBuffer,
-            .IsNeedStructuredBufferView = true,
         });
 
         // Triangular mesh
@@ -364,7 +363,6 @@ namespace sandbox
                 .DebugName = "GridVertexBuffer",
                 .ElementSize = sizeof(joint::MeshVertex),
                 .ElementCount = (uint32_t)gridMesh.Vertices.size(),
-                .IsNeedStructuredBufferView = true,
             });
 
             m_GridIndexBuffer = std::make_unique<benzin::Buffer>(m_Device, benzin::BufferCreation
@@ -373,7 +371,6 @@ namespace sandbox
                 .ElementSize = sizeof(uint32_t),
                 .ElementCount = (uint32_t)gridMesh.Indices.size(),
             });
-            m_GridIndexBuffer->PushFormatBufferView({ .Format = benzin::GraphicsFormat::R32Uint });
 
             {
                 auto& copyCommandQueue = m_Device.GetCopyCommandQueue();
@@ -444,7 +441,6 @@ namespace sandbox
                 .ElementSize = sizeof(ProceduralGeometryConstants),
                 .ElementCount = g_TotalAABBGeometryCount,
                 .Flags = benzin::BufferFlag::UploadBuffer,
-                .IsNeedStructuredBufferView = true,
             });
 
             const DirectX::XMFLOAT4 chromiumReflectance{ 0.549f, 0.556f, 0.554f, 1.0f };
@@ -763,19 +759,16 @@ namespace sandbox
             .ElementSize = sizeof(SceneConstants),
             .ElementCount = 1,
             .Flags = benzin::BufferFlag::ConstantBuffer,
-            .IsNeedConstantBufferView = true,
         });
 
         m_RaytracingOutput = std::make_unique<benzin::Texture>(m_Device, benzin::TextureCreation
         {
             .DebugName = "RayTracingOutput",
-            .Type = benzin::TextureType::Texture2D,
             .Format = benzin::CommandLineArgs::GetBackBufferFormat(),
             .Width = m_Window.GetWidth(),
             .Height = m_Window.GetHeight(),
             .MipCount = 1,
             .Flags = benzin::TextureFlag::AllowUnorderedAccess,
-            .IsNeedUnorderedAccessView = true,
         });
     }
 

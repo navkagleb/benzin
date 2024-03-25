@@ -75,10 +75,10 @@ namespace benzin
         const auto& GetMeshCollection(uint32_t index) const { return m_MeshUnions[index].Collection; };
         const auto& GetMeshCollectionGpuStorage(uint32_t index) const { return m_MeshUnions[index].GpuStorage; }
 
-        const TopLevelAccelerationStructure& GetActiveTopLevelAS() const;
+        const TopLevelAccelerationStructure& GetActiveTopLevelAs() const;
 
         const Descriptor& GetCameraConstantBufferActiveCbv() const;
-        const Descriptor& GetPointLightBufferSRV() const;
+        const Descriptor& GetPointLightBufferStructuredSrv() const;
 
         auto& GetEntityRegistry() { return m_EntityRegistry; }
         const auto& GetEntityRegistry() const { return m_EntityRegistry; }
@@ -93,14 +93,14 @@ namespace benzin
         void BuildTopLevelAccelerationStructure();
 
     private:
-        std::unique_ptr<TopLevelAccelerationStructure>& GetActiveTopLevelAS();
+        std::unique_ptr<TopLevelAccelerationStructure>& GetActiveTopLevelAs();
 
         void OnTransformComponentConstuct(entt::registry& registry, entt::entity entityHandle);
 
         void PushTextures(std::span<const TextureImage> textureImages);
-        void PushBottomLevelAS(MeshUnion& meshUnion);
+        void PushBottomLevelAs(MeshUnion& meshUnion);
 
-        void CreateTopLevelAS();
+        void CreateTopLevelAs();
 
         void UploadAllMeshData();
         void UploadAllMeshInstances();
@@ -117,7 +117,7 @@ namespace benzin
 
         std::vector<MeshUnion> m_MeshUnions;
 
-        std::vector<std::unique_ptr<TopLevelAccelerationStructure>> m_TopLevelASs;
+        std::vector<std::unique_ptr<TopLevelAccelerationStructure>> m_TopLevelAss;
 
         std::vector<std::vector<std::byte>> m_TexturesData;
         std::vector<std::unique_ptr<Texture>> m_Textures;

@@ -16,7 +16,6 @@ namespace joint
         DebugOutputType_GBufferWorldNormal,
         DebugOutputType_GBufferVelocityBuffer,
         DebugOutputType_CurrentShadowVisibility,
-        DebugOutputType_PreviousShadowVisibility,
         DebugOutputType_TemporalAccumulationBuffer,
         DebugOutputType_Count,
     };

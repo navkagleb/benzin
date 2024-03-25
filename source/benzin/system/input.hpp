@@ -11,19 +11,20 @@ namespace benzin
     class Input
     {
     public:
-        static void SetAreKeyEventsBlocked(bool areKeyEventsBlocked);
+        static void BlockKeyEvents();
+        static void UnblockKeyEvents();
 
         template <typename T = int32_t>
-        static T GetMouseX(const Window& window) { return static_cast<T>(GetMousePosition(window).x); }
+        static T GetMouseX(const Window& window) { return (T)GetMousePosition(window).x; }
 
         template <typename T = int32_t>
-        static T GetMouseY(const Window& window) { return static_cast<T>(GetMousePosition(window).y); }
+        static T GetMouseY(const Window& window) { return (T)GetMousePosition(window).y; }
 
         static bool IsMouseButtonPressed(MouseButton mouseButton);
         static bool IsKeyPressed(KeyCode keyCode);
 
     private:
-        static POINT GetMousePosition(const Window& window);
+        DirectX::XMINT2 GetMousePosition(const Window& window);
     };
 
 } // namespace benzin

@@ -1,2 +1,2 @@
-call tools\premake5.exe --file=tools\benzin.lua vs2022
+call tools\premake5.exe --file=tools\benzin_solution_description.lua vs2022
 PAUSE

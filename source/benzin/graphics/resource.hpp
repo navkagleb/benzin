@@ -25,27 +25,22 @@ namespace benzin
         BenzinDefineNonMoveable(Resource);
 
     public:
-        ID3D12Resource* GetD3D12Resource() const { return m_D3D12Resource; }
+        auto* GetD3D12Resource() const { return m_D3D12Resource; }
 
-        ResourceState GetCurrentState() const { return m_CurrentState; }
+        auto GetCurrentState() const { return m_CurrentState; }
         void SetCurrentState(ResourceState resourceState) { m_CurrentState = resourceState; }
 
-    public:
         uint32_t GetAllocationSizeInBytes() const;
 
         virtual uint32_t GetSizeInBytes() const = 0;
 
-        // These views have resources of any type
-        bool HasShaderResourceView(uint32_t index = 0) const { return HasResourceView(DescriptorType::ShaderResourceView, index); }
-        bool HasUnorderedAccessView(uint32_t index = 0) const { return HasResourceView(DescriptorType::UnorderedAccessView, index); }
-
-        const Descriptor& GetShaderResourceView(uint32_t index = 0) const { return GetResourceView(DescriptorType::ShaderResourceView, index); }
-        const Descriptor& GetUnorderedAccessView(uint32_t index = 0) const { return GetResourceView(DescriptorType::UnorderedAccessView, index); }
-
     protected:
-        bool HasResourceView(DescriptorType descriptorType, uint32_t index) const;
-        const Descriptor& GetResourceView(DescriptorType descriptorType, uint32_t index) const;
-        uint32_t PushResourceView(DescriptorType descriptorType, const Descriptor& descriptor);
+        template <typename T>
+        Descriptor& GetViewDescriptor(const T& viewDesc) const
+        {
+            const size_t hash = std::hash<T>{}(viewDesc);
+            return m_ViewDescriptors[hash];
+        }
 
     protected:
         Device& m_Device;
@@ -53,7 +48,8 @@ namespace benzin
         ID3D12Resource* m_D3D12Resource = nullptr;
         ResourceState m_CurrentState = ResourceState::Common;
 
-        std::unordered_map<DescriptorType, std::vector<Descriptor>> m_Views;
+    private:
+        mutable std::unordered_map<size_t, Descriptor> m_ViewDescriptors;
     };
 
 } // namespace benzin

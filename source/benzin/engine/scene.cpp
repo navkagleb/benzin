@@ -34,7 +34,6 @@ namespace benzin
             .ElementSize = sizeof(joint::MeshVertex),
             .ElementCount = (uint32_t)totalVertexCount,
             .Flags = BufferFlag::StructuredBuffer,
-            .IsNeedStructuredBufferView = true,
         });
 
         auto indexBuffer = std::make_unique<Buffer>(device, BufferCreation
@@ -43,7 +42,6 @@ namespace benzin
             .Format = GraphicsFormat::R32Uint,
             .ElementSize = sizeof(uint32_t),
             .ElementCount = (uint32_t)totalIndexCount,
-            .IsNeedFormatBufferView = true,
         });
 
         auto meshInfoBuffer = std::make_unique<Buffer>(device, BufferCreation
@@ -52,7 +50,6 @@ namespace benzin
             .ElementSize = sizeof(joint::MeshInfo),
             .ElementCount = (uint32_t)meshCollection.Meshes.size(),
             .Flags = BufferFlag::StructuredBuffer,
-            .IsNeedStructuredBufferView = true,
         });
 
         auto meshInstanceBuffer = std::make_unique<Buffer>(device, BufferCreation
@@ -61,7 +58,6 @@ namespace benzin
             .ElementSize = sizeof(joint::MeshInstance),
             .ElementCount = (uint32_t)meshCollection.MeshInstances.size(),
             .Flags = BufferFlag::StructuredBuffer,
-            .IsNeedStructuredBufferView = true,
         });
 
         auto materialBuffer = std::make_unique<Buffer>(device, BufferCreation
@@ -70,7 +66,6 @@ namespace benzin
             .ElementSize = sizeof(joint::Material),
             .ElementCount = (uint32_t)meshCollection.Materials.size(),
             .Flags = BufferFlag::StructuredBuffer,
-            .IsNeedStructuredBufferView = true,
         });
 
         BenzinTrace("MeshCollectionGpuStorage created for '{}' mesh", debugName);
@@ -97,17 +92,24 @@ namespace benzin
     {
         m_EntityRegistry.on_construct<TransformComponent>().connect<&Scene::OnTransformComponentConstuct>(this);
 
-        m_TopLevelASs.resize(CommandLineArgs::GetFrameInFlightCount());
+        m_TopLevelAss.resize(CommandLineArgs::GetFrameInFlightCount());
 
         MakeUniquePtr(m_CameraConstantBuffer, m_Device, "DoubleFrameCameraConstantBuffer");
-        m_PointLightBuffer = CreateFrameDependentUploadStructuredBuffer<joint::PointLight>(m_Device, "PointLightBuffer", g_MaxPointLightCount);
+
+        MakeUniquePtr(m_PointLightBuffer, m_Device, BufferCreation
+        {
+            .DebugName = "PointLightBuffer",
+            .ElementSize = sizeof(joint::PointLight),
+            .ElementCount = g_MaxPointLightCount * CommandLineArgs::GetFrameInFlightCount(),
+            .Flags = BufferFlag::UploadBuffer, // #TODO: Add StructuredBuffer flag
+        });
     }
 
     Scene::~Scene() = default;
 
-    const TopLevelAccelerationStructure& Scene::GetActiveTopLevelAS() const
+    const TopLevelAccelerationStructure& Scene::GetActiveTopLevelAs() const
     {
-        return *m_TopLevelASs[m_Device.GetActiveFrameIndex()];
+        return *m_TopLevelAss[m_Device.GetActiveFrameIndex()];
     }
 
     const Descriptor& Scene::GetCameraConstantBufferActiveCbv() const
@@ -115,9 +117,13 @@ namespace benzin
         return m_CameraConstantBuffer->GetActiveCbv();
     }
 
-    const Descriptor& Scene::GetPointLightBufferSRV() const
+    const Descriptor& Scene::GetPointLightBufferStructuredSrv() const
     {
-        return m_PointLightBuffer->GetShaderResourceView(m_Device.GetActiveFrameIndex());
+        return m_PointLightBuffer->GetStructuredSrv(IndexRangeU32
+        {
+            .StartIndex = m_Device.GetActiveFrameIndex() * g_MaxPointLightCount,
+            .Count = g_MaxPointLightCount,
+        });
     }
 
     void Scene::OnUpdate(std::chrono::microseconds dt)
@@ -209,7 +215,7 @@ namespace benzin
         {
             if (IsValidIndex(outTextureIndex))
             {
-                outTextureIndex = m_Textures[textureOffset + outTextureIndex]->GetShaderResourceView().GetHeapIndex();
+                outTextureIndex = m_Textures[textureOffset + outTextureIndex]->GetSrv().GetHeapIndex();
             }
         };
 
@@ -228,7 +234,7 @@ namespace benzin
         meshUnion.Collection.Materials = std::move(meshCollectionResource.Materials);
         meshUnion.GpuStorage = CreateMeshCollectionGpuStorage(m_Device, meshUnion.DebugName, meshUnion.Collection);
 
-        PushBottomLevelAS(meshUnion);
+        PushBottomLevelAs(meshUnion);
 
         for (const auto& mesh : meshUnion.Collection.Meshes)
         {
@@ -273,20 +279,20 @@ namespace benzin
 
     void Scene::BuildTopLevelAccelerationStructure()
     {
-        CreateTopLevelAS();
+        CreateTopLevelAs();
 
         auto& graphicsCommandQueue = m_Device.GetGraphicsCommandQueue();
         auto& commandList = graphicsCommandQueue.GetCommandList();
 
-        auto& activeTopLevelAS = GetActiveTopLevelAS();
-        commandList.SetResourceBarrier(TransitionBarrier{ activeTopLevelAS->GetScratchResource(), ResourceState::UnorderedAccess });
-        commandList.BuildRayTracingAccelerationStructure(*activeTopLevelAS);
-        commandList.SetResourceBarrier(UnorderedAccessBarrier{ activeTopLevelAS->GetBuffer() });
+        auto& activeTopLevelAs = GetActiveTopLevelAs();
+        commandList.SetResourceBarrier(TransitionBarrier{ activeTopLevelAs->GetScratchResource(), ResourceState::UnorderedAccess });
+        commandList.BuildRayTracingAccelerationStructure(*activeTopLevelAs);
+        commandList.SetResourceBarrier(UnorderedAccessBarrier{ activeTopLevelAs->GetBuffer() });
     }
 
-    std::unique_ptr<TopLevelAccelerationStructure>& Scene::GetActiveTopLevelAS()
+    std::unique_ptr<TopLevelAccelerationStructure>& Scene::GetActiveTopLevelAs()
     {
-        return m_TopLevelASs[m_Device.GetActiveFrameIndex()];
+        return m_TopLevelAss[m_Device.GetActiveFrameIndex()];
     }
 
     void Scene::OnTransformComponentConstuct(entt::registry& registry, entt::entity entityHandle)
@@ -312,17 +318,15 @@ namespace benzin
             m_Textures.push_back(std::make_unique<Texture>(m_Device, TextureCreation
             {
                 .DebugName = textureImage.DebugName,
-                .Type = TextureType::Texture2D,
                 .Format = textureImage.Format,
                 .Width = textureImage.Width,
                 .Height = textureImage.Height,
                 .MipCount = 1, // #TODO: Mip generation
-                .IsNeedShaderResourceView = true,
             }));
         }
     }
 
-    void Scene::PushBottomLevelAS(MeshUnion& meshUnion)
+    void Scene::PushBottomLevelAs(MeshUnion& meshUnion)
     {
         uint32_t vertexOffset = 0;
         uint32_t indexOffset = 0;
@@ -352,7 +356,7 @@ namespace benzin
         }
     }
 
-    void Scene::CreateTopLevelAS()
+    void Scene::CreateTopLevelAs()
     {
         std::vector<TopLevelInstance> topLevelInstances;
 
@@ -380,7 +384,7 @@ namespace benzin
         }
 
         BenzinAssert(!topLevelInstances.empty());
-        MakeUniquePtr(GetActiveTopLevelAS(), m_Device, TopLevelAccelerationStructureCreation
+        MakeUniquePtr(GetActiveTopLevelAs(), m_Device, TopLevelAccelerationStructureCreation
         {
             .DebugName = "SceneTopLevelAS",
             .Instances = topLevelInstances,

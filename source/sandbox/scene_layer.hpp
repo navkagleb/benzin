@@ -101,7 +101,7 @@ namespace sandbox
         RtShadowPass(benzin::Device& device, benzin::SwapChain& swapChain);
 
     public:
-        auto& GetVisibilityBuffer() const { return *m_VisibilityBuffer; }
+        auto& GetVisibilityBuffers() const { return m_VisibilityBuffers; }
 
     public:
         void OnUpdate(std::chrono::microseconds dt, std::chrono::milliseconds elapsedTime);
@@ -125,7 +125,7 @@ namespace sandbox
         std::unique_ptr<benzin::Buffer> m_HitGroupShaderTable;
 
         std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
-        std::unique_ptr<benzin::Texture> m_VisibilityBuffer;
+        PingPongWrapper<std::unique_ptr<benzin::Texture>, 2> m_VisibilityBuffers;
     };
 
     class RtShadowDenoisingPass
@@ -135,22 +135,25 @@ namespace sandbox
 
     public:
         auto& GetTemporalAccumulationBuffers() { return m_TemporalAccumulationBuffers; }
+        auto& GetDenoisedVisibilityBuffer() { return *m_DenoisedVisibilityBuffer; }
 
     public:
         void OnUpdate();
-        void OnRender(benzin::Texture& shadowVisiblityBuffer, const GeometryPass::GBuffer& gbuffer) const;
+        void OnRender(const GeometryPass::GBuffer& gbuffer, const benzin::Texture& previousVisibilityBuffer, const benzin::Texture& currentVisiblityBuffer) const;
 
         void OnResize(uint32_t width, uint32_t height);
 
     private:
-        using PassConstantBuffer = benzin::ConstantBuffer<joint::RtShadowDenoisingPassConstants>;
+        void RunTemporalAccumulationSubPass(const GeometryPass::GBuffer& gbuffer, const benzin::Texture& previousVisibilityBuffer, const benzin::Texture& currentVisiblityBuffer) const;
+        void RunMipGenerationSubPass(const GeometryPass::GBuffer& gbuffer) const;
 
+    private:
         benzin::Device& m_Device;
         benzin::SwapChain& m_SwapChain;
 
         std::unique_ptr<benzin::PipelineState> m_Pso;
-        std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
         PingPongWrapper<std::unique_ptr<benzin::Texture>, 2> m_TemporalAccumulationBuffers;
+        std::unique_ptr<benzin::Texture> m_DenoisedVisibilityBuffer;
     };
 
     class DeferredLightingPass

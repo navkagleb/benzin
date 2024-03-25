@@ -44,12 +44,6 @@ namespace joint
         uint RaysPerPixel;
     };
 
-    struct RtShadowDenoisingPassConstants
-    {
-        uint CurrentTextureSlot;
-        uint PreviousTextureSlot;
-    };
-
     struct DeferredLightingPassConstants
     {
         float3 SunColor;
@@ -62,8 +56,6 @@ namespace joint
     struct FullScreenDebugConstants
     {
         uint OutputType;
-        uint CurrentShadowVisibilityBufferSlot;
-        uint PreviousShadowVisibilityBufferSlot;
     };
 
 } // namespace joint

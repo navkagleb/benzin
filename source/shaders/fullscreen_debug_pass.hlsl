@@ -28,9 +28,10 @@ float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
     Texture2D<float2> velocityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_VelocityBuffer)];
     Texture2D<float> depthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_DepthBuffer)];
 
-    Texture2D<float4> shadowVisiblityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_ShadowVisiblityBuffer)];
+    Texture2D<float> shadowVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_ShadowVisibilityBuffer)];
     Texture2D<float> temporalAccumulationBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_TemporalAccumulationBuffer)];
 
+#if 1
     PackedGBuffer packedGBuffer;
     packedGBuffer.Color0 = albedoAndRoughnessTexture.SampleLevel(g_PointWrapSampler, input.UV, 0);
     packedGBuffer.Color1 = emissiveAndMetallicTexture.SampleLevel(g_PointWrapSampler, input.UV, 0);
@@ -38,6 +39,7 @@ float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
     packedGBuffer.Color3 = float4(velocityBuffer.SampleLevel(g_PointWrapSampler, input.UV, 0), 0.0f, 0.0f);
 
     UnpackedGBuffer gbuffer = UnpackGBuffer(packedGBuffer);
+#endif
 
     const float depth = depthBuffer.SampleLevel(g_PointWrapSampler, input.UV, 0);
 
@@ -55,27 +57,19 @@ float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
             
             return float4(worldPosition, 1.0f);
         }
+#if 1
         case joint::DebugOutputType_GBufferAlbedo: return float4(gbuffer.Albedo, 1.0f);
         case joint::DebugOutputType_GBufferRoughness: return float4(gbuffer.Roughness.xxx, 1.0f);
         case joint::DebugOutputType_GBufferEmissive: return float4(gbuffer.Emissive, 1.0f);
         case joint::DebugOutputType_GBufferMetallic: return float4(gbuffer.Metallic.xxx, 1.0f);
         case joint::DebugOutputType_GBufferWorldNormal: return float4(gbuffer.WorldNormal, 1.0f);
         // case joint::DebugOutputType_GBufferVelocityBuffer: return float4(gbuffer.MotionVector, 0.0, 1.0f); #TODO
+#endif
         case joint::DebugOutputType_CurrentShadowVisibility:
         {
-            const uint slot = passConstants.CurrentShadowVisibilityBufferSlot;
-            const float4 shadowVisibility4 = shadowVisiblityBuffer.SampleLevel(g_PointWrapSampler, input.UV, 0);
-            const float shadowVisiblity = GetFloatByIndex(shadowVisibility4, slot);
+            const float shadowVisibility = shadowVisibilityBuffer.SampleLevel(g_PointWrapSampler, input.UV, 0);
 
-            return float4(shadowVisiblity, 0.0f, 0.0f, 1.0f);
-        }
-        case joint::DebugOutputType_PreviousShadowVisibility:
-        {
-            const uint slot = passConstants.PreviousShadowVisibilityBufferSlot;
-            const float4 shadowVisibility4 = shadowVisiblityBuffer.SampleLevel(g_PointWrapSampler, input.UV, 0);
-            const float shadowVisiblity = GetFloatByIndex(shadowVisibility4, slot);
-
-            return float4(shadowVisiblity, 0.0f, 0.0f, 1.0f);
+            return float4(shadowVisibility, 0.0f, 0.0f, 1.0f);
         }
         case joint::DebugOutputType_TemporalAccumulationBuffer:
         {

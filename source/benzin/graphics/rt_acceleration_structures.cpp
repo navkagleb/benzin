@@ -119,7 +119,6 @@ namespace benzin
             .ElementCount = (uint32_t)d3d12PrebuildInfo.ResultDataMaxSizeInBytes,
             .Flags = BufferFlag::AllowUnorderedAccess,
             .InitialState = ResourceState::RaytracingAccelerationStructure,
-            .IsNeedRaytracingAccelerationStructureView = isTopLevelAS,
         });
 
         m_ScratchResource.Create(BufferCreation

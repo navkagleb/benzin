@@ -35,14 +35,14 @@ namespace benzin
 
         ImGui::StyleColorsDark();
 
-        m_FontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::ShaderResourceView);
+        m_FontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
 
         BenzinAssert(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
         BenzinAssert(ImGui_ImplDX12_Init(
             m_Device.GetD3D12Device(),
             CommandLineArgs::GetFrameInFlightCount(),
             (DXGI_FORMAT)CommandLineArgs::GetBackBufferFormat(),
-            m_Device.GetDescriptorManager().GetD3D12ResourceDescriptorHeap(),
+            m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCpuHandle() },
             D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGpuHandle() }
         ));
@@ -50,7 +50,7 @@ namespace benzin
 
     ImGuiLayer::~ImGuiLayer()
     {
-        m_Device.GetDescriptorManager().DeallocateDescriptor(DescriptorType::ShaderResourceView, m_FontDescriptor);
+        m_Device.GetDescriptorManager().FreeDescriptor(m_FontDescriptor);
 
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
@@ -74,17 +74,19 @@ namespace benzin
         ImGui::Render();
 
         commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::RenderTarget });
+        BenzinExecuteOnScopeExit([&]
         {
-            commandList.SetRenderTargets({ currentBackBuffer.GetRenderTargetView() });
+            commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::Common });
+        });
 
-            if (isNeedToClearBackBuffer)
-            {
-                commandList.ClearRenderTarget(currentBackBuffer.GetRenderTargetView());
-            }
+        commandList.SetRenderTargets({ currentBackBuffer.GetRtv() });
 
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
+        if (isNeedToClearBackBuffer)
+        {
+            commandList.ClearRenderTarget(currentBackBuffer.GetRtv());
         }
-        commandList.SetResourceBarrier(TransitionBarrier{ currentBackBuffer, ResourceState::Common });
+
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
     }
 
     void ImGuiLayer::OnEvent(Event& event)

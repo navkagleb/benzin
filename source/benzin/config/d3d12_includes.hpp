@@ -11,8 +11,6 @@
 #include <dxgi1_6.h>
 #pragma comment(lib, "dxgi.lib")
 
-#include <third_party/directx/DDSTextureLoader12.h>
-
 #include <DirectXCollision.h>
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>

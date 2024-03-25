@@ -147,7 +147,7 @@ void RayGen()
 
     StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_PointLightBuffer)];
 
-    RWTexture2D<float4> visibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_VisiblityBuffer)];
+    RWTexture2D<float> visibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_VisiblityBuffer)];
 
     const float2 uv = GetRayUv();
     const float3 worldNormal = worldNormalTexture.SampleLevel(g_PointWrapSampler, uv, 0).xyz;
@@ -164,7 +164,7 @@ void RayGen()
         hittedSum += TraceShadowRay(worldPosition, worldNormal, pointLight, uvSeed);
     }
 
-    visibilityBuffer[DispatchRaysIndex().xy][passConstants.CurrentTextureSlot] = (float)hittedSum / passConstants.RaysPerPixel;
+    visibilityBuffer[DispatchRaysIndex().xy] = (float)hittedSum / passConstants.RaysPerPixel;
 }
 
 [shader("miss")]

@@ -7,6 +7,26 @@
 namespace benzin
 {
 
+    struct FormatBufferSrv
+    {
+        GraphicsFormat Format = GraphicsFormat::Unknown;
+    };
+
+    struct StructuredBufferSrv
+    {
+        IndexRangeU32 ElementRange;
+    };
+
+    struct ByteAddressBufferSrv {};
+    struct RtAsBufferSrv {};
+
+    struct BufferUav {};
+
+    struct BufferCbv
+    {
+        uint32_t ElementIndex = 0;
+    };
+
     static D3D12_HEAP_TYPE ResolveD3D12HeapType(const Device& device, BufferFlags flags)
     {
         if (flags.IsAnySet(BufferFlag::UploadBuffer | BufferFlag::ConstantBuffer))
@@ -74,7 +94,7 @@ namespace benzin
         const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(ResolveD3D12HeapType(device, bufferCreation.Flags));
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(bufferCreation);
 
-        if (d3d12HeapProperties.Type == D3D12_HEAP_TYPE_UPLOAD && bufferCreation.InitialState != ResourceState::GenericRead)
+        if ((d3d12HeapProperties.Type == D3D12_HEAP_TYPE_UPLOAD || d3d12HeapProperties.Type == D3D12_HEAP_TYPE_GPU_UPLOAD) && bufferCreation.InitialState != ResourceState::GenericRead)
         {
             // Validate 'InitialState'
             const_cast<BufferCreation&>(bufferCreation).InitialState = ResourceState::GenericRead;
@@ -92,14 +112,11 @@ namespace benzin
         BenzinEnsure(d3d12Resource);
     }
 
-    static D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12FormatBufferView(const Buffer& buffer, const FormatBufferViewCreation& creation)
+    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, const FormatBufferSrv& formatSrv)
     {
-        BenzinAssert(creation.Format != GraphicsFormat::Unknown);
-        BenzinAssert(buffer.GetElementSize() == GetFormatSizeInBytes(creation.Format));
-
         return D3D12_SHADER_RESOURCE_VIEW_DESC
         {
-            .Format = (DXGI_FORMAT)creation.Format,
+            .Format = (DXGI_FORMAT)formatSrv.Format,
             .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             .Buffer
@@ -112,14 +129,9 @@ namespace benzin
         };
     }
 
-    static D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12StructuredBufferView(const Buffer& buffer, const StructuredBufferViewCreation& creation)
+    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, const StructuredBufferSrv& structuredSrv)
     {
         // Ref: https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_buffer_srv#remarks
-
-        BenzinAssert(creation.FirstElementIndex < buffer.GetElementCount());
-
-        StructuredBufferViewCreation validatedCreation = creation;
-        validatedCreation.ElementCount = creation.ElementCount != 0 ? creation.ElementCount : buffer.GetElementCount();
 
         return D3D12_SHADER_RESOURCE_VIEW_DESC
         {
@@ -128,15 +140,15 @@ namespace benzin
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             .Buffer
             {
-                .FirstElement = validatedCreation.FirstElementIndex,
-                .NumElements = validatedCreation.ElementCount,
+                .FirstElement = structuredSrv.ElementRange.StartIndex,
+                .NumElements = structuredSrv.ElementRange.Count,
                 .StructureByteStride = buffer.GetAlignedElementSize(), // #TODO: 'm_AlignedElementSize' when using 'StructuredBuffer'?
                 .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
             },
         };
     }
 
-    static D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12ByteAddressBufferView(const Buffer& buffer)
+    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, ByteAddressBufferSrv)
     {
         // Note: ByteAddressBuffers supports only 'DXGI_FORMAT_R32_TYPELESS' format 
         // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
@@ -161,7 +173,7 @@ namespace benzin
         };
     }
 
-    static D3D12_SHADER_RESOURCE_VIEW_DESC CreateD3D12RaytracingAccelerationStructureView(const Buffer& buffer)
+    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, RtAsBufferSrv)
     {
         return D3D12_SHADER_RESOURCE_VIEW_DESC
         {
@@ -195,16 +207,12 @@ namespace benzin
         }
     }
 
-    uint64_t Buffer::GetGpuVirtualAddress() const
-    {
-        BenzinAssert(m_D3D12Resource);
-        return m_D3D12Resource->GetGPUVirtualAddress();
-    }
-
     uint64_t Buffer::GetGpuVirtualAddress(uint32_t elementIndex) const
     {
+        BenzinAssert(m_D3D12Resource);
         BenzinAssert(elementIndex < m_ElementCount);
-        return GetGpuVirtualAddress() + elementIndex * m_AlignedElementSize;
+
+        return m_D3D12Resource->GetGPUVirtualAddress() + elementIndex * m_AlignedElementSize;
     }
 
     void Buffer::Create(const BufferCreation& creation)
@@ -232,135 +240,209 @@ namespace benzin
             const MemoryWriter writer{ GetMappedData(), GetSizeInBytes() };
             writer.WriteBytes(creation.InitialData);
         }
-
-        if (creation.IsNeedFormatBufferView)
-        {
-            BenzinAssert(creation.Format != GraphicsFormat::Unknown);
-            PushFormatBufferView({ .Format = creation.Format });
-        }
-
-        if (creation.IsNeedStructuredBufferView)
-        {
-            PushStructureBufferView();
-        }
-
-        if (creation.IsNeedByteAddressBufferView)
-        {
-            PushByteAddressBufferView();
-        }
-
-        if (creation.IsNeedRaytracingAccelerationStructureView)
-        {
-            PushRaytracingAccelerationStructureView();
-        }
-
-        if (creation.IsNeedUnorderedAccessView)
-        {
-            PushUnorderedAccessView();
-        }
-
-        if (creation.IsNeedConstantBufferView)
-        {
-            PushConstantBufferView();
-        }
     }
 
-    uint32_t Buffer::PushFormatBufferView(const FormatBufferViewCreation& creation)
+    const Descriptor& Buffer::GetFormatSrv(GraphicsFormat format) const
+    {
+        BenzinAssert(format != GraphicsFormat::Unknown);
+        BenzinAssert(m_ElementSize == GetFormatSizeInBytes(format));
+
+        const FormatBufferSrv formatSrv{ format };
+
+        auto& descriptor = GetViewDescriptor(formatSrv);
+        if (!descriptor.IsCpuValid())
+        {
+            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResoureViewDesc(*this, formatSrv);
+            descriptor = CreateSrv(d3d12SrvDesc, m_D3D12Resource);
+        }
+
+        return descriptor;
+    }
+
+    const Descriptor& Buffer::GetStructuredSrv(IndexRangeU32 elementRange) const
+    {
+        BenzinAssert(elementRange.StartIndex < m_ElementCount);
+
+        elementRange.Count = elementRange.Count != 0 ? elementRange.Count : m_ElementCount;
+        const StructuredBufferSrv structuredSrv{ elementRange };
+
+        auto& descriptor = GetViewDescriptor(structuredSrv);
+        if (!descriptor.IsCpuValid())
+        {
+            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResoureViewDesc(*this, structuredSrv);
+            descriptor = CreateSrv(d3d12SrvDesc, m_D3D12Resource);
+        }
+
+        return descriptor;
+    }
+
+    const Descriptor& Buffer::GetByteAddressSrv() const
+    {
+        auto& descriptor = GetViewDescriptor(ByteAddressBufferSrv{});
+        if (!descriptor.IsCpuValid())
+        {
+            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResoureViewDesc(*this, ByteAddressBufferSrv{});
+            descriptor = CreateSrv(d3d12SrvDesc, m_D3D12Resource);
+        }
+
+        return descriptor;
+    }
+
+    const Descriptor& Buffer::GetRtAsSrv() const
+    {
+        auto& descriptor = GetViewDescriptor(RtAsBufferSrv{});
+        if (!descriptor.IsCpuValid())
+        {
+            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResoureViewDesc(*this, RtAsBufferSrv{});
+            descriptor = CreateSrv(d3d12SrvDesc, nullptr);
+        }
+
+        return descriptor;
+    }
+
+    const Descriptor& Buffer::GetUav() const
     {
         BenzinAssert(m_D3D12Resource);
 
-        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateD3D12FormatBufferView(*this, creation);
-        return PushShaderResourceView(d3d12ShaderResourceViewDesc, m_D3D12Resource);
-    }
-
-    uint32_t Buffer::PushStructureBufferView(const StructuredBufferViewCreation& creation)
-    {
-        BenzinAssert(m_D3D12Resource);
-
-        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateD3D12StructuredBufferView(*this, creation);
-        return PushShaderResourceView(d3d12ShaderResourceViewDesc, m_D3D12Resource);
-    }
-
-    uint32_t Buffer::PushByteAddressBufferView()
-    {
-        BenzinAssert(m_D3D12Resource);
-
-        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateD3D12ByteAddressBufferView(*this);
-        return PushShaderResourceView(d3d12ShaderResourceViewDesc, m_D3D12Resource);
-    }
-
-    uint32_t Buffer::PushRaytracingAccelerationStructureView()
-    {
-        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12ShaderResourceViewDesc = CreateD3D12RaytracingAccelerationStructureView(*this);
-        return PushShaderResourceView(d3d12ShaderResourceViewDesc, nullptr); // RaytracingAccelerationStructureView creates with pResource == nullptr
-    }
-
-    uint32_t Buffer::PushUnorderedAccessView()
-    {
-        BenzinAssert(m_D3D12Resource);
-
-        const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UnorderedAccessViewDesc
+        auto& descriptor = GetViewDescriptor(BufferUav{});
+        if (!descriptor.IsCpuValid())
         {
-            .Format = DXGI_FORMAT_UNKNOWN,
-            .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
-            .Buffer
+            descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav);
+
+            const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc
             {
-                .FirstElement = 0,
-                .NumElements = m_ElementCount,
-                .StructureByteStride = m_ElementSize,
-                .CounterOffsetInBytes = 0,
-                .Flags = D3D12_BUFFER_UAV_FLAG_NONE,
-            }
-        };
+                .Format = DXGI_FORMAT_UNKNOWN,
+                .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
+                .Buffer
+                {
+                    .FirstElement = 0,
+                    .NumElements = m_ElementCount,
+                    .StructureByteStride = m_ElementSize,
+                    .CounterOffsetInBytes = 0,
+                    .Flags = D3D12_BUFFER_UAV_FLAG_NONE,
+                }
+            };
 
-        const DescriptorType descriptorType = DescriptorType::UnorderedAccessView;
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(descriptorType);
+            m_Device.GetD3D12Device()->CreateUnorderedAccessView(
+                m_D3D12Resource,
+                nullptr,
+                &d3d12UavDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
+            );
+        }
 
-        m_Device.GetD3D12Device()->CreateUnorderedAccessView(
-            m_D3D12Resource,
-            nullptr,
-            &d3d12UnorderedAccessViewDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-        );
-
-        return PushResourceView(descriptorType, descriptor);
+        return descriptor;
     }
 
-    uint32_t Buffer::PushConstantBufferView(const ConstantBufferViewCreation& creation)
+    const Descriptor& Buffer::GetCbv(uint32_t elementIndex) const
     {
         BenzinAssert(m_D3D12Resource);
+        BenzinAssert(elementIndex < m_ElementCount);
 
-        const uint64_t gpuVirtualAddress = IsValidIndex(creation.ElementIndex) ? GetGpuVirtualAddress(creation.ElementIndex) : GetGpuVirtualAddress();
-
-        const D3D12_CONSTANT_BUFFER_VIEW_DESC d3d12ConstantBufferViewDesc
+        auto& descriptor = GetViewDescriptor(BufferCbv{ elementIndex });
+        if (!descriptor.IsCpuValid())
         {
-            .BufferLocation = gpuVirtualAddress,
-            .SizeInBytes = m_AlignedElementSize,
-        };
+            descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Cbv);
 
-        const DescriptorType descriptorType = DescriptorType::ConstantBufferView;
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(descriptorType);
+            const D3D12_CONSTANT_BUFFER_VIEW_DESC d3d12CbvDesc
+            {
+                .BufferLocation = GetGpuVirtualAddress(elementIndex),
+                .SizeInBytes = m_AlignedElementSize,
+            };
 
-        m_Device.GetD3D12Device()->CreateConstantBufferView(
-            &d3d12ConstantBufferViewDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-        );
+            m_Device.GetD3D12Device()->CreateConstantBufferView(
+                &d3d12CbvDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
+            );
+        }
 
-        return PushResourceView(descriptorType, descriptor);
+        return descriptor;
     }
 
-    uint32_t Buffer::PushShaderResourceView(const D3D12_SHADER_RESOURCE_VIEW_DESC& d3d12ShaderResourceViewDesc, ID3D12Resource* d3d12Resource)
+    Descriptor Buffer::CreateSrv(const D3D12_SHADER_RESOURCE_VIEW_DESC& d3d12SrvDesc, ID3D12Resource* d3d12Resource) const
     {
-        const DescriptorType descriptorType = DescriptorType::ShaderResourceView;
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(descriptorType);
+        Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
 
         m_Device.GetD3D12Device()->CreateShaderResourceView(
             d3d12Resource,
-            &d3d12ShaderResourceViewDesc,
+            &d3d12SrvDesc,
             D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
         );
 
-        return PushResourceView(descriptorType, descriptor);
+        return descriptor;
     }
 
 } // namespace benzin
+
+template <>
+struct std::hash<benzin::FormatBufferSrv>
+{
+    size_t operator()(const benzin::FormatBufferSrv& formatSrv) const
+    {
+        static const auto baseHash = typeid(benzin::FormatBufferSrv).hash_code();
+
+        size_t hash = baseHash;
+        hash = benzin::HashCombine(hash, formatSrv.Format);
+
+        return hash;
+    }
+};
+
+template <>
+struct std::hash<benzin::StructuredBufferSrv>
+{
+    size_t operator()(const benzin::StructuredBufferSrv& structuredSrv) const
+    {
+        static const auto baseHash = typeid(benzin::StructuredBufferSrv).hash_code();
+
+        size_t hash = baseHash;
+        hash = benzin::HashCombine(hash, structuredSrv.ElementRange.StartIndex);
+        hash = benzin::HashCombine(hash, structuredSrv.ElementRange.Count);
+
+        return hash;
+    }
+};
+
+template <>
+struct std::hash<benzin::ByteAddressBufferSrv>
+{
+    size_t operator()(benzin::ByteAddressBufferSrv) const
+    {
+        static const auto baseHash = typeid(benzin::ByteAddressBufferSrv).hash_code();
+        return baseHash;
+    }
+};
+
+template <>
+struct std::hash<benzin::RtAsBufferSrv>
+{
+    size_t operator()(benzin::RtAsBufferSrv) const
+    {
+        static const auto baseHash = typeid(benzin::RtAsBufferSrv).hash_code();
+        return baseHash;
+    }
+};
+
+template <>
+struct std::hash<benzin::BufferUav>
+{
+    size_t operator()(benzin::BufferUav) const
+    {
+        static const auto baseHash = typeid(benzin::BufferUav).hash_code();
+        return baseHash;
+    }
+};
+
+template <>
+struct std::hash<benzin::BufferCbv>
+{
+    size_t operator()(const benzin::BufferCbv& bufferCbv) const
+    {
+        static const auto baseHash = typeid(benzin::BufferCbv).hash_code();
+
+        size_t hash = baseHash;
+        hash = benzin::HashCombine(hash, bufferCbv.ElementIndex);
+
+        return hash;
+    }
+};

@@ -13,40 +13,57 @@ namespace benzin
         {
             using enum DescriptorType;
 
-            case RenderTargetView: return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-            case DepthStencilView: return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-            case ConstantBufferView:
-            case ShaderResourceView:
-            case UnorderedAccessView: return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            case Rtv: return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+            case Dsv: return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+            case Cbv:
+            case Srv:
+            case Uav: return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
             case Sampler: return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
         }
 
         std::unreachable();
     }
 
-    // Descriptor
+    // DescriptorHeap
 
-    uint32_t Descriptor::GetHeapIndex() const
+    class DescriptorHeap
     {
-        BenzinAssert(IsValid());
-        return m_HeapIndex;
-    }
+    public:
+        DescriptorHeap(Device& device, D3D12_DESCRIPTOR_HEAP_TYPE d3d12DescriptorHeapType, uint32_t descriptorCount);
+        ~DescriptorHeap();
 
-    uint64_t Descriptor::GetCpuHandle() const
-    {
-        BenzinAssert(IsValid());
-        return m_CpuHandle;
-    }
+        BenzinDefineNonCopyable(DescriptorHeap);
+        BenzinDefineNonMoveable(DescriptorHeap);
 
-    uint64_t Descriptor::GetGpuHandle() const
-    {
-        BenzinAssert(IsValid() && m_GpuHandle != 0);
-        return m_GpuHandle;
-    }
+    public:
+        auto* GetD3D12DescriptorHeap() const { return m_D3D12DescriptorHeap; }
 
-    // DescriptorManager::DescriptorHeap
+        Descriptor AllocateDescriptor(DescriptorType type);
+        void FreeDescriptor(const Descriptor& descriptor);
 
-    DescriptorManager::DescriptorHeap::DescriptorHeap(Device& device, D3D12_DESCRIPTOR_HEAP_TYPE d3d12DescriptorHeapType, uint32_t descriptorCount)
+    private:
+        uint32_t AllocateIndex();
+        void FreeIndex(uint32_t index);
+
+        uint64_t GetCpuHandle(uint32_t index) const;
+        uint64_t GetGpuHandle(uint32_t index) const;
+
+    private:
+        ID3D12DescriptorHeap* m_D3D12DescriptorHeap = nullptr;
+
+        bool m_IsAccessableByShader = false;
+        uint32_t m_DescriptorSize = 0;
+        uint32_t m_DescriptorCount = 0;
+
+        uint32_t m_Marker = 0;
+        std::vector<uint32_t> m_FreeIndices;
+
+#if BENZIN_IS_DEBUG_BUILD
+        uint32_t m_AllocatedIndexCount = 0;
+#endif
+    };
+
+    DescriptorHeap::DescriptorHeap(Device& device, D3D12_DESCRIPTOR_HEAP_TYPE d3d12DescriptorHeapType, uint32_t descriptorCount)
         : m_IsAccessableByShader{ d3d12DescriptorHeapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || d3d12DescriptorHeapType == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER }
         , m_DescriptorCount{ descriptorCount }
     {
@@ -64,7 +81,7 @@ namespace benzin
         m_DescriptorSize = device.GetD3D12Device()->GetDescriptorHandleIncrementSize(d3d12DescriptorHeapDesc.Type);
     }
 
-    DescriptorManager::DescriptorHeap::~DescriptorHeap()
+    DescriptorHeap::~DescriptorHeap()
     {
 #if BENZIN_IS_DEBUG_BUILD
         BenzinAssert(m_AllocatedIndexCount == 0);
@@ -73,17 +90,19 @@ namespace benzin
         SafeUnknownRelease(m_D3D12DescriptorHeap);
     }
 
-    Descriptor DescriptorManager::DescriptorHeap::AllocateDescriptor()
+    Descriptor DescriptorHeap::AllocateDescriptor(DescriptorType type)
     {
-        return GetDescriptor(AllocateIndex());
+        const uint32_t heapIndex = AllocateIndex();
+
+        return Descriptor{ type, heapIndex, GetCpuHandle(heapIndex), m_IsAccessableByShader ? GetGpuHandle(heapIndex) : 0 };
     }
 
-    void DescriptorManager::DescriptorHeap::DeallocateDescriptor(const Descriptor& descriptor)
+    void DescriptorHeap::FreeDescriptor(const Descriptor& descriptor)
     {
-        DeallocateIndex(descriptor.GetHeapIndex());
+        FreeIndex(descriptor.GetHeapIndex());
     }
 
-    uint32_t DescriptorManager::DescriptorHeap::AllocateIndex()
+    uint32_t DescriptorHeap::AllocateIndex()
     {
         static const uint32_t invalidIndex = std::numeric_limits<uint32_t>::max();
 
@@ -107,7 +126,7 @@ namespace benzin
         return index;
     }
 
-    void DescriptorManager::DescriptorHeap::DeallocateIndex(uint32_t index)
+    void DescriptorHeap::FreeIndex(uint32_t index)
     {
         BenzinAssert(std::find(m_FreeIndices.begin(), m_FreeIndices.end(), index) == m_FreeIndices.end());
         m_FreeIndices.push_back(index);
@@ -117,22 +136,12 @@ namespace benzin
 #endif
     }
 
-    Descriptor DescriptorManager::DescriptorHeap::GetDescriptor(uint32_t index) const
-    {
-        return Descriptor
-        {
-            index,
-            GetCpuHandle(index),
-            m_IsAccessableByShader ? GetGpuHandle(index) : 0
-        };
-    }
-
-    uint64_t DescriptorManager::DescriptorHeap::GetCpuHandle(uint32_t index) const
+    uint64_t DescriptorHeap::GetCpuHandle(uint32_t index) const
     {
         return m_D3D12DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + (uint64_t)index * m_DescriptorSize;
     }
 
-    uint64_t DescriptorManager::DescriptorHeap::GetGpuHandle(uint32_t index) const
+    uint64_t DescriptorHeap::GetGpuHandle(uint32_t index) const
     {
         return m_D3D12DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + (uint64_t)index * m_DescriptorSize;
     }
@@ -152,16 +161,28 @@ namespace benzin
         createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, config::g_MaxSamplerDescriptorCount);
     }
 
+    DescriptorManager::~DescriptorManager() = default;
+
+    ID3D12DescriptorHeap* DescriptorManager::GetD3D12GpuResourceDescriptorHeap() const
+    {
+        return m_DescriptorHeaps.at(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->GetD3D12DescriptorHeap();
+    }
+
+    ID3D12DescriptorHeap* DescriptorManager::GetD3D12SamplerDescriptorHeap() const
+    {
+        return m_DescriptorHeaps.at(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)->GetD3D12DescriptorHeap();
+    }
+
     Descriptor DescriptorManager::AllocateDescriptor(DescriptorType descriptorType)
     {
         DescriptorHeap& descriptorHeap = *m_DescriptorHeaps[GetDescriptorHeapType(descriptorType)];
-        return descriptorHeap.AllocateDescriptor();
+        return descriptorHeap.AllocateDescriptor(descriptorType);
     }
 
-    void DescriptorManager::DeallocateDescriptor(DescriptorType descriptorType, const Descriptor& descriptor)
+    void DescriptorManager::FreeDescriptor(const Descriptor& descriptor)
     {
-        DescriptorHeap& descriptorHeap = *m_DescriptorHeaps[GetDescriptorHeapType(descriptorType)];
-        descriptorHeap.DeallocateDescriptor(descriptor);
+        DescriptorHeap& descriptorHeap = *m_DescriptorHeaps[GetDescriptorHeapType(descriptor.GetType())];
+        descriptorHeap.FreeDescriptor(descriptor);
     }
 
 } // namespace benzin

@@ -6,7 +6,6 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
-#include "benzin/graphics/backend.hpp"
 
 #define BenzinNvApiEnsure(nvCall) \
     const NvAPI_Status BenzinUniqueVariableName(nvStatus) = nvCall; \

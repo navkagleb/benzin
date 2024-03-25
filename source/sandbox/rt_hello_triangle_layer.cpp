@@ -80,9 +80,9 @@ namespace sandbox
                 RootConstant_RaytracingOutputTextureIndex,
             };
 
-            commandList.SetRootResource(RootConstant_TopLevelASIndex, m_TLAS->GetShaderResourceView());
-            commandList.SetRootResource(RootConstant_RayGenConstantBufferIndex, m_RayGenConstantBuffer->GetConstantBufferView());
-            commandList.SetRootResource(RootConstant_RaytracingOutputTextureIndex, m_RaytracingOutput->GetUnorderedAccessView());
+            commandList.SetRootResource(RootConstant_TopLevelASIndex, m_TLAS->GetRtAsSrv());
+            commandList.SetRootResource(RootConstant_RayGenConstantBufferIndex, m_RayGenConstantBuffer->GetCbv());
+            commandList.SetRootResource(RootConstant_RaytracingOutputTextureIndex, m_RaytracingOutput->GetUav());
 
             d3d12CommandList->SetPipelineState1(m_D3D12RaytracingStateObject.Get());
         }
@@ -372,7 +372,6 @@ namespace sandbox
             .Flags = benzin::BufferFlag::AllowUnorderedAccess,
             .InitialState = benzin::ResourceState::RaytracingAccelerationStructure,
             // .IsNeedStructuredBufferView = true, // This leads to 'DXGI_ERROR_DEVICE_HUNG' !!!
-            .IsNeedRaytracingAccelerationStructureView = true,
         });
 
         // Create scratch resource for build BottomLevel and TopLevel ASs
@@ -458,19 +457,16 @@ namespace sandbox
             .ElementCount = 1,
             .Flags = benzin::BufferFlag::ConstantBuffer,
             .InitialData = std::as_bytes(std::span{ &m_RayGenConstants, 1 }),
-            .IsNeedConstantBufferView = true,
         });
 
         m_RaytracingOutput = std::make_shared<benzin::Texture>(m_Device, benzin::TextureCreation
         {
             .DebugName = "RayTracingOutput",
-            .Type = benzin::TextureType::Texture2D,
             .Format = benzin::CommandLineArgs::GetBackBufferFormat(),
             .Width = (uint32_t)m_SwapChain.GetViewport().Width,
             .Height = (uint32_t)m_SwapChain.GetViewport().Height,
             .MipCount = 1,
             .Flags = benzin::TextureFlag::AllowUnorderedAccess,
-            .IsNeedUnorderedAccessView = true,
         });
     }
 

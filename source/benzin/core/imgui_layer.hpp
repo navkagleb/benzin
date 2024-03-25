@@ -13,6 +13,8 @@ namespace benzin
     class SwapChain;
     class Window;
 
+    struct GraphicsRefs;
+
     enum class ApplicationTiming : uint32_t
     {
         BeginFrame,

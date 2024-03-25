@@ -13,6 +13,10 @@ namespace benzin
         {
             ::DebugBreak();
         }
+        else
+        {
+            *((volatile int*)1) = 2;
+        }
     }
 
     static void FormatToBuffer(const std::source_location& sourceLocation, std::string_view conditionString, std::string_view message, std::string& outBuffer)

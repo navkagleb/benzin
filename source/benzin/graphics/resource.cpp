@@ -2,7 +2,6 @@
 #include "benzin/graphics/resource.hpp"
 
 #include "benzin/core/asserter.hpp"
-#include "benzin/graphics/descriptor_manager.hpp"
 
 namespace benzin
 {
@@ -13,13 +12,12 @@ namespace benzin
 
     Resource::~Resource()
     {
-        for (const auto& [descriptorType, descriptors] : m_Views)
+        for (const auto& [_, descriptor] : m_ViewDescriptors)
         {
-            for (const auto& descriptor : descriptors)
-            {
-                m_Device.GetDescriptorManager().DeallocateDescriptor(descriptorType, descriptor);
-            }
+            m_Device.GetDescriptorManager().FreeDescriptor(descriptor);
         }
+
+        m_ViewDescriptors.clear();
 
         SafeUnknownRelease(m_D3D12Resource);
     }
@@ -33,36 +31,6 @@ namespace benzin
 
         BenzinAssert(d3d12ResourceAllocationInfo.SizeInBytes <= std::numeric_limits<uint32_t>::max());
         return (uint32_t)d3d12ResourceAllocationInfo.SizeInBytes;
-    }
-
-    bool Resource::HasResourceView(DescriptorType descriptorType, uint32_t index) const
-    {
-        if (!m_Views.contains(descriptorType))
-        {
-            return false;
-        }
-
-        return index < m_Views.at(descriptorType).size();
-    }
-
-    uint32_t Resource::PushResourceView(DescriptorType descriptorType, const Descriptor& descriptor)
-    {
-        BenzinAssert(descriptor.IsValid());
-
-        auto& descriptors = m_Views[descriptorType];
-        descriptors.push_back(descriptor);
-
-        return static_cast<uint32_t>(descriptors.size()) - 1;
-    }
-
-    const Descriptor& Resource::GetResourceView(DescriptorType descriptorType, uint32_t index) const
-    {
-        BenzinAssert(m_Views.contains(descriptorType));
-
-        const auto& descriptors = m_Views.at(descriptorType);
-        BenzinAssert(index < descriptors.size());
-
-        return descriptors[index];
     }
 
 } // namespace benzin

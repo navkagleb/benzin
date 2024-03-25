@@ -34,14 +34,15 @@ namespace joint
 
     enum RtShadowDenoisingRc : uint32_t
     {
-        RtShadowDenoisingRc_PassConstantBuffer = GlobalRc_Count,
-        RtShadowDenoisingRc_WorldNormalTexture,
+        RtShadowDenoisingRc_WorldNormalTexture = GlobalRc_Count,
         RtShadowDenoisingRc_VelocityBuffer,
         RtShadowDenoisingRc_DepthBuffer,
         RtShadowDenoisingRc_PreviousViewDepthBuffer,
-        RtShadowDenoisingRc_ShadowVisibilityBuffer,
+        RtShadowDenoisingRc_PreviousVisibilityBuffer,
+        RtShadowDenoisingRc_CurrentVisibilityBuffer,
         RtShadowDenoisingRc_PreviousTemporalAccumulationBuffer,
         RtShadowDenoisingRc_CurrentTemporalAccumulationBuffer,
+        RtShadowDenoisingRc_DenoisedVisiblityBuffer,
         RtShadowDenoisingRc_Count,
     };
 
@@ -72,7 +73,7 @@ namespace joint
         FullScreenDebugRc_WorldNormalTexture,
         FullScreenDebugRc_VelocityBuffer,
         FullScreenDebugRc_DepthBuffer,
-        FullScreenDebugRc_ShadowVisiblityBuffer,
+        FullScreenDebugRc_ShadowVisibilityBuffer,
         FullScreenDebugRc_TemporalAccumulationBuffer,
         FullScreenDebugRc_Count,
     };

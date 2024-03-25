@@ -50,7 +50,7 @@ namespace benzin
                 const std::span<const D3D12_DRED_BREADCRUMB_CONTEXT> d3d12BreadcrumbContexts{ d3d12AutoBreadcrumbNode->pBreadcrumbContexts, d3d12AutoBreadcrumbNode->BreadcrumbContextsCount };
                 for (const auto& d3d12BreadcrumbContext : d3d12BreadcrumbContexts)
                 {
-                    std::format_to(std::back_inserter(buffer), "      BreadcrumbIndex: {}, Context: {}", d3d12BreadcrumbContext.BreadcrumbIndex, ToNarrowString(d3d12BreadcrumbContext.pContextString));
+                    std::format_to(std::back_inserter(buffer), "      BreadcrumbIndex: {}, Context: {}\n", d3d12BreadcrumbContext.BreadcrumbIndex, ToNarrowString(d3d12BreadcrumbContext.pContextString));
                 }
             }
 
