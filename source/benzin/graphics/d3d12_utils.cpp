@@ -91,6 +91,18 @@ namespace benzin
 
     //
 
+    D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType)
+    {
+        return D3D12_HEAP_PROPERTIES
+        {
+            .Type = d3d12HeapType,
+            .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+            .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+            .CreationNodeMask = 1,
+            .VisibleNodeMask = 1,
+        };
+    }
+
 #if BENZIN_IS_DEBUG_BUILD
 
     void EnableD3D12DebugLayer()
@@ -147,7 +159,7 @@ namespace benzin
         ComPtr<ID3D12DebugDevice2> d3d12DebugDevice;
         BenzinAssert(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
 
-        d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL);
+        d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_IGNORE_INTERNAL | D3D12_RLDO_DETAIL | D3D12_RLDO_SUMMARY);
     }
 
 #endif // BENZIN_IS_DEBUG_BUILD
@@ -171,7 +183,7 @@ namespace benzin
     void EnableDred()
     {
         ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> d3d12DredSettings;
-        BenzinAssert(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12DredSettings)));
+        BenzinEnsure(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12DredSettings)));
 
         d3d12DredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
         d3d12DredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
@@ -184,13 +196,13 @@ namespace benzin
         buffer.reserve(MbToBytes(1));
 
         ComPtr<ID3D12DeviceRemovedExtendedData2> d3d12Dred;
-        BenzinAssert(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12Dred)));
+        BenzinEnsure(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12Dred)));
 
         D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 d3d12DredAutoBreadcrumbsOutput;
-        BenzinAssert(d3d12Dred->GetAutoBreadcrumbsOutput1(&d3d12DredAutoBreadcrumbsOutput));
+        BenzinEnsure(d3d12Dred->GetAutoBreadcrumbsOutput1(&d3d12DredAutoBreadcrumbsOutput));
 
         D3D12_DRED_PAGE_FAULT_OUTPUT2 d3d12DredPageFaultOutput;
-        BenzinAssert(d3d12Dred->GetPageFaultAllocationOutput2(&d3d12DredPageFaultOutput));
+        BenzinEnsure(d3d12Dred->GetPageFaultAllocationOutput2(&d3d12DredPageFaultOutput));
 
         const D3D12_DRED_DEVICE_STATE d3d12DredDeviceState = d3d12Dred->GetDeviceState();
         std::format_to(std::back_inserter(buffer), "D3D12_DRED_DEVICE_STATE: {}\n", magic_enum::enum_name(d3d12DredDeviceState));
@@ -201,58 +213,64 @@ namespace benzin
         return buffer;
     }
 
-    bool HasD3D12ObjectDebugName(ID3D12Object* d3d12Object)
+    std::string GetDxObjectDebugName(DxObjectVariant dxObjectVariant)
     {
-        BenzinAssert(d3d12Object);
-
-        uint32_t bufferSize = 0;
-        return SUCCEEDED(d3d12Object->GetPrivateData(WKPDID_D3DDebugObjectName, &bufferSize, nullptr));
-    }
-
-    std::string GetD3D12ObjectDebugName(ID3D12Object* d3d12Object)
-    {
-        static const size_t maxDebugNameSize = 128;
-
-        BenzinAssert(d3d12Object);
-
-        std::string debugName;
-        debugName.resize_and_overwrite(maxDebugNameSize, [&](char* data, size_t size)
+        return std::visit(MakeVisitorMatch([](auto&& dxObject)
         {
-            auto alignedSize = (uint32_t)size;
+            constexpr size_t maxDebugNameSize = 128;
+            constexpr std::string_view defaultName = "Unnamed DxObject";
 
-            BenzinAssert(d3d12Object->GetPrivateData(WKPDID_D3DDebugObjectName, &alignedSize, data));
-            return alignedSize;
-        });
+            BenzinAssert(dxObject);
 
-        return debugName;
+            std::string debugName;
+            debugName.resize_and_overwrite(maxDebugNameSize, [&](char* data, size_t size) noexcept -> size_t
+            {
+                auto alignedSize = (uint32_t)size;
+
+                if (SUCCEEDED(dxObject->GetPrivateData(WKPDID_D3DDebugObjectName, &alignedSize, data)))
+                {
+                    return alignedSize;
+                }
+
+                memcpy(data, defaultName.data(), defaultName.size());
+                return defaultName.size();
+            });
+
+            return debugName;
+        }), dxObjectVariant);
     }
 
-    void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, std::string_view debugName)
+    void SetDxObjectDebugName(DxObjectVariant dxObjectVariant, std::string_view debugName)
     {
         if (debugName.empty())
         {
             return;
         }
 
-        BenzinAssert(d3d12Object);
-        BenzinAssert(d3d12Object->SetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t)debugName.size(), debugName.data()));
-    }
-
-    void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, std::string_view debugName, uint32_t index)
-    {
-        SetD3D12ObjectDebugName(d3d12Object, std::format("{}{}", debugName, index));
-    }
-
-    D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType)
-    {
-        return D3D12_HEAP_PROPERTIES
+        std::visit(MakeVisitorMatch([&](auto&& dxObject)
         {
-            .Type = d3d12HeapType,
-            .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-            .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-            .CreationNodeMask = 1,
-            .VisibleNodeMask = 1,
-        };
+            BenzinAssert(dxObject);
+            BenzinEnsure(dxObject->SetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t)debugName.size(), debugName.data()));
+        }), dxObjectVariant);
+    }
+
+    void ReleaseDxObject(DxObjectVariant dxObjectVariant)
+    {
+        std::visit(MakeVisitorMatch([](auto&& dxObject)
+        {
+            if (dxObject == nullptr)
+            {
+                return;
+            }
+
+            const auto debugName = GetDxObjectDebugName(dxObject);
+            const uint32_t referenceCount = dxObject->Release();
+
+            if (referenceCount != 0)
+            {
+                BenzinWarning("Remaining reference count {}. DxObject '{}'", referenceCount, debugName);
+            }
+        }), dxObjectVariant);
     }
 
 } // namespace benzin

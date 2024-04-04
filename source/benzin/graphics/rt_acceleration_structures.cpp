@@ -2,6 +2,7 @@
 #include "benzin/graphics/rt_acceleration_structures.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 
 namespace benzin
@@ -61,10 +62,7 @@ namespace benzin
 
     static D3D12_RAYTRACING_GEOMETRY_DESC ToD3D12RaytracingGeometryDescVariant(const RtGeometryVariant& geometryVariant)
     {
-        return std::visit(VisitorMatch
-        {
-            [](auto&& geometry) { return ToD3D12RaytracingGeometryDesc(geometry); },
-        }, geometryVariant);
+        return std::visit(MakeVisitorMatch([](auto&& geometry) { return ToD3D12RaytracingGeometryDesc(geometry); }), geometryVariant);
     }
 
     static D3D12_RAYTRACING_INSTANCE_DESC ToD3D12RaytracingInstanceDesc(const TopLevelInstance& instance)
@@ -129,8 +127,8 @@ namespace benzin
 
         if (!creation.DebugName.empty())
         {
-            SetD3D12ObjectDebugName(m_Buffer.GetD3D12Resource(), std::format("{}_{}AccelerationStructure", creation.DebugName, asTypeName));
-            SetD3D12ObjectDebugName(m_ScratchResource.GetD3D12Resource(), std::format("{}_{}ScratchResource", creation.DebugName, asTypeName));
+            SetDxObjectDebugName(m_Buffer.GetD3D12Resource(), std::format("{}_{}AccelerationStructure", creation.DebugName, asTypeName));
+            SetDxObjectDebugName(m_ScratchResource.GetD3D12Resource(), std::format("{}_{}ScratchResource", creation.DebugName, asTypeName));
         }
     }
 
@@ -143,7 +141,7 @@ namespace benzin
         const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS d3d12BuildInputs
         {
             .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-            // .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+            .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
             .NumDescs = (uint32_t)m_D3D12GeometryDescs.size(),
             .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
             .pGeometryDescs = m_D3D12GeometryDescs.data(),
@@ -173,7 +171,7 @@ namespace benzin
 
         if (!creation.DebugName.empty())
         {
-            SetD3D12ObjectDebugName(m_InstanceBuffer.GetD3D12Resource(), std::format("{}_InstanceBuffer", creation.DebugName));
+            SetDxObjectDebugName(m_InstanceBuffer.GetD3D12Resource(), std::format("{}_InstanceBuffer", creation.DebugName));
         }
 
         const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS d3d12BuildInputs

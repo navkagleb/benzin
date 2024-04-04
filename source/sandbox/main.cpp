@@ -4,18 +4,16 @@
 #include <benzin/core/command_line_args.hpp>
 #include <benzin/core/entry_point.hpp>
 #include <benzin/core/imgui_layer.hpp>
-#include <benzin/core/layer_stack.hpp>
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/system/key_event.hpp>
 #include <benzin/system/window.hpp>
 #include <benzin/utility/debug_utils.hpp>
 
 #include "scene_layer.hpp"
-#include "rt_hello_triangle_layer.hpp"
-#include "rt_procedural_geometry_layer.hpp"
 
 namespace sandbox
 {
@@ -74,18 +72,21 @@ namespace sandbox
             benzin::MakeUniquePtr(m_Device, *m_Backend);
             benzin::MakeUniquePtr(m_SwapChain, *m_MainWindow, *m_Backend, *m_Device);
 
-            const benzin::GraphicsRefs graphicsRefs
-            {
-                .WindowRef = *m_MainWindow,
-                .BackendRef = *m_Backend,
-                .DeviceRef = *m_Device,
-                .SwapChainRef = *m_SwapChain,
-            };
-
             BeginFrame();
             {
-                m_ImGuiLayer = m_LayerStack.PushOverlay<benzin::ImGuiLayer>(graphicsRefs);
-                m_SceneLayer = m_LayerStack.Push<SceneLayer>(graphicsRefs);
+                const benzin::GraphicsRefs graphicsRefs
+                {
+                    .WindowRef = *m_MainWindow,
+                    .BackendRef = *m_Backend,
+                    .DeviceRef = *m_Device,
+                    .SwapChainRef = *m_SwapChain,
+                };
+
+                benzin::MakeUniquePtr(m_ImGuiLayer, graphicsRefs);
+                benzin::MakeUniquePtr(m_SceneLayer, graphicsRefs);
+
+                m_Layers.push_back(m_ImGuiLayer.get());
+                m_Layers.push_back(m_SceneLayer.get());
             }
             EndFrame();
         }
@@ -129,7 +130,7 @@ namespace sandbox
             dispatcher.Dispatch(&Application::OnWindowResized, *this);
             dispatcher.Dispatch(&Application::OnKeyPressed, *this);
 
-            for (auto& layer : m_LayerStack | std::views::reverse)
+            for (auto& layer : m_Layers | std::views::reverse)
             {
                 if (event.IsHandled())
                 {
@@ -144,7 +145,7 @@ namespace sandbox
         {
             BenzinGrabTimeOnScopeExit(m_Timings[benzin::ApplicationTiming::BeginFrame]);
 
-            m_Device->GetGraphicsCommandQueue().ResetCommandList(m_Device->GetActiveFrameIndex());
+            m_Device->GetGraphicsCommandQueue().OnFrameBegin();
         }
 
         void ProcessFrame()
@@ -155,7 +156,7 @@ namespace sandbox
 
             m_FrameRateCounter.OnUpdate(m_FrameTimerRef.GetDeltaTime());
 
-            for (auto& layer : m_LayerStack)
+            for (auto& layer : m_Layers)
             {
                 layer->OnUpdate();
                 layer->OnRender();
@@ -165,7 +166,7 @@ namespace sandbox
             {
                 m_ImGuiLayer->Begin();
                 {
-                    for (auto& layer : m_LayerStack)
+                    for (auto& layer : m_Layers)
                     {
                         layer->OnImGuiRender();
                     }
@@ -182,12 +183,13 @@ namespace sandbox
             const auto oldSwapChainWidth = m_SwapChain->GetViewportWidth();
             const auto oldSwapChainHeight = m_SwapChain->GetViewportHeight();
 
-            m_Device->GetGraphicsCommandQueue().SumbitCommandList();
+            m_Device->GetGpuTimer().ResolveTimestamps(m_Device->GetCpuFrameIndex());
+            m_Device->GetGraphicsCommandQueue().OnFrameEnd();
             m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
 
             if (m_PendingWidth != 0 && m_PendingHeight != 0 && (m_PendingWidth != oldSwapChainWidth || m_PendingHeight != oldSwapChainHeight))
             {
-                for (auto& layer : m_LayerStack)
+                for (auto& layer : m_Layers)
                 {
                     layer->OnResize(m_PendingWidth, m_PendingHeight);
                 }
@@ -252,9 +254,9 @@ namespace sandbox
         benzin::TickTimer& m_FrameTimerRef;
         bool& m_IsUpdateStatsIntervalPassedRef;
 
-        benzin::LayerStack m_LayerStack;
-        benzin::ImGuiLayer* m_ImGuiLayer = nullptr;
-        SceneLayer* m_SceneLayer = nullptr;
+        std::unique_ptr<benzin::ImGuiLayer> m_ImGuiLayer;
+        std::unique_ptr<SceneLayer> m_SceneLayer;
+        std::list<benzin::Layer*> m_Layers;
 
         bool m_IsRunning = false;
         bool m_IsVerticalSyncEnabled = true;

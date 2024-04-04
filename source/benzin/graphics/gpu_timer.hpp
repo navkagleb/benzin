@@ -5,16 +5,8 @@
 namespace benzin
 {
 
-    class CommandList;
     class Device;
-
-    struct GpuTimerCreation
-    {
-        CommandList& CommandList;
-
-        uint64_t TimestampFrequency = 0; // Ticks per Second
-        uint32_t TimerCount = 0;
-    };
+    class GraphicsCommandList;
 
     class GpuTimer
     {
@@ -22,7 +14,7 @@ namespace benzin
         BenzinDefineNonCopyable(GpuTimer);
         BenzinDefineNonMoveable(GpuTimer);
 
-        GpuTimer(Device& device, const GpuTimerCreation& creation);
+        GpuTimer(Device& device, uint32_t timerCount);
         ~GpuTimer();
 
     public:
@@ -41,7 +33,7 @@ namespace benzin
         const float m_InverseFrequency = 0.0f;
         const uint32_t m_ReadbackLatency = g_InvalidIndex<uint32_t>;
 
-        CommandList& m_ProfiledCommandList;
+        GraphicsCommandList& m_ProfiledCommandList;
 
         ID3D12QueryHeap* m_D3D12TimestampQueryHeap = nullptr;
         Buffer m_ReadbackBuffer;
@@ -55,8 +47,8 @@ namespace benzin
     public:
         BenzinDefineNonConstructable(GpuEventTracker);
 
-        static void BeginEvent(const CommandList& commandList, std::string_view eventName);
-        static void EndEvent(const CommandList& commandList);
+        static void BeginEvent(const GraphicsCommandList& commandList, std::string_view eventName);
+        static void EndEvent(const GraphicsCommandList& commandList);
     };
 
 } // namespace benzin

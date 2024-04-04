@@ -2,6 +2,7 @@
 #include "benzin/graphics/pipeline_state.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/render_states.hpp"
 #include "benzin/graphics/shaders.hpp"
@@ -171,8 +172,8 @@ namespace benzin
 
         memcpy(d3d12GraphicsPipelineStateDesc.RTVFormats, creation.RenderTargetFormats.data(), creation.RenderTargetFormats.size() * sizeof(GraphicsFormat));
 
-        BenzinAssert(device.GetD3D12Device()->CreateGraphicsPipelineState(&d3d12GraphicsPipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
-        SetD3D12ObjectDebugName(m_D3D12PipelineState, creation.DebugName);
+        BenzinEnsure(device.GetD3D12Device()->CreateGraphicsPipelineState(&d3d12GraphicsPipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+        SetDxObjectDebugName(m_D3D12PipelineState, creation.DebugName);
     }
 
     PipelineState::PipelineState(Device& device, const ComputePipelineStateCreation& creation)
@@ -195,13 +196,13 @@ namespace benzin
             .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
         };
 
-        BenzinAssert(device.GetD3D12Device()->CreateComputePipelineState(&d3d12ComputePipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
-        SetD3D12ObjectDebugName(m_D3D12PipelineState, creation.DebugName);
+        BenzinEnsure(device.GetD3D12Device()->CreateComputePipelineState(&d3d12ComputePipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+        SetDxObjectDebugName(m_D3D12PipelineState, creation.DebugName);
     }
 
     PipelineState::~PipelineState()
     {
-        SafeUnknownRelease(m_D3D12PipelineState);
+        BenzinSafeDxObjectRelease(m_D3D12PipelineState);
     }
 
 } // namespace benzin

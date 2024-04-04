@@ -9,14 +9,9 @@ namespace benzin
 
     static bool g_IsAllKeyEventsBlocked = false;
 
-    void Input::BlockKeyEvents()
+    void Input::SetAllKeyEventsBlocked(bool isBlocked)
     {
-        g_IsAllKeyEventsBlocked = true;
-    }
-
-    void Input::UnblockKeyEvents()
-    {
-        g_IsAllKeyEventsBlocked = false;
+        g_IsAllKeyEventsBlocked = isBlocked;
     }
 
     bool Input::IsMouseButtonPressed(MouseButton mouseButton)

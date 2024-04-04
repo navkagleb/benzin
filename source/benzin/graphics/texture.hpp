@@ -32,23 +32,23 @@ namespace benzin
 
     struct TextureSrv
     {
-        GraphicsFormat Format = GraphicsFormat::Unknown;
         bool IsCubeMap = false;
-        uint32_t MostDetailedMipIndex = 0;
-        uint32_t MipCount = 0xffffffff; // By default select all mips
+        GraphicsFormat Format = GraphicsFormat::Unknown;
         IndexRangeU16 DepthRange;
+        IndexRangeU16 MipRange{ 0, g_InvalidIndex<uint16_t> }; // By default select all mips
     };
 
     struct TextureUav
     {
         GraphicsFormat Format = GraphicsFormat::Unknown;
+        uint32_t MipIndex = 0;
         IndexRangeU16 DepthRange;
     };
 
     struct TextureRtv
     {
         GraphicsFormat Format = GraphicsFormat::Unknown;
-        IndexRangeU32 DepthRange;
+        IndexRangeU16 DepthRange;
     };
 
     class Texture : public Resource
@@ -67,6 +67,9 @@ namespace benzin
 
         uint32_t GetSizeInBytes() const override;
         uint32_t GetSubResourceCount() const;
+
+        uint32_t GetMipWidth(uint16_t mipIndex) const;
+        uint32_t GetMipHeight(uint16_t mipIndex) const;
 
         const Descriptor& GetSrv(const TextureSrv& textureSrv = {}) const;
         const Descriptor& GetUav(const TextureUav& textureUav = {}) const;

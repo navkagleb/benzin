@@ -13,7 +13,7 @@ namespace benzin
     class Descriptor;
     class Device;
 
-    template <typename ConstantsT>
+    template <typename>
     class ConstantBuffer;
 
     struct MeshInstanceComponent

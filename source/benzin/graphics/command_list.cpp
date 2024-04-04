@@ -3,6 +3,7 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/graphics/buffer.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/pipeline_state.hpp"
@@ -43,37 +44,35 @@ namespace benzin
 
     static D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrierVariant(const ResourceBarrierVariant& resourceBarrier)
     {
-        return std::visit(VisitorMatch
-        {
-            [](auto&& resourceBarrier) { return ToD3D12ResourceBarrier(resourceBarrier); },
-        }, resourceBarrier);
+        return std::visit(MakeVisitorMatch([](auto&& resourceBarrier) { return ToD3D12ResourceBarrier(resourceBarrier); }), resourceBarrier);
     };
 
-    // CommandList
-
-    CommandList::CommandList(Device& device, CommandListType commandListType)
+    GraphicsCommandList::GraphicsCommandList(Device& device)
     {
-        BenzinAssert(device.GetD3D12Device());
-
         ComPtr<ID3D12GraphicsCommandList1> d3d12GraphicsCommandList1;
-        BenzinAssert(device.GetD3D12Device()->CreateCommandList1(
+        BenzinEnsure(device.GetD3D12Device()->CreateCommandList1(
             0,
-            static_cast<D3D12_COMMAND_LIST_TYPE>(commandListType),
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
             D3D12_COMMAND_LIST_FLAG_NONE,
             IID_PPV_ARGS(&d3d12GraphicsCommandList1)
         ));
 
-        BenzinAssert(d3d12GraphicsCommandList1->QueryInterface(IID_PPV_ARGS(&m_D3D12GraphicsCommandList)));
-
-        SetD3D12ObjectDebugName(m_D3D12GraphicsCommandList, magic_enum::enum_name((D3D12_COMMAND_LIST_TYPE)commandListType));
+        BenzinEnsure(d3d12GraphicsCommandList1->QueryInterface(IID_PPV_ARGS(&m_D3D12GraphicsCommandList)));
+        SetDxObjectDebugName(m_D3D12GraphicsCommandList, "GraphicsCommandList");
     }
 
-    CommandList::~CommandList()
+    GraphicsCommandList::~GraphicsCommandList()
     {
-        SafeUnknownRelease(m_D3D12GraphicsCommandList);
+        BenzinSafeDxObjectRelease(m_D3D12GraphicsCommandList);
     }
 
-    void CommandList::SetResourceBarrier(const ResourceBarrierVariant& resourceBarrier)
+    void GraphicsCommandList::SetUploadBuffer(Buffer& uploadBuffer)
+    {
+        m_UploadBuffer = &uploadBuffer;
+        m_UploadBufferOffset = 0;
+    }
+
+    void GraphicsCommandList::SetResourceBarrier(const ResourceBarrierVariant& resourceBarrier)
     {
         const auto* transitionBarrier = std::get_if<TransitionBarrier>(&resourceBarrier);
 
@@ -91,7 +90,7 @@ namespace benzin
         }
     }
 
-    void CommandList::SetResourceBarriers(const std::vector<ResourceBarrierVariant>& resourceBarriers)
+    void GraphicsCommandList::SetResourceBarriers(const std::vector<ResourceBarrierVariant>& resourceBarriers)
     {
         const auto d3d12ResourceBarriers = resourceBarriers | std::views::transform(ToD3D12ResourceBarrierVariant) | std::ranges::to<std::vector>();
         m_D3D12GraphicsCommandList->ResourceBarrier((uint32_t)d3d12ResourceBarriers.size(), d3d12ResourceBarriers.data());
@@ -105,20 +104,12 @@ namespace benzin
         }
     }
 
-    void CommandList::CopyResource(Resource& to, Resource& from)
+    void GraphicsCommandList::CopyResource(Resource& to, Resource& from)
     {
         m_D3D12GraphicsCommandList->CopyResource(to.GetD3D12Resource(), from.GetD3D12Resource());
     }
 
-    // CopyCommandList
-
-    CopyCommandList::CopyCommandList(Device& device)
-        : CommandList{ device, CommandListType::Copy }
-    {}
-
-    CopyCommandList::~CopyCommandList() = default;
-
-    void CopyCommandList::UpdateBuffer(Buffer& buffer, std::span<const std::byte> data, size_t offsetInBytes)
+    void GraphicsCommandList::UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, size_t offsetInBytes)
     {
         BenzinAssert(buffer.GetD3D12Resource());
         BenzinAssert(!data.empty());
@@ -126,8 +117,8 @@ namespace benzin
         BenzinAssert(m_UploadBuffer->GetD3D12Resource());
 
         const size_t uploadBufferOffset = AllocateInUploadBuffer(data.size_bytes());
-        
-        const MemoryWriter writer{ m_UploadBuffer->GetMappedData(), m_UploadBuffer->GetSizeInBytes() };
+
+        const MemoryWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSizeInBytes() };
         writer.WriteBytes(data, uploadBufferOffset);
 
         SetResourceBarrier(TransitionBarrier{ buffer, ResourceState::CopyDestination });
@@ -141,7 +132,7 @@ namespace benzin
         SetResourceBarrier(TransitionBarrier{ buffer, ResourceState::Common });
     }
 
-    void CopyCommandList::UpdateTexture(Texture& texture, const std::vector<SubResourceData>& subResources)
+    void GraphicsCommandList::UploadToTexture(Texture& texture, const std::vector<SubResourceData>& subResources)
     {
         struct CopyableFootprints
         {
@@ -166,34 +157,32 @@ namespace benzin
 
         // Init CopyableFootprints and allocate memory in UploadBuffer
         {
-            uint64_t resourceSize = 0;
+            uint64_t resourceSizeInBytes = 0;
 
-            {
-                ComPtr<ID3D12Device> d3d12Device;
-                texture.GetD3D12Resource()->GetDevice(IID_PPV_ARGS(&d3d12Device));
+            ComPtr<ID3D12Device> d3d12Device;
+            BenzinEnsure(texture.GetD3D12Resource()->GetDevice(IID_PPV_ARGS(&d3d12Device)));
 
-                const D3D12_RESOURCE_DESC d3d12TextureDesc = texture.GetD3D12Resource()->GetDesc();
-                const size_t offset = AllocateInUploadBuffer(0, config::g_TextureAlignment);
+            const D3D12_RESOURCE_DESC d3d12TextureDesc = texture.GetD3D12Resource()->GetDesc();
+            const size_t offsetInBytes = AllocateInUploadBuffer(0, config::g_TextureAlignment);
 
-                d3d12Device->GetCopyableFootprints(
-                    &d3d12TextureDesc,
-                    firstSubresource,
-                    static_cast<uint32_t>(subResources.size()),
-                    offset,
-                    copyableFootprits.D3D12Layouts.data(),
-                    copyableFootprits.RowCounts.data(),
-                    copyableFootprits.RowSizes.data(),
-                    &resourceSize
-                );
-            }
+            d3d12Device->GetCopyableFootprints(
+                &d3d12TextureDesc,
+                firstSubresource,
+                (uint32_t)subResources.size(),
+                offsetInBytes,
+                copyableFootprits.D3D12Layouts.data(),
+                copyableFootprits.RowCounts.data(),
+                copyableFootprits.RowSizes.data(),
+                &resourceSizeInBytes
+            );
 
-            AllocateInUploadBuffer(resourceSize, config::g_TextureAlignment);
+            AllocateInUploadBuffer(resourceSizeInBytes, config::g_TextureAlignment);
         }
 
         // Copying subresources to UploadBuffer
         // Go down to rows and copy it
         {
-            const MemoryWriter writer{ m_UploadBuffer->GetMappedData(), m_UploadBuffer->GetSizeInBytes() };
+            const MemoryWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSizeInBytes() };
 
             for (size_t subResourceIndex = 0; subResourceIndex < subResources.size(); ++subResourceIndex)
             {
@@ -228,7 +217,6 @@ namespace benzin
             }
         }
 
-
         // Copy to texture
         for (size_t i = 0; i < subResources.size(); ++i)
         {
@@ -236,7 +224,7 @@ namespace benzin
             {
                 .pResource = texture.GetD3D12Resource(),
                 .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-                .SubresourceIndex = static_cast<uint32_t>(i + firstSubresource),
+                .SubresourceIndex = (uint32_t)i + firstSubresource,
             };
 
             const D3D12_TEXTURE_COPY_LOCATION source
@@ -252,7 +240,7 @@ namespace benzin
         }
     }
 
-    void CopyCommandList::UpdateTextureTopMip(Texture& texture, std::span<const std::byte> data)
+    void GraphicsCommandList::UploadToTextureTopMip(Texture& texture, std::span<const std::byte> data)
     {
         const uint32_t pixelSizeInBytes = GetFormatSizeInBytes(texture.GetFormat());
 
@@ -264,78 +252,8 @@ namespace benzin
         };
 
         BenzinAssert(topMipSubResource.SlicePitch == data.size_bytes());
-        UpdateTexture(texture, { topMipSubResource });
+        UploadToTexture(texture, { topMipSubResource });
     }
-
-    void CopyCommandList::CreateUploadBuffer(Device& device, uint32_t size)
-    {
-        MakeUniquePtr(m_UploadBuffer, device, BufferCreation
-        {
-            .ElementCount = size,
-            .Flags = BufferFlag::UploadBuffer,
-        });
-    }
-
-    void CopyCommandList::ReleaseUploadBuffer()
-    {
-        m_UploadBuffer.release();
-        m_UploadBufferOffset = 0;
-    }
-
-    size_t CopyCommandList::AllocateInUploadBuffer(size_t size, size_t alignment)
-    {
-        const size_t alignedOffset = alignment == 0 ? m_UploadBufferOffset : AlignAbove(m_UploadBufferOffset, alignment);
-
-        m_UploadBufferOffset = alignedOffset + size;
-        BenzinAssert(alignedOffset + size <= m_UploadBuffer->GetSizeInBytes());
-
-        return alignedOffset;
-    }
-
-    // ComputeCommandList
-
-    ComputeCommandList::ComputeCommandList(Device& device)
-        : CommandList{ device, CommandListType::Compute }
-    {}
-
-    void ComputeCommandList::SetRootConstant(uint32_t rootIndex, uint32_t value)
-    {
-        const uint32_t rootParameterIndex = 0;
-
-        m_D3D12GraphicsCommandList->SetComputeRoot32BitConstant(rootParameterIndex, value, rootIndex);
-    }
-
-    void ComputeCommandList::SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
-    {
-        BenzinAssert(viewDescriptor.IsGpuValid());
-
-        SetRootConstant(rootIndex, viewDescriptor.GetHeapIndex());
-    }
-
-    void ComputeCommandList::SetPipelineState(const PipelineState& pso)
-    {
-        BenzinAssert(pso.GetD3D12PipelineState());
-
-        m_D3D12GraphicsCommandList->SetPipelineState(pso.GetD3D12PipelineState());
-    }
-
-    void ComputeCommandList::Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadPerGroupCount)
-    {
-        BenzinAssert(threadPerGroupCount.x != 0);
-        BenzinAssert(threadPerGroupCount.y != 0);
-        BenzinAssert(threadPerGroupCount.z != 0);
-
-        const uint32_t groupCountX = AlignThreadGroupCount(dimension.x, threadPerGroupCount.x);
-        const uint32_t groupCountY = AlignThreadGroupCount(dimension.y, threadPerGroupCount.y);
-        const uint32_t groupCountZ = AlignThreadGroupCount(dimension.z, threadPerGroupCount.z);
-
-        m_D3D12GraphicsCommandList->Dispatch(groupCountX, groupCountY, groupCountZ);
-    }
-
-    // GraphicsCommandList
-	GraphicsCommandList::GraphicsCommandList(Device& device)
-        : CommandList{ device, CommandListType::Direct }
-    {}
 
     void GraphicsCommandList::SetRootConstant(uint32_t rootIndex, uint32_t value)
     {
@@ -363,7 +281,7 @@ namespace benzin
     {
         BenzinAssert(primitiveTopology != PrimitiveTopology::Unknown);
 
-        m_D3D12GraphicsCommandList->IASetPrimitiveTopology(static_cast<D3D12_PRIMITIVE_TOPOLOGY>(primitiveTopology));
+        m_D3D12GraphicsCommandList->IASetPrimitiveTopology((D3D12_PRIMITIVE_TOPOLOGY)primitiveTopology);
     }
 
     void GraphicsCommandList::SetViewport(const Viewport& viewport)
@@ -375,10 +293,10 @@ namespace benzin
     {
         const D3D12_RECT d3d12Rect
         {
-            .left = static_cast<LONG>(scissorRect.X),
-            .top = static_cast<LONG>(scissorRect.Y),
-            .right = static_cast<LONG>(scissorRect.X + scissorRect.Width),
-            .bottom = static_cast<LONG>(scissorRect.Y + scissorRect.Height),
+            .left = (LONG)scissorRect.X,
+            .top = (LONG)scissorRect.Y,
+            .right = (LONG)(scissorRect.X + scissorRect.Width),
+            .bottom = (LONG)(scissorRect.Y + scissorRect.Height),
         };
 
         m_D3D12GraphicsCommandList->RSSetScissorRects(1, &d3d12Rect);
@@ -479,6 +397,18 @@ namespace benzin
         };
 
         m_D3D12GraphicsCommandList->BuildRaytracingAccelerationStructure(&d3d12BuildAccelerationStructureDesc, 0, nullptr);
+    }
+
+    uint64_t GraphicsCommandList::AllocateInUploadBuffer(uint64_t sizeInBytes, uint64_t alignmentInBytes)
+    {
+        BenzinEnsure(m_UploadBuffer != nullptr);
+
+        const uint64_t alignedOffsetInBytes = alignmentInBytes == 0 ? m_UploadBufferOffset : AlignAbove(m_UploadBufferOffset, alignmentInBytes);
+
+        m_UploadBufferOffset = alignedOffsetInBytes + sizeInBytes;
+        BenzinEnsure(m_UploadBufferOffset <= m_UploadBuffer->GetSizeInBytes());
+
+        return alignedOffsetInBytes;
     }
 
 } // namespace benzin

@@ -32,7 +32,16 @@ namespace benzin
     };
 
     template <typename... Fs>
-    VisitorMatch(Fs...) -> VisitorMatch<Fs...>;
+    auto MakeVisitorMatch(Fs... lambdas)
+    {
+        return VisitorMatch<Fs...>{ lambdas... };
+    }
+
+    template <typename T>
+    auto ToSingleSpan(const T& value)
+    {
+        return std::span{ &value, 1 };
+    }
 
     template <std::unsigned_integral T>
     struct IndexRange

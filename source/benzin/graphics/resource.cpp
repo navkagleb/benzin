@@ -2,6 +2,8 @@
 #include "benzin/graphics/resource.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
+#include "benzin/graphics/device.hpp"
 
 namespace benzin
 {
@@ -16,10 +18,9 @@ namespace benzin
         {
             m_Device.GetDescriptorManager().FreeDescriptor(descriptor);
         }
-
         m_ViewDescriptors.clear();
 
-        SafeUnknownRelease(m_D3D12Resource);
+        BenzinSafeDxObjectRelease(m_D3D12Resource);
     }
 
     uint32_t Resource::GetAllocationSizeInBytes() const

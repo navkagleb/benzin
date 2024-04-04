@@ -2,6 +2,9 @@
 #include "benzin/graphics/texture.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/graphics/common.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
+#include "benzin/graphics/device.hpp"
 
 namespace benzin
 {
@@ -104,14 +107,16 @@ namespace benzin
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
         };
 
+        const auto mipCount = IsValidIndex(textureSrv.MipRange.Count) ? textureSrv.MipRange.Count : g_InvalidIndex<uint32_t>;
+
         const bool isArrayTexture = textureSrv.DepthRange.Count > 1;
         if (!isArrayTexture)
         {
             d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
             d3d12SrvDesc.Texture2D = D3D12_TEX2D_SRV
             {
-                .MostDetailedMip = textureSrv.MostDetailedMipIndex,
-                .MipLevels = textureSrv.MipCount,
+                .MostDetailedMip = textureSrv.MipRange.StartIndex,
+                .MipLevels = mipCount,
                 .PlaneSlice = 0,
                 .ResourceMinLODClamp = 0.0f,
             };
@@ -121,8 +126,8 @@ namespace benzin
             d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
             d3d12SrvDesc.TextureCube = D3D12_TEXCUBE_SRV
             {
-                .MostDetailedMip = textureSrv.MostDetailedMipIndex,
-                .MipLevels = textureSrv.MipCount,
+                .MostDetailedMip = textureSrv.MipRange.StartIndex,
+                .MipLevels = mipCount,
                 .ResourceMinLODClamp = 0.0f,
             };
         }
@@ -131,8 +136,8 @@ namespace benzin
             d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
             d3d12SrvDesc.Texture2DArray = D3D12_TEX2D_ARRAY_SRV
             {
-                .MostDetailedMip = textureSrv.MostDetailedMipIndex,
-                .MipLevels = textureSrv.MipCount,
+                .MostDetailedMip = textureSrv.MipRange.StartIndex,
+                .MipLevels = mipCount,
                 .FirstArraySlice = textureSrv.DepthRange.StartIndex,
                 .ArraySize = textureSrv.DepthRange.Count,
                 .PlaneSlice = 0,
@@ -153,7 +158,7 @@ namespace benzin
             d3d12UavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
             d3d12UavDesc.Texture2D = D3D12_TEX2D_UAV
             {
-                .MipSlice = 0,
+                .MipSlice = textureUav.MipIndex,
                 .PlaneSlice = 0,
             };
         }
@@ -162,7 +167,7 @@ namespace benzin
             d3d12UavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
             d3d12UavDesc.Texture2DArray = D3D12_TEX2D_ARRAY_UAV
             {
-                .MipSlice = 0,
+                .MipSlice = textureUav.MipIndex,
                 .FirstArraySlice = textureUav.DepthRange.StartIndex,
                 .ArraySize = textureUav.DepthRange.Count,
                 .PlaneSlice = 0,
@@ -201,13 +206,23 @@ namespace benzin
         return d3d12RtvDesc;
     }
 
+    static DirectX::XMUINT3 GetMipDimensions(const DirectX::XMUINT3& sourceDimensions, uint16_t mipIndex)
+    {
+        return DirectX::XMUINT3
+        {
+            std::max(1u, sourceDimensions.x >> mipIndex),
+            std::max(1u, sourceDimensions.y >> mipIndex),
+            std::max(1u, sourceDimensions.z >> mipIndex),
+        };
+    }
+
     //
 
     Texture::Texture(Device& device, const TextureCreation& creation)
         : Resource{ device }
     {
         CreateD3D12Resource(creation, m_Device, m_D3D12Resource);
-        SetD3D12ObjectDebugName(m_D3D12Resource, creation.DebugName);
+        SetDxObjectDebugName(m_D3D12Resource, creation.DebugName);
 
         m_IsCubeMap = creation.IsCubeMap;
         m_Format = creation.Format;
@@ -262,10 +277,22 @@ namespace benzin
         return m_MipCount * m_Depth * m_Device.GetPlaneCountFromFormat(m_Format);
     }
 
+    uint32_t Texture::GetMipWidth(uint16_t mipIndex) const
+    {
+        return GetMipDimensions({ m_Width, m_Height, m_Depth }, mipIndex).x;
+    }
+
+    uint32_t Texture::GetMipHeight(uint16_t mipIndex) const
+    {
+        return GetMipDimensions({ m_Width, m_Height, m_Depth }, mipIndex).y;
+    }
+
     const Descriptor& Texture::GetSrv(const TextureSrv& textureSrv) const
     {
         BenzinAssert(m_D3D12Resource);
         BenzinAssert(textureSrv.DepthRange.Count < m_Depth);
+
+        // #TODO: Validation for 'TextureSrv::MipRange'
 
         auto validatedSrv = textureSrv;
         validatedSrv.Format = textureSrv.Format != GraphicsFormat::Unknown ? textureSrv.Format : m_Format;
@@ -372,10 +399,10 @@ struct std::hash<benzin::TextureSrv>
         size_t hash = baseHash;
         hash = benzin::HashCombine(hash, textureSrv.Format);
         hash = benzin::HashCombine(hash, textureSrv.IsCubeMap);
-        hash = benzin::HashCombine(hash, textureSrv.MostDetailedMipIndex);
-        hash = benzin::HashCombine(hash, textureSrv.MipCount);
         hash = benzin::HashCombine(hash, textureSrv.DepthRange.StartIndex);
         hash = benzin::HashCombine(hash, textureSrv.DepthRange.Count);
+        hash = benzin::HashCombine(hash, textureSrv.MipRange.StartIndex);
+        hash = benzin::HashCombine(hash, textureSrv.MipRange.Count);
 
         return hash;
     }
@@ -390,6 +417,7 @@ struct std::hash<benzin::TextureUav>
 
         size_t hash = baseHash;
         hash = benzin::HashCombine(hash, textureUav.Format);
+        hash = benzin::HashCombine(hash, textureUav.MipIndex);
         hash = benzin::HashCombine(hash, textureUav.DepthRange.StartIndex);
         hash = benzin::HashCombine(hash, textureUav.DepthRange.Count);
 

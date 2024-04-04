@@ -56,6 +56,17 @@ namespace joint
     struct FullScreenDebugConstants
     {
         uint OutputType;
+        uint ViewDepthMipIndex;
+        float MinViewDepth;
+        float MaxViewDepth;
+    };
+
+    struct MipGenerationConstants
+    {
+        float2 InvDispatchDimensions;
+        uint IsSourceWidthOdd;
+        uint IsSourceHeightOdd;
+        uint DestinationMipCount;
     };
 
 } // namespace joint

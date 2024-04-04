@@ -10,8 +10,8 @@ namespace benzin::config
     constexpr std::wstring_view g_ComputeShaderTarget = L"cs_6_6";
     constexpr std::wstring_view g_ShaderLibraryTarget = L"lib_6_6";
 
-    constexpr uint32_t g_MaxRenderTargetViewDescriptorCount = 1'000'000;
-    constexpr uint32_t g_MaxDepthStencilViewDescriptorCount = 1'000'000;
+    constexpr uint32_t g_MaxRtvDescriptorCount = 1'000'000;
+    constexpr uint32_t g_MaxDsvDescriptorCount = 1'000'000;
     constexpr uint32_t g_MaxResourceDescriptorCount = 1'000'000;
     constexpr uint32_t g_MaxSamplerDescriptorCount = D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
 

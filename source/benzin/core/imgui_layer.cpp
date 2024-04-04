@@ -37,8 +37,8 @@ namespace benzin
 
         m_FontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
 
-        BenzinAssert(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
-        BenzinAssert(ImGui_ImplDX12_Init(
+        BenzinEnsure(ImGui_ImplWin32_Init(m_Window.GetWin64Window()));
+        BenzinEnsure(ImGui_ImplDX12_Init(
             m_Device.GetD3D12Device(),
             CommandLineArgs::GetFrameInFlightCount(),
             (DXGI_FORMAT)CommandLineArgs::GetBackBufferFormat(),

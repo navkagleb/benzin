@@ -52,14 +52,14 @@ namespace benzin
             {
                 if (LOWORD(wparam) == WA_INACTIVE)
                 {
-                    Input::BlockKeyEvents();
+                    Input::SetAllKeyEventsBlocked(true);
 
                     window->m_IsFocused = false;
                     window->CreateAndPushEvent<WindowUnfocusedEvent>();
                 }
                 else
                 {
-                    Input::UnblockKeyEvents();
+                    Input::SetAllKeyEventsBlocked(false);
 
                     window->m_IsFocused = true;
                     window->CreateAndPushEvent<WindowFocusedEvent>();

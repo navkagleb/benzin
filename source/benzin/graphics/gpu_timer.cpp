@@ -7,7 +7,8 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/command_list.hpp"
+#include "benzin/graphics/command_queue.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/utility/time_utils.hpp"
 
@@ -16,15 +17,15 @@ namespace benzin
 
     // GpuTimer
 
-    GpuTimer::GpuTimer(Device& device, const GpuTimerCreation& creation)
-        : m_InverseFrequency{ 1.0f / creation.TimestampFrequency }
+    GpuTimer::GpuTimer(Device& device, uint32_t timerCount)
+        : m_InverseFrequency{ 1.0f / device.GetGraphicsCommandQueue().GetTimestampFrequency() }
         , m_ReadbackLatency{ CommandLineArgs::GetFrameInFlightCount() + 1 }
-        , m_ProfiledCommandList{ creation.CommandList }
+        , m_ProfiledCommandList{ device.GetGraphicsCommandQueue().GetCommandList() }
         , m_ReadbackBuffer{ device }
     {
-        BenzinAssert(creation.TimerCount < 32);
+        BenzinAssert(timerCount <= 32);
 
-        m_Timestamps.resize(creation.TimerCount * 2);
+        m_Timestamps.resize(timerCount * 2);
 
         const D3D12_QUERY_HEAP_DESC d3d12QueryHeapDesc
         {
@@ -33,8 +34,8 @@ namespace benzin
             .NodeMask = 0,
         };
 
-        BenzinAssert(device.GetD3D12Device()->CreateQueryHeap(&d3d12QueryHeapDesc, IID_PPV_ARGS(&m_D3D12TimestampQueryHeap)));
-        SetD3D12ObjectDebugName(m_D3D12TimestampQueryHeap, "GpuTimer_TimestampQueryHeap");
+        BenzinEnsure(device.GetD3D12Device()->CreateQueryHeap(&d3d12QueryHeapDesc, IID_PPV_ARGS(&m_D3D12TimestampQueryHeap)));
+        SetDxObjectDebugName(m_D3D12TimestampQueryHeap, "GpuTimer_TimestampQueryHeap");
 
         m_ReadbackBuffer.Create(BufferCreation
         {
@@ -48,7 +49,7 @@ namespace benzin
 
     GpuTimer::~GpuTimer()
     {
-        SafeUnknownRelease(m_D3D12TimestampQueryHeap);
+        BenzinSafeDxObjectRelease(m_D3D12TimestampQueryHeap);
     }
 
     void GpuTimer::BeginProfile(uint32_t timerIndex)
@@ -109,7 +110,7 @@ namespace benzin
         };
 
         uint64_t* timestampData = nullptr;
-        BenzinAssert(m_ReadbackBuffer.GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&timestampData)));
+        BenzinEnsure(m_ReadbackBuffer.GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&timestampData)));
         BenzinExecuteOnScopeExit([this] { m_ReadbackBuffer.GetD3D12Resource()->Unmap(0, nullptr); });
 
         memcpy(m_Timestamps.data(), timestampData, m_ReadbackBuffer.GetElementSize());
@@ -137,12 +138,12 @@ namespace benzin
 
     // GpuEventTracker
 
-    void GpuEventTracker::BeginEvent(const CommandList& commandList, std::string_view eventName)
+    void GpuEventTracker::BeginEvent(const GraphicsCommandList& commandList, std::string_view eventName)
     {
         PIXBeginEvent(commandList.GetD3D12GraphicsCommandList(), PIX_COLOR_DEFAULT, "%s", eventName.data());
     }
 
-    void GpuEventTracker::EndEvent(const CommandList& commandList)
+    void GpuEventTracker::EndEvent(const GraphicsCommandList& commandList)
     {
         PIXEndEvent(commandList.GetD3D12GraphicsCommandList());
     }

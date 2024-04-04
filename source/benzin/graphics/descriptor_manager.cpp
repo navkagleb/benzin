@@ -2,6 +2,7 @@
 #include "benzin/graphics/descriptor_manager.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 
 namespace benzin
@@ -55,8 +56,10 @@ namespace benzin
         uint32_t m_DescriptorSize = 0;
         uint32_t m_DescriptorCount = 0;
 
+        std::pmr::unsynchronized_pool_resource m_DescriptorPool;
+
         uint32_t m_Marker = 0;
-        std::vector<uint32_t> m_FreeIndices;
+        std::list<uint32_t> m_FreeIndices;
 
 #if BENZIN_IS_DEBUG_BUILD
         uint32_t m_AllocatedIndexCount = 0;
@@ -75,8 +78,8 @@ namespace benzin
             .NodeMask = 0,
         };
 
-        BenzinAssert(device.GetD3D12Device()->CreateDescriptorHeap(&d3d12DescriptorHeapDesc, IID_PPV_ARGS(&m_D3D12DescriptorHeap)));
-        SetD3D12ObjectDebugName(m_D3D12DescriptorHeap, magic_enum::enum_name(d3d12DescriptorHeapType));
+        BenzinEnsure(device.GetD3D12Device()->CreateDescriptorHeap(&d3d12DescriptorHeapDesc, IID_PPV_ARGS(&m_D3D12DescriptorHeap)));
+        SetDxObjectDebugName(m_D3D12DescriptorHeap, magic_enum::enum_name(d3d12DescriptorHeapType));
 
         m_DescriptorSize = device.GetD3D12Device()->GetDescriptorHandleIncrementSize(d3d12DescriptorHeapDesc.Type);
     }
@@ -87,7 +90,7 @@ namespace benzin
         BenzinAssert(m_AllocatedIndexCount == 0);
 #endif
 
-        SafeUnknownRelease(m_D3D12DescriptorHeap);
+        BenzinSafeDxObjectRelease(m_D3D12DescriptorHeap);
     }
 
     Descriptor DescriptorHeap::AllocateDescriptor(DescriptorType type)
@@ -155,8 +158,8 @@ namespace benzin
             MakeUniquePtr(m_DescriptorHeaps[magic_enum::enum_integer(d3d12DescriptorHeapType)], device, d3d12DescriptorHeapType, descriptorCount);
         };
 
-        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, config::g_MaxRenderTargetViewDescriptorCount);
-        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, config::g_MaxDepthStencilViewDescriptorCount);
+        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, config::g_MaxRtvDescriptorCount);
+        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, config::g_MaxDsvDescriptorCount);
         createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, config::g_MaxResourceDescriptorCount);
         createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, config::g_MaxSamplerDescriptorCount);
     }

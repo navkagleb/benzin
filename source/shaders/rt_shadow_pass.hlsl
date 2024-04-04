@@ -140,18 +140,18 @@ void RayGen()
 {
     const joint::FrameConstants frameConstants = FetchFrameConstants();
     const joint::CameraConstants cameraConstants = FetchCurrentCameraConstants();
-    const joint::RtShadowPassConstants passConstants = FetchConstantBuffer<joint::RtShadowPassConstants>(joint::RtShadowPassRc_PassConstantBuffer);
+    const joint::RtShadowPassConstants passConstants = FetchConstantBuffer<joint::RtShadowPassConstants>(joint::RtShadowRc_PassConstantBuffer);
 
-    Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_GBufferWorldNormalTexture)];
-    Texture2D<float> depthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_GBufferDepthTexture)];
+    Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_GBufferWorldNormalTexture)];
+    Texture2D<float> depthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_GBufferDepthTexture)];
 
-    StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_PointLightBuffer)];
+    StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_PointLightBuffer)];
 
-    RWTexture2D<float> visibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowPassRc_VisiblityBuffer)];
+    RWTexture2D<float> visibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_VisiblityBuffer)];
 
     const float2 uv = GetRayUv();
-    const float3 worldNormal = worldNormalTexture.SampleLevel(g_PointWrapSampler, uv, 0).xyz;
-    const float depth = depthBuffer.SampleLevel(g_PointWrapSampler, uv, 0);
+    const float3 worldNormal = worldNormalTexture.SampleLevel(g_PointClampSampler, uv, 0).xyz;
+    const float depth = depthBuffer.SampleLevel(g_PointClampSampler, uv, 0);
 
     const joint::PointLight pointLight = pointLightBuffer[0];
 

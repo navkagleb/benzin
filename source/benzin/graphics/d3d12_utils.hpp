@@ -5,6 +5,8 @@
 namespace benzin
 {
 
+    D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType);
+
 #if BENZIN_IS_DEBUG_BUILD
     enum class D3D12BreakReasonFlag
     {
@@ -24,24 +26,15 @@ namespace benzin
     void EnableDred();
     std::string GetDredMessages(ID3D12Device* d3d12Device);
 
-    bool HasD3D12ObjectDebugName(ID3D12Object* d3d12Object);
-    std::string GetD3D12ObjectDebugName(ID3D12Object* d3d12Object);
-    void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, std::string_view debugName);
-    void SetD3D12ObjectDebugName(ID3D12Object* d3d12Object, std::string_view debugName, uint32_t index);
+    using DxObjectVariant = std::variant<IDXGIObject*, ID3D12Object*>;
 
-    D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType);
+    std::string GetDxObjectDebugName(DxObjectVariant dxObjectVariant);
+    void SetDxObjectDebugName(DxObjectVariant dxObjectVariant, std::string_view debugName);
 
-    template <std::derived_from<IUnknown> T>
-    void SafeUnknownRelease(T*& unknown)
-    {
-        if (!unknown)
-        {
-            return;
-        }
-
-        const uint32_t referenceCount = unknown->Release();
-        // BenzinAssert(referenceCount == 0);
-        unknown = nullptr;
-    }
+    void ReleaseDxObject(DxObjectVariant dxObjectVariant);
 
 } // namespace benzin
+
+#define BenzinSafeDxObjectRelease(unknownPtr) \
+    benzin::ReleaseDxObject(unknownPtr); \
+    unknownPtr = nullptr

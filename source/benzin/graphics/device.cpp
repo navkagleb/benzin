@@ -5,8 +5,8 @@
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
-#include "benzin/graphics/pipeline_state.hpp"
-#include "benzin/graphics/rt_acceleration_structures.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
+#include "benzin/graphics/gpu_timer.hpp"
 #include "benzin/graphics/sampler.hpp"
 
 namespace benzin
@@ -68,9 +68,10 @@ namespace benzin
     {
         EnableDred();
 
-        ComPtr<ID3D12Device> d3d12Device;
-        BenzinEnsure(::D3D12CreateDevice(backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&d3d12Device)));
-        BenzinEnsure(d3d12Device->QueryInterface(&m_D3D12Device));
+        ComPtr<ID3D12Device> dx12Device;
+        BenzinEnsure(::D3D12CreateDevice(backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&dx12Device)));
+        BenzinEnsure(dx12Device->QueryInterface(&m_D3D12Device));
+        SetDxObjectDebugName(m_D3D12Device, "MainDevice");
 
 #if BENZIN_IS_DEBUG_BUILD
         EnableD3D12DebugBreakOn(m_D3D12Device, true, D3D12BreakReasonFlag::Warning | D3D12BreakReasonFlag::Error | D3D12BreakReasonFlag::Corruption);
@@ -96,14 +97,17 @@ namespace benzin
         CreateBindlessRootSignature();
 
         MakeUniquePtr(m_DescriptorManager, *this);
-        MakeUniquePtr(m_CopyCommandQueue, *this);
-        MakeUniquePtr(m_ComputeCommandQueue, *this);
         MakeUniquePtr(m_GraphicsCommandQueue, *this);
+        MakeUniquePtr(m_GpuTimer, *this, 32); // #TODO: Add more timers
     }
 
     Device::~Device()
     {
-        SafeUnknownRelease(m_D3D12BindlessRootSignature);
+        m_DescriptorManager.reset();
+        m_GraphicsCommandQueue.reset();
+        m_GpuTimer.reset();
+
+        BenzinSafeDxObjectRelease(m_D3D12BindlessRootSignature);
 
 #if BENZIN_IS_DEBUG_BUILD
         EnableD3D12DebugBreakOn(m_D3D12Device, false, { D3D12BreakReasonFlag::Warning });
@@ -111,7 +115,7 @@ namespace benzin
 #endif
 
         // TODO: There is reference count due to implicit heaps of resources
-        SafeUnknownRelease(m_D3D12Device);
+        BenzinSafeDxObjectRelease(m_D3D12Device);
     }
 
     uint8_t Device::GetPlaneCountFromFormat(GraphicsFormat format) const
@@ -264,7 +268,7 @@ namespace benzin
             IID_PPV_ARGS(&m_D3D12BindlessRootSignature)
         ));
 
-        SetD3D12ObjectDebugName(m_D3D12BindlessRootSignature, "BindlessRootSignature");
+        SetDxObjectDebugName(m_D3D12BindlessRootSignature, "BindlessRootSignature");
     }
 
 } // namespace benzin

@@ -3,6 +3,8 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
+#include "benzin/graphics/device.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
 
 namespace benzin
 {
@@ -104,7 +106,7 @@ namespace benzin
             &d3d12HeapProperties,
             D3D12_HEAP_FLAG_NONE,
             &d3d12ResourceDesc,
-            static_cast<D3D12_RESOURCE_STATES>(bufferCreation.InitialState),
+            (D3D12_RESOURCE_STATES)bufferCreation.InitialState,
             nullptr,
             IID_PPV_ARGS(&d3d12Resource)
         ));
@@ -201,7 +203,7 @@ namespace benzin
 
     Buffer::~Buffer()
     {
-        if (m_MappedData != nullptr)
+        if (m_CpuMappedData != nullptr)
         {
             m_D3D12Resource->Unmap(0, nullptr);
         }
@@ -220,7 +222,7 @@ namespace benzin
         BenzinAssert(!m_D3D12Resource);
 
         CreateD3D12Resource(creation, m_Device, m_D3D12Resource);
-        SetD3D12ObjectDebugName(m_D3D12Resource, creation.DebugName);
+        SetDxObjectDebugName(m_D3D12Resource, creation.DebugName);
 
         m_CurrentState = creation.InitialState; // 'InitialState' can updated in 'CreateD3D12Resource'
         m_ElementSize = creation.ElementSize;
@@ -230,14 +232,14 @@ namespace benzin
         if (creation.Flags.IsAnySet(BufferFlag::UploadBuffer | BufferFlag::ConstantBuffer))
         {
             const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // Writing only range
-            BenzinAssert(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_MappedData)));
+            BenzinEnsure(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_CpuMappedData)));
         }
 
         if (!creation.InitialData.empty())
         {
             BenzinAssert(creation.Flags.IsAnySet(BufferFlag::UploadBuffer | BufferFlag::ConstantBuffer));
 
-            const MemoryWriter writer{ GetMappedData(), GetSizeInBytes() };
+            const MemoryWriter writer{ m_CpuMappedData, GetSizeInBytes() };
             writer.WriteBytes(creation.InitialData);
         }
     }

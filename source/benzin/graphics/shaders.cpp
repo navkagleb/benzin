@@ -130,10 +130,10 @@ namespace benzin
     public:
         ShaderCompiler()
         {
-            BenzinAssert(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils)));
-            BenzinAssert(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler)));
+            BenzinEnsure(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils)));
+            BenzinEnsure(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler)));
 
-            BenzinAssert(m_DxcUtils->CreateDefaultIncludeHandler(&m_DxcIncludeHandler));
+            BenzinEnsure(m_DxcUtils->CreateDefaultIncludeHandler(&m_DxcIncludeHandler));
         }
 
     public:
@@ -155,7 +155,7 @@ namespace benzin
             BenzinAssert(m_DxcCompiler->Compile(
                 &dxcSourceBuffer,
                 (LPCWSTR*)compileArgs.data(),
-                static_cast<UINT32>(compileArgs.size()),
+                (uint32_t)compileArgs.size(),
                 m_DxcIncludeHandler.Get(),
                 IID_PPV_ARGS(&dxcResult)
             ));

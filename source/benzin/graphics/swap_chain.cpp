@@ -1,9 +1,11 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/swap_chain.hpp"
 
+#include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/fence.hpp"
 #include "benzin/graphics/texture.hpp"
@@ -51,6 +53,7 @@ namespace benzin
             &dxgiSwapChain1
         ));
         BenzinEnsure(dxgiSwapChain1->QueryInterface(IID_PPV_ARGS(&m_DxgiSwapChain)));
+        SetDxObjectDebugName(m_DxgiSwapChain, "MainSwapChain");
 
         // Disable fullscreen using Alt + Enter
         BenzinEnsure(backend.GetDxgiFactory()->MakeWindowAssociation(window.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
@@ -63,11 +66,8 @@ namespace benzin
 
     SwapChain::~SwapChain()
     {
-        m_Device.GetGraphicsCommandQueue().SumbitCommandList();
-        m_Device.GetGraphicsCommandQueue().Flush();
-
         ReleaseBackBuffers();
-        SafeUnknownRelease(m_DxgiSwapChain);
+        BenzinSafeDxObjectRelease(m_DxgiSwapChain);
     }
 
     Texture& SwapChain::GetCurrentBackBuffer()
@@ -148,7 +148,7 @@ namespace benzin
             BenzinEnsure(m_DxgiSwapChain->GetBuffer((uint32_t)i, IID_PPV_ARGS(&d3d12BackBuffer))); // Increases reference count
             
             MakeUniquePtr(backBuffer, m_Device, d3d12BackBuffer);
-            SetD3D12ObjectDebugName(d3d12BackBuffer, "SwapChainBackBuffer", (uint32_t)i);
+            SetDxObjectDebugName(d3d12BackBuffer, std::format("SwapChainBackBuffer{}", i));
         }
     }
 

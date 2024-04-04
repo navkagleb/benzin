@@ -11,8 +11,9 @@ namespace benzin
     class Input
     {
     public:
-        static void BlockKeyEvents();
-        static void UnblockKeyEvents();
+        BenzinDefineNonConstructable(Input);
+
+        static void SetAllKeyEventsBlocked(bool isBlocked);
 
         template <typename T = int32_t>
         static T GetMouseX(const Window& window) { return (T)GetMousePosition(window).x; }

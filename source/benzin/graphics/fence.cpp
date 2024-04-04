@@ -2,6 +2,7 @@
 #include "benzin/graphics/fence.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 
 namespace benzin
@@ -10,7 +11,7 @@ namespace benzin
     Fence::Fence(Device& device, std::string_view debugName)
     {
         BenzinEnsure(device.GetD3D12Device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_D3D12Fence)));
-        SetD3D12ObjectDebugName(m_D3D12Fence, debugName);
+        SetDxObjectDebugName(m_D3D12Fence, debugName);
 
         m_WaitEvent = ::CreateEvent(nullptr, false, false, nullptr);
         BenzinEnsure(m_WaitEvent != INVALID_HANDLE_VALUE);
@@ -20,7 +21,7 @@ namespace benzin
     {
         ::CloseHandle(m_WaitEvent);
 
-        SafeUnknownRelease(m_D3D12Fence);
+        BenzinSafeDxObjectRelease(m_D3D12Fence);
     }
 
     uint64_t Fence::GetCompletedValue() const

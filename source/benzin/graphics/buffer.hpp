@@ -37,7 +37,7 @@ namespace benzin
     public:
         friend class RtAccelerationStructure;
 
-        template <typename ConstantsT>
+        template <typename>
         friend class ConstantBuffer;
 
     public:
@@ -53,7 +53,7 @@ namespace benzin
 
         uint32_t GetSizeInBytes() const override { return m_AlignedElementSize * m_ElementCount; }
 
-        auto* GetMappedData() const { return m_MappedData; }
+        auto* GetCpuMappedData() const { return m_CpuMappedData; }
 
         uint64_t GetGpuVirtualAddress(uint32_t elementIndex = 0) const;
 
@@ -74,7 +74,7 @@ namespace benzin
         uint32_t m_AlignedElementSize = 0; // For ConstantBufferView
         uint32_t m_ElementCount = 0;
 
-        std::byte* m_MappedData = nullptr;
+        std::byte* m_CpuMappedData = nullptr;
     };
 
     template <typename ConstantsT>
@@ -92,7 +92,7 @@ namespace benzin
                 .Flags = BufferFlag::ConstantBuffer,
             });
 
-            m_MappedDataWriter = MemoryWriter{ m_Buffer.GetMappedData(), m_Buffer.GetSizeInBytes() };
+            m_MappedDataWriter = MemoryWriter{ m_Buffer.GetCpuMappedData(), m_Buffer.GetSizeInBytes() };
         }
 
         const Descriptor& GetActiveCbv() const

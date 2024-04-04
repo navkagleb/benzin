@@ -5,6 +5,7 @@
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/adl_wrapper.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/nvapi_wrapper.hpp"
 
 namespace benzin
@@ -23,7 +24,6 @@ namespace benzin
     }
 
     Backend::Backend()
-        : m_MainAdapterIndex{ CommandLineArgs::GetAdapterIndex() }
     {
 #if BENZIN_IS_DEBUG_BUILD
         EnableD3D12DebugLayer();
@@ -34,7 +34,18 @@ namespace benzin
 
         CreateDxgiFactory();
         GatherDxgiAdapters();
-        QueryDxgiMainAdapter();
+
+        m_MainAdapterIndex = CommandLineArgs::GetAdapterIndex();
+        BenzinEnsure(m_MainAdapterIndex < m_DxgiAdapters.size());
+
+        const auto& mainAdapterInfo = GetMainAdapterInfo();
+        BenzinTrace("----------------------------------------------");
+        BenzinTrace("Main Adapter:");
+        BenzinTrace("{}", m_AdaptersInfo[m_MainAdapterIndex].Name);
+        BenzinTrace("DedicatedVideoMemory: {:.2f} mb, {:.2f} gb", BytesToFloatMb(mainAdapterInfo.TotalDedicatedVramInBytes), BytesToFloatGb(mainAdapterInfo.TotalDedicatedVramInBytes));
+        BenzinTrace("DedicatedSystemMemory: {:.2f} mb, {:.2f} gb", BytesToFloatMb(mainAdapterInfo.TotalDedicatedRamInBytes), BytesToFloatGb(mainAdapterInfo.TotalDedicatedRamInBytes));
+        BenzinTrace("SharedSystemMemory: {:.2f} mb, {:.2f} gb", BytesToFloatMb(mainAdapterInfo.TotalSharedRamInBytes), BytesToFloatGb(mainAdapterInfo.TotalSharedRamInBytes));
+        BenzinTrace("----------------------------------------------");
     }
 
     Backend::~Backend()
@@ -44,22 +55,17 @@ namespace benzin
 
         for (auto& dxgiAdapter : m_DxgiAdapters)
         {
-            SafeUnknownRelease(dxgiAdapter);
+            BenzinSafeDxObjectRelease(dxgiAdapter);
         }
+        m_DxgiAdapters.clear();
 
-        SafeUnknownRelease(m_MainDxgiAdapter);
-        SafeUnknownRelease(m_DxgiFactory);
+        BenzinSafeDxObjectRelease(m_DxgiFactory);
     }
 
     const AdapterInfo& Backend::GetAdaptersInfo(uint32_t adapterIndex) const
     {
         BenzinAssert(adapterIndex < m_AdaptersInfo.size());
         return m_AdaptersInfo[adapterIndex];
-    }
-
-    const AdapterInfo& Backend::GetMainAdapterInfo() const
-    {
-        return GetAdaptersInfo(m_MainAdapterIndex);
     }
 
     AdapterMemoryInfo Backend::GetAdapterMemoryInfo(uint32_t adapterIndex) const
@@ -103,11 +109,6 @@ namespace benzin
         };
     }
 
-    AdapterMemoryInfo Backend::GetMainAdapterMemoryInfo() const
-    {
-        return GetAdapterMemoryInfo(m_MainAdapterIndex);
-    }
-
     void Backend::CreateDxgiFactory()
     {
         const uint32_t dxgiFactoryFlags = BENZIN_IS_DEBUG_BUILD ? DXGI_CREATE_FACTORY_DEBUG : 0;
@@ -115,6 +116,7 @@ namespace benzin
         ComPtr<IDXGIFactory2> dxgiFactory2;
         BenzinEnsure(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&dxgiFactory2)));
         BenzinEnsure(dxgiFactory2->QueryInterface(IID_PPV_ARGS(&m_DxgiFactory)));
+        SetDxObjectDebugName(m_DxgiFactory, "MainFactory");
     }
 
     void Backend::GatherDxgiAdapters()
@@ -157,31 +159,13 @@ namespace benzin
                 dxgiAdapterDesc.Revision
             );
 
-            BenzinEnsure(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&m_MainDxgiAdapter)));
-
             IDXGIAdapter3* dxgiAdapter3 = nullptr;
             BenzinEnsure(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&dxgiAdapter3)));
+            SetDxObjectDebugName(dxgiAdapter3, std::format("Adapter: {}", adapterInfo.Name));
 
             m_DxgiAdapters.push_back(dxgiAdapter3);
             m_AdaptersInfo.push_back(adapterInfo);
         }
-    }
-
-    void Backend::QueryDxgiMainAdapter()
-    {
-        BenzinAssert(m_MainAdapterIndex < m_DxgiAdapters.size());
-
-        auto* dxgiAdapter = m_DxgiAdapters[m_MainAdapterIndex];
-        BenzinEnsure(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&m_MainDxgiAdapter)));
-
-        const auto& mainAdapterInfo = m_AdaptersInfo[m_MainAdapterIndex];
-        BenzinTrace("----------------------------------------------");
-        BenzinTrace("Main Adapter:");
-        BenzinTrace("{}", m_AdaptersInfo[m_MainAdapterIndex].Name);
-        BenzinTrace("DedicatedVideoMemory: {:.2f} mb, {:.2f} gb", BytesToFloatMb(mainAdapterInfo.TotalDedicatedVramInBytes), BytesToFloatGb(mainAdapterInfo.TotalDedicatedVramInBytes));
-        BenzinTrace("DedicatedSystemMemory: {:.2f} mb, {:.2f} gb", BytesToFloatMb(mainAdapterInfo.TotalDedicatedRamInBytes), BytesToFloatGb(mainAdapterInfo.TotalDedicatedRamInBytes));
-        BenzinTrace("SharedSystemMemory: {:.2f} mb, {:.2f} gb", BytesToFloatMb(mainAdapterInfo.TotalSharedRamInBytes), BytesToFloatGb(mainAdapterInfo.TotalSharedRamInBytes));
-        BenzinTrace("----------------------------------------------");
     }
 
 } // namespace benzin

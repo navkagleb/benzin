@@ -1,14 +1,11 @@
 #pragma once
 
-#include "benzin/graphics/common.hpp"
-
 namespace benzin
 {
 
     class Backend;
-    class ComputeCommandQueue;
-    class CopyCommandQueue;
     class DescriptorManager;
+    class GpuTimer;
     class GraphicsCommandQueue;
 
     class Device
@@ -17,22 +14,19 @@ namespace benzin
         friend class SwapChain;
 
     public:
-        BenzinDefineNonCopyable(Device);
-        BenzinDefineNonMoveable(Device);
-
-    public:
         explicit Device(const Backend& backend);
         ~Device();
+
+        BenzinDefineNonCopyable(Device);
+        BenzinDefineNonMoveable(Device);
 
     public:
         auto* GetD3D12Device() const { return m_D3D12Device; }
         auto* GetD3D12BindlessRootSignature() const { return m_D3D12BindlessRootSignature; }
 
         auto& GetDescriptorManager() { return *m_DescriptorManager; }
-
-        auto& GetCopyCommandQueue() { return *m_CopyCommandQueue; }
-        auto& GetComputeCommandQueue() { return *m_ComputeCommandQueue; }
         auto& GetGraphicsCommandQueue() { return *m_GraphicsCommandQueue; }
+        auto& GetGpuTimer() const { return *m_GpuTimer; }
 
         auto GetCpuFrameIndex() const { return m_CpuFrameIndex; }
         auto GetGpuFrameIndex() const { return m_GpuFrameIndex; }
@@ -40,7 +34,6 @@ namespace benzin
 
         auto IsGpuUploadHeapsSupported() const { return m_IsGpuUploadHeapsSupported; }
 
-    public:
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
     private:
@@ -54,10 +47,8 @@ namespace benzin
         ID3D12RootSignature* m_D3D12BindlessRootSignature = nullptr;
 
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
-
-        std::unique_ptr<CopyCommandQueue> m_CopyCommandQueue;
-        std::unique_ptr<ComputeCommandQueue> m_ComputeCommandQueue;
         std::unique_ptr<GraphicsCommandQueue> m_GraphicsCommandQueue;
+        std::unique_ptr<GpuTimer> m_GpuTimer;
 
         uint64_t m_CpuFrameIndex = 0;
         uint64_t m_GpuFrameIndex = 0;

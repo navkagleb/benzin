@@ -16,7 +16,7 @@ namespace benzin
     class BottomLevelAccelerationStructure;
     class TopLevelAccelerationStructure;
 
-    template <typename ConstantsT>
+    template <typename>
     class ConstantBuffer;
 
     struct MeshCollection

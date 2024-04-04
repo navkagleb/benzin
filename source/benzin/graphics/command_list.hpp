@@ -1,6 +1,7 @@
 #pragma once
 
 #include "benzin/graphics/common.hpp"
+#include "benzin/graphics/resource.hpp"
 
 namespace benzin
 {
@@ -8,7 +9,6 @@ namespace benzin
     class Buffer;
     class Descriptor;
     class PipelineState;
-    class Resource;
     class RtAccelerationStructure;
     class Texture;
 
@@ -27,95 +27,40 @@ namespace benzin
 
     using ResourceBarrierVariant = std::variant<TransitionBarrier, UnorderedAccessBarrier>;
 
-    enum class CommandListType : std::underlying_type_t<D3D12_COMMAND_LIST_TYPE>
-    {
-        Copy = D3D12_COMMAND_LIST_TYPE_COPY,
-        Compute = D3D12_COMMAND_LIST_TYPE_COMPUTE,
-        Direct = D3D12_COMMAND_LIST_TYPE_DIRECT,
-    };
-
-    class CommandList
+    class GraphicsCommandList
     {
     public:
-        BenzinDefineNonCopyable(CommandList);
-        BenzinDefineNonMoveable(CommandList);
+        explicit GraphicsCommandList(Device& device);
+        ~GraphicsCommandList();
+
+        BenzinDefineNonCopyable(GraphicsCommandList);
+        BenzinDefineNonMoveable(GraphicsCommandList);
 
     public:
-        CommandList(Device& device, CommandListType commandListType);
-        virtual ~CommandList();
+        auto* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList; }
 
-    public:
-        ID3D12GraphicsCommandList4* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList; }
+        void SetUploadBuffer(Buffer& uploadBuffer);
 
-    public:
         void SetResourceBarrier(const ResourceBarrierVariant& resourceBarrier);
         void SetResourceBarriers(const std::vector<ResourceBarrierVariant>& resourceBarriers);
 
         void CopyResource(Resource& to, Resource& from);
 
-    protected:
-        // ID3D12GraphicsCommandList4 supports RT
-        ID3D12GraphicsCommandList4* m_D3D12GraphicsCommandList = nullptr;
-    };
+        void UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, size_t offsetInBytes);
 
-    class CopyCommandList : public CommandList
-    {
-    public:
-        friend class CopyCommandQueue;
-
-    public:
-        CopyCommandList() = default;
-        explicit CopyCommandList(Device& device);
-        ~CopyCommandList(); // For forward declaration of 'm_UploadBuffer'
-
-    public:
         template <typename T>
-        void UpdateBuffer(Buffer& buffer, std::span<const T> data, size_t startElement = 0) { UpdateBuffer(buffer, std::as_bytes(data), startElement * sizeof(T)); }
-        void UpdateBuffer(Buffer& buffer, std::span<const std::byte> data, size_t offsetInBytes);
+        void UploadToBuffer(Buffer& buffer, std::span<const T> elements, size_t offsetElement = 0)
+        {
+            UploadToBuffer(buffer, std::as_bytes(elements), offsetElement * sizeof(T));
+        }
 
-        void UpdateTexture(Texture& texture, const std::vector<SubResourceData>& subResources);
+        void UploadToTexture(Texture& texture, const std::vector<SubResourceData>& subResources);
+        void UploadToTextureTopMip(Texture& texture, std::span<const std::byte> data);
 
-        void UpdateTextureTopMip(Texture& texture, std::span<const std::byte> data);
-
-    private:
-        bool IsValid() const { return m_UploadBuffer == nullptr; }
-
-        void CreateUploadBuffer(Device& device, uint32_t size);
-        void ReleaseUploadBuffer();
-
-        size_t AllocateInUploadBuffer(size_t size, size_t alignment = 0);
-
-    private:
-        std::unique_ptr<Buffer> m_UploadBuffer;
-        size_t m_UploadBufferOffset = 0;
-    };
-
-    class ComputeCommandList : public CommandList
-    {
-    public:
-        ComputeCommandList() = default;
-        explicit ComputeCommandList(Device& device);
-
-    public:
         void SetRootConstant(uint32_t rootIndex, uint32_t value);
         void SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
 
-        void SetPipelineState(const PipelineState& pso); // TODO: Remove duplicate ComputeCommandList
-
-        void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadPerGroupCount);
-    };
-
-	class GraphicsCommandList : public CommandList
-	{
-    public:
-        GraphicsCommandList() = default;
-        explicit GraphicsCommandList(Device& device);
-
-	public:
-        void SetRootConstant(uint32_t rootIndex, uint32_t value);
-        void SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
-
-        void SetPipelineState(const PipelineState& pso); // TODO: Remove duplicate ComputeCommandList
+        void SetPipelineState(const PipelineState& pso);
 
         void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
 
@@ -130,9 +75,18 @@ namespace benzin
         void DrawVertexed(uint32_t vertexCount, uint32_t instanceCount = 1);
         void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount = 1);
 
-        void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadPerGroupCount); // #TODO: Duplication
+        void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadPerGroupCount);
 
         void BuildRayTracingAccelerationStructure(const RtAccelerationStructure& accelerationStructure);
-	};
+
+    private:
+        uint64_t AllocateInUploadBuffer(uint64_t sizeInBytes, uint64_t alignmentInBytes = 0);
+
+    private:
+        ID3D12GraphicsCommandList4* m_D3D12GraphicsCommandList = nullptr;
+
+        Buffer* m_UploadBuffer = nullptr;
+        uint64_t m_UploadBufferOffset = 0;
+    };
 
 } // namespace benzin

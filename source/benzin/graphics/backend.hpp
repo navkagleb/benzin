@@ -51,26 +51,23 @@ namespace benzin
 
     public:
         auto* GetDxgiFactory() const { return m_DxgiFactory; }
-        auto* GetDxgiMainAdapter() const { return m_MainDxgiAdapter; }
+        auto* GetDxgiMainAdapter() const { return m_DxgiAdapters[m_MainAdapterIndex]; }
 
         auto GetMainAdapterIndex() const { return m_MainAdapterIndex; }
         auto GetAdapterCount() const { return m_DxgiAdapters.size(); }
 
         const AdapterInfo& GetAdaptersInfo(uint32_t adapterIndex) const;
-        const AdapterInfo& GetMainAdapterInfo() const;
-
         AdapterMemoryInfo GetAdapterMemoryInfo(uint32_t adapterIndex) const;
-        AdapterMemoryInfo GetMainAdapterMemoryInfo() const;
+
+        const auto& GetMainAdapterInfo() const { return GetAdaptersInfo(m_MainAdapterIndex); }
+        auto GetMainAdapterMemoryInfo() const { return GetAdapterMemoryInfo(m_MainAdapterIndex); }
 
     private:
         void CreateDxgiFactory();
-
         void GatherDxgiAdapters();
-        void QueryDxgiMainAdapter();
 
     private:
         IDXGIFactory7* m_DxgiFactory = nullptr;
-        IDXGIAdapter4* m_MainDxgiAdapter = nullptr;
 
         std::vector<IDXGIAdapter3*> m_DxgiAdapters;
         std::vector<AdapterInfo> m_AdaptersInfo;

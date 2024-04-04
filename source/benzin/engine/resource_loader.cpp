@@ -65,12 +65,12 @@ namespace benzin
             }
 
             {
-                BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseNodes", outMeshCollection.DebugName);
+                // BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseNodes", outMeshCollection.DebugName);
                 ParseNodes(outMeshCollection);
             }
 
             {
-                BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseMaterials", outMeshCollection.DebugName);
+                // BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseMaterials", outMeshCollection.DebugName);
                 ParseMaterials(outMeshCollection);
             }
 
@@ -469,10 +469,14 @@ namespace benzin
         BenzinAssert(std::filesystem::exists(filePath));
         BenzinAssert(filePath.extension() == ".hdr");
 
+        const std::string narrowFilePath = filePath.string();
+
+        BenzinAssert(stbi_is_hdr(narrowFilePath.c_str()) != 0);
+
         int width;
         int height;
         const int componentCount = 4;
-        float* imageData = stbi_loadf(filePath.string().c_str(), &width, &height, nullptr, componentCount);
+        float* imageData = stbi_loadf(narrowFilePath.c_str(), &width, &height, nullptr, componentCount);
 
         if (!imageData)
         {
