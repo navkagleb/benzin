@@ -12,6 +12,7 @@ namespace benzin
     class Descriptor;
     class Device;
     class Texture;
+    class TickTimer;
 
     class BottomLevelAccelerationStructure;
     class TopLevelAccelerationStructure;
@@ -70,21 +71,24 @@ namespace benzin
         auto& GetCamera() { return m_Camera; }
         const auto& GetCamera() const { return m_Camera; }
 
+        const auto& GetCurrentCameraConstants() const { return m_CurrentCameraConstants; }
+        const auto& GetPreviousCameraConstants() const { return *m_PreviousCameraConstants; }
+
         const auto& GetStats() const { return m_Stats; }
 
         const auto& GetMeshCollection(uint32_t index) const { return m_MeshUnions[index].Collection; };
         const auto& GetMeshCollectionGpuStorage(uint32_t index) const { return m_MeshUnions[index].GpuStorage; }
 
         const TopLevelAccelerationStructure& GetActiveTopLevelAs() const;
-
-        const Descriptor& GetCameraConstantBufferActiveCbv() const;
         const Descriptor& GetPointLightBufferStructuredSrv() const;
 
         auto& GetEntityRegistry() { return m_EntityRegistry; }
         const auto& GetEntityRegistry() const { return m_EntityRegistry; }
 
+        bool HasMeshes() const { return !m_MeshUnions.empty(); }
+
     public:
-        void OnUpdate(std::chrono::microseconds dt);
+        void OnUpdate(const TickTimer& tickTimer);
 
         uint32_t PushMeshCollection(MeshCollectionResource&& meshCollectionResource);
 
@@ -93,7 +97,7 @@ namespace benzin
         void BuildTopLevelAccelerationStructure();
 
     private:
-        std::unique_ptr<TopLevelAccelerationStructure>& GetActiveTopLevelAs();
+        std::unique_ptr<TopLevelAccelerationStructure>& GetActiveTopLevelAsPtr();
 
         void OnTransformComponentConstuct(entt::registry& registry, entt::entity entityHandle);
 
@@ -114,6 +118,8 @@ namespace benzin
 
         PerspectiveProjection m_PerspectiveProjection;
         Camera m_Camera{ m_PerspectiveProjection };
+        joint::CameraConstants m_CurrentCameraConstants;
+        std::optional<joint::CameraConstants> m_PreviousCameraConstants;
 
         std::vector<MeshUnion> m_MeshUnions;
 
@@ -121,9 +127,6 @@ namespace benzin
 
         std::vector<std::vector<std::byte>> m_TexturesData;
         std::vector<std::unique_ptr<Texture>> m_Textures;
-
-        std::optional<joint::CameraConstants> m_PreviousCameraConstants;
-        std::unique_ptr<ConstantBuffer<joint::DoubleFrameCameraConstants>> m_CameraConstantBuffer;
 
         std::unique_ptr<Buffer> m_PointLightBuffer;
 

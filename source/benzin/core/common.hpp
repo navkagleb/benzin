@@ -3,6 +3,12 @@
 namespace benzin
 {
 
+    template <typename T>
+    concept EnumConcept = std::is_enum_v<T>;
+
+    template <typename T, EnumConcept EnumT>
+    using EnumArray = std::array<T, magic_enum::enum_count<EnumT>()>;
+
     template <typename UniquePtrT, typename... Args>
     void MakeUniquePtr(UniquePtrT& outUniquePtr, Args&&... args)
     {
@@ -108,19 +114,19 @@ namespace benzin
         const T m_Lambda;
     };
 
-
-    template <typename From, size_t Size, typename Transformator, size_t... Is>
-    auto TransformArray(const std::array<From, Size>& from, Transformator&& transformator, std::index_sequence<Is...>)
-    {
-        return std::to_array({ transformator(from[Is])... });
-    }
-
-    template <typename From, size_t Size, typename Transformator, size_t... Is>
-    auto TransformArray(const std::array<From, Size>& from, Transformator&& transformator)
-    {
-        return TransformArray(from, transformator, std::make_index_sequence<Size>());
-    }
-
 } // namespace benzin
 
 #define BenzinExecuteOnScopeExit(lambda) const benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }
+
+template <benzin::EnumConcept T>
+struct IsUnaryPlusEnabledForEnum : std::false_type {};
+
+template <benzin::EnumConcept T> requires IsUnaryPlusEnabledForEnum<T>::value
+constexpr auto operator+(T enumValue)
+{
+    return magic_enum::enum_integer(enumValue);
+}
+
+#define BenzinEnableUnaryPlusForEnum(EnumT) \
+    template <> \
+    struct IsUnaryPlusEnabledForEnum<EnumT> : std::true_type {};

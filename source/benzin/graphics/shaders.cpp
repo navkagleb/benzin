@@ -152,7 +152,7 @@ namespace benzin
             const std::vector<const wchar_t*> compileArgs = GetCompileArgs(paths, args);
 
             ComPtr<IDxcResult> dxcResult;
-            BenzinAssert(m_DxcCompiler->Compile(
+            BenzinEnsure(m_DxcCompiler->Compile(
                 &dxcSourceBuffer,
                 (LPCWSTR*)compileArgs.data(),
                 (uint32_t)compileArgs.size(),
@@ -180,7 +180,7 @@ namespace benzin
         {
             uint32_t codePage = CP_UTF8;
             ComPtr<IDxcBlobEncoding> dxcShaderSource;
-            BenzinAssert(m_DxcUtils->LoadFile(filePath.c_str(), &codePage, &dxcShaderSource));
+            BenzinEnsure(m_DxcUtils->LoadFile(filePath.c_str(), &codePage, &dxcShaderSource));
 
             return dxcShaderSource;
         }
@@ -191,7 +191,7 @@ namespace benzin
 
             {
                 ComPtr<IDxcBlob> dxcBinaryBlob;
-                BenzinAssert(dxcResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&dxcBinaryBlob), nullptr));
+                BenzinEnsure(dxcResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&dxcBinaryBlob), nullptr));
                 BenzinAssert(dxcBinaryBlob.Get() && dxcBinaryBlob->GetBufferSize() != 0);
 
                 const auto* data = reinterpret_cast<const std::byte*>(dxcBinaryBlob->GetBufferPointer());
@@ -203,7 +203,7 @@ namespace benzin
             if constexpr (config::g_IsShaderSymbolsEnabled)
             {
                 ComPtr<IDxcBlob> dxcDebugBlob;
-                BenzinAssert(dxcResult->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&dxcDebugBlob), nullptr));
+                BenzinEnsure(dxcResult->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&dxcDebugBlob), nullptr));
                 BenzinAssert(dxcDebugBlob.Get() && dxcDebugBlob->GetBufferPointer());
 
                 const auto* data = reinterpret_cast<const std::byte*>(dxcDebugBlob->GetBufferPointer());

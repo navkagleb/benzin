@@ -35,4 +35,8 @@ namespace benzin
 
     float ToFloatSec(std::chrono::microseconds us) { return ToFloatMs(us) / 1000.0f; }
 
+    float ToFloatSec(std::chrono::milliseconds ms) { return ms.count() / 1000.0f; }
+
+    float MsToSec(float ms) { return ms / 1000.0f; }
+
 } // namespace benzin

@@ -255,7 +255,7 @@ namespace benzin
                 .hIconSm = ::LoadIcon(nullptr, IDI_APPLICATION),
             };
 
-            BenzinAssert(::RegisterClassEx(&registerClass) != 0);
+            BenzinEnsure(::RegisterClassEx(&registerClass) != 0);
         }
 
         ~RegisterManager()
@@ -287,7 +287,7 @@ namespace benzin
             .bottom = (LONG)m_Height,
         };
 
-        BenzinAssert(::AdjustWindowRect(&windowBounds, style, false) != 0);
+        BenzinEnsure(::AdjustWindowRect(&windowBounds, style, false) != 0);
 
         m_Win64Window = ::CreateWindow(
             g_RegisterManager.Name.data(),
@@ -303,7 +303,7 @@ namespace benzin
             (void*)this
         );
 
-        BenzinAssert(m_Win64Window);
+        BenzinEnsure(m_Win64Window);
 
         SetVisible(true);
 

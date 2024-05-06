@@ -6,7 +6,7 @@ namespace benzin
     class ScopedTimer
     {
     public:
-        using Callback = std::function<void(std::chrono::microseconds us)>;
+        using Callback = std::function<void(std::chrono::microseconds time)>;
 
     public:
         explicit ScopedTimer(Callback&& callback);
@@ -35,7 +35,7 @@ namespace benzin
     class ScopedGrabTimer : public ScopedTimer
     {
     public:
-        explicit ScopedGrabTimer(std::chrono::microseconds& outUS);
+        explicit ScopedGrabTimer(std::chrono::microseconds& outTime);
     };
 
     template <typename FunctionT>

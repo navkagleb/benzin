@@ -49,6 +49,7 @@ namespace benzin
     MeshData GenerateSphere(const SphereGeometryCreation& creation);
     MeshData GenerateGeosphere(const GeoSphereGeometryCreation& creation);
 
+    const MeshData& GetUnitBoxMesh();
     const MeshData& GetDefaultGridMesh();
     const MeshData& GetDefaultCyliderMesh();
     const MeshData& GetDefaultGeoSphereMesh();

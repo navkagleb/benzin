@@ -1,3 +1,6 @@
+#define RenderPassConstantsType joint::DeferredLightingPassConstants
+#include "unified_root_parameters.hlsli"
+
 #include "common.hlsli"
 #include "fullscreen_helper.hlsli"
 #include "gbuffer.hlsli"
@@ -59,27 +62,21 @@ UnpackedGBuffer FetchGBuffer(float2 uv)
     return UnpackGBuffer(packedGBuffer);
 }
 
-joint::DeferredLightingPassConstants FetchPassConstants()
+float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 {
-    ConstantBuffer<joint::DeferredLightingPassConstants> passConstants = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_PassConstantBuffer)];
-    return passConstants;
-}
-
-float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
-{
-    const float depth = FetchDepth(input.UV, GetRootConstant(joint::DeferredLightingPassRc_DepthStencilTexture));
-    if (depth == 1.0f)
+    const float depth = FetchDepth(input.Uv, GetRootConstant(joint::DeferredLightingPassRc_DepthStencilTexture));
+    if (depth == 1.0)
     {
         discard;
     }
 
-    const joint::CameraConstants cameraConstants = FetchCurrentCameraConstants();
-    const joint::DeferredLightingPassConstants passConstants = FetchPassConstants();
-    const UnpackedGBuffer gbuffer = FetchGBuffer(input.UV);
+    const UnpackedGBuffer gbuffer = FetchGBuffer(input.Uv);
 
     StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_PointLightBuffer)];
 
-    const float3 worldPosition = ReconstructWorldPositionFromDepth(input.UV, depth, cameraConstants.InverseProjection, cameraConstants.InverseView);
+    const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
+
+    const float3 worldPosition = ReconstructWorldPositionFromDepth(input.Uv, depth, cameraConstants.InverseProjection, cameraConstants.InverseView);
     const float3 worldViewDirection = normalize(cameraConstants.WorldPosition - worldPosition);
 
     PbrMaterial material;
@@ -94,22 +91,22 @@ float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
 
     {
         DirectionalLight sunLight;
-        sunLight.Color = passConstants.SunColor;
-        sunLight.Intensity = passConstants.SunIntensity;
-        sunLight.WorldDirection = passConstants.SunDirection;
+        sunLight.Color = g_PassConstants.SunColor;
+        sunLight.Intensity = g_PassConstants.SunIntensity;
+        sunLight.WorldDirection = g_PassConstants.SunDirection;
 
         directColor += GetLitColorForDirectionalLight(sunLight, material, worldViewDirection, gbuffer.WorldNormal);
     }
 
     {
-        for (uint i = 0; i < passConstants.ActivePointLightCount; ++i)
+        for (uint i = 0; i < g_PassConstants.ActivePointLightCount; ++i)
         {
             directColor += GetLitColorForPointLight(pointLightBuffer[i], material, worldPosition, worldViewDirection, gbuffer.WorldNormal);
         }
     }
     
     Texture2D<float> shadowVisiblityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_ShadowVisibilityBuffer)];
-    const float shadowVisiblity = shadowVisiblityBuffer.Sample(g_LinearWrapSampler, input.UV);
+    const float shadowVisiblity = shadowVisiblityBuffer.Sample(g_LinearWrapSampler, input.Uv);
 
     const float3 finalLitColor = ambientColor + gbuffer.Emissive + directColor * (1.0 - shadowVisiblity);
     return float4(saturate(finalLitColor), 1.0f);

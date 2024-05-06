@@ -32,6 +32,12 @@ namespace benzin
         std::span<const std::byte> InitialData;
     };
 
+    struct FormatBufferSrv
+    {
+        GraphicsFormat Format = GraphicsFormat::Unknown;
+        IndexRangeU32 ElementRange;
+    };
+
     class Buffer : public Resource
     {
     public:
@@ -59,7 +65,7 @@ namespace benzin
 
         void Create(const BufferCreation& creation);
 
-        const Descriptor& GetFormatSrv(GraphicsFormat format = GraphicsFormat::Unknown) const;
+        const Descriptor& GetFormatSrv(const FormatBufferSrv& formatSrv) const;
         const Descriptor& GetStructuredSrv(IndexRangeU32 elementRange = {}) const;
         const Descriptor& GetByteAddressSrv() const;
         const Descriptor& GetRtAsSrv() const;
@@ -70,6 +76,7 @@ namespace benzin
         Descriptor CreateSrv(const D3D12_SHADER_RESOURCE_VIEW_DESC& d3d12SrvDesc, ID3D12Resource* d3d12Resource) const;
 
     private:
+        GraphicsFormat m_Format = GraphicsFormat::Unknown;
         uint32_t m_ElementSize = 0;
         uint32_t m_AlignedElementSize = 0; // For ConstantBufferView
         uint32_t m_ElementCount = 0;
@@ -95,7 +102,12 @@ namespace benzin
             m_MappedDataWriter = MemoryWriter{ m_Buffer.GetCpuMappedData(), m_Buffer.GetSizeInBytes() };
         }
 
-        const Descriptor& GetActiveCbv() const
+        auto GetActiveGpuVirtualAddress() const
+        {
+            return m_Buffer.GetGpuVirtualAddress(m_Buffer.m_Device.GetActiveFrameIndex());
+        }
+
+        const auto& GetActiveCbv() const
         {
             return m_Buffer.GetCbv(m_Buffer.m_Device.GetActiveFrameIndex());
         }

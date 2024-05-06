@@ -7,7 +7,11 @@ namespace benzin
     {
     public:
         auto GetDeltaTime() const { return m_DeltaTime; }
-        auto GetElapsedTime() const { return m_ElapsedTime; }
+        auto GetElapsedTimeInMs() const { return m_ElapsedTimeInMs; }
+
+        float GetDeltaTimeInMs() const;
+        float GetDeltaTimeInSec() const;
+        float GetElapsedTimeInSec() const;
 
         void Reset();
         void Tick();
@@ -16,8 +20,8 @@ namespace benzin
         std::chrono::high_resolution_clock::time_point m_CurrentTimePoint;
         std::chrono::high_resolution_clock::time_point m_PreviousTimePoint;
 
-        std::chrono::microseconds m_DeltaTime;
-        std::chrono::milliseconds m_ElapsedTime;
+        std::chrono::microseconds m_DeltaTime{};
+        float m_ElapsedTimeInMs = 0.0f;
     };
 
 } // namespace benzin

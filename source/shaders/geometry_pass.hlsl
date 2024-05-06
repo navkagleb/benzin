@@ -1,18 +1,8 @@
+#include "unified_root_parameters.hlsli"
+
 #include "common.hlsli"
 #include "gbuffer.hlsli"
-
-float3 ClipPositionToNdcPosition(float4 clipPosition)
-{
-    return clipPosition.xyz / clipPosition.w;
-}
-
-float2 NdcPositionToUv(float3 ndcPosition)
-{
-    float2 uv = ndcPosition.xy * 0.5f + 0.5f; // [-1, 1] -> [0, 1]
-    uv.y = 1.0f - uv.y; // Invert for DirectX
-
-    return uv;
-}
+#include "space_convertions.hlsli"
 
 float3 ExpandNormal(float2 xyNormal)
 {
@@ -90,7 +80,7 @@ joint::Material FetchMaterial(uint materialIndex)
     return materialBuffer[materialIndex];
 }
 
-struct VS_Output
+struct VsOutput
 {
     float4 ClipPosition : SV_Position;
     float4 CurrentClipPosition : CurrentClipPosition;
@@ -101,14 +91,15 @@ struct VS_Output
     float2 Uv : Uv;
 };
 
-VS_Output VS_Main(uint indexIndex : SV_VertexID)
+VsOutput VsMain(uint indexIndex : SV_VertexID)
 {
-    const joint::DoubleFrameCameraConstants cameraConstants = FetchDoubleFrameCameraConstants();
-
     const joint::MeshInstance meshInstance = FetchMeshInstance();
     const joint::MeshVertex vertex = FetchVertex(indexIndex, meshInstance.MeshIndex);
     const joint::MeshTransform transform = FetchMeshTransform();
-    
+
+    const joint::CameraConstants currentCameraConstants = g_FrameConstants.CurrentCamera;
+    const joint::CameraConstants previousCameraConstants = g_FrameConstants.PreviousCamera;
+
     const float4 objectPosition = mul(float4(vertex.Position, 1.0f), meshInstance.Transform);
     const float3 objectNormal = mul(vertex.Normal, (float3x3)meshInstance.Transform);
 
@@ -116,12 +107,12 @@ VS_Output VS_Main(uint indexIndex : SV_VertexID)
     const float4 previousWorldPosition = mul(objectPosition, transform.PreviousWorldMatrix);
     const float3 worldNormal = mul(objectNormal, (float3x3)transform.WorldMatrixForNormals);
 
-    const float4 viewPosition = mul(worldPosition, cameraConstants.CurrentFrame.View);
+    const float4 viewPosition = mul(worldPosition, currentCameraConstants.View);
 
-    VS_Output output = (VS_Output)0;
-    output.ClipPosition = mul(worldPosition, cameraConstants.CurrentFrame.ViewProjection);
+    VsOutput output = (VsOutput)0;
+    output.ClipPosition = mul(worldPosition, currentCameraConstants.ViewProjection);
     output.CurrentClipPosition = output.ClipPosition;
-    output.PreviousClipPosition = mul(previousWorldPosition, cameraConstants.PreviousFrame.ViewProjection);
+    output.PreviousClipPosition = mul(previousWorldPosition, previousCameraConstants.ViewProjection);
     output.WorldPosition = worldPosition.xyz;
     output.ViewDepth = viewPosition.z;
     output.WorldNormal = worldNormal;
@@ -130,7 +121,7 @@ VS_Output VS_Main(uint indexIndex : SV_VertexID)
     return output;
 }
 
-struct PS_Output
+struct PsOutput
 {
     float4 Color0 : SV_Target0;
     float4 Color1 : SV_Target1;
@@ -139,10 +130,8 @@ struct PS_Output
     float4 Color4 : SV_Target4;
 };
 
-PS_Output PS_Main(VS_Output input)
+PsOutput PsMain(VsOutput input)
 {
-    const joint::CameraConstants cameraConstants = FetchCurrentCameraConstants();
-
     const joint::MeshInstance meshInstance = FetchMeshInstance();
     const joint::Material material = FetchMaterial(meshInstance.MaterialIndex);
 
@@ -168,6 +157,8 @@ PS_Output PS_Main(VS_Output input)
 
     if (material.NormalTextureIndex != g_InvalidIndex)
     {
+        const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
+
         Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.NormalTextureIndex];
 
         float3 normalSample = normalTexture.Sample(g_LinearWrapSampler, input.Uv).xyz;
@@ -215,7 +206,7 @@ PS_Output PS_Main(VS_Output input)
     
     const PackedGBuffer packedGBuffer = PackGBuffer(gbuffer);
 
-    PS_Output output = (PS_Output)0;
+    PsOutput output = (PsOutput)0;
     output.Color0 = packedGBuffer.Color0;
     output.Color1 = packedGBuffer.Color1;
     output.Color2 = packedGBuffer.Color2;

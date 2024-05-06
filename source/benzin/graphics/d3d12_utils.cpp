@@ -103,14 +103,12 @@ namespace benzin
         };
     }
 
-#if BENZIN_IS_DEBUG_BUILD
-
     void EnableD3D12DebugLayer()
     {
         // Note: Enabling the debug layer after device creation will invalidate the active device
 
         ComPtr<ID3D12Debug5> d3d12Debug;
-        BenzinAssert(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12Debug)));
+        BenzinEnsure(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12Debug)));
 
         d3d12Debug->EnableDebugLayer();
 
@@ -130,10 +128,10 @@ namespace benzin
     void EnableD3D12DebugBreakOn(ID3D12Device* d3d12Device, bool isEnabled, D3D12BreakReasonFlags flags)
     {
         ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
-        BenzinAssert(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));
+        BenzinEnsure(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));
         
         ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
-        BenzinAssert(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
+        BenzinEnsure(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
         
         if (flags.IsSet(D3D12BreakReasonFlag::Warning))
         {
@@ -157,12 +155,10 @@ namespace benzin
     void ReportLiveD3D12Objects(ID3D12Device* d3d12Device)
     {
         ComPtr<ID3D12DebugDevice2> d3d12DebugDevice;
-        BenzinAssert(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
+        BenzinEnsure(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
 
         d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_IGNORE_INTERNAL | D3D12_RLDO_DETAIL | D3D12_RLDO_SUMMARY);
     }
-
-#endif // BENZIN_IS_DEBUG_BUILD
 
     std::string_view DxgiErrorToString(HRESULT hr)
     {
@@ -220,7 +216,7 @@ namespace benzin
             constexpr size_t maxDebugNameSize = 128;
             constexpr std::string_view defaultName = "Unnamed DxObject";
 
-            BenzinAssert(dxObject);
+            BenzinEnsure(dxObject);
 
             std::string debugName;
             debugName.resize_and_overwrite(maxDebugNameSize, [&](char* data, size_t size) noexcept -> size_t
@@ -249,7 +245,7 @@ namespace benzin
 
         std::visit(MakeVisitorMatch([&](auto&& dxObject)
         {
-            BenzinAssert(dxObject);
+            BenzinEnsure(dxObject);
             BenzinEnsure(dxObject->SetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t)debugName.size(), debugName.data()));
         }), dxObjectVariant);
     }

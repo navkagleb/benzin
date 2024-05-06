@@ -26,8 +26,6 @@ namespace benzin
 
     uint64_t Fence::GetCompletedValue() const
     {
-        BenzinAssert(m_D3D12Fence);
-
         return m_D3D12Fence->GetCompletedValue();
     }
 

@@ -572,6 +572,18 @@ namespace benzin
         return meshData;
     }
 
+    const MeshData& GetUnitBoxMesh()
+    {
+        static const MeshData meshData = GenerateBox(BoxGeometryCreation
+        {
+            .Width = 1.0f,
+            .Height = 1.0f,
+            .Depth = 1.0f,
+        });
+
+        return meshData;
+    }
+
     const MeshData& GetDefaultGridMesh()
     {
         static const MeshData meshData = GenerateGrid(GridGeometryCreation

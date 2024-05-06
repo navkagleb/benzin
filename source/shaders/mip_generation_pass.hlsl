@@ -1,31 +1,34 @@
-// Ref: https://www.3dgep.com/learning-directx-12-4/
-// Ref: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/GenerateMipsCS.hlsli
+#define RenderPassConstantsType joint::MipGenerationConstants
+#include "unified_root_parameters.hlsli"
 
 #include "common.hlsli"
 
-float4 SampleSourceForDestinationMip0(Texture2D<float4> sourceMip, uint3 dispatchThreadId, joint::MipGenerationConstants constants)
+// Ref: https://www.3dgep.com/learning-directx-12-4/
+// Ref: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/GenerateMipsCS.hlsli
+
+float4 SampleSourceForDestinationMip0(Texture2D<float4> sourceMip, uint3 dispatchThreadId)
 {
     float4 sample = 0.0;
 
-    if (!constants.IsSourceWidthOdd && !constants.IsSourceHeightOdd)
+    if (!g_PassConstants.IsSourceWidthOdd && !g_PassConstants.IsSourceHeightOdd)
     {
-        const float2 uv = (dispatchThreadId.xy + 0.5) * constants.InvDispatchDimensions;
+        const float2 uv = (dispatchThreadId.xy + 0.5) * g_PassConstants.InvDispatchDimensions;
         
         sample = sourceMip.SampleLevel(g_LinearClampSampler, uv, 0.0);
     }
-    else if (constants.IsSourceWidthOdd && !constants.IsSourceHeightOdd)
+    else if (g_PassConstants.IsSourceWidthOdd && !g_PassConstants.IsSourceHeightOdd)
     {
-        const float2 uv1 = (dispatchThreadId.xy + float2(0.25, 0.5)) * constants.InvDispatchDimensions;
-        const float2 uv2 = uv1 + float2(0.5, 0.0) * constants.InvDispatchDimensions;
+        const float2 uv1 = (dispatchThreadId.xy + float2(0.25, 0.5)) * g_PassConstants.InvDispatchDimensions;
+        const float2 uv2 = uv1 + float2(0.5, 0.0) * g_PassConstants.InvDispatchDimensions;
 
         sample += sourceMip.SampleLevel(g_LinearClampSampler, uv1, 0.0);
         sample += sourceMip.SampleLevel(g_LinearClampSampler, uv2, 0.0);
         sample *= 0.5;
     }
-    else if (!constants.IsSourceWidthOdd && constants.IsSourceHeightOdd)
+    else if (!g_PassConstants.IsSourceWidthOdd && g_PassConstants.IsSourceHeightOdd)
     {
-        const float2 uv1 = (dispatchThreadId.xy + float2(0.5, 0.25)) * constants.InvDispatchDimensions;
-        const float2 uv2 = uv1 + float2(0.0, 0.5) * constants.InvDispatchDimensions;
+        const float2 uv1 = (dispatchThreadId.xy + float2(0.5, 0.25)) * g_PassConstants.InvDispatchDimensions;
+        const float2 uv2 = uv1 + float2(0.0, 0.5) * g_PassConstants.InvDispatchDimensions;
 
         sample += sourceMip.SampleLevel(g_LinearClampSampler, uv1, 0.0);
         sample += sourceMip.SampleLevel(g_LinearClampSampler, uv2, 0.0);
@@ -33,8 +36,8 @@ float4 SampleSourceForDestinationMip0(Texture2D<float4> sourceMip, uint3 dispatc
     }
     else
     {
-        const float2 uv = (dispatchThreadId.xy + float2(0.25, 0.25)) * constants.InvDispatchDimensions;
-        const float2 uvOffset = 0.5 * constants.InvDispatchDimensions;
+        const float2 uv = (dispatchThreadId.xy + float2(0.25, 0.25)) * g_PassConstants.InvDispatchDimensions;
+        const float2 uvOffset = 0.5 * g_PassConstants.InvDispatchDimensions;
 
         sample += sourceMip.SampleLevel(g_LinearClampSampler, uv, 0.0);
         sample += sourceMip.SampleLevel(g_LinearClampSampler, uv + float2(uvOffset.x, 0.0), 0.0);
@@ -47,9 +50,9 @@ float4 SampleSourceForDestinationMip0(Texture2D<float4> sourceMip, uint3 dispatc
 }
 
 static const uint g_ThreadPerGroupCount =
-    joint::tc::MipGeneration_X *
-    joint::tc::MipGeneration_Y *
-    joint::tc::MipGeneration_Z;
+    joint::ThreadCount881_X *
+    joint::ThreadCount881_Y *
+    joint::ThreadCount881_Z;
 
 // LocalDataShare (LDS)
 groupshared float g_GroupSharedR[g_ThreadPerGroupCount];
@@ -76,10 +79,9 @@ float4 LoadSampleForGroup(uint threadIndex)
 }
 
 // Should dispatch for 1/2 resolution of source mip
-[numthreads(joint::tc::MipGeneration_X, joint::tc::MipGeneration_Y, joint::tc::MipGeneration_Z)]
+[numthreads(joint::ThreadCount881_X, joint::ThreadCount881_Y, joint::ThreadCount881_Z)]
 void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-    ConstantBuffer<joint::MipGenerationConstants> passConstants = ResourceDescriptorHeap[GetRootConstant(joint::MipGenerationRc_PassConstantBuffer)];
     Texture2D<float4> sourceMip = ResourceDescriptorHeap[GetRootConstant(joint::MipGenerationRc_SourceMip)];
 
     RWTexture2D<float4> destinationMip0 = ResourceDescriptorHeap[GetRootConstant(joint::MipGenerationRc_DestinationMip0)];
@@ -87,18 +89,18 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_Dispatc
     RWTexture2D<float4> destinationMip2 = ResourceDescriptorHeap[GetRootConstant(joint::MipGenerationRc_DestinationMip2)];
     RWTexture2D<float4> destinationMip3 = ResourceDescriptorHeap[GetRootConstant(joint::MipGenerationRc_DestinationMip3)];
 
-    if (passConstants.DestinationMipCount == 0)
+    if (g_PassConstants.DestinationMipCount == 0)
     {
         return;
     }
 
-    float4 sample0 = SampleSourceForDestinationMip0(sourceMip, dispatchThreadId, passConstants);
+    float4 sample0 = SampleSourceForDestinationMip0(sourceMip, dispatchThreadId);
 
     // DestinationMip0
     {
         destinationMip0[dispatchThreadId.xy] = sample0;
 
-        if (passConstants.DestinationMipCount == 1)
+        if (g_PassConstants.DestinationMipCount == 1)
         {
             return;
         }
@@ -138,7 +140,7 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_Dispatc
         }
     }
 
-    if (passConstants.DestinationMipCount == 2)
+    if (g_PassConstants.DestinationMipCount == 2)
     {
         return;
     }
@@ -160,7 +162,7 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_Dispatc
         }
     }
 
-    if (passConstants.DestinationMipCount == 3)
+    if (g_PassConstants.DestinationMipCount == 3)
     {
         return;
     }

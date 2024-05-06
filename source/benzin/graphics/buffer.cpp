@@ -9,11 +9,6 @@
 namespace benzin
 {
 
-    struct FormatBufferSrv
-    {
-        GraphicsFormat Format = GraphicsFormat::Unknown;
-    };
-
     struct StructuredBufferSrv
     {
         IndexRangeU32 ElementRange;
@@ -96,7 +91,7 @@ namespace benzin
         const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(ResolveD3D12HeapType(device, bufferCreation.Flags));
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(bufferCreation);
 
-        if ((d3d12HeapProperties.Type == D3D12_HEAP_TYPE_UPLOAD || d3d12HeapProperties.Type == D3D12_HEAP_TYPE_GPU_UPLOAD) && bufferCreation.InitialState != ResourceState::GenericRead)
+        if ((d3d12HeapProperties.Type == D3D12_HEAP_TYPE_UPLOAD) && bufferCreation.InitialState != ResourceState::GenericRead)
         {
             // Validate 'InitialState'
             const_cast<BufferCreation&>(bufferCreation).InitialState = ResourceState::GenericRead;
@@ -114,7 +109,7 @@ namespace benzin
         BenzinEnsure(d3d12Resource);
     }
 
-    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, const FormatBufferSrv& formatSrv)
+    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const FormatBufferSrv& formatSrv)
     {
         return D3D12_SHADER_RESOURCE_VIEW_DESC
         {
@@ -123,8 +118,8 @@ namespace benzin
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             .Buffer
             {
-                .FirstElement = 0,
-                .NumElements = buffer.GetElementCount(),
+                .FirstElement = formatSrv.ElementRange.StartIndex,
+                .NumElements = formatSrv.ElementRange.Count,
                 .StructureByteStride = 0,
                 .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
             },
@@ -225,6 +220,7 @@ namespace benzin
         SetDxObjectDebugName(m_D3D12Resource, creation.DebugName);
 
         m_CurrentState = creation.InitialState; // 'InitialState' can updated in 'CreateD3D12Resource'
+        m_Format = creation.Format;
         m_ElementSize = creation.ElementSize;
         m_ElementCount = creation.ElementCount;
         m_AlignedElementSize = (uint32_t)m_D3D12Resource->GetDesc().Width / creation.ElementCount; // HACK
@@ -244,17 +240,18 @@ namespace benzin
         }
     }
 
-    const Descriptor& Buffer::GetFormatSrv(GraphicsFormat format) const
+    const Descriptor& Buffer::GetFormatSrv(const FormatBufferSrv& formatSrv) const
     {
-        BenzinAssert(format != GraphicsFormat::Unknown);
-        BenzinAssert(m_ElementSize == GetFormatSizeInBytes(format));
+        auto validatedSrv = formatSrv;
+        validatedSrv.Format = formatSrv.Format != GraphicsFormat::Unknown ? formatSrv.Format : m_Format;
+        validatedSrv.ElementRange.Count = formatSrv.ElementRange.Count != 0 ? formatSrv.ElementRange.Count : m_ElementCount;
 
-        const FormatBufferSrv formatSrv{ format };
+        BenzinAssert(validatedSrv.ElementRange.StartIndex + validatedSrv.ElementRange.Count <= m_ElementCount);
 
-        auto& descriptor = GetViewDescriptor(formatSrv);
+        auto& descriptor = GetViewDescriptor(validatedSrv);
         if (!descriptor.IsCpuValid())
         {
-            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResoureViewDesc(*this, formatSrv);
+            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResoureViewDesc(validatedSrv);
             descriptor = CreateSrv(d3d12SrvDesc, m_D3D12Resource);
         }
 

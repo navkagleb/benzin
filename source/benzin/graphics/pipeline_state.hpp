@@ -47,13 +47,12 @@ namespace benzin
     class PipelineState
     {
     public:
-        BenzinDefineNonCopyable(PipelineState);
-        BenzinDefineNonMoveable(PipelineState);
-
-    public:
         explicit PipelineState(Device& device, const GraphicsPipelineStateCreation& creation);
         explicit PipelineState(Device& device, const ComputePipelineStateCreation& creation);
         ~PipelineState();
+
+        BenzinDefineNonCopyable(PipelineState);
+        BenzinDefineNonMoveable(PipelineState);
 
     public:
         ID3D12PipelineState* GetD3D12PipelineState() const { return m_D3D12PipelineState; }

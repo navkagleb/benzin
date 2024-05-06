@@ -1,5 +1,7 @@
 #pragma once
 
+#define BENZIN_IS_ASSERTS_ENABLED BENZIN_IS_DEBUG_BUILD
+
 namespace benzin
 {
 
@@ -51,10 +53,12 @@ namespace benzin
 
 } // namespace benzin
 
-#if BENZIN_IS_DEBUG_BUILD
-  #define BenzinAssert(condition, ...) benzin::Assert{ condition, #condition, __VA_ARGS__ }
+#if BENZIN_IS_ASSERTS_ENABLED
+    #define BenzinAssert(condition, ...) benzin::Assert{ condition, #condition, __VA_ARGS__ }
+    #define BenzinAssertExpr(expression, ...) BenzinAssert(expression, __VA_ARGS__)
 #else
-  #define BenzinAssert(condition, ...) (void)(condition) // The condition can be an expression
+    #define BenzinAssert(condition, ...)
+    #define BenzinAssertExpr(expression, ...) BenzinUnused(expression)
 #endif
 
 #define BenzinEnsure(condition, ...) benzin::Assert{ condition, #condition, __VA_ARGS__ }

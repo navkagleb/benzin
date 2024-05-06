@@ -14,22 +14,13 @@ namespace benzin
 
     struct SubResourceData;
 
-    struct TransitionBarrier
-    {
-        Resource& Resource;
-        ResourceState StateAfter;
-    };
-
-    struct UnorderedAccessBarrier
-    {
-        Resource& Resource;
-    };
-
-    using ResourceBarrierVariant = std::variant<TransitionBarrier, UnorderedAccessBarrier>;
+    enum class UnifiedRootParameter;
 
     class GraphicsCommandList
     {
     public:
+        friend class ScopedResourceBarriers;
+
         explicit GraphicsCommandList(Device& device);
         ~GraphicsCommandList();
 
@@ -41,10 +32,7 @@ namespace benzin
 
         void SetUploadBuffer(Buffer& uploadBuffer);
 
-        void SetResourceBarrier(const ResourceBarrierVariant& resourceBarrier);
-        void SetResourceBarriers(const std::vector<ResourceBarrierVariant>& resourceBarriers);
-
-        void CopyResource(Resource& to, Resource& from);
+        void CopyResource(const Resource& destination, const Resource& source);
 
         void UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, size_t offsetInBytes);
 
@@ -59,6 +47,8 @@ namespace benzin
 
         void SetRootConstant(uint32_t rootIndex, uint32_t value);
         void SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
+        void SetCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
+        void SetSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
         void SetPipelineState(const PipelineState& pso);
 
@@ -89,4 +79,57 @@ namespace benzin
         uint64_t m_UploadBufferOffset = 0;
     };
 
+    struct TransitionBarrier
+    {
+        const Resource& TransitionResource;
+        ResourceState StateBefore;
+        ResourceState StateAfter;
+
+        TransitionBarrier(const Resource& resource, ResourceState stateAfter)
+            : TransitionResource{ resource }
+            , StateBefore{ resource.GetCurrentState() }
+            , StateAfter{ stateAfter }
+        {}
+    };
+
+    struct UnorderedAccessBarrier
+    {
+        const Resource& Resource;
+    };
+
+    using ResourceBarrierVariant = std::variant<TransitionBarrier, UnorderedAccessBarrier>;
+
+    class ResourceBarriers
+    {
+    public:
+        ResourceBarriers(GraphicsCommandList& commandList, const std::vector<ResourceBarrierVariant>& resourceBarriers, bool isScoped);
+        ~ResourceBarriers();
+
+    private:
+        void SetD3D12Barriers(std::span<const D3D12_RESOURCE_BARRIER> d3d12Barriers) const;
+
+    private:
+        GraphicsCommandList& m_CommandList;
+
+        std::vector<TransitionBarrier> m_SwappedTransitionBarriers;
+        bool m_IsScoped = false;
+    };
+
 } // namespace benzin
+
+#define BenzinMakeResourceBarriers(commandList, ...) \
+    const benzin::ResourceBarriers BenzinUniqueVariableName(scopedResourceBarriers) \
+    { \
+        commandList, \
+        std::vector<benzin::ResourceBarrierVariant>{ __VA_ARGS__ }, \
+        false, \
+    }
+
+#define BenzinMakeScopedResourceBarriers(commandList, ...) \
+    const benzin::ResourceBarriers BenzinUniqueVariableName(scopedResourceBarriers) \
+    { \
+        commandList, \
+        std::vector<benzin::ResourceBarrierVariant>{ __VA_ARGS__ }, \
+        true, \
+    }
+

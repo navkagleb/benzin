@@ -6,6 +6,21 @@
 namespace benzin
 {
 
+    float TickTimer::GetDeltaTimeInMs() const
+    {
+        return benzin::ToFloatMs(m_DeltaTime);
+    }
+
+    float TickTimer::GetDeltaTimeInSec() const
+    {
+        return benzin::ToFloatSec(m_DeltaTime);
+    }
+
+    float TickTimer::GetElapsedTimeInSec() const
+    {
+        return benzin::MsToSec(m_ElapsedTimeInMs);
+    }
+
     void TickTimer::Reset()
     {
         m_PreviousTimePoint = std::chrono::high_resolution_clock::now();
@@ -15,15 +30,13 @@ namespace benzin
     {
         m_CurrentTimePoint = std::chrono::high_resolution_clock::now();
 
-        m_DeltaTime = ToUs(m_CurrentTimePoint - m_PreviousTimePoint);
+        m_DeltaTime = ToUs(m_CurrentTimePoint - std::exchange(m_PreviousTimePoint, m_CurrentTimePoint));;
         if (m_DeltaTime < std::chrono::microseconds::zero())
         {
             m_DeltaTime = std::chrono::microseconds::zero();
         }
 
-        m_PreviousTimePoint = m_CurrentTimePoint;
-
-        m_ElapsedTime += ToMs(m_DeltaTime);
+        m_ElapsedTimeInMs += benzin::ToFloatMs(m_DeltaTime);
     }
 
 } // namespace benzin

@@ -3,16 +3,9 @@
 namespace joint
 {
 
-    enum GlobalRc : uint32_t
-    {
-        GlobalRc_FrameConstantBuffer,
-        GlobalRc_CameraConstantBuffer,
-        GlobalRc_Count,
-    };
-
     enum GeometryPassRc : uint32_t
     {
-        GeometryPassRc_MeshVertexBuffer = GlobalRc_Count,
+        GeometryPassRc_MeshVertexBuffer,
         GeometryPassRc_MeshIndexBuffer,
         GeometryPassRc_MeshInfoBuffer,
         GeometryPassRc_MeshInstanceBuffer,
@@ -24,48 +17,55 @@ namespace joint
 
     enum RtShadowRc : uint32_t
     {
-        RtShadowRc_PassConstantBuffer = GlobalRc_Count,
         RtShadowRc_GBufferWorldNormalTexture,
         RtShadowRc_GBufferDepthTexture,
         RtShadowRc_PointLightBuffer,
         RtShadowRc_VisiblityBuffer,
-        RtShadowRc_Count,
     };
 
     enum DenoiserTemporalAccumulationRc : uint32_t
     {
-        DenoiserTemporalAccumulationRc_WorldNormalTexture = GlobalRc_Count,
+        DenoiserTemporalAccumulationRc_WorldNormalTexture,
         DenoiserTemporalAccumulationRc_VelocityBuffer,
         DenoiserTemporalAccumulationRc_DepthBuffer,
         DenoiserTemporalAccumulationRc_PreviousViewDepthBuffer,
         DenoiserTemporalAccumulationRc_PreviousTemporalAccumulationBuffer,
-        DenoiserTemporalAccumulationRc_CurrentTemporalAccumulationBuffer,
-        DenoiserTemporalAccumulationRc_Count,
+        DenoiserTemporalAccumulationRc_PreviousDenoisedVisibilityBuffer,
+        DenoiserTemporalAccumulationRc_TemporalAccumulationBuffer,
+        DenoiserTemporalAccumulationRc_ReprojectedHistoryTexture,
     };
 
     enum MipGenerationRc : uint32_t
     {
-        MipGenerationRc_PassConstantBuffer = GlobalRc_Count,
         MipGenerationRc_SourceMip,
         MipGenerationRc_DestinationMip0,
         MipGenerationRc_DestinationMip1,
         MipGenerationRc_DestinationMip2,
         MipGenerationRc_DestinationMip3,
-        MipGenerationRc_Count,
     };
 
     enum DenoiserHistoryFixRc : uint32_t
     {
-        DenoiserHistoryFixRc_GBufferAlbedoAndRoughness = GlobalRc_Count,
+        DenoiserHistoryFixRc_GBufferAlbedoAndRoughness,
         DenoiserHistoryFixRc_TemporalAccumulationBuffer,
         DenoiserHistoryFixRc_ViewDepthBuffer,
         DenoiserHistoryFixRc_NoisyVisibilityBuffer,
-        DenoiserHistoryFixRc_DenoisedVisibilityBuffer,
+        DenoiserHistoryFixRc_ReprojectedHistoryTexture,
+    };
+
+    enum DenoiserBlurRc : uint32_t
+    {
+        DenoiserBlurRc_AlbedoAndRoughnessTexture,
+        DenoiserBlurRc_WorldNormalTexture,
+        DenoiserBlurRc_DepthBuffer,
+        DenoiserBlurRc_NoisyVisibilityBuffer,
+        DenoiserBlurRc_TemporalAccumulationBuffer,
+        DenoiserBlurRc_ReprojectedHistoryTexture,
+        DenoiserBlurRc_DenoisedVisibilityBuffer,
     };
 
     enum DeferredLightingPassRc : uint32_t
     {
-        DeferredLightingPassRc_PassConstantBuffer = GlobalRc_Count,
         DeferredLightingPassRc_AlbedoAndRoughnessTexture,
         DeferredLightingPassRc_EmissiveAndMetallicTexture,
         DeferredLightingPassRc_WorldNormalTexture,
@@ -73,18 +73,15 @@ namespace joint
         DeferredLightingPassRc_DepthStencilTexture,
         DeferredLightingPassRc_PointLightBuffer,
         DeferredLightingPassRc_ShadowVisibilityBuffer,
-        DeferredLightingPassRc_Count,
     };
 
     enum EnvironmentPassRc : uint32_t
     {
-        EnvironmentPassRc_CubeMapTexture = GlobalRc_Count,
-        EnvironmentPassRc_Count,
+        EnvironmentPassRc_CubeMapTexture,
     };
 
     enum FullScreenDebugRc : uint32_t
     {
-        FullScreenDebugRc_PassConstantBuffer = GlobalRc_Count,
         FullScreenDebugRc_AlbedoAndRoughnessTexture,
         FullScreenDebugRc_EmissiveAndMetallicTexture,
         FullScreenDebugRc_WorldNormalTexture,
@@ -93,14 +90,20 @@ namespace joint
         FullScreenDebugRc_DepthBuffer,
         FullScreenDebugRc_ShadowVisibilityBuffer,
         FullScreenDebugRc_TemporalAccumulationBuffer,
-        FullScreenDebugRc_Count,
+        FullScreenDebugRc_ReprojectedHistoryTexture,
+        FullScreenDebugRc_DenoisedShadowVisibilityBuffer,
     };
 
     enum EquirectangularToCubePassRc : uint32_t
     {
-        EquirectangularToCubeRc_EquirectangularTexture = GlobalRc_Count,
+        EquirectangularToCubeRc_EquirectangularTexture,
         EquirectangularToCubeRc_OutCubeTexture,
-        EquirectangularToCubeRc_Count,
+    };
+
+    enum TestInstancesRc : uint32_t
+    {
+        TestInstancesRc_TransformBuffer,
+        TestInstancesRc_ActiveBitSlotBuffer,
     };
 
 } // namespace joint

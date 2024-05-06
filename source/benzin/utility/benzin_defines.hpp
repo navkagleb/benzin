@@ -8,6 +8,8 @@
 
 #define BenzinUniqueVariableName(name) BenzinStringConcatenate2(name, __LINE__)
 
+#define BenzinUnused(variable) (void)(variable)
+
 #define BenzinDefineNonCopyable(ClassName) \
     ClassName(const ClassName& other) = delete; \
     ClassName& operator =(const ClassName& other) = delete

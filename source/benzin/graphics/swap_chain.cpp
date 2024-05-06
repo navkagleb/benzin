@@ -14,13 +14,13 @@
 namespace benzin
 {
 
-    SwapChain::SwapChain(const Window& window, const Backend& backend, Device& device)
-        : m_Device{ device }
+    SwapChain::SwapChain(const SwapChainCreation& creation)
+        : m_Device{ creation.DeviceRef }
     {
         const uint32_t frameInFlightCount = CommandLineArgs::GetFrameInFlightCount();
 
         uint32_t isAllowTearing = 0;
-        BenzinEnsure(backend.GetDxgiFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &isAllowTearing, sizeof(isAllowTearing)));
+        BenzinEnsure(creation.BackendRef.GetDxgiFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &isAllowTearing, sizeof(isAllowTearing)));
 
         uint32_t dxgiSwapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
         if (isAllowTearing)
@@ -30,8 +30,8 @@ namespace benzin
 
         const DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc1
         {
-            .Width = window.GetWidth(),
-            .Height = window.GetHeight(),
+            .Width = creation.WindowRef.GetWidth(),
+            .Height = creation.WindowRef.GetHeight(),
             .Format = (DXGI_FORMAT)CommandLineArgs::GetBackBufferFormat(),
             .Stereo = false,
             .SampleDesc{ 1, 0 },
@@ -44,29 +44,30 @@ namespace benzin
         };
 
         ComPtr<IDXGISwapChain1> dxgiSwapChain1;
-        BenzinEnsure(backend.GetDxgiFactory()->CreateSwapChainForHwnd(
+        BenzinEnsure(creation.BackendRef.GetDxgiFactory()->CreateSwapChainForHwnd(
             m_Device.GetGraphicsCommandQueue().GetD3D12CommandQueue(),
-            window.GetWin64Window(),
+            creation.WindowRef.GetWin64Window(),
             &dxgiSwapChainDesc1,
             nullptr,
             nullptr,
             &dxgiSwapChain1
         ));
         BenzinEnsure(dxgiSwapChain1->QueryInterface(IID_PPV_ARGS(&m_DxgiSwapChain)));
-        SetDxObjectDebugName(m_DxgiSwapChain, "MainSwapChain");
+        SetDxObjectDebugName(m_DxgiSwapChain, creation.DebugName);
 
         // Disable fullscreen using Alt + Enter
-        BenzinEnsure(backend.GetDxgiFactory()->MakeWindowAssociation(window.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
+        BenzinEnsure(creation.BackendRef.GetDxgiFactory()->MakeWindowAssociation(creation.WindowRef.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
 
         m_BackBuffers.resize(frameInFlightCount);
-        ResizeBackBuffers(window.GetWidth(), window.GetHeight());
+        ResizeBackBuffers(creation.WindowRef.GetWidth(), creation.WindowRef.GetHeight());
 
-        MakeUniquePtr(m_FrameFence, m_Device, "SwapChainFrameFence");
+        MakeUniquePtr(m_FrameFence, m_Device, std::format("{}_FrameFence", creation.DebugName));
     }
 
     SwapChain::~SwapChain()
     {
         ReleaseBackBuffers();
+        m_Device.ProcessDeferredReleaseQueues(true); // TODO: Create SwapChain from Device
         BenzinSafeDxObjectRelease(m_DxgiSwapChain);
     }
 
@@ -85,7 +86,7 @@ namespace benzin
         const uint32_t frameInFlightCount = CommandLineArgs::GetFrameInFlightCount();
 
         uint64_t cpuFrameIndex = m_Device.m_CpuFrameIndex;
-        uint64_t gpuFrameIndex = m_Device.m_GpuFrameIndex;
+        uint64_t gpuFrameIndex = m_Device.m_CompletedGpuFrameIndex;
 
         {
             cpuFrameIndex++;
@@ -93,6 +94,7 @@ namespace benzin
         }
 
         {
+            BenzinGrabTimeOnScopeExit(m_PresentTime);
             BenzinEnsure(m_DxgiSwapChain->Present(isVerticalSyncEnabled, 0));
         }
 
@@ -101,15 +103,23 @@ namespace benzin
 
             if (cpuFrameIndex - gpuFrameIndex >= frameInFlightCount)
             {
-                const uint64_t gpuFrameIndexToWait = cpuFrameIndex - frameInFlightCount + 1;
-                m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
+                {
+                    BenzinGrabTimeOnScopeExit(m_GpuWaitTime);
+
+                    const uint64_t gpuFrameIndexToWait = cpuFrameIndex - frameInFlightCount + 1;
+                    m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
+                }
 
                 // 'm_FrameFence' completed value may differ from 'gpuFrameIndexToWait'
                 // Therefore, save 'm_FrameFence' completed value because it's may be updated during the waiting time
                 gpuFrameIndex = m_FrameFence->GetCompletedValue();
             }
+            else
+            {
+                m_GpuWaitTime = std::chrono::microseconds::zero();
+            }
         }
-        
+
         DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc;
         BenzinEnsure(m_DxgiSwapChain->GetDesc1(&dxgiSwapChainDesc));
         if (m_PendingWidth != 0 && m_PendingHeight != 0 && (m_PendingWidth != dxgiSwapChainDesc.Width || m_PendingHeight != dxgiSwapChainDesc.Height))
@@ -121,6 +131,9 @@ namespace benzin
             );
 
             m_Device.GetGraphicsCommandQueue().Flush();
+            ReleaseBackBuffers();
+            m_Device.ProcessDeferredReleaseQueues(true);
+
             ResizeBackBuffers(m_PendingWidth, m_PendingHeight);
 
             m_PendingWidth = 0;
@@ -128,8 +141,8 @@ namespace benzin
         }
 
         m_Device.m_CpuFrameIndex = cpuFrameIndex;
-        m_Device.m_GpuFrameIndex = gpuFrameIndex;
-        m_Device.m_ActiveFrameIndex = m_DxgiSwapChain->GetCurrentBackBufferIndex();
+        m_Device.m_CompletedGpuFrameIndex = gpuFrameIndex;
+        m_Device.m_ActiveFrameIndex = (uint8_t)m_DxgiSwapChain->GetCurrentBackBufferIndex();
     }
 
     void SwapChain::RequestResize(uint32_t width, uint32_t height)
@@ -162,19 +175,23 @@ namespace benzin
 
     void SwapChain::ResizeBackBuffers(uint32_t width, uint32_t height)
     {
-        ReleaseBackBuffers();
+#if BENZIN_IS_ASSERTS_ENABLED
+        for (const auto& backBuffer : m_BackBuffers)
         {
-            DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc;
-            BenzinEnsure(m_DxgiSwapChain->GetDesc1(&dxgiSwapChainDesc));
-
-            BenzinEnsure(m_DxgiSwapChain->ResizeBuffers(
-                dxgiSwapChainDesc.BufferCount,
-                width,
-                height,
-                dxgiSwapChainDesc.Format,
-                dxgiSwapChainDesc.Flags
-            ));
+            BenzinAssert(backBuffer.get() == nullptr);
         }
+#endif
+
+        DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc;
+        BenzinEnsure(m_DxgiSwapChain->GetDesc1(&dxgiSwapChainDesc));
+
+        BenzinEnsure(m_DxgiSwapChain->ResizeBuffers(
+            dxgiSwapChainDesc.BufferCount,
+            width,
+            height,
+            dxgiSwapChainDesc.Format,
+            dxgiSwapChainDesc.Flags
+        ));
         RegisterBackBuffers();
 
         UpdateViewportDimensions((float)width, (float)height);

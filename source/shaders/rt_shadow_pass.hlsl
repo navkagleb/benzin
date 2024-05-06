@@ -1,6 +1,8 @@
+#define RenderPassConstantsType joint::RtShadowPassConstants
+#include "unified_root_parameters.hlsli"
+
 #include "common.hlsli"
 #include "rt_common.hlsli"
-
 #include "gbuffer.hlsli"
 #include "random.hlsli"
 
@@ -81,7 +83,7 @@ float3 GetLightConeSample(float3 toLightDirection, float coneAngle, float2 uvSee
     // Generate points on the spherical cap around the north pole [1].
     // [1] See https://math.stackexchange.com/a/205589/81266
     float z = GetRandomFloatUV(uvSeed) * (1.0f - cosAngle) + cosAngle;
-    float phi = GetRandomFloatUV(uvSeed) * g_2PI;
+    float phi = GetRandomFloatUV(uvSeed) * g_TwoPi;
 
     float x = sqrt(1.0f - z * z) * cos(phi);
     float y = sqrt(1.0f - z * z) * sin(phi);
@@ -122,7 +124,7 @@ bool TraceShadowRay(float3 worldPosition, float3 worldNormal, joint::PointLight 
     payload.IsHitted = true;
 
     TraceRay(
-        g_TopLevelAS,
+        g_TopLevelAs,
         rayFlags,
         g_InstanceMask,
         g_HitGroupIndex,
@@ -138,16 +140,17 @@ bool TraceShadowRay(float3 worldPosition, float3 worldNormal, joint::PointLight 
 [shader("raygeneration")]
 void RayGen()
 {
-    const joint::FrameConstants frameConstants = FetchFrameConstants();
-    const joint::CameraConstants cameraConstants = FetchCurrentCameraConstants();
-    const joint::RtShadowPassConstants passConstants = FetchConstantBuffer<joint::RtShadowPassConstants>(joint::RtShadowRc_PassConstantBuffer);
-
     Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_GBufferWorldNormalTexture)];
     Texture2D<float> depthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_GBufferDepthTexture)];
-
     StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_PointLightBuffer)];
 
     RWTexture2D<float> visibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_VisiblityBuffer)];
+
+    if (!g_FrameConstants.IsRtShadowsEnabled)
+    {
+        visibilityBuffer[DispatchRaysIndex().xy] = 0.0;
+        return;
+    }
 
     const float2 uv = GetRayUv();
     const float3 worldNormal = worldNormalTexture.SampleLevel(g_PointClampSampler, uv, 0).xyz;
@@ -155,16 +158,17 @@ void RayGen()
 
     const joint::PointLight pointLight = pointLightBuffer[0];
 
+    const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
     const float3 worldPosition = ReconstructWorldPositionFromDepth(uv, depth, cameraConstants.InverseProjection, cameraConstants.InverseView).xyz;
 
     uint hittedSum = 0;
-    for (uint i = 0; i < passConstants.RaysPerPixel; ++i)
+    for (uint i = 0; i < g_PassConstants.RaysPerPixel; ++i)
     {
-        const float2 uvSeed = (uv + i * frameConstants.DeltaTime) * frameConstants.DeltaTime;
+        const float2 uvSeed = (uv + i * g_FrameConstants.DeltaTime) * g_FrameConstants.DeltaTime;
         hittedSum += TraceShadowRay(worldPosition, worldNormal, pointLight, uvSeed);
     }
 
-    visibilityBuffer[DispatchRaysIndex().xy] = (float)hittedSum / passConstants.RaysPerPixel;
+    visibilityBuffer[DispatchRaysIndex().xy] = (float)hittedSum / g_PassConstants.RaysPerPixel;
 }
 
 [shader("miss")]

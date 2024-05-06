@@ -126,14 +126,14 @@ namespace benzin
     PipelineState::PipelineState(Device& device, const GraphicsPipelineStateCreation& creation)
     {
         BenzinAssert(device.GetD3D12Device());
-        BenzinAssert(device.GetD3D12BindlessRootSignature());
+        BenzinAssert(device.GetD3D12UnifiedRootSignature());
 
         BenzinAssert(creation.VertexShader.IsValid());
         BenzinAssert(creation.RenderTargetFormats.size() <= 8);
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12GraphicsPipelineStateDesc
         {
-            .pRootSignature = device.GetD3D12BindlessRootSignature(),
+            .pRootSignature = device.GetD3D12UnifiedRootSignature(),
             .VS = ToD3D12Shader(ShaderType::Vertex, creation.VertexShader),
             .PS = ToD3D12Shader(ShaderType::Pixel, creation.PixelShader),
             .DS{ nullptr, 0 },
@@ -179,13 +179,13 @@ namespace benzin
     PipelineState::PipelineState(Device& device, const ComputePipelineStateCreation& creation)
     {
         BenzinAssert(device.GetD3D12Device());
-        BenzinAssert(device.GetD3D12BindlessRootSignature());
+        BenzinAssert(device.GetD3D12UnifiedRootSignature());
 
         BenzinAssert(creation.ComputeShader.IsValid());
 
         const D3D12_COMPUTE_PIPELINE_STATE_DESC d3d12ComputePipelineStateDesc
         {
-            .pRootSignature = device.GetD3D12BindlessRootSignature(),
+            .pRootSignature = device.GetD3D12UnifiedRootSignature(),
             .CS = ToD3D12Shader(ShaderType::Compute, creation.ComputeShader),
             .NodeMask = 0,
             .CachedPSO

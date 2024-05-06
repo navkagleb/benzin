@@ -8,14 +8,14 @@
 namespace benzin
 {
 
-    static void LogScopeTime(std::string_view scopeName, std::chrono::microseconds us)
+    static void LogScopeTime(std::string_view scopeName, std::chrono::microseconds time)
     {
-        BenzinTrace("Scope '{}' takes {:.3f}ms, {:.3f}s", scopeName, ToFloatMs(us), ToFloatSec(us));
+        BenzinTrace("Scope '{}' takes {:.3f}ms, {:.3f}s", scopeName, ToFloatMs(time), ToFloatSec(time));
     }
 
-    static void GrabScopeTime(std::chrono::microseconds us, std::chrono::microseconds& outUS)
+    static void GrabScopeTime(std::chrono::microseconds time, std::chrono::microseconds& outTime)
     {
-        outUS = us;
+        outTime = time;
     }
 
     // ScopedTimer
@@ -35,8 +35,8 @@ namespace benzin
         }
 
         const auto endTimePoint = std::chrono::high_resolution_clock::now();
-        const auto us = ToUs(endTimePoint - m_StartTimePoint);
-        m_Callback(us);
+        const auto time = ToUs(endTimePoint - m_StartTimePoint);
+        m_Callback(time);
     }
 
     void ScopedTimer::ForceDestroy() const
@@ -48,13 +48,13 @@ namespace benzin
     // ScopedLogTimer
 
     ScopedLogTimer::ScopedLogTimer(std::string&& scopeName)
-        : ScopedTimer{ [scopeName](std::chrono::microseconds us) { LogScopeTime(scopeName, us); } }
+        : ScopedTimer{ [scopeName](std::chrono::microseconds time) { LogScopeTime(scopeName, time); } }
     {}
 
     // ScopedGrabTimer
 
-    ScopedGrabTimer::ScopedGrabTimer(std::chrono::microseconds& outUS)
-        : ScopedTimer{ [&outUS](std::chrono::microseconds us){ GrabScopeTime(us, outUS); } }
+    ScopedGrabTimer::ScopedGrabTimer(std::chrono::microseconds& outTime)
+        : ScopedTimer{ [&outTime](std::chrono::microseconds time){ GrabScopeTime(time, outTime); } }
     {}
 
 } // namespace benzin

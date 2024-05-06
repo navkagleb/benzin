@@ -9,32 +9,6 @@
 namespace benzin
 {
 
-    static void RenderImGuiMatrix4x4(const DirectX::XMMATRIX& matrix)
-        {
-            const uint32_t matrixSize = 4;
-
-            const ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
-
-            if (ImGui::BeginTable("View Matrix", matrixSize, flags))
-            {
-                for (uint32_t rowIndex = 0; rowIndex < matrixSize; ++rowIndex)
-                {
-                    ImGui::TableNextRow();
-
-                    const DirectX::XMVECTOR row = matrix.r[rowIndex];
-
-                    for (uint32_t columnIndex = 0; columnIndex < matrixSize; ++columnIndex)
-                    {
-                        ImGui::TableSetColumnIndex(columnIndex);
-
-                        const float cellValue = *(reinterpret_cast<const float*>(&row) + columnIndex);
-                        ImGui::Text("%0.4f", cellValue);
-                    }
-                }
-                ImGui::EndTable();
-            }
-        }
-
     // Projection
 
     DirectX::BoundingFrustum Projection::GetTransformedBoundingFrustum(const DirectX::XMMATRIX& transform) const
@@ -60,9 +34,9 @@ namespace benzin
         SetLens(fov, aspectRatio, nearPlane, farPlane);
     }
     
-    void PerspectiveProjection::SetFOV(float fov)
+    void PerspectiveProjection::SetFov(float fov)
     {
-        m_FOV = fov;
+        m_Fov = fov;
 
         UpdateMatrix();
     }
@@ -76,7 +50,7 @@ namespace benzin
 
     void PerspectiveProjection::SetLens(float fov, float aspectRatio, float nearPlane, float farPlane)
     {
-        m_FOV = fov;
+        m_Fov = fov;
         m_AspectRatio = aspectRatio;
         m_NearPlane = nearPlane;
         m_FarPlane = farPlane;
@@ -86,7 +60,7 @@ namespace benzin
 
     DirectX::XMMATRIX PerspectiveProjection::CreateMatrix() const
     {
-        return DirectX::XMMatrixPerspectiveFovLH(m_FOV, m_AspectRatio, m_NearPlane, m_FarPlane);
+        return DirectX::XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
     }
 
     // OrthographicProjection
@@ -181,6 +155,7 @@ namespace benzin
     void Camera::UpdateViewMatrix()
     {
         m_ViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
+        m_ViewMatrixForNormals = GetMatrixForNormals(m_ViewMatrix);
         m_InverseViewMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewMatrix);
     }
 
@@ -212,7 +187,18 @@ namespace benzin
     {
         UpdatePitchAndYawIfNeeded();
 
-        const float delta = m_CameraTranslationSpeed * ToFloatMs(dt);
+        float translationSpeedFactor = 1.0f;
+        if (Input::IsKeyPressed(KeyCode::Shift))
+        {
+            translationSpeedFactor = 2.0f;
+        }
+        else if (Input::IsKeyPressed(KeyCode::Control))
+        {
+            translationSpeedFactor = 0.3f;
+        }
+
+
+        const float delta = m_CameraTranslationSpeed * translationSpeedFactor * ToFloatMs(dt);
         const auto& position = m_Camera.GetPosition();
 
         DirectX::XMVECTOR updatedPosition = DirectX::XMVectorZero();
@@ -265,19 +251,6 @@ namespace benzin
         }
     }
 
-    void FlyCameraController::OnImGuiRender()
-    {
-        ImGui::Begin("FlyCameraController");
-        {
-            RenderImGuiControllerProperties();
-            ImGui::Separator();
-            RenderImGuiViewProperties();
-            ImGui::Separator();
-            RenderImGuiProjectionProperties();
-        }
-        ImGui::End();
-    }
-
     bool FlyCameraController::OnWindowResized(WindowResizedEvent& event)
     {
         if (auto* perspectiveProjection = GetPerspectiveProjection())
@@ -324,74 +297,16 @@ namespace benzin
 
     bool FlyCameraController::OnMouseScrolled(MouseScrolledEvent& event)
     {
-        static const float minFOV = DirectX::XM_PIDIV4; // 45 degrees
-        static const float maxFOV = DirectX::XM_PI * 2.0f / 3.0f; // 120 degrees
+        static const float minFov = DirectX::XM_PIDIV4; // 45 degrees
+        static const float maxFov = DirectX::XM_PI * 2.0f / 3.0f; // 120 degrees
 
         if (auto* perspectiveProjection = GetPerspectiveProjection())
         {
-            const float fov = perspectiveProjection->GetFOV() - m_MouseWheelSensitivity * (float)event.GetOffsetX();
-            perspectiveProjection->SetFOV(std::clamp(fov, minFOV, maxFOV));
+            const float fov = perspectiveProjection->GetFov() - m_MouseWheelSensitivity * (float)event.GetOffsetX();
+            perspectiveProjection->SetFov(std::clamp(fov, minFov, maxFov));
         }
 
         return false;
-    }
-
-    void FlyCameraController::RenderImGuiControllerProperties()
-    {
-        ImGui::Text("Controller Properties");
-        ImGui::SliderFloat("CameraTranslationSpeed", &m_CameraTranslationSpeed, 0.001f, 0.01f);
-        ImGui::SliderFloat("MouseSensitivity", &m_MouseSensitivity, 0.001f, 0.007f, "%.3f");
-    }
-
-    void FlyCameraController::RenderImGuiViewProperties()
-    {
-        ImGui::Text("View Properties");
-
-        if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&m_Camera.m_Position)))
-        {
-            m_Camera.UpdateViewMatrix();
-        }
-
-        if (ImGui::DragFloat3("Front Direction", reinterpret_cast<float*>(&m_Camera.m_FrontDirection)))
-        {
-            m_Camera.UpdateViewMatrix();
-        }
-
-        if (ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&m_Camera.m_UpDirection)))
-        {
-            m_Camera.UpdateViewMatrix();
-        }
-
-        if (ImGui::SliderAngle("Pitch (X)", &m_Pitch, -89.0f, 89.0f))
-        {
-            m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
-        }
-
-        if (ImGui::SliderAngle("Yaw (Y)", &m_Yaw, -180.0f, 180.0f))
-        {
-            m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
-        }
-
-        RenderImGuiMatrix4x4(m_Camera.GetViewMatrix());
-    }
-
-    void FlyCameraController::RenderImGuiProjectionProperties()
-    {
-        if (auto* perspectiveProjection = GetPerspectiveProjection())
-        {
-            ImGui::Text("Projection Properties");
-
-            if (ImGui::SliderAngle("FOV", &perspectiveProjection->m_FOV, 45.0f, 120.0f))
-            {
-                perspectiveProjection->UpdateMatrix();
-            }
-
-            ImGui::Text("AspectRatio: %f", perspectiveProjection->m_AspectRatio);
-            ImGui::Text("NearPlane: %f", perspectiveProjection->m_NearPlane);
-            ImGui::Text("FarPlane: %f", perspectiveProjection->m_FarPlane);
-        }
-
-        RenderImGuiMatrix4x4(m_Camera.GetProjectionMatrix());
     }
 
     PerspectiveProjection* FlyCameraController::GetPerspectiveProjection()

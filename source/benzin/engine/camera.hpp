@@ -32,15 +32,14 @@ namespace benzin
     class PerspectiveProjection : public Projection
     {
     public:
-        friend class FlyCameraController;
+        friend class FlyCameraTool;
 
-    public:
         PerspectiveProjection() = default;
         PerspectiveProjection(float fov, float aspectRatio, float nearPlane, float farPlane);
 
     public:
-        float GetFOV() const { return m_FOV; }
-        void SetFOV(float fov);
+        float GetFov() const { return m_Fov; }
+        void SetFov(float fov);
 
         float GetAspectRatio() const { return m_AspectRatio; }
         void SetAspectRatio(float aspectRatio);
@@ -52,7 +51,7 @@ namespace benzin
         DirectX::XMMATRIX CreateMatrix() const override;
 
     private:
-        float m_FOV = DirectX::XMConvertToRadians(60.0f);
+        float m_Fov = DirectX::XMConvertToRadians(60.0f);
         float m_AspectRatio = 0.0f;
         float m_NearPlane = 0.1f;
         float m_FarPlane = 1000.0f;
@@ -71,7 +70,6 @@ namespace benzin
             float FarPlane = 1.0f;
         };
 
-    public:
         void SetViewRect(const ViewRect& viewRect);
 
     private:
@@ -84,28 +82,28 @@ namespace benzin
     class Camera
     {
     public:
-        friend class FlyCameraController;
+        friend class FlyCameraTool;
 
-    public:
         explicit Camera(Projection& projection);
 
     public:
-        const DirectX::XMVECTOR& GetPosition() const { return m_Position; }
+        const auto& GetPosition() const { return m_Position; }
         void SetPosition(const DirectX::XMVECTOR& position);
 
-        const DirectX::XMVECTOR& GetFrontDirection() const { return m_FrontDirection; }
+        const auto& GetFrontDirection() const { return m_FrontDirection; }
         void SetFrontDirection(const DirectX::XMVECTOR& frontDirection);
 
-        const DirectX::XMVECTOR& GetUpDirection() const { return m_UpDirection; }
+        const auto& GetUpDirection() const { return m_UpDirection; }
         void SetUpDirection(const DirectX::XMVECTOR& upDirection);
 
-        const DirectX::XMVECTOR& GetRightDirection() const { return m_RightDirection; }
+        const auto& GetRightDirection() const { return m_RightDirection; }
 
-        const DirectX::XMMATRIX& GetViewMatrix() const { return m_ViewMatrix; }
-        const DirectX::XMMATRIX& GetInverseViewMatrix() const { return m_InverseViewMatrix; }
+        const auto& GetViewMatrix() const { return m_ViewMatrix; }
+        const auto& GetViewMatrixForNormals() const { return m_ViewMatrixForNormals; }
+        const auto& GetInverseViewMatrix() const { return m_InverseViewMatrix; }
 
-        Projection& GetProjection() { return m_Projection; }
-        const Projection& GetProjection() const { return m_Projection; }
+        auto& GetProjection() { return m_Projection; }
+        const auto& GetProjection() const { return m_Projection; }
 
         const DirectX::XMMATRIX& GetProjectionMatrix() const;
         const DirectX::XMMATRIX& GetInverseProjectionMatrix() const;
@@ -127,6 +125,7 @@ namespace benzin
         DirectX::XMVECTOR m_RightDirection{ 0.0f, 0.0f, 0.0f, 1.0f };
 
         DirectX::XMMATRIX m_ViewMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_ViewMatrixForNormals = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX m_InverseViewMatrix = DirectX::XMMatrixIdentity();
 
         Projection& m_Projection;
@@ -135,25 +134,21 @@ namespace benzin
     class FlyCameraController
     {
     public:
+        friend class FlyCameraTool;
+
         explicit FlyCameraController(Camera& camera);
 
     public:
-        void SetCamera(Camera& camera);
+        void SetCameraTranslationSpeed(float speed) { m_CameraTranslationSpeed = speed; }
         void SetCameraPitchYaw(float pitch, float yaw);
 
-    public:
         void OnEvent(Event& event);
         void OnUpdate(std::chrono::microseconds dt);
-        void OnImGuiRender();
 
     private:
         bool OnWindowResized(WindowResizedEvent& event);
         bool OnMouseMoved(MouseMovedEvent& event);
         bool OnMouseScrolled(MouseScrolledEvent& event);
-
-        void RenderImGuiControllerProperties();
-        void RenderImGuiViewProperties();
-        void RenderImGuiProjectionProperties();
 
         PerspectiveProjection* GetPerspectiveProjection();
 

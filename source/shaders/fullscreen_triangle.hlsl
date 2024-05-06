@@ -1,21 +1,24 @@
 #include "fullscreen_helper.hlsli"
 
-VS_FullScreenTriangleOutput CreateOutput(uint vertexIndex, float4 homogeneousPosition)
+VsFullScreenTriangleOutput CreateOutput(uint vertexIndex, float4 clipPosition)
 {
-    VS_FullScreenTriangleOutput output = (VS_FullScreenTriangleOutput)0;
-    output.HomogeneousPosition = homogeneousPosition;
-    output.ClipPosition = output.HomogeneousPosition;
-    output.UV = GetFullScreenTriangleUV(vertexIndex);
+    VsFullScreenTriangleOutput output = (VsFullScreenTriangleOutput)0;
+    output.SvPosition = clipPosition;
+    output.ClipPosition = clipPosition;
+    output.Uv = GetFullScreenTriangleUv(vertexIndex);
 
     return output;
 }
 
-VS_FullScreenTriangleOutput VS_Main(uint vertexIndex : SV_VertexID)
+VsFullScreenTriangleOutput VsMain(uint vertexIndex : SV_VertexID)
 {
-    return CreateOutput(vertexIndex, GetFullScreenTriangleHomogeneousPosition(vertexIndex));
+    return CreateOutput(vertexIndex, GetFullScreenTriangleClipPosition(vertexIndex));
 }
 
-VS_FullScreenTriangleOutput VS_MainDepth1(uint vertexIndex : SV_VertexID)
+VsFullScreenTriangleOutput VsMainDepth1(uint vertexIndex : SV_VertexID)
 {
-    return CreateOutput(vertexIndex, GetFullScreenTriangleHomogeneousPositionDepth1(vertexIndex));
+    float4 clipPositionDepth1 = GetFullScreenTriangleClipPosition(vertexIndex);
+    clipPositionDepth1.z = 1.0;
+
+    return CreateOutput(vertexIndex, clipPositionDepth1);
 }

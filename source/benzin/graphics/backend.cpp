@@ -25,9 +25,7 @@ namespace benzin
 
     Backend::Backend()
     {
-#if BENZIN_IS_DEBUG_BUILD
         EnableD3D12DebugLayer();
-#endif
 
         AdlWrapper::Initialize();
         NvApiWrapper::Initialize();
@@ -90,8 +88,10 @@ namespace benzin
         }
         else if (adapterInfo.IsNvidia())
         {
+#if BENZIN_IS_ASSERTS_ENABLED
             const uint64_t totalUsedDedicatedVram = NvApiWrapper::GetTotalDedicatedVramInBytes(adapterInfo.DeviceId);
             BenzinAssert(totalUsedDedicatedVram == adapterInfo.TotalDedicatedVramInBytes, "UsedDedicatedVram calculates relative to TotalDedicatedVram");
+#endif
 
             vendorTotalUsedDedicatedVramInBytes = NvApiWrapper::GetUsedDedicatedVramInBytes(adapterInfo.DeviceId);
         }

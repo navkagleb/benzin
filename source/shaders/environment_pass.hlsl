@@ -1,12 +1,13 @@
+#include "unified_root_parameters.hlsli"
+
 #include "common.hlsli"
 #include "fullscreen_helper.hlsli"
 
-float4 PS_Main(VS_FullScreenTriangleOutput input) : SV_Target
+float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 {
-    const joint::CameraConstants cameraConstants = FetchCurrentCameraConstants();
     TextureCube<float4> cubeMap = ResourceDescriptorHeap[GetRootConstant(joint::EnvironmentPassRc_CubeMapTexture)];
 
-    const float4 worldPosition = mul(input.ClipPosition, cameraConstants.InverseViewDirectionProjection);
+    const float4 worldPosition = mul(input.ClipPosition, g_FrameConstants.CurrentCamera.InverseViewDirectionProjection);
     const float3 direction = normalize(worldPosition.xyz);
 
     const float4 color = cubeMap.Sample(g_LinearWrapSampler, direction);

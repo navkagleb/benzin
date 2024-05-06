@@ -12,6 +12,7 @@ namespace benzin
 
     class Descriptor;
     class Device;
+    class TickTimer;
 
     template <typename>
     class ConstantBuffer;
@@ -41,9 +42,9 @@ namespace benzin
 
         const Descriptor& GetActiveTransformCbv() const;
 
-    private:
         void UpdateMatricesIfNeeded();
 
+    private:
         void CreateTransformConstantBuffer(Device& device, std::string_view debugName);
         void UpdateTransformConstantBuffer();
 
@@ -62,7 +63,8 @@ namespace benzin
 
     struct UpdateComponent
     {
-        std::function<void(entt::registry&, entt::entity, std::chrono::microseconds)> Callback;
+        using FrameUpdateCallback = std::function<void(entt::registry&, entt::entity, const TickTimer&)>;
+        FrameUpdateCallback Callback;
     };
 
     struct PointLightComponent

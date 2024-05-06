@@ -53,9 +53,9 @@ namespace benzin
         BenzinSafeDxObjectRelease(m_D3D12CommandQueue);
     }
 
-    GraphicsCommandList& GraphicsCommandQueue::GetCommandList(std::optional<uint64_t> uploadBufferSizeInBytes)
+    GraphicsCommandList& GraphicsCommandQueue::GetCommandList(uint64_t uploadBufferSizeInBytes)
     {
-        if (uploadBufferSizeInBytes)
+        if (uploadBufferSizeInBytes != 0)
         {
             auto& uploadBuffers = m_FrameContexts[m_Device.GetActiveFrameIndex()].UploadBuffers;
 
@@ -64,7 +64,7 @@ namespace benzin
             {
                 .DebugName = std::format("UploadBuffer{}", uploadBuffers.size() - 1),
                 .ElementSize = sizeof(std::byte),
-                .ElementCount = (uint32_t)*uploadBufferSizeInBytes, // #TODO
+                .ElementCount = (uint32_t)uploadBufferSizeInBytes, // #TODO
                 .Flags = BufferFlag::UploadBuffer,
             });
 
@@ -84,8 +84,6 @@ namespace benzin
 
     void GraphicsCommandQueue::OnFrameBegin()
     {
-        const auto activeFrameIndex = m_Device.GetActiveFrameIndex();
-
         {
             auto& frameContext = m_FrameContexts[m_Device.GetActiveFrameIndex()];
 
@@ -106,8 +104,8 @@ namespace benzin
 
         ID3D12GraphicsCommandList* d3d12GraphicsCommandList = m_CommandList.GetD3D12GraphicsCommandList();
         d3d12GraphicsCommandList->SetDescriptorHeaps((uint32_t)std::size(d3d12DescriptorHeaps), d3d12DescriptorHeaps);
-        d3d12GraphicsCommandList->SetComputeRootSignature(m_Device.GetD3D12BindlessRootSignature());
-        d3d12GraphicsCommandList->SetGraphicsRootSignature(m_Device.GetD3D12BindlessRootSignature());
+        d3d12GraphicsCommandList->SetComputeRootSignature(m_Device.GetD3D12UnifiedRootSignature());
+        d3d12GraphicsCommandList->SetGraphicsRootSignature(m_Device.GetD3D12UnifiedRootSignature());
     }
 
     void GraphicsCommandQueue::OnFrameEnd()

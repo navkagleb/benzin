@@ -12,6 +12,62 @@
 namespace benzin
 {
 
+    using UnifiedD3D12RootParameters = EnumArray<D3D12_ROOT_PARAMETER1, UnifiedRootParameter>;
+
+    static UnifiedD3D12RootParameters CreateUnifiedD3D12RootParamers()
+    {
+        UnifiedD3D12RootParameters d3d12RootParamers;
+
+        uint32_t constantBufferSpaceIndex = 0;
+
+        d3d12RootParamers[+UnifiedRootParameter::RootConstantBuffer] = D3D12_ROOT_PARAMETER1
+        {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
+            .Constants
+            {
+                .ShaderRegister = 0,
+                .RegisterSpace = constantBufferSpaceIndex++,
+                .Num32BitValues = 32,
+            },
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        };
+
+        d3d12RootParamers[+UnifiedRootParameter::FrameConstantBuffer] = D3D12_ROOT_PARAMETER1
+        {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
+            .Descriptor
+            {
+                .ShaderRegister = 0,
+                .RegisterSpace = constantBufferSpaceIndex++,
+            },
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        };
+
+        d3d12RootParamers[+UnifiedRootParameter::RenderPassConstantBuffer] = D3D12_ROOT_PARAMETER1
+        {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
+            .Descriptor
+            {
+                .ShaderRegister = 0,
+                .RegisterSpace = constantBufferSpaceIndex++,
+            },
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        };
+
+        d3d12RootParamers[+UnifiedRootParameter::TopLevelAs] = D3D12_ROOT_PARAMETER1
+        {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
+            .Descriptor
+            {
+                .ShaderRegister = 0,
+                .RegisterSpace = 0,
+            },
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        };
+
+        return d3d12RootParamers;
+    }
+
     static D3D12_FILTER ToD3D12TextureFilter(const TextureFilterType& minification, const TextureFilterType& magnification, const TextureFilterType& mipLevel)
     {
         switch (minification)
@@ -64,18 +120,16 @@ namespace benzin
 
     //
 
-    Device::Device(const Backend& backend)
+    Device::Device(const DeviceCreation& creation)
     {
         EnableDred();
 
         ComPtr<ID3D12Device> dx12Device;
-        BenzinEnsure(::D3D12CreateDevice(backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&dx12Device)));
+        BenzinEnsure(::D3D12CreateDevice(creation.BackendRef.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&dx12Device)));
         BenzinEnsure(dx12Device->QueryInterface(&m_D3D12Device));
-        SetDxObjectDebugName(m_D3D12Device, "MainDevice");
+        SetDxObjectDebugName(m_D3D12Device, creation.DebugName);
 
-#if BENZIN_IS_DEBUG_BUILD
         EnableD3D12DebugBreakOn(m_D3D12Device, true, D3D12BreakReasonFlag::Warning | D3D12BreakReasonFlag::Error | D3D12BreakReasonFlag::Corruption);
-#endif
 
         Asserter::SetDeviceRemovedCallback([this]
         {
@@ -86,7 +140,7 @@ namespace benzin
                 "CPUFrameIndex: {}, GPUFrameIndex: {}, ActiveFrameIndex: {}\n"
                 "RemoveDevice was trigerred. DeviceRemovedReason: ({:#0x}) {}\n",
                 GetDredMessages(m_D3D12Device),
-                m_CpuFrameIndex, m_GpuFrameIndex, m_ActiveFrameIndex,
+                m_CpuFrameIndex, m_CompletedGpuFrameIndex, m_ActiveFrameIndex,
                 (uint32_t)removedReason, DxgiErrorToString(removedReason)
             );
 
@@ -94,7 +148,7 @@ namespace benzin
         });
         
         CheckFeaturesSupport();
-        CreateBindlessRootSignature();
+        CreateUnifiedRootSignature();
 
         MakeUniquePtr(m_DescriptorManager, *this);
         MakeUniquePtr(m_GraphicsCommandQueue, *this);
@@ -103,16 +157,16 @@ namespace benzin
 
     Device::~Device()
     {
+        ProcessDeferredReleaseQueues(true);
+
         m_DescriptorManager.reset();
         m_GraphicsCommandQueue.reset();
         m_GpuTimer.reset();
 
-        BenzinSafeDxObjectRelease(m_D3D12BindlessRootSignature);
+        BenzinSafeDxObjectRelease(m_D3D12UnifiedRootSignature);
 
-#if BENZIN_IS_DEBUG_BUILD
         EnableD3D12DebugBreakOn(m_D3D12Device, false, { D3D12BreakReasonFlag::Warning });
         ReportLiveD3D12Objects(m_D3D12Device);
-#endif
 
         // TODO: There is reference count due to implicit heaps of resources
         BenzinSafeDxObjectRelease(m_D3D12Device);
@@ -123,9 +177,52 @@ namespace benzin
         BenzinAssert(format != GraphicsFormat::Unknown);
 
         D3D12_FEATURE_DATA_FORMAT_INFO d3d12FormatInfo{ .Format = (DXGI_FORMAT)format };
-        BenzinAssert(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_INFO, &d3d12FormatInfo, sizeof(d3d12FormatInfo)));
+        BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_INFO, &d3d12FormatInfo, sizeof(d3d12FormatInfo)));
 
         return d3d12FormatInfo.PlaneCount;
+    }
+
+    void Device::DeferredRelease(const Descriptor& descriptor)
+    {
+        BenzinAssert(descriptor.IsCpuValid());
+
+        m_DeferredReleaseDescriptorQueue.emplace(m_CpuFrameIndex, descriptor);
+    }
+
+    void Device::DeferredRelease(ID3D12Object* d3d12Object)
+    {
+        BenzinAssert(d3d12Object != nullptr);
+
+        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12Object);
+    }
+
+    void Device::ProcessDeferredReleaseQueues(bool isReleaseForced)
+    {
+        while (!m_DeferredReleaseDescriptorQueue.empty())
+        {
+            auto&& [cpuFrameIndex, descriptor] = m_DeferredReleaseDescriptorQueue.front();
+
+            if (!(isReleaseForced || cpuFrameIndex <= m_CompletedGpuFrameIndex))
+            {
+                break;
+            }
+
+            m_DescriptorManager->FreeDescriptor(descriptor);
+            m_DeferredReleaseDescriptorQueue.pop();
+        }
+
+        while (!m_DeferredReleaseResourceQueue.empty())
+        {
+            auto&& [cpuFrameIndex, d3d12Object] = m_DeferredReleaseResourceQueue.front();
+
+            if (!(isReleaseForced || cpuFrameIndex <= m_CompletedGpuFrameIndex))
+            {
+                break;
+            }
+
+            BenzinSafeDxObjectRelease(d3d12Object);
+            m_DeferredReleaseResourceQueue.pop();
+        }
     }
 
     void Device::CheckFeaturesSupport()
@@ -180,35 +277,9 @@ namespace benzin
         }
     }
 
-    void Device::CreateBindlessRootSignature()
+    void Device::CreateUnifiedRootSignature()
     {
-        const auto d3d12RootParameters = std::to_array(
-        {
-            // Root ConstantBuffer
-            D3D12_ROOT_PARAMETER1
-            {
-                .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
-                .Constants
-                {
-                    .ShaderRegister = 0,
-                    .RegisterSpace = 0,
-                    .Num32BitValues = 32,
-                },
-                .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-            },
-
-            // Root TopLevelAS
-            D3D12_ROOT_PARAMETER1
-            {
-                .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
-                .Descriptor
-                {
-                    .ShaderRegister = 0,
-                    .RegisterSpace = 0,
-                },
-                .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-            },
-        });
+        const auto d3d12RootParameters = CreateUnifiedD3D12RootParamers();
 
         uint32_t samplerSpaceIndex = 0;
         const auto d3d12StaticSamplerDescs = std::to_array(
@@ -265,10 +336,10 @@ namespace benzin
             0,
             d3d12Blob->GetBufferPointer(),
             d3d12Blob->GetBufferSize(),
-            IID_PPV_ARGS(&m_D3D12BindlessRootSignature)
+            IID_PPV_ARGS(&m_D3D12UnifiedRootSignature)
         ));
 
-        SetDxObjectDebugName(m_D3D12BindlessRootSignature, "BindlessRootSignature");
+        SetDxObjectDebugName(m_D3D12UnifiedRootSignature, "UnifiedRootSignature");
     }
 
 } // namespace benzin

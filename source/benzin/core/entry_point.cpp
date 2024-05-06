@@ -26,7 +26,7 @@ namespace benzin
 
     int Main(int argc, char** argv)
     {
-        BenzinAssert(::SetConsoleCtrlHandler(Wint64_ConsoleHandler, true) != 0);
+        BenzinEnsure(::SetConsoleCtrlHandler(Wint64_ConsoleHandler, true) != 0);
 
         CommandLineArgs::Initialize(argc, argv);
 

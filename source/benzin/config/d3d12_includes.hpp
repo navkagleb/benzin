@@ -3,13 +3,10 @@
 #include <d3d12.h>
 #pragma comment(lib, "d3d12.lib")
 
-#if defined(BENZIN_DEBUG_BUILD)
-  #include <dxgidebug.h>
-  #pragma comment(lib, "dxguid.lib")
-#endif
-
 #include <dxgi1_6.h>
+#include <dxgidebug.h>
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "dxguid.lib")
 
 #include <DirectXCollision.h>
 #include <DirectXMath.h>
@@ -29,5 +26,4 @@ extern "C"
 #include <d3d12shader.h>
 #include <dxcapi.h>
 #include <dxcerrors.h>
-
 #pragma comment(lib, "dxcompiler.lib")

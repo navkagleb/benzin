@@ -1,32 +1,24 @@
 #pragma once
 
-struct VS_FullScreenTriangleOutput
+struct VsFullScreenTriangleOutput
 {
-    float4 HomogeneousPosition : SV_Position;
+    float4 SvPosition : SV_Position;
     float4 ClipPosition : ClipPosition;
-    float2 UV : UV;
+    float2 Uv : Uv;
 };
 
-float4 GetFullScreenTriangleHomogeneousPosition(uint32_t vertexIndex)
+float4 GetFullScreenTriangleClipPosition(uint32_t vertexIndex)
 {
-    const float x = (float)(vertexIndex >> 1) * -4.0f + 1.0f;
-    const float y = (float)(vertexIndex & 1) * -4.0f + 1.0f;
+    const float x = (float)(vertexIndex >> 1) * -4.0 + 1.0;
+    const float y = (float)(vertexIndex & 1) * -4.0 + 1.0;
 
-    return float4(x, y, 0.0f, 1.0f);
+    return float4(x, y, 0.0, 1.0);
 }
 
-float4 GetFullScreenTriangleHomogeneousPositionDepth1(uint32_t vertexIndex)
+float2 GetFullScreenTriangleUv(uint vertexId)
 {
-    float4 homogeneousPosition = GetFullScreenTriangleHomogeneousPosition(vertexIndex);
-    homogeneousPosition.z = 1.0f;
-
-    return homogeneousPosition;
-}
-
-float2 GetFullScreenTriangleUV(uint32_t vertexID)
-{
-    const float u = 1.0f - (float)(vertexID >> 1) * 2.0f;
-    const float v = (float)(vertexID & 1) * 2.0f;
+    const float u = 1.0 - (float)(vertexId >> 1) * 2.0;
+    const float v = (float)(vertexId & 1) * 2.0;
 
     return float2(u, v);
 }

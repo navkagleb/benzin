@@ -35,7 +35,7 @@ float3 NormalDistributionFunction(float3 normal, float3 halfDirection, float alp
     const float3 nDotH2 = nDotH * nDotH;
 
     const float numerator = alpha2;
-    const float3 denominator = g_PI * pow(nDotH2 * (alpha2 - 1.0f) + 1.0f, 2.0f);
+    const float3 denominator = g_Pi * pow(nDotH2 * (alpha2 - 1.0f) + 1.0f, 2.0f);
 
     return numerator / denominator;
 }
@@ -79,7 +79,7 @@ float3 DiffuseFunction(float3 albedo)
     // Lambertian Model
     // dot(lightDirection, normal) included in overall formula
 
-    return albedo / g_PI;
+    return albedo / g_Pi;
 }
 
 float3 SpecularFunction(PbrLight light, PbrMaterial material, float3 viewDirection, float3 normal, float3 halfDirection)

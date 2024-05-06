@@ -12,7 +12,7 @@ namespace benzin
         BenzinDefineNonMoveable(Fence);
 
     public:
-        explicit Fence(Device& device, std::string_view debugName);
+        Fence(Device& device, std::string_view debugName);
         ~Fence();
 
     public:

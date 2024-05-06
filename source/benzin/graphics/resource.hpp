@@ -46,7 +46,7 @@ namespace benzin
         auto* GetD3D12Resource() const { return m_D3D12Resource; }
 
         auto GetCurrentState() const { return m_CurrentState; }
-        void SetCurrentState(ResourceState resourceState) { m_CurrentState = resourceState; }
+        void SetCurrentState(ResourceState resourceState) const { m_CurrentState = resourceState; }
 
         uint32_t GetAllocationSizeInBytes() const;
 
@@ -64,7 +64,7 @@ namespace benzin
         Device& m_Device;
 
         ID3D12Resource* m_D3D12Resource = nullptr;
-        ResourceState m_CurrentState = ResourceState::Common;
+        mutable ResourceState m_CurrentState = ResourceState::Common;
 
     private:
         mutable std::unordered_map<size_t, Descriptor> m_ViewDescriptors;

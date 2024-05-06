@@ -12,15 +12,23 @@ namespace benzin
     class Fence;
     class Texture;
 
+    struct SwapChainCreation
+    {
+        std::string_view DebugName;
+
+        const Window& WindowRef;
+        const Backend& BackendRef;
+        Device& DeviceRef;
+    };
+
     class SwapChain
     {
     public:
+        explicit SwapChain(const SwapChainCreation& creation);
+        ~SwapChain();
+
         BenzinDefineNonCopyable(SwapChain);
         BenzinDefineNonMoveable(SwapChain);
-
-    public:
-        SwapChain(const Window& window, const Backend& backend, Device& device);
-        ~SwapChain();
 
     public:
         Texture& GetCurrentBackBuffer();
@@ -32,6 +40,9 @@ namespace benzin
 
         auto GetViewportWidth() const { return (uint32_t)m_Viewport.Width; }
         auto GetViewportHeight() const { return (uint32_t)m_Viewport.Height; }
+
+        auto GetPresentTime() const { return m_PresentTime; }
+        auto GetGpuWaitTime() const { return m_GpuWaitTime; }
 
     public:
         void OnFlip(bool isVerticalSyncEnabled);
@@ -57,6 +68,9 @@ namespace benzin
         float m_AspectRatio = 0.0f;
         Viewport m_Viewport;
         ScissorRect m_ScissorRect;
+
+        std::chrono::microseconds m_PresentTime = std::chrono::microseconds::zero();
+        std::chrono::microseconds m_GpuWaitTime = std::chrono::microseconds::zero();
     };
 
 } // namespace benzin

@@ -26,8 +26,10 @@ namespace benzin
         }
     }
 
-    static void SetFalseIfExists([[maybe_unused]] std::string_view commandLineToParse, void* member)
+    static void SetFalseIfExists(std::string_view commandLineToParse, void* member)
     {
+        BenzinUnused(commandLineToParse);
+
         *reinterpret_cast<bool*>(member) = false;
     }
 
@@ -71,15 +73,17 @@ namespace benzin
 
                 SupportedCommandLineArg{ "-adapter_index:", &AdapterIndex, ParseArithmetic<decltype(AdapterIndex)> },
                 SupportedCommandLineArg{ "-frame_in_flight_count:", &FrameInFlightCount, ParseArithmetic<decltype(FrameInFlightCount)> },
-                SupportedCommandLineArg{ "-force_disable_gpu_upload_heaps", &IsGpuUploadHeapsEnabled, SetFalseIfExists },
+                SupportedCommandLineArg{ "-no_gpu_upload_heaps", &IsGpuUploadHeapsEnabled, SetFalseIfExists },
 
-                SupportedCommandLineArg{ "-force_disable_gpu_based_validation", &GraphicsDebugLayerParams.IsGpuBasedValidationEnabled, SetFalseIfExists },
-                SupportedCommandLineArg{ "-force_disable_sync_command_queue_validation", &GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled, SetFalseIfExists },
+                SupportedCommandLineArg{ "-no_gpu_based_validation", &GraphicsDebugLayerParams.IsGpuBasedValidationEnabled, SetFalseIfExists },
+                SupportedCommandLineArg{ "-no_sync_command_queue_validation", &GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled, SetFalseIfExists },
             });
 
             ExecutablePath = argv[0];
 
-            for (int i = 1; i < argc; ++i)
+            BenzinTrace("ExecutablePath: {}", ExecutablePath.string());
+
+            for (const int i : std::views::iota(1, argc))
             {
                 const std::string_view currentArg = argv[i];
 

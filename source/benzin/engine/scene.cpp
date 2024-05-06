@@ -94,8 +94,6 @@ namespace benzin
 
         m_TopLevelAss.resize(CommandLineArgs::GetFrameInFlightCount());
 
-        MakeUniquePtr(m_CameraConstantBuffer, m_Device, "DoubleFrameCameraConstantBuffer");
-
         MakeUniquePtr(m_PointLightBuffer, m_Device, BufferCreation
         {
             .DebugName = "PointLightBuffer",
@@ -109,12 +107,8 @@ namespace benzin
 
     const TopLevelAccelerationStructure& Scene::GetActiveTopLevelAs() const
     {
+        BenzinAssert(HasMeshes());
         return *m_TopLevelAss[m_Device.GetActiveFrameIndex()];
-    }
-
-    const Descriptor& Scene::GetCameraConstantBufferActiveCbv() const
-    {
-        return m_CameraConstantBuffer->GetActiveCbv();
     }
 
     const Descriptor& Scene::GetPointLightBufferStructuredSrv() const
@@ -126,7 +120,7 @@ namespace benzin
         });
     }
 
-    void Scene::OnUpdate(std::chrono::microseconds dt)
+    void Scene::OnUpdate(const TickTimer& tickTimer)
     {
         {
             const auto view = m_EntityRegistry.view<UpdateComponent>();
@@ -134,10 +128,8 @@ namespace benzin
             {
                 auto& uc = view.get<UpdateComponent>(entityHandle);
 
-                if (uc.Callback)
-                {
-                    uc.Callback(m_EntityRegistry, entityHandle, dt);
-                }
+                BenzinAssert((bool)uc.Callback);
+                uc.Callback(m_EntityRegistry, entityHandle, tickTimer);
             }
         }
 
@@ -151,9 +143,10 @@ namespace benzin
         }
 
         {
-            const joint::CameraConstants currentCameraConstants
+            const joint::CameraConstants cameraConstants
             {
                 .View = m_Camera.GetViewMatrix(),
+                .ViewForNormals = m_Camera.GetViewMatrixForNormals(),
                 .InverseView = m_Camera.GetInverseViewMatrix(),
                 .Projection = m_Camera.GetProjectionMatrix(),
                 .InverseProjection = m_Camera.GetInverseProjectionMatrix(),
@@ -163,14 +156,15 @@ namespace benzin
                 .WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition()),
             };
 
-            const joint::DoubleFrameCameraConstants constants
+            if (m_PreviousCameraConstants.has_value())
             {
-                .CurrentFrame = currentCameraConstants,
-                .PreviousFrame = m_PreviousCameraConstants.value_or(currentCameraConstants),
-            };
-
-            m_CameraConstantBuffer->UpdateConstants(constants);
-            m_PreviousCameraConstants = constants.CurrentFrame;
+                m_PreviousCameraConstants = std::exchange(m_CurrentCameraConstants, cameraConstants);
+            }
+            else
+            {
+                m_PreviousCameraConstants = cameraConstants;
+                m_CurrentCameraConstants = cameraConstants;
+            }
         }
 
         {
@@ -247,6 +241,11 @@ namespace benzin
 
     void Scene::UploadMeshCollections()
     {
+        if (!HasMeshes())
+        {
+            return;
+        }
+
         UploadAllMeshData();
         UploadAllMeshInstances();
         UploadAllTextures();
@@ -255,13 +254,18 @@ namespace benzin
 
     void Scene::BuildBottomLevelAccelerationStructures()
     {
+        if (!HasMeshes())
+        {
+            return;
+        }
+
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
         for (const auto& meshUnion : m_MeshUnions)
         {
             for (const auto& blas : meshUnion.BottomLevelASs)
             {
-                commandList.SetResourceBarrier(TransitionBarrier{ blas->GetScratchResource(), ResourceState::UnorderedAccess });
+                BenzinMakeResourceBarriers(commandList, TransitionBarrier{ blas->GetScratchResource(), ResourceState::UnorderedAccess });
                 commandList.BuildRayTracingAccelerationStructure(*blas);
             }
         }
@@ -271,24 +275,29 @@ namespace benzin
         {
             for (const auto& blas : meshUnion.BottomLevelASs)
             {
-                commandList.SetResourceBarrier(UnorderedAccessBarrier{ blas->GetBuffer() });
+                BenzinMakeResourceBarriers(commandList, UnorderedAccessBarrier{ blas->GetBuffer() });
             }
         }
     }
 
     void Scene::BuildTopLevelAccelerationStructure()
     {
+        if (!HasMeshes())
+        {
+            return;
+        }
+
         CreateTopLevelAs();
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 
-        auto& activeTopLevelAs = GetActiveTopLevelAs();
-        commandList.SetResourceBarrier(TransitionBarrier{ activeTopLevelAs->GetScratchResource(), ResourceState::UnorderedAccess });
+        auto& activeTopLevelAs = GetActiveTopLevelAsPtr();
+
+        BenzinMakeScopedResourceBarriers(commandList, TransitionBarrier{ activeTopLevelAs->GetScratchResource(), ResourceState::UnorderedAccess });
         commandList.BuildRayTracingAccelerationStructure(*activeTopLevelAs);
-        commandList.SetResourceBarrier(UnorderedAccessBarrier{ activeTopLevelAs->GetBuffer() });
     }
 
-    std::unique_ptr<TopLevelAccelerationStructure>& Scene::GetActiveTopLevelAs()
+    std::unique_ptr<TopLevelAccelerationStructure>& Scene::GetActiveTopLevelAsPtr()
     {
         return m_TopLevelAss[m_Device.GetActiveFrameIndex()];
     }
@@ -382,7 +391,7 @@ namespace benzin
         }
 
         BenzinAssert(!topLevelInstances.empty());
-        MakeUniquePtr(GetActiveTopLevelAs(), m_Device, TopLevelAccelerationStructureCreation
+        MakeUniquePtr(GetActiveTopLevelAsPtr(), m_Device, TopLevelAccelerationStructureCreation
         {
             .DebugName = "SceneTopLevelAS",
             .Instances = topLevelInstances,

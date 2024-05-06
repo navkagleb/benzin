@@ -1,16 +1,13 @@
 #pragma once
 
+template <benzin::EnumConcept T>
+struct IsFlagsEnabledForEnum : std::false_type {};
+
+template <benzin::EnumConcept T>
+struct IsFlagsEnabledForBitEnum : std::false_type {};
+
 namespace benzin
 {
-
-    template <typename T>
-    concept EnumConcept = std::is_enum_v<T>;
-
-    template <EnumConcept T>
-    struct IsFlagsEnabledForEnum : std::false_type {};
-
-    template <EnumConcept T>
-    struct IsFlagsEnabledForBitEnum : std::false_type {};
 
     template <EnumConcept T>
     class EnumFlags
@@ -71,7 +68,7 @@ namespace benzin
 
 } // namespace benzin
 
-template <typename T> requires benzin::IsFlagsEnabledForEnum<T>::value
+template <typename T> requires IsFlagsEnabledForEnum<T>::value
 auto operator|(T first, T second)
 {
     return benzin::EnumFlags<T>{ first } | benzin::EnumFlags<T>{ second };
@@ -79,10 +76,10 @@ auto operator|(T first, T second)
 
 #define BenzinEnableFlagsForEnum(EnumTypeName) \
     template <> \
-    struct benzin::IsFlagsEnabledForEnum<EnumTypeName> : std::true_type {}; \
+    struct IsFlagsEnabledForEnum<EnumTypeName> : std::true_type {}; \
     using BenzinStringConcatenate2(EnumTypeName, s) = benzin::EnumFlags<EnumTypeName>
 
 #define BenzinEnableFlagsForBitEnum(EnumTypeName) \
     template <> \
-    struct benzin::IsFlagsEnabledForBitEnum<EnumTypeName> : std::true_type {}; \
+    struct IsFlagsEnabledForBitEnum<EnumTypeName> : std::true_type {}; \
     BenzinEnableFlagsForEnum(EnumTypeName)

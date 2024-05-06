@@ -21,9 +21,9 @@ namespace benzin
             .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
             .Transition
             {
-                .pResource = transitionBarrier.Resource.GetD3D12Resource(),
+                .pResource = transitionBarrier.TransitionResource.GetD3D12Resource(),
                 .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                .StateBefore = (D3D12_RESOURCE_STATES)transitionBarrier.Resource.GetCurrentState(),
+                .StateBefore = (D3D12_RESOURCE_STATES)transitionBarrier.StateBefore,
                 .StateAfter = (D3D12_RESOURCE_STATES)transitionBarrier.StateAfter,
             },
         };
@@ -46,6 +46,8 @@ namespace benzin
     {
         return std::visit(MakeVisitorMatch([](auto&& resourceBarrier) { return ToD3D12ResourceBarrier(resourceBarrier); }), resourceBarrier);
     };
+
+    // GraphicsCommandList
 
     GraphicsCommandList::GraphicsCommandList(Device& device)
     {
@@ -72,41 +74,9 @@ namespace benzin
         m_UploadBufferOffset = 0;
     }
 
-    void GraphicsCommandList::SetResourceBarrier(const ResourceBarrierVariant& resourceBarrier)
+    void GraphicsCommandList::CopyResource(const Resource& destination, const Resource& source)
     {
-        const auto* transitionBarrier = std::get_if<TransitionBarrier>(&resourceBarrier);
-
-        if (transitionBarrier != nullptr && transitionBarrier->Resource.GetCurrentState() == transitionBarrier->StateAfter)
-        {
-            return;
-        }
-
-        const D3D12_RESOURCE_BARRIER d3d12ResourceBarrier = ToD3D12ResourceBarrierVariant(resourceBarrier);
-        m_D3D12GraphicsCommandList->ResourceBarrier(1, &d3d12ResourceBarrier);
-
-        if (transitionBarrier != nullptr)
-        {
-            transitionBarrier->Resource.SetCurrentState(transitionBarrier->StateAfter);
-        }
-    }
-
-    void GraphicsCommandList::SetResourceBarriers(const std::vector<ResourceBarrierVariant>& resourceBarriers)
-    {
-        const auto d3d12ResourceBarriers = resourceBarriers | std::views::transform(ToD3D12ResourceBarrierVariant) | std::ranges::to<std::vector>();
-        m_D3D12GraphicsCommandList->ResourceBarrier((uint32_t)d3d12ResourceBarriers.size(), d3d12ResourceBarriers.data());
-
-        for (const auto& resourceBarrier : resourceBarriers)
-        {
-            if (const auto* transitionBarrier = std::get_if<TransitionBarrier>(&resourceBarrier))
-            {
-                transitionBarrier->Resource.SetCurrentState(transitionBarrier->StateAfter);
-            }
-        }
-    }
-
-    void GraphicsCommandList::CopyResource(Resource& to, Resource& from)
-    {
-        m_D3D12GraphicsCommandList->CopyResource(to.GetD3D12Resource(), from.GetD3D12Resource());
+        m_D3D12GraphicsCommandList->CopyResource(destination.GetD3D12Resource(), source.GetD3D12Resource());
     }
 
     void GraphicsCommandList::UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, size_t offsetInBytes)
@@ -121,7 +91,7 @@ namespace benzin
         const MemoryWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSizeInBytes() };
         writer.WriteBytes(data, uploadBufferOffset);
 
-        SetResourceBarrier(TransitionBarrier{ buffer, ResourceState::CopyDestination });
+        BenzinMakeScopedResourceBarriers(*this, TransitionBarrier{ buffer, ResourceState::CopyDestination });
         m_D3D12GraphicsCommandList->CopyBufferRegion(
             buffer.GetD3D12Resource(),
             offsetInBytes,
@@ -129,7 +99,6 @@ namespace benzin
             uploadBufferOffset,
             data.size_bytes()
         );
-        SetResourceBarrier(TransitionBarrier{ buffer, ResourceState::Common });
     }
 
     void GraphicsCommandList::UploadToTexture(Texture& texture, const std::vector<SubResourceData>& subResources)
@@ -234,9 +203,8 @@ namespace benzin
                 .PlacedFootprint = copyableFootprits.D3D12Layouts[i],
             };
 
-            SetResourceBarrier(TransitionBarrier{ texture, ResourceState::CopyDestination });
+            BenzinMakeScopedResourceBarriers(*this, TransitionBarrier{ texture, ResourceState::CopyDestination });
             m_D3D12GraphicsCommandList->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
-            SetResourceBarrier(TransitionBarrier{ texture, ResourceState::Common });
         }
     }
 
@@ -257,10 +225,8 @@ namespace benzin
 
     void GraphicsCommandList::SetRootConstant(uint32_t rootIndex, uint32_t value)
     {
-        const uint32_t rootParameterIndex = 0;
-
-        m_D3D12GraphicsCommandList->SetComputeRoot32BitConstant(rootParameterIndex, value, rootIndex);
-        m_D3D12GraphicsCommandList->SetGraphicsRoot32BitConstant(rootParameterIndex, value, rootIndex);
+        m_D3D12GraphicsCommandList->SetComputeRoot32BitConstant(+UnifiedRootParameter::RootConstantBuffer, value, rootIndex);
+        m_D3D12GraphicsCommandList->SetGraphicsRoot32BitConstant(+UnifiedRootParameter::RootConstantBuffer, value, rootIndex);
     }
 
     void GraphicsCommandList::SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
@@ -268,6 +234,18 @@ namespace benzin
         BenzinAssert(viewDescriptor.IsGpuValid());
 
         SetRootConstant(rootIndex, viewDescriptor.GetHeapIndex());
+    }
+
+    void GraphicsCommandList::SetCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
+    {
+        m_D3D12GraphicsCommandList->SetComputeRootConstantBufferView(+rootParameter, D3D12_GPU_VIRTUAL_ADDRESS{ gpuVirtualAddress });
+        m_D3D12GraphicsCommandList->SetGraphicsRootConstantBufferView(+rootParameter, D3D12_GPU_VIRTUAL_ADDRESS{ gpuVirtualAddress });
+    }
+
+    void GraphicsCommandList::SetSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
+    {
+        m_D3D12GraphicsCommandList->SetComputeRootShaderResourceView(+rootParameter, D3D12_GPU_VIRTUAL_ADDRESS{ gpuVirtualAddress });
+        m_D3D12GraphicsCommandList->SetComputeRootShaderResourceView(+rootParameter, D3D12_GPU_VIRTUAL_ADDRESS{ gpuVirtualAddress });
     }
 
     void GraphicsCommandList::SetPipelineState(const PipelineState& pso)
@@ -409,6 +387,61 @@ namespace benzin
         BenzinEnsure(m_UploadBufferOffset <= m_UploadBuffer->GetSizeInBytes());
 
         return alignedOffsetInBytes;
+    }
+
+    // ResourceBarriers
+
+    ResourceBarriers::ResourceBarriers(GraphicsCommandList& commandList, const std::vector<ResourceBarrierVariant>& resourceBarriers, bool isScoped)
+        : m_CommandList{ commandList }
+        , m_IsScoped{ isScoped }
+    {
+        std::vector<D3D12_RESOURCE_BARRIER> d3d12Barriers;
+
+        for (const auto& barrierVariant : resourceBarriers)
+        {
+            const auto* transitionBarrier = std::get_if<TransitionBarrier>(&barrierVariant);
+            if (transitionBarrier != nullptr)
+            {
+                transitionBarrier->TransitionResource.SetCurrentState(transitionBarrier->StateAfter);
+
+                if (m_IsScoped)
+                {
+                    m_SwappedTransitionBarriers.push_back(*transitionBarrier);
+                }
+            }
+
+            d3d12Barriers.push_back(ToD3D12ResourceBarrierVariant(barrierVariant));
+        }
+
+        SetD3D12Barriers(d3d12Barriers);
+    }
+
+    ResourceBarriers::~ResourceBarriers()
+    {
+        if (!m_IsScoped || m_SwappedTransitionBarriers.empty())
+        {
+            return;
+        }
+
+        for (auto& transitionBarrier : m_SwappedTransitionBarriers)
+        {
+            std::swap(transitionBarrier.StateAfter, transitionBarrier.StateBefore);
+            transitionBarrier.TransitionResource.SetCurrentState(transitionBarrier.StateAfter);
+        }
+
+        const auto d3d12Barriers = m_SwappedTransitionBarriers | std::views::transform(ToD3D12ResourceBarrierVariant) | std::ranges::to<std::vector>();
+        SetD3D12Barriers(d3d12Barriers);
+    }
+
+    void ResourceBarriers::SetD3D12Barriers(std::span<const D3D12_RESOURCE_BARRIER> d3d12Barriers) const
+    {
+        if (d3d12Barriers.empty())
+        {
+            return;
+        }
+
+        auto* d3d12CommandList = m_CommandList.GetD3D12GraphicsCommandList();
+        d3d12CommandList->ResourceBarrier((uint32_t)d3d12Barriers.size(), d3d12Barriers.data());
     }
 
 } // namespace benzin

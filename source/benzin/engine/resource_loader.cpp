@@ -18,7 +18,7 @@ namespace benzin
     public:
         bool ReadFromFile(std::string_view fileName, MeshCollectionResource& outMeshCollection)
         {
-            const std::filesystem::path filePath = config::g_ModelDirPath / fileName;
+            const std::filesystem::path filePath = config::g_AbsModelDirPath / fileName;
             BenzinAssert(std::filesystem::exists(filePath));
             BenzinAssert(filePath.extension() == ".glb" || filePath.extension() == ".gltf");
 
@@ -299,7 +299,7 @@ namespace benzin
             return nodeTransform * parentNodeTransform;
         }
 
-        void ParseNode(int gltfNodeIndex, int gltfParentNodeIndex, const DirectX::XMMATRIX& parentNodeTransform, MeshCollectionResource& outMeshCollection)
+        void ParseNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentNodeTransform, MeshCollectionResource& outMeshCollection)
         {
             const tinygltf::Node& gltfNode = m_CurrentModel.nodes[gltfNodeIndex];
             const DirectX::XMMATRIX nodeTransform = ParseNodeTransform(gltfNode, parentNodeTransform);
@@ -321,14 +321,12 @@ namespace benzin
 
             for (const int gltfChildNodeIndex : gltfNode.children)
             {
-                ParseNode(gltfChildNodeIndex, gltfNodeIndex, nodeTransform, outMeshCollection);
+                ParseNode(gltfChildNodeIndex, nodeTransform, outMeshCollection);
             }
         }
 
         void ParseNodes(MeshCollectionResource& outMeshCollection)
         {
-            const int gltfParentNodeIndex = -1;
-
             // Convert from right-handed to left-handed
             // Must be used with TriangleOrder::CounterClockwise in rasterizer state
             const DirectX::XMMATRIX parentNodeTransform = DirectX::XMMatrixScaling(1.0f, 1.0f, -1.0f);
@@ -337,7 +335,7 @@ namespace benzin
             {
                 for (const int gltfNodeIndex : gltfScene.nodes)
                 {
-                    ParseNode(gltfNodeIndex, gltfParentNodeIndex, parentNodeTransform, outMeshCollection);
+                    ParseNode(gltfNodeIndex, parentNodeTransform, outMeshCollection);
                 }
             }
         }

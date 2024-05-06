@@ -22,6 +22,12 @@ namespace benzin
             WriteSized(data, sizeof(T), offsetElement);
         }
 
+        template <typename T>
+        void WriteArray(std::span<const T> elements, size_t offsetElement = 0) const
+        {
+            WriteBytes(std::as_bytes(elements), offsetElement * sizeof(T));
+        }
+
     private:
         std::byte* m_Data;
         size_t m_MaxSizeInBytes;

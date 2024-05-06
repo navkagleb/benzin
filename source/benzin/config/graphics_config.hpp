@@ -25,18 +25,18 @@ namespace benzin::config
     constexpr bool g_IsShaderDebugEnabled = BENZIN_IS_DEBUG_BUILD;
     constexpr bool g_IsShaderSymbolsEnabled = BENZIN_IS_DEBUG_BUILD;
 
-    const std::filesystem::path g_ShaderSourceDirectoryPath{ "source/shaders/" };
+    const std::filesystem::path g_ShaderSourceDirectoryPath{ "source/shaders" };
     const std::filesystem::path g_AbsoluteShaderSourceDirectoryPath = std::filesystem::absolute(g_ShaderSourceDirectoryPath);
 
 #if BENZIN_IS_DEBUG_BUILD
-    const std::filesystem::path g_ShaderBinaryDirectoryPath{ "bin/shader_bytecode_debug/" };
+    const std::filesystem::path g_ShaderBinaryDirectoryPath{ "bin/shader_bytecode_debug" };
 #elif BENZIN_IS_RELEASE_BUILD
-    const std::filesystem::path g_ShaderBinaryDirectoryPath{ "bin/shader_bytecode_release/" };
+    const std::filesystem::path g_ShaderBinaryDirectoryPath{ "bin/shader_bytecode_release" };
 #endif
 
     const std::filesystem::path g_AbsoluteShaderBinaryDirectoryPath = std::filesystem::absolute(g_ShaderBinaryDirectoryPath);
 
-    const std::filesystem::path g_ShaderDebugDirectoryPath{ "bin/shader_pbd/" };
+    const std::filesystem::path g_ShaderDebugDirectoryPath{ "bin/shader_pbd" };
     const std::filesystem::path g_AbsoluteShaderDebugDirectoryPath = std::filesystem::absolute(g_ShaderDebugDirectoryPath);
 
 } // namespace benzin::config

@@ -11,18 +11,6 @@ namespace benzin
 
     struct TextureDsv {};
 
-    static D3D12_HEAP_PROPERTIES GetDefaultD3D12HeapProperties()
-    {
-        return D3D12_HEAP_PROPERTIES
-        {
-            .Type = D3D12_HEAP_TYPE_DEFAULT,
-            .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-            .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-            .CreationNodeMask = 1,
-            .VisibleNodeMask = 1,
-        };
-    }
-
     static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const TextureCreation& textureCreation)
     {
         D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
@@ -444,7 +432,7 @@ struct std::hash<benzin::TextureRtv>
 template <>
 struct std::hash<benzin::TextureDsv>
 {
-    size_t operator()(const benzin::TextureDsv& textureDsv) const
+    size_t operator()(benzin::TextureDsv) const
     {
         static const auto baseHash = typeid(benzin::TextureDsv).hash_code();
         return baseHash;

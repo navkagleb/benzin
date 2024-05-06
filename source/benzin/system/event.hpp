@@ -42,18 +42,17 @@ namespace benzin
     {
     public:
         friend class EventDispatcher;
-        friend class ImGuiLayer;
+        friend class ImGuiManager;
 
     public:
         virtual ~Event() = default;
 
-    public:
-        bool IsHandled() const { return m_IsHandled; }
+        auto IsHandled() const { return m_IsHandled; }
 
         virtual EventType GetEventType() const = 0;
         virtual bool IsInCategory(EventCategoryFlag flag) const = 0;
 
-    protected:
+    private:
         bool m_IsHandled = false;
     };
 
@@ -91,10 +90,14 @@ namespace benzin
             : m_Event{ event }
         {}
 
-    public:
         template <std::derived_from<Event> EventChild>
         bool Dispatch(const std::function<bool(EventChild&)>& callback)
         {
+            if (m_Event.IsHandled())
+            {
+                return false;
+            }
+
             if (m_Event.GetEventType() == EventChild::GetStaticEventType())
             {
                 m_Event.m_IsHandled = callback((EventChild&)m_Event);

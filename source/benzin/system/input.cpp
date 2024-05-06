@@ -35,8 +35,8 @@ namespace benzin
 
         POINT mousePosition{ 0, 0 };
 
-        BenzinAssert(::GetCursorPos(&mousePosition) != 0);
-        BenzinAssert(::ScreenToClient(window.GetWin64Window(), &mousePosition) != 0);
+        BenzinAssertExpr(::GetCursorPos(&mousePosition) != 0);
+        BenzinAssertExpr(::ScreenToClient(window.GetWin64Window(), &mousePosition) != 0);
 
         return { mousePosition.x, mousePosition.y };
     }

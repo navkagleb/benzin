@@ -1,7 +1,5 @@
 #pragma once
 
-// #TODO: Include directory must be started from 'shaders'
-// Undef hlsl defines in the end of the file
 #include "hlsl_to_cpp.hpp"
 
 namespace joint
