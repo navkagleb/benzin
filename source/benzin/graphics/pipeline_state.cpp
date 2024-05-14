@@ -2,27 +2,28 @@
 #include "benzin/graphics/pipeline_state.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/render_states.hpp"
-#include "benzin/graphics/shaders.hpp"
 
 namespace benzin
 {
 
-    static D3D12_SHADER_BYTECODE ToD3D12Shader(ShaderType shaderType, const ShaderCreation& shaderCreation)
+    static D3D12_SHADER_BYTECODE ToD3D12Shader(Device& device, ShaderType shaderType, const ShaderCreation& shaderCreation)
     {
         if (!shaderCreation.IsValid())
         {
             return { nullptr, 0 };
         }
-
-        const std::span<const std::byte> shaderBinary = GetShaderBinary(shaderType, shaderCreation);
+        
+        const auto& shaderManager = device.GetBackend().GetShaderManager();
+        const std::span shaderDxil = shaderManager.GetShaderDxil(shaderType, shaderCreation.FileName, shaderCreation.EntryPoint);
 
         return D3D12_SHADER_BYTECODE
         {
-            .pShaderBytecode = shaderBinary.data(),
-            .BytecodeLength = shaderBinary.size(),
+            .pShaderBytecode = shaderDxil.data(),
+            .BytecodeLength = shaderDxil.size(),
         };
     }
 
@@ -134,8 +135,8 @@ namespace benzin
         D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12GraphicsPipelineStateDesc
         {
             .pRootSignature = device.GetD3D12UnifiedRootSignature(),
-            .VS = ToD3D12Shader(ShaderType::Vertex, creation.VertexShader),
-            .PS = ToD3D12Shader(ShaderType::Pixel, creation.PixelShader),
+            .VS = ToD3D12Shader(device, ShaderType::Vertex, creation.VertexShader),
+            .PS = ToD3D12Shader(device, ShaderType::Pixel, creation.PixelShader),
             .DS{ nullptr, 0 },
             .HS{ nullptr, 0 },
             .GS{ nullptr, 0 },
@@ -186,7 +187,7 @@ namespace benzin
         const D3D12_COMPUTE_PIPELINE_STATE_DESC d3d12ComputePipelineStateDesc
         {
             .pRootSignature = device.GetD3D12UnifiedRootSignature(),
-            .CS = ToD3D12Shader(ShaderType::Compute, creation.ComputeShader),
+            .CS = ToD3D12Shader(device, ShaderType::Compute, creation.ComputeShader),
             .NodeMask = 0,
             .CachedPSO
             {

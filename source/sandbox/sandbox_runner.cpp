@@ -7,6 +7,7 @@
 #include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/geometry_generator.hpp>
 #include <benzin/engine/scene.hpp>
+#include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_list.hpp>
 #include <benzin/graphics/command_queue.hpp>
@@ -14,7 +15,6 @@
 #include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/pipeline_state.hpp>
 #include <benzin/graphics/rt_acceleration_structures.hpp>
-#include <benzin/graphics/shaders.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/system/key_event.hpp>
@@ -410,14 +410,14 @@ namespace sandbox
             };
 
             // 2. D3D12_DXIL_LIBRARY_DESC
-            const std::span<const std::byte> libraryBinary = benzin::GetShaderBinary(benzin::ShaderType::Library, { "rt_shadow_pass.hlsl" });
+            const std::span libraryDxil = ms_Device->GetBackend().GetShaderManager().GetLibraryDxil("rt_shadow_pass.hlsl");
 
             const D3D12_DXIL_LIBRARY_DESC d3d12DXILLibraryDesc
             {
                 .DXILLibrary
                 {
-                    .pShaderBytecode = libraryBinary.data(),
-                    .BytecodeLength = libraryBinary.size(),
+                    .pShaderBytecode = libraryDxil.data(),
+                    .BytecodeLength = libraryDxil.size(),
                 },
                 .NumExports = 0,
                 .pExports = nullptr,

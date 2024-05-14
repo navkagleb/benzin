@@ -86,22 +86,4 @@ namespace benzin
         return sourceTime > destinationTime;
     }
 
-    fs::path GetShaderSourceFilePath(std::string_view fileName)
-    {
-        const fs::path shaderSourceFilePath{ config::g_AbsoluteShaderSourceDirectoryPath / fileName };
-        BenzinEnsure(fs::exists(shaderSourceFilePath));
-
-        return shaderSourceFilePath;
-    }
-
-    fs::path GetShaderBinaryFilePath(size_t shaderKey)
-    {
-        return fs::path{ config::g_AbsoluteShaderBinaryDirectoryPath / std::format("{}.bin", shaderKey) };
-    }
-
-    fs::path GetShaderDebugFilePath(size_t shaderKey)
-    {
-        return fs::path{ config::g_AbsoluteShaderDebugDirectoryPath / std::format("{}.pdb", shaderKey) };
-    }
-
 } // namespace benzin

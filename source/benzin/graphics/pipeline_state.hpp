@@ -47,8 +47,8 @@ namespace benzin
     class PipelineState
     {
     public:
-        explicit PipelineState(Device& device, const GraphicsPipelineStateCreation& creation);
-        explicit PipelineState(Device& device, const ComputePipelineStateCreation& creation);
+        PipelineState(Device& device, const GraphicsPipelineStateCreation& creation);
+        PipelineState(Device& device, const ComputePipelineStateCreation& creation);
         ~PipelineState();
 
         BenzinDefineNonCopyable(PipelineState);

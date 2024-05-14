@@ -17,8 +17,4 @@ namespace benzin
 
     bool IsDestinationFileOlder(const std::filesystem::path& sourceFilePath, const std::filesystem::path& destinationFilePath);
 
-    std::filesystem::path GetShaderSourceFilePath(std::string_view fileName);
-    std::filesystem::path GetShaderBinaryFilePath(size_t shaderKey);
-    std::filesystem::path GetShaderDebugFilePath(size_t shaderKey);
-
 } // namespace benzin

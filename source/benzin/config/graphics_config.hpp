@@ -5,11 +5,6 @@
 namespace benzin::config
 {
 
-    constexpr std::wstring_view g_VertexShaderTarget = L"vs_6_6";
-    constexpr std::wstring_view g_PixelShaderTarget = L"ps_6_6";
-    constexpr std::wstring_view g_ComputeShaderTarget = L"cs_6_6";
-    constexpr std::wstring_view g_ShaderLibraryTarget = L"lib_6_6";
-
     constexpr uint32_t g_MaxRtvDescriptorCount = 1'000'000;
     constexpr uint32_t g_MaxDsvDescriptorCount = 1'000'000;
     constexpr uint32_t g_MaxResourceDescriptorCount = 1'000'000;
@@ -24,19 +19,5 @@ namespace benzin::config
 
     constexpr bool g_IsShaderDebugEnabled = BENZIN_IS_DEBUG_BUILD;
     constexpr bool g_IsShaderSymbolsEnabled = BENZIN_IS_DEBUG_BUILD;
-
-    const std::filesystem::path g_ShaderSourceDirectoryPath{ "source/shaders" };
-    const std::filesystem::path g_AbsoluteShaderSourceDirectoryPath = std::filesystem::absolute(g_ShaderSourceDirectoryPath);
-
-#if BENZIN_IS_DEBUG_BUILD
-    const std::filesystem::path g_ShaderBinaryDirectoryPath{ "bin/shader_bytecode_debug" };
-#elif BENZIN_IS_RELEASE_BUILD
-    const std::filesystem::path g_ShaderBinaryDirectoryPath{ "bin/shader_bytecode_release" };
-#endif
-
-    const std::filesystem::path g_AbsoluteShaderBinaryDirectoryPath = std::filesystem::absolute(g_ShaderBinaryDirectoryPath);
-
-    const std::filesystem::path g_ShaderDebugDirectoryPath{ "bin/shader_pbd" };
-    const std::filesystem::path g_AbsoluteShaderDebugDirectoryPath = std::filesystem::absolute(g_ShaderDebugDirectoryPath);
 
 } // namespace benzin::config

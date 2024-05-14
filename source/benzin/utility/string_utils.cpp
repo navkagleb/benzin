@@ -20,6 +20,11 @@ namespace benzin
 
     std::string ToNarrowString(std::wstring_view wideString)
     {
+        if (wideString.empty())
+        {
+            return {};
+        }
+
         const auto wideSize = (int)wideString.size();
         const size_t narrowSize = GetNarrowSize(wideString);
 
@@ -33,6 +38,11 @@ namespace benzin
 
     std::wstring ToWideString(std::string_view narrowString)
     {
+        if (narrowString.empty())
+        {
+            return {};
+        }
+
         const auto narrowSize = (int)narrowString.size();
         const size_t wideSize = GetWideSize(narrowString);
 

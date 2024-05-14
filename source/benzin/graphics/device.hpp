@@ -36,6 +36,8 @@ namespace benzin
         BenzinDefineNonMoveable(Device);
 
     public:
+        const auto& GetBackend() const { return m_Backend; }
+
         auto* GetD3D12Device() const { return m_D3D12Device; }
         auto* GetD3D12UnifiedRootSignature() const { return m_D3D12UnifiedRootSignature; }
 
@@ -62,6 +64,8 @@ namespace benzin
         void CreateUnifiedRootSignature();
 
     private:
+        const Backend& m_Backend;
+
         // ID3D12Device5 supports RT
         ID3D12Device5* m_D3D12Device = nullptr;
 

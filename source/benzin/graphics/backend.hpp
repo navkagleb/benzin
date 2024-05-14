@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benzin/graphics/device.hpp"
+#include "benzin/graphics/shader_manager.hpp"
 
 namespace benzin
 {
@@ -62,6 +62,8 @@ namespace benzin
         const auto& GetMainAdapterInfo() const { return GetAdaptersInfo(m_MainAdapterIndex); }
         auto GetMainAdapterMemoryInfo() const { return GetAdapterMemoryInfo(m_MainAdapterIndex); }
 
+        const auto& GetShaderManager() const { return m_ShaderManager; }
+
     private:
         void CreateDxgiFactory();
         void GatherDxgiAdapters();
@@ -73,6 +75,8 @@ namespace benzin
         std::vector<AdapterInfo> m_AdaptersInfo;
 
         uint32_t m_MainAdapterIndex = g_InvalidIndex<uint32_t>;
+
+        ShaderManager m_ShaderManager;
     };
 
 } // namespace benzin

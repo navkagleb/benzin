@@ -121,11 +121,12 @@ namespace benzin
     //
 
     Device::Device(const DeviceCreation& creation)
+        : m_Backend{ creation.BackendRef }
     {
         EnableDred();
 
         ComPtr<ID3D12Device> dx12Device;
-        BenzinEnsure(::D3D12CreateDevice(creation.BackendRef.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&dx12Device)));
+        BenzinEnsure(::D3D12CreateDevice(m_Backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&dx12Device)));
         BenzinEnsure(dx12Device->QueryInterface(&m_D3D12Device));
         SetDxObjectDebugName(m_D3D12Device, creation.DebugName);
 
@@ -157,13 +158,13 @@ namespace benzin
 
     Device::~Device()
     {
-        ProcessDeferredReleaseQueues(true);
-
         m_DescriptorManager.reset();
         m_GraphicsCommandQueue.reset();
         m_GpuTimer.reset();
 
         BenzinSafeDxObjectRelease(m_D3D12UnifiedRootSignature);
+
+        ProcessDeferredReleaseQueues(true);
 
         EnableD3D12DebugBreakOn(m_D3D12Device, false, { D3D12BreakReasonFlag::Warning });
         ReportLiveD3D12Objects(m_D3D12Device);
