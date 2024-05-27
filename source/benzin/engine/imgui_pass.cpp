@@ -11,7 +11,7 @@
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/gpu_timer.hpp"
 #include "benzin/graphics/texture.hpp"
-#include "benzin/system/event.hpp"
+#include "benzin/system/key_event.hpp"
 #include "benzin/system/window.hpp"
 
 namespace benzin
@@ -77,6 +77,17 @@ namespace benzin
         event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Keyboard) & io.WantCaptureKeyboard;
         event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Mouse) & io.WantCaptureMouse;
 
+        const EventDispatcher dispatcher{ event };
+        dispatcher.Dispatch<KeyPressedEvent>([this](const auto& event)
+        {
+            if (event.GetKeyCode() == KeyCode::O)
+            {
+                m_IsDemoWindowVisible = !m_IsDemoWindowVisible;
+            }
+
+            return false;
+        });
+
         for (auto& imGuiTool : m_Tools)
         {
             imGuiTool->OnEvent(event);
@@ -93,7 +104,7 @@ namespace benzin
 
     void ImGuiPass::OnRender() const
     {
-        BenzinGrabTimeOnScopeExit(m_RenderTime);
+        BenzinGrabTimeOnScopeExit(m_CpuRenderTime);
 
         Begin();
         {
@@ -110,6 +121,11 @@ namespace benzin
                 }
             }
             ImGui::EndMainMenuBar();
+
+            if (m_ImGuiManager.m_IsDemoWindowVisible)
+            {
+                ImGui::ShowDemoWindow(&m_ImGuiManager.m_IsDemoWindowVisible);
+            }
 
             for (auto& imGuiTool : m_ImGuiManager.m_Tools)
             {

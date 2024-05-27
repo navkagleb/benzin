@@ -88,7 +88,7 @@ namespace benzin
         bool HasMeshes() const { return !m_MeshUnions.empty(); }
 
     public:
-        void OnUpdate(const TickTimer& tickTimer);
+        void OnUpdate();
 
         uint32_t PushMeshCollection(MeshCollectionResource&& meshCollectionResource);
 

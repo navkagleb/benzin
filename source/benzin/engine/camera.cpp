@@ -251,7 +251,7 @@ namespace benzin
         }
     }
 
-    bool FlyCameraController::OnWindowResized(WindowResizedEvent& event)
+    bool FlyCameraController::OnWindowResized(const WindowResizedEvent& event)
     {
         if (auto* perspectiveProjection = GetPerspectiveProjection())
         {
@@ -262,7 +262,7 @@ namespace benzin
         return false;
     }
 
-    bool FlyCameraController::OnMouseMoved(MouseMovedEvent& event)
+    bool FlyCameraController::OnMouseMoved(const MouseMovedEvent& event)
     {
         if (Input::IsMouseButtonPressed(MouseButton::Left))
         {
@@ -295,7 +295,7 @@ namespace benzin
         return false;
     }
 
-    bool FlyCameraController::OnMouseScrolled(MouseScrolledEvent& event)
+    bool FlyCameraController::OnMouseScrolled(const MouseScrolledEvent& event)
     {
         static const float minFov = DirectX::XM_PIDIV4; // 45 degrees
         static const float maxFov = DirectX::XM_PI * 2.0f / 3.0f; // 120 degrees

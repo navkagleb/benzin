@@ -21,8 +21,10 @@ namespace sandbox
         }
     }
 
+    //
+
     RenderPassSettingsTool::RenderPassSettingsTool(benzin::Scene& scene, RenderPassSettings& settings)
-        : ImGuiTool{ "RenderPassSettingsTool", false }
+        : ImGuiTool{ "RenderPassSettingsTool", true }
         , m_Scene{ scene }
         , m_Settings{ settings }
     {}

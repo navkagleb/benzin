@@ -120,7 +120,7 @@ namespace benzin
         });
     }
 
-    void Scene::OnUpdate(const TickTimer& tickTimer)
+    void Scene::OnUpdate()
     {
         {
             const auto view = m_EntityRegistry.view<UpdateComponent>();
@@ -129,7 +129,7 @@ namespace benzin
                 auto& uc = view.get<UpdateComponent>(entityHandle);
 
                 BenzinAssert((bool)uc.Callback);
-                uc.Callback(m_EntityRegistry, entityHandle, tickTimer);
+                uc.Callback(m_EntityRegistry, entityHandle);
             }
         }
 

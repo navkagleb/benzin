@@ -56,8 +56,6 @@ namespace benzin
         uint32_t m_DescriptorSize = 0;
         uint32_t m_DescriptorCount = 0;
 
-        std::pmr::unsynchronized_pool_resource m_DescriptorPool;
-
         uint32_t m_Marker = 0;
         std::list<uint32_t> m_FreeIndices;
 

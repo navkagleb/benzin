@@ -13,6 +13,9 @@ namespace benzin
         float GetDeltaTimeInSec() const;
         float GetElapsedTimeInSec() const;
 
+        auto IsPaused() const { return m_IsPaused; }
+        void SetPaused(bool isPaused);
+
         void Reset();
         void Tick();
 
@@ -22,6 +25,8 @@ namespace benzin
 
         std::chrono::microseconds m_DeltaTime{};
         float m_ElapsedTimeInMs = 0.0f;
+
+        bool m_IsPaused = false;
     };
 
 } // namespace benzin

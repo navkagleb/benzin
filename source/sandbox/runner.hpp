@@ -31,15 +31,8 @@ namespace sandbox
         Runner();
         virtual ~Runner();
 
-        virtual void Client_InitTools() {};
-        virtual void Client_InitRenderPasses() {};
-        virtual void Client_InitSceneEntities() {};
-
-        virtual void Client_OnEvent(benzin::Event& event);
-        virtual void Client_OnUpdate() {};
         virtual void Client_AfterEndFrame() {};
 
-        void Client_Init();
         void RunMainLoop();
 
     private:
@@ -63,6 +56,8 @@ namespace sandbox
         std::unique_ptr<benzin::SwapChain> m_SwapChain;
 
         benzin::TickTimer m_FrameTimer;
+        benzin::TickTimer m_AnimationTimer;
+
         FrameRateCounter m_FrameRateCounter;
 
         std::unique_ptr<benzin::Scene> m_Scene;
@@ -71,7 +66,7 @@ namespace sandbox
         std::unique_ptr<benzin::ImGuiManager> m_ImGuiManager;
 
         std::unique_ptr<benzin::RenderResources> m_RenderResources;
-        std::list<std::unique_ptr<benzin::RenderPass>> m_RenderPasses;
+        std::vector<std::unique_ptr<benzin::RenderPass>> m_RenderPasses;
         benzin::ImGuiPass* m_ImGuiPass = nullptr;
 
         bool m_IsRunning = true;

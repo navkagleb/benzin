@@ -128,6 +128,8 @@ namespace benzin
 
     HRESULT STDMETHODCALLTYPE CustumDxcIncludeHandler::LoadSource(_In_z_ LPCWSTR pFilename, _COM_Outptr_result_maybenull_ IDxcBlob** outIncludeSource)
     {
+        // Ref: https://simoncoenen.com/blog/programming/graphics/DxcCompiling#custom-include-handler
+
         const std::filesystem::path includeFilePath{ pFilename };
         BenzinAssert(std::filesystem::exists(includeFilePath));
 

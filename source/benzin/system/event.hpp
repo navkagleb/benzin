@@ -86,31 +86,53 @@ namespace benzin
     class EventDispatcher
     {
     public:
+        using EventNoParamCallback = std::function<bool()>;
+
+        template <std::derived_from<Event> EventT>
+        using EventParamCallback = std::function<bool(const EventT&)>;
+
         explicit EventDispatcher(Event& event)
             : m_Event{ event }
         {}
 
-        template <std::derived_from<Event> EventChild>
-        bool Dispatch(const std::function<bool(EventChild&)>& callback)
+        template <std::derived_from<Event> EventT>
+        bool Dispatch(const EventNoParamCallback& callback) const
         {
             if (m_Event.IsHandled())
             {
                 return false;
             }
 
-            if (m_Event.GetEventType() == EventChild::GetStaticEventType())
+            if (m_Event.GetEventType() == EventT::GetStaticEventType())
             {
-                m_Event.m_IsHandled = callback((EventChild&)m_Event);
+                m_Event.m_IsHandled = callback();
                 return true;
             }
 
             return false;
         }
 
-        template <std::derived_from<Event> EventChild, typename ClassType>
-        bool Dispatch(bool (ClassType::*MemberCallback)(EventChild&), ClassType& classInstance)
+        template <std::derived_from<Event> EventT>
+        bool Dispatch(const EventParamCallback<EventT>& callback) const
         {
-            return Dispatch<EventChild>([&](EventChild& event)
+            if (m_Event.IsHandled())
+            {
+                return false;
+            }
+
+            if (m_Event.GetEventType() == EventT::GetStaticEventType())
+            {
+                m_Event.m_IsHandled = callback((const EventT&)m_Event);
+                return true;
+            }
+
+            return false;
+        }
+
+        template <std::derived_from<Event> EventT, typename ClassT>
+        bool Dispatch(bool (ClassT::*MemberCallback)(EventT&), ClassT& classInstance) const
+        {
+            return Dispatch<EventT>([&](const EventT& event)
             {
                 return std::invoke_r<bool>(MemberCallback, classInstance, event);
             });

@@ -2,6 +2,7 @@
 #include "sandbox/sandbox_runner.hpp"
 
 #include <benzin/core/asserter.hpp>
+#include <benzin/core/logger.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/engine/camera.hpp>
 #include <benzin/engine/entity_components.hpp>
@@ -18,6 +19,7 @@
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/system/key_event.hpp>
+#include <benzin/system/window_event.hpp>
 
 #include <shaders/joint/constant_buffer_types.hpp>
 #include <shaders/joint/enum_types.hpp>
@@ -28,6 +30,19 @@
 
 namespace sandbox
 {
+
+    static uint32_t GetTimingIndent(SandboxTiming timing)
+    {
+        switch (timing)
+        {
+            case SandboxTiming::DenoiserPass_Accumulation:
+            case SandboxTiming::DenoiserPass_Mips:
+            case SandboxTiming::DenoiserPass_HistoryFix:
+            case SandboxTiming::DenoiserPass_Blur: return 2;
+        }
+
+        return 0;
+    }
 
     static Timings<SandboxTiming> g_CpuTimings;
 
@@ -448,13 +463,13 @@ namespace sandbox
 
             // Create ID3D12StateObject
             const auto d3d12StateSubObjects = std::to_array(
-                {
-                    D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE, &d3d12GlobalRootSignature },
-                    D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, &d3d12DXILLibraryDesc },
-                    D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, &d3d12HitGroupDesc },
-                    D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG, &d3d12RaytracingShaderConfig },
-                    D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG, &d3d12RaytracingPipelineConfig },
-                });
+            {
+                D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE, &d3d12GlobalRootSignature },
+                D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, &d3d12DXILLibraryDesc },
+                D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, &d3d12HitGroupDesc },
+                D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG, &d3d12RaytracingShaderConfig },
+                D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG, &d3d12RaytracingPipelineConfig },
+            });
 
             const D3D12_STATE_OBJECT_DESC d3d12StateObjectDesc
             {
@@ -1169,7 +1184,16 @@ namespace sandbox
 
     // SandboxRunner
 
-    void SandboxRunner::Client_InitRenderPasses()
+    SandboxRunner::SandboxRunner()
+    {
+        InitRenderPasses();
+        InitTools();
+        
+        InitCamera();
+        InitSceneEntities();
+    }
+
+    void SandboxRunner::InitRenderPasses()
     {
         auto isRenderTextureFlippableCallback = [](uint32_t key)
         {
@@ -1186,6 +1210,8 @@ namespace sandbox
         benzin::RenderPass::SetContext(*m_Device, *m_SwapChain, *m_RenderResources);
 
         // The order in which render passes are added is important
+        m_RenderPasses.reserve(9);
+
         m_RenderPasses.push_back(std::make_unique<GlobalConstantBufferPass>(*m_Scene));
         m_RenderPasses.push_back(std::make_unique<GeometryPass>(*m_Scene));
         m_RenderPasses.push_back(std::make_unique<RtShadowPass>(*m_Scene));
@@ -1193,24 +1219,17 @@ namespace sandbox
         m_RenderPasses.push_back(std::make_unique<DeferredLightingPass>(*m_Scene));
         m_RenderPasses.push_back(std::make_unique<EnvironmentPass>());
         m_RenderPasses.push_back(std::make_unique<FullScreenDebugPass>());
-        m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager, +RenderTextures::FinalOutputTexture, +SandboxTiming::ImGuiPass));
-        m_RenderPasses.push_back(std::make_unique<BackBufferCopyPass>());
 
-        auto imGuiPassIt = std::next(m_RenderPasses.rbegin());
-        m_ImGuiPass = dynamic_cast<benzin::ImGuiPass*>((*imGuiPassIt).get());
-        BenzinEnsure(m_ImGuiPass != nullptr);
+        m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager, +RenderTextures::FinalOutputTexture, +SandboxTiming::ImGuiPass));
+        m_ImGuiPass = (benzin::ImGuiPass*)m_RenderPasses.back().get();
+
+        m_RenderPasses.push_back(std::make_unique<BackBufferCopyPass>());
     }
 
-    void SandboxRunner::Client_InitTools()
+    void SandboxRunner::InitTools()
     {
         m_RenderPassSettingsTool = m_ImGuiManager->PushTool<RenderPassSettingsTool>(*m_Scene, g_RenderPassSettings);
-        m_TimingsTool = m_ImGuiManager->PushTool<TimingsTool<SandboxTiming, SandboxTiming>>(*m_Device);
-    }
-
-    void SandboxRunner::Client_InitSceneEntities()
-    {
-        InitCamera();
-        InitSceneEntities();
+        m_TimingsTool = m_ImGuiManager->PushTool<TimingsTool>(*m_Device);
     }
 
     void SandboxRunner::InitCamera()
@@ -1238,25 +1257,11 @@ namespace sandbox
         }
     }
 
-    void SandboxRunner::Client_OnEvent(benzin::Event& event)
-    {
-        benzin::EventDispatcher dispatcher{ event };
-        dispatcher.Dispatch<benzin::KeyPressedEvent>([this](auto& event)
-        {
-            if (event.GetKeyCode() == benzin::KeyCode::F2)
-            {
-                m_IsAnimationEnabled = !m_IsAnimationEnabled;
-            }
-
-            return false;
-        });
-    }
-
     void SandboxRunner::Client_AfterEndFrame()
     {
         if (m_FrameRateCounter.IsIntervalPassed())
         {
-            g_CpuTimings[+SandboxTiming::ImGuiPass] = m_ImGuiPass->GetRenderTime();
+            g_CpuTimings[+SandboxTiming::ImGuiPass] = m_ImGuiPass->GetCpuRenderTime();
             m_TimingsTool->SetCpuTimings(g_CpuTimings);
         }
     }
@@ -1359,9 +1364,9 @@ namespace sandbox
             tc.SetTranslation({ 0.0f, 0.6f, 0.0f });
 
             auto& uc = entityRegistry.emplace<benzin::UpdateComponent>(entity);
-            uc.Callback = [this](entt::registry& entityRegistry, entt::entity entityHandle, const benzin::TickTimer& tickTimer)
+            uc.Callback = [this](entt::registry& entityRegistry, entt::entity entityHandle)
             {
-                if (!m_IsAnimationEnabled)
+                if (m_AnimationTimer.IsPaused())
                 {
                     return;
                 }
@@ -1369,8 +1374,8 @@ namespace sandbox
                 auto& tc = entityRegistry.get<benzin::TransformComponent>(entityHandle);
 
                 auto rotation = tc.GetRotation();
-                rotation.x += 0.0001f * tickTimer.GetDeltaTimeInMs();
-                rotation.z += 0.0002f * tickTimer.GetDeltaTimeInMs();
+                rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
+                rotation.z += 0.0002f * m_AnimationTimer.GetDeltaTimeInMs();
 
                 tc.SetRotation(rotation);
             };
@@ -1388,9 +1393,9 @@ namespace sandbox
             tc.SetTranslation({ 1.0f, 0.5f, -0.5f });
 
             auto& uc = entityRegistry.emplace<benzin::UpdateComponent>(entity);
-            uc.Callback = [this](entt::registry& entityRegistry, entt::entity entityHandle, const benzin::TickTimer& tickTimer)
+            uc.Callback = [this](entt::registry& entityRegistry, entt::entity entityHandle)
             {
-                if (!m_IsAnimationEnabled)
+                if (m_AnimationTimer.IsPaused())
                 {
                     return;
                 }
@@ -1398,8 +1403,8 @@ namespace sandbox
                 auto& tc = entityRegistry.get<benzin::TransformComponent>(entityHandle);
 
                 auto rotation = tc.GetRotation();
-                rotation.x += 0.0001f * tickTimer.GetDeltaTimeInMs();
-                rotation.y -= 0.00015f * tickTimer.GetDeltaTimeInMs();
+                rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
+                rotation.y -= 0.00015f * m_AnimationTimer.GetDeltaTimeInMs();
 
                 tc.SetRotation(rotation);
             };
@@ -1446,28 +1451,26 @@ namespace sandbox
             plc.GeometryRadius = sphereLightRadius;
 
             auto& uc = entityRegistry.emplace<benzin::UpdateComponent>(entity);
-            uc.Callback = [this](entt::registry& entityRegistry, entt::entity entityHandle, const benzin::TickTimer& tickTimer)
+            uc.Callback = [this](entt::registry& entityRegistry, entt::entity entityHandle)
             {
+                if (m_AnimationTimer.IsPaused())
+                {
+                    return;
+                }
+
                 static constexpr float travelRadius = 1.0f;
                 static constexpr float travelSpeed = 0.0004f;
-
-                static std::chrono::microseconds elapsedTime;
 
                 auto& tc = entityRegistry.get<benzin::TransformComponent>(entityHandle);
 
                 static const float startX = tc.GetTranslation().x;
                 static const float startZ = tc.GetTranslation().z;
 
-                if (m_IsAnimationEnabled)
-                {
-                    elapsedTime += tickTimer.GetDeltaTime();
+                auto translation = tc.GetTranslation();
+                translation.x = startX + travelRadius * std::cos(travelSpeed * m_AnimationTimer.GetElapsedTimeInMs());
+                translation.z = startZ + travelRadius * std::sin(travelSpeed * m_AnimationTimer.GetElapsedTimeInMs());
 
-                    auto translation = tc.GetTranslation();
-                    translation.x = startX + travelRadius * std::cos(travelSpeed * benzin::ToFloatMs(elapsedTime));
-                    translation.z = startZ + travelRadius * std::sin(travelSpeed * benzin::ToFloatMs(elapsedTime));
-
-                    tc.SetTranslation(translation);
-                }
+                tc.SetTranslation(translation);
             };
 
             BenzinAssert(m_RenderPassSettingsTool != nullptr);

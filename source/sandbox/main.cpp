@@ -7,7 +7,6 @@
 int benzin::ClientMain()
 {
     sandbox::SandboxRunner runner;
-    runner.Client_Init();
     runner.RunMainLoop();
 
     return 0;

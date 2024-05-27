@@ -146,9 +146,9 @@ namespace benzin
         void OnUpdate(std::chrono::microseconds dt);
 
     private:
-        bool OnWindowResized(WindowResizedEvent& event);
-        bool OnMouseMoved(MouseMovedEvent& event);
-        bool OnMouseScrolled(MouseScrolledEvent& event);
+        bool OnWindowResized(const WindowResizedEvent& event);
+        bool OnMouseMoved(const MouseMovedEvent& event);
+        bool OnMouseScrolled(const MouseScrolledEvent& event);
 
         PerspectiveProjection* GetPerspectiveProjection();
 

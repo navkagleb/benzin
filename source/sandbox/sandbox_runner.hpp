@@ -14,10 +14,10 @@ namespace sandbox
         GeometryPass,
         RtShadowPass,
         DenoiserPass,
-        DenoiserPass_Accumulation,
-        DenoiserPass_Mips,
-        DenoiserPass_HistoryFix,
-        DenoiserPass_Blur,
+            DenoiserPass_Accumulation,
+            DenoiserPass_Mips,
+            DenoiserPass_HistoryFix,
+            DenoiserPass_Blur,
         DeferredLightingPass,
         EnvironmentPass,
         FullScreenDebugPass,
@@ -40,17 +40,19 @@ namespace sandbox
 
     class SandboxRunner : public Runner
     {
+    public:
+        SandboxRunner();
+
     private:
         using SceneMeshes = benzin::EnumArray<uint32_t, SceneMesh>;
+        using TimingsTool = TimingsTool<SandboxTiming, SandboxTiming>;
 
-        void Client_InitRenderPasses() override;
-        void Client_InitTools() override;
-        void Client_InitSceneEntities() override;
+        void InitRenderPasses();
+        void InitTools();
 
-        void InitCamera();
         void InitSceneEntities();
+        void InitCamera();
 
-        void Client_OnEvent(benzin::Event& event) override;
         void Client_AfterEndFrame() override;
 
         void LoadAndCreateMeshes(SceneMeshes& outSceneMeshes);
@@ -58,7 +60,7 @@ namespace sandbox
 
     private:
         RenderPassSettingsTool* m_RenderPassSettingsTool = nullptr;
-        TimingsTool<SandboxTiming, SandboxTiming>* m_TimingsTool = nullptr;
+        TimingsTool* m_TimingsTool = nullptr;
 
         bool m_IsAnimationEnabled = false;
         entt::entity m_PointLightEntity;

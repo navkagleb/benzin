@@ -63,7 +63,7 @@ namespace benzin
 
     struct UpdateComponent
     {
-        using FrameUpdateCallback = std::function<void(entt::registry&, entt::entity, const TickTimer&)>;
+        using FrameUpdateCallback = std::function<void(entt::registry&, entt::entity)>;
         FrameUpdateCallback Callback;
     };
 

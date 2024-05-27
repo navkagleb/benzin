@@ -18,7 +18,7 @@ BilinearFilter CreateBilinearFilter(float2 uv, float2 textureSize)
     filter.Weights = frac(texelPosition);
 
     return filter;
-};
+}
 
 float4 GatherRedManually(Texture2D<float> texture, BilinearFilter filter, uint mipIndex = 0)
 {

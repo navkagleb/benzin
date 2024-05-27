@@ -61,28 +61,20 @@ namespace sandbox
         m_Device->GetGraphicsCommandQueue().Flush();
     }
 
-    void Runner::Client_OnEvent(benzin::Event& event)
-    {
-        BenzinUnused(event);
-    }
-
-    void Runner::Client_Init()
-    {
-        Client_InitTools();
-        Client_InitRenderPasses();
-
-        Client_InitSceneEntities();
-    }
-
     void Runner::RunMainLoop()
     {
         BenzinEnsure(m_IsRunning);
+
         m_FrameTimer.Reset();
+        m_AnimationTimer.Reset();
 
         RunZeroFrame();
 
         while (m_IsRunning)
         {
+            m_FrameTimer.Tick();
+            m_AnimationTimer.Tick();
+
             m_MainWindow->ProcessEvents();
 
             BeginFrame();
@@ -133,17 +125,31 @@ namespace sandbox
 
     void Runner::WindowEventCallback(benzin::Event& event)
     {
-        benzin::EventDispatcher dispatcher{ event };
+        const benzin::EventDispatcher dispatcher{ event };
         {
-            dispatcher.Dispatch<benzin::WindowCloseEvent>([&](auto& event)
+            dispatcher.Dispatch<benzin::WindowCloseEvent>([this]
             {
-                BenzinUnused(event);
-
                 RequestShutdown();
                 return false;
             });
 
-            dispatcher.Dispatch<benzin::WindowResizedEvent>([&](auto& event)
+            dispatcher.Dispatch<benzin::WindowEnterResizingEvent>([this]
+            {
+                m_FrameTimer.SetPaused(true);
+                m_AnimationTimer.SetPaused(true);
+
+                return false;
+            });
+
+            dispatcher.Dispatch<benzin::WindowExitResizingEvent>([this]
+            {
+                m_FrameTimer.SetPaused(false);
+                m_AnimationTimer.SetPaused(false);
+
+                return false;
+            });
+
+            dispatcher.Dispatch<benzin::WindowResizedEvent>([&](const benzin::WindowResizedEvent& event)
             {
                 m_PendingWidth = event.GetWidth();
                 m_PendingHeight = event.GetHeight();
@@ -153,7 +159,7 @@ namespace sandbox
                 return false;
             });
 
-            dispatcher.Dispatch<benzin::KeyPressedEvent>([&](auto& event)
+            dispatcher.Dispatch<benzin::KeyPressedEvent>([&](const auto& event)
             {
                 switch (event.GetKeyCode())
                 {
@@ -172,6 +178,11 @@ namespace sandbox
                         m_ImGuiPass->SetRenderingEnabled(!m_ImGuiPass->IsRenderingEnabled());
                         break;
                     }
+                    case benzin::KeyCode::F2:
+                    {
+                        m_AnimationTimer.SetPaused(!m_AnimationTimer.IsPaused());
+                        break;
+                    }
                 }
 
                 return false;
@@ -180,8 +191,6 @@ namespace sandbox
 
         m_ImGuiManager->OnEvent(event);
         m_FlyCameraController->OnEvent(event);
-
-        Client_OnEvent(event);
     }
 
     void Runner::BeginFrame()
@@ -193,9 +202,11 @@ namespace sandbox
 
     void Runner::ProcessFrame()
     {
-        m_FrameTimer.Tick();
+        if (!m_FrameTimer.IsPaused())
+        {
+            OnUpdate();
+        }
 
-        OnUpdate();
         OnRender();
     }
 
@@ -229,10 +240,8 @@ namespace sandbox
         BenzinGrabTimeOnScopeExit(m_Timings[+RunnerTiming::OnUpdate]);
 
         m_FrameRateCounter.OnUpdate(m_FrameTimer);
-        m_FlyCameraController->OnUpdate(m_FrameTimer.GetDeltaTime());
-        m_Scene->OnUpdate(m_FrameTimer);
-
-        Client_OnUpdate();
+        m_FlyCameraController->OnUpdate(m_AnimationTimer.GetDeltaTime());
+        m_Scene->OnUpdate();
 
         m_RenderResources->FlipResources();
         for (auto& renderPass : m_RenderPasses)

@@ -32,8 +32,8 @@ namespace sandbox
         using CpuTimings = Timings<CpuTimingT>;
         using GpuTimings = Timings<GpuTimingT>;
 
-        explicit TimingsTool(const benzin::Device& device, bool isVisible = false)
-            : ImGuiTool{ "TimingsTool", isVisible }
+        explicit TimingsTool(const benzin::Device& device)
+            : ImGuiTool{ "TimingsTool", true }
             , m_Device{ device }
         {}
 

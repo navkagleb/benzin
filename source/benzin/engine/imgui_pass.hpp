@@ -46,7 +46,7 @@ namespace benzin
         {
             auto& tool = m_Tools.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
             
-            m_Tools.sort([](const auto& lhs, const auto& rhs)
+            std::ranges::sort(m_Tools, [](const auto& lhs, const auto& rhs)
             {
                 return lhs->m_Name < rhs->m_Name;
             });
@@ -58,7 +58,9 @@ namespace benzin
         Device& m_Device;
 
         Descriptor m_FontDescriptor;
-        std::list<std::unique_ptr<ImGuiTool>> m_Tools;
+        std::vector<std::unique_ptr<ImGuiTool>> m_Tools;
+
+        bool m_IsDemoWindowVisible = false;
     };
 
     class ImGuiPass : public RenderPass
@@ -66,7 +68,7 @@ namespace benzin
     public:
         ImGuiPass(ImGuiManager& imGuiManager, uint32_t finalOutputTextureKey, uint32_t gpuTimingIndex);
 
-        auto GetRenderTime() const { return m_RenderTime; }
+        auto GetCpuRenderTime() const { return m_CpuRenderTime; }
 
         void OnRender() const override;
 
@@ -80,7 +82,7 @@ namespace benzin
         uint32_t m_FinalOutputTextureKey;
         uint32_t m_GpuTimingIndex;
 
-        mutable std::chrono::microseconds m_RenderTime;
+        mutable std::chrono::microseconds m_CpuRenderTime;
     };
 
 }
