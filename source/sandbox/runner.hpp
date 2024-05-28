@@ -1,8 +1,9 @@
 #pragma once
 
+#include <benzin/core/interval_timer.hpp>
 #include <benzin/core/tick_timer.hpp>
 
-#include "sandbox/framerate_counter.hpp"
+#include "sandbox/fps_counter.hpp"
 #include "sandbox/tools/bottom_panel_tool.hpp"
 
 namespace benzin
@@ -31,8 +32,6 @@ namespace sandbox
         Runner();
         virtual ~Runner();
 
-        virtual void Client_AfterEndFrame() {};
-
         void RunMainLoop();
 
     private:
@@ -57,8 +56,9 @@ namespace sandbox
 
         benzin::TickTimer m_FrameTimer;
         benzin::TickTimer m_AnimationTimer;
+        benzin::IntervalTimer m_1SecIntervalTimer;
 
-        FrameRateCounter m_FrameRateCounter;
+        FpsCounter m_FpsCounter;
 
         std::unique_ptr<benzin::Scene> m_Scene;
         std::unique_ptr<benzin::FlyCameraController> m_FlyCameraController;

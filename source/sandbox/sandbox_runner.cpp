@@ -1191,6 +1191,12 @@ namespace sandbox
         
         InitCamera();
         InitSceneEntities();
+
+        m_1SecIntervalTimer.PushCallback([this]
+        {
+            g_CpuTimings[+SandboxTiming::ImGuiPass] = m_ImGuiPass->GetCpuRenderTime();
+            m_TimingsTool->SetCpuTimings(g_CpuTimings);
+        });
     }
 
     void SandboxRunner::InitRenderPasses()
@@ -1254,15 +1260,6 @@ namespace sandbox
         {
             BenzinLogTimeOnScopeExit("Create entities");
             CreateEntities(sceneMeshes);
-        }
-    }
-
-    void SandboxRunner::Client_AfterEndFrame()
-    {
-        if (m_FrameRateCounter.IsIntervalPassed())
-        {
-            g_CpuTimings[+SandboxTiming::ImGuiPass] = m_ImGuiPass->GetCpuRenderTime();
-            m_TimingsTool->SetCpuTimings(g_CpuTimings);
         }
     }
 

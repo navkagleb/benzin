@@ -53,8 +53,6 @@ namespace sandbox
         void InitSceneEntities();
         void InitCamera();
 
-        void Client_AfterEndFrame() override;
-
         void LoadAndCreateMeshes(SceneMeshes& outSceneMeshes);
         void CreateEntities(const SceneMeshes& sceneMeshes);
 
@@ -62,7 +60,6 @@ namespace sandbox
         RenderPassSettingsTool* m_RenderPassSettingsTool = nullptr;
         TimingsTool* m_TimingsTool = nullptr;
 
-        bool m_IsAnimationEnabled = false;
         entt::entity m_PointLightEntity;
     };
 

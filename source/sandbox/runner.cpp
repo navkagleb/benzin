@@ -25,6 +25,7 @@ namespace sandbox
 {
 
     Runner::Runner()
+        : m_1SecIntervalTimer{ std::chrono::seconds{ 1 } }
     {
         BenzinLogTimeOnScopeExit("Create Runner");
 
@@ -51,6 +52,14 @@ namespace sandbox
         m_ImGuiManager->PushTool<benzin::FlyCameraTool>(*m_FlyCameraController);
         m_ImGuiManager->PushTool<SceneStatsTool>(*m_Scene);
         m_ImGuiManager->PushTool<TickTimerTool>(m_FrameTimer);
+
+        m_1SecIntervalTimer.PushCallback([this]
+        {
+            m_FpsCounter.UpdateFps(m_1SecIntervalTimer.GetInterval());;
+
+            m_BottomPanelTool->SetFrameRateStats(m_FpsCounter.GetFps(), benzin::ToFloatMs(m_FpsCounter.GetDeltaTime()));
+            m_BottomPanelTool->SetRunnerTimings(m_Timings);
+        });
     }
 
     Runner::~Runner()
@@ -65,31 +74,22 @@ namespace sandbox
     {
         BenzinEnsure(m_IsRunning);
 
+        RunZeroFrame();
+
         m_FrameTimer.Reset();
         m_AnimationTimer.Reset();
-
-        RunZeroFrame();
 
         while (m_IsRunning)
         {
             m_FrameTimer.Tick();
             m_AnimationTimer.Tick();
+            m_1SecIntervalTimer.AccumulateInterval(m_FrameTimer);
 
             m_MainWindow->ProcessEvents();
 
             BeginFrame();
             ProcessFrame();
             EndFrame();
-
-            Client_AfterEndFrame();
-
-            if (m_FrameRateCounter.IsIntervalPassed())
-            {
-                m_FrameRateCounter.UpdateFrameRate();
-
-                m_BottomPanelTool->SetFrameRateStats(m_FrameRateCounter.GetFrameRate(), benzin::ToFloatMs(m_FrameRateCounter.GetDeltaTime()));
-                m_BottomPanelTool->SetRunnerTimings(m_Timings);
-            }
         }
     }
 
@@ -239,7 +239,7 @@ namespace sandbox
     {
         BenzinGrabTimeOnScopeExit(m_Timings[+RunnerTiming::OnUpdate]);
 
-        m_FrameRateCounter.OnUpdate(m_FrameTimer);
+        m_FpsCounter.TickFrame(m_FrameTimer);
         m_FlyCameraController->OnUpdate(m_AnimationTimer.GetDeltaTime());
         m_Scene->OnUpdate();
 
