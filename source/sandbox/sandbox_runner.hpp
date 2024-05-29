@@ -59,8 +59,6 @@ namespace sandbox
     private:
         RenderPassSettingsTool* m_RenderPassSettingsTool = nullptr;
         TimingsTool* m_TimingsTool = nullptr;
-
-        entt::entity m_PointLightEntity;
     };
 
 }

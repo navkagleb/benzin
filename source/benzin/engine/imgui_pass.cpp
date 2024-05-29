@@ -63,6 +63,12 @@ namespace benzin
 
     ImGuiManager::~ImGuiManager()
     {
+        for (auto* tool : m_Tools)
+        {
+            delete tool;
+        }
+        m_Tools.clear();
+
         m_Device.GetDescriptorManager().FreeDescriptor(m_FontDescriptor);
 
         ImGui_ImplDX12_Shutdown();

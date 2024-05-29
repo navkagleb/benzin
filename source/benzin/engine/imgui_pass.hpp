@@ -17,6 +17,7 @@ namespace benzin
         friend class ImGuiPass;
 
         ImGuiTool(std::string_view name, bool isVisible);
+        virtual ~ImGuiTool() = default;
 
     public:
         virtual void OnEvent(Event& event) { BenzinUnused(event); };
@@ -44,21 +45,19 @@ namespace benzin
         template <std::derived_from<ImGuiTool> T, typename... Args>
         T* PushTool(Args&&... args)
         {
-            auto& tool = m_Tools.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
-            
-            std::ranges::sort(m_Tools, [](const auto& lhs, const auto& rhs)
-            {
-                return lhs->m_Name < rhs->m_Name;
-            });
+            auto* tool = new T{ std::forward<Args>(args)... };
 
-            return (T*)tool.get();
+            m_Tools.push_back(tool);
+            std::ranges::sort(m_Tools, {}, &ImGuiTool::m_Name);
+
+            return tool;
         }
 
     private:
         Device& m_Device;
 
         Descriptor m_FontDescriptor;
-        std::vector<std::unique_ptr<ImGuiTool>> m_Tools;
+        std::vector<ImGuiTool*> m_Tools;
 
         bool m_IsDemoWindowVisible = false;
     };
