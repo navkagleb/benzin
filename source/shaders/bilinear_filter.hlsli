@@ -4,17 +4,21 @@ struct BilinearFilter
 {
     float2 TexelSize;
     float2 TopLeftTexelPosition;
+    float2 TopLeftUv;
     float2 Weights;
 };
 
 BilinearFilter CreateBilinearFilter(float2 uv, float2 textureSize)
 {
-    const float2 textureOffsetEpsilon = textureSize * 0.000001;
+    const float epsilon = 0.0001;
+
+    const float2 textureOffsetEpsilon = textureSize * epsilon;
     const float2 texelPosition = (uv * textureSize) - 0.5 + textureOffsetEpsilon; // Force jump to the correct texel
 
     BilinearFilter filter;
     filter.TexelSize = 1.0 / textureSize;
     filter.TopLeftTexelPosition = floor(texelPosition);
+    filter.TopLeftUv = filter.TopLeftTexelPosition * filter.TexelSize + epsilon; // Force jump to the current uv position (bug showed up on Nvidia)
     filter.Weights = frac(texelPosition);
 
     return filter;
@@ -27,13 +31,11 @@ float4 GatherRedManually(Texture2D<float> texture, BilinearFilter filter, uint m
     // uv - points to 'w' texel
     // For gathering uv should point to 'y' texel
 
-    const float2 uv = filter.TopLeftTexelPosition * filter.TexelSize;
-    
     float4 samples = 0.0;
-    samples.x = texture.SampleLevel(g_PointWithTransparentBlackBorderSampler, uv, mipIndex);
-    samples.y = texture.SampleLevel(g_PointWithTransparentBlackBorderSampler, uv + float2(filter.TexelSize.x, 0.0), mipIndex);
-    samples.z = texture.SampleLevel(g_PointWithTransparentBlackBorderSampler, uv + float2(0.0, filter.TexelSize.y), mipIndex);
-    samples.w = texture.SampleLevel(g_PointWithTransparentBlackBorderSampler, uv + filter.TexelSize, mipIndex);
+    samples.x = texture.SampleLevel(g_PointWithTransparentBlackBorderSampler, filter.TopLeftUv, mipIndex);
+    samples.y = texture.SampleLevel(g_PointWithTransparentBlackBorderSampler, filter.TopLeftUv + float2(filter.TexelSize.x, 0.0), mipIndex);
+    samples.z = texture.SampleLevel(g_PointWithTransparentBlackBorderSampler, filter.TopLeftUv + float2(0.0, filter.TexelSize.y), mipIndex);
+    samples.w = texture.SampleLevel(g_PointWithTransparentBlackBorderSampler, filter.TopLeftUv + filter.TexelSize, mipIndex);
 
     return samples;
 }
