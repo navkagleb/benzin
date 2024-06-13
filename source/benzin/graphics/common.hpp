@@ -16,6 +16,15 @@ namespace benzin
         SwapChain& SwapChainRef;
     };
 
+    enum class ShaderType : uint8_t
+    {
+        Vertex,
+        Pixel,
+        Compute,
+        Library,
+    };
+    BenzinEnableUnaryPlusForEnum(ShaderType);
+
     enum class ShaderVisibility : std::underlying_type_t<D3D12_SHADER_VISIBILITY>
     {
         All = D3D12_SHADER_VISIBILITY_ALL,

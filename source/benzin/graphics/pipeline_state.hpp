@@ -9,9 +9,9 @@ namespace benzin
 
     struct ShaderCreation
     {
+        ShaderType Type;
         std::string_view FileName;
         std::string_view EntryPoint;
-        std::vector<std::string> Defines;
 
         bool IsValid() const
         {
@@ -23,8 +23,7 @@ namespace benzin
     {
         std::string_view DebugName;
 
-        ShaderCreation VertexShader;
-        ShaderCreation PixelShader;
+        std::array<ShaderCreation, 2> Shaders;
 
         PrimitiveTopologyType PrimitiveTopologyType = PrimitiveTopologyType::Unknown;
         RasterizerState RasterizerState;
@@ -41,14 +40,15 @@ namespace benzin
     {
         std::string_view DebugName;
 
-        ShaderCreation ComputeShader;
+        ShaderCreation Shader;
     };
+
+    using PipelineStateCreationVariant = std::variant<GraphicsPipelineStateCreation, ComputePipelineStateCreation>;
 
     class PipelineState
     {
     public:
-        PipelineState(Device& device, const GraphicsPipelineStateCreation& creation);
-        PipelineState(Device& device, const ComputePipelineStateCreation& creation);
+        PipelineState(Device& device, const PipelineStateCreationVariant& creation);
         ~PipelineState();
 
         BenzinDefineNonCopyable(PipelineState);
@@ -57,8 +57,20 @@ namespace benzin
     public:
         ID3D12PipelineState* GetD3D12PipelineState() const { return m_D3D12PipelineState; }
 
+        std::span<const ShaderCreation> GetShaders() const;
+
+        void Reload();
+
     private:
+        void Create(const GraphicsPipelineStateCreation& creation);
+        void Create(const ComputePipelineStateCreation& creation);
+
+    private:
+        Device& m_Device;
+
         ID3D12PipelineState* m_D3D12PipelineState = nullptr;
+
+        std::variant<GraphicsPipelineStateCreation, ComputePipelineStateCreation> m_Creation;
     };
 
 } // namespace benzin

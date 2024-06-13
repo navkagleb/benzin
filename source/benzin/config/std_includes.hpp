@@ -20,6 +20,7 @@
 #include <ios>
 #include <iostream>
 #include <map>
+#include <memory_resource>
 #include <memory>
 #include <numbers>
 #include <numeric>

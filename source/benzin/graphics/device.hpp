@@ -8,6 +8,7 @@ namespace benzin
     class Backend;
     class GpuTimer;
     class GraphicsCommandQueue;
+    class PipelineStateManager;
 
     enum class UnifiedRootParameter
     {
@@ -21,7 +22,7 @@ namespace benzin
     struct DeviceCreation
     {
         std::string_view DebugName;
-        const Backend& BackendRef;
+        Backend& BackendRef;
     };
 
     class Device
@@ -36,12 +37,13 @@ namespace benzin
         BenzinDefineNonMoveable(Device);
 
     public:
-        const auto& GetBackend() const { return m_Backend; }
+        auto& GetBackend() { return m_Backend; }
 
         auto* GetD3D12Device() const { return m_D3D12Device; }
         auto* GetD3D12UnifiedRootSignature() const { return m_D3D12UnifiedRootSignature; }
 
         auto& GetDescriptorManager() { return *m_DescriptorManager; }
+        auto& GetPipelineStateManager() { return *m_PipelineStateManager; }
         auto& GetGraphicsCommandQueue() { return *m_GraphicsCommandQueue; }
 
         auto& GetGpuTimer() { return *m_GpuTimer; }
@@ -55,6 +57,13 @@ namespace benzin
 
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
+        template <std::derived_from<ID3D12Object> T>
+        void DeferredRelease(T*& d3d12Object)
+        {
+            DeferredRelease((ID3D12Object*)d3d12Object);
+            d3d12Object = nullptr;
+        }
+
         void DeferredRelease(const Descriptor& descriptor);
         void DeferredRelease(ID3D12Object* d3d12Object);
         void ProcessDeferredReleaseQueues(bool isReleaseForced = false); // Must be called after 'SwapChain::OnFlip' because 'm_GpuFrameIndex' will be updated there
@@ -64,14 +73,16 @@ namespace benzin
         void CreateUnifiedRootSignature();
 
     private:
-        const Backend& m_Backend;
+        Backend& m_Backend;
 
         // ID3D12Device5 supports RT
         ID3D12Device5* m_D3D12Device = nullptr;
 
         ID3D12RootSignature* m_D3D12UnifiedRootSignature = nullptr;
 
+        // Must be released in desctructor before m_D3D12 destroying
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
+        std::unique_ptr<PipelineStateManager> m_PipelineStateManager;
         std::unique_ptr<GraphicsCommandQueue> m_GraphicsCommandQueue;
         std::unique_ptr<GpuTimer> m_GpuTimer;
 

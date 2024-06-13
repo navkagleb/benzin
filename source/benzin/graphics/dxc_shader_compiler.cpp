@@ -121,16 +121,16 @@ namespace benzin
         : m_DxcUtils{ dxcUtils }
     {}
 
-    void CustumDxcIncludeHandler::ExchangeIncludeFilePaths(std::vector<std::filesystem::path>& outIncludeFilePathes)
+    void CustumDxcIncludeHandler::ExchangeIncludeFilePaths(std::unordered_set<std::filesystem::path>& outIncludeFilePathes)
     {
-        outIncludeFilePathes = std::exchange(m_IncludeFilePaths, {});
+        outIncludeFilePathes.insert_range(std::exchange(m_IncludeFilePaths, {}));
     }
 
     HRESULT STDMETHODCALLTYPE CustumDxcIncludeHandler::LoadSource(_In_z_ LPCWSTR pFilename, _COM_Outptr_result_maybenull_ IDxcBlob** outIncludeSource)
     {
         // Ref: https://simoncoenen.com/blog/programming/graphics/DxcCompiling#custom-include-handler
 
-        const std::filesystem::path includeFilePath{ pFilename };
+        std::filesystem::path includeFilePath{ pFilename };
         BenzinAssert(std::filesystem::exists(includeFilePath));
 
         ComPtr<IDxcBlobEncoding> includeSource;
@@ -138,7 +138,7 @@ namespace benzin
 
         if (SUCCEEDED(hr))
         {
-            m_IncludeFilePaths.push_back(includeFilePath);
+            m_IncludeFilePaths.push_back(std::move(includeFilePath));
 
             *outIncludeSource = includeSource.Detach();
         }
@@ -165,6 +165,11 @@ namespace benzin
     }
 
     // DxcShaderCompiler
+
+    const std::filesystem::path& DxcShaderCompiler::GetShaderSourceDir()
+    {
+        return g_ShaderSourceDir;
+    }
 
     DxcShaderCompiler::DxcShaderCompiler()
     {

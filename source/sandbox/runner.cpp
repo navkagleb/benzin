@@ -11,6 +11,7 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
+#include <benzin/graphics/pipeline_state_manager.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/system/key_event.hpp>
@@ -221,6 +222,8 @@ namespace sandbox
         m_Device->GetGpuTimer().ResolveTimestamps(m_Device->GetCpuFrameIndex());
         m_Device->GetGraphicsCommandQueue().OnFrameEnd();
         m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
+
+        m_Device->GetPipelineStateManager().ReloadPipelineStatesIfNeeded();
         m_Device->ProcessDeferredReleaseQueues();
 
         if (m_PendingWidth != 0 && m_PendingHeight != 0 && (m_PendingWidth != oldSwapChainWidth || m_PendingHeight != oldSwapChainHeight))

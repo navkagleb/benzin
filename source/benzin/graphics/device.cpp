@@ -7,6 +7,7 @@
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/gpu_timer.hpp"
+#include "benzin/graphics/pipeline_state_manager.hpp"
 #include "benzin/graphics/sampler.hpp"
 
 namespace benzin
@@ -126,7 +127,7 @@ namespace benzin
         EnableDred();
 
         ComPtr<ID3D12Device> dx12Device;
-        BenzinEnsure(::D3D12CreateDevice(m_Backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&dx12Device)));
+        BenzinEnsure(::D3D12CreateDevice(m_Backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&dx12Device)));
         BenzinEnsure(dx12Device->QueryInterface(&m_D3D12Device));
         SetDxObjectDebugName(m_D3D12Device, creation.DebugName);
 
@@ -152,6 +153,7 @@ namespace benzin
         CreateUnifiedRootSignature();
 
         MakeUniquePtr(m_DescriptorManager, *this);
+        MakeUniquePtr(m_PipelineStateManager, *this);
         MakeUniquePtr(m_GraphicsCommandQueue, *this);
         MakeUniquePtr(m_GpuTimer, *this, 32); // #TODO: Add more timers
     }
@@ -159,6 +161,7 @@ namespace benzin
     Device::~Device()
     {
         m_DescriptorManager.reset();
+        m_PipelineStateManager.reset();
         m_GraphicsCommandQueue.reset();
         m_GpuTimer.reset();
 
@@ -194,7 +197,7 @@ namespace benzin
     {
         BenzinAssert(d3d12Object != nullptr);
 
-        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12Object);
+        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, std::exchange(d3d12Object, nullptr));
     }
 
     void Device::ProcessDeferredReleaseQueues(bool isReleaseForced)

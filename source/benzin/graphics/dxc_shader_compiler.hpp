@@ -1,23 +1,15 @@
 #pragma once
 
+#include "benzin/graphics/common.hpp"
+
 namespace benzin
 {
-
-    enum class ShaderType : uint8_t
-    {
-        Vertex,
-        Pixel,
-        Compute,
-        Library,
-    };
-    BenzinEnableUnaryPlusForEnum(ShaderType);
 
     struct ShaderPaths
     {
         std::filesystem::path SourceFilePath;
         std::filesystem::path DxilFilePath;
         std::filesystem::path PdbFilePath;
-        std::filesystem::path IncludeDependencyFilePath;
 
         ShaderPaths(size_t hash, std::string_view fileName);
     };
@@ -35,7 +27,7 @@ namespace benzin
         std::vector<std::byte> DxilBlob;
         std::vector<std::byte> PdbBlob;
 
-        std::vector<std::filesystem::path> IncludeFilePaths;
+        std::unordered_set<std::filesystem::path> IncludeFilePaths;
     };
 
     class CustumDxcIncludeHandler : public IDxcIncludeHandler
@@ -43,7 +35,7 @@ namespace benzin
     public:
         explicit CustumDxcIncludeHandler(IDxcUtils* dxcUtils);
 
-        void ExchangeIncludeFilePaths(std::vector<std::filesystem::path>& outIncludeFilePathes);
+        void ExchangeIncludeFilePaths(std::unordered_set<std::filesystem::path>& outIncludeFilePathes);
 
         // IDxcIncludeHandler interface
 
@@ -63,6 +55,9 @@ namespace benzin
 
     class DxcShaderCompiler
     {
+    public:
+        static const std::filesystem::path& GetShaderSourceDir();
+
     public:
         DxcShaderCompiler();
 

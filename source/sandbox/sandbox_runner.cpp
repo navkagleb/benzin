@@ -15,6 +15,7 @@
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/pipeline_state_manager.hpp>
 #include <benzin/graphics/rt_acceleration_structures.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
@@ -148,11 +149,14 @@ namespace sandbox
         GeometryPass(const benzin::Scene& scene)
             : m_Scene{ scene }
         {
-            benzin::MakeUniquePtr(m_Pso, *ms_Device, benzin::GraphicsPipelineStateCreation
+            m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
             {
                 .DebugName = "GeometryPass",
-                .VertexShader{ "geometry_pass.hlsl", "VsMain" },
-                .PixelShader{ "geometry_pass.hlsl", "PsMain" },
+                .Shaders
+                {
+                    benzin::ShaderCreation{ benzin::ShaderType::Vertex, "geometry_pass.hlsl", "VsMain" },
+                    benzin::ShaderCreation{ benzin::ShaderType::Pixel, "geometry_pass.hlsl", "PsMain" },
+                },
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .RasterizerState
                 {
@@ -169,6 +173,11 @@ namespace sandbox
                 },
                 .DepthStencilFormat = g_RenderPassesConfig.DepthStencilFormat,
             });
+        }
+
+        ~GeometryPass()
+        {
+            ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
         }
 
         void OnResize(uint32_t width, uint32_t height) override
@@ -317,7 +326,7 @@ namespace sandbox
     private:
         const benzin::Scene& m_Scene;
 
-        std::unique_ptr<benzin::PipelineState> m_Pso;
+        benzin::PipelineState* m_Pso = nullptr;
     };
 
     class RtShadowPass : public benzin::RenderPass
@@ -526,32 +535,43 @@ namespace sandbox
     public:
         DenoiserPass()
         {
-            benzin::MakeUniquePtr(m_TemporalAccumulationPso, *ms_Device, benzin::ComputePipelineStateCreation
+            auto& pipelineStateManager = ms_Device->GetPipelineStateManager();
+
+            m_TemporalAccumulationPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserTemporalAccumulation",
-                .ComputeShader{ "denoiser_temporal_accumulation_pass.hlsl", "CsMain" },
+                .Shader{ benzin::ShaderType::Compute, "denoiser_temporal_accumulation_pass.hlsl", "CsMain" },
             });
 
-            benzin::MakeUniquePtr(m_MipGenerationPso, *ms_Device, benzin::ComputePipelineStateCreation
+            m_MipGenerationPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserMipGeneration",
-                .ComputeShader{ "mip_generation_pass.hlsl", "CsMain" },
+                .Shader{ benzin::ShaderType::Compute, "mip_generation_pass.hlsl", "CsMain" },
             });
 
-            benzin::MakeUniquePtr(m_HistoryFixPso, *ms_Device, benzin::ComputePipelineStateCreation
+            m_HistoryFixPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserHistoryFix",
-                .ComputeShader{ "denoiser_history_fix_pass.hlsl", "CsMain" },
+                .Shader{ benzin::ShaderType::Compute, "denoiser_history_fix_pass.hlsl", "CsMain" },
             });
 
-            benzin::MakeUniquePtr(m_BlurPso, *ms_Device, benzin::ComputePipelineStateCreation
+            m_BlurPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserBlur",
-                .ComputeShader{ "denoiser_blur_pass.hlsl", "CsMain" },
+                .Shader{ benzin::ShaderType::Compute, "denoiser_blur_pass.hlsl", "CsMain" },
             });
 
             benzin::MakeUniquePtr(m_MipGenerationConstantBuffer, *ms_Device, "MipGenerationConstantBuffer");
             benzin::MakeUniquePtr(m_BlurConstantBuffer, *ms_Device, "BlurConstantBuffer");
+        }
+
+        ~DenoiserPass()
+        {
+            auto& pipelineStateManager = ms_Device->GetPipelineStateManager();
+            pipelineStateManager.DestroyPipelineState(m_TemporalAccumulationPso);
+            pipelineStateManager.DestroyPipelineState(m_MipGenerationPso);
+            pipelineStateManager.DestroyPipelineState(m_HistoryFixPso);
+            pipelineStateManager.DestroyPipelineState(m_BlurPso);
         }
 
         void OnResize(uint32_t width, uint32_t height) override
@@ -833,10 +853,10 @@ namespace sandbox
         }
 
     private:
-        std::unique_ptr<benzin::PipelineState> m_TemporalAccumulationPso;
-        std::unique_ptr<benzin::PipelineState> m_MipGenerationPso;
-        std::unique_ptr<benzin::PipelineState> m_HistoryFixPso;
-        std::unique_ptr<benzin::PipelineState> m_BlurPso;
+        benzin::PipelineState* m_TemporalAccumulationPso = nullptr;
+        benzin::PipelineState* m_MipGenerationPso = nullptr;
+        benzin::PipelineState* m_HistoryFixPso = nullptr;
+        benzin::PipelineState* m_BlurPso = nullptr;
 
         using MipGenerationConstantBuffer = benzin::ConstantBuffer<joint::MipGenerationConstants>;
         std::unique_ptr<MipGenerationConstantBuffer> m_MipGenerationConstantBuffer;
@@ -851,11 +871,14 @@ namespace sandbox
         DeferredLightingPass(const benzin::Scene& scene)
             : m_Scene{ scene }
         {
-            benzin::MakeUniquePtr(m_Pso, *ms_Device, benzin::GraphicsPipelineStateCreation
+            m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
             {
                 .DebugName = "DeferredLightingPass",
-                .VertexShader{ "fullscreen_triangle.hlsl", "VsMain" },
-                .PixelShader{ "deferred_lighting_pass.hlsl", "PsMain" },
+                .Shaders
+                {
+                    benzin::ShaderCreation{ benzin::ShaderType::Vertex, "fullscreen_triangle.hlsl", "VsMain" },
+                    benzin::ShaderCreation{ benzin::ShaderType::Pixel, "deferred_lighting_pass.hlsl", "PsMain" },
+                },
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .DepthState
                 {
@@ -866,6 +889,11 @@ namespace sandbox
             });
 
             benzin::MakeUniquePtr(m_PassConstantBuffer, *ms_Device, "DeferredLightingPassConstantBuffer");
+        }
+
+        ~DeferredLightingPass()
+        {
+            ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
         }
 
         void OnResize(uint32_t width, uint32_t height) override
@@ -934,11 +962,11 @@ namespace sandbox
         }
 
     private:
-        using PassConstantBuffer = benzin::ConstantBuffer<joint::DeferredLightingPassConstants>;
-
         const benzin::Scene& m_Scene;
 
-        std::unique_ptr<benzin::PipelineState> m_Pso;
+        benzin::PipelineState* m_Pso = nullptr;
+
+        using PassConstantBuffer = benzin::ConstantBuffer<joint::DeferredLightingPassConstants>;
         std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
     };
 
@@ -947,17 +975,14 @@ namespace sandbox
     public:
         EnvironmentPass()
         {
-            benzin::MakeUniquePtr(m_EquirectangularToCubePso, *ms_Device, benzin::ComputePipelineStateCreation
-            {
-                .DebugName = "EquirectangularToCube",
-                .ComputeShader{ "equirectangular_to_cube_pass.hlsl", "CsMain" },
-            });
-
-            benzin::MakeUniquePtr(m_Pso, *ms_Device, benzin::GraphicsPipelineStateCreation
+            m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
             {
                 .DebugName = "EnvironmentPass",
-                .VertexShader{ "fullscreen_triangle.hlsl", "VsMainDepth1" },
-                .PixelShader{ "environment_pass.hlsl", "PsMain" },
+                .Shaders
+                {
+                    benzin::ShaderCreation{ benzin::ShaderType::Vertex, "fullscreen_triangle.hlsl", "VsMainDepth1" },
+                    benzin::ShaderCreation{ benzin::ShaderType::Pixel, "environment_pass.hlsl", "PsMain" },
+                },
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .DepthState
                 {
@@ -969,10 +994,15 @@ namespace sandbox
             });
         }
 
+        ~EnvironmentPass()
+        {
+            ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
+        }
+
         void OnZeroFrameInit() override
         {
-            LoadEquirectangularTexture();
-            ComputeCubeMapTexture();
+            std::unique_ptr equirectangularTexture = LoadEquirectangularTexture();
+            ComputeCubeMapTexture(*equirectangularTexture);
         }
 
         void OnUpdate() override
@@ -1012,12 +1042,12 @@ namespace sandbox
         }
 
     private:
-        void LoadEquirectangularTexture()
+        std::unique_ptr<benzin::Texture> LoadEquirectangularTexture()
         {
             benzin::TextureImage equirectangularTextureImage;
             BenzinAssertExpr(benzin::LoadTextureImageFromHdrFile("scythian_tombs_2_4k.hdr", equirectangularTextureImage));
 
-            benzin::MakeUniquePtr(m_EquirectangularTexture, *ms_Device, benzin::TextureCreation
+            auto equirectangularTexture = std::make_unique<benzin::Texture>(*ms_Device, benzin::TextureCreation
             {
                 .DebugName = equirectangularTextureImage.DebugName,
                 .Format = equirectangularTextureImage.Format,
@@ -1026,12 +1056,26 @@ namespace sandbox
                 .MipCount = 1,
             });
 
-            auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList(m_EquirectangularTexture->GetSizeInBytes());
-            commandList.UploadToTextureTopMip(*m_EquirectangularTexture, std::as_bytes(std::span{ equirectangularTextureImage.ImageData }));
+            auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList(equirectangularTexture->GetSizeInBytes());
+            commandList.UploadToTextureTopMip(*equirectangularTexture, std::as_bytes(std::span{ equirectangularTextureImage.ImageData }));
+        
+            return equirectangularTexture;
         }
 
-        void ComputeCubeMapTexture()
+        void ComputeCubeMapTexture(benzin::Texture& equirectangularTexture)
         {
+            auto& pipelineStateManager = ms_Device->GetPipelineStateManager();
+
+            auto* equirectangularToCubePso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
+            {
+                .DebugName = "EquirectangularToCube",
+                .Shader{ benzin::ShaderType::Compute, "equirectangular_to_cube_pass.hlsl", "CsMain" },
+            });
+            BenzinExecuteOnScopeExit([&]
+            {
+                pipelineStateManager.DestroyPipelineState(equirectangularToCubePso);
+            });
+
             const uint32_t cubeMapSize = 1024;
             benzin::MakeUniquePtr(m_CubeTexture, *ms_Device, benzin::TextureCreation
             {
@@ -1047,9 +1091,9 @@ namespace sandbox
 
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
-            commandList.SetPipelineState(*m_EquirectangularToCubePso);
+            commandList.SetPipelineState(*equirectangularToCubePso);
 
-            commandList.SetRootResource(joint::EquirectangularToCubeRc_EquirectangularTexture, m_EquirectangularTexture->GetSrv());
+            commandList.SetRootResource(joint::EquirectangularToCubeRc_EquirectangularTexture, equirectangularTexture.GetSrv());
             commandList.SetRootResource(joint::EquirectangularToCubeRc_OutCubeTexture, m_CubeTexture->GetUav());
 
             BenzinMakeScopedResourceBarriers(
@@ -1063,10 +1107,7 @@ namespace sandbox
         }
 
     private:
-        std::unique_ptr<benzin::PipelineState> m_EquirectangularToCubePso;
-        std::unique_ptr<benzin::Texture> m_EquirectangularTexture;
-
-        std::unique_ptr<benzin::PipelineState> m_Pso;
+        benzin::PipelineState* m_Pso = nullptr;
         std::unique_ptr<benzin::Texture> m_CubeTexture;
     };
 
@@ -1075,11 +1116,14 @@ namespace sandbox
     public:
         FullScreenDebugPass()
         {
-            benzin::MakeUniquePtr(m_Pso, *ms_Device, benzin::GraphicsPipelineStateCreation
+            m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
             {
                 .DebugName = "FullScreenDebugPass",
-                .VertexShader{ "fullscreen_triangle.hlsl", "VsMain" },
-                .PixelShader{ "fullscreen_debug_pass.hlsl", "PsMain" },
+                .Shaders
+                {
+                    benzin::ShaderCreation{ benzin::ShaderType::Vertex, "fullscreen_triangle.hlsl", "VsMain" },
+                    benzin::ShaderCreation{ benzin::ShaderType::Pixel, "fullscreen_debug_pass.hlsl", "PsMain" },
+                },
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .DepthState
                 {
@@ -1090,6 +1134,11 @@ namespace sandbox
             });
 
             benzin::MakeUniquePtr(m_PassConstantBuffer, *ms_Device, "FullScreenDebugConstantBuffer");
+        }
+
+        ~FullScreenDebugPass()
+        {
+            ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
         }
 
         void OnUpdate() override
@@ -1152,7 +1201,7 @@ namespace sandbox
     private:
         using PassConstantBuffer = benzin::ConstantBuffer<joint::FullScreenDebugConstants>;
 
-        std::unique_ptr<benzin::PipelineState> m_Pso;
+        benzin::PipelineState* m_Pso = nullptr;
         std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
     };
 
