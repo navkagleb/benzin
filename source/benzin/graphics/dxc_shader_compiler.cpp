@@ -183,7 +183,10 @@ namespace benzin
     {
         ShaderCompileResult result;
         const auto dxcCompileResult = GetDxcCompileResult(paths, args, result);
-        ParseDxcCompileResult(dxcCompileResult, result);
+        if (dxcCompileResult)
+        {
+            ParseDxcCompileResult(dxcCompileResult, result);
+        }
 
         return result;
     }
@@ -221,7 +224,7 @@ namespace benzin
             BenzinError("Failed to compile shader: {} ({})", paths.SourceFilePath.string(), ToNarrowString(args.EntryPoint));
             BenzinError("ErrorMessage: \n{}", dxcErrorBlob->GetStringPointer());
 
-            BenzinEnsure(false);
+            return nullptr;
         }
 
         m_CustomIncludeHandler->ExchangeIncludeFilePaths(outResult.IncludeFilePaths);

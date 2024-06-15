@@ -34,10 +34,14 @@ namespace benzin
     public:
         ShaderManager();
 
+        bool IsAllShadersGood() const { return m_IsAllShaderGood; }
+
         std::span<const std::byte> GetShaderDxil(const ShaderCreation& shaderCreation);
         std::span<const std::byte> GetLibraryDxil(std::string_view fileName);
 
-        void RunIfPendingToReloadShaderAvailable(std::function<void()>&& callback);
+        bool TryCompileShaderIfNeeded(const ShaderCreation& shaderCreation);
+
+        void RunIfPendingToReloadShaderIsAvailable(std::function<void()>&& callback);
         bool UpdateShaderState(const ShaderCreation& shaderCreation);
 
     private:
@@ -49,11 +53,14 @@ namespace benzin
         const DxcShaderCompiler m_DxcShaderCompiler;
         const Win64_ShaderFileWatcher m_FileWatcher;
 
+        std::unordered_map<uint64_t, bool> m_IsShaderGoodMap;
         std::unordered_map<uint64_t, std::vector<std::byte>> m_ShaderDxils;
         std::unordered_map<std::filesystem::path, std::unordered_set<std::filesystem::path>> m_IncludeDependencies;
 
         std::mutex m_PendingShaderToReloadMutex;
         std::optional<std::filesystem::path> m_PendingShaderToReload;
+
+        bool m_IsAllShaderGood = true;
     };
 
 }

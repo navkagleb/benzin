@@ -63,6 +63,7 @@ namespace benzin
         auto GetMainAdapterMemoryInfo() const { return GetAdapterMemoryInfo(m_MainAdapterIndex); }
 
         auto& GetShaderManager() { return m_ShaderManager; }
+        const auto& GetShaderManager() const { return m_ShaderManager; }
 
     private:
         void CreateDxgiFactory();

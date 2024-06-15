@@ -126,12 +126,9 @@ namespace benzin
 
     PipelineState::PipelineState(Device& device, const PipelineStateCreationVariant& creation)
         : m_Device{ device }
-        , m_Creation{ creation }
+        , m_CreationVariant{ creation }
     {
-        std::visit(
-            [this](const auto& creation) { Create(creation); },
-            m_Creation
-        );
+        m_CreationVariant | MakeVisitorMatch([this](const auto& creation) { Create(creation); });
     }
 
     PipelineState::~PipelineState()
@@ -141,26 +138,23 @@ namespace benzin
 
     std::span<const ShaderCreation> PipelineState::GetShaders() const
     {
-        return std::visit(MakeVisitorMatch(
-            [](const GraphicsPipelineStateCreation& creation)
-            {
-                return std::span<const ShaderCreation>{ creation.Shaders };
-            },
-            [](const ComputePipelineStateCreation& creation)
-            {
-                return std::span<const ShaderCreation>{ &creation.Shader, 1 };
-            }
-        ), m_Creation);
+        return m_CreationVariant | MakeVisitorMatch(
+            [](const GraphicsPipelineStateCreation& creation) { return std::span<const ShaderCreation>{ creation.Shaders }; },
+            [](const ComputePipelineStateCreation& creation) { return std::span<const ShaderCreation>{ &creation.Shader, 1 }; }
+        );
     }
 
-    void PipelineState::Reload()
+    bool PipelineState::Reload()
     {
-        m_Device.DeferredRelease(m_D3D12PipelineState);
+        if (!IsAllShadersValid())
+        {
+            return false;
+        }
 
-        std::visit(
-            [this](const auto& creation) { Create(creation); },
-            m_Creation
-        );
+        m_Device.DeferredRelease(m_D3D12PipelineState);
+        m_CreationVariant | MakeVisitorMatch([this](const auto& creation) { Create(creation); });
+
+        return true;
     }
 
     void PipelineState::Create(const GraphicsPipelineStateCreation& creation)
@@ -238,6 +232,16 @@ namespace benzin
 
         BenzinEnsure(m_Device.GetD3D12Device()->CreateComputePipelineState(&d3d12ComputePipelineStateDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
         SetDxObjectDebugName(m_D3D12PipelineState, creation.DebugName);
+    }
+
+    bool PipelineState::IsAllShadersValid() const
+    {
+        auto& shaderManager = m_Device.GetBackend().GetShaderManager();
+
+        return std::ranges::all_of(GetShaders(), [&shaderManager](const auto& shader)
+        {
+            return shaderManager.TryCompileShaderIfNeeded(shader);
+        });
     }
 
 } // namespace benzin

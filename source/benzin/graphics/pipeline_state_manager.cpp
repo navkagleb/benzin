@@ -55,20 +55,19 @@ namespace benzin
     void PipelineStateManager::ReloadPipelineStatesIfNeeded()
     {
         auto& shaderManager = m_Device.GetBackend().GetShaderManager();
-        shaderManager.RunIfPendingToReloadShaderAvailable([&]
+        shaderManager.RunIfPendingToReloadShaderIsAvailable([&]
         {
             for (auto* pso : m_PipelineStates)
             {
                 bool isPsoNeedsReload = false;
-
                 for (const auto& shader : pso->GetShaders())
                 {
                     isPsoNeedsReload |= shaderManager.UpdateShaderState(shader);
                 }
 
-                if (isPsoNeedsReload)
+                if (isPsoNeedsReload && !pso->Reload())
                 {
-                    pso->Reload();
+                    return;
                 }
             }
         });

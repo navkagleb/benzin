@@ -37,13 +37,18 @@ namespace sandbox
     void BottomPanelTool::OnImGuiRender()
     {
         static constexpr uint32_t rowCount = 2;
+        static constexpr auto backgroundColors = std::to_array(
+        {
+            IM_COL32(200, 50, 0, 240),
+            IM_COL32(184, 100, 0, 240),
+        });
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 10.0f, 5.0f });
         BenzinExecuteOnScopeExit([] { ImGui::PopStyleVar(3); });
 
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(184, 100, 0, 240));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, backgroundColors[m_Backend.GetShaderManager().IsAllShadersGood()]);
         BenzinExecuteOnScopeExit([] { ImGui::PopStyleColor(); });
 
         const auto& context = *ImGui::GetCurrentContext();

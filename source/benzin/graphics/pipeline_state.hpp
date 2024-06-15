@@ -59,18 +59,20 @@ namespace benzin
 
         std::span<const ShaderCreation> GetShaders() const;
 
-        void Reload();
+        bool Reload();
 
     private:
         void Create(const GraphicsPipelineStateCreation& creation);
         void Create(const ComputePipelineStateCreation& creation);
+
+        bool IsAllShadersValid() const;
 
     private:
         Device& m_Device;
 
         ID3D12PipelineState* m_D3D12PipelineState = nullptr;
 
-        std::variant<GraphicsPipelineStateCreation, ComputePipelineStateCreation> m_Creation;
+        PipelineStateCreationVariant m_CreationVariant;
     };
 
 } // namespace benzin

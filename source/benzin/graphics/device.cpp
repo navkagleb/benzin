@@ -186,6 +186,13 @@ namespace benzin
         return d3d12FormatInfo.PlaneCount;
     }
 
+    void Device::DeferredRelease(ID3D12Object* d3d12Object)
+    {
+        BenzinAssert(d3d12Object != nullptr);
+
+        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12Object);
+    }
+
     void Device::DeferredRelease(const Descriptor& descriptor)
     {
         BenzinAssert(descriptor.IsCpuValid());
@@ -193,26 +200,11 @@ namespace benzin
         m_DeferredReleaseDescriptorQueue.emplace(m_CpuFrameIndex, descriptor);
     }
 
-    void Device::DeferredRelease(ID3D12Object* d3d12Object)
-    {
-        BenzinAssert(d3d12Object != nullptr);
-
-        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, std::exchange(d3d12Object, nullptr));
-    }
-
     void Device::ProcessDeferredReleaseQueues(bool isReleaseForced)
     {
-        while (!m_DeferredReleaseDescriptorQueue.empty())
+        if (!IsValidIndex(m_CompletedGpuFrameIndex))
         {
-            auto&& [cpuFrameIndex, descriptor] = m_DeferredReleaseDescriptorQueue.front();
-
-            if (!(isReleaseForced || cpuFrameIndex <= m_CompletedGpuFrameIndex))
-            {
-                break;
-            }
-
-            m_DescriptorManager->FreeDescriptor(descriptor);
-            m_DeferredReleaseDescriptorQueue.pop();
+            return;
         }
 
         while (!m_DeferredReleaseResourceQueue.empty())
@@ -226,6 +218,19 @@ namespace benzin
 
             BenzinSafeDxObjectRelease(d3d12Object);
             m_DeferredReleaseResourceQueue.pop();
+        }
+
+        while (!m_DeferredReleaseDescriptorQueue.empty())
+        {
+            auto&& [cpuFrameIndex, descriptor] = m_DeferredReleaseDescriptorQueue.front();
+
+            if (!(isReleaseForced || cpuFrameIndex <= m_CompletedGpuFrameIndex))
+            {
+                break;
+            }
+
+            m_DescriptorManager->FreeDescriptor(descriptor);
+            m_DeferredReleaseDescriptorQueue.pop();
         }
     }
 

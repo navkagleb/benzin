@@ -29,6 +29,17 @@ namespace benzin
         return fileName.ends_with(L"hlsl");
     }
 
+    static void CacheShader(const ShaderPaths& paths, const ShaderCompileResult& compileResult)
+    {
+        WriteToFile(paths.DxilFilePath, compileResult.DxilBlob);
+
+        if constexpr (config::g_IsShaderSymbolsEnabled)
+        {
+            BenzinAssert(!compileResult.PdbBlob.empty());
+            WriteToFile(paths.PdbFilePath, compileResult.PdbBlob);
+        }
+    }
+
     // Win64_ShaderFileWatcher
 
     Win64_ShaderFileWatcher::Win64_ShaderFileWatcher(Callback&& callback)
@@ -154,9 +165,38 @@ namespace benzin
             return it->second;
         }
 
+        BenzinAssert(TryCompileShaderIfNeeded(shaderCreation));
+        return m_ShaderDxils.at(shaderHash);
+    }
+
+    std::span<const std::byte> ShaderManager::GetLibraryDxil(std::string_view fileName)
+    {
+        return GetShaderDxil(ShaderCreation
+        {
+            .Type = ShaderType::Library,
+            .FileName = fileName,
+        });
+    }
+
+    bool ShaderManager::TryCompileShaderIfNeeded(const ShaderCreation& shaderCreation)
+    {
+        const size_t shaderHash = GetShaderHash(shaderCreation);
+
+        auto& isShaderGood = m_IsShaderGoodMap[shaderHash];
+        if (isShaderGood)
+        {
+            return true;
+        }
+
         const ShaderPaths paths{ shaderHash, shaderCreation.FileName };
         const ShaderArgs args{ shaderCreation.Type, shaderCreation.EntryPoint };
         auto [us, compileResult] = BenzinProfileFunction(m_DxcShaderCompiler.CompileShader(paths, args));
+
+        if (!compileResult.IsValid())
+        {
+            isShaderGood = false;
+            return false;
+        }
 
         if (shaderCreation.Type == ShaderType::Library)
         {
@@ -173,29 +213,13 @@ namespace benzin
             );
         }
 
-        WriteToFile(paths.DxilFilePath, compileResult.DxilBlob);
-
-        if constexpr (config::g_IsShaderSymbolsEnabled)
-        {
-            BenzinAssert(!compileResult.PdbBlob.empty());
-            WriteToFile(paths.PdbFilePath, compileResult.PdbBlob);
-        }
-
+        isShaderGood = true;
+        m_ShaderDxils[shaderHash] = std::move(compileResult.DxilBlob);
         m_IncludeDependencies[paths.SourceFilePath] = std::move(compileResult.IncludeFilePaths);
 
-        auto& shaderDxil = m_ShaderDxils[shaderHash];
-        shaderDxil = std::move(compileResult.DxilBlob);
+        CacheShader(paths, compileResult);
 
-        return shaderDxil;
-    }
-
-    std::span<const std::byte> ShaderManager::GetLibraryDxil(std::string_view fileName)
-    {
-        return GetShaderDxil(ShaderCreation
-        {
-            .Type = ShaderType::Library,
-            .FileName = fileName,
-        });
+        return true;
     }
 
     bool ShaderManager::UpdateShaderState(const ShaderCreation& shaderCreation)
@@ -210,7 +234,8 @@ namespace benzin
         BenzinExecuteOnScopeExit([&]
         {
             if (isShaderNeedsRecompilation)
-            {
+            {   
+                m_IsShaderGoodMap[shaderHash] = false;
                 m_ShaderDxils.erase(shaderHash);
             }
         });
@@ -220,12 +245,6 @@ namespace benzin
             isShaderNeedsRecompilation = *m_PendingShaderToReload == paths.SourceFilePath;
             return isShaderNeedsRecompilation;
         }
-        
-        // TODO: Is need to be checked?
-        // if (IsDestinationFileOlder(paths.SourceFilePath, paths.DxilFilePath))
-        // {
-        //     return true;
-        // }
 
         BenzinAssert(m_IncludeDependencies.contains(paths.SourceFilePath));
         if (m_IncludeDependencies.at(paths.SourceFilePath).contains(*m_PendingShaderToReload))
@@ -236,18 +255,25 @@ namespace benzin
         return isShaderNeedsRecompilation = false;
     }
 
-    void ShaderManager::RunIfPendingToReloadShaderAvailable(std::function<void()>&& callback)
+    void ShaderManager::RunIfPendingToReloadShaderIsAvailable(std::function<void()>&& callback)
     {
-        std::lock_guard guard{ m_PendingShaderToReloadMutex };
-
-        if (!IsPendingToReloadShaderAvailable())
         {
-            return;
+            std::lock_guard guard{ m_PendingShaderToReloadMutex };
+
+            if (!IsPendingToReloadShaderAvailable())
+            {
+                return;
+            }
+
+            callback();
+
+            m_PendingShaderToReload = std::nullopt;
         }
 
-        callback();
-
-        m_PendingShaderToReload = std::nullopt;
+        m_IsAllShaderGood = std::ranges::all_of(m_IsShaderGoodMap, [](const auto& pair)
+        {
+            return pair.second;
+        });
     }
 
     bool ShaderManager::IsPendingToReloadShaderAvailable() const

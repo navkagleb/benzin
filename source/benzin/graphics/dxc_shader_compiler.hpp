@@ -28,6 +28,8 @@ namespace benzin
         std::vector<std::byte> PdbBlob;
 
         std::unordered_set<std::filesystem::path> IncludeFilePaths;
+
+        bool IsValid() const { return !DxilBlob.empty(); }
     };
 
     class CustumDxcIncludeHandler : public IDxcIncludeHandler

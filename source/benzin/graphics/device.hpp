@@ -58,14 +58,9 @@ namespace benzin
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
         template <std::derived_from<ID3D12Object> T>
-        void DeferredRelease(T*& d3d12Object)
-        {
-            DeferredRelease((ID3D12Object*)d3d12Object);
-            d3d12Object = nullptr;
-        }
-
-        void DeferredRelease(const Descriptor& descriptor);
+        void DeferredRelease(T*& d3d12Object) { DeferredRelease((ID3D12Object*)std::exchange(d3d12Object, nullptr)); }
         void DeferredRelease(ID3D12Object* d3d12Object);
+        void DeferredRelease(const Descriptor& descriptor);
         void ProcessDeferredReleaseQueues(bool isReleaseForced = false); // Must be called after 'SwapChain::OnFlip' because 'm_GpuFrameIndex' will be updated there
 
     private:
@@ -87,7 +82,7 @@ namespace benzin
         std::unique_ptr<GpuTimer> m_GpuTimer;
 
         uint64_t m_CpuFrameIndex = 0;
-        uint64_t m_CompletedGpuFrameIndex = 0;
+        uint64_t m_CompletedGpuFrameIndex = g_InvalidIndex<uint64_t>;
         uint8_t m_ActiveFrameIndex = 0; // In range [0, FrameInFlightCount)
 
         bool m_IsGpuUploadHeapsSupported = false;
