@@ -211,7 +211,7 @@ namespace benzin
 
     std::string GetDxObjectDebugName(DxObjectVariant dxObjectVariant)
     {
-        return std::visit(MakeVisitorMatch([](auto&& dxObject)
+        return dxObjectVariant | MakeVisitorMatch([](auto* dxObject)
         {
             constexpr size_t maxDebugNameSize = 128;
             constexpr std::string_view defaultName = "Unnamed DxObject";
@@ -233,7 +233,7 @@ namespace benzin
             });
 
             return debugName;
-        }), dxObjectVariant);
+        });
     }
 
     void SetDxObjectDebugName(DxObjectVariant dxObjectVariant, std::string_view debugName)
@@ -243,16 +243,16 @@ namespace benzin
             return;
         }
 
-        std::visit(MakeVisitorMatch([&](auto&& dxObject)
+        dxObjectVariant | MakeVisitorMatch([&](auto* dxObject)
         {
             BenzinEnsure(dxObject);
             BenzinEnsure(dxObject->SetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t)debugName.size(), debugName.data()));
-        }), dxObjectVariant);
+        });
     }
 
     void ReleaseDxObject(DxObjectVariant dxObjectVariant)
     {
-        std::visit(MakeVisitorMatch([](auto&& dxObject)
+        dxObjectVariant | MakeVisitorMatch([](auto* dxObject)
         {
             if (dxObject == nullptr)
             {
@@ -266,7 +266,7 @@ namespace benzin
             {
                 BenzinWarning("Remaining reference count {}. DxObject '{}'", referenceCount, debugName);
             }
-        }), dxObjectVariant);
+        });
     }
 
 } // namespace benzin

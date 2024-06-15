@@ -130,3 +130,9 @@ constexpr auto operator+(T enumValue)
 #define BenzinEnableUnaryPlusForEnum(EnumT) \
     template <> \
     struct IsUnaryPlusEnabledForEnum<EnumT> : std::true_type {};
+
+template <typename... Ts, typename... Fs>
+constexpr decltype(auto) operator|(const std::variant<Ts...>& variant, const benzin::VisitorMatch<Fs...>& visitorMatch)
+{
+    return std::visit(visitorMatch, variant);
+}
