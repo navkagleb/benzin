@@ -8,10 +8,14 @@
 namespace benzin
 {
 
-    Fence::Fence(Device& device, std::string_view debugName)
+    Fence::Fence(Device& device, const FenceCreation& creation)
     {
-        BenzinEnsure(device.GetD3D12Device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_D3D12Fence)));
-        SetDxObjectDebugName(m_D3D12Fence, debugName);
+        BenzinEnsure(device.GetD3D12Device()->CreateFence(
+            creation.InitialValue,
+            D3D12_FENCE_FLAG_NONE,
+            IID_PPV_ARGS(&m_D3D12Fence)
+        ));
+        SetDxObjectDebugName(m_D3D12Fence, creation.DebugName);
 
         m_WaitEvent = ::CreateEvent(nullptr, false, false, nullptr);
         BenzinEnsure(m_WaitEvent != INVALID_HANDLE_VALUE);

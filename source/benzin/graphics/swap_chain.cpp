@@ -61,7 +61,11 @@ namespace benzin
         m_BackBuffers.resize(frameInFlightCount);
         ResizeBackBuffers(creation.WindowRef.GetWidth(), creation.WindowRef.GetHeight());
 
-        MakeUniquePtr(m_FrameFence, m_Device, std::format("{}_FrameFence", creation.DebugName));
+        MakeUniquePtr(m_FrameFence, m_Device, FenceCreation
+        {
+            .DebugName = std::format("{}_FrameFence", creation.DebugName),
+            .InitialValue = m_Device.m_CompletedGpuFrameIndex,
+        });
     }
 
     SwapChain::~SwapChain()

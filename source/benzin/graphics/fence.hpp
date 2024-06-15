@@ -5,15 +5,20 @@ namespace benzin
 
     class Device;
 
+    struct FenceCreation
+    {
+        std::string_view DebugName;
+        uint64_t InitialValue = g_InvalidIndex<uint64_t>;
+    };
+
     class Fence
     {
     public:
+        Fence(Device& device, const FenceCreation& creation);
+        ~Fence();
+
         BenzinDefineNonCopyable(Fence);
         BenzinDefineNonMoveable(Fence);
-
-    public:
-        Fence(Device& device, std::string_view debugName);
-        ~Fence();
 
     public:
         auto* GetD3D12Fence() const { return m_D3D12Fence; }

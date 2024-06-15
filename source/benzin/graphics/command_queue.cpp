@@ -38,7 +38,11 @@ namespace benzin
             SetDxObjectDebugName(d3d12CommandAllocator, std::format("GraphicsCommandAllocator{}", i));
         }
 
-        MakeUniquePtr(m_FlushFence, device, GetDxObjectDebugName(m_D3D12CommandQueue) + "FlushFence");
+        MakeUniquePtr(m_FlushFence, device, FenceCreation
+        {
+            .DebugName = GetDxObjectDebugName(m_D3D12CommandQueue) + "FlushFence",
+            .InitialValue = m_FlushCount,
+        });
     }
 
     GraphicsCommandQueue::~GraphicsCommandQueue()
