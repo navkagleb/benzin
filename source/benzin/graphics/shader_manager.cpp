@@ -2,12 +2,15 @@
 #include "benzin/graphics/shader_manager.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
-#include "benzin/utility/time_utils.hpp"
 #include "benzin/graphics/pipeline_state.hpp"
+#include "benzin/utility/time_utils.hpp"
 
 namespace benzin
 {
+
+    static const auto g_IncludeDependenciesFilePath = std::filesystem::absolute("bin/shader_include_dependencies.txt");
 
     static size_t GetShaderHash(const ShaderCreation& shaderCreation)
     {
@@ -153,9 +156,16 @@ namespace benzin
 
     ShaderManager::ShaderManager()
         : m_FileWatcher{ std::bind(&ShaderManager::FileWatcherCallback, this, std::placeholders::_1) }
-    {}
+    {
+        LoadIncludeDependenciesCache();
+    }
 
-    std::span<const std::byte> ShaderManager::GetShaderDxil(const ShaderCreation& shaderCreation)
+    ShaderManager::~ShaderManager()
+    {
+        CacheIncludeDependencies();
+    }
+
+    std::span<const std::byte> ShaderManager::GetShaderDxil(const ShaderCreation& shaderCreation, bool isCacheIgnored)
     {
         const size_t shaderHash = GetShaderHash(shaderCreation);
         
@@ -163,6 +173,11 @@ namespace benzin
         if (it != m_ShaderDxils.end())
         {
             return it->second;
+        }
+
+        if (!isCacheIgnored && LoadShaderCacheIfPossible(shaderCreation))
+        {
+            return m_ShaderDxils.at(shaderHash);
         }
 
         BenzinAssert(TryCompileShaderIfNeeded(shaderCreation));
@@ -190,7 +205,7 @@ namespace benzin
 
         const ShaderPaths paths{ shaderHash, shaderCreation.FileName };
         const ShaderArgs args{ shaderCreation.Type, shaderCreation.EntryPoint };
-        auto [us, compileResult] = BenzinProfileFunction(m_DxcShaderCompiler.CompileShader(paths, args));
+        auto [us, compileResult] = BenzinProfileFunction(m_ShaderCompiler.CompileShader(paths, args));
 
         if (!compileResult.IsValid())
         {
@@ -213,11 +228,11 @@ namespace benzin
             );
         }
 
+        CacheShader(paths, compileResult);
+
         isShaderGood = true;
         m_ShaderDxils[shaderHash] = std::move(compileResult.DxilBlob);
-        m_IncludeDependencies[paths.SourceFilePath] = std::move(compileResult.IncludeFilePaths);
-
-        CacheShader(paths, compileResult);
+        m_IncludeDependencies[shaderHash] = std::move(compileResult.IncludeFilePaths);
 
         return true;
     }
@@ -246,8 +261,8 @@ namespace benzin
             return isShaderNeedsRecompilation;
         }
 
-        BenzinAssert(m_IncludeDependencies.contains(paths.SourceFilePath));
-        if (m_IncludeDependencies.at(paths.SourceFilePath).contains(*m_PendingShaderToReload))
+        BenzinAssert(m_IncludeDependencies.contains(shaderHash));
+        if (m_IncludeDependencies.at(shaderHash).contains(*m_PendingShaderToReload))
         {
             return isShaderNeedsRecompilation;
         }
@@ -302,6 +317,95 @@ namespace benzin
         }
 
         ::CloseHandle(fileHandle);
+        return true;
+    }
+
+    void ShaderManager::CacheIncludeDependencies()
+    {
+        BenzinAssert(!m_IncludeDependencies.empty());
+
+        std::ofstream file{ g_IncludeDependenciesFilePath };
+
+        for (const auto& [shaderHash, includePaths] : m_IncludeDependencies)
+        {
+            file << shaderHash << '\n';
+
+            for (const auto& includePath : includePaths)
+            {
+                file << includePath.string() << '\n';
+            }
+
+            file << '\n';
+        }
+    }
+
+    void ShaderManager::LoadIncludeDependenciesCache()
+    {
+        if (!std::filesystem::exists(g_IncludeDependenciesFilePath))
+        {
+            return;
+        }
+
+        BenzinAssert(m_IncludeDependencies.empty());
+
+        std::ifstream file{ g_IncludeDependenciesFilePath };
+
+        std::string line;
+        while (std::getline(file, line))
+        {
+            const auto shaderHash = ToU64(line);
+
+            std::unordered_set<std::filesystem::path> includeDependencies;
+            while (std::getline(file, line) && !line.empty())
+            {
+                includeDependencies.insert(line);
+            }
+
+            m_IncludeDependencies[shaderHash] = std::move(includeDependencies);
+        }
+    }
+
+    bool ShaderManager::LoadShaderCacheIfPossible(const ShaderCreation& shaderCreation)
+    {
+        if (CommandLineArgs::IsShaderCacheIgnored())
+        {
+            return false;
+        }
+
+        const size_t shaderHash = GetShaderHash(shaderCreation);
+        const ShaderPaths paths{ shaderHash, shaderCreation.FileName };
+
+        if (IsDestinationFileOlder(paths.SourceFilePath, paths.DxilFilePath))
+        {
+            return false;
+        }
+
+        const bool isAnyIncludeDependencyNewer = std::ranges::any_of(
+            m_IncludeDependencies.at(shaderHash),
+            [&paths](const std::filesystem::path& includeDependency)
+            {
+                return IsDestinationFileOlder(includeDependency, paths.DxilFilePath);
+            }
+        );
+
+        if (isAnyIncludeDependencyNewer)
+        {
+            return false;
+        }
+
+        auto [us, shaderDxil] = BenzinProfileFunction(ReadFromFile(paths.DxilFilePath));
+
+        m_IsShaderGoodMap[shaderHash] = true;
+        m_ShaderDxils[shaderHash] = std::move(shaderDxil);
+
+        BenzinTrace(
+            "Shader loaded from cache: {}! File: {}, EntryPoint: {}. Time: {} ms",
+            shaderHash,
+            shaderCreation.FileName,
+            shaderCreation.EntryPoint,
+            ToFloatMs(us)
+        );
+
         return true;
     }
 

@@ -1,6 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/utility/string_utils.hpp"
 
+#include "benzin/core/asserter.hpp"
+
 namespace benzin
 {
 
@@ -52,6 +54,21 @@ namespace benzin
         ::MultiByteToWideChar(CP_UTF8, 0, narrowString.data(), narrowSize, wide.data(), (int)wideSize);
 
         return wide;
+    }
+
+    uint64_t ToU64(std::string_view integerString)
+    {
+        // Ref: https://jsteemann.github.io/blog/2016/06/02/fastest-string-to-uint64-conversion-method/
+
+        uint64_t result = 0;
+
+        for (const char digit : integerString)
+        {
+            BenzinAssert('0' <= digit && digit <= '9');
+            result = (result << 1) + (result << 3) + digit - '0';
+        }
+
+        return result;
     }
 
 } // namespace benzin

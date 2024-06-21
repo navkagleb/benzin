@@ -62,8 +62,8 @@ namespace benzin
         bool Reload();
 
     private:
-        void Create(const GraphicsPipelineStateCreation& creation);
-        void Create(const ComputePipelineStateCreation& creation);
+        void Create(const GraphicsPipelineStateCreation& creation, bool isShaderCacheIgnored);
+        void Create(const ComputePipelineStateCreation& creation, bool isShaderCacheIgnored);
 
         bool IsAllShadersValid() const;
 

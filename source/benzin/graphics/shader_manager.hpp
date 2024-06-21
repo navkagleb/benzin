@@ -33,10 +33,11 @@ namespace benzin
     {
     public:
         ShaderManager();
+        ~ShaderManager();   
 
         bool IsAllShadersGood() const { return m_IsAllShaderGood; }
 
-        std::span<const std::byte> GetShaderDxil(const ShaderCreation& shaderCreation);
+        std::span<const std::byte> GetShaderDxil(const ShaderCreation& shaderCreation, bool isCacheIgnored = false);
         std::span<const std::byte> GetLibraryDxil(std::string_view fileName);
 
         bool TryCompileShaderIfNeeded(const ShaderCreation& shaderCreation);
@@ -47,15 +48,21 @@ namespace benzin
     private:
         bool IsPendingToReloadShaderAvailable() const;
 
+        void CacheIncludeDependencies();
+        void LoadIncludeDependenciesCache();
+
+        bool LoadShaderCacheIfPossible(const ShaderCreation& shaderCreation);
+
         void FileWatcherCallback(std::filesystem::path&& filePath);
 
     private:
-        const DxcShaderCompiler m_DxcShaderCompiler;
+        const DxcShaderCompiler m_ShaderCompiler;
         const Win64_ShaderFileWatcher m_FileWatcher;
 
+        // TODO: Maybe replace with one big unordered_map?
         std::unordered_map<uint64_t, bool> m_IsShaderGoodMap;
         std::unordered_map<uint64_t, std::vector<std::byte>> m_ShaderDxils;
-        std::unordered_map<std::filesystem::path, std::unordered_set<std::filesystem::path>> m_IncludeDependencies;
+        std::unordered_map<uint64_t, std::unordered_set<std::filesystem::path>> m_IncludeDependencies;
 
         std::mutex m_PendingShaderToReloadMutex;
         std::optional<std::filesystem::path> m_PendingShaderToReload;

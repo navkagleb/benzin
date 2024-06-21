@@ -26,6 +26,8 @@ namespace benzin
         static bool IsGpuUploadHeapsEnabled();
 
         static GraphicsDebugLayerParams GetGraphicsDebugLayerParams();
+
+        static bool IsShaderCacheIgnored();
     };
 
 } // namespace benzin

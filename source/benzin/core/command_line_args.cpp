@@ -21,16 +21,23 @@ namespace benzin
         {
             BenzinAssert(memberValue != std::numeric_limits<T>::max());
 
-            auto& reinterpreMember = *reinterpret_cast<T*>(member);
+            auto& reinterpreMember = *((T*)member);
             reinterpreMember = memberValue;
         }
+    }
+
+    static void SetTrueIfExists(std::string_view commandLineToParse, void* member)
+    {
+        BenzinUnused(commandLineToParse);
+
+        *((bool*)member) = true;
     }
 
     static void SetFalseIfExists(std::string_view commandLineToParse, void* member)
     {
         BenzinUnused(commandLineToParse);
 
-        *reinterpret_cast<bool*>(member) = false;
+        *((bool*)member) = false;
     }
 
     struct SupportedCommandLineArg
@@ -63,6 +70,8 @@ namespace benzin
 
         GraphicsDebugLayerParams GraphicsDebugLayerParams;
 
+        bool IsShaderCacheIgnored = false;
+
         CommandLineArgsState(int argc, char** argv)
         {
             const auto supportedArgs = std::to_array(
@@ -77,6 +86,8 @@ namespace benzin
 
                 SupportedCommandLineArg{ "-no_gpu_based_validation", &GraphicsDebugLayerParams.IsGpuBasedValidationEnabled, SetFalseIfExists },
                 SupportedCommandLineArg{ "-no_sync_command_queue_validation", &GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled, SetFalseIfExists },
+            
+                SupportedCommandLineArg{ "-ignore_shader_cache", &IsShaderCacheIgnored, SetTrueIfExists },
             });
 
             ExecutablePath = argv[0];
@@ -119,5 +130,6 @@ namespace benzin
     GraphicsFormat CommandLineArgs::GetBackBufferFormat() { return g_CommandLineArgsState->BackBufferFormat; }
     bool CommandLineArgs::IsGpuUploadHeapsEnabled() { return g_CommandLineArgsState->IsGpuUploadHeapsEnabled; }
     GraphicsDebugLayerParams CommandLineArgs::GetGraphicsDebugLayerParams() { return g_CommandLineArgsState->GraphicsDebugLayerParams; }
+    bool CommandLineArgs::IsShaderCacheIgnored() { return g_CommandLineArgsState->IsShaderCacheIgnored; }
 
 } // namespace benzin

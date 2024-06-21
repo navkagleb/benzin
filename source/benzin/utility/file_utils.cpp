@@ -20,10 +20,7 @@ namespace benzin
 
     void WriteToFile(std::wstring_view fileName, std::span<const std::byte> data)
     {
-        if (data.empty())
-        {
-            return;
-        }
+        BenzinAssert(!data.empty());
 
         std::ofstream file{ fileName.data(), std::ios::binary | std::ios::trunc };
         BenzinAssert(file.good());
