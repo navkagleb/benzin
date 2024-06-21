@@ -55,81 +55,46 @@ namespace benzin
         }
     };
 
-    struct CommandLineArgsState
-    {
-        std::filesystem::path ExecutablePath;
-
-        uint32_t WindowWidth = 1280;
-        uint32_t WindowHeight = 720;
-        bool IsWindowResizable = true;
-
-        uint32_t AdapterIndex = 0;
-        uint32_t FrameInFlightCount = 3;
-        GraphicsFormat BackBufferFormat = GraphicsFormat::Rgba8Unorm;
-        bool IsGpuUploadHeapsEnabled = true;
-
-        GraphicsDebugLayerParams GraphicsDebugLayerParams;
-
-        bool IsShaderCacheIgnored = false;
-
-        CommandLineArgsState(int argc, char** argv)
-        {
-            const auto supportedArgs = std::to_array(
-            {
-                SupportedCommandLineArg{ "-window_width:", &WindowWidth, ParseArithmetic<decltype(WindowWidth)> },
-                SupportedCommandLineArg{ "-window_height:", &WindowHeight, ParseArithmetic<decltype(WindowHeight)> },
-                SupportedCommandLineArg{ "-disable_window_resizing", &IsWindowResizable, SetFalseIfExists },
-
-                SupportedCommandLineArg{ "-adapter_index:", &AdapterIndex, ParseArithmetic<decltype(AdapterIndex)> },
-                SupportedCommandLineArg{ "-frame_in_flight_count:", &FrameInFlightCount, ParseArithmetic<decltype(FrameInFlightCount)> },
-                SupportedCommandLineArg{ "-no_gpu_upload_heaps", &IsGpuUploadHeapsEnabled, SetFalseIfExists },
-
-                SupportedCommandLineArg{ "-no_gpu_based_validation", &GraphicsDebugLayerParams.IsGpuBasedValidationEnabled, SetFalseIfExists },
-                SupportedCommandLineArg{ "-no_sync_command_queue_validation", &GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled, SetFalseIfExists },
-            
-                SupportedCommandLineArg{ "-ignore_shader_cache", &IsShaderCacheIgnored, SetTrueIfExists },
-            });
-
-            ExecutablePath = argv[0];
-
-            BenzinTrace("ExecutablePath: {}", ExecutablePath.string());
-
-            for (const int i : std::views::iota(1, argc))
-            {
-                const std::string_view currentArg = argv[i];
-
-                if (!currentArg.starts_with('-'))
-                {
-                    continue;
-                }
-
-                for (const auto& supportedArg : supportedArgs)
-                {
-                    supportedArg.InvokeIfMatches(currentArg);
-                }
-
-                BenzinTrace("CommandLineArg {}: {}", i, currentArg);
-            }
-        }
-    };
-
-    static std::unique_ptr<CommandLineArgsState> g_CommandLineArgsState;
-
     //
 
     void CommandLineArgs::Initialize(int argc, char** argv)
     {
-        MakeUniquePtr(g_CommandLineArgsState, argc, argv);
-    }
+        const auto supportedArgs = std::to_array(
+        {
+            SupportedCommandLineArg{ "-window_width:", &g_WindowWidth, ParseArithmetic<decltype(g_WindowWidth)> },
+            SupportedCommandLineArg{ "-window_height:", &g_WindowHeight, ParseArithmetic<decltype(g_WindowHeight)> },
+            SupportedCommandLineArg{ "-disable_window_resizing", &g_IsWindowResizable, SetFalseIfExists },
 
-    uint32_t CommandLineArgs::GetWindowWidth() { return g_CommandLineArgsState->WindowWidth; }
-    uint32_t CommandLineArgs::GetWindowHeight() { return g_CommandLineArgsState->WindowHeight; }
-    bool CommandLineArgs::IsWindowResizable() { return g_CommandLineArgsState->IsWindowResizable; }
-    uint32_t CommandLineArgs::GetAdapterIndex() { return g_CommandLineArgsState->AdapterIndex; }
-    uint32_t CommandLineArgs::GetFrameInFlightCount() { return g_CommandLineArgsState->FrameInFlightCount; }
-    GraphicsFormat CommandLineArgs::GetBackBufferFormat() { return g_CommandLineArgsState->BackBufferFormat; }
-    bool CommandLineArgs::IsGpuUploadHeapsEnabled() { return g_CommandLineArgsState->IsGpuUploadHeapsEnabled; }
-    GraphicsDebugLayerParams CommandLineArgs::GetGraphicsDebugLayerParams() { return g_CommandLineArgsState->GraphicsDebugLayerParams; }
-    bool CommandLineArgs::IsShaderCacheIgnored() { return g_CommandLineArgsState->IsShaderCacheIgnored; }
+            SupportedCommandLineArg{ "-adapter_index:", &g_AdapterIndex, ParseArithmetic<decltype(g_AdapterIndex)> },
+            SupportedCommandLineArg{ "-frame_in_flight_count:", &g_FrameInFlightCount, ParseArithmetic<decltype(g_FrameInFlightCount)> },
+            SupportedCommandLineArg{ "-no_gpu_upload_heaps", &g_IsGpuUploadHeapsEnabled, SetFalseIfExists },
+
+            SupportedCommandLineArg{ "-no_gpu_based_validation", &g_GraphicsDebugLayerParams.IsGpuBasedValidationEnabled, SetFalseIfExists },
+            SupportedCommandLineArg{ "-no_sync_command_queue_validation", &g_GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled, SetFalseIfExists },
+
+            SupportedCommandLineArg{ "-ignore_shader_cache", &g_IsShaderCacheIgnored, SetTrueIfExists },
+        });
+
+        g_ExecutableFilePath = argv[0];
+
+        BenzinTrace("ExecutablePath: {}", g_ExecutableFilePath.string());
+
+        for (const int i : std::views::iota(1, argc))
+        {
+            const std::string_view currentArg = argv[i];
+
+            if (!currentArg.starts_with('-'))
+            {
+                continue;
+            }
+
+            for (const auto& supportedArg : supportedArgs)
+            {
+                supportedArg.InvokeIfMatches(currentArg);
+            }
+
+            BenzinTrace("CommandLineArg {}: {}", i, currentArg);
+        }
+    }
 
 } // namespace benzin

@@ -23,7 +23,7 @@ namespace benzin
 
     GpuTimer::GpuTimer(Device& device, uint32_t timerCount)
         : m_InverseFrequency{ 1.0f / device.GetGraphicsCommandQueue().GetTimestampFrequency() }
-        , m_ReadbackLatency{ CommandLineArgs::GetFrameInFlightCount() + 1 }
+        , m_ReadbackLatency{ CommandLineArgs::g_FrameInFlightCount + 1 }
         , m_ProfiledCommandList{ device.GetGraphicsCommandQueue().GetCommandList() }
         , m_ReadbackBuffer{ device }
     {

@@ -53,8 +53,8 @@ namespace benzin
         BenzinEnsure(ImGui_ImplWin32_Init(window.GetWin64Window()));
         BenzinEnsure(ImGui_ImplDX12_Init(
             m_Device.GetD3D12Device(),
-            CommandLineArgs::GetFrameInFlightCount(),
-            (DXGI_FORMAT)CommandLineArgs::GetBackBufferFormat(),
+            CommandLineArgs::g_FrameInFlightCount,
+            (DXGI_FORMAT)CommandLineArgs::g_BackBufferFormat,
             m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCpuHandle() },
             D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGpuHandle() }

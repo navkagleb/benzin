@@ -16,8 +16,6 @@ namespace benzin
         : m_Device{ device }
         , m_CommandList{ device }
     {
-        const auto frameInFlightCount = CommandLineArgs::GetFrameInFlightCount();
-
         const D3D12_COMMAND_QUEUE_DESC d3d12CommandQueueDesc
         {
             .Type = D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -29,7 +27,7 @@ namespace benzin
         BenzinEnsure(device.GetD3D12Device()->CreateCommandQueue(&d3d12CommandQueueDesc, IID_PPV_ARGS(&m_D3D12CommandQueue)));
         SetDxObjectDebugName(m_D3D12CommandQueue, "GraphicsCommandQueue");
 
-        m_FrameContexts.resize(frameInFlightCount);
+        m_FrameContexts.resize(CommandLineArgs::g_FrameInFlightCount);
         for (const auto [i, frameContext] : m_FrameContexts | std::views::enumerate)
         {
             auto*& d3d12CommandAllocator = frameContext.D3D12CommandAllocator;

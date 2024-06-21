@@ -17,8 +17,6 @@ namespace benzin
     SwapChain::SwapChain(const SwapChainCreation& creation)
         : m_Device{ creation.DeviceRef }
     {
-        const uint32_t frameInFlightCount = CommandLineArgs::GetFrameInFlightCount();
-
         uint32_t isAllowTearing = 0;
         BenzinEnsure(creation.BackendRef.GetDxgiFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &isAllowTearing, sizeof(isAllowTearing)));
 
@@ -32,11 +30,11 @@ namespace benzin
         {
             .Width = creation.WindowRef.GetWidth(),
             .Height = creation.WindowRef.GetHeight(),
-            .Format = (DXGI_FORMAT)CommandLineArgs::GetBackBufferFormat(),
+            .Format = (DXGI_FORMAT)CommandLineArgs::g_BackBufferFormat,
             .Stereo = false,
             .SampleDesc{ 1, 0 },
             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-            .BufferCount = frameInFlightCount,
+            .BufferCount = CommandLineArgs::g_FrameInFlightCount,
             .Scaling = DXGI_SCALING_STRETCH,
             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
             .AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED,
@@ -58,7 +56,7 @@ namespace benzin
         // Disable fullscreen using Alt + Enter
         BenzinEnsure(creation.BackendRef.GetDxgiFactory()->MakeWindowAssociation(creation.WindowRef.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
 
-        m_BackBuffers.resize(frameInFlightCount);
+        m_BackBuffers.resize(CommandLineArgs::g_FrameInFlightCount);
         ResizeBackBuffers(creation.WindowRef.GetWidth(), creation.WindowRef.GetHeight());
 
         MakeUniquePtr(m_FrameFence, m_Device, FenceCreation
@@ -87,8 +85,6 @@ namespace benzin
 
     void SwapChain::OnFlip(bool isVerticalSyncEnabled)
     {
-        const uint32_t frameInFlightCount = CommandLineArgs::GetFrameInFlightCount();
-
         uint64_t cpuFrameIndex = m_Device.m_CpuFrameIndex;
         uint64_t gpuFrameIndex = m_Device.m_CompletedGpuFrameIndex;
 
@@ -105,12 +101,12 @@ namespace benzin
         {
             gpuFrameIndex = m_FrameFence->GetCompletedValue();
 
-            if (cpuFrameIndex - gpuFrameIndex >= frameInFlightCount)
+            if (cpuFrameIndex - gpuFrameIndex >= CommandLineArgs::g_FrameInFlightCount)
             {
                 {
                     BenzinGrabTimeOnScopeExit(m_GpuWaitTime);
 
-                    const uint64_t gpuFrameIndexToWait = cpuFrameIndex - frameInFlightCount + 1;
+                    const uint64_t gpuFrameIndexToWait = cpuFrameIndex - CommandLineArgs::g_FrameInFlightCount + 1;
                     m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
                 }
 

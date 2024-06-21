@@ -16,18 +16,20 @@ namespace benzin
 
         static void Initialize(int argc, char** argv);
 
-        static uint32_t GetWindowWidth();
-        static uint32_t GetWindowHeight();
-        static bool IsWindowResizable();
+        static inline std::filesystem::path g_ExecutableFilePath;
 
-        static uint32_t GetAdapterIndex();
-        static uint32_t GetFrameInFlightCount();
-        static GraphicsFormat GetBackBufferFormat();
-        static bool IsGpuUploadHeapsEnabled();
+        static inline uint32_t g_WindowWidth = 1280;
+        static inline uint32_t g_WindowHeight = 720;
+        static inline bool g_IsWindowResizable = true;
 
-        static GraphicsDebugLayerParams GetGraphicsDebugLayerParams();
+        static inline uint32_t g_AdapterIndex = 0;
+        static inline uint32_t g_FrameInFlightCount = 3;
+        static inline GraphicsFormat g_BackBufferFormat = GraphicsFormat::Rgba8Unorm;
+        static inline bool g_IsGpuUploadHeapsEnabled = true;
 
-        static bool IsShaderCacheIgnored();
+        static inline GraphicsDebugLayerParams g_GraphicsDebugLayerParams;
+
+        static inline bool g_IsShaderCacheIgnored = false;
     };
 
 } // namespace benzin

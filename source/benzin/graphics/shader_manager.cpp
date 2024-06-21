@@ -367,7 +367,7 @@ namespace benzin
 
     bool ShaderManager::LoadShaderCacheIfPossible(const ShaderCreation& shaderCreation)
     {
-        if (CommandLineArgs::IsShaderCacheIgnored())
+        if (CommandLineArgs::g_IsShaderCacheIgnored)
         {
             return false;
         }

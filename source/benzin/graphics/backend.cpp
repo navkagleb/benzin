@@ -33,7 +33,7 @@ namespace benzin
         CreateDxgiFactory();
         GatherDxgiAdapters();
 
-        m_MainAdapterIndex = CommandLineArgs::GetAdapterIndex();
+        m_MainAdapterIndex = CommandLineArgs::g_AdapterIndex;
         BenzinEnsure(m_MainAdapterIndex < m_DxgiAdapters.size());
 
         const auto& mainAdapterInfo = GetMainAdapterInfo();

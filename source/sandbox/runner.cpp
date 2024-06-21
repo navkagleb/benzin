@@ -33,9 +33,9 @@ namespace sandbox
         const benzin::WindowCreation windowCreation
         {
             .Title = "Benzin: Sandbox",
-            .Width = benzin::CommandLineArgs::GetWindowWidth(),
-            .Height = benzin::CommandLineArgs::GetWindowHeight(),
-            .IsResizable = benzin::CommandLineArgs::IsWindowResizable(),
+            .Width = benzin::CommandLineArgs::g_WindowWidth,
+            .Height = benzin::CommandLineArgs::g_WindowHeight,
+            .IsResizable = benzin::CommandLineArgs::g_IsWindowResizable,
             .EventCallback = [&](benzin::Event& event) { WindowEventCallback(event); },
         };
 

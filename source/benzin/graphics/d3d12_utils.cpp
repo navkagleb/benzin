@@ -112,7 +112,7 @@ namespace benzin
 
         d3d12Debug->EnableDebugLayer();
 
-        const auto& params = CommandLineArgs::GetGraphicsDebugLayerParams();
+        const auto& params = CommandLineArgs::g_GraphicsDebugLayerParams;
         d3d12Debug->SetEnableGPUBasedValidation(params.IsGpuBasedValidationEnabled);
         d3d12Debug->SetEnableSynchronizedCommandQueueValidation(params.IsSynchronizedCommandQueueValidationEnabled);
         d3d12Debug->SetEnableAutoName(true);
