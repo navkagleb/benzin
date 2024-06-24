@@ -32,26 +32,27 @@ namespace benzin
         return fileName.ends_with(L"hlsl");
     }
 
-    static void CacheShader(const ShaderPaths& paths, const ShaderCompileResult& compileResult)
+    static void CacheShader(const ShaderPaths& paths, const CompiledShader& compiledShader)
     {
-        WriteToFile(paths.DxilFilePath, compileResult.DxilBlob);
+        WriteToFile(paths.DxilFilePath, compiledShader.DxilBlob);
 
         if constexpr (config::g_IsShaderSymbolsEnabled)
         {
-            BenzinAssert(!compileResult.PdbBlob.empty());
-            WriteToFile(paths.PdbFilePath, compileResult.PdbBlob);
+            BenzinAssert(!compiledShader.PdbBlob.empty());
+            WriteToFile(paths.PdbFilePath, compiledShader.PdbBlob);
         }
     }
 
     // Win64_ShaderFileWatcher
 
     Win64_ShaderFileWatcher::Win64_ShaderFileWatcher(Callback&& callback)
-        : m_Callback{ callback }
+        : m_WatchDirectory{ Dxc_ShaderCompiler::GetShaderSourceDir() }
+        , m_Callback{ callback }
     {
         BenzinAssert((bool)callback);
 
         m_DirectoryHandle = ::CreateFileW(
-            DxcShaderCompiler::GetShaderSourceDir().c_str(),
+            m_WatchDirectory.c_str(),
             FILE_LIST_DIRECTORY,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
             nullptr,
@@ -108,8 +109,12 @@ namespace benzin
                 continue;
             }
 
-            const bool isWaitingForAll = false;
-            const DWORD waitStatus = ::WaitForMultipleObjects((DWORD)handles.size(), handles.data(), isWaitingForAll, INFINITE);
+            const DWORD waitStatus = ::WaitForMultipleObjects(
+                (DWORD)handles.size(),
+                handles.data(),
+                false, // Wait for all
+                INFINITE
+            );
 
             if (waitStatus == WAIT_OBJECT_0)
             {
@@ -132,7 +137,7 @@ namespace benzin
                 bufferOffset += fileInfo->NextEntryOffset;
 
                 const std::wstring_view fileName{ fileInfo->FileName, fileInfo->FileNameLength / sizeof(WCHAR) };
-                std::filesystem::path filePath = DxcShaderCompiler::GetShaderSourceDir() / fileName;
+                std::filesystem::path filePath = m_WatchDirectory / fileName;
 
                 if (!IsIncludeShader(fileName) && !IsSourceShader(fileName))
                 {
@@ -180,7 +185,7 @@ namespace benzin
             return m_ShaderDxils.at(shaderHash);
         }
 
-        BenzinAssert(TryCompileShaderIfNeeded(shaderCreation));
+        BenzinEnsure(TryCompileShaderIfNeeded(shaderCreation));
         return m_ShaderDxils.at(shaderHash);
     }
 
@@ -205,9 +210,9 @@ namespace benzin
 
         const ShaderPaths paths{ shaderHash, shaderCreation.FileName };
         const ShaderArgs args{ shaderCreation.Type, shaderCreation.EntryPoint };
-        auto [us, compileResult] = BenzinProfileFunction(m_ShaderCompiler.CompileShader(paths, args));
+        auto [us, compiledShader] = BenzinProfileFunction(m_ShaderCompiler.CompileShader(paths, args));
 
-        if (!compileResult.IsValid())
+        if (!compiledShader.IsValid())
         {
             isShaderGood = false;
             return false;
@@ -228,11 +233,11 @@ namespace benzin
             );
         }
 
-        CacheShader(paths, compileResult);
+        CacheShader(paths, compiledShader);
 
         isShaderGood = true;
-        m_ShaderDxils[shaderHash] = std::move(compileResult.DxilBlob);
-        m_IncludeDependencies[shaderHash] = std::move(compileResult.IncludeFilePaths);
+        m_ShaderDxils[shaderHash] = std::move(compiledShader.DxilBlob);
+        m_IncludeDependencies[shaderHash] = std::move(compiledShader.IncludeFilePaths);
 
         return true;
     }

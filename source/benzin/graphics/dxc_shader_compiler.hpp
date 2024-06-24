@@ -22,7 +22,7 @@ namespace benzin
         explicit ShaderArgs(ShaderType shaderType, std::string_view entryPoint = {});
     };
 
-    struct ShaderCompileResult
+    struct CompiledShader
     {
         std::vector<std::byte> DxilBlob;
         std::vector<std::byte> PdbBlob;
@@ -32,10 +32,10 @@ namespace benzin
         bool IsValid() const { return !DxilBlob.empty(); }
     };
 
-    class CustumDxcIncludeHandler : public IDxcIncludeHandler
+    class Dxc_CustomIncludeHandler : public IDxcIncludeHandler
     {
     public:
-        explicit CustumDxcIncludeHandler(IDxcUtils* dxcUtils);
+        explicit Dxc_CustomIncludeHandler(IDxcUtils* dxcUtils);
 
         void ExchangeIncludeFilePaths(std::unordered_set<std::filesystem::path>& outIncludeFilePathes);
 
@@ -55,28 +55,28 @@ namespace benzin
         std::vector<std::filesystem::path> m_IncludeFilePaths;
     };
 
-    class DxcShaderCompiler
+    class Dxc_ShaderCompiler
     {
     public:
         static const std::filesystem::path& GetShaderSourceDir();
 
     public:
-        DxcShaderCompiler();
+        Dxc_ShaderCompiler();
 
-        BenzinDefineNonCopyable(DxcShaderCompiler);
-        BenzinDefineNonMoveable(DxcShaderCompiler);
+        BenzinDefineNonCopyable(Dxc_ShaderCompiler);
+        BenzinDefineNonMoveable(Dxc_ShaderCompiler);
 
-        ShaderCompileResult CompileShader(const ShaderPaths& paths, const ShaderArgs& args) const;
+        CompiledShader CompileShader(const ShaderPaths& paths, const ShaderArgs& args) const;
 
     private:
-        ComPtr<IDxcResult> GetDxcCompileResult(const ShaderPaths& paths, const ShaderArgs& args, ShaderCompileResult& outResult) const;
-        void ParseDxcCompileResult(const ComPtr<IDxcResult>& dxcResult, ShaderCompileResult& outResult) const;
+        ComPtr<IDxcResult> GetDxcCompileResult(const ShaderPaths& paths, const ShaderArgs& args, CompiledShader& outCompiledShader) const;
+        void ParseDxcCompileResult(const ComPtr<IDxcResult>& dxcResult, CompiledShader& outCompiledShader) const;
 
     private:
         ComPtr<IDxcUtils> m_DxcUtils;
         ComPtr<IDxcCompiler3> m_DxcCompiler;
 
-        std::unique_ptr<CustumDxcIncludeHandler> m_CustomIncludeHandler;
+        std::unique_ptr<Dxc_CustomIncludeHandler> m_CustomIncludeHandler;
     };
 
 }

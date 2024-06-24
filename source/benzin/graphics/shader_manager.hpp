@@ -21,6 +21,8 @@ namespace benzin
         void WatchFiles();
 
     private:
+        const std::filesystem::path& m_WatchDirectory;
+
         HANDLE m_DirectoryHandle = INVALID_HANDLE_VALUE;
         HANDLE m_StoppedEvent = INVALID_HANDLE_VALUE;
         OVERLAPPED m_DirectoryChangeOverlapped{};
@@ -56,7 +58,7 @@ namespace benzin
         void FileWatcherCallback(std::filesystem::path&& filePath);
 
     private:
-        const DxcShaderCompiler m_ShaderCompiler;
+        const Dxc_ShaderCompiler m_ShaderCompiler;
         const Win64_ShaderFileWatcher m_FileWatcher;
 
         // TODO: Maybe replace with one big unordered_map?

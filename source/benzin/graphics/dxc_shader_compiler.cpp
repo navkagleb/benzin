@@ -115,18 +115,18 @@ namespace benzin
         , EntryPoint{ ToWideString(entryPoint) }
     {}
 
-    // CustumDxcIncludeHandler
+    // Dxc_CustomIncludeHandler
 
-    CustumDxcIncludeHandler::CustumDxcIncludeHandler(IDxcUtils* dxcUtils)
+    Dxc_CustomIncludeHandler::Dxc_CustomIncludeHandler(IDxcUtils* dxcUtils)
         : m_DxcUtils{ dxcUtils }
     {}
 
-    void CustumDxcIncludeHandler::ExchangeIncludeFilePaths(std::unordered_set<std::filesystem::path>& outIncludeFilePathes)
+    void Dxc_CustomIncludeHandler::ExchangeIncludeFilePaths(std::unordered_set<std::filesystem::path>& outIncludeFilePathes)
     {
         outIncludeFilePathes.insert_range(std::exchange(m_IncludeFilePaths, {}));
     }
 
-    HRESULT STDMETHODCALLTYPE CustumDxcIncludeHandler::LoadSource(_In_z_ LPCWSTR pFilename, _COM_Outptr_result_maybenull_ IDxcBlob** outIncludeSource)
+    HRESULT STDMETHODCALLTYPE Dxc_CustomIncludeHandler::LoadSource(_In_z_ LPCWSTR pFilename, _COM_Outptr_result_maybenull_ IDxcBlob** outIncludeSource)
     {
         // Ref: https://simoncoenen.com/blog/programming/graphics/DxcCompiling#custom-include-handler
 
@@ -146,7 +146,7 @@ namespace benzin
         return hr;
     }
 
-    HRESULT STDMETHODCALLTYPE CustumDxcIncludeHandler::QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject)
+    HRESULT STDMETHODCALLTYPE Dxc_CustomIncludeHandler::QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject)
     {
         BenzinUnused(riid);
         BenzinUnused(ppvObject);
@@ -154,44 +154,44 @@ namespace benzin
         return E_NOINTERFACE;
     }
 
-    ULONG STDMETHODCALLTYPE CustumDxcIncludeHandler::AddRef()
+    ULONG STDMETHODCALLTYPE Dxc_CustomIncludeHandler::AddRef()
     {
         return 0;
     }
 
-    ULONG STDMETHODCALLTYPE CustumDxcIncludeHandler::Release()
+    ULONG STDMETHODCALLTYPE Dxc_CustomIncludeHandler::Release()
     {
         return 0;
     }
 
     // DxcShaderCompiler
 
-    const std::filesystem::path& DxcShaderCompiler::GetShaderSourceDir()
+    const std::filesystem::path& Dxc_ShaderCompiler::GetShaderSourceDir()
     {
         return g_ShaderSourceDir;
     }
 
-    DxcShaderCompiler::DxcShaderCompiler()
+    Dxc_ShaderCompiler::Dxc_ShaderCompiler()
     {
-        BenzinEnsure(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils)));
-        BenzinEnsure(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler)));
+        BenzinEnsure(::DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils)));
+        BenzinEnsure(::DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler)));
 
         MakeUniquePtr(m_CustomIncludeHandler, m_DxcUtils.Get());
     }
 
-    ShaderCompileResult DxcShaderCompiler::CompileShader(const ShaderPaths& paths, const ShaderArgs& args) const
+    CompiledShader Dxc_ShaderCompiler::CompileShader(const ShaderPaths& paths, const ShaderArgs& args) const
     {
-        ShaderCompileResult result;
-        const auto dxcCompileResult = GetDxcCompileResult(paths, args, result);
+        CompiledShader compiledShader;
+        const auto dxcCompileResult = GetDxcCompileResult(paths, args, compiledShader);
         if (dxcCompileResult)
         {
-            ParseDxcCompileResult(dxcCompileResult, result);
+            ParseDxcCompileResult(dxcCompileResult, compiledShader);
         }
 
-        return result;
+        return compiledShader;
     }
 
-    ComPtr<IDxcResult> DxcShaderCompiler::GetDxcCompileResult(const ShaderPaths& paths, const ShaderArgs& args, ShaderCompileResult& outResult) const
+    ComPtr<IDxcResult> Dxc_ShaderCompiler::GetDxcCompileResult(const ShaderPaths& paths, const ShaderArgs& args, CompiledShader& outCompiledShader) const
     {
         uint32_t codePage = CP_UTF8;
         ComPtr<IDxcBlobEncoding> dxcShaderSource;
@@ -227,12 +227,12 @@ namespace benzin
             return nullptr;
         }
 
-        m_CustomIncludeHandler->ExchangeIncludeFilePaths(outResult.IncludeFilePaths);
+        m_CustomIncludeHandler->ExchangeIncludeFilePaths(outCompiledShader.IncludeFilePaths);
 
         return dxcResult;
     }
 
-    void DxcShaderCompiler::ParseDxcCompileResult(const ComPtr<IDxcResult>& dxcResult, ShaderCompileResult& outResult) const
+    void Dxc_ShaderCompiler::ParseDxcCompileResult(const ComPtr<IDxcResult>& dxcResult, CompiledShader& outCompiledShader) const
     {
         {
             ComPtr<IDxcBlob> dxcBinaryBlob;
@@ -242,7 +242,7 @@ namespace benzin
             const auto* data = reinterpret_cast<const std::byte*>(dxcBinaryBlob->GetBufferPointer());
             const size_t size = dxcBinaryBlob->GetBufferSize();
 
-            outResult.DxilBlob.assign(data, data + size);
+            outCompiledShader.DxilBlob.assign(data, data + size);
         }
 
         if constexpr (config::g_IsShaderSymbolsEnabled)
@@ -254,7 +254,7 @@ namespace benzin
             const auto* data = reinterpret_cast<const std::byte*>(dxcDebugBlob->GetBufferPointer());
             const size_t size = dxcDebugBlob->GetBufferSize();
 
-            outResult.PdbBlob.assign(data, data + size);
+            outCompiledShader.PdbBlob.assign(data, data + size);
         }
     }
 
