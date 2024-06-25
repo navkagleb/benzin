@@ -4,6 +4,7 @@
 #include <third_party/adl/adl_sdk.h>
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
 
 static constexpr std::string_view AdlReturnCodeToString(int adlReturnCode)
@@ -254,12 +255,20 @@ namespace benzin
 
     void AdlWrapper::Initialize()
     {
-        MakeUniquePtr(g_AdlState);
+        if (CommandLineArgs::g_IsAdlWrapperEnabled)
+        {
+            MakeUniquePtr(g_AdlState);
+        }
     }
 
     void AdlWrapper::Shutdown()
     {
         g_AdlState.reset();
+    }
+
+    bool AdlWrapper::IsInitialized()
+    {
+        return g_AdlState.get();
     }
 
     uint64_t AdlWrapper::GetUsedVramInBytes(uint32_t deviceId)

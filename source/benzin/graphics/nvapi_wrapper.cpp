@@ -5,6 +5,7 @@
 #pragma comment(lib, "nvapi64.lib")
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
 
 #define BenzinNvApiEnsure(nvCall) \
@@ -93,14 +94,20 @@ namespace benzin
 
     void NvApiWrapper::Initialize()
     {
-        BenzinAssert(g_NvApiState.get() == nullptr);
-        MakeUniquePtr(g_NvApiState);
+        if (CommandLineArgs::g_IsNvApiWrapperEnabled)
+        {
+            MakeUniquePtr(g_NvApiState);
+        }
     }
 
     void NvApiWrapper::Shutdown()
     {
-        BenzinAssert(g_NvApiState.get() != nullptr);
         g_NvApiState.reset();
+    }
+
+    bool NvApiWrapper::IsInitialized()
+    {
+        return g_NvApiState.get();
     }
 
     uint64_t NvApiWrapper::GetTotalDedicatedVramInBytes(uint32_t deviceId)

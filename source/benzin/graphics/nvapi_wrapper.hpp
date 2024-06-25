@@ -13,6 +13,8 @@ namespace benzin
         static void Initialize();
         static void Shutdown();
 
+        static bool IsInitialized();
+
         static uint64_t GetTotalDedicatedVramInBytes(uint32_t deviceId);
         static uint64_t GetUsedDedicatedVramInBytes(uint32_t deviceId);
 

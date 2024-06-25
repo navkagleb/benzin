@@ -81,12 +81,12 @@ namespace benzin
 
         const uint64_t dedicatedVramOsBudget = d3d12LocalVideoMemoryInfo.Budget;
 
-        uint64_t vendorTotalUsedDedicatedVramInBytes = g_InvalidIndex<uint64_t>;
-        if (adapterInfo.IsAmd())
+        auto vendorTotalUsedDedicatedVramInBytes = g_InvalidIndex<uint64_t>;
+        if (AdlWrapper::IsInitialized() && adapterInfo.IsAmd())
         {
             vendorTotalUsedDedicatedVramInBytes = AdlWrapper::GetUsedDedicatedVramInBytes(adapterInfo.DeviceId);
         }
-        else if (adapterInfo.IsNvidia())
+        else if (NvApiWrapper::IsInitialized() && adapterInfo.IsNvidia())
         {
 #if BENZIN_IS_ASSERTS_ENABLED
             const uint64_t totalUsedDedicatedVram = NvApiWrapper::GetTotalDedicatedVramInBytes(adapterInfo.DeviceId);

@@ -22,6 +22,9 @@ namespace benzin
         static inline uint32_t g_WindowHeight = 720;
         static inline bool g_IsWindowResizable = true;
 
+        static inline bool g_IsAdlWrapperEnabled = true;
+        static inline bool g_IsNvApiWrapperEnabled = true;
+
         static inline uint32_t g_AdapterIndex = 0;
         static inline uint32_t g_FrameInFlightCount = 3;
         static inline GraphicsFormat g_BackBufferFormat = GraphicsFormat::Rgba8Unorm;

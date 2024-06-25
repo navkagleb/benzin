@@ -200,7 +200,7 @@ namespace benzin
         m_DeferredReleaseDescriptorQueue.emplace(m_CpuFrameIndex, descriptor);
     }
 
-    void Device::ProcessDeferredReleaseQueues(bool isReleaseForced)
+    void Device::ProcessDeferredReleaseQueues(bool isForceRelease)
     {
         if (!IsValidIndex(m_CompletedGpuFrameIndex))
         {
@@ -211,7 +211,7 @@ namespace benzin
         {
             auto&& [cpuFrameIndex, d3d12Object] = m_DeferredReleaseResourceQueue.front();
 
-            if (!(isReleaseForced || cpuFrameIndex <= m_CompletedGpuFrameIndex))
+            if (!isForceRelease && cpuFrameIndex >= m_CompletedGpuFrameIndex)
             {
                 break;
             }
@@ -224,7 +224,7 @@ namespace benzin
         {
             auto&& [cpuFrameIndex, descriptor] = m_DeferredReleaseDescriptorQueue.front();
 
-            if (!(isReleaseForced || cpuFrameIndex <= m_CompletedGpuFrameIndex))
+            if (!isForceRelease && cpuFrameIndex >= m_CompletedGpuFrameIndex)
             {
                 break;
             }

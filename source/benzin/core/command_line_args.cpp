@@ -65,6 +65,9 @@ namespace benzin
             SupportedCommandLineArg{ "-window_height:", &g_WindowHeight, ParseArithmetic<decltype(g_WindowHeight)> },
             SupportedCommandLineArg{ "-disable_window_resizing", &g_IsWindowResizable, SetFalseIfExists },
 
+            SupportedCommandLineArg{ "-no_adl_wrapper", &g_IsAdlWrapperEnabled, SetFalseIfExists },
+            SupportedCommandLineArg{ "-no_nvapi_wrapper", &g_IsNvApiWrapperEnabled, SetFalseIfExists },
+
             SupportedCommandLineArg{ "-adapter_index:", &g_AdapterIndex, ParseArithmetic<decltype(g_AdapterIndex)> },
             SupportedCommandLineArg{ "-frame_in_flight_count:", &g_FrameInFlightCount, ParseArithmetic<decltype(g_FrameInFlightCount)> },
             SupportedCommandLineArg{ "-no_gpu_upload_heaps", &g_IsGpuUploadHeapsEnabled, SetFalseIfExists },

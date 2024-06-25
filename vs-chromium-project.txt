@@ -1,0 +1,11 @@
+[SearchableFiles.include]
+*.cpp
+*.hpp
+*.c
+*.h
+*.hlsl
+*.hlsli
+
+[SearchableFiles.ignore]
+**/source/generated_projects/
+**/source/third_party/
