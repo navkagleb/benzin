@@ -19,8 +19,6 @@
 #include <benzin/graphics/rt_acceleration_structures.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
-#include <benzin/system/key_event.hpp>
-#include <benzin/system/window_event.hpp>
 
 #include <shaders/joint/constant_buffer_types.hpp>
 #include <shaders/joint/enum_types.hpp>
@@ -67,7 +65,7 @@ namespace sandbox
     };
     BenzinEnableUnaryPlusForEnum(RenderTextures);
 
-    struct RenderPassesConfig
+    struct RenderPassConfig
     {
         const benzin::GraphicsFormat GBufferColor0Format = benzin::GraphicsFormat::Rgba8Unorm; // Albedo, Albedo, Albedo, Roughness
         const benzin::GraphicsFormat GBufferColor1Format = benzin::GraphicsFormat::Rgba8Unorm; // Emissive, Emissive, Emissive, Metallic
@@ -83,7 +81,7 @@ namespace sandbox
         const std::wstring_view HitGroupName = L"HitGroup";
     };
 
-    static constexpr RenderPassesConfig g_RenderPassesConfig;
+    static constexpr RenderPassConfig g_RenderPassConfig;
     static RenderPassSettings g_RenderPassSettings;
 
     class GlobalConstantBufferPass : public benzin::RenderPass
@@ -154,8 +152,8 @@ namespace sandbox
                 .DebugName = "GeometryPass",
                 .Shaders
                 {
-                    benzin::ShaderCreation{ benzin::ShaderType::Vertex, "geometry_pass.hlsl", "VsMain" },
-                    benzin::ShaderCreation{ benzin::ShaderType::Pixel, "geometry_pass.hlsl", "PsMain" },
+                    benzin::ShaderCreation::CreateVertexShader("geometry_pass.hlsl", "VsMain"),
+                    benzin::ShaderCreation::CreatePixelShader("geometry_pass.hlsl", "PsMain"),
                 },
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .RasterizerState
@@ -165,13 +163,13 @@ namespace sandbox
                 },
                 .RenderTargetFormats
                 {
-                    g_RenderPassesConfig.GBufferColor0Format,
-                    g_RenderPassesConfig.GBufferColor1Format,
-                    g_RenderPassesConfig.GBufferColor2Format,
-                    g_RenderPassesConfig.GBufferColor3Format,
-                    g_RenderPassesConfig.GBufferColor4Format,
+                    g_RenderPassConfig.GBufferColor0Format,
+                    g_RenderPassConfig.GBufferColor1Format,
+                    g_RenderPassConfig.GBufferColor2Format,
+                    g_RenderPassConfig.GBufferColor3Format,
+                    g_RenderPassConfig.GBufferColor4Format,
                 },
-                .DepthStencilFormat = g_RenderPassesConfig.DepthStencilFormat,
+                .DepthStencilFormat = g_RenderPassConfig.DepthStencilFormat,
             });
         }
 
@@ -200,18 +198,18 @@ namespace sandbox
                 });
             };
 
-            createGBufferTexture(ms_RenderResources->GetTexture(+RenderTextures::AlbedoAndRoughness), "GBuffer_AlbedoAndRoughness", g_RenderPassesConfig.GBufferColor0Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(ms_RenderResources->GetTexture(+RenderTextures::EmissiveAndMetallic), "GBuffer_EmissiveAndMetallic", g_RenderPassesConfig.GBufferColor1Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(ms_RenderResources->GetTexture(+RenderTextures::WorldNormal), "GBuffer_WorldNormal", g_RenderPassesConfig.GBufferColor2Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(ms_RenderResources->GetTexture(+RenderTextures::VelocityBuffer), "GBuffer_VelocityBuffer", g_RenderPassesConfig.GBufferColor3Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(ms_RenderResources->GetTexture(+RenderTextures::DepthStencil), "GBuffer_DepthStencil", g_RenderPassesConfig.DepthStencilFormat, benzin::TextureFlag::AllowDepthStencil);
+            createGBufferTexture(ms_RenderResources->GetTexture(+RenderTextures::AlbedoAndRoughness), "GBuffer_AlbedoAndRoughness", g_RenderPassConfig.GBufferColor0Format, benzin::TextureFlag::AllowRenderTarget);
+            createGBufferTexture(ms_RenderResources->GetTexture(+RenderTextures::EmissiveAndMetallic), "GBuffer_EmissiveAndMetallic", g_RenderPassConfig.GBufferColor1Format, benzin::TextureFlag::AllowRenderTarget);
+            createGBufferTexture(ms_RenderResources->GetTexture(+RenderTextures::WorldNormal), "GBuffer_WorldNormal", g_RenderPassConfig.GBufferColor2Format, benzin::TextureFlag::AllowRenderTarget);
+            createGBufferTexture(ms_RenderResources->GetTexture(+RenderTextures::VelocityBuffer), "GBuffer_VelocityBuffer", g_RenderPassConfig.GBufferColor3Format, benzin::TextureFlag::AllowRenderTarget);
+            createGBufferTexture(ms_RenderResources->GetTexture(+RenderTextures::DepthStencil), "GBuffer_DepthStencil", g_RenderPassConfig.DepthStencilFormat, benzin::TextureFlag::AllowDepthStencil);
 
             ms_RenderResources->ForEachFlippableTexture(+RenderTextures::ViewDepth, [&](uint32_t i, auto& outTexture)
             {
                 benzin::MakeUniquePtr(outTexture, *ms_Device, benzin::TextureCreation
                 {
                     .DebugName = std::format("GBuffer_ViewDepth{}", i),
-                    .Format = g_RenderPassesConfig.GBufferColor4Format,
+                    .Format = g_RenderPassConfig.GBufferColor4Format,
                     .Width = width,
                     .Height = height,
                     .MipCount = 5,
@@ -382,7 +380,7 @@ namespace sandbox
 
             commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstantBuffer->GetActiveGpuVirtualAddress());
             commandList.SetRootResource(joint::RtShadowRc_GBufferWorldNormalTexture, ms_RenderResources->GetTexture(+RenderTextures::WorldNormal)->GetSrv());
-            commandList.SetRootResource(joint::RtShadowRc_GBufferDepthTexture, ms_RenderResources->GetTexture(+RenderTextures::DepthStencil)->GetSrv({ .Format = g_RenderPassesConfig.DepthStencilSrvFormat }));
+            commandList.SetRootResource(joint::RtShadowRc_GBufferDepthTexture, ms_RenderResources->GetTexture(+RenderTextures::DepthStencil)->GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
             commandList.SetRootResource(joint::RtShadowRc_PointLightBuffer, m_Scene.GetPointLightBufferStructuredSrv());
             commandList.SetRootResource(joint::RtShadowRc_VisiblityBuffer, visibilityBuffer.GetUav());
 
@@ -434,7 +432,7 @@ namespace sandbox
             };
 
             // 2. D3D12_DXIL_LIBRARY_DESC
-            const std::span libraryDxil = ms_Device->GetBackend().GetShaderManager().GetLibraryDxil("rt_shadow_pass.hlsl");
+            const std::span libraryDxil = ms_Device->GetBackend().GetShaderManager().GetShaderDxil(benzin::ShaderCreation::CreateLibrary("rt_shadow_pass.hlsl"));
 
             const D3D12_DXIL_LIBRARY_DESC d3d12DXILLibraryDesc
             {
@@ -450,7 +448,7 @@ namespace sandbox
             // 3. D3D12_HIT_GROUP_DESC
             const D3D12_HIT_GROUP_DESC d3d12HitGroupDesc
             {
-                .HitGroupExport = g_RenderPassesConfig.HitGroupName.data(),
+                .HitGroupExport = g_RenderPassConfig.HitGroupName.data(),
                 .Type = D3D12_HIT_GROUP_TYPE_TRIANGLES,
                 .AnyHitShaderImport = nullptr,
                 .ClosestHitShaderImport = nullptr,
@@ -512,9 +510,9 @@ namespace sandbox
                 });
             };
 
-            m_RayGenShaderTable = CreateShaderTable(g_RenderPassesConfig.RayGenShaderName);
-            m_MissShaderTable = CreateShaderTable(g_RenderPassesConfig.MissShaderName);
-            m_HitGroupShaderTable = CreateShaderTable(g_RenderPassesConfig.HitGroupName);
+            m_RayGenShaderTable = CreateShaderTable(g_RenderPassConfig.RayGenShaderName);
+            m_MissShaderTable = CreateShaderTable(g_RenderPassConfig.MissShaderName);
+            m_HitGroupShaderTable = CreateShaderTable(g_RenderPassConfig.HitGroupName);
         }
 
     private:
@@ -540,25 +538,31 @@ namespace sandbox
             m_TemporalAccumulationPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserTemporalAccumulation",
-                .Shader{ benzin::ShaderType::Compute, "denoiser_temporal_accumulation_pass.hlsl", "CsMain" },
+                .Shader = benzin::ShaderCreation::CreateComputeShader("denoiser_temporal_accumulation_pass.hlsl", "CsMain"),
             });
 
             m_MipGenerationPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserMipGeneration",
-                .Shader{ benzin::ShaderType::Compute, "mip_generation_pass.hlsl", "CsMain" },
+                .Shader = benzin::ShaderCreation::CreateComputeShader("mip_generation_pass.hlsl", "CsMain"),
             });
 
             m_HistoryFixPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserHistoryFix",
-                .Shader{ benzin::ShaderType::Compute, "denoiser_history_fix_pass.hlsl", "CsMain" },
+                .Shader = benzin::ShaderCreation::CreateComputeShader("denoiser_history_fix_pass.hlsl", "CsMain"),
             });
 
             m_BlurPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserBlur",
-                .Shader{ benzin::ShaderType::Compute, "denoiser_blur_pass.hlsl", "CsMain" },
+                .Shader = benzin::ShaderCreation::CreateComputeShader("denoiser_blur_pass.hlsl", "CsMain"),
+            });
+
+            m_PostBlurPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
+            {
+                .DebugName = "DenoiserPostBlur",
+                .Shader = benzin::ShaderCreation::CreateComputeShader("denoiser_post_blur_pass.hlsl", "CsMain"),
             });
 
             benzin::MakeUniquePtr(m_MipGenerationConstantBuffer, *ms_Device, "MipGenerationConstantBuffer");
@@ -572,6 +576,7 @@ namespace sandbox
             pipelineStateManager.DestroyPipelineState(m_MipGenerationPso);
             pipelineStateManager.DestroyPipelineState(m_HistoryFixPso);
             pipelineStateManager.DestroyPipelineState(m_BlurPso);
+            pipelineStateManager.DestroyPipelineState(m_PostBlurPso);
         }
 
         void OnResize(uint32_t width, uint32_t height) override
@@ -621,6 +626,8 @@ namespace sandbox
                 .IsNormalWeightUsed = g_RenderPassSettings.IsNormalWeightUsed,
                 .IsRoughnessWeightUsed = g_RenderPassSettings.IsRoughnessWeightUsed,
                 .GeometryWeightSensitivity = g_RenderPassSettings.GeometryWeightSensitivity,
+                .MinBlurRadius = g_RenderPassSettings.MinBlurRadius,
+                .MaxBlurRadius = g_RenderPassSettings.MaxBlurRadius,
             });
         }
 
@@ -709,7 +716,7 @@ namespace sandbox
 
             commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_WorldNormalTexture, ms_RenderResources->GetTexture(+RenderTextures::WorldNormal)->GetSrv());
             commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_VelocityBuffer, ms_RenderResources->GetTexture(+RenderTextures::VelocityBuffer)->GetSrv());
-            commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_DepthBuffer, ms_RenderResources->GetTexture(+RenderTextures::DepthStencil)->GetSrv({ .Format = g_RenderPassesConfig.DepthStencilSrvFormat }));
+            commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_DepthBuffer, ms_RenderResources->GetTexture(+RenderTextures::DepthStencil)->GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
             commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_PreviousViewDepthBuffer, previousViewDepth.GetSrv({ .MipRange{ 0, 1 } }));
             commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_PreviousTemporalAccumulationBuffer, previousAccumulationBuffer.GetSrv());
             commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_PreviousDenoisedVisibilityBuffer, previousDenoisedVisibilityBuffer.GetSrv());
@@ -831,7 +838,7 @@ namespace sandbox
             commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_BlurConstantBuffer->GetActiveGpuVirtualAddress());
             commandList.SetRootResource(joint::DenoiserBlurRc_AlbedoAndRoughnessTexture, ms_RenderResources->GetTexture(+RenderTextures::AlbedoAndRoughness)->GetSrv());
             commandList.SetRootResource(joint::DenoiserBlurRc_WorldNormalTexture, ms_RenderResources->GetTexture(+RenderTextures::WorldNormal)->GetSrv());
-            commandList.SetRootResource(joint::DenoiserBlurRc_DepthBuffer, ms_RenderResources->GetTexture(+RenderTextures::DepthStencil)->GetSrv({ .Format = g_RenderPassesConfig.DepthStencilSrvFormat }));
+            commandList.SetRootResource(joint::DenoiserBlurRc_DepthBuffer, ms_RenderResources->GetTexture(+RenderTextures::DepthStencil)->GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
             commandList.SetRootResource(joint::DenoiserBlurRc_NoisyVisibilityBuffer, noisyVisibilityBuffer.GetSrv({ .MipRange{ 0, 1 } }));
             commandList.SetRootResource(joint::DenoiserBlurRc_TemporalAccumulationBuffer, ms_RenderResources->GetTexture(+RenderTextures::TemporalAccumulationBuffer)->GetSrv());
             commandList.SetRootResource(joint::DenoiserBlurRc_ReprojectedHistoryTexture, ms_RenderResources->GetTexture(+RenderTextures::ReprojectedHistoryTexture)->GetSrv());
@@ -857,6 +864,7 @@ namespace sandbox
         benzin::PipelineState* m_MipGenerationPso = nullptr;
         benzin::PipelineState* m_HistoryFixPso = nullptr;
         benzin::PipelineState* m_BlurPso = nullptr;
+        benzin::PipelineState* m_PostBlurPso = nullptr;
 
         using MipGenerationConstantBuffer = benzin::ConstantBuffer<joint::MipGenerationConstants>;
         std::unique_ptr<MipGenerationConstantBuffer> m_MipGenerationConstantBuffer;
@@ -876,8 +884,8 @@ namespace sandbox
                 .DebugName = "DeferredLightingPass",
                 .Shaders
                 {
-                    benzin::ShaderCreation{ benzin::ShaderType::Vertex, "fullscreen_triangle.hlsl", "VsMain" },
-                    benzin::ShaderCreation{ benzin::ShaderType::Pixel, "deferred_lighting_pass.hlsl", "PsMain" },
+                    benzin::ShaderCreation::CreateVertexShader("fullscreen_triangle.hlsl", "VsMain"),
+                    benzin::ShaderCreation::CreatePixelShader("deferred_lighting_pass.hlsl", "PsMain"),
                 },
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .DepthState
@@ -901,7 +909,7 @@ namespace sandbox
             benzin::MakeUniquePtr(ms_RenderResources->GetTexture(+RenderTextures::FinalOutputTexture), *ms_Device, benzin::TextureCreation
             {
                 .DebugName = "DeferredLightingPass_OutputTexture",
-                .Format = benzin::CommandLineArgs::GetBackBufferFormat(),
+                .Format = benzin::CommandLineArgs::g_BackBufferFormat,
                 .Width = width,
                 .Height = height,
                 .MipCount = 1,
@@ -953,7 +961,7 @@ namespace sandbox
             commandList.SetRootResource(joint::DeferredLightingPassRc_EmissiveAndMetallicTexture, ms_RenderResources->GetTexture(+RenderTextures::EmissiveAndMetallic)->GetSrv());
             commandList.SetRootResource(joint::DeferredLightingPassRc_WorldNormalTexture, ms_RenderResources->GetTexture(+RenderTextures::WorldNormal)->GetSrv());
             commandList.SetRootResource(joint::DeferredLightingPassRc_VelocityBuffer, ms_RenderResources->GetTexture(+RenderTextures::VelocityBuffer)->GetSrv());
-            commandList.SetRootResource(joint::DeferredLightingPassRc_DepthStencilTexture, ms_RenderResources->GetTexture(+RenderTextures::DepthStencil)->GetSrv({ .Format = g_RenderPassesConfig.DepthStencilSrvFormat }));
+            commandList.SetRootResource(joint::DeferredLightingPassRc_DepthStencilTexture, ms_RenderResources->GetTexture(+RenderTextures::DepthStencil)->GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
             commandList.SetRootResource(joint::DeferredLightingPassRc_PointLightBuffer, m_Scene.GetPointLightBufferStructuredSrv());
             commandList.SetRootResource(joint::DeferredLightingPassRc_ShadowVisibilityBuffer, denoisedShadowVisibilityBuffer.GetSrv());
 
@@ -980,8 +988,8 @@ namespace sandbox
                 .DebugName = "EnvironmentPass",
                 .Shaders
                 {
-                    benzin::ShaderCreation{ benzin::ShaderType::Vertex, "fullscreen_triangle.hlsl", "VsMainDepth1" },
-                    benzin::ShaderCreation{ benzin::ShaderType::Pixel, "environment_pass.hlsl", "PsMain" },
+                    benzin::ShaderCreation::CreateVertexShader("fullscreen_triangle.hlsl", "VsMainDepth1"),
+                    benzin::ShaderCreation::CreatePixelShader("environment_pass.hlsl", "PsMain"),
                 },
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .DepthState
@@ -1069,7 +1077,7 @@ namespace sandbox
             auto* equirectangularToCubePso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "EquirectangularToCube",
-                .Shader{ benzin::ShaderType::Compute, "equirectangular_to_cube_pass.hlsl", "CsMain" },
+                .Shader = benzin::ShaderCreation::CreateComputeShader("equirectangular_to_cube_pass.hlsl", "CsMain"),
             });
             BenzinExecuteOnScopeExit([&]
             {
@@ -1121,8 +1129,8 @@ namespace sandbox
                 .DebugName = "FullScreenDebugPass",
                 .Shaders
                 {
-                    benzin::ShaderCreation{ benzin::ShaderType::Vertex, "fullscreen_triangle.hlsl", "VsMain" },
-                    benzin::ShaderCreation{ benzin::ShaderType::Pixel, "fullscreen_debug_pass.hlsl", "PsMain" },
+                    benzin::ShaderCreation::CreateVertexShader("fullscreen_triangle.hlsl", "VsMain"),
+                    benzin::ShaderCreation::CreatePixelShader("fullscreen_debug_pass.hlsl", "PsMain"),
                 },
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .DepthState
@@ -1188,7 +1196,7 @@ namespace sandbox
             commandList.SetRootResource(joint::FullScreenDebugRc_WorldNormalTexture, ms_RenderResources->GetTexture(+RenderTextures::WorldNormal)->GetSrv());
             commandList.SetRootResource(joint::FullScreenDebugRc_VelocityBuffer, ms_RenderResources->GetTexture(+RenderTextures::VelocityBuffer)->GetSrv());
             commandList.SetRootResource(joint::FullScreenDebugRc_ViewDepthBuffer, viewDepth.GetSrv());
-            commandList.SetRootResource(joint::FullScreenDebugRc_DepthBuffer, ms_RenderResources->GetTexture(+RenderTextures::DepthStencil)->GetSrv({ .Format = g_RenderPassesConfig.DepthStencilSrvFormat }));
+            commandList.SetRootResource(joint::FullScreenDebugRc_DepthBuffer, ms_RenderResources->GetTexture(+RenderTextures::DepthStencil)->GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
             commandList.SetRootResource(joint::FullScreenDebugRc_ShadowVisibilityBuffer, noisyShadowVisibilityBuffer.GetSrv());
             commandList.SetRootResource(joint::FullScreenDebugRc_TemporalAccumulationBuffer, temporalAccumulationBuffer.GetSrv());
             commandList.SetRootResource(joint::FullScreenDebugRc_ReprojectedHistoryTexture, ms_RenderResources->GetTexture(+RenderTextures::ReprojectedHistoryTexture)->GetSrv());
@@ -1235,6 +1243,8 @@ namespace sandbox
 
     SandboxRunner::SandboxRunner()
     {
+        BenzinLogTimeOnScopeExit("Create SandboxRunner");
+
         InitRenderPasses();
         InitTools();
         
@@ -1504,10 +1514,10 @@ namespace sandbox
                     return;
                 }
 
+                auto& tc = entityRegistry.get<benzin::TransformComponent>(entityHandle);
+
                 static constexpr float travelRadius = 1.0f;
                 static constexpr float travelSpeed = 0.0004f;
-
-                auto& tc = entityRegistry.get<benzin::TransformComponent>(entityHandle);
 
                 static const float startX = tc.GetTranslation().x;
                 static const float startZ = tc.GetTranslation().z;

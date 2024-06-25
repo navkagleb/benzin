@@ -13,10 +13,16 @@ namespace benzin
         std::string_view FileName;
         std::string_view EntryPoint;
 
-        bool IsValid() const
-        {
-            return !FileName.empty() && !EntryPoint.empty();
-        }
+        const uint64_t Hash = g_InvalidIndex<uint64_t>;
+
+        ShaderCreation() = default; // To remove designated initialization
+
+        static ShaderCreation CreateVertexShader(std::string_view fileName, std::string_view entryPoint);
+        static ShaderCreation CreatePixelShader(std::string_view fileName, std::string_view entryPoint);
+        static ShaderCreation CreateComputeShader(std::string_view fileName, std::string_view entryPoint);
+        static ShaderCreation CreateLibrary(std::string_view fileName);
+
+        bool IsValid() const { return !FileName.empty() && !EntryPoint.empty(); }
     };
 
     struct GraphicsPipelineStateCreation

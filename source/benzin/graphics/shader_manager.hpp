@@ -40,7 +40,6 @@ namespace benzin
         bool IsAllShadersGood() const { return m_IsAllShaderGood; }
 
         std::span<const std::byte> GetShaderDxil(const ShaderCreation& shaderCreation, bool isCacheIgnored = false);
-        std::span<const std::byte> GetLibraryDxil(std::string_view fileName);
 
         bool TryCompileShaderIfNeeded(const ShaderCreation& shaderCreation);
 

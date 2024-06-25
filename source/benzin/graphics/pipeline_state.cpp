@@ -10,6 +10,28 @@
 namespace benzin
 {
 
+    static uint64_t GetShaderHash(const ShaderCreation& shaderCreation)
+    {
+        uint64_t hash = 0;
+        hash = HashCombine(hash, +shaderCreation.Type);
+        hash = HashCombine(hash, shaderCreation.FileName);
+        hash = HashCombine(hash, shaderCreation.EntryPoint);
+
+        return hash;
+    }
+
+    static ShaderCreation CreateShader(ShaderType type, std::string_view fileName, std::string_view entryPoint)
+    {
+        ShaderCreation creation;
+        creation.Type = type;
+        creation.FileName = fileName;
+        creation.EntryPoint = entryPoint;
+
+        const_cast<uint64_t&>(creation.Hash) = GetShaderHash(creation);
+
+        return creation;
+    }
+
     static D3D12_SHADER_BYTECODE ToD3D12Shader(Device& device, const ShaderCreation& shaderCreation, bool isShaderCacheIgnored)
     {
         if (!shaderCreation.IsValid())
@@ -122,7 +144,29 @@ namespace benzin
         return d3d12BlendDesc;
     }
 
-    //
+    // ShaderCreation
+
+    ShaderCreation ShaderCreation::CreateVertexShader(std::string_view fileName, std::string_view entryPoint)
+    {
+        return CreateShader(ShaderType::Vertex, fileName, entryPoint);
+    }
+
+    ShaderCreation ShaderCreation::CreatePixelShader(std::string_view fileName, std::string_view entryPoint)
+    {
+        return CreateShader(ShaderType::Pixel, fileName, entryPoint);
+    }
+
+    ShaderCreation ShaderCreation::CreateComputeShader(std::string_view fileName, std::string_view entryPoint)
+    {
+        return CreateShader(ShaderType::Compute, fileName, entryPoint);
+    }
+
+    ShaderCreation ShaderCreation::CreateLibrary(std::string_view fileName)
+    {
+        return CreateShader(ShaderType::Library, fileName, "");
+    }
+
+    // PipelineState
 
     PipelineState::PipelineState(Device& device, const PipelineStateCreationVariant& creation)
         : m_Device{ device }

@@ -12,16 +12,6 @@ namespace benzin
 
     static const auto g_IncludeDependenciesFilePath = std::filesystem::absolute("bin/shader_include_dependencies.txt");
 
-    static size_t GetShaderHash(const ShaderCreation& shaderCreation)
-    {
-        size_t hash = 0;
-        hash = HashCombine(hash, magic_enum::enum_integer(shaderCreation.Type));
-        hash = HashCombine(hash, shaderCreation.FileName);
-        hash = HashCombine(hash, shaderCreation.EntryPoint);
-
-        return hash;
-    }
-
     static bool IsIncludeShader(std::wstring_view fileName)
     {
         return fileName.ends_with(L"hlsli");
@@ -172,9 +162,7 @@ namespace benzin
 
     std::span<const std::byte> ShaderManager::GetShaderDxil(const ShaderCreation& shaderCreation, bool isCacheIgnored)
     {
-        const size_t shaderHash = GetShaderHash(shaderCreation);
-        
-        const auto it = m_ShaderDxils.find(shaderHash);
+        const auto it = m_ShaderDxils.find(shaderCreation.Hash);
         if (it != m_ShaderDxils.end())
         {
             return it->second;
@@ -182,33 +170,22 @@ namespace benzin
 
         if (!isCacheIgnored && LoadShaderCacheIfPossible(shaderCreation))
         {
-            return m_ShaderDxils.at(shaderHash);
+            return m_ShaderDxils.at(shaderCreation.Hash);
         }
 
         BenzinEnsure(TryCompileShaderIfNeeded(shaderCreation));
-        return m_ShaderDxils.at(shaderHash);
-    }
-
-    std::span<const std::byte> ShaderManager::GetLibraryDxil(std::string_view fileName)
-    {
-        return GetShaderDxil(ShaderCreation
-        {
-            .Type = ShaderType::Library,
-            .FileName = fileName,
-        });
+        return m_ShaderDxils.at(shaderCreation.Hash);
     }
 
     bool ShaderManager::TryCompileShaderIfNeeded(const ShaderCreation& shaderCreation)
     {
-        const size_t shaderHash = GetShaderHash(shaderCreation);
-
-        auto& isShaderGood = m_IsShaderGoodMap[shaderHash];
+        auto& isShaderGood = m_IsShaderGoodMap[shaderCreation.Hash];
         if (isShaderGood)
         {
             return true;
         }
 
-        const ShaderPaths paths{ shaderHash, shaderCreation.FileName };
+        const ShaderPaths paths{ shaderCreation.Hash, shaderCreation.FileName };
         const ShaderArgs args{ shaderCreation.Type, shaderCreation.EntryPoint };
         auto [us, compiledShader] = BenzinProfileFunction(m_ShaderCompiler.CompileShader(paths, args));
 
@@ -218,26 +195,20 @@ namespace benzin
             return false;
         }
 
-        if (shaderCreation.Type == ShaderType::Library)
-        {
-            BenzinTrace("LibraryCompiled: {}! File: {}, Time: {} ms", shaderHash, shaderCreation.FileName, ToFloatMs(us));
-        }
-        else
-        {
-            BenzinTrace(
-                "ShaderCompiled: {}! File: {}, EntryPoint: {}. Time: {} ms",
-                shaderHash,
-                shaderCreation.FileName,
-                shaderCreation.EntryPoint,
-                ToFloatMs(us)
-            );
-        }
+        BenzinTrace(
+            "ShaderCompiled: {}! Type: {}, File: {}, EntryPoint: {}. Time: {} ms",
+            shaderCreation.Hash,
+            magic_enum::enum_name(shaderCreation.Type),
+            shaderCreation.FileName,
+            shaderCreation.EntryPoint,
+            ToFloatMs(us)
+        );
 
         CacheShader(paths, compiledShader);
 
         isShaderGood = true;
-        m_ShaderDxils[shaderHash] = std::move(compiledShader.DxilBlob);
-        m_IncludeDependencies[shaderHash] = std::move(compiledShader.IncludeFilePaths);
+        m_ShaderDxils[shaderCreation.Hash] = std::move(compiledShader.DxilBlob);
+        m_IncludeDependencies[shaderCreation.Hash] = std::move(compiledShader.IncludeFilePaths);
 
         return true;
     }
@@ -246,8 +217,7 @@ namespace benzin
     {
         BenzinAssert(IsPendingToReloadShaderAvailable());
 
-        const size_t shaderHash = GetShaderHash(shaderCreation);
-        const ShaderPaths paths{ shaderHash, shaderCreation.FileName };
+        const ShaderPaths paths{ shaderCreation.Hash, shaderCreation.FileName };
 
         bool isShaderNeedsRecompilation = true;
 
@@ -255,8 +225,8 @@ namespace benzin
         {
             if (isShaderNeedsRecompilation)
             {   
-                m_IsShaderGoodMap[shaderHash] = false;
-                m_ShaderDxils.erase(shaderHash);
+                m_IsShaderGoodMap[shaderCreation.Hash] = false;
+                m_ShaderDxils.erase(shaderCreation.Hash);
             }
         });
 
@@ -266,8 +236,8 @@ namespace benzin
             return isShaderNeedsRecompilation;
         }
 
-        BenzinAssert(m_IncludeDependencies.contains(shaderHash));
-        if (m_IncludeDependencies.at(shaderHash).contains(*m_PendingShaderToReload))
+        BenzinAssert(m_IncludeDependencies.contains(shaderCreation.Hash));
+        if (m_IncludeDependencies.at(shaderCreation.Hash).contains(*m_PendingShaderToReload))
         {
             return isShaderNeedsRecompilation;
         }
@@ -377,8 +347,7 @@ namespace benzin
             return false;
         }
 
-        const size_t shaderHash = GetShaderHash(shaderCreation);
-        const ShaderPaths paths{ shaderHash, shaderCreation.FileName };
+        const ShaderPaths paths{ shaderCreation.Hash, shaderCreation.FileName };
 
         if (IsDestinationFileOlder(paths.SourceFilePath, paths.DxilFilePath))
         {
@@ -386,7 +355,7 @@ namespace benzin
         }
 
         const bool isAnyIncludeDependencyNewer = std::ranges::any_of(
-            m_IncludeDependencies.at(shaderHash),
+            m_IncludeDependencies.at(shaderCreation.Hash),
             [&paths](const std::filesystem::path& includeDependency)
             {
                 return IsDestinationFileOlder(includeDependency, paths.DxilFilePath);
@@ -400,12 +369,13 @@ namespace benzin
 
         auto [us, shaderDxil] = BenzinProfileFunction(ReadFromFile(paths.DxilFilePath));
 
-        m_IsShaderGoodMap[shaderHash] = true;
-        m_ShaderDxils[shaderHash] = std::move(shaderDxil);
+        m_IsShaderGoodMap[shaderCreation.Hash] = true;
+        m_ShaderDxils[shaderCreation.Hash] = std::move(shaderDxil);
 
         BenzinTrace(
-            "Shader loaded from cache: {}! File: {}, EntryPoint: {}. Time: {} ms",
-            shaderHash,
+            "Shader loaded from cache: {}! Type: {}, File: {}, EntryPoint: {}. Time: {} ms",
+            shaderCreation.Hash,
+            magic_enum::enum_name(shaderCreation.Type),
             shaderCreation.FileName,
             shaderCreation.EntryPoint,
             ToFloatMs(us)
