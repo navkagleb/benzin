@@ -1,21 +1,35 @@
 #pragma once
 
-namespace joint
-{
-
-    struct MeshVertex;
-
-} // namespace joint
-
 namespace benzin
 {
 
-    DirectX::XMVECTOR GetDirectionFromPitchYaw(float pitch, float yaw);
-    DirectX::XMFLOAT2 GetPitchYawFromDirection(const DirectX::XMVECTOR& direction);
+    template <std::integral T, std::integral U>
+    constexpr auto AlignAbove(T value, U alignment)
+    {
+        using CommonType = std::common_type_t<T, U>;
 
-    DirectX::BoundingBox ComputeBoundingBox(std::span<const joint::MeshVertex> vertices);
-    DirectX::BoundingBox TransformBoundingBox(const DirectX::BoundingBox& boundingBox, const DirectX::XMMATRIX& transformMatrix);
+        const CommonType commonValue = value;
+        const CommonType commonAlignment = alignment;
 
-    DirectX::XMMATRIX GetMatrixForNormals(const DirectX::XMMATRIX& transform);
+        return (commonValue + (commonAlignment - 1)) & ~(commonAlignment - 1);
+    }
 
-} // namespace benzin
+    constexpr uint32_t I32Ceil(float floatingPoint)
+    {
+        const auto integral = static_cast<int32_t>(floatingPoint);
+        return floatingPoint > integral ? integral + 1 : integral;
+    }
+
+    constexpr uint32_t I32Floor(float floatingPoint)
+    {
+        const auto integral = static_cast<int32_t>(floatingPoint);
+        return floatingPoint < integral ? integral - 1 : integral;
+    }
+
+    constexpr uint32_t GetDispatchGroupCount(uint32_t dimension, uint32_t groupSize)
+    {
+        const auto groupCount = I32Ceil((float)dimension / groupSize);
+        return std::max<uint32_t>(groupCount, 1);
+    }
+
+}

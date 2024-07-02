@@ -3,8 +3,9 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
-#include "benzin/graphics/device.hpp"
+#include "benzin/core/math.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
+#include "benzin/graphics/device.hpp"
 
 namespace benzin
 {

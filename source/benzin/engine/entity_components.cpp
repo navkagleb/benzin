@@ -4,7 +4,7 @@
 #include <shaders/joint/structured_buffer_types.hpp>
 
 #include "benzin/core/asserter.hpp"
-#include "benzin/core/math.hpp"
+#include "benzin/core/engine_math.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/device.hpp"
 

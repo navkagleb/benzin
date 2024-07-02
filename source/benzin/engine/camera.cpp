@@ -2,7 +2,7 @@
 #include "benzin/engine/camera.hpp"
 
 #include "benzin/core/logger.hpp"
-#include "benzin/core/math.hpp"
+#include "benzin/core/engine_math.hpp"
 #include "benzin/system/input.hpp"
 #include "benzin/utility/time_utils.hpp"
 

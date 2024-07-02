@@ -106,9 +106,4 @@ namespace benzin
     constexpr DirectX::XMFLOAT4 g_DefaultClearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
     constexpr DepthStencil g_DefaultClearDepthStencil;
 
-    constexpr uint32_t AlignThreadGroupCount(uint32_t value, uint32_t threadPerGroupCount)
-    {
-        return value / threadPerGroupCount + 1;
-    }
-
 } // namespace benzin

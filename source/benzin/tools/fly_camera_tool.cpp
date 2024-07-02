@@ -1,7 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/tools/fly_camera_tool.hpp"
 
-#include "benzin/core/math.hpp"
+#include "benzin/core/engine_math.hpp"
 #include "benzin/engine/camera.hpp"
 
 namespace benzin

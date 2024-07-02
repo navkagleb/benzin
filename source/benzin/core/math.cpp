@@ -1,51 +1,39 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/math.hpp"
 
-#include <shaders/joint/structured_buffer_types.hpp>
-
 namespace benzin
 {
 
-    DirectX::XMVECTOR GetDirectionFromPitchYaw(float pitch, float yaw)
-    {
-        return DirectX::XMVector3Normalize(DirectX::XMVectorSet(
-            DirectX::XMScalarCos(yaw) * DirectX::XMScalarCos(pitch),
-            DirectX::XMScalarSin(pitch),
-            DirectX::XMScalarSin(yaw) * DirectX::XMScalarCos(pitch),
-            0.0f
-        ));
-    }
+    // Ref: https://stackoverflow.com/questions/31952237/looking-for-a-constexpr-ceil-function/31957574
 
-    DirectX::XMFLOAT2 GetPitchYawFromDirection(const DirectX::XMVECTOR& direction)
-    {
-        DirectX::XMFLOAT3 unpackedDirection;
-        DirectX::XMStoreFloat3(&unpackedDirection, direction);
+    static_assert(I32Floor(0.0f) == 0);
+    static_assert(I32Floor(0.499999f) == 0);
+    static_assert(I32Floor(0.5f) == 0);
+    static_assert(I32Floor(0.999999f) == 0);
+    static_assert(I32Floor(1.0f) == 1);
+    static_assert(I32Floor(123.0f) == 123);
+    static_assert(I32Floor(123.4f) == 123);
 
-        float pitch = std::asin(unpackedDirection.y);
-        float yaw = std::atan2(unpackedDirection.z, unpackedDirection.x);
+    static_assert(I32Floor(-0.499999f) == -1);
+    static_assert(I32Floor(-0.5f) == -1);
+    static_assert(I32Floor(-0.999999f) == -1);
+    static_assert(I32Floor(-1.0f) == -1);
+    static_assert(I32Floor(-123.0f) == -123);
+    static_assert(I32Floor(-123.4f) == -124);
 
-        return DirectX::XMFLOAT2{ pitch, yaw };
-    }
+    static_assert(I32Ceil(0.0f) == 0);
+    static_assert(I32Ceil(0.499999f) == 1);
+    static_assert(I32Ceil(0.5f) == 1);
+    static_assert(I32Ceil(0.999999f) == 1);
+    static_assert(I32Ceil(1.0f) == 1);
+    static_assert(I32Ceil(123.0f) == 123);
+    static_assert(I32Ceil(123.4f) == 124);
 
-    DirectX::BoundingBox ComputeBoundingBox(std::span<const joint::MeshVertex> vertices)
-    {
-        DirectX::BoundingBox boundingBox;
-        DirectX::BoundingBox::CreateFromPoints(boundingBox, vertices.size(), (const DirectX::XMFLOAT3*)vertices.data(), sizeof(joint::MeshVertex));
+    static_assert(I32Ceil(-0.499999f) == 0);
+    static_assert(I32Ceil(-0.5f) == 0);
+    static_assert(I32Ceil(-0.999999f) == 0);
+    static_assert(I32Ceil(-1.0f) == -1);
+    static_assert(I32Ceil(-123.0f) == -123);
+    static_assert(I32Ceil(-123.4f) == -123);
 
-        return boundingBox;
-    }
-
-    DirectX::BoundingBox TransformBoundingBox(const DirectX::BoundingBox& boundingBox, const DirectX::XMMATRIX& transformMatrix)
-    {
-        DirectX::BoundingBox transformedBoundingBox;
-        boundingBox.Transform(transformedBoundingBox, transformMatrix);
-
-        return transformedBoundingBox;
-    }
-
-    DirectX::XMMATRIX GetMatrixForNormals(const DirectX::XMMATRIX& transform)
-    {
-        return DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, transform));
-    }
-
-} // namespace benzin
+}

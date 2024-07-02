@@ -2,6 +2,7 @@
 #include "benzin/graphics/command_list.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/math.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
@@ -351,15 +352,13 @@ namespace benzin
         m_D3D12GraphicsCommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, 0);
     }
 
-    void GraphicsCommandList::Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadPerGroupCount)
+    void GraphicsCommandList::Dispatch(const DirectX::XMUINT3& dimensions, const DirectX::XMUINT3& groupSize)
     {
-        BenzinAssert(threadPerGroupCount.x != 0);
-        BenzinAssert(threadPerGroupCount.y != 0);
-        BenzinAssert(threadPerGroupCount.z != 0);
+        BenzinAssert(dimensions.x != 0 && dimensions.y != 0 && dimensions.z != 0);
 
-        const uint32_t groupCountX = AlignThreadGroupCount(dimension.x, threadPerGroupCount.x);
-        const uint32_t groupCountY = AlignThreadGroupCount(dimension.y, threadPerGroupCount.y);
-        const uint32_t groupCountZ = AlignThreadGroupCount(dimension.z, threadPerGroupCount.z);
+        const uint32_t groupCountX = GetDispatchGroupCount(dimensions.x, groupSize.x);
+        const uint32_t groupCountY = GetDispatchGroupCount(dimensions.y, groupSize.y);
+        const uint32_t groupCountZ = GetDispatchGroupCount(dimensions.z, groupSize.z);
 
         m_D3D12GraphicsCommandList->Dispatch(groupCountX, groupCountY, groupCountZ);
     }

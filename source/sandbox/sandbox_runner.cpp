@@ -2,8 +2,8 @@
 #include "sandbox/sandbox_runner.hpp"
 
 #include <benzin/core/asserter.hpp>
+#include <benzin/core/engine_math.hpp>
 #include <benzin/core/logger.hpp>
-#include <benzin/core/math.hpp>
 #include <benzin/engine/camera.hpp>
 #include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/geometry_generator.hpp>

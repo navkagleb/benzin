@@ -22,3 +22,7 @@
     ClassName() = delete; \
     BenzinDefineNonCopyable(ClassName); \
     BenzinDefineNonMoveable(ClassName)
+
+
+#define BenzinOptimizeOff() __pragma(optimize("", off))
+#define BenzinOptimizeOn() __pragma(optimize("", on))

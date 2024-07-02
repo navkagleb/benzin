@@ -73,17 +73,6 @@ namespace benzin
     constexpr float BytesToFloatMb(uint64_t bytes) { return (float)bytes / MbToBytes(1); }
     constexpr float BytesToFloatGb(uint64_t bytes) { return (float)bytes / GbToBytes(1); }
 
-    template <std::integral T, std::integral U>
-    constexpr auto AlignAbove(T value, U alignment)
-    {
-        using CommonType = std::common_type_t<T, U>;
-
-        const CommonType commonValue = value;
-        const CommonType commonAlignment = alignment;
-
-        return (commonValue + (commonAlignment - 1)) & ~(commonAlignment - 1);
-    }
-
     constexpr auto ToBit(std::integral auto bitPosition)
     {
         return 1 << bitPosition;
