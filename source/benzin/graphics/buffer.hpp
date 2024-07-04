@@ -55,9 +55,9 @@ namespace benzin
         auto GetElementSize() const { return m_ElementSize; }
         auto GetElementCount() const { return m_ElementCount; }
         auto GetAlignedElementSize() const { return m_AlignedElementSize; }
-        auto GetNotAlignedSizeInBytes() const { return m_ElementSize * m_ElementCount; }
 
-        uint32_t GetSizeInBytes() const override { return m_AlignedElementSize * m_ElementCount; }
+        Bytes32 GetNotAlignedSize() const { return m_ElementSize * m_ElementCount; }
+        Bytes32 GetSize() const override { return m_AlignedElementSize * m_ElementCount; }
 
         auto* GetCpuMappedData() const { return m_CpuMappedData; }
 
@@ -99,7 +99,7 @@ namespace benzin
                 .Flags = BufferFlag::ConstantBuffer,
             });
 
-            m_MappedDataWriter = MemoryWriter{ m_Buffer.GetCpuMappedData(), m_Buffer.GetSizeInBytes() };
+            m_MappedDataWriter = MemoryWriter{ m_Buffer.GetCpuMappedData(), m_Buffer.GetSize() };
         }
 
         auto GetActiveGpuVirtualAddress() const

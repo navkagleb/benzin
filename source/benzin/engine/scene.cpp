@@ -4,6 +4,7 @@
 #include <shaders/joint/structured_buffer_types.hpp>
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/engine_math.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/engine/entity_components.hpp"
@@ -67,13 +68,6 @@ namespace benzin
             .ElementCount = (uint32_t)meshCollection.Materials.size(),
             .Flags = BufferFlag::StructuredBuffer,
         });
-
-        // BenzinTrace("MeshCollectionGpuStorage created for '{}' mesh", debugName);
-        // BenzinTrace("VertexCount: {}, VertexSize: {}, VertexBufferSize: {}", totalVertexCount, sizeof(joint::MeshVertex), vertexBuffer->GetSizeInBytes());
-        // BenzinTrace("IndexCount: {}, IndexSize: {}, IndexBufferSize: {}", totalIndexCount, sizeof(uint32_t), indexBuffer->GetSizeInBytes());
-        // BenzinTrace("MeshInfoCount: {}, MeshInfoSize: {}, MeshInfoBufferSize: {}", meshCollection.Meshes.size(), sizeof(joint::MeshInfo), meshInfoBuffer->GetSizeInBytes());
-        // BenzinTrace("MeshInstanceCount: {}, MeshInstanceSize: {}, MeshInstanceBufferSize: {}", meshCollection.MeshInstances.size(), sizeof(joint::MeshInstance), meshInstanceBuffer->GetSizeInBytes());
-        // BenzinTrace("MaterialCount: {}, MaterialSize: {}, MaterialBufferSize: {}", meshCollection.Materials.size(), sizeof(joint::Material), materialBuffer->GetSizeInBytes());
 
         return MeshCollectionGpuStorage
         {
@@ -169,7 +163,7 @@ namespace benzin
 
         {
             const uint32_t offset = g_MaxPointLightCount * m_Device.GetActiveFrameIndex();
-            const MemoryWriter writer{ m_PointLightBuffer->GetCpuMappedData(), m_PointLightBuffer->GetSizeInBytes() };
+            const MemoryWriter writer{ m_PointLightBuffer->GetCpuMappedData(), m_PointLightBuffer->GetSize() };
 
             const auto view = m_EntityRegistry.view<TransformComponent, PointLightComponent>();
             for (const auto [i, entityHandle] : view | std::views::enumerate)
@@ -400,12 +394,12 @@ namespace benzin
 
     void Scene::UploadAllMeshData()
     {
-        uint64_t uploadBufferSize = 0;
+        Bytes32 uploadBufferSize;
         for (const auto& meshUnion : m_MeshUnions)
         {
-            uploadBufferSize += meshUnion.GpuStorage.VertexBuffer->GetSizeInBytes();
-            uploadBufferSize += meshUnion.GpuStorage.IndexBuffer->GetSizeInBytes();
-            uploadBufferSize += meshUnion.GpuStorage.MeshInfoBuffer->GetSizeInBytes();
+            uploadBufferSize += meshUnion.GpuStorage.VertexBuffer->GetSize();
+            uploadBufferSize += meshUnion.GpuStorage.IndexBuffer->GetSize();
+            uploadBufferSize += meshUnion.GpuStorage.MeshInfoBuffer->GetSize();
         }
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
@@ -434,10 +428,10 @@ namespace benzin
 
     void Scene::UploadAllMeshInstances()
     {
-        uint64_t uploadBufferSize = 0;
+        Bytes32 uploadBufferSize;
         for (const auto& meshUnion : m_MeshUnions)
         {
-            uploadBufferSize += meshUnion.GpuStorage.MeshInstanceBuffer->GetSizeInBytes();
+            uploadBufferSize += meshUnion.GpuStorage.MeshInstanceBuffer->GetSize();
         }
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
@@ -466,10 +460,10 @@ namespace benzin
             return;
         }
 
-        uint64_t uploadBufferSize = 0;
+        Bytes32 uploadBufferSize;
         for (const auto& texture : m_Textures)
         {
-            uploadBufferSize += AlignAbove(texture->GetSizeInBytes(), config::g_TextureAlignment);
+            uploadBufferSize += Bytes{ AlignAbove(texture->GetSize().GetBytes(), config::g_TextureAlignment) };
         }
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
@@ -484,10 +478,10 @@ namespace benzin
     {
         static_assert(sizeof(Material) == sizeof(joint::Material));
 
-        uint64_t uploadBufferSize = 0;
+        Bytes32 uploadBufferSize;
         for (const auto& meshUnion : m_MeshUnions)
         {
-            uploadBufferSize += meshUnion.GpuStorage.MaterialBuffer->GetSizeInBytes();
+            uploadBufferSize += meshUnion.GpuStorage.MaterialBuffer->GetSize();
         }
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);

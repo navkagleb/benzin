@@ -21,11 +21,6 @@ namespace benzin
 
     static void FormatToBuffer(const std::source_location& sourceLocation, std::string_view conditionString, std::string_view message, std::string& outBuffer)
     {
-        if (outBuffer.empty())
-        {
-            outBuffer.reserve(KbToBytes(1));
-        }
-
         std::format_to(
             std::back_inserter(outBuffer),
             "\n"
@@ -100,6 +95,7 @@ namespace benzin
         }
 
         std::string buffer;
+        buffer.reserve(1_kb);
         FormatToBuffer(sourceLocation, conditionString, message, buffer);
         FormatToBuffer(hr, buffer);
         

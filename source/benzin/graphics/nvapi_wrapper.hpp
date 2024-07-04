@@ -15,10 +15,10 @@ namespace benzin
 
         static bool IsInitialized();
 
-        static uint64_t GetTotalDedicatedVramInBytes(uint32_t deviceId);
-        static uint64_t GetUsedDedicatedVramInBytes(uint32_t deviceId);
+        static Bytes64 GetTotalDedicatedVram(uint32_t deviceId);
+        static Bytes64 GetUsedDedicatedVram(uint32_t deviceId);
 
-        static std::pair<uint64_t, uint64_t> GetCpuVisibleVramInBytes(ID3D12Device* d3d12Device);
+        static std::pair<Bytes64, Bytes64> GetCpuVisibleVram(ID3D12Device* d3d12Device);
     };
 
 } // namespace benzin

@@ -71,8 +71,8 @@ namespace sandbox
                 "VRAM NonLocal: {:.0f} / {:.0f} mb | "
                 "CPU: {}, Completed GPU: {}, ActiveFrame: {}",
                 m_Backend.GetMainAdapterInfo().Name,
-                benzin::BytesToFloatMb(adapterMemoryInfo.ProcessUsedDedicatedVramInBytes), benzin::BytesToFloatMb(adapterMemoryInfo.DedicatedVramOsBudgetInBytes),
-                benzin::BytesToFloatMb(adapterMemoryInfo.ProcessUsedSharedRamInBytes), benzin::BytesToFloatMb(adapterMemoryInfo.SharedRamOsBudgetInBytes),
+                adapterMemoryInfo.ProcessUsedDedicatedVram.GetMb(), adapterMemoryInfo.DedicatedVramOsBudget.GetMb(),
+                adapterMemoryInfo.ProcessUsedSharedRam.GetMb(), adapterMemoryInfo.SharedRamOsBudget.GetMb(),
                 m_Device.GetCpuFrameIndex(), m_Device.GetCompletedGpuFrameIndex(), m_Device.GetActiveFrameIndex()
             ));
 

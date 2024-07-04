@@ -170,20 +170,20 @@ namespace benzin
             return m_AdlAdapterIndices.at(deviceId);
         }
 
-        uint64_t GetUsedVramInBytes(int adlAdapterIndex)
+        Bytes64 GetUsedVram(int adlAdapterIndex)
         {
             int vramUsageInMb = 0;
             BenzinAdlEnsure(ADL2_Adapter_VRAMUsage_Get(m_Context, adlAdapterIndex, &vramUsageInMb));
 
-            return MbToBytes((uint64_t)vramUsageInMb);
+            return vramUsageInMb * 1_mb;
         }
 
-        uint64_t GetUsedDedicatedVramInBytes(int adlAdapterIndex)
+        Bytes64 GetUsedDedicatedVram(int adlAdapterIndex)
         {
             int vramUsageInMb = 0;
             BenzinAdlEnsure(ADL2_Adapter_DedicatedVRAMUsage_Get(m_Context, adlAdapterIndex, &vramUsageInMb));
 
-            return MbToBytes((uint64_t)vramUsageInMb);
+            return vramUsageInMb * 1_mb;
         }
 
     private:
@@ -271,16 +271,16 @@ namespace benzin
         return g_AdlState.get();
     }
 
-    uint64_t AdlWrapper::GetUsedVramInBytes(uint32_t deviceId)
+    Bytes64 AdlWrapper::GetUsedVram(uint32_t deviceId)
     {
         const uint32_t internalAdapterIndex = g_AdlState->GetAdapterIndex(deviceId);
-        return g_AdlState->GetUsedVramInBytes(internalAdapterIndex);
+        return g_AdlState->GetUsedVram(internalAdapterIndex);
     }
 
-    uint64_t AdlWrapper::GetUsedDedicatedVramInBytes(uint32_t deviceId)
+    Bytes64 AdlWrapper::GetUsedDedicatedVram(uint32_t deviceId)
     {
         const uint32_t internalAdapterIndex = g_AdlState->GetAdapterIndex(deviceId);
-        return g_AdlState->GetUsedDedicatedVramInBytes(internalAdapterIndex);
+        return g_AdlState->GetUsedDedicatedVram(internalAdapterIndex);
     }
 
 } // namespace benzin

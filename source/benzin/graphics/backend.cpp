@@ -40,9 +40,9 @@ namespace benzin
         BenzinTrace("----------------------------------------------");
         BenzinTrace("Main Adapter:");
         BenzinTrace("{}", m_AdaptersInfo[m_MainAdapterIndex].Name);
-        BenzinTrace("DedicatedVideoMemory: {:.2f} mb, {:.2f} gb", BytesToFloatMb(mainAdapterInfo.TotalDedicatedVramInBytes), BytesToFloatGb(mainAdapterInfo.TotalDedicatedVramInBytes));
-        BenzinTrace("DedicatedSystemMemory: {:.2f} mb, {:.2f} gb", BytesToFloatMb(mainAdapterInfo.TotalDedicatedRamInBytes), BytesToFloatGb(mainAdapterInfo.TotalDedicatedRamInBytes));
-        BenzinTrace("SharedSystemMemory: {:.2f} mb, {:.2f} gb", BytesToFloatMb(mainAdapterInfo.TotalSharedRamInBytes), BytesToFloatGb(mainAdapterInfo.TotalSharedRamInBytes));
+        BenzinTrace("DedicatedVideoMemory: {:.2f} mb, {:.2f} gb", mainAdapterInfo.TotalDedicatedVram.GetMb(), mainAdapterInfo.TotalDedicatedVram.GetGb());
+        BenzinTrace("DedicatedSystemMemory: {:.2f} mb, {:.2f} gb", mainAdapterInfo.TotalDedicatedRam.GetMb(), mainAdapterInfo.TotalDedicatedRam.GetGb());
+        BenzinTrace("SharedSystemMemory: {:.2f} mb, {:.2f} gb", mainAdapterInfo.TotalSharedRam.GetMb(), mainAdapterInfo.TotalSharedRam.GetGb());
         BenzinTrace("----------------------------------------------");
     }
 
@@ -79,33 +79,33 @@ namespace benzin
         DXGI_QUERY_VIDEO_MEMORY_INFO d3d12NonLocalVideoMemoryInfo;
         BenzinEnsure(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &d3d12NonLocalVideoMemoryInfo));
 
-        const uint64_t dedicatedVramOsBudget = d3d12LocalVideoMemoryInfo.Budget;
-
-        auto vendorTotalUsedDedicatedVramInBytes = g_InvalidIndex<uint64_t>;
+        Bytes64 vendorTotalUsedDedicatedVram = g_InvalidIndex<uint64_t>;
         if (AdlWrapper::IsInitialized() && adapterInfo.IsAmd())
         {
-            vendorTotalUsedDedicatedVramInBytes = AdlWrapper::GetUsedDedicatedVramInBytes(adapterInfo.DeviceId);
+            vendorTotalUsedDedicatedVram = AdlWrapper::GetUsedDedicatedVram(adapterInfo.DeviceId);
         }
         else if (NvApiWrapper::IsInitialized() && adapterInfo.IsNvidia())
         {
 #if BENZIN_IS_ASSERTS_ENABLED
-            const uint64_t totalUsedDedicatedVram = NvApiWrapper::GetTotalDedicatedVramInBytes(adapterInfo.DeviceId);
-            BenzinAssert(totalUsedDedicatedVram == adapterInfo.TotalDedicatedVramInBytes, "UsedDedicatedVram calculates relative to TotalDedicatedVram");
+            const Bytes64 totalUsedDedicatedVram = NvApiWrapper::GetTotalDedicatedVram(adapterInfo.DeviceId);
+            BenzinAssert(totalUsedDedicatedVram == adapterInfo.TotalDedicatedVram, "UsedDedicatedVram calculates relative to TotalDedicatedVram");
 #endif
 
-            vendorTotalUsedDedicatedVramInBytes = NvApiWrapper::GetUsedDedicatedVramInBytes(adapterInfo.DeviceId);
+            vendorTotalUsedDedicatedVram = NvApiWrapper::GetUsedDedicatedVram(adapterInfo.DeviceId);
         }
 
-        const bool isVendorDataValid = IsValidIndex(vendorTotalUsedDedicatedVramInBytes);
+        const Bytes64 dedicatedVramOsBudget = d3d12LocalVideoMemoryInfo.Budget;
+        const bool isVendorDataValid = IsValidIndex(vendorTotalUsedDedicatedVram.GetBytes());
+
         return AdapterMemoryInfo
         {
-            .DedicatedVramOsBudgetInBytes = dedicatedVramOsBudget,
-            .ProcessUsedDedicatedVramInBytes = d3d12LocalVideoMemoryInfo.CurrentUsage,
-            .SharedRamOsBudgetInBytes = d3d12NonLocalVideoMemoryInfo.Budget,
-            .ProcessUsedSharedRamInBytes = d3d12NonLocalVideoMemoryInfo.CurrentUsage,
-            .TotalUsedDedicatedVramInBytes = !isVendorDataValid ? 0 : vendorTotalUsedDedicatedVramInBytes,
-            .AvailableDedicatedVramInBytes = !isVendorDataValid ? 0 : adapterInfo.TotalDedicatedVramInBytes - vendorTotalUsedDedicatedVramInBytes,
-            .AvailableDedicatedVramRelativeToOsBudgetInBytes = !isVendorDataValid ? 0 : dedicatedVramOsBudget - vendorTotalUsedDedicatedVramInBytes,
+            .DedicatedVramOsBudget = dedicatedVramOsBudget,
+            .ProcessUsedDedicatedVram = d3d12LocalVideoMemoryInfo.CurrentUsage,
+            .SharedRamOsBudget = d3d12NonLocalVideoMemoryInfo.Budget,
+            .ProcessUsedSharedRam = d3d12NonLocalVideoMemoryInfo.CurrentUsage,
+            .TotalUsedDedicatedVram = !isVendorDataValid ? 0_bytes64 : vendorTotalUsedDedicatedVram,
+            .AvailableDedicatedVram = !isVendorDataValid ? 0_bytes64 : adapterInfo.TotalDedicatedVram - vendorTotalUsedDedicatedVram,
+            .AvailableDedicatedVramRelativeToOsBudget = !isVendorDataValid ? 0_bytes64 : dedicatedVramOsBudget - vendorTotalUsedDedicatedVram,
         };
     }
 
@@ -144,9 +144,9 @@ namespace benzin
                 .Name = ToNarrowString(dxgiAdapterDesc.Description),
                 .VendorType = AdapterVendorIdToType(dxgiAdapterDesc.VendorId),
                 .DeviceId = dxgiAdapterDesc.DeviceId,
-                .TotalDedicatedVramInBytes = dxgiAdapterDesc.DedicatedVideoMemory,
-                .TotalDedicatedRamInBytes = dxgiAdapterDesc.DedicatedSystemMemory,
-                .TotalSharedRamInBytes = dxgiAdapterDesc.SharedSystemMemory,
+                .TotalDedicatedVram = dxgiAdapterDesc.DedicatedVideoMemory,
+                .TotalDedicatedRam = dxgiAdapterDesc.DedicatedSystemMemory,
+                .TotalSharedRam = dxgiAdapterDesc.SharedSystemMemory,
             };
 
             BenzinTrace(

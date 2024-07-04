@@ -19,7 +19,7 @@ namespace benzin
     public:
         auto* GetD3D12CommandQueue() const { return m_D3D12CommandQueue; }
 
-        GraphicsCommandList& GetCommandList(uint64_t uploadBufferSizeInBytes = 0);
+        GraphicsCommandList& GetCommandList(Bytes32 uploadBufferSize = 0);
         uint64_t GetTimestampFrequency() const;
 
         void OnFrameBegin();

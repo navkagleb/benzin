@@ -7,8 +7,6 @@ namespace benzin
 
     struct ShaderCreation;
 
-    class ShaderManager;
-
     class Win64_ShaderFileWatcher
     {
     public:

@@ -6,17 +6,17 @@
 namespace benzin
 {
 
-    MemoryWriter::MemoryWriter(std::byte* data, size_t maxSizeInBytes)
+    MemoryWriter::MemoryWriter(std::byte* data, Bytes64 maxSize)
         : m_Data{ data }
-        , m_MaxSizeInBytes{ maxSizeInBytes }
+        , m_MaxSize{ maxSize }
     {}
 
-    void MemoryWriter::WriteBytes(std::span<const std::byte> data, size_t offsetInBytes) const
+    void MemoryWriter::WriteBytes(std::span<const std::byte> data, Bytes64 offset) const
     {
         BenzinAssert(m_Data != nullptr);
-        BenzinAssert(offsetInBytes + data.size_bytes() <= m_MaxSizeInBytes);
+        BenzinAssert(offset + data.size_bytes() <= m_MaxSize);
 
-        memcpy(m_Data + offsetInBytes, data.data(), data.size_bytes());
+        memcpy(m_Data + offset, data.data(), data.size_bytes());
     }
 
 } // namespace benzin

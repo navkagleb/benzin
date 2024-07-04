@@ -31,6 +31,6 @@ namespace benzin
         R32Typeless = DXGI_FORMAT_R32_TYPELESS,
     };
 
-    uint32_t GetFormatSizeInBytes(GraphicsFormat format);
+    Bytes32 GetFormatSize(GraphicsFormat format);
 
 } // namespace benzin

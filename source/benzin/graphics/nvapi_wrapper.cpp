@@ -110,7 +110,7 @@ namespace benzin
         return g_NvApiState.get();
     }
 
-    uint64_t NvApiWrapper::GetTotalDedicatedVramInBytes(uint32_t deviceId)
+    Bytes64 NvApiWrapper::GetTotalDedicatedVram(uint32_t deviceId)
     {
         const NvPhysicalGpuHandle gpuHandle = g_NvApiState->GetPhysicalGpuHandle(deviceId);
         const NV_GPU_MEMORY_INFO_EX gpuMemoryInfo = g_NvApiState->GetGpuMemoryInfo(gpuHandle);
@@ -118,7 +118,7 @@ namespace benzin
         return gpuMemoryInfo.availableDedicatedVideoMemory;
     }
 
-    uint64_t NvApiWrapper::GetUsedDedicatedVramInBytes(uint32_t deviceId)
+    Bytes64 NvApiWrapper::GetUsedDedicatedVram(uint32_t deviceId)
     {
         const NvPhysicalGpuHandle gpuHandle = g_NvApiState->GetPhysicalGpuHandle(deviceId);
         const NV_GPU_MEMORY_INFO_EX gpuMemoryInfo = g_NvApiState->GetGpuMemoryInfo(gpuHandle);
@@ -126,14 +126,14 @@ namespace benzin
         return gpuMemoryInfo.availableDedicatedVideoMemory - gpuMemoryInfo.curAvailableDedicatedVideoMemory;
     }
 
-    std::pair<uint64_t, uint64_t> NvApiWrapper::GetCpuVisibleVramInBytes(ID3D12Device* d3d12Device)
+    std::pair<Bytes64, Bytes64> NvApiWrapper::GetCpuVisibleVram(ID3D12Device* d3d12Device)
     {
-        NvU64 totalSizeInBytes = 0;
-        NvU64 freeSizeInBytes = 0;
+        NvU64 totalSize = 0;
+        NvU64 freeSize = 0;
 
-        BenzinNvApiEnsure(NvAPI_D3D12_QueryCpuVisibleVidmem(d3d12Device, &totalSizeInBytes, &freeSizeInBytes));
+        BenzinNvApiEnsure(NvAPI_D3D12_QueryCpuVisibleVidmem(d3d12Device, &totalSize, &freeSize));
 
-        return std::make_pair(totalSizeInBytes, freeSizeInBytes);
+        return std::make_pair(totalSize, freeSize);
     }
 
 } // namespace benzin

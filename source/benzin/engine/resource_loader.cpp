@@ -7,8 +7,8 @@
 #include <shaders/joint/structured_buffer_types.hpp>
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/engine_math.hpp"
 #include "benzin/core/logger.hpp"
-#include "benzin/core/math.hpp"
 
 namespace benzin
 {
@@ -97,11 +97,11 @@ namespace benzin
             const tinygltf::BufferView& gltfBufferView = m_CurrentModel.bufferViews[gltfAccessor.bufferView];
             const tinygltf::Buffer& gltfBuffer = m_CurrentModel.buffers[gltfBufferView.buffer];
 
-            const size_t offsetInBytes = gltfBufferView.byteOffset + gltfAccessor.byteOffset;
+            const Bytes64 offset = gltfBufferView.byteOffset + gltfAccessor.byteOffset;
 
             return std::span
             {
-                reinterpret_cast<const T*>(gltfBuffer.data.data() + offsetInBytes),
+                reinterpret_cast<const T*>(gltfBuffer.data.data() + offset),
                 gltfAccessor.count
             };
         };
@@ -486,9 +486,9 @@ namespace benzin
         textureImage.Width = (uint32_t)width;
         textureImage.Height = (uint32_t)height;
 
-        const uint64_t imageSizeInBytes = width * height * GetFormatSizeInBytes(textureImage.Format);
-        textureImage.ImageData.resize(imageSizeInBytes);
-        memcpy(textureImage.ImageData.data(), imageData, imageSizeInBytes);
+        const Bytes imageSize = width * height * GetFormatSize(textureImage.Format);
+        textureImage.ImageData.resize(imageSize);
+        memcpy(textureImage.ImageData.data(), imageData, imageSize);
 
         stbi_image_free(imageData);
 

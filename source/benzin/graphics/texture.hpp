@@ -65,7 +65,7 @@ namespace benzin
         auto GetDepth() const { return m_Depth; }
         auto GetMipCount() const { return m_MipCount; }
 
-        uint32_t GetSizeInBytes() const override;
+        Bytes32 GetSize() const override;
         uint32_t GetSubResourceCount() const;
 
         uint32_t GetMipWidth(uint16_t mipIndex) const;

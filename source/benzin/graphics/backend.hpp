@@ -19,9 +19,9 @@ namespace benzin
         AdapterVendorType VendorType = AdapterVendorType::Other;
         uint32_t DeviceId = g_InvalidIndex<uint32_t>;
 
-        uint64_t TotalDedicatedVramInBytes = 0;
-        uint64_t TotalDedicatedRamInBytes = 0;
-        uint64_t TotalSharedRamInBytes = 0;
+        Bytes64 TotalDedicatedVram;
+        Bytes64 TotalDedicatedRam;
+        Bytes64 TotalSharedRam;
 
         bool IsAmd() const { return VendorType == AdapterVendorType::Amd ;}
         bool IsNvidia() const { return VendorType == AdapterVendorType::Nvidia; }
@@ -31,16 +31,16 @@ namespace benzin
     struct AdapterMemoryInfo
     {
         // Query from DXGI
-        uint64_t DedicatedVramOsBudgetInBytes = 0;
-        uint64_t ProcessUsedDedicatedVramInBytes = 0;
+        Bytes64 DedicatedVramOsBudget;
+        Bytes64 ProcessUsedDedicatedVram;
 
-        uint64_t SharedRamOsBudgetInBytes = 0;
-        uint64_t ProcessUsedSharedRamInBytes = 0;
+        Bytes64 SharedRamOsBudget;
+        Bytes64 ProcessUsedSharedRam;
 
         // Query from ADL or NvAPI
-        uint64_t TotalUsedDedicatedVramInBytes = 0;
-        uint64_t AvailableDedicatedVramInBytes = 0;
-        uint64_t AvailableDedicatedVramRelativeToOsBudgetInBytes = 0;
+        Bytes64 TotalUsedDedicatedVram;
+        Bytes64 AvailableDedicatedVram;
+        Bytes64 AvailableDedicatedVramRelativeToOsBudget;
     };
 
     class Backend

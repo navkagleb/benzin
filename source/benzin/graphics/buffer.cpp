@@ -152,9 +152,9 @@ namespace benzin
         // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
 
         static const auto rawBufferFormat = GraphicsFormat::R32Typeless;
-        static const auto rawBufferFormatSizeInBytes = GetFormatSizeInBytes(rawBufferFormat);
+        static const auto rawBufferFormatSize = GetFormatSize(rawBufferFormat);
 
-        BenzinAssert(buffer.GetSizeInBytes() % rawBufferFormatSizeInBytes == 0);
+        BenzinAssert(buffer.GetSize() % rawBufferFormatSize == 0);
 
         return D3D12_SHADER_RESOURCE_VIEW_DESC
         {
@@ -164,7 +164,7 @@ namespace benzin
             .Buffer
             {
                 .FirstElement = 0,
-                .NumElements = buffer.GetSizeInBytes() / rawBufferFormatSizeInBytes,
+                .NumElements = buffer.GetSize() / rawBufferFormatSize,
                 .StructureByteStride = 0,
                 .Flags = D3D12_BUFFER_SRV_FLAG_RAW,
             },
@@ -236,7 +236,7 @@ namespace benzin
         {
             BenzinAssert(creation.Flags.IsAnySet(BufferFlag::UploadBuffer | BufferFlag::ConstantBuffer));
 
-            const MemoryWriter writer{ m_CpuMappedData, GetSizeInBytes() };
+            const MemoryWriter writer{ m_CpuMappedData, GetSize() };
             writer.WriteBytes(creation.InitialData);
         }
     }

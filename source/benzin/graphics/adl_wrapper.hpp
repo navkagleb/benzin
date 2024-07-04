@@ -15,8 +15,8 @@ namespace benzin
 
         static bool IsInitialized();
 
-        static uint64_t GetUsedVramInBytes(uint32_t deviceId); // ???
-        static uint64_t GetUsedDedicatedVramInBytes(uint32_t deviceId);
+        static Bytes64 GetUsedVram(uint32_t deviceId); // ???
+        static Bytes64 GetUsedDedicatedVram(uint32_t deviceId);
     };
 
 } // namespace benzin

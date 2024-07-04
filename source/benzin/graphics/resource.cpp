@@ -22,7 +22,7 @@ namespace benzin
         m_Device.DeferredRelease(m_D3D12Resource);
     }
 
-    uint32_t Resource::GetAllocationSizeInBytes() const
+    Bytes32 Resource::GetAllocationSize() const
     {
         BenzinAssert(m_D3D12Resource);
 

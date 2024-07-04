@@ -19,6 +19,7 @@ namespace benzin
     class GraphicsCommandList
     {
     public:
+        friend class GraphicsCommandQueue;
         friend class ScopedResourceBarriers;
 
         explicit GraphicsCommandList(Device& device);
@@ -30,16 +31,14 @@ namespace benzin
     public:
         auto* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList; }
 
-        void SetUploadBuffer(Buffer& uploadBuffer);
-
         void CopyResource(const Resource& destination, const Resource& source);
 
-        void UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, size_t offsetInBytes);
-
+        void UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, Bytes64 offset);
+        
         template <typename T>
         void UploadToBuffer(Buffer& buffer, std::span<const T> elements, size_t offsetElement = 0)
         {
-            UploadToBuffer(buffer, std::as_bytes(elements), offsetElement * sizeof(T));
+            UploadToBuffer(buffer, std::as_bytes(elements), Bytes64{ offsetElement * sizeof(T) });
         }
 
         void UploadToTexture(Texture& texture, const std::vector<SubResourceData>& subResources);
@@ -70,7 +69,8 @@ namespace benzin
         void BuildRayTracingAccelerationStructure(const RtAccelerationStructure& accelerationStructure);
 
     private:
-        uint64_t AllocateInUploadBuffer(uint64_t sizeInBytes, uint64_t alignmentInBytes = 0);
+        void SetUploadBuffer(Buffer& uploadBuffer);
+        Bytes64 AllocateInUploadBuffer(Bytes64 size, Bytes64 alignment = 0);
 
     private:
         ID3D12GraphicsCommandList4* m_D3D12GraphicsCommandList = nullptr;

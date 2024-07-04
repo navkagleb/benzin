@@ -2,8 +2,8 @@
 #include "benzin/graphics/d3d12_utils.hpp"
 
 #include "benzin/core/asserter.hpp"
-#include "benzin/core/logger.hpp"
 #include "benzin/core/command_line_args.hpp"
+#include "benzin/core/logger.hpp"
 
 namespace benzin
 {
@@ -61,26 +61,26 @@ namespace benzin
     static void FormatToBuffer(const D3D12_DRED_PAGE_FAULT_OUTPUT2& d3d12DredPageFaultOutput, std::string& buffer)
     {
         static const auto FormatToBuffer = [](const D3D12_DRED_ALLOCATION_NODE1* d3d12DREDAllocationNode, std::string_view title, std::string& buffer)
+        {
+            if (d3d12DREDAllocationNode)
             {
-                if (d3d12DREDAllocationNode)
+                std::format_to(std::back_inserter(buffer), "{}\n", title);
+            }
+
+            while (d3d12DREDAllocationNode)
+            {
+                std::format_to(std::back_inserter(buffer), "  D3D12_DRED_ALLOCATION_NODE1: {}\n", (const void*)d3d12DREDAllocationNode);
+
+                if (d3d12DREDAllocationNode->ObjectNameA)
                 {
-                    std::format_to(std::back_inserter(buffer), "{}\n", title);
+                    std::format_to(std::back_inserter(buffer), "    D3D12 ObjectName: {}\n", d3d12DREDAllocationNode->ObjectNameA);
                 }
 
-                while (d3d12DREDAllocationNode)
-                {
-                    std::format_to(std::back_inserter(buffer), "  D3D12_DRED_ALLOCATION_NODE1: {}\n", (const void*)d3d12DREDAllocationNode);
+                std::format_to(std::back_inserter(buffer), "    AllocationType: {}\n", magic_enum::enum_name(d3d12DREDAllocationNode->AllocationType));
 
-                    if (d3d12DREDAllocationNode->ObjectNameA)
-                    {
-                        std::format_to(std::back_inserter(buffer), "    D3D12 ObjectName: {}\n", d3d12DREDAllocationNode->ObjectNameA);
-                    }
-
-                    std::format_to(std::back_inserter(buffer), "    AllocationType: {}\n", magic_enum::enum_name(d3d12DREDAllocationNode->AllocationType));
-
-                    d3d12DREDAllocationNode = d3d12DREDAllocationNode->pNext;
-                }
-            };
+                d3d12DREDAllocationNode = d3d12DREDAllocationNode->pNext;
+            }
+        };
 
         std::format_to(std::back_inserter(buffer), "D3D12_DRED_PAGE_FAULT_OUTPUT2\n");
         std::format_to(std::back_inserter(buffer), "PageFaultVA: {:#x}\n", d3d12DredPageFaultOutput.PageFaultVA);
@@ -189,7 +189,7 @@ namespace benzin
     std::string GetDredMessages(ID3D12Device* d3d12Device)
     {
         std::string buffer;
-        buffer.reserve(MbToBytes(1));
+        buffer.reserve(1_mb);
 
         ComPtr<ID3D12DeviceRemovedExtendedData2> d3d12Dred;
         BenzinEnsure(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12Dred)));

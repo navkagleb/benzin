@@ -354,6 +354,13 @@ namespace benzin
             return false;
         }
 
+        if (!m_IncludeDependencies.contains(shaderCreation.Hash))
+        {
+            // It is impossible to check the validity of a shader
+            // relative to its included dependencies. So it's better to compile it
+            return false;
+        }
+
         const bool isAnyIncludeDependencyNewer = std::ranges::any_of(
             m_IncludeDependencies.at(shaderCreation.Hash),
             [&paths](const std::filesystem::path& includeDependency)
@@ -390,6 +397,8 @@ namespace benzin
 
         BenzinAssert(!m_PendingShaderToReload.has_value() || m_PendingShaderToReload == filePath);
         m_PendingShaderToReload = std::move(filePath);
+
+        BenzinTrace("Shader '{}' updated", m_PendingShaderToReload->string());
     }
 
 }

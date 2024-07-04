@@ -65,14 +65,6 @@ namespace benzin
         return std::ranges::iota_view{ indexRange.StartIndex, indexRange.StartIndex + indexRange.Count };
     }
 
-    constexpr uint64_t KbToBytes(uint64_t kb) { return kb * 1024; }
-    constexpr uint64_t MbToBytes(uint64_t mb) { return KbToBytes(mb * 1024); }
-    constexpr uint64_t GbToBytes(uint64_t gb) { return MbToBytes(gb * 1024); }
-
-    constexpr float BytesToFloatKb(uint64_t bytes) { return (float)bytes / KbToBytes(1); }
-    constexpr float BytesToFloatMb(uint64_t bytes) { return (float)bytes / MbToBytes(1); }
-    constexpr float BytesToFloatGb(uint64_t bytes) { return (float)bytes / GbToBytes(1); }
-
     constexpr auto ToBit(std::integral auto bitPosition)
     {
         return 1 << bitPosition;

@@ -2,6 +2,7 @@
 #include "benzin/graphics/pipeline_state.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/logger.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
@@ -197,6 +198,8 @@ namespace benzin
 
         m_Device.DeferredRelease(m_D3D12PipelineState);
         m_CreationVariant | MakeVisitorMatch([this](const auto& creation) { Create(creation, true); });
+
+        BenzinTrace("Pso '{}' reloaded", GetDxObjectDebugName(m_D3D12PipelineState));
 
         return true;
     }

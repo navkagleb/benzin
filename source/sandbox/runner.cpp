@@ -223,6 +223,7 @@ namespace sandbox
         m_Device->GetGraphicsCommandQueue().OnFrameEnd();
         m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
 
+        m_Device->GetPipelineStateManager().DestroyPendingPipelineStates();
         m_Device->GetPipelineStateManager().ReloadPipelineStatesIfNeeded();
         m_Device->ProcessDeferredReleaseQueues();
 

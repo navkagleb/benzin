@@ -11,6 +11,7 @@
 #include "benzin/utility/file_utils.hpp"
 #include "benzin/utility/string_utils.hpp"
 
+#include "benzin/core/bytes.hpp"
 #include "benzin/core/common.hpp"
 #include "benzin/core/scoped_timer.hpp"
 

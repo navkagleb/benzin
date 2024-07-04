@@ -55,9 +55,9 @@ namespace benzin
         BenzinSafeDxObjectRelease(m_D3D12CommandQueue);
     }
 
-    GraphicsCommandList& GraphicsCommandQueue::GetCommandList(uint64_t uploadBufferSizeInBytes)
+    GraphicsCommandList& GraphicsCommandQueue::GetCommandList(Bytes32 uploadBufferSize)
     {
-        if (uploadBufferSizeInBytes != 0)
+        if (uploadBufferSize != 0)
         {
             auto& uploadBuffers = m_FrameContexts[m_Device.GetActiveFrameIndex()].UploadBuffers;
 
@@ -66,7 +66,7 @@ namespace benzin
             {
                 .DebugName = std::format("UploadBuffer{}", uploadBuffers.size() - 1),
                 .ElementSize = sizeof(std::byte),
-                .ElementCount = (uint32_t)uploadBufferSizeInBytes, // #TODO
+                .ElementCount = uploadBufferSize,
                 .Flags = BufferFlag::UploadBuffer,
             });
 

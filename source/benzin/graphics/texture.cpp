@@ -236,7 +236,7 @@ namespace benzin
         }
     }
 
-    uint32_t Texture::GetSizeInBytes() const
+    Bytes32 Texture::GetSize() const
     {
         BenzinAssert(m_D3D12Resource);
 
