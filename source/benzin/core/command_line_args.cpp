@@ -17,13 +17,10 @@ namespace benzin
         auto memberValue = std::numeric_limits<T>::max();
         const auto result = std::from_chars(commandLineToParse.data(), commandLineToParse.data() + commandLineToParse.size(), memberValue);
 
-        if (result.ec == std::errc{})
-        {
-            BenzinAssert(memberValue != std::numeric_limits<T>::max());
+        BenzinAssert(result.ec == std::errc{} && memberValue != std::numeric_limits<T>::max());
 
-            auto& reinterpreMember = *((T*)member);
-            reinterpreMember = memberValue;
-        }
+        auto& reinterpreMember = *((T*)member);
+        reinterpreMember = memberValue;
     }
 
     static void SetTrueIfExists(std::string_view commandLineToParse, void* member)
@@ -46,7 +43,7 @@ namespace benzin
         void* Member = nullptr;
         ParseCallback Callback = nullptr;
 
-        void InvokeIfMatches(std::string_view currentCommandLine) const
+        void ParseIfMathes(std::string_view currentCommandLine) const
         {
             if (currentCommandLine.starts_with(Name))
             {
@@ -93,7 +90,7 @@ namespace benzin
 
             for (const auto& supportedArg : supportedArgs)
             {
-                supportedArg.InvokeIfMatches(currentArg);
+                supportedArg.ParseIfMathes(currentArg);
             }
 
             BenzinTrace("CommandLineArg {}: {}", i, currentArg);

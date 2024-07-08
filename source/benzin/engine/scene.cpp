@@ -107,7 +107,7 @@ namespace benzin
 
     const Descriptor& Scene::GetPointLightBufferStructuredSrv() const
     {
-        return m_PointLightBuffer->GetStructuredSrv(IndexRangeU32
+        return m_PointLightBuffer->GetStructuredSrv(IndexRange32
         {
             .StartIndex = m_Device.GetActiveFrameIndex() * g_MaxPointLightCount,
             .Count = g_MaxPointLightCount,
@@ -201,7 +201,7 @@ namespace benzin
 
         const auto UpdateTextureIndexIfNeeded = [&](uint32_t& outTextureIndex)
         {
-            if (IsValidIndex(outTextureIndex))
+            if (IsValidUnsigned(outTextureIndex))
             {
                 outTextureIndex = m_Textures[textureOffset + outTextureIndex]->GetSrv().GetHeapIndex();
             }

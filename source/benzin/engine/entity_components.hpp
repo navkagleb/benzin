@@ -19,8 +19,8 @@ namespace benzin
 
     struct MeshInstanceComponent
     {
-        uint32_t MeshUnionIndex = g_InvalidIndex<uint32_t>;
-        std::optional<IndexRangeU32> MeshInstanceRange;
+        uint32_t MeshUnionIndex = g_InvalidUnsigned<uint32_t>;
+        std::optional<IndexRange32> MeshInstanceRange;
     };
 
     class TransformComponent

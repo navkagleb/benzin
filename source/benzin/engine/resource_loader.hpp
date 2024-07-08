@@ -24,8 +24,8 @@ namespace benzin
 
     struct MeshInstance
     {
-        uint32_t MeshIndex = g_InvalidIndex<uint32_t>;
-        uint32_t MaterialIndex = g_InvalidIndex<uint32_t>;
+        uint32_t MeshIndex = g_InvalidUnsigned<uint32_t>;
+        uint32_t MaterialIndex = g_InvalidUnsigned<uint32_t>;
 
         DirectX::XMMATRIX Transform = DirectX::XMMatrixIdentity();
     };
@@ -44,10 +44,10 @@ namespace benzin
 
     struct Material
     {
-        uint32_t AlbedoTextureIndex = g_InvalidIndex<uint32_t>;
-        uint32_t NormalTextureIndex = g_InvalidIndex<uint32_t>;
-        uint32_t MetallicRoughnessTextureIndex = g_InvalidIndex<uint32_t>;
-        uint32_t EmissiveTextureIndex = g_InvalidIndex<uint32_t>;
+        uint32_t AlbedoTextureIndex = g_InvalidUnsigned<uint32_t>;
+        uint32_t NormalTextureIndex = g_InvalidUnsigned<uint32_t>;
+        uint32_t MetallicRoughnessTextureIndex = g_InvalidUnsigned<uint32_t>;
+        uint32_t EmissiveTextureIndex = g_InvalidUnsigned<uint32_t>;
 
         DirectX::XMFLOAT4 AlbedoFactor{ 1.0f, 1.0f, 1.0f, 1.0f };
         float AlphaCutoff = 0.0f;

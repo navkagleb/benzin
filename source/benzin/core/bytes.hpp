@@ -8,7 +8,7 @@ constexpr uint64_t operator"" _gb(uint64_t gb) { return gb * 1024 * 1024 * 1024;
 namespace benzin
 {
 
-    template <std::integral T>
+    template <std::unsigned_integral T>
     class Bytes
     {
     public:
@@ -18,7 +18,7 @@ namespace benzin
             : m_ByteCount{ byteCount }
         {}
 
-        template <std::integral U>
+        template <std::unsigned_integral U>
         constexpr Bytes(Bytes<U> other)
             : m_ByteCount{ other.GetBytes() }
         {}
@@ -46,26 +46,26 @@ namespace benzin
 constexpr benzin::Bytes32 operator"" _bytes32(uint64_t byteCount) { return (uint32_t)byteCount; }
 constexpr benzin::Bytes64 operator"" _bytes64(uint64_t byteCount) { return byteCount; }
 
-template <std::integral T, std::integral U>
+template <std::unsigned_integral T, std::unsigned_integral U>
 constexpr auto operator+(benzin::Bytes<T> lhs, benzin::Bytes<U> rhs)
 {
     return benzin::Bytes{ lhs.GetBytes() + rhs.GetBytes() };
 }
 
-template <std::integral T, std::integral U>
+template <std::unsigned_integral T, std::unsigned_integral U>
 constexpr auto& operator+=(benzin::Bytes<T>& lhs, benzin::Bytes<U> rhs)
 {
     lhs.SetBytes(lhs.GetBytes() + rhs.GetBytes());
     return lhs;
 }
 
-template <std::integral T, std::integral U>
+template <std::unsigned_integral T, std::unsigned_integral U>
 constexpr auto operator-(benzin::Bytes<T> lhs, benzin::Bytes<U> rhs)
 {
     return benzin::Bytes{ lhs.GetBytes() - rhs.GetBytes() };
 }
 
-template <std::integral T, std::integral U>
+template <std::unsigned_integral T, std::unsigned_integral U>
 constexpr auto& operator-=(benzin::Bytes<T>& lhs, benzin::Bytes<U> rhs)
 {
     lhs.SetBytes(lhs.GetBytes() - rhs.GetBytes());

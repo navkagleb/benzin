@@ -28,7 +28,7 @@ namespace benzin
 
         auto GetFullMeshInstanceRange() const
         {
-            return IndexRangeU32{ 0, (uint32_t)MeshInstances.size() };
+            return IndexRange32{ 0, (uint32_t)MeshInstances.size() };
         }
     };
 

@@ -35,7 +35,7 @@ namespace benzin
     struct FormatBufferSrv
     {
         GraphicsFormat Format = GraphicsFormat::Unknown;
-        IndexRangeU32 ElementRange;
+        IndexRange32 ElementRange;
     };
 
     class Buffer : public Resource
@@ -66,7 +66,7 @@ namespace benzin
         void Create(const BufferCreation& creation);
 
         const Descriptor& GetFormatSrv(const FormatBufferSrv& formatSrv) const;
-        const Descriptor& GetStructuredSrv(IndexRangeU32 elementRange = {}) const;
+        const Descriptor& GetStructuredSrv(IndexRange32 elementRange = {}) const;
         const Descriptor& GetByteAddressSrv() const;
         const Descriptor& GetRtAsSrv() const;
         const Descriptor& GetUav() const;

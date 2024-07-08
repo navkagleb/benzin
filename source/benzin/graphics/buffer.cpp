@@ -12,7 +12,7 @@ namespace benzin
 
     struct StructuredBufferSrv
     {
-        IndexRangeU32 ElementRange;
+        IndexRange32 ElementRange;
     };
 
     struct ByteAddressBufferSrv {};
@@ -259,7 +259,7 @@ namespace benzin
         return descriptor;
     }
 
-    const Descriptor& Buffer::GetStructuredSrv(IndexRangeU32 elementRange) const
+    const Descriptor& Buffer::GetStructuredSrv(IndexRange32 elementRange) const
     {
         BenzinAssert(elementRange.StartIndex < m_ElementCount);
 

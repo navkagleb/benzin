@@ -16,8 +16,11 @@ namespace benzin
 
     static D3D12_RAYTRACING_GEOMETRY_DESC ToD3D12RaytracingGeometryDesc(const RtTriangledGeometry& geometry)
     {
-        const uint32_t validatedVertexCount = geometry.VertexCount == g_InvalidIndex<uint32_t> && geometry.VertexOffset == 0 ? geometry.VertexBuffer.GetElementCount() : geometry.VertexCount;
-        const uint32_t validatedIndexCount = geometry.IndexCount == g_InvalidIndex<uint32_t> && geometry.IndexOffset == 0 ? geometry.IndexBuffer.GetElementCount() : geometry.IndexCount;
+        const uint32_t validatedVertexCount = !IsValidUnsigned(geometry.VertexCount) || geometry.VertexOffset == 0 ? geometry.VertexBuffer.GetElementCount() : geometry.VertexCount;
+        const uint32_t validatedIndexCount = !IsValidUnsigned(geometry.IndexCount) || geometry.IndexOffset == 0 ? geometry.IndexBuffer.GetElementCount() : geometry.IndexCount;
+
+        BenzinAssert(validatedVertexCount <= geometry.VertexBuffer.GetElementCount());
+        BenzinAssert(validatedIndexCount <= geometry.IndexBuffer.GetElementCount());
 
         return D3D12_RAYTRACING_GEOMETRY_DESC
         {

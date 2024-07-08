@@ -20,15 +20,15 @@ namespace benzin
     inline constexpr bool g_DependentFalse = false;
 
     template <std::unsigned_integral T>
-    inline constexpr auto g_InvalidIndex = std::numeric_limits<T>::max();
+    inline constexpr auto g_InvalidUnsigned = std::numeric_limits<T>::max();
 
     template <typename T> requires std::is_enum_v<T>
-    inline constexpr auto g_InvalidEnumValue = (T)g_InvalidIndex<std::underlying_type_t<T>>;
+    inline constexpr auto g_InvalidEnumValue = (T)g_InvalidUnsigned<std::underlying_type_t<T>>;
 
     template <std::unsigned_integral T>
-    constexpr bool IsValidIndex(T index)
+    constexpr bool IsValidUnsigned(T value)
     {
-        return index != g_InvalidIndex<T>;
+        return value != g_InvalidUnsigned<T>;
     }
 
     template <typename... Fs>
@@ -56,8 +56,8 @@ namespace benzin
         T Count = 0;
     };
 
-    using IndexRangeU16 = IndexRange<uint16_t>;
-    using IndexRangeU32 = IndexRange<uint32_t>;
+    using IndexRange16 = IndexRange<uint16_t>;
+    using IndexRange32 = IndexRange<uint32_t>;
 
     template <std::unsigned_integral T>
     constexpr auto IndexRangeToView(IndexRange<T> indexRange)

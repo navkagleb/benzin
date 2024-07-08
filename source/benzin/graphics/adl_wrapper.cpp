@@ -110,9 +110,9 @@ namespace benzin
 
         static const auto ConvertFrom16to10Base = [](std::string_view valueString)
         {
-            uint32_t value = g_InvalidIndex<uint32_t>;
+            uint32_t value = g_InvalidUnsigned<uint32_t>;
             const auto result = std::from_chars(valueString.data(), valueString.data() + valueString.size(), value, 16);
-            BenzinAssert(result.ec == std::errc{} && IsValidIndex(value));
+            BenzinAssert(result.ec == std::errc{} && IsValidUnsigned(value));
 
             return value;
         };

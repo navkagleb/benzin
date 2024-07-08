@@ -31,7 +31,7 @@ namespace benzin
 
     private:
         const float m_InverseFrequency = 0.0f;
-        const uint32_t m_ReadbackLatency = g_InvalidIndex<uint32_t>;
+        const uint32_t m_ReadbackLatency = g_InvalidUnsigned<uint32_t>;
 
         GraphicsCommandList& m_ProfiledCommandList;
 

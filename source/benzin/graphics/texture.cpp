@@ -95,7 +95,7 @@ namespace benzin
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
         };
 
-        const auto mipCount = IsValidIndex(textureSrv.MipRange.Count) ? textureSrv.MipRange.Count : g_InvalidIndex<uint32_t>;
+        const auto mipCount = IsValidUnsigned(textureSrv.MipRange.Count) ? textureSrv.MipRange.Count : g_InvalidUnsigned<uint32_t>;
 
         const bool isArrayTexture = textureSrv.DepthRange.Count > 1;
         if (!isArrayTexture)

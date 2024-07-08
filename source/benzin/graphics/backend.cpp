@@ -79,7 +79,7 @@ namespace benzin
         DXGI_QUERY_VIDEO_MEMORY_INFO d3d12NonLocalVideoMemoryInfo;
         BenzinEnsure(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &d3d12NonLocalVideoMemoryInfo));
 
-        Bytes64 vendorTotalUsedDedicatedVram = g_InvalidIndex<uint64_t>;
+        Bytes64 vendorTotalUsedDedicatedVram = g_InvalidUnsigned<uint64_t>;
         if (AdlWrapper::IsInitialized() && adapterInfo.IsAmd())
         {
             vendorTotalUsedDedicatedVram = AdlWrapper::GetUsedDedicatedVram(adapterInfo.DeviceId);
@@ -95,7 +95,7 @@ namespace benzin
         }
 
         const Bytes64 dedicatedVramOsBudget = d3d12LocalVideoMemoryInfo.Budget;
-        const bool isVendorDataValid = IsValidIndex(vendorTotalUsedDedicatedVram.GetBytes());
+        const bool isVendorDataValid = IsValidUnsigned(vendorTotalUsedDedicatedVram.GetBytes());
 
         return AdapterMemoryInfo
         {

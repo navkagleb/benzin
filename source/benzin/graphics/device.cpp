@@ -202,7 +202,7 @@ namespace benzin
 
     void Device::ProcessDeferredReleaseQueues(bool isForceRelease)
     {
-        if (!IsValidIndex(m_CompletedGpuFrameIndex))
+        if (!IsValidUnsigned(m_CompletedGpuFrameIndex))
         {
             return;
         }

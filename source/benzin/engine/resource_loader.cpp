@@ -436,7 +436,7 @@ namespace benzin
         {
             if (gltfTextureIndex == -1)
             {
-                return g_InvalidIndex<uint32_t>;
+                return g_InvalidUnsigned<uint32_t>;
             }
 
             if (!m_TextureMappings.contains(gltfTextureIndex))

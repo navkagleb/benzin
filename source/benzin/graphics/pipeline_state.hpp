@@ -13,7 +13,7 @@ namespace benzin
         std::string_view FileName;
         std::string_view EntryPoint;
 
-        const uint64_t Hash = g_InvalidIndex<uint64_t>;
+        const uint64_t Hash = g_InvalidUnsigned<uint64_t>;
 
         ShaderCreation() = default; // To remove designated initialization
 
