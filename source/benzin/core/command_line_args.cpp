@@ -54,6 +54,24 @@ namespace benzin
 
     //
 
+    std::filesystem::path CommandLineArgs::g_ExecutableFilePath;
+
+    uint32_t CommandLineArgs::g_WindowWidth = 1280;
+    uint32_t CommandLineArgs::g_WindowHeight = 720;
+    bool CommandLineArgs::g_IsWindowResizable = true;
+
+    bool CommandLineArgs::g_IsAdlWrapperEnabled = true;
+    bool CommandLineArgs::g_IsNvApiWrapperEnabled = true;
+
+    uint32_t CommandLineArgs::g_AdapterIndex = 0;
+    uint32_t CommandLineArgs::g_FrameInFlightCount = 3;
+    GraphicsFormat CommandLineArgs::g_BackBufferFormat = GraphicsFormat::Rgba8Unorm;
+    bool CommandLineArgs::g_IsGpuUploadHeapsEnabled = true;
+
+    GraphicsDebugLayerParams CommandLineArgs::g_GraphicsDebugLayerParams;
+
+    bool CommandLineArgs::g_IsShaderCacheIgnored = false;
+
     void CommandLineArgs::Initialize(int argc, char** argv)
     {
         const auto supportedArgs = std::to_array(
