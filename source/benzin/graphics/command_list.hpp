@@ -76,7 +76,7 @@ namespace benzin
         ID3D12GraphicsCommandList4* m_D3D12GraphicsCommandList = nullptr;
 
         Buffer* m_UploadBuffer = nullptr;
-        uint64_t m_UploadBufferOffset = 0;
+        Bytes64 m_UploadBufferOffset = 0;
     };
 
     struct TransitionBarrier

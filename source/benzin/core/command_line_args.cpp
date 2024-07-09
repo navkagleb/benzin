@@ -12,8 +12,6 @@ namespace benzin
     template <typename T> requires std::is_arithmetic_v<T>
     static void ParseArithmetic(std::string_view commandLineToParse, void* member)
     {
-        BenzinAssert(member);
-
         auto memberValue = std::numeric_limits<T>::max();
         const auto result = std::from_chars(commandLineToParse.data(), commandLineToParse.data() + commandLineToParse.size(), memberValue);
 
@@ -21,6 +19,11 @@ namespace benzin
 
         auto& reinterpreMember = *((T*)member);
         reinterpreMember = memberValue;
+    }
+
+    static void ParseStringView(std::string_view commandLineToParse, void* member)
+    {
+        *((std::string_view*)member) = commandLineToParse;
     }
 
     static void SetTrueIfExists(std::string_view commandLineToParse, void* member)
@@ -63,7 +66,8 @@ namespace benzin
     bool CommandLineArgs::g_IsAdlWrapperEnabled = true;
     bool CommandLineArgs::g_IsNvApiWrapperEnabled = true;
 
-    uint32_t CommandLineArgs::g_AdapterIndex = 0;
+    uint32_t CommandLineArgs::g_AdapterIndex = g_InvalidUnsigned<uint32_t>;
+    std::string_view CommandLineArgs::g_AdapterName;
     uint32_t CommandLineArgs::g_FrameInFlightCount = 3;
     GraphicsFormat CommandLineArgs::g_BackBufferFormat = GraphicsFormat::Rgba8Unorm;
     bool CommandLineArgs::g_IsGpuUploadHeapsEnabled = true;
@@ -84,6 +88,7 @@ namespace benzin
             SupportedCommandLineArg{ "-no_nvapi_wrapper", &g_IsNvApiWrapperEnabled, SetFalseIfExists },
 
             SupportedCommandLineArg{ "-adapter_index:", &g_AdapterIndex, ParseArithmetic<decltype(g_AdapterIndex)> },
+            SupportedCommandLineArg{ "-adapter_name:", &g_AdapterName, ParseStringView },
             SupportedCommandLineArg{ "-frame_in_flight_count:", &g_FrameInFlightCount, ParseArithmetic<decltype(g_FrameInFlightCount)> },
             SupportedCommandLineArg{ "-no_gpu_upload_heaps", &g_IsGpuUploadHeapsEnabled, SetFalseIfExists },
 

@@ -26,6 +26,7 @@ namespace benzin
         static bool g_IsNvApiWrapperEnabled;
 
         static uint32_t g_AdapterIndex;
+        static std::string_view g_AdapterName;
         static uint32_t g_FrameInFlightCount;
         static GraphicsFormat g_BackBufferFormat;
         static bool g_IsGpuUploadHeapsEnabled;

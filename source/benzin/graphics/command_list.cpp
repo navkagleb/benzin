@@ -382,7 +382,11 @@ namespace benzin
     {
         BenzinEnsure(m_UploadBuffer != nullptr);
 
-        const Bytes64 alignedOffset = alignment == 0 ? m_UploadBufferOffset : AlignAbove(m_UploadBufferOffset, alignment.GetBytes());
+        Bytes64 alignedOffset = m_UploadBufferOffset;
+        if (alignment != 0)
+        {
+            alignedOffset = AlignAbove(m_UploadBufferOffset.GetBytes(), alignment.GetBytes());
+        }
 
         m_UploadBufferOffset = alignedOffset + size;
         BenzinEnsure(m_UploadBufferOffset <= m_UploadBuffer->GetSize());

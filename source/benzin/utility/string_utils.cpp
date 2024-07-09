@@ -71,4 +71,17 @@ namespace benzin
         return result;
     }
 
+    bool IsStringContainsCaseInsensitive(std::string_view haystack, std::string_view needle)
+    {
+        if (needle.empty())
+        {
+            return false;
+        }
+
+        return std::ranges::contains_subrange(haystack, needle, [](char lhs, char rhs)
+        {
+            return std::tolower(lhs) == std::tolower(rhs);
+        });
+    }
+
 } // namespace benzin

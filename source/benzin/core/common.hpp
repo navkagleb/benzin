@@ -31,6 +31,12 @@ namespace benzin
         return value != g_InvalidUnsigned<T>;
     }
 
+    template <std::unsigned_integral T, std::unsigned_integral U>
+    constexpr auto GetValidUnsignedOr(T value, U orValue)
+    {
+        return (std::common_type_t<T, U>)(IsValidUnsigned(value) ? value : orValue);
+    }
+
     template <typename... Fs>
     struct VisitorMatch : Fs...
     {

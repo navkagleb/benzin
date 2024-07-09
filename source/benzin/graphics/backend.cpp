@@ -33,9 +33,6 @@ namespace benzin
         CreateDxgiFactory();
         GatherDxgiAdapters();
 
-        m_MainAdapterIndex = CommandLineArgs::g_AdapterIndex;
-        BenzinEnsure(m_MainAdapterIndex < m_DxgiAdapters.size());
-
         const auto& mainAdapterInfo = GetMainAdapterInfo();
         BenzinTrace("----------------------------------------------");
         BenzinTrace("Main Adapter:");
@@ -139,7 +136,7 @@ namespace benzin
                 continue;
             }
 
-            const AdapterInfo adapterInfo
+            AdapterInfo adapterInfo
             {
                 .Name = ToNarrowString(dxgiAdapterDesc.Description),
                 .VendorType = AdapterVendorIdToType(dxgiAdapterDesc.VendorId),
@@ -159,12 +156,23 @@ namespace benzin
                 dxgiAdapterDesc.Revision
             );
 
+            if (IsStringContainsCaseInsensitive(adapterInfo.Name, CommandLineArgs::g_AdapterName))
+            {
+                m_MainAdapterIndex = adapterIndex;
+            }
+
             IDXGIAdapter3* dxgiAdapter3 = nullptr;
             BenzinEnsure(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&dxgiAdapter3)));
             SetDxObjectDebugName(dxgiAdapter3, std::format("Adapter: {}", adapterInfo.Name));
 
             m_DxgiAdapters.push_back(dxgiAdapter3);
-            m_AdaptersInfo.push_back(adapterInfo);
+            m_AdaptersInfo.push_back(std::move(adapterInfo));
+        }
+
+        if (!IsValidUnsigned(m_MainAdapterIndex))
+        {
+            m_MainAdapterIndex = GetValidUnsignedOr(CommandLineArgs::g_AdapterIndex, 0u);
+            BenzinEnsure(m_MainAdapterIndex < m_DxgiAdapters.size());
         }
     }
 
