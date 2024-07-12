@@ -7,6 +7,7 @@
 #include "benzin/graphics/adl_wrapper.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/nvapi_wrapper.hpp"
+#include "benzin/graphics/pix_capturer.hpp"
 
 namespace benzin
 {
@@ -25,10 +26,12 @@ namespace benzin
 
     Backend::Backend()
     {
-        EnableD3D12DebugLayer();
+        PixCapturer::Initialize(); // Need to be loaded first of all if needed
 
         AdlWrapper::Initialize();
         NvApiWrapper::Initialize();
+
+        EnableD3D12DebugLayer();
 
         CreateDxgiFactory();
         GatherDxgiAdapters();
@@ -45,9 +48,6 @@ namespace benzin
 
     Backend::~Backend()
     {
-        AdlWrapper::Shutdown();
-        NvApiWrapper::Shutdown();
-
         for (auto& dxgiAdapter : m_DxgiAdapters)
         {
             BenzinSafeDxObjectRelease(dxgiAdapter);
@@ -55,6 +55,11 @@ namespace benzin
         m_DxgiAdapters.clear();
 
         BenzinSafeDxObjectRelease(m_DxgiFactory);
+
+        AdlWrapper::Shutdown();
+        NvApiWrapper::Shutdown();
+
+        PixCapturer::Shutdown();
     }
 
     const AdapterInfo& Backend::GetAdaptersInfo(uint32_t adapterIndex) const

@@ -1,0 +1,74 @@
+#include "benzin/config/bootstrap.hpp"
+#include "benzin/graphics/pix_capturer.hpp"
+
+#include <ShlObj.h>
+
+#include "benzin/core/asserter.hpp"
+#include "benzin/core/command_line_args.hpp"
+#include "benzin/core/logger.hpp"
+
+namespace benzin
+{
+
+    static constexpr std::wstring_view g_PixCapturerDllName = L"WinPixGpuCapturer.dll";
+
+    static std::wstring GetLatestWinPixGpuCapturerPath()
+    {
+        // Ref: https://devblogs.microsoft.com/pix/taking-a-capture/
+
+        wchar_t* programFilesPath = nullptr;
+        ::SHGetKnownFolderPath(FOLDERID_ProgramFiles, KF_FLAG_DEFAULT, nullptr, &programFilesPath);
+
+        std::filesystem::path pixInstallationPath = programFilesPath;
+        pixInstallationPath /= "Microsoft PIX";
+
+        std::wstring pixNewestVersion;
+        for (const auto& directoryEntry : std::filesystem::directory_iterator{ pixInstallationPath })
+        {
+            if (!directoryEntry.is_directory())
+            {
+                continue;
+            }
+
+            if (pixNewestVersion.empty() || pixNewestVersion < directoryEntry.path().filename().c_str())
+            {
+                pixNewestVersion = directoryEntry.path().filename().c_str();
+            }
+        }
+
+        BenzinEnsure(!pixNewestVersion.empty());
+        return pixInstallationPath / pixNewestVersion / g_PixCapturerDllName;
+    }
+
+    //
+
+    void PixCapturer::Initialize()
+    {
+        if (!CommandLineArgs::g_IsPixCapturerEnabled)
+        {
+            return;
+        }
+
+        if (::GetModuleHandleW(g_PixCapturerDllName.data()) == nullptr)
+        {
+            ::LoadLibraryW(GetLatestWinPixGpuCapturerPath().c_str());
+            BenzinTrace("PixGpuCapturer DLL loaded");
+        }
+    }
+
+    void PixCapturer::Shutdown()
+    {
+        if (!CommandLineArgs::g_IsPixCapturerEnabled)
+        {
+            return;
+        }
+
+        const HMODULE pixHandle = ::GetModuleHandleW(g_PixCapturerDllName.data());
+        if (pixHandle != nullptr)
+        {
+            ::FreeLibrary(pixHandle);
+            BenzinTrace("PixGpuCapturer DLL unloaded");
+        }
+    }
+
+}

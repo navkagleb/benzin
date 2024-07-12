@@ -22,6 +22,7 @@ namespace benzin
         static uint32_t g_WindowHeight;
         static bool g_IsWindowResizable;
 
+        static bool g_IsPixCapturerEnabled;
         static bool g_IsAdlWrapperEnabled;
         static bool g_IsNvApiWrapperEnabled;
 

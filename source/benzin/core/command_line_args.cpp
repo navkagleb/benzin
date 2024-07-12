@@ -63,6 +63,7 @@ namespace benzin
     uint32_t CommandLineArgs::g_WindowHeight = 720;
     bool CommandLineArgs::g_IsWindowResizable = true;
 
+    bool CommandLineArgs::g_IsPixCapturerEnabled = false;
     bool CommandLineArgs::g_IsAdlWrapperEnabled = true;
     bool CommandLineArgs::g_IsNvApiWrapperEnabled = true;
 
@@ -84,6 +85,7 @@ namespace benzin
             SupportedCommandLineArg{ "-window_height:", &g_WindowHeight, ParseArithmetic<decltype(g_WindowHeight)> },
             SupportedCommandLineArg{ "-disable_window_resizing", &g_IsWindowResizable, SetFalseIfExists },
 
+            SupportedCommandLineArg{ "-pix", &g_IsPixCapturerEnabled, SetTrueIfExists },
             SupportedCommandLineArg{ "-no_adl_wrapper", &g_IsAdlWrapperEnabled, SetFalseIfExists },
             SupportedCommandLineArg{ "-no_nvapi_wrapper", &g_IsNvApiWrapperEnabled, SetFalseIfExists },
 
