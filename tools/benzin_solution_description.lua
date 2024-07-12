@@ -62,6 +62,7 @@ local cpp_version = "C++latest" -- Included C++23 features
 
 local benzin_projects_warning_level = "Extra"
 local warnings_as_errors_flag = "FatalWarnings"
+local multi_processor_compile_flag = "MultiProcessorCompile"
 
 
 project "0_ThirdParty"
@@ -73,6 +74,10 @@ project "0_ThirdParty"
     targetname "third_party"
     targetdir(bin_dir)
     objdir(build_dir .. "/%{prj.name}/%{cfg.buildcfg}")
+
+    flags {
+        multi_processor_compile_flag,
+    }
 
     files {
         third_party_source_dir .. "adl/**.h",
@@ -104,7 +109,8 @@ project "1_BenzinFramework"
     warnings(benzin_projects_warning_level)
 
     flags {
-        warnings_as_errors_flag
+        multi_processor_compile_flag,
+        warnings_as_errors_flag,
     }
 
     pchheader "benzin/config/bootstrap.hpp"
@@ -169,7 +175,8 @@ project "3_Sandbox"
     warnings(benzin_projects_warning_level)
 
     flags {
-        warnings_as_errors_flag
+        multi_processor_compile_flag,
+        warnings_as_errors_flag,
     }
 
     pchheader "sandbox/bootstrap.hpp"
