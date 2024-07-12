@@ -12,7 +12,7 @@ namespace benzin
 
     static constexpr std::wstring_view g_PixCapturerDllName = L"WinPixGpuCapturer.dll";
 
-    static std::wstring GetLatestWinPixGpuCapturerPath()
+    static std::filesystem::path GetLatestWinPixGpuCapturerPath()
     {
         // Ref: https://devblogs.microsoft.com/pix/taking-a-capture/
 
@@ -51,8 +51,10 @@ namespace benzin
 
         if (::GetModuleHandleW(g_PixCapturerDllName.data()) == nullptr)
         {
-            ::LoadLibraryW(GetLatestWinPixGpuCapturerPath().c_str());
-            BenzinTrace("PixGpuCapturer DLL loaded");
+            const std::filesystem::path pixCapturerPath = GetLatestWinPixGpuCapturerPath();
+            ::LoadLibraryW(pixCapturerPath.c_str());
+
+            BenzinTrace("PixGpuCapturer DLL loaded. FilePath: {}", pixCapturerPath.string());
         }
     }
 

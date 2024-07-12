@@ -52,6 +52,8 @@ namespace joint
         uint IsNormalWeightUsed : 1;
         uint IsRoughnessWeightUsed : 1;
         float GeometryWeightSensitivity;
+        float MinBlurRadius;
+        float MaxBlurRadius;
     };
 
     struct DeferredLightingPassConstants

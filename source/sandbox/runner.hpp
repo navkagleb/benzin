@@ -70,7 +70,7 @@ namespace sandbox
         benzin::ImGuiPass* m_ImGuiPass = nullptr;
 
         bool m_IsRunning = true;
-        bool m_IsVerticalSyncEnabled = false;
+        bool m_IsVerticalSyncEnabled = true;
 
     private:
         BottomPanelTool* m_BottomPanelTool = nullptr;

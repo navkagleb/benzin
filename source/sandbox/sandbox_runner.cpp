@@ -394,18 +394,18 @@ namespace sandbox
                 .RayGenerationShaderRecord
                 {
                     .StartAddress = m_RayGenShaderTable->GetGpuVirtualAddress(),
-                    .SizeInBytes = m_RayGenShaderTable->GetNotAlignedSizeInBytes(),
+                    .SizeInBytes = m_RayGenShaderTable->GetNotAlignedSize(),
                 },
                 .MissShaderTable
                 {
                     .StartAddress = m_MissShaderTable->GetGpuVirtualAddress(),
-                    .SizeInBytes = m_MissShaderTable->GetNotAlignedSizeInBytes(),
+                    .SizeInBytes = m_MissShaderTable->GetNotAlignedSize(),
                     .StrideInBytes = m_MissShaderTable->GetElementSize(),
                 },
                 .HitGroupTable
                 {
                     .StartAddress = m_HitGroupShaderTable->GetGpuVirtualAddress(),
-                    .SizeInBytes = m_HitGroupShaderTable->GetNotAlignedSizeInBytes(),
+                    .SizeInBytes = m_HitGroupShaderTable->GetNotAlignedSize(),
                     .StrideInBytes = m_HitGroupShaderTable->GetElementSize(),
                 },
                 .CallableShaderTable
@@ -498,7 +498,7 @@ namespace sandbox
             const auto CreateShaderTable = [&](std::wstring_view identiferName)
             {
                 const void* rawShaderIdentifier = d3d12StateObjectProperties->GetShaderIdentifier(identiferName.data());
-                const auto shaderIdentifier = std::span{ (const std::byte*)rawShaderIdentifier, benzin::config::g_ShaderIdentifierSizeInBytes };
+                const auto shaderIdentifier = std::span{ (const std::byte*)rawShaderIdentifier, benzin::config::g_ShaderIdentifierSize };
 
                 return std::make_unique<benzin::Buffer>(*ms_Device, benzin::BufferCreation
                 {
@@ -1064,7 +1064,7 @@ namespace sandbox
                 .MipCount = 1,
             });
 
-            auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList(equirectangularTexture->GetSizeInBytes());
+            auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList(equirectangularTexture->GetSize());
             commandList.UploadToTextureTopMip(*equirectangularTexture, std::as_bytes(std::span{ equirectangularTextureImage.ImageData }));
         
             return equirectangularTexture;

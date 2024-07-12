@@ -28,6 +28,8 @@ namespace sandbox
         bool IsNormalWeightUsed = true;
         bool IsRoughnessWeightUsed = true;
         float GeometryWeightSensitivity = 20.0f;
+        float MinBlurRadius = 0.01f;
+        float MaxBlurRadius = 0.2f;
         uint32_t MaxTemporalAccumulationCount = 32;
 
         joint::DebugOutputType DebugOutputType = joint::DebugOutputType_None;

@@ -1,6 +1,7 @@
 #include "unified_root_parameters.hlsli"
 
 #include "bilinear_filter.hlsli"
+#include "space_convertions.hlsli"
 
 static const int g_MaxHistoryFixFrameCount = 4;
 
@@ -30,7 +31,7 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     const uint mipIndex = g_MaxHistoryFixFrameCount * (1.0 - normalizedAccumulatedFrameCount) * roughness;
     const float2 mipSize = g_FrameConstants.RenderResolution / (1u << mipIndex);
 
-    const float2 uv = (dispatchThreadId.xy + 0.5) * g_FrameConstants.InvRenderResolution;
+    const float2 uv = DispatchThreadIdToUv(dispatchThreadId, g_FrameConstants.InvRenderResolution);
     const BilinearFilter filter = CreateBilinearFilter(uv, mipSize);
 
     const float4 noisyVisibilityBufferSamples = GatherRedManually(noisyVisibilityBuffer, filter, mipIndex);

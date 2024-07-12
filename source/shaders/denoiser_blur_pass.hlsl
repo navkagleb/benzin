@@ -29,9 +29,6 @@ static const float2 g_PoissonSamples[g_PoissonSampleCount] =
     float2(0.6080788867056116, 0.42260358791146085),
 };
 
-static const float g_MinBlurRadius = 0.01;
-static const float g_MaxBlurRadius = 0.2;
-
 float3 GetGgxDominantDirection(float3 viewNormal, float3 viewDirection, float roughness)
 {
     // Page69. Ref: https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
@@ -205,7 +202,7 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     const float roughness = albedoAndRoughnessTexture[dispatchThreadId.xy].w;
 
-    const float blurRadius = lerp(g_MinBlurRadius, g_MaxBlurRadius, accumulationSpeed);
+    const float blurRadius = lerp(g_PassConstants.MinBlurRadius, g_PassConstants.MaxBlurRadius, accumulationSpeed);
     const float3x3 samplingBasis = GetKernelBasis(viewPosition, viewNormal, roughness, blurRadius);
     const float2x2 rotationMatrix = GetRotationMatrix2x2(g_FrameConstants.ElapsedTime * 0.01);
 

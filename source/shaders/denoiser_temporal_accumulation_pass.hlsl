@@ -62,19 +62,17 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     const bool4 isGatherOnScreen = bool4(filterAtPreviousUv.TopLeftTexelPosition >= 0.0, (filterAtPreviousUv.TopLeftTexelPosition + 1.0) < g_FrameConstants.RenderResolution);
     const bool4 isOccludedByPlaneDistance = IsOccludedByPlaneDistance(worldNormal, previousWorldPosition, previousViewPosition, previousViewDepthSamples);
     const bool4 isGatherValid = isGatherOnScreen & !isOccludedByPlaneDistance;
-    
+
     {
         const float4 accumulationCounts = min(previousAccumulationCounts + 1.0, g_FrameConstants.MaxTemporalAccumulationCount);
-        float accumulationCount = ApplyBilinearCustomWeights(filterAtPreviousUv, accumulationCounts, isGatherValid);
-        accumulationCount = isGatherValid.x <= 0.0 ? 0.0 : accumulationCount; // Check only texel in write location
+        const float accumulationCount = ApplyBilinearCustomWeights(filterAtPreviousUv, accumulationCounts, isGatherValid);
 
         temporalAccumulationBuffer[dispatchThreadId.xy] = accumulationCount;
     }
 
     {
         const float4 previousDenoisedVisibilitySamples = GatherRedManually(previousDenoisedVisibilityBuffer, filterAtPreviousUv);
-        float reprojectedHistorySample = ApplyBilinearCustomWeights(filterAtPreviousUv, previousDenoisedVisibilitySamples, isGatherValid);
-        reprojectedHistorySample = isGatherValid.x <= 0.0 ? 0.0 : reprojectedHistorySample; // Check only texel in write location
+        const float reprojectedHistorySample = ApplyBilinearCustomWeights(filterAtPreviousUv, previousDenoisedVisibilitySamples, isGatherValid);
 
         // For the first frame the 'previousDenoisedVisibilityBuffer' contains garbage (-NaN)
         // So saturate it and -NaN go to 0 which means no shadow
