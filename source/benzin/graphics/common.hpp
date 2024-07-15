@@ -22,6 +22,8 @@ namespace benzin
         Pixel,
         Compute,
         Library,
+
+        ShaderCount = Library,
     };
     BenzinEnableUnaryPlusForEnum(ShaderType);
 

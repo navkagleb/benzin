@@ -19,7 +19,7 @@ namespace benzin
     );
     static const auto g_ShaderPdbDir = std::filesystem::absolute("bin/shader_pbd");
 
-    static constexpr auto GetShaderTargets()
+    static constexpr auto g_ShaderTargets = []
     {
         EnumArray<std::wstring_view, ShaderType> shaderTargets;
         shaderTargets[+ShaderType::Vertex] = L"vs_6_6";
@@ -28,9 +28,7 @@ namespace benzin
         shaderTargets[+ShaderType::Library] = L"lib_6_6";
 
         return shaderTargets;
-    }
-
-    static constexpr auto g_ShaderTargets = GetShaderTargets();
+    }();
 
     static std::vector<const wchar_t*> GetCompileArgs(const ShaderPaths& paths, const ShaderArgs& args)
     {

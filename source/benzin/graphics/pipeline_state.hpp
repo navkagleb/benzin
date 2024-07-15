@@ -7,29 +7,36 @@ namespace benzin
 
     class Device;
 
-    struct ShaderCreation
+    class ShaderInfo
     {
-        ShaderType Type;
-        std::string_view FileName;
-        std::string_view EntryPoint;
+    public:
+        ShaderInfo() = default;
+        ShaderInfo(ShaderType type, std::string_view fileName, std::string_view entryPoint = {});
 
-        const uint64_t Hash = g_InvalidUnsigned<uint64_t>;
+        auto GetType() const { return m_Type; }
+        auto GetFileName() const { return m_FileName; }
+        auto GetEntryPoint() const { return m_EntryPoint; }
+        auto GetHash() const { return m_Hash; }
 
-        ShaderCreation() = default; // To remove designated initialization
+        bool IsValid() const { return !m_FileName.empty() && !m_EntryPoint.empty(); }
 
-        static ShaderCreation CreateVertexShader(std::string_view fileName, std::string_view entryPoint);
-        static ShaderCreation CreatePixelShader(std::string_view fileName, std::string_view entryPoint);
-        static ShaderCreation CreateComputeShader(std::string_view fileName, std::string_view entryPoint);
-        static ShaderCreation CreateLibrary(std::string_view fileName);
+    private:
+        ShaderType m_Type = g_InvalidEnumValue<ShaderType>;
+        std::string_view m_FileName;
+        std::string_view m_EntryPoint;
 
-        bool IsValid() const { return !FileName.empty() && !EntryPoint.empty(); }
+        uint64_t m_Hash = g_InvalidUnsigned<uint64_t>;
     };
 
     struct GraphicsPipelineStateCreation
     {
         std::string_view DebugName;
 
-        std::array<ShaderCreation, 2> Shaders;
+        std::string_view VsFileName;
+        std::string_view VsEntryPoint;
+
+        std::string_view PsFileName;
+        std::string_view PsEntryPoint;
 
         PrimitiveTopologyType PrimitiveTopologyType = PrimitiveTopologyType::Unknown;
         RasterizerState RasterizerState;
@@ -46,7 +53,8 @@ namespace benzin
     {
         std::string_view DebugName;
 
-        ShaderCreation Shader;
+        std::string_view CsFileName;
+        std::string_view CsEntryPoint;
     };
 
     using PipelineStateCreationVariant = std::variant<GraphicsPipelineStateCreation, ComputePipelineStateCreation>;
@@ -63,13 +71,16 @@ namespace benzin
     public:
         ID3D12PipelineState* GetD3D12PipelineState() const { return m_D3D12PipelineState; }
 
-        std::span<const ShaderCreation> GetShaders() const;
+        std::span<const ShaderInfo> GetShaders() const { return { m_Shaders.data(), m_ShaderCount }; }
 
         bool Reload();
 
     private:
-        void Create(const GraphicsPipelineStateCreation& creation, bool isShaderCacheIgnored);
-        void Create(const ComputePipelineStateCreation& creation, bool isShaderCacheIgnored);
+        void StoreShaders(const GraphicsPipelineStateCreation& creation);
+        void StoreShaders(const ComputePipelineStateCreation& creation);
+
+        void Compile(const GraphicsPipelineStateCreation& creation, bool isShaderCacheIgnored);
+        void Compile(const ComputePipelineStateCreation& creation, bool isShaderCacheIgnored);
 
         bool IsAllShadersValid() const;
 
@@ -79,6 +90,9 @@ namespace benzin
         ID3D12PipelineState* m_D3D12PipelineState = nullptr;
 
         PipelineStateCreationVariant m_CreationVariant;
+
+        std::array<ShaderInfo, 2> m_Shaders;
+        uint32_t m_ShaderCount = g_InvalidUnsigned<uint32_t>;
     };
 
 } // namespace benzin

@@ -28,7 +28,7 @@ namespace benzin
         void Create(const RtAccelerationStructureCreation& creation);
 
     protected:
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS m_D3D12BuildInputs;
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS m_D3D12BuildInputs{};
 
         Buffer m_Buffer;
         Buffer m_ScratchResource;

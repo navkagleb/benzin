@@ -5,7 +5,7 @@
 namespace benzin
 {
 
-    struct ShaderCreation;
+    class ShaderInfo;
 
     class Win64_ShaderFileWatcher
     {
@@ -37,12 +37,12 @@ namespace benzin
 
         bool IsAllShadersGood() const { return m_IsAllShaderGood; }
 
-        std::span<const std::byte> GetShaderDxil(const ShaderCreation& shaderCreation, bool isCacheIgnored = false);
+        std::span<const std::byte> GetShaderDxil(const ShaderInfo& shader, bool isCacheIgnored = false);
 
-        bool TryCompileShaderIfNeeded(const ShaderCreation& shaderCreation);
+        bool TryCompileShaderIfNeeded(const ShaderInfo& shader);
 
         void RunIfPendingToReloadShaderIsAvailable(std::function<void()>&& callback);
-        bool UpdateShaderState(const ShaderCreation& shaderCreation);
+        bool UpdateShaderState(const ShaderInfo& shader);
 
     private:
         bool IsPendingToReloadShaderAvailable() const;
@@ -50,7 +50,7 @@ namespace benzin
         void CacheIncludeDependencies();
         void LoadIncludeDependenciesCache();
 
-        bool LoadShaderCacheIfPossible(const ShaderCreation& shaderCreation);
+        bool LoadShaderCacheIfPossible(const ShaderInfo& shader);
 
         void FileWatcherCallback(std::filesystem::path&& filePath);
 

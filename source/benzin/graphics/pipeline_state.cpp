@@ -11,37 +11,25 @@
 namespace benzin
 {
 
-    static uint64_t GetShaderHash(const ShaderCreation& shaderCreation)
+    static constexpr auto g_DefaultShaderEntryPoints = []
     {
-        uint64_t hash = 0;
-        hash = HashCombine(hash, +shaderCreation.Type);
-        hash = HashCombine(hash, shaderCreation.FileName);
-        hash = HashCombine(hash, shaderCreation.EntryPoint);
+        std::array<std::string_view, +ShaderType::ShaderCount> entryPoints;
+        entryPoints[+ShaderType::Vertex] = "VsMain";
+        entryPoints[+ShaderType::Pixel] = "PsMain";
+        entryPoints[+ShaderType::Compute] = "CsMain";
 
-        return hash;
-    }
+        return entryPoints;
+    }();
 
-    static ShaderCreation CreateShader(ShaderType type, std::string_view fileName, std::string_view entryPoint)
+    static D3D12_SHADER_BYTECODE ToD3D12Shader(Device& device, const ShaderInfo& shader, bool isShaderCacheIgnored)
     {
-        ShaderCreation creation;
-        creation.Type = type;
-        creation.FileName = fileName;
-        creation.EntryPoint = entryPoint;
-
-        const_cast<uint64_t&>(creation.Hash) = GetShaderHash(creation);
-
-        return creation;
-    }
-
-    static D3D12_SHADER_BYTECODE ToD3D12Shader(Device& device, const ShaderCreation& shaderCreation, bool isShaderCacheIgnored)
-    {
-        if (!shaderCreation.IsValid())
+        if (!shader.IsValid())
         {
             return { nullptr, 0 };
         }
         
         auto& shaderManager = device.GetBackend().GetShaderManager();
-        const std::span shaderDxil = shaderManager.GetShaderDxil(shaderCreation, isShaderCacheIgnored);
+        const std::span shaderDxil = shaderManager.GetShaderDxil(shader, isShaderCacheIgnored);
 
         return D3D12_SHADER_BYTECODE
         {
@@ -145,26 +133,22 @@ namespace benzin
         return d3d12BlendDesc;
     }
 
-    // ShaderCreation
+    // ShaderInfo
 
-    ShaderCreation ShaderCreation::CreateVertexShader(std::string_view fileName, std::string_view entryPoint)
+    ShaderInfo::ShaderInfo(ShaderType type, std::string_view fileName, std::string_view entryPoint)
+        : m_Type{ type }
+        , m_FileName{ fileName }
+        , m_EntryPoint{ entryPoint }
+        , m_Hash{ 0 }
     {
-        return CreateShader(ShaderType::Vertex, fileName, entryPoint);
-    }
+        if (m_EntryPoint.empty() && type != ShaderType::Library)
+        {
+            m_EntryPoint = g_DefaultShaderEntryPoints[+type];
+        }
 
-    ShaderCreation ShaderCreation::CreatePixelShader(std::string_view fileName, std::string_view entryPoint)
-    {
-        return CreateShader(ShaderType::Pixel, fileName, entryPoint);
-    }
-
-    ShaderCreation ShaderCreation::CreateComputeShader(std::string_view fileName, std::string_view entryPoint)
-    {
-        return CreateShader(ShaderType::Compute, fileName, entryPoint);
-    }
-
-    ShaderCreation ShaderCreation::CreateLibrary(std::string_view fileName)
-    {
-        return CreateShader(ShaderType::Library, fileName, "");
+        m_Hash = HashCombine(m_Hash, +m_Type);
+        m_Hash = HashCombine(m_Hash, m_FileName);
+        m_Hash = HashCombine(m_Hash, m_EntryPoint);
     }
 
     // PipelineState
@@ -173,20 +157,16 @@ namespace benzin
         : m_Device{ device }
         , m_CreationVariant{ creation }
     {
-        m_CreationVariant | MakeVisitorMatch([this](const auto& creation) { Create(creation, false); });
+        m_CreationVariant | MakeVisitorMatch([this](const auto& creation)
+        {
+            StoreShaders(creation);
+            Compile(creation, false);
+        });
     }
 
     PipelineState::~PipelineState()
     {
         m_Device.DeferredRelease(m_D3D12PipelineState);
-    }
-
-    std::span<const ShaderCreation> PipelineState::GetShaders() const
-    {
-        return m_CreationVariant | MakeVisitorMatch(
-            [](const GraphicsPipelineStateCreation& creation) { return std::span<const ShaderCreation>{ creation.Shaders }; },
-            [](const ComputePipelineStateCreation& creation) { return std::span<const ShaderCreation>{ &creation.Shader, 1 }; }
-        );
     }
 
     bool PipelineState::Reload()
@@ -197,28 +177,40 @@ namespace benzin
         }
 
         m_Device.DeferredRelease(m_D3D12PipelineState);
-        m_CreationVariant | MakeVisitorMatch([this](const auto& creation) { Create(creation, true); });
+        m_CreationVariant | MakeVisitorMatch([this](const auto& creation) { Compile(creation, true); });
 
         BenzinTrace("Pso '{}' reloaded", GetDxObjectDebugName(m_D3D12PipelineState));
 
         return true;
     }
 
-    void PipelineState::Create(const GraphicsPipelineStateCreation& creation, bool isShaderCacheIgnored)
+    void PipelineState::StoreShaders(const GraphicsPipelineStateCreation& creation)
+    {
+        m_ShaderCount = 2;
+
+        m_Shaders[0] = ShaderInfo{ ShaderType::Vertex, creation.VsFileName, creation.VsEntryPoint };
+        m_Shaders[1] = ShaderInfo{ ShaderType::Pixel, creation.PsFileName, creation.PsEntryPoint };
+    }
+
+    void PipelineState::StoreShaders(const ComputePipelineStateCreation& creation)
+    {
+        m_ShaderCount = 1;
+
+        m_Shaders[0] = ShaderInfo{ ShaderType::Compute, creation.CsFileName, creation.CsEntryPoint };
+    }
+
+    void PipelineState::Compile(const GraphicsPipelineStateCreation& creation, bool isShaderCacheIgnored)
     {
         BenzinAssert(creation.RenderTargetFormats.size() <= 8);
 
-        const auto& vertexShader = creation.Shaders[0];
-        const auto& pixelShader = creation.Shaders[1];
-
-        BenzinAssert(vertexShader.Type == ShaderType::Vertex);
-        BenzinAssert(pixelShader.Type == ShaderType::Pixel);
+        BenzinAssert(m_Shaders[0].GetType() == ShaderType::Vertex);
+        BenzinAssert(m_Shaders[1].GetType() == ShaderType::Pixel);
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12GraphicsPipelineStateDesc
         {
             .pRootSignature = m_Device.GetD3D12UnifiedRootSignature(),
-            .VS = ToD3D12Shader(m_Device, vertexShader, isShaderCacheIgnored),
-            .PS = ToD3D12Shader(m_Device, pixelShader, isShaderCacheIgnored),
+            .VS = ToD3D12Shader(m_Device, m_Shaders[0], isShaderCacheIgnored),
+            .PS = ToD3D12Shader(m_Device, m_Shaders[1], isShaderCacheIgnored),
             .DS{ nullptr, 0 },
             .HS{ nullptr, 0 },
             .GS{ nullptr, 0 },
@@ -259,15 +251,14 @@ namespace benzin
         SetDxObjectDebugName(m_D3D12PipelineState, creation.DebugName);
     }
 
-    void PipelineState::Create(const ComputePipelineStateCreation& creation, bool isShaderCacheIgnored)
+    void PipelineState::Compile(const ComputePipelineStateCreation& creation, bool isShaderCacheIgnored)
     {
-        BenzinAssert(creation.Shader.Type == ShaderType::Compute);
-        BenzinAssert(creation.Shader.IsValid());
+        BenzinAssert(m_Shaders[0].GetType() == ShaderType::Compute);
 
         const D3D12_COMPUTE_PIPELINE_STATE_DESC d3d12ComputePipelineStateDesc
         {
             .pRootSignature = m_Device.GetD3D12UnifiedRootSignature(),
-            .CS = ToD3D12Shader(m_Device, creation.Shader, isShaderCacheIgnored),
+            .CS = ToD3D12Shader(m_Device, m_Shaders[0], isShaderCacheIgnored),
             .NodeMask = 0,
             .CachedPSO
             {

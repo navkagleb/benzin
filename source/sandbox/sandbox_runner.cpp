@@ -150,11 +150,8 @@ namespace sandbox
             m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
             {
                 .DebugName = "GeometryPass",
-                .Shaders
-                {
-                    benzin::ShaderCreation::CreateVertexShader("geometry_pass.hlsl", "VsMain"),
-                    benzin::ShaderCreation::CreatePixelShader("geometry_pass.hlsl", "PsMain"),
-                },
+                .VsFileName = "geometry_pass.hlsl",
+                .PsFileName = "geometry_pass.hlsl",
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .RasterizerState
                 {
@@ -432,7 +429,7 @@ namespace sandbox
             };
 
             // 2. D3D12_DXIL_LIBRARY_DESC
-            const std::span libraryDxil = ms_Device->GetBackend().GetShaderManager().GetShaderDxil(benzin::ShaderCreation::CreateLibrary("rt_shadow_pass.hlsl"));
+            const std::span libraryDxil = ms_Device->GetBackend().GetShaderManager().GetShaderDxil(benzin::ShaderInfo{ benzin::ShaderType::Library, "rt_shadow_pass.hlsl" });
 
             const D3D12_DXIL_LIBRARY_DESC d3d12DXILLibraryDesc
             {
@@ -538,25 +535,25 @@ namespace sandbox
             m_TemporalAccumulationPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserTemporalAccumulation",
-                .Shader = benzin::ShaderCreation::CreateComputeShader("denoiser_temporal_accumulation_pass.hlsl", "CsMain"),
+                .CsFileName = "denoiser_temporal_accumulation_pass.hlsl",
             });
 
             m_MipGenerationPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserMipGeneration",
-                .Shader = benzin::ShaderCreation::CreateComputeShader("mip_generation_pass.hlsl", "CsMain"),
+                .CsFileName = "mip_generation_pass.hlsl",
             });
 
             m_HistoryFixPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserHistoryFix",
-                .Shader = benzin::ShaderCreation::CreateComputeShader("denoiser_history_fix_pass.hlsl", "CsMain"),
+                .CsFileName = "denoiser_history_fix_pass.hlsl",
             });
 
             m_BlurPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "DenoiserBlur",
-                .Shader = benzin::ShaderCreation::CreateComputeShader("denoiser_blur_pass.hlsl", "CsMain"),
+                .CsFileName = "denoiser_blur_pass.hlsl",
             });
 
             m_PostBlurPso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
@@ -882,11 +879,8 @@ namespace sandbox
             m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
             {
                 .DebugName = "DeferredLightingPass",
-                .Shaders
-                {
-                    benzin::ShaderCreation::CreateVertexShader("fullscreen_triangle.hlsl", "VsMain"),
-                    benzin::ShaderCreation::CreatePixelShader("deferred_lighting_pass.hlsl", "PsMain"),
-                },
+                .VsFileName = "fullscreen_triangle.hlsl",
+                .PsFileName = "deferred_lighting_pass.hlsl",
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .DepthState
                 {
@@ -986,11 +980,9 @@ namespace sandbox
             m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
             {
                 .DebugName = "EnvironmentPass",
-                .Shaders
-                {
-                    benzin::ShaderCreation::CreateVertexShader("fullscreen_triangle.hlsl", "VsMainDepth1"),
-                    benzin::ShaderCreation::CreatePixelShader("environment_pass.hlsl", "PsMain"),
-                },
+                .VsFileName = "fullscreen_triangle.hlsl",
+                .VsEntryPoint = "VsMainDepth1",
+                .PsFileName = "environment_pass.hlsl",
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .DepthState
                 {
@@ -1077,7 +1069,7 @@ namespace sandbox
             auto* equirectangularToCubePso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
             {
                 .DebugName = "EquirectangularToCube",
-                .Shader = benzin::ShaderCreation::CreateComputeShader("equirectangular_to_cube_pass.hlsl", "CsMain"),
+                .CsFileName = "equirectangular_to_cube_pass.hlsl",
             });
             BenzinExecuteOnScopeExit([&]
             {
@@ -1127,11 +1119,8 @@ namespace sandbox
             m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
             {
                 .DebugName = "FullScreenDebugPass",
-                .Shaders
-                {
-                    benzin::ShaderCreation::CreateVertexShader("fullscreen_triangle.hlsl", "VsMain"),
-                    benzin::ShaderCreation::CreatePixelShader("fullscreen_debug_pass.hlsl", "PsMain"),
-                },
+                .VsFileName = "fullscreen_triangle.hlsl",
+                .PsFileName = "fullscreen_debug_pass.hlsl",
                 .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
                 .DepthState
                 {
