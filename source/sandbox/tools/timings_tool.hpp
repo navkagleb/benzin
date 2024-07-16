@@ -40,22 +40,22 @@ namespace sandbox
         void SetCpuTimings(const CpuTimings& timings) { m_CpuTimings = timings; }
 
     private:
-        void OnImGuiRender() override
+        void SpawnImGui() override
         {
             for (const auto& [i, timing] : m_GpuTimings | std::views::enumerate)
             {
                 timing = m_Device.GetGpuTimer().GetElapsedTime((uint32_t)i);
             }
 
-            RenderImGuiWindow([this]
+            SpawnImGuiWindow([this]
             {
-                RenderImGuiTimings<CpuTimingT>("CpuTimings", m_CpuTimings);
-                RenderImGuiTimings<GpuTimingT>("GpuTimings", m_GpuTimings);
+                SpawnImGuiTimings<CpuTimingT>("CpuTimings", m_CpuTimings);
+                SpawnImGuiTimings<GpuTimingT>("GpuTimings", m_GpuTimings);
             });
         }
 
         template <benzin::EnumConcept TimingT>
-        void RenderImGuiTimings(std::string_view name, std::span<const std::chrono::microseconds> timings)
+        void SpawnImGuiTimings(std::string_view name, std::span<const std::chrono::microseconds> timings)
         {
             const auto flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Selected;
             if (ImGui::TreeNodeEx(name.data(), flags))
@@ -63,7 +63,7 @@ namespace sandbox
                 for (const auto [i, timing] : timings | std::views::enumerate)
                 {
                     const uint32_t indent = GetTimingIndent((TimingT)i);
-                    ImGui::Text(BenzinFormatCstr("{:{}}{}: {:.4f} ms", "", indent, magic_enum::enum_name((TimingT)i), benzin::ToFloatMs(timing)));
+                    ImGui::Text(BenzinFormatData("{:{}}{}: {:.4f} ms", "", indent, magic_enum::enum_name((TimingT)i), benzin::ToFloatMs(timing)));
                 }
 
                 ImGui::TreePop();

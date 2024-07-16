@@ -35,7 +35,7 @@ namespace sandbox
         void SetRunnerTimings(const RunnerTimings& timings);
 
     private:
-        void OnImGuiRender() override;
+        void SpawnImGui() override;
 
     private:
         const benzin::Window& m_Window;

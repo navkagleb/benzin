@@ -6,8 +6,6 @@
 namespace sandbox
 {
 
-    class RenderPassSettingsTool;
-
     enum class SandboxTiming : uint32_t
     {
         BuildTopLevelAs,
@@ -57,7 +55,6 @@ namespace sandbox
         void CreateEntities(const SceneMeshes& sceneMeshes);
 
     private:
-        RenderPassSettingsTool* m_RenderPassSettingsTool = nullptr;
         TimingsTool* m_TimingsTool = nullptr;
     };
 

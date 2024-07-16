@@ -178,7 +178,6 @@ namespace benzin
     void FlyCameraController::OnEvent(Event& event)
     {
         EventDispatcher dispatcher{ event };
-        dispatcher.Dispatch(&FlyCameraController::OnWindowResized, *this);
         dispatcher.Dispatch(&FlyCameraController::OnMouseMoved, *this);
         dispatcher.Dispatch(&FlyCameraController::OnMouseScrolled, *this);
     }
@@ -251,11 +250,11 @@ namespace benzin
         }
     }
 
-    bool FlyCameraController::OnWindowResized(const WindowResizedEvent& event)
+    bool FlyCameraController::OnRenderViewportResized(uint32_t width, uint32_t height)
     {
         if (auto* perspectiveProjection = GetPerspectiveProjection())
         {
-            const float aspectRatio = event.GetAspectRatio();
+            const float aspectRatio = (float)width / height;
             perspectiveProjection->SetAspectRatio(aspectRatio);
         }
 
@@ -264,7 +263,7 @@ namespace benzin
 
     bool FlyCameraController::OnMouseMoved(const MouseMovedEvent& event)
     {
-        if (Input::IsMouseButtonPressed(MouseButton::Left))
+        if (Input::IsMouseButtonPressed(MouseButton::Right))
         {
             const float deltaX = event.GetX<float>() - m_LastMousePosition.x;
             const float deltaY = event.GetY<float>() - m_LastMousePosition.y;

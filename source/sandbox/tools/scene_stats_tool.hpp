@@ -18,7 +18,7 @@ namespace sandbox
         explicit SceneStatsTool(const benzin::Scene& scene);
 
     private:
-        void OnImGuiRender() override;
+        void SpawnImGui() override;
 
     private:
         const benzin::Scene& m_Scene;

@@ -9,15 +9,14 @@ namespace benzin
 
     // RenderResources
 
-    RenderResources::RenderResources(IsResourceFlippableCallback&& isResourceFippableCallback)
-        : m_IsResourceFlippableCallback{ std::move(isResourceFippableCallback) }
+    void RenderResources::SetIsTextureFlippableResources(IsResourceFlippableCallback&& callback)
     {
-        BenzinEnsure((bool)m_IsResourceFlippableCallback);
+        m_IsTextureFlippableCallback = std::move(callback);
     }
 
     std::unique_ptr<Texture>& RenderResources::GetTexture(uint32_t key)
     {
-        if (!m_IsResourceFlippableCallback(key))
+        if (!m_IsTextureFlippableCallback(key))
         {
             return m_Textures[key];
         }
@@ -27,13 +26,13 @@ namespace benzin
 
     std::unique_ptr<Texture>& RenderResources::GetPreviousTexture(uint32_t key)
     {
-        BenzinEnsure(m_IsResourceFlippableCallback(key));
+        BenzinEnsure(m_IsTextureFlippableCallback(key));
         return m_Textures[key - m_PreviousFlipResourceIndex];
     }
 
     void RenderResources::ForEachFlippableTexture(uint32_t key, ForEachTextureCallback&& callback)
     {
-        BenzinEnsure(m_IsResourceFlippableCallback(key));
+        BenzinEnsure(m_IsTextureFlippableCallback(key));
         
         callback(0, GetTexture(key));
         callback(1, GetPreviousTexture(key));
@@ -47,18 +46,43 @@ namespace benzin
 
     // RenderPass
 
-    void RenderPass::SetContext(Device& device, SwapChain& swapChain, RenderResources& renderResources)
+    void RenderPass::SetContext(Device& device, SwapChain& swapChain, RenderResources& resources, RenderSettings& settings)
     {
         ms_Device = &device;
         ms_SwapChain = &swapChain;
-        ms_RenderResources = &renderResources;
+        ms_Resources = &resources;
+        ms_Settings = &settings;
     }
 
-    void RenderPass::OnResize(uint32_t width, uint32_t height)
+    void RenderPass::SetWindowViewport(uint32_t width, uint32_t height)
+    {
+        ms_WindowViewport.Width = (float)width;
+        ms_WindowViewport.Height = (float)height;
+
+        ms_WindowScissorRect.Width = (float)width;
+        ms_WindowScissorRect.Height = (float)height;
+    }
+
+    void RenderPass::SetRenderViewport(uint32_t width, uint32_t height)
+    {
+        ms_RenderViewport.Width = (float)width;
+        ms_RenderViewport.Height = (float)height;
+
+        ms_RenderScissorRect.Width = (float)width;
+        ms_RenderScissorRect.Height = (float)height;
+    }
+
+    void RenderPass::OnWindowResize(uint32_t width, uint32_t height)
     {
         BenzinUnused(width);
         BenzinUnused(height);
     };
+
+    void RenderPass::OnRenderViewportResize(uint32_t width, uint32_t height)
+    {
+        BenzinUnused(width);
+        BenzinUnused(height);
+    }
 
     void RenderPass::OnUpdate(const TickTimer& tickTimer)
     {

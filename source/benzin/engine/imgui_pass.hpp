@@ -21,10 +21,10 @@ namespace benzin
 
     public:
         virtual void OnEvent(Event& event) { BenzinUnused(event); };
-        virtual void OnImGuiRender() = 0;
+        virtual void SpawnImGui() = 0;
 
     protected:
-        void RenderImGuiWindow(const std::function<void()>& callback);
+        void SpawnImGuiWindow(const std::function<void()>& callback);
 
     protected:
         std::string_view m_Name;
@@ -40,7 +40,11 @@ namespace benzin
         ~ImGuiManager();
 
     public:
+        void BeginUiFrame() const;
+        void EndUiFrame() const;
+
         void OnEvent(Event& event);
+        void SpawnUi();
 
         template <std::derived_from<ImGuiTool> T, typename... Args>
         T* PushTool(Args&&... args)
@@ -54,34 +58,38 @@ namespace benzin
         }
 
     private:
+        void SpawnImGuiDockSpace(const std::function<void()>& callback);
+        void SpawnImGuiManuBar();
+
+    private:
         Device& m_Device;
 
         Descriptor m_FontDescriptor;
         std::vector<ImGuiTool*> m_Tools;
 
         bool m_IsDemoWindowVisible = false;
+        bool m_IsSpawnEnabled = true;
+
+        mutable ImDrawData* m_CurrentImGuiDrawData = nullptr;
     };
 
     class ImGuiPass : public RenderPass
     {
     public:
-        ImGuiPass(ImGuiManager& imGuiManager, uint32_t finalOutputTextureKey, uint32_t gpuTimingIndex);
+        ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureKey, uint32_t gpuTimingIndex);
 
         auto GetCpuRenderTime() const { return m_CpuRenderTime; }
 
+        void OnWindowResize(uint32_t width, uint32_t height) override;
         void OnRender() const override;
-
-    private:
-        void Begin() const;
-        void End() const;
 
     private:
         ImGuiManager& m_ImGuiManager;
         
-        uint32_t m_FinalOutputTextureKey;
+        uint32_t m_ImGuiTextureKey;
         uint32_t m_GpuTimingIndex;
 
-        mutable std::chrono::microseconds m_CpuRenderTime;
+        mutable std::chrono::microseconds m_CpuRenderTime = std::chrono::microseconds::zero();
     };
 
 }

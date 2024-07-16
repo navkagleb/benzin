@@ -18,7 +18,7 @@ namespace sandbox
         explicit TickTimerTool(const benzin::TickTimer& tickTimer);
 
     private:
-        void OnImGuiRender() override;
+        void SpawnImGui() override;
 
     private:
         const benzin::TickTimer& m_TickTimer;

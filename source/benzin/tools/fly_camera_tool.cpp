@@ -39,9 +39,9 @@ namespace benzin
         , m_Controller{ controller }
     {}
 
-    void FlyCameraTool::OnImGuiRender()
+    void FlyCameraTool::SpawnImGui()
     {
-        RenderImGuiWindow([this]
+        SpawnImGuiWindow([this]
         {
             RenderImGuiControllerProperties();
             ImGui::Separator();

@@ -145,8 +145,9 @@ namespace benzin
         void OnEvent(Event& event);
         void OnUpdate(std::chrono::microseconds dt);
 
+        bool OnRenderViewportResized(uint32_t width, uint32_t height);
+    
     private:
-        bool OnWindowResized(const WindowResizedEvent& event);
         bool OnMouseMoved(const MouseMovedEvent& event);
         bool OnMouseScrolled(const MouseScrolledEvent& event);
 

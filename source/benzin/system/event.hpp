@@ -43,6 +43,7 @@ namespace benzin
     public:
         friend class EventDispatcher;
         friend class ImGuiManager;
+        friend class RenderViewportTool;
 
     public:
         virtual ~Event() = default;
@@ -96,13 +97,8 @@ namespace benzin
         {}
 
         template <std::derived_from<Event> EventT>
-        bool Dispatch(const EventNoParamCallback& callback) const
+        bool ForceDispatch(const EventNoParamCallback& callback) const
         {
-            if (m_Event.IsHandled())
-            {
-                return false;
-            }
-
             if (m_Event.GetEventType() == EventT::GetStaticEventType())
             {
                 m_Event.m_IsHandled = callback();
@@ -113,13 +109,8 @@ namespace benzin
         }
 
         template <std::derived_from<Event> EventT>
-        bool Dispatch(const EventParamCallback<EventT>& callback) const
+        bool ForceDispatch(const EventParamCallback<EventT>& callback) const
         {
-            if (m_Event.IsHandled())
-            {
-                return false;
-            }
-
             if (m_Event.GetEventType() == EventT::GetStaticEventType())
             {
                 m_Event.m_IsHandled = callback((const EventT&)m_Event);
@@ -127,6 +118,37 @@ namespace benzin
             }
 
             return false;
+        }
+
+        template <std::derived_from<Event> EventT, typename ClassT>
+        bool ForceDispatch(bool (ClassT::* MemberCallback)(EventT&), ClassT& classInstance) const
+        {
+            return ForceDispatch<EventT>([&](const EventT& event)
+            {
+                return std::invoke_r<bool>(MemberCallback, classInstance, event);
+            });
+        }
+
+        template <std::derived_from<Event> EventT>
+        bool Dispatch(const EventNoParamCallback& callback) const
+        {
+            if (m_Event.IsHandled())
+            {
+                return false;
+            }
+
+            return ForceDispatch<EventT>(callback);
+        }
+
+        template <std::derived_from<Event> EventT>
+        bool Dispatch(const EventParamCallback<EventT>& callback) const
+        {
+            if (m_Event.IsHandled())
+            {
+                return false;
+            }
+
+            return ForceDispatch<EventT>(callback);
         }
 
         template <std::derived_from<Event> EventT, typename ClassT>

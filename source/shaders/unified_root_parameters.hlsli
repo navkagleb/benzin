@@ -35,7 +35,10 @@ SamplerState g_LinearWrapSampler : register(s0, space2);
 SamplerState g_LinearClampSampler : register(s0, space3);
 SamplerState g_Anisotropic16WrapSampler : register(s0, space4);
 SamplerState g_Anisotropic16ClampSampler : register(s0, space5);
-SamplerState g_PointWithTransparentBlackBorderSampler : register(s0, space6);
+
+SamplerState g_MinLinearClampSampler : register(s0, space6);
+SamplerState g_MaxLinearClampSampler : register(s0, space7);
+SamplerState g_PointWithTransparentBlackBorderSampler : register(s0, space8);
 
 uint GetRootConstant(uint index)
 {

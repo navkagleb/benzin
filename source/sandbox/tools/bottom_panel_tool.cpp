@@ -34,7 +34,7 @@ namespace sandbox
         m_RunnerTimings = timings;
     }
 
-    void BottomPanelTool::OnImGuiRender()
+    void BottomPanelTool::SpawnImGui()
     {
         static constexpr uint32_t rowCount = 2;
         static constexpr auto backgroundColors = std::to_array(
@@ -46,10 +46,7 @@ namespace sandbox
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 10.0f, 5.0f });
-        BenzinExecuteOnScopeExit([] { ImGui::PopStyleVar(3); });
-
         ImGui::PushStyleColor(ImGuiCol_WindowBg, backgroundColors[m_Backend.GetShaderManager().IsAllShadersGood()]);
-        BenzinExecuteOnScopeExit([] { ImGui::PopStyleColor(); });
 
         const auto& context = *ImGui::GetCurrentContext();
         const float panelHeight =
@@ -60,12 +57,15 @@ namespace sandbox
         ImGui::SetNextWindowPos(ImVec2{ 0.0f, context.IO.DisplaySize.y - panelHeight });
         ImGui::SetNextWindowSize(ImVec2{ context.IO.DisplaySize.x, panelHeight });
 
-        const auto windowFlags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs;
-        ImGui::Begin("Bottom Panel", nullptr, windowFlags);
+        static constexpr auto windowFlags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs;
+        ImGui::Begin("BottomPanel", nullptr, windowFlags);
         {
+            ImGui::PopStyleVar(3);
+            ImGui::PopStyleColor();
+
             const auto adapterMemoryInfo = m_Backend.GetMainAdapterMemoryInfo();
 
-            ImGui::Text(BenzinFormatCstr(
+            ImGui::Text(BenzinFormatData(
                 "{} | "
                 "VRAM Local: {:.0f} / {:.0f} mb | "
                 "VRAM NonLocal: {:.0f} / {:.0f} mb | "
@@ -81,7 +81,7 @@ namespace sandbox
             const auto onRenderTiming = benzin::ToFloatMs(m_RunnerTimings[+RunnerTiming::OnRender]);
             const auto endFrameTiming = benzin::ToFloatMs(m_RunnerTimings[+RunnerTiming::EndFrame]);
 
-            ImGui::Text(BenzinFormatCstr(
+            ImGui::Text(BenzinFormatData(
                 "({} x {}) | "
                 "FPS: {:.1f} ({:.3f} ms) | "
                 "Begin: {:.3f}, OnUpdate: {:.3f}, OnRender: {:.3f}, End: {:.3f} | "

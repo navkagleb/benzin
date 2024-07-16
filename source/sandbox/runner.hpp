@@ -11,15 +11,17 @@ namespace benzin
 
     class Backend;
     class Device;
+    class Event;
     class FlyCameraController;
     class ImGuiManager;
     class ImGuiPass;
     class RenderPass;
     class RenderResources;
+    class RenderSettingsTool;
     class Scene;
     class SwapChain;
+    class RenderViewportTool;
     class Window;
-    class Event;
 
 }
 
@@ -63,18 +65,21 @@ namespace sandbox
         std::unique_ptr<benzin::Scene> m_Scene;
         std::unique_ptr<benzin::FlyCameraController> m_FlyCameraController;
 
-        std::unique_ptr<benzin::ImGuiManager> m_ImGuiManager;
-
         std::unique_ptr<benzin::RenderResources> m_RenderResources;
+        std::unique_ptr<benzin::RenderSettings> m_RenderSettings;
         std::vector<std::unique_ptr<benzin::RenderPass>> m_RenderPasses;
         benzin::ImGuiPass* m_ImGuiPass = nullptr;
+
+        std::unique_ptr<benzin::ImGuiManager> m_ImGuiManager;
+        benzin::RenderViewportTool* m_RenderViewportTool = nullptr;
+        benzin::RenderSettingsTool* m_RenderSettingsTool = nullptr;
 
         bool m_IsRunning = true;
         bool m_IsVerticalSyncEnabled = true;
 
     private:
         BottomPanelTool* m_BottomPanelTool = nullptr;
-        BottomPanelTool::RunnerTimings m_Timings;
+        BottomPanelTool::RunnerTimings m_Timings{};
 
         uint32_t m_PendingWidth = 0;
         uint32_t m_PendingHeight = 0;

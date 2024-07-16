@@ -12,4 +12,4 @@ namespace benzin
 
 } // namespace benzin
 
-#define BenzinFormatCstr(formatString, ...) std::format(formatString, __VA_ARGS__).c_str()
+#define BenzinFormatData(formatString, ...) std::format(formatString, __VA_ARGS__).c_str()

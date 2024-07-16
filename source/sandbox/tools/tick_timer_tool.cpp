@@ -8,21 +8,21 @@ namespace sandbox
 {
 
     TickTimerTool::TickTimerTool(const benzin::TickTimer& tickTimer)
-        : ImGuiTool{ "TickTimerTool", true }
+        : ImGuiTool{ "TickTimerTool", false }
         , m_TickTimer{ tickTimer }
     {}
 
-    void TickTimerTool::OnImGuiRender()
+    void TickTimerTool::SpawnImGui()
     {
-        RenderImGuiWindow([this]
+        SpawnImGuiWindow([this]
         {
-            ImGui::Text(BenzinFormatCstr(
+            ImGui::Text(BenzinFormatData(
                 "DeltaTime: {:11.3f} ms, {:8.3f} s",
                 benzin::ToFloatMs(m_TickTimer.GetDeltaTime()),
                 benzin::ToFloatSec(m_TickTimer.GetDeltaTime())
             ));
 
-            ImGui::Text(BenzinFormatCstr(
+            ImGui::Text(BenzinFormatData(
                 "ElapsedTime: {:8.3f} ms, {:8.3f} s",
                 m_TickTimer.GetElapsedTimeInMs(),
                 benzin::MsToSec(m_TickTimer.GetElapsedTimeInMs())

@@ -11,9 +11,9 @@ namespace sandbox
         , m_Scene{ scene }
     {}
 
-    void SceneStatsTool::OnImGuiRender()
+    void SceneStatsTool::SpawnImGui()
     {
-        RenderImGuiWindow([this]
+        SpawnImGuiWindow([this]
         {
             struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
             {
@@ -28,9 +28,9 @@ namespace sandbox
             BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
             const auto& sceneStats = m_Scene.GetStats();
-            ImGui::Text(BenzinFormatCstr("VertexCount: {:L}", sceneStats.VertexCount));
-            ImGui::Text(BenzinFormatCstr("TriangleCount: {:L}", sceneStats.TriangleCount));
-            ImGui::Text(BenzinFormatCstr("PointLightCount: {:L}", sceneStats.PointLightCount));
+            ImGui::Text(BenzinFormatData("VertexCount: {:L}", sceneStats.VertexCount));
+            ImGui::Text(BenzinFormatData("TriangleCount: {:L}", sceneStats.TriangleCount));
+            ImGui::Text(BenzinFormatData("PointLightCount: {:L}", sceneStats.PointLightCount));
         });
     }
 

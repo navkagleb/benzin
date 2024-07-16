@@ -24,7 +24,7 @@ namespace benzin
         , m_IsVisible{ isVisible }
     {}
     
-    void ImGuiTool::RenderImGuiWindow(const std::function<void()>& callback)
+    void ImGuiTool::SpawnImGuiWindow(const std::function<void()>& callback)
     {
         ImGui::Begin(m_Name.data(), &m_IsVisible);
         {
@@ -76,101 +76,182 @@ namespace benzin
         ImGui::DestroyContext();
     }
 
+    void ImGuiManager::BeginUiFrame() const
+    {
+        ImGui_ImplDX12_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+        m_CurrentImGuiDrawData = nullptr;
+    }
+
+    void ImGuiManager::EndUiFrame() const
+    {
+        ImGui::Render();
+        m_CurrentImGuiDrawData = ImGui::GetDrawData();
+    }
+
     void ImGuiManager::OnEvent(Event& event)
     {
-        // ImGuiManager handles system events
-        const auto& io = ImGui::GetIO();
-        event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Keyboard) & io.WantCaptureKeyboard;
-        event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Mouse) & io.WantCaptureMouse;
-
         const EventDispatcher dispatcher{ event };
         dispatcher.Dispatch<KeyPressedEvent>([this](const auto& event)
         {
-            if (event.GetKeyCode() == KeyCode::O)
+            switch (event.GetKeyCode())
             {
-                m_IsDemoWindowVisible = !m_IsDemoWindowVisible;
+                case KeyCode::O:
+                {
+                    m_IsDemoWindowVisible = !m_IsDemoWindowVisible;
+                    break;
+                }
+                case KeyCode::F1:
+                {
+                    m_IsSpawnEnabled = !m_IsSpawnEnabled;
+                    break;
+                }
             }
 
             return false;
         });
 
-        for (auto& imGuiTool : m_Tools)
+        // ImGuiManager handles system events
+        const auto& io = ImGui::GetIO();
+        event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Keyboard) & io.WantCaptureKeyboard;
+        event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Mouse) & io.WantCaptureMouse;
+
+        for (auto& tool : m_Tools)
         {
-            imGuiTool->OnEvent(event);
+            tool->OnEvent(event);
         }
+    }
+
+    void ImGuiManager::SpawnUi()
+    {
+        if (!m_IsSpawnEnabled)
+        {
+            return;
+        }
+
+        SpawnImGuiDockSpace([this]
+        {
+            SpawnImGuiManuBar();
+
+            if (m_IsDemoWindowVisible)
+            {
+                ImGui::ShowDemoWindow(&m_IsDemoWindowVisible);
+            }
+
+            for (auto* tool : m_Tools)
+            {
+                if (tool->m_IsVisible)
+                {
+                    tool->SpawnImGui();
+                }
+            };
+        });
+    }
+
+    void ImGuiManager::SpawnImGuiDockSpace(const std::function<void()>& callback)
+    {
+        static constexpr ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
+
+        static constexpr ImGuiWindowFlags windowFlags =
+            ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_MenuBar |
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoBringToFrontOnFocus |
+            ImGuiWindowFlags_NoNavFocus |
+            ImGuiWindowFlags_MenuBar;
+
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
+        ImGui::SetNextWindowViewport(viewport->ID);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
+
+        ImGui::Begin("DockSpace", nullptr, windowFlags);
+        {
+            ImGui::PopStyleVar(3);
+
+            // Submit the DockSpace
+            ImGuiIO& io = ImGui::GetIO();
+            if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
+            {
+                const ImGuiID dockspaceId = ImGui::GetID("BenzinDockSpace");
+                ImGui::DockSpace(dockspaceId, ImVec2{ 0.0f, 0.0f }, dockspaceFlags);
+            }
+
+            callback();
+        }
+        ImGui::End();
+    }
+
+    void ImGuiManager::SpawnImGuiManuBar()
+    {
+        ImGui::BeginMenuBar();
+        {
+            if (ImGui::BeginMenu("Tools"))
+            {
+                for (auto& tool : m_Tools)
+                {
+                    ImGui::MenuItem(tool->m_Name.data(), nullptr, &tool->m_IsVisible);
+                }
+
+                ImGui::EndMenu();
+            }
+        }
+        ImGui::EndMenuBar();
     }
 
     // ImGuiPass
 
-    ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager, uint32_t finalOutputTextureKey, uint32_t gpuTimingIndex)
+    ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureKey, uint32_t gpuTimingIndex)
         : m_ImGuiManager{ imGuiManager }
-        , m_FinalOutputTextureKey{ finalOutputTextureKey }
+        , m_ImGuiTextureKey{ imGuiTextureKey }
         , m_GpuTimingIndex{ gpuTimingIndex }
     {}
+
+    void ImGuiPass::OnWindowResize(uint32_t width, uint32_t height)
+    {
+        benzin::MakeUniquePtr(ms_Resources->GetTexture(m_ImGuiTextureKey), *ms_Device, benzin::TextureCreation
+        {
+            .DebugName = "ImGuiTexture",
+            .Format = benzin::CommandLineArgs::g_BackBufferFormat,
+            .Width = width,
+            .Height = height,
+            .MipCount = 1,
+            .Flags = benzin::TextureFlag::AllowRenderTarget,
+        });
+    }
 
     void ImGuiPass::OnRender() const
     {
         BenzinGrabTimeOnScopeExit(m_CpuRenderTime);
 
-        Begin();
-        {
-            ImGui::BeginMainMenuBar();
-            {
-                if (ImGui::BeginMenu("Tools"))
-                {
-                    for (auto& imGuiTool : m_ImGuiManager.m_Tools)
-                    {
-                        ImGui::MenuItem(imGuiTool->m_Name.data(), nullptr, &imGuiTool->m_IsVisible);
-                    }
-
-                    ImGui::EndMenu();
-                }
-            }
-            ImGui::EndMainMenuBar();
-
-            if (m_ImGuiManager.m_IsDemoWindowVisible)
-            {
-                ImGui::ShowDemoWindow(&m_ImGuiManager.m_IsDemoWindowVisible);
-            }
-
-            for (auto& imGuiTool : m_ImGuiManager.m_Tools)
-            {
-                if (imGuiTool->m_IsVisible)
-                {
-                    imGuiTool->OnImGuiRender();
-                }
-            }
-        }
-        End();
-    }
-
-    void ImGuiPass::Begin() const
-    {
-        ImGui_ImplDX12_NewFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-    }
-
-    void ImGuiPass::End() const
-    {
         auto& gpuTimer = ms_Device->GetGpuTimer();
         BenzinGrabGpuTimeOnScopeExit(gpuTimer, m_GpuTimingIndex);
 
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "ImGuiPass");
 
-        ImGui::Render();
+        const auto& imGuiTexture = *ms_Resources->GetTexture(m_ImGuiTextureKey);
 
-        const auto& finalOutputTexture = *ms_RenderResources->GetTexture(m_FinalOutputTextureKey);
+        commandList.SetViewport(ms_WindowViewport);
+        commandList.SetScissorRect(ms_WindowScissorRect);
 
         BenzinMakeScopedResourceBarriers(
             commandList,
-            TransitionBarrier{ finalOutputTexture, ResourceState::RenderTarget },
+            TransitionBarrier{ imGuiTexture, ResourceState::RenderTarget },
         );
 
-        commandList.SetRenderTargets({ finalOutputTexture.GetRtv() });
+        commandList.SetRenderTargets({ imGuiTexture.GetRtv() });
+        commandList.ClearRenderTarget(imGuiTexture.GetRtv());
 
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.GetD3D12GraphicsCommandList());
+        ImGui_ImplDX12_RenderDrawData(m_ImGuiManager.m_CurrentImGuiDrawData, commandList.GetD3D12GraphicsCommandList());
     }
 
 }

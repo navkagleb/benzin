@@ -13,7 +13,7 @@ namespace benzin
         explicit FlyCameraTool(FlyCameraController& controller);
 
     private:
-        void OnImGuiRender() override;
+        void SpawnImGui() override;
 
         void RenderImGuiControllerProperties();
         void RenderImGuiViewProperties();
