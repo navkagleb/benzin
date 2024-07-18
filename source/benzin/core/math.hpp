@@ -32,4 +32,22 @@ namespace benzin
         return std::max<uint32_t>(groupCount, 1);
     }
 
+    template <std::integral T>
+    constexpr bool IsEvenQuickly(T value)
+    {
+        return (value & 1) == 0;
+    }
+
+    template <std::integral T>
+    constexpr bool IsOddQuickly(T value)
+    {
+        return (value & 1) == 1;
+    }
+
+    template <std::integral T>
+    constexpr bool IsDividedBy2Quickly(T value)
+    {
+        return (value & 2) == 0;
+    }
+
 }

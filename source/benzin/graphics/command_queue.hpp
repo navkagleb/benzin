@@ -22,12 +22,10 @@ namespace benzin
         GraphicsCommandList& GetCommandList(Bytes32 uploadBufferSize = 0);
         uint64_t GetTimestampFrequency() const;
 
-        void OnFrameBegin();
-        void OnFrameEnd();
-
+        void ResetCommandList();
         void SubmitCommandList();
-        void Flush();
 
+        void Flush();
         void SignalFence(Fence& fence, uint64_t value);
 
     private:

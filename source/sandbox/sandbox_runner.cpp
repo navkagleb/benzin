@@ -4,6 +4,7 @@
 #include <benzin/core/asserter.hpp>
 #include <benzin/core/engine_math.hpp>
 #include <benzin/core/logger.hpp>
+#include <benzin/core/math.hpp>
 #include <benzin/engine/camera.hpp>
 #include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/geometry_generator.hpp>
@@ -95,6 +96,8 @@ namespace sandbox
             benzin::MakeUniquePtr(m_FrameConstantBuffer, *ms_Device, "FrameConstantBuffer");
         }
 
+        bool IsDependentOnViewport() const override { return false; }
+
         void OnUpdate(const benzin::TickTimer& tickTimer) override
         {
             const auto& rtShadowSettings = ms_Settings->GetSection<RtShadowsSettings>();
@@ -179,6 +182,8 @@ namespace sandbox
         {
             ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
         }
+
+        bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize(uint32_t width, uint32_t height) override
         {
@@ -340,6 +345,8 @@ namespace sandbox
 
             benzin::MakeUniquePtr(m_PassConstantBuffer, *ms_Device, "RtShadowPassConstantBuffer");
         }
+
+        bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize(uint32_t width, uint32_t height) override
         {
@@ -578,6 +585,8 @@ namespace sandbox
             pipelineStateManager.DestroyPipelineState(m_BlurPso);
         }
 
+        bool IsDependentOnViewport() const override { return true; }
+
         void OnRenderViewportResize(uint32_t width, uint32_t height) override
         {
             ms_Resources->ForEachFlippableTexture(+RenderTextures::TemporalAccumulationBuffer, [&](uint32_t i, auto& outTexture)
@@ -760,11 +769,13 @@ namespace sandbox
                 .FilterType = settings.DepthFilterType,
             });
 
+            m_ColorMipGenerationConstantBuffer->UpdateConstants(joint::MipGenerationConstants
             {
                 .InvDispatchDimensions{ 1.0f / dispatchMipWidth, 1.0f / dispatchMipHeight },
-                .IsSourceWidthOdd = (viewDepth.GetWidth() & 1) == 1,
-                .IsSourceHeightOdd = (viewDepth.GetHeight() & 1) == 1,
+                .IsSourceWidthOdd = benzin::IsOddQuickly(viewDepth.GetWidth()),
+                .IsSourceHeightOdd = benzin::IsOddQuickly(viewDepth.GetHeight()),
                 .DestinationMipCount = 4,
+                .FilterType = joint::MipGenerationFilterType_Max,
             });
 
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
@@ -772,10 +783,11 @@ namespace sandbox
             BenzinPushGpuEvent(commandList, "Denoiser_MipGeneration");
 
             commandList.SetPipelineState(*m_MipGenerationPso);
-            commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_MipGenerationConstantBuffer->GetActiveGpuVirtualAddress());
 
-            const auto dispatchTexture = [&](const benzin::Texture& texture)
+            const auto dispatchTexture = [&](const benzin::Texture& texture, const MipGenerationConstantBuffer& constantBuffer)
             {
+                commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, constantBuffer.GetActiveGpuVirtualAddress());
+
                 commandList.SetRootResource(joint::MipGenerationRc_SourceMip, texture.GetSrv({ .MipRange{ 0, 1 } }));
                 commandList.SetRootResource(joint::MipGenerationRc_DestinationMip0, texture.GetUav({ .MipIndex = 1 }));
                 commandList.SetRootResource(joint::MipGenerationRc_DestinationMip1, texture.GetUav({ .MipIndex = 2 }));
@@ -788,12 +800,11 @@ namespace sandbox
                 );
 
                 const DirectX::XMUINT3 dimensions{ dispatchMipWidth, dispatchMipHeight, 1 };
-                const DirectX::XMUINT3 threadPerGroupCount{ joint::ThreadCount881_X, joint::ThreadCount881_Y, joint::ThreadCount881_Z };
-                commandList.Dispatch(dimensions, threadPerGroupCount);
+                commandList.Dispatch(dimensions, joint::g_ThreadPerGroupCount881);
             };
 
-            dispatchTexture(viewDepth);
-            dispatchTexture(visibilityBuffer);
+            dispatchTexture(viewDepth, *m_DepthMipGenerationConstantBuffer);
+            dispatchTexture(visibilityBuffer, *m_ColorMipGenerationConstantBuffer);
         }
 
         void RunHistoryFixSubPass() const
@@ -834,8 +845,7 @@ namespace sandbox
             );
 
             const DirectX::XMUINT3 dimensions{ reprojectedHistoryTexture.GetWidth(), reprojectedHistoryTexture.GetHeight(), 1 };
-            const DirectX::XMUINT3 threadPerGroupCount{ joint::ThreadCount881_X, joint::ThreadCount881_Y, joint::ThreadCount881_Z };
-            commandList.Dispatch(dimensions, threadPerGroupCount);
+            commandList.Dispatch(dimensions, joint::g_ThreadPerGroupCount881);
         }
 
         void RunBlurSubPass() const
@@ -868,13 +878,7 @@ namespace sandbox
             );
 
             const DirectX::XMUINT3 dimensions{ denoisedVisibilityBuffer.GetWidth(), denoisedVisibilityBuffer.GetHeight(), 1 };
-            const DirectX::XMUINT3 threadPerGroupCount{ joint::ThreadCount881_X, joint::ThreadCount881_Y, joint::ThreadCount881_Z };
-            commandList.Dispatch(dimensions, threadPerGroupCount);
-        }
-
-        void RunPostBlurSubPass() const
-        {
-
+            commandList.Dispatch(dimensions, joint::g_ThreadPerGroupCount881);
         }
 
     private:
@@ -882,10 +886,13 @@ namespace sandbox
         benzin::PipelineState* m_MipGenerationPso = nullptr;
         benzin::PipelineState* m_HistoryFixPso = nullptr;
         benzin::PipelineState* m_BlurPso = nullptr;
-        benzin::PipelineState* m_PostBlurPso = nullptr;
 
         using MipGenerationConstantBuffer = benzin::ConstantBuffer<joint::MipGenerationConstants>;
-        std::unique_ptr<MipGenerationConstantBuffer> m_MipGenerationConstantBuffer;
+        std::unique_ptr<MipGenerationConstantBuffer> m_DepthMipGenerationConstantBuffer;
+        std::unique_ptr<MipGenerationConstantBuffer> m_ColorMipGenerationConstantBuffer;
+
+        using HistoryFixConstantBuffer = benzin::ConstantBuffer<joint::DenoiserHistoryFixConstants>;
+        std::unique_ptr<HistoryFixConstantBuffer> m_HistoryFixConstantBuffer;
 
         using BlurConstantBuffer = benzin::ConstantBuffer<joint::DenoiserBlurConstants>;
         std::unique_ptr<BlurConstantBuffer> m_BlurConstantBuffer;
@@ -918,6 +925,8 @@ namespace sandbox
         {
             ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
         }
+
+        bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize(uint32_t width, uint32_t height) override
         {
@@ -1023,6 +1032,8 @@ namespace sandbox
             ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
         }
 
+        bool IsDependentOnViewport() const override { return true; }
+
         void OnZeroFrameInit() override
         {
             std::unique_ptr equirectangularTexture = LoadEquirectangularTexture();
@@ -1046,7 +1057,7 @@ namespace sandbox
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
             BenzinPushGpuEvent(commandList, "EnvironmentPass");
 
-            const auto& finalOutputTexture = *ms_Resources->GetTexture(+RenderTextures::FinalTexture);
+            const auto& finalTexture = *ms_Resources->GetTexture(+RenderTextures::FinalTexture);
             const auto& depthStencilBuffer = *ms_Resources->GetTexture(+RenderTextures::DepthStencil);
 
             commandList.SetViewport(ms_RenderViewport);
@@ -1054,11 +1065,11 @@ namespace sandbox
 
             BenzinMakeScopedResourceBarriers(
                 commandList,
-                benzin::TransitionBarrier{ finalOutputTexture, benzin::ResourceState::RenderTarget },
+                benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::RenderTarget },
                 benzin::TransitionBarrier{ depthStencilBuffer, benzin::ResourceState::DepthRead },
             );
 
-            commandList.SetRenderTargets({ finalOutputTexture.GetRtv() }, &depthStencilBuffer.GetDsv());
+            commandList.SetRenderTargets({ finalTexture.GetRtv() }, &depthStencilBuffer.GetDsv());
 
             commandList.SetPipelineState(*m_Pso);
             commandList.SetRootResource(joint::EnvironmentPassRc_CubeMapTexture, m_CubeTexture->GetSrv());
@@ -1163,6 +1174,8 @@ namespace sandbox
             ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
         }
 
+        bool IsDependentOnViewport() const override { return true; }
+
         void OnUpdate() override
         {
             const auto& settings = ms_Settings->GetSection<FullScreenDebugSettings>();
@@ -1191,18 +1204,18 @@ namespace sandbox
             const auto& viewDepth = *ms_Resources->GetTexture(+RenderTextures::ViewDepth);
             const auto& noisyShadowVisibilityBuffer = *ms_Resources->GetTexture(+RenderTextures::NoisyShadowVisibilityBuffer);
             const auto& temporalAccumulationBuffer = *ms_Resources->GetTexture(+RenderTextures::TemporalAccumulationBuffer);
-            const auto& finalOutputTexture = *ms_Resources->GetTexture(+RenderTextures::FinalTexture);
+            const auto& finalTexture = *ms_Resources->GetTexture(+RenderTextures::FinalTexture);
 
             commandList.SetViewport(ms_RenderViewport);
             commandList.SetScissorRect(ms_RenderScissorRect);
 
             BenzinMakeScopedResourceBarriers(
                 commandList,
-                benzin::TransitionBarrier{ finalOutputTexture, benzin::ResourceState::RenderTarget },
+                benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::RenderTarget },
             );
 
-            commandList.SetRenderTargets({ finalOutputTexture.GetRtv() });
-            commandList.ClearRenderTarget(finalOutputTexture.GetRtv());
+            commandList.SetRenderTargets({ finalTexture.GetRtv() });
+            commandList.ClearRenderTarget(finalTexture.GetRtv());
 
             commandList.SetPipelineState(*m_Pso);
 
@@ -1232,6 +1245,8 @@ namespace sandbox
     class BackBufferCopyPass : public benzin::RenderPass
     {
     public:
+        bool IsDependentOnViewport() const override { return false; }
+
         void OnRender() const override
         {
             BenzinGrabTimeOnScopeExit(g_CpuTimings[+SandboxTiming::BackBufferCopy]);
@@ -1259,7 +1274,7 @@ namespace sandbox
 
     SandboxRunner::SandboxRunner()
     {
-        BenzinLogTimeOnScopeExit("Create SandboxRunner");
+        BenzinLogTimeOnScopeExit("SandboxRunner::SandboxRunner");
 
         InitRenderPasses();
         InitTools();
@@ -1270,7 +1285,11 @@ namespace sandbox
         m_1SecIntervalTimer.PushCallback([this]
         {
             g_CpuTimings[+SandboxTiming::ImGuiPass] = m_ImGuiPass->GetCpuRenderTime();
+
+            m_TimingsTool->SetRunnerTimings(m_RunnerTimings);
             m_TimingsTool->SetCpuTimings(g_CpuTimings);
+
+            g_CpuTimings = {}; // TODO: Reset it every frame
         });
     }
 
@@ -1409,7 +1428,7 @@ namespace sandbox
     void SandboxRunner::InitCamera()
     {
         auto& perspectiveProjection = m_Scene->GetPerspectiveProjection();
-        perspectiveProjection.SetLens(DirectX::XMConvertToRadians(60.0f), m_SwapChain->GetAspectRatio(), 0.1f, 1000.0f);
+        perspectiveProjection.SetLens(DirectX::XMConvertToRadians(60.0f), 16.0f / 9.0f, 0.1f, 1000.0f);
 
         auto& camera = m_Scene->GetCamera();
         camera.SetPosition({ -3.0f, 2.0f, -0.25f });
@@ -1419,20 +1438,14 @@ namespace sandbox
     void SandboxRunner::InitSceneEntities()
     {
         SceneMeshes sceneMeshes;
-
-        {
-            BenzinLogTimeOnScopeExit("Load and Create mesh collections");
-            LoadAndCreateMeshes(sceneMeshes);
-        }
-
-        {
-            BenzinLogTimeOnScopeExit("Create entities");
-            CreateEntities(sceneMeshes);
-        }
+        LoadAndCreateMeshes(sceneMeshes);
+        CreateEntities(sceneMeshes);
     }
 
     void SandboxRunner::LoadAndCreateMeshes(SceneMeshes& outSceneMeshes)
     {
+        BenzinLogTimeOnScopeExit("SandboxRunner::LoadAndCreateMeshes");
+
         const auto createCylinderMeshCollection = []
         {
             const benzin::Material material
@@ -1504,6 +1517,8 @@ namespace sandbox
 
     void SandboxRunner::CreateEntities(const SceneMeshes& sceneMeshes)
     {
+        BenzinLogTimeOnScopeExit("SandboxRunner::CreateEntities");
+
         auto& entityRegistry = m_Scene->GetEntityRegistry();
 
         {

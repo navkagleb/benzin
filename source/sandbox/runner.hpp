@@ -4,7 +4,7 @@
 #include <benzin/core/tick_timer.hpp>
 
 #include "sandbox/fps_counter.hpp"
-#include "sandbox/tools/bottom_panel_tool.hpp"
+#include "sandbox/tools/timings_tool.hpp"
 
 namespace benzin
 {
@@ -15,12 +15,13 @@ namespace benzin
     class FlyCameraController;
     class ImGuiManager;
     class ImGuiPass;
+    class PerformanceOverlayTool;
     class RenderPass;
     class RenderResources;
     class RenderSettingsTool;
+    class RenderViewportTool;
     class Scene;
     class SwapChain;
-    class RenderViewportTool;
     class Window;
 
 }
@@ -42,13 +43,14 @@ namespace sandbox
         void WindowEventCallback(benzin::Event& event);
 
         void BeginFrame();
-        void ProcessFrame();
         void EndFrame();
 
         void OnUpdate();
         void OnRender();
 
         void RequestShutdown();
+        void ToggleVerticalSync();
+        void ToggleAnimation();
 
     protected:
         std::unique_ptr<benzin::Window> m_MainWindow;
@@ -74,15 +76,13 @@ namespace sandbox
         benzin::RenderViewportTool* m_RenderViewportTool = nullptr;
         benzin::RenderSettingsTool* m_RenderSettingsTool = nullptr;
 
+        RunnerTimings m_RunnerTimings{};
+
         bool m_IsRunning = true;
         bool m_IsVerticalSyncEnabled = true;
 
     private:
-        BottomPanelTool* m_BottomPanelTool = nullptr;
-        BottomPanelTool::RunnerTimings m_Timings{};
-
-        uint32_t m_PendingWidth = 0;
-        uint32_t m_PendingHeight = 0;
+        benzin::PerformanceOverlayTool* m_PerformanceOverlayTool = nullptr;
     };
 
 }

@@ -16,6 +16,8 @@ namespace benzin
 
     SwapChain::SwapChain(const SwapChainCreation& creation)
         : m_Device{ creation.DeviceRef }
+        , m_Width{ creation.WindowRef.GetWidth() }
+        , m_Height{ creation.WindowRef.GetHeight() }
     {
         uint32_t isAllowTearing = 0;
         BenzinEnsure(creation.BackendRef.GetDxgiFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &isAllowTearing, sizeof(isAllowTearing)));
@@ -57,7 +59,7 @@ namespace benzin
         BenzinEnsure(creation.BackendRef.GetDxgiFactory()->MakeWindowAssociation(creation.WindowRef.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
 
         m_BackBuffers.resize(CommandLineArgs::g_FrameInFlightCount);
-        ResizeBackBuffers(creation.WindowRef.GetWidth(), creation.WindowRef.GetHeight());
+        ResizeBackBuffers();
 
         MakeUniquePtr(m_FrameFence, m_Device, FenceCreation
         {
@@ -83,7 +85,7 @@ namespace benzin
         return *m_BackBuffers[m_Device.GetActiveFrameIndex()];
     }
 
-    void SwapChain::OnFlip(bool isVerticalSyncEnabled)
+    bool SwapChain::OnFlip(bool isVerticalSyncEnabled)
     {
         uint64_t cpuFrameIndex = m_Device.m_CpuFrameIndex;
         uint64_t gpuFrameIndex = m_Device.m_CompletedGpuFrameIndex;
@@ -120,37 +122,41 @@ namespace benzin
             }
         }
 
+        BenzinExecuteOnScopeExit([&]
+        {
+            m_Device.m_CpuFrameIndex = cpuFrameIndex;
+            m_Device.m_CompletedGpuFrameIndex = gpuFrameIndex;
+            m_Device.m_ActiveFrameIndex = (uint8_t)m_DxgiSwapChain->GetCurrentBackBufferIndex();
+        });
+
         DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc;
         BenzinEnsure(m_DxgiSwapChain->GetDesc1(&dxgiSwapChainDesc));
-        if (m_PendingWidth != 0 && m_PendingHeight != 0 && (m_PendingWidth != dxgiSwapChainDesc.Width || m_PendingHeight != dxgiSwapChainDesc.Height))
+        if (m_Width != dxgiSwapChainDesc.Width || m_Height != dxgiSwapChainDesc.Height)
         {
             BenzinLogTimeOnScopeExit(
                 "SwapChain ResizeBuffers from ({} x {}) to ({} x {})",
                 dxgiSwapChainDesc.Width, dxgiSwapChainDesc.Height,
-                m_PendingWidth, m_PendingHeight
+                m_Width, m_Height
             );
 
             m_Device.GetGraphicsCommandQueue().Flush();
             ReleaseBackBuffers();
             m_Device.ProcessDeferredReleaseQueues(true);
 
-            ResizeBackBuffers(m_PendingWidth, m_PendingHeight);
+            ResizeBackBuffers();
 
-            m_PendingWidth = 0;
-            m_PendingHeight = 0;
+            return true;
         }
 
-        m_Device.m_CpuFrameIndex = cpuFrameIndex;
-        m_Device.m_CompletedGpuFrameIndex = gpuFrameIndex;
-        m_Device.m_ActiveFrameIndex = (uint8_t)m_DxgiSwapChain->GetCurrentBackBufferIndex();
+        return false;
     }
 
     void SwapChain::RequestResize(uint32_t width, uint32_t height)
     {
         BenzinAssert(width != 0 && height != 0);
 
-        m_PendingWidth = width;
-        m_PendingHeight = height;
+        m_Width = width;
+        m_Height = height;
     }
 
     void SwapChain::RegisterBackBuffers()
@@ -173,7 +179,7 @@ namespace benzin
         }
     }
 
-    void SwapChain::ResizeBackBuffers(uint32_t width, uint32_t height)
+    void SwapChain::ResizeBackBuffers()
     {
 #if BENZIN_IS_ASSERTS_ENABLED
         for (const auto& backBuffer : m_BackBuffers)
@@ -187,25 +193,12 @@ namespace benzin
 
         BenzinEnsure(m_DxgiSwapChain->ResizeBuffers(
             dxgiSwapChainDesc.BufferCount,
-            width,
-            height,
+            m_Width,
+            m_Height,
             dxgiSwapChainDesc.Format,
             dxgiSwapChainDesc.Flags
         ));
         RegisterBackBuffers();
-
-        UpdateViewportDimensions((float)width, (float)height);
-    }
-
-    void SwapChain::UpdateViewportDimensions(float width, float height)
-    {
-        m_AspectRatio = width / height;
-
-        m_Viewport.Width = width;
-        m_Viewport.Height = height;
-
-        m_ScissorRect.Width = width;
-        m_ScissorRect.Height = height;
     }
 
 } // namespace benzin

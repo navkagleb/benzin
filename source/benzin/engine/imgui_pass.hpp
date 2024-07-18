@@ -14,12 +14,13 @@ namespace benzin
     {
     public:
         friend class ImGuiManager;
-        friend class ImGuiPass;
 
         ImGuiTool(std::string_view name, bool isVisible);
         virtual ~ImGuiTool() = default;
 
     public:
+        auto IsVisible() const { return m_IsVisible; }
+
         virtual void OnEvent(Event& event) { BenzinUnused(event); };
         virtual void SpawnImGui() = 0;
 
@@ -57,18 +58,24 @@ namespace benzin
             return tool;
         }
 
+        void PushSpawnImGuiMenuCallback(std::function<void()>&& callback);
+
     private:
         void SpawnImGuiDockSpace(const std::function<void()>& callback);
         void SpawnImGuiManuBar();
+
+        void ToggleImGuiDemoWindow();
+        void ToggleUiSpawn();
 
     private:
         Device& m_Device;
 
         Descriptor m_FontDescriptor;
         std::vector<ImGuiTool*> m_Tools;
+        std::vector<std::function<void()>> m_ImGuiSpawnMenuCallbacks;
 
-        bool m_IsDemoWindowVisible = false;
-        bool m_IsSpawnEnabled = true;
+        bool m_IsImGuiDemoWindowVisible = false;
+        bool m_IsUiSpawnEnabled = true;
 
         mutable ImDrawData* m_CurrentImGuiDrawData = nullptr;
     };
@@ -77,6 +84,8 @@ namespace benzin
     {
     public:
         ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureKey, uint32_t gpuTimingIndex);
+
+        bool IsDependentOnViewport() const override { return false; }
 
         auto GetCpuRenderTime() const { return m_CpuRenderTime; }
 

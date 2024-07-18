@@ -45,7 +45,11 @@ namespace benzin
 
     private:
         template <typename Event, typename... Args>
-        void CreateAndPushEvent(Args&&... args);
+        void CreateAndPushEvent(Args&&... args)
+        {
+            Event event{ std::forward<Args>(args)... };
+            m_EventCallback(event);
+        }
 
     private:
         HWND m_Win64Window = nullptr;
@@ -59,15 +63,5 @@ namespace benzin
 
         WindowEventCallback m_EventCallback;
     };
-
-    template <typename Event, typename... Args>
-    void Window::CreateAndPushEvent(Args&&... args)
-    {
-        if (m_EventCallback)
-        {
-            Event event{ std::forward<Args>(args)... };
-            m_EventCallback(event);
-        }
-    }
 
 } // namespace benzin

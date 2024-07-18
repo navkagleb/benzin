@@ -9,7 +9,7 @@ namespace benzin
 {
 
     RenderViewportTool::RenderViewportTool(RenderResources& renderResources)
-        : ImGuiTool{ "RenderViewport", true }
+        : ImGuiTool{ "RenderViewportTool", true }
         , m_RenderResources{ renderResources }
     {}
 
@@ -22,10 +22,10 @@ namespace benzin
 
     void RenderViewportTool::SpawnImGui()
     {
-        ImGui::Begin(m_Name.data());
-        {
-            ImGui::Text(BenzinFormatData("{} x {}", m_ViewportSize.x, m_ViewportSize.y));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
 
+        if (ImGui::Begin(m_Name.data(), &m_IsVisible))
+        {
             UpdateImGuiDimensions();
 
             if (IsValidUnsigned(m_FinalTextureKey))
@@ -44,27 +44,29 @@ namespace benzin
             }
         }
         ImGui::End();
+        ImGui::PopStyleVar();
     }
 
     void RenderViewportTool::UpdateImGuiDimensions()
     {
+        m_IsViewportSizeRelevant = true;
+
         const DirectX::XMINT2 viewportSize
         {
             (int32_t)ImGui::GetContentRegionAvail().x,
             (int32_t)ImGui::GetContentRegionAvail().y,
         };
 
-        m_IsViewportResized = false;
-
+        const bool isInResizingState = ImGui::IsAnyItemActive();
         const bool isEqual = viewportSize.x == m_ViewportSize.x && viewportSize.y == m_ViewportSize.y;
         const bool isCollapsed = viewportSize.x <= 0 || viewportSize.y <= 0;
-        if (isEqual || isCollapsed)
+        if (isInResizingState || isEqual || isCollapsed)
         {
             return;
         }
 
         m_ViewportSize = viewportSize;
-        m_IsViewportResized = true;
+        m_IsViewportSizeRelevant = false;
     }
 
 }

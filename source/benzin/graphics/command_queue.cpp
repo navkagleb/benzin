@@ -84,19 +84,17 @@ namespace benzin
         return frequency;
     }
 
-    void GraphicsCommandQueue::OnFrameBegin()
+    void GraphicsCommandQueue::ResetCommandList()
     {
-        {
-            auto& frameContext = m_FrameContexts[m_Device.GetActiveFrameIndex()];
+        auto& frameContext = m_FrameContexts[m_Device.GetActiveFrameIndex()];
 
-            auto* d3d12CommandAllocator = frameContext.D3D12CommandAllocator;
-            BenzinEnsure(d3d12CommandAllocator->Reset());
+        auto* d3d12CommandAllocator = frameContext.D3D12CommandAllocator;
+        BenzinEnsure(d3d12CommandAllocator->Reset());
 
-            frameContext.UploadBuffers.clear();
+        frameContext.UploadBuffers.clear();
 
-            ID3D12GraphicsCommandList1* d3d12GraphicsCommandList = m_CommandList.GetD3D12GraphicsCommandList();
-            BenzinEnsure(d3d12GraphicsCommandList->Reset(d3d12CommandAllocator, nullptr));
-        }
+        ID3D12GraphicsCommandList1* d3d12GraphicsCommandList = m_CommandList.GetD3D12GraphicsCommandList();
+        BenzinEnsure(d3d12GraphicsCommandList->Reset(d3d12CommandAllocator, nullptr));
 
         ID3D12DescriptorHeap* const d3d12DescriptorHeaps[]
         {
@@ -104,15 +102,9 @@ namespace benzin
             m_Device.GetDescriptorManager().GetD3D12SamplerDescriptorHeap()
         };
 
-        ID3D12GraphicsCommandList* d3d12GraphicsCommandList = m_CommandList.GetD3D12GraphicsCommandList();
         d3d12GraphicsCommandList->SetDescriptorHeaps((uint32_t)std::size(d3d12DescriptorHeaps), d3d12DescriptorHeaps);
         d3d12GraphicsCommandList->SetComputeRootSignature(m_Device.GetD3D12UnifiedRootSignature());
         d3d12GraphicsCommandList->SetGraphicsRootSignature(m_Device.GetD3D12UnifiedRootSignature());
-    }
-
-    void GraphicsCommandQueue::OnFrameEnd()
-    {
-        SubmitCommandList();
     }
 
     void GraphicsCommandQueue::SubmitCommandList()

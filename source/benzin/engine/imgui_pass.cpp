@@ -26,10 +26,13 @@ namespace benzin
     
     void ImGuiTool::SpawnImGuiWindow(const std::function<void()>& callback)
     {
-        ImGui::Begin(m_Name.data(), &m_IsVisible);
+        if (!ImGui::Begin(m_Name.data(), &m_IsVisible))
         {
-            callback();
+            ImGui::End();
+            return;
         }
+
+        callback();
         ImGui::End();
     }
 
@@ -99,12 +102,12 @@ namespace benzin
             {
                 case KeyCode::O:
                 {
-                    m_IsDemoWindowVisible = !m_IsDemoWindowVisible;
+                    ToggleImGuiDemoWindow();
                     break;
                 }
                 case KeyCode::F1:
                 {
-                    m_IsSpawnEnabled = !m_IsSpawnEnabled;
+                    ToggleUiSpawn();
                     break;
                 }
             }
@@ -113,7 +116,7 @@ namespace benzin
         });
 
         // ImGuiManager handles system events
-        const auto& io = ImGui::GetIO();
+        const ImGuiIO& io = ImGui::GetIO();
         event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Keyboard) & io.WantCaptureKeyboard;
         event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Mouse) & io.WantCaptureMouse;
 
@@ -125,7 +128,7 @@ namespace benzin
 
     void ImGuiManager::SpawnUi()
     {
-        if (!m_IsSpawnEnabled)
+        if (!m_IsUiSpawnEnabled)
         {
             return;
         }
@@ -134,9 +137,9 @@ namespace benzin
         {
             SpawnImGuiManuBar();
 
-            if (m_IsDemoWindowVisible)
+            if (m_IsImGuiDemoWindowVisible)
             {
-                ImGui::ShowDemoWindow(&m_IsDemoWindowVisible);
+                ImGui::ShowDemoWindow(&m_IsImGuiDemoWindowVisible);
             }
 
             for (auto* tool : m_Tools)
@@ -147,6 +150,11 @@ namespace benzin
                 }
             };
         });
+    }
+
+    void ImGuiManager::PushSpawnImGuiMenuCallback(std::function<void()>&& callback)
+    {
+        m_ImGuiSpawnMenuCallbacks.push_back(std::move(callback));
     }
 
     void ImGuiManager::SpawnImGuiDockSpace(const std::function<void()>& callback)
@@ -178,12 +186,11 @@ namespace benzin
             ImGui::PopStyleVar(3);
 
             // Submit the DockSpace
-            ImGuiIO& io = ImGui::GetIO();
-            if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
-            {
-                const ImGuiID dockspaceId = ImGui::GetID("BenzinDockSpace");
-                ImGui::DockSpace(dockspaceId, ImVec2{ 0.0f, 0.0f }, dockspaceFlags);
-            }
+            const ImGuiIO& io = ImGui::GetIO();
+            BenzinAssert((io.ConfigFlags & ImGuiConfigFlags_DockingEnable) != 0);
+
+            const ImGuiID dockspaceId = ImGui::GetID("BenzinDockSpace");
+            ImGui::DockSpace(dockspaceId, ImVec2{ 0.0f, 0.0f }, dockspaceFlags);
 
             callback();
         }
@@ -201,10 +208,37 @@ namespace benzin
                     ImGui::MenuItem(tool->m_Name.data(), nullptr, &tool->m_IsVisible);
                 }
 
+                ImGui::Separator();
+
+                if (ImGui::MenuItem("ImGuiDemoWindow", "O", m_IsImGuiDemoWindowVisible))
+                {
+                    ToggleImGuiDemoWindow();
+                }
+
+                if (ImGui::MenuItem("UiSpawn", "F1", m_IsUiSpawnEnabled))
+                {
+                    ToggleUiSpawn();
+                }
+
                 ImGui::EndMenu();
+            }
+
+            for (const auto& spawnImGuiMenu : m_ImGuiSpawnMenuCallbacks)
+            {
+                spawnImGuiMenu();
             }
         }
         ImGui::EndMenuBar();
+    }
+
+    void ImGuiManager::ToggleImGuiDemoWindow()
+    {
+        ToggleBool(m_IsImGuiDemoWindowVisible);
+    }
+
+    void ImGuiManager::ToggleUiSpawn()
+    {
+        ToggleBool(m_IsUiSpawnEnabled);
     }
 
     // ImGuiPass

@@ -25,6 +25,12 @@ namespace benzin
     template <typename T> requires std::is_enum_v<T>
     inline constexpr auto g_InvalidEnumValue = (T)g_InvalidUnsigned<std::underlying_type_t<T>>;
 
+    inline constexpr bool ToggleBool(bool& value)
+    {
+        value = !value;
+        return value;
+    }
+
     template <std::unsigned_integral T>
     constexpr bool IsValidUnsigned(T value)
     {

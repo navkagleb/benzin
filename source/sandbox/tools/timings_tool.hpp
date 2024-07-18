@@ -18,6 +18,17 @@ namespace sandbox
     template <benzin::EnumConcept TimingT>
     using Timings = benzin::EnumArray<std::chrono::microseconds, TimingT>;
 
+    enum class RunnerTiming : uint32_t
+    {
+        BeginFrame,
+        OnUpdate,
+        OnRender,
+        EndFrame,
+    };
+    BenzinEnableUnaryPlusForEnum(RunnerTiming);
+
+    using RunnerTimings = Timings<RunnerTiming>;
+
     template <benzin::EnumConcept TimingT>
     uint32_t GetTimingIndent(TimingT timing)
     {
@@ -37,6 +48,7 @@ namespace sandbox
             , m_Device{ device }
         {}
 
+        void SetRunnerTimings(const RunnerTimings& timings) { m_RunnerTimings = timings; }
         void SetCpuTimings(const CpuTimings& timings) { m_CpuTimings = timings; }
 
     private:
@@ -49,13 +61,14 @@ namespace sandbox
 
             SpawnImGuiWindow([this]
             {
+                SpawnImGuiTimings<RunnerTiming>("RunnerTimings", m_RunnerTimings);
                 SpawnImGuiTimings<CpuTimingT>("CpuTimings", m_CpuTimings);
                 SpawnImGuiTimings<GpuTimingT>("GpuTimings", m_GpuTimings);
             });
         }
 
         template <benzin::EnumConcept TimingT>
-        void SpawnImGuiTimings(std::string_view name, std::span<const std::chrono::microseconds> timings)
+        void SpawnImGuiTimings(std::string_view name, std::span<const std::chrono::microseconds> timings) const
         {
             const auto flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Selected;
             if (ImGui::TreeNodeEx(name.data(), flags))
@@ -73,6 +86,7 @@ namespace sandbox
     private:
         const benzin::Device& m_Device;
 
+        RunnerTimings m_RunnerTimings{};
         CpuTimings m_CpuTimings{};
         GpuTimings m_GpuTimings{};
     };

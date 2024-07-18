@@ -3,6 +3,7 @@
 
 #include <benzin/core/asserter.hpp>
 #include <benzin/core/command_line_args.hpp>
+#include <benzin/core/logger.hpp>
 #include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/imgui_pass.hpp>
 #include <benzin/engine/render_pass.hpp>
@@ -17,6 +18,7 @@
 #include <benzin/system/key_event.hpp>
 #include <benzin/system/window.hpp>
 #include <benzin/tools/fly_camera_tool.hpp>
+#include <benzin/tools/performance_overlay_tool.hpp>
 #include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
 #include <benzin/utility/time_utils.hpp>
@@ -30,11 +32,11 @@ namespace sandbox
     Runner::Runner()
         : m_1SecIntervalTimer{ std::chrono::seconds{ 1 } }
     {
-        BenzinLogTimeOnScopeExit("Create Runner");
+        BenzinLogTimeOnScopeExit("Runner::Runner");
 
         const benzin::WindowCreation windowCreation
         {
-            .Title = "Benzin: Sandbox",
+            .Title = "benzin::SandboxRunner",
             .Width = benzin::CommandLineArgs::g_WindowWidth,
             .Height = benzin::CommandLineArgs::g_WindowHeight,
             .IsResizable = benzin::CommandLineArgs::g_IsWindowResizable,
@@ -56,17 +58,33 @@ namespace sandbox
         benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device);
         m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderResources);
         m_RenderSettingsTool = m_ImGuiManager->PushTool<benzin::RenderSettingsTool>(*m_RenderSettings);
-        m_BottomPanelTool = m_ImGuiManager->PushTool<BottomPanelTool>(*m_MainWindow, *m_Backend, *m_Device, *m_SwapChain);
+        m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Device, *m_SwapChain, *m_RenderViewportTool);
         m_ImGuiManager->PushTool<benzin::FlyCameraTool>(*m_FlyCameraController);
         m_ImGuiManager->PushTool<SceneStatsTool>(*m_Scene);
         m_ImGuiManager->PushTool<TickTimerTool>(m_FrameTimer);
 
+        m_ImGuiManager->PushSpawnImGuiMenuCallback([this]
+        {
+            if (ImGui::BeginMenu("Runner"))
+            {
+                if (ImGui::MenuItem("VerticalSync", "V", m_IsVerticalSyncEnabled))
+                {
+                    ToggleVerticalSync();
+                }
+
+                if (ImGui::MenuItem("Animation", "F2", m_AnimationTimer.IsPaused()))
+                {
+                    ToggleAnimation();
+                }
+
+                ImGui::EndMenu();
+            }
+        });
+
         m_1SecIntervalTimer.PushCallback([this]
         {
-            m_FpsCounter.UpdateFps(m_1SecIntervalTimer.GetInterval());;
-
-            m_BottomPanelTool->SetFrameRateStats(m_FpsCounter.GetFps(), benzin::ToFloatMs(m_FpsCounter.GetDeltaTime()));
-            m_BottomPanelTool->SetRunnerTimings(m_Timings);
+            m_FpsCounter.UpdateFps(m_1SecIntervalTimer.GetInterval());
+            m_PerformanceOverlayTool->SetFrameRateStats(m_FpsCounter.GetFps(), benzin::ToFloatMs(m_FpsCounter.GetDeltaTime()));
         });
     }
 
@@ -91,23 +109,29 @@ namespace sandbox
             m_MainWindow->ProcessEvents();
 
             BeginFrame();
-            ProcessFrame();
+            {
+                OnUpdate();
+                OnRender();
+            }
             EndFrame();
         }
     }
 
     void Runner::RunZeroFrame()
     {
+        BenzinLogTimeOnScopeExit("Runner::RunZeroFrame");
+
+        // Force call window resize on render passes
+        benzin::RenderPass::SetWindowViewport(m_SwapChain->GetWidth(), m_SwapChain->GetHeight());
         for (auto& renderPass : m_RenderPasses)
         {
-            if (renderPass->IsRenderingEnabled())
-            {
-                renderPass->OnWindowResize(m_SwapChain->GetViewportWidth(), m_SwapChain->GetViewportHeight());
-            }
+            renderPass->OnWindowResize(m_SwapChain->GetWidth(), m_SwapChain->GetHeight());
         }
 
         BeginFrame();
         {
+            OnUpdate(); // Updates the UI. On EndFrame calls RenderPass::OnRenderViewportResize
+
             for (auto& renderPass : m_RenderPasses)
             {
                 renderPass->OnZeroFrameInit();
@@ -154,11 +178,7 @@ namespace sandbox
 
             dispatcher.Dispatch<benzin::WindowResizedEvent>([&](const auto& event)
             {
-                m_PendingWidth = event.GetWidth();
-                m_PendingHeight = event.GetHeight();
-
-                m_SwapChain->RequestResize(m_PendingWidth, m_PendingHeight);
-
+                m_SwapChain->RequestResize(event.GetWidth(), event.GetHeight());
                 return false;
             });
 
@@ -173,12 +193,12 @@ namespace sandbox
                     }
                     case benzin::KeyCode::V:
                     {
-                        m_IsVerticalSyncEnabled = !m_IsVerticalSyncEnabled;
+                        ToggleVerticalSync();
                         break;
                     }
                     case benzin::KeyCode::F2:
                     {
-                        m_AnimationTimer.SetPaused(!m_AnimationTimer.IsPaused());
+                        ToggleAnimation();
                         break;
                     }
                 }
@@ -193,62 +213,35 @@ namespace sandbox
 
     void Runner::BeginFrame()
     {
-        BenzinGrabTimeOnScopeExit(m_Timings[+RunnerTiming::BeginFrame]);
+        BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::BeginFrame]);
 
-        m_Device->GetGraphicsCommandQueue().OnFrameBegin();
-    }
-
-    void Runner::ProcessFrame()
-    {
-        if (!m_FrameTimer.IsPaused())
-        {
-            OnUpdate();
-        }
-
-        OnRender();
+        m_Device->GetGraphicsCommandQueue().ResetCommandList();
     }
 
     void Runner::EndFrame()
     {
-        BenzinGrabTimeOnScopeExit(m_Timings[+RunnerTiming::EndFrame]);
-
-        // 'SwapChain::OnFlip' can update viewport dimenions, so if statemend below will be invalid
-        const auto oldSwapChainWidth = m_SwapChain->GetViewportWidth();
-        const auto oldSwapChainHeight = m_SwapChain->GetViewportHeight();
+        BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::EndFrame]);
 
         m_Device->GetGpuTimer().ResolveTimestamps(m_Device->GetCpuFrameIndex());
-        m_Device->GetGraphicsCommandQueue().OnFrameEnd();
-        m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
-
-        m_Device->GetPipelineStateManager().DestroyPendingPipelineStates();
-        m_Device->GetPipelineStateManager().ReloadPipelineStatesIfNeeded();
-        m_Device->ProcessDeferredReleaseQueues();
-
-        if (m_PendingWidth != 0 && m_PendingHeight != 0 && (m_PendingWidth != oldSwapChainWidth || m_PendingHeight != oldSwapChainHeight))
+        m_Device->GetGraphicsCommandQueue().SubmitCommandList();
+        
+        const bool isResized = m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
+        if (isResized)
         {
-            benzin::RenderPass::SetWindowViewport(m_PendingWidth, m_PendingHeight);
+            const auto windowWidth = m_SwapChain->GetWidth();
+            const auto windowHeight = m_SwapChain->GetHeight();
+
+            benzin::RenderPass::SetWindowViewport(windowWidth, windowHeight);
             for (auto& renderPass : m_RenderPasses)
             {
-                renderPass->OnWindowResize(m_PendingWidth, m_PendingHeight);
+                renderPass->OnWindowResize(windowWidth, windowHeight);
             }
-
-            m_PendingWidth = 0;
-            m_PendingHeight = 0;
         }
-    }
 
-    void Runner::OnUpdate()
-    {
-        BenzinGrabTimeOnScopeExit(m_Timings[+RunnerTiming::OnUpdate]);
-
-        m_FpsCounter.TickFrame(m_FrameTimer);
-
-        m_ImGuiManager->BeginUiFrame();
-        m_ImGuiManager->SpawnUi();
-        m_ImGuiManager->EndUiFrame();
-
-        if (m_RenderViewportTool->IsViewportResized())
+        if (!m_RenderViewportTool->IsViewportSizeRelevant())
         {
+            // Viewport size is controlled by UI. So first update UI and then resize render passes
+
             const auto viewportWidth = m_RenderViewportTool->GetWidth();
             const auto viewportHeight = m_RenderViewportTool->GetHeight();
 
@@ -259,6 +252,28 @@ namespace sandbox
             {
                 renderPass->OnRenderViewportResize(viewportWidth, viewportHeight);
             }
+        }
+
+        m_Device->GetPipelineStateManager().DestroyPendingPipelineStates();
+        m_Device->GetPipelineStateManager().ReloadPipelineStatesIfNeeded();
+        m_Device->ProcessDeferredReleaseQueues();
+    }
+
+    void Runner::OnUpdate()
+    {
+        BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::OnUpdate]);
+
+        if (m_FrameTimer.IsPaused())
+        {
+            return;
+        }
+
+        m_FpsCounter.TickFrame(m_FrameTimer);
+
+        {
+            m_ImGuiManager->BeginUiFrame();
+            m_ImGuiManager->SpawnUi();
+            m_ImGuiManager->EndUiFrame();
         }
 
         m_FlyCameraController->OnUpdate(m_AnimationTimer.GetDeltaTime());
@@ -273,23 +288,36 @@ namespace sandbox
 
     void Runner::OnRender()
     {
-        BenzinGrabTimeOnScopeExit(m_Timings[+RunnerTiming::OnRender]);
+        BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::OnRender]);
 
         auto& commandList = m_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "RenderPasses");
 
         for (auto& renderPass : m_RenderPasses)
         {
-            if (renderPass->IsRenderingEnabled())
+            const bool isViewportTestFailed = !m_RenderViewportTool->IsValidForRendering() && renderPass->IsDependentOnViewport();
+            if (isViewportTestFailed || !renderPass->IsRenderingEnabled())
             {
-                renderPass->OnRender();
+                continue;
             }
+
+            renderPass->OnRender();
         }
     }
 
     void Runner::RequestShutdown()
     {
         m_IsRunning = false;
+    }
+
+    void Runner::ToggleVerticalSync()
+    {
+        benzin::ToggleBool(m_IsVerticalSyncEnabled);
+    }
+
+    void Runner::ToggleAnimation()
+    {
+        m_AnimationTimer.SetPaused(!m_AnimationTimer.IsPaused());
     }
 
 }

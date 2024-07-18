@@ -13,7 +13,8 @@ namespace benzin
         uint32_t GetWidth() const { return (uint32_t)m_ViewportSize.x; }
         uint32_t GetHeight() const { return (uint32_t)m_ViewportSize.y; }
 
-        bool IsViewportResized() const { return m_IsViewportResized; }
+        bool IsViewportSizeRelevant() const { return m_IsViewportSizeRelevant; }
+        bool IsValidForRendering() const { return m_IsViewportSizeRelevant && m_IsVisible; }
 
         void SetFinalTextureKey(uint32_t finalTextureKey) { m_FinalTextureKey = finalTextureKey; }
 
@@ -29,7 +30,7 @@ namespace benzin
         uint32_t m_FinalTextureKey = g_InvalidUnsigned<uint32_t>;
         
         DirectX::XMINT2 m_ViewportSize{};
-        bool m_IsViewportResized = false;
+        bool m_IsViewportSizeRelevant = true;
 
         bool m_IsViewportHovered = false;
     };

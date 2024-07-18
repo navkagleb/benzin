@@ -78,6 +78,8 @@ namespace benzin
         auto IsRenderingEnabled() const { return m_IsRenderingEnabled; }
         void SetRenderingEnabled(bool isEnabled) { m_IsRenderingEnabled = isEnabled; }
 
+        virtual bool IsDependentOnViewport() const = 0;
+
         virtual void OnZeroFrameInit() {}
         virtual void OnWindowResize(uint32_t width, uint32_t height);
         virtual void OnRenderViewportResize(uint32_t width, uint32_t height);

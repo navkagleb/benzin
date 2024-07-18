@@ -69,30 +69,42 @@ namespace benzin
         return d3d12RootParamers;
     }
 
-    static D3D12_FILTER ToD3D12TextureFilter(const TextureFilterType& minification, const TextureFilterType& magnification, const TextureFilterType& mipLevel)
+    static D3D12_FILTER ToD3D12TextureFilter(const TextureFilterFunction& function, const TextureFilterType& type)
     {
-        switch (minification)
+        switch (function)
         {
-            using enum TextureFilterType;
+            case TextureFilterFunction::Average:
+            {
+                switch (type)
+                {
+                    case TextureFilterType::Point: return D3D12_FILTER_MIN_MAG_MIP_POINT;
+                    case TextureFilterType::Linear: return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                    case TextureFilterType::Anisotropic: return D3D12_FILTER_ANISOTROPIC;
+                }
 
-            case Point:
-            {
-                BenzinAssert(magnification != Anisotropic && mipLevel != Anisotropic);
-                return magnification == Point
-                    ? mipLevel == Point ? D3D12_FILTER_MIN_MAG_MIP_POINT : D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR
-                    : mipLevel == Point ? D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+                std::unreachable();
             }
-            case Linear:
+            case TextureFilterFunction::Min:
             {
-                BenzinAssert(magnification != Anisotropic && mipLevel != Anisotropic);
-                return magnification == Point 
-                    ? mipLevel == Point ? D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT : D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR
-                    : mipLevel == Point ? D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                switch (type)
+                {
+                    case TextureFilterType::Point: return D3D12_FILTER_MINIMUM_MIN_MAG_MIP_POINT;
+                    case TextureFilterType::Linear: return D3D12_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR;
+                    case TextureFilterType::Anisotropic: return D3D12_FILTER_MINIMUM_ANISOTROPIC;
+                }
+
+                std::unreachable();
             }
-            case Anisotropic:
+            case TextureFilterFunction::Max:
             {
-                BenzinAssert(magnification == Anisotropic && mipLevel == Anisotropic);
-                return D3D12_FILTER_ANISOTROPIC;
+                switch (type)
+                {
+                    case TextureFilterType::Point: return D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_POINT;
+                    case TextureFilterType::Linear: return D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR;
+                    case TextureFilterType::Anisotropic: return D3D12_FILTER_MAXIMUM_ANISOTROPIC;
+                }
+
+                std::unreachable();
             }
         }
 
@@ -103,11 +115,11 @@ namespace benzin
     {
         return D3D12_STATIC_SAMPLER_DESC
         {
-            .Filter = ToD3D12TextureFilter(staticSampler.Sampler.Minification, staticSampler.Sampler.Magnification, staticSampler.Sampler.MipLevel),
-            .AddressU = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressU,
-            .AddressV = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressV,
-            .AddressW = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressW,
-            .MipLODBias = staticSampler.MipLODBias,
+            .Filter = ToD3D12TextureFilter(staticSampler.Sampler.FilterFunction, staticSampler.Sampler.FilterType),
+            .AddressU = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressMode,
+            .AddressV = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressMode,
+            .AddressW = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressMode,
+            .MipLODBias = staticSampler.MipLodBias,
             .MaxAnisotropy = staticSampler.MaxAnisotropy,
             .ComparisonFunc = (D3D12_COMPARISON_FUNC)staticSampler.ComparisonFunction,
             .BorderColor = (D3D12_STATIC_BORDER_COLOR)staticSampler.BorderColor,
@@ -202,11 +214,6 @@ namespace benzin
 
     void Device::ProcessDeferredReleaseQueues(bool isForceRelease)
     {
-        if (!IsValidUnsigned(m_CompletedGpuFrameIndex))
-        {
-            return;
-        }
-
         while (!m_DeferredReleaseResourceQueue.empty())
         {
             auto&& [cpuFrameIndex, d3d12Object] = m_DeferredReleaseResourceQueue.front();
@@ -257,7 +264,7 @@ namespace benzin
        
         // Ray Tracing
         {
-            D3D12_FEATURE_DATA_D3D12_OPTIONS5 d3d12Options;
+            D3D12_FEATURE_DATA_D3D12_OPTIONS5 d3d12Options{};
             BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &d3d12Options, sizeof(d3d12Options)));
             BenzinEnsure(d3d12Options.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
 
@@ -266,7 +273,7 @@ namespace benzin
 
         // DRED Breadcrumb
         {
-            D3D12_FEATURE_DATA_EXISTING_HEAPS d3d12Options;
+            D3D12_FEATURE_DATA_EXISTING_HEAPS d3d12Options{};
             BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_EXISTING_HEAPS, &d3d12Options, sizeof(d3d12Options)));
             BenzinEnsure(d3d12Options.Supported == 1);
 
@@ -275,7 +282,7 @@ namespace benzin
 
         // GPU Upload Heaps
         {
-            D3D12_FEATURE_DATA_D3D12_OPTIONS16 d3d12Options;
+            D3D12_FEATURE_DATA_D3D12_OPTIONS16 d3d12Options{};
             BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS16, &d3d12Options, sizeof(d3d12Options)));
 
             m_IsGpuUploadHeapsSupported = d3d12Options.GPUUploadHeapSupported == 1;
@@ -299,16 +306,14 @@ namespace benzin
             ToD3D12StaticSamplerDesc(StaticSampler::GetLinearClamp({ 0, samplerSpaceIndex++ })),
             ToD3D12StaticSamplerDesc(StaticSampler::GetAnisotropicWrap({ 0, samplerSpaceIndex++ })),
             ToD3D12StaticSamplerDesc(StaticSampler::GetAnisotropicClamp({ 0, samplerSpaceIndex++ })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetMinLinearClamp({ 0, samplerSpaceIndex++ })),
+            ToD3D12StaticSamplerDesc(StaticSampler::GetMaxLinearClamp({ 0, samplerSpaceIndex++ })),
             ToD3D12StaticSamplerDesc(StaticSampler
             {
                 .Sampler
                 {
-                    .Minification = TextureFilterType::Point,
-                    .Magnification = TextureFilterType::Point,
-                    .MipLevel = TextureFilterType::Point,
-                    .AddressU = TextureAddressMode::Border,
-                    .AddressV = TextureAddressMode::Border,
-                    .AddressW = TextureAddressMode::Border,
+                    .FilterType = TextureFilterType::Point,
+                    .AddressMode = TextureAddressMode::Border,
                 },
                 .BorderColor = TextureBorderColor::TransparentBlack,
                 .ShaderRegister{ 0, samplerSpaceIndex++ },

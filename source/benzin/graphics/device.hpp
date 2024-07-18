@@ -38,6 +38,7 @@ namespace benzin
 
     public:
         auto& GetBackend() { return m_Backend; }
+        const auto& GetBackend() const { return m_Backend; }
 
         auto* GetD3D12Device() const { return m_D3D12Device; }
         auto* GetD3D12UnifiedRootSignature() const { return m_D3D12UnifiedRootSignature; }
@@ -75,7 +76,7 @@ namespace benzin
 
         ID3D12RootSignature* m_D3D12UnifiedRootSignature = nullptr;
 
-        // Must be released in desctructor before m_D3D12 destroying
+        // Must be released in desctructor before m_D3D12Device destroying
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
         std::unique_ptr<PipelineStateManager> m_PipelineStateManager;
         std::unique_ptr<GraphicsCommandQueue> m_GraphicsCommandQueue;

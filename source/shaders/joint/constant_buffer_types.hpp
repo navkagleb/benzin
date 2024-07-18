@@ -2,6 +2,8 @@
 
 #include "hlsl_to_cpp.hpp"
 
+#include "enum_types.hpp"
+
 namespace joint
 {
 
@@ -42,8 +44,13 @@ namespace joint
 
     struct RtShadowPassConstants
     {
-        uint CurrentTextureSlot;
         uint RaysPerPixel;
+    };
+
+    struct DenoiserHistoryFixConstants
+    {
+        uint IsHistoryFixEnabled : 1;
+        uint IsViewDepthUsedForWeights : 1;
     };
 
     struct DenoiserBlurConstants
@@ -79,6 +86,7 @@ namespace joint
         uint IsSourceWidthOdd;
         uint IsSourceHeightOdd;
         uint DestinationMipCount;
+        MipGenerationFilterType FilterType;
     };
 
 } // namespace joint

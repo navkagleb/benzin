@@ -5,6 +5,13 @@
 namespace benzin
 {
 
+    enum class TextureFilterFunction : uint8_t
+    {
+        Average,
+        Min,
+        Max,
+    };
+
     enum class TextureFilterType : uint8_t
     {
         Point,
@@ -23,21 +30,9 @@ namespace benzin
 
     struct Sampler
     {
-        TextureFilterType Minification = TextureFilterType::Point;
-        TextureFilterType Magnification = TextureFilterType::Point;
-        TextureFilterType MipLevel = TextureFilterType::Point;
-        TextureAddressMode AddressU = TextureAddressMode::Wrap;
-        TextureAddressMode AddressV = TextureAddressMode::Wrap;
-        TextureAddressMode AddressW = TextureAddressMode::Wrap;
-
-        static const Sampler& GetPointWrap();
-        static const Sampler& GetPointClamp();
-        static const Sampler& GetLinearWrap();
-        static const Sampler& GetLinearClamp();
-        static const Sampler& GetAnisotropicWrap();
-        static const Sampler& GetAnisotropicClamp();
-
-        static Sampler Get(TextureFilterType textureFilter, TextureAddressMode textureAddressMode);
+        TextureFilterFunction FilterFunction = TextureFilterFunction::Average;
+        TextureFilterType FilterType = TextureFilterType::Point;
+        TextureAddressMode AddressMode = TextureAddressMode::Wrap;
     };
 
     enum class TextureBorderColor : std::underlying_type_t<D3D12_STATIC_BORDER_COLOR>
@@ -51,7 +46,7 @@ namespace benzin
     {
         Sampler Sampler;
         TextureBorderColor BorderColor = TextureBorderColor::TransparentBlack;
-        float MipLODBias = 0.0f;
+        float MipLodBias = 0.0f;
         uint32_t MaxAnisotropy = 1;
         ComparisonFunction ComparisonFunction = ComparisonFunction::Always;
         ShaderRegister ShaderRegister;
@@ -63,6 +58,9 @@ namespace benzin
         static StaticSampler GetLinearClamp(const struct ShaderRegister& shaderRegister);
         static StaticSampler GetAnisotropicWrap(const struct ShaderRegister& shaderRegister);
         static StaticSampler GetAnisotropicClamp(const struct ShaderRegister& shaderRegister);
+
+        static StaticSampler GetMinLinearClamp(const struct ShaderRegister& shaderRegister);
+        static StaticSampler GetMaxLinearClamp(const struct ShaderRegister& shaderRegister);
     };
 
 } // namespace benzin

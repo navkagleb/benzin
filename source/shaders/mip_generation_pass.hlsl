@@ -6,53 +6,88 @@
 // Ref: https://www.3dgep.com/learning-directx-12-4/
 // Ref: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/GenerateMipsCS.hlsli
 
+float4 ApplyFilterType(float4 color0, float4 color1)
+{
+    switch (g_PassConstants.FilterType)
+    {
+        case joint::MipGenerationFilterType_Min: return min(color0, color1);
+        case joint::MipGenerationFilterType_Max: return max(color0, color1);
+        case joint::MipGenerationFilterType_Average: return (color0 + color1) * 0.5;
+    }
+
+    return g_NaN;
+}
+
+float4 ApplyFilterType(float4 color0, float4 color1, float4 color2, float4 color3)
+{
+    return ApplyFilterType(
+        ApplyFilterType(color0, color1),
+        ApplyFilterType(color2, color3)
+    );
+}
+
+float4 SampleSourceMip(Texture2D<float4> sourceMip, float2 uv)
+{
+    switch (g_PassConstants.FilterType)
+    {
+        case joint::MipGenerationFilterType_Min:
+        {
+            return sourceMip.SampleLevel(g_MinLinearClampSampler, uv, 0.0);
+        }
+        case joint::MipGenerationFilterType_Max:
+        {
+            return sourceMip.SampleLevel(g_MaxLinearClampSampler, uv, 0.0);
+        }
+        case joint::MipGenerationFilterType_Average:
+        {
+            return sourceMip.SampleLevel(g_LinearClampSampler, uv, 0.0);
+        }
+    }
+
+    return g_NaN;
+}
+
 float4 SampleSourceForDestinationMip0(Texture2D<float4> sourceMip, uint3 dispatchThreadId)
 {
-    float4 sample = 0.0;
-
     if (!g_PassConstants.IsSourceWidthOdd && !g_PassConstants.IsSourceHeightOdd)
     {
         const float2 uv = (dispatchThreadId.xy + 0.5) * g_PassConstants.InvDispatchDimensions;
-        
-        sample = sourceMip.SampleLevel(g_LinearClampSampler, uv, 0.0);
+
+        return SampleSourceMip(sourceMip, uv);
     }
     else if (g_PassConstants.IsSourceWidthOdd && !g_PassConstants.IsSourceHeightOdd)
     {
-        const float2 uv1 = (dispatchThreadId.xy + float2(0.25, 0.5)) * g_PassConstants.InvDispatchDimensions;
-        const float2 uv2 = uv1 + float2(0.5, 0.0) * g_PassConstants.InvDispatchDimensions;
+        const float2 uv0 = (dispatchThreadId.xy + float2(0.25, 0.5)) * g_PassConstants.InvDispatchDimensions;
+        const float2 uv1 = uv0 + float2(0.5, 0.0) * g_PassConstants.InvDispatchDimensions;
 
-        sample += sourceMip.SampleLevel(g_LinearClampSampler, uv1, 0.0);
-        sample += sourceMip.SampleLevel(g_LinearClampSampler, uv2, 0.0);
-        sample *= 0.5;
+        return ApplyFilterType(
+            SampleSourceMip(sourceMip, uv0),
+            SampleSourceMip(sourceMip, uv1)
+        );
     }
     else if (!g_PassConstants.IsSourceWidthOdd && g_PassConstants.IsSourceHeightOdd)
     {
-        const float2 uv1 = (dispatchThreadId.xy + float2(0.5, 0.25)) * g_PassConstants.InvDispatchDimensions;
-        const float2 uv2 = uv1 + float2(0.0, 0.5) * g_PassConstants.InvDispatchDimensions;
+        const float2 uv0 = (dispatchThreadId.xy + float2(0.5, 0.25)) * g_PassConstants.InvDispatchDimensions;
+        const float2 uv1 = uv0 + float2(0.0, 0.5) * g_PassConstants.InvDispatchDimensions;
 
-        sample += sourceMip.SampleLevel(g_LinearClampSampler, uv1, 0.0);
-        sample += sourceMip.SampleLevel(g_LinearClampSampler, uv2, 0.0);
-        sample *= 0.5;
-    }
-    else
-    {
-        const float2 uv = (dispatchThreadId.xy + float2(0.25, 0.25)) * g_PassConstants.InvDispatchDimensions;
-        const float2 uvOffset = 0.5 * g_PassConstants.InvDispatchDimensions;
-
-        sample += sourceMip.SampleLevel(g_LinearClampSampler, uv, 0.0);
-        sample += sourceMip.SampleLevel(g_LinearClampSampler, uv + float2(uvOffset.x, 0.0), 0.0);
-        sample += sourceMip.SampleLevel(g_LinearClampSampler, uv + float2(0.0, uvOffset.y), 0.0);
-        sample += sourceMip.SampleLevel(g_LinearClampSampler, uv + float2(uvOffset.x, uvOffset.y), 0.0);
-        sample *= 0.25;
+        return ApplyFilterType(
+            SampleSourceMip(sourceMip, uv0),
+            SampleSourceMip(sourceMip, uv1)
+        );
     }
 
-    return sample;
+    const float2 uv = (dispatchThreadId.xy + float2(0.25, 0.25)) * g_PassConstants.InvDispatchDimensions;
+    const float2 uvOffset = 0.5 * g_PassConstants.InvDispatchDimensions;
+
+    return ApplyFilterType(
+        SampleSourceMip(sourceMip, uv),
+        SampleSourceMip(sourceMip, uv + float2(uvOffset.x, 0.0)),
+        SampleSourceMip(sourceMip, uv + float2(0.0, uvOffset.y)),
+        SampleSourceMip(sourceMip, uv + float2(uvOffset.x, uvOffset.y))
+    );
 }
 
-static const uint g_ThreadPerGroupCount =
-    joint::ThreadCount881_X *
-    joint::ThreadCount881_Y *
-    joint::ThreadCount881_Z;
+static const uint g_ThreadPerGroupCount = joint::ThreadCount881_X * joint::ThreadCount881_Y * joint::ThreadCount881_Z;
 
 // LocalDataShare (LDS)
 groupshared float g_GroupSharedR[g_ThreadPerGroupCount];
@@ -133,7 +168,7 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_Dispatc
             const float4 sample2 = LoadSampleForGroup(groupIndex + 8);
             const float4 sample3 = LoadSampleForGroup(groupIndex + 9);
 
-            sample0 = 0.25 * (sample0 + sample1 + sample2 + sample3);
+            sample0 = ApplyFilterType(sample0, sample1, sample2, sample3);
             destinationMip1[dispatchThreadId.xy >> 1] = sample0;
 
             StoreSampleForGroup(groupIndex, sample0);
@@ -155,7 +190,7 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_Dispatc
             const float4 sample2 = LoadSampleForGroup(groupIndex + 16);
             const float4 sample3 = LoadSampleForGroup(groupIndex + 18);
 
-            sample0 = 0.25 * (sample0 + sample1 + sample2 + sample3);
+            sample0 = ApplyFilterType(sample0, sample1, sample2, sample3);
             destinationMip2[dispatchThreadId.xy >> 2] = sample0;
 
             StoreSampleForGroup(groupIndex, sample0);
@@ -177,7 +212,7 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_Dispatc
             const float4 sample2 = LoadSampleForGroup(groupIndex + 32);
             const float4 sample3 = LoadSampleForGroup(groupIndex + 36);
 
-            sample0 = 0.25 * (sample0 + sample1 + sample2 + sample3);
+            sample0 = ApplyFilterType(sample0, sample1, sample2, sample3);
             destinationMip3[dispatchThreadId.xy >> 3] = sample0;
         }
     }
