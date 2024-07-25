@@ -243,15 +243,20 @@ namespace benzin
 
     // ImGuiPass
 
-    ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureKey, uint32_t gpuTimingIndex)
+    ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureIndex, uint32_t gpuTimingIndex)
         : m_ImGuiManager{ imGuiManager }
-        , m_ImGuiTextureKey{ imGuiTextureKey }
+        , m_ImGuiTextureIndex{ imGuiTextureIndex }
         , m_GpuTimingIndex{ gpuTimingIndex }
     {}
 
+    ImGuiPass::~ImGuiPass()
+    {
+        ms_Resources->DestroyTexture(m_ImGuiTextureIndex);
+    }
+
     void ImGuiPass::OnWindowResize(uint32_t width, uint32_t height)
     {
-        benzin::MakeUniquePtr(ms_Resources->GetTexture(m_ImGuiTextureKey), *ms_Device, benzin::TextureCreation
+        ms_Resources->CreateTexture(m_ImGuiTextureIndex, benzin::TextureCreation
         {
             .DebugName = "ImGuiTexture",
             .Format = benzin::CommandLineArgs::g_BackBufferFormat,
@@ -272,7 +277,7 @@ namespace benzin
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "ImGuiPass");
 
-        const auto& imGuiTexture = *ms_Resources->GetTexture(m_ImGuiTextureKey);
+        const auto& imGuiTexture = ms_Resources->GetTexture(m_ImGuiTextureIndex);
 
         commandList.SetViewport(ms_WindowViewport);
         commandList.SetScissorRect(ms_WindowScissorRect);

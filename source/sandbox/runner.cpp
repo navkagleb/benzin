@@ -51,7 +51,7 @@ namespace sandbox
         benzin::MakeUniquePtr(m_Scene, *m_Device);
         benzin::MakeUniquePtr(m_FlyCameraController, m_Scene->GetCamera());
 
-        benzin::MakeUniquePtr(m_RenderResources);
+        benzin::MakeUniquePtr(m_RenderResources, *m_Device);
         benzin::MakeUniquePtr(m_RenderSettings);
         benzin::RenderPass::SetContext(*m_Device, *m_SwapChain, *m_RenderResources, *m_RenderSettings);
 

@@ -6,6 +6,8 @@
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 
+#include "benzin/core/logger.hpp"
+
 namespace benzin
 {
 
@@ -210,7 +212,7 @@ namespace benzin
         : Resource{ device }
     {
         CreateD3D12Resource(creation, m_Device, m_D3D12Resource);
-        SetDxObjectDebugName(m_D3D12Resource, creation.DebugName);
+        SetDxObjectDebugName(m_D3D12Resource, std::format("Texture_{}", creation.DebugName));
 
         m_IsCubeMap = creation.IsCubeMap;
         m_Format = creation.Format;

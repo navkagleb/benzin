@@ -28,10 +28,10 @@ namespace benzin
         {
             UpdateImGuiDimensions();
 
-            if (IsValidUnsigned(m_FinalTextureKey))
+            if (IsValidUnsigned(m_FinalTextureIndex))
             {
-                const auto& finalTexture = m_RenderResources.GetTexture(m_FinalTextureKey);
-                if (finalTexture)
+                const auto* finalTexture = m_RenderResources.GetTexturePtr(m_FinalTextureIndex);
+                if (finalTexture != nullptr)
                 {
                     ImGui::Image((ImTextureID)finalTexture->GetSrv().GetGpuHandle(), ImVec2
                     {

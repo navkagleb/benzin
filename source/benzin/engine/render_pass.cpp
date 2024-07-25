@@ -9,11 +9,105 @@ namespace benzin
 
     // RenderResources
 
-    void RenderResources::SetIsTextureFlippableResources(IsResourceFlippableCallback&& callback)
+    RenderResources::RenderResources(Device& device)
+        : m_Device{ device }
+    {}
+
+    RenderResources::~RenderResources()
     {
-        m_IsTextureFlippableCallback = std::move(callback);
+#if BENZIN_IS_ASSERTS_ENABLED
+        uint32_t nonReleasedTextureCount = 0;
+        for (const auto& texture : m_Textures)
+        {
+            nonReleasedTextureCount += texture.get() != nullptr;
+        }
+
+        BenzinAssert(nonReleasedTextureCount == 0, "Not all textures are released! Non released texture count: {}", nonReleasedTextureCount);
+#endif
     }
 
+    void RenderResources::SetMaxTextureCount(uint32_t maxTextureCount)
+    {
+        BenzinAssert(m_Textures.empty());
+        m_Textures.resize(maxTextureCount);
+    }
+
+    void RenderResources::SetIsTextureFlippableCallback(IsResourceFlippableCallback&& callback)
+    {
+        m_IsTextureFlippable = std::move(callback);
+    }
+
+    void RenderResources::CreateTexture(uint32_t index, const TextureCreation& creation)
+    {
+        BenzinAssert(index < m_Textures.size());
+
+        if (m_IsTextureFlippable(index))
+        {
+            auto validatedCreation = creation;
+
+            for (const uint32_t i : std::views::iota(0u, 2u))
+            {
+                const std::string debugName = std::format("{}{}", creation.DebugName, 0);
+                validatedCreation.DebugName = debugName;
+
+                MakeUniquePtr(m_Textures[index - i], m_Device, validatedCreation);
+            }
+
+            return;
+        }
+
+        MakeUniquePtr(m_Textures[index], m_Device, creation);
+    }
+
+    void RenderResources::DestroyTexture(uint32_t index)
+    {
+        BenzinAssert(index < m_Textures.size());
+
+        if (m_IsTextureFlippable(index))
+        {
+            m_Textures[index - 1].reset();
+        }
+
+        m_Textures[index].reset();
+    }
+
+    const Texture& RenderResources::GetTexture(uint32_t index) const
+    {
+        const auto* texture = GetTexturePtr(index);
+        BenzinAssert(texture != nullptr);
+
+        return *texture;
+    }
+
+    const Texture& RenderResources::GetPreviousTexture(uint32_t index) const
+    {
+        const auto* texture = GetPreviousTexturePtr(index);
+        BenzinAssert(texture != nullptr);
+
+        return *texture;
+    }
+
+    const Texture* RenderResources::GetTexturePtr(uint32_t index) const
+    {
+        BenzinAssert(index < m_Textures.size());
+
+        if (m_IsTextureFlippable(index))
+        {
+            return m_Textures[index - m_CurrentFlipResourceIndex].get();
+        }
+
+        return m_Textures[index].get();
+    }
+
+    const Texture* RenderResources::GetPreviousTexturePtr(uint32_t index) const
+    {
+        BenzinAssert(index < m_Textures.size());
+        BenzinAssert(m_IsTextureFlippable(index));
+
+        return m_Textures[index - m_PreviousFlipResourceIndex].get();
+    }
+
+#if 0
     std::unique_ptr<Texture>& RenderResources::GetTexture(uint32_t key)
     {
         if (!m_IsTextureFlippableCallback(key))
@@ -37,6 +131,7 @@ namespace benzin
         callback(0, GetTexture(key));
         callback(1, GetPreviousTexture(key));
     }
+#endif
 
     void RenderResources::FlipResources()
     {

@@ -16,7 +16,7 @@ namespace benzin
         bool IsViewportSizeRelevant() const { return m_IsViewportSizeRelevant; }
         bool IsValidForRendering() const { return m_IsViewportSizeRelevant && m_IsVisible; }
 
-        void SetFinalTextureKey(uint32_t finalTextureKey) { m_FinalTextureKey = finalTextureKey; }
+        void SetFinalTextureIndex(uint32_t finalTextureIndex) { m_FinalTextureIndex = finalTextureIndex; }
 
     private:
         void OnEvent(Event& event) override;
@@ -27,7 +27,7 @@ namespace benzin
     private:
         RenderResources& m_RenderResources;
 
-        uint32_t m_FinalTextureKey = g_InvalidUnsigned<uint32_t>;
+        uint32_t m_FinalTextureIndex = g_InvalidUnsigned<uint32_t>;
         
         DirectX::XMINT2 m_ViewportSize{};
         bool m_IsViewportSizeRelevant = true;

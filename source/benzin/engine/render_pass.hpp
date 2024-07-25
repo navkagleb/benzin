@@ -10,6 +10,8 @@ namespace benzin
     class Texture;
     class TickTimer;
 
+    struct TextureCreation;
+
     class RenderSettings
     {
     public:
@@ -44,24 +46,33 @@ namespace benzin
     {
     public:
         using IsResourceFlippableCallback = std::function<bool(uint32_t)>;
-        using ForEachTextureCallback = std::function<void(uint32_t index, std::unique_ptr<Texture>&)>;
 
-        void SetIsTextureFlippableResources(IsResourceFlippableCallback&& callback);
+        explicit RenderResources(Device& device);
+        ~RenderResources();
 
-        std::unique_ptr<Texture>& GetTexture(uint32_t key);
-        std::unique_ptr<Texture>& GetPreviousTexture(uint32_t key);
+        void SetMaxTextureCount(uint32_t maxTextureCount);
+        void SetIsTextureFlippableCallback(IsResourceFlippableCallback&& callback);
 
-        void ForEachFlippableTexture(uint32_t key, ForEachTextureCallback&& callback);
+        void CreateTexture(uint32_t index, const TextureCreation& creation);
+        void DestroyTexture(uint32_t index);
+
+        const Texture& GetTexture(uint32_t index) const;
+        const Texture& GetPreviousTexture(uint32_t index) const;
+
+        const Texture* GetTexturePtr(uint32_t index) const;
+        const Texture* GetPreviousTexturePtr(uint32_t index) const;
 
         void FlipResources();
 
     public:
-        std::unordered_map<uint32_t, std::unique_ptr<Texture>> m_Textures;
+        Device& m_Device;
 
         uint8_t m_PreviousFlipResourceIndex = 1;
         uint8_t m_CurrentFlipResourceIndex = 0;
 
-        IsResourceFlippableCallback m_IsTextureFlippableCallback;
+        std::vector<std::unique_ptr<Texture>> m_Textures;
+
+        IsResourceFlippableCallback m_IsTextureFlippable;
     };
 
     class RenderPass

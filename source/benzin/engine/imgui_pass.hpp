@@ -83,7 +83,8 @@ namespace benzin
     class ImGuiPass : public RenderPass
     {
     public:
-        ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureKey, uint32_t gpuTimingIndex);
+        ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureIndex, uint32_t gpuTimingIndex);
+        ~ImGuiPass() override;
 
         bool IsDependentOnViewport() const override { return false; }
 
@@ -95,7 +96,7 @@ namespace benzin
     private:
         ImGuiManager& m_ImGuiManager;
         
-        uint32_t m_ImGuiTextureKey;
+        uint32_t m_ImGuiTextureIndex;
         uint32_t m_GpuTimingIndex;
 
         mutable std::chrono::microseconds m_CpuRenderTime = std::chrono::microseconds::zero();
