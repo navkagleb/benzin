@@ -71,7 +71,7 @@ namespace benzin
                 BenzinNvApiEnsure(NvAPI_GPU_GetPCIIdentifiers(physicalGpuHandle, &deviceId, &subSystemId, &revisionId, &extDeviceId));
 
                 BenzinTrace(
-                    "Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
+                    "NvApi Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
                     i,
                     gpuName,
                     0x10DE, // Force set VendorId for NvAPI,

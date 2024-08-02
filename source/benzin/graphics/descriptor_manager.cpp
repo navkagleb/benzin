@@ -2,12 +2,15 @@
 #include "benzin/graphics/descriptor_manager.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/logger.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 
 namespace benzin
 {
  
+    BenzinEnableUnaryPlusForEnum(DescriptorType);
+
     static D3D12_DESCRIPTOR_HEAP_TYPE GetDescriptorHeapType(DescriptorType descripitorType)
     {
         switch (descripitorType)
@@ -60,7 +63,7 @@ namespace benzin
         std::list<uint32_t> m_FreeIndices;
 
 #if BENZIN_IS_DEBUG_BUILD
-        uint32_t m_AllocatedIndexCount = 0;
+        EnumArray<uint32_t, DescriptorType> m_AllocatedIndexCounts{};
 #endif
     };
 
@@ -85,7 +88,10 @@ namespace benzin
     DescriptorHeap::~DescriptorHeap()
     {
 #if BENZIN_IS_DEBUG_BUILD
-        BenzinAssert(m_AllocatedIndexCount == 0);
+        for (const auto [i, count] : m_AllocatedIndexCounts | std::views::enumerate)
+        {
+            BenzinWarningIf(count != 0, "Remainding allocated index count {} for DescriptorType::{}", count, magic_enum::enum_name((DescriptorType)i));
+        }
 #endif
 
         BenzinSafeDxObjectRelease(m_D3D12DescriptorHeap);
@@ -95,23 +101,25 @@ namespace benzin
     {
         const uint32_t heapIndex = AllocateIndex();
 
+#if BENZIN_IS_DEBUG_BUILD
+        m_AllocatedIndexCounts[+type]++;
+#endif
+
         return Descriptor{ type, heapIndex, GetCpuHandle(heapIndex), m_IsAccessableByShader ? GetGpuHandle(heapIndex) : 0 };
     }
 
     void DescriptorHeap::FreeDescriptor(const Descriptor& descriptor)
     {
         FreeIndex(descriptor.GetHeapIndex());
+
+#if BENZIN_IS_DEBUG_BUILD
+        m_AllocatedIndexCounts[+descriptor.GetType()]--;
+#endif
     }
 
     uint32_t DescriptorHeap::AllocateIndex()
     {
-        static const uint32_t invalidIndex = std::numeric_limits<uint32_t>::max();
-
-#if BENZIN_IS_DEBUG_BUILD
-        m_AllocatedIndexCount += 1;
-#endif
-
-        uint32_t index = invalidIndex;
+        auto index = g_InvalidUnsigned<uint32_t>;
 
         if (!m_FreeIndices.empty())
         {
@@ -123,7 +131,7 @@ namespace benzin
             index = m_Marker++;
         }
 
-        BenzinAssert(index != invalidIndex);
+        BenzinAssert(IsValidUnsigned(index));
         return index;
     }
 
@@ -131,10 +139,6 @@ namespace benzin
     {
         BenzinAssert(std::find(m_FreeIndices.begin(), m_FreeIndices.end(), index) == m_FreeIndices.end());
         m_FreeIndices.push_back(index);
-
-#if BENZIN_IS_DEBUG_BUILD
-        m_AllocatedIndexCount--;
-#endif
     }
 
     uint64_t DescriptorHeap::GetCpuHandle(uint32_t index) const

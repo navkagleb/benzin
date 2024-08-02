@@ -17,7 +17,6 @@ namespace benzin
         std::string_view DebugName;
 
         const Window& WindowRef;
-        const Backend& BackendRef;
         Device& DeviceRef;
     };
 

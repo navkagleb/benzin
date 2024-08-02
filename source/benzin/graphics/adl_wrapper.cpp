@@ -215,7 +215,7 @@ namespace benzin
                 ParseUniqueDeviceIdString(adapterInfo.strUDID, vendorId, deviceId, subSysId, revisionId);
 
                 BenzinTrace(
-                    "Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
+                    "Adl Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
                     i,
                     adapterInfo.strAdapterName,
                     vendorId,

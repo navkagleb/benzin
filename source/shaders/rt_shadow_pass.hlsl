@@ -164,7 +164,7 @@ void RayGen()
     uint hittedSum = 0;
     for (uint i = 0; i < g_PassConstants.RaysPerPixel; ++i)
     {
-        const float2 uvSeed = (uv + i * g_FrameConstants.DeltaTime) * g_FrameConstants.DeltaTime;
+        const float2 uvSeed = (uv + i * g_FrameConstants.FrameTimeInSec * 548.0) * g_FrameConstants.FrameTimeInSec * 854.0 + g_FrameConstants.FrameTimeInSec * 123.0;
         hittedSum += TraceShadowRay(worldPosition, worldNormal, pointLight, uvSeed);
     }
 

@@ -286,13 +286,15 @@ namespace benzin
         std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> d3d12RtvDescriptorHandles;
         d3d12RtvDescriptorHandles.reserve(rtvs.size());
 
-        for (const Descriptor& descriptor : rtvs)
+        for (const auto& rtv : rtvs)
         {
-            d3d12RtvDescriptorHandles.emplace_back(descriptor.GetCpuHandle());
+            BenzinAssert(rtv.GetType() == DescriptorType::Rtv);
+            d3d12RtvDescriptorHandles.emplace_back(rtv.GetCpuHandle());
         }
 
         if (dsv)
         {
+            BenzinAssert(dsv->GetType() == DescriptorType::Dsv);
             const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DsvDescriptorHandle{ dsv->GetCpuHandle() };
 
             m_D3D12GraphicsCommandList->OMSetRenderTargets(
@@ -315,6 +317,7 @@ namespace benzin
 
     void GraphicsCommandList::ClearRenderTarget(const Descriptor& rtv, const DirectX::XMFLOAT4& color)
     {
+        BenzinAssert(rtv.GetType() == DescriptorType::Rtv);
         const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RtvDescriptorHandle{ rtv.GetCpuHandle() };
 
         m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RtvDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
@@ -322,6 +325,7 @@ namespace benzin
 
     void GraphicsCommandList::ClearDepthStencil(const Descriptor& dsv, const DepthStencil& depthStencil)
     {
+        BenzinAssert(dsv.GetType() == DescriptorType::Dsv);
         const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DsvDescriptorHandle{ dsv.GetCpuHandle() };
 
         m_D3D12GraphicsCommandList->ClearDepthStencilView(

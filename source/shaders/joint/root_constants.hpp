@@ -58,9 +58,10 @@ namespace joint
         DenoiserBlurRc_AlbedoAndRoughnessTexture,
         DenoiserBlurRc_WorldNormalTexture,
         DenoiserBlurRc_DepthBuffer,
+        DenoiserBlurRc_VelocityTexture,
         DenoiserBlurRc_NoisyVisibilityBuffer,
-        DenoiserBlurRc_TemporalAccumulationBuffer,
         DenoiserBlurRc_ReprojectedHistoryTexture,
+        DenoiserBlurRc_TemporalAccumulationBuffer,
         DenoiserBlurRc_DenoisedVisibilityBuffer,
     };
 

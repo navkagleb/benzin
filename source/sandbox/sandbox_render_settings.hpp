@@ -30,6 +30,11 @@ namespace sandbox
 
     struct DenoiserBlurSettings
     {
+        float SpecularAccumulationCurve = 0.2f;
+        float SpecularAccumulationBasePower = 0.25f;
+
+        bool IsDenoiserAntilagEnabled = true;
+
         bool IsGeometryWeightUsed = true;
         bool IsNormalWeightUsed = true;
         bool IsRoughnessWeightUsed = true;

@@ -305,8 +305,6 @@ namespace benzin
 
         BenzinEnsure(m_Win64Window);
 
-        SetVisible(true);
-
         // Init 'm_EventCallback' after window creation to don't handle events before window is created
         m_EventCallback = creation.EventCallback;
     }

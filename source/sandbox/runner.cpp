@@ -46,7 +46,7 @@ namespace sandbox
         benzin::MakeUniquePtr(m_MainWindow, windowCreation);
         benzin::MakeUniquePtr(m_Backend);
         benzin::MakeUniquePtr(m_Device, benzin::DeviceCreation{ "MainDevice", *m_Backend });
-        benzin::MakeUniquePtr(m_SwapChain, benzin::SwapChainCreation{ "MainSwapChain", *m_MainWindow, *m_Backend, *m_Device });
+        benzin::MakeUniquePtr(m_SwapChain, benzin::SwapChainCreation{ "MainSwapChain", *m_MainWindow, *m_Device });
 
         benzin::MakeUniquePtr(m_Scene, *m_Device);
         benzin::MakeUniquePtr(m_FlyCameraController, m_Scene->GetCamera());
@@ -88,7 +88,13 @@ namespace sandbox
         });
     }
 
-    Runner::~Runner() = default;
+    Runner::~Runner()
+    {
+        BenzinTrace("----------------------------------------------");
+        BenzinLogTimeOnScopeExit("Runner::~Runner");
+
+        m_Device->GetGraphicsCommandQueue().Flush();
+    }
 
     void Runner::RunMainLoop()
     {
@@ -96,6 +102,8 @@ namespace sandbox
         BenzinEnsure(m_ImGuiPass != nullptr);
 
         RunZeroFrame();
+
+        m_MainWindow->SetVisible(true);
 
         m_FrameTimer.Reset();
         m_AnimationTimer.Reset();
@@ -270,14 +278,14 @@ namespace sandbox
 
         m_FpsCounter.TickFrame(m_FrameTimer);
 
+        m_FlyCameraController->OnUpdate(m_AnimationTimer.GetDeltaTime());
+        m_Scene->OnUpdate();
+
         {
             m_ImGuiManager->BeginUiFrame();
             m_ImGuiManager->SpawnUi();
             m_ImGuiManager->EndUiFrame();
         }
-
-        m_FlyCameraController->OnUpdate(m_AnimationTimer.GetDeltaTime());
-        m_Scene->OnUpdate();
 
         m_RenderResources->FlipResources();
         for (auto& renderPass : m_RenderPasses)
@@ -289,9 +297,7 @@ namespace sandbox
     void Runner::OnRender()
     {
         BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::OnRender]);
-
-        auto& commandList = m_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinPushGpuEvent(commandList, "RenderPasses");
+        BenzinPushGpuEvent(m_Device->GetGraphicsCommandQueue().GetCommandList(), "RenderPasses");
 
         for (auto& renderPass : m_RenderPasses)
         {

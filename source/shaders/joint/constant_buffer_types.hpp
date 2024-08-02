@@ -31,8 +31,8 @@ namespace joint
         float2 RenderResolution;
         float2 InvRenderResolution;
         uint CpuFrameIndex;
-        float DeltaTime;
-        float ElapsedTime;
+        float FrameTimeInSec;
+        float ElapsedTimeInSec;
 
         uint IsRtShadowsEnabled : 1;
         uint IsDenoiserEnabled : 1;
@@ -47,6 +47,11 @@ namespace joint
         uint RaysPerPixel;
     };
 
+    struct DenoiserTemporalAccumulationConstants
+    {
+        bool IsAccumulationEnabled : 1;
+    };
+
     struct DenoiserHistoryFixConstants
     {
         uint IsHistoryFixEnabled : 1;
@@ -55,6 +60,11 @@ namespace joint
 
     struct DenoiserBlurConstants
     {
+        float SpecularAccumulationCurve;
+        float SpecularAccumulationBasePower;
+
+        uint IsDenoiserAntilagEnabled : 1;
+
         uint IsGeometryWeightUsed : 1;
         uint IsNormalWeightUsed : 1;
         uint IsRoughnessWeightUsed : 1;

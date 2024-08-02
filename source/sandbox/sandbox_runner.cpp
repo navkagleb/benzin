@@ -48,7 +48,7 @@ namespace sandbox
 
     static Timings<SandboxTiming> g_CpuTimings;
 
-    enum class RenderTextures : uint32_t
+    enum class Texture : uint32_t
     {
         // GBuffer
         AlbedoAndRoughness,
@@ -71,7 +71,7 @@ namespace sandbox
 
         Count,
     };
-    BenzinEnableUnaryPlusForEnum(RenderTextures);
+    BenzinEnableUnaryPlusForEnum(Texture);
 
     struct RenderPassConfig
     {
@@ -112,8 +112,8 @@ namespace sandbox
                 .RenderResolution{ (float)GetRenderViewportWidth(), (float)GetRenderViewportHeight() },
                 .InvRenderResolution{ 1.0f / (float)GetRenderViewportWidth(), 1.0f / (float)GetRenderViewportHeight() },
                 .CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex(),
-                .DeltaTime = tickTimer.GetDeltaTimeInMs(),
-                .ElapsedTime = tickTimer.GetElapsedTimeInMs(),
+                .FrameTimeInSec = tickTimer.GetDeltaTimeInSec(),
+                .ElapsedTimeInSec = tickTimer.GetElapsedTimeInSec(),
                 .IsRtShadowsEnabled = rtShadowSettings.IsRtShadowEnabled,
                 .IsDenoiserEnabled = denoiserSettings.IsDenoiserEnabled,
                 .MaxTemporalAccumulationCount = denoiserSettings.MaxTemporalAccumulationCount,
@@ -186,12 +186,12 @@ namespace sandbox
         {
             ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
 
-            ms_Resources->DestroyTexture(+RenderTextures::AlbedoAndRoughness);
-            ms_Resources->DestroyTexture(+RenderTextures::EmissiveAndMetallic);
-            ms_Resources->DestroyTexture(+RenderTextures::WorldNormal);
-            ms_Resources->DestroyTexture(+RenderTextures::VelocityBuffer);
-            ms_Resources->DestroyTexture(+RenderTextures::DepthStencil);
-            ms_Resources->DestroyTexture(+RenderTextures::ViewDepth);
+            ms_Resources->DestroyTexture(+Texture::AlbedoAndRoughness);
+            ms_Resources->DestroyTexture(+Texture::EmissiveAndMetallic);
+            ms_Resources->DestroyTexture(+Texture::WorldNormal);
+            ms_Resources->DestroyTexture(+Texture::VelocityBuffer);
+            ms_Resources->DestroyTexture(+Texture::DepthStencil);
+            ms_Resources->DestroyTexture(+Texture::ViewDepth);
         }
 
         bool IsDependentOnViewport() const override { return true; }
@@ -199,7 +199,7 @@ namespace sandbox
         void OnRenderViewportResize(uint32_t width, uint32_t height) override
         {
             const auto createGBufferTexture = [&](
-                RenderTextures textureIndex,
+                Texture textureIndex,
                 benzin::GraphicsFormat format,
                 benzin::TextureFlag flag
             )
@@ -215,15 +215,15 @@ namespace sandbox
                 });
             };
 
-            createGBufferTexture(RenderTextures::AlbedoAndRoughness, g_RenderPassConfig.GBufferColor0Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(RenderTextures::EmissiveAndMetallic, g_RenderPassConfig.GBufferColor1Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(RenderTextures::WorldNormal, g_RenderPassConfig.GBufferColor2Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(RenderTextures::VelocityBuffer, g_RenderPassConfig.GBufferColor3Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(RenderTextures::DepthStencil, g_RenderPassConfig.DepthStencilFormat, benzin::TextureFlag::AllowDepthStencil);
+            createGBufferTexture(Texture::AlbedoAndRoughness, g_RenderPassConfig.GBufferColor0Format, benzin::TextureFlag::AllowRenderTarget);
+            createGBufferTexture(Texture::EmissiveAndMetallic, g_RenderPassConfig.GBufferColor1Format, benzin::TextureFlag::AllowRenderTarget);
+            createGBufferTexture(Texture::WorldNormal, g_RenderPassConfig.GBufferColor2Format, benzin::TextureFlag::AllowRenderTarget);
+            createGBufferTexture(Texture::VelocityBuffer, g_RenderPassConfig.GBufferColor3Format, benzin::TextureFlag::AllowRenderTarget);
+            createGBufferTexture(Texture::DepthStencil, g_RenderPassConfig.DepthStencilFormat, benzin::TextureFlag::AllowDepthStencil);
 
-            ms_Resources->CreateTexture(+RenderTextures::ViewDepth, benzin::TextureCreation
+            ms_Resources->CreateTexture(+Texture::ViewDepth, benzin::TextureCreation
             {
-                .DebugName = magic_enum::enum_name(RenderTextures::ViewDepth),
+                .DebugName = magic_enum::enum_name(Texture::ViewDepth),
                 .Format = g_RenderPassConfig.GBufferColor4Format,
                 .Width = width,
                 .Height = height,
@@ -242,12 +242,12 @@ namespace sandbox
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
             BenzinPushGpuEvent(commandList, "GeometryPass");
 
-            const auto& albedoAndRoughness = ms_Resources->GetTexture(+RenderTextures::AlbedoAndRoughness);
-            const auto& emissiveAndMetallic = ms_Resources->GetTexture(+RenderTextures::EmissiveAndMetallic);
-            const auto& worldNormal = ms_Resources->GetTexture(+RenderTextures::WorldNormal);
-            const auto& velocity = ms_Resources->GetTexture(+RenderTextures::VelocityBuffer);
-            const auto& viewDepth = ms_Resources->GetTexture(+RenderTextures::ViewDepth);
-            const auto& depthStencil = ms_Resources->GetTexture(+RenderTextures::DepthStencil);
+            const auto& albedoAndRoughness = ms_Resources->GetTexture(+Texture::AlbedoAndRoughness);
+            const auto& emissiveAndMetallic = ms_Resources->GetTexture(+Texture::EmissiveAndMetallic);
+            const auto& worldNormal = ms_Resources->GetTexture(+Texture::WorldNormal);
+            const auto& velocity = ms_Resources->GetTexture(+Texture::VelocityBuffer);
+            const auto& viewDepth = ms_Resources->GetTexture(+Texture::ViewDepth);
+            const auto& depthStencil = ms_Resources->GetTexture(+Texture::DepthStencil);
 
             commandList.SetViewport(ms_RenderViewport);
             commandList.SetScissorRect(ms_RenderScissorRect);
@@ -270,7 +270,7 @@ namespace sandbox
                     velocity.GetRtv(),
                     viewDepth.GetRtv(),
                 },
-                &ms_Resources->GetTexture(+RenderTextures::DepthStencil).GetDsv()
+                &ms_Resources->GetTexture(+Texture::DepthStencil).GetDsv()
             );
 
             commandList.ClearRenderTarget(albedoAndRoughness.GetRtv());
@@ -355,16 +355,16 @@ namespace sandbox
 
         ~RtShadowPass()
         {
-            ms_Resources->DestroyTexture(+RenderTextures::NoisyShadowVisibility);
+            ms_Resources->DestroyTexture(+Texture::NoisyShadowVisibility);
         }
 
         bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize(uint32_t width, uint32_t height) override
         {
-            ms_Resources->CreateTexture(+RenderTextures::NoisyShadowVisibility, benzin::TextureCreation
+            ms_Resources->CreateTexture(+Texture::NoisyShadowVisibility, benzin::TextureCreation
             {
-                .DebugName = magic_enum::enum_name(RenderTextures::NoisyShadowVisibility),
+                .DebugName = magic_enum::enum_name(Texture::NoisyShadowVisibility),
                 .Format = benzin::GraphicsFormat::R32Float,
                 .Width = width,
                 .Height = height,
@@ -394,13 +394,13 @@ namespace sandbox
             auto* d3d12CommandList = commandList.GetD3D12GraphicsCommandList();
             BenzinPushGpuEvent(commandList, "RtShadowPass");
 
-            const auto& visibilityTexture = ms_Resources->GetTexture(+RenderTextures::NoisyShadowVisibility);
+            const auto& visibilityTexture = ms_Resources->GetTexture(+Texture::NoisyShadowVisibility);
 
             d3d12CommandList->SetPipelineState1(m_D3D12RaytracingStateObject.Get());
 
             commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstantBuffer->GetActiveGpuVirtualAddress());
-            commandList.SetRootResource(joint::RtShadowRc_GBufferWorldNormalTexture, ms_Resources->GetTexture(+RenderTextures::WorldNormal).GetSrv());
-            commandList.SetRootResource(joint::RtShadowRc_GBufferDepthTexture, ms_Resources->GetTexture(+RenderTextures::DepthStencil).GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
+            commandList.SetRootResource(joint::RtShadowRc_GBufferWorldNormalTexture, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
+            commandList.SetRootResource(joint::RtShadowRc_GBufferDepthTexture, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
             commandList.SetRootResource(joint::RtShadowRc_PointLightBuffer, m_Scene.GetPointLightBufferStructuredSrv());
             commandList.SetRootResource(joint::RtShadowRc_VisiblityBuffer, visibilityTexture.GetUav());
 
@@ -579,6 +579,7 @@ namespace sandbox
                 .CsFileName = "denoiser_blur_pass.hlsl",
             });
 
+            benzin::MakeUniquePtr(m_TemporalAccumulationConstantBuffer, *ms_Device, "TemporalAccumulationConstants");
             benzin::MakeUniquePtr(m_DepthMipGenerationConstantBuffer, *ms_Device, "DepthMipGenerationConstantBuffer");
             benzin::MakeUniquePtr(m_ColorMipGenerationConstantBuffer, *ms_Device, "ColorMipGenerationConstantBuffer");
             benzin::MakeUniquePtr(m_HistoryFixConstantBuffer, *ms_Device, "HistoryFixConstantBuffer");
@@ -593,18 +594,18 @@ namespace sandbox
             pipelineStateManager.DestroyPipelineState(m_HistoryFixPso);
             pipelineStateManager.DestroyPipelineState(m_BlurPso);
 
-            ms_Resources->DestroyTexture(+RenderTextures::TemporalAccumulation);
-            ms_Resources->DestroyTexture(+RenderTextures::ReprojectedShadowHistory);
-            ms_Resources->DestroyTexture(+RenderTextures::DenoisedShadowVisibility);
+            ms_Resources->DestroyTexture(+Texture::TemporalAccumulation);
+            ms_Resources->DestroyTexture(+Texture::ReprojectedShadowHistory);
+            ms_Resources->DestroyTexture(+Texture::DenoisedShadowVisibility);
         }
 
         bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize(uint32_t width, uint32_t height) override
         {
-            ms_Resources->CreateTexture(+RenderTextures::TemporalAccumulation, benzin::TextureCreation
+            ms_Resources->CreateTexture(+Texture::TemporalAccumulation, benzin::TextureCreation
             {
-                .DebugName = magic_enum::enum_name(RenderTextures::TemporalAccumulation),
+                .DebugName = magic_enum::enum_name(Texture::TemporalAccumulation),
                 .Format = benzin::GraphicsFormat::R32Float,
                 .Width = width,
                 .Height = height,
@@ -612,9 +613,9 @@ namespace sandbox
                 .Flags = benzin::TextureFlag::AllowUnorderedAccess,
             });
 
-            ms_Resources->CreateTexture(+RenderTextures::ReprojectedShadowHistory, benzin::TextureCreation
+            ms_Resources->CreateTexture(+Texture::ReprojectedShadowHistory, benzin::TextureCreation
             {
-                .DebugName = magic_enum::enum_name(RenderTextures::ReprojectedShadowHistory),
+                .DebugName = magic_enum::enum_name(Texture::ReprojectedShadowHistory),
                 .Format = benzin::GraphicsFormat::R32Float,
                 .Width = width,
                 .Height = height,
@@ -622,9 +623,9 @@ namespace sandbox
                 .Flags = benzin::TextureFlag::AllowUnorderedAccess,
             });
 
-            ms_Resources->CreateTexture(+RenderTextures::DenoisedShadowVisibility, benzin::TextureCreation
+            ms_Resources->CreateTexture(+Texture::DenoisedShadowVisibility, benzin::TextureCreation
             {
-                .DebugName = magic_enum::enum_name(RenderTextures::DenoisedShadowVisibility),
+                .DebugName = magic_enum::enum_name(Texture::DenoisedShadowVisibility),
                 .Format = benzin::GraphicsFormat::R32Float,
                 .Width = width,
                 .Height = height,
@@ -635,10 +636,17 @@ namespace sandbox
 
         void OnUpdate()
         {
-            const auto& settings = ms_Settings->GetSection<DenoiserBlurSettings>();
+            m_TemporalAccumulationConstantBuffer->UpdateConstants(
+            {
+                .IsAccumulationEnabled = (ms_Device->GetCpuFrameIndex() % 30) == 0,
+            });
 
+            const auto& settings = ms_Settings->GetSection<DenoiserBlurSettings>();
             m_BlurConstantBuffer->UpdateConstants(joint::DenoiserBlurConstants
             {
+                .SpecularAccumulationCurve = settings.SpecularAccumulationCurve,
+                .SpecularAccumulationBasePower = settings.SpecularAccumulationBasePower,
+                .IsDenoiserAntilagEnabled = settings.IsDenoiserAntilagEnabled,
                 .IsGeometryWeightUsed = settings.IsGeometryWeightUsed,
                 .IsNormalWeightUsed = settings.IsNormalWeightUsed,
                 .IsRoughnessWeightUsed = settings.IsRoughnessWeightUsed,
@@ -722,17 +730,18 @@ namespace sandbox
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
             BenzinPushGpuEvent(commandList, "Denoiser_TemporalAccumulation");
 
-            const auto& previousViewDepth = ms_Resources->GetPreviousTexture(+RenderTextures::ViewDepth);
-            const auto& previousAccumulationTexture = ms_Resources->GetPreviousTexture(+RenderTextures::TemporalAccumulation);
-            const auto& previousDenoisedVisibilityTexture = ms_Resources->GetPreviousTexture(+RenderTextures::DenoisedShadowVisibility);
-            const auto& accumulationTexture = ms_Resources->GetTexture(+RenderTextures::TemporalAccumulation);
-            const auto& reprojectedHistoryTexture = ms_Resources->GetTexture(+RenderTextures::ReprojectedShadowHistory);
+            const auto& previousViewDepth = ms_Resources->GetPreviousTexture(+Texture::ViewDepth);
+            const auto& previousAccumulationTexture = ms_Resources->GetPreviousTexture(+Texture::TemporalAccumulation);
+            const auto& previousDenoisedVisibilityTexture = ms_Resources->GetPreviousTexture(+Texture::DenoisedShadowVisibility);
+            const auto& accumulationTexture = ms_Resources->GetTexture(+Texture::TemporalAccumulation);
+            const auto& reprojectedHistoryTexture = ms_Resources->GetTexture(+Texture::ReprojectedShadowHistory);
 
             commandList.SetPipelineState(*m_TemporalAccumulationPso);
 
-            commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_WorldNormalTexture, ms_Resources->GetTexture(+RenderTextures::WorldNormal).GetSrv());
-            commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_VelocityBuffer, ms_Resources->GetTexture(+RenderTextures::VelocityBuffer).GetSrv());
-            commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_DepthBuffer, ms_Resources->GetTexture(+RenderTextures::DepthStencil).GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
+            commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_TemporalAccumulationConstantBuffer->GetActiveGpuVirtualAddress());
+            commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_WorldNormalTexture, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
+            commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_VelocityBuffer, ms_Resources->GetTexture(+Texture::VelocityBuffer).GetSrv());
+            commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_DepthBuffer, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
             commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_PreviousViewDepthBuffer, previousViewDepth.GetSrv({ .MipRange{ 0, 1 } }));
             commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_PreviousTemporalAccumulationBuffer, previousAccumulationTexture.GetSrv());
             commandList.SetRootResource(joint::DenoiserTemporalAccumulationRc_PreviousDenoisedVisibilityBuffer, previousDenoisedVisibilityTexture.GetSrv());
@@ -756,8 +765,8 @@ namespace sandbox
             auto& gpuTimer = ms_Device->GetGpuTimer();
             BenzinGrabGpuTimeOnScopeExit(gpuTimer, +SandboxTiming::DenoiserPass_Mips);
 
-            const auto& viewDepth = ms_Resources->GetTexture(+RenderTextures::ViewDepth);
-            const auto& visibilityTexture = ms_Resources->GetTexture(+RenderTextures::NoisyShadowVisibility);
+            const auto& viewDepth = ms_Resources->GetTexture(+Texture::ViewDepth);
+            const auto& visibilityTexture = ms_Resources->GetTexture(+Texture::NoisyShadowVisibility);
 
             BenzinAssert(viewDepth.GetWidth() == visibilityTexture.GetWidth() && viewDepth.GetHeight() == visibilityTexture.GetHeight());
 
@@ -782,7 +791,7 @@ namespace sandbox
                 .IsSourceWidthOdd = benzin::IsOddQuickly(viewDepth.GetWidth()),
                 .IsSourceHeightOdd = benzin::IsOddQuickly(viewDepth.GetHeight()),
                 .DestinationMipCount = 4,
-                .FilterType = joint::MipGenerationFilterType_Max,
+                .FilterType = joint::MipGenerationFilterType_Average, // #TODO
             });
 
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
@@ -832,15 +841,15 @@ namespace sandbox
                 .IsViewDepthUsedForWeights = settings.IsViewDepthUsedForWeights,
             });
 
-            const auto& accumulationTexture = ms_Resources->GetTexture(+RenderTextures::TemporalAccumulation);
-            const auto& viewDepth = ms_Resources->GetTexture(+RenderTextures::ViewDepth);
-            const auto& noisyVisibilityTexture = ms_Resources->GetTexture(+RenderTextures::NoisyShadowVisibility);
-            const auto& reprojectedHistoryTexture = ms_Resources->GetTexture(+RenderTextures::ReprojectedShadowHistory);
+            const auto& accumulationTexture = ms_Resources->GetTexture(+Texture::TemporalAccumulation);
+            const auto& viewDepth = ms_Resources->GetTexture(+Texture::ViewDepth);
+            const auto& noisyVisibilityTexture = ms_Resources->GetTexture(+Texture::NoisyShadowVisibility);
+            const auto& reprojectedHistoryTexture = ms_Resources->GetTexture(+Texture::ReprojectedShadowHistory);
 
             commandList.SetPipelineState(*m_HistoryFixPso);
             commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_HistoryFixConstantBuffer->GetActiveGpuVirtualAddress());
 
-            commandList.SetRootResource(joint::DenoiserHistoryFixRc_GBufferAlbedoAndRoughness, ms_Resources->GetTexture(+RenderTextures::AlbedoAndRoughness).GetSrv());
+            commandList.SetRootResource(joint::DenoiserHistoryFixRc_GBufferAlbedoAndRoughness, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());
             commandList.SetRootResource(joint::DenoiserHistoryFixRc_TemporalAccumulationBuffer, accumulationTexture.GetSrv());
             commandList.SetRootResource(joint::DenoiserHistoryFixRc_ViewDepthBuffer, viewDepth.GetSrv());
             commandList.SetRootResource(joint::DenoiserHistoryFixRc_NoisyVisibilityBuffer, noisyVisibilityTexture.GetSrv());
@@ -865,22 +874,25 @@ namespace sandbox
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
             BenzinPushGpuEvent(commandList, "Denoiser_Blur");
 
-            const auto& noisyVisibilityTexture = ms_Resources->GetTexture(+RenderTextures::NoisyShadowVisibility);
-            const auto& denoisedVisibilityTexture = ms_Resources->GetTexture(+RenderTextures::DenoisedShadowVisibility);
+            const auto& noisyVisibilityTexture = ms_Resources->GetTexture(+Texture::NoisyShadowVisibility);
+            const auto& temporalAccumulationTexture = ms_Resources->GetTexture(+Texture::TemporalAccumulation);
+            const auto& denoisedVisibilityTexture = ms_Resources->GetTexture(+Texture::DenoisedShadowVisibility);
 
             commandList.SetPipelineState(*m_BlurPso);
 
             commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_BlurConstantBuffer->GetActiveGpuVirtualAddress());
-            commandList.SetRootResource(joint::DenoiserBlurRc_AlbedoAndRoughnessTexture, ms_Resources->GetTexture(+RenderTextures::AlbedoAndRoughness).GetSrv());
-            commandList.SetRootResource(joint::DenoiserBlurRc_WorldNormalTexture, ms_Resources->GetTexture(+RenderTextures::WorldNormal).GetSrv());
-            commandList.SetRootResource(joint::DenoiserBlurRc_DepthBuffer, ms_Resources->GetTexture(+RenderTextures::DepthStencil).GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
+            commandList.SetRootResource(joint::DenoiserBlurRc_AlbedoAndRoughnessTexture, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());
+            commandList.SetRootResource(joint::DenoiserBlurRc_WorldNormalTexture, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
+            commandList.SetRootResource(joint::DenoiserBlurRc_DepthBuffer, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
+            commandList.SetRootResource(joint::DenoiserBlurRc_VelocityTexture, ms_Resources->GetTexture(+Texture::VelocityBuffer).GetSrv());
             commandList.SetRootResource(joint::DenoiserBlurRc_NoisyVisibilityBuffer, noisyVisibilityTexture.GetSrv({ .MipRange{ 0, 1 } }));
-            commandList.SetRootResource(joint::DenoiserBlurRc_TemporalAccumulationBuffer, ms_Resources->GetTexture(+RenderTextures::TemporalAccumulation).GetSrv());
-            commandList.SetRootResource(joint::DenoiserBlurRc_ReprojectedHistoryTexture, ms_Resources->GetTexture(+RenderTextures::ReprojectedShadowHistory).GetSrv());
+            commandList.SetRootResource(joint::DenoiserBlurRc_ReprojectedHistoryTexture, ms_Resources->GetTexture(+Texture::ReprojectedShadowHistory).GetSrv());
+            commandList.SetRootResource(joint::DenoiserBlurRc_TemporalAccumulationBuffer, temporalAccumulationTexture.GetUav());
             commandList.SetRootResource(joint::DenoiserBlurRc_DenoisedVisibilityBuffer, denoisedVisibilityTexture.GetUav());
 
             BenzinMakeScopedResourceBarriers(
                 commandList,
+                benzin::TransitionBarrier{ temporalAccumulationTexture, benzin::ResourceState::UnorderedAccess },
                 benzin::TransitionBarrier{ denoisedVisibilityTexture, benzin::ResourceState::UnorderedAccess },
             );
 
@@ -894,14 +906,15 @@ namespace sandbox
         benzin::PipelineState* m_HistoryFixPso = nullptr;
         benzin::PipelineState* m_BlurPso = nullptr;
 
+        using TemporalAccumulationConstantBuffer = benzin::ConstantBuffer<joint::DenoiserTemporalAccumulationConstants>;
         using MipGenerationConstantBuffer = benzin::ConstantBuffer<joint::MipGenerationConstants>;
+        using HistoryFixConstantBuffer = benzin::ConstantBuffer<joint::DenoiserHistoryFixConstants>;
+        using BlurConstantBuffer = benzin::ConstantBuffer<joint::DenoiserBlurConstants>;
+
+        std::unique_ptr<TemporalAccumulationConstantBuffer> m_TemporalAccumulationConstantBuffer;
         std::unique_ptr<MipGenerationConstantBuffer> m_DepthMipGenerationConstantBuffer;
         std::unique_ptr<MipGenerationConstantBuffer> m_ColorMipGenerationConstantBuffer;
-
-        using HistoryFixConstantBuffer = benzin::ConstantBuffer<joint::DenoiserHistoryFixConstants>;
         std::unique_ptr<HistoryFixConstantBuffer> m_HistoryFixConstantBuffer;
-
-        using BlurConstantBuffer = benzin::ConstantBuffer<joint::DenoiserBlurConstants>;
         std::unique_ptr<BlurConstantBuffer> m_BlurConstantBuffer;
     };
 
@@ -932,16 +945,16 @@ namespace sandbox
         {
             ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
 
-            ms_Resources->DestroyTexture(+RenderTextures::Final);
+            ms_Resources->DestroyTexture(+Texture::Final);
         }
 
         bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize(uint32_t width, uint32_t height) override
         {
-            ms_Resources->CreateTexture(+RenderTextures::Final, benzin::TextureCreation
+            ms_Resources->CreateTexture(+Texture::Final, benzin::TextureCreation
             {
-                .DebugName = magic_enum::enum_name(RenderTextures::Final),
+                .DebugName = magic_enum::enum_name(Texture::Final),
                 .Format = benzin::CommandLineArgs::g_BackBufferFormat,
                 .Width = width,
                 .Height = height,
@@ -976,8 +989,8 @@ namespace sandbox
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
             BenzinPushGpuEvent(commandList, "DeferredLightingPass");
 
-            const auto& denoisedShadowVisibilityTexture = ms_Resources->GetTexture(+RenderTextures::DenoisedShadowVisibility);
-            const auto& finalTexture = ms_Resources->GetTexture(+RenderTextures::Final);
+            const auto& denoisedShadowVisibilityTexture = ms_Resources->GetTexture(+Texture::DenoisedShadowVisibility);
+            const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
 
             commandList.SetViewport(ms_RenderViewport);
             commandList.SetScissorRect(ms_RenderScissorRect);
@@ -993,11 +1006,11 @@ namespace sandbox
             commandList.SetPipelineState(*m_Pso);
 
             commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstantBuffer->GetActiveGpuVirtualAddress());
-            commandList.SetRootResource(joint::DeferredLightingPassRc_AlbedoAndRoughnessTexture, ms_Resources->GetTexture(+RenderTextures::AlbedoAndRoughness).GetSrv());
-            commandList.SetRootResource(joint::DeferredLightingPassRc_EmissiveAndMetallicTexture, ms_Resources->GetTexture(+RenderTextures::EmissiveAndMetallic).GetSrv());
-            commandList.SetRootResource(joint::DeferredLightingPassRc_WorldNormalTexture, ms_Resources->GetTexture(+RenderTextures::WorldNormal).GetSrv());
-            commandList.SetRootResource(joint::DeferredLightingPassRc_VelocityBuffer, ms_Resources->GetTexture(+RenderTextures::VelocityBuffer).GetSrv());
-            commandList.SetRootResource(joint::DeferredLightingPassRc_DepthStencilTexture, ms_Resources->GetTexture(+RenderTextures::DepthStencil).GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
+            commandList.SetRootResource(joint::DeferredLightingPassRc_AlbedoAndRoughnessTexture, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());
+            commandList.SetRootResource(joint::DeferredLightingPassRc_EmissiveAndMetallicTexture, ms_Resources->GetTexture(+Texture::EmissiveAndMetallic).GetSrv());
+            commandList.SetRootResource(joint::DeferredLightingPassRc_WorldNormalTexture, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
+            commandList.SetRootResource(joint::DeferredLightingPassRc_VelocityBuffer, ms_Resources->GetTexture(+Texture::VelocityBuffer).GetSrv());
+            commandList.SetRootResource(joint::DeferredLightingPassRc_DepthStencilTexture, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
             commandList.SetRootResource(joint::DeferredLightingPassRc_PointLightBuffer, m_Scene.GetPointLightBufferStructuredSrv());
             commandList.SetRootResource(joint::DeferredLightingPassRc_ShadowVisibilityBuffer, denoisedShadowVisibilityTexture.GetSrv());
 
@@ -1066,8 +1079,8 @@ namespace sandbox
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
             BenzinPushGpuEvent(commandList, "EnvironmentPass");
 
-            const auto& finalTexture = ms_Resources->GetTexture(+RenderTextures::Final);
-            const auto& depthStencilBuffer = ms_Resources->GetTexture(+RenderTextures::DepthStencil);
+            const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
+            const auto& depthStencilBuffer = ms_Resources->GetTexture(+Texture::DepthStencil);
 
             commandList.SetViewport(ms_RenderViewport);
             commandList.SetScissorRect(ms_RenderScissorRect);
@@ -1210,10 +1223,10 @@ namespace sandbox
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
             BenzinPushGpuEvent(commandList, "FullScreenDebugPass");
 
-            const auto& viewDepth = ms_Resources->GetTexture(+RenderTextures::ViewDepth);
-            const auto& noisyShadowVisibilityTexture = ms_Resources->GetTexture(+RenderTextures::NoisyShadowVisibility);
-            const auto& temporalAccumulationTexture = ms_Resources->GetTexture(+RenderTextures::TemporalAccumulation);
-            const auto& finalTexture = ms_Resources->GetTexture(+RenderTextures::Final);
+            const auto& viewDepth = ms_Resources->GetTexture(+Texture::ViewDepth);
+            const auto& noisyShadowVisibilityTexture = ms_Resources->GetTexture(+Texture::NoisyShadowVisibility);
+            const auto& temporalAccumulationTexture = ms_Resources->GetTexture(+Texture::TemporalAccumulation);
+            const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
 
             commandList.SetViewport(ms_RenderViewport);
             commandList.SetScissorRect(ms_RenderScissorRect);
@@ -1229,16 +1242,16 @@ namespace sandbox
             commandList.SetPipelineState(*m_Pso);
 
             commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstantBuffer->GetActiveGpuVirtualAddress());
-            commandList.SetRootResource(joint::FullScreenDebugRc_AlbedoAndRoughnessTexture, ms_Resources->GetTexture(+RenderTextures::AlbedoAndRoughness).GetSrv());
-            commandList.SetRootResource(joint::FullScreenDebugRc_EmissiveAndMetallicTexture, ms_Resources->GetTexture(+RenderTextures::EmissiveAndMetallic).GetSrv());
-            commandList.SetRootResource(joint::FullScreenDebugRc_WorldNormalTexture, ms_Resources->GetTexture(+RenderTextures::WorldNormal).GetSrv());
-            commandList.SetRootResource(joint::FullScreenDebugRc_VelocityBuffer, ms_Resources->GetTexture(+RenderTextures::VelocityBuffer).GetSrv());
+            commandList.SetRootResource(joint::FullScreenDebugRc_AlbedoAndRoughnessTexture, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());
+            commandList.SetRootResource(joint::FullScreenDebugRc_EmissiveAndMetallicTexture, ms_Resources->GetTexture(+Texture::EmissiveAndMetallic).GetSrv());
+            commandList.SetRootResource(joint::FullScreenDebugRc_WorldNormalTexture, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
+            commandList.SetRootResource(joint::FullScreenDebugRc_VelocityBuffer, ms_Resources->GetTexture(+Texture::VelocityBuffer).GetSrv());
             commandList.SetRootResource(joint::FullScreenDebugRc_ViewDepthBuffer, viewDepth.GetSrv());
-            commandList.SetRootResource(joint::FullScreenDebugRc_DepthBuffer, ms_Resources->GetTexture(+RenderTextures::DepthStencil).GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
+            commandList.SetRootResource(joint::FullScreenDebugRc_DepthBuffer, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv({ .Format = g_RenderPassConfig.DepthStencilSrvFormat }));
             commandList.SetRootResource(joint::FullScreenDebugRc_ShadowVisibilityBuffer, noisyShadowVisibilityTexture.GetSrv());
             commandList.SetRootResource(joint::FullScreenDebugRc_TemporalAccumulationBuffer, temporalAccumulationTexture.GetSrv());
-            commandList.SetRootResource(joint::FullScreenDebugRc_ReprojectedHistoryTexture, ms_Resources->GetTexture(+RenderTextures::ReprojectedShadowHistory).GetSrv());
-            commandList.SetRootResource(joint::FullScreenDebugRc_DenoisedShadowVisibilityBuffer, ms_Resources->GetTexture(+RenderTextures::DenoisedShadowVisibility).GetSrv());
+            commandList.SetRootResource(joint::FullScreenDebugRc_ReprojectedHistoryTexture, ms_Resources->GetTexture(+Texture::ReprojectedShadowHistory).GetSrv());
+            commandList.SetRootResource(joint::FullScreenDebugRc_DenoisedShadowVisibilityBuffer, ms_Resources->GetTexture(+Texture::DenoisedShadowVisibility).GetSrv());
 
             commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
             commandList.DrawVertexed(3);
@@ -1267,7 +1280,7 @@ namespace sandbox
             BenzinPushGpuEvent(commandList, "BackBufferCopy");
 
             const auto& currentBackBuffer = ms_SwapChain->GetCurrentBackBuffer();
-            const auto& imGuiTexture = ms_Resources->GetTexture(+RenderTextures::ImGui);
+            const auto& imGuiTexture = ms_Resources->GetTexture(+Texture::ImGui);
 
             BenzinMakeScopedResourceBarriers(
                 commandList,
@@ -1308,16 +1321,16 @@ namespace sandbox
 
         auto isRenderTextureFlippableCallback = [](uint32_t key)
         {
-            const uint32_t maxKey = +magic_enum::enum_values<RenderTextures>().back();
+            const uint32_t maxKey = +magic_enum::enum_values<Texture>().back();
             const uint32_t previousTextureKey = key - 1;
 
             const bool isInBounds = previousTextureKey <= maxKey;
-            const bool isGapExists = !magic_enum::enum_contains<RenderTextures>(previousTextureKey); // There must be a gap between enum values, so the enum value must not exist
+            const bool isGapExists = !magic_enum::enum_contains<Texture>(previousTextureKey); // There must be a gap between enum values, so the enum value must not exist
 
             return isInBounds && isGapExists;
         };
 
-        m_RenderResources->SetMaxTextureCount(+RenderTextures::Count);
+        m_RenderResources->SetMaxTextureCount(+Texture::Count);
         m_RenderResources->SetIsTextureFlippableCallback(std::move(isRenderTextureFlippableCallback));
 
         // The order in which render passes are added is important
@@ -1331,7 +1344,7 @@ namespace sandbox
         m_RenderPasses.push_back(std::make_unique<EnvironmentPass>());
         m_RenderPasses.push_back(std::make_unique<FullScreenDebugPass>());
 
-        m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager, +RenderTextures::ImGui, +SandboxTiming::ImGuiPass));
+        m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager, +Texture::ImGui, +SandboxTiming::ImGuiPass));
         m_ImGuiPass = (benzin::ImGuiPass*)m_RenderPasses.back().get();
 
         m_RenderPasses.push_back(std::make_unique<BackBufferCopyPass>());
@@ -1341,7 +1354,7 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::InitTools");
 
-        m_RenderViewportTool->SetFinalTextureIndex(+RenderTextures::Final);
+        m_RenderViewportTool->SetFinalTextureIndex(+Texture::Final);
 
         m_TimingsTool = m_ImGuiManager->PushTool<TimingsTool>(*m_Device);
 
@@ -1361,26 +1374,11 @@ namespace sandbox
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<DenoiserMipGenerationSettings>("DenoiserMipGeneration", [](DenoiserMipGenerationSettings& settings)
         {
-            ImGui::Text("MipGenerationFilterType");
-            if (ImGui::BeginListBox("##emtpy0", ImVec2{ -FLT_MIN, 40.0f })) // #TODO: Calculate item height
-            {
-                for (const auto i : std::views::iota(0u, magic_enum::enum_count<joint::MipGenerationFilterType>()))
-                {
-                    const bool isSelected = settings.DepthFilterType == i;
+            static const auto names = magic_enum::enum_names<joint::MipGenerationFilterType>() |
+                std::views::transform([](std::string_view name) { return name.substr("MipGenerationFilterType_"sv.size()).data(); }) |
+                std::ranges::to<std::vector>();
 
-                    const auto name = magic_enum::enum_name((joint::MipGenerationFilterType)i).substr("MipGenerationFilterType_"sv.size());
-                    if (ImGui::Selectable(name.data(), isSelected))
-                    {
-                        settings.DepthFilterType = (joint::MipGenerationFilterType)i;
-                    }
-
-                    if (isSelected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndListBox();
-            }
+            ImGui::Combo("MipGenerationFilterType", (int*)&settings.DepthFilterType, names.data(), (int)names.size());
         });
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<DenoiserHistoryFixSettings>("DenoiserHistoryFix", [](DenoiserHistoryFixSettings& settings)
@@ -1391,6 +1389,11 @@ namespace sandbox
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<DenoiserBlurSettings>("DenoiserBlur", [](DenoiserBlurSettings& settings)
         {
+            ImGui::DragFloat("SpecularAccumulationCurve", &settings.SpecularAccumulationCurve, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("SpecularAccumulationBasePower", &settings.SpecularAccumulationBasePower, 0.001f, 0.0f, 1.0f);
+            ImGui::Checkbox("IsDenoiserAntilagEnabled", &settings.IsDenoiserAntilagEnabled);
+            ImGui::Separator();
+
             ImGui::Checkbox("IsGeometryWeightUsed", &settings.IsGeometryWeightUsed);
             ImGui::Checkbox("IsNormalWeightUsed", &settings.IsNormalWeightUsed);
             ImGui::Checkbox("IsRoughnessWeightUsed", &settings.IsRoughnessWeightUsed);
@@ -1416,26 +1419,11 @@ namespace sandbox
             ImGui::SliderFloat("MinViewDepth", &settings.MinViewDepth, 0.001f, 2.0f, "%.4f");
             ImGui::SliderFloat("MaxViewDepth", &settings.MaxViewDepth, 0.001f, 30.0f);
 
-            ImGui::Text("DebugOutputType");
-            if (ImGui::BeginListBox("##emtpy1", ImVec2{ -FLT_MIN, 230.0f })) // #TODO: Calculate item height
-            {
-                for (const auto i : std::views::iota(0u, magic_enum::enum_count<joint::DebugOutputType>()))
-                {
-                    const bool isSelected = settings.DebugOutputType == i;
+            static const auto debugOutputTypeNames = magic_enum::enum_names<joint::DebugOutputType>() |
+                std::views::transform([](std::string_view name) { return name.substr("DebugOutputType_"sv.size()).data(); }) |
+                std::ranges::to<std::vector>();
 
-                    const auto name = magic_enum::enum_name((joint::DebugOutputType)i).substr("DebugOutputType_"sv.size());
-                    if (ImGui::Selectable(name.data(), isSelected))
-                    {
-                        settings.DebugOutputType = (joint::DebugOutputType)i;
-                    }
-
-                    if (isSelected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndListBox();
-            }
+            ImGui::Combo("DebugOutputType", (int*)&settings.DebugOutputType, debugOutputTypeNames.data(), (int)debugOutputTypeNames.size());
         });
     }
 
@@ -1655,7 +1643,7 @@ namespace sandbox
                 auto& tc = entityRegistry.get<benzin::TransformComponent>(entityHandle);
 
                 static constexpr float travelRadius = 1.0f;
-                static constexpr float travelSpeed = 0.0004f;
+                static constexpr float travelSpeed = 0.001f;
 
                 static const float startX = tc.GetTranslation().x;
                 static const float startZ = tc.GetTranslation().z;

@@ -48,6 +48,13 @@ namespace benzin
 
     Backend::~Backend()
     {
+        {
+            const auto adapterMemoryInfo = GetMainAdapterMemoryInfo();
+            BenzinTrace("AdapterMemoryInfo - Process used DedicatedVram: {:0.2f} mb", adapterMemoryInfo.ProcessUsedDedicatedVram.GetMb());
+            BenzinTrace("AdapterMemoryInfo - Process used SharedVram: {:0.2f} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb());
+            BenzinTrace("AdapterMemoryInfo - Total used Vram: {} mb", adapterMemoryInfo.TotalUsedDedicatedVram.GetMb());
+        }
+
         for (auto& dxgiAdapter : m_DxgiAdapters)
         {
             BenzinSafeDxObjectRelease(dxgiAdapter);

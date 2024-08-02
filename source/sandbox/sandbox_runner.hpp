@@ -21,7 +21,6 @@ namespace sandbox
         FullScreenDebugPass,
         ImGuiPass,
         BackBufferCopy,
-        Total,
     };
     BenzinEnableUnaryPlusForEnum(SandboxTiming);
 

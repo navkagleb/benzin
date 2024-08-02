@@ -80,4 +80,3 @@ float3 ReconstructWorldPositionFromViewPosition(float3 viewPosition, float4x4 in
     const float3 worldPosition = mul(float4(viewPosition, 1.0f), inverseViewMatrix).xyz;
     return worldPosition;
 }
-

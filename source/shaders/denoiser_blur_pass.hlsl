@@ -29,6 +29,34 @@ static const float2 g_PoissonSamples[g_PoissonSampleCount] =
     float2(0.6080788867056116, 0.42260358791146085),
 };
 
+float CalcParallax(float3 worldPosition, float3 previousWorldPosition)
+{
+    const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
+    const joint::CameraConstants prevCameraConstants = g_FrameConstants.PreviousCamera;
+
+    const float3 worldCameraDelta = cameraConstants.WorldPosition - prevCameraConstants.WorldPosition;
+    const float3 worldMovementDelta = worldPosition - (previousWorldPosition - worldCameraDelta);
+
+    const float distanceToPoint = distance(prevCameraConstants.WorldPosition, previousWorldPosition);
+
+    // ~sine of angle between old and new view vector in world space
+    // Measure of relative surface-camera motion.
+    const float parallax = length(worldMovementDelta) / (distanceToPoint * g_FrameConstants.FrameTimeInSec);
+
+    return parallax;
+}
+
+float GetMaxAllowedAccumulatedFrameCountUsingSurfaceMotion(float roughness, float nDotL, float parallax)
+{
+    float acos01sq = saturate(1.0 - nDotL);
+    float a = pow(acos01sq, g_PassConstants.SpecularAccumulationCurve);
+    float b = 1.001 + roughness * roughness;
+    float angularSensitivity = (b + a) / (b - a);
+    float power = g_PassConstants.SpecularAccumulationBasePower * (1.0 + parallax * angularSensitivity);
+
+    return g_FrameConstants.MaxTemporalAccumulationCount * pow(roughness, power);
+}
+
 float3 GetGgxDominantDirection(float3 viewNormal, float3 viewDirection, float roughness)
 {
     // Page69. Ref: https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
@@ -50,7 +78,7 @@ float GetGgxSpecularLobeHalfAngleInRadians(float roughness)
     return DegreesToRadians(angleInDegrees);
 }
 
-float3x3 GetKernelBasis(float3 viewPosition, float3 viewNormal, float roughness, float blurRadius)
+float3x3 GetKernelBasis(float3 viewPosition, float3 viewNormal, float roughness, float blurRadius, float normalizedAccumulatedFrameCount)
 {
     const float3 viewDirection = -normalize(viewPosition);
     const float3 dominantDirection = GetGgxDominantDirection(viewNormal, viewDirection, roughness);
@@ -59,8 +87,15 @@ float3x3 GetKernelBasis(float3 viewPosition, float3 viewNormal, float roughness,
     const float3 tangent = normalize(cross(viewNormal, reflectedDominantDirection)); // #TODO: Handle the case when viewNormal = reflectedDominantDirection
     const float3 bitangent = cross(reflectedDominantDirection, tangent);
 
+    // Anisotropic sampling
+    // Tangent gets scaled more under glandcing angles
+    // Skew factor depends on roughness
+    // If accumulation goes badly kernel shape moves towards isotropic (in the world space, still anisotropic in the screen space)
+    const float angle = saturate(acos(viewNormal.z) / g_PiDiv2);
+    const float skewFactor = lerp(1.0, roughness, angle);
+
     return float3x3(
-        tangent * blurRadius,
+        tangent * blurRadius * lerp(1.0, skewFactor, normalizedAccumulatedFrameCount),
         bitangent * blurRadius,
         dominantDirection
     );
@@ -166,10 +201,11 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     Texture2D<float4> albedoAndRoughnessTexture = ResourceDescriptorHeap[GetRootConstant(joint::DenoiserBlurRc_AlbedoAndRoughnessTexture)];
     Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::DenoiserBlurRc_WorldNormalTexture)];
     Texture2D<float> depthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DenoiserBlurRc_DepthBuffer)];
+    Texture2D<float4> velocityTexture = ResourceDescriptorHeap[GetRootConstant(joint::DenoiserBlurRc_VelocityTexture)];
     Texture2D<float> noisyVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DenoiserBlurRc_NoisyVisibilityBuffer)];
-    Texture2D<float> temporalAccumulationBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DenoiserBlurRc_TemporalAccumulationBuffer)];
     Texture2D<float> reprojectedHistoryTexture = ResourceDescriptorHeap[GetRootConstant(joint::DenoiserBlurRc_ReprojectedHistoryTexture)];
 
+    RWTexture2D<float> temporalAccumulationBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DenoiserBlurRc_TemporalAccumulationBuffer)];
     RWTexture2D<float> denoisedVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DenoiserBlurRc_DenoisedVisibilityBuffer)];
 
     const float depth = depthBuffer[dispatchThreadId.xy];
@@ -188,23 +224,41 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
 
-    const float maxFrameCount = g_FrameConstants.MaxTemporalAccumulationCount;
-    const float frameCount = temporalAccumulationBuffer[dispatchThreadId.xy];
-    const float accumulationSpeed = 1.0 / (1.0 + frameCount);
+    const float roughness = albedoAndRoughnessTexture[dispatchThreadId.xy].w;
+
+    const float3 motionVector = velocityTexture[dispatchThreadId.xy].xyz;
+    const float3 worldNormal = worldNormalTexture[dispatchThreadId.xy].xyz;
 
     const float2 uv = DispatchThreadIdToUv(dispatchThreadId, g_FrameConstants.InvRenderResolution);
+    const float2 previousUv = uv - motionVector.xy;
+    const float previousDepth = depth - motionVector.z;
+    const float3 previousViewPosition = ReconstructViewPositionFromDepth(previousUv, previousDepth, g_FrameConstants.PreviousCamera.InverseProjection);
+    const float3 previousWorldPosition = ReconstructWorldPositionFromViewPosition(previousViewPosition, g_FrameConstants.PreviousCamera.InverseView);
 
     const float3 viewPosition = ReconstructViewPositionFromDepth(uv, depth, cameraConstants.InverseProjection);
     const float3 worldPosition = ReconstructWorldPositionFromViewPosition(viewPosition, cameraConstants.InverseView);
 
-    const float3 worldNormal = worldNormalTexture[dispatchThreadId.xy].xyz;
+    const float3 lightDirection = normalize(g_FrameConstants.CurrentCamera.WorldPosition - worldPosition);
+    const float nDotL = dot(worldNormal, lightDirection);
+    const float parallax = CalcParallax(worldPosition, previousWorldPosition);
+    const float allowedFrameCount = GetMaxAllowedAccumulatedFrameCountUsingSurfaceMotion(roughness, nDotL, parallax);
+
+    float frameCount = temporalAccumulationBuffer[dispatchThreadId.xy];
+    frameCount = min(frameCount, g_FrameConstants.MaxTemporalAccumulationCount);
+
+    if (g_PassConstants.IsDenoiserAntilagEnabled)
+    {
+        frameCount = min(frameCount, allowedFrameCount);
+    }
+
+    const float normalizedFrameCount = frameCount / g_FrameConstants.MaxTemporalAccumulationCount;
+    const float accumulationSpeed = 1.0 / (1.0 + frameCount);
+
     const float3 viewNormal = mul(worldNormal, (float3x3)cameraConstants.ViewForNormals);
 
-    const float roughness = albedoAndRoughnessTexture[dispatchThreadId.xy].w;
-
     const float blurRadius = lerp(g_PassConstants.MinBlurRadius, g_PassConstants.MaxBlurRadius, accumulationSpeed);
-    const float3x3 samplingBasis = GetKernelBasis(viewPosition, viewNormal, roughness, blurRadius);
-    const float2x2 rotationMatrix = GetRotationMatrix2x2(g_FrameConstants.ElapsedTime * 0.01);
+    const float3x3 samplingBasis = GetKernelBasis(viewPosition, viewNormal, roughness, blurRadius, normalizedFrameCount);
+    const float2x2 rotationMatrix = GetRotationMatrix2x2(g_FrameConstants.ElapsedTimeInSec * 0.01);
 
     float sampleSum = 0.0;
     float sampleWeightSum = 0.0;
@@ -225,7 +279,7 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
         const float3 sampleViewPosition = ReconstructViewPositionFromDepth(sampleUv, sampleDepth, cameraConstants.InverseProjection);
 
         const float geometryWeight = GetGeometryWeight(viewPosition, viewNormal, sampleViewPosition, accumulationSpeed);
-        const float normalWeight = GetNormalWeight(worldNormal, sampleWorldNormal, roughness, frameCount, maxFrameCount);
+        const float normalWeight = GetNormalWeight(worldNormal, sampleWorldNormal, roughness, frameCount, g_FrameConstants.MaxTemporalAccumulationCount);
         const float roughnessWeight = GetRoughnessWeight(roughness, sampleRoughness);
         const float sampleWeight = geometryWeight * normalWeight * roughnessWeight;
 
@@ -237,5 +291,6 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float historySample = reprojectedHistoryTexture[dispatchThreadId.xy];
     const float denoisedSample = lerp(historySample, currentSample, accumulationSpeed);
 
+    // temporalAccumulationBuffer[dispatchThreadId.xy] = frameCount;
     denoisedVisibilityBuffer[dispatchThreadId.xy] = !isnan(denoisedSample) ? denoisedSample : 0.0;
 }

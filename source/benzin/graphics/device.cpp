@@ -291,6 +291,8 @@ namespace benzin
             m_IsGpuUploadHeapsSupported &= CommandLineArgs::g_IsGpuUploadHeapsEnabled;
             BenzinTrace("Is GpuUploadHeaps enabled: {}", m_IsGpuUploadHeapsSupported);
         }
+
+        BenzinTrace("----------------------------------------------");
     }
 
     void Device::CreateUnifiedRootSignature()

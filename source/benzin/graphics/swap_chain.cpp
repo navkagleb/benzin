@@ -19,8 +19,10 @@ namespace benzin
         , m_Width{ creation.WindowRef.GetWidth() }
         , m_Height{ creation.WindowRef.GetHeight() }
     {
+        const auto& backend = m_Device.GetBackend();
+
         uint32_t isAllowTearing = 0;
-        BenzinEnsure(creation.BackendRef.GetDxgiFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &isAllowTearing, sizeof(isAllowTearing)));
+        BenzinEnsure(backend.GetDxgiFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &isAllowTearing, sizeof(isAllowTearing)));
 
         uint32_t dxgiSwapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
         if (isAllowTearing)
@@ -44,7 +46,7 @@ namespace benzin
         };
 
         ComPtr<IDXGISwapChain1> dxgiSwapChain1;
-        BenzinEnsure(creation.BackendRef.GetDxgiFactory()->CreateSwapChainForHwnd(
+        BenzinEnsure(backend.GetDxgiFactory()->CreateSwapChainForHwnd(
             m_Device.GetGraphicsCommandQueue().GetD3D12CommandQueue(),
             creation.WindowRef.GetWin64Window(),
             &dxgiSwapChainDesc1,
@@ -56,7 +58,7 @@ namespace benzin
         SetDxObjectDebugName(m_DxgiSwapChain, creation.DebugName);
 
         // Disable fullscreen using Alt + Enter
-        BenzinEnsure(creation.BackendRef.GetDxgiFactory()->MakeWindowAssociation(creation.WindowRef.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
+        BenzinEnsure(backend.GetDxgiFactory()->MakeWindowAssociation(creation.WindowRef.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
 
         m_BackBuffers.resize(CommandLineArgs::g_FrameInFlightCount);
         ResizeBackBuffers();
