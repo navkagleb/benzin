@@ -26,14 +26,29 @@ namespace benzin
     
     void ImGuiTool::SpawnImGuiWindow(const std::function<void()>& callback)
     {
-        if (!ImGui::Begin(m_Name.data(), &m_IsVisible))
+        if (ImGui::Begin(m_Name.data(), &m_IsVisible))
         {
-            ImGui::End();
-            return;
+            callback();
+        }
+        ImGui::End();
+    }
+
+    bool ImGuiTool::SpawnImGuiCollapsingHeader(std::string_view name, bool isOpenByDefault) const
+    {
+        static constexpr ImVec4 headerColor{ 0.7f, 1.0f, 0.7f, 1.0f };
+        static constexpr ImVec4 headerBackground{ 0.7f * 0.3f, 1.0f * 0.3f, 0.7f * 0.3f, 1.0f };
+
+        ImGui::PushStyleColor(ImGuiCol_Text, headerColor);
+        ImGui::PushStyleColor(ImGuiCol_Header, headerBackground);
+        BenzinExecuteOnScopeExit([]{ ImGui::PopStyleColor(2); });
+
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_CollapsingHeader;
+        if (isOpenByDefault)
+        {
+            flags |= ImGuiTreeNodeFlags_DefaultOpen;
         }
 
-        callback();
-        ImGui::End();
+        return ImGui::CollapsingHeader(name.data(), flags);
     }
 
     // ImGuiManager
@@ -84,12 +99,15 @@ namespace benzin
         ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
+
         m_CurrentImGuiDrawData = nullptr;
     }
 
     void ImGuiManager::EndUiFrame() const
     {
+        ImGui::EndFrame();
         ImGui::Render();
+
         m_CurrentImGuiDrawData = ImGui::GetDrawData();
     }
 

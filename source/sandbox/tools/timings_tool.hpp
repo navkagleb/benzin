@@ -70,16 +70,13 @@ namespace sandbox
         template <benzin::EnumConcept TimingT>
         void SpawnImGuiTimings(std::string_view name, std::span<const std::chrono::microseconds> timings) const
         {
-            const auto flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Selected;
-            if (ImGui::TreeNodeEx(name.data(), flags))
+            if (SpawnImGuiCollapsingHeader(name))
             {
                 for (const auto [i, timing] : timings | std::views::enumerate)
                 {
                     const uint32_t indent = GetTimingIndent((TimingT)i);
                     ImGui::Text(BenzinFormatData("{:{}}{}: {:.4f} ms", "", indent, magic_enum::enum_name((TimingT)i), benzin::ToFloatMs(timing)));
                 }
-
-                ImGui::TreePop();
             }
         }
 

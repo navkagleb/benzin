@@ -26,6 +26,7 @@ namespace benzin
 
     protected:
         void SpawnImGuiWindow(const std::function<void()>& callback);
+        bool SpawnImGuiCollapsingHeader(std::string_view name, bool isOpenByDefault = true) const;
 
     protected:
         std::string_view m_Name;

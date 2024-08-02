@@ -4,17 +4,6 @@
 namespace benzin
 {
 
-    static void SpawnImGuiSection(std::string_view titleName, const std::function<void()>& imGuiRenderCallback)
-    {
-        static constexpr ImVec4 titleColor{ 0.72f, 39.0f, 0.0f, 1.0f };
-
-        ImGui::TextColored(titleColor, titleName.data());
-        imGuiRenderCallback();
-        ImGui::Separator();
-    }
-
-    //
-
     RenderSettingsTool::RenderSettingsTool(RenderSettings& renderSettings)
         : ImGuiTool{ "RenderSettingsTool", true }
         , m_RenderSettings{ renderSettings }
@@ -26,7 +15,10 @@ namespace benzin
         {
             for (const auto& sectionInfo : m_SectionInfos)
             {
-                SpawnImGuiSection(sectionInfo.TitleName, sectionInfo.ImGuiSpawnCallback);
+                if (SpawnImGuiCollapsingHeader(sectionInfo.TitleName))
+                {
+                    sectionInfo.ImGuiSpawnCallback();
+                }
             }
         });
     }
