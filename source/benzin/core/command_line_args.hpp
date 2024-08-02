@@ -3,12 +3,6 @@
 namespace benzin
 {
 
-    struct GraphicsDebugLayerParams
-    {
-        bool IsGpuBasedValidationEnabled = true;
-        bool IsSynchronizedCommandQueueValidationEnabled = true;
-    };
-
     class CommandLineArgs
     {
     public:
@@ -17,6 +11,8 @@ namespace benzin
         static void Initialize(int argc, char** argv);
 
         static std::filesystem::path g_ExecutableFilePath;
+
+        static uint32_t g_RawLoggerLogOptionFlags;
 
         static uint32_t g_WindowWidth;
         static uint32_t g_WindowHeight;
@@ -32,7 +28,8 @@ namespace benzin
         static GraphicsFormat g_BackBufferFormat;
         static bool g_IsGpuUploadHeapsEnabled;
 
-        static GraphicsDebugLayerParams g_GraphicsDebugLayerParams;
+        static bool g_IsGpuValidationEnabled;
+        static bool g_IsSynchronizedCommandQueueValidationEnabled;
 
         static bool g_IsShaderCacheIgnored;
     };

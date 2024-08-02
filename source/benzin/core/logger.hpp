@@ -1,5 +1,7 @@
 #pragma once
 
+#include "benzin/core/enum_flags.hpp"
+
 namespace benzin
 {
 
@@ -10,13 +12,22 @@ namespace benzin
         Error,
     };
 
+    enum class LogOptionFlag
+    {
+        Time = ToBit(0),
+        ThreadId = ToBit(1),
+        FileName = ToBit(2),
+        All = Time | ThreadId | FileName,
+    };
+    BenzinEnableFlagsForBitEnum(LogOptionFlag);
+
     class Logger
     {
     public:
         template <typename... Args>
         friend struct Log;
 
-        BenzinDefineNonConstructable(Logger);
+        static void Initialize(LogOptionFlags logOptionFlags = LogOptionFlag::All);
 
     private:
         static void LogImpl(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message);

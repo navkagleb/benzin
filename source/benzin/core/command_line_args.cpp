@@ -7,6 +7,7 @@
 namespace benzin
 {
 
+    using ParseCallbackNoArgs = void (*)();
     using ParseCallback = void (*)(std::string_view commandLineToParse, void* member);
 
     template <typename T> requires std::is_arithmetic_v<T>
@@ -44,20 +45,27 @@ namespace benzin
     {
         std::string_view Name;
         void* Member = nullptr;
-        ParseCallback Callback = nullptr;
+        std::variant<ParseCallbackNoArgs, ParseCallback> CallbackVariant;
 
         void ParseIfMathes(std::string_view currentCommandLine) const
         {
-            if (currentCommandLine.starts_with(Name))
+            if (!currentCommandLine.starts_with(Name))
             {
-                Callback(currentCommandLine.substr(Name.size()), Member);
+                return;
             }
+
+            CallbackVariant | MakeVisitorMatch(
+                [](ParseCallbackNoArgs callback) { callback(); },
+                [&](ParseCallback callback) { callback(currentCommandLine.substr(Name.size()), Member); }
+            );
         }
     };
 
     //
 
     std::filesystem::path CommandLineArgs::g_ExecutableFilePath;
+
+    uint32_t CommandLineArgs::g_RawLoggerLogOptionFlags = 0;
 
     uint32_t CommandLineArgs::g_WindowWidth = 1280;
     uint32_t CommandLineArgs::g_WindowHeight = 720;
@@ -73,7 +81,8 @@ namespace benzin
     GraphicsFormat CommandLineArgs::g_BackBufferFormat = GraphicsFormat::Rgba8Unorm;
     bool CommandLineArgs::g_IsGpuUploadHeapsEnabled = true;
 
-    GraphicsDebugLayerParams CommandLineArgs::g_GraphicsDebugLayerParams;
+    bool CommandLineArgs::g_IsGpuValidationEnabled = true;
+    bool CommandLineArgs::g_IsSynchronizedCommandQueueValidationEnabled = true;
 
     bool CommandLineArgs::g_IsShaderCacheIgnored = false;
 
@@ -81,6 +90,10 @@ namespace benzin
     {
         const auto supportedArgs = std::to_array(
         {
+            SupportedCommandLineArg{ "-log_time", nullptr, [] { CommandLineArgs::g_RawLoggerLogOptionFlags |= (uint32_t)LogOptionFlag::Time; } },
+            SupportedCommandLineArg{ "-log_thread_id", nullptr, [] { CommandLineArgs::g_RawLoggerLogOptionFlags |= (uint32_t)LogOptionFlag::ThreadId; } },
+            SupportedCommandLineArg{ "-log_file_name", nullptr, [] { CommandLineArgs::g_RawLoggerLogOptionFlags |= (uint32_t)LogOptionFlag::FileName; } },
+
             SupportedCommandLineArg{ "-window_width:", &g_WindowWidth, ParseArithmetic<decltype(g_WindowWidth)> },
             SupportedCommandLineArg{ "-window_height:", &g_WindowHeight, ParseArithmetic<decltype(g_WindowHeight)> },
             SupportedCommandLineArg{ "-disable_window_resizing", &g_IsWindowResizable, SetFalseIfExists },
@@ -94,8 +107,8 @@ namespace benzin
             SupportedCommandLineArg{ "-frame_in_flight_count:", &g_FrameInFlightCount, ParseArithmetic<decltype(g_FrameInFlightCount)> },
             SupportedCommandLineArg{ "-no_gpu_upload_heaps", &g_IsGpuUploadHeapsEnabled, SetFalseIfExists },
 
-            SupportedCommandLineArg{ "-no_gpu_based_validation", &g_GraphicsDebugLayerParams.IsGpuBasedValidationEnabled, SetFalseIfExists },
-            SupportedCommandLineArg{ "-no_sync_command_queue_validation", &g_GraphicsDebugLayerParams.IsSynchronizedCommandQueueValidationEnabled, SetFalseIfExists },
+            SupportedCommandLineArg{ "-no_gpu_based_validation", &g_IsGpuValidationEnabled, SetFalseIfExists },
+            SupportedCommandLineArg{ "-no_sync_command_queue_validation", &g_IsSynchronizedCommandQueueValidationEnabled, SetFalseIfExists },
 
             SupportedCommandLineArg{ "-ignore_shader_cache", &g_IsShaderCacheIgnored, SetTrueIfExists },
         });

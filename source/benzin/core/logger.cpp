@@ -1,46 +1,71 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/logger.hpp"
 
+#include "benzin/core/command_line_args.hpp"
+
 namespace benzin
 {
 
-    namespace
+    static const auto g_StartTimePoint = std::chrono::system_clock::now().time_since_epoch();
+
+    static LogOptionFlags g_LogOptionFlags;
+
+    static std::string GetTimePointFormat()
     {
+        using namespace std::chrono;
 
-        const auto g_StartTimePoint = std::chrono::system_clock::now().time_since_epoch();
+        const auto logTimePoint = system_clock::now().time_since_epoch();
+        const auto passTime = duration_cast<milliseconds>(logTimePoint - g_StartTimePoint);
 
-        std::string GetTimePointFormat()
+        const uint64_t h = duration_cast<hours>(passTime).count();
+        const uint64_t m = duration_cast<minutes>(passTime).count() - h * 60;
+        const uint64_t s = duration_cast<seconds>(passTime).count() - h * 60 * 60 - m * 60;
+        const uint64_t ms = duration_cast<milliseconds>(passTime).count() - h * 60 * 60 * 1000 - m * 60 * 1000 - s * 1000;
+
+        return std::format("{}:{}:{:0>2}.{:0>3}", h, m, s, ms);
+    }
+
+    static std::string GetFileNameFormat(const std::source_location& sourceLocation)
+    {
+        const std::string_view filePath = sourceLocation.file_name();
+
+        return std::format("{}:{}", filePath.substr(filePath.find_last_of("\\") + 1), sourceLocation.line());
+    }
+
+    static std::string GetOutput(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
+    {
+        std::string logOptions;
+        logOptions.reserve(256);
+
+        const auto pushLogOptionToBuffer = [&logOptions](const auto& option)
         {
-            using namespace std::chrono;
+            std::format_to(std::back_inserter(logOptions), "[{}]", option);
+        };
 
-            const auto logTimePoint = system_clock::now().time_since_epoch();
-            const auto passTime = duration_cast<milliseconds>(logTimePoint - g_StartTimePoint);
-
-            const uint64_t h = duration_cast<hours>(passTime).count();
-            const uint64_t m = duration_cast<minutes>(passTime).count() - h * 60;
-            const uint64_t s = duration_cast<seconds>(passTime).count() - h * 60 * 60 - m * 60;
-            const uint64_t ms = duration_cast<milliseconds>(passTime).count() - h * 60 * 60 * 1000 - m * 60 * 1000 - s * 1000;
-
-            return std::format("{}:{}:{:0>2}.{:0>3}", h, m, s, ms);
+        if (g_LogOptionFlags.IsSet(LogOptionFlag::Time))
+        {
+            pushLogOptionToBuffer(GetTimePointFormat());
         }
 
-        std::string GetFileNameFormat(const std::source_location& sourceLocation)
+        if (g_LogOptionFlags.IsSet(LogOptionFlag::ThreadId))
         {
-            const std::string_view filePath = sourceLocation.file_name();
-
-            return std::format("{}:{}", filePath.substr(filePath.find_last_of("\\") + 1), sourceLocation.line());
+            pushLogOptionToBuffer(std::this_thread::get_id());
         }
 
-        std::string GetOutput(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
+        if (g_LogOptionFlags.IsSet(LogOptionFlag::FileName))
         {
-            const auto time = GetTimePointFormat();
-            const auto fileName = GetFileNameFormat(sourceLocation);
-            const auto threadId = std::this_thread::get_id();
-
-            return std::format("[{}][{}][{}][{}]: {}\n", time, threadId, magic_enum::enum_name(severity), fileName, message);
+            pushLogOptionToBuffer(GetFileNameFormat(sourceLocation));
         }
 
-    } // anonymous namespace
+        return std::format("{}[{}]: {}\n", logOptions, magic_enum::enum_name(severity), message);
+    }
+
+    //
+
+    void Logger::Initialize(LogOptionFlags logOptionFlags)
+    {
+        g_LogOptionFlags = logOptionFlags;
+    }
 
     void Logger::LogImpl(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
     {
