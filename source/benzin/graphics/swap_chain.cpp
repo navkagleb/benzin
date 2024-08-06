@@ -34,11 +34,11 @@ namespace benzin
         {
             .Width = creation.WindowRef.GetWidth(),
             .Height = creation.WindowRef.GetHeight(),
-            .Format = (DXGI_FORMAT)CommandLineArgs::g_BackBufferFormat,
+            .Format = (DXGI_FORMAT)CommandLineArgs::GetU32("BackBufferFormat"),
             .Stereo = false,
             .SampleDesc{ 1, 0 },
             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-            .BufferCount = CommandLineArgs::g_FrameInFlightCount,
+            .BufferCount = CommandLineArgs::GetU32("FrameInFlightCount"),
             .Scaling = DXGI_SCALING_STRETCH,
             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
             .AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED,
@@ -60,7 +60,7 @@ namespace benzin
         // Disable fullscreen using Alt + Enter
         BenzinEnsure(backend.GetDxgiFactory()->MakeWindowAssociation(creation.WindowRef.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
 
-        m_BackBuffers.resize(CommandLineArgs::g_FrameInFlightCount);
+        m_BackBuffers.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
         ResizeBackBuffers();
 
         MakeUniquePtr(m_FrameFence, m_Device, FenceCreation
@@ -105,12 +105,12 @@ namespace benzin
         {
             gpuFrameIndex = m_FrameFence->GetCompletedValue();
 
-            if (cpuFrameIndex - gpuFrameIndex >= CommandLineArgs::g_FrameInFlightCount)
+            if (cpuFrameIndex - gpuFrameIndex >= CommandLineArgs::GetU32("FrameInFlightCount"))
             {
                 {
                     BenzinGrabTimeOnScopeExit(m_GpuWaitTime);
 
-                    const uint64_t gpuFrameIndexToWait = cpuFrameIndex - CommandLineArgs::g_FrameInFlightCount + 1;
+                    const uint64_t gpuFrameIndexToWait = cpuFrameIndex - CommandLineArgs::GetU32("FrameInFlightCount") + 1;
                     m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
                 }
 

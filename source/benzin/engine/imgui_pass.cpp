@@ -71,8 +71,8 @@ namespace benzin
         BenzinEnsure(ImGui_ImplWin32_Init(window.GetWin64Window()));
         BenzinEnsure(ImGui_ImplDX12_Init(
             m_Device.GetD3D12Device(),
-            CommandLineArgs::g_FrameInFlightCount,
-            (DXGI_FORMAT)CommandLineArgs::g_BackBufferFormat,
+            CommandLineArgs::GetU32("FrameInFlightCount"),
+            (DXGI_FORMAT)CommandLineArgs::GetU32("BackBufferFormat"),
             m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap(),
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCpuHandle() },
             D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGpuHandle() }
@@ -274,14 +274,14 @@ namespace benzin
 
     void ImGuiPass::OnWindowResize(uint32_t width, uint32_t height)
     {
-        ms_Resources->CreateTexture(m_ImGuiTextureIndex, benzin::TextureCreation
+        ms_Resources->CreateTexture(m_ImGuiTextureIndex, TextureCreation
         {
             .DebugName = "ImGuiTexture",
-            .Format = benzin::CommandLineArgs::g_BackBufferFormat,
+            .Format = (GraphicsFormat)CommandLineArgs::GetU32("BackBufferFormat"),
             .Width = width,
             .Height = height,
             .MipCount = 1,
-            .Flags = benzin::TextureFlag::AllowRenderTarget,
+            .Flags = TextureFlag::AllowRenderTarget,
         });
     }
 

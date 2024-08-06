@@ -86,13 +86,13 @@ namespace benzin
     {
         m_EntityRegistry.on_construct<TransformComponent>().connect<&Scene::OnTransformComponentConstuct>(this);
 
-        m_TopLevelAss.resize(CommandLineArgs::g_FrameInFlightCount);
+        m_TopLevelAss.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
 
         MakeUniquePtr(m_PointLightBuffer, m_Device, BufferCreation
         {
             .DebugName = "PointLightBuffer",
             .ElementSize = sizeof(joint::PointLight),
-            .ElementCount = g_MaxPointLightCount * CommandLineArgs::g_FrameInFlightCount,
+            .ElementCount = g_MaxPointLightCount * CommandLineArgs::GetU32("FrameInFlightCount"),
             .Flags = BufferFlag::UploadBuffer, // #TODO: Add StructuredBuffer flag
         });
     }

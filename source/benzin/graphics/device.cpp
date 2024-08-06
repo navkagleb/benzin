@@ -288,7 +288,7 @@ namespace benzin
             m_IsGpuUploadHeapsSupported = d3d12Options.GPUUploadHeapSupported == 1;
             BenzinTrace("Is GpuUploadHeaps supported: {}", m_IsGpuUploadHeapsSupported);
 
-            m_IsGpuUploadHeapsSupported &= CommandLineArgs::g_IsGpuUploadHeapsEnabled;
+            m_IsGpuUploadHeapsSupported &= CommandLineArgs::GetBool("IsGpuUploadHeapsEnabled");
             BenzinTrace("Is GpuUploadHeaps enabled: {}", m_IsGpuUploadHeapsSupported);
         }
 

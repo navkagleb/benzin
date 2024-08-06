@@ -955,7 +955,7 @@ namespace sandbox
             ms_Resources->CreateTexture(+Texture::Final, benzin::TextureCreation
             {
                 .DebugName = magic_enum::enum_name(Texture::Final),
-                .Format = benzin::CommandLineArgs::g_BackBufferFormat,
+                .Format = (benzin::GraphicsFormat)benzin::CommandLineArgs::GetU32("BackBufferFormat"),
                 .Width = width,
                 .Height = height,
                 .MipCount = 1,

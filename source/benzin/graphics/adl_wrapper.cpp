@@ -255,7 +255,7 @@ namespace benzin
 
     void AdlWrapper::Initialize()
     {
-        if (CommandLineArgs::g_IsAdlWrapperEnabled)
+        if (CommandLineArgs::GetBool("IsAdlWrapperEnabled"))
         {
             MakeUniquePtr(g_AdlState);
         }

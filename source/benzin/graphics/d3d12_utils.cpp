@@ -112,14 +112,14 @@ namespace benzin
 
         d3d12Debug->EnableDebugLayer();
 
-        d3d12Debug->SetEnableGPUBasedValidation(CommandLineArgs::g_IsGpuValidationEnabled);
-        d3d12Debug->SetEnableSynchronizedCommandQueueValidation(CommandLineArgs::g_IsSynchronizedCommandQueueValidationEnabled);
+        d3d12Debug->SetEnableGPUBasedValidation(CommandLineArgs::GetBool("IsGpuValidationEnabled"));
+        d3d12Debug->SetEnableSynchronizedCommandQueueValidation(CommandLineArgs::GetBool("IsSynchronizedCommandQueueValidationEnabled"));
         d3d12Debug->SetEnableAutoName(true);
 
         BenzinTrace("----------------------------------------------");
         BenzinTrace("D3D12DebugLayer enabled");
-        BenzinTrace("GPUBasedValidation enabled: {}", CommandLineArgs::g_IsGpuValidationEnabled);
-        BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", CommandLineArgs::g_IsSynchronizedCommandQueueValidationEnabled);
+        BenzinTrace("GPUBasedValidation enabled: {}", CommandLineArgs::GetBool("IsGpuValidationEnabled"));
+        BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", CommandLineArgs::GetBool("IsSynchronizedCommandQueueValidationEnabled"));
         BenzinTrace("AutoName enabled: true");
         BenzinTrace("----------------------------------------------");
     }

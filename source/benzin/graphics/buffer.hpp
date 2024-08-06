@@ -95,7 +95,7 @@ namespace benzin
             {
                 .DebugName = debugName,
                 .ElementSize = sizeof(ConstantsT),
-                .ElementCount = CommandLineArgs::g_FrameInFlightCount,
+                .ElementCount = CommandLineArgs::GetU32("FrameInFlightCount"),
                 .Flags = BufferFlag::ConstantBuffer,
             });
 

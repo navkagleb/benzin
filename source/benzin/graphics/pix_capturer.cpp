@@ -44,7 +44,7 @@ namespace benzin
 
     void PixCapturer::Initialize()
     {
-        if (!CommandLineArgs::g_IsPixCapturerEnabled)
+        if (!CommandLineArgs::GetBool("IsPixCapturerEnabled"))
         {
             return;
         }
@@ -60,7 +60,7 @@ namespace benzin
 
     void PixCapturer::Shutdown()
     {
-        if (!CommandLineArgs::g_IsPixCapturerEnabled)
+        if (!CommandLineArgs::GetBool("IsPixCapturerEnabled"))
         {
             return;
         }

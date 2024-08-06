@@ -168,7 +168,7 @@ namespace benzin
                 dxgiAdapterDesc.Revision
             );
 
-            if (IsStringContainsCaseInsensitive(adapterInfo.Name, CommandLineArgs::g_AdapterName))
+            if (IsStringContainsCaseInsensitive(adapterInfo.Name, CommandLineArgs::GetString("AdapterName")))
             {
                 m_MainAdapterIndex = adapterIndex;
             }
@@ -183,7 +183,7 @@ namespace benzin
 
         if (!IsValidUnsigned(m_MainAdapterIndex))
         {
-            m_MainAdapterIndex = GetValidUnsignedOr(CommandLineArgs::g_AdapterIndex, 0u);
+            m_MainAdapterIndex = GetValidUnsignedOr(CommandLineArgs::GetU32("AdapterIndex"), 0u);
             BenzinEnsure(m_MainAdapterIndex < m_DxgiAdapters.size());
         }
     }

@@ -94,7 +94,7 @@ namespace benzin
 
     void NvApiWrapper::Initialize()
     {
-        if (CommandLineArgs::g_IsNvApiWrapperEnabled)
+        if (CommandLineArgs::GetBool("IsNvApiWrapperEnabled"))
         {
             MakeUniquePtr(g_NvApiState);
         }

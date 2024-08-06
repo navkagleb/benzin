@@ -34,16 +34,15 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("Runner::Runner");
 
-        const benzin::WindowCreation windowCreation
+        benzin::MakeUniquePtr(m_MainWindow, benzin::WindowCreation
         {
             .Title = "benzin::SandboxRunner",
-            .Width = benzin::CommandLineArgs::g_WindowWidth,
-            .Height = benzin::CommandLineArgs::g_WindowHeight,
-            .IsResizable = benzin::CommandLineArgs::g_IsWindowResizable,
-            .EventCallback = [&](benzin::Event& event) { WindowEventCallback(event); },
-        };
+            .Width = benzin::CommandLineArgs::GetU32("WindowWidth"),
+            .Height = benzin::CommandLineArgs::GetU32("WindowHeight"),
+            .IsResizable = benzin::CommandLineArgs::GetBool("IsWindowResizable"),
+            .EventCallback = [this](benzin::Event& event) { WindowEventCallback(event); },
+        });
 
-        benzin::MakeUniquePtr(m_MainWindow, windowCreation);
         benzin::MakeUniquePtr(m_Backend);
         benzin::MakeUniquePtr(m_Device, benzin::DeviceCreation{ "MainDevice", *m_Backend });
         benzin::MakeUniquePtr(m_SwapChain, benzin::SwapChainCreation{ "MainSwapChain", *m_MainWindow, *m_Device });
