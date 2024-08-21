@@ -38,7 +38,7 @@ namespace benzin
         const auto& GetTranslation() const { return m_Translation; }
         void SetTranslation(const DirectX::XMFLOAT3& translation);
 
-        const DirectX::XMMATRIX& GetWorldMatrix() const;
+        const DirectX::XMMATRIX& GetLocalToWorldMatrix() const;
 
         const Descriptor& GetActiveTransformCbv() const;
 
@@ -54,9 +54,9 @@ namespace benzin
         DirectX::XMFLOAT3 m_Translation{ 0.0f, 0.0f, 0.0f };
 
         bool m_IsDirty = true;
-        DirectX::XMMATRIX m_WorldMatrix = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_PreviousWorldMatrix = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_WorldMatrixForNormals = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_LocalToWorldMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_PrevLocalToWorldMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_LocalToWorldMatrixForNormals = DirectX::XMMatrixIdentity();
 
         std::unique_ptr<ConstantBuffer<joint::MeshTransform>> m_TransformConstantBuffer;
     };

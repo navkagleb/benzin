@@ -10,22 +10,23 @@ namespace benzin
     class Projection
     {
     public:
-        const DirectX::XMMATRIX& GetMatrix() const { return m_ProjectionMatrix; }
-        const DirectX::XMMATRIX& GetInverseMatrix() const { return m_InverseProjectionMatrix; }
+        const DirectX::XMMATRIX& GetViewToClipMatrix() const { return m_ViewToClipMatrix; }
+        const DirectX::XMMATRIX& GetInvViewToClipMatrix() const { return m_InvViewToClipMatrix; }
 
         const DirectX::BoundingFrustum& GetBoundingFrustum() const { return m_BoundingFrustum; }
 
-    public:
         DirectX::BoundingFrustum GetTransformedBoundingFrustum(const DirectX::XMMATRIX& transform) const;
+        DirectX::XMFLOAT4 GetPackedFrustumPlaneSlopes() const;
 
-        void UpdateMatrix();
+        void UpdateViewToClipMatrix();
 
     protected:
-        virtual DirectX::XMMATRIX CreateMatrix() const = 0;
+        virtual DirectX::XMMATRIX CreateViewToClipMatrix() const = 0;
 
     private:
-        DirectX::XMMATRIX m_ProjectionMatrix = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_InverseProjectionMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_ViewToClipMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_InvViewToClipMatrix = DirectX::XMMatrixIdentity();
+
         DirectX::BoundingFrustum m_BoundingFrustum;
     };
 
@@ -35,23 +36,22 @@ namespace benzin
         friend class FlyCameraTool;
 
         PerspectiveProjection() = default;
-        PerspectiveProjection(float fov, float aspectRatio, float nearPlane, float farPlane);
+        PerspectiveProjection(float vericalFov, float aspectRatio, float nearPlane, float farPlane);
 
     public:
-        float GetFov() const { return m_Fov; }
-        void SetFov(float fov);
+        float GetVerticalFov() const { return m_VerticalFov; }
+        void SetVerticalFov(float verticalFov);
 
         float GetAspectRatio() const { return m_AspectRatio; }
         void SetAspectRatio(float aspectRatio);
 
-    public:
-        void SetLens(float fov, float aspectRatio, float nearPlane, float farPlane);
+        void SetLens(float verticalFov, float aspectRatio, float nearPlane, float farPlane);
 
     private:
-        DirectX::XMMATRIX CreateMatrix() const override;
+        DirectX::XMMATRIX CreateViewToClipMatrix() const override;
 
     private:
-        float m_Fov = DirectX::XMConvertToRadians(60.0f);
+        float m_VerticalFov = DirectX::XMConvertToRadians(60.0f);
         float m_AspectRatio = 0.0f;
         float m_NearPlane = 0.1f;
         float m_FarPlane = 1000.0f;
@@ -73,7 +73,7 @@ namespace benzin
         void SetViewRect(const ViewRect& viewRect);
 
     private:
-        DirectX::XMMATRIX CreateMatrix() const override;
+        DirectX::XMMATRIX CreateViewToClipMatrix() const override;
 
     private:
         ViewRect m_ViewRect;
@@ -98,25 +98,25 @@ namespace benzin
 
         const auto& GetRightDirection() const { return m_RightDirection; }
 
-        const auto& GetViewMatrix() const { return m_ViewMatrix; }
-        const auto& GetViewMatrixForNormals() const { return m_ViewMatrixForNormals; }
-        const auto& GetInverseViewMatrix() const { return m_InverseViewMatrix; }
+        const auto& GetWorldToViewMatrix() const { return m_WorldToViewMatrix; }
+        const auto& GetWorldToViewMatrixForNormals() const { return m_WorldToViewMatrixForNormals; }
+        const auto& GetInvWorldToViewMatrix() const { return m_InvWorldToViewMatrix; }
 
         auto& GetProjection() { return m_Projection; }
         const auto& GetProjection() const { return m_Projection; }
 
-        const DirectX::XMMATRIX& GetProjectionMatrix() const;
-        const DirectX::XMMATRIX& GetInverseProjectionMatrix() const;
+        const DirectX::XMMATRIX& GetViewToClipMatrix() const;
+        const DirectX::XMMATRIX& GetInvViewToClipMatrix() const;
 
-        DirectX::XMMATRIX GetViewProjectionMatrix() const;
-        DirectX::XMMATRIX GetInverseViewProjectionMatrix() const;
+        DirectX::XMMATRIX GetWorldToClipMatrix() const;
+        DirectX::XMMATRIX GetInvWorldToClipMatrix() const;
 
         // Used for normal transformation
-        DirectX::XMMATRIX GetInverseViewDirectionProjectionMatrix() const;
+        DirectX::XMMATRIX GetInvDirectionalWorldToClipMatrix() const;
 
     private:
         void UpdateRightDirection();
-        void UpdateViewMatrix();
+        void UpdateWorldToViewMatrix();
 
     private:
         DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, 0.0f, 1.0f };
@@ -124,9 +124,9 @@ namespace benzin
         DirectX::XMVECTOR m_UpDirection{ 0.0f, 1.0f, 0.0f, 1.0f };
         DirectX::XMVECTOR m_RightDirection{ 0.0f, 0.0f, 0.0f, 1.0f };
 
-        DirectX::XMMATRIX m_ViewMatrix = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_ViewMatrixForNormals = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_InverseViewMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_WorldToViewMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_WorldToViewMatrixForNormals = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_InvWorldToViewMatrix = DirectX::XMMatrixIdentity();
 
         Projection& m_Projection;
     };

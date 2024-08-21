@@ -137,31 +137,6 @@ namespace benzin
         }
 
         {
-            const joint::CameraConstants cameraConstants
-            {
-                .View = m_Camera.GetViewMatrix(),
-                .ViewForNormals = m_Camera.GetViewMatrixForNormals(),
-                .InverseView = m_Camera.GetInverseViewMatrix(),
-                .Projection = m_Camera.GetProjectionMatrix(),
-                .InverseProjection = m_Camera.GetInverseProjectionMatrix(),
-                .ViewProjection = m_Camera.GetViewProjectionMatrix(),
-                .InverseViewProjection = m_Camera.GetInverseViewProjectionMatrix(),
-                .InverseViewDirectionProjection = m_Camera.GetInverseViewDirectionProjectionMatrix(),
-                .WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&m_Camera.GetPosition()),
-            };
-
-            if (m_PreviousCameraConstants.has_value())
-            {
-                m_PreviousCameraConstants = std::exchange(m_CurrentCameraConstants, cameraConstants);
-            }
-            else
-            {
-                m_PreviousCameraConstants = cameraConstants;
-                m_CurrentCameraConstants = cameraConstants;
-            }
-        }
-
-        {
             const uint32_t offset = g_MaxPointLightCount * m_Device.GetActiveFrameIndex();
             const MemoryWriter writer{ m_PointLightBuffer->GetCpuMappedData(), m_PointLightBuffer->GetSize() };
 
@@ -379,7 +354,7 @@ namespace benzin
                 {
                     .BottomLevelAccelerationStructure = *meshUnion.BottomLevelASs[meshInstance.MeshIndex],
                     .HitGroupIndex = 0,
-                    .Transform = meshInstance.Transform * tc.GetWorldMatrix(),
+                    .Transform = meshInstance.Transform * tc.GetLocalToWorldMatrix(),
                 });
             }
         }

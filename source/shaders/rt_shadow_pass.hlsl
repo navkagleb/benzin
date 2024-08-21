@@ -158,8 +158,9 @@ void RayGen()
 
     const joint::PointLight pointLight = pointLightBuffer[0];
 
-    const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
-    const float3 worldPosition = ReconstructWorldPositionFromDepth(uv, depth, cameraConstants.InverseProjection, cameraConstants.InverseView).xyz;
+    const float2 uv = GetRayUv();
+    const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
+    const float3 worldPosition = ReconstructWorldPositionFromDepth(uv, depth, cameraConstants.InvViewToClip, cameraConstants.InvWorldToView).xyz;
 
     uint hittedSum = 0;
     for (uint i = 0; i < g_PassConstants.RaysPerPixel; ++i)

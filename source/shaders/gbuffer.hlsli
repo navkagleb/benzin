@@ -80,3 +80,13 @@ float3 ReconstructWorldPositionFromViewPosition(float3 viewPosition, float4x4 in
     const float3 worldPosition = mul(float4(viewPosition, 1.0f), inverseViewMatrix).xyz;
     return worldPosition;
 }
+
+// orthoMode = { 0 - perspective, -1 - right handed ortho, 1 - left handed ortho }
+float3 ReconstructViewPositionFromViewDepth(float2 uv, float viewDepth, float4 packedCameraFrustumPlaneSlopes)
+{
+    float3 viewPosition;
+    viewPosition.xy = (uv * packedCameraFrustumPlaneSlopes.zw + packedCameraFrustumPlaneSlopes.xy) * viewDepth;
+    viewPosition.z = viewDepth;
+
+    return viewPosition;
+}

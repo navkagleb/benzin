@@ -71,9 +71,6 @@ namespace benzin
         auto& GetCamera() { return m_Camera; }
         const auto& GetCamera() const { return m_Camera; }
 
-        const auto& GetCurrentCameraConstants() const { return m_CurrentCameraConstants; }
-        const auto& GetPreviousCameraConstants() const { return *m_PreviousCameraConstants; }
-
         const auto& GetStats() const { return m_Stats; }
 
         const auto& GetMeshCollection(uint32_t index) const { return m_MeshUnions[index].Collection; };
@@ -118,8 +115,6 @@ namespace benzin
 
         PerspectiveProjection m_PerspectiveProjection;
         Camera m_Camera{ m_PerspectiveProjection };
-        joint::CameraConstants m_CurrentCameraConstants;
-        std::optional<joint::CameraConstants> m_PreviousCameraConstants;
 
         std::vector<MeshUnion> m_MeshUnions;
 

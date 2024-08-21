@@ -19,48 +19,64 @@ namespace benzin
         return transformedBoundingFrustum;
     }
 
-    void Projection::UpdateMatrix()
+    DirectX::XMFLOAT4 Projection::GetPackedFrustumPlaneSlopes() const
     {
-        m_ProjectionMatrix = CreateMatrix();
-        m_InverseProjectionMatrix = DirectX::XMMatrixInverse(nullptr, m_ProjectionMatrix);
+        // Can be used to reconstruct ViewPosition from ViewDepth and Uv coordinates
+        // Usage:
+        //   viewPos.xy = (packedSlopes.zw * uv + packedSlopes.xy) * viewDepth
+        //   viewPos.z = viewDepth
 
-        DirectX::BoundingFrustum::CreateFromMatrix(m_BoundingFrustum, m_ProjectionMatrix);
+        DirectX::XMFLOAT4 packedSlopes;
+        packedSlopes.x = -m_BoundingFrustum.LeftSlope;
+        packedSlopes.y = -m_BoundingFrustum.TopSlope;
+        packedSlopes.z = m_BoundingFrustum.LeftSlope - m_BoundingFrustum.RightSlope;
+        packedSlopes.w = m_BoundingFrustum.TopSlope - m_BoundingFrustum.BottomSlope;
+
+        return packedSlopes;
+    }
+
+    void Projection::UpdateViewToClipMatrix()
+    {
+        m_ViewToClipMatrix = CreateViewToClipMatrix();
+        m_InvViewToClipMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewToClipMatrix);
+
+        DirectX::BoundingFrustum::CreateFromMatrix(m_BoundingFrustum, m_ViewToClipMatrix);
     };
 
     // PerspectiveProjection
 
-    PerspectiveProjection::PerspectiveProjection(float fov, float aspectRatio, float nearPlane, float farPlane)
+    PerspectiveProjection::PerspectiveProjection(float verticalFov, float aspectRatio, float nearPlane, float farPlane)
     {
-        SetLens(fov, aspectRatio, nearPlane, farPlane);
+        SetLens(verticalFov, aspectRatio, nearPlane, farPlane);
     }
     
-    void PerspectiveProjection::SetFov(float fov)
+    void PerspectiveProjection::SetVerticalFov(float verticalFov)
     {
-        m_Fov = fov;
+        m_VerticalFov = verticalFov;
 
-        UpdateMatrix();
+        UpdateViewToClipMatrix();
     }
 
     void PerspectiveProjection::SetAspectRatio(float aspectRatio)
     {
         m_AspectRatio = aspectRatio;
 
-        UpdateMatrix();
+        UpdateViewToClipMatrix();
     }
 
-    void PerspectiveProjection::SetLens(float fov, float aspectRatio, float nearPlane, float farPlane)
+    void PerspectiveProjection::SetLens(float verticalFov, float aspectRatio, float nearPlane, float farPlane)
     {
-        m_Fov = fov;
+        m_VerticalFov = verticalFov;
         m_AspectRatio = aspectRatio;
         m_NearPlane = nearPlane;
         m_FarPlane = farPlane;
 
-        UpdateMatrix();
+        UpdateViewToClipMatrix();
     }
 
-    DirectX::XMMATRIX PerspectiveProjection::CreateMatrix() const
+    DirectX::XMMATRIX PerspectiveProjection::CreateViewToClipMatrix() const
     {
-        return DirectX::XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
+        return DirectX::XMMatrixPerspectiveFovLH(m_VerticalFov, m_AspectRatio, m_NearPlane, m_FarPlane);
     }
 
     // OrthographicProjection
@@ -69,10 +85,10 @@ namespace benzin
     {
         m_ViewRect = viewRect;
 
-        UpdateMatrix();
+        UpdateViewToClipMatrix();
     };
 
-    DirectX::XMMATRIX OrthographicProjection::CreateMatrix() const
+    DirectX::XMMATRIX OrthographicProjection::CreateViewToClipMatrix() const
     {
         return DirectX::XMMatrixOrthographicOffCenterLH(
             m_ViewRect.LeftPlane,
@@ -90,14 +106,14 @@ namespace benzin
         : m_Projection{ projection }
     {
         UpdateRightDirection();
-        UpdateViewMatrix();
+        UpdateWorldToViewMatrix();
     }
 
     void Camera::SetPosition(const DirectX::XMVECTOR& position)
     {
         m_Position = position;
 
-        UpdateViewMatrix();
+        UpdateWorldToViewMatrix();
     }
 
     void Camera::SetFrontDirection(const DirectX::XMVECTOR& frontDirection)
@@ -106,7 +122,7 @@ namespace benzin
         DirectX::XMVector3Normalize(m_FrontDirection);
 
         UpdateRightDirection();
-        UpdateViewMatrix();
+        UpdateWorldToViewMatrix();
     }
 
     void Camera::SetUpDirection(const DirectX::XMVECTOR& upDirection)
@@ -115,36 +131,36 @@ namespace benzin
         DirectX::XMVector3Normalize(m_UpDirection);
 
         UpdateRightDirection();
-        UpdateViewMatrix();
+        UpdateWorldToViewMatrix();
     }
 
-    const DirectX::XMMATRIX& Camera::GetProjectionMatrix() const
+    const DirectX::XMMATRIX& Camera::GetViewToClipMatrix() const
     {
-        return m_Projection.GetMatrix();
+        return m_Projection.GetViewToClipMatrix();
     }
 
-    const DirectX::XMMATRIX& Camera::GetInverseProjectionMatrix() const
+    const DirectX::XMMATRIX& Camera::GetInvViewToClipMatrix() const
     {
-        return m_Projection.GetInverseMatrix();
+        return m_Projection.GetInvViewToClipMatrix();
     }
 
-    DirectX::XMMATRIX Camera::GetViewProjectionMatrix() const
+    DirectX::XMMATRIX Camera::GetWorldToClipMatrix() const
     {
-        return m_ViewMatrix * GetProjectionMatrix();
+        return m_WorldToViewMatrix * GetViewToClipMatrix();
     }
 
-    DirectX::XMMATRIX Camera::GetInverseViewProjectionMatrix() const
+    DirectX::XMMATRIX Camera::GetInvWorldToClipMatrix() const
     {
-        return DirectX::XMMatrixInverse(nullptr, GetViewProjectionMatrix());
+        return DirectX::XMMatrixInverse(nullptr, GetWorldToClipMatrix());
     }
 
-    DirectX::XMMATRIX Camera::GetInverseViewDirectionProjectionMatrix() const
+    DirectX::XMMATRIX Camera::GetInvDirectionalWorldToClipMatrix() const
     {
-        DirectX::XMMATRIX viewDirectionMatrix = m_ViewMatrix;
-        viewDirectionMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
+        DirectX::XMMATRIX directionWorldToViewMatrix = m_WorldToViewMatrix;
+        directionWorldToViewMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
 
-        const DirectX::XMMATRIX viewDirectionProjectionMatrix = viewDirectionMatrix * GetProjectionMatrix();
-        return DirectX::XMMatrixInverse(nullptr, viewDirectionProjectionMatrix);
+        const DirectX::XMMATRIX directionalWorldToClipMatrix = directionWorldToViewMatrix * GetViewToClipMatrix();
+        return DirectX::XMMatrixInverse(nullptr, directionalWorldToClipMatrix);
     }
 
     void Camera::UpdateRightDirection()
@@ -152,11 +168,11 @@ namespace benzin
         m_RightDirection = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(m_FrontDirection, m_UpDirection));
     }
 
-    void Camera::UpdateViewMatrix()
+    void Camera::UpdateWorldToViewMatrix()
     {
-        m_ViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
-        m_ViewMatrixForNormals = GetMatrixForNormals(m_ViewMatrix);
-        m_InverseViewMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewMatrix);
+        m_WorldToViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
+        m_WorldToViewMatrixForNormals = GetMatrixForNormals(m_WorldToViewMatrix);
+        m_InvWorldToViewMatrix = DirectX::XMMatrixInverse(nullptr, m_WorldToViewMatrix);
     }
 
     // CameraController
@@ -296,13 +312,13 @@ namespace benzin
 
     bool FlyCameraController::OnMouseScrolled(const MouseScrolledEvent& event)
     {
-        static const float minFov = DirectX::XM_PIDIV4; // 45 degrees
-        static const float maxFov = DirectX::XM_PI * 2.0f / 3.0f; // 120 degrees
+        static const float minVerticalFov = DirectX::XMConvertToRadians(45.0f);
+        static const float maxVerticalFov = DirectX::XMConvertToRadians(120.0f);
 
         if (auto* perspectiveProjection = GetPerspectiveProjection())
         {
-            const float fov = perspectiveProjection->GetFov() - m_MouseWheelSensitivity * (float)event.GetOffsetX();
-            perspectiveProjection->SetFov(std::clamp(fov, minFov, maxFov));
+            const float verticalFov = perspectiveProjection->GetVerticalFov() - m_MouseWheelSensitivity * (float)event.GetOffsetX();
+            perspectiveProjection->SetVerticalFov(std::clamp(verticalFov, minVerticalFov, maxVerticalFov));
         }
 
         return false;

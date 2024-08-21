@@ -43,17 +43,25 @@ namespace benzin
     {
         SpawnImGuiWindow([this]
         {
-            RenderImGuiControllerProperties();
-            ImGui::Separator();
-            RenderImGuiViewProperties();
-            ImGui::Separator();
-            RenderImGuiProjectionProperties();
+            if (SpawnImGuiCollapsingHeader("Controller Props"))
+            {
+                RenderImGuiControllerProperties();
+            }
+            
+            if (SpawnImGuiCollapsingHeader("View Props"))
+            {
+                RenderImGuiViewProperties();
+            }
+            
+            if (SpawnImGuiCollapsingHeader("Projection Props"))
+            {
+                RenderImGuiProjectionProperties();
+            }
         });
     }
 
     void FlyCameraTool::RenderImGuiControllerProperties()
     {
-        ImGui::Text("Controller Properties");
         ImGui::SliderFloat("CameraTranslationSpeed", &m_Controller.m_CameraTranslationSpeed, 0.001f, 0.03f);
         ImGui::SliderFloat("MouseSensitivity", &m_Controller.m_MouseSensitivity, 0.001f, 0.007f, "%.3f");
     }
@@ -62,21 +70,20 @@ namespace benzin
     {
         auto& camera = m_Controller.m_Camera;
 
-        ImGui::Text("View Properties");
-
         if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&camera.m_Position)))
         {
-            camera.UpdateViewMatrix();
+            camera.UpdateWorldToViewMatrix();
         }
 
         if (ImGui::DragFloat3("Front Direction", reinterpret_cast<float*>(&camera.m_FrontDirection)))
         {
-            camera.UpdateViewMatrix();
+            camera.SetFrontDirection(camera.m_FrontDirection);
+            camera.UpdateWorldToViewMatrix();
         }
 
         if (ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&camera.m_UpDirection)))
         {
-            camera.UpdateViewMatrix();
+            camera.UpdateWorldToViewMatrix();
         }
 
         if (ImGui::SliderAngle("Pitch (X)", &m_Controller.m_Pitch, -89.0f, 89.0f))
@@ -89,7 +96,9 @@ namespace benzin
             camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Controller.m_Pitch, m_Controller.m_Yaw));
         }
 
-        RenderImGuiMatrix4x4(camera.GetViewMatrix());
+        ImGui::Separator();
+        ImGui::Text("WorldToViewMatrix");
+        RenderImGuiMatrix4x4(camera.GetWorldToViewMatrix());
     }
 
     void FlyCameraTool::RenderImGuiProjectionProperties()
@@ -103,18 +112,18 @@ namespace benzin
         }
         else
         {
-            ImGui::Text("Projection Properties");
-
-            if (ImGui::SliderAngle("Fov", &perspectiveProjection->m_Fov, 45.0f, 120.0f))
+            if (ImGui::SliderAngle("VerticalFov", &perspectiveProjection->m_VerticalFov, 45.0f, 120.0f))
             {
-                perspectiveProjection->UpdateMatrix();
+                perspectiveProjection->UpdateViewToClipMatrix();
             }
 
             ImGui::Text("AspectRatio: %f", perspectiveProjection->m_AspectRatio);
             ImGui::Text("NearPlane: %f", perspectiveProjection->m_NearPlane);
             ImGui::Text("FarPlane: %f", perspectiveProjection->m_FarPlane);
 
-            RenderImGuiMatrix4x4(camera.GetProjectionMatrix());
+            ImGui::Separator();
+            ImGui::Text("ViewToClipMatrix");
+            RenderImGuiMatrix4x4(camera.GetViewToClipMatrix());
         }
     }
 

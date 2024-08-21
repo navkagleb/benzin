@@ -74,9 +74,9 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 
     StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_PointLightBuffer)];
 
-    const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
+    const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
 
-    const float3 worldPosition = ReconstructWorldPositionFromDepth(input.Uv, depth, cameraConstants.InverseProjection, cameraConstants.InverseView);
+    const float3 worldPosition = ReconstructWorldPositionFromDepth(input.Uv, depth, cameraConstants.InvViewToClip, cameraConstants.InvWorldToView);
     const float3 worldViewDirection = normalize(cameraConstants.WorldPosition - worldPosition);
 
     PbrMaterial material;

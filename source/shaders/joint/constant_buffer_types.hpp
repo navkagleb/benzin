@@ -9,21 +9,21 @@ namespace joint
 
     struct CameraConstants
     {
-        float4x4 View;
-        float4x4 ViewForNormals;
-        float4x4 InverseView;
+        float4x4 WorldToView;
+        float4x4 WorldToViewForNormals;
+        float4x4 InvWorldToView;
 
-        float4x4 Projection;
-        float4x4 InverseProjection;
+        float4x4 ViewToClip;
+        float4x4 InvViewToClip;
 
-        float4x4 ViewProjection;
-        float4x4 InverseViewProjection;
+        float4x4 WorldToClip;
+        float4x4 InvWorldToClip;
 
-        float4x4 InverseViewDirectionProjection;
+        float4x4 InvDirectionWorldToClip;
 
         float3 WorldPosition;
 
-        float __UnusedPadding;
+        float4 PackedFrustumPlaneSlopes;
     };
 
     struct FrameConstants
@@ -38,8 +38,8 @@ namespace joint
         uint IsDenoiserEnabled : 1;
         uint MaxTemporalAccumulationCount;
 
-        CameraConstants CurrentCamera;
-        CameraConstants PreviousCamera;
+        CameraConstants Camera;
+        CameraConstants PrevCamera;
     };
 
     struct RtShadowPassConstants

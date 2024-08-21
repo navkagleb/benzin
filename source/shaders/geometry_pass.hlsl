@@ -97,8 +97,8 @@ VsOutput VsMain(uint indexIndex : SV_VertexID)
     const joint::MeshVertex vertex = FetchVertex(indexIndex, meshInstance.MeshIndex);
     const joint::MeshTransform transform = FetchMeshTransform();
 
-    const joint::CameraConstants currentCameraConstants = g_FrameConstants.CurrentCamera;
-    const joint::CameraConstants previousCameraConstants = g_FrameConstants.PreviousCamera;
+    const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
+    const joint::CameraConstants prevCameraConstants = g_FrameConstants.PrevCamera;
 
     const float4 objectPosition = mul(float4(vertex.Position, 1.0f), meshInstance.Transform);
     const float3 objectNormal = mul(vertex.Normal, (float3x3)meshInstance.Transform);
@@ -107,12 +107,12 @@ VsOutput VsMain(uint indexIndex : SV_VertexID)
     const float4 previousWorldPosition = mul(objectPosition, transform.PreviousWorldMatrix);
     const float3 worldNormal = mul(objectNormal, (float3x3)transform.WorldMatrixForNormals);
 
-    const float4 viewPosition = mul(worldPosition, currentCameraConstants.View);
+    const float4 viewPosition = mul(worldPosition, cameraConstants.WorldToView);
 
     VsOutput output = (VsOutput)0;
-    output.ClipPosition = mul(worldPosition, currentCameraConstants.ViewProjection);
+    output.ClipPosition = mul(worldPosition, cameraConstants.WorldToClip);
     output.CurrentClipPosition = output.ClipPosition;
-    output.PreviousClipPosition = mul(previousWorldPosition, previousCameraConstants.ViewProjection);
+    output.PreviousClipPosition = mul(previousWorldPosition, prevCameraConstants.WorldToClip);
     output.WorldPosition = worldPosition.xyz;
     output.ViewDepth = viewPosition.z;
     output.WorldNormal = worldNormal;
@@ -157,7 +157,7 @@ PsOutput PsMain(VsOutput input)
 
     if (material.NormalTextureIndex != g_InvalidIndex)
     {
-        const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
+        const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
 
         Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.NormalTextureIndex];
 

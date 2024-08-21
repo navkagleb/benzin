@@ -31,8 +31,8 @@ static const float2 g_PoissonSamples[g_PoissonSampleCount] =
 
 float CalcParallax(float3 worldPosition, float3 previousWorldPosition)
 {
-    const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
-    const joint::CameraConstants prevCameraConstants = g_FrameConstants.PreviousCamera;
+    const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
+    const joint::CameraConstants prevCameraConstants = g_FrameConstants.PrevCamera;
 
     const float3 worldCameraDelta = cameraConstants.WorldPosition - prevCameraConstants.WorldPosition;
     const float3 worldMovementDelta = worldPosition - (previousWorldPosition - worldCameraDelta);
@@ -124,7 +124,7 @@ float3 GetPoissonDummyViewPosition(uint poissonSampleIndex, float3x3 samplingBas
 
 float2 GetPoissonSampleUv(float3 dummyViewPosition)
 {
-    const float4 clipPosition = ViewPositionToClipPosition(dummyViewPosition, g_FrameConstants.CurrentCamera.Projection);
+    const float4 clipPosition = mul(float4(dummyViewPosition, 1.0), g_FrameConstants.Camera.ViewToClip);
     const float3 ndcPosition = ClipPositionToNdcPosition(clipPosition);
     const float2 sampleUv = NdcPositionToUv(ndcPosition);
 
@@ -222,7 +222,7 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-    const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
+    const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
 
     const float roughness = albedoAndRoughnessTexture[dispatchThreadId.xy].w;
 
@@ -232,13 +232,13 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float2 uv = DispatchThreadIdToUv(dispatchThreadId, g_FrameConstants.InvRenderResolution);
     const float2 previousUv = uv - motionVector.xy;
     const float previousDepth = depth - motionVector.z;
-    const float3 previousViewPosition = ReconstructViewPositionFromDepth(previousUv, previousDepth, g_FrameConstants.PreviousCamera.InverseProjection);
-    const float3 previousWorldPosition = ReconstructWorldPositionFromViewPosition(previousViewPosition, g_FrameConstants.PreviousCamera.InverseView);
+    const float3 previousViewPosition = ReconstructViewPositionFromDepth(previousUv, previousDepth, g_FrameConstants.PrevCamera.InvViewToClip);
+    const float3 previousWorldPosition = ReconstructWorldPositionFromViewPosition(previousViewPosition, g_FrameConstants.PrevCamera.InvWorldToView);
 
-    const float3 viewPosition = ReconstructViewPositionFromDepth(uv, depth, cameraConstants.InverseProjection);
-    const float3 worldPosition = ReconstructWorldPositionFromViewPosition(viewPosition, cameraConstants.InverseView);
+    const float3 viewPosition = ReconstructViewPositionFromDepth(uv, depth, cameraConstants.InvViewToClip);
+    const float3 worldPosition = ReconstructWorldPositionFromViewPosition(viewPosition, cameraConstants.InvWorldToView);
 
-    const float3 lightDirection = normalize(g_FrameConstants.CurrentCamera.WorldPosition - worldPosition);
+    const float3 lightDirection = normalize(cameraConstants.WorldPosition - worldPosition);
     const float nDotL = dot(worldNormal, lightDirection);
     const float parallax = CalcParallax(worldPosition, previousWorldPosition);
     const float allowedFrameCount = GetMaxAllowedAccumulatedFrameCountUsingSurfaceMotion(roughness, nDotL, parallax);
@@ -254,7 +254,7 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float normalizedFrameCount = frameCount / g_FrameConstants.MaxTemporalAccumulationCount;
     const float accumulationSpeed = 1.0 / (1.0 + frameCount);
 
-    const float3 viewNormal = mul(worldNormal, (float3x3)cameraConstants.ViewForNormals);
+    const float3 viewNormal = mul(worldNormal, (float3x3)cameraConstants.WorldToViewForNormals);
 
     const float blurRadius = lerp(g_PassConstants.MinBlurRadius, g_PassConstants.MaxBlurRadius, accumulationSpeed);
     const float3x3 samplingBasis = GetKernelBasis(viewPosition, viewNormal, roughness, blurRadius, normalizedFrameCount);
@@ -276,7 +276,7 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
         const float3 sampleWorldNormal = worldNormalTexture.SampleLevel(g_PointClampSampler, sampleUv, 0.0).xyz;
         const float sample = noisyVisibilityBuffer.SampleLevel(g_PointClampSampler, sampleUv, 0.0);
 
-        const float3 sampleViewPosition = ReconstructViewPositionFromDepth(sampleUv, sampleDepth, cameraConstants.InverseProjection);
+        const float3 sampleViewPosition = ReconstructViewPositionFromDepth(sampleUv, sampleDepth, cameraConstants.InvViewToClip);
 
         const float geometryWeight = GetGeometryWeight(viewPosition, viewNormal, sampleViewPosition, accumulationSpeed);
         const float normalWeight = GetNormalWeight(worldNormal, sampleWorldNormal, roughness, frameCount, g_FrameConstants.MaxTemporalAccumulationCount);

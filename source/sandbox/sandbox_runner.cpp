@@ -94,8 +94,9 @@ namespace sandbox
     class GlobalConstantBufferPass : public benzin::RenderPass
     {
     public:
-        explicit GlobalConstantBufferPass(benzin::Scene& scene)
-            : m_Scene{ scene }
+        GlobalConstantBufferPass(benzin::Device& device, benzin::Scene& scene)
+            : m_Device{ device }
+            , m_Scene{ scene }
         {
             benzin::MakeUniquePtr(m_FrameConstantBuffer, *ms_Device, "FrameConstantBuffer");
         }
@@ -107,6 +108,39 @@ namespace sandbox
             const auto& rtShadowSettings = ms_Settings->GetSection<RtShadowsSettings>();
             const auto& denoiserSettings = ms_Settings->GetSection<DenoiserSettings>();
 
+            {
+                auto& camera = m_Scene.GetCamera();
+                auto& projection = m_Scene.GetPerspectiveProjection();
+
+                const joint::CameraConstants cameraConstants
+                {
+                    .WorldToView = camera.GetWorldToViewMatrix(),
+                    .WorldToViewForNormals = camera.GetWorldToViewMatrixForNormals(),
+                    .InvWorldToView = camera.GetInvWorldToViewMatrix(),
+
+                    .ViewToClip = camera.GetViewToClipMatrix(),
+                    .InvViewToClip = camera.GetInvViewToClipMatrix(),
+
+                    .WorldToClip = camera.GetWorldToClipMatrix(),
+                    .InvWorldToClip = camera.GetInvWorldToClipMatrix(),
+                    .InvDirectionWorldToClip = camera.GetInvDirectionalWorldToClipMatrix(),
+
+                    .WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()),
+
+                    .PackedFrustumPlaneSlopes = projection.GetPackedFrustumPlaneSlopes(),
+                };
+
+                if (m_Device.GetCpuFrameIndex() != 0)
+                {
+                    m_PrevCameraConstants = std::exchange(m_CameraConstants, cameraConstants);
+                }
+                else
+                {
+                    m_PrevCameraConstants = cameraConstants;
+                    m_CameraConstants = cameraConstants;
+                }
+            }
+
             m_FrameConstantBuffer->UpdateConstants(joint::FrameConstants
             {
                 .RenderResolution{ (float)GetRenderViewportWidth(), (float)GetRenderViewportHeight() },
@@ -117,8 +151,9 @@ namespace sandbox
                 .IsRtShadowsEnabled = rtShadowSettings.IsRtShadowEnabled,
                 .IsDenoiserEnabled = denoiserSettings.IsDenoiserEnabled,
                 .MaxTemporalAccumulationCount = denoiserSettings.MaxTemporalAccumulationCount,
-                .CurrentCamera = m_Scene.GetCurrentCameraConstants(),
-                .PreviousCamera = m_Scene.GetPreviousCameraConstants(),
+
+                .Camera = m_CameraConstants,
+                .PrevCamera = m_PrevCameraConstants,
             });
         }
 
@@ -147,10 +182,14 @@ namespace sandbox
         }
 
     private:
+        benzin::Device& m_Device;
         benzin::Scene& m_Scene;
 
         using FrameConstantBuffer = benzin::ConstantBuffer<joint::FrameConstants>;
         std::unique_ptr<FrameConstantBuffer> m_FrameConstantBuffer;
+
+        joint::CameraConstants m_CameraConstants{};
+        joint::CameraConstants m_PrevCameraConstants{};
     };
 
     class GeometryPass : public benzin::RenderPass
@@ -318,7 +357,7 @@ namespace sandbox
         }
 
     private:
-        bool IsMeshCulled(const benzin::MeshCollection& meshCollection, uint32_t meshInstanceIndex, const DirectX::XMMATRIX& worldMatrix) const
+        bool IsMeshCulled(const benzin::MeshCollection& meshCollection, uint32_t meshInstanceIndex, const DirectX::XMMATRIX& localToWorldMatrix) const
         {
             const auto& camera = m_Scene.GetCamera();
             const auto& meshInstance = meshCollection.MeshInstances[meshInstanceIndex];
@@ -329,7 +368,7 @@ namespace sandbox
                 return false;
             }
 
-            const auto localToViewSpaceTransformMatrix = meshInstance.Transform * worldMatrix * camera.GetViewMatrix();
+            const auto localToViewSpaceTransformMatrix = meshInstance.Transform * localToWorldMatrix * camera.GetWorldToViewMatrix();
             const auto viewSpaceMeshBoundingBox = benzin::TransformBoundingBox(*mesh.BoundingBox, localToViewSpaceTransformMatrix);
 
             return camera.GetProjection().GetBoundingFrustum().Contains(viewSpaceMeshBoundingBox) == DirectX::DISJOINT;
@@ -1336,7 +1375,7 @@ namespace sandbox
         // The order in which render passes are added is important
         m_RenderPasses.reserve(9);
 
-        m_RenderPasses.push_back(std::make_unique<GlobalConstantBufferPass>(*m_Scene));
+        m_RenderPasses.push_back(std::make_unique<GlobalConstantBufferPass>(*m_Device, *m_Scene));
         m_RenderPasses.push_back(std::make_unique<GeometryPass>(*m_Scene));
         m_RenderPasses.push_back(std::make_unique<RtShadowPass>(*m_Scene));
         m_RenderPasses.push_back(std::make_unique<DenoiserPass>());

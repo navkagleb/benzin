@@ -52,12 +52,12 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
     {
         case joint::DebugOutputType_ReconsructedWorldPosition:
         {
-            const joint::CameraConstants cameraConstants = g_FrameConstants.CurrentCamera;
-            const float3 worldPosition = ReconstructWorldPositionFromDepth(input.Uv, depth, cameraConstants.InverseProjection, cameraConstants.InverseView);
+            const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
+            const float3 worldPosition = ReconstructWorldPositionFromDepth(input.Uv, depth, cameraConstants.InvViewToClip, cameraConstants.InvWorldToView);
             
 #if 1
-            const float3 viewPosition = ReconstructViewPositionFromDepth(input.Uv, depth, cameraConstants.InverseProjection);
-            const float4 clipPosition = ViewPositionToClipPosition(viewPosition, cameraConstants.Projection);
+            const float3 viewPosition = ReconstructViewPositionFromDepth(input.Uv, depth, cameraConstants.InvViewToClip);
+            const float4 clipPosition = mul(float4(viewPosition, 1.0), cameraConstants.ViewToClip);
             const float3 ndcPosition = ClipPositionToNdcPosition(clipPosition);
             const float2 uv = NdcPositionToUv(ndcPosition);
             

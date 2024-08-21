@@ -29,10 +29,10 @@ namespace benzin
         m_IsDirty = true;
     }
 
-    const DirectX::XMMATRIX& TransformComponent::GetWorldMatrix() const
+    const DirectX::XMMATRIX& TransformComponent::GetLocalToWorldMatrix() const
     {
         BenzinAssert(!m_IsDirty);
-        return m_WorldMatrix;
+        return m_LocalToWorldMatrix;
     }
 
     const Descriptor& TransformComponent::GetActiveTransformCbv() const
@@ -43,7 +43,7 @@ namespace benzin
     void TransformComponent::UpdateMatricesIfNeeded()
     {
         // Force update 'm_PreviousWorldMatrix'
-        m_PreviousWorldMatrix = m_WorldMatrix;
+        m_PrevLocalToWorldMatrix = m_LocalToWorldMatrix;
 
         if (!m_IsDirty)
         {
@@ -55,8 +55,8 @@ namespace benzin
         const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(m_Translation.x, m_Translation.y, m_Translation.z);
         const DirectX::XMMATRIX currentWorldMatrix = scaling * rotation * translation;
 
-        m_WorldMatrix = currentWorldMatrix;
-        m_WorldMatrixForNormals = GetMatrixForNormals(m_WorldMatrix);
+        m_LocalToWorldMatrix = currentWorldMatrix;
+        m_LocalToWorldMatrixForNormals = GetMatrixForNormals(m_LocalToWorldMatrix);
 
         m_IsDirty = false;
     }
@@ -73,9 +73,9 @@ namespace benzin
         // #TODO: Can skip writing if matrix is not updated
         m_TransformConstantBuffer->UpdateConstants(joint::MeshTransform
         {
-            .WorldMatrix = m_WorldMatrix,
-            .PreviousWorldMatrix = m_PreviousWorldMatrix,
-            .WorldMatrixForNormals = m_WorldMatrixForNormals,
+            .WorldMatrix = m_LocalToWorldMatrix,
+            .PreviousWorldMatrix = m_PrevLocalToWorldMatrix,
+            .WorldMatrixForNormals = m_LocalToWorldMatrixForNormals,
         });
     }
 

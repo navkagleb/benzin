@@ -42,7 +42,7 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-    const joint::CameraConstants previousCameraConstants = g_FrameConstants.PreviousCamera;
+    const joint::CameraConstants prevCameraConstants = g_FrameConstants.PrevCamera;
 
     const float2 uv = DispatchThreadIdToUv(dispatchThreadId, g_FrameConstants.InvRenderResolution);
 
@@ -52,8 +52,8 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     const float2 previousUv = uv - motionVector.xy;
     const float previousDepth = depth - motionVector.z;
-    const float3 previousViewPosition = ReconstructViewPositionFromDepth(previousUv, previousDepth, previousCameraConstants.InverseProjection);
-    const float3 previousWorldPosition = ReconstructWorldPositionFromViewPosition(previousViewPosition, previousCameraConstants.InverseView);
+    const float3 previousViewPosition = ReconstructViewPositionFromDepth(previousUv, previousDepth, prevCameraConstants.InvViewToClip);
+    const float3 previousWorldPosition = ReconstructWorldPositionFromViewPosition(previousViewPosition, prevCameraConstants.InvWorldToView);
 
     const BilinearFilter filterAtPreviousUv = CreateBilinearFilter(previousUv, g_FrameConstants.RenderResolution);
     const float4 previousViewDepthSamples = GatherRedManually(previousViewDepthBuffer, filterAtPreviousUv);
