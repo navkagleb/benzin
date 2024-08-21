@@ -129,7 +129,7 @@ namespace benzin
             BenzinEnsure(texture.GetD3D12Resource()->GetDevice(IID_PPV_ARGS(&d3d12Device)));
 
             const D3D12_RESOURCE_DESC d3d12TextureDesc = texture.GetD3D12Resource()->GetDesc();
-            const Bytes64 offset = AllocateInUploadBuffer(0, config::g_TextureAlignment);
+            const Bytes64 offset = AllocateInUploadBuffer(0, GfxConfig::s_TextureAlignment);
 
             d3d12Device->GetCopyableFootprints(
                 &d3d12TextureDesc,
@@ -142,7 +142,7 @@ namespace benzin
                 &resourceSize
             );
 
-            AllocateInUploadBuffer(resourceSize, config::g_TextureAlignment);
+            AllocateInUploadBuffer(resourceSize, GfxConfig::s_TextureAlignment);
         }
 
         // Copying subresources to UploadBuffer
@@ -315,24 +315,24 @@ namespace benzin
         }
     }
 
-    void GraphicsCommandList::ClearRenderTarget(const Descriptor& rtv, const DirectX::XMFLOAT4& color)
+    void GraphicsCommandList::ClearRenderTarget(const Texture& renderTarget)
     {
-        BenzinAssert(rtv.GetType() == DescriptorType::Rtv);
-        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RtvDescriptorHandle{ rtv.GetCpuHandle() };
+        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RtvDescriptorHandle{ renderTarget.GetRtv().GetCpuHandle() };
+        const auto& clearColor = renderTarget.GetClearColor();
 
-        m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RtvDescriptorHandle, reinterpret_cast<const float*>(&color), 0, nullptr);
+        m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RtvDescriptorHandle, reinterpret_cast<const float*>(&clearColor), 0, nullptr);
     }
 
-    void GraphicsCommandList::ClearDepthStencil(const Descriptor& dsv, const DepthStencil& depthStencil)
+    void GraphicsCommandList::ClearDepthStencil(const Texture& depthStencil)
     {
-        BenzinAssert(dsv.GetType() == DescriptorType::Dsv);
-        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DsvDescriptorHandle{ dsv.GetCpuHandle() };
+        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DsvDescriptorHandle{ depthStencil.GetDsv().GetCpuHandle() };
+        const auto clearDepthStencil = depthStencil.GetClearDepthStencil();
 
         m_D3D12GraphicsCommandList->ClearDepthStencilView(
             d3d12DsvDescriptorHandle,
             D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-            depthStencil.Depth,
-            depthStencil.Stencil,
+            clearDepthStencil.Depth,
+            clearDepthStencil.Stencil,
             0,
             nullptr
         );

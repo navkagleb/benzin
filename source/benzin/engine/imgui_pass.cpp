@@ -307,6 +307,7 @@ namespace benzin
 
         commandList.SetRenderTargets({ imGuiTexture.GetRtv() });
         commandList.ClearRenderTarget(imGuiTexture.GetRtv());
+        commandList.ClearRenderTarget(imGuiTexture);
 
         ImGui_ImplDX12_RenderDrawData(m_ImGuiManager.m_CurrentImGuiDrawData, commandList.GetD3D12GraphicsCommandList());
     }

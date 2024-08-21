@@ -273,12 +273,12 @@ namespace sandbox
                 &ms_Resources->GetTexture(+Texture::DepthStencil).GetDsv()
             );
 
-            commandList.ClearRenderTarget(albedoAndRoughness.GetRtv());
-            commandList.ClearRenderTarget(emissiveAndMetallic.GetRtv());
-            commandList.ClearRenderTarget(worldNormal.GetRtv());
-            commandList.ClearRenderTarget(velocity.GetRtv());
-            commandList.ClearRenderTarget(viewDepth.GetRtv());
-            commandList.ClearDepthStencil(depthStencil.GetDsv());
+            commandList.ClearRenderTarget(albedoAndRoughness);
+            commandList.ClearRenderTarget(emissiveAndMetallic);
+            commandList.ClearRenderTarget(worldNormal);
+            commandList.ClearRenderTarget(velocity);
+            commandList.ClearRenderTarget(viewDepth);
+            commandList.ClearDepthStencil(depthStencil);
 
             commandList.SetPipelineState(*m_Pso);
 
@@ -518,12 +518,12 @@ namespace sandbox
             const auto CreateShaderTable = [&](std::wstring_view identiferName)
             {
                 const void* rawShaderIdentifier = d3d12StateObjectProperties->GetShaderIdentifier(identiferName.data());
-                const auto shaderIdentifier = std::span{ (const std::byte*)rawShaderIdentifier, benzin::config::g_ShaderIdentifierSize };
+                const auto shaderIdentifier = std::span{ (const std::byte*)rawShaderIdentifier, benzin::GfxConfig::s_ShaderIdentifierSize };
 
                 return std::make_unique<benzin::Buffer>(*ms_Device, benzin::BufferCreation
                 {
                     .DebugName = std::format("{}ShaderTable", benzin::ToNarrowString(identiferName)),
-                    .ElementSize = benzin::config::g_RayTracingShaderRecordAlignment,
+                    .ElementSize = benzin::GfxConfig::s_RayTracingShaderRecordAlignment,
                     .ElementCount = 1,
                     .Flags = benzin::BufferFlag::UploadBuffer,
                     .InitialData = shaderIdentifier,
@@ -1001,7 +1001,7 @@ namespace sandbox
             );
 
             commandList.SetRenderTargets({ finalTexture.GetRtv() });
-            commandList.ClearRenderTarget(finalTexture.GetRtv());
+            commandList.ClearRenderTarget(finalTexture);
 
             commandList.SetPipelineState(*m_Pso);
 
@@ -1237,7 +1237,7 @@ namespace sandbox
             );
 
             commandList.SetRenderTargets({ finalTexture.GetRtv() });
-            commandList.ClearRenderTarget(finalTexture.GetRtv());
+            commandList.ClearRenderTarget(finalTexture);
 
             commandList.SetPipelineState(*m_Pso);
 

@@ -6,6 +6,14 @@
 namespace benzin
 {
 
+    struct DepthStencilValue
+    {
+        float Depth = 1.0f;
+        uint8_t Stencil = 0;
+    };
+
+    using ClearValueVariant = std::variant<std::monostate, DirectX::XMFLOAT4, DepthStencilValue>;
+
     enum class TextureFlag : uint8_t
     {
         AllowRenderTarget,
@@ -26,6 +34,7 @@ namespace benzin
         uint16_t MipCount = 0; // By default select all mip levels
 
         TextureFlags Flags;
+        ClearValueVariant ClearValueVariant;
 
         ResourceState InitialState = ResourceState::Common;
     };
@@ -65,6 +74,9 @@ namespace benzin
         auto GetDepth() const { return m_Depth; }
         auto GetMipCount() const { return m_MipCount; }
 
+        const DirectX::XMFLOAT4& GetClearColor() const;
+        DepthStencilValue GetClearDepthStencil() const;
+
         Bytes32 GetSize() const override;
         uint32_t GetSubResourceCount() const;
 
@@ -83,6 +95,8 @@ namespace benzin
         uint32_t m_Height = 0;
         uint16_t m_Depth = 0;
         uint16_t m_MipCount = 0;
+
+        ClearValueVariant m_ClearValueVariant;
     };
 
 } // namespace benzin

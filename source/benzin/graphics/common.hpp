@@ -97,15 +97,4 @@ namespace benzin
         float Height = 0.0f;
     };
 
-    struct DepthStencil
-    {
-        float Depth = 1.0f;
-        uint8_t Stencil = 0;
-    };
-
-    using ClearValueVariant = std::variant<std::monostate, DirectX::XMFLOAT4, DepthStencil>;
-
-    constexpr DirectX::XMFLOAT4 g_DefaultClearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
-    constexpr DepthStencil g_DefaultClearDepthStencil;
-
 } // namespace benzin
