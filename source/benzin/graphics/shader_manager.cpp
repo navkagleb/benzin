@@ -26,17 +26,17 @@ namespace benzin
     {
         WriteToFile(paths.DxilFilePath, compiledShader.DxilBlob);
 
-        if constexpr (config::g_IsShaderSymbolsEnabled)
+        if (GfxConfig::s_IsShaderSymbolsEnabled)
         {
             BenzinAssert(!compiledShader.PdbBlob.empty());
             WriteToFile(paths.PdbFilePath, compiledShader.PdbBlob);
         }
     }
 
-    // Win64_ShaderFileWatcher
+    // Win64ShaderFileWatcher
 
-    Win64_ShaderFileWatcher::Win64_ShaderFileWatcher(Callback&& callback)
-        : m_WatchDirectory{ Dxc_ShaderCompiler::GetShaderSourceDir() }
+    Win64ShaderFileWatcher::Win64ShaderFileWatcher(Callback&& callback)
+        : m_WatchDirectory{ GfxConfig::s_ShaderSourceDir }
         , m_Callback{ callback }
     {
         BenzinAssert((bool)callback);
@@ -58,10 +58,10 @@ namespace benzin
         m_DirectoryChangeOverlapped.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
         BenzinEnsure(m_DirectoryChangeOverlapped.hEvent != INVALID_HANDLE_VALUE);
 
-        m_WatchThread = std::thread(&Win64_ShaderFileWatcher::WatchFiles, this);
+        m_WatchThread = std::thread(&Win64ShaderFileWatcher::WatchFiles, this);
     }
 
-    Win64_ShaderFileWatcher::~Win64_ShaderFileWatcher()
+    Win64ShaderFileWatcher::~Win64ShaderFileWatcher()
     {
         ::SetEvent(m_StoppedEvent);
 
@@ -75,18 +75,18 @@ namespace benzin
         ::CloseHandle(m_DirectoryChangeOverlapped.hEvent);
     }
 
-    void Win64_ShaderFileWatcher::WatchFiles()
+    void Win64ShaderFileWatcher::WatchFiles()
     {
         const auto handles = std::to_array({ m_StoppedEvent, m_DirectoryChangeOverlapped.hEvent });
 
-        std::array<std::byte, 1024> buffer;
+        RawFileInfoBuffer rawFileInfoBuffer{};
 
         while (true)
         {
             const bool isSucceeded = ::ReadDirectoryChangesW(
                 m_DirectoryHandle,
-                buffer.data(),
-                (DWORD)buffer.size(),
+                rawFileInfoBuffer.data(),
+                (DWORD)rawFileInfoBuffer.size(),
                 true, // is recursive
                 FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE, // notify filter
                 nullptr,
@@ -118,32 +118,40 @@ namespace benzin
             DWORD writeByteCount;
             BenzinEnsure(::GetOverlappedResult(m_DirectoryHandle, &m_DirectoryChangeOverlapped, &writeByteCount, false) != 0);
 
-            const FILE_NOTIFY_INFORMATION* fileInfo = nullptr;
-            size_t bufferOffset = 0;
+            HandleFileChanges(rawFileInfoBuffer);
+        }
+    }
 
-            do
+    void Win64ShaderFileWatcher::HandleFileChanges(const RawFileInfoBuffer& rawFileInfoBuffer)
+    {
+        size_t bufferOffset = 0;
+
+        while (true)
+        {
+            const auto* fileInfo = (FILE_NOTIFY_INFORMATION*)(rawFileInfoBuffer.data() + bufferOffset);
+            bufferOffset += fileInfo->NextEntryOffset;
+
+            const std::wstring_view fileName{ fileInfo->FileName, fileInfo->FileNameLength / sizeof(WCHAR) };
+            std::filesystem::path filePath = m_WatchDirectory / fileName;
+
+            if (IsIncludeShader(fileName) || IsSourceShader(fileName))
             {
-                fileInfo = (FILE_NOTIFY_INFORMATION*)(buffer.data() + bufferOffset);
-                bufferOffset += fileInfo->NextEntryOffset;
-
-                const std::wstring_view fileName{ fileInfo->FileName, fileInfo->FileNameLength / sizeof(WCHAR) };
-                std::filesystem::path filePath = m_WatchDirectory / fileName;
-
-                if (!IsIncludeShader(fileName) && !IsSourceShader(fileName))
-                {
-                    continue;
-                }
-
-                if (
+                const bool isFileChanged =
                     fileInfo->Action == FILE_ACTION_MODIFIED ||
                     // Case for Visual Studio
                     // Visual Studio creates temp file and then rename it to original file name
-                    fileInfo->Action == FILE_ACTION_RENAMED_NEW_NAME
-                )
+                    fileInfo->Action == FILE_ACTION_RENAMED_NEW_NAME;
+
+                if (isFileChanged)
                 {
                     m_Callback(std::move(filePath));
                 }
-            } while (fileInfo->NextEntryOffset != 0);
+            }
+
+            if (fileInfo->NextEntryOffset == 0)
+            {
+                break;
+            }
         }
     }
 
@@ -196,11 +204,11 @@ namespace benzin
         }
 
         BenzinTrace(
-            "ShaderCompiled: {}! Type: {}, File: {}, EntryPoint: {}. Time: {} ms",
+            "Shader compiled: {:20}! Type: {:>7}, File: {}, EntryPoint: {}. Time: {} ms",
             shader.GetHash(),
             magic_enum::enum_name(shader.GetType()),
             shader.GetFileName(),
-            shader.GetEntryPoint(),
+            !shader.GetEntryPoint().empty() ? shader.GetEntryPoint() : "\"\"",
             ToFloatMs(us)
         );
 
@@ -381,11 +389,11 @@ namespace benzin
         m_ShaderDxils[shader.GetHash()] = std::move(shaderDxil);
 
         BenzinTrace(
-            "Shader loaded from cache: {}! Type: {}, File: {}, EntryPoint: {}. Time: {} ms",
+            "Shader loaded: {:20}! Type: {:>7}, File: {}, EntryPoint: {}. Time: {} ms",
             shader.GetHash(),
             magic_enum::enum_name(shader.GetType()),
             shader.GetFileName(),
-            shader.GetEntryPoint(),
+            !shader.GetEntryPoint().empty() ? shader.GetEntryPoint() : "\"\"",
             ToFloatMs(us)
         );
 

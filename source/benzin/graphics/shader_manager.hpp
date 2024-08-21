@@ -7,16 +7,19 @@ namespace benzin
 
     class ShaderInfo;
 
-    class Win64_ShaderFileWatcher
+    class Win64ShaderFileWatcher
     {
     public:
         using Callback = std::function<void(std::filesystem::path&& filePath)>;
 
-        Win64_ShaderFileWatcher(Callback&& callback);
-        ~Win64_ShaderFileWatcher();
+        Win64ShaderFileWatcher(Callback&& callback);
+        ~Win64ShaderFileWatcher();
 
     private:
+        using RawFileInfoBuffer = std::array<std::byte, 1_kb>;
+
         void WatchFiles();
+        void HandleFileChanges(const RawFileInfoBuffer& rawFileInfoBuffer);
 
     private:
         const std::filesystem::path& m_WatchDirectory;
@@ -26,6 +29,7 @@ namespace benzin
         OVERLAPPED m_DirectoryChangeOverlapped{};
 
         std::thread m_WatchThread;
+
         Callback m_Callback;
     };
 
@@ -55,8 +59,8 @@ namespace benzin
         void FileWatcherCallback(std::filesystem::path&& filePath);
 
     private:
-        const Dxc_ShaderCompiler m_ShaderCompiler;
-        const Win64_ShaderFileWatcher m_FileWatcher;
+        const DxcShaderCompiler m_ShaderCompiler;
+        const Win64ShaderFileWatcher m_FileWatcher;
 
         // TODO: Maybe replace with one big unordered_map?
         std::unordered_map<uint64_t, bool> m_IsShaderGoodMap;

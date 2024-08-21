@@ -18,7 +18,7 @@ namespace benzin
     public:
         bool ReadFromFile(std::string_view fileName, MeshCollectionResource& outMeshCollection)
         {
-            const std::filesystem::path filePath = config::g_AbsModelDirPath / fileName;
+            const std::filesystem::path filePath = EngineConfig::s_ModelDir / fileName;
             BenzinAssert(std::filesystem::exists(filePath));
             BenzinAssert(filePath.extension() == ".glb" || filePath.extension() == ".gltf");
 
@@ -463,7 +463,7 @@ namespace benzin
 
     bool LoadTextureImageFromHdrFile(std::string_view fileName, TextureImage& textureImage)
     {
-        const std::filesystem::path filePath = config::g_TextureDirPath / fileName;
+        const std::filesystem::path filePath = EngineConfig::s_TextureDir / fileName;
         BenzinAssert(std::filesystem::exists(filePath));
         BenzinAssert(filePath.extension() == ".hdr");
 

@@ -160,10 +160,10 @@ namespace benzin
             MakeUniquePtr(m_DescriptorHeaps[magic_enum::enum_integer(d3d12DescriptorHeapType)], device, d3d12DescriptorHeapType, descriptorCount);
         };
 
-        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, config::g_MaxRtvDescriptorCount);
-        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, config::g_MaxDsvDescriptorCount);
-        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, config::g_MaxResourceDescriptorCount);
-        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, config::g_MaxSamplerDescriptorCount);
+        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, GfxConfig::s_MaxRtvDescriptorCount);
+        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, GfxConfig::s_MaxDsvDescriptorCount);
+        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, GfxConfig::s_MaxResourceDescriptorCount);
+        createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, GfxConfig::s_MaxSamplerDescriptorCount);
     }
 
     DescriptorManager::~DescriptorManager() = default;

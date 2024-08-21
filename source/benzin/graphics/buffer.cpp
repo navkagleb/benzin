@@ -49,7 +49,7 @@ namespace benzin
         {
             // The 'BufferCreation::ElementSize' is aligned, not the entire buffer size 'BufferFlag::ConstantBuffer'.
             // This is done so that each element can be used as a separate constant buffer using ConstantBufferView
-            alignedElementSize = AlignAbove(alignedElementSize, config::g_ConstantBufferAlignment);
+            alignedElementSize = AlignAbove(alignedElementSize, GfxConfig::s_ConstantBufferAlignment);
         }
         else if (bufferCreation.Flags.IsSet(BufferFlag::StructuredBuffer))
         {
@@ -58,10 +58,10 @@ namespace benzin
 
             BenzinAssert(!bufferCreation.DebugName.empty()); // #TODO: Remove. Rewrite warning logging
             BenzinWarningIf(
-                alignedElementSize % config::g_StructuredBufferAlignment != 0,
+                alignedElementSize % GfxConfig::s_StructuredBufferAlignment != 0,
                 "For better performance 'ElementSize' ({}) should be aligned to StructuredBufferAlignemnt ({}) in buffer: {}",
                 alignedElementSize,
-                config::g_StructuredBufferAlignment,
+                GfxConfig::s_StructuredBufferAlignment,
                 bufferCreation.DebugName
             );
         }

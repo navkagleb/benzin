@@ -1,12 +1,14 @@
 #pragma once
 
-namespace benzin::config
+namespace benzin
 {
 
-    const std::filesystem::path g_TextureDirPath{ "assets/textures/" };
-    const std::filesystem::path g_AbsTextureDirPath = std::filesystem::absolute(g_TextureDirPath);
+    struct EngineConfig
+    {
+        BenzinDefineNonConstructable(EngineConfig);
 
-    const std::filesystem::path g_ModelDirPath{ "assets/models/" };
-    const std::filesystem::path g_AbsModelDirPath = std::filesystem::absolute(g_ModelDirPath);
+        static const std::filesystem::path s_TextureDir;
+        static const std::filesystem::path s_ModelDir;
+    };
 
-} // namespace benzin::config
+}
