@@ -330,11 +330,11 @@ namespace sandbox
                 const auto& meshCollection = m_Scene.GetMeshCollection(mic.MeshUnionIndex);
                 const auto& meshCollectionGpuStorage = m_Scene.GetMeshCollectionGpuStorage(mic.MeshUnionIndex);
 
-                commandList.SetRootResource(joint::GeometryPassRc_MeshVertexBuffer, meshCollectionGpuStorage.VertexBuffer->GetStructuredSrv());
-                commandList.SetRootResource(joint::GeometryPassRc_MeshIndexBuffer, meshCollectionGpuStorage.IndexBuffer->GetStructuredSrv());
-                commandList.SetRootResource(joint::GeometryPassRc_MeshInfoBuffer, meshCollectionGpuStorage.MeshInfoBuffer->GetStructuredSrv());
-                commandList.SetRootResource(joint::GeometryPassRc_MeshInstanceBuffer, meshCollectionGpuStorage.MeshInstanceBuffer->GetStructuredSrv());
-                commandList.SetRootResource(joint::GeometryPassRc_MaterialBuffer, meshCollectionGpuStorage.MaterialBuffer->GetStructuredSrv());
+                commandList.SetRootResource(joint::GeometryPassRc_MeshVertexBuffer, meshCollectionGpuStorage.VertexBuffer->GetSrv());
+                commandList.SetRootResource(joint::GeometryPassRc_MeshIndexBuffer, meshCollectionGpuStorage.IndexBuffer->GetSrv());
+                commandList.SetRootResource(joint::GeometryPassRc_MeshInfoBuffer, meshCollectionGpuStorage.MeshInfoBuffer->GetSrv());
+                commandList.SetRootResource(joint::GeometryPassRc_MeshInstanceBuffer, meshCollectionGpuStorage.MeshInstanceBuffer->GetSrv());
+                commandList.SetRootResource(joint::GeometryPassRc_MaterialBuffer, meshCollectionGpuStorage.MaterialBuffer->GetSrv());
                 commandList.SetRootResource(joint::GeometryPassRc_MeshTransformConstantBuffer, tc.GetActiveTransformCbv());
 
                 const auto meshInstanceRange = mic.MeshInstanceRange.value_or(meshCollection.GetFullMeshInstanceRange());
@@ -559,14 +559,18 @@ namespace sandbox
                 const void* rawShaderIdentifier = d3d12StateObjectProperties->GetShaderIdentifier(identiferName.data());
                 const auto shaderIdentifier = std::span{ (const std::byte*)rawShaderIdentifier, benzin::GfxConfig::s_ShaderIdentifierSize };
 
-                return std::make_unique<benzin::Buffer>(*ms_Device, benzin::BufferCreation
+                auto shaderTableBuffer = std::make_unique<benzin::Buffer>(*ms_Device, benzin::BufferCreation
                 {
                     .DebugName = std::format("{}ShaderTable", benzin::ToNarrowString(identiferName)),
+                    .MemoryType = benzin::ResourceMemoryType::Upload,
                     .ElementSize = benzin::GfxConfig::s_RayTracingShaderRecordAlignment,
                     .ElementCount = 1,
-                    .Flags = benzin::BufferFlag::UploadBuffer,
-                    .InitialData = shaderIdentifier,
                 });
+
+                const benzin::MemoryWriter shaderTableWriter{ shaderTableBuffer->GetCpuMappedData(), shaderTableBuffer->GetSize() };
+                shaderTableWriter.WriteBytes(shaderIdentifier);
+
+                return shaderTableBuffer;
             };
 
             m_RayGenShaderTable = CreateShaderTable(g_RenderPassConfig.RayGenShaderName);

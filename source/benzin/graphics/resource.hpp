@@ -13,6 +13,13 @@ namespace benzin
         size_t SlicePitch = 0;
     };
 
+    enum class ResourceMemoryType : uint8_t
+    {
+        Default, // Gpu
+        Upload, // Shared CpuGpu memory
+        Readback, // Cpu can read ???
+    };
+
     enum class ResourceState : std::underlying_type_t<D3D12_RESOURCE_STATES>
     {
         Common = D3D12_RESOURCE_STATE_COMMON,
@@ -30,7 +37,7 @@ namespace benzin
         ResolveDestination = D3D12_RESOURCE_STATE_RESOLVE_DEST,
         ResolveSource = D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
         GenericRead = D3D12_RESOURCE_STATE_GENERIC_READ,
-        RaytracingAccelerationStructure = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+        RtAccelerationStructure = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
     };
 
     class Resource
@@ -59,6 +66,8 @@ namespace benzin
             const size_t hash = std::hash<T>{}(viewDesc);
             return m_ViewDescriptors[hash];
         }
+
+        const Descriptor& TryGetViewDescriptor(size_t hash, std::function<Descriptor()>&& createDescriptorCallback) const;
 
     protected:
         Device& m_Device;

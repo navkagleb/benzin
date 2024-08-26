@@ -20,11 +20,11 @@ namespace benzin
 
         template <std::unsigned_integral U>
         constexpr Bytes(Bytes<U> other)
-            : m_ByteCount{ other.GetBytes() }
+            : m_ByteCount{ other.GetByteCount() }
         {}
 
-        constexpr T GetBytes() const { return m_ByteCount; }
-        void SetBytes(T byteCount) { m_ByteCount = byteCount; }
+        constexpr T GetByteCount() const { return m_ByteCount; }
+        constexpr void SetByteCount(T byteCount) { m_ByteCount = byteCount; }
 
         constexpr float GetKb() const { return (float)m_ByteCount / 1_kb; };
         constexpr float GetMb() const { return (float)m_ByteCount / 1_mb; };
@@ -32,7 +32,7 @@ namespace benzin
 
         constexpr operator T() const { return m_ByteCount; }
 
-        T* operator&() { return &m_ByteCount; }
+        constexpr T* operator&() { return &m_ByteCount; }
 
     private:
         T m_ByteCount = 0;
@@ -49,25 +49,25 @@ constexpr benzin::Bytes64 operator"" _bytes64(uint64_t byteCount) { return byteC
 template <std::unsigned_integral T, std::unsigned_integral U>
 constexpr auto operator+(benzin::Bytes<T> lhs, benzin::Bytes<U> rhs)
 {
-    return benzin::Bytes{ lhs.GetBytes() + rhs.GetBytes() };
+    return benzin::Bytes{ lhs.GetByteCount() + rhs.GetByteCount() };
 }
 
 template <std::unsigned_integral T, std::unsigned_integral U>
 constexpr auto& operator+=(benzin::Bytes<T>& lhs, benzin::Bytes<U> rhs)
 {
-    lhs.SetBytes(lhs.GetBytes() + rhs.GetBytes());
+    lhs.SetByteCount(lhs.GetByteCount() + rhs.GetByteCount());
     return lhs;
 }
 
 template <std::unsigned_integral T, std::unsigned_integral U>
 constexpr auto operator-(benzin::Bytes<T> lhs, benzin::Bytes<U> rhs)
 {
-    return benzin::Bytes{ lhs.GetBytes() - rhs.GetBytes() };
+    return benzin::Bytes{ lhs.GetByteCount() - rhs.GetByteCount() };
 }
 
 template <std::unsigned_integral T, std::unsigned_integral U>
 constexpr auto& operator-=(benzin::Bytes<T>& lhs, benzin::Bytes<U> rhs)
 {
-    lhs.SetBytes(lhs.GetBytes() - rhs.GetBytes());
+    lhs.SetByteCount(lhs.GetByteCount() - rhs.GetByteCount());
     return lhs;
 }

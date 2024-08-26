@@ -8,6 +8,15 @@
 namespace benzin
 {
 
+    enum class BufferType : uint8_t
+    {
+        Byte, // ByteAddress
+        Format,
+        Structured,
+        Constant,
+        RtAccelerationStructure,
+    };
+
     enum class BufferFlag : uint8_t
     {
         UploadBuffer,
@@ -22,20 +31,14 @@ namespace benzin
     {
         std::string_view DebugName;
 
-        GraphicsFormat Format = GraphicsFormat::Unknown;
-        uint32_t ElementSize = sizeof(std::byte);
+        ResourceMemoryType MemoryType = ResourceMemoryType::Default;
+        BufferType Type = BufferType::Byte;
+        GraphicsFormat Format = GraphicsFormat::Unknown; // Optional. Uses for BufferType::Format
+
+        Bytes32 ElementSize = sizeof(std::byte);
         uint32_t ElementCount = 0;
 
-        BufferFlags Flags;
-
-        ResourceState InitialState = ResourceState::Common;
-        std::span<const std::byte> InitialData;
-    };
-
-    struct FormatBufferSrv
-    {
-        GraphicsFormat Format = GraphicsFormat::Unknown;
-        IndexRange32 ElementRange;
+        bool IsUnorderedAccessAllowed = false;
     };
 
     class Buffer : public Resource
@@ -43,15 +46,17 @@ namespace benzin
     public:
         friend class RtAccelerationStructure;
 
-        template <typename>
+        template <typename ConstantsT>
         friend class ConstantBuffer;
 
-    public:
         explicit Buffer(Device& device);
         Buffer(Device& device, const BufferCreation& creation);
         ~Buffer() override;
 
     public:
+        auto GetFormat() const { return m_Format; }
+        auto GetType() const { return m_Type; }
+
         auto GetElementSize() const { return m_ElementSize; }
         auto GetElementCount() const { return m_ElementCount; }
         auto GetAlignedElementSize() const { return m_AlignedElementSize; }
@@ -65,21 +70,24 @@ namespace benzin
 
         void Create(const BufferCreation& creation);
 
-        const Descriptor& GetFormatSrv(const FormatBufferSrv& formatSrv) const;
-        const Descriptor& GetStructuredSrv(IndexRange32 elementRange = {}) const;
-        const Descriptor& GetByteAddressSrv() const;
-        const Descriptor& GetRtAsSrv() const;
+        const Descriptor& GetSrv(IndexRange32 elementRange = {}) const;
         const Descriptor& GetUav() const;
         const Descriptor& GetCbv(uint32_t elementIndex = 0) const;
 
-    private:
-        Descriptor CreateSrv(const D3D12_SHADER_RESOURCE_VIEW_DESC& d3d12SrvDesc, ID3D12Resource* d3d12Resource) const;
+        Descriptor CreateDetachedSrv(IndexRange32 elementRange = {}, bool isValidationEnabled = true) const;
+        Descriptor CreateDetachedUav() const;
+        Descriptor CreateDetachedCbv(uint32_t elementIndex) const;
 
     private:
+        ResourceMemoryType m_MemoryType = ResourceMemoryType::Default;
+        BufferType m_Type = BufferType::Byte;
         GraphicsFormat m_Format = GraphicsFormat::Unknown;
-        uint32_t m_ElementSize = 0;
-        uint32_t m_AlignedElementSize = 0; // For ConstantBufferView
+
+        Bytes32 m_ElementSize = 0;
+        Bytes32 m_AlignedElementSize = 0; // For ConstantBufferView
         uint32_t m_ElementCount = 0;
+
+        bool m_IsUnorderedAccessAllowed = false;
 
         std::byte* m_CpuMappedData = nullptr;
     };
@@ -94,9 +102,10 @@ namespace benzin
             m_Buffer.Create(BufferCreation
             {
                 .DebugName = debugName,
+                .MemoryType = ResourceMemoryType::Upload,
+                .Type = BufferType::Constant,
                 .ElementSize = sizeof(ConstantsT),
                 .ElementCount = CommandLineArgs::GetU32("FrameInFlightCount"),
-                .Flags = BufferFlag::ConstantBuffer,
             });
 
             m_MappedDataWriter = MemoryWriter{ m_Buffer.GetCpuMappedData(), m_Buffer.GetSize() };

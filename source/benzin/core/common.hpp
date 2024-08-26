@@ -9,13 +9,6 @@ namespace benzin
     template <typename T, EnumConcept EnumT>
     using EnumArray = std::array<T, magic_enum::enum_count<EnumT>()>;
 
-    template <typename UniquePtrT, typename... Args>
-    void MakeUniquePtr(UniquePtrT& outUniquePtr, Args&&... args)
-    {
-        using InnerType = std::decay_t<UniquePtrT>::element_type;
-        outUniquePtr = std::make_unique<InnerType>(std::forward<Args>(args)...);
-    }
-
     template <typename>
     inline constexpr bool g_DependentFalse = false;
 
@@ -41,24 +34,6 @@ namespace benzin
     constexpr auto GetValidUnsignedOr(T value, U orValue)
     {
         return (std::common_type_t<T, U>)(IsValidUnsigned(value) ? value : orValue);
-    }
-
-    template <typename... Fs>
-    struct VisitorMatch : Fs...
-    {
-        using Fs::operator()...;
-    };
-
-    template <typename... Fs>
-    auto MakeVisitorMatch(Fs... lambdas)
-    {
-        return VisitorMatch<Fs...>{ lambdas... };
-    }
-
-    template <typename T>
-    auto ToSingleSpan(const T& value)
-    {
-        return std::span{ &value, 1 };
     }
 
     template <std::unsigned_integral T>
@@ -123,9 +98,3 @@ constexpr auto operator+(T enumValue)
 #define BenzinEnableUnaryPlusForEnum(EnumT) \
     template <> \
     struct IsUnaryPlusEnabledForEnum<EnumT> : std::true_type {};
-
-template <typename... Ts, typename... Fs>
-constexpr decltype(auto) operator|(const std::variant<Ts...>& variant, const benzin::VisitorMatch<Fs...>& visitorMatch)
-{
-    return std::visit(visitorMatch, variant);
-}

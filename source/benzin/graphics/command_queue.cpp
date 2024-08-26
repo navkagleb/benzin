@@ -65,9 +65,10 @@ namespace benzin
             MakeUniquePtr(uploadBuffer, m_Device, BufferCreation
             {
                 .DebugName = std::format("UploadBuffer{}", uploadBuffers.size() - 1),
+                .MemoryType = ResourceMemoryType::Upload,
+                .Type = BufferType::Byte,
                 .ElementSize = sizeof(std::byte),
                 .ElementCount = uploadBufferSize,
-                .Flags = BufferFlag::UploadBuffer,
             });
 
             m_CommandList.SetUploadBuffer(*uploadBuffer);

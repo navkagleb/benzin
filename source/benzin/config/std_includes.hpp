@@ -40,3 +40,52 @@
 
 using namespace std::literals::string_literals;
 using namespace std::literals::string_view_literals;
+
+namespace benzin
+{
+
+    template <typename T>
+    size_t GetStdHash(const T& hashType)
+    {
+        return std::hash<T>{}(hashType);
+    }
+
+    template <typename... Fs>
+    struct VisitorMatch : Fs...
+    {
+        using Fs::operator()...;
+    };
+
+    template <typename... Fs>
+    auto MakeVisitorMatch(Fs... lambdas)
+    {
+        return VisitorMatch<Fs...>{ lambdas... };
+    }
+
+    template <typename T>
+    auto ToSingleSpan(const T& value)
+    {
+        return std::span{ &value, 1 };
+    }
+
+    template <typename UniquePtrT, typename... Args>
+    void MakeUniquePtr(UniquePtrT& outUniquePtr, Args&&... args)
+    {
+        using InnerType = std::decay_t<UniquePtrT>::element_type;
+        outUniquePtr = std::make_unique<InnerType>(std::forward<Args>(args)...);
+    }
+
+}
+#define BenzinDefineStdHashForType(HashType, HashFunctionImpl) \
+    template <> \
+    struct std::hash<HashType> \
+    { \
+        size_t operator()([[maybe_unused]] const HashType& hashType) const \
+        HashFunctionImpl \
+    } 
+
+template <typename... Ts, typename... Fs>
+constexpr decltype(auto) operator|(const std::variant<Ts...>& variant, const benzin::VisitorMatch<Fs...>& visitorMatch)
+{
+    return std::visit(visitorMatch, variant);
+}

@@ -44,10 +44,9 @@ namespace benzin
         m_ReadbackBuffer.Create(BufferCreation
         {
             .DebugName = "GpuTimer_ReadbackBuffer",
+            .MemoryType = ResourceMemoryType::Readback,
             .ElementSize = sizeof(uint64_t) * (uint32_t)m_Timestamps.size(),
             .ElementCount = m_ReadbackLatency,
-            .Flags = BufferFlag::ReadbackBuffer,
-            .InitialState = ResourceState::CopyDestination,
         });
     }
 

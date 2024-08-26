@@ -389,7 +389,7 @@ namespace benzin
         Bytes64 alignedOffset = m_UploadBufferOffset;
         if (alignment != 0)
         {
-            alignedOffset = AlignAbove(m_UploadBufferOffset.GetBytes(), alignment.GetBytes());
+            alignedOffset = AlignAbove(m_UploadBufferOffset.GetByteCount(), alignment.GetByteCount());
         }
 
         m_UploadBufferOffset = alignedOffset + size;

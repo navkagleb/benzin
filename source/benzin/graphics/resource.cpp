@@ -33,4 +33,14 @@ namespace benzin
         return (uint32_t)d3d12ResourceAllocationInfo.SizeInBytes;
     }
 
+    const Descriptor& Resource::TryGetViewDescriptor(size_t hash, std::function<Descriptor()>&& createDescriptorCallback) const
+    {
+        const auto [it, _] = m_ViewDescriptors.try_emplace(
+            hash,
+            MakeLazyConverter(std::move(createDescriptorCallback))
+        );
+
+        return (*it).second;
+    }
+
 } // namespace benzin

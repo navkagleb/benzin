@@ -13,6 +13,7 @@
 
 #include "benzin/core/bytes.hpp"
 #include "benzin/core/common.hpp"
+#include "benzin/core/lazy_converter.hpp"
 #include "benzin/core/scoped_timer.hpp"
 
 // Global configs

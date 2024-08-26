@@ -104,7 +104,7 @@ namespace benzin
         }
 
         const Bytes64 dedicatedVramOsBudget = d3d12LocalVideoMemoryInfo.Budget;
-        const bool isVendorDataValid = IsValidUnsigned(vendorTotalUsedDedicatedVram.GetBytes());
+        const bool isVendorDataValid = IsValidUnsigned(vendorTotalUsedDedicatedVram.GetByteCount());
 
         return AdapterMemoryInfo
         {

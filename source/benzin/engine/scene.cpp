@@ -32,14 +32,15 @@ namespace benzin
         auto vertexBuffer = std::make_unique<Buffer>(device, BufferCreation
         {
             .DebugName = std::format("{}_VertexBuffer", debugName),
+            .Type = BufferType::Structured,
             .ElementSize = sizeof(joint::MeshVertex),
             .ElementCount = (uint32_t)totalVertexCount,
-            .Flags = BufferFlag::StructuredBuffer,
         });
 
         auto indexBuffer = std::make_unique<Buffer>(device, BufferCreation
         {
             .DebugName = std::format("{}_IndexBuffer", debugName),
+            .Type = BufferType::Format,
             .Format = GraphicsFormat::R32Uint,
             .ElementSize = sizeof(uint32_t),
             .ElementCount = (uint32_t)totalIndexCount,
@@ -48,25 +49,25 @@ namespace benzin
         auto meshInfoBuffer = std::make_unique<Buffer>(device, BufferCreation
         {
             .DebugName = std::format("{}_MeshInfoBuffer", debugName),
+            .Type = BufferType::Structured,
             .ElementSize = sizeof(joint::MeshInfo),
             .ElementCount = (uint32_t)meshCollection.Meshes.size(),
-            .Flags = BufferFlag::StructuredBuffer,
         });
 
         auto meshInstanceBuffer = std::make_unique<Buffer>(device, BufferCreation
         {
             .DebugName = std::format("{}_MeshInstanceBuffer", debugName),
+            .Type = BufferType::Structured,
             .ElementSize = sizeof(joint::MeshInstance),
             .ElementCount = (uint32_t)meshCollection.MeshInstances.size(),
-            .Flags = BufferFlag::StructuredBuffer,
         });
 
         auto materialBuffer = std::make_unique<Buffer>(device, BufferCreation
         {
             .DebugName = std::format("{}_MaterialBuffer", debugName),
+            .Type = BufferType::Structured,
             .ElementSize = sizeof(joint::Material),
             .ElementCount = (uint32_t)meshCollection.Materials.size(),
-            .Flags = BufferFlag::StructuredBuffer,
         });
 
         return MeshCollectionGpuStorage
@@ -91,9 +92,10 @@ namespace benzin
         MakeUniquePtr(m_PointLightBuffer, m_Device, BufferCreation
         {
             .DebugName = "PointLightBuffer",
+            .MemoryType = ResourceMemoryType::Upload,
+            .Type = BufferType::Structured,
             .ElementSize = sizeof(joint::PointLight),
             .ElementCount = g_MaxPointLightCount * CommandLineArgs::GetU32("FrameInFlightCount"),
-            .Flags = BufferFlag::UploadBuffer, // #TODO: Add StructuredBuffer flag
         });
     }
 
@@ -107,7 +109,7 @@ namespace benzin
 
     const Descriptor& Scene::GetPointLightBufferStructuredSrv() const
     {
-        return m_PointLightBuffer->GetStructuredSrv(IndexRange32
+        return m_PointLightBuffer->GetSrv(IndexRange32
         {
             .StartIndex = m_Device.GetActiveFrameIndex() * g_MaxPointLightCount,
             .Count = g_MaxPointLightCount,
@@ -438,7 +440,7 @@ namespace benzin
         Bytes32 uploadBufferSize;
         for (const auto& texture : m_Textures)
         {
-            uploadBufferSize += Bytes{ AlignAbove(texture->GetSize().GetBytes(), GfxConfig::s_TextureAlignment) };
+            uploadBufferSize += Bytes32{ AlignAbove(texture->GetSize().GetByteCount(), GfxConfig::s_TextureAlignment.GetByteCount()) };
         }
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);

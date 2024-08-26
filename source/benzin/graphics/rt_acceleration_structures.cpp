@@ -117,15 +117,15 @@ namespace benzin
 
         m_Buffer.Create(BufferCreation
         {
+            .Type = BufferType::RtAccelerationStructure,
             .ElementCount = (uint32_t)d3d12PrebuildInfo.ResultDataMaxSizeInBytes,
-            .Flags = BufferFlag::AllowUnorderedAccess,
-            .InitialState = ResourceState::RaytracingAccelerationStructure,
+            .IsUnorderedAccessAllowed = true,
         });
 
         m_ScratchResource.Create(BufferCreation
         {
             .ElementCount = (uint32_t)d3d12PrebuildInfo.ScratchDataSizeInBytes,
-            .Flags = BufferFlag::AllowUnorderedAccess,
+            .IsUnorderedAccessAllowed = true,
         });
 
         if (!creation.DebugName.empty())
@@ -166,11 +166,13 @@ namespace benzin
     {
         m_InstanceBuffer.Create(BufferCreation
         {
+            .MemoryType = ResourceMemoryType::Upload,// #TODO: Remove UploadBuffer
             .ElementSize = sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
             .ElementCount = (uint32_t)m_D3D12InstanceDescs.size(),
-            .Flags = BufferFlag::UploadBuffer, // #TODO: Remove UploadBuffer
-            .InitialData = std::as_bytes(std::span{ m_D3D12InstanceDescs }),
         });
+
+        const MemoryWriter instanceBufferWriter{ m_InstanceBuffer.GetCpuMappedData(), m_InstanceBuffer.GetSize() };
+        instanceBufferWriter.WriteArray<D3D12_RAYTRACING_INSTANCE_DESC>(m_D3D12InstanceDescs);
 
         if (!creation.DebugName.empty())
         {
