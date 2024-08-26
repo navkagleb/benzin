@@ -13,28 +13,69 @@ namespace benzin
 
     struct TextureDsv {};
 
+    static void ValidateTextureSrv(const Texture& texture, TextureSrv& outTextureSrv)
+    {
+        // #TODO: Validation for 'TextureSrv::MipRange'
+
+        BenzinAssert(texture.GetD3D12Resource());
+        BenzinAssert(outTextureSrv.DepthRange.Count < texture.GetDepth());
+
+        outTextureSrv.Format = outTextureSrv.Format != GraphicsFormat::Unknown ? outTextureSrv.Format : texture.GetFormat();
+        outTextureSrv.IsCubeMap = outTextureSrv.IsCubeMap ? true : texture.IsCubeMap();
+        outTextureSrv.DepthRange.Count = outTextureSrv.DepthRange.Count != 0 ? outTextureSrv.DepthRange.Count : texture.GetDepth();
+    }
+
+    static void ValidateTextureUav(const Texture& texture, TextureUav& outTextureUav)
+    {
+        BenzinAssert(texture.GetD3D12Resource());
+        BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowUnorderedAccess));
+        BenzinAssert(outTextureUav.MipIndex < texture.GetMipCount());
+        BenzinAssert(outTextureUav.DepthRange.Count < texture.GetDepth());
+
+        outTextureUav.Format = outTextureUav.Format != GraphicsFormat::Unknown ? outTextureUav.Format : texture.GetFormat();
+        outTextureUav.DepthRange.Count = outTextureUav.DepthRange.Count != 0 ? outTextureUav.DepthRange.Count : texture.GetDepth();
+    }
+
+    static void ValidateTextureRtv(const Texture& texture, TextureRtv& outTextureRtv)
+    {
+        BenzinAssert(texture.GetD3D12Resource());
+        BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowRenderTarget));
+        BenzinAssert(outTextureRtv.DepthRange.Count < texture.GetDepth());
+
+        outTextureRtv.Format = outTextureRtv.Format != GraphicsFormat::Unknown ? outTextureRtv.Format : texture.GetFormat();
+        outTextureRtv.DepthRange.Count = outTextureRtv.DepthRange.Count != 0 ? outTextureRtv.DepthRange.Count : texture.GetDepth();
+    }
+
+    static void ValidateTextureDsv(const Texture& texture)
+    {
+        // A stopgap for future implementation
+
+        BenzinAssert(texture.GetD3D12Resource());
+        BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowDepthStencil));
+    }
+
     static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const TextureCreation& textureCreation)
     {
         D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
 
-        if (textureCreation.Flags.IsSet(TextureFlag::AllowRenderTarget))
+        if (textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         }
 
-        if (textureCreation.Flags.IsSet(TextureFlag::AllowDepthStencil))
+        if (textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
         }
 
-        if (textureCreation.Flags.IsSet(TextureFlag::AllowUnorderedAccess))
+        if (textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowUnorderedAccess))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
 
         return D3D12_RESOURCE_DESC
         {
-            .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D, // For now only 2D textured supported
+            .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D, // For now only 2D textures supported
             .Alignment = 0,
             .Width = (uint64_t)textureCreation.Width,
             .Height = textureCreation.Height,
@@ -47,64 +88,89 @@ namespace benzin
         };
     }
 
-    static void CreateD3D12Resource(const TextureCreation& textureCreation, const Device& device, ID3D12Resource*& d3d12Resource)
+    static D3D12_CLEAR_VALUE ToD3D12ClearValue(const TextureCreation& textureCreation)
+    {
+        D3D12_CLEAR_VALUE d3d12ClearValue
+        {
+            .Format = (DXGI_FORMAT)textureCreation.Format
+        };
+
+        if (std::holds_alternative<std::monostate>(textureCreation.ClearValueVariant))
+        {
+            if (textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget))
+            {
+                const_cast<ClearValueVariant&>(textureCreation.ClearValueVariant) = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 0.0f };
+            }
+            else if (textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil))
+            {
+                const_cast<ClearValueVariant&>(textureCreation.ClearValueVariant) = DepthStencilValue{};
+            }
+        }
+
+        textureCreation.ClearValueVariant | MakeVisitorMatch(
+            [&textureCreation, &d3d12ClearValue](const DirectX::XMFLOAT4& clearColor)
+            {
+                BenzinAssert(textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget));
+
+                d3d12ClearValue.Color[0] = clearColor.x;
+                d3d12ClearValue.Color[1] = clearColor.y;
+                d3d12ClearValue.Color[2] = clearColor.z;
+                d3d12ClearValue.Color[3] = clearColor.w;
+            },
+                [&textureCreation, &d3d12ClearValue](const DepthStencilValue& depthStencil)
+            {
+                BenzinAssert(textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil));
+
+                d3d12ClearValue.DepthStencil.Depth = depthStencil.Depth;
+                d3d12ClearValue.DepthStencil.Stencil = depthStencil.Stencil;
+            },
+                [](std::monostate)
+            {
+                BenzinEnsure(false);
+            }
+        );
+
+        return d3d12ClearValue;
+    }
+
+    static void CreateD3D12Resource(
+        const TextureCreation& textureCreation,
+        const Device& device,
+        ID3D12Resource*& outD3D12Resource,
+        ResourceState& outInitialState
+    )
     {
         const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(textureCreation);
 
-        std::unique_ptr<D3D12_CLEAR_VALUE> d3d12ClearValue;
+        outInitialState = ResourceState::Common;
 
-        if (textureCreation.Flags.IsAnySet(TextureFlag::AllowRenderTarget | TextureFlag::AllowDepthStencil))
+        if (textureCreation.AccessFlags.IsAnySet(TextureAccessFlag::AllowRenderTarget | TextureAccessFlag::AllowDepthStencil))
         {
-            MakeUniquePtr(d3d12ClearValue);
-            d3d12ClearValue->Format = (DXGI_FORMAT)textureCreation.Format;
+            const D3D12_CLEAR_VALUE d3d12ClearValue = ToD3D12ClearValue(textureCreation);
 
-            if (std::holds_alternative<std::monostate>(textureCreation.ClearValueVariant))
-            {
-                if (textureCreation.Flags.IsSet(TextureFlag::AllowRenderTarget))
-                {
-                    const_cast<ClearValueVariant&>(textureCreation.ClearValueVariant) = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 0.0f };
-                }
-                else if (textureCreation.Flags.IsSet(TextureFlag::AllowDepthStencil))
-                {
-                    const_cast<ClearValueVariant&>(textureCreation.ClearValueVariant) = DepthStencilValue{};
-                }
-            }
-
-            textureCreation.ClearValueVariant | MakeVisitorMatch(
-                [&textureCreation, &d3d12ClearValue](const DirectX::XMFLOAT4& clearColor)
-                {
-                    BenzinAssert(textureCreation.Flags.IsSet(TextureFlag::AllowRenderTarget));
-
-                    d3d12ClearValue->Color[0] = clearColor.x;
-                    d3d12ClearValue->Color[1] = clearColor.y;
-                    d3d12ClearValue->Color[2] = clearColor.z;
-                    d3d12ClearValue->Color[3] = clearColor.w;
-                },
-                [&textureCreation, &d3d12ClearValue](const DepthStencilValue& depthStencil)
-                {
-                    BenzinAssert(textureCreation.Flags.IsSet(TextureFlag::AllowDepthStencil));
-
-                    d3d12ClearValue->DepthStencil.Depth = depthStencil.Depth;
-                    d3d12ClearValue->DepthStencil.Stencil = depthStencil.Stencil;
-                },
-                [](std::monostate)
-                {
-                    BenzinEnsure(false);
-                }
-            );
+            BenzinEnsure(device.GetD3D12Device()->CreateCommittedResource(
+                &d3d12HeapProperties,
+                D3D12_HEAP_FLAG_NONE,
+                &d3d12ResourceDesc,
+                (D3D12_RESOURCE_STATES)outInitialState,
+                &d3d12ClearValue,
+                IID_PPV_ARGS(&outD3D12Resource)
+            ));
+        }
+        else
+        {
+            BenzinEnsure(device.GetD3D12Device()->CreateCommittedResource(
+                &d3d12HeapProperties,
+                D3D12_HEAP_FLAG_NONE,
+                &d3d12ResourceDesc,
+                (D3D12_RESOURCE_STATES)outInitialState,
+                nullptr,
+                IID_PPV_ARGS(&outD3D12Resource)
+            ));
         }
 
-        BenzinEnsure(device.GetD3D12Device()->CreateCommittedResource(
-            &d3d12HeapProperties,
-            D3D12_HEAP_FLAG_NONE,
-            &d3d12ResourceDesc,
-            (D3D12_RESOURCE_STATES)textureCreation.InitialState,
-            d3d12ClearValue.get(),
-            IID_PPV_ARGS(&d3d12Resource)
-        ));
-
-        BenzinEnsure(d3d12Resource);
+        BenzinEnsure(outD3D12Resource);
     }
 
     static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResourceViewDesc(const TextureSrv& textureSrv)
@@ -229,7 +295,7 @@ namespace benzin
     Texture::Texture(Device& device, const TextureCreation& creation)
         : Resource{ device }
     {
-        CreateD3D12Resource(creation, m_Device, m_D3D12Resource);
+        CreateD3D12Resource(creation, m_Device, m_D3D12Resource, m_CurrentState);
         SetDxObjectDebugName(m_D3D12Resource, std::format("Texture_{}", creation.DebugName));
 
         m_IsCubeMap = creation.IsCubeMap;
@@ -238,6 +304,7 @@ namespace benzin
         m_Height = creation.Height;
         m_Depth = creation.Depth;
         m_MipCount = creation.MipCount;
+        m_AccessFlags = creation.AccessFlags;
         m_ClearValueVariant = creation.ClearValueVariant;
     }
 
@@ -254,6 +321,21 @@ namespace benzin
             m_Height = d3d12ResourceDesc.Height;
             m_Depth = d3d12ResourceDesc.DepthOrArraySize;
             m_MipCount = d3d12ResourceDesc.MipLevels;
+
+            if (d3d12ResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+            {
+                m_AccessFlags.Set(TextureAccessFlag::AllowRenderTarget);
+            }
+
+            if (d3d12ResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+            {
+                m_AccessFlags.Set(TextureAccessFlag::AllowDepthStencil);
+            }
+
+            if (d3d12ResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
+            {
+                m_AccessFlags.Set(TextureAccessFlag::AllowUnorderedAccess);
+            }
         }
     }
 
@@ -310,164 +392,157 @@ namespace benzin
 
     const Descriptor& Texture::GetSrv(const TextureSrv& textureSrv) const
     {
-        BenzinAssert(m_D3D12Resource);
-        BenzinAssert(textureSrv.DepthRange.Count < m_Depth);
+        ValidateTextureSrv(*this, const_cast<TextureSrv&>(textureSrv));
 
-        // #TODO: Validation for 'TextureSrv::MipRange'
-
-        auto validatedSrv = textureSrv;
-        validatedSrv.Format = textureSrv.Format != GraphicsFormat::Unknown ? textureSrv.Format : m_Format;
-        validatedSrv.IsCubeMap = textureSrv.IsCubeMap ? true : m_IsCubeMap;
-        validatedSrv.DepthRange.Count = textureSrv.DepthRange.Count != 0 ? textureSrv.DepthRange.Count : m_Depth;
-
-        auto& descriptor = GetViewDescriptor(validatedSrv);
-        if (!descriptor.IsCpuValid())
-        {
-            descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
-
-            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResourceViewDesc(validatedSrv);
-
-            m_Device.GetD3D12Device()->CreateShaderResourceView(
-                m_D3D12Resource,
-                &d3d12SrvDesc,
-                D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-            );
-        }
-
-        return descriptor;
+        return TryGetViewDescriptor(
+            GetStdHash(textureSrv),
+            [&] { return CreateDetachedSrv(textureSrv, false); }
+        );
     }
 
     const Descriptor& Texture::GetUav(const TextureUav& textureUav) const
     {
-        BenzinAssert(m_D3D12Resource);
-        BenzinAssert(textureUav.DepthRange.Count < m_Depth);
+        ValidateTextureUav(*this, const_cast<TextureUav&>(textureUav));
 
-        auto validatedUav = textureUav;
-        validatedUav.Format = textureUav.Format != GraphicsFormat::Unknown ? textureUav.Format : m_Format;
-        validatedUav.DepthRange.Count = textureUav.DepthRange.Count != 0 ? textureUav.DepthRange.Count : m_Depth;
-
-        auto& descriptor = GetViewDescriptor(validatedUav);
-        if (!descriptor.IsCpuValid())
-        {
-            descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav);
-
-            const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = ToD3D12UnorderedAccessViewDesc(validatedUav);
-            m_Device.GetD3D12Device()->CreateUnorderedAccessView(
-                m_D3D12Resource,
-                nullptr,
-                &d3d12UavDesc,
-                D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-            );
-        }
-
-        return descriptor;
+        return TryGetViewDescriptor(
+            GetStdHash(textureUav),
+            [&] { return CreateDetachedUav(textureUav, false); }
+        );
     }
 
     const Descriptor& Texture::GetRtv(const TextureRtv& textureRtv) const
     {
-        BenzinAssert(m_D3D12Resource);
-        BenzinAssert(textureRtv.DepthRange.Count < m_Depth);
+        ValidateTextureRtv(*this, const_cast<TextureRtv&>(textureRtv));
 
-        auto validatedRtv = textureRtv;
-        validatedRtv.Format = textureRtv.Format != GraphicsFormat::Unknown ? textureRtv.Format : m_Format;
-        validatedRtv.DepthRange.Count = textureRtv.DepthRange.Count != 0 ? textureRtv.DepthRange.Count : m_Depth;
-
-        auto& descriptor = GetViewDescriptor(validatedRtv);
-        if (!descriptor.IsCpuValid())
-        {
-            descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Rtv);
-
-            const D3D12_RENDER_TARGET_VIEW_DESC d3d12RtvDesc = ToD3D12RenderTargetViewDesc(validatedRtv);
-
-            m_Device.GetD3D12Device()->CreateRenderTargetView(
-                m_D3D12Resource,
-                &d3d12RtvDesc,
-                D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-            );
-        }
-
-        return descriptor;
+        return TryGetViewDescriptor(
+            GetStdHash(textureRtv),
+            [&] { return CreateDetachedRtv(textureRtv, false); }
+        );
     }
 
     const Descriptor& Texture::GetDsv() const
     {
-        BenzinAssert(m_D3D12Resource);
+        ValidateTextureDsv(*this);
 
-        auto& descriptor = GetViewDescriptor(TextureDsv{});
-        if (!descriptor.IsCpuValid())
+        return TryGetViewDescriptor(
+            GetStdHash(TextureDsv{}),
+            [&] { return CreateDetachedDsv(false); }
+        );
+    }
+
+    Descriptor Texture::CreateDetachedSrv(const TextureSrv& textureSrv, bool isValidationEnabled) const
+    {
+        if (isValidationEnabled)
         {
-            descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Dsv);
-
-            m_Device.GetD3D12Device()->CreateDepthStencilView(
-                m_D3D12Resource,
-                nullptr, // Default D3D12_DEPTH_STENCIL_VIEW_DESC
-                D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-            );
+            ValidateTextureSrv(*this, const_cast<TextureSrv&>(textureSrv));
         }
-        
+
+        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResourceViewDesc(textureSrv);
+        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
+
+        m_Device.GetD3D12Device()->CreateShaderResourceView(
+            m_D3D12Resource,
+            &d3d12SrvDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
+        );
+
+        return descriptor;
+    }
+
+    Descriptor Texture::CreateDetachedUav(const TextureUav& textureUav, bool isValidationEnabled) const
+    {
+        if (isValidationEnabled)
+        {
+            ValidateTextureUav(*this, const_cast<TextureUav&>(textureUav));
+        }
+
+        const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = ToD3D12UnorderedAccessViewDesc(textureUav);
+        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav);
+
+        m_Device.GetD3D12Device()->CreateUnorderedAccessView(
+            m_D3D12Resource,
+            nullptr,
+            &d3d12UavDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
+        );
+
+        return descriptor;
+    }
+
+    Descriptor Texture::CreateDetachedRtv(const TextureRtv& textureRtv, bool isValidationEnabled) const
+    {
+        if (isValidationEnabled)
+        {
+            ValidateTextureRtv(*this, const_cast<TextureRtv&>(textureRtv));
+        }
+
+        const D3D12_RENDER_TARGET_VIEW_DESC d3d12RtvDesc = ToD3D12RenderTargetViewDesc(textureRtv);
+        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Rtv);
+
+        m_Device.GetD3D12Device()->CreateRenderTargetView(
+            m_D3D12Resource,
+            &d3d12RtvDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
+        );
+
+        return descriptor;
+    }
+
+    Descriptor Texture::CreateDetachedDsv(bool isValidationEnabled) const
+    {
+        if (isValidationEnabled)
+        {
+            ValidateTextureDsv(*this);
+        }
+
+        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Dsv);
+
+        m_Device.GetD3D12Device()->CreateDepthStencilView(
+            m_D3D12Resource,
+            nullptr, // Default D3D12_DEPTH_STENCIL_VIEW_DESC
+            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
+        );
+
         return descriptor;
     }
 
 } // namespace benzin
 
-template <>
-struct std::hash<benzin::TextureSrv>
+BenzinDefineStdHashForType(benzin::TextureSrv, textureSrv,
 {
-    size_t operator()(const benzin::TextureSrv& textureSrv) const
-    {
-        static const auto baseHash = typeid(benzin::TextureSrv).hash_code();
+    size_t hash = typeid(benzin::TextureSrv).hash_code();
+    hash = benzin::HashCombine(hash, textureSrv.Format);
+    hash = benzin::HashCombine(hash, textureSrv.IsCubeMap);
+    hash = benzin::HashCombine(hash, textureSrv.DepthRange.StartIndex);
+    hash = benzin::HashCombine(hash, textureSrv.DepthRange.Count);
+    hash = benzin::HashCombine(hash, textureSrv.MipRange.StartIndex);
+    hash = benzin::HashCombine(hash, textureSrv.MipRange.Count);
 
-        size_t hash = baseHash;
-        hash = benzin::HashCombine(hash, textureSrv.Format);
-        hash = benzin::HashCombine(hash, textureSrv.IsCubeMap);
-        hash = benzin::HashCombine(hash, textureSrv.DepthRange.StartIndex);
-        hash = benzin::HashCombine(hash, textureSrv.DepthRange.Count);
-        hash = benzin::HashCombine(hash, textureSrv.MipRange.StartIndex);
-        hash = benzin::HashCombine(hash, textureSrv.MipRange.Count);
+    return hash;
+});
 
-        return hash;
-    }
-};
-
-template <>
-struct std::hash<benzin::TextureUav>
+BenzinDefineStdHashForType(benzin::TextureUav, textureUav,
 {
-    size_t operator()(const benzin::TextureUav& textureUav) const
-    {
-        static const auto baseHash = typeid(benzin::TextureUav).hash_code();
+    size_t hash = typeid(benzin::TextureUav).hash_code();
+    hash = benzin::HashCombine(hash, textureUav.Format);
+    hash = benzin::HashCombine(hash, textureUav.MipIndex);
+    hash = benzin::HashCombine(hash, textureUav.DepthRange.StartIndex);
+    hash = benzin::HashCombine(hash, textureUav.DepthRange.Count);
 
-        size_t hash = baseHash;
-        hash = benzin::HashCombine(hash, textureUav.Format);
-        hash = benzin::HashCombine(hash, textureUav.MipIndex);
-        hash = benzin::HashCombine(hash, textureUav.DepthRange.StartIndex);
-        hash = benzin::HashCombine(hash, textureUav.DepthRange.Count);
+    return hash;
+});
 
-        return hash;
-    }
-};
-
-template <>
-struct std::hash<benzin::TextureRtv>
+BenzinDefineStdHashForType(benzin::TextureRtv, textureRtv,
 {
-    size_t operator()(const benzin::TextureRtv& textureRtv) const
-    {
-        static const auto baseHash = typeid(benzin::TextureRtv).hash_code();
+    size_t hash = typeid(benzin::TextureRtv).hash_code();
+    hash = benzin::HashCombine(hash, textureRtv.Format);
+    hash = benzin::HashCombine(hash, textureRtv.DepthRange.StartIndex);
+    hash = benzin::HashCombine(hash, textureRtv.DepthRange.Count);
 
-        size_t hash = baseHash;
-        hash = benzin::HashCombine(hash, textureRtv.Format);
-        hash = benzin::HashCombine(hash, textureRtv.DepthRange.StartIndex);
-        hash = benzin::HashCombine(hash, textureRtv.DepthRange.Count);
+    return hash;
+});
 
-        return hash;
-    }
-};
-
-template <>
-struct std::hash<benzin::TextureDsv>
+BenzinDefineStdHashForType(benzin::TextureDsv, textureDsv,
 {
-    size_t operator()(benzin::TextureDsv) const
-    {
-        static const auto baseHash = typeid(benzin::TextureDsv).hash_code();
-        return baseHash;
-    }
-};
+    return typeid(benzin::TextureDsv).hash_code();
+});

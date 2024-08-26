@@ -288,7 +288,7 @@ namespace benzin
             .Width = width,
             .Height = height,
             .MipCount = 1,
-            .Flags = TextureFlag::AllowRenderTarget,
+            .AccessFlags = TextureAccessFlag::AllowRenderTarget,
         });
     }
 

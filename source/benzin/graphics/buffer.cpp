@@ -23,6 +23,14 @@ namespace benzin
         uint32_t ElementIndex = 0;
     };
 
+    static void ValidateBufferElementRange(const Buffer& buffer, IndexRange32& outElementRange)
+    {
+        BenzinAssert(outElementRange.StartIndex < buffer.GetElementCount());
+        BenzinAssert(outElementRange.Count <= buffer.GetElementCount());
+
+        outElementRange.Count = outElementRange.Count != 0 ? outElementRange.Count : buffer.GetElementCount();
+    }
+
     static D3D12_HEAP_TYPE ToD3D12HeapType(const Device& device, const ResourceMemoryType& memoryType)
     {
         switch (memoryType)
@@ -43,7 +51,7 @@ namespace benzin
         Bytes32 alignedElementSize = bufferCreation.ElementSize;
         if (bufferCreation.Type == BufferType::Constant)
         {
-            // The 'BufferCreation::ElementSize' is aligned, not the entire buffer size 'BufferFlag::ConstantBuffer'.
+            // Align the 'BufferCreation::ElementSize', not the entire buffer size 'BufferFlag::ConstantBuffer'
             // This is done so that each element can be used as a separate constant buffer using ConstantBufferView
             alignedElementSize = AlignAbove(alignedElementSize.GetByteCount(), GfxConfig::s_ConstantBufferAlignment.GetByteCount());
         }
@@ -280,19 +288,11 @@ namespace benzin
             const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // Writing only range
             BenzinEnsure(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_CpuMappedData)));
         }
-
-        // if (!creation.InitialData.empty())
-        // {
-        //     BenzinAssert(creation.Flags.IsAnySet(BufferFlag::UploadBuffer | BufferFlag::ConstantBuffer));
-        // 
-        //     const MemoryWriter writer{ m_CpuMappedData, GetSize() };
-        //     writer.WriteBytes(creation.InitialData);
-        // }
     }
 
     const Descriptor& Buffer::GetSrv(IndexRange32 elementRange) const
     {
-        elementRange.Count = elementRange.Count != 0 ? elementRange.Count : m_ElementCount;
+        ValidateBufferElementRange(*this, elementRange);
 
         return TryGetViewDescriptor(
             GetStdHash(BufferSrv{ m_Type, elementRange }),
@@ -318,12 +318,9 @@ namespace benzin
 
     Descriptor Buffer::CreateDetachedSrv(IndexRange32 elementRange, bool isValidationEnabled) const
     {
-        BenzinAssert(elementRange.StartIndex < m_ElementCount);
-        BenzinAssert(elementRange.Count <= m_ElementCount);
-
         if (isValidationEnabled)
         {
-            elementRange.Count = elementRange.Count != 0 ? elementRange.Count : m_ElementCount;
+            ValidateBufferElementRange(*this, elementRange);
         }
 
         ID3D12Resource* d3d12Resource = nullptr;
@@ -382,26 +379,25 @@ namespace benzin
 
 } // namespace benzin
 
-BenzinDefineStdHashForType(benzin::BufferSrv,
+BenzinDefineStdHashForType(benzin::BufferSrv, bufferSrv,
 {
     size_t hash = typeid(benzin::BufferSrv).hash_code();
-    hash = benzin::HashCombine(hash, hashType.BufferType);
-    hash = benzin::HashCombine(hash, hashType.ElementRange.StartIndex);
-    hash = benzin::HashCombine(hash, hashType.ElementRange.Count);
+    hash = benzin::HashCombine(hash, bufferSrv.BufferType);
+    hash = benzin::HashCombine(hash, bufferSrv.ElementRange.StartIndex);
+    hash = benzin::HashCombine(hash, bufferSrv.ElementRange.Count);
 
     return hash;
 });
 
-
-BenzinDefineStdHashForType(benzin::BufferUav,
+BenzinDefineStdHashForType(benzin::BufferUav, bufferUav,
 {
     return typeid(benzin::BufferUav).hash_code();
 });
 
-BenzinDefineStdHashForType(benzin::BufferCbv,
+BenzinDefineStdHashForType(benzin::BufferCbv, bufferCbv,
 {
     size_t hash = typeid(benzin::BufferCbv).hash_code();
-    hash = benzin::HashCombine(hash, hashType.ElementIndex);
+    hash = benzin::HashCombine(hash, bufferCbv.ElementIndex);
 
     return hash;
 });

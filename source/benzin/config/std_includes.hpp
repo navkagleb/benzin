@@ -76,11 +76,11 @@ namespace benzin
     }
 
 }
-#define BenzinDefineStdHashForType(HashType, HashFunctionImpl) \
+#define BenzinDefineStdHashForType(HashType, HashTypeVariableName, HashFunctionImpl) \
     template <> \
     struct std::hash<HashType> \
     { \
-        size_t operator()([[maybe_unused]] const HashType& hashType) const \
+        size_t operator()([[maybe_unused]] const HashType& HashTypeVariableName) const \
         HashFunctionImpl \
     } 
 

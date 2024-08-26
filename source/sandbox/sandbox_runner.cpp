@@ -260,7 +260,7 @@ namespace sandbox
             const auto createGBufferTexture = [&](
                 Texture textureIndex,
                 benzin::GraphicsFormat format,
-                benzin::TextureFlag flag
+                benzin::TextureAccessFlag accessFlag
             )
             {
                 ms_Resources->CreateTexture(+textureIndex, benzin::TextureCreation
@@ -270,15 +270,15 @@ namespace sandbox
                     .Width = width,
                     .Height = height,
                     .MipCount = 1,
-                    .Flags = flag,
+                    .AccessFlags = accessFlag,
                 });
             };
 
-            createGBufferTexture(Texture::AlbedoAndRoughness, g_RenderPassConfig.GBufferColor0Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(Texture::EmissiveAndMetallic, g_RenderPassConfig.GBufferColor1Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(Texture::WorldNormal, g_RenderPassConfig.GBufferColor2Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(Texture::VelocityBuffer, g_RenderPassConfig.GBufferColor3Format, benzin::TextureFlag::AllowRenderTarget);
-            createGBufferTexture(Texture::DepthStencil, g_RenderPassConfig.DepthStencilFormat, benzin::TextureFlag::AllowDepthStencil);
+            createGBufferTexture(Texture::AlbedoAndRoughness, g_RenderPassConfig.GBufferColor0Format, benzin::TextureAccessFlag::AllowRenderTarget);
+            createGBufferTexture(Texture::EmissiveAndMetallic, g_RenderPassConfig.GBufferColor1Format, benzin::TextureAccessFlag::AllowRenderTarget);
+            createGBufferTexture(Texture::WorldNormal, g_RenderPassConfig.GBufferColor2Format, benzin::TextureAccessFlag::AllowRenderTarget);
+            createGBufferTexture(Texture::VelocityBuffer, g_RenderPassConfig.GBufferColor3Format, benzin::TextureAccessFlag::AllowRenderTarget);
+            createGBufferTexture(Texture::DepthStencil, g_RenderPassConfig.DepthStencilFormat, benzin::TextureAccessFlag::AllowDepthStencil);
 
             ms_Resources->CreateTexture(+Texture::ViewDepth, benzin::TextureCreation
             {
@@ -287,7 +287,7 @@ namespace sandbox
                 .Width = width,
                 .Height = height,
                 .MipCount = 5,
-                .Flags = benzin::TextureFlag::AllowRenderTarget | benzin::TextureFlag::AllowUnorderedAccess,
+                .AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget | benzin::TextureAccessFlag::AllowUnorderedAccess,
                 .ClearValueVariant = DirectX::XMFLOAT4{ std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f }, // R32 max value
             });
         }
@@ -429,7 +429,7 @@ namespace sandbox
                 .Width = width,
                 .Height = height,
                 .MipCount = 5,
-                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
         }
 
@@ -656,7 +656,7 @@ namespace sandbox
                 .Width = m_TileCount.x,
                 .Height = m_TileCount.y,
                 .MipCount = 1,
-                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
 
             ms_Resources->CreateTexture(+Texture::SigmaSmoothTiles, benzin::TextureCreation
@@ -666,7 +666,7 @@ namespace sandbox
                 .Width = m_TileCount.x,
                 .Height = m_TileCount.y,
                 .MipCount = 1,
-                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
 
             ms_Resources->CreateTexture(+Texture::SigmaDenoisedPenumbra, benzin::TextureCreation
@@ -676,7 +676,7 @@ namespace sandbox
                 .Width = GetRenderViewportWidth(),
                 .Height = GetRenderViewportHeight(),
                 .MipCount = 1,
-                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
 
             ms_Resources->CreateTexture(+Texture::SigmaHistory, benzin::TextureCreation
@@ -686,7 +686,7 @@ namespace sandbox
                 .Width = GetRenderViewportWidth(),
                 .Height = GetRenderViewportHeight(),
                 .MipCount = 1,
-                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
         }
 
@@ -867,7 +867,7 @@ namespace sandbox
                 .Width = width,
                 .Height = height,
                 .MipCount = 1,
-                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
 
             ms_Resources->CreateTexture(+Texture::ReprojectedShadowHistory, benzin::TextureCreation
@@ -877,7 +877,7 @@ namespace sandbox
                 .Width = width,
                 .Height = height,
                 .MipCount = 1,
-                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
 
             ms_Resources->CreateTexture(+Texture::DenoisedShadowVisibility, benzin::TextureCreation
@@ -887,7 +887,7 @@ namespace sandbox
                 .Width = width,
                 .Height = height,
                 .MipCount = 1,
-                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
         }
 
@@ -1216,7 +1216,7 @@ namespace sandbox
                 .Width = width,
                 .Height = height,
                 .MipCount = 1,
-                .Flags = benzin::TextureFlag::AllowRenderTarget,
+                .AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget,
             });
         }
 
@@ -1402,7 +1402,7 @@ namespace sandbox
                 .Height = cubeMapSize,
                 .Depth = 6,
                 .MipCount = 1,
-                .Flags = benzin::TextureFlag::AllowUnorderedAccess,
+                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
 
             auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();

@@ -14,16 +14,18 @@ namespace benzin
 
     using ClearValueVariant = std::variant<std::monostate, DirectX::XMFLOAT4, DepthStencilValue>;
 
-    enum class TextureFlag : uint8_t
+    enum class TextureAccessFlag : uint8_t
     {
         AllowRenderTarget,
         AllowDepthStencil,
         AllowUnorderedAccess,
     };
-    BenzinEnableFlagsForEnum(TextureFlag);
+    BenzinEnableFlagsForEnum(TextureAccessFlag);
 
     struct TextureCreation
     {
+        // For now only 2D textures supported
+
         std::string_view DebugName;
 
         bool IsCubeMap = false;
@@ -33,10 +35,8 @@ namespace benzin
         uint16_t Depth = 1; // ArraySize
         uint16_t MipCount = 0; // By default select all mip levels
 
-        TextureFlags Flags;
+        TextureAccessFlags AccessFlags;
         ClearValueVariant ClearValueVariant;
-
-        ResourceState InitialState = ResourceState::Common;
     };
 
     struct TextureSrv
@@ -73,6 +73,7 @@ namespace benzin
         auto GetHeight() const { return m_Height; }
         auto GetDepth() const { return m_Depth; }
         auto GetMipCount() const { return m_MipCount; }
+        auto GetAccessFlags() const { return m_AccessFlags; }
 
         const DirectX::XMFLOAT4& GetClearColor() const;
         DepthStencilValue GetClearDepthStencil() const;
@@ -88,6 +89,11 @@ namespace benzin
         const Descriptor& GetRtv(const TextureRtv& textureRtv = {}) const;
         const Descriptor& GetDsv() const;
 
+        Descriptor CreateDetachedSrv(const TextureSrv& textureSrv = {}, bool isValidationEnabled = true) const;
+        Descriptor CreateDetachedUav(const TextureUav& textureUav = {}, bool isValidationEnabled = true) const;
+        Descriptor CreateDetachedRtv(const TextureRtv& textureRtv = {}, bool isValidationEnabled = true) const;
+        Descriptor CreateDetachedDsv(bool isValidationEnabled = true) const;
+
     private:
         bool m_IsCubeMap = false;
         GraphicsFormat m_Format = GraphicsFormat::Unknown;
@@ -96,6 +102,7 @@ namespace benzin
         uint16_t m_Depth = 0;
         uint16_t m_MipCount = 0;
 
+        TextureAccessFlags m_AccessFlags;
         ClearValueVariant m_ClearValueVariant;
     };
 

@@ -17,16 +17,6 @@ namespace benzin
         RtAccelerationStructure,
     };
 
-    enum class BufferFlag : uint8_t
-    {
-        UploadBuffer,
-        ConstantBuffer,
-        ReadbackBuffer,
-        StructuredBuffer,
-        AllowUnorderedAccess,
-    };
-    BenzinEnableFlagsForEnum(BufferFlag);
-
     struct BufferCreation
     {
         std::string_view DebugName;
