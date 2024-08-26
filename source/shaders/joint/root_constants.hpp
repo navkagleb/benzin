@@ -93,6 +93,9 @@ namespace joint
         FullScreenDebugRc_TemporalAccumulationBuffer,
         FullScreenDebugRc_ReprojectedHistoryTexture,
         FullScreenDebugRc_DenoisedShadowVisibilityBuffer,
+
+        FullScreenDebugRc_SigmaTiles,
+        FullScreenDebugRc_SigmaSmoothTiles,
     };
 
     enum EquirectangularToCubePassRc : uint32_t

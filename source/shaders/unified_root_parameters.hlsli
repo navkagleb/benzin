@@ -44,3 +44,5 @@ uint GetRootConstant(uint index)
 {
     return g_RootConstants.GetConstant(index);
 }
+
+#define BenzinDeclareRootResource(Type, name, rootIndex) static Type name = ResourceDescriptorHeap[GetRootConstant(rootIndex)]

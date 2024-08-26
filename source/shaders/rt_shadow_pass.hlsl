@@ -2,9 +2,10 @@
 #include "unified_root_parameters.hlsli"
 
 #include "common.hlsli"
-#include "rt_common.hlsli"
 #include "gbuffer.hlsli"
 #include "random.hlsli"
+#include "rt_common.hlsli"
+#include "sigma_denoiser/sigma_frontend.hlsli"
 
 float3x3 AngleAxis3x3(float angle, float3 axis)
 {
@@ -99,7 +100,9 @@ float3 GetLightConeSample(float3 toLightDirection, float coneAngle, float2 uvSee
     return mul(R, float3(x, y, z));
 }
 
-bool TraceShadowRay(float3 worldPosition, float3 worldNormal, joint::PointLight pointLight, float2 uvSeed)
+static const float g_THitOnMiss = 0.0;
+
+joint::ShadowRayPayload TraceShadowRay(float3 worldPosition, float3 worldNormal, joint::PointLight pointLight, float2 uvSeed, out float outDistanceToLight)
 {
     float3 toLightDirection = pointLight.WorldPosition - worldPosition;
     float distanceToLight = length(toLightDirection);
@@ -111,17 +114,17 @@ bool TraceShadowRay(float3 worldPosition, float3 worldNormal, joint::PointLight 
     RayDesc rayDesc;
     rayDesc.Origin = OffsetRayPosition(worldPosition, worldNormal);
     rayDesc.Direction = coneDirection;
-    rayDesc.TMin = 0.01f;
+    rayDesc.TMin = 0.0;
     rayDesc.TMax = distanceToLight;
 
-    const uint rayFlags =
-        // RAY_FLAG_CULL_BACK_FACING_TRIANGLES |
-        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH |
-        RAY_FLAG_FORCE_OPAQUE | // Skip any hit shaders
-        RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
+    uint rayFlags = RAY_FLAG_NONE;
+    // rayFlags |= RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
+    rayFlags |= RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
+    rayFlags |= RAY_FLAG_FORCE_OPAQUE; // Skip any hit shaders
+    // rayFlags |= RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
 
     joint::ShadowRayPayload payload;
-    payload.IsHitted = true;
+    payload.THit = 0.0;
 
     TraceRay(
         g_TopLevelAs,
@@ -134,7 +137,8 @@ bool TraceShadowRay(float3 worldPosition, float3 worldNormal, joint::PointLight 
         payload
     );
 
-    return payload.IsHitted;
+    outDistanceToLight = distanceToLight;
+    return payload;
 }
 
 [shader("raygeneration")]
@@ -148,13 +152,12 @@ void RayGen()
 
     if (!g_FrameConstants.IsRtShadowsEnabled)
     {
-        visibilityBuffer[DispatchRaysIndex().xy] = 0.0;
+        visibilityBuffer[DispatchRaysIndex().xy] = 1.0;
         return;
     }
 
-    const float2 uv = GetRayUv();
-    const float3 worldNormal = worldNormalTexture.SampleLevel(g_PointClampSampler, uv, 0).xyz;
-    const float depth = depthBuffer.SampleLevel(g_PointClampSampler, uv, 0);
+    const float3 worldNormal = worldNormalTexture[DispatchRaysIndex().xy].xyz;
+    const float depth = depthBuffer[DispatchRaysIndex().xy];
 
     const joint::PointLight pointLight = pointLightBuffer[0];
 
@@ -162,18 +165,28 @@ void RayGen()
     const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
     const float3 worldPosition = ReconstructWorldPositionFromDepth(uv, depth, cameraConstants.InvViewToClip, cameraConstants.InvWorldToView).xyz;
 
-    uint hittedSum = 0;
-    for (uint i = 0; i < g_PassConstants.RaysPerPixel; ++i)
-    {
-        const float2 uvSeed = (uv + i * g_FrameConstants.FrameTimeInSec * 548.0) * g_FrameConstants.FrameTimeInSec * 854.0 + g_FrameConstants.FrameTimeInSec * 123.0;
-        hittedSum += TraceShadowRay(worldPosition, worldNormal, pointLight, uvSeed);
-    }
+    const float2 uvSeed = (uv + g_FrameConstants.FrameTimeInSec * 548.0) * g_FrameConstants.FrameTimeInSec * 854.0 + g_FrameConstants.FrameTimeInSec * 123.0;
+    
+    float distanceToLight = 0.0;
+    const joint::ShadowRayPayload payload = TraceShadowRay(worldPosition, worldNormal, pointLight, uvSeed, distanceToLight);
 
-    visibilityBuffer[DispatchRaysIndex().xy] = (float)hittedSum / g_PassConstants.RaysPerPixel;
+    // float distanceToOccluder:
+    // - distance to occluder, must follow the rules:
+    //     - NoL <= 0         - 0 ( it's very important )
+    //     - NoL > 0 ( hit )  - hit distance
+    //     - NoL > 0 ( miss ) - >= NRD_FP16_MAX
+    const float packedPenumbra = sigma::PackPenumbra(payload.THit, distanceToLight, pointLight.GeometryRadius);
+    visibilityBuffer[DispatchRaysIndex().xy] = packedPenumbra;
+}
+
+[shader("closesthit")]
+void ClosestHitShader(inout joint::ShadowRayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
+{
+    payload.THit = RayTCurrent();
 }
 
 [shader("miss")]
 void Miss(inout joint::ShadowRayPayload payload)
 {
-    payload.IsHitted = false;
+    payload.THit = sigma::g_Fp16Max;
 }

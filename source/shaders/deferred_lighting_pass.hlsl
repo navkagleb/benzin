@@ -108,6 +108,6 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
     Texture2D<float> shadowVisiblityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_ShadowVisibilityBuffer)];
     const float shadowVisiblity = shadowVisiblityBuffer.Sample(g_LinearWrapSampler, input.Uv);
 
-    const float3 finalLitColor = ambientColor + gbuffer.Emissive + directColor * (1.0 - shadowVisiblity);
+    const float3 finalLitColor = ambientColor + gbuffer.Emissive + directColor;
     return float4(saturate(finalLitColor), 1.0f);
 }

@@ -25,13 +25,13 @@ namespace benzin
             case D24Unorm_S8Uint:
             case D24Unorm_X8Typeless: return 1 * (32 / 8);
 
+            case R8Unorm: return 1 * (8 / 8);
+
             case R16Uint: return 1 * (16 / 8);
 
             case R32Float:
             case R32Uint:
             case R32Typeless: return 1 * (32 / 8);
-
-            default: BenzinEnsure(false);
         }
 
         std::unreachable();

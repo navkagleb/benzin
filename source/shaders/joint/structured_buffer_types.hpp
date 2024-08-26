@@ -65,7 +65,7 @@ namespace joint
 
     struct ShadowRayPayload
     {
-        bool IsHitted;
+        float THit;
     };
 
 } // namespace joint

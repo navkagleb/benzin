@@ -33,6 +33,9 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
     Texture2D<float> reprojectedHistoryTexture = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_ReprojectedHistoryTexture)];
     Texture2D<float> denoisedShadowVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_DenoisedShadowVisibilityBuffer)];
 
+    Texture2D<float4> sigmaTiles = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaTiles)];
+    Texture2D<float2> sigmaSmoothTiles = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaSmoothTiles)];
+
     PackedGBuffer packedGBuffer;
     packedGBuffer.Color0 = albedoAndRoughnessTexture.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
     packedGBuffer.Color1 = emissiveAndMetallicTexture.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
@@ -43,10 +46,10 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 
     const float depth = depthBuffer.SampleLevel(g_PointClampSampler, input.Uv, 0);
 
-    if (depth == 1.0f)
-    {
-        discard;
-    }
+    // if (depth == 1.0f)
+    // {
+    //     discard;
+    // }
 
     switch (g_PassConstants.OutputType)
     {
@@ -99,6 +102,16 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
         {
             const float sample = denoisedShadowVisibilityBuffer.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
             return float4(sample, 0.0, 0.0, 1.0);
+        }
+        case joint::DebugOutputType_SigmaTiles:
+        {
+            const float3 sample = sigmaTiles.SampleLevel(g_PointClampSampler, input.Uv, 0.0).xyz;
+            return float4(sample, 1.0);
+        }
+        case joint::DebugOutputType_SigmaSmoothTiles:
+        {
+            const float2 sample = sigmaSmoothTiles.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+            return float4(sample, 0.0, 1.0);
         }
     }
 

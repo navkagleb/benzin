@@ -63,6 +63,7 @@ namespace benzin
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         ImGui::StyleColorsDark();
 
@@ -109,6 +110,13 @@ namespace benzin
         ImGui::Render();
 
         m_CurrentImGuiDrawData = ImGui::GetDrawData();
+
+        const ImGuiIO& io = ImGui::GetIO();
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }
     }
 
     void ImGuiManager::OnEvent(Event& event)
@@ -204,8 +212,7 @@ namespace benzin
             ImGui::PopStyleVar(3);
 
             // Submit the DockSpace
-            const ImGuiIO& io = ImGui::GetIO();
-            BenzinAssert((io.ConfigFlags & ImGuiConfigFlags_DockingEnable) != 0);
+            BenzinAssert((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable) != 0);
 
             const ImGuiID dockspaceId = ImGui::GetID("BenzinDockSpace");
             ImGui::DockSpace(dockspaceId, ImVec2{ 0.0f, 0.0f }, dockspaceFlags);
@@ -306,7 +313,6 @@ namespace benzin
         );
 
         commandList.SetRenderTargets({ imGuiTexture.GetRtv() });
-        commandList.ClearRenderTarget(imGuiTexture.GetRtv());
         commandList.ClearRenderTarget(imGuiTexture);
 
         ImGui_ImplDX12_RenderDrawData(m_ImGuiManager.m_CurrentImGuiDrawData, commandList.GetD3D12GraphicsCommandList());

@@ -241,6 +241,7 @@ namespace sandbox
             benzin::RenderPass::SetWindowViewport(windowWidth, windowHeight);
             for (auto& renderPass : m_RenderPasses)
             {
+                // TODO: Remove windowWidth and windowHeight params
                 renderPass->OnWindowResize(windowWidth, windowHeight);
             }
         }
@@ -257,6 +258,7 @@ namespace sandbox
             benzin::RenderPass::SetRenderViewport(viewportWidth, viewportHeight);
             for (auto& renderPass : m_RenderPasses)
             {
+                // TODO: Remove viewportWidth and viewportHeight params
                 renderPass->OnRenderViewportResize(viewportWidth, viewportHeight);
             }
         }

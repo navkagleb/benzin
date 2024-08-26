@@ -350,15 +350,19 @@ namespace benzin
         m_D3D12GraphicsCommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, 0);
     }
 
-    void GraphicsCommandList::Dispatch(const DirectX::XMUINT3& dimensions, const DirectX::XMUINT3& groupSize)
+    void GraphicsCommandList::Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize)
     {
-        BenzinAssert(dimensions.x != 0 && dimensions.y != 0 && dimensions.z != 0);
+        BenzinAssert(dimension.x != 0 && dimension.y != 0 && dimension.z != 0);
+        BenzinAssert(threadGroupSize.x != 0 && threadGroupSize.y != 0 && threadGroupSize.z != 0);
 
-        const uint32_t groupCountX = GetDispatchGroupCount(dimensions.x, groupSize.x);
-        const uint32_t groupCountY = GetDispatchGroupCount(dimensions.y, groupSize.y);
-        const uint32_t groupCountZ = GetDispatchGroupCount(dimensions.z, groupSize.z);
+        const DirectX::XMUINT3 threadGroupCount
+        {
+            std::max(DivideUp(dimension.x, threadGroupSize.x), 1u),
+            std::max(DivideUp(dimension.y, threadGroupSize.y), 1u),
+            std::max(DivideUp(dimension.z, threadGroupSize.z), 1u),
+        };
 
-        m_D3D12GraphicsCommandList->Dispatch(groupCountX, groupCountY, groupCountZ);
+        m_D3D12GraphicsCommandList->Dispatch(threadGroupCount.x, threadGroupCount.y, threadGroupCount.z);
     }
 
     void GraphicsCommandList::BuildRayTracingAccelerationStructure(const RtAccelerationStructure& accelerationStructure)

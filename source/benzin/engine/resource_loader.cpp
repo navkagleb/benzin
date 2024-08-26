@@ -86,7 +86,7 @@ namespace benzin
 
     private:
         template <typename T>
-        std::span<const T> GetBufferFromGLTFAccessor(int accessorIndex)
+        std::span<const T> GetBufferFromAccessor(int accessorIndex)
         {
             if (accessorIndex == -1)
             {
@@ -136,10 +136,10 @@ namespace benzin
             const int indexAccessorIndex = gltfPrimitive.indices;
             BenzinAssert(!gltfPrimitive.attributes.contains("TEXCOORD_1")); // #TODO
 
-            const auto positions = GetBufferFromGLTFAccessor<DirectX::XMFLOAT3>(positionAccessorIndex);
-            const auto normals = GetBufferFromGLTFAccessor<DirectX::XMFLOAT3>(normalAccessorIndex);
-            const auto uvs = GetBufferFromGLTFAccessor<DirectX::XMFLOAT2>(uvAccessorIndex);
-            const auto indices = GetBufferFromGLTFAccessor<IndexType>(indexAccessorIndex);
+            const auto positions = GetBufferFromAccessor<DirectX::XMFLOAT3>(positionAccessorIndex);
+            const auto normals = GetBufferFromAccessor<DirectX::XMFLOAT3>(normalAccessorIndex);
+            const auto uvs = GetBufferFromAccessor<DirectX::XMFLOAT2>(uvAccessorIndex);
+            const auto indices = GetBufferFromAccessor<IndexType>(indexAccessorIndex);
 
             BenzinAssert(!positions.empty());
 

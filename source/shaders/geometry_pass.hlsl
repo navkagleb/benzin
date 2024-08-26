@@ -203,7 +203,9 @@ PsOutput PsMain(VsOutput input)
         gbuffer.DepthMotionVector = currentNdcPosition.z - previousNdcPosition.z;
         gbuffer.ViewDepth = input.ViewDepth;
     }
-    
+
+    gbuffer.Albedo = 0.6;
+
     const PackedGBuffer packedGBuffer = PackGBuffer(gbuffer);
 
     PsOutput output = (PsOutput)0;

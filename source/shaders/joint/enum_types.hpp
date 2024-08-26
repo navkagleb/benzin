@@ -29,6 +29,9 @@ namespace joint
         DebugOutputType_TemporalAccumulationBuffer,
         DebugOutputType_ReprojectedHistory,
         DebugOutputType_DenoisedShadowVisibilityBuffer,
+
+        DebugOutputType_SigmaTiles,
+        DebugOutputType_SigmaSmoothTiles,
     };
 
     enum MipGenerationFilterType : uint32_t

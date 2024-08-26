@@ -30,6 +30,9 @@ namespace joint
     {
         float2 RenderResolution;
         float2 InvRenderResolution;
+        float RenderAspectRatio;
+        float PixelToWorldScale;
+
         uint CpuFrameIndex;
         float FrameTimeInSec;
         float ElapsedTimeInSec;

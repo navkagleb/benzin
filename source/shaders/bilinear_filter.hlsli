@@ -1,3 +1,5 @@
+#pragma once
+
 // Ref: https://wojtsterna.blogspot.com/2018/02/directx-11-hlsl-gatherred.html
 
 struct BilinearFilter

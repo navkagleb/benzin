@@ -1,10 +1,5 @@
 #pragma once
 
-float4 ViewPositionToClipPosition(float3 viewPosition, float4x4 projection)
-{
-    return mul(float4(viewPosition, 1.0), projection);
-}
-
 float3 ClipPositionToNdcPosition(float4 clipPosition)
 {
     return clipPosition.xyz / clipPosition.w;
@@ -21,6 +16,11 @@ float2 NdcPositionToUv(float3 ndcPosition)
 float2 DispatchThreadIdToUv(uint3 dispatchThreadId, float2 invDimensions)
 {
     return (dispatchThreadId.xy + 0.5) * invDimensions;
+}
+
+float2 DispatchThreadIdToUv(uint2 dispatchThreadId, float2 invDimensions)
+{
+    return DispatchThreadIdToUv(uint3(dispatchThreadId, 0), invDimensions);
 }
 
 float2 ExpandUv(float2 uv)

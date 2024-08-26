@@ -12,24 +12,12 @@ namespace benzin
         const CommonType commonAlignment = alignment;
 
         return (commonValue + (commonAlignment - 1)) & ~(commonAlignment - 1);
-    }
+    }   
 
-    constexpr uint32_t I32Ceil(float floatingPoint)
+    template <std::unsigned_integral T>
+    constexpr auto DivideUp(T value, T divisor)
     {
-        const auto integral = static_cast<int32_t>(floatingPoint);
-        return floatingPoint > integral ? integral + 1 : integral;
-    }
-
-    constexpr uint32_t I32Floor(float floatingPoint)
-    {
-        const auto integral = static_cast<int32_t>(floatingPoint);
-        return floatingPoint < integral ? integral - 1 : integral;
-    }
-
-    constexpr uint32_t GetDispatchGroupCount(uint32_t dimension, uint32_t groupSize)
-    {
-        const auto groupCount = I32Ceil((float)dimension / groupSize);
-        return std::max<uint32_t>(groupCount, 1);
+        return (value + divisor - 1) / divisor;
     }
 
     template <std::integral T>
