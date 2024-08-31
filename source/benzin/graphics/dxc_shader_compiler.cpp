@@ -119,6 +119,11 @@ namespace benzin
             return std::move(m_IncludeFilePaths);
         }
 
+        void ClearIncludeFilePathes()
+        {
+            m_IncludeFilePaths.clear();
+        }
+
         // IDxcIncludeHandler interface
         HRESULT LoadSource(LPCWSTR rawAbsFilePath,  IDxcBlob** outDxcIncludeSource) override
         {
@@ -239,6 +244,8 @@ namespace benzin
 
         if (dxcErrorBlob && dxcErrorBlob->GetStringLength() > 0)
         {
+            m_IncludeHandler->ClearIncludeFilePathes();
+
             BenzinError("Failed to compile shader: {} ({})", paths.SourceFilePath.string(), ToNarrowString(args.EntryPoint));
             BenzinError("ErrorMessage: \n{}", dxcErrorBlob->GetStringPointer());
 

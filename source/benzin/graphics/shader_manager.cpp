@@ -228,30 +228,24 @@ namespace benzin
 
         const ShaderPaths paths{ shader.GetHash(), shader.GetFileName() };
 
-        bool isShaderNeedsRecompilation = true;
-
-        BenzinExecuteOnScopeExit([&]
-        {
-            if (isShaderNeedsRecompilation)
-            {   
-                m_IsShaderGoodMap[shader.GetHash()] = false;
-                m_ShaderDxils.erase(shader.GetHash());
-            }
-        });
-
+        bool isShaderNeedsRecompilation = false;
         if (IsSourceShader(m_PendingShaderToReload->c_str()))
         {
             isShaderNeedsRecompilation = *m_PendingShaderToReload == paths.SourceFilePath;
-            return isShaderNeedsRecompilation;
         }
-
-        BenzinAssert(m_IncludeDependencies.contains(shader.GetHash()));
-        if (m_IncludeDependencies.at(shader.GetHash()).contains(*m_PendingShaderToReload))
+        else
         {
-            return isShaderNeedsRecompilation;
+            BenzinAssert(m_IncludeDependencies.contains(shader.GetHash()));
+            isShaderNeedsRecompilation = m_IncludeDependencies.at(shader.GetHash()).contains(*m_PendingShaderToReload);
         }
 
-        return isShaderNeedsRecompilation = false;
+        if (isShaderNeedsRecompilation)
+        {
+            m_IsShaderGoodMap[shader.GetHash()] = false;
+            m_ShaderDxils.erase(shader.GetHash());
+        }
+
+        return isShaderNeedsRecompilation;
     }
 
     void ShaderManager::RunIfPendingToReloadShaderIsAvailable(std::function<void()>&& callback)
