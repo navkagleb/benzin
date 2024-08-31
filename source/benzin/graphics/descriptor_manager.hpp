@@ -13,23 +13,25 @@ namespace benzin
         Cbv,
         Srv,
         Uav,
-        Sampler,
+        Sampler, // For future use
     };
 
     class Descriptor
     {
     public:
+        friend class DescriptorManager;
+
         Descriptor() = default;
 
-        Descriptor(DescriptorType type, uint32_t heapIndex, uint64_t cpuHandle, uint64_t gpuHandle = 0)
+        Descriptor(DescriptorType type, uint32_t gpuHeapIndex, uint64_t cpuHandle, uint64_t gpuHandle = 0)
             : m_Type{ type }
-            , m_HeapIndex{ heapIndex }
+            , m_GpuHeapIndex{ gpuHeapIndex }
             , m_CpuHandle{ cpuHandle }
             , m_GpuHandle{ gpuHandle }
         {}
         
         auto GetType() const { return m_Type; }
-        auto GetHeapIndex() const { return m_HeapIndex; }
+        auto GetGpuHeapIndex() const { return m_GpuHeapIndex; }
         auto GetCpuHandle() const { return m_CpuHandle; }
         auto GetGpuHandle() const { return m_GpuHandle; }
 
@@ -38,7 +40,7 @@ namespace benzin
 
     private:
         DescriptorType m_Type = g_InvalidEnumValue<DescriptorType>;
-        uint32_t m_HeapIndex = 0;
+        uint32_t m_GpuHeapIndex = 0;
         uint64_t m_CpuHandle = 0;
         uint64_t m_GpuHandle = 0;
     };
@@ -53,14 +55,25 @@ namespace benzin
         BenzinDefineNonMoveable(DescriptorManager);
 
     public:
-        ID3D12DescriptorHeap* GetD3D12GpuResourceDescriptorHeap() const;
-        ID3D12DescriptorHeap* GetD3D12SamplerDescriptorHeap() const;
+        using DescriptorInitCallback = std::function<void(uint64_t handle)>;
 
-        Descriptor AllocateDescriptor(DescriptorType descriptorType);
+        ID3D12DescriptorHeap* GetD3D12GpuResourceDescriptorHeap() const;
+
+        Descriptor AllocateDescriptor(DescriptorType descriptorType, const DescriptorInitCallback& initCallback = {});
         void FreeDescriptor(const Descriptor& descriptor);
 
+        void CopyToGpuResourceHeap(Descriptor& descriptor);
+
     private:
-        std::array<std::unique_ptr<DescriptorHeap>, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> m_DescriptorHeaps;
+        DescriptorHeap& GetCpuHeap(DescriptorType descriptorType);
+
+    private:
+        Device& m_Device;
+
+        std::unique_ptr<DescriptorHeap> m_CpuRtvHeap;
+        std::unique_ptr<DescriptorHeap> m_CpuDsvHeap;
+        std::unique_ptr<DescriptorHeap> m_CpuResourceHeap;
+        std::unique_ptr<DescriptorHeap> m_GpuResourceHeap;
     };
 
-} // namespace benzin
+}

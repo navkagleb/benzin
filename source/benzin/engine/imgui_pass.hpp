@@ -72,6 +72,7 @@ namespace benzin
         Device& m_Device;
 
         Descriptor m_FontDescriptor;
+
         std::vector<ImGuiTool*> m_Tools;
         std::vector<std::function<void()>> m_ImGuiSpawnMenuCallbacks;
 

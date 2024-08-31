@@ -64,6 +64,7 @@ namespace benzin
         void DrawVertexed(uint32_t vertexCount, uint32_t instanceCount = 1);
         void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount = 1);
 
+        void ClearUnorderedAccess(const Texture& unorderedAccess, const DirectX::XMFLOAT4& color);
         void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize);
 
         void BuildRayTracingAccelerationStructure(const RtAccelerationStructure& accelerationStructure);

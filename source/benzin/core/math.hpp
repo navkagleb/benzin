@@ -38,4 +38,17 @@ namespace benzin
         return (value & 2) == 0;
     }
 
+    template <std::unsigned_integral T>
+    constexpr T FindPowerOf2(T value)
+    {
+        T power = 0;
+
+        while (value > 1)
+        {
+            value >>= 1;
+            ++power;
+        }
+
+        return power;
+    }
 }

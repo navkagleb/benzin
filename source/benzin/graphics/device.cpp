@@ -8,6 +8,7 @@
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/gpu_timer.hpp"
 #include "benzin/graphics/pipeline_state_manager.hpp"
+#include "benzin/graphics/resource.hpp"
 #include "benzin/graphics/sampler.hpp"
 
 namespace benzin
@@ -198,18 +199,25 @@ namespace benzin
         return d3d12FormatInfo.PlaneCount;
     }
 
-    void Device::DeferredRelease(ID3D12Object* d3d12Object)
-    {
-        BenzinAssert(d3d12Object != nullptr);
-
-        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12Object);
-    }
-
     void Device::DeferredRelease(const Descriptor& descriptor)
     {
         BenzinAssert(descriptor.IsCpuValid());
 
         m_DeferredReleaseDescriptorQueue.emplace(m_CpuFrameIndex, descriptor);
+    }
+
+    void Device::DeferredRelease(const PipelineState& pso)
+    {
+        BenzinAssert(pso.GetD3D12PipelineState() != nullptr);
+
+        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, pso.GetD3D12PipelineState());
+    }
+
+    void Device::DeferredRelease(const Resource& resource)
+    {
+        BenzinAssert(resource.GetD3D12Resource() != nullptr);
+
+        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, resource.GetD3D12Resource());
     }
 
     void Device::ProcessDeferredReleaseQueues(bool isForceRelease)

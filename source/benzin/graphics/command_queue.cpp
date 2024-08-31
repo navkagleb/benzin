@@ -100,7 +100,6 @@ namespace benzin
         ID3D12DescriptorHeap* const d3d12DescriptorHeaps[]
         {
             m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap(),
-            m_Device.GetDescriptorManager().GetD3D12SamplerDescriptorHeap()
         };
 
         d3d12GraphicsCommandList->SetDescriptorHeaps((uint32_t)std::size(d3d12DescriptorHeaps), d3d12DescriptorHeaps);

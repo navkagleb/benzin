@@ -19,7 +19,8 @@ namespace benzin
         }
         m_ViewDescriptors.clear();
 
-        m_Device.DeferredRelease(m_D3D12Resource);
+        m_Device.DeferredRelease(*this);
+        m_D3D12Resource = nullptr;
     }
 
     Bytes32 Resource::GetAllocationSize() const

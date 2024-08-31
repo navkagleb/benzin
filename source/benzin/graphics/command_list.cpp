@@ -230,7 +230,7 @@ namespace benzin
     {
         BenzinAssert(viewDescriptor.IsGpuValid());
 
-        SetRootConstant(rootIndex, viewDescriptor.GetHeapIndex());
+        SetRootConstant(rootIndex, viewDescriptor.GetGpuHeapIndex());
     }
 
     void GraphicsCommandList::SetCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
@@ -348,6 +348,25 @@ namespace benzin
     void GraphicsCommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount)
     {
         m_D3D12GraphicsCommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, 0);
+    }
+
+    void GraphicsCommandList::ClearUnorderedAccess(const Texture& unorderedAccess, const DirectX::XMFLOAT4& color)
+    {
+        BenzinUnused(unorderedAccess);
+        BenzinUnused(color);
+
+        // For now supported only default uavs
+
+        const auto& uav = unorderedAccess.GetUav();
+
+        m_D3D12GraphicsCommandList->ClearUnorderedAccessViewFloat(
+            D3D12_GPU_DESCRIPTOR_HANDLE{ uav.GetGpuHandle() },
+            D3D12_CPU_DESCRIPTOR_HANDLE{ uav.GetCpuHandle() },
+            unorderedAccess.GetD3D12Resource(),
+            (const float*)&color,
+            0,
+            nullptr // Clears entire texture
+        );
     }
 
     void GraphicsCommandList::Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize)

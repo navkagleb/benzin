@@ -330,16 +330,16 @@ namespace benzin
             d3d12Resource = m_D3D12Resource;
         }
 
-        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResoureViewDesc(*this, elementRange);
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
+        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv, [&](uint64_t cpuHandle)
+        {
+            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResoureViewDesc(*this, elementRange);
 
-        m_Device.GetD3D12Device()->CreateShaderResourceView(
-            d3d12Resource,
-            &d3d12SrvDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-        );
-
-        return descriptor;
+            m_Device.GetD3D12Device()->CreateShaderResourceView(
+                d3d12Resource,
+                &d3d12SrvDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
+            );
+        });
     }
 
     Descriptor Buffer::CreateDetachedUav() const
@@ -347,17 +347,17 @@ namespace benzin
         BenzinAssert(m_D3D12Resource);
         BenzinAssert(m_IsUnorderedAccessAllowed);
 
-        const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = ToD3D12UnorderedAccessViewDesc(*this);
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav);
+        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav, [&](uint64_t cpuHandle)
+        {
+            const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = ToD3D12UnorderedAccessViewDesc(*this);
 
-        m_Device.GetD3D12Device()->CreateUnorderedAccessView(
-            m_D3D12Resource,
-            nullptr,
-            &d3d12UavDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-        );
-
-        return descriptor;
+            m_Device.GetD3D12Device()->CreateUnorderedAccessView(
+                m_D3D12Resource,
+                nullptr,
+                &d3d12UavDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
+            );
+        });
     }
 
     Descriptor Buffer::CreateDetachedCbv(uint32_t elementIndex) const
@@ -366,15 +366,15 @@ namespace benzin
         BenzinAssert(m_Type == BufferType::Constant);
         BenzinAssert(elementIndex < m_ElementCount);
 
-        const D3D12_CONSTANT_BUFFER_VIEW_DESC d3d12CbvDesc = ToD3D12ConstantBufferViewDesc(*this, elementIndex);
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Cbv);
+        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Cbv, [&](uint64_t cpuHandle)
+        {
+            const D3D12_CONSTANT_BUFFER_VIEW_DESC d3d12CbvDesc = ToD3D12ConstantBufferViewDesc(*this, elementIndex);
 
-        m_Device.GetD3D12Device()->CreateConstantBufferView(
-            &d3d12CbvDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-        );
-
-        return descriptor;
+            m_Device.GetD3D12Device()->CreateConstantBufferView(
+                &d3d12CbvDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
+            );
+        });
     }
 
 } // namespace benzin

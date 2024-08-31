@@ -8,7 +8,9 @@ namespace benzin
     class Backend;
     class GpuTimer;
     class GraphicsCommandQueue;
+    class PipelineState;
     class PipelineStateManager;
+    class Resource;
 
     enum class UnifiedRootParameter
     {
@@ -58,10 +60,9 @@ namespace benzin
 
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
-        template <std::derived_from<ID3D12Object> T>
-        void DeferredRelease(T*& d3d12Object) { DeferredRelease((ID3D12Object*)std::exchange(d3d12Object, nullptr)); }
-        void DeferredRelease(ID3D12Object* d3d12Object);
         void DeferredRelease(const Descriptor& descriptor);
+        void DeferredRelease(const PipelineState& pso);
+        void DeferredRelease(const Resource& resource);
         void ProcessDeferredReleaseQueues(bool isForceRelease = false); // Must be called after 'SwapChain::OnFlip' because 'm_CompletedGpuFrameIndex' will be updated there
 
     private:

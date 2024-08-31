@@ -78,6 +78,14 @@ namespace benzin
             D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCpuHandle() },
             D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGpuHandle() }
         ));
+
+        {
+            // Force call 'ImGui_ImplDX12_CreateDeviceObjects' to copy
+            // font descriptor from CPU descriptor heap to GPU descriptor heap
+
+            ImGui_ImplDX12_CreateDeviceObjects();
+            m_Device.GetDescriptorManager().CopyToGpuResourceHeap(m_FontDescriptor);
+        }
     }
 
     ImGuiManager::~ImGuiManager()

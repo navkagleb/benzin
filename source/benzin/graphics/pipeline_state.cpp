@@ -166,7 +166,8 @@ namespace benzin
 
     PipelineState::~PipelineState()
     {
-        m_Device.DeferredRelease(m_D3D12PipelineState);
+        m_Device.DeferredRelease(*this);
+        m_D3D12PipelineState = nullptr;
     }
 
     bool PipelineState::Reload()
@@ -176,7 +177,9 @@ namespace benzin
             return false;
         }
 
-        m_Device.DeferredRelease(m_D3D12PipelineState);
+        m_Device.DeferredRelease(*this);
+        m_D3D12PipelineState = nullptr;
+
         m_CreationVariant | MakeVisitorMatch([this](const auto& creation) { Compile(creation, true); });
 
         BenzinTrace("Pso '{}' reloaded", GetDxObjectDebugName(m_D3D12PipelineState));

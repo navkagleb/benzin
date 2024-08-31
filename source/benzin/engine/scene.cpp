@@ -180,7 +180,7 @@ namespace benzin
         {
             if (IsValidUnsigned(outTextureIndex))
             {
-                outTextureIndex = m_Textures[textureOffset + outTextureIndex]->GetSrv().GetHeapIndex();
+                outTextureIndex = m_Textures[textureOffset + outTextureIndex]->GetSrv().GetGpuHeapIndex();
             }
         };
 

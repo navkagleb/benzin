@@ -437,16 +437,16 @@ namespace benzin
             ValidateTextureSrv(*this, const_cast<TextureSrv&>(textureSrv));
         }
 
-        const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResourceViewDesc(textureSrv);
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
+        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv, [&](uint64_t cpuHandle)
+        {
+            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResourceViewDesc(textureSrv);
 
-        m_Device.GetD3D12Device()->CreateShaderResourceView(
-            m_D3D12Resource,
-            &d3d12SrvDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-        );
-
-        return descriptor;
+            m_Device.GetD3D12Device()->CreateShaderResourceView(
+                m_D3D12Resource,
+                &d3d12SrvDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
+            );
+        });
     }
 
     Descriptor Texture::CreateDetachedUav(const TextureUav& textureUav, bool isValidationEnabled) const
@@ -456,17 +456,17 @@ namespace benzin
             ValidateTextureUav(*this, const_cast<TextureUav&>(textureUav));
         }
 
-        const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = ToD3D12UnorderedAccessViewDesc(textureUav);
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav);
+        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav, [&](uint64_t cpuHandle)
+        {
+            const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = ToD3D12UnorderedAccessViewDesc(textureUav);
 
-        m_Device.GetD3D12Device()->CreateUnorderedAccessView(
-            m_D3D12Resource,
-            nullptr,
-            &d3d12UavDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-        );
-
-        return descriptor;
+            m_Device.GetD3D12Device()->CreateUnorderedAccessView(
+                m_D3D12Resource,
+                nullptr,
+                &d3d12UavDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
+            );
+        });
     }
 
     Descriptor Texture::CreateDetachedRtv(const TextureRtv& textureRtv, bool isValidationEnabled) const
@@ -476,16 +476,16 @@ namespace benzin
             ValidateTextureRtv(*this, const_cast<TextureRtv&>(textureRtv));
         }
 
-        const D3D12_RENDER_TARGET_VIEW_DESC d3d12RtvDesc = ToD3D12RenderTargetViewDesc(textureRtv);
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Rtv);
+        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Rtv, [&](uint64_t cpuHandle)
+        {
+            const D3D12_RENDER_TARGET_VIEW_DESC d3d12RtvDesc = ToD3D12RenderTargetViewDesc(textureRtv);
 
-        m_Device.GetD3D12Device()->CreateRenderTargetView(
-            m_D3D12Resource,
-            &d3d12RtvDesc,
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-        );
-
-        return descriptor;
+            m_Device.GetD3D12Device()->CreateRenderTargetView(
+                m_D3D12Resource,
+                &d3d12RtvDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
+            );
+        });
     }
 
     Descriptor Texture::CreateDetachedDsv(bool isValidationEnabled) const
@@ -495,15 +495,14 @@ namespace benzin
             ValidateTextureDsv(*this);
         }
 
-        const Descriptor descriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Dsv);
-
-        m_Device.GetD3D12Device()->CreateDepthStencilView(
-            m_D3D12Resource,
-            nullptr, // Default D3D12_DEPTH_STENCIL_VIEW_DESC
-            D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.GetCpuHandle() }
-        );
-
-        return descriptor;
+        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Dsv, [&](uint64_t cpuHandle)
+        {
+            m_Device.GetD3D12Device()->CreateDepthStencilView(
+                m_D3D12Resource,
+                nullptr, // Default D3D12_DEPTH_STENCIL_VIEW_DESC
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
+            );
+        });
     }
 
 } // namespace benzin
