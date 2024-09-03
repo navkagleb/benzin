@@ -10,6 +10,7 @@
 #include "benzin/graphics/pipeline_state.hpp"
 #include "benzin/graphics/rt_acceleration_structures.hpp"
 #include "benzin/graphics/texture.hpp"
+#include "benzin/graphics/unified_root_signature.hpp"
 
 namespace benzin
 {

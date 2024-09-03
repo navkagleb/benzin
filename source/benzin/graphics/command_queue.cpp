@@ -8,6 +8,7 @@
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/fence.hpp"
+#include "benzin/graphics/unified_root_signature.hpp"
 
 namespace benzin
 {
@@ -101,10 +102,10 @@ namespace benzin
         {
             m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap(),
         };
-
         d3d12GraphicsCommandList->SetDescriptorHeaps((uint32_t)std::size(d3d12DescriptorHeaps), d3d12DescriptorHeaps);
-        d3d12GraphicsCommandList->SetComputeRootSignature(m_Device.GetD3D12UnifiedRootSignature());
-        d3d12GraphicsCommandList->SetGraphicsRootSignature(m_Device.GetD3D12UnifiedRootSignature());
+
+        d3d12GraphicsCommandList->SetComputeRootSignature(m_Device.GetUnifiedRootSignature().GetD3D12RootSignature());
+        d3d12GraphicsCommandList->SetGraphicsRootSignature(m_Device.GetUnifiedRootSignature().GetD3D12RootSignature());
     }
 
     void GraphicsCommandQueue::SubmitCommandList()

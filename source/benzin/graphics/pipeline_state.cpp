@@ -7,6 +7,7 @@
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/render_states.hpp"
+#include "benzin/graphics/unified_root_signature.hpp"
 
 namespace benzin
 {
@@ -211,7 +212,7 @@ namespace benzin
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12GraphicsPipelineStateDesc
         {
-            .pRootSignature = m_Device.GetD3D12UnifiedRootSignature(),
+            .pRootSignature = m_Device.GetUnifiedRootSignature().GetD3D12RootSignature(),
             .VS = ToD3D12Shader(m_Device, m_Shaders[0], isShaderCacheIgnored),
             .PS = ToD3D12Shader(m_Device, m_Shaders[1], isShaderCacheIgnored),
             .DS{ nullptr, 0 },
@@ -260,7 +261,7 @@ namespace benzin
 
         const D3D12_COMPUTE_PIPELINE_STATE_DESC d3d12ComputePipelineStateDesc
         {
-            .pRootSignature = m_Device.GetD3D12UnifiedRootSignature(),
+            .pRootSignature = m_Device.GetUnifiedRootSignature().GetD3D12RootSignature(),
             .CS = ToD3D12Shader(m_Device, m_Shaders[0], isShaderCacheIgnored),
             .NodeMask = 0,
             .CachedPSO

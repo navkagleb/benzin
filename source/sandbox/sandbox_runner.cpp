@@ -20,6 +20,7 @@
 #include <benzin/graphics/rt_acceleration_structures.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
+#include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
 
@@ -508,7 +509,7 @@ namespace sandbox
             // 1. D3D12_GLOBAL_ROOT_SIGNATURE
             const D3D12_GLOBAL_ROOT_SIGNATURE d3d12GlobalRootSignature
             {
-                .pGlobalRootSignature = ms_Device->GetD3D12UnifiedRootSignature(),
+                .pGlobalRootSignature = ms_Device->GetUnifiedRootSignature().GetD3D12RootSignature(),
             };
 
             // 2. D3D12_DXIL_LIBRARY_DESC

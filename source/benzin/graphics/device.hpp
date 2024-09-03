@@ -11,19 +11,12 @@ namespace benzin
     class PipelineState;
     class PipelineStateManager;
     class Resource;
-
-    enum class UnifiedRootParameter
-    {
-        RootConstantBuffer,
-        FrameConstantBuffer,
-        RenderPassConstantBuffer,
-        TopLevelAs,
-    };
-    BenzinEnableUnaryPlusForEnum(UnifiedRootParameter);
+    class UnifiedRootSignature;
 
     struct DeviceCreation
     {
         std::string_view DebugName;
+
         Backend& BackendRef;
     };
 
@@ -43,8 +36,8 @@ namespace benzin
         const auto& GetBackend() const { return m_Backend; }
 
         auto* GetD3D12Device() const { return m_D3D12Device; }
-        auto* GetD3D12UnifiedRootSignature() const { return m_D3D12UnifiedRootSignature; }
 
+        auto& GetUnifiedRootSignature() { return *m_UnifiedRootSignature; }
         auto& GetDescriptorManager() { return *m_DescriptorManager; }
         auto& GetPipelineStateManager() { return *m_PipelineStateManager; }
         auto& GetGraphicsCommandQueue() { return *m_GraphicsCommandQueue; }
@@ -67,7 +60,6 @@ namespace benzin
 
     private:
         void CheckFeaturesSupport();
-        void CreateUnifiedRootSignature();
 
     private:
         Backend& m_Backend;
@@ -75,9 +67,8 @@ namespace benzin
         // ID3D12Device5 supports RT
         ID3D12Device5* m_D3D12Device = nullptr;
 
-        ID3D12RootSignature* m_D3D12UnifiedRootSignature = nullptr;
-
         // Must be released in desctructor before m_D3D12Device destroying
+        std::unique_ptr<UnifiedRootSignature> m_UnifiedRootSignature;
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
         std::unique_ptr<PipelineStateManager> m_PipelineStateManager;
         std::unique_ptr<GraphicsCommandQueue> m_GraphicsCommandQueue;
