@@ -6,27 +6,19 @@
 namespace sandbox
 {
 
-    enum class SandboxTiming : uint32_t
+    enum class RenderPasses : uint32_t
     {
-        BuildTopLevelAs,
-        GeometryPass,
-        RtShadowPass,
-        SigmaDenoiserPass,
-            SigmaDenoiserPass_ClassifyTiles,
-            SigmaDenoiserPass_SmoothTiles,
-            SigmaDenoiserPass_Blur,
-        // DenoiserPass,
-        //     DenoiserPass_Accumulation,
-        //     DenoiserPass_Mips,
-        //     DenoiserPass_HistoryFix,
-        //     DenoiserPass_Blur,
-        DeferredLightingPass,
-        EnvironmentPass,
-        FullScreenDebugPass,
-        ImGuiPass,
-        BackBufferCopy,
+        GlobalConstants,
+        Geometry,
+        RayTracingShadows,
+        SigmaDenoiser,
+        DeferredLighting,
+        Environment,
+        FullScreenDebug,
+        ImGui,
+        CopuToBackBuffer,
     };
-    BenzinEnableUnaryPlusForEnum(SandboxTiming);
+    BenzinEnableUnaryPlusForEnum(RenderPasses);
 
     enum SceneMesh
     {
@@ -46,7 +38,7 @@ namespace sandbox
 
     private:
         using SceneMeshes = benzin::EnumArray<uint32_t, SceneMesh>;
-        using TimingsTool = TimingsTool<SandboxTiming, SandboxTiming>;
+        using TimingsTool = TimingsTool<RenderPasses, RenderPasses>;
 
         void InitRenderPasses();
         void InitTools();
@@ -59,6 +51,8 @@ namespace sandbox
 
     private:
         TimingsTool* m_TimingsTool = nullptr;
+
+        Timings<RenderPasses> m_CpuTimings{};
     };
 
 }

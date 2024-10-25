@@ -9,6 +9,7 @@ namespace benzin
     class SwapChain;
     class Texture;
     class TickTimer;
+    class ScopedGpuGrabTimer;
 
     struct TextureCreation;
 
@@ -78,6 +79,7 @@ namespace benzin
     class RenderPass
     {
     public:
+        RenderPass();
         virtual ~RenderPass() = default;
 
     public:
@@ -86,18 +88,23 @@ namespace benzin
         static void SetWindowViewport(uint32_t width, uint32_t height);
         static void SetRenderViewport(uint32_t width, uint32_t height);
 
+        auto GetGpuTimerIndex() const { return m_GpuTimerIndex; }
         auto IsRenderingEnabled() const { return m_IsRenderingEnabled; }
-        void SetRenderingEnabled(bool isEnabled) { m_IsRenderingEnabled = isEnabled; }
+
+        auto GetCpuRenderTime() const { return m_CpuRenderTime; }
 
         virtual bool IsDependentOnViewport() const = 0;
 
         virtual void OnZeroFrameInit() {}
-        virtual void OnWindowResize(uint32_t width, uint32_t height);
-        virtual void OnRenderViewportResize(uint32_t width, uint32_t height);
+        virtual void OnWindowResize() {}
+        virtual void OnRenderViewportResize() {}
 
         virtual void OnUpdate() {}
         virtual void OnUpdate(const TickTimer& tickTimer);
         virtual void OnRender() const = 0;
+
+        [[nodiscard]] ScopedGrabTimer GrabCpuRenderTime();
+        [[nodiscard]] ScopedGpuGrabTimer GrabGpuRenderTime();
 
     protected:
         static inline Device* ms_Device = nullptr;
@@ -111,10 +118,16 @@ namespace benzin
         static inline Viewport ms_RenderViewport;
         static inline ScissorRect ms_RenderScissorRect;
 
+        static uint32_t GetWindowViewportWidth() { return (uint32_t)ms_WindowViewport.Width; }
+        static uint32_t GetWindowViewportHeight() { return (uint32_t)ms_WindowViewport.Height; }
+
         static uint32_t GetRenderViewportWidth() { return (uint32_t)ms_RenderViewport.Width; }
         static uint32_t GetRenderViewportHeight() { return (uint32_t)ms_RenderViewport.Height; }
 
+        uint32_t m_GpuTimerIndex = g_InvalidUnsigned<uint32_t>;
         bool m_IsRenderingEnabled = true;
+
+        std::chrono::microseconds m_CpuRenderTime = std::chrono::microseconds::zero();
     };
 
 }

@@ -60,7 +60,7 @@ namespace benzin
             outMeshCollection.DebugName = CutExtension(fileName);
 
             {
-                BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseMeshPrimitives", outMeshCollection.DebugName);
+                // BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseMeshPrimitives", outMeshCollection.DebugName);
                 ParseMeshPrimitives(outMeshCollection);
             }
 
@@ -75,7 +75,7 @@ namespace benzin
             }
 
             {
-                BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseTextures", outMeshCollection.DebugName);
+                // BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseTextures", outMeshCollection.DebugName);
                 ParseTextures(outMeshCollection);
             }
 

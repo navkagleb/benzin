@@ -18,11 +18,9 @@ namespace benzin
     Device::Device(const DeviceCreation& creation)
         : m_Backend{ creation.BackendRef }
     {
-        EnableDred();
-
-        ComPtr<ID3D12Device> dx12Device;
-        BenzinEnsure(::D3D12CreateDevice(m_Backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&dx12Device)));
-        BenzinEnsure(dx12Device->QueryInterface(&m_D3D12Device));
+        ComPtr<ID3D12Device> d3d12Device;
+        BenzinEnsure(::D3D12CreateDevice(m_Backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d3d12Device)));
+        BenzinEnsure(d3d12Device->QueryInterface(&m_D3D12Device));
         SetDxObjectDebugName(m_D3D12Device, creation.DebugName);
 
         EnableD3D12DebugBreakOn(m_D3D12Device, true, D3D12BreakReasonFlag::Warning | D3D12BreakReasonFlag::Error | D3D12BreakReasonFlag::Corruption);
@@ -32,7 +30,7 @@ namespace benzin
             const HRESULT removedReason = m_D3D12Device->GetDeviceRemovedReason();
             BenzinError(
                 "\n"
-                "{}\n"
+                "DredMessages: {}\n"
                 "CPUFrameIndex: {}, GPUFrameIndex: {}, ActiveFrameIndex: {}\n"
                 "RemoveDevice was trigerred. DeviceRemovedReason: ({:#0x}) {}\n",
                 GetDredMessages(m_D3D12Device),
@@ -49,7 +47,7 @@ namespace benzin
         MakeUniquePtr(m_DescriptorManager, *this);
         MakeUniquePtr(m_PipelineStateManager, *this);
         MakeUniquePtr(m_GraphicsCommandQueue, *this);
-        MakeUniquePtr(m_GpuTimer, *this, 32); // #TODO: Add more timers
+        MakeUniquePtr(m_GpuTimer, *this, GpuTimer::s_MaxGpuTimerCount); // #TODO: Add more timers
     }
 
     Device::~Device()
@@ -62,7 +60,7 @@ namespace benzin
 
         ProcessDeferredReleaseQueues(true);
 
-        EnableD3D12DebugBreakOn(m_D3D12Device, false, { D3D12BreakReasonFlag::Warning });
+        EnableD3D12DebugBreakOn(m_D3D12Device, false, D3D12BreakReasonFlag::Warning);
         ReportLiveD3D12Objects(m_D3D12Device);
 
         // TODO: There is reference count due to implicit heaps of resources
@@ -141,7 +139,7 @@ namespace benzin
 
             D3D12_FEATURE_DATA_SHADER_MODEL d3d12FeatureDataShaderModel
             {
-                .HighestShaderModel{ D3D_SHADER_MODEL_6_6 }
+                .HighestShaderModel = D3D_SHADER_MODEL_6_6,
             };
 
             BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &d3d12FeatureDataShaderModel, sizeof(d3d12FeatureDataShaderModel)));
@@ -163,9 +161,10 @@ namespace benzin
         {
             D3D12_FEATURE_DATA_EXISTING_HEAPS d3d12Options{};
             BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_EXISTING_HEAPS, &d3d12Options, sizeof(d3d12Options)));
-            BenzinEnsure(d3d12Options.Supported == 1);
 
-            BenzinTrace("Device supports D3D12_FEATURE_EXISTING_HEAPS");
+            m_Caps.IsDredSupported = d3d12Options.Supported = 1;
+
+            BenzinTrace("Is Dred supported: {}", m_Caps.IsDredSupported);
         }
 
         // GPU Upload Heaps
@@ -173,14 +172,14 @@ namespace benzin
             D3D12_FEATURE_DATA_D3D12_OPTIONS16 d3d12Options{};
             BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS16, &d3d12Options, sizeof(d3d12Options)));
 
-            m_IsGpuUploadHeapsSupported = d3d12Options.GPUUploadHeapSupported == 1;
-            BenzinTrace("Is GpuUploadHeaps supported: {}", m_IsGpuUploadHeapsSupported);
+            m_Caps.IsGpuUploadHeapsSupported = d3d12Options.GPUUploadHeapSupported == 1;
+            BenzinTrace("Is GpuUploadHeaps supported: {}", m_Caps.IsGpuUploadHeapsSupported);
 
-            m_IsGpuUploadHeapsSupported &= CommandLineArgs::GetBool("IsGpuUploadHeapsEnabled");
-            BenzinTrace("Is GpuUploadHeaps enabled: {}", m_IsGpuUploadHeapsSupported);
+            m_Caps.IsGpuUploadHeapsSupported &= CommandLineArgs::GetBool("IsGpuUploadHeapsEnabled");
+            BenzinTrace("Is GpuUploadHeaps enabled: {}", m_Caps.IsGpuUploadHeapsSupported);
         }
 
-        BenzinTrace("----------------------------------------------");
+        BenzinTrace(Logger::s_LineSeparator);
     }
 
 } // namespace benzin

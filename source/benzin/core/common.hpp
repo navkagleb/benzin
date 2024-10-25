@@ -16,18 +16,18 @@ namespace benzin
     inline constexpr auto g_InvalidUnsigned = std::numeric_limits<T>::max();
 
     template <typename T> requires std::is_enum_v<T>
-    inline constexpr auto g_InvalidEnumValue = (T)g_InvalidUnsigned<std::underlying_type_t<T>>;
-
-    inline constexpr bool ToggleBool(bool& value)
-    {
-        value = !value;
-        return value;
-    }
+    inline constexpr auto g_InvalidEnum = (T)g_InvalidUnsigned<std::underlying_type_t<T>>;
 
     template <std::unsigned_integral T>
     constexpr bool IsValidUnsigned(T value)
     {
         return value != g_InvalidUnsigned<T>;
+    }
+
+    template <typename T> requires std::is_enum_v<T>
+    constexpr bool IsValidEnum(T value)
+    {
+        return value != g_InvalidEnum<T>;
     }
 
     template <std::unsigned_integral T, std::unsigned_integral U>

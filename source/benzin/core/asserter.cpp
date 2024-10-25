@@ -41,7 +41,7 @@ namespace benzin
 
     static void FormatToBuffer(HRESULT hr, std::string& outBuffer)
     {
-        _com_error comError{ hr };
+        const _com_error comError{ hr };
         const std::string_view comErrorMessage = comError.ErrorMessage();
 
         std::format_to(

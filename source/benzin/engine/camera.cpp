@@ -1,10 +1,11 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/camera.hpp"
 
+#include "benzin/utility/time_utils.hpp"
+#include "benzin/tools/render_viewport_tool.hpp"
+#include "benzin/system/input.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/core/engine_math.hpp"
-#include "benzin/system/input.hpp"
-#include "benzin/utility/time_utils.hpp"
 
 namespace benzin
 {
@@ -45,14 +46,14 @@ namespace benzin
 
     // PerspectiveProjection
 
-    PerspectiveProjection::PerspectiveProjection(float verticalFov, float aspectRatio, float nearPlane, float farPlane)
+    PerspectiveProjection::PerspectiveProjection(float verticalFovInRadians, float aspectRatio, float nearPlane, float farPlane)
     {
-        SetLens(verticalFov, aspectRatio, nearPlane, farPlane);
+        SetLens(verticalFovInRadians, aspectRatio, nearPlane, farPlane);
     }
     
-    void PerspectiveProjection::SetVerticalFov(float verticalFov)
+    void PerspectiveProjection::SetVerticalFov(float verticalFovInRadians)
     {
-        m_VerticalFov = verticalFov;
+        m_VerticalFovInRadians = verticalFovInRadians;
 
         UpdateViewToClipMatrix();
     }
@@ -64,9 +65,9 @@ namespace benzin
         UpdateViewToClipMatrix();
     }
 
-    void PerspectiveProjection::SetLens(float verticalFov, float aspectRatio, float nearPlane, float farPlane)
+    void PerspectiveProjection::SetLens(float verticalFovInRadians, float aspectRatio, float nearPlane, float farPlane)
     {
-        m_VerticalFov = verticalFov;
+        m_VerticalFovInRadians = verticalFovInRadians;
         m_AspectRatio = aspectRatio;
         m_NearPlane = nearPlane;
         m_FarPlane = farPlane;
@@ -76,7 +77,7 @@ namespace benzin
 
     DirectX::XMMATRIX PerspectiveProjection::CreateViewToClipMatrix() const
     {
-        return DirectX::XMMatrixPerspectiveFovLH(m_VerticalFov, m_AspectRatio, m_NearPlane, m_FarPlane);
+        return DirectX::XMMatrixPerspectiveFovLH(m_VerticalFovInRadians, m_AspectRatio, m_NearPlane, m_FarPlane);
     }
 
     // OrthographicProjection
@@ -191,13 +192,6 @@ namespace benzin
         m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
     }
 
-    void FlyCameraController::OnEvent(Event& event)
-    {
-        EventDispatcher dispatcher{ event };
-        dispatcher.Dispatch(&FlyCameraController::OnMouseMoved, *this);
-        dispatcher.Dispatch(&FlyCameraController::OnMouseScrolled, *this);
-    }
-
     void FlyCameraController::OnUpdate(std::chrono::microseconds dt)
     {
         UpdatePitchAndYawIfNeeded();
@@ -307,21 +301,21 @@ namespace benzin
         m_LastMousePosition.x = event.GetX<float>();
         m_LastMousePosition.y = event.GetY<float>();
 
-        return false;
+        return true;
     }
 
     bool FlyCameraController::OnMouseScrolled(const MouseScrolledEvent& event)
     {
-        static const float minVerticalFov = DirectX::XMConvertToRadians(45.0f);
-        static const float maxVerticalFov = DirectX::XMConvertToRadians(120.0f);
+        static const float minVerticalFovInRadians = DirectX::XMConvertToRadians(45.0f);
+        static const float maxVerticalFovInRadians = DirectX::XMConvertToRadians(120.0f);
 
         if (auto* perspectiveProjection = GetPerspectiveProjection())
         {
-            const float verticalFov = perspectiveProjection->GetVerticalFov() - m_MouseWheelSensitivity * (float)event.GetOffsetX();
-            perspectiveProjection->SetVerticalFov(std::clamp(verticalFov, minVerticalFov, maxVerticalFov));
+            const float verticalFov = perspectiveProjection->GetVerticalFovInRadians() - m_MouseWheelSensitivity * (float)event.GetOffsetX();
+            perspectiveProjection->SetVerticalFov(std::clamp(verticalFov, minVerticalFovInRadians, maxVerticalFovInRadians));
         }
 
-        return false;
+        return true;
     }
 
     PerspectiveProjection* FlyCameraController::GetPerspectiveProjection()

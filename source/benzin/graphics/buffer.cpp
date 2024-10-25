@@ -37,7 +37,7 @@ namespace benzin
         {
             case ResourceMemoryType::Default: return D3D12_HEAP_TYPE_DEFAULT;
             case ResourceMemoryType::Readback: return D3D12_HEAP_TYPE_READBACK;
-            case ResourceMemoryType::Upload: return device.IsGpuUploadHeapsSupported() ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD;
+            case ResourceMemoryType::Upload: return device.GetCaps().IsGpuUploadHeapsSupported ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD;
         }
 
         std::unreachable();
@@ -214,6 +214,8 @@ namespace benzin
 
     static D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(const Buffer& buffer)
     {
+        BenzinAssert(buffer.GetType() == BufferType::Structured);
+
         return D3D12_UNORDERED_ACCESS_VIEW_DESC
         {
             .Format = DXGI_FORMAT_UNKNOWN,

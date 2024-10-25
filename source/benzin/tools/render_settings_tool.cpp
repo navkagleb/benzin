@@ -15,7 +15,7 @@ namespace benzin
         {
             for (const auto& sectionInfo : m_SectionInfos)
             {
-                if (SpawnImGuiCollapsingHeader(sectionInfo.TitleName))
+                if (SpawnImGuiCollapsingHeader(sectionInfo.TitleName, sectionInfo.IsOpenByDefault))
                 {
                     sectionInfo.ImGuiSpawnCallback();
                 }

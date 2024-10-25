@@ -20,6 +20,12 @@ namespace benzin
         Backend& BackendRef;
     };
 
+    struct DeviceCaps
+    {
+        bool IsGpuUploadHeapsSupported = false;
+        bool IsDredSupported = false;
+    };
+
     class Device
     {
     public:
@@ -49,7 +55,7 @@ namespace benzin
         auto GetCompletedGpuFrameIndex() const { return m_CompletedGpuFrameIndex; }
         auto GetActiveFrameIndex() const { return m_ActiveFrameIndex; }
 
-        auto IsGpuUploadHeapsSupported() const { return m_IsGpuUploadHeapsSupported; }
+        const auto& GetCaps() const { return m_Caps; }
 
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
@@ -78,7 +84,7 @@ namespace benzin
         uint64_t m_CompletedGpuFrameIndex = 0;
         uint8_t m_ActiveFrameIndex = 0; // In range [0, FrameInFlightCount)
 
-        bool m_IsGpuUploadHeapsSupported = false;
+        DeviceCaps m_Caps;
 
         std::queue<std::pair<uint64_t, ID3D12Object*>> m_DeferredReleaseResourceQueue;
         std::queue<std::pair<uint64_t, Descriptor>> m_DeferredReleaseDescriptorQueue;

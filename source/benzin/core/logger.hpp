@@ -27,6 +27,8 @@ namespace benzin
         template <typename... Args>
         friend struct Log;
 
+        static constexpr std::string_view s_LineSeparator = "----------------------------------------------";
+
         static void Initialize(LogOptionFlags logOptionFlags = LogOptionFlag::All);
 
     private:

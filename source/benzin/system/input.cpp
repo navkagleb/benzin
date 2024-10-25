@@ -9,6 +9,11 @@ namespace benzin
 
     static bool g_IsAllKeyEventsBlocked = false;
 
+    static bool g_IsCursorLocked = false;
+    static POINT g_LockedCursorPosition{};
+
+    //
+
     void Input::SetAllKeyEventsBlocked(bool isBlocked)
     {
         g_IsAllKeyEventsBlocked = isBlocked;
@@ -34,11 +39,37 @@ namespace benzin
         BenzinAssert(window.GetWin64Window());
 
         POINT mousePosition{ 0, 0 };
-
         BenzinAssertExpr(::GetCursorPos(&mousePosition) != 0);
         BenzinAssertExpr(::ScreenToClient(window.GetWin64Window(), &mousePosition) != 0);
 
         return { mousePosition.x, mousePosition.y };
+    }
+
+    DirectX::XMINT2 Input::LockCursor(const Window& window)
+    {
+        if (!g_IsCursorLocked)
+        {
+            g_IsCursorLocked = true;
+            BenzinAssertExpr(::GetCursorPos(&g_LockedCursorPosition) != 0);
+        }
+
+        POINT clientLockedCursorPosition = g_LockedCursorPosition;
+        BenzinAssertExpr(::ScreenToClient(window.GetWin64Window(), &clientLockedCursorPosition) != 0);
+
+        return { clientLockedCursorPosition.x, clientLockedCursorPosition.y };
+    }
+
+    void Input::UnlockCursor()
+    {
+        g_IsCursorLocked = false;
+    }
+
+    void Input::SetCursorPositionIfNeeded()
+    {
+        if (g_IsCursorLocked)
+        {
+            ::SetCursorPos(g_LockedCursorPosition.x, g_LockedCursorPosition.y);
+        }
     }
 
 } // namespace benzin

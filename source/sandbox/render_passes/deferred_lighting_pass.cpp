@@ -1,0 +1,111 @@
+#include "sandbox/bootstrap.hpp"
+#include "sandbox/render_passes/deferred_lighting_pass.hpp"
+
+#include <benzin/engine/scene.hpp>
+#include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_timer.hpp>
+#include <benzin/graphics/pipeline_state_manager.hpp>
+#include <benzin/graphics/texture.hpp>
+#include <benzin/graphics/unified_root_signature.hpp>
+
+#include <shaders/joint/root_constants.hpp>
+
+#include "sandbox/resources.hpp"
+#include "sandbox/sandbox_render_settings.hpp"
+
+namespace sandbox
+{
+
+    DeferredLightingPass::DeferredLightingPass(const benzin::Scene& scene)
+        : m_Scene{ scene }
+    {
+        m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
+        {
+            .DebugName = "DeferredLightingPass",
+            .VsFileName = "fullscreen_triangle.hlsl",
+            .PsFileName = "deferred_lighting_pass.hlsl",
+            .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
+            .DepthState
+            {
+                .IsEnabled = false,
+                .IsWriteEnabled = false,
+            },
+            .RenderTargetFormats{ benzin::GraphicsFormat::Rgba8Unorm },
+        });
+
+        benzin::MakeUniquePtr(m_PassConstantBuffer, *ms_Device, "DeferredLightingPassConstantBuffer");
+    }
+
+    DeferredLightingPass::~DeferredLightingPass()
+    {
+        ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
+
+        ms_Resources->DestroyTexture(+Texture::Final);
+    }
+
+    void DeferredLightingPass::OnRenderViewportResize()
+    {
+        ms_Resources->CreateTexture(+Texture::Final, benzin::TextureCreation
+        {
+            .DebugName = magic_enum::enum_name(Texture::Final),
+            .Format = (benzin::GraphicsFormat)benzin::CommandLineArgs::GetU32("BackBufferFormat"),
+            .Width = GetRenderViewportWidth(),
+            .Height = GetRenderViewportHeight(),
+            .MipCount = 1,
+            .AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget,
+        });
+    }
+
+    void DeferredLightingPass::OnUpdate()
+    {
+        const auto& deferredLightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
+        const auto& fullScreenDebugSettings = ms_Settings->GetSection<FullScreenDebugSettings>();
+
+        m_IsRenderingEnabled = fullScreenDebugSettings.DebugOutputType == joint::DebugOutputType_None;
+
+        m_PassConstantBuffer->UpdateConstants(joint::DeferredLightingPassConstants
+        {
+            .SunColor = deferredLightingSettings.SunColor,
+            .SunIntensity = deferredLightingSettings.SunIntensity,
+            .SunDirection = GetSunDirection(deferredLightingSettings),
+            .ActivePointLightCount = m_Scene.GetStats().PointLightCount,
+        });
+    }
+
+    void DeferredLightingPass::OnRender() const
+    {
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+
+        BenzinPushGpuEvent(commandList, "DeferredLightingPass");
+
+        const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
+
+        commandList.SetViewport(ms_RenderViewport);
+        commandList.SetScissorRect(ms_RenderScissorRect);
+
+        BenzinMakeScopedResourceBarriers(
+            commandList,
+            benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::RenderTarget },
+        );
+
+        commandList.SetRenderTargets({ finalTexture.GetRtv() });
+        commandList.ClearRenderTarget(finalTexture);
+
+        commandList.SetPipelineState(*m_Pso);
+
+        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstantBuffer->GetActiveGpuVirtualAddress());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_AlbedoAndRoughnessTex, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_EmissiveAndMetallicTex, ms_Resources->GetTexture(+Texture::EmissiveAndMetallic).GetSrv());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_WorldNormalTex, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_VelocityTex, ms_Resources->GetTexture(+Texture::VelocityBuffer).GetSrv());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_DepthStencilTex, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_PointLightBuf, m_Scene.GetPointLightBufferStructuredSrv());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_SigmaShadowTex, ms_Resources->GetTexture(+Texture::SigmaShadow).GetSrv());
+
+        commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+        commandList.DrawVertexed(3);
+    }
+
+}

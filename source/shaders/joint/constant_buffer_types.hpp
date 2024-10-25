@@ -37,17 +37,20 @@ namespace joint
         float FrameTimeInSec;
         float ElapsedTimeInSec;
 
-        uint IsRtShadowsEnabled : 1;
-        uint IsDenoiserEnabled : 1;
-        uint MaxTemporalAccumulationCount;
+        float4 RandomFloats01;
 
         CameraConstants Camera;
         CameraConstants PrevCamera;
     };
 
-    struct RtShadowPassConstants
+    struct RayTracingShadowsConstants
     {
+        bool IsEnabled;
         uint RaysPerPixel;
+        float TanSunAngularRadius;
+        float PixelAngularRadiusInRadians;
+        float SunAngularRadiusInRadians;
+        float3 SunDirection;
     };
 
     struct DenoiserTemporalAccumulationConstants

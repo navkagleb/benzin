@@ -18,4 +18,7 @@ namespace benzin
 
     DirectX::XMMATRIX GetMatrixForNormals(const DirectX::XMMATRIX& transform);
 
+    float GetWeylSequence(float seed, uint32_t n);
+
+    DirectX::XMFLOAT4 GetRotator(float angleInRadians);
 }

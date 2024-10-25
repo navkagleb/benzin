@@ -11,19 +11,22 @@ namespace benzin
     {
     public:
         ShaderInfo() = default;
-        ShaderInfo(ShaderType type, std::string_view fileName, std::string_view entryPoint = {});
+        ShaderInfo(ShaderType type, std::string_view fileName, std::string_view entryPoint, std::vector<std::string_view>&& defines);
 
         auto GetType() const { return m_Type; }
         auto GetFileName() const { return m_FileName; }
         auto GetEntryPoint() const { return m_EntryPoint; }
+        const auto& GetDefines() const { return m_Defines; }
+
         auto GetHash() const { return m_Hash; }
 
         bool IsValid() const { return !m_FileName.empty() && !m_EntryPoint.empty(); }
 
     private:
-        ShaderType m_Type = g_InvalidEnumValue<ShaderType>;
+        ShaderType m_Type = g_InvalidEnum<ShaderType>;
         std::string_view m_FileName;
         std::string_view m_EntryPoint;
+        std::vector<std::string_view> m_Defines;
 
         uint64_t m_Hash = g_InvalidUnsigned<uint64_t>;
     };
@@ -34,9 +37,11 @@ namespace benzin
 
         std::string_view VsFileName;
         std::string_view VsEntryPoint;
+        std::vector<std::string_view> VsDefines;
 
         std::string_view PsFileName;
         std::string_view PsEntryPoint;
+        std::vector<std::string_view> PsDefines;
 
         PrimitiveTopologyType PrimitiveTopologyType = PrimitiveTopologyType::Unknown;
         RasterizerState RasterizerState;
@@ -55,6 +60,7 @@ namespace benzin
 
         std::string_view CsFileName;
         std::string_view CsEntryPoint;
+        std::vector<std::string_view> CsDefines;
     };
 
     using PipelineStateCreationVariant = std::variant<GraphicsPipelineStateCreation, ComputePipelineStateCreation>;
@@ -92,7 +98,7 @@ namespace benzin
         PipelineStateCreationVariant m_CreationVariant;
 
         std::array<ShaderInfo, 2> m_Shaders;
-        uint32_t m_ShaderCount = g_InvalidUnsigned<uint32_t>;
+        uint32_t m_ShaderCount = 0;
     };
 
 } // namespace benzin

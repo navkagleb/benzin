@@ -204,7 +204,7 @@ PsOutput PsMain(VsOutput input)
         gbuffer.ViewDepth = input.ViewDepth;
     }
 
-    gbuffer.Albedo = 0.6;
+    // gbuffer.Albedo = 0.6;
 
     const PackedGBuffer packedGBuffer = PackGBuffer(gbuffer);
 

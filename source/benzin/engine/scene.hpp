@@ -67,6 +67,7 @@ namespace benzin
 
     public:
         auto& GetPerspectiveProjection() { return m_PerspectiveProjection; }
+        const auto& GetPerspectiveProjection() const { return m_PerspectiveProjection; }
 
         auto& GetCamera() { return m_Camera; }
         const auto& GetCamera() const { return m_Camera; }

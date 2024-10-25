@@ -54,7 +54,7 @@ float FetchDepth(float2 uv, uint depthTextureIndex)
     return depthTexture.SampleLevel(g_LinearWrapSampler, uv, 0).r;
 }
 
-float3 ReconstructViewPositionFromDepth(float2 uv, float depth, float4x4 inverseProjectionMatrix)
+float3 ReconstructViewPositionFromDepth(float2 uv, float depth, float4x4 invViewToClip)
 {
     // Get x/w and y/w from the viewport position
     const float x = uv.x * 2.0f - 1.0f;
@@ -62,26 +62,19 @@ float3 ReconstructViewPositionFromDepth(float2 uv, float depth, float4x4 inverse
     const float z = depth;
 
     const float4 ndcPosition = float4(x, y, z, 1.0f);
-    const float4 viewPosition = mul(ndcPosition, inverseProjectionMatrix);
+    const float4 viewPosition = mul(ndcPosition, invViewToClip);
 
     return viewPosition.xyz / viewPosition.w;
 }
 
-float3 ReconstructWorldPositionFromDepth(float2 uv, float depth, float4x4 inverseProjectionMatrix, float4x4 inverseViewMatrix)
+float3 ReconstructWorldPositionFromDepth(float2 uv, float depth, float4x4 invViewToClip, float4x4 invWorldToView)
 {
-    const float3 viewPosition = ReconstructViewPositionFromDepth(uv, depth, inverseProjectionMatrix);
-    const float3 worldPosition = mul(float4(viewPosition, 1.0f), inverseViewMatrix).xyz;
+    const float3 viewPosition = ReconstructViewPositionFromDepth(uv, depth, invViewToClip);
+    const float3 worldPosition = mul(float4(viewPosition, 1.0f), invWorldToView).xyz;
 
     return worldPosition;
 }
 
-float3 ReconstructWorldPositionFromViewPosition(float3 viewPosition, float4x4 inverseViewMatrix)
-{
-    const float3 worldPosition = mul(float4(viewPosition, 1.0f), inverseViewMatrix).xyz;
-    return worldPosition;
-}
-
-// orthoMode = { 0 - perspective, -1 - right handed ortho, 1 - left handed ortho }
 float3 ReconstructViewPositionFromViewDepth(float2 uv, float viewDepth, float4 packedCameraFrustumPlaneSlopes)
 {
     float3 viewPosition;

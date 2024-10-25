@@ -1,0 +1,146 @@
+#include "sandbox/bootstrap.hpp"
+#include "sandbox/render_passes/environment_pass.hpp"
+
+#include <benzin/core/asserter.hpp>
+#include <benzin/engine/resource_loader.hpp>
+#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_timer.hpp>
+#include <benzin/graphics/pipeline_state_manager.hpp>
+#include <benzin/graphics/texture.hpp>
+
+#include <shaders/joint/root_constants.hpp>
+
+#include "sandbox/resources.hpp"
+#include "sandbox/sandbox_render_settings.hpp"
+
+namespace sandbox
+{
+
+    EnvironmentPass::EnvironmentPass()
+    {
+        m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
+        {
+            .DebugName = "EnvironmentPass",
+            .VsFileName = "fullscreen_triangle.hlsl",
+            .VsEntryPoint = "VsMainDepth1",
+            .PsFileName = "environment_pass.hlsl",
+            .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
+            .DepthState
+            {
+                .IsWriteEnabled = false,
+                .ComparisonFunction = benzin::ComparisonFunction::Equal,
+            },
+            .RenderTargetFormats{ benzin::GraphicsFormat::Rgba8Unorm },
+            .DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint,
+        });
+    }
+
+    EnvironmentPass::~EnvironmentPass()
+    {
+        ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
+    }
+
+    void EnvironmentPass::OnZeroFrameInit()
+    {
+        std::unique_ptr equirectangularTexture = LoadEquirectangularTexture();
+        ComputeCubeMapTexture(*equirectangularTexture);
+    }
+
+    void EnvironmentPass::OnUpdate()
+    {
+        const auto& settings = ms_Settings->GetSection<FullScreenDebugSettings>();
+
+        m_IsRenderingEnabled = settings.DebugOutputType == joint::DebugOutputType_None;
+    }
+
+    void EnvironmentPass::OnRender() const
+    {
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+
+        BenzinPushGpuEvent(commandList, "EnvironmentPass");
+
+        const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
+        const auto& depthStencilBuffer = ms_Resources->GetTexture(+Texture::DepthStencil);
+
+        commandList.SetViewport(ms_RenderViewport);
+        commandList.SetScissorRect(ms_RenderScissorRect);
+
+        BenzinMakeScopedResourceBarriers(
+            commandList,
+            benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::RenderTarget },
+            benzin::TransitionBarrier{ depthStencilBuffer, benzin::ResourceState::DepthRead },
+        );
+
+        commandList.SetRenderTargets({ finalTexture.GetRtv() }, &depthStencilBuffer.GetDsv());
+
+        commandList.SetPipelineState(*m_Pso);
+        commandList.SetRootResource(joint::EnvironmentPassRc_CubeMapTexture, m_CubeTexture->GetSrv());
+
+        commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+        commandList.DrawVertexed(3);
+    }
+
+    std::unique_ptr<benzin::Texture> EnvironmentPass::LoadEquirectangularTexture()
+    {
+        benzin::TextureImage equirectangularTextureImage;
+        BenzinAssertExpr(benzin::LoadTextureImageFromHdrFile("scythian_tombs_2_4k.hdr", equirectangularTextureImage));
+
+        auto equirectangularTexture = std::make_unique<benzin::Texture>(*ms_Device, benzin::TextureCreation
+        {
+            .DebugName = equirectangularTextureImage.DebugName,
+            .Format = equirectangularTextureImage.Format,
+            .Width = equirectangularTextureImage.Width,
+            .Height = equirectangularTextureImage.Height,
+            .MipCount = 1,
+        });
+
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList(equirectangularTexture->GetSize());
+        commandList.UploadToTextureTopMip(*equirectangularTexture, std::as_bytes(std::span{ equirectangularTextureImage.ImageData }));
+        
+        return equirectangularTexture;
+    }
+
+    void EnvironmentPass::ComputeCubeMapTexture(benzin::Texture& equirectangularTexture)
+    {
+        auto& pipelineStateManager = ms_Device->GetPipelineStateManager();
+
+        auto* equirectangularToCubePso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
+        {
+            .DebugName = "EquirectangularToCube",
+            .CsFileName = "equirectangular_to_cube_pass.hlsl",
+        });
+        BenzinExecuteOnScopeExit([&]
+        {
+            pipelineStateManager.DestroyPipelineState(equirectangularToCubePso);
+        });
+
+        const uint32_t cubeMapSize = 1024;
+        benzin::MakeUniquePtr(m_CubeTexture, *ms_Device, benzin::TextureCreation
+        {
+            .DebugName = "EnvironmentCubeMap",
+            .IsCubeMap = true,
+            .Format = benzin::GraphicsFormat::Rgba32Float,
+            .Width = cubeMapSize,
+            .Height = cubeMapSize,
+            .Depth = 6,
+            .MipCount = 1,
+            .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
+        });
+
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+
+        commandList.SetPipelineState(*equirectangularToCubePso);
+        commandList.SetRootResource(joint::EquirectangularToCubeRc_EquirectangularTexture, equirectangularTexture.GetSrv());
+        commandList.SetRootResource(joint::EquirectangularToCubeRc_OutCubeTexture, m_CubeTexture->GetUav());
+
+        BenzinMakeScopedResourceBarriers(
+            commandList,
+            benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::UnorderedAccess },
+        );
+
+        const DirectX::XMUINT3 dimensions{ cubeMapSize, cubeMapSize, m_CubeTexture->GetDepth() };
+        commandList.Dispatch(dimensions, joint::g_ThreadPerGroupCount881);
+    }
+
+}

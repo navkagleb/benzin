@@ -233,10 +233,10 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float2 previousUv = uv - motionVector.xy;
     const float previousDepth = depth - motionVector.z;
     const float3 previousViewPosition = ReconstructViewPositionFromDepth(previousUv, previousDepth, g_FrameConstants.PrevCamera.InvViewToClip);
-    const float3 previousWorldPosition = ReconstructWorldPositionFromViewPosition(previousViewPosition, g_FrameConstants.PrevCamera.InvWorldToView);
+    const float3 previousWorldPosition = mul(float4(previousViewPosition, 1.0), g_FrameConstants.PrevCamera.InvWorldToView).xyz;
 
     const float3 viewPosition = ReconstructViewPositionFromDepth(uv, depth, cameraConstants.InvViewToClip);
-    const float3 worldPosition = ReconstructWorldPositionFromViewPosition(viewPosition, cameraConstants.InvWorldToView);
+    const float3 worldPosition = mul(float4(viewPosition, 1.0), cameraConstants.InvWorldToView).xyz;
 
     const float3 lightDirection = normalize(cameraConstants.WorldPosition - worldPosition);
     const float nDotL = dot(worldNormal, lightDirection);

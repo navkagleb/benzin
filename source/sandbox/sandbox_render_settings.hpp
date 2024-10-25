@@ -5,49 +5,29 @@
 namespace sandbox
 {
 
-    struct RtShadowsSettings
+    struct RayTracingShadowsSettings
     {
-        bool IsRtShadowEnabled = true;
+        bool IsEnabled = true;
         uint32_t RaysPerPixel = 1;
     };
 
-    struct DenoiserSettings
+    struct SigmaDenoiserSettings
     {
-        bool IsDenoiserEnabled = true;
-        uint32_t MaxTemporalAccumulationCount = 16;
-    };
+        float StabilizationStrength = 1.0f;
 
-    struct DenoiserMipGenerationSettings
-    {
-        joint::MipGenerationFilterType DepthFilterType = joint::MipGenerationFilterType_Min;
-    };
-
-    struct DenoiserHistoryFixSettings
-    {
-        bool IsHistoryFixEnabled = true;
-        bool IsViewDepthUsedForWeights = true;
-    };
-
-    struct DenoiserBlurSettings
-    {
-        float SpecularAccumulationCurve = 0.2f;
-        float SpecularAccumulationBasePower = 0.25f;
-
-        bool IsDenoiserAntilagEnabled = true;
-
-        bool IsGeometryWeightUsed = true;
-        bool IsNormalWeightUsed = true;
-        bool IsRoughnessWeightUsed = true;
-        float GeometryWeightSensitivity = 20.0f;
-        float MinBlurRadius = 0.01f;
-        float MaxBlurRadius = 0.2f;
+        bool IsPostBlurEnabled = true;
+        bool IsTemporalStabilizationEnabled = true;
+        bool IsBicubicSamplingUsedForHistory = true;
     };
 
     struct DeferredLightingSettings
     {
-        float SunIntensity = 0.0f;
-        DirectX::XMFLOAT3 SunColor{ 1.0f, 1.0f, 1.0f };
-        DirectX::XMFLOAT3 SunDirection{ -0.5f, -0.5f, -0.5f };
+        float SunIntensity = 4.0f;
+        DirectX::XMFLOAT3 SunColor{ 1.0f, 1.0f, 0.9f };
+
+        float SunAngularDiameterInRadians = DirectX::XMConvertToRadians(0.5f); // [0.01f, 5.0f]
+        float SunAzimuthInRadians = DirectX::XMConvertToRadians(0.0f); // [-180.0f, 180.0f]
+        float SunElevationInRadians = DirectX::XMConvertToRadians(45.0f); // [0.0f, 180.0]
     };
 
     struct FullScreenDebugSettings
@@ -57,5 +37,7 @@ namespace sandbox
         float MinViewDepth = 0.0f;
         float MaxViewDepth = 20.0f;
     };
+
+    DirectX::XMFLOAT3 GetSunDirection(const DeferredLightingSettings& settings);
 
 }

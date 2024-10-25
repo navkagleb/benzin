@@ -53,7 +53,7 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float2 previousUv = uv - motionVector.xy;
     const float previousDepth = depth - motionVector.z;
     const float3 previousViewPosition = ReconstructViewPositionFromDepth(previousUv, previousDepth, prevCameraConstants.InvViewToClip);
-    const float3 previousWorldPosition = ReconstructWorldPositionFromViewPosition(previousViewPosition, prevCameraConstants.InvWorldToView);
+    const float3 previousWorldPosition = mul(float4(previousViewPosition, 1.0), prevCameraConstants.InvWorldToView).xyz;
 
     const BilinearFilter filterAtPreviousUv = CreateBilinearFilter(previousUv, g_FrameConstants.RenderResolution);
     const float4 previousViewDepthSamples = GatherRedManually(previousViewDepthBuffer, filterAtPreviousUv);

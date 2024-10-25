@@ -12,6 +12,20 @@ namespace benzin
 
     static const auto g_IncludeDependenciesFilePath = std::filesystem::absolute("bin/shader_include_dependencies.txt");
 
+    static void LogShaderInfo(std::string_view stage, std::chrono::microseconds stageTime, const ShaderInfo& shader)
+    {
+        BenzinTrace(
+            "{} ({:07.3f} ms): {:20}! Type: {:>7}, File: {}, EntryPoint: {}, Defines: {}",
+            stage,
+            ToFloatMs(stageTime),
+            shader.GetHash(),
+            magic_enum::enum_name(shader.GetType()),
+            shader.GetFileName(),
+            !shader.GetEntryPoint().empty() ? shader.GetEntryPoint() : "\"-\"",
+            shader.GetDefines()
+        );
+    }
+
     static bool IsIncludeShader(std::wstring_view fileName)
     {
         return fileName.ends_with(L"hlsli");
@@ -19,7 +33,7 @@ namespace benzin
 
     static bool IsSourceShader(std::wstring_view fileName)
     {
-        return fileName.ends_with(L"hlsl");
+        return fileName.ends_with(L"hlsl") || fileName.ends_with(L"hpp");
     }
 
     static void CacheShader(const ShaderPaths& paths, const CompiledShader& compiledShader)
@@ -193,8 +207,8 @@ namespace benzin
             return true;
         }
 
-        const ShaderPaths paths{ shader.GetHash(), shader.GetFileName() };
-        const ShaderArgs args{ shader.GetType(), shader.GetEntryPoint() };
+        const ShaderPaths paths{ shader };
+        const ShaderArgs args{ shader };
         auto [us, compiledShader] = BenzinProfileFunction(m_ShaderCompiler.CompileShader(paths, args));
 
         if (!compiledShader.IsValid())
@@ -203,14 +217,7 @@ namespace benzin
             return false;
         }
 
-        BenzinTrace(
-            "Shader compiled: {:20}! Type: {:>7}, File: {}, EntryPoint: {}. Time: {} ms",
-            shader.GetHash(),
-            magic_enum::enum_name(shader.GetType()),
-            shader.GetFileName(),
-            !shader.GetEntryPoint().empty() ? shader.GetEntryPoint() : "\"\"",
-            ToFloatMs(us)
-        );
+        LogShaderInfo("Shader compiled", us, shader);
 
         CacheShader(paths, compiledShader);
 
@@ -226,14 +233,14 @@ namespace benzin
         BenzinAssert(IsPendingToReloadShaderAvailable());
         BenzinAssert(shader.IsValid());
 
-        const ShaderPaths paths{ shader.GetHash(), shader.GetFileName() };
+        const ShaderPaths paths{ shader };
 
         bool isShaderNeedsRecompilation = false;
         if (IsSourceShader(m_PendingShaderToReload->c_str()))
         {
             isShaderNeedsRecompilation = *m_PendingShaderToReload == paths.SourceFilePath;
         }
-        else
+        else if (IsIncludeShader(m_PendingShaderToReload->c_str()))
         {
             BenzinAssert(m_IncludeDependencies.contains(shader.GetHash()));
             isShaderNeedsRecompilation = m_IncludeDependencies.at(shader.GetHash()).contains(*m_PendingShaderToReload);
@@ -350,7 +357,7 @@ namespace benzin
             return false;
         }
 
-        const ShaderPaths paths{ shader.GetHash(), shader.GetFileName() };
+        const ShaderPaths paths{ shader };
 
         if (IsDestinationFileOlder(paths.SourceFilePath, paths.DxilFilePath))
         {
@@ -368,7 +375,7 @@ namespace benzin
             m_IncludeDependencies.at(shader.GetHash()),
             [&paths](const std::filesystem::path& includeDependency)
             {
-                return IsDestinationFileOlder(includeDependency, paths.DxilFilePath);
+                return !std::filesystem::exists(includeDependency) || IsDestinationFileOlder(includeDependency, paths.DxilFilePath);
             }
         );
 
@@ -382,14 +389,7 @@ namespace benzin
         m_IsShaderGoodMap[shader.GetHash()] = true;
         m_ShaderDxils[shader.GetHash()] = std::move(shaderDxil);
 
-        BenzinTrace(
-            "Shader loaded: {:20}! Type: {:>7}, File: {}, EntryPoint: {}. Time: {} ms",
-            shader.GetHash(),
-            magic_enum::enum_name(shader.GetType()),
-            shader.GetFileName(),
-            !shader.GetEntryPoint().empty() ? shader.GetEntryPoint() : "\"\"",
-            ToFloatMs(us)
-        );
+        LogShaderInfo("Shader loaded  ", us, shader);
 
         return true;
     }

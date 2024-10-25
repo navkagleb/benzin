@@ -1,6 +1,7 @@
 #pragma once
 
 #include "benzin/engine/imgui_pass.hpp"
+#include "benzin/engine/camera.hpp"
 
 namespace benzin
 {
@@ -8,7 +9,11 @@ namespace benzin
     class RenderViewportTool : public ImGuiTool
     {
     public:
-        explicit RenderViewportTool(RenderResources& renderResources);
+        friend class FlyCameraController;
+
+        RenderViewportTool(RenderResources& renderResources, Camera& camera);
+
+        auto& GetFlyCameraController() { return m_FlyCameraController; }
 
         uint32_t GetWidth() const { return (uint32_t)m_ViewportSize.x; }
         uint32_t GetHeight() const { return (uint32_t)m_ViewportSize.y; }
@@ -26,6 +31,7 @@ namespace benzin
 
     private:
         RenderResources& m_RenderResources;
+        FlyCameraController m_FlyCameraController;
 
         uint32_t m_FinalTextureIndex = g_InvalidUnsigned<uint32_t>;
         

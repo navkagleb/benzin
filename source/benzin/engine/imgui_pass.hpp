@@ -29,6 +29,8 @@ namespace benzin
         bool SpawnImGuiCollapsingHeader(std::string_view name, bool isOpenByDefault = true) const;
 
     protected:
+        static inline const Window* ms_Window = nullptr;
+
         std::string_view m_Name;
         bool m_IsVisible = false;
     };
@@ -85,23 +87,18 @@ namespace benzin
     class ImGuiPass : public RenderPass
     {
     public:
-        ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureIndex, uint32_t gpuTimingIndex);
+        ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureIndex);
         ~ImGuiPass() override;
 
         bool IsDependentOnViewport() const override { return false; }
 
-        auto GetCpuRenderTime() const { return m_CpuRenderTime; }
-
-        void OnWindowResize(uint32_t width, uint32_t height) override;
+        void OnWindowResize() override;
         void OnRender() const override;
 
     private:
         ImGuiManager& m_ImGuiManager;
         
         uint32_t m_ImGuiTextureIndex;
-        uint32_t m_GpuTimingIndex;
-
-        mutable std::chrono::microseconds m_CpuRenderTime = std::chrono::microseconds::zero();
     };
 
 }

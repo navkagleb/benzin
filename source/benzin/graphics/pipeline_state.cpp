@@ -136,10 +136,11 @@ namespace benzin
 
     // ShaderInfo
 
-    ShaderInfo::ShaderInfo(ShaderType type, std::string_view fileName, std::string_view entryPoint)
+    ShaderInfo::ShaderInfo(ShaderType type, std::string_view fileName, std::string_view entryPoint, std::vector<std::string_view>&& defines)
         : m_Type{ type }
         , m_FileName{ fileName }
         , m_EntryPoint{ entryPoint }
+        , m_Defines{ std::move(defines) }
         , m_Hash{ 0 }
     {
         if (m_EntryPoint.empty() && type != ShaderType::Library)
@@ -150,6 +151,11 @@ namespace benzin
         m_Hash = HashCombine(m_Hash, +m_Type);
         m_Hash = HashCombine(m_Hash, m_FileName);
         m_Hash = HashCombine(m_Hash, m_EntryPoint);
+
+        for (auto define : m_Defines)
+        {
+            m_Hash = HashCombine(m_Hash, define);
+        }
     }
 
     // PipelineState
@@ -190,17 +196,19 @@ namespace benzin
 
     void PipelineState::StoreShaders(const GraphicsPipelineStateCreation& creation)
     {
-        m_ShaderCount = 2;
+        BenzinAssert(m_ShaderCount == 0);
 
-        m_Shaders[0] = ShaderInfo{ ShaderType::Vertex, creation.VsFileName, creation.VsEntryPoint };
-        m_Shaders[1] = ShaderInfo{ ShaderType::Pixel, creation.PsFileName, creation.PsEntryPoint };
+        auto& nonConstCreation = const_cast<GraphicsPipelineStateCreation&>(creation);
+        m_Shaders[m_ShaderCount++] = ShaderInfo{ ShaderType::Vertex, creation.VsFileName, creation.VsEntryPoint, std::move(nonConstCreation.VsDefines) };
+        m_Shaders[m_ShaderCount++] = ShaderInfo{ ShaderType::Pixel, creation.PsFileName, creation.PsEntryPoint, std::move(nonConstCreation.PsDefines) };
     }
 
     void PipelineState::StoreShaders(const ComputePipelineStateCreation& creation)
     {
-        m_ShaderCount = 1;
+        BenzinAssert(m_ShaderCount == 0);
 
-        m_Shaders[0] = ShaderInfo{ ShaderType::Compute, creation.CsFileName, creation.CsEntryPoint };
+        auto& nonConstCreation = const_cast<ComputePipelineStateCreation&>(creation);
+        m_Shaders[m_ShaderCount++] = ShaderInfo{ ShaderType::Compute, creation.CsFileName, creation.CsEntryPoint, std::move(nonConstCreation.CsDefines) };
     }
 
     void PipelineState::Compile(const GraphicsPipelineStateCreation& creation, bool isShaderCacheIgnored)

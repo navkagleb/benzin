@@ -8,23 +8,37 @@
 namespace benzin
 {
 
-    RenderViewportTool::RenderViewportTool(RenderResources& renderResources)
+    RenderViewportTool::RenderViewportTool(RenderResources& renderResources, Camera& camera)
         : ImGuiTool{ "RenderViewportTool", true }
         , m_RenderResources{ renderResources }
+        , m_FlyCameraController{ camera }
     {}
 
     void RenderViewportTool::OnEvent(Event& event)
     {
+        if (!m_IsViewportHovered)
+        {
+            return;
+        }
+
         const EventDispatcher dispatcher{ event };
-        dispatcher.ForceDispatch<MouseMovedEvent>([this] { return !m_IsViewportHovered; });
-        dispatcher.ForceDispatch<MouseScrolledEvent>([this] { return !m_IsViewportHovered; });
+
+        dispatcher.ForceDispatch<MouseMovedEvent>([this](const auto& event)
+        {
+            return m_FlyCameraController.OnMouseMoved(event);
+        });
+
+        dispatcher.ForceDispatch<MouseScrolledEvent>([this](const auto& event)
+        {
+            return m_FlyCameraController.OnMouseScrolled(event);
+        });
     }
 
     void RenderViewportTool::SpawnImGui()
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
 
-        if (ImGui::Begin(m_Name.data(), &m_IsVisible))
+        SpawnImGuiWindow([this]
         {
             UpdateImGuiDimensions();
 
@@ -42,8 +56,8 @@ namespace benzin
                     m_IsViewportHovered = ImGui::IsItemHovered();
                 }
             }
-        }
-        ImGui::End();
+        });
+
         ImGui::PopStyleVar();
     }
 
@@ -67,6 +81,8 @@ namespace benzin
 
         m_ViewportSize = viewportSize;
         m_IsViewportSizeRelevant = false;
+
+        m_FlyCameraController.OnRenderViewportResized(m_ViewportSize.x, m_ViewportSize.y);
     }
 
 }

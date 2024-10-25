@@ -112,7 +112,7 @@ namespace benzin
         }
         else
         {
-            if (ImGui::SliderAngle("VerticalFov", &perspectiveProjection->m_VerticalFov, 45.0f, 120.0f))
+            if (ImGui::SliderAngle("VerticalFov", &perspectiveProjection->m_VerticalFovInRadians, 45.0f, 120.0f))
             {
                 perspectiveProjection->UpdateViewToClipMatrix();
             }

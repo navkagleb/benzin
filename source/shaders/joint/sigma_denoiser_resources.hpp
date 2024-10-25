@@ -5,40 +5,61 @@
 namespace joint
 {
 
-    enum SigmaClassifyTilesRs : uint32_t
+    static const uint g_SigmaTileSize = 16;
+
+    enum class Rc_SigmaClassifyTiles : uint32_t
     {
-        SigmaClassifyTilesRc_ViewDepthTex,
-        SigmaClassifyTilesRc_PenumbraTex,
+        ViewDepthTex,
+        PenumbraTex,
 
-        SigmaClassifyTilesRc_OutTilesTex,
+        OutTilesTex,
     };
+    BenzinEnableUnaryPlusForEnum(Rc_SigmaClassifyTiles);
 
-    enum SigmaSmoothTilesRc : uint32_t
+    enum class Rc_SigmaSmoothTiles : uint32_t
     {
-        SigmaSmoothTilesRc_TilesTex,
+        TilesTex,
 
-        SigmaSmoothTilesRc_OutSmoothTilesTex,
+        OutSmoothTilesTex,
     };
+    BenzinEnableUnaryPlusForEnum(Rc_SigmaSmoothTiles);
 
-    enum SigmaBlurRc : uint32_t
+    enum Rc_SigmaBlur : uint32_t
     {
-        SigmaBlurRc_DepthTex, // TODO: ViewPos can be reconstructed from ViewDepthTex
+        WorldNormalTex,
+        ViewDepthTex,
+        PenumbraTex,
+        SmoothTilesTex,
+        ShadowTex,
+        HistoryTex, // FIRST_BLUR_PASS
 
-        SigmaBlurRc_WorldNormalTex,
-        SigmaBlurRc_ViewDepthTex,
-        SigmaBlurRc_AlbedoAndRoughnessTex,
-        SigmaBlurRc_PenumbraTex,
-        SigmaBlurRc_SmoothTilesTex,
-        SigmaBlurRc_HistoryTex,
-
-        SigmaBlurRc_OutDenoisedPenumbraTex,
-        SigmaBlurRc_OutHistoryTex,
+        OutHistoryTex, // FIRST_BLUR_PASS
+        OutPenumbraTex,
+        OutShadowTex,
     };
+    BenzinEnableUnaryPlusForEnum(Rc_SigmaBlur);
+
+    enum class Rc_SigmaTemporalStabilization : uint32_t
+    {
+        ViewDepthTex,
+        MvTex,
+        PenumbraTex,
+        ShadowTex,
+        HistoryTex,
+        SmoothTilesTex,
+
+        OutShadowTex,
+    };
+    BenzinEnableUnaryPlusForEnum(Rc_SigmaTemporalStabilization)
 
     struct SigmaConstants
     {
         uint2 TileCount;
         float StabilizationStrength;
+        float3 WorldSunDirection;
+        float4 BlurRotator;
+        float4 PostBlurRotator;
+        bool IsBicubicSamplingUsedForHistory;
     };
 
 }

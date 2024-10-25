@@ -5,6 +5,7 @@
 #include "fullscreen_helper.hlsli"
 #include "gbuffer.hlsli"
 #include "pbr.hlsli"
+#include "sigma_denoiser/sigma_public.hlsli"
 
 struct DirectionalLight
 {
@@ -23,7 +24,7 @@ float3 GetLitColorForDirectionalLight(DirectionalLight directionalLight, PbrMate
     PbrLight light;
     light.Color = directionalLight.Color;
     light.Intensity = directionalLight.Intensity;
-    light.Direction = normalize(-directionalLight.WorldDirection);
+    light.Direction = directionalLight.WorldDirection; // Assume that directionalLight.WorldDirection is directed towards the sun
 
     return GetPbrLitColor(light, material, worldViewDirection, worldNormal);
 }
@@ -46,33 +47,34 @@ float3 GetLitColorForPointLight(joint::PointLight pointLight, PbrMaterial materi
     return attenuation * pbr;
 }
 
+BenzinDeclareRootResource(Texture2D<float4>, g_AlbedoAndRoughnessTex, joint::DeferredLightingPassRc_AlbedoAndRoughnessTex);
+BenzinDeclareRootResource(Texture2D<float4>, g_EmissiveAndMetallicTex, joint::DeferredLightingPassRc_EmissiveAndMetallicTex);
+BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormalTex, joint::DeferredLightingPassRc_WorldNormalTex);
+BenzinDeclareRootResource(Texture2D<float2>, g_VelocityTex, joint::DeferredLightingPassRc_VelocityTex);
+BenzinDeclareRootResource(Texture2D<float>, g_DepthTex, joint::DeferredLightingPassRc_DepthStencilTex);
+BenzinDeclareRootResource(StructuredBuffer<joint::PointLight>, g_PointLightBuf, joint::DeferredLightingPassRc_PointLightBuf);
+BenzinDeclareRootResource(Texture2D<float>, g_SigmaShadowTex, joint::DeferredLightingPassRc_SigmaShadowTex);
+
 UnpackedGBuffer FetchGBuffer(float2 uv)
 {
-    Texture2D<float4> albedoAndRoughnessTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_AlbedoAndRoughnessTexture)];
-    Texture2D<float4> emissiveAndMetallicTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_EmissiveAndMetallicTexture)];
-    Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_WorldNormalTexture)];
-    Texture2D<float2> velocityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_VelocityBuffer)];
-
     PackedGBuffer packedGBuffer;
-    packedGBuffer.Color0 = albedoAndRoughnessTexture.SampleLevel(g_PointWrapSampler, uv, 0);
-    packedGBuffer.Color1 = emissiveAndMetallicTexture.SampleLevel(g_PointWrapSampler, uv, 0);
-    packedGBuffer.Color2 = worldNormalTexture.SampleLevel(g_PointWrapSampler, uv, 0);
-    packedGBuffer.Color3 = float4(velocityBuffer.SampleLevel(g_PointWrapSampler, uv, 0), 0.0f, 0.0f);
+    packedGBuffer.Color0 = g_AlbedoAndRoughnessTex.SampleLevel(g_PointClampSampler, uv, 0.0);
+    packedGBuffer.Color1 = g_EmissiveAndMetallicTex.SampleLevel(g_PointClampSampler, uv, 0.0);
+    packedGBuffer.Color2 = g_WorldNormalTex.SampleLevel(g_PointClampSampler, uv, 0.0);
+    packedGBuffer.Color3 = float4(g_VelocityTex.SampleLevel(g_PointClampSampler, uv, 0.0), 0.0, 0.0);
 
     return UnpackGBuffer(packedGBuffer);
 }
 
 float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 {
-    const float depth = FetchDepth(input.Uv, GetRootConstant(joint::DeferredLightingPassRc_DepthStencilTexture));
+    const float depth = g_DepthTex.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
     if (depth == 1.0)
     {
         discard;
     }
 
     const UnpackedGBuffer gbuffer = FetchGBuffer(input.Uv);
-
-    StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_PointLightBuffer)];
 
     const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
 
@@ -85,9 +87,9 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
     material.Metallic = gbuffer.Metallic;
     material.F0 = GetF0(gbuffer.Albedo.rgb, gbuffer.Metallic);
 
-    const float3 ambientColor = 0.3f * gbuffer.Albedo.rgb;
+    const float3 ambientColor = 0.3 * gbuffer.Albedo.rgb;
 
-    float3 directColor = 0.0f;
+    float3 directColor = 0.0;
 
     {
         DirectionalLight sunLight;
@@ -101,13 +103,15 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
     {
         for (uint i = 0; i < g_PassConstants.ActivePointLightCount; ++i)
         {
-            directColor += GetLitColorForPointLight(pointLightBuffer[i], material, worldPosition, worldViewDirection, gbuffer.WorldNormal);
+            directColor += GetLitColorForPointLight(g_PointLightBuf[i], material, worldPosition, worldViewDirection, gbuffer.WorldNormal);
         }
     }
-    
-    Texture2D<float> shadowVisiblityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::DeferredLightingPassRc_ShadowVisibilityBuffer)];
-    const float shadowVisiblity = shadowVisiblityBuffer.Sample(g_LinearWrapSampler, input.Uv);
 
-    const float3 finalLitColor = ambientColor + gbuffer.Emissive + directColor;
+    float shadowFactor = g_SigmaShadowTex.Sample(g_PointClampSampler, input.Uv);
+    shadowFactor = sigma::UnpackShadow(shadowFactor);
+    // shadowFactor = saturate(shadowFactor);
+    // shadowFactor = 1.0;
+
+    const float3 finalLitColor = ambientColor + gbuffer.Emissive + directColor * shadowFactor;
     return float4(saturate(finalLitColor), 1.0f);
 }

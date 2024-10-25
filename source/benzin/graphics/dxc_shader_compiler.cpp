@@ -3,6 +3,7 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
+#include "benzin/graphics/pipeline_state.hpp"
 
 namespace benzin
 {
@@ -71,25 +72,25 @@ namespace benzin
                 compileArgs.push_back(args.EntryPoint.c_str());
             }
 
-#if 0
             // Defines
             for (const auto& define : args.Defines)
             {
                 compileArgs.push_back(L"-D");
                 compileArgs.push_back(define.c_str());
             }
-#endif
         }
+
+        compileArgs.push_back(L"-HV 2021");
 
         return compileArgs;
     }
 
     // ShaderPaths
 
-    ShaderPaths::ShaderPaths(size_t hash, std::string_view fileName)
-        : SourceFilePath{ GfxConfig::s_ShaderSourceDir / fileName }
-        , DxilFilePath{ GfxConfig::s_ShaderDxilDir / std::format("{}.bin", hash) }
-        , PdbFilePath{ GfxConfig::s_ShaderPdbDir / std::format("{}.pdb", hash) }
+    ShaderPaths::ShaderPaths(const ShaderInfo& shader)
+        : SourceFilePath{ GfxConfig::s_ShaderSourceDir / shader.GetFileName() }
+        , DxilFilePath{ GfxConfig::s_ShaderDxilDir / std::format("{}.bin", shader.GetHash()) }
+        , PdbFilePath{ GfxConfig::s_ShaderPdbDir / std::format("{}.pdb", shader.GetHash()) }
     {
         BenzinEnsure(std::filesystem::exists(SourceFilePath));
 
@@ -100,9 +101,10 @@ namespace benzin
 
     // ShaderArgs
 
-    ShaderArgs::ShaderArgs(ShaderType shaderType, std::string_view entryPoint)
-        : Target{ g_ShaderTargets[+shaderType] }
-        , EntryPoint{ ToWideString(entryPoint) }
+    ShaderArgs::ShaderArgs(const ShaderInfo& shader)
+        : Target{ g_ShaderTargets[+shader.GetType()]}
+        , EntryPoint{ ToWideString(shader.GetEntryPoint()) }
+        , Defines{ std::from_range, shader.GetDefines() | std::views::transform(ToWideString) }
     {}
 
     // DxcShaderCompiler::IncludeHandler

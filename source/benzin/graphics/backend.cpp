@@ -6,6 +6,7 @@
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/adl_wrapper.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
+#include "benzin/graphics/device.hpp"
 #include "benzin/graphics/nvapi_wrapper.hpp"
 #include "benzin/graphics/pix_capturer.hpp"
 
@@ -32,18 +33,19 @@ namespace benzin
         NvApiWrapper::Initialize();
 
         EnableD3D12DebugLayer();
+        EnableDred(); // TODO: Check if temp device is supported
 
         CreateDxgiFactory();
         GatherDxgiAdapters();
 
         const auto& mainAdapterInfo = GetMainAdapterInfo();
-        BenzinTrace("----------------------------------------------");
+        BenzinTrace(Logger::s_LineSeparator);
         BenzinTrace("Main Adapter:");
         BenzinTrace("{}", m_AdaptersInfo[m_MainAdapterIndex].Name);
         BenzinTrace("DedicatedVideoMemory: {:.2f} mb, {:.2f} gb", mainAdapterInfo.TotalDedicatedVram.GetMb(), mainAdapterInfo.TotalDedicatedVram.GetGb());
         BenzinTrace("DedicatedSystemMemory: {:.2f} mb, {:.2f} gb", mainAdapterInfo.TotalDedicatedRam.GetMb(), mainAdapterInfo.TotalDedicatedRam.GetGb());
         BenzinTrace("SharedSystemMemory: {:.2f} mb, {:.2f} gb", mainAdapterInfo.TotalSharedRam.GetMb(), mainAdapterInfo.TotalSharedRam.GetGb());
-        BenzinTrace("----------------------------------------------");
+        BenzinTrace(Logger::s_LineSeparator);
     }
 
     Backend::~Backend()

@@ -1,6 +1,14 @@
 #pragma once
 
 #ifdef __cplusplus
+
+#define JointDefineEnum(EnumName, ...) \
+    enum class EnumName : uint \
+    { \
+        __VA_ARGS__ \
+    }; \
+    BenzinEnableUnaryPlusForEnum(EnumName)
+
 namespace joint
 {
 
@@ -22,6 +30,13 @@ namespace joint
     static_assert(sizeof(float3) == sizeof(float) * 3);
     static_assert(sizeof(float4) == sizeof(float) * 4);
     static_assert(sizeof(float4x4) == sizeof(float) * 4 * 4);
-
 }
+
+#else
+
+#undef BenzinEnableUnaryPlusForEnum
+#define BenzinEnableUnaryPlusForEnum(EnumT)
+
+#define JointDefineEnum(EnumName, ...) namespace EnumName { enum struct Enum : int { __VA_ARGS__ }; }
+
 #endif

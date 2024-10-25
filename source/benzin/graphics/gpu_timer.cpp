@@ -6,9 +6,6 @@
 #include <pix3.h>
 #pragma comment(lib, "WinPixEventRuntime.lib")
 
-// #TODO: Take a PIX capture:
-// Ref: https://devblogs.microsoft.com/pix/taking-a-capture/
-
 #include "benzin/core/asserter.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/command_queue.hpp"
@@ -21,13 +18,15 @@ namespace benzin
 
     // GpuTimer
 
+    const uint32_t GpuTimer::s_MaxGpuTimerCount = 32;
+
     GpuTimer::GpuTimer(Device& device, uint32_t timerCount)
         : m_InverseFrequency{ 1.0f / device.GetGraphicsCommandQueue().GetTimestampFrequency() }
         , m_ReadbackLatency{ CommandLineArgs::GetU32("FrameInFlightCount") + 1}
         , m_ProfiledCommandList{ device.GetGraphicsCommandQueue().GetCommandList() }
         , m_ReadbackBuffer{ device }
     {
-        BenzinAssert(timerCount <= 32);
+        BenzinAssert(timerCount <= s_MaxGpuTimerCount);
 
         m_Timestamps.resize(timerCount * 2);
 
@@ -149,6 +148,21 @@ namespace benzin
     void GpuEventTracker::EndEvent(const GraphicsCommandList& commandList)
     {
         PIXEndEvent(commandList.GetD3D12GraphicsCommandList());
+    }
+
+    // ScopedGpuGrabTimer
+
+    ScopedGpuGrabTimer::ScopedGpuGrabTimer(GpuTimer& gpuTimer, uint32_t timerIndex)
+        : m_GpuTimer{ gpuTimer }
+        , m_TimerIndex{ timerIndex }
+    {
+        BenzinAssert(m_TimerIndex < GpuTimer::s_MaxGpuTimerCount);
+        m_GpuTimer.BeginProfile(m_TimerIndex);
+    }
+
+    ScopedGpuGrabTimer::~ScopedGpuGrabTimer()
+    {
+        m_GpuTimer.EndProfile(m_TimerIndex);
     }
 
 } // namespace benzin

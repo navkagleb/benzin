@@ -24,8 +24,12 @@ namespace benzin
         static bool IsMouseButtonPressed(MouseButton mouseButton);
         static bool IsKeyPressed(KeyCode keyCode);
 
+        [[nodiscard]] static DirectX::XMINT2 LockCursor(const Window& window);
+        static void UnlockCursor();
+        static void SetCursorPositionIfNeeded();
+
     private:
-        DirectX::XMINT2 GetMousePosition(const Window& window);
+        static DirectX::XMINT2 GetMousePosition(const Window& window);
     };
 
-} // namespace benzin
+}

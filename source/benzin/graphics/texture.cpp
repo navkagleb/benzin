@@ -20,6 +20,12 @@ namespace benzin
         BenzinAssert(texture.GetD3D12Resource());
         BenzinAssert(outTextureSrv.DepthRange.Count < texture.GetDepth());
 
+        // Set default format for depth stencil if format is not set
+        if (texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowDepthStencil) && outTextureSrv.Format == GraphicsFormat::Unknown)
+        {
+            outTextureSrv.Format = GraphicsFormat::D24Unorm_X8Typeless;
+        }
+
         outTextureSrv.Format = outTextureSrv.Format != GraphicsFormat::Unknown ? outTextureSrv.Format : texture.GetFormat();
         outTextureSrv.IsCubeMap = outTextureSrv.IsCubeMap ? true : texture.IsCubeMap();
         outTextureSrv.DepthRange.Count = outTextureSrv.DepthRange.Count != 0 ? outTextureSrv.DepthRange.Count : texture.GetDepth();
@@ -48,6 +54,8 @@ namespace benzin
 
     static void ValidateTextureDsv(const Texture& texture)
     {
+        BenzinUnused(texture);
+
         // A stopgap for future implementation
 
         BenzinAssert(texture.GetD3D12Resource());

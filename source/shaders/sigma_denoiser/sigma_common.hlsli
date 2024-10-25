@@ -1,7 +1,13 @@
 #pragma once
 
+#ifdef SIGMA_USE_BORDER_2
+    #define SIGMA_BORDER 4
+#else
+    #define SIGMA_BORDER 1
+#endif
+
 #include "common.hlsli"
-#include "sigma_denoiser/sigma_frontend.hlsli"
+#include "sigma_denoiser/sigma_public.hlsli"
 
 namespace sigma
 {
@@ -16,6 +22,58 @@ namespace sigma
     static const float g_PlaneDistanceSensitivity = 0.005;
 
     static const float g_PenumbraWeightScale = 10.0;
+    static const uint g_PoissonSampleCount = 8;
+
+    // Ref: https://www.desmos.com/calculator/abaqyvswem
+    static const float3 g_PoissonSamples[g_PoissonSampleCount] =
+    {
+        float3(-1.00, 0.00, 1.0),
+        float3(0.00, 1.00, 1.0),
+        float3(1.00, 0.00, 1.0),
+        float3(0.00, -1.00, 1.0),
+        float3(-0.25 * sqrt(2.0), 0.25 * sqrt(2.0), 0.5),
+        float3(0.25 * sqrt(2.0), 0.25 * sqrt(2.0), 0.5),
+        float3(0.25 * sqrt(2.0), -0.25 * sqrt(2.0), 0.5),
+        float3(-0.25 * sqrt(2.0), -0.25 * sqrt(2.0), 0.5),
+    };
+    
+    float2 RotateVectorByRotator(float2 vector2, float4 rotator)
+    {
+        // Rotator - rotation matrix 2x2
+        return vector2.x * rotator.xz + vector2.y * rotator.yw;
+    }
+    
+    float2 GetKernelSampleUv(
+        float4x4 viewToClip,
+        float2 offset,
+        float3 viewPos,
+        float3 kernelTangent,
+        float3 kernelBitangent,
+        float4 rotator = float4(1, 0, 0, 1)
+    )
+    {
+        // We can't rotate T and B instead, because T is skewed
+        offset.xy = RotateVectorByRotator(offset, rotator);
+
+        const float3 transformedViewPos = viewPos + kernelTangent * offset.x + kernelBitangent * offset.y;
+        
+        float3 clipPos = mul(float4(transformedViewPos, 1.0), viewToClip).xyw;
+        clipPos.xy /= clipPos.z;
+        clipPos.y = -clipPos.y;
+
+        const float2 uv = clipPos.xy * 0.5 + 0.5;
+        return uv;
+    }
+
+    float LinearStep(float a, float b, float x)
+    {
+        return saturate((x - a) / (b - a));
+    }
+    
+    float IsInScreenNearest(float2 uv)
+    {
+        return float(all(uv >= 0.0) && all(uv < 1.0));
+    }
 
     // TODO: move to common.hlsli
     uint DivideUp(uint value, uint divisor)
@@ -42,48 +100,14 @@ namespace sigma
         return float3x3(tangent, bitangent, normal);
     }
 
-    struct LdsDistributor
-    {
-        uint2 ThreadPos;
-        uint2 PixelPos;
-        uint FlatThreadIndex;
-
-        uint BorderSize;
-
-        uint2 GroupSize;
-        uint2 BufferSize;
-
-        uint2 Dimension;
-
-        template <typename T>
-        void Preload(T preloadType)
-        {
-            const int2 groupBasePos = PixelPos - ThreadPos - BorderSize; // Is this equal to SV_GroupID?
-            const uint stageCount = DivideUp(BufferSize.x * BufferSize.y, GroupSize.x * GroupSize.y);
-    
-            [unroll]
-            for (uint stageIndex = 0; stageIndex < stageCount; ++stageIndex)
-            {
-                const uint flatTileIndex = FlatThreadIndex + stageIndex * GroupSize.x * GroupSize.y;
-                const uint2 localTilePos = uint2(flatTileIndex % BufferSize.x, flatTileIndex / BufferSize.y);
-
-                if (stageIndex == 0 || flatTileIndex < BufferSize.x * BufferSize.y)
-                {
-                    const uint2 globalTilePos = clamp(groupBasePos + localTilePos, 0, Dimension - 1);
-                    preloadType.Preload(localTilePos, globalTilePos);
-                }
-            }
-        }
-    };
-
     bool IsLit(float penumbra)
     {
         return penumbra >= sigma::g_Fp16Max;
     }
 
-    float PixelRadiusToWorldAtDepth(float pixelRadius, float viewDepth)
+    float PixelRadiusToWorldAtDepth(float pixelToWorldScale, float pixelRadius, float viewDepth)
     {
-        return pixelRadius * g_FrameConstants.PixelToWorldScale * viewDepth;
+        return pixelRadius * pixelToWorldScale * viewDepth;
     }
 
     float GetFrustumSizeAtDepth(float pixelToWorldScale, float minRenderSize, float viewDepth)
@@ -93,9 +117,9 @@ namespace sigma
         return minRenderSize * pixelToWorldScale * viewDepth;
     }
 
-    float GetKernelRadiusInPixels(float hitDistance, float unprojectDepth, float scale = 1.0)
+    float GetKernelRadiusInPixels(float hitDistance, float pixelToWorldScale, float scale = 1.0)
     {
-        const float unclampedRadius = hitDistance / unprojectDepth;
+        const float unclampedRadius = hitDistance / pixelToWorldScale;
         const float minRadius = min(unclampedRadius, SIGMA_BORDER);
 
         return clamp(unclampedRadius * scale, minRadius, g_MaxPixelRadius);
@@ -174,6 +198,11 @@ namespace sigma
         const float horizontalLerp1 = lerp(c10, c11, t.x);
 
         return lerp(horizontalLerp0, horizontalLerp1, t.y);
+    }
+
+    float2 RotateVector(float4 rotator, float2 vector2)
+    {
+        return vector2.x * rotator.xz + vector2.y * rotator.yw;
     }
 
 }

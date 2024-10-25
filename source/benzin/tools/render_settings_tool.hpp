@@ -11,11 +11,12 @@ namespace benzin
         RenderSettingsTool(RenderSettings& renderSettings);
 
         template <typename T>
-        void RegisterSectionImGuiSpawnCallback(std::string_view name, const std::function<void(T&)>& imGuiSpawnCallback)
+        void RegisterSectionImGuiSpawnCallback(std::string_view name, bool isOpenByDefault, const std::function<void(T&)>& imGuiSpawnCallback)
         {
             m_SectionInfos.push_back(SectionInfo
             {
                 .TitleName = name,
+                .IsOpenByDefault = isOpenByDefault,
                 .ImGuiSpawnCallback = [this, imGuiSpawnCallback]
                 {
                     imGuiSpawnCallback(m_RenderSettings.GetSection<T>());
@@ -30,6 +31,7 @@ namespace benzin
         struct SectionInfo
         {
             std::string_view TitleName;
+            bool IsOpenByDefault = false;
             std::function<void()> ImGuiSpawnCallback;
         };
 

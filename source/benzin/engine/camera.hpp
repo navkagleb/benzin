@@ -7,6 +7,8 @@
 namespace benzin
 {
 
+    class RenderViewportTool;
+
     class Projection
     {
     public:
@@ -36,11 +38,11 @@ namespace benzin
         friend class FlyCameraTool;
 
         PerspectiveProjection() = default;
-        PerspectiveProjection(float vericalFov, float aspectRatio, float nearPlane, float farPlane);
+        PerspectiveProjection(float verticalFovInRadians, float aspectRatio, float nearPlane, float farPlane);
 
     public:
-        float GetVerticalFov() const { return m_VerticalFov; }
-        void SetVerticalFov(float verticalFov);
+        float GetVerticalFovInRadians() const { return m_VerticalFovInRadians; }
+        void SetVerticalFov(float verticalFovInRadians);
 
         float GetAspectRatio() const { return m_AspectRatio; }
         void SetAspectRatio(float aspectRatio);
@@ -51,7 +53,7 @@ namespace benzin
         DirectX::XMMATRIX CreateViewToClipMatrix() const override;
 
     private:
-        float m_VerticalFov = DirectX::XMConvertToRadians(60.0f);
+        float m_VerticalFovInRadians = DirectX::XMConvertToRadians(60.0f);
         float m_AspectRatio = 0.0f;
         float m_NearPlane = 0.1f;
         float m_FarPlane = 1000.0f;
@@ -135,6 +137,7 @@ namespace benzin
     {
     public:
         friend class FlyCameraTool;
+        friend class RenderViewportTool;
 
         explicit FlyCameraController(Camera& camera);
 
@@ -142,7 +145,6 @@ namespace benzin
         void SetCameraTranslationSpeed(float speed) { m_CameraTranslationSpeed = speed; }
         void SetCameraPitchYaw(float pitch, float yaw);
 
-        void OnEvent(Event& event);
         void OnUpdate(std::chrono::microseconds dt);
 
         bool OnRenderViewportResized(uint32_t width, uint32_t height);

@@ -4,22 +4,20 @@
 #include "unified_root_parameters.hlsli"
 
 #include "sigma_denoiser/sigma_common.hlsli"
+#include "sigma_denoiser/lds_preloader.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float4>, g_TilesTex, joint::SigmaSmoothTilesRc_TilesTex);
-BenzinDeclareRootResource(RWTexture2D<float2>, g_OutSmoothTilesTex, joint::SigmaSmoothTilesRc_OutSmoothTilesTex);
+BenzinDeclareRootResource(Texture2D<float4>, g_TilesTex, joint::Rc_SigmaSmoothTiles::TilesTex);
+BenzinDeclareRootResource(RWTexture2D<float2>, g_OutSmoothTilesTex, joint::Rc_SigmaSmoothTiles::OutSmoothTilesTex);
 
 static const uint g_GroupSize = 16;
 static const uint g_BufferSize = g_GroupSize + SIGMA_BORDER * 2;
 
 groupshared float g_Tiles[g_BufferSize][g_BufferSize];
 
-struct SmoothTilesPreload
+void Preload(uint2 localPos, uint2 globalPos)
 {
-    void Preload(uint2 localPos, uint2 globalPos)
-    {
-        g_Tiles[localPos.y][localPos.x] = g_TilesTex[globalPos].x;
-    }
-};
+    g_Tiles[localPos.y][localPos.x] = g_TilesTex[globalPos].x;
+}
 
 struct CsInput
 {
@@ -32,18 +30,16 @@ struct CsInput
 void CsMain(CsInput input)
 {
     {
-        sigma::LdsDistributor distributor;
-        distributor.ThreadPos = input.ThreadPos;
-        distributor.PixelPos = input.PixelPos;
-        distributor.FlatThreadIndex = input.FlatThreadIndex;
-        distributor.BorderSize = SIGMA_BORDER;
-        distributor.GroupSize = g_GroupSize;
-        distributor.BufferSize = g_BufferSize;
-        distributor.Dimension = g_PassConstants.TileCount;
+        sigma::LdsPreloadCreation creation;
+        creation.ThreadPos = input.ThreadPos;
+        creation.PixelPos = input.PixelPos;
+        creation.FlatThreadIndex = input.FlatThreadIndex;
+        creation.GroupSize = g_GroupSize;
+        creation.BufferSize = g_BufferSize;
+        creation.Dimension = g_PassConstants.TileCount;
 
-        SmoothTilesPreload preload;
-        distributor.Preload(preload);
-
+        SigmaRunLdsPreloader(creation, Preload);
+        
         GroupMemoryBarrierWithGroupSync();
     }
 

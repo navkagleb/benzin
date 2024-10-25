@@ -1,11 +1,10 @@
-#define RenderPassConstantsType joint::RtShadowPassConstants
+#define RenderPassConstantsType joint::RayTracingShadowsConstants
 #include "unified_root_parameters.hlsli"
 
 #include "common.hlsli"
 #include "gbuffer.hlsli"
-#include "random.hlsli"
 #include "rt_common.hlsli"
-#include "sigma_denoiser/sigma_frontend.hlsli"
+#include "sigma_denoiser/sigma_public.hlsli"
 
 float3x3 AngleAxis3x3(float angle, float3 axis)
 {
@@ -56,39 +55,23 @@ static const uint g_HitGroupIndex = 0;
 static const uint g_HitGroupStride = 1;
 static const uint g_MissShaderIndex = 0;
 
-static const float3 g_UpDirection = float3(0.0, 1.0f, 0.0f);
-
-float GetLightConeAngle(float3 worldPosition, joint::PointLight pointLight)
+float GetPseudoRandomFloat(float2 uv)
 {
-    const float3 toLightDirection = normalize(pointLight.WorldPosition - worldPosition);
-
-    float3 perpendicularToLightDirection = cross(toLightDirection, g_UpDirection);
-    if (all(perpendicularToLightDirection == 0.0f))
-    {
-        perpendicularToLightDirection.x = 1.0f;
-    }
-
-    const float3 lightEdgePoint = pointLight.WorldPosition + perpendicularToLightDirection * pointLight.GeometryRadius;
-    const float3 toLightEdgeDirection = normalize(lightEdgePoint - worldPosition);
-
-    const float coneAngle = acos(dot(toLightDirection, toLightEdgeDirection)) * 2.0f;
-    return coneAngle;
+    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
-float3 GetLightConeSample(float3 toLightDirection, float coneAngle, float2 uvSeed)
+float3 GetLightConeSample(float3 toLightDirection, float coneAngleInRandians)
 {
-    uint seed = 123;
-
-    float cosAngle = cos(coneAngle);
+    float cosAngle = cos(coneAngleInRandians);
 
     // Generate points on the spherical cap around the north pole [1].
     // [1] See https://math.stackexchange.com/a/205589/81266
-    float z = GetRandomFloatUV(uvSeed) * (1.0f - cosAngle) + cosAngle;
-    float phi = GetRandomFloatUV(uvSeed) * g_TwoPi;
+    float z = GetPseudoRandomFloat(GetRayUv() * g_FrameConstants.ElapsedTimeInSec) * (1.0f - cosAngle) + cosAngle;
+    float phi = GetPseudoRandomFloat(GetRayUv() * g_FrameConstants.ElapsedTimeInSec) * g_TwoPi;
 
-    float x = sqrt(1.0f - z * z) * cos(phi);
-    float y = sqrt(1.0f - z * z) * sin(phi);
-    float3 north = float3(0.f, 0.f, 1.f);
+    float x = sqrt(1.0 - z * z) * cos(phi);
+    float y = sqrt(1.0 - z * z) * sin(phi);
+    float3 north = float3(0.0, 0.0, 1.0);
 
     // Find the rotation axis `u` and rotation angle `rot` [1]
     float3 axis = normalize(cross(north, normalize(toLightDirection)));
@@ -100,22 +83,19 @@ float3 GetLightConeSample(float3 toLightDirection, float coneAngle, float2 uvSee
     return mul(R, float3(x, y, z));
 }
 
-static const float g_THitOnMiss = 0.0;
-
-joint::ShadowRayPayload TraceShadowRay(float3 worldPosition, float3 worldNormal, joint::PointLight pointLight, float2 uvSeed, out float outDistanceToLight)
+void TraceSunShadowRay(
+    float3 worldPosition,
+    float3 worldNormal,
+    out float outDistanceToOccluder
+)
 {
-    float3 toLightDirection = pointLight.WorldPosition - worldPosition;
-    float distanceToLight = length(toLightDirection);
-    toLightDirection /= distanceToLight;
-
-    const float coneAngle = GetLightConeAngle(worldPosition, pointLight);
-    const float3 coneDirection = GetLightConeSample(toLightDirection, coneAngle, uvSeed);
+    const float coneAngleInRadians = max(g_PassConstants.SunAngularRadiusInRadians, g_PassConstants.PixelAngularRadiusInRadians) * 2.0;
 
     RayDesc rayDesc;
     rayDesc.Origin = OffsetRayPosition(worldPosition, worldNormal);
-    rayDesc.Direction = coneDirection;
-    rayDesc.TMin = 0.0;
-    rayDesc.TMax = distanceToLight;
+    rayDesc.Direction = GetLightConeSample(g_PassConstants.SunDirection, coneAngleInRadians);
+    rayDesc.TMin = 0.01;
+    rayDesc.TMax = sigma::g_Fp16Max;
 
     uint rayFlags = RAY_FLAG_NONE;
     // rayFlags |= RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
@@ -137,46 +117,39 @@ joint::ShadowRayPayload TraceShadowRay(float3 worldPosition, float3 worldNormal,
         payload
     );
 
-    outDistanceToLight = distanceToLight;
-    return payload;
+    outDistanceToOccluder = payload.THit;
 }
+
+BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormalTex, joint::RayTracingShadowsRc_WorldNormalTex);
+BenzinDeclareRootResource(Texture2D<float>, g_DepthTex, joint::RayTracingShadowsRc_DepthTex);
+BenzinDeclareRootResource(RWTexture2D<float>, g_OutNoisyPenumbraTex, joint::RayTracingShadowsRc_OutNoisyPenumbraTex);
 
 [shader("raygeneration")]
 void RayGen()
 {
-    Texture2D<float4> worldNormalTexture = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_GBufferWorldNormalTexture)];
-    Texture2D<float> depthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_GBufferDepthTexture)];
-    StructuredBuffer<joint::PointLight> pointLightBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_PointLightBuffer)];
-
-    RWTexture2D<float> visibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::RtShadowRc_VisiblityBuffer)];
-
-    if (!g_FrameConstants.IsRtShadowsEnabled)
+    if (!g_PassConstants.IsEnabled)
     {
-        visibilityBuffer[DispatchRaysIndex().xy] = 1.0;
+        g_OutNoisyPenumbraTex[DispatchRaysIndex().xy] = sigma::PackPenumbra(sigma::g_Fp16Max, g_PassConstants.TanSunAngularRadius);
         return;
     }
 
-    const float3 worldNormal = worldNormalTexture[DispatchRaysIndex().xy].xyz;
-    const float depth = depthBuffer[DispatchRaysIndex().xy];
-
-    const joint::PointLight pointLight = pointLightBuffer[0];
+    const float3 worldNormal = g_WorldNormalTex[DispatchRaysIndex().xy].xyz;
+    const float depth = g_DepthTex[DispatchRaysIndex().xy];
 
     const float2 uv = GetRayUv();
     const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
     const float3 worldPosition = ReconstructWorldPositionFromDepth(uv, depth, cameraConstants.InvViewToClip, cameraConstants.InvWorldToView).xyz;
 
-    const float2 uvSeed = (uv + g_FrameConstants.FrameTimeInSec * 548.0) * g_FrameConstants.FrameTimeInSec * 854.0 + g_FrameConstants.FrameTimeInSec * 123.0;
-    
-    float distanceToLight = 0.0;
-    const joint::ShadowRayPayload payload = TraceShadowRay(worldPosition, worldNormal, pointLight, uvSeed, distanceToLight);
+    float distanceToOccluder;
+    TraceSunShadowRay(worldPosition, worldNormal, distanceToOccluder);
 
     // float distanceToOccluder:
     // - distance to occluder, must follow the rules:
     //     - NoL <= 0         - 0 ( it's very important )
     //     - NoL > 0 ( hit )  - hit distance
     //     - NoL > 0 ( miss ) - >= NRD_FP16_MAX
-    const float packedPenumbra = sigma::PackPenumbra(payload.THit, distanceToLight, pointLight.GeometryRadius);
-    visibilityBuffer[DispatchRaysIndex().xy] = packedPenumbra;
+    const float packedPenumbra = sigma::PackPenumbra(distanceToOccluder, g_PassConstants.TanSunAngularRadius);
+    g_OutNoisyPenumbraTex[DispatchRaysIndex().xy] = packedPenumbra;
 }
 
 [shader("closesthit")]

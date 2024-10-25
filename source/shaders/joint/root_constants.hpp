@@ -15,12 +15,12 @@ namespace joint
         GeometryPassRc_Count,
     };
 
-    enum RtShadowRc : uint32_t
+    enum RayTracingShadowsRc : uint32_t
     {
-        RtShadowRc_GBufferWorldNormalTexture,
-        RtShadowRc_GBufferDepthTexture,
-        RtShadowRc_PointLightBuffer,
-        RtShadowRc_VisiblityBuffer,
+        RayTracingShadowsRc_WorldNormalTex,
+        RayTracingShadowsRc_DepthTex,
+
+        RayTracingShadowsRc_OutNoisyPenumbraTex,
     };
 
     enum DenoiserTemporalAccumulationRc : uint32_t
@@ -67,13 +67,13 @@ namespace joint
 
     enum DeferredLightingPassRc : uint32_t
     {
-        DeferredLightingPassRc_AlbedoAndRoughnessTexture,
-        DeferredLightingPassRc_EmissiveAndMetallicTexture,
-        DeferredLightingPassRc_WorldNormalTexture,
-        DeferredLightingPassRc_VelocityBuffer,
-        DeferredLightingPassRc_DepthStencilTexture,
-        DeferredLightingPassRc_PointLightBuffer,
-        DeferredLightingPassRc_ShadowVisibilityBuffer,
+        DeferredLightingPassRc_AlbedoAndRoughnessTex,
+        DeferredLightingPassRc_EmissiveAndMetallicTex,
+        DeferredLightingPassRc_WorldNormalTex,
+        DeferredLightingPassRc_VelocityTex,
+        DeferredLightingPassRc_DepthStencilTex,
+        DeferredLightingPassRc_PointLightBuf,
+        DeferredLightingPassRc_SigmaShadowTex,
     };
 
     enum EnvironmentPassRc : uint32_t
@@ -89,13 +89,12 @@ namespace joint
         FullScreenDebugRc_VelocityBuffer,
         FullScreenDebugRc_ViewDepthBuffer,
         FullScreenDebugRc_DepthBuffer,
-        FullScreenDebugRc_ShadowVisibilityBuffer,
-        FullScreenDebugRc_TemporalAccumulationBuffer,
-        FullScreenDebugRc_ReprojectedHistoryTexture,
-        FullScreenDebugRc_DenoisedShadowVisibilityBuffer,
+        FullScreenDebugRc_NoisyPenumbraTexture,
 
         FullScreenDebugRc_SigmaTiles,
         FullScreenDebugRc_SigmaSmoothTiles,
+        FullScreenDebugRc_SigmaDenoisedPenumbra,
+        FullScreenDebugRc_SigmaShadow,
     };
 
     enum EquirectangularToCubePassRc : uint32_t

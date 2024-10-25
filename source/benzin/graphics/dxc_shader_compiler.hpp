@@ -5,21 +5,24 @@
 namespace benzin
 {
 
+    class ShaderInfo;
+
     struct ShaderPaths
     {
         std::filesystem::path SourceFilePath;
         std::filesystem::path DxilFilePath;
         std::filesystem::path PdbFilePath;
 
-        ShaderPaths(size_t hash, std::string_view fileName);
+        explicit ShaderPaths(const ShaderInfo& shader);
     };
 
     struct ShaderArgs
     {
         std::wstring_view Target;
         std::wstring EntryPoint;
+        std::vector<std::wstring> Defines;
 
-        explicit ShaderArgs(ShaderType shaderType, std::string_view entryPoint = {});
+        explicit ShaderArgs(const ShaderInfo& shader);
     };
 
     struct CompiledShader

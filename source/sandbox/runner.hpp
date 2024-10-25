@@ -12,7 +12,6 @@ namespace benzin
     class Backend;
     class Device;
     class Event;
-    class FlyCameraController;
     class ImGuiManager;
     class ImGuiPass;
     class PerformanceOverlayTool;
@@ -22,6 +21,7 @@ namespace benzin
     class RenderViewportTool;
     class Scene;
     class SwapChain;
+    class TextureViewerTool;
     class Window;
 
 }
@@ -62,10 +62,11 @@ namespace sandbox
         benzin::TickTimer m_AnimationTimer;
         benzin::IntervalTimer m_1SecIntervalTimer;
 
+        bool m_IsAnimationEnabled = true;
+
         FpsCounter m_FpsCounter;
 
         std::unique_ptr<benzin::Scene> m_Scene;
-        std::unique_ptr<benzin::FlyCameraController> m_FlyCameraController;
 
         std::unique_ptr<benzin::RenderResources> m_RenderResources;
         std::unique_ptr<benzin::RenderSettings> m_RenderSettings;
@@ -75,6 +76,7 @@ namespace sandbox
         std::unique_ptr<benzin::ImGuiManager> m_ImGuiManager;
         benzin::RenderViewportTool* m_RenderViewportTool = nullptr;
         benzin::RenderSettingsTool* m_RenderSettingsTool = nullptr;
+        benzin::TextureViewerTool* m_TextureViewerTool = nullptr;
 
         RunnerTimings m_RunnerTimings{};
 

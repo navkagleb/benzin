@@ -5,6 +5,7 @@
 #include "fullscreen_helper.hlsli"
 #include "gbuffer.hlsli"
 #include "space_convertions.hlsli"
+#include "sigma_denoiser/sigma_public.hlsli"
 
 float GetFloatByIndex(float4 values, uint index)
 {
@@ -28,13 +29,12 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
     Texture2D<float> viewDepthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_ViewDepthBuffer)];
     Texture2D<float> depthBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_DepthBuffer)];
 
-    Texture2D<float> shadowVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_ShadowVisibilityBuffer)];
-    Texture2D<float> temporalAccumulationBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_TemporalAccumulationBuffer)];
-    Texture2D<float> reprojectedHistoryTexture = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_ReprojectedHistoryTexture)];
-    Texture2D<float> denoisedShadowVisibilityBuffer = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_DenoisedShadowVisibilityBuffer)];
+    Texture2D<float> noisyPenumbra = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_NoisyPenumbraTexture)];
 
     Texture2D<float4> sigmaTiles = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaTiles)];
     Texture2D<float2> sigmaSmoothTiles = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaSmoothTiles)];
+    Texture2D<float> sigmaDenoisedPenumbra = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaDenoisedPenumbra)];
+    Texture2D<float> sigmaShadow = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaShadow)];
 
     PackedGBuffer packedGBuffer;
     packedGBuffer.Color0 = albedoAndRoughnessTexture.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
@@ -76,32 +76,17 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
         // case joint::DebugOutputType_GBufferVelocityBuffer: return float4(gbuffer.MotionVector, 0.0, 1.0f); #TODO
         case joint::DebugOutputType_GBufferViewDepthBuffer:
         {
-            const float viewDepth = viewDepthBuffer.SampleLevel(g_PointClampSampler, input.Uv, g_PassConstants.ViewDepthMipIndex);
-            return float4((viewDepth + g_PassConstants.MinViewDepth) / g_PassConstants.MaxViewDepth, 0.0, 0.0, 1.0);
+            const float viewDepth = viewDepthBuffer.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+            const float3 viewPos = ReconstructViewPositionFromViewDepth(input.Uv, viewDepth, g_FrameConstants.Camera.PackedFrustumPlaneSlopes);
+            return float4(viewPos, 1.0);
+
+            // const float viewDepth = viewDepthBuffer.SampleLevel(g_PointClampSampler, input.Uv, g_PassConstants.ViewDepthMipIndex);
+            // return float4((viewDepth + g_PassConstants.MinViewDepth) / g_PassConstants.MaxViewDepth, 0.0, 0.0, 1.0);
         }
-        case joint::DebugOutputType_CurrentShadowVisibility:
+        case joint::DebugOutputType_NoisyPenumbra:
         {
-            const float shadowVisibility = shadowVisibilityBuffer.SampleLevel(g_PointClampSampler, input.Uv, g_PassConstants.ViewDepthMipIndex);
+            const float shadowVisibility = noisyPenumbra.SampleLevel(g_PointClampSampler, input.Uv, g_PassConstants.ViewDepthMipIndex);
             return float4(shadowVisibility, 0.0, 0.0, 1.0);
-        }
-        case joint::DebugOutputType_TemporalAccumulationBuffer:
-        {
-            // Grab by pixel position due to R32 texture doesn't support sampling
-
-            const uint2 texelPosition = input.Uv * g_FrameConstants.RenderResolution;
-            const float temporalAccumulation = temporalAccumulationBuffer[texelPosition];
-
-            return temporalAccumulation / g_FrameConstants.MaxTemporalAccumulationCount;
-        }
-        case joint::DebugOutputType_ReprojectedHistory:
-        {
-            const float reprojectedVisibilitySample = reprojectedHistoryTexture.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
-            return float4(reprojectedVisibilitySample, 0.0, 0.0, 1.0);
-        }
-        case joint::DebugOutputType_DenoisedShadowVisibilityBuffer:
-        {
-            const float sample = denoisedShadowVisibilityBuffer.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
-            return float4(sample, 0.0, 0.0, 1.0);
         }
         case joint::DebugOutputType_SigmaTiles:
         {
@@ -112,6 +97,16 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
         {
             const float2 sample = sigmaSmoothTiles.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
             return float4(sample, 0.0, 1.0);
+        }
+        case joint::DebugOutputType_SigmaDenoisedPenumbra:
+        {
+            const float sample = sigmaDenoisedPenumbra.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+            return float4(sample, 0.0, 0.0, 1.0);
+        }
+        case joint::DebugOutputType_SigmaShadow:
+        {
+            const float sample = sigmaShadow.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+            return float4(sigma::UnpackShadow(sample), 0.0, 0.0, 1.0);
         }
     }
 

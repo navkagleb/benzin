@@ -86,6 +86,8 @@ namespace benzin
             ImGui_ImplDX12_CreateDeviceObjects();
             m_Device.GetDescriptorManager().CopyToGpuResourceHeap(m_FontDescriptor);
         }
+
+        ImGuiTool::ms_Window = &window;
     }
 
     ImGuiManager::~ImGuiManager()
@@ -266,20 +268,19 @@ namespace benzin
 
     void ImGuiManager::ToggleImGuiDemoWindow()
     {
-        ToggleBool(m_IsImGuiDemoWindowVisible);
+        m_IsImGuiDemoWindowVisible = !m_IsImGuiDemoWindowVisible;
     }
 
     void ImGuiManager::ToggleUiSpawn()
     {
-        ToggleBool(m_IsUiSpawnEnabled);
+        m_IsUiSpawnEnabled = !m_IsUiSpawnEnabled;
     }
 
     // ImGuiPass
 
-    ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureIndex, uint32_t gpuTimingIndex)
+    ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureIndex)
         : m_ImGuiManager{ imGuiManager }
         , m_ImGuiTextureIndex{ imGuiTextureIndex }
-        , m_GpuTimingIndex{ gpuTimingIndex }
     {}
 
     ImGuiPass::~ImGuiPass()
@@ -287,14 +288,14 @@ namespace benzin
         ms_Resources->DestroyTexture(m_ImGuiTextureIndex);
     }
 
-    void ImGuiPass::OnWindowResize(uint32_t width, uint32_t height)
+    void ImGuiPass::OnWindowResize()
     {
         ms_Resources->CreateTexture(m_ImGuiTextureIndex, TextureCreation
         {
             .DebugName = "ImGuiTexture",
             .Format = (GraphicsFormat)CommandLineArgs::GetU32("BackBufferFormat"),
-            .Width = width,
-            .Height = height,
+            .Width = GetWindowViewportWidth(),
+            .Height = GetWindowViewportHeight(),
             .MipCount = 1,
             .AccessFlags = TextureAccessFlag::AllowRenderTarget,
         });
@@ -302,12 +303,8 @@ namespace benzin
 
     void ImGuiPass::OnRender() const
     {
-        BenzinGrabTimeOnScopeExit(m_CpuRenderTime);
-
-        auto& gpuTimer = ms_Device->GetGpuTimer();
-        BenzinGrabGpuTimeOnScopeExit(gpuTimer, m_GpuTimingIndex);
-
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+
         BenzinPushGpuEvent(commandList, "ImGuiPass");
 
         const auto& imGuiTexture = ms_Resources->GetTexture(m_ImGuiTextureIndex);

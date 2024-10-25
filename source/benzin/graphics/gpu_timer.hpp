@@ -11,6 +11,9 @@ namespace benzin
     class GpuTimer
     {
     public:
+        static const uint32_t s_MaxGpuTimerCount;
+
+    public:
         BenzinDefineNonCopyable(GpuTimer);
         BenzinDefineNonMoveable(GpuTimer);
 
@@ -51,11 +54,18 @@ namespace benzin
         static void EndEvent(const GraphicsCommandList& commandList);
     };
 
-} // namespace benzin
+    class ScopedGpuGrabTimer
+    {
+    public:
+        ScopedGpuGrabTimer(GpuTimer& gpuTimer, uint32_t timerIndex);
+        ~ScopedGpuGrabTimer();
 
-#define BenzinGrabGpuTimeOnScopeExit(gpuTimer, timerIndex) \
-    (gpuTimer).BeginProfile(timerIndex); \
-    BenzinExecuteOnScopeExit([&] { (gpuTimer).EndProfile(timerIndex); })
+    private:
+        GpuTimer& m_GpuTimer;
+        uint32_t m_TimerIndex = g_InvalidUnsigned<uint32_t>;
+    };
+
+} // namespace benzin
 
 #define BenzinPushGpuEvent(commandList, eventName) \
     benzin::GpuEventTracker::BeginEvent(commandList, eventName); \

@@ -25,13 +25,12 @@ namespace joint
         DebugOutputType_GBufferWorldNormal,
         DebugOutputType_GBufferVelocityBuffer,
         DebugOutputType_GBufferViewDepthBuffer,
-        DebugOutputType_CurrentShadowVisibility,
-        DebugOutputType_TemporalAccumulationBuffer,
-        DebugOutputType_ReprojectedHistory,
-        DebugOutputType_DenoisedShadowVisibilityBuffer,
+        DebugOutputType_NoisyPenumbra,
 
         DebugOutputType_SigmaTiles,
         DebugOutputType_SigmaSmoothTiles,
+        DebugOutputType_SigmaDenoisedPenumbra,
+        DebugOutputType_SigmaShadow,
     };
 
     enum MipGenerationFilterType : uint32_t
