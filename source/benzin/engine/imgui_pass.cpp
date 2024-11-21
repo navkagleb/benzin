@@ -19,8 +19,9 @@ namespace benzin
 
     // ImGuiTool
 
-    ImGuiTool::ImGuiTool(std::string_view name, bool isVisible)
+    ImGuiTool::ImGuiTool(std::string_view name, bool isVisible, std::string_view shortcut)
         : m_Name{ name }
+        , m_Shortcut{ shortcut }
         , m_IsVisible{ isVisible }
     {}
     
@@ -240,7 +241,7 @@ namespace benzin
             {
                 for (auto& tool : m_Tools)
                 {
-                    ImGui::MenuItem(tool->m_Name.data(), nullptr, &tool->m_IsVisible);
+                    ImGui::MenuItem(tool->m_Name.data(), tool->m_Shortcut.data(), &tool->m_IsVisible);
                 }
 
                 ImGui::Separator();

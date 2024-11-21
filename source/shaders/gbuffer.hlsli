@@ -56,6 +56,8 @@ float FetchDepth(float2 uv, uint depthTextureIndex)
 
 float3 ReconstructViewPositionFromDepth(float2 uv, float depth, float4x4 invViewToClip)
 {
+    // x y z -> in convert ScreenPos to ClipPos
+
     // Get x/w and y/w from the viewport position
     const float x = uv.x * 2.0f - 1.0f;
     const float y = (1.0f - uv.y) * 2.0f - 1.0f;

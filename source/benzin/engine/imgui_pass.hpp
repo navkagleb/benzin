@@ -15,7 +15,7 @@ namespace benzin
     public:
         friend class ImGuiManager;
 
-        ImGuiTool(std::string_view name, bool isVisible);
+        ImGuiTool(std::string_view name, bool isVisible, std::string_view shortcut = {});
         virtual ~ImGuiTool() = default;
 
     public:
@@ -32,6 +32,7 @@ namespace benzin
         static inline const Window* ms_Window = nullptr;
 
         std::string_view m_Name;
+        std::string_view m_Shortcut;
         bool m_IsVisible = false;
     };
 

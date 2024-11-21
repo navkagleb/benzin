@@ -88,7 +88,10 @@ namespace sandbox
             
         commandList.SetRootResource(joint::FullScreenDebugRc_SigmaTiles, ms_Resources->GetTexture(+Texture::SigmaTiles).GetSrv());
         commandList.SetRootResource(joint::FullScreenDebugRc_SigmaSmoothTiles, ms_Resources->GetTexture(+Texture::SigmaSmoothTiles).GetSrv());
-        commandList.SetRootResource(joint::FullScreenDebugRc_SigmaDenoisedPenumbra, ms_Resources->GetTexture(+Texture::SigmaDenoisedPenumbra).GetSrv());
+        commandList.SetRootResource(joint::FullScreenDebugRc_SigmaPenumbra1, ms_Resources->GetTexture(+Texture::SigmaPenumbra1).GetSrv());
+        commandList.SetRootResource(joint::FullScreenDebugRc_SigmaPenumbra2, ms_Resources->GetTexture(+Texture::SigmaPenumbra2).GetSrv());
+        commandList.SetRootResource(joint::FullScreenDebugRc_SigmaShadowTemp1, ms_Resources->GetTexture(+Texture::SigmaShadowTemp1).GetSrv());
+        commandList.SetRootResource(joint::FullScreenDebugRc_SigmaShadowTemp2, ms_Resources->GetTexture(+Texture::SigmaShadowTemp2).GetSrv());
         commandList.SetRootResource(joint::FullScreenDebugRc_SigmaShadow, ms_Resources->GetTexture(+Texture::SigmaShadow).GetSrv());
 
         commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);

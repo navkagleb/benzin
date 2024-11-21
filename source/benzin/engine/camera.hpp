@@ -150,8 +150,8 @@ namespace benzin
         bool OnRenderViewportResized(uint32_t width, uint32_t height);
     
     private:
-        bool OnMouseMoved(const MouseMovedEvent& event);
-        bool OnMouseScrolled(const MouseScrolledEvent& event);
+        void RotateCamera(DirectX::XMINT2 mousePosition, DirectX::XMINT2 prevMousePosition);
+        void IncrementFov(float direction);
 
         PerspectiveProjection* GetPerspectiveProjection();
 

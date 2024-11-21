@@ -36,6 +36,7 @@ namespace joint
         uint CpuFrameIndex;
         float FrameTimeInSec;
         float ElapsedTimeInSec;
+        float3 _Padding0;
 
         float4 RandomFloats01;
 
@@ -45,7 +46,7 @@ namespace joint
 
     struct RayTracingShadowsConstants
     {
-        bool IsEnabled;
+        uint IsEnabled;
         uint RaysPerPixel;
         float TanSunAngularRadius;
         float PixelAngularRadiusInRadians;

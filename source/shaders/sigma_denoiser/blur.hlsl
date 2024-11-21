@@ -206,7 +206,7 @@ void CsMain(CsInput input)
     // Avoid 1-pixel wide blur if penumbra size < 1 pixel
     const float penumbraInPixels = blurredPenumbra / unprojectViewDepth;
     const float factor = sigma::LinearStep(0.75, 1.25, penumbraInPixels);
-    blurredShadow = lerp(shadowCenterTap, blurredShadow, factor);
+    // blurredShadow = lerp(shadowCenterTap, blurredShadow, factor); // TODO: fixes not blurred pixels
 
     const float invHitDist = 1.0 / max(blurredPenumbra, sigma::g_Eps);
 

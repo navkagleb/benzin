@@ -3,6 +3,7 @@
 
 #include "benzin/graphics/texture.hpp"
 #include "benzin/system/event.hpp"
+#include "benzin/system/input.hpp"
 #include "benzin/system/mouse_event.hpp"
 
 namespace benzin
@@ -25,12 +26,25 @@ namespace benzin
 
         dispatcher.ForceDispatch<MouseMovedEvent>([this](const auto& event)
         {
-            return m_FlyCameraController.OnMouseMoved(event);
+            if (!Input::IsMouseButtonPressed(MouseButton::Right))
+            {
+                Input::UnlockCursor();
+                return true;
+            }
+
+            const DirectX::XMINT2 mousePosition = event.GetPosition();
+            const DirectX::XMINT2 lockedCursorPosition = Input::LockCursor(*ms_Window);
+
+            m_FlyCameraController.RotateCamera(mousePosition, lockedCursorPosition);
+
+            return true;
         });
 
         dispatcher.ForceDispatch<MouseScrolledEvent>([this](const auto& event)
         {
-            return m_FlyCameraController.OnMouseScrolled(event);
+            m_FlyCameraController.IncrementFov((float)event.GetOffsetX());
+
+            return true;
         });
     }
 
@@ -42,20 +56,24 @@ namespace benzin
         {
             UpdateImGuiDimensions();
 
-            if (IsValidUnsigned(m_FinalTextureIndex))
+            if (!IsValidUnsigned(m_FinalTextureIndex))
             {
-                const auto* finalTexture = m_RenderResources.GetTexturePtr(m_FinalTextureIndex);
-                if (finalTexture != nullptr)
-                {
-                    ImGui::Image((ImTextureID)finalTexture->GetSrv().GetGpuHandle(), ImVec2
-                    {
-                        (float)finalTexture->GetWidth(),
-                        (float)finalTexture->GetHeight(),
-                    });
-
-                    m_IsViewportHovered = ImGui::IsItemHovered();
-                }
+                return;
             }
+
+            const auto* finalTexture = m_RenderResources.GetTexturePtr(m_FinalTextureIndex);
+            if (finalTexture == nullptr)
+            {
+                return;
+            }
+
+            ImGui::Image((ImTextureID)finalTexture->GetSrv().GetGpuHandle(), ImVec2
+            {
+                (float)finalTexture->GetWidth(),
+                (float)finalTexture->GetHeight(),
+            });
+
+            m_IsViewportHovered = ImGui::IsItemHovered();
         });
 
         ImGui::PopStyleVar();

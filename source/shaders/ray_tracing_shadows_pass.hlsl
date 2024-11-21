@@ -57,7 +57,7 @@ static const uint g_MissShaderIndex = 0;
 
 float GetPseudoRandomFloat(float2 uv)
 {
-    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
+    return frac(sin(dot(uv, float2(12.9898, 78.233)) / g_FrameConstants.RandomFloats01.w) * 43758.5453); // TODO
 }
 
 float3 GetLightConeSample(float3 toLightDirection, float coneAngleInRandians)
@@ -66,8 +66,8 @@ float3 GetLightConeSample(float3 toLightDirection, float coneAngleInRandians)
 
     // Generate points on the spherical cap around the north pole [1].
     // [1] See https://math.stackexchange.com/a/205589/81266
-    float z = GetPseudoRandomFloat(GetRayUv() * g_FrameConstants.ElapsedTimeInSec) * (1.0f - cosAngle) + cosAngle;
-    float phi = GetPseudoRandomFloat(GetRayUv() * g_FrameConstants.ElapsedTimeInSec) * g_TwoPi;
+    float z = GetPseudoRandomFloat(GetRayUv()) * (1.0f - cosAngle) + cosAngle;
+    float phi = GetPseudoRandomFloat(GetRayUv()) * g_TwoPi;
 
     float x = sqrt(1.0 - z * z) * cos(phi);
     float y = sqrt(1.0 - z * z) * sin(phi);
@@ -99,7 +99,7 @@ void TraceSunShadowRay(
 
     uint rayFlags = RAY_FLAG_NONE;
     // rayFlags |= RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
-    rayFlags |= RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
+    // rayFlags |= RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
     rayFlags |= RAY_FLAG_FORCE_OPAQUE; // Skip any hit shaders
     // rayFlags |= RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
 

@@ -29,7 +29,10 @@ namespace joint
 
         DebugOutputType_SigmaTiles,
         DebugOutputType_SigmaSmoothTiles,
-        DebugOutputType_SigmaDenoisedPenumbra,
+        DebugOutputType_SigmaPenumbra1,
+        DebugOutputType_SigmaPenumbra2,
+        DebugOutputType_SigmaShadowTemp1,
+        DebugOutputType_SigmaShadowTemp2,
         DebugOutputType_SigmaShadow,
     };
 

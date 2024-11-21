@@ -104,6 +104,7 @@ namespace benzin
             ImGui::Text(BenzinFormatData("Fps: {:.1f} ({:.3f} ms)", m_FrameRate, m_FrameDeltaTimeMs));
             ImGui::Text(BenzinFormatData("Present: {:06.3f}, GpuWait: {:06.3f}", ToFloatMs(m_SwapChain.GetPresentTime()), ToFloatMs(m_SwapChain.GetGpuWaitTime())));
             ImGui::Text(BenzinFormatData("Cpu: {}, Gpu: {}, Frame: {}", m_Device.GetCpuFrameIndex(), m_Device.GetCompletedGpuFrameIndex(), m_Device.GetActiveFrameIndex()));
+            ImGui::Text(BenzinFormatData("FrameDelay: {}", m_Device.GetCpuFrameIndex() - m_Device.GetCompletedGpuFrameIndex()));
             ImGui::Text(BenzinFormatData("Vram Local: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedDedicatedVram.GetMb(), adapterMemoryInfo.DedicatedVramOsBudget.GetMb()));
             ImGui::Text(BenzinFormatData("Vram NonLocal: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb(), adapterMemoryInfo.SharedRamOsBudget.GetMb()));
 

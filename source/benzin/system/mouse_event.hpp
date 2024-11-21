@@ -36,6 +36,8 @@ namespace benzin
         template <typename T = int32_t> T GetX() const { return (T)m_X; }
         template <typename T = int32_t> T GetY() const { return (T)m_Y; }
 
+        DirectX::XMINT2 GetPosition() const { return { m_X, m_Y }; }
+
     protected:
         int32_t m_X = 0;
         int32_t m_Y = 0;

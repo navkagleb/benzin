@@ -186,9 +186,17 @@ namespace sandbox
         auto& perspectiveProjection = m_Scene->GetPerspectiveProjection();
         perspectiveProjection.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.1f, 1000.0f);
 
+#if 0
         auto& camera = m_Scene->GetCamera();
         camera.SetPosition({ -3.0f, 2.0f, -0.25f });
         camera.SetFrontDirection({ 1.0f, 0.0f, 0.0f });
+#else
+        auto& camera = m_Scene->GetCamera();
+        camera.SetPosition({ -1.649f, 1.007f, -1.555f });
+        camera.SetFrontDirection({ 0.769f, 0.129f, 0.627f });
+
+        m_AnimationTimer.SetPaused(true);
+#endif
     }
 
     void SandboxRunner::InitSceneEntities()

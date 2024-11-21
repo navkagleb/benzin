@@ -172,7 +172,7 @@ namespace sandbox
             dispatcher.Dispatch<benzin::WindowEnterResizingEvent>([this]
             {
                 m_FrameTimer.SetPaused(true);
-                m_AnimationTimer.SetPaused(true);
+                // m_AnimationTimer.SetPaused(true);
 
                 return false;
             });
@@ -183,7 +183,7 @@ namespace sandbox
 
                 if (m_IsAnimationEnabled)
                 {
-                    m_AnimationTimer.SetPaused(false);
+                    // m_AnimationTimer.SetPaused(false);
                 }
 
                 return false;
@@ -312,11 +312,11 @@ namespace sandbox
             }
 
             {
-                const auto cpuTimer = renderPass->GrabCpuRenderTime();
-                const auto gpuTimer = renderPass->GrabGpuRenderTime();
+                const auto scopeCpuTimer = renderPass->GrabCpuRenderTime();
+                const auto scopeGpuTimer = renderPass->GrabGpuRenderTime();
 
-                BenzinUnused(cpuTimer);
-                BenzinUnused(gpuTimer);
+                BenzinUnused(scopeCpuTimer);
+                BenzinUnused(scopeGpuTimer);
 
                 renderPass->OnRender();
             }

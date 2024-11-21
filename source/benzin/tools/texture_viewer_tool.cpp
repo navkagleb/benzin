@@ -6,26 +6,40 @@
 #include "benzin/graphics/texture.hpp"
 #include "benzin/system/event.hpp"
 #include "benzin/system/input.hpp"
+#include "benzin/system/key_event.hpp"
 #include "benzin/system/mouse_event.hpp"
-
-#include "benzin/core/logger.hpp"
 
 namespace benzin
 {
 
+    static constexpr auto g_ToggleVisibilityKeyCode = KeyCode::F3;
+
+    //
+
     TextureViewerTool::TextureViewerTool(const RenderResources& renderResources)
-        : ImGuiTool{ "TextureViewerTool", true }
+        : ImGuiTool{ "TextureViewerTool", false, magic_enum::enum_name(g_ToggleVisibilityKeyCode) }
         , m_RenderResouces{ renderResources }
     {}
 
     void TextureViewerTool::OnEvent(Event& event)
     {
+        const EventDispatcher dispatcher{ event };
+
+        dispatcher.ForceDispatch<KeyPressedEvent>([this](const auto& event)
+        {
+            if (event.GetKeyCode() == g_ToggleVisibilityKeyCode)
+            {
+                m_IsVisible = !m_IsVisible;
+            }
+
+            return true;
+        });
+
         if (!m_IsHovered)
         {
+            // Handled mouse events only when mouse hovers tool
             return;
         }
-
-        const EventDispatcher dispatcher{ event };
 
         dispatcher.ForceDispatch<MouseScrolledEvent>([this](const auto& event)
         {

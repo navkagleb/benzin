@@ -97,14 +97,16 @@ namespace benzin
         ResourceState& outInitialState
     )
     {
-        static const auto getInitialResourceState = [](const BufferCreation& creation)
+        static const auto getInitialResourceState = [](const Device& device, const BufferCreation& creation)
         {
             if (creation.Type == BufferType::RtAccelerationStructure)
             {
                 return ResourceState::RtAccelerationStructure;
             }
-            else if (creation.MemoryType == ResourceMemoryType::Upload)
+            else if (creation.MemoryType == ResourceMemoryType::Upload && !device.IsGpuUploadHeapsSupported())
             {
+                // Case only for D3D12_HEAP_TYPE_UPLOAD
+                // D3D12_HEAP_TYPE_GPU_UPLOAD requires D3D12_RESOURCE_STATE_COMMON
                 return ResourceState::GenericRead;
             }
             else if (creation.MemoryType == ResourceMemoryType::Readback)
@@ -118,7 +120,7 @@ namespace benzin
         const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(ToD3D12HeapType(device, bufferCreation.MemoryType));
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(bufferCreation);
 
-        outInitialState = getInitialResourceState(bufferCreation);
+        outInitialState = getInitialResourceState(device, bufferCreation);
 
         BenzinEnsure(device.GetD3D12Device()->CreateCommittedResource(
             &d3d12HeapProperties,

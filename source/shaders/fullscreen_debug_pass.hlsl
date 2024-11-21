@@ -7,6 +7,12 @@
 #include "space_convertions.hlsli"
 #include "sigma_denoiser/sigma_public.hlsli"
 
+BenzinDeclareRootResource(Texture2D<float>, g_SigmaPenumbra1, joint::FullScreenDebugRc_SigmaPenumbra1);
+BenzinDeclareRootResource(Texture2D<float>, g_SigmaPenumbra2, joint::FullScreenDebugRc_SigmaPenumbra2);
+BenzinDeclareRootResource(Texture2D<float>, g_SigmaShadowTemp1, joint::FullScreenDebugRc_SigmaShadowTemp1);
+BenzinDeclareRootResource(Texture2D<float>, g_SigmaShadowTemp2, joint::FullScreenDebugRc_SigmaShadowTemp2);
+BenzinDeclareRootResource(Texture2D<float>, g_SigmaShadow, joint::FullScreenDebugRc_SigmaShadow);
+
 float GetFloatByIndex(float4 values, uint index)
 {
     switch (index)
@@ -33,8 +39,6 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 
     Texture2D<float4> sigmaTiles = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaTiles)];
     Texture2D<float2> sigmaSmoothTiles = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaSmoothTiles)];
-    Texture2D<float> sigmaDenoisedPenumbra = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaDenoisedPenumbra)];
-    Texture2D<float> sigmaShadow = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaShadow)];
 
     PackedGBuffer packedGBuffer;
     packedGBuffer.Color0 = albedoAndRoughnessTexture.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
@@ -98,14 +102,29 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
             const float2 sample = sigmaSmoothTiles.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
             return float4(sample, 0.0, 1.0);
         }
-        case joint::DebugOutputType_SigmaDenoisedPenumbra:
+        case joint::DebugOutputType_SigmaPenumbra1:
         {
-            const float sample = sigmaDenoisedPenumbra.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+            const float sample = g_SigmaPenumbra1.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
             return float4(sample, 0.0, 0.0, 1.0);
+        }
+        case joint::DebugOutputType_SigmaPenumbra2:
+        {
+            const float sample = g_SigmaPenumbra2.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+            return float4(sample, 0.0, 0.0, 1.0);
+        }
+        case joint::DebugOutputType_SigmaShadowTemp1:
+        {
+            const float sample = g_SigmaShadowTemp1.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+            return float4(sigma::UnpackShadow(sample), 0.0, 0.0, 1.0);
+        }
+        case joint::DebugOutputType_SigmaShadowTemp2:
+        {
+            const float sample = g_SigmaShadowTemp2.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+            return float4(sigma::UnpackShadow(sample), 0.0, 0.0, 1.0);
         }
         case joint::DebugOutputType_SigmaShadow:
         {
-            const float sample = sigmaShadow.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+            const float sample = g_SigmaShadow.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
             return float4(sigma::UnpackShadow(sample), 0.0, 0.0, 1.0);
         }
     }

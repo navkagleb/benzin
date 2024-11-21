@@ -45,7 +45,8 @@ namespace sandbox
         ms_Resources->DestroyTexture(+Texture::SigmaTiles);
         ms_Resources->DestroyTexture(+Texture::SigmaSmoothTiles);
         ms_Resources->DestroyTexture(+Texture::SigmaHistory);
-        ms_Resources->DestroyTexture(+Texture::SigmaDenoisedPenumbra);
+        ms_Resources->DestroyTexture(+Texture::SigmaPenumbra1);
+        ms_Resources->DestroyTexture(+Texture::SigmaPenumbra2);
         ms_Resources->DestroyTexture(+Texture::SigmaShadowTemp1);
         ms_Resources->DestroyTexture(+Texture::SigmaShadowTemp2);
         ms_Resources->DestroyTexture(+Texture::SigmaShadow);
@@ -86,32 +87,27 @@ namespace sandbox
             .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
         });
 
-        ms_Resources->CreateTexture(+Texture::SigmaDenoisedPenumbra, benzin::TextureCreation
         {
-            .DebugName = magic_enum::enum_name(Texture::SigmaDenoisedPenumbra),
-            .Format = benzin::GraphicsFormat::R32Float,
-            .Width = GetRenderViewportWidth(),
-            .Height = GetRenderViewportHeight(),
-            .MipCount = 1,
-            .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
-        });
-            
-        const auto getShadowTextureCreation = [](std::string_view debugName)
-        {
-            return benzin::TextureCreation
+            const auto createSigmaTexture = [](Texture textureIndex, benzin::GraphicsFormat format)
             {
-                .DebugName = debugName,
-                .Format = benzin::GraphicsFormat::R8Unorm,
-                .Width = GetRenderViewportWidth(),
-                .Height = GetRenderViewportHeight(),
-                .MipCount = 1,
-                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
+                ms_Resources->CreateTexture(+textureIndex, benzin::TextureCreation
+                {
+                    .DebugName = magic_enum::enum_name(textureIndex),
+                    .Format = format,
+                    .Width = GetRenderViewportWidth(),
+                    .Height = GetRenderViewportHeight(),
+                    .MipCount = 1,
+                    .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
+                });
             };
-        };
 
-        ms_Resources->CreateTexture(+Texture::SigmaShadowTemp1, getShadowTextureCreation(magic_enum::enum_name(Texture::SigmaShadowTemp1)));
-        ms_Resources->CreateTexture(+Texture::SigmaShadowTemp2, getShadowTextureCreation(magic_enum::enum_name(Texture::SigmaShadowTemp2)));
-        ms_Resources->CreateTexture(+Texture::SigmaShadow, getShadowTextureCreation(magic_enum::enum_name(Texture::SigmaShadow)));
+            createSigmaTexture(Texture::SigmaPenumbra1, benzin::GraphicsFormat::R32Float);
+            createSigmaTexture(Texture::SigmaPenumbra2, benzin::GraphicsFormat::R32Float);
+
+            createSigmaTexture(Texture::SigmaShadowTemp1, benzin::GraphicsFormat::R8Unorm);
+            createSigmaTexture(Texture::SigmaShadowTemp2, benzin::GraphicsFormat::R8Unorm);
+            createSigmaTexture(Texture::SigmaShadow, benzin::GraphicsFormat::R8Unorm);
+        }
     }
 
     void SigmaDenoiserPass::OnUpdate()
@@ -202,7 +198,7 @@ namespace sandbox
 
         commandList.SetPipelineState(*m_BlurPso);
 
-        const auto& denoisedPenumbra = ms_Resources->GetTexture(+Texture::SigmaDenoisedPenumbra);
+        const auto& penumbra1 = ms_Resources->GetTexture(+Texture::SigmaPenumbra1);
         const auto& history = ms_Resources->GetTexture(+Texture::SigmaHistory);
         const auto& shadowTemp1 = ms_Resources->GetTexture(+Texture::SigmaShadowTemp1);
 
@@ -215,18 +211,18 @@ namespace sandbox
             commandList.SetRootResource(+SmoothTilesTex, ms_Resources->GetTexture(+Texture::SigmaSmoothTiles).GetSrv());
             commandList.SetRootResource(+HistoryTex, ms_Resources->GetTexture(+Texture::SigmaShadow).GetSrv());
             commandList.SetRootResource(+OutHistoryTex, history.GetUav());
-            commandList.SetRootResource(+OutPenumbraTex, denoisedPenumbra.GetUav());
+            commandList.SetRootResource(+OutPenumbraTex, penumbra1.GetUav());
             commandList.SetRootResource(+OutShadowTex, shadowTemp1.GetUav());
         }
 
         BenzinMakeScopedResourceBarriers(
             commandList,
             benzin::TransitionBarrier{ history, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ denoisedPenumbra, benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ penumbra1, benzin::ResourceState::UnorderedAccess },
             benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::UnorderedAccess },
         );
 
-        // commandList.ClearUnorderedAccess(denoisedPenumbra, { 0.0f, 0.0f, 0.0f, 0.0f });
+        // commandList.ClearUnorderedAccess(penumbra1, { 0.0f, 0.0f, 0.0f, 0.0f });
         // commandList.ClearUnorderedAccess(shadow, { 0.0f, 0.0f, 0.0f, 0.0f });
         commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
     }
@@ -244,7 +240,7 @@ namespace sandbox
 
         commandList.SetPipelineState(*m_PostBlurPso);
 
-        const auto& denoisedPenumbra = ms_Resources->GetTexture(+Texture::SigmaDenoisedPenumbra);
+        const auto& penumbra2 = ms_Resources->GetTexture(+Texture::SigmaPenumbra2);
         const auto& shadowTemp2 = ms_Resources->GetTexture(+Texture::SigmaShadowTemp2);
 
         {
@@ -252,16 +248,16 @@ namespace sandbox
 
             commandList.SetRootResource(+WorldNormalTex, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
             commandList.SetRootResource(+ViewDepthTex, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
-            commandList.SetRootResource(+PenumbraTex, ms_Resources->GetTexture(+Texture::SigmaDenoisedPenumbra).GetSrv());
+            commandList.SetRootResource(+PenumbraTex, ms_Resources->GetTexture(+Texture::SigmaPenumbra1).GetSrv());
             commandList.SetRootResource(+SmoothTilesTex, ms_Resources->GetTexture(+Texture::SigmaSmoothTiles).GetSrv());
             commandList.SetRootResource(+ShadowTex, ms_Resources->GetTexture(+Texture::SigmaShadowTemp1).GetSrv());
-            commandList.SetRootResource(+OutPenumbraTex, denoisedPenumbra.GetUav());
+            commandList.SetRootResource(+OutPenumbraTex, penumbra2.GetUav());
             commandList.SetRootResource(+OutShadowTex, shadowTemp2.GetUav());
         }
 
         BenzinMakeScopedResourceBarriers(
             commandList,
-            benzin::TransitionBarrier{ denoisedPenumbra, benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ penumbra2, benzin::ResourceState::UnorderedAccess },
             benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::UnorderedAccess },
         );
 
@@ -288,7 +284,7 @@ namespace sandbox
 
             commandList.SetRootResource(+ViewDepthTex, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
             commandList.SetRootResource(+MvTex, ms_Resources->GetTexture(+Texture::VelocityBuffer).GetSrv());
-            commandList.SetRootResource(+PenumbraTex, ms_Resources->GetTexture(+Texture::SigmaDenoisedPenumbra).GetSrv());
+            commandList.SetRootResource(+PenumbraTex, ms_Resources->GetTexture(+Texture::SigmaPenumbra2).GetSrv());
             commandList.SetRootResource(+ShadowTex, ms_Resources->GetTexture(+Texture::SigmaShadowTemp2).GetSrv());
             commandList.SetRootResource(+HistoryTex, ms_Resources->GetTexture(+Texture::SigmaHistory).GetSrv());
             commandList.SetRootResource(+SmoothTilesTex, ms_Resources->GetTexture(+Texture::SigmaSmoothTiles).GetSrv());

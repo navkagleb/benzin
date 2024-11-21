@@ -166,6 +166,7 @@ namespace benzin
     {
         m_InstanceBuffer.Create(BufferCreation
         {
+            .DebugName = "TlasInstanceBuffer",
             .MemoryType = ResourceMemoryType::Upload,// #TODO: Remove UploadBuffer
             .ElementSize = sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
             .ElementCount = (uint32_t)m_D3D12InstanceDescs.size(),

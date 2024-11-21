@@ -271,51 +271,41 @@ namespace benzin
         return false;
     }
 
-    bool FlyCameraController::OnMouseMoved(const MouseMovedEvent& event)
+    void FlyCameraController::RotateCamera(DirectX::XMINT2 mousePosition, DirectX::XMINT2 prevMousePosition)
     {
-        if (Input::IsMouseButtonPressed(MouseButton::Right))
+        const auto deltaX = (float)(mousePosition.x - prevMousePosition.x);
+        const auto deltaY = (float)(mousePosition.y - prevMousePosition.y);
+
+        m_Pitch += m_MouseSensitivity * deltaY;
+        m_Yaw += m_MouseSensitivity * deltaX;
+
+        // Clamp the up down view
+        m_Pitch = std::clamp(m_Pitch, -DirectX::XM_PIDIV2 + 0.01f, DirectX::XM_PIDIV2 - 0.01f);
+
+        // 360 rotation
+        if (m_Yaw > DirectX::XM_PI)
         {
-            const float deltaX = event.GetX<float>() - m_LastMousePosition.x;
-            const float deltaY = event.GetY<float>() - m_LastMousePosition.y;
-
-            m_Pitch += m_MouseSensitivity * deltaY;
-            m_Yaw += m_MouseSensitivity * deltaX;
-
-            // Clamp the up down view
-            m_Pitch = std::clamp(m_Pitch, -DirectX::XM_PIDIV2 + 0.01f, DirectX::XM_PIDIV2 - 0.01f);
-
-            // 360 rotation
-            if (m_Yaw > DirectX::XM_PI)
-            {
-                m_Yaw = -DirectX::XM_PI;
-            }
-
-            if (m_Yaw < -DirectX::XM_PI)
-            {
-                m_Yaw = DirectX::XM_PI;
-            }
-
-            m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
+            m_Yaw = -DirectX::XM_PI;
         }
 
-        m_LastMousePosition.x = event.GetX<float>();
-        m_LastMousePosition.y = event.GetY<float>();
+        if (m_Yaw < -DirectX::XM_PI)
+        {
+            m_Yaw = DirectX::XM_PI;
+        }
 
-        return true;
+        m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
     }
 
-    bool FlyCameraController::OnMouseScrolled(const MouseScrolledEvent& event)
+    void FlyCameraController::IncrementFov(float direction)
     {
         static const float minVerticalFovInRadians = DirectX::XMConvertToRadians(45.0f);
         static const float maxVerticalFovInRadians = DirectX::XMConvertToRadians(120.0f);
 
         if (auto* perspectiveProjection = GetPerspectiveProjection())
         {
-            const float verticalFov = perspectiveProjection->GetVerticalFovInRadians() - m_MouseWheelSensitivity * (float)event.GetOffsetX();
+            const float verticalFov = perspectiveProjection->GetVerticalFovInRadians() - m_MouseWheelSensitivity * direction;
             perspectiveProjection->SetVerticalFov(std::clamp(verticalFov, minVerticalFovInRadians, maxVerticalFovInRadians));
         }
-
-        return true;
     }
 
     PerspectiveProjection* FlyCameraController::GetPerspectiveProjection()

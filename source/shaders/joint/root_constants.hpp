@@ -93,7 +93,10 @@ namespace joint
 
         FullScreenDebugRc_SigmaTiles,
         FullScreenDebugRc_SigmaSmoothTiles,
-        FullScreenDebugRc_SigmaDenoisedPenumbra,
+        FullScreenDebugRc_SigmaPenumbra1,
+        FullScreenDebugRc_SigmaPenumbra2,
+        FullScreenDebugRc_SigmaShadowTemp1,
+        FullScreenDebugRc_SigmaShadowTemp2,
         FullScreenDebugRc_SigmaShadow,
     };
 

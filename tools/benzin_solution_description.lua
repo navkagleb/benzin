@@ -121,7 +121,7 @@ project "1_BenzinFramework"
     }
 
     nuget {
-        "Microsoft.Direct3D.D3D12:1.715.0-preview",
+        "Microsoft.Direct3D.D3D12:1.715.1-preview",
         "Microsoft.Direct3D.DXC:1.7.2308.12",
         "WinPixEventRuntime:1.0.231030001",
     }
