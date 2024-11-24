@@ -20,6 +20,7 @@
 #include "sandbox/render_passes/global_constants_pass.hpp"
 #include "sandbox/render_passes/ray_tracing_shadows_pass.hpp"
 #include "sandbox/render_passes/sigma_denoiser_pass.hpp"
+#include "sandbox/render_passes/tlas_building_pass.hpp"
 #include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
 
@@ -72,6 +73,7 @@ namespace sandbox
         BenzinAssert(m_RenderPasses.empty());
         m_RenderPasses.resize(magic_enum::enum_count<RenderPasses>());
 
+        m_RenderPasses[+RenderPasses::TlasBuilding] = std::make_unique<TlasBuildingPass>(*m_Device, *m_Scene);
         m_RenderPasses[+RenderPasses::GlobalConstants] = std::make_unique<GlobalConstantsPass>(*m_Device, *m_Scene);
         m_RenderPasses[+RenderPasses::Geometry] = std::make_unique<GeometryPass>(*m_Scene);
         m_RenderPasses[+RenderPasses::RayTracingShadows] = std::make_unique<RayTracingShadowsPass>(*m_Scene);

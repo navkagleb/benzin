@@ -123,6 +123,11 @@ namespace benzin
         : m_GpuTimerIndex{ m_RenderPassCount++ }
     {}
 
+    uint32_t RenderPass::GetRegisteredRenderPassCount()
+    {
+        return m_RenderPassCount;
+    }
+
     void RenderPass::SetContext(Device& device, SwapChain& swapChain, RenderResources& resources, RenderSettings& settings)
     {
         ms_Device = &device;

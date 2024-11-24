@@ -57,13 +57,6 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "GlobalConstantsPass");
 
-        {
-            // Before updating TopLevel AccelerationStructure the TransformComponents must be updated
-
-            BenzinPushGpuEvent(commandList, "BuildTopLevelAs");
-            m_Scene.BuildTopLevelAccelerationStructure();
-        }
-
         commandList.SetCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, m_FrameConstantBuffer->GetActiveGpuVirtualAddress());
 
         if (m_Scene.HasMeshes())

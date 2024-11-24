@@ -161,8 +161,6 @@ namespace benzin
 
                 writer.Write(entry, offset + i);
             }
-
-            m_Stats.PointLightCount = (uint32_t)view.size_hint();
         }
     }
 
@@ -201,11 +199,7 @@ namespace benzin
 
         PushBottomLevelAs(meshUnion);
 
-        for (const auto& mesh : meshUnion.Collection.Meshes)
-        {
-            m_Stats.VertexCount += (uint32_t)mesh.Vertices.size();
-            m_Stats.TriangleCount += (uint32_t)mesh.Indices.size() / 3;
-        }
+        UpdateStats(meshUnion);
 
         return (uint32_t)m_MeshUnions.size() - 1;
     }
@@ -468,5 +462,20 @@ namespace benzin
             commandList.UploadToBuffer<Material>(*meshUnion.GpuStorage.MaterialBuffer, meshUnion.Collection.Materials);
         }
     }
+
+    void Scene::UpdateStats(const MeshUnion& meshUnion)
+    {
+        for (const auto& mesh : meshUnion.Collection.Meshes)
+        {
+            m_Stats.VertexCount += (uint32_t)mesh.Vertices.size();
+            m_Stats.TriangleCount += (uint32_t)mesh.Indices.size() / 3;
+
+            ++m_Stats.MeshCount;
+        }
+
+        m_Stats.MaterialCount += (uint32_t)meshUnion.Collection.Materials.size();
+        m_Stats.MeshInstanceCount += (uint32_t)meshUnion.Collection.MeshInstances.size();
+    }
+
 
 } // namespace benzin

@@ -111,6 +111,8 @@ namespace sandbox
 
         while (m_IsRunning)
         {
+            BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::FullFrame]);
+
             m_FrameTimer.Tick();
             m_AnimationTimer.Tick();
             m_1SecIntervalTimer.AccumulateInterval(m_FrameTimer);
@@ -302,6 +304,8 @@ namespace sandbox
     {
         BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::OnRender]);
         BenzinPushGpuEvent(m_Device->GetGraphicsCommandQueue().GetCommandList(), "RenderPasses");
+
+        const benzin::ScopedGpuGrabTimer gpuFrameTimer{ m_Device->GetGpuTimer(), benzin::RenderPass::GetRegisteredRenderPassCount() };
 
         for (auto& renderPass : m_RenderPasses)
         {

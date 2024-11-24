@@ -8,6 +8,7 @@ namespace sandbox
 
     enum class RenderPasses : uint32_t
     {
+        TlasBuilding,
         GlobalConstants,
         Geometry,
         RayTracingShadows,

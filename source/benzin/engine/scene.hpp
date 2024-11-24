@@ -46,7 +46,9 @@ namespace benzin
         uint32_t VertexCount = 0;
         uint32_t TriangleCount = 0;
 
-        uint32_t PointLightCount = 0;
+        uint32_t MeshCount = 0;
+        uint32_t MaterialCount = 0;
+        uint32_t MeshInstanceCount = 0;
     };
 
     class Scene
@@ -108,6 +110,8 @@ namespace benzin
         void UploadAllMeshInstances();
         void UploadAllTextures();
         void UploadAllMaterials();
+
+        void UpdateStats(const MeshUnion& meshUnion);
 
     private:
         Device& m_Device;

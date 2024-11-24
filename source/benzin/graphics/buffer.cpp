@@ -103,7 +103,7 @@ namespace benzin
             {
                 return ResourceState::RtAccelerationStructure;
             }
-            else if (creation.MemoryType == ResourceMemoryType::Upload && !device.IsGpuUploadHeapsSupported())
+            else if (creation.MemoryType == ResourceMemoryType::Upload && !device.GetCaps().IsGpuUploadHeapsSupported)
             {
                 // Case only for D3D12_HEAP_TYPE_UPLOAD
                 // D3D12_HEAP_TYPE_GPU_UPLOAD requires D3D12_RESOURCE_STATE_COMMON

@@ -70,7 +70,7 @@ namespace sandbox
             .SunColor = deferredLightingSettings.SunColor,
             .SunIntensity = deferredLightingSettings.SunIntensity,
             .SunDirection = GetSunDirection(deferredLightingSettings),
-            .ActivePointLightCount = m_Scene.GetStats().PointLightCount,
+            .ActivePointLightCount = 0, // TODO
         });
     }
 

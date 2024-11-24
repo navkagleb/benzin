@@ -24,6 +24,7 @@ namespace sandbox
         OnUpdate,
         OnRender,
         EndFrame,
+        FullFrame,
     };
     BenzinEnableUnaryPlusForEnum(RunnerTiming);
 
@@ -63,7 +64,11 @@ namespace sandbox
             {
                 SpawnImGuiTimings<RunnerTiming>("RunnerTimings", m_RunnerTimings);
                 SpawnImGuiTimings<CpuTimingT>("CpuTimings", m_CpuTimings);
-                SpawnImGuiTimings<GpuTimingT>("GpuTimings", m_GpuTimings);
+
+                {
+                    SpawnImGuiTimings<GpuTimingT>("GpuTimings", m_GpuTimings);
+                    SpawnImGuiTimingText("FullGpuFrame", m_Device.GetGpuTimer().GetElapsedTime(benzin::RenderPass::GetRegisteredRenderPassCount()));
+                }
             });
         }
 
@@ -74,10 +79,16 @@ namespace sandbox
             {
                 for (const auto [i, timing] : timings | std::views::enumerate)
                 {
-                    const uint32_t indent = GetTimingIndent((TimingT)i);
-                    ImGui::Text(BenzinFormatData("{:{}}{}: {:.4f} ms", "", indent, magic_enum::enum_name((TimingT)i), benzin::ToFloatMs(timing)));
+                    const auto timingName = magic_enum::enum_name((TimingT)i);
+                    const uint32_t timingIndent = GetTimingIndent((TimingT)i);
+                    SpawnImGuiTimingText(timingName, timing, timingIndent);
                 }
             }
+        }
+
+        void SpawnImGuiTimingText(std::string_view name, std::chrono::microseconds us, uint32_t indent = 0) const
+        {
+            ImGui::Text(BenzinFormatData("{:{}}{}: {:.4f} ms", "", indent, name, benzin::ToFloatMs(us)));
         }
 
     private:

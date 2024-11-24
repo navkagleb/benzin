@@ -83,6 +83,8 @@ namespace benzin
         virtual ~RenderPass() = default;
 
     public:
+        static uint32_t GetRegisteredRenderPassCount();
+
         static void SetContext(Device& device, SwapChain& swapChain, RenderResources& resources, RenderSettings& settings);
 
         static void SetWindowViewport(uint32_t width, uint32_t height);
