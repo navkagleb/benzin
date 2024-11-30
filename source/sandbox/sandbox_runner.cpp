@@ -106,16 +106,20 @@ namespace sandbox
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<RayTracingShadowsSettings>("RayTracingShadows", true, [](RayTracingShadowsSettings& settings)
         {
-            ImGui::Checkbox("IsEnabled", &settings.IsEnabled);
+            ImGui::Checkbox("IsEnabled###RayTracingShadows", &settings.IsEnabled);
             ImGui::SliderInt("RaysPerPixel", (int*)&settings.RaysPerPixel, 0, 100);
         });
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<SigmaDenoiserSettings>("SigmaDenoiser", true, [](SigmaDenoiserSettings& settings)
         {
-            ImGui::DragFloat("StabilizationStrength", &settings.StabilizationStrength, 0.001f, 0.0f, 1.0f);
+            ImGui::Checkbox("IsEnabled###SigmaDenoiser", &settings.IsEnabled);
 
+            ImGui::Separator();
             ImGui::Checkbox("IsPostBlurEnabled", &settings.IsPostBlurEnabled);
+
+            ImGui::Separator();
             ImGui::Checkbox("IsTemporalStabilizationEnabled", &settings.IsTemporalStabilizationEnabled);
+            ImGui::DragFloat("StabilizationStrength", &settings.StabilizationStrength, 0.001f, 0.0f, 1.0f);
             ImGui::Checkbox("IsBicubicSamplingUsedForHistory", &settings.IsBicubicSamplingUsedForHistory);
         });
 
@@ -192,7 +196,17 @@ namespace sandbox
         auto& camera = m_Scene->GetCamera();
         camera.SetPosition({ -3.0f, 2.0f, -0.25f });
         camera.SetFrontDirection({ 1.0f, 0.0f, 0.0f });
+#elif 0
+        // For denoising results
+
+        auto& camera = m_Scene->GetCamera();
+        camera.SetPosition({ -0.244f, 0.846f, -1.346f });
+        camera.SetFrontDirection({ 0.439f, -0.413f, -0.798f });
+
+        m_AnimationTimer.SetPaused(true);
 #else
+        // For global results
+
         auto& camera = m_Scene->GetCamera();
         camera.SetPosition({ -1.649f, 1.007f, -1.555f });
         camera.SetFrontDirection({ 0.769f, 0.129f, 0.627f });

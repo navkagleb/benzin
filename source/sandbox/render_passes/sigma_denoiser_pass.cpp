@@ -135,11 +135,15 @@ namespace sandbox
         const auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "SigmaDenoiserPass");
 
-        RunClassifyTilesPass();
-        RunSmoothTilesPass();
-        RunBlurPass();
-        RunPostBlurPass();
-        RunTemporalStabilizationPass();
+        const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
+        if (sigmaSettings.IsEnabled)
+        {
+            RunClassifyTilesPass();
+            RunSmoothTilesPass();
+            RunBlurPass();
+            RunPostBlurPass();
+            RunTemporalStabilizationPass();
+        }
     }
 
     void SigmaDenoiserPass::RunClassifyTilesPass() const

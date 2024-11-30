@@ -107,10 +107,8 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
         }
     }
 
-    float shadowFactor = g_SigmaShadowTex.Sample(g_PointClampSampler, input.Uv);
-    shadowFactor = sigma::UnpackShadow(shadowFactor);
-    // shadowFactor = saturate(shadowFactor);
-    // shadowFactor = 1.0;
+    float shadowFactor = g_SigmaShadowTex.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+    shadowFactor = g_FrameConstants.IsDenoiserEnabled ? sigma::UnpackShadow(shadowFactor) : sigma::IsLit(shadowFactor);
 
     const float3 finalLitColor = ambientColor + gbuffer.Emissive + directColor * shadowFactor;
     return float4(saturate(finalLitColor), 1.0f);

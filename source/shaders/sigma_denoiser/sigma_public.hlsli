@@ -37,4 +37,9 @@ namespace sigma
         return shadow * shadow;
     }
 
+    bool IsLit(float penumbra)
+    {
+        return penumbra >= sigma::g_Fp16Max;
+    }
+
 }

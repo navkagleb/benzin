@@ -100,11 +100,6 @@ namespace sigma
         return float3x3(tangent, bitangent, normal);
     }
 
-    bool IsLit(float penumbra)
-    {
-        return penumbra >= sigma::g_Fp16Max;
-    }
-
     float PixelRadiusToWorldAtDepth(float pixelToWorldScale, float pixelRadius, float viewDepth)
     {
         return pixelRadius * pixelToWorldScale * viewDepth;

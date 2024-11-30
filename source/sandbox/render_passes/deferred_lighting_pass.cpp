@@ -80,6 +80,9 @@ namespace sandbox
 
         BenzinPushGpuEvent(commandList, "DeferredLightingPass");
 
+        const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
+
+        const auto& shadows = ms_Resources->GetTexture(sigmaSettings.IsEnabled ? +Texture::SigmaShadow : +Texture::NoisyPenumbra);
         const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
 
         commandList.SetViewport(ms_RenderViewport);
@@ -102,7 +105,7 @@ namespace sandbox
         commandList.SetRootResource(joint::DeferredLightingPassRc_VelocityTex, ms_Resources->GetTexture(+Texture::VelocityBuffer).GetSrv());
         commandList.SetRootResource(joint::DeferredLightingPassRc_DepthStencilTex, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv());
         commandList.SetRootResource(joint::DeferredLightingPassRc_PointLightBuf, m_Scene.GetPointLightBufferStructuredSrv());
-        commandList.SetRootResource(joint::DeferredLightingPassRc_SigmaShadowTex, ms_Resources->GetTexture(+Texture::SigmaShadow).GetSrv());
+        commandList.SetRootResource(joint::DeferredLightingPassRc_SigmaShadowTex, shadows.GetSrv());
 
         commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
         commandList.DrawVertexed(3);

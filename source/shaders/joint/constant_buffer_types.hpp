@@ -33,10 +33,10 @@ namespace joint
         float RenderAspectRatio;
         float PixelToWorldScale;
 
+        uint IsShadowsEnabled : 1;
+        uint IsDenoiserEnabled : 1;
+
         uint CpuFrameIndex;
-        float FrameTimeInSec;
-        float ElapsedTimeInSec;
-        float3 _Padding0;
 
         float4 RandomFloats01;
 
@@ -46,38 +46,11 @@ namespace joint
 
     struct RayTracingShadowsConstants
     {
-        uint IsEnabled;
         uint RaysPerPixel;
         float TanSunAngularRadius;
         float PixelAngularRadiusInRadians;
         float SunAngularRadiusInRadians;
         float3 SunDirection;
-    };
-
-    struct DenoiserTemporalAccumulationConstants
-    {
-        bool IsAccumulationEnabled : 1;
-    };
-
-    struct DenoiserHistoryFixConstants
-    {
-        uint IsHistoryFixEnabled : 1;
-        uint IsViewDepthUsedForWeights : 1;
-    };
-
-    struct DenoiserBlurConstants
-    {
-        float SpecularAccumulationCurve;
-        float SpecularAccumulationBasePower;
-
-        uint IsDenoiserAntilagEnabled : 1;
-
-        uint IsGeometryWeightUsed : 1;
-        uint IsNormalWeightUsed : 1;
-        uint IsRoughnessWeightUsed : 1;
-        float GeometryWeightSensitivity;
-        float MinBlurRadius;
-        float MaxBlurRadius;
     };
 
     struct DeferredLightingPassConstants

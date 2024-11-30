@@ -20,11 +20,11 @@ namespace joint
 
     struct MeshInstance
     {
-        uint MeshIndex;
-        uint MaterialIndex;
-        float2 __UnusedPadding0;
         float4x4 Transform;
         float4x4 TransformForNormals;
+        uint MeshIndex;
+        uint MaterialIndex;
+        uint2 Padding_0;
     };
 
     struct MeshTransform

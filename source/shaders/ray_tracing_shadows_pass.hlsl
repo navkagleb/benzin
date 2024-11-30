@@ -127,7 +127,7 @@ BenzinDeclareRootResource(RWTexture2D<float>, g_OutNoisyPenumbraTex, joint::RayT
 [shader("raygeneration")]
 void RayGen()
 {
-    if (!g_PassConstants.IsEnabled)
+    if (!g_FrameConstants.IsShadowsEnabled)
     {
         g_OutNoisyPenumbraTex[DispatchRaysIndex().xy] = sigma::PackPenumbra(sigma::g_Fp16Max, g_PassConstants.TanSunAngularRadius);
         return;

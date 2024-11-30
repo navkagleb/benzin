@@ -68,7 +68,6 @@ namespace sandbox
 
         m_PassConstantBuffer->UpdateConstants(joint::RayTracingShadowsConstants
         {
-            .IsEnabled = rayTracingSettings.IsEnabled,
             .RaysPerPixel = rayTracingSettings.RaysPerPixel,
             .TanSunAngularRadius = std::tan(sunAngularRadiusInRadians),
             .PixelAngularRadiusInRadians = pixelAngularRadiusInRadians,

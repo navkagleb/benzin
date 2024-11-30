@@ -25,7 +25,7 @@ namespace sandbox
 
         bool IsDependentOnViewport() const override { return false; }
 
-        void OnUpdate(const benzin::TickTimer& tickTimer) override;
+        void OnUpdate() override;
         void OnRender() const override;
 
     private:

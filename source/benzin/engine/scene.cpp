@@ -413,10 +413,10 @@ namespace benzin
             {
                 const joint::MeshInstance gpuMeshInstance
                 {
-                    .MeshIndex = meshInstance.MeshIndex,
-                    .MaterialIndex = meshInstance.MaterialIndex,
                     .Transform = meshInstance.Transform,
                     .TransformForNormals = GetMatrixForNormals(meshInstance.Transform),
+                    .MeshIndex = meshInstance.MeshIndex,
+                    .MaterialIndex = meshInstance.MaterialIndex,
                 };
 
                 commandList.UploadToBuffer(*meshUnion.GpuStorage.MeshInstanceBuffer, ToSingleSpan(gpuMeshInstance), i);

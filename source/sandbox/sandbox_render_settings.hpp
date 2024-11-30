@@ -13,6 +13,8 @@ namespace sandbox
 
     struct SigmaDenoiserSettings
     {
+        bool IsEnabled = true;
+
         float StabilizationStrength = 1.0f;
 
         bool IsPostBlurEnabled = true;

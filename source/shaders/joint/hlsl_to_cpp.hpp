@@ -1,13 +1,18 @@
 #pragma once
 
+#define BenzinAlign16
+
 #ifdef __cplusplus
 
-#define JointDefineEnum(EnumName, ...) \
-    enum class EnumName : uint \
-    { \
-        __VA_ARGS__ \
-    }; \
-    BenzinEnableUnaryPlusForEnum(EnumName)
+    #undef BenzinAlign16
+    #define BenzinAlign16 __declspec(align(16))
+
+    #define JointDefineEnum(EnumName, ...) \
+        enum class EnumName : uint \
+        { \
+            __VA_ARGS__ \
+        }; \
+        BenzinEnableUnaryPlusForEnum(EnumName)
 
 namespace joint
 {
@@ -34,9 +39,9 @@ namespace joint
 
 #else
 
-#undef BenzinEnableUnaryPlusForEnum
-#define BenzinEnableUnaryPlusForEnum(EnumT)
+    #undef BenzinEnableUnaryPlusForEnum
+    #define BenzinEnableUnaryPlusForEnum(EnumT)
 
-#define JointDefineEnum(EnumName, ...) namespace EnumName { enum struct Enum : int { __VA_ARGS__ }; }
+    #define JointDefineEnum(EnumName, ...) namespace EnumName { enum struct Enum : int { __VA_ARGS__ }; }
 
 #endif

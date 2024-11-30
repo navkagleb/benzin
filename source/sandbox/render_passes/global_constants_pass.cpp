@@ -11,6 +11,8 @@
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/utility/random.hpp>
 
+#include "sandbox/sandbox_render_settings.hpp"
+
 namespace sandbox
 {
 
@@ -21,7 +23,7 @@ namespace sandbox
         benzin::MakeUniquePtr(m_FrameConstantBuffer, *ms_Device, "FrameConstantBuffer");
     }
 
-    void GlobalConstantsPass::OnUpdate(const benzin::TickTimer& tickTimer)
+    void GlobalConstantsPass::OnUpdate()
     {
         const float aspectRatio = (float)GetRenderViewportWidth() / GetRenderViewportHeight();
         const float pixelToWorldScale = std::tan(0.5f * m_Scene.GetPerspectiveProjection().GetVerticalFovInRadians()) / GetRenderViewportHeight(); // ViewToClip[1][1] factor
@@ -35,9 +37,10 @@ namespace sandbox
             .RenderAspectRatio = aspectRatio,
             .PixelToWorldScale = pixelToWorldScale,
 
+            .IsShadowsEnabled = ms_Settings->GetSection<RayTracingShadowsSettings>().IsEnabled,
+            .IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled,
+
             .CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex(),
-            .FrameTimeInSec = tickTimer.GetDeltaTimeInSec(),
-            .ElapsedTimeInSec = tickTimer.GetElapsedTimeInSec(),
 
             .RandomFloats01
             {
