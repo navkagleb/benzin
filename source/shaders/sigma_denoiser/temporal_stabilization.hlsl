@@ -229,7 +229,7 @@ void CsMain(CsInput input)
     }
 
     // Early out
-    const float unprojectDepth = sigma::PixelRadiusToWorldAtDepth(g_FrameConstants.PixelToWorldScale, 1.0, centerData.ViewDepth);
+    const float unprojectDepth = sigma::PixelRadiusToWorld(1.0, g_FrameConstants.PixelToWorldScale, centerData.ViewDepth);
     const float penumbraInPixels = centerData.Penumbra / unprojectDepth;
 
 #if !defined(DEBUG_TEMPORAL_STABILIZATION)

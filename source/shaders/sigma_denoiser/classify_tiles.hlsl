@@ -8,7 +8,7 @@ BenzinDeclareRootResource(Texture2D<float>, g_PenumbraTex, joint::Rc_SigmaClassi
 BenzinDeclareRootResource(RWTexture2D<float4>, g_OutTilesTex, joint::Rc_SigmaClassifyTiles::OutTilesTex);
 
 groupshared uint gs_TileMask;
-groupshared uint gs_TileRadius;
+groupshared uint gs_TileRadius; // Stores float value. Use asuint and asfloat
 
 struct CsInput
 {
@@ -50,8 +50,8 @@ void FetchThreadTileInfo(CsInput input, out uint outThreadMask, out float outThr
             threadMask += (isInf ? 1 : 0) << 18;
 
             const float hitDistance = isLit || isInf ? 0.0 : penumbra;
-            const float unprojectDepth = sigma::PixelRadiusToWorldAtDepth(g_FrameConstants.PixelToWorldScale, 1.0, viewDepth);
-            const float pixelRadius = sigma::GetKernelRadiusInPixels(hitDistance, unprojectDepth);
+            const float unprojectDepth = sigma::PixelRadiusToWorld(1.0, g_FrameConstants.PixelToWorldScale, viewDepth);
+            const float pixelRadius = sigma::GetKernelPixelRadius(hitDistance, unprojectDepth);
 
             threadRadius = max(pixelRadius, threadRadius);
         }
@@ -66,7 +66,7 @@ void CsMain(CsInput input)
 {
     // Cpp. Thread group size = 16 => sample count per thread group = 16 * 16 = 256
     // Hlsl. Sample count per thread group = thread count * sample count per thread = (8 * 4) * (2 * 4) = 256
-    
+
     if (input.FlatThreadIndex == 0)
     {
         gs_TileMask = 0;

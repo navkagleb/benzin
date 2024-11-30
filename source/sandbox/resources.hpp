@@ -19,9 +19,9 @@ namespace sandbox
         // SigmaDenoiser
         SigmaTiles,
         SigmaSmoothTiles,
-        SigmaHistory,
         SigmaPenumbra1,
         SigmaPenumbra2,
+        SigmaShadowHistory,
         SigmaShadowTemp1,
         SigmaShadowTemp2,
         SigmaShadow,

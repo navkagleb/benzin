@@ -284,7 +284,7 @@ namespace sandbox
 
         m_FpsCounter.TickFrame(m_FrameTimer);
 
-        m_RenderViewportTool->GetFlyCameraController().OnUpdate(m_AnimationTimer.GetDeltaTime());
+        m_RenderViewportTool->GetFlyCameraController().OnUpdate(m_FrameTimer.GetDeltaTime());
         m_Scene->OnUpdate();
 
         {

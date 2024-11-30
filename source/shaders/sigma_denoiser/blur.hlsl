@@ -135,7 +135,7 @@ void CsMain(CsInput input)
         min(g_FrameConstants.RenderResolution.x, g_FrameConstants.RenderResolution.y),
         centerData.ViewDepth
     );
-    const float unprojectViewDepth = sigma::PixelRadiusToWorldAtDepth(g_FrameConstants.PixelToWorldScale, 1.0, centerData.ViewDepth);
+    const float unprojectViewDepth = sigma::PixelRadiusToWorld(1.0, g_FrameConstants.PixelToWorldScale, centerData.ViewDepth);
     const float2 geometryWeightParams = sigma::GetGeometryWeightParams(sigma::g_PlaneDistanceSensitivity, frustumSize, viewPos, viewNormal, 1.0);
 
 #if 1
@@ -239,7 +239,7 @@ void CsMain(CsInput input)
 #endif
 
     // Blur radius
-    const float worldRadius = sigma::GetKernelRadiusInPixels(blurredPenumbra, unprojectViewDepth, tileValue) * unprojectViewDepth;
+    const float worldRadius = sigma::GetKernelPixelRadius(blurredPenumbra, unprojectViewDepth, tileValue) * unprojectViewDepth;
 
     tangent *= worldRadius;
     bitangent *= worldRadius;

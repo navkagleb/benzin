@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef SIGMA_USE_BORDER_2
-    #define SIGMA_BORDER 4
+    #define SIGMA_BORDER 2
 #else
     #define SIGMA_BORDER 1
 #endif
@@ -16,7 +16,7 @@ namespace sigma
     // (units) > 0 - use TLAS or tracing range (max value = NRD_FP16_MAX / NRD_FP16_VIEWZ_SCALE - 1 = 524031)
     static const float g_DenoisingRange = 500000.0;
 
-    static const float g_MaxPixelRadius = 16.0; // TODO: at least 32 needed for test 200
+    static const float g_MaxPixelRadius = 32.0;
 
     // (normalized %) - represents maximum allowed deviation from local tangent plane
     static const float g_PlaneDistanceSensitivity = 0.005;
@@ -100,8 +100,10 @@ namespace sigma
         return float3x3(tangent, bitangent, normal);
     }
 
-    float PixelRadiusToWorldAtDepth(float pixelToWorldScale, float pixelRadius, float viewDepth)
+    float PixelRadiusToWorld(float pixelRadius, float pixelToWorldScale, float viewDepth)
     {
+        // 'pixelToWorldScale' is used to account for render viewport resolution
+        // 'viewDepth' is used to account for perspective projection
         return pixelRadius * pixelToWorldScale * viewDepth;
     }
 
@@ -112,12 +114,24 @@ namespace sigma
         return minRenderSize * pixelToWorldScale * viewDepth;
     }
 
-    float GetKernelRadiusInPixels(float hitDistance, float pixelToWorldScale, float scale = 1.0)
+    float GetKernelPixelRadius(float hitDistance, float unprojectDepth, float scale = 1.0)
     {
-        const float unclampedRadius = hitDistance / pixelToWorldScale;
-        const float minRadius = min(unclampedRadius, SIGMA_BORDER);
+        // TODO:
+        // unprojectDepth: Converts a pixel radius from world space to normalized screen space, calculated as:
+        
+        // Note:
+        // The result, unclampedRadius, represents the size of the kernel radius in pixels for a penumbra blur.
 
-        return clamp(unclampedRadius * scale, minRadius, g_MaxPixelRadius);
+        float unclampedRadius = hitDistance / unprojectDepth; // Larger penumbra (hitDist) or smaller unprojectZ increases the radius.
+        unclampedRadius *= scale;
+
+#if defined(SIGMA_USE_BORDER_2)
+        const float minRadius = min(unclampedRadius, 2.0);
+#else
+        const float minRadius = min(unclampedRadius, 1.0);
+#endif
+
+        return clamp(unclampedRadius, minRadius, g_MaxPixelRadius);
     }
 
     float2 GetGeometryWeightParams(float planeDistanceSensitivity, float frustumSize, float3 viewPos, float3 viewNormal, float nonLinearAccumSpeed)

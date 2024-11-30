@@ -39,6 +39,7 @@ namespace benzin
         bool m_IsViewportSizeRelevant = true;
 
         bool m_IsViewportHovered = false;
+        bool m_IsActive = false;
     };
 
 }

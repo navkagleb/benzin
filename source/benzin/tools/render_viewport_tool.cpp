@@ -17,7 +17,7 @@ namespace benzin
 
     void RenderViewportTool::OnEvent(Event& event)
     {
-        if (!m_IsViewportHovered)
+        if (!m_IsViewportHovered || !m_IsViewportActive)
         {
             return;
         }
@@ -74,6 +74,7 @@ namespace benzin
             });
 
             m_IsViewportHovered = ImGui::IsItemHovered();
+            m_IsViewportActive = true; // TODO: ImGui::IsWindowFocused don't work
         });
 
         ImGui::PopStyleVar();

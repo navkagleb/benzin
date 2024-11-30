@@ -10,6 +10,8 @@ namespace sigma
     // X => IN_PENUMBRA
     float PackPenumbra(float distanceToOccluder,float tanOfLightAngularRadius)
     {
+        // Return the size of penumbra in world space
+
         const float penumbraSize = distanceToOccluder * tanOfLightAngularRadius;
         const float penumbraRadius = penumbraSize * 0.5;
 
