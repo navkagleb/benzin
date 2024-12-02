@@ -77,7 +77,7 @@ namespace sandbox
         m_RenderPasses[+RenderPasses::GlobalConstants] = std::make_unique<GlobalConstantsPass>(*m_Device, *m_Scene);
         m_RenderPasses[+RenderPasses::Geometry] = std::make_unique<GeometryPass>(*m_Scene);
         m_RenderPasses[+RenderPasses::RayTracingShadows] = std::make_unique<RayTracingShadowsPass>(*m_Scene);
-        m_RenderPasses[+RenderPasses::SigmaDenoiser] = std::make_unique<SigmaDenoiserPass>(*m_Scene); // Temp
+        m_RenderPasses[+RenderPasses::SigmaDenoiser] = std::make_unique<SigmaDenoiserPass>();
         m_RenderPasses[+RenderPasses::DeferredLighting] = std::make_unique<DeferredLightingPass>(*m_Scene);
         m_RenderPasses[+RenderPasses::Environment] = std::make_unique<EnvironmentPass>();
         m_RenderPasses[+RenderPasses::FullScreenDebug] = std::make_unique<FullScreenDebugPass>();
@@ -113,14 +113,11 @@ namespace sandbox
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<SigmaDenoiserSettings>("SigmaDenoiser", true, [](SigmaDenoiserSettings& settings)
         {
             ImGui::Checkbox("IsEnabled###SigmaDenoiser", &settings.IsEnabled);
-
-            ImGui::Separator();
+            ImGui::Checkbox("IsClearEnabled", &settings.IsClearEnabled);
             ImGui::Checkbox("IsPostBlurEnabled", &settings.IsPostBlurEnabled);
-
-            ImGui::Separator();
             ImGui::Checkbox("IsTemporalStabilizationEnabled", &settings.IsTemporalStabilizationEnabled);
-            ImGui::DragFloat("StabilizationStrength", &settings.StabilizationStrength, 0.001f, 0.0f, 1.0f);
             ImGui::Checkbox("IsBicubicSamplingUsedForHistory", &settings.IsBicubicSamplingUsedForHistory);
+            ImGui::DragFloat("StabilizationStrength", &settings.StabilizationStrength, 0.001f, 0.0f, 1.0f);
         });
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<DeferredLightingSettings>("DeferredLighting", true, [](DeferredLightingSettings& settings)

@@ -3,8 +3,6 @@
 
 #include <benzin/core/engine_math.hpp>
 #include <benzin/core/math.hpp>
-#include <benzin/engine/entity_components.hpp>
-#include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
@@ -12,7 +10,6 @@
 #include <benzin/graphics/pipeline_state_manager.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
-#include <benzin/utility/benzin_defines.hpp>
 
 #include "sandbox/sandbox_render_settings.hpp"
 #include "sandbox/resources.hpp"
@@ -20,8 +17,7 @@
 namespace sandbox
 {
 
-    SigmaDenoiserPass::SigmaDenoiserPass(const benzin::Scene& scene)
-        : m_Scene{ scene }
+    SigmaDenoiserPass::SigmaDenoiserPass()
     {
         auto& psoManager = ms_Device->GetPipelineStateManager();
         m_ClassifyTilesPso = psoManager.CreatePipelineState(benzin::ComputePipelineStateCreation{ .DebugName = "Sigma_ClassifyTiles", .CsFileName = "sigma_denoiser/classify_tiles.hlsl" });
@@ -73,8 +69,8 @@ namespace sandbox
         createSigmaTexture(Texture::SigmaTiles, benzin::GraphicsFormat::Rgba8Unorm, m_TileCount);
         createSigmaTexture(Texture::SigmaSmoothTiles, benzin::GraphicsFormat::Rg8Unorm, m_TileCount);
 
-        const auto shadowFormat = benzin::GraphicsFormat::R32Float;
-        const auto penumbraFormat = benzin::GraphicsFormat::R8Unorm;
+        const auto shadowFormat = benzin::GraphicsFormat::R8Unorm;
+        const auto penumbraFormat = benzin::GraphicsFormat::R32Float;
         const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
 
         createSigmaTexture(Texture::SigmaPenumbra1, penumbraFormat, renderResolution);
@@ -111,15 +107,47 @@ namespace sandbox
         const auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "SigmaDenoiserPass");
 
-        const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
-        if (sigmaSettings.IsEnabled)
+        const auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
+        if (settings.IsEnabled)
         {
+            RunClearPass(settings.IsClearEnabled);
             RunClassifyTilesPass();
             RunSmoothTilesPass();
             RunBlurPass();
-            RunPostBlurPass();
-            RunTemporalStabilizationPass();
+            RunPostBlurPass(settings.IsPostBlurEnabled);
+            RunTemporalStabilizationPass(settings.IsTemporalStabilizationEnabled);
         }
+    }
+
+    void SigmaDenoiserPass::RunClearPass(bool isEnabled) const
+    {
+        if (!isEnabled)
+        {
+            return;
+        }
+
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        BenzinPushGpuEvent(commandList, "Clear");
+
+        BenzinMakeScopedResourceBarriers(
+            commandList,
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaTiles), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaSmoothTiles), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaPenumbra1), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaPenumbra2), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaShadowHistory), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaShadowTemp1), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaShadowTemp2), benzin::ResourceState::UnorderedAccess },
+        );
+
+        const DirectX::XMFLOAT4 clearColor{};
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaTiles), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaSmoothTiles), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaPenumbra1), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaPenumbra2), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaShadowHistory), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaShadowTemp1), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaShadowTemp2), clearColor);
     }
 
     void SigmaDenoiserPass::RunClassifyTilesPass() const
@@ -207,7 +235,7 @@ namespace sandbox
         commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
     }
 
-    void SigmaDenoiserPass::RunPostBlurPass() const
+    void SigmaDenoiserPass::RunPostBlurPass(bool isEnabled) const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "PostBlur");
@@ -217,8 +245,7 @@ namespace sandbox
         const auto& shadowTemp1 = ms_Resources->GetTexture(+Texture::SigmaShadowTemp1);
         const auto& shadowTemp2 = ms_Resources->GetTexture(+Texture::SigmaShadowTemp2);
 
-        const auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
-        if (!settings.IsPostBlurEnabled)
+        if (!isEnabled)
         {
             BenzinMakeScopedResourceBarriers(
                 commandList,
@@ -230,7 +257,7 @@ namespace sandbox
 
             commandList.CopyResource(penumbra2, penumbra1);
             commandList.CopyResource(shadowTemp2, shadowTemp1);
-
+        
             return;
         }
 
@@ -241,9 +268,9 @@ namespace sandbox
 
             commandList.SetRootResource(+WorldNormalTex, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
             commandList.SetRootResource(+ViewDepthTex, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
-            commandList.SetRootResource(+PenumbraTex, ms_Resources->GetTexture(+Texture::SigmaPenumbra1).GetSrv());
             commandList.SetRootResource(+SmoothTilesTex, ms_Resources->GetTexture(+Texture::SigmaSmoothTiles).GetSrv());
-            commandList.SetRootResource(+ShadowTex, ms_Resources->GetTexture(+Texture::SigmaShadowTemp1).GetSrv());
+            commandList.SetRootResource(+PenumbraTex, penumbra1.GetSrv());
+            commandList.SetRootResource(+ShadowTex, shadowTemp1.GetSrv());
             commandList.SetRootResource(+OutPenumbraTex, penumbra2.GetUav());
             commandList.SetRootResource(+OutShadowTex, shadowTemp2.GetUav());
         }
@@ -257,7 +284,7 @@ namespace sandbox
         commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
     }
 
-    void SigmaDenoiserPass::RunTemporalStabilizationPass() const
+    void SigmaDenoiserPass::RunTemporalStabilizationPass(bool isEnabled) const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "TemporalStabilization");
@@ -265,8 +292,7 @@ namespace sandbox
         const auto& shadowTemp2 = ms_Resources->GetTexture(+Texture::SigmaShadowTemp2);
         const auto& shadow = ms_Resources->GetTexture(+Texture::SigmaShadow);
 
-        const auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
-        if (!settings.IsTemporalStabilizationEnabled)
+        if (!isEnabled)
         {
             BenzinMakeScopedResourceBarriers(
                 commandList,

@@ -21,7 +21,7 @@ namespace sandbox
     class SigmaDenoiserPass : public benzin::RenderPass
     {
     public:
-        explicit SigmaDenoiserPass(const benzin::Scene& scene);
+        SigmaDenoiserPass();
         ~SigmaDenoiserPass() override;
 
         bool IsDependentOnViewport() const override { return true; }
@@ -32,15 +32,14 @@ namespace sandbox
         void OnRender() const override;
 
     private:
+        void RunClearPass(bool isEnabled) const;
         void RunClassifyTilesPass() const;
         void RunSmoothTilesPass() const;
         void RunBlurPass() const;
-        void RunPostBlurPass() const;
-        void RunTemporalStabilizationPass() const;
+        void RunPostBlurPass(bool isEnabled) const;
+        void RunTemporalStabilizationPass(bool isEnabled) const;
 
     private:
-        const benzin::Scene& m_Scene; // Temp
-
         benzin::PipelineState* m_ClassifyTilesPso = nullptr;
         benzin::PipelineState* m_SmoothTilesPso = nullptr;
         benzin::PipelineState* m_BlurPso = nullptr;

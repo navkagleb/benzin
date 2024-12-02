@@ -14,12 +14,11 @@ namespace sandbox
     struct SigmaDenoiserSettings
     {
         bool IsEnabled = true;
-
-        float StabilizationStrength = 1.0f;
-
+        bool IsClearEnabled = false;
         bool IsPostBlurEnabled = true;
         bool IsTemporalStabilizationEnabled = true;
         bool IsBicubicSamplingUsedForHistory = true;
+        float StabilizationStrength = 1.0f;
     };
 
     struct DeferredLightingSettings
