@@ -8,7 +8,7 @@ namespace sandbox
 {
 
     TickTimerTool::TickTimerTool(const benzin::TickTimer& tickTimer)
-        : ImGuiTool{ "TickTimerTool", false }
+        : ImGuiTool{ "TickTimerTool" }
         , m_TickTimer{ tickTimer }
     {}
 

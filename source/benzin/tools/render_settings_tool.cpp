@@ -5,7 +5,7 @@ namespace benzin
 {
 
     RenderSettingsTool::RenderSettingsTool(RenderSettings& renderSettings)
-        : ImGuiTool{ "RenderSettingsTool", true }
+        : ImGuiTool{ "RenderSettingsTool" }
         , m_RenderSettings{ renderSettings }
     {}
 

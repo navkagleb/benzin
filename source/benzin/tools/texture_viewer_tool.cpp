@@ -17,7 +17,7 @@ namespace benzin
     //
 
     TextureViewerTool::TextureViewerTool(const RenderResources& renderResources)
-        : ImGuiTool{ "TextureViewerTool", false, magic_enum::enum_name(g_ToggleVisibilityKeyCode) }
+        : ImGuiTool{ "TextureViewerTool", magic_enum::enum_name(g_ToggleVisibilityKeyCode) }
         , m_RenderResouces{ renderResources }
     {}
 

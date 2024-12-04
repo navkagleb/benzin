@@ -35,7 +35,7 @@ namespace benzin
     //
 
     FlyCameraTool::FlyCameraTool(FlyCameraController& controller)
-        : ImGuiTool{ "FlyCameraTool", false }
+        : ImGuiTool{ "FlyCameraTool" }
         , m_Controller{ controller }
     {}
 

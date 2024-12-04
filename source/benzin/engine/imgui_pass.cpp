@@ -17,12 +17,13 @@
 namespace benzin
 {
 
+    static const auto g_ToolsVisiblityPath = std::filesystem::absolute("bin/tools_visiblity.txt");
+
     // ImGuiTool
 
-    ImGuiTool::ImGuiTool(std::string_view name, bool isVisible, std::string_view shortcut)
+    ImGuiTool::ImGuiTool(std::string_view name, std::string_view shortcut)
         : m_Name{ name }
         , m_Shortcut{ shortcut }
-        , m_IsVisible{ isVisible }
     {}
     
     void ImGuiTool::SpawnImGuiWindow(const std::function<void()>& callback)
@@ -89,10 +90,14 @@ namespace benzin
         }
 
         ImGuiTool::ms_Window = &window;
+
+        LoadToolsVisiblity();
     }
 
     ImGuiManager::~ImGuiManager()
     {
+        SaveToolsVisiblity();
+
         for (auto* tool : m_Tools)
         {
             delete tool;
@@ -275,6 +280,47 @@ namespace benzin
     void ImGuiManager::ToggleUiSpawn()
     {
         m_IsUiSpawnEnabled = !m_IsUiSpawnEnabled;
+    }
+
+    void ImGuiManager::SaveToolsVisiblity()
+    {
+        if (m_Tools.empty())
+        {
+            return;
+        }
+
+        for (const auto* tool : m_Tools)
+        {
+            m_IsToolVisibleMap[tool->m_Name.data()] = tool->m_IsVisible;
+        }
+
+        std::ofstream file{ g_ToolsVisiblityPath };
+        for (const auto& [name, isVisible] : m_IsToolVisibleMap)
+        {
+            file << name << ' ' << isVisible << '\n';
+        }
+    }
+
+    void ImGuiManager::LoadToolsVisiblity()
+    {
+        if (!std::filesystem::exists(g_ToolsVisiblityPath))
+        {
+            return;
+        }
+
+        BenzinAssert(m_IsToolVisibleMap.empty());
+
+        std::ifstream file{ g_ToolsVisiblityPath };
+        while (file.good())
+        {
+            std::string name;
+            bool isVisible;
+
+            file >> name;
+            file >> isVisible;
+
+            m_IsToolVisibleMap[name] = isVisible;
+        }
     }
 
     // ImGuiPass

@@ -30,7 +30,7 @@ namespace benzin
         const SwapChain& swapChain,
         const RenderViewportTool& renderViewportTool
     )
-        : ImGuiTool{ "PerformanceOverlayTool", true }
+        : ImGuiTool{ "PerformanceOverlayTool" }
         , m_Window{ window }
         , m_Device{ device }
         , m_SwapChain{ swapChain }

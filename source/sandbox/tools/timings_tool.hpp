@@ -45,7 +45,7 @@ namespace sandbox
         using GpuTimings = Timings<GpuTimingT>;
 
         explicit TimingsTool(const benzin::Device& device)
-            : ImGuiTool{ "TimingsTool", true }
+            : ImGuiTool{ "TimingsTool" }
             , m_Device{ device }
         {}
 

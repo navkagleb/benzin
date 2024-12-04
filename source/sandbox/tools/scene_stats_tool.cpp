@@ -7,7 +7,7 @@ namespace sandbox
 {
 
     SceneStatsTool::SceneStatsTool(const benzin::Scene& scene)
-        : ImGuiTool{ "SceneStatsTool", false }
+        : ImGuiTool{ "SceneStatsTool" }
         , m_Scene{ scene }
     {}
 

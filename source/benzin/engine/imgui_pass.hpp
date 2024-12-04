@@ -15,12 +15,10 @@ namespace benzin
     public:
         friend class ImGuiManager;
 
-        ImGuiTool(std::string_view name, bool isVisible, std::string_view shortcut = {});
+        ImGuiTool(std::string_view name, std::string_view shortcut = {});
         virtual ~ImGuiTool() = default;
 
     public:
-        auto IsVisible() const { return m_IsVisible; }
-
         virtual void OnEvent(Event& event) { BenzinUnused(event); };
         virtual void SpawnImGui() = 0;
 
@@ -55,6 +53,7 @@ namespace benzin
         T* PushTool(Args&&... args)
         {
             auto* tool = new T{ std::forward<Args>(args)... };
+            tool->m_IsVisible = m_IsToolVisibleMap[tool->m_Name.data()];
 
             m_Tools.push_back(tool);
             std::ranges::sort(m_Tools, {}, &ImGuiTool::m_Name);
@@ -71,10 +70,15 @@ namespace benzin
         void ToggleImGuiDemoWindow();
         void ToggleUiSpawn();
 
+        void SaveToolsVisiblity();
+        void LoadToolsVisiblity();
+
     private:
         Device& m_Device;
 
         Descriptor m_FontDescriptor;
+
+        std::unordered_map<std::string, bool> m_IsToolVisibleMap; // TODO: can std::string_view be used instead of std::string
 
         std::vector<ImGuiTool*> m_Tools;
         std::vector<std::function<void()>> m_ImGuiSpawnMenuCallbacks;
