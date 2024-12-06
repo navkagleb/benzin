@@ -17,7 +17,6 @@ namespace joint
     enum DebugOutputType : uint32_t
     {
         DebugOutputType_None,
-        DebugOutputType_ReconsructedWorldPosition,
         DebugOutputType_GBufferAlbedo,
         DebugOutputType_GBufferRoughness,
         DebugOutputType_GBufferEmissive,

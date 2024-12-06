@@ -16,6 +16,18 @@
 namespace sandbox
 {
 
+    float CalcPixelToWorldScale(const DirectX::XMMATRIX& viewToClip, uint32_t viewportHeight)
+    {
+        // viewToClip[1][1] = 1.0f / std::tan(0.5f * verticalFov)
+
+        const float projectionScaleY = DirectX::XMVectorGetByIndex(viewToClip.r[1], 1);
+        const float pixelToWorldScale = 2.0f / ((float)viewportHeight * projectionScaleY);
+
+        return pixelToWorldScale;
+    }
+
+    //
+
     GlobalConstantsPass::GlobalConstantsPass(benzin::Device& device, benzin::Scene& scene)
         : m_Device{ device }
         , m_Scene{ scene }
@@ -25,22 +37,20 @@ namespace sandbox
 
     void GlobalConstantsPass::OnUpdate()
     {
-        const float aspectRatio = (float)GetRenderViewportWidth() / GetRenderViewportHeight();
-        const float pixelToWorldScale = std::tan(0.5f * m_Scene.GetPerspectiveProjection().GetVerticalFovInRadians()) / GetRenderViewportHeight(); // ViewToClip[1][1] factor
-
         UpdateCameraConstants();
+
+        const float pixelToWorldScale = CalcPixelToWorldScale(m_Scene.GetPerspectiveProjection().GetViewToClipMatrix(), GetRenderViewportHeight());
 
         m_FrameConstantBuffer->UpdateConstants(joint::FrameConstants
         {
             .RenderResolution{ (float)GetRenderViewportWidth(), (float)GetRenderViewportHeight() },
             .InvRenderResolution{ 1.0f / (float)GetRenderViewportWidth(), 1.0f / (float)GetRenderViewportHeight() },
-            .RenderAspectRatio = aspectRatio,
+            
             .PixelToWorldScale = pixelToWorldScale,
+            .CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex(),
 
             .IsShadowsEnabled = ms_Settings->GetSection<RayTracingShadowsSettings>().IsEnabled,
             .IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled,
-
-            .CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex(),
 
             .RandomFloats01
             {
@@ -76,19 +86,19 @@ namespace sandbox
         const joint::CameraConstants cameraConstants
         {
             .WorldToView = camera.GetWorldToViewMatrix(),
-            .WorldToViewForNormals = camera.GetWorldToViewMatrixForNormals(),
-            .InvWorldToView = camera.GetInvWorldToViewMatrix(),
+            .ViewToWorld = camera.GetViewToWorldMatrix(),
 
             .ViewToClip = camera.GetViewToClipMatrix(),
-            .InvViewToClip = camera.GetInvViewToClipMatrix(),
+            .ClipToView = camera.GetClipToViewMatrix(),
 
             .WorldToClip = camera.GetWorldToClipMatrix(),
-            .InvWorldToClip = camera.GetInvWorldToClipMatrix(),
-            .InvDirectionWorldToClip = camera.GetInvDirectionalWorldToClipMatrix(),
+            .ClipToWorld = camera.GetClipToWorldMatrix(),
+            .ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation(),
 
             .WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()),
 
-            .PackedFrustumPlaneSlopes = projection.GetPackedFrustumPlaneSlopes(),
+            .UvToViewScale = projection.GetUvToViewScale(),
+            .UvToViewBias = projection.GetUvToViewBias(),
         };
 
         if (m_Device.GetCpuFrameIndex() != 0)

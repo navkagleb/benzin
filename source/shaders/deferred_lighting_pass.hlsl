@@ -6,6 +6,7 @@
 #include "gbuffer.hlsli"
 #include "pbr.hlsli"
 #include "sigma_denoiser/sigma_public.hlsli"
+#include "space_convertions.hlsli"
 
 struct DirectionalLight
 {
@@ -78,7 +79,7 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 
     const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
 
-    const float3 worldPosition = ReconstructWorldPositionFromDepth(input.Uv, depth, cameraConstants.InvViewToClip, cameraConstants.InvWorldToView);
+    const float3 worldPosition = ReconstructWorldPosition(input.Uv, depth, cameraConstants.ClipToView, cameraConstants.ViewToWorld);
     const float3 worldViewDirection = normalize(cameraConstants.WorldPosition - worldPosition);
 
     PbrMaterial material;

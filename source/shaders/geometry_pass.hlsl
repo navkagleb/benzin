@@ -193,14 +193,14 @@ PsOutput PsMain(VsOutput input)
     }
 
     {
-        const float3 currentNdcPosition = ClipPositionToNdcPosition(input.CurrentClipPosition);
-        const float3 previousNdcPosition = ClipPositionToNdcPosition(input.PreviousClipPosition);
+        const float3 currentNdcPosition = ClipToNdc(input.CurrentClipPosition);
+        const float3 prevNdcPosition = ClipToNdc(input.PreviousClipPosition);
 
-        const float2 currentUv = NdcPositionToUv(currentNdcPosition);
-        const float2 previousUv = NdcPositionToUv(previousNdcPosition);
+        const float2 currentUv = NdcToUv(currentNdcPosition.xy);
+        const float2 prevUv = NdcToUv(prevNdcPosition.xy);
 
-        gbuffer.UvMotionVector = currentUv - previousUv;
-        gbuffer.DepthMotionVector = currentNdcPosition.z - previousNdcPosition.z;
+        gbuffer.UvMotionVector = currentUv - prevUv;
+        gbuffer.DepthMotionVector = currentNdcPosition.z - prevNdcPosition.z;
         gbuffer.ViewDepth = input.ViewDepth;
     }
 

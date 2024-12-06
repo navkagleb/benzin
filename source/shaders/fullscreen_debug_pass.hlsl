@@ -4,9 +4,11 @@
 #include "common.hlsli"
 #include "fullscreen_helper.hlsli"
 #include "gbuffer.hlsli"
-#include "space_convertions.hlsli"
 #include "sigma_denoiser/sigma_public.hlsli"
+#include "space_convertions.hlsli"
 
+BenzinDeclareRootResource(Texture2D<float4>, g_SigmaTiles, joint::FullScreenDebugRc_SigmaTiles);
+BenzinDeclareRootResource(Texture2D<float2>, g_SigmaSmoothTiles, joint::FullScreenDebugRc_SigmaSmoothTiles);
 BenzinDeclareRootResource(Texture2D<float>, g_SigmaPenumbra1, joint::FullScreenDebugRc_SigmaPenumbra1);
 BenzinDeclareRootResource(Texture2D<float>, g_SigmaPenumbra2, joint::FullScreenDebugRc_SigmaPenumbra2);
 BenzinDeclareRootResource(Texture2D<float>, g_SigmaShadowTemp1, joint::FullScreenDebugRc_SigmaShadowTemp1);
@@ -37,9 +39,6 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 
     Texture2D<float> noisyPenumbra = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_NoisyPenumbraTexture)];
 
-    Texture2D<float4> sigmaTiles = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaTiles)];
-    Texture2D<float2> sigmaSmoothTiles = ResourceDescriptorHeap[GetRootConstant(joint::FullScreenDebugRc_SigmaSmoothTiles)];
-
     PackedGBuffer packedGBuffer;
     packedGBuffer.Color0 = albedoAndRoughnessTexture.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
     packedGBuffer.Color1 = emissiveAndMetallicTexture.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
@@ -57,31 +56,15 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 
     switch (g_PassConstants.OutputType)
     {
-        case joint::DebugOutputType_ReconsructedWorldPosition:
-        {
-            const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
-            const float3 worldPosition = ReconstructWorldPositionFromDepth(input.Uv, depth, cameraConstants.InvViewToClip, cameraConstants.InvWorldToView);
-            
-#if 1
-            const float3 viewPosition = ReconstructViewPositionFromDepth(input.Uv, depth, cameraConstants.InvViewToClip);
-            const float4 clipPosition = mul(float4(viewPosition, 1.0), cameraConstants.ViewToClip);
-            const float3 ndcPosition = ClipPositionToNdcPosition(clipPosition);
-            const float2 uv = NdcPositionToUv(ndcPosition);
-            
-            return float4(uv, 0.0, 1.0);
-#endif
-            return float4(worldPosition, 1.0);
-        }
         case joint::DebugOutputType_GBufferAlbedo: return float4(gbuffer.Albedo, 1.0);
         case joint::DebugOutputType_GBufferRoughness: return float4(gbuffer.Roughness.xxx, 1.0);
         case joint::DebugOutputType_GBufferEmissive: return float4(gbuffer.Emissive, 1.0);
         case joint::DebugOutputType_GBufferMetallic: return float4(gbuffer.Metallic.xxx, 1.0);
         case joint::DebugOutputType_GBufferWorldNormal: return float4(gbuffer.WorldNormal, 1.0);
-        // case joint::DebugOutputType_GBufferVelocityBuffer: return float4(gbuffer.MotionVector, 0.0, 1.0f); #TODO
         case joint::DebugOutputType_GBufferViewDepthBuffer:
         {
             const float viewDepth = viewDepthBuffer.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
-            const float3 viewPos = ReconstructViewPositionFromViewDepth(input.Uv, viewDepth, g_FrameConstants.Camera.PackedFrustumPlaneSlopes);
+            const float3 viewPos = ReconstructViewPosition(input.Uv, viewDepth, g_FrameConstants.Camera.UvToViewScale, g_FrameConstants.Camera.UvToViewBias);
             return float4(viewPos, 1.0);
 
             // const float viewDepth = viewDepthBuffer.SampleLevel(g_PointClampSampler, input.Uv, g_PassConstants.ViewDepthMipIndex);
@@ -94,12 +77,12 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
         }
         case joint::DebugOutputType_SigmaTiles:
         {
-            const float3 sample = sigmaTiles.SampleLevel(g_PointClampSampler, input.Uv, 0.0).xyz;
+            const float3 sample = g_SigmaTiles.SampleLevel(g_PointClampSampler, input.Uv, 0.0).xyz;
             return float4(sample, 1.0);
         }
         case joint::DebugOutputType_SigmaSmoothTiles:
         {
-            const float2 sample = sigmaSmoothTiles.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+            const float2 sample = g_SigmaSmoothTiles.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
             return float4(sample, 0.0, 1.0);
         }
         case joint::DebugOutputType_SigmaPenumbra1:

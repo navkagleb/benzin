@@ -5,7 +5,7 @@
 
 float3 GetCubeUv(float2 faceUv, uint32_t faceIndex)
 {
-    const float2 expandedFaceUv = ExpandUv(faceUv);
+    const float2 expandedFaceUv = UvToNdc(faceUv);
 
     switch (faceIndex)
     {

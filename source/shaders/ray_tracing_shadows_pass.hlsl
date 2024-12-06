@@ -2,9 +2,9 @@
 #include "unified_root_parameters.hlsli"
 
 #include "common.hlsli"
-#include "gbuffer.hlsli"
 #include "rt_common.hlsli"
 #include "sigma_denoiser/sigma_public.hlsli"
+#include "space_convertions.hlsli"
 
 float3x3 AngleAxis3x3(float angle, float3 axis)
 {
@@ -138,7 +138,7 @@ void RayGen()
 
     const float2 uv = GetRayUv();
     const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
-    const float3 worldPosition = ReconstructWorldPositionFromDepth(uv, depth, cameraConstants.InvViewToClip, cameraConstants.InvWorldToView).xyz;
+    const float3 worldPosition = ReconstructWorldPosition(uv, depth, cameraConstants.ClipToView, cameraConstants.ViewToWorld);
 
     float distanceToOccluder;
     TraceSunShadowRay(worldPosition, worldNormal, distanceToOccluder);

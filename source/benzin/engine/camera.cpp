@@ -20,26 +20,10 @@ namespace benzin
         return transformedBoundingFrustum;
     }
 
-    DirectX::XMFLOAT4 Projection::GetPackedFrustumPlaneSlopes() const
-    {
-        // Can be used to reconstruct ViewPosition from ViewDepth and Uv coordinates
-        // Usage:
-        //   viewPos.xy = (packedSlopes.zw * uv + packedSlopes.xy) * viewDepth
-        //   viewPos.z = viewDepth
-
-        DirectX::XMFLOAT4 packedSlopes;
-        packedSlopes.x = -m_BoundingFrustum.LeftSlope;
-        packedSlopes.y = -m_BoundingFrustum.TopSlope;
-        packedSlopes.z = m_BoundingFrustum.LeftSlope - m_BoundingFrustum.RightSlope;
-        packedSlopes.w = m_BoundingFrustum.TopSlope - m_BoundingFrustum.BottomSlope;
-
-        return packedSlopes;
-    }
-
     void Projection::UpdateViewToClipMatrix()
     {
         m_ViewToClipMatrix = CreateViewToClipMatrix();
-        m_InvViewToClipMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewToClipMatrix);
+        m_ClipToViewMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewToClipMatrix);
 
         DirectX::BoundingFrustum::CreateFromMatrix(m_BoundingFrustum, m_ViewToClipMatrix);
     };
@@ -63,6 +47,34 @@ namespace benzin
         m_AspectRatio = aspectRatio;
 
         UpdateViewToClipMatrix();
+    }
+
+    // x0 = vPlane[PLANE_LEFT].z / vPlane[PLANE_LEFT].x;
+    // x1 = vPlane[PLANE_RIGHT].z / vPlane[PLANE_RIGHT].x;
+    // y0 = vPlane[PLANE_BOTTOM].z / vPlane[PLANE_BOTTOM].y;
+    // y1 = vPlane[PLANE_TOP].z / vPlane[PLANE_TOP].y;
+
+    // pfFrustum4[0] = -x0;
+    // pfFrustum4[2] = x0 - x1;
+    // pfFrustum4[1] = -y1;
+    // pfFrustum4[3] = y1 - y0;
+
+    DirectX::XMFLOAT2 PerspectiveProjection::GetUvToViewScale() const
+    {
+        DirectX::XMFLOAT2 scale{};
+        scale.x = m_BoundingFrustum.RightSlope - m_BoundingFrustum.LeftSlope;
+        scale.y = m_BoundingFrustum.BottomSlope - m_BoundingFrustum.TopSlope;
+
+        return scale;
+    }
+
+    DirectX::XMFLOAT2 PerspectiveProjection::GetUvToViewBias() const
+    {
+        DirectX::XMFLOAT2 bias{};
+        bias.x = m_BoundingFrustum.LeftSlope;
+        bias.y = m_BoundingFrustum.TopSlope;
+
+        return bias;
     }
 
     void PerspectiveProjection::SetLens(float verticalFovInRadians, float aspectRatio, float nearPlane, float farPlane)
@@ -140,9 +152,9 @@ namespace benzin
         return m_Projection.GetViewToClipMatrix();
     }
 
-    const DirectX::XMMATRIX& Camera::GetInvViewToClipMatrix() const
+    const DirectX::XMMATRIX& Camera::GetClipToViewMatrix() const
     {
-        return m_Projection.GetInvViewToClipMatrix();
+        return m_Projection.GetClipToViewMatrix();
     }
 
     DirectX::XMMATRIX Camera::GetWorldToClipMatrix() const
@@ -150,18 +162,18 @@ namespace benzin
         return m_WorldToViewMatrix * GetViewToClipMatrix();
     }
 
-    DirectX::XMMATRIX Camera::GetInvWorldToClipMatrix() const
+    DirectX::XMMATRIX Camera::GetClipToWorldMatrix() const
     {
         return DirectX::XMMatrixInverse(nullptr, GetWorldToClipMatrix());
     }
 
-    DirectX::XMMATRIX Camera::GetInvDirectionalWorldToClipMatrix() const
+    DirectX::XMMATRIX Camera::GetClipToWorldNoTranslation() const
     {
-        DirectX::XMMATRIX directionWorldToViewMatrix = m_WorldToViewMatrix;
-        directionWorldToViewMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
+        DirectX::XMMATRIX worldToViewMatrix = m_WorldToViewMatrix;
+        worldToViewMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
 
-        const DirectX::XMMATRIX directionalWorldToClipMatrix = directionWorldToViewMatrix * GetViewToClipMatrix();
-        return DirectX::XMMatrixInverse(nullptr, directionalWorldToClipMatrix);
+        const DirectX::XMMATRIX worldToClipMatrix = worldToViewMatrix * GetViewToClipMatrix();
+        return DirectX::XMMatrixInverse(nullptr, worldToViewMatrix);
     }
 
     void Camera::UpdateRightDirection()
@@ -172,8 +184,7 @@ namespace benzin
     void Camera::UpdateWorldToViewMatrix()
     {
         m_WorldToViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
-        m_WorldToViewMatrixForNormals = GetMatrixForNormals(m_WorldToViewMatrix);
-        m_InvWorldToViewMatrix = DirectX::XMMatrixInverse(nullptr, m_WorldToViewMatrix);
+        m_ViewToWorldMatrix = DirectX::XMMatrixInverse(nullptr, m_WorldToViewMatrix);
     }
 
     // CameraController

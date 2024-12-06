@@ -54,12 +54,13 @@ namespace joint
 
     struct SigmaConstants
     {
-        uint2 TileCount;
         float StabilizationStrength;
         float3 WorldSunDirection;
         float4 BlurRotator;
         float4 PostBlurRotator;
-        bool IsBicubicSamplingUsedForHistory;
+        uint2 TileCount;
+        uint IsBicubicSamplingUsedForHistory;
+        uint _Padding0;
     };
 
 }

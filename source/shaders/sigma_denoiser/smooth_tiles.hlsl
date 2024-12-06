@@ -12,11 +12,11 @@ BenzinDeclareRootResource(RWTexture2D<float2>, g_OutSmoothTilesTex, joint::Rc_Si
 static const uint g_GroupSize = 16;
 static const uint g_BufferSize = g_GroupSize + SIGMA_BORDER * 2;
 
-groupshared float g_Tiles[g_BufferSize][g_BufferSize];
+groupshared float g_IsPenumbra[g_BufferSize][g_BufferSize];
 
 void Preload(uint2 localPos, uint2 globalPos)
 {
-    g_Tiles[localPos.y][localPos.x] = g_TilesTex[globalPos].x;
+    g_IsPenumbra[localPos.y][localPos.x] = g_TilesTex[globalPos].x;
 }
 
 struct CsInput
@@ -46,8 +46,7 @@ void CsMain(CsInput input)
     const float3 centerTile = g_TilesTex[input.PixelPos].xyz;
     const float k = 1.01 / (centerTile.y + 0.01);
 
-    float blurry = 0.0;
-    float weightSum = 0.0;
+    float2 smoothPenumbra = 0.0;
 
     [unroll]
     for (uint j = 0; j <= SIGMA_BORDER * 2; ++j)
@@ -58,12 +57,11 @@ void CsMain(CsInput input)
             const float distance = length(float2(i, j) - SIGMA_BORDER); // TODO: what name actually need to be used ???
             const float weight = exp2(-k * distance * distance);
 
-            blurry += g_Tiles[input.ThreadPos.y + j][input.ThreadPos.x + i] * weight;
-            weightSum += weight;
+            smoothPenumbra += float2(g_IsPenumbra[input.ThreadPos.y + j][input.ThreadPos.x + i], 1.0) * weight;
         }
     }
 
-    blurry /= weightSum;
+    smoothPenumbra.x /= smoothPenumbra.y;
 
-    g_OutSmoothTilesTex[input.PixelPos] = float2(blurry, centerTile.z);
+    g_OutSmoothTilesTex[input.PixelPos] = float2(smoothPenumbra.x, centerTile.z);
 }

@@ -70,7 +70,7 @@ namespace sandbox
         createSigmaTexture(Texture::SigmaSmoothTiles, benzin::GraphicsFormat::Rg8Unorm, m_TileCount);
 
         const auto shadowFormat = benzin::GraphicsFormat::R8Unorm;
-        const auto penumbraFormat = benzin::GraphicsFormat::R32Float;
+        const auto penumbraFormat = benzin::GraphicsFormat::R16Float; // TODO: R32FLoat
         const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
 
         createSigmaTexture(Texture::SigmaPenumbra1, penumbraFormat, renderResolution);
@@ -94,11 +94,12 @@ namespace sandbox
 
         m_SigmaConstantBuffer->UpdateConstants(joint::SigmaConstants
         {
-            .TileCount = m_TileCount,
             .StabilizationStrength = sigmaSettings.StabilizationStrength,
             .WorldSunDirection = GetSunDirection(deferredLightingSettings),
             .BlurRotator = blurRotator,
             .PostBlurRotator = postBlurRotator,
+            .TileCount = m_TileCount,
+            .IsBicubicSamplingUsedForHistory = sigmaSettings.IsBicubicSamplingUsedForHistory,
         });
     }
 

@@ -7,8 +7,8 @@ BenzinDeclareRootResource(Texture2D<float>, g_ViewDepthTex, joint::Rc_SigmaClass
 BenzinDeclareRootResource(Texture2D<float>, g_PenumbraTex, joint::Rc_SigmaClassifyTiles::PenumbraTex);
 BenzinDeclareRootResource(RWTexture2D<float4>, g_OutTilesTex, joint::Rc_SigmaClassifyTiles::OutTilesTex);
 
-groupshared uint gs_TileMask;
-groupshared uint gs_TileRadius; // Stores float value. Use asuint and asfloat
+groupshared uint g_TileMask;
+groupshared uint g_TilePixelRadius; // Stores float value. Use asuint and asfloat
 
 struct CsInput
 {
@@ -23,12 +23,12 @@ static const uint g_ThreadCountZ = 1;
 
 static const uint2 g_ThreadTileSize = joint::g_SigmaTileSize / uint2(g_ThreadCountX, g_ThreadCountY);
 
-void FetchThreadTileInfo(CsInput input, out uint outThreadMask, out float outThreadRadius)
+void FetchThreadTileInfo(CsInput input, out uint outThreadMask, out float outThreadPixelRadius)
 {
     const uint2 basePixelPos = input.GroupPos * joint::g_SigmaTileSize + input.ThreadPos * g_ThreadTileSize;
 
     uint threadMask = 0;
-    float threadRadius = 0.0;
+    float threadPixelRadius = 0.0;
 
     [unroll]
     for (uint i = 0; i < g_ThreadTileSize.x; ++i)
@@ -50,15 +50,15 @@ void FetchThreadTileInfo(CsInput input, out uint outThreadMask, out float outThr
             threadMask += (isInf ? 1 : 0) << 18;
 
             const float hitDistance = isLit || isInf ? 0.0 : penumbra;
-            const float unprojectDepth = sigma::PixelRadiusToWorld(1.0, g_FrameConstants.PixelToWorldScale, viewDepth);
-            const float pixelRadius = sigma::GetKernelPixelRadius(hitDistance, unprojectDepth);
+            const float worldPixelSize = sigma::PixelRadiusToWorld(1.0, g_FrameConstants.PixelToWorldScale, viewDepth);
+            const float blurPixelRadius = sigma::GetKernelPixelRadius(hitDistance, worldPixelSize);
 
-            threadRadius = max(pixelRadius, threadRadius);
+            threadPixelRadius = max(threadPixelRadius, blurPixelRadius);
         }
     }
-     
+
     outThreadMask = threadMask;
-    outThreadRadius = threadRadius;
+    outThreadPixelRadius = threadPixelRadius;
 }
 
 [numthreads(g_ThreadCountX, g_ThreadCountY, g_ThreadCountZ)]
@@ -69,18 +69,18 @@ void CsMain(CsInput input)
 
     if (input.FlatThreadIndex == 0)
     {
-        gs_TileMask = 0;
-        gs_TileRadius = 0;
+        g_TileMask = 0;
+        g_TilePixelRadius = 0;
     }
 
     GroupMemoryBarrier();
     {
         uint threadMask = 0;
-        float threadRadius = 0.0;
-        FetchThreadTileInfo(input, threadMask, threadRadius);
+        float threadPixelRadius = 0.0;
+        FetchThreadTileInfo(input, threadMask, threadPixelRadius);
 
-        InterlockedAdd(gs_TileMask, threadMask);
-        InterlockedMax(gs_TileRadius, asuint(threadRadius));
+        InterlockedAdd(g_TileMask, threadMask);
+        InterlockedMax(g_TilePixelRadius, asuint(threadPixelRadius));
     }
     GroupMemoryBarrier();
 
@@ -94,13 +94,13 @@ void CsMain(CsInput input)
         // umbra - fully shadowed
         // penumbra - partially lit
 
-        const bool isLit = ((gs_TileMask >> 0) & 511) == 256;
-        const bool isUmbra = ((gs_TileMask >> 9) & 511) == 256;
-        const bool isInf = ((gs_TileMask >> 18) & 511) == 256;
+        const bool isLit = ((g_TileMask >> 0) & 511) == 256;
+        const bool isUmbra = ((g_TileMask >> 9) & 511) == 256;
+        const bool isInf = ((g_TileMask >> 18) & 511) == 256;
 
         float4 result;
         result.x = (isLit || isUmbra) ? 0.0 : 1.0; // Mark penumbra regions
-        result.y = saturate(asfloat(gs_TileRadius) / (float)joint::g_SigmaTileSize);
+        result.y = saturate(asfloat(g_TilePixelRadius) / (float)joint::g_SigmaTileSize); // Normalize blur pixel radius
         result.z = isInf ? 1.0 : 0.0;
         result.w = 0.0;
 

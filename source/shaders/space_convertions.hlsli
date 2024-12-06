@@ -1,30 +1,50 @@
 #pragma once
 
-float3 ClipPositionToNdcPosition(float4 clipPosition)
+float3 ClipToNdc(float4 clipPosition)
 {
     return clipPosition.xyz / clipPosition.w;
 }
 
-float2 NdcPositionToUv(float3 ndcPosition)
+float2 NdcToUv(float2 ndc)
 {
-    float2 uv = ndcPosition.xy * 0.5 + 0.5; // [-1, 1] -> [0, 1]
+    float2 uv = ndc.xy * 0.5 + 0.5;
     uv.y = 1.0 - uv.y; // Invert for DirectX
 
     return uv;
 }
 
-float2 DispatchThreadIdToUv(uint3 dispatchThreadId, float2 invDimensions)
+float2 ClipToUv(float4 clipPosition)
 {
-    return (dispatchThreadId.xy + 0.5) * invDimensions;
+    return NdcToUv(ClipToNdc(clipPosition).xy);
 }
 
-float2 DispatchThreadIdToUv(uint2 dispatchThreadId, float2 invDimensions)
+float2 UvToNdc(float2 uv)
 {
-    return DispatchThreadIdToUv(uint3(dispatchThreadId, 0), invDimensions);
+    uv.y = 1.0 - uv.y; // // Invert for DirectX
+
+    return uv * 2.0 - 1.0;
 }
 
-float2 ExpandUv(float2 uv)
+float3 ReconstructViewPosition(float2 uv, float viewDepth, float2 uvToViewScale, float2 uvToViewBias)
 {
-    uv.y = 1.0 - uv.y;
-    return 2.0 * uv - 1.0; // [0, 1] -> [-1, 1]
+    const float2 normalizedViewPosition = uv * uvToViewScale + uvToViewBias; // normalized by viewDepth
+    const float3 viewPosition = float3(normalizedViewPosition, 1.0) * viewDepth;
+
+    return viewPosition;
+}
+
+float3 ReconstructViewPosition(float2 uv, float depth, float4x4 clipToView)
+{
+    const float4 clipPosition = float4(UvToNdc(uv), depth, 1.0);
+    const float4 viewPosition = mul(clipPosition, clipToView);
+
+    return viewPosition.xyz / viewPosition.w;
+}
+
+float3 ReconstructWorldPosition(float2 uv, float depth, float4x4 clipToView, float4x4 viewToWorld)
+{
+    const float3 viewPosition = ReconstructViewPosition(uv, depth, clipToView);
+    const float3 worldPosition = mul(float4(viewPosition, 1.0), viewToWorld).xyz;
+
+    return worldPosition;
 }

@@ -10,33 +10,33 @@ namespace joint
     struct CameraConstants
     {
         float4x4 WorldToView;
-        float4x4 WorldToViewForNormals;
-        float4x4 InvWorldToView;
+        float4x4 ViewToWorld;
 
         float4x4 ViewToClip;
-        float4x4 InvViewToClip;
+        float4x4 ClipToView;
 
         float4x4 WorldToClip;
-        float4x4 InvWorldToClip;
-
-        float4x4 InvDirectionWorldToClip;
+        float4x4 ClipToWorld;
+        float4x4 ClipToWorldNoTranslation;
 
         float3 WorldPosition;
+        float _Padding0; // TODO: Why I need to use this it here?
 
-        float4 PackedFrustumPlaneSlopes;
+        float2 UvToViewScale;
+        float2 UvToViewBias;
     };
 
     struct FrameConstants
     {
         float2 RenderResolution;
         float2 InvRenderResolution;
-        float RenderAspectRatio;
+
         float PixelToWorldScale;
+        uint CpuFrameIndex;
 
         uint IsShadowsEnabled : 1;
         uint IsDenoiserEnabled : 1;
-
-        uint CpuFrameIndex;
+        uint _Padding0;
 
         float4 RandomFloats01;
 

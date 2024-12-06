@@ -7,36 +7,56 @@
 #endif
 
 #include "common.hlsli"
+#include "sigma_denoiser/sigma_constants.hlsli"
 #include "sigma_denoiser/sigma_public.hlsli"
+#include "space_convertions.hlsli"
 
 namespace sigma
 {
 
-    // TODO
-    // (units) > 0 - use TLAS or tracing range (max value = NRD_FP16_MAX / NRD_FP16_VIEWZ_SCALE - 1 = 524031)
-    static const float g_DenoisingRange = 500000.0;
-
-    static const float g_MaxPixelRadius = 32.0;
-
-    // (normalized %) - represents maximum allowed deviation from local tangent plane
-    static const float g_PlaneDistanceSensitivity = 0.005;
-
-    static const float g_PenumbraWeightScale = 10.0;
-    static const uint g_PoissonSampleCount = 8;
-
-    // Ref: https://www.desmos.com/calculator/abaqyvswem
-    static const float3 g_PoissonSamples[g_PoissonSampleCount] =
+    float PixelRadiusToWorld(float pixelRadius, float pixelToWorldScale, float viewDepth)
     {
-        float3(-1.00, 0.00, 1.0),
-        float3(0.00, 1.00, 1.0),
-        float3(1.00, 0.00, 1.0),
-        float3(0.00, -1.00, 1.0),
-        float3(-0.25 * sqrt(2.0), 0.25 * sqrt(2.0), 0.5),
-        float3(0.25 * sqrt(2.0), 0.25 * sqrt(2.0), 0.5),
-        float3(0.25 * sqrt(2.0), -0.25 * sqrt(2.0), 0.5),
-        float3(-0.25 * sqrt(2.0), -0.25 * sqrt(2.0), 0.5),
-    };
+        // 'pixelToWorldScale' is used to account for render viewport resolution
+        // 'viewDepth' is used to account for perspective projection
+        return pixelRadius * pixelToWorldScale * viewDepth;
+    }
+
+    float GetWorldPixelSize(float pixelToWorldScale, float viewDepth)
+    {
+        return PixelRadiusToWorld(1.0, pixelToWorldScale, viewDepth);
+    }
+
+    float GetKernelPixelRadius(float hitDistance, float worldPixelSize, float scale = 1.0)
+    {
+        // Note:
+        // The result, unclampedRadius, represents the size of the kernel radius in pixels for a penumbra blur.
+
+        float unclampedRadius = hitDistance / worldPixelSize; // Larger penumbra (hitDist) or smaller unprojectZ increases the radius.
+        unclampedRadius *= scale;
+
+#if defined(SIGMA_USE_BORDER_2)
+        const float minRadius = min(unclampedRadius, 2.0);
+#else
+        const float minRadius = min(unclampedRadius, 1.0);
+#endif
+
+        return clamp(unclampedRadius, minRadius, g_MaxKernelPixelRadius);
+    }
+
+    float GetFrustumSize(float minRenderDimension, float pixelToWorldScale, float viewDepth)
+    {
+        return minRenderDimension * pixelToWorldScale * viewDepth;
+    }
     
+    bool IsBothLitOrUmbra(float penumbra1, float penumbra2)
+    {
+        // Check the tile classification (penumbra value meaning)
+        const bool isLitOrUmbra1 = penumbra1 == 0.0;
+        const bool isLitOrUmbra2 = penumbra2 == 0.0;
+
+        return isLitOrUmbra1 == isLitOrUmbra2;
+    }
+
     float2 RotateVectorByRotator(float2 vector2, float4 rotator)
     {
         // Rotator - rotation matrix 2x2
@@ -56,20 +76,17 @@ namespace sigma
         offset.xy = RotateVectorByRotator(offset, rotator);
 
         const float3 transformedViewPos = viewPos + kernelTangent * offset.x + kernelBitangent * offset.y;
-        
-        float3 clipPos = mul(float4(transformedViewPos, 1.0), viewToClip).xyw;
-        clipPos.xy /= clipPos.z;
-        clipPos.y = -clipPos.y;
 
-        const float2 uv = clipPos.xy * 0.5 + 0.5;
-        return uv;
+        // float3 clipPos = mul(float4(transformedViewPos, 1.0), viewToClip).xyw; // TODO: Why this don't work?
+        const float4 clipPos = mul(viewToClip, float4(transformedViewPos, 1.0));
+        return ClipToUv(clipPos);
     }
 
     float LinearStep(float a, float b, float x)
     {
         return saturate((x - a) / (b - a));
     }
-    
+
     float IsInScreenNearest(float2 uv)
     {
         return float(all(uv >= 0.0) && all(uv < 1.0));
@@ -100,44 +117,12 @@ namespace sigma
         return float3x3(tangent, bitangent, normal);
     }
 
-    float PixelRadiusToWorld(float pixelRadius, float pixelToWorldScale, float viewDepth)
+    float2 GetGeometryWeightParams(float frustumSize, float3 viewPos, float3 viewNormal)
     {
-        // 'pixelToWorldScale' is used to account for render viewport resolution
-        // 'viewDepth' is used to account for perspective projection
-        return pixelRadius * pixelToWorldScale * viewDepth;
-    }
+        const float nonLinearAccumSpeed = 1.0; // To reduce param count
 
-    float GetFrustumSizeAtDepth(float pixelToWorldScale, float minRenderSize, float viewDepth)
-    {
-        const float minViewportSideSize = min(g_FrameConstants.RenderResolution.x, g_FrameConstants.RenderResolution.y);
-
-        return minRenderSize * pixelToWorldScale * viewDepth;
-    }
-
-    float GetKernelPixelRadius(float hitDistance, float unprojectDepth, float scale = 1.0)
-    {
-        // TODO:
-        // unprojectDepth: Converts a pixel radius from world space to normalized screen space, calculated as:
-        
-        // Note:
-        // The result, unclampedRadius, represents the size of the kernel radius in pixels for a penumbra blur.
-
-        float unclampedRadius = hitDistance / unprojectDepth; // Larger penumbra (hitDist) or smaller unprojectZ increases the radius.
-        unclampedRadius *= scale;
-
-#if defined(SIGMA_USE_BORDER_2)
-        const float minRadius = min(unclampedRadius, 2.0);
-#else
-        const float minRadius = min(unclampedRadius, 1.0);
-#endif
-
-        return clamp(unclampedRadius, minRadius, g_MaxPixelRadius);
-    }
-
-    float2 GetGeometryWeightParams(float planeDistanceSensitivity, float frustumSize, float3 viewPos, float3 viewNormal, float nonLinearAccumSpeed)
-    {
         const float relaxation = lerp(1.0, 0.25, nonLinearAccumSpeed); // => 0.25
-        const float a = relaxation / (planeDistanceSensitivity * frustumSize);
+        const float a = relaxation / (g_PlaneDistanceSensitivity * frustumSize);
         const float b = -dot(viewNormal, viewPos) * a;
 
         return float2(a, b);
@@ -145,9 +130,11 @@ namespace sigma
 
     float ComputeWeight(float x, float px, float py)
     {
+        // NRD SOURCE: ComputeNonExponentialWeight
+
         // A good choice for non noisy data
         // IMPORTANT: cutoffs are needed to minimize floating point precision drifting
-        return smoothstep(0.999, 0.001, abs((x) * px + py));
+        return smoothstep(1.0, 0.0, abs(x * px + py));
     }
 
     float GetGaussianWeight(float r)
@@ -189,12 +176,8 @@ namespace sigma
         return float2(yw.z, xw.z);
     }
 
-    float TextureCubic(Texture2D<float2> tex, float2 uv)
+    float TextureCubicX(Texture2D<float2> tex, float2 uv, float2 size)
     {
-        uint w, h;
-        tex.GetDimensions(w, h);
-        const float2 size = float2(w, h);
-
         float4 uv_10_00, uv_11_01;
         const float2 t = FilterBicubic(size, uv.xy, uv_10_00, uv_11_01);
 

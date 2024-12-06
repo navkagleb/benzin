@@ -37,17 +37,12 @@ struct SharedData
 
 groupshared SharedData g_SharedData[g_SharedBufferSizeY][g_SharedBufferSizeX];
 
-float IsInScreenNearest(float2 uv)
-{
-    return float(all(uv >= 0.0) && all(uv < 1.0));
-}
-
-void Preload(uint2 sharedPos, uint2 globalPos)
+void Preload(uint2 sharedPos, uint2 pixelPos)
 {
     SharedData data;
-    data.Penumbra = g_PenumbraTex[globalPos];
-    data.ViewDepth = g_ViewDepthTex[globalPos];
-    data.Shadow = sigma::UnpackShadow(g_ShadowTex[globalPos]);
+    data.Penumbra = g_PenumbraTex[pixelPos];
+    data.ViewDepth = g_ViewDepthTex[pixelPos];
+    data.Shadow = sigma::UnpackShadow(g_ShadowTex[pixelPos]);
     data.SignNoL = float(data.Penumbra != 0.0);
 
     g_SharedData[sharedPos.y][sharedPos.x] = data;
@@ -184,7 +179,7 @@ float CalcHistoryWeight(float2 prevPixelUv, float antilagFactor, float penumbraI
     static const float earlyOutThreshold = 0.25;
 
     float historyWeight = maxHistoryWeight;
-    historyWeight *= IsInScreenNearest(prevPixelUv);
+    historyWeight *= sigma::IsInScreenNearest(prevPixelUv);
     historyWeight *= antilagFactor;
     historyWeight *= smoothstep(earlyOutThreshold, 1.0, penumbraInPixels);
     historyWeight *= g_PassConstants.StabilizationStrength;
@@ -252,7 +247,7 @@ void CsMain(CsInput input)
     const float2 prevPixelUv = GetPrevPixelUv(input.PixelPos, nearestViewDepthPixelOffset);
     const float history = SampleHistory(prevPixelUv);
     const float antilag = CalcAntilagFactor(m1, history, sigma);
-    
+
     const float historyWeight = CalcHistoryWeight(prevPixelUv, antilag, penumbraInPixels);
     const float clampedHistory = ClampHistory(history, m1, sigma);
 

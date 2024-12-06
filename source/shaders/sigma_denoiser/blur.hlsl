@@ -5,10 +5,8 @@
 #define RenderPassConstantsType joint::SigmaConstants
 #include "unified_root_parameters.hlsli"
 
-#include "gbuffer.hlsli"
 #include "sigma_denoiser/lds_preloader.hlsli"
 #include "sigma_denoiser/sigma_common.hlsli"
-#include "space_convertions.hlsli"
 
 BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormalTex, joint::Rc_SigmaBlur::WorldNormalTex);
 BenzinDeclareRootResource(Texture2D<float>, g_ViewDepthTex, joint::Rc_SigmaBlur::ViewDepthTex);
@@ -31,28 +29,28 @@ static const uint g_GroupSizeY = 16;
 static const uint g_BufferSizeX = g_GroupSizeX + SIGMA_BORDER * 2;
 static const uint g_BufferSizeY = g_GroupSizeY + SIGMA_BORDER * 2;
 
-struct LdsData
+struct PixelData
 {
     float Penumbra;
     float ViewDepth;
     float Shadow;
 };
 
-groupshared LdsData g_Data[g_BufferSizeY][g_BufferSizeX];
+groupshared PixelData g_PixelsData[g_BufferSizeY][g_BufferSizeX];
 
-void Preload(uint2 localPos, uint2 pixelPos)
+void Preload(uint2 sharedPos, uint2 pixelPos)
 {
-    LdsData data;
-    data.Penumbra = g_PenumbraTex[pixelPos];
-    data.ViewDepth = g_ViewDepthTex[pixelPos];
+    PixelData pixel;
+    pixel.Penumbra = g_PenumbraTex[pixelPos];
+    pixel.ViewDepth = g_ViewDepthTex[pixelPos];
 
 #if defined(FIRST_BLUR_PASS)
-    data.Shadow = sigma::IsLit(data.Penumbra);
+    pixel.Shadow = sigma::IsLit(pixel.Penumbra); // This is ok. Full shadow - 0, No shadow = 1
 #else
-    data.Shadow = sigma::UnpackShadow(g_ShadowTex[pixelPos]);
+    pixel.Shadow = sigma::UnpackShadow(g_ShadowTex[pixelPos]);
 #endif
 
-    g_Data[localPos.y][localPos.x] = data;
+    g_PixelsData[sharedPos.y][sharedPos.x] = pixel;
 }
 
 struct CsInput
@@ -62,10 +60,239 @@ struct CsInput
     uint FlatThreadIndex : SV_GroupIndex;
 };
 
+struct BlurParams
+{
+    float2 UvToViewScale;
+    float2 UvToViewBias;
+
+    PixelData CenterPixel;
+
+    float2 BaseUv;
+    float3 BaseViewPosition;
+    float3 BaseViewNormal;
+
+    float WorldPixelSize;
+    float2 GeometryWeightParams;
+};
+
+struct SampleParams
+{
+    float3 ViewPosition;
+    float NormDistanceFromCenter;
+};
+
+struct SparseBlurKernel
+{
+    float3 Tangent;
+    float3 Bitangent;
+    float4 Rotator; // 2x2 matrix
+};
+
+BlurParams GetBlurParams(float2 baseUv, PixelData centerPixel)
+{
+    const joint::CameraConstants camera = g_FrameConstants.Camera;
+    const float pixelToWorldScale = g_FrameConstants.PixelToWorldScale;
+    const float3 worldNormal = g_WorldNormalTex.SampleLevel(g_PointClampSampler, baseUv, 0.0).xyz;
+
+    const float worldFrustumSize = sigma::PixelRadiusToWorld(
+        min(g_FrameConstants.RenderResolution.x, g_FrameConstants.RenderResolution.y),
+        pixelToWorldScale,
+        centerPixel.ViewDepth
+    );
+
+    BlurParams params;
+    params.UvToViewScale = camera.UvToViewScale;
+    params.UvToViewBias = camera.UvToViewBias;
+    params.CenterPixel = centerPixel;
+    params.BaseUv = baseUv;
+    params.BaseViewPosition = ReconstructViewPosition(baseUv, centerPixel.ViewDepth, params.UvToViewScale, params.UvToViewBias);
+    params.BaseViewNormal = mul(worldNormal, (float3x3)camera.WorldToView);
+    params.WorldPixelSize = sigma::GetWorldPixelSize(pixelToWorldScale, centerPixel.ViewDepth);
+    params.GeometryWeightParams = sigma::GetGeometryWeightParams(worldFrustumSize, params.BaseViewPosition, params.BaseViewNormal);
+
+    return params;
+}
+
+float CalcShadowWeight(BlurParams params, PixelData samplePixel, SampleParams sampleParams)
+{
+    const float surfaceViewAlignment = dot(params.BaseViewNormal, sampleParams.ViewPosition);
+
+    float shadowWeight = 1.0;
+    shadowWeight *= sigma::ComputeWeight(surfaceViewAlignment, params.GeometryWeightParams.x, params.GeometryWeightParams.y);
+    shadowWeight *= sigma::GetGaussianWeight(sampleParams.NormDistanceFromCenter);
+    shadowWeight *= (float)sigma::IsBothLitOrUmbra(params.CenterPixel.Penumbra, samplePixel.Penumbra);
+
+    return shadowWeight;
+}
+
+float CalcPenumbraWeight(BlurParams params, float shadowWeight, PixelData samplePixel)
+{
+    float penumbraWeight = shadowWeight;
+    penumbraWeight *= params.WorldPixelSize / (params.WorldPixelSize + samplePixel.Penumbra); // Prefer smaller penumbra
+    penumbraWeight *= !sigma::IsLit(samplePixel.Penumbra); // TODO: If this is removed - removes the flickering
+
+    return penumbraWeight;
+}
+
+SparseBlurKernel CalcSparseBlurKernel(BlurParams params, float blurredPenumbra, float tileValue)
+{
+    // Tangent basis with anisotropy
+    const float3x3 worldToLocal = sigma::GetOrthonormalBasisFromNormal(params.BaseViewNormal); // TODO: ViewNormal???
+
+    SparseBlurKernel kernel;
+    kernel.Tangent = worldToLocal[0];
+    kernel.Bitangent = worldToLocal[1];
+#if defined(FIRST_BLUR_PASS)
+    kernel.Rotator = g_PassConstants.BlurRotator;
+#else
+    kernel.Rotator = g_PassConstants.PostBlurRotator;
+#endif
+
+    const float3 viewSunDirection = mul(g_PassConstants.WorldSunDirection, (float3x3)g_FrameConstants.Camera.WorldToView); // TODO: Move to cpp side
+    const float3 t = cross(viewSunDirection, params.BaseViewNormal); // NRD TODO: add support for other light types to bring proper anisotropic filtering
+    if (length(t) > 0.001)
+    {
+        kernel.Tangent = normalize(t);
+        kernel.Bitangent = cross(kernel.Tangent, params.BaseViewNormal);
+
+        const float cosa = abs(dot(params.BaseViewNormal, viewSunDirection));
+        const float skewFactor = lerp(0.25, 1.0, cosa);
+
+        //Tv *= skewFactor; // TODO: let's not srink filtering in the other direction
+        kernel.Bitangent /= skewFactor;
+    }
+
+    const float pixelRadius = sigma::GetKernelPixelRadius(blurredPenumbra, params.WorldPixelSize, tileValue);
+    const float worldPixelRadius = params.WorldPixelSize; //TODO: Why we multipy pixelRadius by worldPixelSize
+
+    kernel.Tangent *= worldPixelRadius;
+    kernel.Bitangent *= worldPixelRadius;
+
+    return kernel;
+}
+
+float2 CalcSparseBlurKernelUv(SparseBlurKernel kernel, float2 offset, float3 viewPosition)
+{
+    // We can't rotate T and B instead, because T is skewed
+    offset.xy = sigma::RotateVectorByRotator(offset, kernel.Rotator);
+
+    viewPosition += offset.x * kernel.Tangent + offset.y * kernel.Bitangent;
+
+    const float4x4 viewToClip = g_FrameConstants.Camera.ViewToClip;
+
+    const float4 clipPos = mul(float4(viewPosition, 1.0), viewToClip); // TODO: Why this don't work?
+    // const float4 clipPos = mul(g_FrameConstants.Camera.ViewToClip, float4(viewPosition, 1.0));
+    const float2 uv = ClipToUv(clipPos);
+
+    return uv;
+}
+
+void RunDenseBlur(CsInput input, BlurParams params, out float2 outShadow, out float2 outPenumbra)
+{
+    outShadow = 0.0;
+    outPenumbra = 0.0;
+
+    [unroll]
+    for (int j = -SIGMA_BORDER; j <= SIGMA_BORDER; ++j)
+    {
+        [unroll]
+        for (int i = -SIGMA_BORDER; i <= SIGMA_BORDER; ++i)
+        {
+            const uint2 sharedPosition = input.ThreadPos + int2(i, j) + SIGMA_BORDER;
+            const PixelData pixel = g_PixelsData[sharedPosition.y][sharedPosition.x];
+
+            float shadowWeight = 1.0;
+
+            const bool isCenterSample = i == 0 && j == 0;
+            if (!isCenterSample)
+            {
+                const float2 pixelOffset = float2(i, j);
+                const float2 uv = params.BaseUv + pixelOffset * g_FrameConstants.InvRenderResolution;
+
+                SampleParams sampleParams;
+                sampleParams.ViewPosition = ReconstructViewPosition(uv, pixel.ViewDepth, params.UvToViewScale, params.UvToViewBias);
+                sampleParams.NormDistanceFromCenter = length(pixelOffset / SIGMA_BORDER);
+
+                shadowWeight = CalcShadowWeight(params, pixel, sampleParams);
+            }
+
+            const float penumbraWeight = CalcPenumbraWeight(params, shadowWeight, pixel);
+
+            outShadow += float2(pixel.Shadow, 1.0) * shadowWeight;
+            outPenumbra += float2(pixel.Penumbra, 1.0) * penumbraWeight;
+        }
+    }
+
+    outShadow.x /= outShadow.y;
+    outShadow.y = 1.0;
+
+    outPenumbra.x /= max(outPenumbra.y, sigma::g_Eps); // Yes, without patching // TODO: What it means?
+    outPenumbra.y = outPenumbra.y != 0.0;
+}
+
+void RunSparseBlur(BlurParams params, float tileValue, inout float2 outShadow, inout float2 outPenumbra)
+{
+    // World space sampling
+
+    const SparseBlurKernel sparseKernel = CalcSparseBlurKernel(params, outPenumbra.x, tileValue);
+
+    const float invEstimatedPenumbra = 1.0 / max(outPenumbra.x, sigma::g_Eps);
+
+    for (uint sampleIndex = 0; sampleIndex < sigma::g_PoissonSampleCount; ++sampleIndex)
+    {
+        const float3 offset = sigma::g_PoissonSamples[sampleIndex]; // TODO: Name this variable with prefix
+
+        float2 uv = CalcSparseBlurKernelUv(sparseKernel, offset.xy, params.BaseViewPosition);
+        uv = (floor(uv * g_FrameConstants.RenderResolution) + 0.5) * g_FrameConstants.InvRenderResolution; // Snap to the pixel center
+
+        const uint2 pixelPosition = uv * g_FrameConstants.RenderResolution;
+        
+        PixelData samplePixel;
+#if 0
+        samplePixel.ViewDepth = g_ViewDepthTex.SampleLevel(g_PointClampSampler, uv, 0.0);
+        samplePixel.Penumbra = g_PenumbraTex.SampleLevel(g_PointClampSampler, uv, 0.0);
+#else
+        samplePixel.ViewDepth = g_ViewDepthTex[pixelPosition].x;
+        samplePixel.Penumbra = g_PenumbraTex[pixelPosition].x;
+#endif
+#if defined(FIRST_BLUR_PASS)
+        samplePixel.Shadow = sigma::IsLit(samplePixel.Penumbra);
+#else
+    #if 0
+        samplePixel.Shadow = g_ShadowTex.SampleLevel(g_PointClampSampler, uv, 0.0);
+    #else
+        samplePixel.Shadow = g_ShadowTex[pixelPosition].x;
+    #endif
+        samplePixel.Shadow = sigma::UnpackShadow(samplePixel.Shadow);
+#endif
+
+        SampleParams sampleParams;
+        sampleParams.ViewPosition = ReconstructViewPosition(uv, samplePixel.ViewDepth, params.UvToViewScale, params.UvToViewBias);
+        sampleParams.NormDistanceFromCenter = offset.z;
+
+        float shadowWeight = sigma::IsInScreenNearest(uv);
+        // shadowWeight = 1.0;
+        shadowWeight *= CalcShadowWeight(params, samplePixel, sampleParams);
+
+        // Avoid umbra leaking inside wide penumbra
+        // NRD TODO: it works surprisingly well, keep an eye on it!
+        shadowWeight *= saturate(samplePixel.Penumbra * invEstimatedPenumbra); 
+
+        const float penumbraWeight = CalcPenumbraWeight(params, shadowWeight, samplePixel);
+
+        outShadow += float2(samplePixel.Shadow, 1.0) * shadowWeight;
+        outPenumbra += float2(samplePixel.Penumbra, 1.0) * penumbraWeight;
+    }
+
+    outShadow.x /= outShadow.y;
+    outPenumbra.x = outPenumbra.y == 0.0 ? params.CenterPixel.Penumbra : outPenumbra.x / outPenumbra.y;
+}
+
 [numthreads(g_GroupSizeX, g_GroupSizeY, 1)]
 void CsMain(CsInput input)
 {
-    const bool isSky = g_SmoothTilesTex[input.PixelPos >> 4].y;
+    bool isSky = SIGMA_USE_TILE_CHECK;
+    isSky = isSky && g_SmoothTilesTex[input.PixelPos >> 4].y;
 
     if (!isSky)
     {
@@ -87,16 +314,15 @@ void CsMain(CsInput input)
         return;
     }
 
-    const uint2 ldsPos = input.ThreadPos + SIGMA_BORDER;
-    const LdsData centerData = g_Data[ldsPos.y][ldsPos.x];
-    float centerSignNoL = float(centerData.Penumbra != 0.0);
+    const uint2 sharedPos = input.ThreadPos + SIGMA_BORDER;
+    const PixelData centerPixel = g_PixelsData[sharedPos.y][sharedPos.x];
 
-    // Early out
-    if (centerData.ViewDepth > sigma::g_DenoisingRange)
+    if (centerPixel.ViewDepth > sigma::g_DenoisingRange)
     {
         return;
     }
 
+    // TODO: History copy moved to another pass?
 #if defined(FIRST_BLUR_PASS)
     if (g_PassConstants.StabilizationStrength != 0.0)
     {
@@ -105,215 +331,51 @@ void CsMain(CsInput input)
 #endif
 
     // Tile-based early out ( potentially )
-    const float2 pixelUv = DispatchThreadIdToUv(input.PixelPos, g_FrameConstants.InvRenderResolution);
+    const float2 pixelUv = (input.PixelPos + 0.5) * g_FrameConstants.InvRenderResolution;
+    const float tileValue = sigma::TextureCubicX(g_SmoothTilesTex, pixelUv, g_FrameConstants.RenderResolution);
 
-    float tileValue = sigma::TextureCubic(g_SmoothTilesTex, pixelUv);
-#if defined(FIRST_BLUR_PASS)
-    tileValue *= all(input.PixelPos < g_FrameConstants.RenderResolution); // due to USE_MAX_DIMS
-#endif
-
-    if (tileValue == 0.0 || centerData.Penumbra == 0.0)
+    const bool isUmbra = (SIGMA_USE_TILE_CHECK && tileValue == 0.0) || centerPixel.Penumbra == 0.0;
+    if (isUmbra)
     {
-        g_OutPenumbraTex[input.PixelPos] = centerData.Penumbra;
-        g_OutShadowTex[input.PixelPos] = sigma::PackShadow(centerData.Shadow);
-    
+        g_OutPenumbraTex[input.PixelPos] = centerPixel.Penumbra;
+        g_OutShadowTex[input.PixelPos] = sigma::PackShadow(centerPixel.Shadow);
+
         return;
     }
 
-    // Position
-    // ???
-    const float3 viewPos = ReconstructViewPositionFromViewDepth(pixelUv, centerData.ViewDepth, g_FrameConstants.Camera.PackedFrustumPlaneSlopes);
-    const float3 worldPos = mul(float4(viewPos, 1.0), g_FrameConstants.Camera.InvWorldToView).xyz;
-
-    // Normal
-    const float3 worldNormal = g_WorldNormalTex[input.PixelPos].xyz;
-    const float3 viewNormal = mul(worldNormal, (float3x3)g_FrameConstants.Camera.WorldToViewForNormals); // ???
-
-    // Parameters
-    const float frustumSize = sigma::GetFrustumSizeAtDepth(
-        g_FrameConstants.PixelToWorldScale,
-        min(g_FrameConstants.RenderResolution.x, g_FrameConstants.RenderResolution.y),
-        centerData.ViewDepth
-    );
-    const float unprojectViewDepth = sigma::PixelRadiusToWorld(1.0, g_FrameConstants.PixelToWorldScale, centerData.ViewDepth);
-    const float2 geometryWeightParams = sigma::GetGeometryWeightParams(sigma::g_PlaneDistanceSensitivity, frustumSize, viewPos, viewNormal, 1.0);
+    const BlurParams params = GetBlurParams(pixelUv, centerPixel);
+    
+    float2 blurredShadow = 0.0;
+    float2 blurredPenumbra = 0.0;
 
 #if 1
-    // Estimate penumbra size and filter shadow ( pass 1: dense 3x3 or 5x5 )
-    float blurredShadow = 0.0;
-    float shadowWeightSum = 0.0;
-
-    float blurredPenumbra = 0.0;
-    float penumbraWeightSum = 0.0;
-
-    float shadowCenterTap = 0.0;
-    
-    [unroll]
-    for (int j = 0; j <= SIGMA_BORDER * 2; ++j)
-    {
-        [unroll]
-        for (int i = 0; i <= SIGMA_BORDER * 2; ++i)
-        {
-            const int2 pos = input.ThreadPos + uint2(i, j);
-
-            const LdsData sampleData = g_Data[pos.y][pos.x];
-            const float sampleSignNoL = float(sampleData.Penumbra != 0);
-
-            float shadowSample = sampleData.Shadow;
-            float shadowWeight = 1.0;
-
-            const bool isCenterSample = i == SIGMA_BORDER && j == SIGMA_BORDER;
-            if (isCenterSample)
-            {
-                shadowCenterTap = sampleData.Shadow;
-            }
-            else
-            {
-                const float2 sampleUv = pixelUv + float2(i - SIGMA_BORDER, j - SIGMA_BORDER) * g_FrameConstants.InvRenderResolution;
-                const float3 sampleViewPos = ReconstructViewPositionFromViewDepth(sampleUv, sampleData.ViewDepth, g_FrameConstants.Camera.PackedFrustumPlaneSlopes);
-                const float sampleNoX = dot(viewNormal, sampleViewPos);
-
-                shadowWeight *= sigma::ComputeWeight(sampleNoX, geometryWeightParams.x, geometryWeightParams.y);
-                shadowWeight *= sigma::GetGaussianWeight(length(float2(i - SIGMA_BORDER, j - SIGMA_BORDER) / SIGMA_BORDER));
-                shadowWeight *= (float)(sampleData.ViewDepth < sigma::g_DenoisingRange);
-                shadowWeight *= (float)(centerSignNoL == sampleSignNoL);
-
-                if (shadowWeight == 0.0)
-                {
-                    shadowSample = 0.0;
-                }
-            }
-
-            float penumbraWeight = shadowWeight;
-            penumbraWeight *= !sigma::IsLit(sampleData.Penumbra);
-            penumbraWeight /= 1.0 + (sampleData.Penumbra / unprojectViewDepth); // Prefer smaller penumbra
-            
-            blurredShadow += shadowSample * shadowWeight;
-            shadowWeightSum += shadowWeight;
-            
-            blurredPenumbra += sampleData.Penumbra * penumbraWeight;
-            penumbraWeightSum += penumbraWeight;
-        }
-    }
-
-    blurredShadow /= shadowWeightSum;
-    shadowWeightSum = 1.0;
-    
-    blurredPenumbra /= max(penumbraWeightSum, sigma::g_Eps); // Yes, without patching
-    penumbraWeightSum = penumbraWeightSum != 0.0;
+    RunDenseBlur(input, params, blurredShadow, blurredPenumbra);
 #endif
-
-    // Avoid 1-pixel wide blur if penumbra size < 1 pixel
-    const float penumbraInPixels = blurredPenumbra / unprojectViewDepth;
-    const float factor = sigma::LinearStep(0.75, 1.25, penumbraInPixels);
-    // blurredShadow = lerp(shadowCenterTap, blurredShadow, factor); // TODO: fixes not blurred pixels
-
-    const float invHitDist = 1.0 / max(blurredPenumbra, sigma::g_Eps);
 
 #if 1
-    // Tangent basis with anisotropy
-    const float3x3 worldToLocal = sigma::GetOrthonormalBasisFromNormal(viewNormal);
-    float3 tangent = worldToLocal[0];
-    float3 bitangent = worldToLocal[1];
-
-#if 0
-    const float3 worldLightDirection = normalize(g_PassConstants.LightWorldPosition - worldPos);
-    const float3 viewLightDirection = mul(worldLightDirection, (float3x3)g_FrameConstants.Camera.WorldToView);
+    // Avoid blurry result if penumbra size < BORDER
+    const float penumbraInPixels = blurredPenumbra.x / params.WorldPixelSize;
+    const float factor = smoothstep(0.0, SIGMA_BORDER, penumbraInPixels);
+    blurredShadow.x = lerp(params.CenterPixel.Shadow, blurredShadow.x, factor); // TODO: not the best solution
 #endif
 
-    const float3 viewSunDirection = mul(g_PassConstants.WorldSunDirection, (float3x3)g_FrameConstants.Camera.WorldToView);
-    
 #if 1
-    const float3 t = cross(viewSunDirection, viewNormal); // TODO: add support for other light types to bring proper anisotropic filtering
-    if (length(t) > 0.001)
-    {
-        tangent = normalize(t);
-        bitangent = cross( tangent, viewNormal);
-
-        const float cosa = abs(dot(viewNormal, viewSunDirection));
-        const float skewFactor = lerp(0.25, 1.0, cosa);
-
-        //Tv *= skewFactor; // TODO: let's not srink filtering in the other direction
-        bitangent /= skewFactor;
-    }
+    // Avoid unnecessary weight increase for the unfiltered center sample if the blur radius is small
+    const float f = lerp( 4.0, 1.0, factor); // TODO: adds blurriness
+    blurredShadow *= f;
+    blurredPenumbra *= f;
 #endif
 
-    // Blur radius
-    const float worldRadius = sigma::GetKernelPixelRadius(blurredPenumbra, unprojectViewDepth, tileValue) * unprojectViewDepth;
-
-    tangent *= worldRadius;
-    bitangent *= worldRadius;
-
-    // Estimate penumbra size and filter shadow ( pass 2: sparse 8-taps )
-    const float invEstimatedPenumbra = 1.0 / max(blurredPenumbra, sigma::g_Eps);
-    
-    [unroll]
-    for (uint sampleIndex = 0; sampleIndex < sigma::g_PoissonSampleCount; ++sampleIndex)
-    {
-#if defined(FIRST_BLUR_PASS)
-        const float4 rotator = g_PassConstants.BlurRotator;
-#else
-        const float4 rotator = g_PassConstants.PostBlurRotator;
+#if 1
+    RunSparseBlur(params, tileValue, blurredShadow, blurredPenumbra);
 #endif
-
-        // Sample coordinates
-        const float3 sampleOffset = sigma::g_PoissonSamples[sampleIndex];
-        float2 sampleUv = sigma::GetKernelSampleUv(g_FrameConstants.Camera.ViewToClip, sampleOffset.xy, viewPos, tangent, bitangent, rotator);
-
-        // Snap to the pixel center!
-        sampleUv = (floor(sampleUv * g_FrameConstants.RenderResolution) + 0.5) * g_FrameConstants.InvRenderResolution;
-
-        // Fetch data
-        const float samplePenumbra = g_PenumbraTex.SampleLevel(g_PointClampSampler, sampleUv, 0.0);
-        const float sampleViewDepth = g_ViewDepthTex.SampleLevel(g_PointClampSampler, sampleUv, 0.0);
-        const float sampleSignNoL = float(samplePenumbra != 0.0);
-
-        // Sample weight
-        const float3 sampleViewPos = ReconstructViewPositionFromViewDepth(sampleUv, sampleViewDepth, g_FrameConstants.Camera.PackedFrustumPlaneSlopes);
-        const float NoX = dot(viewNormal, sampleViewPos);
-
-        float shadowWeight = sigma::IsInScreenNearest(sampleUv);
-        shadowWeight *= sigma::GetGaussianWeight(sampleOffset.z);
-        shadowWeight *= sigma::ComputeWeight(NoX, geometryWeightParams.x, geometryWeightParams.y);
-        shadowWeight *= float(sampleViewDepth < sigma::g_DenoisingRange);
-        shadowWeight *= float(centerSignNoL == sampleSignNoL);
-
-        // Avoid umbra leaking inside wide penumbra
-        float t = saturate(samplePenumbra * invEstimatedPenumbra);
-        shadowWeight *= smoothstep(0.0, 1.0, t); // TODO: it works surprisingly well, keep an eye on it!
-
-        // Fetch shadow
-#if defined(FIRST_BLUR_PASS)
-        float sampleShadow = sigma::IsLit(samplePenumbra); // TODO: Rewrite
-#else
-        float sampleShadow = g_ShadowTex.SampleLevel(g_PointClampSampler, sampleUv, 0.0);
-        sampleShadow = sigma::UnpackShadow(sampleShadow);
-#endif
-        sampleShadow = shadowWeight == 0.0 ? 0.0 : sampleShadow;
-
-        const float penumraInPixels = samplePenumbra / unprojectViewDepth;
-        
-        float penumbraWeight = shadowWeight;
-        penumbraWeight *= !sigma::IsLit(samplePenumbra);
-        penumbraWeight /= 1.0 + penumraInPixels; // prefer smaller penumbra
-
-        blurredShadow += sampleShadow * shadowWeight;
-        shadowWeightSum += shadowWeight;
-        
-        blurredPenumbra += samplePenumbra * penumbraWeight;
-        penumbraWeightSum += penumbraWeight;
-    }
-#endif
-    
-    blurredShadow /= shadowWeightSum;
-    blurredPenumbra = penumbraWeightSum == 0.0 ? centerData.Penumbra : blurredPenumbra / penumbraWeightSum;
 
 #if !defined(FIRST_BLUR_PASS)
     if (g_PassConstants.StabilizationStrength != 0)
 #endif
     {
-        g_OutPenumbraTex[input.PixelPos] = blurredPenumbra;
+        g_OutPenumbraTex[input.PixelPos] = blurredPenumbra.x;
     }
 
-    g_OutShadowTex[input.PixelPos] = sigma::PackShadow(blurredShadow);
+    g_OutShadowTex[input.PixelPos] = sigma::PackShadow(blurredShadow.x);
 }
