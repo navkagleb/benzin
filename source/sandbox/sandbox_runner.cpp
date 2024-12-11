@@ -100,6 +100,25 @@ namespace sandbox
 
         m_RenderViewportTool->SetFinalTextureIndex(+Texture::Final);
 
+        m_TextureViewerTool->SetTextureSelectorCallback([]
+        {
+            static const auto textureNames =
+                magic_enum::enum_names<Texture>() |
+                std::views::transform([](std::string_view name) { return name.data(); }) |
+                std::ranges::to<std::vector>();
+
+            static auto selectedTexture = Texture::SigmaShadow;
+
+            ImGui::Combo("Texture", (int*)&selectedTexture, textureNames.data(), (int)textureNames.size());
+
+            if (ImGui::Button("Reset"))
+            {
+                selectedTexture = (Texture)benzin::g_InvalidUnsigned<uint32_t>;
+            }
+
+            return +selectedTexture;
+        });
+
         m_TimingsTool = m_ImGuiManager->PushTool<TimingsTool>(*m_Device);
 
         BenzinAssert(m_RenderSettingsTool != nullptr);
@@ -159,28 +178,6 @@ namespace sandbox
             spawnButton(joint::DebugOutputType_SigmaSmoothTiles);
             ImGui::SameLine();
             spawnButton(joint::DebugOutputType_SigmaShadow);
-
-            {
-                static const auto textureNames =
-                    magic_enum::enum_names<Texture>() |
-                    std::views::transform([](std::string_view name) { return name.data(); }) |
-                    std::ranges::to<std::vector>();
-
-                static auto selectedTexture = Texture::SigmaShadow;
-                ImGui::Combo("Texture", (int*)&selectedTexture, textureNames.data(), (int)textureNames.size());
-
-                if (benzin::IsValidEnum(selectedTexture))
-                {
-                    m_TextureViewerTool->SetTextureIndex(+selectedTexture);
-                }
-
-                if (ImGui::Button("Reset"))
-                {
-                    selectedTexture = benzin::g_InvalidEnum<Texture>;
-                    m_TextureViewerTool->SetTextureIndex(benzin::g_InvalidUnsigned<uint32_t>);
-                }
-            }
-            
         });
     }
 

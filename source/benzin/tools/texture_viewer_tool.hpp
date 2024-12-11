@@ -10,9 +10,11 @@ namespace benzin
     class TextureViewerTool : public ImGuiTool
     {
     public:
+        using TextureSelectorCallback = std::function<uint32_t()>;
+
         explicit TextureViewerTool(const RenderResources& renderResources);
 
-        void SetTextureIndex(uint32_t textureIndex) { m_TextureIndex = textureIndex; }
+        void SetTextureSelectorCallback(TextureSelectorCallback&& callback) { m_SelectorCallback = std::move(callback); }
 
     private:
         void OnEvent(Event& event) override;
@@ -21,9 +23,9 @@ namespace benzin
         void ClampUvs();
 
     private:
-        const RenderResources& m_RenderResouces;
+        const RenderResources& m_RenderResources;
 
-        uint32_t m_TextureIndex = g_InvalidUnsigned<uint32_t>;
+        TextureSelectorCallback m_SelectorCallback;
 
         ImVec2 m_UvMin{ 0.0f, 0.0f };
         ImVec2 m_UvMax{ 1.0f, 1.0f };

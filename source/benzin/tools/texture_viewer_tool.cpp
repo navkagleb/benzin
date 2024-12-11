@@ -18,7 +18,7 @@ namespace benzin
 
     TextureViewerTool::TextureViewerTool(const RenderResources& renderResources)
         : ImGuiTool{ "TextureViewerTool", magic_enum::enum_name(g_ToggleVisibilityKeyCode) }
-        , m_RenderResouces{ renderResources }
+        , m_RenderResources{ renderResources }
     {}
 
     void TextureViewerTool::OnEvent(Event& event)
@@ -106,13 +106,13 @@ namespace benzin
 
         SpawnImGuiWindow([this]
         {
-            if (!IsValidUnsigned(m_TextureIndex))
+            const uint32_t textureIndex = m_SelectorCallback ? m_SelectorCallback() : g_InvalidUnsigned<uint32_t>;
+            if (!IsValidUnsigned(textureIndex))
             {
                 return;
             }
 
-            const Texture* texture = m_RenderResouces.GetTexturePtr(m_TextureIndex);
-
+            const Texture* texture = m_RenderResources.GetTexturePtr(textureIndex);
             if (texture == nullptr)
             {
                 return;
