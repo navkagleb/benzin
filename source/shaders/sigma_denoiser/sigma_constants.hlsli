@@ -1,7 +1,17 @@
-#pragma once
+#ifdef SIGMA_USE_BORDER_2
+    #define SIGMA_BORDER 2
+#else
+    #define SIGMA_BORDER 1
+#endif
 
 #define SIGMA_USE_TILE_CHECK 1
-#define SIGMA_USE_SPARSE_BLUR 1
+
+#define SIGMA_BLUR_USE_SPARSE_BLUR 1
+
+#define SIGMA_TS_USE_EARLY_OUT 1
+#define SIGMA_TS_MAX_HISTORY_LENGTH 7
+#define SIGMA_TS_NORM_DISOCCLUSION_THRESHOLD 0.02 // normalized % // TODO: use CommonSettings::disocclusionThreshold?
+#define SIGMA_TS_SIGMA_SCALE 3.0
 
 namespace sigma
 {

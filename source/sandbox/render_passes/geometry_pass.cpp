@@ -21,7 +21,7 @@ namespace sandbox
     static constexpr auto g_GBufferColor0Format = benzin::GraphicsFormat::Rgba8Unorm; // Albedo, Albedo, Albedo, Roughness
     static constexpr auto g_GBufferColor1Format = benzin::GraphicsFormat::Rgba8Unorm; // Emissive, Emissive, Emissive, Metallic
     static constexpr auto g_GBufferColor2Format = benzin::GraphicsFormat::Rgba16Float; // WorldNormal, WorldNormal, WorldNormal, None
-    static constexpr auto g_GBufferColor3Format = benzin::GraphicsFormat::Rgba16Float; // UvMotionVector, UvMotionVector, DepthMotionVector, None
+    static constexpr auto g_GBufferColor3Format = benzin::GraphicsFormat::Rgba16Float; // UvMv, UvMv, ViewDepthMv, None
     static constexpr auto g_GBufferColor4Format = benzin::GraphicsFormat::R32Float; // ViewDepth
 
     static constexpr auto g_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
@@ -154,6 +154,9 @@ namespace sandbox
         {
             const auto& tc = view.get<benzin::TransformComponent>(entityHandle);
             const auto& mic = view.get<benzin::MeshInstanceComponent>(entityHandle);
+
+            const std::string_view meshCollectionDebugName = m_Scene.GetMeshCollectionDebugName(mic.MeshUnionIndex);
+            BenzinPushGpuEvent(commandList, meshCollectionDebugName);
 
             const auto& meshCollection = m_Scene.GetMeshCollection(mic.MeshUnionIndex);
             const auto& meshCollectionGpuStorage = m_Scene.GetMeshCollectionGpuStorage(mic.MeshUnionIndex);

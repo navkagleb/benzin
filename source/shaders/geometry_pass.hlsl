@@ -83,10 +83,9 @@ joint::Material FetchMaterial(uint materialIndex)
 struct VsOutput
 {
     float4 ClipPosition : SV_Position;
-    float4 CurrentClipPosition : CurrentClipPosition;
-    float4 PreviousClipPosition : PreviousClipPosition;
     float3 WorldPosition : WorldPosition;
-    float ViewDepth : ViewDepth;
+    float3 ViewPosition : ViewPosition;
+    float3 PrevViewPosition : PrevViewPosition;
     float3 WorldNormal : WorldNormal;
     float2 Uv : Uv;
 };
@@ -97,24 +96,22 @@ VsOutput VsMain(uint indexIndex : SV_VertexID)
     const joint::MeshVertex vertex = FetchVertex(indexIndex, meshInstance.MeshIndex);
     const joint::MeshTransform transform = FetchMeshTransform();
 
-    const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
-    const joint::CameraConstants prevCameraConstants = g_FrameConstants.PrevCamera;
+    const joint::CameraConstants camera = g_FrameConstants.Camera;
 
     const float4 objectPosition = mul(float4(vertex.Position, 1.0f), meshInstance.Transform);
     const float3 objectNormal = mul(vertex.Normal, (float3x3)meshInstance.Transform);
 
     const float4 worldPosition = mul(objectPosition, transform.WorldMatrix);
-    const float4 previousWorldPosition = mul(objectPosition, transform.PreviousWorldMatrix);
+    const float4 prevWorldPosition = mul(objectPosition, transform.PreviousWorldMatrix);
     const float3 worldNormal = mul(objectNormal, (float3x3)transform.WorldMatrixForNormals);
 
-    const float4 viewPosition = mul(worldPosition, cameraConstants.WorldToView);
+    const float4 viewPosition = mul(worldPosition, camera.WorldToView);
 
     VsOutput output = (VsOutput)0;
-    output.ClipPosition = mul(worldPosition, cameraConstants.WorldToClip);
-    output.CurrentClipPosition = output.ClipPosition;
-    output.PreviousClipPosition = mul(previousWorldPosition, prevCameraConstants.WorldToClip);
+    output.ClipPosition = mul(worldPosition, camera.WorldToClip);
     output.WorldPosition = worldPosition.xyz;
-    output.ViewDepth = viewPosition.z;
+    output.ViewPosition = viewPosition.xyz;
+    output.PrevViewPosition = mul(prevWorldPosition, g_FrameConstants.PrevCamera.WorldToView).xyz;
     output.WorldNormal = worldNormal;
     output.Uv = vertex.Uv;
 
@@ -193,15 +190,17 @@ PsOutput PsMain(VsOutput input)
     }
 
     {
-        const float3 currentNdcPosition = ClipToNdc(input.CurrentClipPosition);
-        const float3 prevNdcPosition = ClipToNdc(input.PreviousClipPosition);
+        const float4 clipPosition = mul(float4(input.ViewPosition, 1.0), g_FrameConstants.Camera.ViewToClip);
+        const float4 prevClipPosition = mul(float4(input.PrevViewPosition, 1.0), g_FrameConstants.PrevCamera.ViewToClip);
 
-        const float2 currentUv = NdcToUv(currentNdcPosition.xy);
-        const float2 prevUv = NdcToUv(prevNdcPosition.xy);
+        // const float2 uv = input.ClipPosition.xy * g_FrameConstants.InvRenderResolution;
+        const float2 uv = ClipToUv(clipPosition);
+        const float2 prevUv = ClipToUv(prevClipPosition);
 
-        gbuffer.UvMotionVector = currentUv - prevUv;
-        gbuffer.DepthMotionVector = currentNdcPosition.z - prevNdcPosition.z;
-        gbuffer.ViewDepth = input.ViewDepth;
+        gbuffer.UvMv = (uv - prevUv) * g_FrameConstants.RenderResolution; // TODO: Pack/Unpack Mv
+        gbuffer.ViewDepthMv = input.ViewPosition.z - input.PrevViewPosition.z;
+
+        gbuffer.ViewDepth = input.ViewPosition.z;
     }
 
     // gbuffer.Albedo = 0.6;

@@ -143,7 +143,7 @@ namespace benzin
                 while (true)
                 {
                     const size_t slashPos = includeFilePathToParse.find_first_of('/');
-                    BenzinEnsure(slashPos != std::wstring_view::npos, "Invalid include file");
+                    BenzinEnsure(slashPos != std::wstring_view::npos, "Invalid include file: {}", ToNarrowString(includeFilePathToParse));
 
                     includeFilePathToParse = includeFilePathToParse.substr(slashPos + 1);
 
@@ -156,6 +156,11 @@ namespace benzin
 
                 return includeFilePath;
             };
+
+            if (rawAbsFilePath == nullptr || outDxcIncludeSource == nullptr)
+            {
+                return E_INVALIDARG;
+            }
 
             auto includeFilePath = getShaderIncludeFilePath(rawAbsFilePath);
 

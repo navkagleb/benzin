@@ -1,49 +1,30 @@
+#define g_ThreadCountX 16
+#define g_ThreadCountY 16
+
 #include "joint/sigma_denoiser_resources.hpp"
 
 #define RenderPassConstantsType joint::SigmaConstants
 #include "unified_root_parameters.hlsli"
 
-#include "sigma_denoiser/sigma_common.hlsli"
-#include "sigma_denoiser/lds_preloader.hlsli"
+#include "sigma_denoiser/group_shared_preloader.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float4>, g_TilesTex, joint::Rc_SigmaSmoothTiles::TilesTex);
-BenzinDeclareRootResource(RWTexture2D<float2>, g_OutSmoothTilesTex, joint::Rc_SigmaSmoothTiles::OutSmoothTilesTex);
+BenzinDeclareRootResource(Texture2D<float4>, g_Tiles, joint::Rc_SigmaSmoothTiles::Tiles);
+BenzinDeclareRootResource(RWTexture2D<float2>, g_OutSmoothTiles, joint::Rc_SigmaSmoothTiles::OutSmoothTiles);
 
-static const uint g_GroupSize = 16;
-static const uint g_BufferSize = g_GroupSize + SIGMA_BORDER * 2;
-
-groupshared float g_IsPenumbra[g_BufferSize][g_BufferSize];
+groupshared float g_IsPenumbra[g_SharedBufferSizeY][g_SharedBufferSizeX];
 
 void Preload(uint2 localPos, uint2 globalPos)
 {
-    g_IsPenumbra[localPos.y][localPos.x] = g_TilesTex[globalPos].x;
+    g_IsPenumbra[localPos.y][localPos.x] = g_Tiles[globalPos].x;
 }
 
-struct CsInput
+[numthreads(g_ThreadCountX, g_ThreadCountY, 1)]
+void CsMain(sigma::GroupSharedCsInput input)
 {
-    uint2 ThreadPos : SV_GroupThreadID;
-    uint2 PixelPos : SV_DispatchThreadID;
-    uint FlatThreadIndex : SV_GroupIndex;
-};
+    SigmaPreloadToGroupSharedMem(input, g_PassConstants.TileCount, Preload);
+    GroupMemoryBarrierWithGroupSync();
 
-[numthreads(g_GroupSize, g_GroupSize, 1)]
-void CsMain(CsInput input)
-{
-    {
-        sigma::LdsPreloadCreation creation;
-        creation.ThreadPos = input.ThreadPos;
-        creation.PixelPos = input.PixelPos;
-        creation.FlatThreadIndex = input.FlatThreadIndex;
-        creation.GroupSize = g_GroupSize;
-        creation.BufferSize = g_BufferSize;
-        creation.Dimension = g_PassConstants.TileCount;
-
-        SigmaRunLdsPreloader(creation, Preload);
-        
-        GroupMemoryBarrierWithGroupSync();
-    }
-
-    const float3 centerTile = g_TilesTex[input.PixelPos].xyz;
+    const float3 centerTile = g_Tiles[input.PixelPos].xyz;
     const float k = 1.01 / (centerTile.y + 0.01);
 
     float2 smoothPenumbra = 0.0;
@@ -63,5 +44,5 @@ void CsMain(CsInput input)
 
     smoothPenumbra.x /= smoothPenumbra.y;
 
-    g_OutSmoothTilesTex[input.PixelPos] = float2(smoothPenumbra.x, centerTile.z);
+    g_OutSmoothTiles[input.PixelPos] = float2(smoothPenumbra.x, centerTile.z);
 }

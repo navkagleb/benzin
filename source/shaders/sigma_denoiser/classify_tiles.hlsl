@@ -3,9 +3,9 @@
 #include "joint/sigma_denoiser_resources.hpp"
 #include "sigma_denoiser/sigma_common.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float>, g_ViewDepthTex, joint::Rc_SigmaClassifyTiles::ViewDepthTex);
-BenzinDeclareRootResource(Texture2D<float>, g_PenumbraTex, joint::Rc_SigmaClassifyTiles::PenumbraTex);
-BenzinDeclareRootResource(RWTexture2D<float4>, g_OutTilesTex, joint::Rc_SigmaClassifyTiles::OutTilesTex);
+BenzinDeclareRootResource(Texture2D<float>, g_ViewDepth, joint::Rc_SigmaClassifyTiles::ViewDepth);
+BenzinDeclareRootResource(Texture2D<float>, g_Penumbra, joint::Rc_SigmaClassifyTiles::Penumbra);
+BenzinDeclareRootResource(RWTexture2D<float4>, g_OutTiles, joint::Rc_SigmaClassifyTiles::OutTiles);
 
 groupshared uint g_TileMask;
 groupshared uint g_TilePixelRadius; // Stores float value. Use asuint and asfloat
@@ -38,8 +38,8 @@ void FetchThreadTileInfo(CsInput input, out uint outThreadMask, out float outThr
         {
             const uint2 pixelPos = basePixelPos + uint2(i, j);
 
-            const float penumbra = g_PenumbraTex[pixelPos];
-            const float viewDepth = g_ViewDepthTex[pixelPos];
+            const float penumbra = g_Penumbra[pixelPos];
+            const float viewDepth = g_ViewDepth[pixelPos];
 
             const bool isInf = viewDepth > sigma::g_DenoisingRange;
             const bool isShadow = penumbra == 0;
@@ -104,6 +104,6 @@ void CsMain(CsInput input)
         result.z = isInf ? 1.0 : 0.0;
         result.w = 0.0;
 
-        g_OutTilesTex[input.GroupPos] = result;
+        g_OutTiles[input.GroupPos] = result;
     }
 }

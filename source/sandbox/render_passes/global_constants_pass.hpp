@@ -40,6 +40,8 @@ namespace sandbox
 
         joint::CameraConstants m_CameraConstants{};
         joint::CameraConstants m_PrevCameraConstants{};
+
+        DirectX::XMUINT2 m_PrevRenderResolution{ 0, 0 };
     };
 
 }

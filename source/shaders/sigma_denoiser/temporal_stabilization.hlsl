@@ -1,4 +1,6 @@
-// #define DEBUG_TEMPORAL_STABILIZATION
+#define g_ThreadCountX 8
+#define g_ThreadCountY 16
+
 #define SIGMA_USE_BORDER_2
 
 #include "joint/sigma_denoiser_resources.hpp"
@@ -6,263 +8,263 @@
 #define RenderPassConstantsType joint::SigmaConstants
 #include "unified_root_parameters.hlsli"
 
-#include "filters.hlsli"
-#include "gbuffer.hlsli"
-#include "sigma_denoiser/lds_preloader.hlsli"
-#include "sigma_denoiser/sigma_common.hlsli"
+#include "bilinear_filter.hlsli"
+#include "sigma_denoiser/group_shared_preloader.hlsli"
 #include "space_convertions.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float>, g_ViewDepthTex, joint::Rc_SigmaTemporalStabilization::ViewDepthTex);
-BenzinDeclareRootResource(Texture2D<float4>, g_MvTex, joint::Rc_SigmaTemporalStabilization::MvTex);
-BenzinDeclareRootResource(Texture2D<float>, g_PenumbraTex, joint::Rc_SigmaTemporalStabilization::PenumbraTex);
-BenzinDeclareRootResource(Texture2D<float>, g_ShadowTex, joint::Rc_SigmaTemporalStabilization::ShadowTex);
-BenzinDeclareRootResource(Texture2D<float4>, g_HistoryTex, joint::Rc_SigmaTemporalStabilization::HistoryTex);
-BenzinDeclareRootResource(Texture2D<float2>, g_SmoothTilesTex, joint::Rc_SigmaTemporalStabilization::SmoothTilesTex);
+BenzinDeclareRootResource(Texture2D<float4>, g_Mv, joint::Rc_SigmaTemporalStabilization::Mv);
+BenzinDeclareRootResource(Texture2D<float>, g_ViewDepth, joint::Rc_SigmaTemporalStabilization::ViewDepth);
+BenzinDeclareRootResource(Texture2D<float2>, g_SmoothTiles, joint::Rc_SigmaTemporalStabilization::SmoothTiles);
+BenzinDeclareRootResource(Texture2D<float>, g_Penumbra, joint::Rc_SigmaTemporalStabilization::Penumbra);
+BenzinDeclareRootResource(Texture2D<float>, g_Shadow, joint::Rc_SigmaTemporalStabilization::Shadow);
+BenzinDeclareRootResource(Texture2D<float>, g_ShadowHistory, joint::Rc_SigmaTemporalStabilization::ShadowHistory);
+BenzinDeclareRootResource(Texture2D<uint>, g_HistoryLength, joint::Rc_SigmaTemporalStabilization::HistoryLength);
 
-BenzinDeclareRootResource(RWTexture2D<float>, g_OutShadowTex, joint::Rc_SigmaTemporalStabilization::OutShadowTex);
+BenzinDeclareRootResource(RWTexture2D<float>, g_OutShadow, joint::Rc_SigmaTemporalStabilization::OutShadow);
+BenzinDeclareRootResource(RWTexture2D<uint>, g_OutHistoryLength, joint::Rc_SigmaTemporalStabilization::OutHistoryLength);
 
-static const uint g_ThreadCountX = 8;
-static const uint g_ThreadCountY = 16;
-
-static const uint g_SharedBufferSizeX = SigmaCalcSharedBufferSize(g_ThreadCountX);
-static const uint g_SharedBufferSizeY = SigmaCalcSharedBufferSize(g_ThreadCountY);
-
-struct SharedData
+struct PixelData
 {
     float Penumbra;
     float ViewDepth;
     float Shadow;
-    float SignNoL;
 };
 
-groupshared SharedData g_SharedData[g_SharedBufferSizeY][g_SharedBufferSizeX];
+groupshared PixelData g_Pixels[g_SharedBufferSizeY][g_SharedBufferSizeX];
 
 void Preload(uint2 sharedPos, uint2 pixelPos)
 {
-    SharedData data;
-    data.Penumbra = g_PenumbraTex[pixelPos];
-    data.ViewDepth = g_ViewDepthTex[pixelPos];
-    data.Shadow = sigma::UnpackShadow(g_ShadowTex[pixelPos]);
-    data.SignNoL = float(data.Penumbra != 0.0);
+    PixelData pixel;
+    pixel.Penumbra = g_Penumbra[pixelPos];
+    pixel.ViewDepth = g_ViewDepth[pixelPos];
+    pixel.Shadow = sigma::UnpackShadow(g_Shadow[pixelPos]);
 
-    g_SharedData[sharedPos.y][sharedPos.x] = data;
+    g_Pixels[sharedPos.y][sharedPos.x] = pixel;
 }
 
-#define SIGMA_SHOW 0 // 1 - tiles, 2 - history weight
-
-#define SIGMA_TS_EARLY_OUT_THRESHOLD 0.25
-#define SIGMA_TS_Z_FALLOFF 1.0 // exp2( -SIGMA_TS_Z_FALLOFF * dz )
-
-struct CsInput
+uint PackViewDepthAndHistoryLength(float viewDepth, float historyLength)
 {
-    uint2 ThreadPos : SV_GroupThreadID;
-    uint2 PixelPos : SV_DispatchThreadID;
-    uint FlatThreadIndex : SV_GroupIndex;
-};
+    uint packed = asuint(viewDepth) & ~SIGMA_TS_MAX_HISTORY_LENGTH;
+    packed |= min(uint(historyLength + 0.5), SIGMA_TS_MAX_HISTORY_LENGTH);
 
-void CalcLocalVariance(
-    CsInput input,
-    SharedData centerData,
-    out float outM1,
-    out float outM2,
-    out float outNearestViewDepth,
-    out uint2 outNearestViewDepthPixelOffset
-)
+    return packed;
+}
+
+void UnpackViewDepthAndHistoryLength(uint4 packedData, out float4 outViewDepths, out float4 outHistoryLengths)
 {
-    float shadowWeightSum = 0.0;
-    float m1 = 0.0;
-    float m2 = 0.0;
+    outViewDepths = asfloat(packedData & ~SIGMA_TS_MAX_HISTORY_LENGTH);
+    outHistoryLengths = float4(packedData & SIGMA_TS_MAX_HISTORY_LENGTH);
+}
 
-    float nearestViewDepth = sigma::g_DenoisingRange;
-    uint2 nearestViewDepthPixelOffset = 0;
+void CalcLocalVariance(uint2 threadPos, float centerPenumbra, out float outM1, out float outM2)
+{
+    outM1 = 0.0;
+    outM2 = 0.0;
+
+    float weightSum = 0.0;
 
     [unroll]
-    for (uint j = 0; j <= SIGMA_BORDER * 2; ++j)
+    for (int j = -SIGMA_BORDER; j <= SIGMA_BORDER; ++j)
     {
         [unroll]
-        for (uint i = 0; i <= SIGMA_BORDER * 2; ++i)
+        for (int i = -SIGMA_BORDER; i <= SIGMA_BORDER; ++i)
         {
-            const uint2 pos = input.ThreadPos + int2(i, j);
-            const SharedData data = g_SharedData[pos.y][pos.x];
+            const int2 sharedPos = threadPos + SIGMA_BORDER + int2(i, j);
+            const PixelData pixel = g_Pixels[sharedPos.y][sharedPos.x];
 
             float shadowWeight = 1.0;
-            if (!(i == SIGMA_BORDER && j == SIGMA_BORDER))
+
+            const bool isCenterSample = i == 0 && j == 0;
+            if (!isCenterSample)
             {
-                shadowWeight *= exp2(-SIGMA_TS_Z_FALLOFF * abs(data.ViewDepth - centerData.ViewDepth)); // soft Z test // TODO: use relative difference?
-                shadowWeight *= sigma::IsLit(data.Penumbra) == sigma::IsLit(centerData.Penumbra); // no-harm on a flat surface due to wide spatials, needed to prevent bleeding from one surface to another
-                shadowWeight *= float(centerData.ViewDepth < sigma::g_DenoisingRange); // ignore sky
-                shadowWeight *= float(centerData.SignNoL == data.SignNoL); // ignore samples with different NoL signs
+                shadowWeight = sigma::IsBothLitOrUmbra(centerPenumbra, pixel.Penumbra);
+                shadowWeight *= sigma::GetGaussianWeight(length(float2(i, j) / SIGMA_BORDER));
             }
 
-            if (nearestViewDepth > data.ViewDepth)
-            {
-                nearestViewDepth = data.ViewDepth;
-                nearestViewDepthPixelOffset = uint2(i, j);
-            }
-
-            m1 += data.Shadow * shadowWeight;
-            m2 += data.Shadow * data.Shadow * shadowWeight;
-            shadowWeightSum += shadowWeight;
+            outM1 += pixel.Shadow * shadowWeight;
+            outM2 += pixel.Shadow * pixel.Shadow * shadowWeight;
+            weightSum += shadowWeight;
         }
     }
 
-    const float invShadowWeightSum = 1.0 / shadowWeightSum; // rcp(shadowWeightSum);
-    m1 *= invShadowWeightSum;
-    m2 *= invShadowWeightSum;
-
-    outM1 = m1;
-    outM2 = m2;
-    outNearestViewDepth = nearestViewDepth;
-    outNearestViewDepthPixelOffset = nearestViewDepthPixelOffset;
+    const float invWeightSum = 1.0 / weightSum; // rcp(shadowWeightSum)?
+    outM1 *= invWeightSum;
+    outM2 *= invWeightSum;
 }
 
 float GetStdDeviation(float m1, float m2)
 {
-    // sigma = standard deviation, variance = sigma ^ 2
+    const float variance = abs(m2 - m1 * m1);
+    const float sigma = sqrt(variance);
 
-    return sqrt(abs(m2 - m1 * m1)); // sqrt( max( m2 - m1 * m1, 0.0 ) )
+    return sigma;
 }
 
-float2 GetPrevPixelUv(uint2 pixelPosition, uint2 nearestViewDepthPixelOffset)
+void CalcPrevPositions(uint2 pixelPos, float2 pixelUv, float viewDepth, out float2 outPrevPixelUv, out float3 outPrevViewPos)
 {
-    const uint2 mvPixelPosition = clamp(pixelPosition + nearestViewDepthPixelOffset - SIGMA_BORDER, 0, g_FrameConstants.RenderResolution);
-    const float2 mv = g_MvTex[mvPixelPosition].xy;
+    const joint::CameraConstants camera = g_FrameConstants.Camera;
+    const joint::CameraConstants prevCamera = g_FrameConstants.PrevCamera;
 
-    const float2 pixelUv = (pixelPosition + 0.5) * g_FrameConstants.InvRenderResolution;
+    const float3 viewPos = ReconstructViewPosition(pixelUv, viewDepth, camera.UvToViewScale, camera.UvToViewBias);
+    const float3 worldPos = mul(float4(viewPos, 1.0), camera.ViewToWorld).xyz;
+
+    float3 mv = g_Mv[pixelPos].xyz;
+    mv.xy *= g_FrameConstants.InvRenderResolution; // TODO: Pack/Unpack Mv
+
     const float2 prevPixelUv = pixelUv - mv.xy;
 
-    return prevPixelUv;
+    const float prevViewDepth = viewDepth - mv.z;
+    const float3 tempPrevViewPos = ReconstructViewPosition(prevPixelUv, prevViewDepth, prevCamera.UvToViewScale, prevCamera.UvToViewBias); // TODO: Does there is any difference between 'prevViewPos'?
+    const float3 prevWorldPos = mul(float4(tempPrevViewPos, 1.0), prevCamera.ViewToWorld).xyz;
+    const float3 prevViewPos = mul(float4(prevWorldPos, 1.0), prevCamera.WorldToView).xyz;
+
+    outPrevPixelUv = prevPixelUv;
+    outPrevViewPos = prevViewPos;
 }
 
-float SampleHistory(float2 prevPixelUv)
+float GetDisocclusionThreshold(float viewDepth)
 {
-    float history = g_PassConstants.IsBicubicSamplingUsedForHistory
-        ? BicubicFilterNoCorners(g_HistoryTex, saturate(prevPixelUv) * g_FrameConstants.RenderResolution, g_FrameConstants.InvRenderResolution).x
-        : g_HistoryTex.SampleLevel(g_LinearClampSampler, prevPixelUv, 0.0).x;
+    // Only for viewZ comparisons for close to each other pixels ( not sparse filters! )
+
+    const float worldFrustumSize = sigma::PixelRadiusToWorld(g_FrameConstants.MinRenderDimension, g_FrameConstants.PixelToWorldScale, viewDepth);
+
+    return worldFrustumSize * SIGMA_TS_NORM_DISOCCLUSION_THRESHOLD;
+}
+
+void SampleHistoryData(float2 prevPixelUv, float viewDepth, float prevViewDepth, out float outHistoryLength, out float outShadowHistory)
+{
+    // History length
+    const BilinearFilter prevFilter = CreateBilinearFilter(prevPixelUv, g_FrameConstants.RenderResolution);
+
+    const float2 gatherUv = (prevFilter.TopLeftTexelPos + 1.0) * g_FrameConstants.InvRenderResolution;
+    const uint4 prevHistoryData = g_HistoryLength.GatherRed(g_PointClampSampler, gatherUv).wzxy;
+
+    float4 prevViewDepths;
+    float4 prevHistoryLengths;
+    UnpackViewDepthAndHistoryLength(prevHistoryData, prevViewDepths, prevHistoryLengths);
+
+    float disocclusionThreshold = GetDisocclusionThreshold(viewDepth); // TODO: slope scale?
+    disocclusionThreshold *= sigma::IsUvIn01Range(prevPixelUv);
+    disocclusionThreshold -= sigma::g_Eps;
+
+    const float4 prevPlaneDistanceDiff = abs(prevViewDepths - prevViewDepth);
+    const float4 isSampleOccluded = step(prevPlaneDistanceDiff, disocclusionThreshold);
+    const float4 customWeights = ExpandBilinearWeights(prevFilter.LerpWeights) * isSampleOccluded;
+
+    const float historyLength = ApplyBilinearCustomWeights(prevHistoryLengths, customWeights);
+
+    // Shadow history
+    const bool isCatRomAllowed = dot(customWeights, 1.0) > 3.5;
+
+    // const bool isBicubicSamplingUsed = dot(customWeights, 1.0) > 3.5;
+    // const float history = SampleShadowHistory(prevPixelUv, isBicubicSamplingUsed);
+
+    float shadowHistory;
+    BicubicFilterNoCornersWithFallbackToBilinearFilterWithCustomWeights(
+        saturate(prevPixelUv) * g_FrameConstants.RenderResolution,
+        g_FrameConstants.InvRenderResolution,
+        customWeights,
+        isCatRomAllowed,
+        g_ShadowHistory,
+        shadowHistory
+    );
+
+    shadowHistory = g_ShadowHistory.SampleLevel(g_LinearClampSampler, prevPixelUv, 0.0); // TODO: Remove?
+    shadowHistory = saturate(shadowHistory);
+    shadowHistory = sigma::UnpackShadow(shadowHistory);
+
+    outHistoryLength = historyLength;
+    outShadowHistory = shadowHistory;
+}
+
+float CalcAntilagFactor(float history, float clampedHistory)
+{
+    float antilag = abs(clampedHistory - history);
+    antilag = sqrt(saturate(antilag));
+    antilag = saturate(1.0 - antilag);
+
+    return antilag;
+}
+
+#if 0
+float SampleShadowHistory(float2 prevPixelUv, bool isBicubicSamplingUsed)
+{
+    float history = isBicubicSamplingUsed && g_PassConstants.IsBicubicSamplingUsedForHistory
+        ? BicubicFilterNoCorners(g_ShadowHistory, saturate(prevPixelUv) * g_FrameConstants.RenderResolution, g_FrameConstants.InvRenderResolution).x
+        : g_ShadowHistory.SampleLevel(g_LinearClampSampler, prevPixelUv, 0.0).x;
 
     history = saturate(history);
     history = sigma::UnpackShadow(history);
 
     return history;
 }
-
-float ClampHistory(float history, float thisFrameShadow, float sigma)
-{
-    static const float sigmaScale = 3.0;
-
-    const float inputMin = thisFrameShadow - sigma * sigmaScale;
-    const float inputMax = thisFrameShadow + sigma * sigmaScale;
-
-    const float clampedHistory = clamp(history, inputMin, inputMax);
-    return clampedHistory;
-}
-
-float CalcAntilagFactor(float fast, float slow, float sigma)
-{
-    static const float antilagSigmaScale = 0.25;
-    static const float antilagEps = 0.05;
-    static const float antilagPower = 1.0;
-
-    const float a = abs(slow - fast) - sigma * antilagSigmaScale - antilagEps;
-    const float b = max(slow, fast) + sigma * antilagSigmaScale + antilagEps;
-
-    float antilag = a / b;
-    antilag = smoothstep(0.0, 1.0, saturate(1.0 - antilag));
-    antilag = pow(saturate(antilag), antilagPower);
-
-    return antilag;
-}
-
-float CalcHistoryWeight(float2 prevPixelUv, float antilagFactor, float penumbraInPixels)
-{
-    static const float maxHistoryWeight = 0.95;
-    static const float earlyOutThreshold = 0.25;
-
-    float historyWeight = maxHistoryWeight;
-    historyWeight *= sigma::IsInScreenNearest(prevPixelUv);
-    historyWeight *= antilagFactor;
-    historyWeight *= smoothstep(earlyOutThreshold, 1.0, penumbraInPixels);
-    historyWeight *= g_PassConstants.StabilizationStrength;
-
-    return historyWeight;
-}
+#endif
 
 [numthreads(g_ThreadCountX, g_ThreadCountY, 1)]
-void CsMain(CsInput input)
+void CsMain(sigma::GroupSharedCsInput input)
 {
-    const bool isSky = g_SmoothTilesTex[input.PixelPos >> 4].y;
+    bool isSky = SIGMA_USE_TILE_CHECK;
+    isSky = isSky && g_SmoothTiles[input.PixelPos >> 4].y;
 
     if (!isSky)
     {
-        sigma::LdsPreloadCreation creation;
-        creation.ThreadPos = input.ThreadPos;
-        creation.PixelPos = input.PixelPos;
-        creation.FlatThreadIndex = input.FlatThreadIndex;
-        creation.GroupSize = uint2(g_ThreadCountX, g_ThreadCountY);
-        creation.BufferSize = uint2(g_SharedBufferSizeX, g_SharedBufferSizeY);
-        creation.Dimension = g_FrameConstants.RenderResolution;
-
-        SigmaRunLdsPreloader(creation, Preload);
-
-        GroupMemoryBarrierWithGroupSync();
+        // TODO: Will it still work even if it is false?
+        SigmaPreloadToGroupSharedMem(input, g_FrameConstants.RenderResolution, Preload);
     }
-    
-    // Tile-based early out
-    if (isSky || any(input.PixelPos >= g_FrameConstants.RenderResolution))
-    {
-        return;
-    }
-    
-    // Center data
+
+    GroupMemoryBarrierWithGroupSync();
+
     const uint2 sharedPos = input.ThreadPos + SIGMA_BORDER;
-    const SharedData centerData = g_SharedData[sharedPos.y][sharedPos.x];
+    const PixelData centerPixel = g_Pixels[sharedPos.y][sharedPos.x];
 
-    // Early out
-    if (centerData.ViewDepth > sigma::g_DenoisingRange)
+    const bool isOutOfBounds = any(input.PixelPos >= g_FrameConstants.RenderResolution);
+    const bool isOutOfDenoisingRange = centerPixel.ViewDepth > sigma::g_DenoisingRange;
+    if (isSky || isOutOfBounds || isOutOfDenoisingRange)
     {
         return;
     }
 
-    // Early out
-    const float unprojectDepth = sigma::PixelRadiusToWorld(1.0, g_FrameConstants.PixelToWorldScale, centerData.ViewDepth);
-    const float penumbraInPixels = centerData.Penumbra / unprojectDepth;
+    const float2 pixelUv = (input.PixelPos + 0.5) * g_FrameConstants.InvRenderResolution;
+    const float tileValue = sigma::TextureCubicX(g_SmoothTiles, pixelUv);
 
-#if !defined(DEBUG_TEMPORAL_STABILIZATION)
-    if (penumbraInPixels <= SIGMA_TS_EARLY_OUT_THRESHOLD && SIGMA_SHOW == 0)
+    bool isHardShadow = SIGMA_TS_USE_EARLY_OUT;
+    isHardShadow &= (SIGMA_USE_TILE_CHECK && tileValue == 0.0) || centerPixel.Penumbra == 0.0;
+    if (isHardShadow)
     {
-        g_OutShadowTex[input.PixelPos] = sigma::PackShadow(centerData.Shadow);
+        g_OutShadow[input.PixelPos] = sigma::PackShadow(centerPixel.Shadow);
+        g_OutHistoryLength[input.PixelPos] = PackViewDepthAndHistoryLength(centerPixel.ViewDepth, SIGMA_TS_MAX_HISTORY_LENGTH); // TODO: yes, SIGMA_MAX_HISTORY_LENGTH to allow accumulation in neighbors
+
         return;
     }
-#endif
 
-    // Local variance
-    float m1 = 0.0;
-    float m2 = 0.0;
-    float nearestViewDepth = 0.0;
-    uint2 nearestViewDepthPixelOffset = 0;
-    CalcLocalVariance(input, centerData, m1, m2, nearestViewDepth, nearestViewDepthPixelOffset);
+    float m1;
+    float m2;
+    CalcLocalVariance(input.ThreadPos, centerPixel.Penumbra, m1, m2);
 
-    const float sigma = GetStdDeviation(m1, m2);
+    float2 prevPixelUv;
+    float3 prevViewPos;
+    CalcPrevPositions(input.PixelPos, pixelUv, centerPixel.ViewDepth, prevPixelUv, prevViewPos);
 
-    const float2 prevPixelUv = GetPrevPixelUv(input.PixelPos, nearestViewDepthPixelOffset);
-    const float history = SampleHistory(prevPixelUv);
-    const float antilag = CalcAntilagFactor(m1, history, sigma);
+    float historyLength;
+    float history;
+    SampleHistoryData(prevPixelUv, centerPixel.ViewDepth, prevViewPos.z, historyLength, history);
 
-    const float historyWeight = CalcHistoryWeight(prevPixelUv, antilag, penumbraInPixels);
-    const float clampedHistory = ClampHistory(history, m1, sigma);
+    float sigma = GetStdDeviation(m1, m2);
+    sigma *= lerp(SIGMA_TS_SIGMA_SCALE, 1.0, 1.0 / (1.0 + historyLength)); // TODO: lerp(SIGMA_TS_SIGMA_SCALE, 1.0, 0.125) != SIGMA_TS_SIGMA_SCALE
 
-    float result = lerp(centerData.Shadow, clampedHistory, historyWeight);
+    float clampedHistory = clamp(history, m1 - sigma, m1 + sigma);
 
-#if defined(DEBUG_TEMPORAL_STABILIZATION)
-    float tileValue = g_SmoothTilesTex[input.PixelPos >> 4].x;
-    tileValue = float(tileValue != 0.0); // optional, just to show fully discarded tiles
+    historyLength *= CalcAntilagFactor(history, clampedHistory);
 
-    result = tileValue;
-    result = sigma::UnpackShadow(historyWeight);
+    const float historyWeight = historyLength / (1.0 + historyLength); // The greater the accumulation, the greater the influence of history
 
-    // Show grid
-    result *= all((input.PixelPos & 15) != 0);
-#endif
+    // Street magic (helps to smooth out "penumbra to 1" regions)
+    float streetMagic = 0.6 * historyWeight;
+    clampedHistory = lerp(clampedHistory, history, streetMagic);
 
-    g_OutShadowTex[input.PixelPos] = sigma::PackShadow(result);
+    const float shadowResult = lerp(centerPixel.Shadow, clampedHistory, min(g_PassConstants.StabilizationStrength, historyWeight));
+    const float historyLengthResult = min(historyLength + 1.0, SIGMA_TS_MAX_HISTORY_LENGTH);
+
+    g_OutShadow[input.PixelPos] = sigma::PackShadow(shadowResult);
+    g_OutHistoryLength[input.PixelPos] = PackViewDepthAndHistoryLength(centerPixel.ViewDepth, historyLengthResult);
 }

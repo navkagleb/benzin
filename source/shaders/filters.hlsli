@@ -2,6 +2,7 @@
 
 static const float g_CatRomSharpness = 0.5; // [ 0; 1 ], 0.5 matches Catmull-Rom
 
+#if 0
 #define _BicubicFilterNoCornersWithFallbackToBilinearFilterWithCustomWeights_Init \
     /* Catmul-Rom with 12 taps ( excluding corners ) */ \
     float2 centerPos = floor( samplePos - 0.5 ) + 0.5; \
@@ -40,6 +41,8 @@ static const float g_CatRomSharpness = 0.5; // [ 0; 1 ], 0.5 matches Catmull-Rom
     color += tex.SampleLevel( gLinearClamp, uv4, 0 ) * w4; \
     /* Normalize similarly to "Filtering::ApplyBilinearCustomWeights()" */ \
     color = sum < 0.0001 ? 0 : color / sum;
+
+#endif
 
 float4 BicubicFilterNoCorners(Texture2D<float4> bicubicTexture, float2 texelPosition, float2 invTextureSize)
 {

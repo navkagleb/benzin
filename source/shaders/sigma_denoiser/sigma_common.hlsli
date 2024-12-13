@@ -1,11 +1,3 @@
-#pragma once
-
-#ifdef SIGMA_USE_BORDER_2
-    #define SIGMA_BORDER 2
-#else
-    #define SIGMA_BORDER 1
-#endif
-
 #include "common.hlsli"
 #include "sigma_denoiser/sigma_constants.hlsli"
 #include "sigma_denoiser/sigma_public.hlsli"
@@ -43,11 +35,6 @@ namespace sigma
         return clamp(unclampedRadius, minRadius, g_MaxKernelPixelRadius);
     }
 
-    float GetFrustumSize(float minRenderDimension, float pixelToWorldScale, float viewDepth)
-    {
-        return minRenderDimension * pixelToWorldScale * viewDepth;
-    }
-    
     bool IsBothLitOrUmbra(float penumbra1, float penumbra2)
     {
         // Check the tile classification (penumbra value meaning)
@@ -62,40 +49,10 @@ namespace sigma
         // Rotator - rotation matrix 2x2
         return vector2.x * rotator.xz + vector2.y * rotator.yw;
     }
-    
-    float2 GetKernelSampleUv(
-        float4x4 viewToClip,
-        float2 offset,
-        float3 viewPos,
-        float3 kernelTangent,
-        float3 kernelBitangent,
-        float4 rotator = float4(1, 0, 0, 1)
-    )
-    {
-        // We can't rotate T and B instead, because T is skewed
-        offset.xy = RotateVectorByRotator(offset, rotator);
 
-        const float3 transformedViewPos = viewPos + kernelTangent * offset.x + kernelBitangent * offset.y;
-
-        // float3 clipPos = mul(float4(transformedViewPos, 1.0), viewToClip).xyw; // TODO: Why this don't work?
-        const float4 clipPos = mul(viewToClip, float4(transformedViewPos, 1.0));
-        return ClipToUv(clipPos);
-    }
-
-    float LinearStep(float a, float b, float x)
-    {
-        return saturate((x - a) / (b - a));
-    }
-
-    float IsInScreenNearest(float2 uv)
+    bool IsUvIn01Range(float2 uv)
     {
         return float(all(uv >= 0.0) && all(uv < 1.0));
-    }
-
-    // TODO: move to common.hlsli
-    uint DivideUp(uint value, uint divisor)
-    {
-        return (value + divisor - 1) / divisor;
     }
 
     float3x3 GetOrthonormalBasisFromNormal(float3 normal)
@@ -119,6 +76,7 @@ namespace sigma
 
     float2 GetGeometryWeightParams(float frustumSize, float3 viewPos, float3 viewNormal)
     {
+    #if 0
         const float nonLinearAccumSpeed = 1.0; // To reduce param count
 
         const float relaxation = lerp(1.0, 0.25, nonLinearAccumSpeed); // => 0.25
@@ -126,6 +84,13 @@ namespace sigma
         const float b = -dot(viewNormal, viewPos) * a;
 
         return float2(a, b);
+    #else
+        float norm = g_PlaneDistanceSensitivity * frustumSize;
+        float a = 1.0 / norm;
+        float b = dot(viewNormal, viewPos) * a;
+
+        return float2(a, -b);
+    #endif
     }
 
     float ComputeWeight(float x, float px, float py)
@@ -176,10 +141,14 @@ namespace sigma
         return float2(yw.z, xw.z);
     }
 
-    float TextureCubicX(Texture2D<float2> tex, float2 uv, float2 size)
+    float TextureCubicX(Texture2D<float2> tex, float2 uv)
     {
+        uint width;
+        uint height;
+        tex.GetDimensions(width, height);
+
         float4 uv_10_00, uv_11_01;
-        const float2 t = FilterBicubic(size, uv.xy, uv_10_00, uv_11_01);
+        const float2 t = FilterBicubic(float2(width, height), uv.xy, uv_10_00, uv_11_01);
 
         float c00 = tex.SampleLevel(g_LinearClampSampler, uv_10_00.zw, 0).x;
         float c10 = tex.SampleLevel(g_LinearClampSampler, uv_10_00.xy, 0).x;
@@ -190,11 +159,6 @@ namespace sigma
         const float horizontalLerp1 = lerp(c10, c11, t.x);
 
         return lerp(horizontalLerp0, horizontalLerp1, t.y);
-    }
-
-    float2 RotateVector(float4 rotator, float2 vector2)
-    {
-        return vector2.x * rotator.xz + vector2.y * rotator.yw;
     }
 
 }

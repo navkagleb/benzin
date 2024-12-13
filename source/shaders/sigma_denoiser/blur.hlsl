@@ -1,3 +1,6 @@
+#define g_ThreadCountX 8
+#define g_ThreadCountY 16
+
 #define SIGMA_USE_BORDER_2
 
 #include "joint/sigma_denoiser_resources.hpp"
@@ -5,29 +8,18 @@
 #define RenderPassConstantsType joint::SigmaConstants
 #include "unified_root_parameters.hlsli"
 
-#include "sigma_denoiser/lds_preloader.hlsli"
-#include "sigma_denoiser/sigma_common.hlsli"
+#include "sigma_denoiser/group_shared_preloader.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormalTex, joint::Rc_SigmaBlur::WorldNormalTex);
-BenzinDeclareRootResource(Texture2D<float>, g_ViewDepthTex, joint::Rc_SigmaBlur::ViewDepthTex);
-BenzinDeclareRootResource(Texture2D<float>, g_PenumbraTex, joint::Rc_SigmaBlur::PenumbraTex);
-BenzinDeclareRootResource(Texture2D<float2>, g_SmoothTilesTex, joint::Rc_SigmaBlur::SmoothTilesTex);
-
-#if defined(FIRST_BLUR_PASS)
-    BenzinDeclareRootResource(Texture2D<float>, g_HistoryTex, joint::Rc_SigmaBlur::HistoryTex);
-    BenzinDeclareRootResource(RWTexture2D<float>, g_OutHistoryTex, joint::Rc_SigmaBlur::OutHistoryTex);
-#else
-    BenzinDeclareRootResource(Texture2D<float>, g_ShadowTex, joint::Rc_SigmaBlur::ShadowTex);
+BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::Rc_SigmaBlur::WorldNormal);
+BenzinDeclareRootResource(Texture2D<float>, g_ViewDepth, joint::Rc_SigmaBlur::ViewDepth);
+BenzinDeclareRootResource(Texture2D<float>, g_Penumbra, joint::Rc_SigmaBlur::Penumbra);
+BenzinDeclareRootResource(Texture2D<float2>, g_SmoothTiles, joint::Rc_SigmaBlur::SmoothTiles);
+#if !defined(FIRST_BLUR_PASS)
+    BenzinDeclareRootResource(Texture2D<float>, g_Shadow, joint::Rc_SigmaBlur::Shadow);
 #endif
 
-BenzinDeclareRootResource(RWTexture2D<float>, g_OutPenumbraTex, joint::Rc_SigmaBlur::OutPenumbraTex);
-BenzinDeclareRootResource(RWTexture2D<float>, g_OutShadowTex, joint::Rc_SigmaBlur::OutShadowTex);
-
-static const uint g_GroupSizeX = 8; // == g_ThreadCount
-static const uint g_GroupSizeY = 16;
-
-static const uint g_BufferSizeX = g_GroupSizeX + SIGMA_BORDER * 2;
-static const uint g_BufferSizeY = g_GroupSizeY + SIGMA_BORDER * 2;
+BenzinDeclareRootResource(RWTexture2D<float>, g_OutPenumbra, joint::Rc_SigmaBlur::OutPenumbra);
+BenzinDeclareRootResource(RWTexture2D<float>, g_OutShadow, joint::Rc_SigmaBlur::OutShadow);
 
 struct PixelData
 {
@@ -36,18 +28,18 @@ struct PixelData
     float Shadow;
 };
 
-groupshared PixelData g_PixelsData[g_BufferSizeY][g_BufferSizeX];
+groupshared PixelData g_PixelsData[g_SharedBufferSizeY][g_SharedBufferSizeX];
 
 void Preload(uint2 sharedPos, uint2 pixelPos)
 {
     PixelData pixel;
-    pixel.Penumbra = g_PenumbraTex[pixelPos];
-    pixel.ViewDepth = g_ViewDepthTex[pixelPos];
+    pixel.Penumbra = g_Penumbra[pixelPos];
+    pixel.ViewDepth = g_ViewDepth[pixelPos];
 
 #if defined(FIRST_BLUR_PASS)
     pixel.Shadow = sigma::IsLit(pixel.Penumbra); // This is ok. Full shadow - 0, No shadow = 1
 #else
-    pixel.Shadow = sigma::UnpackShadow(g_ShadowTex[pixelPos]);
+    pixel.Shadow = sigma::UnpackShadow(g_Shadow[pixelPos]);
 #endif
 
     g_PixelsData[sharedPos.y][sharedPos.x] = pixel;
@@ -92,13 +84,8 @@ BlurParams GetBlurParams(float2 baseUv, PixelData centerPixel)
 {
     const joint::CameraConstants camera = g_FrameConstants.Camera;
     const float pixelToWorldScale = g_FrameConstants.PixelToWorldScale;
-    const float3 worldNormal = g_WorldNormalTex.SampleLevel(g_PointClampSampler, baseUv, 0.0).xyz;
-
-    const float worldFrustumSize = sigma::PixelRadiusToWorld(
-        min(g_FrameConstants.RenderResolution.x, g_FrameConstants.RenderResolution.y),
-        pixelToWorldScale,
-        centerPixel.ViewDepth
-    );
+    const float3 worldNormal = g_WorldNormal.SampleLevel(g_PointClampSampler, baseUv, 0.0).xyz;
+    const float worldFrustumSize = sigma::PixelRadiusToWorld(g_FrameConstants.MinRenderDimension, pixelToWorldScale, centerPixel.ViewDepth);
 
     BlurParams params;
     params.UvToViewScale = camera.UvToViewScale;
@@ -158,12 +145,12 @@ SparseBlurKernel CalcSparseBlurKernel(BlurParams params, float blurredPenumbra, 
         const float cosa = abs(dot(params.BaseViewNormal, viewSunDirection));
         const float skewFactor = lerp(0.25, 1.0, cosa);
 
-        //Tv *= skewFactor; // TODO: let's not srink filtering in the other direction
+        // kernel.Tangent *= skewFactor; // TODO: let's not srink filtering in the other direction
         kernel.Bitangent /= skewFactor;
     }
 
     const float pixelRadius = sigma::GetKernelPixelRadius(blurredPenumbra, params.WorldPixelSize, tileValue);
-    const float worldPixelRadius = params.WorldPixelSize; //TODO: Why we multipy pixelRadius by worldPixelSize
+    const float worldPixelRadius = pixelRadius * params.WorldPixelSize; //TODO: Why we multipy pixelRadius by worldPixelSize
 
     kernel.Tangent *= worldPixelRadius;
     kernel.Bitangent *= worldPixelRadius;
@@ -187,7 +174,7 @@ float2 CalcSparseBlurKernelUv(SparseBlurKernel kernel, float2 offset, float3 vie
     return uv;
 }
 
-void RunDenseBlur(CsInput input, BlurParams params, out float2 outShadow, out float2 outPenumbra)
+void RunDenseBlur(sigma::GroupSharedCsInput input, BlurParams params, out float2 outShadow, out float2 outPenumbra)
 {
     outShadow = 0.0;
     outPenumbra = 0.0;
@@ -246,23 +233,14 @@ void RunSparseBlur(BlurParams params, float tileValue, inout float2 outShadow, i
         uv = (floor(uv * g_FrameConstants.RenderResolution) + 0.5) * g_FrameConstants.InvRenderResolution; // Snap to the pixel center
 
         const uint2 pixelPosition = uv * g_FrameConstants.RenderResolution;
-        
+
         PixelData samplePixel;
-#if 0
-        samplePixel.ViewDepth = g_ViewDepthTex.SampleLevel(g_PointClampSampler, uv, 0.0);
-        samplePixel.Penumbra = g_PenumbraTex.SampleLevel(g_PointClampSampler, uv, 0.0);
-#else
-        samplePixel.ViewDepth = g_ViewDepthTex[pixelPosition].x;
-        samplePixel.Penumbra = g_PenumbraTex[pixelPosition].x;
-#endif
+        samplePixel.ViewDepth = g_ViewDepth.SampleLevel(g_PointClampSampler, uv, 0.0);
+        samplePixel.Penumbra = g_Penumbra.SampleLevel(g_PointClampSampler, uv, 0.0);
 #if defined(FIRST_BLUR_PASS)
         samplePixel.Shadow = sigma::IsLit(samplePixel.Penumbra);
 #else
-    #if 0
-        samplePixel.Shadow = g_ShadowTex.SampleLevel(g_PointClampSampler, uv, 0.0);
-    #else
-        samplePixel.Shadow = g_ShadowTex[pixelPosition].x;
-    #endif
+        samplePixel.Shadow = g_Shadow.SampleLevel(g_PointClampSampler, uv, 0.0);
         samplePixel.Shadow = sigma::UnpackShadow(samplePixel.Shadow);
 #endif
 
@@ -270,8 +248,7 @@ void RunSparseBlur(BlurParams params, float tileValue, inout float2 outShadow, i
         sampleParams.ViewPosition = ReconstructViewPosition(uv, samplePixel.ViewDepth, params.UvToViewScale, params.UvToViewBias);
         sampleParams.NormDistanceFromCenter = offset.z;
 
-        float shadowWeight = sigma::IsInScreenNearest(uv);
-        // shadowWeight = 1.0;
+        float shadowWeight = sigma::IsUvIn01Range(uv);
         shadowWeight *= CalcShadowWeight(params, samplePixel, sampleParams);
 
         // Avoid umbra leaking inside wide penumbra
@@ -288,26 +265,18 @@ void RunSparseBlur(BlurParams params, float tileValue, inout float2 outShadow, i
     outPenumbra.x = outPenumbra.y == 0.0 ? params.CenterPixel.Penumbra : outPenumbra.x / outPenumbra.y;
 }
 
-[numthreads(g_GroupSizeX, g_GroupSizeY, 1)]
-void CsMain(CsInput input)
+[numthreads(g_ThreadCountX, g_ThreadCountY, 1)]
+void CsMain(sigma::GroupSharedCsInput input)
 {
     bool isSky = SIGMA_USE_TILE_CHECK;
-    isSky = isSky && g_SmoothTilesTex[input.PixelPos >> 4].y;
+    isSky = isSky && g_SmoothTiles[input.PixelPos >> 4].y;
 
     if (!isSky)
     {
-        sigma::LdsPreloadCreation creation;
-        creation.ThreadPos = input.ThreadPos;
-        creation.PixelPos = input.PixelPos;
-        creation.FlatThreadIndex = input.FlatThreadIndex;
-        creation.GroupSize = uint2(g_GroupSizeX, g_GroupSizeY);
-        creation.BufferSize = uint2(g_BufferSizeX, g_BufferSizeY);
-        creation.Dimension = g_FrameConstants.RenderResolution;
-
-        SigmaRunLdsPreloader(creation, Preload);
-
-        GroupMemoryBarrierWithGroupSync();
+        SigmaPreloadToGroupSharedMem(input, g_FrameConstants.RenderResolution, Preload);
     }
+
+    GroupMemoryBarrierWithGroupSync();
 
     if (isSky || any(input.PixelPos >= g_FrameConstants.RenderResolution))
     {
@@ -322,23 +291,15 @@ void CsMain(CsInput input)
         return;
     }
 
-    // TODO: History copy moved to another pass?
-#if defined(FIRST_BLUR_PASS)
-    if (g_PassConstants.StabilizationStrength != 0.0)
-    {
-        g_OutHistoryTex[input.PixelPos] = g_HistoryTex[input.PixelPos];
-    }
-#endif
-
     // Tile-based early out ( potentially )
     const float2 pixelUv = (input.PixelPos + 0.5) * g_FrameConstants.InvRenderResolution;
-    const float tileValue = sigma::TextureCubicX(g_SmoothTilesTex, pixelUv, g_FrameConstants.RenderResolution);
+    const float tileValue = sigma::TextureCubicX(g_SmoothTiles, pixelUv);
 
-    const bool isUmbra = (SIGMA_USE_TILE_CHECK && tileValue == 0.0) || centerPixel.Penumbra == 0.0;
-    if (isUmbra)
+    const bool isHardShadow = (SIGMA_USE_TILE_CHECK && tileValue == 0.0) || centerPixel.Penumbra == 0.0;
+    if (isHardShadow)
     {
-        g_OutPenumbraTex[input.PixelPos] = centerPixel.Penumbra;
-        g_OutShadowTex[input.PixelPos] = sigma::PackShadow(centerPixel.Shadow);
+        g_OutPenumbra[input.PixelPos] = centerPixel.Penumbra;
+        g_OutShadow[input.PixelPos] = sigma::PackShadow(centerPixel.Shadow);
 
         return;
     }
@@ -348,25 +309,19 @@ void CsMain(CsInput input)
     float2 blurredShadow = 0.0;
     float2 blurredPenumbra = 0.0;
 
-#if 1
     RunDenseBlur(input, params, blurredShadow, blurredPenumbra);
-#endif
 
-#if 1
     // Avoid blurry result if penumbra size < BORDER
     const float penumbraInPixels = blurredPenumbra.x / params.WorldPixelSize;
     const float factor = smoothstep(0.0, SIGMA_BORDER, penumbraInPixels);
     blurredShadow.x = lerp(params.CenterPixel.Shadow, blurredShadow.x, factor); // TODO: not the best solution
-#endif
 
-#if 1
     // Avoid unnecessary weight increase for the unfiltered center sample if the blur radius is small
     const float f = lerp( 4.0, 1.0, factor); // TODO: adds blurriness
     blurredShadow *= f;
     blurredPenumbra *= f;
-#endif
 
-#if 1
+#if SIGMA_BLUR_USE_SPARSE_BLUR
     RunSparseBlur(params, tileValue, blurredShadow, blurredPenumbra);
 #endif
 
@@ -374,8 +329,8 @@ void CsMain(CsInput input)
     if (g_PassConstants.StabilizationStrength != 0)
 #endif
     {
-        g_OutPenumbraTex[input.PixelPos] = blurredPenumbra.x;
+        g_OutPenumbra[input.PixelPos] = blurredPenumbra.x;
     }
 
-    g_OutShadowTex[input.PixelPos] = sigma::PackShadow(blurredShadow.x);
+    g_OutShadow[input.PixelPos] = sigma::PackShadow(blurredShadow.x);
 }

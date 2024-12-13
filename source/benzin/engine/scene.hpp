@@ -76,6 +76,7 @@ namespace benzin
 
         const auto& GetStats() const { return m_Stats; }
 
+        std::string_view GetMeshCollectionDebugName(uint32_t index) const { return m_MeshUnions[index].DebugName; }
         const auto& GetMeshCollection(uint32_t index) const { return m_MeshUnions[index].Collection; };
         const auto& GetMeshCollectionGpuStorage(uint32_t index) const { return m_MeshUnions[index].GpuStorage; }
 

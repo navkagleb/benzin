@@ -17,14 +17,17 @@ namespace sandbox
         NoisyPenumbra,
 
         // SigmaDenoiser
+        // TODO: Make 'Sigma' textures private to SigmaDenoiserPass
         SigmaTiles,
         SigmaSmoothTiles,
+        SigmaPrevShadow,
+        SigmaPrevHistoryLength,
         SigmaPenumbra1,
         SigmaPenumbra2,
-        SigmaShadowHistory,
         SigmaShadowTemp1,
         SigmaShadowTemp2,
         SigmaShadow,
+        SigmaHistoryLength,
 
         Final,
         ImGui,

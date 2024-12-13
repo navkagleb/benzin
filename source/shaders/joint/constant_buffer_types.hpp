@@ -30,13 +30,14 @@ namespace joint
     {
         float2 RenderResolution;
         float2 InvRenderResolution;
+        float MinRenderDimension;
 
         float PixelToWorldScale;
         uint CpuFrameIndex;
 
+        uint IsRenderResolutionChanged : 1;
         uint IsShadowsEnabled : 1;
         uint IsDenoiserEnabled : 1;
-        uint _Padding0;
 
         float4 RandomFloats01;
 

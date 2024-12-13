@@ -81,9 +81,9 @@ namespace benzin
         return *texture;
     }
 
-    const Texture& RenderResources::GetPreviousTexture(uint32_t index) const
+    const Texture& RenderResources::GetPrevTexture(uint32_t index) const
     {
-        const auto* texture = GetPreviousTexturePtr(index);
+        const auto* texture = GetPrevTexturePtr(index);
         BenzinAssert(texture != nullptr);
 
         return *texture;
@@ -95,24 +95,23 @@ namespace benzin
 
         if (m_IsTextureFlippable(index))
         {
-            return m_Textures[index - m_CurrentFlipResourceIndex].get();
+            return m_Textures[index - m_FlipResourceIndex].get();
         }
 
         return m_Textures[index].get();
     }
 
-    const Texture* RenderResources::GetPreviousTexturePtr(uint32_t index) const
+    const Texture* RenderResources::GetPrevTexturePtr(uint32_t index) const
     {
         BenzinAssert(index < m_Textures.size());
         BenzinAssert(m_IsTextureFlippable(index));
 
-        return m_Textures[index - m_PreviousFlipResourceIndex].get();
+        return m_Textures[index - (m_FlipResourceIndex + 1) & 1].get();
     }
 
     void RenderResources::FlipResources()
     {
-        m_PreviousFlipResourceIndex = m_CurrentFlipResourceIndex;
-        m_CurrentFlipResourceIndex = (m_CurrentFlipResourceIndex + 1) % 2;
+        m_FlipResourceIndex = (m_FlipResourceIndex + 1) & 1;
     }
 
     // RenderPass

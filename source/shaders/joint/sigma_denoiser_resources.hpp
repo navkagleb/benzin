@@ -7,51 +7,6 @@ namespace joint
 
     static const uint g_SigmaTileSize = 16;
 
-    enum class Rc_SigmaClassifyTiles : uint32_t
-    {
-        ViewDepthTex,
-        PenumbraTex,
-
-        OutTilesTex,
-    };
-    BenzinEnableUnaryPlusForEnum(Rc_SigmaClassifyTiles);
-
-    enum class Rc_SigmaSmoothTiles : uint32_t
-    {
-        TilesTex,
-
-        OutSmoothTilesTex,
-    };
-    BenzinEnableUnaryPlusForEnum(Rc_SigmaSmoothTiles);
-
-    enum Rc_SigmaBlur : uint32_t
-    {
-        WorldNormalTex,
-        ViewDepthTex,
-        PenumbraTex,
-        SmoothTilesTex,
-        ShadowTex,
-        HistoryTex, // FIRST_BLUR_PASS
-
-        OutHistoryTex, // FIRST_BLUR_PASS
-        OutPenumbraTex,
-        OutShadowTex,
-    };
-    BenzinEnableUnaryPlusForEnum(Rc_SigmaBlur);
-
-    enum class Rc_SigmaTemporalStabilization : uint32_t
-    {
-        ViewDepthTex,
-        MvTex,
-        PenumbraTex,
-        ShadowTex,
-        HistoryTex,
-        SmoothTilesTex,
-
-        OutShadowTex,
-    };
-    BenzinEnableUnaryPlusForEnum(Rc_SigmaTemporalStabilization)
-
     struct SigmaConstants
     {
         float StabilizationStrength;
@@ -62,5 +17,61 @@ namespace joint
         uint IsBicubicSamplingUsedForHistory;
         uint _Padding0;
     };
+
+    enum class Rc_SigmaClassifyTiles : uint32_t
+    {
+        ViewDepth,
+        Penumbra,
+
+        OutTiles,
+    };
+    BenzinEnableUnaryPlusForEnum(Rc_SigmaClassifyTiles);
+
+    enum class Rc_SigmaSmoothTiles : uint32_t
+    {
+        Tiles,
+
+        OutSmoothTiles,
+    };
+    BenzinEnableUnaryPlusForEnum(Rc_SigmaSmoothTiles);
+
+    enum class Rc_SigmaCopyHistory : uint32_t
+    {
+        SmoothTiles,
+        ShadowHistory,
+        HistoryLength,
+
+        OutShadowHistory,
+        OutHistoryLength,
+    };
+    BenzinEnableUnaryPlusForEnum(Rc_SigmaCopyHistory);
+
+    enum Rc_SigmaBlur : uint32_t
+    {
+        WorldNormal,
+        ViewDepth,
+        SmoothTiles,
+        Penumbra,
+        Shadow, // !FIRST_BLUR_PASS
+
+        OutPenumbra,
+        OutShadow,
+    };
+    BenzinEnableUnaryPlusForEnum(Rc_SigmaBlur);
+
+    enum class Rc_SigmaTemporalStabilization : uint32_t
+    {
+        Mv,
+        ViewDepth,
+        SmoothTiles,
+        Penumbra,
+        Shadow,
+        ShadowHistory,
+        HistoryLength,
+
+        OutShadow,
+        OutHistoryLength,
+    };
+    BenzinEnableUnaryPlusForEnum(Rc_SigmaTemporalStabilization)
 
 }

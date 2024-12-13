@@ -21,7 +21,7 @@ namespace sandbox
         // viewToClip[1][1] = 1.0f / std::tan(0.5f * verticalFov)
 
         const float projectionScaleY = DirectX::XMVectorGetByIndex(viewToClip.r[1], 1);
-        const float pixelToWorldScale = 2.0f / ((float)viewportHeight * projectionScaleY);
+        const float pixelToWorldScale = 1.0f / (0.5f * (float)viewportHeight * projectionScaleY);
 
         return pixelToWorldScale;
     }
@@ -39,16 +39,19 @@ namespace sandbox
     {
         UpdateCameraConstants();
 
-        const float pixelToWorldScale = CalcPixelToWorldScale(m_Scene.GetPerspectiveProjection().GetViewToClipMatrix(), GetRenderViewportHeight());
+        const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
+        const float pixelToWorldScale = CalcPixelToWorldScale(m_Scene.GetPerspectiveProjection().GetViewToClipMatrix(), renderResolution.y);
 
         m_FrameConstantBuffer->UpdateConstants(joint::FrameConstants
-        {
-            .RenderResolution{ (float)GetRenderViewportWidth(), (float)GetRenderViewportHeight() },
-            .InvRenderResolution{ 1.0f / (float)GetRenderViewportWidth(), 1.0f / (float)GetRenderViewportHeight() },
-            
+            {
+            .RenderResolution = { (float)renderResolution.x, (float)renderResolution.y },
+            .InvRenderResolution{ 1.0f / (float)renderResolution.x, 1.0f / (float)renderResolution.y },
+            .MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y),
+
             .PixelToWorldScale = pixelToWorldScale,
             .CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex(),
 
+            .IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y,
             .IsShadowsEnabled = ms_Settings->GetSection<RayTracingShadowsSettings>().IsEnabled,
             .IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled,
 
@@ -63,6 +66,8 @@ namespace sandbox
             .Camera = m_CameraConstants,
             .PrevCamera = m_PrevCameraConstants,
         });
+
+        m_PrevRenderResolution = renderResolution;
     }
 
     void GlobalConstantsPass::OnRender() const

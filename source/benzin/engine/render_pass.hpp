@@ -58,18 +58,17 @@ namespace benzin
         void DestroyTexture(uint32_t index);
 
         const Texture& GetTexture(uint32_t index) const;
-        const Texture& GetPreviousTexture(uint32_t index) const;
+        const Texture& GetPrevTexture(uint32_t index) const;
 
         const Texture* GetTexturePtr(uint32_t index) const;
-        const Texture* GetPreviousTexturePtr(uint32_t index) const;
+        const Texture* GetPrevTexturePtr(uint32_t index) const;
 
         void FlipResources();
 
     public:
         Device& m_Device;
 
-        uint8_t m_PreviousFlipResourceIndex = 1;
-        uint8_t m_CurrentFlipResourceIndex = 0;
+        uint8_t m_FlipResourceIndex = 0;
 
         std::vector<std::unique_ptr<Texture>> m_Textures;
 

@@ -34,17 +34,24 @@ namespace sandbox
     private:
         void RunClearPass(bool isEnabled) const;
         void RunClassifyTilesPass() const;
+        void RunCopyHistoryPass(bool isEnabled) const;
         void RunSmoothTilesPass() const;
         void RunBlurPass() const;
         void RunPostBlurPass(bool isEnabled) const;
         void RunTemporalStabilizationPass(bool isEnabled) const;
 
     private:
-        benzin::PipelineState* m_ClassifyTilesPso = nullptr;
-        benzin::PipelineState* m_SmoothTilesPso = nullptr;
-        benzin::PipelineState* m_BlurPso = nullptr;
-        benzin::PipelineState* m_PostBlurPso = nullptr;
-        benzin::PipelineState* m_TemporalStabilizationPso = nullptr;
+        enum Step
+        {
+            ClassifyTiles,
+            SmoothTiles,
+            CopyHistory,
+            Blur,
+            PostBlur,
+            TemporalStabilization,
+        };
+
+        std::array<benzin::PipelineState*, magic_enum::enum_count<Step>()> m_Psos{};
 
         using SigmaConstantBuffer = benzin::ConstantBuffer<joint::SigmaConstants>;
         std::unique_ptr<SigmaConstantBuffer> m_SigmaConstantBuffer;
