@@ -15,6 +15,7 @@ namespace sandbox
     {
         bool IsEnabled = true;
         bool IsClearEnabled = false;
+        bool IsTileSmoothingEnabled = true;
         bool IsPostBlurEnabled = true;
         bool IsTemporalStabilizationEnabled = true;
         bool IsBicubicSamplingUsedForHistory = true;

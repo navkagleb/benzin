@@ -20,7 +20,7 @@ namespace joint
         float4x4 ClipToWorldNoTranslation;
 
         float3 WorldPosition;
-        float _Padding0; // TODO: Why I need to use this it here?
+        float PixelToWorldScale;
 
         float2 UvToViewScale;
         float2 UvToViewBias;
@@ -32,12 +32,12 @@ namespace joint
         float2 InvRenderResolution;
         float MinRenderDimension;
 
-        float PixelToWorldScale;
         uint CpuFrameIndex;
 
         uint IsRenderResolutionChanged : 1;
         uint IsShadowsEnabled : 1;
         uint IsDenoiserEnabled : 1;
+        uint _Padding0;
 
         float4 RandomFloats01;
 

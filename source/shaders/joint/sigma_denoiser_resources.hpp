@@ -15,7 +15,7 @@ namespace joint
         float4 PostBlurRotator;
         uint2 TileCount;
         uint IsBicubicSamplingUsedForHistory;
-        uint _Padding0;
+        uint IsTileSmoothingEnabled;
     };
 
     enum class Rc_SigmaClassifyTiles : uint32_t

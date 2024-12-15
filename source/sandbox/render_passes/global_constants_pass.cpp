@@ -16,18 +16,6 @@
 namespace sandbox
 {
 
-    float CalcPixelToWorldScale(const DirectX::XMMATRIX& viewToClip, uint32_t viewportHeight)
-    {
-        // viewToClip[1][1] = 1.0f / std::tan(0.5f * verticalFov)
-
-        const float projectionScaleY = DirectX::XMVectorGetByIndex(viewToClip.r[1], 1);
-        const float pixelToWorldScale = 1.0f / (0.5f * (float)viewportHeight * projectionScaleY);
-
-        return pixelToWorldScale;
-    }
-
-    //
-
     GlobalConstantsPass::GlobalConstantsPass(benzin::Device& device, benzin::Scene& scene)
         : m_Device{ device }
         , m_Scene{ scene }
@@ -40,7 +28,6 @@ namespace sandbox
         UpdateCameraConstants();
 
         const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
-        const float pixelToWorldScale = CalcPixelToWorldScale(m_Scene.GetPerspectiveProjection().GetViewToClipMatrix(), renderResolution.y);
 
         m_FrameConstantBuffer->UpdateConstants(joint::FrameConstants
             {
@@ -48,7 +35,6 @@ namespace sandbox
             .InvRenderResolution{ 1.0f / (float)renderResolution.x, 1.0f / (float)renderResolution.y },
             .MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y),
 
-            .PixelToWorldScale = pixelToWorldScale,
             .CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex(),
 
             .IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y,
@@ -101,6 +87,7 @@ namespace sandbox
             .ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation(),
 
             .WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()),
+            .PixelToWorldScale = projection.GetPixelToWorldScale(GetRenderViewportHeight()),
 
             .UvToViewScale = projection.GetUvToViewScale(),
             .UvToViewBias = projection.GetUvToViewBias(),

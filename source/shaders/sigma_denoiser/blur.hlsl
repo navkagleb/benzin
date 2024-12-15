@@ -83,9 +83,9 @@ struct SparseBlurKernel
 BlurParams GetBlurParams(float2 baseUv, PixelData centerPixel)
 {
     const joint::CameraConstants camera = g_FrameConstants.Camera;
-    const float pixelToWorldScale = g_FrameConstants.PixelToWorldScale;
+    const float pixelToWorldScale = g_FrameConstants.Camera.PixelToWorldScale;
     const float3 worldNormal = g_WorldNormal.SampleLevel(g_PointClampSampler, baseUv, 0.0).xyz;
-    const float worldFrustumSize = sigma::PixelRadiusToWorld(g_FrameConstants.MinRenderDimension, pixelToWorldScale, centerPixel.ViewDepth);
+    const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConstants.MinRenderDimension, pixelToWorldScale, centerPixel.ViewDepth);
 
     BlurParams params;
     params.UvToViewScale = camera.UvToViewScale;
@@ -116,7 +116,7 @@ float CalcPenumbraWeight(BlurParams params, float shadowWeight, PixelData sample
 {
     float penumbraWeight = shadowWeight;
     penumbraWeight *= params.WorldPixelSize / (params.WorldPixelSize + samplePixel.Penumbra); // Prefer smaller penumbra
-    penumbraWeight *= !sigma::IsLit(samplePixel.Penumbra); // TODO: If this is removed - removes the flickering
+    penumbraWeight *= !sigma::IsLit(samplePixel.Penumbra);
 
     return penumbraWeight;
 }
@@ -136,14 +136,14 @@ SparseBlurKernel CalcSparseBlurKernel(BlurParams params, float blurredPenumbra, 
 #endif
 
     const float3 viewSunDirection = mul(g_PassConstants.WorldSunDirection, (float3x3)g_FrameConstants.Camera.WorldToView); // TODO: Move to cpp side
-    const float3 t = cross(viewSunDirection, params.BaseViewNormal); // NRD TODO: add support for other light types to bring proper anisotropic filtering
-    if (length(t) > 0.001)
+    const float3 tangentDirection = cross(viewSunDirection, params.BaseViewNormal); // NRD TODO: add support for other light types to bring proper anisotropic filtering
+    if (length(tangentDirection) > 0.001)
     {
-        kernel.Tangent = normalize(t);
+        kernel.Tangent = normalize(tangentDirection);
         kernel.Bitangent = cross(kernel.Tangent, params.BaseViewNormal);
 
-        const float cosa = abs(dot(params.BaseViewNormal, viewSunDirection));
-        const float skewFactor = lerp(0.25, 1.0, cosa);
+        const float cosNormalSun = abs(dot(params.BaseViewNormal, viewSunDirection));
+        const float skewFactor = lerp(0.25, 1.0, cosNormalSun);
 
         // kernel.Tangent *= skewFactor; // TODO: let's not srink filtering in the other direction
         kernel.Bitangent /= skewFactor;
@@ -174,7 +174,7 @@ float2 CalcSparseBlurKernelUv(SparseBlurKernel kernel, float2 offset, float3 vie
     return uv;
 }
 
-void RunDenseBlur(sigma::GroupSharedCsInput input, BlurParams params, out float2 outShadow, out float2 outPenumbra)
+void RunIsotropicBlur(sigma::GroupSharedCsInput input, BlurParams params, out float2 outShadow, out float2 outPenumbra)
 {
     outShadow = 0.0;
     outPenumbra = 0.0;
@@ -217,7 +217,7 @@ void RunDenseBlur(sigma::GroupSharedCsInput input, BlurParams params, out float2
     outPenumbra.y = outPenumbra.y != 0.0;
 }
 
-void RunSparseBlur(BlurParams params, float tileValue, inout float2 outShadow, inout float2 outPenumbra)
+void RunAnisotropicBlur(BlurParams params, float tileValue, inout float2 outShadow, inout float2 outPenumbra)
 {
     // World space sampling
 
@@ -291,7 +291,7 @@ void CsMain(sigma::GroupSharedCsInput input)
         return;
     }
 
-    // Tile-based early out ( potentially )
+    // Tile-based early out (potentially)
     const float2 pixelUv = (input.PixelPos + 0.5) * g_FrameConstants.InvRenderResolution;
     const float tileValue = sigma::TextureCubicX(g_SmoothTiles, pixelUv);
 
@@ -309,7 +309,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     float2 blurredShadow = 0.0;
     float2 blurredPenumbra = 0.0;
 
-    RunDenseBlur(input, params, blurredShadow, blurredPenumbra);
+    RunIsotropicBlur(input, params, blurredShadow, blurredPenumbra);
 
     // Avoid blurry result if penumbra size < BORDER
     const float penumbraInPixels = blurredPenumbra.x / params.WorldPixelSize;
@@ -317,12 +317,12 @@ void CsMain(sigma::GroupSharedCsInput input)
     blurredShadow.x = lerp(params.CenterPixel.Shadow, blurredShadow.x, factor); // TODO: not the best solution
 
     // Avoid unnecessary weight increase for the unfiltered center sample if the blur radius is small
-    const float f = lerp( 4.0, 1.0, factor); // TODO: adds blurriness
+    const float f = lerp(4.0, 1.0, factor); // TODO: adds blurriness
     blurredShadow *= f;
     blurredPenumbra *= f;
 
-#if SIGMA_BLUR_USE_SPARSE_BLUR
-    RunSparseBlur(params, tileValue, blurredShadow, blurredPenumbra);
+#if SIGMA_BLUR_USE_ANISOTROPIC_BLUR
+    RunAnisotropicBlur(params, tileValue, blurredShadow, blurredPenumbra);
 #endif
 
 #if !defined(FIRST_BLUR_PASS)

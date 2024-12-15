@@ -50,7 +50,7 @@ void FetchThreadTileInfo(CsInput input, out uint outThreadMask, out float outThr
             threadMask += (isInf ? 1 : 0) << 18;
 
             const float hitDistance = isLit || isInf ? 0.0 : penumbra;
-            const float worldPixelSize = sigma::PixelRadiusToWorld(1.0, g_FrameConstants.PixelToWorldScale, viewDepth);
+            const float worldPixelSize = sigma::GetWorldPixelSize(g_FrameConstants.Camera.PixelToWorldScale, viewDepth);
             const float blurPixelRadius = sigma::GetKernelPixelRadius(hitDistance, worldPixelSize);
 
             threadPixelRadius = max(threadPixelRadius, blurPixelRadius);

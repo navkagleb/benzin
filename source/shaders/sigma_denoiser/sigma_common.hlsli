@@ -6,33 +6,30 @@
 namespace sigma
 {
 
-    float PixelRadiusToWorld(float pixelRadius, float pixelToWorldScale, float viewDepth)
+    float PixelsToWorldSize(uint pixelCount, float pixelToWorldScale, float viewDepth)
     {
         // 'pixelToWorldScale' is used to account for render viewport resolution
         // 'viewDepth' is used to account for perspective projection
-        return pixelRadius * pixelToWorldScale * viewDepth;
+        return (float)pixelCount * pixelToWorldScale * viewDepth;
     }
 
     float GetWorldPixelSize(float pixelToWorldScale, float viewDepth)
     {
-        return PixelRadiusToWorld(1.0, pixelToWorldScale, viewDepth);
+        return PixelsToWorldSize(1, pixelToWorldScale, viewDepth);
     }
 
-    float GetKernelPixelRadius(float hitDistance, float worldPixelSize, float scale = 1.0)
+    float GetKernelPixelRadius(float penumbra, float worldPixelSize, float pixelScale = 1.0)
     {
-        // Note:
-        // The result, unclampedRadius, represents the size of the kernel radius in pixels for a penumbra blur.
-
-        float unclampedRadius = hitDistance / worldPixelSize; // Larger penumbra (hitDist) or smaller unprojectZ increases the radius.
-        unclampedRadius *= scale;
+        float pixelRadius = penumbra / worldPixelSize; // Larger 'penumbra' or smaller 'worldPixelSize' increases the radius.
+        pixelRadius *= pixelScale;
 
 #if defined(SIGMA_USE_BORDER_2)
-        const float minRadius = min(unclampedRadius, 2.0);
+        const float minRadius = min(pixelRadius, 2.0);
 #else
-        const float minRadius = min(unclampedRadius, 1.0);
+        const float minRadius = min(pixelRadius, 1.0);
 #endif
 
-        return clamp(unclampedRadius, minRadius, g_MaxKernelPixelRadius);
+        return clamp(pixelRadius, minRadius, SIGMA_MAX_BLUR_KERNEL_PIXEL_RADIUS);
     }
 
     bool IsBothLitOrUmbra(float penumbra1, float penumbra2)

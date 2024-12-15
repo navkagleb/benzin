@@ -108,6 +108,7 @@ namespace sandbox
             .PostBlurRotator = postBlurRotator,
             .TileCount = m_TileCount,
             .IsBicubicSamplingUsedForHistory = sigmaSettings.IsBicubicSamplingUsedForHistory,
+            .IsTileSmoothingEnabled = sigmaSettings.IsTileSmoothingEnabled,
         });
     }
 

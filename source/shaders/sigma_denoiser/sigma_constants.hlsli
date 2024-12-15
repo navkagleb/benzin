@@ -5,8 +5,9 @@
 #endif
 
 #define SIGMA_USE_TILE_CHECK 1
+#define SIGMA_MAX_BLUR_KERNEL_PIXEL_RADIUS 32
 
-#define SIGMA_BLUR_USE_SPARSE_BLUR 1
+#define SIGMA_BLUR_USE_ANISOTROPIC_BLUR 1
 
 #define SIGMA_TS_USE_EARLY_OUT 1
 #define SIGMA_TS_MAX_HISTORY_LENGTH 7
@@ -17,8 +18,6 @@ namespace sigma
 {
 
     static const float g_DenoisingRange = 500000.0;
-
-    static const float g_MaxKernelPixelRadius = 32.0;
 
     // (normalized %) - represents maximum allowed deviation from local tangent plane
     static const float g_PlaneDistanceSensitivity = 0.005;

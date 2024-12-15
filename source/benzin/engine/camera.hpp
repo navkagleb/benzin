@@ -50,6 +50,8 @@ namespace benzin
         DirectX::XMFLOAT2 GetUvToViewScale() const;
         DirectX::XMFLOAT2 GetUvToViewBias() const;
 
+        float GetPixelToWorldScale(uint32_t height) const;
+
         void SetLens(float verticalFov, float aspectRatio, float nearPlane, float farPlane);
 
     private:

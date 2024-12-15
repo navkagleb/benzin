@@ -44,5 +44,11 @@ void CsMain(sigma::GroupSharedCsInput input)
 
     smoothPenumbra.x /= smoothPenumbra.y;
 
+    // TODO: Add SIGMA_DEBUG define
+    if (!g_PassConstants.IsTileSmoothingEnabled)
+    {
+        smoothPenumbra.x = centerTile.x;
+    }
+
     g_OutSmoothTiles[input.PixelPos] = float2(smoothPenumbra.x, centerTile.z);
 }

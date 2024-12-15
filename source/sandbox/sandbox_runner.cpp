@@ -133,6 +133,7 @@ namespace sandbox
         {
             ImGui::Checkbox("IsEnabled###SigmaDenoiser", &settings.IsEnabled);
             ImGui::Checkbox("IsClearEnabled", &settings.IsClearEnabled);
+            ImGui::Checkbox("IsTileSmoothingeEnabled", &settings.IsTileSmoothingEnabled);
             ImGui::Checkbox("IsPostBlurEnabled", &settings.IsPostBlurEnabled);
             ImGui::Checkbox("IsTemporalStabilizationEnabled", &settings.IsTemporalStabilizationEnabled);
             ImGui::Checkbox("IsBicubicSamplingUsedForHistory", &settings.IsBicubicSamplingUsedForHistory);
@@ -144,7 +145,7 @@ namespace sandbox
             ImGui::DragFloat("SunIntensity", &settings.SunIntensity, 0.1f, 0.0f, 100.0f);
             ImGui::ColorEdit3("SunColor", reinterpret_cast<float*>(&settings.SunColor));
 
-            ImGui::SliderAngle("SunAngularDiameter", &settings.SunAngularDiameterInRadians, 0.01f, 5.0f, "%.3f");
+            ImGui::SliderAngle("SunAngularDiameter", &settings.SunAngularDiameterInRadians, 0.0f, 5.0f, "%.3f");
             ImGui::SliderAngle("SunAzimuth (Yaw)", &settings.SunAzimuthInRadians, -180.0f, 180.0f);
             ImGui::SliderAngle("SunElevation (Pitch)", &settings.SunElevationInRadians, 0.0f, 180.0f);
 

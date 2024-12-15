@@ -126,7 +126,7 @@ float GetDisocclusionThreshold(float viewDepth)
 {
     // Only for viewZ comparisons for close to each other pixels ( not sparse filters! )
 
-    const float worldFrustumSize = sigma::PixelRadiusToWorld(g_FrameConstants.MinRenderDimension, g_FrameConstants.PixelToWorldScale, viewDepth);
+    const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConstants.MinRenderDimension, g_FrameConstants.Camera.PixelToWorldScale, viewDepth);
 
     return worldFrustumSize * SIGMA_TS_NORM_DISOCCLUSION_THRESHOLD;
 }

@@ -77,6 +77,16 @@ namespace benzin
         return bias;
     }
 
+    float PerspectiveProjection::GetPixelToWorldScale(uint32_t height) const
+    {
+        // viewToClip[1][1] = 1.0f / std::tan(0.5f * verticalFov)
+
+        const float verticalProjectionScale = DirectX::XMVectorGetByIndex(GetViewToClipMatrix().r[1], 1);
+        const float pixelToWorldScale = 1.0f / (0.5f * (float)height * verticalProjectionScale);
+
+        return pixelToWorldScale;
+    }
+
     void PerspectiveProjection::SetLens(float verticalFovInRadians, float aspectRatio, float nearPlane, float farPlane)
     {
         m_VerticalFovInRadians = verticalFovInRadians;
