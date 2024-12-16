@@ -98,16 +98,17 @@ namespace sandbox
         const DirectX::XMFLOAT4 postBlurRotator = benzin::GetRotator(rotatorAngleInRadians + DirectX::XMConvertToRadians(45.0f));
 
         const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
-        const auto& deferredLightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
+        const auto& lightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
 
         m_SigmaConstantBuffer->UpdateConstants(joint::SigmaConstants
         {
             .StabilizationStrength = sigmaSettings.StabilizationStrength,
-            .WorldSunDirection = GetSunDirection(deferredLightingSettings),
+            .WorldSunDirection = GetSunDirection(lightingSettings),
             .BlurRotator = blurRotator,
             .PostBlurRotator = postBlurRotator,
             .TileCount = m_TileCount,
             .PlaneDistanceSensitivity = sigmaSettings.PlaneDistanceSensitivity,
+            .DisocclusionThreshold = sigmaSettings.DisocclusionThreshold,
             .IsBicubicSamplingUsedForHistory = sigmaSettings.IsBicubicSamplingUsedForHistory,
             .IsTileSmoothingEnabled = sigmaSettings.IsTileSmoothingEnabled,
         });

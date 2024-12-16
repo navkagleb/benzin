@@ -131,7 +131,10 @@ namespace sandbox
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<SigmaDenoiserSettings>("SigmaDenoiser", true, [](SigmaDenoiserSettings& settings)
         {
             ImGui::Checkbox("IsEnabled###SigmaDenoiser", &settings.IsEnabled);
-            ImGui::DragFloat("PlaneDistanceSensitivity", &settings.PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
+            ImGui::DragFloat("PlaneDistanceSensitivity %", &settings.PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
+            ImGui::DragFloat("DisocclusionThreshold %", &settings.DisocclusionThreshold, 0.0001f, 0.0f, 0.2f);
+            
+            ImGui::Separator();
             ImGui::Checkbox("IsClearEnabled", &settings.IsClearEnabled);
             ImGui::Checkbox("IsTileSmoothingeEnabled", &settings.IsTileSmoothingEnabled);
             ImGui::Checkbox("IsPostBlurEnabled", &settings.IsPostBlurEnabled);

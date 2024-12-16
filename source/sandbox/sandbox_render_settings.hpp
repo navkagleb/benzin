@@ -14,6 +14,7 @@ namespace sandbox
     {
         bool IsEnabled = true;
         float PlaneDistanceSensitivity = 0.02f; // (normalized %) - represents maximum allowed deviation from the local tangent plane
+        float DisocclusionThreshold = 0.02f; // (normalized %)
         bool IsClearEnabled = false;
         bool IsTileSmoothingEnabled = true;
         bool IsPostBlurEnabled = true;

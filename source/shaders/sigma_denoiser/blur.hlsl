@@ -102,11 +102,9 @@ BlurParams GetBlurParams(float2 baseUv, PixelData centerPixel)
 
 float CalcShadowWeight(BlurParams params, PixelData samplePixel, SampleParams sampleParams)
 {
-    const float surfaceViewAlignment = dot(params.BaseViewNormal, sampleParams.ViewPosition);
-
     float shadowWeight = 1.0;
-    shadowWeight *= sigma::CalcGeometryWeight(surfaceViewAlignment, params.GeometryWeightParams);
     shadowWeight *= sigma::GetGaussianWeight(sampleParams.NormDistanceFromCenter);
+    shadowWeight *= sigma::CalcGeometryWeight(params.BaseViewNormal, sampleParams.ViewPosition, params.GeometryWeightParams);
     shadowWeight *= (float)sigma::IsBothLitOrUmbra(params.CenterPixel.Penumbra, samplePixel.Penumbra);
 
     return shadowWeight;

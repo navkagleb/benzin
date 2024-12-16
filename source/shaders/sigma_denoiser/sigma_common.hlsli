@@ -73,16 +73,21 @@ namespace sigma
 
     float2 GetGeometryWeightParams(float planeDistanceSensitivity, float3 viewPos, float3 viewNormal, float worldFrustumSize)
     {
+        const float surfaceViewAlignment = dot(viewNormal, viewPos);
+
         const float scale = 1.0 / (planeDistanceSensitivity * worldFrustumSize);
-        const float bias = dot(viewNormal, viewPos) * scale;
+        const float bias = surfaceViewAlignment * scale;
 
         return float2(scale, -bias);
     }
 
-    float CalcGeometryWeight(float surfaceViewAlignment, float2 scaleAndBias)
+    float CalcGeometryWeight(float3 viewNormal, float3 viewPos, float2 scaleAndBias)
     {
         // A good choice for non noisy data
         // IMPORTANT: cutoffs are needed to minimize floating point precision drifting
+
+        const float surfaceViewAlignment = dot(viewNormal, viewPos);
+
         return smoothstep(1.0, 0.0, abs(surfaceViewAlignment * scaleAndBias.x + scaleAndBias.y));
     }
 

@@ -16,7 +16,6 @@
 
 #define SIGMA_TS_USE_EARLY_OUT 1
 #define SIGMA_TS_MAX_HISTORY_LENGTH 7
-#define SIGMA_TS_NORM_DISOCCLUSION_THRESHOLD 0.02 // normalized % // TODO: use CommonSettings::disocclusionThreshold?
 #define SIGMA_TS_SIGMA_SCALE 3.0
 
 namespace sigma

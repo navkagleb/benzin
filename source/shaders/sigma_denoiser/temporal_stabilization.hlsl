@@ -128,7 +128,7 @@ float GetDisocclusionThreshold(float viewDepth)
 
     const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConstants.MinRenderDimension, g_FrameConstants.Camera.PixelToWorldScale, viewDepth);
 
-    return worldFrustumSize * SIGMA_TS_NORM_DISOCCLUSION_THRESHOLD;
+    return worldFrustumSize * g_PassConstants.DisocclusionThreshold;
 }
 
 void SampleHistoryData(float2 prevPixelUv, float viewDepth, float prevViewDepth, out float outHistoryLength, out float outShadowHistory)

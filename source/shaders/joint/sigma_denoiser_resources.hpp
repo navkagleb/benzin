@@ -15,6 +15,7 @@ namespace joint
         float4 PostBlurRotator;
         uint2 TileCount;
         float PlaneDistanceSensitivity;
+        float DisocclusionThreshold;
         uint IsBicubicSamplingUsedForHistory;
         uint IsTileSmoothingEnabled;
     };
