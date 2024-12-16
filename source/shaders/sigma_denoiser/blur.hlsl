@@ -95,7 +95,7 @@ BlurParams GetBlurParams(float2 baseUv, PixelData centerPixel)
     params.BaseViewPosition = ReconstructViewPosition(baseUv, centerPixel.ViewDepth, params.UvToViewScale, params.UvToViewBias);
     params.BaseViewNormal = mul(worldNormal, (float3x3)camera.WorldToView);
     params.WorldPixelSize = sigma::GetWorldPixelSize(pixelToWorldScale, centerPixel.ViewDepth);
-    params.GeometryWeightParams = sigma::GetGeometryWeightParams(worldFrustumSize, params.BaseViewPosition, params.BaseViewNormal);
+    params.GeometryWeightParams = sigma::GetGeometryWeightParams(g_PassConstants.PlaneDistanceSensitivity, params.BaseViewPosition, params.BaseViewNormal, worldFrustumSize);
 
     return params;
 }
@@ -105,7 +105,7 @@ float CalcShadowWeight(BlurParams params, PixelData samplePixel, SampleParams sa
     const float surfaceViewAlignment = dot(params.BaseViewNormal, sampleParams.ViewPosition);
 
     float shadowWeight = 1.0;
-    shadowWeight *= sigma::ComputeWeight(surfaceViewAlignment, params.GeometryWeightParams.x, params.GeometryWeightParams.y);
+    shadowWeight *= sigma::CalcGeometryWeight(surfaceViewAlignment, params.GeometryWeightParams);
     shadowWeight *= sigma::GetGaussianWeight(sampleParams.NormDistanceFromCenter);
     shadowWeight *= (float)sigma::IsBothLitOrUmbra(params.CenterPixel.Penumbra, samplePixel.Penumbra);
 
@@ -225,9 +225,9 @@ void RunAnisotropicBlur(BlurParams params, float tileValue, inout float2 outShad
 
     const float invEstimatedPenumbra = 1.0 / max(outPenumbra.x, sigma::g_Eps);
 
-    for (uint sampleIndex = 0; sampleIndex < sigma::g_PoissonSampleCount; ++sampleIndex)
+    for (uint sampleIndex = 0; sampleIndex < SIGMA_BLUR_POISSON_SAMPLE_COUNT; ++sampleIndex)
     {
-        const float3 offset = sigma::g_PoissonSamples[sampleIndex]; // TODO: Name this variable with prefix
+        const float3 offset = SIGMA_BLUR_POISSON_SAMPLES[sampleIndex]; // TODO: Name this variable with prefix
 
         float2 uv = CalcSparseBlurKernelUv(sparseKernel, offset.xy, params.BaseViewPosition);
         uv = (floor(uv * g_FrameConstants.RenderResolution) + 0.5) * g_FrameConstants.InvRenderResolution; // Snap to the pixel center
@@ -286,7 +286,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     const uint2 sharedPos = input.ThreadPos + SIGMA_BORDER;
     const PixelData centerPixel = g_PixelsData[sharedPos.y][sharedPos.x];
 
-    if (centerPixel.ViewDepth > sigma::g_DenoisingRange)
+    if (centerPixel.ViewDepth > SIGMA_DENOISING_RANGE)
     {
         return;
     }

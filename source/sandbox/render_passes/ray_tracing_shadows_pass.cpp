@@ -58,21 +58,15 @@ namespace sandbox
 
     void RayTracingShadowsPass::OnUpdate()
     {
-        const auto& perspectiveProjection = m_Scene.GetPerspectiveProjection();
+        const auto& lightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
 
-        const auto& rayTracingSettings = ms_Settings->GetSection<RayTracingShadowsSettings>();
-        const auto& deferredLightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
-
-        const float pixelAngularRadiusInRadians = 0.5f * perspectiveProjection.GetVerticalFovInRadians() / (float)GetRenderViewportWidth();
-        const float sunAngularRadiusInRadians = 0.5f * deferredLightingSettings.SunAngularDiameterInRadians;
+        const float sunAngularRadiusInRadians = 0.5f * lightingSettings.SunAngularDiameterInRadians;
 
         m_PassConstantBuffer->UpdateConstants(joint::RayTracingShadowsConstants
         {
-            .RaysPerPixel = rayTracingSettings.RaysPerPixel,
+            .SunDirection = GetSunDirection(lightingSettings),
             .TanSunAngularRadius = std::tan(sunAngularRadiusInRadians),
-            .PixelAngularRadiusInRadians = pixelAngularRadiusInRadians,
             .SunAngularRadiusInRadians = sunAngularRadiusInRadians,
-            .SunDirection = GetSunDirection(deferredLightingSettings),
         });
     }
 

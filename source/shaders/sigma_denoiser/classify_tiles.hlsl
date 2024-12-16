@@ -41,7 +41,7 @@ void FetchThreadTileInfo(CsInput input, out uint outThreadMask, out float outThr
             const float penumbra = g_Penumbra[pixelPos];
             const float viewDepth = g_ViewDepth[pixelPos];
 
-            const bool isInf = viewDepth > sigma::g_DenoisingRange;
+            const bool isInf = viewDepth > SIGMA_DENOISING_RANGE;
             const bool isShadow = penumbra == 0;
             const bool isLit = sigma::IsLit(penumbra);
 
@@ -49,9 +49,8 @@ void FetchThreadTileInfo(CsInput input, out uint outThreadMask, out float outThr
             threadMask += ((!isLit || isInf || isShadow) ? 1 : 0) << 9;
             threadMask += (isInf ? 1 : 0) << 18;
 
-            const float hitDistance = isLit || isInf ? 0.0 : penumbra;
             const float worldPixelSize = sigma::GetWorldPixelSize(g_FrameConstants.Camera.PixelToWorldScale, viewDepth);
-            const float blurPixelRadius = sigma::GetKernelPixelRadius(hitDistance, worldPixelSize);
+            const float blurPixelRadius = (isLit || isInf) ? 0.0 : sigma::GetKernelPixelRadius(penumbra, worldPixelSize);
 
             threadPixelRadius = max(threadPixelRadius, blurPixelRadius);
         }

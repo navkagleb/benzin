@@ -47,11 +47,9 @@ namespace joint
 
     struct RayTracingShadowsConstants
     {
-        uint RaysPerPixel;
-        float TanSunAngularRadius;
-        float PixelAngularRadiusInRadians;
-        float SunAngularRadiusInRadians;
         float3 SunDirection;
+        float TanSunAngularRadius;
+        float SunAngularRadiusInRadians;
     };
 
     struct DeferredLightingPassConstants

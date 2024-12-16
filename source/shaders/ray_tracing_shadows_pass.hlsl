@@ -89,7 +89,7 @@ void TraceSunShadowRay(
     out float outDistanceToOccluder
 )
 {
-    const float coneAngleInRadians = max(g_PassConstants.SunAngularRadiusInRadians, g_PassConstants.PixelAngularRadiusInRadians) * 2.0;
+    const float coneAngleInRadians = g_PassConstants.SunAngularRadiusInRadians * 2.0;
 
     RayDesc rayDesc;
     rayDesc.Origin = OffsetRayPosition(worldPosition, worldNormal);

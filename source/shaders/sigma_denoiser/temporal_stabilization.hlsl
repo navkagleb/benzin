@@ -124,7 +124,7 @@ void CalcPrevPositions(uint2 pixelPos, float2 pixelUv, float viewDepth, out floa
 
 float GetDisocclusionThreshold(float viewDepth)
 {
-    // Only for viewZ comparisons for close to each other pixels ( not sparse filters! )
+    // Only for viewDepth comparisons for close to each other pixels (not sparse filters!)
 
     const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConstants.MinRenderDimension, g_FrameConstants.Camera.PixelToWorldScale, viewDepth);
 
@@ -218,7 +218,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     const PixelData centerPixel = g_Pixels[sharedPos.y][sharedPos.x];
 
     const bool isOutOfBounds = any(input.PixelPos >= g_FrameConstants.RenderResolution);
-    const bool isOutOfDenoisingRange = centerPixel.ViewDepth > sigma::g_DenoisingRange;
+    const bool isOutOfDenoisingRange = centerPixel.ViewDepth > SIGMA_DENOISING_RANGE;
     if (isSky || isOutOfBounds || isOutOfDenoisingRange)
     {
         return;

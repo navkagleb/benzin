@@ -107,6 +107,7 @@ namespace sandbox
             .BlurRotator = blurRotator,
             .PostBlurRotator = postBlurRotator,
             .TileCount = m_TileCount,
+            .PlaneDistanceSensitivity = sigmaSettings.PlaneDistanceSensitivity,
             .IsBicubicSamplingUsedForHistory = sigmaSettings.IsBicubicSamplingUsedForHistory,
             .IsTileSmoothingEnabled = sigmaSettings.IsTileSmoothingEnabled,
         });

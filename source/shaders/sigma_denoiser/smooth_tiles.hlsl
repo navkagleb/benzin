@@ -25,7 +25,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     GroupMemoryBarrierWithGroupSync();
 
     const float3 centerTile = g_Tiles[input.PixelPos].xyz;
-    const float k = 1.01 / (centerTile.y + 0.01);
+    const float gaussianFalloff = 1.01 / (centerTile.y + 0.01);
 
     float2 smoothPenumbra = 0.0;
 
@@ -35,10 +35,11 @@ void CsMain(sigma::GroupSharedCsInput input)
         [unroll]
         for (uint i = 0; i <= SIGMA_BORDER * 2; ++i)
         {
-            const float distance = length(float2(i, j) - SIGMA_BORDER); // TODO: what name actually need to be used ???
-            const float weight = exp2(-k * distance * distance);
+            const float distance = length(float2(i, j) - SIGMA_BORDER);
+            const float weight = exp2(-gaussianFalloff * distance * distance);
 
-            smoothPenumbra += float2(g_IsPenumbra[input.ThreadPos.y + j][input.ThreadPos.x + i], 1.0) * weight;
+            const uint2 sharedPos = input.ThreadPos + uint2(i, j);
+            smoothPenumbra += float2(g_IsPenumbra[sharedPos.y][sharedPos.x], 1.0) * weight;
         }
     }
 

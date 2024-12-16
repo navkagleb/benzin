@@ -8,12 +8,12 @@ namespace sandbox
     struct RayTracingShadowsSettings
     {
         bool IsEnabled = true;
-        uint32_t RaysPerPixel = 1;
     };
 
     struct SigmaDenoiserSettings
     {
         bool IsEnabled = true;
+        float PlaneDistanceSensitivity = 0.02f; // (normalized %) - represents maximum allowed deviation from the local tangent plane
         bool IsClearEnabled = false;
         bool IsTileSmoothingEnabled = true;
         bool IsPostBlurEnabled = true;

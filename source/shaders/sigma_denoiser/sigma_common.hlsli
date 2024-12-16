@@ -71,32 +71,19 @@ namespace sigma
         return float3x3(tangent, bitangent, normal);
     }
 
-    float2 GetGeometryWeightParams(float frustumSize, float3 viewPos, float3 viewNormal)
+    float2 GetGeometryWeightParams(float planeDistanceSensitivity, float3 viewPos, float3 viewNormal, float worldFrustumSize)
     {
-    #if 0
-        const float nonLinearAccumSpeed = 1.0; // To reduce param count
+        const float scale = 1.0 / (planeDistanceSensitivity * worldFrustumSize);
+        const float bias = dot(viewNormal, viewPos) * scale;
 
-        const float relaxation = lerp(1.0, 0.25, nonLinearAccumSpeed); // => 0.25
-        const float a = relaxation / (g_PlaneDistanceSensitivity * frustumSize);
-        const float b = -dot(viewNormal, viewPos) * a;
-
-        return float2(a, b);
-    #else
-        float norm = g_PlaneDistanceSensitivity * frustumSize;
-        float a = 1.0 / norm;
-        float b = dot(viewNormal, viewPos) * a;
-
-        return float2(a, -b);
-    #endif
+        return float2(scale, -bias);
     }
 
-    float ComputeWeight(float x, float px, float py)
+    float CalcGeometryWeight(float surfaceViewAlignment, float2 scaleAndBias)
     {
-        // NRD SOURCE: ComputeNonExponentialWeight
-
         // A good choice for non noisy data
         // IMPORTANT: cutoffs are needed to minimize floating point precision drifting
-        return smoothstep(1.0, 0.0, abs(x * px + py));
+        return smoothstep(1.0, 0.0, abs(surfaceViewAlignment * scaleAndBias.x + scaleAndBias.y));
     }
 
     float GetGaussianWeight(float r)

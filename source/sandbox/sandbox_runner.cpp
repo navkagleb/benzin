@@ -126,12 +126,12 @@ namespace sandbox
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<RayTracingShadowsSettings>("RayTracingShadows", true, [](RayTracingShadowsSettings& settings)
         {
             ImGui::Checkbox("IsEnabled###RayTracingShadows", &settings.IsEnabled);
-            ImGui::SliderInt("RaysPerPixel", (int*)&settings.RaysPerPixel, 0, 100);
         });
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<SigmaDenoiserSettings>("SigmaDenoiser", true, [](SigmaDenoiserSettings& settings)
         {
             ImGui::Checkbox("IsEnabled###SigmaDenoiser", &settings.IsEnabled);
+            ImGui::DragFloat("PlaneDistanceSensitivity", &settings.PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
             ImGui::Checkbox("IsClearEnabled", &settings.IsClearEnabled);
             ImGui::Checkbox("IsTileSmoothingeEnabled", &settings.IsTileSmoothingEnabled);
             ImGui::Checkbox("IsPostBlurEnabled", &settings.IsPostBlurEnabled);
