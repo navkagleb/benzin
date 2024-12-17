@@ -95,7 +95,7 @@ namespace benzin
 
         if (m_IsTextureFlippable(index))
         {
-            return m_Textures[index - m_FlipResourceIndex].get();
+            return m_Textures[index - m_FlipIndex].get();
         }
 
         return m_Textures[index].get();
@@ -106,12 +106,13 @@ namespace benzin
         BenzinAssert(index < m_Textures.size());
         BenzinAssert(m_IsTextureFlippable(index));
 
-        return m_Textures[index - (m_FlipResourceIndex + 1) & 1].get();
+        const uint8_t prevFlipIndex = (m_FlipIndex + 1) & 1;
+        return m_Textures[index - prevFlipIndex].get();
     }
 
     void RenderResources::FlipResources()
     {
-        m_FlipResourceIndex = (m_FlipResourceIndex + 1) & 1;
+        m_FlipIndex = (m_FlipIndex + 1) & 1;
     }
 
     // RenderPass

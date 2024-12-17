@@ -20,14 +20,12 @@ namespace sandbox
         // TODO: Make 'Sigma' textures private to SigmaDenoiserPass
         SigmaTiles,
         SigmaSmoothTiles,
-        SigmaPrevShadow,
-        SigmaPrevHistoryLength,
         SigmaPenumbra1,
         SigmaPenumbra2,
         SigmaShadowTemp1,
         SigmaShadowTemp2,
-        SigmaShadow,
-        SigmaHistoryLength,
+        SigmaShadow = SigmaShadowTemp2 + 2,
+        SigmaHistoryLength = SigmaShadow + 2,
 
         Final,
         ImGui,

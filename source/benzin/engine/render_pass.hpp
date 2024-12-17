@@ -68,7 +68,7 @@ namespace benzin
     public:
         Device& m_Device;
 
-        uint8_t m_FlipResourceIndex = 0;
+        uint8_t m_FlipIndex = 0;
 
         std::vector<std::unique_ptr<Texture>> m_Textures;
 

@@ -34,7 +34,6 @@ namespace sandbox
     private:
         void RunClearPass(bool isEnabled) const;
         void RunClassifyTilesPass() const;
-        void RunCopyHistoryPass(bool isEnabled) const;
         void RunSmoothTilesPass() const;
         void RunBlurPass() const;
         void RunPostBlurPass(bool isEnabled) const;
