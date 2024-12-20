@@ -10,22 +10,21 @@ namespace sandbox
         EmissiveAndMetallic,
         WorldNormal,
         VelocityBuffer,
-        DepthStencil,
         ViewDepth,
+        DepthStencil,
 
-        // RtShadows
+        // RayTraced Shadows
         NoisyPenumbra,
 
         // SigmaDenoiser
-        // TODO: Make 'Sigma' textures private to SigmaDenoiserPass
-        SigmaTiles,
-        SigmaSmoothTiles,
-        SigmaPenumbra1,
-        SigmaPenumbra2,
-        SigmaShadowTemp1,
-        SigmaShadowTemp2,
-        SigmaShadow = SigmaShadowTemp2 + 2,
-        SigmaHistoryLength = SigmaShadow + 2,
+        Sigma_Tiles,
+        Sigma_SmoothTiles,
+        Sigma_BlurredPenumbra1,
+        Sigma_BlurredPenumbra2,
+        Sigma_BlurredShadowTemp1,
+        Sigma_BlurredShadowTemp2,
+        Shadow = Sigma_BlurredShadowTemp2 + 2,
+        ShadowHistoryLength = Shadow + 2,
 
         Final,
         ImGui,

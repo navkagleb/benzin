@@ -11,7 +11,6 @@ namespace benzin
     class ConstantBuffer;
 
     class PipelineState;
-    class Scene;
 
 }
 
@@ -21,6 +20,10 @@ namespace sandbox
     class SigmaDenoiserPass : public benzin::RenderPass
     {
     public:
+        static const benzin::GraphicsFormat s_PenumbraFormat;
+        static const uint32_t s_MaxHistoryLength;
+
+    public:
         SigmaDenoiserPass();
         ~SigmaDenoiserPass() override;
 
@@ -28,7 +31,7 @@ namespace sandbox
 
         void OnRenderViewportResize() override;
 
-        void OnUpdate() override;
+        void OnUpdate(const benzin::TickTimer& tickTimer) override;
         void OnRender() const override;
 
     private:
@@ -40,7 +43,7 @@ namespace sandbox
         void RunTemporalStabilizationPass(bool isEnabled) const;
 
     private:
-        enum Step
+        enum class Step
         {
             ClassifyTiles,
             SmoothTiles,

@@ -82,7 +82,7 @@ namespace sandbox
 
         const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 
-        const auto& shadows = ms_Resources->GetTexture(sigmaSettings.IsEnabled ? +Texture::SigmaShadow : +Texture::NoisyPenumbra);
+        const auto& shadows = ms_Resources->GetTexture(sigmaSettings.IsEnabled ? +Texture::Shadow : +Texture::NoisyPenumbra);
         const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
 
         commandList.SetViewport(ms_RenderViewport);

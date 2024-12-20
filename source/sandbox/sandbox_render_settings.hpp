@@ -25,8 +25,9 @@ namespace sandbox
         bool IsTileSmoothingEnabled = true;
         bool IsPostBlurEnabled = true;
         bool IsTemporalStabilizationEnabled = true;
-        bool IsBicubicSamplingUsedForHistory = true;
-        float StabilizationStrength = 1.0f;
+
+        uint32_t MaxHistoryLength = 5;
+        float StabilizationStrength = 0.0;
     };
 
     struct DeferredLightingSettings

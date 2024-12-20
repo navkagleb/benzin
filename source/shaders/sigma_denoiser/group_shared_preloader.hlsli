@@ -34,12 +34,12 @@ namespace sigma
         for (uint stageIndex = 0; stageIndex < stageCount; ++stageIndex) \
         { \
             const uint flatTileIndex = input.FlatThreadIndex + stageIndex * g_ThreadCountX * g_ThreadCountY; \
-            const uint2 localTilePos = uint2(flatTileIndex % g_SharedBufferSizeX, flatTileIndex / g_SharedBufferSizeX); \
+            const uint2 sharedPos = uint2(flatTileIndex % g_SharedBufferSizeX, flatTileIndex / g_SharedBufferSizeX); \
             \
             if (stageIndex == 0 || flatTileIndex < g_SharedBufferSizeX * g_SharedBufferSizeY) \
             { \
-                const uint2 globalTilePos = clamp(groupBasePos + localTilePos, 0, resolution - 1); \
-                preloader(localTilePos, globalTilePos); \
+                const uint2 pixelPos = clamp(groupBasePos + sharedPos, 0, resolution - 1); \
+                preloader(sharedPos, pixelPos); \
             } \
         } \
     }

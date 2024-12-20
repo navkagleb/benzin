@@ -90,14 +90,6 @@ namespace joint
         FullScreenDebugRc_ViewDepthBuffer,
         FullScreenDebugRc_DepthBuffer,
         FullScreenDebugRc_NoisyPenumbraTexture,
-
-        FullScreenDebugRc_SigmaTiles,
-        FullScreenDebugRc_SigmaSmoothTiles,
-        FullScreenDebugRc_SigmaPenumbra1,
-        FullScreenDebugRc_SigmaPenumbra2,
-        FullScreenDebugRc_SigmaShadowTemp1,
-        FullScreenDebugRc_SigmaShadowTemp2,
-        FullScreenDebugRc_SigmaShadow,
     };
 
     enum EquirectangularToCubePassRc : uint32_t

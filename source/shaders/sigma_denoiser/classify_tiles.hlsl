@@ -93,15 +93,15 @@ void CsMain(CsInput input)
         // umbra - fully shadowed
         // penumbra - partially lit
 
-        const bool isLit = ((g_TileMask >> 0) & 511) == 256;
-        const bool isUmbra = ((g_TileMask >> 9) & 511) == 256;
-        const bool isInf = ((g_TileMask >> 18) & 511) == 256;
+        const bool isEachPixelLit = ((g_TileMask >> 0) & 511) == 256;
+        const bool isEachPixelUmbra = ((g_TileMask >> 9) & 511) == 256;
+        const bool isEachPixelInf = ((g_TileMask >> 18) & 511) == 256;
 
         float4 result;
-        result.x = (isLit || isUmbra) ? 0.0 : 1.0; // Mark penumbra regions
-        result.y = saturate(asfloat(g_TilePixelRadius) / (float)joint::g_SigmaTileSize); // Normalize blur pixel radius
-        result.z = isInf ? 1.0 : 0.0;
-        result.w = 0.0;
+        result.x = (isEachPixelLit || isEachPixelUmbra) ? 0.0 : 1.0; // Mark penumbra regions
+        result.y = saturate(asfloat(g_TilePixelRadius) / 16.0); // Normalize blur pixel radius. TODO: 16.0 (TileSize) or (MaxBlurRadius)
+        result.z = isEachPixelInf ? 1.0 : 0.0;
+        result.w = 1.0;
 
         g_OutTiles[input.GroupPos] = result;
     }

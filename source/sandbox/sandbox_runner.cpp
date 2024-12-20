@@ -107,7 +107,7 @@ namespace sandbox
                 std::views::transform([](std::string_view name) { return name.data(); }) |
                 std::ranges::to<std::vector>();
 
-            static auto selectedTexture = Texture::SigmaShadow;
+            static auto selectedTexture = Texture::Shadow;
 
             ImGui::Combo("Texture", (int*)&selectedTexture, textureNames.data(), (int)textureNames.size());
 
@@ -140,13 +140,16 @@ namespace sandbox
             ImGui::DragFloat("PlaneDistanceSensitivity %", &settings.PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
             ImGui::DragFloat("DisocclusionThreshold %", &settings.DisocclusionThreshold, 0.0001f, 0.0f, 0.2f);
             
+            ImGui::BeginDisabled(true);
+            ImGui::SliderInt("MaxHistoryLength", (int*)&settings.MaxHistoryLength, 0, SigmaDenoiserPass::s_MaxHistoryLength, "%d", ImGuiSliderFlags_NoInput);
+            ImGui::EndDisabled();
+            ImGui::Text(BenzinFormatData("StabilizationStrength: {:.3f}", settings.StabilizationStrength));
+
             ImGui::Separator();
             ImGui::Checkbox("IsClearEnabled", &settings.IsClearEnabled);
             ImGui::Checkbox("IsTileSmoothingeEnabled", &settings.IsTileSmoothingEnabled);
             ImGui::Checkbox("IsPostBlurEnabled", &settings.IsPostBlurEnabled);
             ImGui::Checkbox("IsTemporalStabilizationEnabled", &settings.IsTemporalStabilizationEnabled);
-            ImGui::Checkbox("IsBicubicSamplingUsedForHistory", &settings.IsBicubicSamplingUsedForHistory);
-            ImGui::DragFloat("StabilizationStrength", &settings.StabilizationStrength, 0.001f, 0.0f, 1.0f);
         });
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<DeferredLightingSettings>("DeferredLighting", true, [](DeferredLightingSettings& settings)
@@ -162,7 +165,7 @@ namespace sandbox
             ImGui::Text(BenzinFormatData("SunDirection: [{:.3f}, {:.3f}, {:.3f}]", sunDirection.x, sunDirection.y, sunDirection.z));
         });
 
-        m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<FullScreenDebugSettings>("FullScreenDebug", true, [this](FullScreenDebugSettings& settings)
+        m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<FullScreenDebugSettings>("FullScreenDebug", false, [this](FullScreenDebugSettings& settings)
         {
             ImGui::SliderInt("ViewDepthMipIndex", (int*)&settings.ViewDepthMipIndex, 0, 4);
             ImGui::SliderFloat("MinViewDepth", &settings.MinViewDepth, 0.001f, 2.0f, "%.4f");
@@ -196,27 +199,11 @@ namespace sandbox
         auto& perspectiveProjection = m_Scene->GetPerspectiveProjection();
         perspectiveProjection.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.1f, 1000.0f);
 
-#if 0
-        auto& camera = m_Scene->GetCamera();
-        camera.SetPosition({ -3.0f, 2.0f, -0.25f });
-        camera.SetFrontDirection({ 1.0f, 0.0f, 0.0f });
-#elif 0
-        // For denoising results
-
-        auto& camera = m_Scene->GetCamera();
-        camera.SetPosition({ -0.244f, 0.846f, -1.346f });
-        camera.SetFrontDirection({ 0.439f, -0.413f, -0.798f });
-
-        m_AnimationTimer.SetPaused(true);
-#else
-        // For global results
-
         auto& camera = m_Scene->GetCamera();
         camera.SetPosition({ -1.649f, 1.007f, -1.555f });
         camera.SetFrontDirection({ 0.769f, 0.129f, 0.627f });
 
         m_AnimationTimer.SetPaused(true);
-#endif
     }
 
     void SandboxRunner::InitSceneEntities()
@@ -389,7 +376,7 @@ namespace sandbox
 
             auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
             tc.SetScale({ 0.05f, 0.05f, 0.05f });
-            tc.SetTranslation({ 2.5f, 0.4f, -0.25f });
+            tc.SetTranslation({ 2.5f, 0.2f, -0.25f });
         }
 
         {

@@ -15,8 +15,9 @@
 #include <shaders/joint/root_constants.hpp>
 #include <shaders/joint/structured_buffer_types.hpp>
 
-#include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
+#include "sandbox/resources.hpp"
+#include "sandbox/render_passes/sigma_denoiser_pass.hpp"
 
 namespace sandbox
 {
@@ -48,7 +49,7 @@ namespace sandbox
         ms_Resources->CreateTexture(+Texture::NoisyPenumbra, benzin::TextureCreation
         {
             .DebugName = magic_enum::enum_name(Texture::NoisyPenumbra),
-            .Format = benzin::GraphicsFormat::R16Float,
+            .Format = SigmaDenoiserPass::s_PenumbraFormat,
             .Width = GetRenderViewportWidth(),
             .Height = GetRenderViewportHeight(),
             .MipCount = 1,

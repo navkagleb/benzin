@@ -16,7 +16,6 @@ namespace joint
         uint2 TileCount;
         float PlaneDistanceSensitivity;
         float DisocclusionThreshold;
-        uint IsBicubicSamplingUsedForHistory;
         uint IsTileSmoothingEnabled;
     };
 

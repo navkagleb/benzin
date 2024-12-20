@@ -3,6 +3,7 @@
 
 #include <benzin/core/engine_math.hpp>
 #include <benzin/core/math.hpp>
+#include <benzin/core/tick_timer.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
@@ -18,6 +19,20 @@ BenzinEnableUnaryPlusForEnum(sandbox::SigmaDenoiserPass::Step);
 
 namespace sandbox
 {
+
+
+    static uint32_t GetMaxHistoryLength(float fps)
+    {
+        static constexpr float defaultAccumulationTimeInSec = 0.084f; // 5 (history length) / 60 (fps)
+
+        const auto allowedMaxHistoryLength = (uint32_t)(defaultAccumulationTimeInSec * fps);
+        return std::min(allowedMaxHistoryLength, SigmaDenoiserPass::s_MaxHistoryLength);
+    }
+
+    //
+
+    const benzin::GraphicsFormat SigmaDenoiserPass::s_PenumbraFormat = benzin::GraphicsFormat::R16Float;
+    const uint32_t SigmaDenoiserPass::s_MaxHistoryLength = 7;
 
     SigmaDenoiserPass::SigmaDenoiserPass()
     {
@@ -40,23 +55,29 @@ namespace sandbox
             psoManager.DestroyPipelineState(pso);
         }
 
-        ms_Resources->DestroyTexture(+Texture::SigmaTiles);
-        ms_Resources->DestroyTexture(+Texture::SigmaSmoothTiles);
-        ms_Resources->DestroyTexture(+Texture::SigmaPenumbra1);
-        ms_Resources->DestroyTexture(+Texture::SigmaPenumbra2);
-        ms_Resources->DestroyTexture(+Texture::SigmaShadowTemp1);
-        ms_Resources->DestroyTexture(+Texture::SigmaShadowTemp2);
-        ms_Resources->DestroyTexture(+Texture::SigmaShadow);
-        ms_Resources->DestroyTexture(+Texture::SigmaHistoryLength);
+        ms_Resources->DestroyTexture(+Texture::Sigma_Tiles);
+        ms_Resources->DestroyTexture(+Texture::Sigma_SmoothTiles);
+        ms_Resources->DestroyTexture(+Texture::Sigma_BlurredPenumbra1);
+        ms_Resources->DestroyTexture(+Texture::Sigma_BlurredPenumbra2);
+        ms_Resources->DestroyTexture(+Texture::Sigma_BlurredShadowTemp1);
+        ms_Resources->DestroyTexture(+Texture::Sigma_BlurredShadowTemp2);
+        ms_Resources->DestroyTexture(+Texture::Shadow);
+        ms_Resources->DestroyTexture(+Texture::ShadowHistoryLength);
     }
 
     void SigmaDenoiserPass::OnRenderViewportResize()
     {
-        const auto createSigmaTexture = [](Texture textureIndex, benzin::GraphicsFormat format, DirectX::XMUINT2 resolution)
+        m_TileCount.x = benzin::DivideUp(GetRenderViewportWidth(), joint::g_SigmaTileSize);
+        m_TileCount.y = benzin::DivideUp(GetRenderViewportHeight(), joint::g_SigmaTileSize);
+
+        const DirectX::XMUINT2 renderResolution = GetRenderResolution();
+        const auto shadowFormat = benzin::GraphicsFormat::R8Unorm;
+
+        const auto createTexture = [](Texture texture, benzin::GraphicsFormat format, DirectX::XMUINT2 resolution)
         {
-            ms_Resources->CreateTexture(+textureIndex, benzin::TextureCreation
+            ms_Resources->CreateTexture(+texture, benzin::TextureCreation
             {
-                .DebugName = magic_enum::enum_name(textureIndex),
+                .DebugName = magic_enum::enum_name(texture),
                 .Format = format,
                 .Width = resolution.x,
                 .Height = resolution.y,
@@ -65,34 +86,29 @@ namespace sandbox
             });
         };
 
-        m_TileCount.x = benzin::DivideUp(GetRenderViewportWidth(), joint::g_SigmaTileSize);
-        m_TileCount.y = benzin::DivideUp(GetRenderViewportHeight(), joint::g_SigmaTileSize);
-
-        const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
-
-        createSigmaTexture(Texture::SigmaTiles, benzin::GraphicsFormat::Rgba8Unorm, m_TileCount);
-        createSigmaTexture(Texture::SigmaSmoothTiles, benzin::GraphicsFormat::Rg8Unorm, m_TileCount);
-        createSigmaTexture(Texture::SigmaHistoryLength, benzin::GraphicsFormat::R32Uint, renderResolution);
-
-        const auto penumbraFormat = benzin::GraphicsFormat::R16Float; // TODO: R32FLoat
-        createSigmaTexture(Texture::SigmaPenumbra1, penumbraFormat, renderResolution);
-        createSigmaTexture(Texture::SigmaPenumbra2, penumbraFormat, renderResolution);
-
-        const auto shadowFormat = benzin::GraphicsFormat::R8Unorm;
-        createSigmaTexture(Texture::SigmaShadowTemp1, shadowFormat, renderResolution);
-        createSigmaTexture(Texture::SigmaShadowTemp2, shadowFormat, renderResolution);
-        createSigmaTexture(Texture::SigmaShadow, shadowFormat, renderResolution);
+        createTexture(Texture::Sigma_Tiles, benzin::GraphicsFormat::Rgba8Unorm, m_TileCount);
+        createTexture(Texture::Sigma_SmoothTiles, benzin::GraphicsFormat::Rg8Unorm, m_TileCount);
+        createTexture(Texture::Sigma_BlurredPenumbra1, s_PenumbraFormat, renderResolution);
+        createTexture(Texture::Sigma_BlurredPenumbra2, s_PenumbraFormat, renderResolution);
+        createTexture(Texture::Sigma_BlurredShadowTemp1, shadowFormat, renderResolution);
+        createTexture(Texture::Sigma_BlurredShadowTemp2, shadowFormat, renderResolution);
+        createTexture(Texture::Shadow, shadowFormat, renderResolution);
+        createTexture(Texture::ShadowHistoryLength, benzin::GraphicsFormat::R32Uint, renderResolution);
     }
 
-    void SigmaDenoiserPass::OnUpdate()
+    void SigmaDenoiserPass::OnUpdate(const benzin::TickTimer& tickTimer)
     {
         // TODO: Do I need cast to u32?
         const float rotatorAngleInRadians = benzin::GetWeylSequence(0.0f, (uint32_t)ms_Device->GetCpuFrameIndex()) * DirectX::XMConvertToRadians(90.0f);
         const DirectX::XMFLOAT4 blurRotator = benzin::GetRotator(rotatorAngleInRadians);
         const DirectX::XMFLOAT4 postBlurRotator = benzin::GetRotator(rotatorAngleInRadians + DirectX::XMConvertToRadians(45.0f));
 
-        const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
+        auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
         const auto& lightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
+
+        const float fps = 1.0f / tickTimer.GetDeltaTimeInSec();
+        sigmaSettings.MaxHistoryLength = GetMaxHistoryLength(fps);
+        sigmaSettings.StabilizationStrength = sigmaSettings.MaxHistoryLength / (1.0f + sigmaSettings.MaxHistoryLength);
 
         m_SigmaConstantBuffer->UpdateConstants(joint::SigmaConstants
         {
@@ -103,7 +119,6 @@ namespace sandbox
             .TileCount = m_TileCount,
             .PlaneDistanceSensitivity = sigmaSettings.PlaneDistanceSensitivity,
             .DisocclusionThreshold = sigmaSettings.DisocclusionThreshold,
-            .IsBicubicSamplingUsedForHistory = sigmaSettings.IsBicubicSamplingUsedForHistory,
             .IsTileSmoothingEnabled = sigmaSettings.IsTileSmoothingEnabled,
         });
     }
@@ -139,21 +154,21 @@ namespace sandbox
 
         BenzinMakeScopedResourceBarriers(
             commandList,
-            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaTiles), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaSmoothTiles), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaPenumbra1), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaPenumbra2), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaShadowTemp1), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::SigmaShadowTemp2), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::Sigma_Tiles), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::Sigma_SmoothTiles), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra1), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra2), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp1), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp2), benzin::ResourceState::UnorderedAccess },
         );
 
         const DirectX::XMFLOAT4 clearColor{};
-        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaTiles), clearColor);
-        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaSmoothTiles), clearColor);
-        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaPenumbra1), clearColor);
-        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaPenumbra2), clearColor);
-        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaShadowTemp1), clearColor);
-        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::SigmaShadowTemp2), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::Sigma_Tiles), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::Sigma_SmoothTiles), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra1), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra2), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp1), clearColor);
+        commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp2), clearColor);
     }
 
     void SigmaDenoiserPass::RunClassifyTilesPass() const
@@ -161,7 +176,7 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "ClassifyTiles");
 
-        const auto& tiles = ms_Resources->GetTexture(+Texture::SigmaTiles);
+        const auto& tiles = ms_Resources->GetTexture(+Texture::Sigma_Tiles);
 
         {
             using enum joint::Rc_SigmaClassifyTiles;
@@ -186,12 +201,12 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "SmoothTiles");
 
-        const auto& smoothTiles = ms_Resources->GetTexture(+Texture::SigmaSmoothTiles);
+        const auto& smoothTiles = ms_Resources->GetTexture(+Texture::Sigma_SmoothTiles);
 
         {
             using enum joint::Rc_SigmaSmoothTiles;
 
-            commandList.SetRootResource(+Tiles, ms_Resources->GetTexture(+Texture::SigmaTiles).GetSrv());
+            commandList.SetRootResource(+Tiles, ms_Resources->GetTexture(+Texture::Sigma_Tiles).GetSrv());
             commandList.SetRootResource(+OutSmoothTiles, smoothTiles.GetUav());
         }
 
@@ -209,15 +224,15 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "Blur");
 
-        const auto& penumbra1 = ms_Resources->GetTexture(+Texture::SigmaPenumbra1);
-        const auto& shadowTemp1 = ms_Resources->GetTexture(+Texture::SigmaShadowTemp1);
+        const auto& penumbra1 = ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra1);
+        const auto& shadowTemp1 = ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp1);
 
         {
             using enum joint::Rc_SigmaBlur;
 
             commandList.SetRootResource(+WorldNormal, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
             commandList.SetRootResource(+ViewDepth, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
-            commandList.SetRootResource(+SmoothTiles, ms_Resources->GetTexture(+Texture::SigmaSmoothTiles).GetSrv());
+            commandList.SetRootResource(+SmoothTiles, ms_Resources->GetTexture(+Texture::Sigma_SmoothTiles).GetSrv());
             commandList.SetRootResource(+Penumbra, ms_Resources->GetTexture(+Texture::NoisyPenumbra).GetSrv());
 
             commandList.SetRootResource(+OutPenumbra, penumbra1.GetUav());
@@ -239,10 +254,10 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "PostBlur");
 
-        const auto& penumbra1 = ms_Resources->GetTexture(+Texture::SigmaPenumbra1);
-        const auto& penumbra2 = ms_Resources->GetTexture(+Texture::SigmaPenumbra2);
-        const auto& shadowTemp1 = ms_Resources->GetTexture(+Texture::SigmaShadowTemp1);
-        const auto& shadowTemp2 = ms_Resources->GetTexture(+Texture::SigmaShadowTemp2);
+        const auto& penumbra1 = ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra1);
+        const auto& penumbra2 = ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra2);
+        const auto& shadowTemp1 = ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp1);
+        const auto& shadowTemp2 = ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp2);
 
         if (!isEnabled)
         {
@@ -265,7 +280,7 @@ namespace sandbox
 
             commandList.SetRootResource(+WorldNormal, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
             commandList.SetRootResource(+ViewDepth, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
-            commandList.SetRootResource(+SmoothTiles, ms_Resources->GetTexture(+Texture::SigmaSmoothTiles).GetSrv());
+            commandList.SetRootResource(+SmoothTiles, ms_Resources->GetTexture(+Texture::Sigma_SmoothTiles).GetSrv());
             commandList.SetRootResource(+Penumbra, penumbra1.GetSrv());
             commandList.SetRootResource(+Shadow, shadowTemp1.GetSrv());
 
@@ -288,8 +303,8 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "TemporalStabilization");
 
-        const auto& shadowTemp2 = ms_Resources->GetTexture(+Texture::SigmaShadowTemp2);
-        const auto& shadow = ms_Resources->GetTexture(+Texture::SigmaShadow);
+        const auto& shadowTemp2 = ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp2);
+        const auto& shadow = ms_Resources->GetTexture(+Texture::Shadow);
 
         if (!isEnabled)
         {
@@ -304,18 +319,18 @@ namespace sandbox
             return;
         }
 
-        const auto& historyLength = ms_Resources->GetTexture(+Texture::SigmaHistoryLength);
+        const auto& historyLength = ms_Resources->GetTexture(+Texture::ShadowHistoryLength);
 
         {
             using enum joint::Rc_SigmaTemporalStabilization;
 
             commandList.SetRootResource(+Mv, ms_Resources->GetTexture(+Texture::VelocityBuffer).GetSrv());
             commandList.SetRootResource(+ViewDepth, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
-            commandList.SetRootResource(+SmoothTiles, ms_Resources->GetTexture(+Texture::SigmaSmoothTiles).GetSrv());
-            commandList.SetRootResource(+Penumbra, ms_Resources->GetTexture(+Texture::SigmaPenumbra2).GetSrv());
+            commandList.SetRootResource(+SmoothTiles, ms_Resources->GetTexture(+Texture::Sigma_SmoothTiles).GetSrv());
+            commandList.SetRootResource(+Penumbra, ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra2).GetSrv());
             commandList.SetRootResource(+Shadow, shadowTemp2.GetSrv());
-            commandList.SetRootResource(+ShadowHistory, ms_Resources->GetPrevTexture(+Texture::SigmaShadow).GetSrv());
-            commandList.SetRootResource(+HistoryLength, ms_Resources->GetPrevTexture(+Texture::SigmaHistoryLength).GetSrv());
+            commandList.SetRootResource(+ShadowHistory, ms_Resources->GetPrevTexture(+Texture::Shadow).GetSrv());
+            commandList.SetRootResource(+HistoryLength, ms_Resources->GetPrevTexture(+Texture::ShadowHistoryLength).GetSrv());
 
             commandList.SetRootResource(+OutShadow, shadow.GetUav());
             commandList.SetRootResource(+OutHistoryLength, historyLength.GetUav());

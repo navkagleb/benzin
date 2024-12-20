@@ -320,7 +320,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     blurredPenumbra *= f;
 
 #if SIGMA_BLUR_USE_ANISOTROPIC_BLUR
-    RunAnisotropicBlur(params, tileValue, blurredShadow, blurredPenumbra);
+    RunAnisotropicBlur(params, tileValue, blurredShadow, blurredPenumbra); // TODO: Normalize blurredShadow and blurredPenumbra when SIGMA_BLUR_USE_ANISOTROPIC_BLUR is 0
 #endif
 
 #if !defined(FIRST_BLUR_PASS)

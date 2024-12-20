@@ -121,9 +121,11 @@ namespace benzin
 
         static uint32_t GetWindowViewportWidth() { return (uint32_t)ms_WindowViewport.Width; }
         static uint32_t GetWindowViewportHeight() { return (uint32_t)ms_WindowViewport.Height; }
+        static DirectX::XMUINT2 GetWindowResolution() { return { GetWindowViewportWidth(), GetWindowViewportHeight() }; };
 
         static uint32_t GetRenderViewportWidth() { return (uint32_t)ms_RenderViewport.Width; }
         static uint32_t GetRenderViewportHeight() { return (uint32_t)ms_RenderViewport.Height; }
+        static DirectX::XMUINT2 GetRenderResolution() { return { GetRenderViewportWidth(), GetRenderViewportHeight() }; };
 
         uint32_t m_GpuTimerIndex = g_InvalidUnsigned<uint32_t>;
         bool m_IsRenderingEnabled = true;
