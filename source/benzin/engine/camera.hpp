@@ -17,8 +17,6 @@ namespace benzin
 
         const DirectX::BoundingFrustum& GetBoundingFrustum() const { return m_BoundingFrustum; }
 
-        DirectX::BoundingFrustum GetTransformedBoundingFrustum(const DirectX::XMMATRIX& transform) const;
-
         void UpdateViewToClipMatrix();
 
     protected:

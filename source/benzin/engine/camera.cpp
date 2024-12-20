@@ -12,14 +12,6 @@ namespace benzin
 
     // Projection
 
-    DirectX::BoundingFrustum Projection::GetTransformedBoundingFrustum(const DirectX::XMMATRIX& transform) const
-    {
-        DirectX::BoundingFrustum transformedBoundingFrustum;
-        m_BoundingFrustum.Transform(transformedBoundingFrustum, transform);
-
-        return transformedBoundingFrustum;
-    }
-
     void Projection::UpdateViewToClipMatrix()
     {
         m_ViewToClipMatrix = CreateViewToClipMatrix();

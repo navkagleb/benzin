@@ -28,13 +28,6 @@ namespace sandbox
         void OnRender() const override;
 
     private:
-        bool IsMeshCulled(
-            const benzin::MeshCollection& meshCollection,
-            uint32_t meshInstanceIndex,
-            const DirectX::XMMATRIX& localToWorldMatrix
-        ) const;
-
-    private:
         const benzin::Scene& m_Scene;
 
         benzin::PipelineState* m_Pso = nullptr;

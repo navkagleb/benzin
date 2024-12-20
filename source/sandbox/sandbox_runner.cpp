@@ -123,6 +123,12 @@ namespace sandbox
 
         BenzinAssert(m_RenderSettingsTool != nullptr);
 
+        m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<GBufferStats>("GBufferStats", true, [](GBufferStats& stats)
+        {
+            ImGui::Text(BenzinFormatData("MeshCount: {}", stats.MeshCount));
+            ImGui::Text(BenzinFormatData("RenderedMeshCount: {}", stats.RenderedMeshCount));
+        });
+
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<RayTracingShadowsSettings>("RayTracingShadows", true, [](RayTracingShadowsSettings& settings)
         {
             ImGui::Checkbox("IsEnabled###RayTracingShadows", &settings.IsEnabled);

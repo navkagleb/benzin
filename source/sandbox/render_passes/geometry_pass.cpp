@@ -14,6 +14,7 @@
 #include <shaders/joint/root_constants.hpp>
 
 #include "sandbox/resources.hpp"
+#include "sandbox/sandbox_render_settings.hpp"
 
 namespace sandbox
 {
@@ -62,8 +63,8 @@ namespace sandbox
         ms_Resources->DestroyTexture(+Texture::EmissiveAndMetallic);
         ms_Resources->DestroyTexture(+Texture::WorldNormal);
         ms_Resources->DestroyTexture(+Texture::VelocityBuffer);
-        ms_Resources->DestroyTexture(+Texture::DepthStencil);
         ms_Resources->DestroyTexture(+Texture::ViewDepth);
+        ms_Resources->DestroyTexture(+Texture::DepthStencil);
     }
 
     void GeometryPass::OnRenderViewportResize()
@@ -149,6 +150,13 @@ namespace sandbox
 
         commandList.SetPipelineState(*m_Pso);
 
+        auto& stats = ms_Settings->GetSection<GBufferStats>();
+        stats.MeshCount = 0;
+        stats.RenderedMeshCount = 0;
+
+        const auto& worldToViewMatrix = m_Scene.GetCamera().GetWorldToViewMatrix();
+        const auto& cameraFrustum = m_Scene.GetCamera().GetProjection().GetBoundingFrustum();
+
         const auto view = m_Scene.GetEntityRegistry().view<benzin::TransformComponent, benzin::MeshInstanceComponent>();
         for (const auto entityHandle : view)
         {
@@ -171,37 +179,30 @@ namespace sandbox
             const auto meshInstanceRange = mic.MeshInstanceRange.value_or(meshCollection.GetFullMeshInstanceRange());
             for (const auto i : benzin::IndexRangeToView(meshInstanceRange))
             {
-                if (IsMeshCulled(meshCollection, i, tc.GetLocalToWorldMatrix()))
-                {
-                    continue;
-                }
-
-                commandList.SetRootConstant(joint::GeometryPassRc_MeshInstanceIndex, i);
+                ++stats.MeshCount;
 
                 const auto& meshInstance = meshCollection.MeshInstances[i];
                 const auto& mesh = meshCollection.Meshes[meshInstance.MeshIndex];
 
+                if (mesh.BoundingBox.has_value())
+                {
+                    const DirectX::XMMATRIX localToViewMatrix = meshInstance.Transform * tc.GetLocalToWorldMatrix() * worldToViewMatrix;
+                    const auto viewBoundingBox = benzin::TransformBoundingBox(*mesh.BoundingBox, localToViewMatrix);
+
+                    if (cameraFrustum.Contains(viewBoundingBox) == DirectX::DISJOINT)
+                    {
+                        continue;
+                    }
+                }
+
+                commandList.SetRootConstant(joint::GeometryPassRc_MeshInstanceIndex, i);
+
                 commandList.SetPrimitiveTopology(mesh.PrimitiveTopology);
                 commandList.DrawVertexed((uint32_t)mesh.Indices.size());
+
+                ++stats.RenderedMeshCount;
             }
         }
-    }
-
-    bool GeometryPass::IsMeshCulled(const benzin::MeshCollection& meshCollection, uint32_t meshInstanceIndex, const DirectX::XMMATRIX& localToWorldMatrix) const
-    {
-        const auto& camera = m_Scene.GetCamera();
-        const auto& meshInstance = meshCollection.MeshInstances[meshInstanceIndex];
-        const auto& mesh = meshCollection.Meshes[meshInstance.MeshIndex];
-
-        if (!mesh.BoundingBox)
-        {
-            return false;
-        }
-
-        const auto localToViewSpaceTransformMatrix = meshInstance.Transform * localToWorldMatrix * camera.GetWorldToViewMatrix();
-        const auto viewSpaceMeshBoundingBox = benzin::TransformBoundingBox(*mesh.BoundingBox, localToViewSpaceTransformMatrix);
-
-        return camera.GetProjection().GetBoundingFrustum().Contains(viewSpaceMeshBoundingBox) == DirectX::DISJOINT;
     }
 
 }

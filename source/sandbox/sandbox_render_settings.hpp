@@ -5,6 +5,12 @@
 namespace sandbox
 {
 
+    struct GBufferStats
+    {
+        uint32_t MeshCount = 0;
+        uint32_t RenderedMeshCount = 0;
+    };
+
     struct RayTracingShadowsSettings
     {
         bool IsEnabled = true;
