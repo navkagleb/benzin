@@ -23,48 +23,6 @@ namespace joint
         RayTracingShadowsRc_OutNoisyPenumbraTex,
     };
 
-    enum DenoiserTemporalAccumulationRc : uint32_t
-    {
-        DenoiserTemporalAccumulationRc_WorldNormalTexture,
-        DenoiserTemporalAccumulationRc_VelocityBuffer,
-        DenoiserTemporalAccumulationRc_DepthBuffer,
-        DenoiserTemporalAccumulationRc_PreviousViewDepthBuffer,
-        DenoiserTemporalAccumulationRc_PreviousTemporalAccumulationBuffer,
-        DenoiserTemporalAccumulationRc_PreviousDenoisedVisibilityBuffer,
-        DenoiserTemporalAccumulationRc_TemporalAccumulationBuffer,
-        DenoiserTemporalAccumulationRc_ReprojectedHistoryTexture,
-    };
-
-    enum MipGenerationRc : uint32_t
-    {
-        MipGenerationRc_SourceMip,
-        MipGenerationRc_DestinationMip0,
-        MipGenerationRc_DestinationMip1,
-        MipGenerationRc_DestinationMip2,
-        MipGenerationRc_DestinationMip3,
-    };
-
-    enum DenoiserHistoryFixRc : uint32_t
-    {
-        DenoiserHistoryFixRc_GBufferAlbedoAndRoughness,
-        DenoiserHistoryFixRc_TemporalAccumulationBuffer,
-        DenoiserHistoryFixRc_ViewDepthBuffer,
-        DenoiserHistoryFixRc_NoisyVisibilityBuffer,
-        DenoiserHistoryFixRc_ReprojectedHistoryTexture,
-    };
-
-    enum DenoiserBlurRc : uint32_t
-    {
-        DenoiserBlurRc_AlbedoAndRoughnessTexture,
-        DenoiserBlurRc_WorldNormalTexture,
-        DenoiserBlurRc_DepthBuffer,
-        DenoiserBlurRc_VelocityTexture,
-        DenoiserBlurRc_NoisyVisibilityBuffer,
-        DenoiserBlurRc_ReprojectedHistoryTexture,
-        DenoiserBlurRc_TemporalAccumulationBuffer,
-        DenoiserBlurRc_DenoisedVisibilityBuffer,
-    };
-
     enum DeferredLightingPassRc : uint32_t
     {
         DeferredLightingPassRc_AlbedoAndRoughnessTex,
@@ -98,10 +56,3 @@ namespace joint
         EquirectangularToCubeRc_OutCubeTexture,
     };
 
-    enum TestInstancesRc : uint32_t
-    {
-        TestInstancesRc_TransformBuffer,
-        TestInstancesRc_ActiveBitSlotBuffer,
-    };
-
-} // namespace joint

@@ -69,13 +69,4 @@ namespace joint
         float MaxViewDepth;
     };
 
-    struct MipGenerationConstants
-    {
-        float2 InvDispatchDimensions;
-        uint IsSourceWidthOdd;
-        uint IsSourceHeightOdd;
-        uint DestinationMipCount;
-        MipGenerationFilterType FilterType;
-    };
-
-} // namespace joint
+}

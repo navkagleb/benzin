@@ -84,7 +84,7 @@ namespace sandbox
     std::unique_ptr<benzin::Texture> EnvironmentPass::LoadEquirectangularTexture()
     {
         benzin::TextureImage equirectangularTextureImage;
-        BenzinAssertExpr(benzin::LoadTextureImageFromHdrFile("scythian_tombs_2_4k.hdr", equirectangularTextureImage));
+        BenzinAssertExpr(benzin::LoadTextureImageFromHdrFile("spaichingen_hill_4k.hdr", equirectangularTextureImage));
 
         auto equirectangularTexture = std::make_unique<benzin::Texture>(*ms_Device, benzin::TextureCreation
         {
