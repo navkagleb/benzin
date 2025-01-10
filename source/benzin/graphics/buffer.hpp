@@ -44,8 +44,9 @@ namespace benzin
         ~Buffer() override;
 
     public:
-        auto GetFormat() const { return m_Format; }
+        auto GetMemoryType() const { return m_MemoryType; }
         auto GetType() const { return m_Type; }
+        auto GetFormat() const { return m_Format; }
 
         auto GetElementSize() const { return m_ElementSize; }
         auto GetElementCount() const { return m_ElementCount; }

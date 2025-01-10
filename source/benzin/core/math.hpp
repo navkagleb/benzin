@@ -4,7 +4,7 @@ namespace benzin
 {
 
     template <std::unsigned_integral T, std::unsigned_integral U>
-    constexpr auto AlignAbove(T value, U alignment)
+    constexpr auto AlignUp(T value, U alignment)
     {
         using CommonType = std::common_type_t<T, U>;
 

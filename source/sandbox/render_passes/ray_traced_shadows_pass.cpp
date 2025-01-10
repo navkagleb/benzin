@@ -10,6 +10,7 @@
 #include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/pipeline_state.hpp>
 #include <benzin/graphics/pipeline_state_manager.hpp>
+#include <benzin/graphics/ray_tracing_shader_table.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 
@@ -20,11 +21,7 @@
 namespace sandbox
 {
 
-    static constexpr auto g_RayGenShaderName = L"RayGeneneration"sv;
-    static constexpr auto g_MissShaderName = L"Miss"sv;
-
-    static constexpr auto g_HitGroupName = L"HitGroup"sv;
-    static constexpr auto g_ClosestHitShaderName = L"ClosestHitShader"sv;
+    static constexpr auto g_HitGroupName = "DefaultHitGroup"sv;
 
     static void BuildOrthonormalBasis(DirectX::XMFLOAT3 normal3, DirectX::XMFLOAT3& outTangent3, DirectX::XMFLOAT3& outBitangent3)
     {
@@ -52,7 +49,7 @@ namespace sandbox
             },
             .HitGroup
             {
-                .Name = "HitGroup", // TODO: g_HitGroupName to narrow string
+                .Name = g_HitGroupName,
                 .ClosestHitEntryPoint = "ClosestHit",
             },
             .ShaderConfig
@@ -62,7 +59,7 @@ namespace sandbox
             },
         });
 
-        CreateShaderTable();
+        BuildShaderTable();
 
         benzin::MakeUniquePtr(m_PassConstBuffer, *ms_Device, "RayTracedShadowsConsts");
     }
@@ -131,7 +128,6 @@ namespace sandbox
     void RayTracedShadowsPass::OnRender() const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        auto* d3d12CommandList = commandList.GetD3D12GraphicsCommandList();
         BenzinPushGpuEvent(commandList, "RayTracingShadowPass");
 
         const auto& noisyPenumbra = ms_Resources->GetTexture(+Texture::NoisyPenumbra);
@@ -154,68 +150,38 @@ namespace sandbox
             benzin::TransitionBarrier{ noisyPenumbra, benzin::ResourceState::UnorderedAccess },
         );
 
-        const D3D12_DISPATCH_RAYS_DESC d3d12DispatchRayDesc
-        {
-            .RayGenerationShaderRecord
-            {
-                .StartAddress = m_RayGenShaderTable->GetGpuVirtualAddress(),
-                .SizeInBytes = m_RayGenShaderTable->GetNotAlignedSize(),
-            },
-            .MissShaderTable
-            {
-                .StartAddress = m_MissShaderTable->GetGpuVirtualAddress(),
-                .SizeInBytes = m_MissShaderTable->GetNotAlignedSize(),
-                .StrideInBytes = m_MissShaderTable->GetElementSize(),
-            },
-            .HitGroupTable
-            {
-                .StartAddress = m_HitGroupShaderTable->GetGpuVirtualAddress(),
-                .SizeInBytes = m_HitGroupShaderTable->GetNotAlignedSize(),
-                .StrideInBytes = m_HitGroupShaderTable->GetElementSize(),
-            },
-            .CallableShaderTable
-            {
-                .StartAddress = 0,
-                .SizeInBytes = 0,
-                .StrideInBytes = 0,
-            },
-            .Width = noisyPenumbra.GetWidth(),
-            .Height = noisyPenumbra.GetHeight(),
-            .Depth = 1,
-        };
-
-        d3d12CommandList->DispatchRays(&d3d12DispatchRayDesc);
+        commandList.DispatchRays(*m_ShaderTable, { GetRenderViewportWidth(), GetRenderViewportHeight(), 1 });
     }
 
-    void RayTracedShadowsPass::CreateShaderTable()
+    void RayTracedShadowsPass::BuildShaderTable()
     {
         BenzinEnsure(m_Pso->GetD3D12StateObject() != nullptr);
 
         ComPtr<ID3D12StateObjectProperties> d3d12StateObjectProperties;
         BenzinEnsure(m_Pso->GetD3D12StateObject()->QueryInterface(IID_PPV_ARGS(&d3d12StateObjectProperties)));
 
-        const auto CreateShaderTable = [&](std::wstring_view identiferName)
+        const auto getShaderIdentifier = [&d3d12StateObjectProperties](std::string_view idName)
         {
-            const void* rawShaderIdentifier = d3d12StateObjectProperties->GetShaderIdentifier(identiferName.data());
-            const auto shaderIdentifier = std::span{ (const std::byte*)rawShaderIdentifier, benzin::GfxConfig::s_ShaderIdentifierSize };
+            const std::wstring wideIdName = benzin::ToWideString(idName);
+            const void* rawId = d3d12StateObjectProperties->GetShaderIdentifier(wideIdName.data());
 
-            auto shaderTableBuffer = std::make_unique<benzin::Buffer>(*ms_Device, benzin::BufferCreation
-            {
-                .DebugName = std::format("{}ShaderTable", benzin::ToNarrowString(identiferName)),
-                .MemoryType = benzin::ResourceMemoryType::Upload,
-                .ElementSize = benzin::GfxConfig::s_RayTracingShaderRecordAlignment,
-                .ElementCount = 1,
-            });
-
-            const benzin::MemoryWriter shaderTableWriter{ shaderTableBuffer->GetCpuMappedData(), shaderTableBuffer->GetSize() };
-            shaderTableWriter.WriteBytes(shaderIdentifier);
-
-            return shaderTableBuffer;
+            return rawId;
         };
 
-        m_RayGenShaderTable = CreateShaderTable(g_RayGenShaderName);
-        m_MissShaderTable = CreateShaderTable(g_MissShaderName);
-        m_HitGroupShaderTable = CreateShaderTable(g_HitGroupName);
+        m_ShaderTable = std::make_unique<benzin::RayTracingShaderTable>();
+        m_ShaderTable->SetRayGenerationShader(getShaderIdentifier("RayGeneration"));
+        m_ShaderTable->SetMissShader(getShaderIdentifier("Miss"));
+        m_ShaderTable->SetHitGroupShaders(getShaderIdentifier(g_HitGroupName));
+
+        m_TableBuffer = std::make_unique<benzin::Buffer>(*ms_Device, benzin::BufferCreation
+        {
+            .DebugName = "RayTracedShadows_ShaderTable",
+            .MemoryType = benzin::ResourceMemoryType::Upload,
+            .ElementSize = (uint32_t)m_ShaderTable->GetRequiredTableSize(),
+            .ElementCount = 1,
+        });
+
+        m_ShaderTable->UploadToGpu(m_TableBuffer.get());
     }
 
 }

@@ -8,6 +8,7 @@
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/pipeline_state.hpp"
+#include "benzin/graphics/ray_tracing_shader_table.hpp"
 #include "benzin/graphics/rt_acceleration_structures.hpp"
 #include "benzin/graphics/texture.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
@@ -407,6 +408,45 @@ namespace benzin
         m_D3D12GraphicsCommandList->BuildRaytracingAccelerationStructure(&d3d12BuildAccelerationStructureDesc, 0, nullptr);
     }
 
+    void GraphicsCommandList::DispatchRays(const RayTracingShaderTable& shaderTable, const DirectX::XMUINT3 dimenions)
+    {
+        BenzinAssert(dimenions.x != 0 && dimenions.y != 0 && dimenions.z != 0);
+
+        const RayTracingShaderTable::GpuAddresses& gpuAddresses = shaderTable.GetGpuAddresses();
+
+        const D3D12_DISPATCH_RAYS_DESC d3d12DispatchRayDesc
+        {
+            .RayGenerationShaderRecord
+            {
+                .StartAddress = gpuAddresses.RayGenerationShader.GpuVirtualAddress,
+                .SizeInBytes = gpuAddresses.RayGenerationShader.Size,
+            },
+            .MissShaderTable
+            {
+                .StartAddress = gpuAddresses.MissTable.GpuVirtualAddress,
+                .SizeInBytes = gpuAddresses.MissTable.Size,
+                .StrideInBytes = 0, // TODO: For now supported only one record per table
+            },
+            .HitGroupTable
+            {
+                .StartAddress = gpuAddresses.HitGroupTable.GpuVirtualAddress,
+                .SizeInBytes = gpuAddresses.MissTable.Size,
+                .StrideInBytes = 0, // TODO: For now supported only one record per table
+            },
+            .CallableShaderTable
+            {
+                .StartAddress = 0,
+                .SizeInBytes = 0,
+                .StrideInBytes = 0,
+            },
+            .Width = dimenions.x,
+            .Height = dimenions.y,
+            .Depth = dimenions.z,
+        };
+
+        m_D3D12GraphicsCommandList->DispatchRays(&d3d12DispatchRayDesc);
+    }
+
     void GraphicsCommandList::SetUploadBuffer(Buffer& uploadBuffer)
     {
         m_UploadBuffer = &uploadBuffer;
@@ -420,7 +460,7 @@ namespace benzin
         Bytes64 alignedOffset = m_UploadBufferOffset;
         if (alignment != 0)
         {
-            alignedOffset = AlignAbove(m_UploadBufferOffset.GetByteCount(), alignment.GetByteCount());
+            alignedOffset = AlignUp(m_UploadBufferOffset.GetByteCount(), alignment.GetByteCount());
         }
 
         m_UploadBufferOffset = alignedOffset + size;

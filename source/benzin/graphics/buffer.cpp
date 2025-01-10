@@ -53,7 +53,7 @@ namespace benzin
         {
             // Align the 'BufferCreation::ElementSize', not the entire buffer size 'BufferFlag::ConstantBuffer'
             // This is done so that each element can be used as a separate constant buffer using ConstantBufferView
-            alignedElementSize = AlignAbove(alignedElementSize.GetByteCount(), GfxConfig::s_ConstantBufferAlignment.GetByteCount());
+            alignedElementSize = AlignUp(alignedElementSize.GetByteCount(), GfxConfig::s_ConstantBufferAlignment.GetByteCount());
         }
         else if (bufferCreation.Type == BufferType::Structured)
         {

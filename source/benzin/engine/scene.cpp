@@ -434,7 +434,7 @@ namespace benzin
         Bytes32 uploadBufferSize;
         for (const auto& texture : m_Textures)
         {
-            uploadBufferSize += Bytes32{ AlignAbove(texture->GetSize().GetByteCount(), GfxConfig::s_TextureAlignment.GetByteCount()) };
+            uploadBufferSize += Bytes32{ AlignUp(texture->GetSize().GetByteCount(), GfxConfig::s_TextureAlignment.GetByteCount()) };
         }
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);

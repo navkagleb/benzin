@@ -9,6 +9,7 @@ namespace benzin
     class Buffer;
     class Descriptor;
     class PipelineState;
+    class RayTracingShaderTable;
     class RtAccelerationStructure;
     class Texture;
 
@@ -67,7 +68,9 @@ namespace benzin
         void ClearUnorderedAccess(const Texture& unorderedAccess, const DirectX::XMFLOAT4& color);
         void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize);
 
+        // RayTracing
         void BuildRayTracingAccelerationStructure(const RtAccelerationStructure& accelerationStructure);
+        void DispatchRays(const RayTracingShaderTable& shaderTable, const DirectX::XMUINT3 dimenions);
 
     private:
         void SetUploadBuffer(Buffer& uploadBuffer);

@@ -157,7 +157,7 @@ float TraceSunShadowRay(float depth)
 }
 
 [shader("raygeneration")]
-void RayGeneneration()
+void RayGeneration()
 {
     const uint2 pixelPosition = DispatchRaysIndex().xy;
 
