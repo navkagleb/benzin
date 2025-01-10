@@ -86,9 +86,20 @@ namespace benzin
 
     void Device::DeferredRelease(const PipelineState& pso)
     {
-        BenzinAssert(pso.GetD3D12PipelineState() != nullptr);
+        if (pso.IsRayTracing())
+        {
+            auto* d3d12StateObject = pso.GetD3D12StateObject();
 
-        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, pso.GetD3D12PipelineState());
+            BenzinAssert(d3d12StateObject != nullptr);
+            m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12StateObject);
+
+            return;
+        }
+
+        auto* d3d12PipelineState = pso.GetD3D12PipelineState();
+
+        BenzinAssert(d3d12PipelineState != nullptr);
+        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12PipelineState);
     }
 
     void Device::DeferredRelease(const Resource& resource)

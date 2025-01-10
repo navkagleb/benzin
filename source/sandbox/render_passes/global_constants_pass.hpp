@@ -22,6 +22,7 @@ namespace sandbox
     {
     public:
         GlobalConstantsPass(benzin::Device& device, benzin::Scene& scene);
+        ~GlobalConstantsPass() override;
 
         bool IsDependentOnViewport() const override { return false; }
 

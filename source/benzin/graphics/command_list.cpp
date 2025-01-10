@@ -248,8 +248,15 @@ namespace benzin
 
     void GraphicsCommandList::SetPipelineState(const PipelineState& pso)
     {
-        BenzinAssert(pso.GetD3D12PipelineState());
+        if (pso.IsRayTracing())
+        {
+            BenzinAssert(pso.GetD3D12StateObject());
+            m_D3D12GraphicsCommandList->SetPipelineState1(pso.GetD3D12StateObject());
 
+            return;
+        }
+
+        BenzinAssert(pso.GetD3D12PipelineState());
         m_D3D12GraphicsCommandList->SetPipelineState(pso.GetD3D12PipelineState());
     }
 

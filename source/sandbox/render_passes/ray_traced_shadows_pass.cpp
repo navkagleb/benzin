@@ -1,5 +1,5 @@
 #include "sandbox/bootstrap.hpp"
-#include "sandbox/render_passes/ray_tracing_shadows_pass.hpp"
+#include "sandbox/render_passes/ray_traced_shadows_pass.hpp"
 
 #include <benzin/core/asserter.hpp>
 #include <benzin/engine/scene.hpp>
@@ -9,11 +9,9 @@
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/pipeline_state.hpp>
+#include <benzin/graphics/pipeline_state_manager.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
-
-#include <shaders/joint/root_constants.hpp>
-#include <shaders/joint/structured_buffer_types.hpp>
 
 #include "sandbox/sandbox_render_settings.hpp"
 #include "sandbox/resources.hpp"
@@ -22,29 +20,78 @@
 namespace sandbox
 {
 
-    static constexpr auto g_RayGenShaderName = L"RayGen"sv;
+    static constexpr auto g_RayGenShaderName = L"RayGeneneration"sv;
     static constexpr auto g_MissShaderName = L"Miss"sv;
 
     static constexpr auto g_HitGroupName = L"HitGroup"sv;
     static constexpr auto g_ClosestHitShaderName = L"ClosestHitShader"sv;
 
+    static void BuildOrthonormalBasis(DirectX::XMFLOAT3 normal3, DirectX::XMFLOAT3& outTangent3, DirectX::XMFLOAT3& outBitangent3)
+    {
+        const DirectX::XMVECTOR up = abs(normal3.y) < 0.9999f ? DirectX::XMVECTOR{ 0.0f, 1.0f, 0.0f } : DirectX::XMVECTOR{ 1.0f, 0.0f, 0.0f };
+        const DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&normal3);
+
+        const DirectX::XMVECTOR tangent = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(up, normal));
+        const DirectX::XMVECTOR bitangent = DirectX::XMVector3Cross(normal, tangent);
+
+        DirectX::XMStoreFloat3(&outTangent3, tangent);
+        DirectX::XMStoreFloat3(&outBitangent3, bitangent);
+    }
+
     //
 
-    RayTracingShadowsPass::RayTracingShadowsPass(const benzin::Scene& scene)
+    RayTracedShadowsPass::RayTracedShadowsPass(const benzin::Scene& scene)
         : m_Scene{ scene }
     {
-        CreatePipelineStateObject();
+        m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::RayTracingPipelineStateCreation
+        {
+            .DebugName = "RayTracedShadowsPass",
+            .ShaderLibrary
+            {
+                .FileName = "ray_traced_shadows_pass.hlsl",
+            },
+            .HitGroup
+            {
+                .Name = "HitGroup", // TODO: g_HitGroupName to narrow string
+                .ClosestHitEntryPoint = "ClosestHit",
+            },
+            .ShaderConfig
+            {
+                .PayloadSize = sizeof(joint::ShadowRayPayload),
+                .AttributeSize = sizeof(DirectX::XMFLOAT2), // Barycentrics
+            },
+        });
+
         CreateShaderTable();
 
-        benzin::MakeUniquePtr(m_PassConstantBuffer, *ms_Device, "RayTracingShadowsConstants");
+        benzin::MakeUniquePtr(m_PassConstBuffer, *ms_Device, "RayTracedShadowsConsts");
     }
 
-    RayTracingShadowsPass::~RayTracingShadowsPass()
+    RayTracedShadowsPass::~RayTracedShadowsPass()
     {
         ms_Resources->DestroyTexture(+Texture::NoisyPenumbra);
+        m_BlueNoise.reset();
     }
 
-    void RayTracingShadowsPass::OnRenderViewportResize()
+    void RayTracedShadowsPass::OnZeroFrameInit()
+    {
+        benzin::TextureImage blueNoiseImage;
+        benzin::LoadTextureImageFromDdsFile("blue_noise_64.dds", blueNoiseImage);
+
+        m_BlueNoise = std::make_unique<benzin::Texture>(*ms_Device, benzin::TextureCreation
+        {
+            .DebugName = "BlueNoise64",
+            .Format = blueNoiseImage.Format,
+            .Width = blueNoiseImage.Width,
+            .Height = blueNoiseImage.Height,
+            .MipCount = 1,
+        });
+
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList(m_BlueNoise->GetSize());
+        commandList.UploadToTextureTopMip(*m_BlueNoise, std::as_bytes(std::span{ blueNoiseImage.ImageData }));
+    }
+
+    void RayTracedShadowsPass::OnRenderViewportResize()
     {
         ms_Resources->CreateTexture(+Texture::NoisyPenumbra, benzin::TextureCreation
         {
@@ -57,21 +104,31 @@ namespace sandbox
         });
     }
 
-    void RayTracingShadowsPass::OnUpdate()
+    void RayTracedShadowsPass::OnUpdate()
     {
+        const auto& shadowSettings = ms_Settings->GetSection<RayTracingShadowsSettings>();
         const auto& lightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
 
         const float sunAngularRadiusInRadians = 0.5f * lightingSettings.SunAngularDiameterInRadians;
+        const DirectX::XMFLOAT3 toSunDirection = GetSunDirection(lightingSettings);
 
-        m_PassConstantBuffer->UpdateConstants(joint::RayTracingShadowsConstants
+        DirectX::XMFLOAT3 toSunTangent;
+        DirectX::XMFLOAT3 toSunBitangent;
+        BuildOrthonormalBasis(toSunDirection, toSunTangent, toSunBitangent);
+
+        m_PassConstBuffer->UpdateConstants(joint::RayTracedShadowsConsts
         {
-            .SunDirection = GetSunDirection(lightingSettings),
+            .ToSunDirection = toSunDirection,
             .TanSunAngularRadius = std::tan(sunAngularRadiusInRadians),
+            .ToSunTangent = toSunTangent,
             .SunAngularRadiusInRadians = sunAngularRadiusInRadians,
+            .ToSunBitangent = toSunBitangent,
+            .IsBlueNoiseUsed = shadowSettings.IsBlueNoiseUsed,
+            .IsNoiseAnimated = shadowSettings.IsNoiseAnimated,
         });
     }
 
-    void RayTracingShadowsPass::OnRender() const
+    void RayTracedShadowsPass::OnRender() const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         auto* d3d12CommandList = commandList.GetD3D12GraphicsCommandList();
@@ -79,12 +136,18 @@ namespace sandbox
 
         const auto& noisyPenumbra = ms_Resources->GetTexture(+Texture::NoisyPenumbra);
 
-        d3d12CommandList->SetPipelineState1(m_D3D12RaytracingStateObject.Get());
+        commandList.SetPipelineState(*m_Pso);
+        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstBuffer->GetActiveGpuVirtualAddress());
 
-        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstantBuffer->GetActiveGpuVirtualAddress());
-        commandList.SetRootResource(joint::RayTracingShadowsRc_WorldNormalTex, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
-        commandList.SetRootResource(joint::RayTracingShadowsRc_DepthTex, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv());
-        commandList.SetRootResource(joint::RayTracingShadowsRc_OutNoisyPenumbraTex, noisyPenumbra.GetUav());
+        {
+            using enum joint::Rc_RayTracedShadows;
+
+            commandList.SetRootResource(+WorldNormal, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
+            commandList.SetRootResource(+Depth, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv());
+            commandList.SetRootResource(+BlueNoise, m_BlueNoise->GetSrv());
+
+            commandList.SetRootResource(+OutNoisyPenumbra, noisyPenumbra.GetUav());
+        }
 
         BenzinMakeScopedResourceBarriers(
             commandList,
@@ -124,78 +187,12 @@ namespace sandbox
         d3d12CommandList->DispatchRays(&d3d12DispatchRayDesc);
     }
 
-    void RayTracingShadowsPass::CreatePipelineStateObject()
+    void RayTracedShadowsPass::CreateShaderTable()
     {
-        // 1. D3D12_GLOBAL_ROOT_SIGNATURE
-        const D3D12_GLOBAL_ROOT_SIGNATURE d3d12GlobalRootSignature
-        {
-            .pGlobalRootSignature = ms_Device->GetUnifiedRootSignature().GetD3D12RootSignature(),
-        };
-
-        // 2. D3D12_DXIL_LIBRARY_DESC
-        const benzin::ShaderInfo shaderLibrary{ benzin::ShaderType::Library, "ray_tracing_shadows_pass.hlsl", {}, {} };
-        const std::span libraryDxil = ms_Device->GetBackend().GetShaderManager().GetShaderDxil(shaderLibrary);
-
-        const D3D12_DXIL_LIBRARY_DESC d3d12DXILLibraryDesc
-        {
-            .DXILLibrary
-            {
-                .pShaderBytecode = libraryDxil.data(),
-                .BytecodeLength = libraryDxil.size(),
-            },
-            .NumExports = 0,
-            .pExports = nullptr,
-        };
-
-        // 3. D3D12_HIT_GROUP_DESC
-        const D3D12_HIT_GROUP_DESC d3d12HitGroupDesc
-        {
-            .HitGroupExport = g_HitGroupName.data(),
-            .Type = D3D12_HIT_GROUP_TYPE_TRIANGLES,
-            .AnyHitShaderImport = nullptr,
-            .ClosestHitShaderImport = g_ClosestHitShaderName.data(),
-            .IntersectionShaderImport = nullptr,
-        };
-
-        // 4. D3D12_RAYTRACING_SHADER_CONFIG
-        const D3D12_RAYTRACING_SHADER_CONFIG d3d12RaytracingShaderConfig
-        {
-            .MaxPayloadSizeInBytes = std::max<uint32_t>(4, sizeof(joint::ShadowRayPayload)), // #TODO: Min size is 4 bytes
-            .MaxAttributeSizeInBytes = sizeof(DirectX::XMFLOAT2), // Barycentrics
-        };
-
-        // 5. D3D12_RAYTRACING_PIPELINE_CONFIG
-        const D3D12_RAYTRACING_PIPELINE_CONFIG d3d12RaytracingPipelineConfig
-        {
-            .MaxTraceRecursionDepth = 1,
-        };
-
-        // Create ID3D12StateObject
-        const auto d3d12StateSubObjects = std::to_array(
-        {
-            D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE, &d3d12GlobalRootSignature },
-            D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, &d3d12DXILLibraryDesc },
-            D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, &d3d12HitGroupDesc },
-            D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG, &d3d12RaytracingShaderConfig },
-            D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG, &d3d12RaytracingPipelineConfig },
-        });
-
-        const D3D12_STATE_OBJECT_DESC d3d12StateObjectDesc
-        {
-            .Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE,
-            .NumSubobjects = (uint32_t)d3d12StateSubObjects.size(),
-            .pSubobjects = d3d12StateSubObjects.data(),
-        };
-
-        BenzinEnsure(ms_Device->GetD3D12Device()->CreateStateObject(&d3d12StateObjectDesc, IID_PPV_ARGS(&m_D3D12RaytracingStateObject)));
-    }
-
-    void RayTracingShadowsPass::CreateShaderTable()
-    {
-        BenzinEnsure(m_D3D12RaytracingStateObject.Get());
+        BenzinEnsure(m_Pso->GetD3D12StateObject() != nullptr);
 
         ComPtr<ID3D12StateObjectProperties> d3d12StateObjectProperties;
-        BenzinEnsure(m_D3D12RaytracingStateObject.As(&d3d12StateObjectProperties));
+        BenzinEnsure(m_Pso->GetD3D12StateObject()->QueryInterface(IID_PPV_ARGS(&d3d12StateObjectProperties)));
 
         const auto CreateShaderTable = [&](std::wstring_view identiferName)
         {

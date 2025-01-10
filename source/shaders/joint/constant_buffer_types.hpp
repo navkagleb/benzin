@@ -45,13 +45,6 @@ namespace joint
         CameraConstants PrevCamera;
     };
 
-    struct RayTracingShadowsConstants
-    {
-        float3 SunDirection;
-        float TanSunAngularRadius;
-        float SunAngularRadiusInRadians;
-    };
-
     struct DeferredLightingPassConstants
     {
         float3 SunColor;

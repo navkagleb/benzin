@@ -20,7 +20,15 @@ namespace benzin
 
         auto GetHash() const { return m_Hash; }
 
-        bool IsValid() const { return !m_FileName.empty() && !m_EntryPoint.empty(); }
+        bool IsValid() const
+        {
+            if (m_Type == ShaderType::Library)
+            {
+                return !m_FileName.empty();
+            }
+
+            return !m_FileName.empty() && !m_EntryPoint.empty();
+        }
 
     private:
         ShaderType m_Type = g_InvalidEnum<ShaderType>;
@@ -63,7 +71,34 @@ namespace benzin
         std::vector<std::string_view> CsDefines;
     };
 
-    using PipelineStateCreationVariant = std::variant<GraphicsPipelineStateCreation, ComputePipelineStateCreation>;
+    struct RayTracingPipelineStateCreation
+    {
+        std::string_view DebugName;
+
+        struct
+        {
+            std::string_view FileName;
+            std::vector<std::string_view> Defines;
+        } ShaderLibrary;
+
+        struct
+        {
+            std::string_view Name;
+            std::string_view ClosestHitEntryPoint;
+        } HitGroup;
+
+        struct
+        {
+            Bytes32 PayloadSize;
+            Bytes32 AttributeSize;
+        } ShaderConfig;
+    };
+
+    using PipelineStateCreationVariant = std::variant<
+        GraphicsPipelineStateCreation,
+        ComputePipelineStateCreation,
+        RayTracingPipelineStateCreation
+    >;
 
     class PipelineState
     {
@@ -75,7 +110,10 @@ namespace benzin
         BenzinDefineNonMoveable(PipelineState);
 
     public:
-        ID3D12PipelineState* GetD3D12PipelineState() const { return m_D3D12PipelineState; }
+        ID3D12PipelineState* GetD3D12PipelineState() const;
+        ID3D12StateObject* GetD3D12StateObject() const;
+
+        bool IsRayTracing() const;
 
         std::span<const ShaderInfo> GetShaders() const { return { m_Shaders.data(), m_ShaderCount }; }
 
@@ -84,16 +122,24 @@ namespace benzin
     private:
         void StoreShaders(const GraphicsPipelineStateCreation& creation);
         void StoreShaders(const ComputePipelineStateCreation& creation);
+        void StoreShaders(const RayTracingPipelineStateCreation& creation);
 
         void Compile(const GraphicsPipelineStateCreation& creation, bool isShaderCacheIgnored);
         void Compile(const ComputePipelineStateCreation& creation, bool isShaderCacheIgnored);
+        void Compile(const RayTracingPipelineStateCreation& creation, bool isShaderCacheIgnored);
 
         bool IsAllShadersValid() const;
+
+        void Reset();
 
     private:
         Device& m_Device;
 
-        ID3D12PipelineState* m_D3D12PipelineState = nullptr;
+        union
+        {
+            ID3D12PipelineState* m_D3D12PipelineState = nullptr;
+            ID3D12StateObject* m_D3D12StateObject;
+        };
 
         PipelineStateCreationVariant m_CreationVariant;
 

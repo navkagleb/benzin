@@ -2,7 +2,7 @@
 
 #include <benzin/engine/render_pass.hpp>
 
-#include <shaders/joint/constant_buffer_types.hpp>
+#include <shaders/joint/ray_traced_shadows_resources.hpp>
 
 namespace benzin
 {
@@ -10,43 +10,45 @@ namespace benzin
     template <typename>
     class ConstantBuffer;
 
+    class Buffer;
     class PipelineState;
     class Scene;
-    class Buffer;
+    class Texture;
 
 }
 
 namespace sandbox
 {
 
-    class RayTracingShadowsPass : public benzin::RenderPass
+    class RayTracedShadowsPass : public benzin::RenderPass
     {
     public:
-        explicit RayTracingShadowsPass(const benzin::Scene& scene);
-        ~RayTracingShadowsPass() override;
+        explicit RayTracedShadowsPass(const benzin::Scene& scene);
+        ~RayTracedShadowsPass() override;
 
         bool IsDependentOnViewport() const override { return true; }
 
+        void OnZeroFrameInit() override;
         void OnRenderViewportResize() override;
 
         void OnUpdate() override;
         void OnRender() const override;
 
     private:
-        void CreatePipelineStateObject();
         void CreateShaderTable();
 
     private:
         const benzin::Scene& m_Scene;
 
-        ComPtr<ID3D12StateObject> m_D3D12RaytracingStateObject;
-
+        benzin::PipelineState* m_Pso = nullptr;
         std::unique_ptr<benzin::Buffer> m_RayGenShaderTable;
         std::unique_ptr<benzin::Buffer> m_MissShaderTable;
         std::unique_ptr<benzin::Buffer> m_HitGroupShaderTable;
 
-        using PassConstantBuffer = benzin::ConstantBuffer<joint::RayTracingShadowsConstants>;
-        std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
+        using PassConstantBuffer = benzin::ConstantBuffer<joint::RayTracedShadowsConsts>;
+        std::unique_ptr<PassConstantBuffer> m_PassConstBuffer;
+
+        std::unique_ptr<benzin::Texture> m_BlueNoise;
     };
 
 }

@@ -23,6 +23,8 @@ namespace sandbox
         benzin::MakeUniquePtr(m_FrameConstantBuffer, *ms_Device, "FrameConstantBuffer");
     }
 
+    GlobalConstantsPass::~GlobalConstantsPass() = default;
+
     void GlobalConstantsPass::OnUpdate()
     {
         UpdateCameraConstants();

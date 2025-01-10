@@ -47,7 +47,7 @@ namespace joint
     };
     BenzinEnableUnaryPlusForEnum(Rc_SigmaCopyHistory);
 
-    enum Rc_SigmaBlur : uint32_t
+    enum class Rc_SigmaBlur : uint32_t
     {
         WorldNormal,
         ViewDepth,

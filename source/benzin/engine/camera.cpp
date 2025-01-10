@@ -175,7 +175,7 @@ namespace benzin
         worldToViewMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
 
         const DirectX::XMMATRIX worldToClipMatrix = worldToViewMatrix * GetViewToClipMatrix();
-        return DirectX::XMMatrixInverse(nullptr, worldToViewMatrix);
+        return DirectX::XMMatrixInverse(nullptr, worldToClipMatrix);
     }
 
     void Camera::UpdateRightDirection()

@@ -63,9 +63,4 @@ namespace joint
         float GeometryRadius;
     };
 
-    struct ShadowRayPayload
-    {
-        float THit;
-    };
-
-} // namespace joint
+}

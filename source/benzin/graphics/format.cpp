@@ -13,7 +13,8 @@ namespace benzin
             using enum GraphicsFormat;
 
             case Rgba32Float: return 4 * (32 / 8);
-            case Rgba16Float: return 4 * (16 / 8);
+            case Rgba16Float:
+            case Rgba16Unorm: return 4 * (16 / 8);
             case Rgba8Unorm: return 4 * (8 / 8);
 
             case Rgb32Float: return 3 * (32 / 8);
@@ -33,9 +34,13 @@ namespace benzin
             case R32Float:
             case R32Uint:
             case R32Typeless: return 1 * (32 / 8);
-        }
 
-        std::unreachable();
+            default:
+            {
+                BenzinAssert(false, "Not supported GraphicsFormat value");
+                return 0;
+            }
+        }
     }
 
-} // namespace benzin
+}

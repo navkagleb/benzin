@@ -11,7 +11,7 @@ namespace sandbox
         TlasBuilding,
         GlobalConstants,
         Geometry,
-        RayTracingShadows,
+        RayTracedShadows,
         SigmaDenoiser,
         DeferredLighting,
         Environment,

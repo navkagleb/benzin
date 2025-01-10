@@ -37,7 +37,7 @@ namespace benzin
     {
     public:
         ShaderManager();
-        ~ShaderManager();   
+        ~ShaderManager();
 
         bool IsAllShadersGood() const { return m_IsAllShaderGood; }
 

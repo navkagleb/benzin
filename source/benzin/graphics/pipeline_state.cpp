@@ -173,8 +173,24 @@ namespace benzin
 
     PipelineState::~PipelineState()
     {
-        m_Device.DeferredRelease(*this);
-        m_D3D12PipelineState = nullptr;
+        Reset();
+    }
+
+    ID3D12PipelineState* PipelineState::GetD3D12PipelineState() const
+    {
+        BenzinAssert(!IsRayTracing());
+        return m_D3D12PipelineState;
+    }
+
+    ID3D12StateObject* PipelineState::GetD3D12StateObject() const
+    {
+        BenzinAssert(IsRayTracing());
+        return m_D3D12StateObject;
+    }
+
+    bool PipelineState::IsRayTracing() const
+    {
+        return std::holds_alternative<RayTracingPipelineStateCreation>(m_CreationVariant);
     }
 
     bool PipelineState::Reload()
@@ -184,9 +200,7 @@ namespace benzin
             return false;
         }
 
-        m_Device.DeferredRelease(*this);
-        m_D3D12PipelineState = nullptr;
-
+        Reset();
         m_CreationVariant | MakeVisitorMatch([this](const auto& creation) { Compile(creation, true); });
 
         BenzinTrace("Pso '{}' reloaded", GetDxObjectDebugName(m_D3D12PipelineState));
@@ -199,8 +213,10 @@ namespace benzin
         BenzinAssert(m_ShaderCount == 0);
 
         auto& nonConstCreation = const_cast<GraphicsPipelineStateCreation&>(creation);
-        m_Shaders[m_ShaderCount++] = ShaderInfo{ ShaderType::Vertex, creation.VsFileName, creation.VsEntryPoint, std::move(nonConstCreation.VsDefines) };
-        m_Shaders[m_ShaderCount++] = ShaderInfo{ ShaderType::Pixel, creation.PsFileName, creation.PsEntryPoint, std::move(nonConstCreation.PsDefines) };
+        m_Shaders[0] = ShaderInfo{ ShaderType::Vertex, creation.VsFileName, creation.VsEntryPoint, std::move(nonConstCreation.VsDefines) };
+        m_Shaders[1] = ShaderInfo{ ShaderType::Pixel, creation.PsFileName, creation.PsEntryPoint, std::move(nonConstCreation.PsDefines) };
+
+        m_ShaderCount = 2;
     }
 
     void PipelineState::StoreShaders(const ComputePipelineStateCreation& creation)
@@ -208,7 +224,19 @@ namespace benzin
         BenzinAssert(m_ShaderCount == 0);
 
         auto& nonConstCreation = const_cast<ComputePipelineStateCreation&>(creation);
-        m_Shaders[m_ShaderCount++] = ShaderInfo{ ShaderType::Compute, creation.CsFileName, creation.CsEntryPoint, std::move(nonConstCreation.CsDefines) };
+        m_Shaders[0] = ShaderInfo{ ShaderType::Compute, creation.CsFileName, creation.CsEntryPoint, std::move(nonConstCreation.CsDefines) };
+
+        m_ShaderCount = 1;
+    }
+
+    void PipelineState::StoreShaders(const RayTracingPipelineStateCreation& creation)
+    {
+        BenzinAssert(m_ShaderCount == 0);
+
+        auto& nonConstCreation = const_cast<RayTracingPipelineStateCreation&>(creation);
+        m_Shaders[0] = ShaderInfo{ benzin::ShaderType::Library, creation.ShaderLibrary.FileName, {}, std::move(nonConstCreation.ShaderLibrary.Defines) };
+
+        m_ShaderCount = 1;
     }
 
     void PipelineState::Compile(const GraphicsPipelineStateCreation& creation, bool isShaderCacheIgnored)
@@ -284,6 +312,71 @@ namespace benzin
         SetDxObjectDebugName(m_D3D12PipelineState, creation.DebugName);
     }
 
+    void PipelineState::Compile(const RayTracingPipelineStateCreation& creation, bool isShaderCacheIgnored)
+    {
+        // D3D12_GLOBAL_ROOT_SIGNATURE
+        const D3D12_GLOBAL_ROOT_SIGNATURE d3d12GlobalRootSignature
+        {
+            .pGlobalRootSignature = m_Device.GetUnifiedRootSignature().GetD3D12RootSignature(),
+        };
+
+        // D3D12_DXIL_LIBRARY_DESC
+        const auto d3d12ShaderBytecode = ToD3D12Shader(m_Device, m_Shaders[0], isShaderCacheIgnored);
+
+        const D3D12_DXIL_LIBRARY_DESC d3d12DXILLibraryDesc
+        {
+            .DXILLibrary = d3d12ShaderBytecode,
+            .NumExports = 0,
+            .pExports = nullptr,
+        };
+
+        // D3D12_HIT_GROUP_DESC
+        const std::wstring hitGroupName = ToWideString(creation.HitGroup.Name);
+        const std::wstring closesHitEntryPoint = ToWideString(creation.HitGroup.ClosestHitEntryPoint);
+
+        const D3D12_HIT_GROUP_DESC d3d12HitGroupDesc
+        {
+            .HitGroupExport = hitGroupName.data(),
+            .Type = D3D12_HIT_GROUP_TYPE_TRIANGLES,
+            .AnyHitShaderImport = nullptr,
+            .ClosestHitShaderImport = closesHitEntryPoint.data(),
+            .IntersectionShaderImport = nullptr,
+        };
+
+        // D3D12_RAYTRACING_SHADER_CONFIG
+        const D3D12_RAYTRACING_SHADER_CONFIG d3d12RaytracingShaderConfig
+        {
+            .MaxPayloadSizeInBytes = std::max<uint32_t>(4u, creation.ShaderConfig.PayloadSize), // Min size is 4 bytes
+            .MaxAttributeSizeInBytes = creation.ShaderConfig.AttributeSize, // Barycentrics
+        };
+
+        // D3D12_RAYTRACING_PIPELINE_CONFIG
+        const D3D12_RAYTRACING_PIPELINE_CONFIG d3d12RaytracingPipelineConfig
+        {
+            .MaxTraceRecursionDepth = 1,
+        };
+
+        // Create ID3D12StateObject
+        const auto d3d12StateSubObjects = std::to_array(
+        {
+            D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE, &d3d12GlobalRootSignature },
+            D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, &d3d12DXILLibraryDesc },
+            D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, &d3d12HitGroupDesc },
+            D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG, &d3d12RaytracingShaderConfig },
+            D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG, &d3d12RaytracingPipelineConfig },
+        });
+
+        const D3D12_STATE_OBJECT_DESC d3d12StateObjectDesc
+        {
+            .Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE,
+            .NumSubobjects = (uint32_t)d3d12StateSubObjects.size(),
+            .pSubobjects = d3d12StateSubObjects.data(),
+        };
+
+        BenzinEnsure(m_Device.GetD3D12Device()->CreateStateObject(&d3d12StateObjectDesc, IID_PPV_ARGS(&m_D3D12StateObject)));
+        SetDxObjectDebugName(m_D3D12StateObject, creation.DebugName);
+    }
+
     bool PipelineState::IsAllShadersValid() const
     {
         auto& shaderManager = m_Device.GetBackend().GetShaderManager();
@@ -294,4 +387,10 @@ namespace benzin
         });
     }
 
-} // namespace benzin
+    void PipelineState::Reset()
+    {
+        m_Device.DeferredRelease(*this);
+        m_D3D12PipelineState = nullptr;
+    }
+
+}

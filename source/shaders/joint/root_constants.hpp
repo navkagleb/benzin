@@ -15,14 +15,6 @@ namespace joint
         GeometryPassRc_Count,
     };
 
-    enum RayTracingShadowsRc : uint32_t
-    {
-        RayTracingShadowsRc_WorldNormalTex,
-        RayTracingShadowsRc_DepthTex,
-
-        RayTracingShadowsRc_OutNoisyPenumbraTex,
-    };
-
     enum DeferredLightingPassRc : uint32_t
     {
         DeferredLightingPassRc_AlbedoAndRoughnessTex,
@@ -56,3 +48,4 @@ namespace joint
         EquirectangularToCubeRc_OutCubeTexture,
     };
 
+}
