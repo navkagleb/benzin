@@ -70,6 +70,8 @@ namespace benzin
     };
 
     bool LoadTextureImageFromHdrFile(std::string_view fileName, TextureImage& textureImage);
+    bool LoadTextureImageFromDdsFile(std::string_view fileName, TextureImage& textureImage);
+
     bool LoadMeshCollectionFromGltfFile(std::string_view fileName, MeshCollectionResource& outMeshCollection);
 
-} // namespace benzin
+}

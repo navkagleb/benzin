@@ -25,7 +25,6 @@ workspace "Benzin"
         systemversion "10.0.20348.0:latest"
         architecture "x64"
         characterset "MBCS"
-        linkoptions { "/ENTRY:mainCRTStartup" }
 
         defines {
             "BENZIN_PLATFORM_WIN64",
@@ -81,6 +80,9 @@ project "0_ThirdParty"
 
     files {
         third_party_source_dir .. "adl/**.h",
+        third_party_source_dir .. "DirectXTex/include/**.h",
+        third_party_source_dir .. "DirectXTex/include/**.inl",
+        third_party_source_dir .. "DirectXTex/**.cpp",
         third_party_source_dir .. "entt/**.cpp",
         third_party_source_dir .. "entt/**.h",
         third_party_source_dir .. "entt/**.hpp",
@@ -161,6 +163,8 @@ project "2_Shaders"
 project "3_Sandbox"
     local project_source_dir = source_dir .. "sandbox/"
 
+    linkoptions { "/ENTRY:mainCRTStartup" }
+
     kind "ConsoleApp"
     language(cpp_language)
     cppdialect(cpp_version)
@@ -199,4 +203,5 @@ project "3_Sandbox"
     libdirs {
         packages_dir .. "**/bin/x64/",
         third_party_source_dir .. "nvapi/amd64",
+        third_party_source_dir .. "DirectXTex/lib",
     }

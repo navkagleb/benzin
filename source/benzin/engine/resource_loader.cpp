@@ -4,6 +4,9 @@
 #include <third_party/tinygltf/stb_image.h>
 #include <third_party/tinygltf/tiny_gltf.h>
 
+#include <third_party/DirectXTex/include/DirectXTex.h>
+#pragma comment(lib, "DirectXTex.lib")
+
 #include <shaders/joint/structured_buffer_types.hpp>
 
 #include "benzin/core/asserter.hpp"
@@ -495,6 +498,37 @@ namespace benzin
         return true;
     }
 
+    bool LoadTextureImageFromDdsFile(std::string_view fileName, TextureImage& textureImage)
+    {
+        BenzinUnused(textureImage);
+
+        const std::filesystem::path filePath = EngineConfig::s_TextureDir / fileName;
+        BenzinAssert(std::filesystem::exists(filePath));
+        BenzinAssert(filePath.extension() == ".dds");
+
+        DirectX::ScratchImage image;
+        if (FAILED(DirectX::LoadFromDDSFile(filePath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image)))
+        {
+            return false;
+        }
+
+        const auto& metadata = image.GetMetadata();
+        BenzinAssert(image.GetImageCount() == 1);
+        BenzinAssert(metadata.mipLevels == 1); // TODO: Add mip levels support
+        BenzinAssert(magic_enum::enum_contains<GraphicsFormat>(metadata.format));
+
+        textureImage.DebugName = fileName;
+        textureImage.Format = (GraphicsFormat)metadata.format;
+        textureImage.Width = (uint32_t)metadata.width;
+        textureImage.Height = (uint32_t)metadata.height;
+
+        const Bytes dataSize = image.GetPixelsSize();
+        textureImage.ImageData.resize(dataSize);
+        memcpy(textureImage.ImageData.data(), image.GetPixels(), dataSize);
+
+        return true;
+    }
+
     bool LoadMeshCollectionFromGltfFile(std::string_view fileName, MeshCollectionResource& outMeshCollection)
     {
         static thread_local GltfReader gltfReader;
@@ -502,4 +536,4 @@ namespace benzin
         return gltfReader.ReadFromFile(fileName, outMeshCollection);
     }
 
-} // namespace benzin
+}
