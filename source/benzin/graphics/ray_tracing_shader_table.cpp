@@ -51,6 +51,8 @@ namespace benzin
 
     void RayTracingShaderTable::UploadToGpu(Buffer* shaderTable)
     {
+        // TODO: Replace 'shaderTable' with buffer in default heap
+
         BenzinAssert(shaderTable->GetMemoryType() == ResourceMemoryType::Upload);
         BenzinAssert(m_ShaderTable == nullptr);
         m_ShaderTable = shaderTable;

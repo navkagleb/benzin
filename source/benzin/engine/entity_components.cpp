@@ -56,8 +56,6 @@ namespace benzin
         const DirectX::XMMATRIX currentWorldMatrix = scaling * rotation * translation;
 
         m_LocalToWorldMatrix = currentWorldMatrix;
-        m_LocalToWorldMatrixForNormals = GetMatrixForNormals(m_LocalToWorldMatrix);
-
         m_IsDirty = false;
     }
 
@@ -75,8 +73,7 @@ namespace benzin
         {
             .WorldMatrix = m_LocalToWorldMatrix,
             .PreviousWorldMatrix = m_PrevLocalToWorldMatrix,
-            .WorldMatrixForNormals = m_LocalToWorldMatrixForNormals,
         });
     }
 
-} // namespace benzin
+}

@@ -3,6 +3,13 @@
 #include "sandbox/runner.hpp"
 #include "sandbox/tools/timings_tool.hpp"
 
+namespace benzin
+{
+
+    struct MeshCollectionResource;
+
+}
+
 namespace sandbox
 {
 
@@ -21,36 +28,24 @@ namespace sandbox
     };
     BenzinEnableUnaryPlusForEnum(RenderPasses);
 
-    enum SceneMesh
-    {
-        Sponza,
-        BoomBox,
-        DamagedHelmet,
-        OrientationTest,
-        Cylinder,
-        Sphere,
-    };
-    BenzinEnableUnaryPlusForEnum(SceneMesh);
-
     class SandboxRunner : public Runner
     {
     public:
         SandboxRunner();
 
     private:
-        using SceneMeshes = benzin::EnumArray<uint32_t, SceneMesh>;
-        using TimingsTool = TimingsTool<RenderPasses, RenderPasses>;
-
         void InitRenderPasses();
         void InitTools();
 
         void InitSceneEntities();
         void InitCamera();
 
-        void LoadAndCreateMeshes(SceneMeshes& outSceneMeshes);
-        void CreateEntities(const SceneMeshes& sceneMeshes);
+        void LoadMeshes(std::span<benzin::MeshCollectionResource> outMeshResources);
+        void AddMeshesToScene(std::span<benzin::MeshCollectionResource> meshResources, std::span<entt::entity> outMeshHandles);
+        void CreateEntities(std::span<const entt::entity> meshHandles);
 
     private:
+        using TimingsTool = TimingsTool<RenderPasses, RenderPasses>;
         TimingsTool* m_TimingsTool = nullptr;
 
         Timings<RenderPasses> m_CpuTimings{};

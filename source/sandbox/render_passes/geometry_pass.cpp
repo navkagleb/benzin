@@ -153,21 +153,19 @@ namespace sandbox
         auto& stats = ms_Settings->GetSection<GBufferStats>();
         stats.MeshCount = 0;
         stats.RenderedMeshCount = 0;
+        stats.RenderedTriangleCount = 0;
 
         const auto& worldToViewMatrix = m_Scene.GetCamera().GetWorldToViewMatrix();
         const auto& cameraFrustum = m_Scene.GetCamera().GetProjection().GetBoundingFrustum();
 
-        const auto view = m_Scene.GetEntityRegistry().view<benzin::TransformComponent, benzin::MeshInstanceComponent>();
-        for (const auto entityHandle : view)
+        const auto view = m_Scene.GetEntityRegistry().view<benzin::TransformComponent, benzin::MeshComponent>();
+        for (const auto& [_, tc, mc] : view.each())
         {
-            const auto& tc = view.get<benzin::TransformComponent>(entityHandle);
-            const auto& mic = view.get<benzin::MeshInstanceComponent>(entityHandle);
-
-            const std::string_view meshCollectionDebugName = m_Scene.GetMeshCollectionDebugName(mic.MeshUnionIndex);
+            const std::string_view meshCollectionDebugName = m_Scene.GetMeshCollectionDebugName(mc.MeshHandle);
             BenzinPushGpuEvent(commandList, meshCollectionDebugName);
 
-            const auto& meshCollection = m_Scene.GetMeshCollection(mic.MeshUnionIndex);
-            const auto& meshCollectionGpuStorage = m_Scene.GetMeshCollectionGpuStorage(mic.MeshUnionIndex);
+            const auto& meshCollection = m_Scene.GetMeshCollection(mc.MeshHandle);
+            const auto& meshCollectionGpuStorage = m_Scene.GetMeshCollectionGpuStorage(mc.MeshHandle);
 
             commandList.SetRootResource(joint::GeometryPassRc_MeshVertexBuffer, meshCollectionGpuStorage.VertexBuffer->GetSrv());
             commandList.SetRootResource(joint::GeometryPassRc_MeshIndexBuffer, meshCollectionGpuStorage.IndexBuffer->GetSrv());
@@ -176,7 +174,7 @@ namespace sandbox
             commandList.SetRootResource(joint::GeometryPassRc_MaterialBuffer, meshCollectionGpuStorage.MaterialBuffer->GetSrv());
             commandList.SetRootResource(joint::GeometryPassRc_MeshTransformConstantBuffer, tc.GetActiveTransformCbv());
 
-            const auto meshInstanceRange = mic.MeshInstanceRange.value_or(meshCollection.GetFullMeshInstanceRange());
+            const auto meshInstanceRange = mc.MeshInstanceRange.value_or(meshCollection.GetFullMeshInstanceRange());
             for (const auto i : benzin::IndexRangeToView(meshInstanceRange))
             {
                 ++stats.MeshCount;
@@ -201,6 +199,7 @@ namespace sandbox
                 commandList.DrawVertexed((uint32_t)mesh.Indices.size());
 
                 ++stats.RenderedMeshCount;
+                stats.RenderedTriangleCount += (uint32_t)(mesh.Indices.size() / 3);
             }
         }
     }

@@ -17,9 +17,9 @@ namespace benzin
     template <typename>
     class ConstantBuffer;
 
-    struct MeshInstanceComponent
+    struct MeshComponent
     {
-        uint32_t MeshUnionIndex = g_InvalidUnsigned<uint32_t>;
+        entt::entity MeshHandle = g_InvalidEnum<entt::entity>;
         std::optional<IndexRange32> MeshInstanceRange;
     };
 
@@ -56,7 +56,6 @@ namespace benzin
         bool m_IsDirty = true;
         DirectX::XMMATRIX m_LocalToWorldMatrix = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX m_PrevLocalToWorldMatrix = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_LocalToWorldMatrixForNormals = DirectX::XMMatrixIdentity();
 
         std::unique_ptr<ConstantBuffer<joint::MeshTransform>> m_TransformConstantBuffer;
     };
@@ -76,4 +75,4 @@ namespace benzin
         float GeometryRadius;
     };
 
-} // namespace benzin
+}

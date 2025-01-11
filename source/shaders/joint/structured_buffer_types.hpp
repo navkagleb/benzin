@@ -21,7 +21,6 @@ namespace joint
     struct MeshInstance
     {
         float4x4 Transform;
-        float4x4 TransformForNormals;
         uint MeshIndex;
         uint MaterialIndex;
         uint2 Padding_0;
@@ -31,7 +30,6 @@ namespace joint
     {
         float4x4 WorldMatrix;
         float4x4 PreviousWorldMatrix;
-        float4x4 WorldMatrixForNormals;
     };
 
     struct Material

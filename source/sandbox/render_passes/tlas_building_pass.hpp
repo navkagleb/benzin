@@ -4,7 +4,7 @@ namespace benzin
 {
 
     class Device;
-    class Scene;
+    class RayTracingScene;
 
 }
 
@@ -14,7 +14,7 @@ namespace sandbox
     class TlasBuildingPass : public benzin::RenderPass
     {
     public:
-        TlasBuildingPass(benzin::Device& device, benzin::Scene& scene);
+        TlasBuildingPass(benzin::Device& device, benzin::RayTracingScene& rayTracingScene);
 
         bool IsDependentOnViewport() const override { return false; }
 
@@ -22,7 +22,7 @@ namespace sandbox
 
     private:
         benzin::Device& m_Device;
-        benzin::Scene& m_Scene;
+        benzin::RayTracingScene& m_RayTracingScene;
     };
 
 }

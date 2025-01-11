@@ -44,6 +44,8 @@ namespace benzin
 
         uint32_t VertexCount = g_InvalidUnsigned<uint32_t>;
         uint32_t IndexCount = g_InvalidUnsigned<uint32_t>;
+
+        uint64_t TransformGpuAddress = 0;
     };
 
     struct RtProceduralGeometry

@@ -32,7 +32,7 @@ namespace sandbox
         const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
 
         m_FrameConstantBuffer->UpdateConstants(joint::FrameConstants
-            {
+        {
             .RenderResolution = { (float)renderResolution.x, (float)renderResolution.y },
             .InvRenderResolution{ 1.0f / (float)renderResolution.x, 1.0f / (float)renderResolution.y },
             .MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y),
@@ -64,11 +64,6 @@ namespace sandbox
         BenzinPushGpuEvent(commandList, "GlobalConstantsPass");
 
         commandList.SetCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, m_FrameConstantBuffer->GetActiveGpuVirtualAddress());
-
-        if (m_Scene.HasMeshes())
-        {
-            commandList.SetSrv(benzin::UnifiedRootParameter::TopLevelAs, m_Scene.GetActiveTopLevelAs().GetBuffer().GetGpuVirtualAddress());
-        }
     }
 
     void GlobalConstantsPass::UpdateCameraConstants()

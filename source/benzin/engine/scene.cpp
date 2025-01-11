@@ -11,7 +11,6 @@
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/rt_acceleration_structures.hpp"
 #include "benzin/graphics/texture.hpp"
 
 namespace benzin
@@ -87,8 +86,6 @@ namespace benzin
     {
         m_EntityRegistry.on_construct<TransformComponent>().connect<&Scene::OnTransformComponentConstuct>(this);
 
-        m_TopLevelAss.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
-
         MakeUniquePtr(m_PointLightBuffer, m_Device, BufferCreation
         {
             .DebugName = "PointLightBuffer",
@@ -101,10 +98,19 @@ namespace benzin
 
     Scene::~Scene() = default;
 
-    const TopLevelAccelerationStructure& Scene::GetActiveTopLevelAs() const
+    std::string_view Scene::GetMeshCollectionDebugName(entt::entity meshHandle) const
     {
-        BenzinAssert(HasMeshes());
-        return *m_TopLevelAss[m_Device.GetActiveFrameIndex()];
+        return m_MeshRegistry.get<std::string>(meshHandle);
+    }
+
+    const MeshCollection& Scene::GetMeshCollection(entt::entity meshHandle) const
+    {
+        return m_MeshRegistry.get<MeshCollection>(meshHandle);
+    }
+
+    const MeshCollectionGpuStorage& Scene::GetMeshCollectionGpuStorage(entt::entity meshHandle) const
+    {
+        return m_MeshRegistry.get<MeshCollectionGpuStorage>(meshHandle);
     }
 
     const Descriptor& Scene::GetPointLightBufferStructuredSrv() const
@@ -120,10 +126,8 @@ namespace benzin
     {
         {
             const auto view = m_EntityRegistry.view<UpdateComponent>();
-            for (const auto entityHandle : view)
+            for (const auto& [entityHandle, uc] : view.each())
             {
-                auto& uc = view.get<UpdateComponent>(entityHandle);
-
                 BenzinAssert((bool)uc.Callback);
                 uc.Callback(m_EntityRegistry, entityHandle);
             }
@@ -131,9 +135,8 @@ namespace benzin
 
         {
             const auto view = m_EntityRegistry.view<TransformComponent>();
-            for (const auto entityHandle : view)
+            for (const auto& [entityHandle, tc] : view.each())
             {
-                auto& tc = view.get<TransformComponent>(entityHandle);
                 tc.UpdateTransformConstantBuffer();
             }
         }
@@ -164,7 +167,7 @@ namespace benzin
         }
     }
 
-    uint32_t Scene::PushMeshCollection(MeshCollectionResource&& meshCollectionResource)
+    entt::entity Scene::PushMeshCollection(MeshCollectionResource&& meshCollectionResource)
     {
         BenzinAssert(!meshCollectionResource.DebugName.empty());
         BenzinAssert(!meshCollectionResource.Meshes.empty());
@@ -190,81 +193,32 @@ namespace benzin
             UpdateTextureIndexIfNeeded(material.EmissiveTextureIndex);
         }
 
-        MeshUnion& meshUnion = m_MeshUnions.emplace_back();
-        meshUnion.DebugName = std::move(meshCollectionResource.DebugName);
-        meshUnion.Collection.Meshes = std::move(meshCollectionResource.Meshes);
-        meshUnion.Collection.MeshInstances = std::move(meshCollectionResource.MeshInstances);
-        meshUnion.Collection.Materials = std::move(meshCollectionResource.Materials);
-        meshUnion.GpuStorage = CreateMeshCollectionGpuStorage(m_Device, meshUnion.DebugName, meshUnion.Collection);
+        const entt::entity meshHandle = m_MeshRegistry.create();
 
-        PushBottomLevelAs(meshUnion);
+        auto& meshDebugName = m_MeshRegistry.emplace<std::string>(meshHandle);
+        meshDebugName = std::move(meshCollectionResource.DebugName);
 
-        UpdateStats(meshUnion);
+        auto& meshCollection = m_MeshRegistry.emplace<MeshCollection>(meshHandle);
+        meshCollection.Meshes = std::move(meshCollectionResource.Meshes);
+        meshCollection.MeshInstances = std::move(meshCollectionResource.MeshInstances);
+        meshCollection.Materials = std::move(meshCollectionResource.Materials);
 
-        return (uint32_t)m_MeshUnions.size() - 1;
+        auto& meshGpuStorage = m_MeshRegistry.emplace<MeshCollectionGpuStorage>(meshHandle);
+        meshGpuStorage = CreateMeshCollectionGpuStorage(m_Device, meshDebugName, meshCollection);
+
+        UpdateStats(meshHandle);
+
+        return meshHandle;
     }
 
-    void Scene::UploadMeshCollections()
+    void Scene::UploadMeshCollectionsToGpu()
     {
-        if (!HasMeshes())
-        {
-            return;
-        }
+        BenzinLogTimeOnScopeExit("Scene::UploadMeshCollectionsToGpu");
 
         UploadAllMeshData();
         UploadAllMeshInstances();
         UploadAllTextures();
         UploadAllMaterials();
-    }
-
-    void Scene::BuildBottomLevelAccelerationStructures()
-    {
-        if (!HasMeshes())
-        {
-            return;
-        }
-
-        auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
-
-        for (const auto& meshUnion : m_MeshUnions)
-        {
-            for (const auto& blas : meshUnion.BottomLevelASs)
-            {
-                BenzinMakeResourceBarriers(commandList, TransitionBarrier{ blas->GetScratchResource(), ResourceState::UnorderedAccess });
-                commandList.BuildRayTracingAccelerationStructure(*blas);
-            }
-        }
-
-        // Wait for BottomLevelASs
-        for (const auto& meshUnion : m_MeshUnions)
-        {
-            for (const auto& blas : meshUnion.BottomLevelASs)
-            {
-                BenzinMakeResourceBarriers(commandList, UnorderedAccessBarrier{ blas->GetBuffer() });
-            }
-        }
-    }
-
-    void Scene::BuildTopLevelAccelerationStructure()
-    {
-        if (!HasMeshes())
-        {
-            return;
-        }
-
-        CreateTopLevelAs();
-
-        auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
-
-        auto& activeTopLevelAs = GetActiveTopLevelAsPtr();
-
-        BenzinMakeScopedResourceBarriers(commandList, TransitionBarrier{ activeTopLevelAs->GetScratchResource(), ResourceState::UnorderedAccess });
-        commandList.BuildRayTracingAccelerationStructure(*activeTopLevelAs);
-    }
-
-    std::unique_ptr<TopLevelAccelerationStructure>& Scene::GetActiveTopLevelAsPtr()
-    {
-        return m_TopLevelAss[m_Device.GetActiveFrameIndex()];
     }
 
     void Scene::OnTransformComponentConstuct(entt::registry& registry, entt::entity entityHandle)
@@ -298,88 +252,27 @@ namespace benzin
         }
     }
 
-    void Scene::PushBottomLevelAs(MeshUnion& meshUnion)
-    {
-        uint32_t vertexOffset = 0;
-        uint32_t indexOffset = 0;
-        for (const auto& mesh : meshUnion.Collection.Meshes)
-        {
-            const auto vertexCount = (uint32_t)mesh.Vertices.size();
-            const auto indexCount = (uint32_t)mesh.Indices.size();
-
-            const RtGeometryVariant meshGeometryDesc = RtTriangledGeometry
-            {
-                .VertexBuffer = *meshUnion.GpuStorage.VertexBuffer,
-                .IndexBuffer = *meshUnion.GpuStorage.IndexBuffer,
-                .VertexOffset = vertexOffset,
-                .IndexOffset = indexOffset,
-                .VertexCount = vertexCount,
-                .IndexCount = indexCount,
-            };
-
-            meshUnion.BottomLevelASs.push_back(std::make_unique<BottomLevelAccelerationStructure>(m_Device, BottomLevelAccelerationStructureCreation
-            {
-                .DebugName = meshUnion.DebugName,
-                .Geometries = std::span{ &meshGeometryDesc, 1 },
-            }));
-
-            vertexOffset += vertexCount;
-            indexOffset += indexCount;
-        }
-    }
-
-    void Scene::CreateTopLevelAs()
-    {
-        std::vector<TopLevelInstance> topLevelInstances;
-
-        const auto view = m_EntityRegistry.view<TransformComponent, MeshInstanceComponent>(entt::exclude<PointLightComponent>);
-        for (const auto entityHandle : view)
-        {
-            const auto& tc = view.get<TransformComponent>(entityHandle);
-            const auto& mic = view.get<MeshInstanceComponent>(entityHandle);
-
-            const auto& meshUnion = m_MeshUnions[mic.MeshUnionIndex];
-            const auto& meshCollection = meshUnion.Collection;
-
-            const auto meshInstanceRange = mic.MeshInstanceRange.value_or(meshCollection.GetFullMeshInstanceRange());
-            for (const auto i : IndexRangeToView(meshInstanceRange))
-            {
-                const auto& meshInstance = meshCollection.MeshInstances[i];
-
-                topLevelInstances.push_back(TopLevelInstance
-                {
-                    .BottomLevelAccelerationStructure = *meshUnion.BottomLevelASs[meshInstance.MeshIndex],
-                    .HitGroupIndex = 0,
-                    .Transform = meshInstance.Transform * tc.GetLocalToWorldMatrix(),
-                });
-            }
-        }
-
-        BenzinAssert(!topLevelInstances.empty());
-        MakeUniquePtr(GetActiveTopLevelAsPtr(), m_Device, TopLevelAccelerationStructureCreation
-        {
-            .DebugName = "SceneTopLevelAS",
-            .Instances = topLevelInstances,
-        });
-    }
-
     void Scene::UploadAllMeshData()
     {
         Bytes32 uploadBufferSize;
-        for (const auto& meshUnion : m_MeshUnions)
+        m_MeshRegistry.each([this, &uploadBufferSize](entt::entity meshHandle)
         {
-            uploadBufferSize += meshUnion.GpuStorage.VertexBuffer->GetSize();
-            uploadBufferSize += meshUnion.GpuStorage.IndexBuffer->GetSize();
-            uploadBufferSize += meshUnion.GpuStorage.MeshInfoBuffer->GetSize();
-        }
+            const auto& gpuStorage = m_MeshRegistry.get<MeshCollectionGpuStorage>(meshHandle);
+
+            uploadBufferSize += gpuStorage.VertexBuffer->GetSize();
+            uploadBufferSize += gpuStorage.IndexBuffer->GetSize();
+            uploadBufferSize += gpuStorage.MeshInfoBuffer->GetSize();
+        });
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
-
-        for (const auto& meshUnion : m_MeshUnions)
+        m_MeshRegistry.each([this, &commandList](entt::entity meshHandle)
         {
+            const auto& gpuStorage = m_MeshRegistry.get<MeshCollectionGpuStorage>(meshHandle);
+            auto& meshCollection = m_MeshRegistry.get<MeshCollection>(meshHandle);
+
             uint32_t vertexOffset = 0;
             uint32_t indexOffset = 0;
-            for (const auto [i, mesh] : meshUnion.Collection.Meshes | std::views::enumerate)
+            for (const auto [i, mesh] : meshCollection.Meshes | std::views::enumerate)
             {
                 const joint::MeshInfo meshInfo
                 {
@@ -387,41 +280,46 @@ namespace benzin
                     .IndexOffset = indexOffset,
                 };
 
-                commandList.UploadToBuffer<joint::MeshVertex>(*meshUnion.GpuStorage.VertexBuffer, mesh.Vertices, vertexOffset);
-                commandList.UploadToBuffer<uint32_t>(*meshUnion.GpuStorage.IndexBuffer, mesh.Indices, indexOffset);
-                commandList.UploadToBuffer(*meshUnion.GpuStorage.MeshInfoBuffer, ToSingleSpan(meshInfo), i);
+                meshCollection.MeshInfos.push_back(meshInfo);
+
+                commandList.UploadToBuffer<joint::MeshVertex>(*gpuStorage.VertexBuffer, mesh.Vertices, vertexOffset);
+                commandList.UploadToBuffer<uint32_t>(*gpuStorage.IndexBuffer, mesh.Indices, indexOffset);
+                commandList.UploadToBuffer(*gpuStorage.MeshInfoBuffer, ToSingleSpan(meshInfo), i);
 
                 vertexOffset += (uint32_t)mesh.Vertices.size();
                 indexOffset += (uint32_t)mesh.Indices.size();
             }
-        }
+        });
     }
 
     void Scene::UploadAllMeshInstances()
     {
         Bytes32 uploadBufferSize;
-        for (const auto& meshUnion : m_MeshUnions)
+        m_MeshRegistry.each([this, &uploadBufferSize](entt::entity meshHandle)
         {
-            uploadBufferSize += meshUnion.GpuStorage.MeshInstanceBuffer->GetSize();
-        }
+            const auto& gpuStorage = m_MeshRegistry.get<MeshCollectionGpuStorage>(meshHandle);
+
+            uploadBufferSize += gpuStorage.MeshInstanceBuffer->GetSize();
+        });
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
-
-        for (const auto& meshUnion : m_MeshUnions)
+        m_MeshRegistry.each([this, &commandList](entt::entity meshHandle)
         {
-            for (const auto& [i, meshInstance] : meshUnion.Collection.MeshInstances | std::views::enumerate)
+            const auto& meshCollection = m_MeshRegistry.get<MeshCollection>(meshHandle);
+            const auto& gpuStorage = m_MeshRegistry.get<MeshCollectionGpuStorage>(meshHandle);
+
+            for (const auto& [i, meshInstance] : meshCollection.MeshInstances | std::views::enumerate)
             {
                 const joint::MeshInstance gpuMeshInstance
                 {
                     .Transform = meshInstance.Transform,
-                    .TransformForNormals = GetMatrixForNormals(meshInstance.Transform),
                     .MeshIndex = meshInstance.MeshIndex,
                     .MaterialIndex = meshInstance.MaterialIndex,
                 };
 
-                commandList.UploadToBuffer(*meshUnion.GpuStorage.MeshInstanceBuffer, ToSingleSpan(gpuMeshInstance), i);
+                commandList.UploadToBuffer(*gpuStorage.MeshInstanceBuffer, ToSingleSpan(gpuMeshInstance), i);
             }
-        }
+        });
     }
 
     void Scene::UploadAllTextures()
@@ -450,22 +348,28 @@ namespace benzin
         static_assert(sizeof(Material) == sizeof(joint::Material));
 
         Bytes32 uploadBufferSize;
-        for (const auto& meshUnion : m_MeshUnions)
+        m_MeshRegistry.each([this, &uploadBufferSize](entt::entity meshHandle)
         {
-            uploadBufferSize += meshUnion.GpuStorage.MaterialBuffer->GetSize();
-        }
+            const auto& gpuStorage = m_MeshRegistry.get<MeshCollectionGpuStorage>(meshHandle);
+
+            uploadBufferSize += gpuStorage.MaterialBuffer->GetSize();
+        });
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
-
-        for (const auto& meshUnion : m_MeshUnions)
+        m_MeshRegistry.each([this, &commandList](entt::entity meshHandle)
         {
-            commandList.UploadToBuffer<Material>(*meshUnion.GpuStorage.MaterialBuffer, meshUnion.Collection.Materials);
-        }
+            const auto& meshCollection = m_MeshRegistry.get<MeshCollection>(meshHandle);
+            const auto& gpuStorage = m_MeshRegistry.get<MeshCollectionGpuStorage>(meshHandle);
+
+            commandList.UploadToBuffer<Material>(*gpuStorage.MaterialBuffer, meshCollection.Materials);
+        });
     }
 
-    void Scene::UpdateStats(const MeshUnion& meshUnion)
+    void Scene::UpdateStats(entt::entity meshHandle)
     {
-        for (const auto& mesh : meshUnion.Collection.Meshes)
+        const auto& meshCollection = m_MeshRegistry.get<MeshCollection>(meshHandle);
+
+        for (const auto& mesh : meshCollection.Meshes)
         {
             m_Stats.VertexCount += (uint32_t)mesh.Vertices.size();
             m_Stats.TriangleCount += (uint32_t)mesh.Indices.size() / 3;
@@ -473,9 +377,8 @@ namespace benzin
             ++m_Stats.MeshCount;
         }
 
-        m_Stats.MaterialCount += (uint32_t)meshUnion.Collection.Materials.size();
-        m_Stats.MeshInstanceCount += (uint32_t)meshUnion.Collection.MeshInstances.size();
+        m_Stats.MaterialCount += (uint32_t)meshCollection.Materials.size();
+        m_Stats.MeshInstanceCount += (uint32_t)meshCollection.MeshInstances.size();
     }
 
-
-} // namespace benzin
+}

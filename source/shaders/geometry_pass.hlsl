@@ -103,7 +103,7 @@ VsOutput VsMain(uint indexIndex : SV_VertexID)
 
     const float4 worldPosition = mul(objectPosition, transform.WorldMatrix);
     const float4 prevWorldPosition = mul(objectPosition, transform.PreviousWorldMatrix);
-    const float3 worldNormal = mul(objectNormal, (float3x3)transform.WorldMatrixForNormals);
+    const float3 worldNormal = mul(objectNormal, (float3x3)transform.WorldMatrix); // TODO: Maybe I still need to yse 'WorldMatrixForNormals'?
 
     const float4 viewPosition = mul(worldPosition, camera.WorldToView);
 

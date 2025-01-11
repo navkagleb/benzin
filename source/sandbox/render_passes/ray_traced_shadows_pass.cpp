@@ -66,8 +66,8 @@ namespace sandbox
 
     RayTracedShadowsPass::~RayTracedShadowsPass()
     {
+        ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
         ms_Resources->DestroyTexture(+Texture::NoisyPenumbra);
-        m_BlueNoise.reset();
     }
 
     void RayTracedShadowsPass::OnZeroFrameInit()
@@ -75,7 +75,7 @@ namespace sandbox
         benzin::TextureImage blueNoiseImage;
         benzin::LoadTextureImageFromDdsFile("blue_noise_64.dds", blueNoiseImage);
 
-        m_BlueNoise = std::make_unique<benzin::Texture>(*ms_Device, benzin::TextureCreation
+        benzin::MakeUniquePtr(m_BlueNoise, *ms_Device, benzin::TextureCreation
         {
             .DebugName = "BlueNoise64",
             .Format = blueNoiseImage.Format,

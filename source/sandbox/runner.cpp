@@ -6,6 +6,7 @@
 #include <benzin/core/logger.hpp>
 #include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/imgui_pass.hpp>
+#include <benzin/engine/ray_tracing_scene.hpp>
 #include <benzin/engine/render_pass.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/backend.hpp>
@@ -50,6 +51,7 @@ namespace sandbox
         benzin::MakeUniquePtr(m_SwapChain, benzin::SwapChainCreation{ "MainSwapChain", *m_MainWindow, *m_Device });
 
         benzin::MakeUniquePtr(m_Scene, *m_Device);
+        benzin::MakeUniquePtr(m_RayTracingScene, *m_Device, *m_Scene);
 
         benzin::MakeUniquePtr(m_RenderResources, *m_Device);
         benzin::MakeUniquePtr(m_RenderSettings);
@@ -148,15 +150,8 @@ namespace sandbox
                 renderPass->OnZeroFrameInit();
             }
 
-            {
-                BenzinLogTimeOnScopeExit("Upload scene data to GPU");
-                m_Scene->UploadMeshCollections();
-            }
-
-            {
-                BenzinLogTimeOnScopeExit("Build scene RT BottomLevel ASs");
-                m_Scene->BuildBottomLevelAccelerationStructures();
-            }
+            m_Scene->UploadMeshCollectionsToGpu();
+            m_RayTracingScene->BuildBlases();
         }
         EndFrame();
     }

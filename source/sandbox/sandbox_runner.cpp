@@ -27,6 +27,20 @@
 namespace sandbox
 {
 
+    enum class MeshHandle
+    {
+        Sponza,
+        BoomBox,
+        DamagedHelmet,
+        OrientationTest,
+        MilkTruck,
+        Cylinder,
+        Sphere,
+    };
+    BenzinEnableUnaryPlusForEnum(MeshHandle);
+
+    //
+
     SandboxRunner::SandboxRunner()
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::SandboxRunner");
@@ -73,7 +87,7 @@ namespace sandbox
         BenzinAssert(m_RenderPasses.empty());
         m_RenderPasses.resize(magic_enum::enum_count<RenderPasses>());
 
-        m_RenderPasses[+RenderPasses::TlasBuilding] = std::make_unique<TlasBuildingPass>(*m_Device, *m_Scene);
+        m_RenderPasses[+RenderPasses::TlasBuilding] = std::make_unique<TlasBuildingPass>(*m_Device, *m_RayTracingScene);
         m_RenderPasses[+RenderPasses::GlobalConstants] = std::make_unique<GlobalConstantsPass>(*m_Device, *m_Scene);
         m_RenderPasses[+RenderPasses::Geometry] = std::make_unique<GeometryPass>(*m_Scene);
         m_RenderPasses[+RenderPasses::RayTracedShadows] = std::make_unique<RayTracedShadowsPass>(*m_Scene);
@@ -125,8 +139,21 @@ namespace sandbox
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<GBufferStats>("GBufferStats", true, [](GBufferStats& stats)
         {
-            ImGui::Text(BenzinFormatData("MeshCount: {}", stats.MeshCount));
-            ImGui::Text(BenzinFormatData("RenderedMeshCount: {}", stats.RenderedMeshCount));
+            struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
+            {
+                char do_thousands_sep() const override { return '\''; }
+
+                std::string do_grouping() const override { return "\3"; }
+            };
+
+            static const std::locale customLocale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
+
+            std::locale::global(customLocale);
+            BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
+
+            ImGui::Text(BenzinFormatData("MeshCount: {:L}", stats.MeshCount));
+            ImGui::Text(BenzinFormatData("RenderedMeshCount: {:L}", stats.RenderedMeshCount));
+            ImGui::Text(BenzinFormatData("RenderedTriangleCount: {:L}", stats.RenderedTriangleCount));
         });
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<RayTracingShadowsSettings>("RayTracingShadows", true, [](RayTracingShadowsSettings& settings)
@@ -210,12 +237,16 @@ namespace sandbox
 
     void SandboxRunner::InitSceneEntities()
     {
-        SceneMeshes sceneMeshes;
-        LoadAndCreateMeshes(sceneMeshes);
-        CreateEntities(sceneMeshes);
+        std::array<benzin::MeshCollectionResource, magic_enum::enum_count<MeshHandle>()> meshResources;
+        LoadMeshes(meshResources);
+
+        std::array<entt::entity, magic_enum::enum_count<MeshHandle>()> meshHandles;
+        AddMeshesToScene(meshResources, meshHandles);
+
+        CreateEntities(meshHandles);
     }
 
-    void SandboxRunner::LoadAndCreateMeshes(SceneMeshes& outSceneMeshes)
+    void SandboxRunner::LoadMeshes(std::span<benzin::MeshCollectionResource> outMeshResources)
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::LoadAndCreateMeshes");
 
@@ -257,7 +288,7 @@ namespace sandbox
 
             return benzin::MeshCollectionResource
             {
-                .DebugName = "Cylinder",
+                .DebugName = "Sphere",
                 .Meshes{ benzin::GetDefaultGeoSphereMesh() },
                 .MeshInstances{ meshInstance },
                 .Materials{ material },
@@ -266,36 +297,38 @@ namespace sandbox
 
         const auto loadFromFile = [](std::string_view fileName)
         {
-            // BenzinLogTimeOnScopeExit("Loading MeshCollection from {}", fileName);
-
             benzin::MeshCollectionResource resource;
             BenzinAssertExpr(benzin::LoadMeshCollectionFromGltfFile(fileName, resource));
 
             return resource;
         };
 
-        benzin::EnumArray<benzin::MeshCollectionResource, SceneMesh> meshCollectionResources;
-
         const auto sponzaFuture = std::async(std::launch::async, [&]
         {
-            meshCollectionResources[+SceneMesh::Sponza] = loadFromFile("Sponza/glTF/Sponza.gltf");
+            outMeshResources[+MeshHandle::Sponza] = loadFromFile("Sponza/glTF/Sponza.gltf");
         });
 
-        meshCollectionResources[+SceneMesh::BoomBox] = loadFromFile("BoomBox/glTF/BoomBox.gltf");
-        meshCollectionResources[+SceneMesh::DamagedHelmet] = loadFromFile("DamagedHelmet/glTF/DamagedHelmet.gltf");
-        meshCollectionResources[+SceneMesh::OrientationTest] = loadFromFile("OrientationTest/OrientationTest.gltf");
-        meshCollectionResources[+SceneMesh::Cylinder] = createCylinderMeshCollection();
-        meshCollectionResources[+SceneMesh::Sphere] = createSphereLightMeshCollection();
+        outMeshResources[+MeshHandle::BoomBox] = loadFromFile("BoomBox/glTF/BoomBox.gltf");
+        outMeshResources[+MeshHandle::DamagedHelmet] = loadFromFile("DamagedHelmet/glTF/DamagedHelmet.gltf");
+        outMeshResources[+MeshHandle::OrientationTest] = loadFromFile("OrientationTest/OrientationTest.gltf");
+        outMeshResources[+MeshHandle::MilkTruck] = loadFromFile("CesiumMilkTruck/glTF/CesiumMilkTruck.gltf");
+        outMeshResources[+MeshHandle::Cylinder] = createCylinderMeshCollection();
+        outMeshResources[+MeshHandle::Sphere] = createSphereLightMeshCollection();
 
         sponzaFuture.wait();
+    }
 
-        for (auto&& [outSceneMesh, meshCollectionResource] : std::views::zip(outSceneMeshes, meshCollectionResources))
+    void SandboxRunner::AddMeshesToScene(std::span<benzin::MeshCollectionResource> meshResources, std::span<entt::entity> outMeshHandles)
+    {
+        BenzinLogTimeOnScopeExit("SandboxRunner::AddMeshesToScene");
+
+        for (auto&& [outMeshHandle, meshResource] : std::views::zip(outMeshHandles, meshResources))
         {
-            outSceneMesh = m_Scene->PushMeshCollection(std::move(meshCollectionResource));
+            outMeshHandle = m_Scene->PushMeshCollection(std::move(meshResource));
         }
     }
 
-    void SandboxRunner::CreateEntities(const SceneMeshes& sceneMeshes)
+    void SandboxRunner::CreateEntities(std::span<const entt::entity> meshHandles)
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::CreateEntities");
 
@@ -304,8 +337,8 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mic = entityRegistry.emplace<benzin::MeshInstanceComponent>(entity);
-            mic.MeshUnionIndex = sceneMeshes[+SceneMesh::Sponza];
+            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
+            mc.MeshHandle = meshHandles[+MeshHandle::Sponza];
 
             auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
             tc.SetRotation({ 0.0f, DirectX::XM_PI, 0.0f });
@@ -315,8 +348,8 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mic = entityRegistry.emplace<benzin::MeshInstanceComponent>(entity);
-            mic.MeshUnionIndex = sceneMeshes[+SceneMesh::BoomBox];
+            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
+            mc.MeshHandle = meshHandles[+MeshHandle::BoomBox];
 
             auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
             tc.SetRotation({ 0.0f, DirectX::XMConvertToRadians(-135.0f), 0.0f });
@@ -344,8 +377,8 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mic = entityRegistry.emplace<benzin::MeshInstanceComponent>(entity);
-            mic.MeshUnionIndex = sceneMeshes[+SceneMesh::DamagedHelmet];
+            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
+            mc.MeshHandle = meshHandles[+MeshHandle::DamagedHelmet];
 
             auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
             tc.SetRotation({ 0.0f, DirectX::XMConvertToRadians(-135.0f), 0.0f });
@@ -373,8 +406,8 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mic = entityRegistry.emplace<benzin::MeshInstanceComponent>(entity);
-            mic.MeshUnionIndex = sceneMeshes[+SceneMesh::OrientationTest];
+            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
+            mc.MeshHandle = meshHandles[+MeshHandle::OrientationTest];
 
             auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
             tc.SetScale({ 0.05f, 0.05f, 0.05f });
@@ -384,8 +417,19 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mic = entityRegistry.emplace<benzin::MeshInstanceComponent>(entity);
-            mic.MeshUnionIndex = sceneMeshes[+SceneMesh::Cylinder];
+            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
+            mc.MeshHandle = meshHandles[+MeshHandle::MilkTruck];
+
+            auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
+            tc.SetScale({ 0.1f, 0.1f, 0.1f });
+            tc.SetTranslation({ -1.5f, 0.2f, 0.5f });
+        }
+
+        {
+            const auto entity = entityRegistry.create();
+
+            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
+            mc.MeshHandle = meshHandles[+MeshHandle::Cylinder];
 
             auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
             tc.SetScale({ 0.1f, 1.5f, 0.1f });

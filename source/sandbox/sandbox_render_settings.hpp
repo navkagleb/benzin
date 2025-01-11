@@ -9,6 +9,7 @@ namespace sandbox
     {
         uint32_t MeshCount = 0;
         uint32_t RenderedMeshCount = 0;
+        uint32_t RenderedTriangleCount = 0;
     };
 
     struct RayTracingShadowsSettings

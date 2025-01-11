@@ -28,7 +28,7 @@ namespace sandbox
             BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
             const auto& sceneStats = m_Scene.GetStats();
-            ImGui::Text(BenzinFormatData("MeshCount (BlasCount): {:L}", sceneStats.MeshCount));
+            ImGui::Text(BenzinFormatData("MeshCount: {:L}", sceneStats.MeshCount));
             ImGui::Text(BenzinFormatData("MaterialCount: {:L}", sceneStats.MaterialCount));
             ImGui::Text(BenzinFormatData("MeshInstanceCount: {:L}", sceneStats.MeshInstanceCount));
 
