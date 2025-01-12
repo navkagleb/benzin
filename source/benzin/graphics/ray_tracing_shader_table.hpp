@@ -5,7 +5,7 @@ namespace benzin
 
     class Buffer;
 
-    class RayTracingShaderTable
+    class RayTracing_ShaderTable
     {
     public:
         using ShaderIdentifier = std::array<std::byte, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES>;

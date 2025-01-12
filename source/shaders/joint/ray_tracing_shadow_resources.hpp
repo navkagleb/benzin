@@ -5,7 +5,7 @@
 namespace joint
 {
 
-    struct RayTracedShadowsConsts
+    struct RayTracing_ShadowConsts
     {
         float3 ToSunDirection;
         float TanSunAngularRadius;
@@ -16,12 +16,12 @@ namespace joint
         uint IsNoiseAnimated : 1;
     };
 
-    struct ShadowRayPayload
+    struct RayTracing_ShadowPayload
     {
         float THit;
     };
 
-    enum class Rc_RayTracedShadows : uint
+    enum class Rc_RayTracing_Shadow : uint // TODO: Ugly name
     {
         WorldNormal,
         Depth,
@@ -29,6 +29,6 @@ namespace joint
 
         OutNoisyPenumbra,
     };
-    BenzinEnableUnaryPlusForEnum(Rc_RayTracedShadows);
+    BenzinEnableUnaryPlusForEnum(Rc_RayTracing_Shadow);
 
 }

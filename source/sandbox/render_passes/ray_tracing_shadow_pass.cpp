@@ -1,5 +1,5 @@
 #include "sandbox/bootstrap.hpp"
-#include "sandbox/render_passes/ray_traced_shadows_pass.hpp"
+#include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
 
 #include <benzin/core/asserter.hpp>
 #include <benzin/engine/resource_loader.hpp>
@@ -14,6 +14,8 @@
 #include <benzin/graphics/ray_tracing_shader_table.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
+
+#include <shaders/joint/ray_tracing_shadow_resources.hpp>
 
 #include "sandbox/sandbox_render_settings.hpp"
 #include "sandbox/resources.hpp"
@@ -38,15 +40,15 @@ namespace sandbox
 
     //
 
-    RayTracedShadowsPass::RayTracedShadowsPass(const benzin::Scene& scene)
+    RayTracing_ShadowPass::RayTracing_ShadowPass(const benzin::Scene& scene)
         : m_Scene{ scene }
     {
         m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::RayTracingPipelineStateCreation
         {
-            .DebugName = "RayTracedShadowsPass",
+            .DebugName = "RayTracing_ShadowPass",
             .ShaderLibrary
             {
-                .FileName = "ray_traced_shadows_pass.hlsl",
+                .FileName = "ray_tracing_shadow_pass.hlsl",
             },
             .HitGroup
             {
@@ -55,23 +57,23 @@ namespace sandbox
             },
             .ShaderConfig
             {
-                .PayloadSize = sizeof(joint::ShadowRayPayload),
+                .PayloadSize = sizeof(joint::RayTracing_ShadowPayload),
                 .AttributeSize = sizeof(DirectX::XMFLOAT2), // Barycentrics
             },
         });
 
         BuildShaderTable();
 
-        benzin::MakeUniquePtr(m_PassConstBuffer, *ms_Device, "RayTracedShadowsConsts");
+        benzin::MakeUniquePtr(m_PassConstBuffer, *ms_Device, "RayTracing_ShadowConsts");
     }
 
-    RayTracedShadowsPass::~RayTracedShadowsPass()
+    RayTracing_ShadowPass::~RayTracing_ShadowPass()
     {
         ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
         ms_Resources->DestroyTexture(+Texture::NoisyPenumbra);
     }
 
-    void RayTracedShadowsPass::OnZeroFrameInit()
+    void RayTracing_ShadowPass::OnZeroFrameInit()
     {
         benzin::TextureImage blueNoiseImage;
         benzin::LoadTextureImageFromDdsFile("blue_noise_64.dds", blueNoiseImage);
@@ -89,7 +91,7 @@ namespace sandbox
         commandList.UploadToTextureTopMip(*m_BlueNoise, std::as_bytes(std::span{ blueNoiseImage.ImageData }));
     }
 
-    void RayTracedShadowsPass::OnRenderViewportResize()
+    void RayTracing_ShadowPass::OnRenderViewportResize()
     {
         ms_Resources->CreateTexture(+Texture::NoisyPenumbra, benzin::TextureCreation
         {
@@ -102,7 +104,7 @@ namespace sandbox
         });
     }
 
-    void RayTracedShadowsPass::OnUpdate()
+    void RayTracing_ShadowPass::OnUpdate()
     {
         const auto& shadowSettings = ms_Settings->GetSection<RayTracingShadowsSettings>();
         const auto& lightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
@@ -114,7 +116,7 @@ namespace sandbox
         DirectX::XMFLOAT3 toSunBitangent;
         BuildOrthonormalBasis(toSunDirection, toSunTangent, toSunBitangent);
 
-        m_PassConstBuffer->UpdateConstants(joint::RayTracedShadowsConsts
+        m_PassConstBuffer->UpdateConstants(joint::RayTracing_ShadowConsts
         {
             .ToSunDirection = toSunDirection,
             .TanSunAngularRadius = std::tan(sunAngularRadiusInRadians),
@@ -126,7 +128,7 @@ namespace sandbox
         });
     }
 
-    void RayTracedShadowsPass::OnRender() const
+    void RayTracing_ShadowPass::OnRender() const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "RayTracingShadowPass");
@@ -137,7 +139,7 @@ namespace sandbox
         commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstBuffer->GetActiveGpuVirtualAddress());
 
         {
-            using enum joint::Rc_RayTracedShadows;
+            using enum joint::Rc_RayTracing_Shadow;
 
             commandList.SetRootResource(+WorldNormal, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
             commandList.SetRootResource(+Depth, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv());
@@ -154,7 +156,7 @@ namespace sandbox
         commandList.DispatchRays(*m_ShaderTable, { GetRenderViewportWidth(), GetRenderViewportHeight(), 1 });
     }
 
-    void RayTracedShadowsPass::BuildShaderTable()
+    void RayTracing_ShadowPass::BuildShaderTable()
     {
         BenzinEnsure(m_Pso->GetD3D12StateObject() != nullptr);
 
@@ -169,7 +171,7 @@ namespace sandbox
             return rawId;
         };
 
-        m_ShaderTable = std::make_unique<benzin::RayTracingShaderTable>();
+        benzin::MakeUniquePtr(m_ShaderTable);
         m_ShaderTable->SetRayGenerationShader(getShaderIdentifier("RayGeneration"));
         m_ShaderTable->SetMissShader(getShaderIdentifier("Miss"));
         m_ShaderTable->SetHitGroupShaders(getShaderIdentifier(g_HitGroupName));

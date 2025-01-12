@@ -15,7 +15,7 @@ namespace benzin
     class ImGuiManager;
     class ImGuiPass;
     class PerformanceOverlayTool;
-    class RayTracingScene;
+    class RayTracing_Scene;
     class RenderPass;
     class RenderResources;
     class RenderSettingsTool;
@@ -68,7 +68,7 @@ namespace sandbox
         FpsCounter m_FpsCounter;
 
         std::unique_ptr<benzin::Scene> m_Scene;
-        std::unique_ptr<benzin::RayTracingScene> m_RayTracingScene;
+        std::unique_ptr<benzin::RayTracing_Scene> m_RayTracingScene;
 
         std::unique_ptr<benzin::RenderResources> m_RenderResources;
         std::unique_ptr<benzin::RenderSettings> m_RenderSettings;

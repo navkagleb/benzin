@@ -8,8 +8,8 @@
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/pipeline_state.hpp"
+#include "benzin/graphics/ray_tracing_acceleration_structures.hpp"
 #include "benzin/graphics/ray_tracing_shader_table.hpp"
-#include "benzin/graphics/rt_acceleration_structures.hpp"
 #include "benzin/graphics/texture.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
 
@@ -393,26 +393,26 @@ namespace benzin
         m_D3D12GraphicsCommandList->Dispatch(threadGroupCount.x, threadGroupCount.y, threadGroupCount.z);
     }
 
-    void GraphicsCommandList::BuildRayTracingAccelerationStructure(const RtAccelerationStructure& accelerationStructure)
+    void GraphicsCommandList::BuildRayTracingAccelerationStructure(const RayTracing_AcclerationStructure& accelerationStructure)
     {
-        BenzinAssert(accelerationStructure.GetScratchResource().GetCurrentState() == ResourceState::UnorderedAccess);
+        BenzinAssert(accelerationStructure.GetScratchResource()->GetCurrentState() == ResourceState::UnorderedAccess);
 
         const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12BuildAccelerationStructureDesc
         {
-            .DestAccelerationStructureData = accelerationStructure.GetBuffer().GetGpuVirtualAddress(),
+            .DestAccelerationStructureData = accelerationStructure.GetBuffer()->GetGpuVirtualAddress(),
             .Inputs = accelerationStructure.GetD3D12BuildInputs(),
             .SourceAccelerationStructureData = 0,
-            .ScratchAccelerationStructureData = accelerationStructure.GetScratchResource().GetGpuVirtualAddress(),
+            .ScratchAccelerationStructureData = accelerationStructure.GetScratchResource()->GetGpuVirtualAddress(),
         };
 
         m_D3D12GraphicsCommandList->BuildRaytracingAccelerationStructure(&d3d12BuildAccelerationStructureDesc, 0, nullptr);
     }
 
-    void GraphicsCommandList::DispatchRays(const RayTracingShaderTable& shaderTable, const DirectX::XMUINT3 dimenions)
+    void GraphicsCommandList::DispatchRays(const RayTracing_ShaderTable& shaderTable, const DirectX::XMUINT3 dimenions)
     {
         BenzinAssert(dimenions.x != 0 && dimenions.y != 0 && dimenions.z != 0);
 
-        const RayTracingShaderTable::GpuAddresses& gpuAddresses = shaderTable.GetGpuAddresses();
+        const RayTracing_ShaderTable::GpuAddresses& gpuAddresses = shaderTable.GetGpuAddresses();
 
         const D3D12_DISPATCH_RAYS_DESC d3d12DispatchRayDesc
         {
@@ -524,4 +524,4 @@ namespace benzin
         d3d12CommandList->ResourceBarrier((uint32_t)d3d12Barriers.size(), d3d12Barriers.data());
     }
 
-} // namespace benzin
+}

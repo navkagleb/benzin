@@ -11,7 +11,7 @@
 namespace sandbox
 {
 
-    TlasBuildingPass::TlasBuildingPass(benzin::Device& device, benzin::RayTracingScene& rayTracingScene)
+    TlasBuildingPass::TlasBuildingPass(benzin::Device& device, benzin::RayTracing_Scene& rayTracingScene)
         : m_Device{ device }
         , m_RayTracingScene{ rayTracingScene }
     {}

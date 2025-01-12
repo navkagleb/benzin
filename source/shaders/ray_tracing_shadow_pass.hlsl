@@ -8,14 +8,14 @@
 #include "sigma_denoiser/sigma_public.hlsli"
 #include "space_convertions.hlsli"
 
-#include "joint/ray_traced_shadows_resources.hpp"
-#define RenderPassConstantsType joint::RayTracedShadowsConsts
+#include "joint/ray_tracing_shadow_resources.hpp"
+#define RenderPassConstantsType joint::RayTracing_ShadowConsts
 #include "unified_root_parameters.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::Rc_RayTracedShadows::WorldNormal);
-BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::Rc_RayTracedShadows::Depth);
-BenzinDeclareRootResource(Texture2D<float2>, g_BlueNoise, joint::Rc_RayTracedShadows::BlueNoise);
-BenzinDeclareRootResource(RWTexture2D<float>, g_OutNoisyPenumbra, joint::Rc_RayTracedShadows::OutNoisyPenumbra);
+BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::Rc_RayTracing_Shadow::WorldNormal);
+BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::Rc_RayTracing_Shadow::Depth);
+BenzinDeclareRootResource(Texture2D<float2>, g_BlueNoise, joint::Rc_RayTracing_Shadow::BlueNoise);
+BenzinDeclareRootResource(RWTexture2D<float>, g_OutNoisyPenumbra, joint::Rc_RayTracing_Shadow::OutNoisyPenumbra);
 
 float3 OffsetRayPosition(float3 position, float3 normal)
 {
@@ -135,7 +135,7 @@ float TraceSunShadowRay(float depth)
     rayFlags |= RAY_FLAG_FORCE_OPAQUE; // Skip any hit shaders
     // rayFlags |= RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
 
-    joint::ShadowRayPayload payload;
+    joint::RayTracing_ShadowPayload payload;
     payload.THit = 0.0;
 
     const uint g_InstanceMask = ~0;
@@ -173,13 +173,13 @@ void RayGeneration()
 }
 
 [shader("closesthit")]
-void ClosestHit(inout joint::ShadowRayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
+void ClosestHit(inout joint::RayTracing_ShadowPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
     payload.THit = RayTCurrent();
 }
 
 [shader("miss")]
-void Miss(inout joint::ShadowRayPayload payload)
+void Miss(inout joint::RayTracing_ShadowPayload payload)
 {
     payload.THit = sigma::g_Fp16Max;
 }

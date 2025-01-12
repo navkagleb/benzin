@@ -20,7 +20,7 @@
 #include "sandbox/render_passes/full_screen_debug_pass.hpp"
 #include "sandbox/render_passes/geometry_pass.hpp"
 #include "sandbox/render_passes/global_constants_pass.hpp"
-#include "sandbox/render_passes/ray_traced_shadows_pass.hpp"
+#include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
 #include "sandbox/render_passes/sigma_denoiser_pass.hpp"
 #include "sandbox/render_passes/tlas_building_pass.hpp"
 #include "sandbox/resources.hpp"
@@ -176,7 +176,7 @@ namespace sandbox
         m_RenderPasses[+RenderPasses::TlasBuilding] = std::make_unique<TlasBuildingPass>(*m_Device, *m_RayTracingScene);
         m_RenderPasses[+RenderPasses::GlobalConstants] = std::make_unique<GlobalConstantsPass>(*m_Device, *m_Scene);
         m_RenderPasses[+RenderPasses::Geometry] = std::make_unique<GeometryPass>(*m_Scene);
-        m_RenderPasses[+RenderPasses::RayTracedShadows] = std::make_unique<RayTracedShadowsPass>(*m_Scene);
+        m_RenderPasses[+RenderPasses::RayTracedShadows] = std::make_unique<RayTracing_ShadowPass>(*m_Scene);
         m_RenderPasses[+RenderPasses::SigmaDenoiser] = std::make_unique<SigmaDenoiserPass>();
         m_RenderPasses[+RenderPasses::DeferredLighting] = std::make_unique<DeferredLightingPass>(*m_Scene);
         m_RenderPasses[+RenderPasses::Environment] = std::make_unique<EnvironmentPass>();

@@ -2,8 +2,6 @@
 
 #include <benzin/engine/render_pass.hpp>
 
-#include <shaders/joint/ray_traced_shadows_resources.hpp>
-
 namespace benzin
 {
 
@@ -14,18 +12,25 @@ namespace benzin
     class PipelineState;
     class Scene;
     class Texture;
-    class RayTracingShaderTable;
+    class RayTracing_ShaderTable;
+
+}
+
+namespace joint
+{
+
+    struct RayTracing_ShadowConsts;
 
 }
 
 namespace sandbox
 {
 
-    class RayTracedShadowsPass : public benzin::RenderPass
+    class RayTracing_ShadowPass : public benzin::RenderPass
     {
     public:
-        explicit RayTracedShadowsPass(const benzin::Scene& scene);
-        ~RayTracedShadowsPass() override;
+        explicit RayTracing_ShadowPass(const benzin::Scene& scene);
+        ~RayTracing_ShadowPass() override;
 
         bool IsDependentOnViewport() const override { return true; }
 
@@ -42,10 +47,10 @@ namespace sandbox
         const benzin::Scene& m_Scene;
 
         benzin::PipelineState* m_Pso = nullptr;
-        std::unique_ptr<benzin::RayTracingShaderTable> m_ShaderTable;
+        std::unique_ptr<benzin::RayTracing_ShaderTable> m_ShaderTable;
         std::unique_ptr<benzin::Buffer> m_TableBuffer;
 
-        using PassConstantBuffer = benzin::ConstantBuffer<joint::RayTracedShadowsConsts>;
+        using PassConstantBuffer = benzin::ConstantBuffer<joint::RayTracing_ShadowConsts>;
         std::unique_ptr<PassConstantBuffer> m_PassConstBuffer;
 
         std::unique_ptr<benzin::Texture> m_BlueNoise;

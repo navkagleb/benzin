@@ -7,7 +7,6 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/rt_acceleration_structures.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/utility/random.hpp>
 

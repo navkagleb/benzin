@@ -11,29 +11,29 @@ namespace benzin
     constexpr uint64_t g_RecordAlignment = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
     constexpr uint64_t g_TableAlignment = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 
-    static void StoreRawShaderIdentifier(const void* rawId, RayTracingShaderTable::ShaderIdentifier& outId)
+    static void StoreRawShaderIdentifier(const void* rawId, RayTracing_ShaderTable::ShaderIdentifier& outId)
     {
         std::copy_n((const std::byte*)rawId, outId.size(), outId.begin());
     }
 
     //
 
-    void RayTracingShaderTable::SetRayGenerationShader(const void* rawId)
+    void RayTracing_ShaderTable::SetRayGenerationShader(const void* rawId)
     {
         StoreRawShaderIdentifier(rawId, m_RayGenerationShader);
     }
 
-    void RayTracingShaderTable::SetMissShader(const void* rawId)
+    void RayTracing_ShaderTable::SetMissShader(const void* rawId)
     {
         StoreRawShaderIdentifier(rawId, m_MissShader);
     }
 
-    void RayTracingShaderTable::SetHitGroupShaders(const void* rawId)
+    void RayTracing_ShaderTable::SetHitGroupShaders(const void* rawId)
     {
         StoreRawShaderIdentifier(rawId, m_HitGroupShaders);
     }
 
-    Bytes64 RayTracingShaderTable::GetRequiredTableSize() const
+    Bytes64 RayTracing_ShaderTable::GetRequiredTableSize() const
     {
         const auto getIdentifierSize = [](ShaderIdentifier id)
         {
@@ -49,7 +49,7 @@ namespace benzin
         return tableSize;
     }
 
-    void RayTracingShaderTable::UploadToGpu(Buffer* shaderTable)
+    void RayTracing_ShaderTable::UploadToGpu(Buffer* shaderTable)
     {
         // TODO: Replace 'shaderTable' with buffer in default heap
 

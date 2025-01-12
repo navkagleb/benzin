@@ -32,7 +32,7 @@ namespace benzin
     class Scene
     {
     public:
-        friend class RayTracingScene;
+        friend class RayTracing_Scene;
 
         explicit Scene(Device& device);
         ~Scene();

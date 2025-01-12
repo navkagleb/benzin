@@ -9,8 +9,8 @@ namespace benzin
     class Buffer;
     class Descriptor;
     class PipelineState;
-    class RayTracingShaderTable;
-    class RtAccelerationStructure;
+    class RayTracing_AcclerationStructure;
+    class RayTracing_ShaderTable;
     class Texture;
 
     struct SubResourceData;
@@ -69,8 +69,8 @@ namespace benzin
         void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize);
 
         // RayTracing
-        void BuildRayTracingAccelerationStructure(const RtAccelerationStructure& accelerationStructure);
-        void DispatchRays(const RayTracingShaderTable& shaderTable, const DirectX::XMUINT3 dimenions);
+        void BuildRayTracingAccelerationStructure(const RayTracing_AcclerationStructure& accelerationStructure);
+        void DispatchRays(const RayTracing_ShaderTable& shaderTable, const DirectX::XMUINT3 dimenions);
 
     private:
         void SetUploadBuffer(Buffer& uploadBuffer);
@@ -119,7 +119,7 @@ namespace benzin
         bool m_IsScoped = false;
     };
 
-} // namespace benzin
+}
 
 #define BenzinMakeResourceBarriers(commandList, ...) \
     const benzin::ResourceBarriers BenzinUniqueVariableName(scopedResourceBarriers) \
