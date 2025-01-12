@@ -37,9 +37,8 @@ namespace joint
         uint IsRenderResolutionChanged : 1;
         uint IsShadowsEnabled : 1;
         uint IsDenoiserEnabled : 1;
-        uint _Padding0;
 
-        float4 RandomFloats01;
+        BenzinAlign16 float4 RandomFloats01;
 
         CameraConstants Camera;
         CameraConstants PrevCamera;

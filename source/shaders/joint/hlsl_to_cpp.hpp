@@ -2,7 +2,10 @@
 
 #if defined(__cplusplus)
 
-    #define BenzinAlign16 __declspec(align(16))
+    #define BenzinAlign16 alignas(16)
+    #pragma warning(disable: 4324) // Disable warning about user provided alignment
+
+    #define BenzinCppOnly(...) __VA_ARGS__
 
 namespace joint
 {
@@ -29,9 +32,11 @@ namespace joint
 
 #else
 
-    #define BenzinAlign16
-
     #undef BenzinEnableUnaryPlusForEnum
     #define BenzinEnableUnaryPlusForEnum(EnumT)
+
+    #define BenzinAlign16
+
+    #define BenzinCppOnly(...)
 
 #endif

@@ -150,7 +150,7 @@ namespace sandbox
                 renderPass->OnZeroFrameInit();
             }
 
-            m_Scene->UploadMeshCollectionsToGpu();
+            m_Scene->UploadMeshesToGpu();
             m_RayTracingScene->BuildBlases();
         }
         EndFrame();

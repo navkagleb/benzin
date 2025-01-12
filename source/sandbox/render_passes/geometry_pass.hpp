@@ -8,8 +8,6 @@ namespace benzin
     class Scene;
     class PipelineState;
 
-    struct MeshCollection;
-
 }
 
 namespace sandbox

@@ -1,17 +1,14 @@
 #pragma once
 
 #include "benzin/engine/camera.hpp"
-#include "benzin/engine/resource_loader.hpp"
-
-namespace joint
-{
-
-    struct MeshInfo;
-
-}
 
 namespace benzin
 {
+
+    struct Mesh;
+    struct MeshGpuStorage;
+    struct MeshResource;
+    struct TextureImage;
 
     class Buffer;
     class Descriptor;
@@ -21,28 +18,6 @@ namespace benzin
 
     template <typename>
     class ConstantBuffer;
-
-    struct MeshCollection
-    {
-        std::vector<MeshData> Meshes;
-        std::vector<joint::MeshInfo> MeshInfos;
-        std::vector<Material> Materials;
-        std::vector<MeshInstance> MeshInstances;
-
-        auto GetFullMeshInstanceRange() const
-        {
-            return IndexRange32{ 0, (uint32_t)MeshInstances.size() };
-        }
-    };
-
-    struct MeshCollectionGpuStorage
-    {
-        std::unique_ptr<Buffer> VertexBuffer;
-        std::unique_ptr<Buffer> IndexBuffer;
-        std::unique_ptr<Buffer> MeshInfoBuffer;
-        std::unique_ptr<Buffer> MeshInstanceBuffer;
-        std::unique_ptr<Buffer> MaterialBuffer;
-    };
 
     struct SceneStats
     {
@@ -71,21 +46,19 @@ namespace benzin
 
         const auto& GetStats() const { return m_Stats; }
 
-        std::string_view GetMeshCollectionDebugName(entt::entity meshHandle) const;
-        const MeshCollection& GetMeshCollection(entt::entity meshHandle) const;
-        const MeshCollectionGpuStorage& GetMeshCollectionGpuStorage(entt::entity meshHandle) const;
-
         const Descriptor& GetPointLightBufferStructuredSrv() const;
 
         auto& GetEntityRegistry() { return m_EntityRegistry; }
         const auto& GetEntityRegistry() const { return m_EntityRegistry; }
 
+        const auto& GetMeshRegistry() const { return m_MeshRegistry; }
+
     public:
         void OnUpdate();
 
-        entt::entity PushMeshCollection(MeshCollectionResource&& meshCollectionResource);
+        entt::entity AddMesh(MeshResource&& meshResource);
 
-        void UploadMeshCollectionsToGpu();
+        void UploadMeshesToGpu();
 
     private:
         void OnTransformComponentConstuct(entt::registry& registry, entt::entity entityHandle);

@@ -2,6 +2,7 @@
 
 #include "common.hlsli"
 #include "gbuffer.hlsli"
+#include "joint/mesh_types.hpp"
 #include "space_convertions.hlsli"
 
 float3 ExpandNormal(float2 xyNormal)
@@ -54,13 +55,13 @@ joint::MeshInstance FetchMeshInstance()
     return meshInstanceBuffer[meshInstanceIndex];
 }
 
-joint::MeshVertex FetchVertex(uint indexIndex, uint meshIndex)
+joint::MeshVertex FetchVertex(uint indexIndex, uint subMeshIndex)
 {
     StructuredBuffer<joint::MeshVertex> vertexBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRc_MeshVertexBuffer)];
     Buffer<uint> indexBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRc_MeshIndexBuffer)];
     StructuredBuffer<joint::MeshInfo> meshInfoBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRc_MeshInfoBuffer)];
 
-    const joint::MeshInfo meshInfo = meshInfoBuffer[meshIndex];
+    const joint::MeshInfo meshInfo = meshInfoBuffer[subMeshIndex];
 
     const uint vertexIndex = indexBuffer[meshInfo.IndexOffset + indexIndex];
     const joint::MeshVertex vertex = vertexBuffer[meshInfo.VertexOffset + vertexIndex];
@@ -93,7 +94,7 @@ struct VsOutput
 VsOutput VsMain(uint indexIndex : SV_VertexID)
 {
     const joint::MeshInstance meshInstance = FetchMeshInstance();
-    const joint::MeshVertex vertex = FetchVertex(indexIndex, meshInstance.MeshIndex);
+    const joint::MeshVertex vertex = FetchVertex(indexIndex, meshInstance.SubMeshIndex);
     const joint::MeshTransform transform = FetchMeshTransform();
 
     const joint::CameraConstants camera = g_FrameConstants.Camera;

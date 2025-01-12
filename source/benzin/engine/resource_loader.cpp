@@ -7,11 +7,12 @@
 #include <third_party/DirectXTex/include/DirectXTex.h>
 #pragma comment(lib, "DirectXTex.lib")
 
-#include <shaders/joint/structured_buffer_types.hpp>
+#include <shaders/joint/mesh_types.hpp>
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/engine_math.hpp"
 #include "benzin/core/logger.hpp"
+#include "benzin/engine/mesh.hpp"
 
 namespace benzin
 {
@@ -19,7 +20,7 @@ namespace benzin
     class GltfReader
     {
     public:
-        bool ReadFromFile(std::string_view fileName, MeshCollectionResource& outMeshCollection)
+        bool ReadFromFile(std::string_view fileName, MeshResource& outMesh)
         {
             const std::filesystem::path filePath = EngineConfig::s_ModelDir / fileName;
             BenzinAssert(std::filesystem::exists(filePath));
@@ -60,27 +61,12 @@ namespace benzin
                 return false;
             }
 
-            outMeshCollection.DebugName = CutExtension(fileName);
+            outMesh.DebugName = CutExtension(fileName);
 
-            {
-                // BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseMeshPrimitives", outMeshCollection.DebugName);
-                ParseMeshPrimitives(outMeshCollection);
-            }
-
-            {
-                // BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseNodes", outMeshCollection.DebugName);
-                ParseNodes(outMeshCollection);
-            }
-
-            {
-                // BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseMaterials", outMeshCollection.DebugName);
-                ParseMaterials(outMeshCollection);
-            }
-
-            {
-                // BenzinLogTimeOnScopeExit("GLTF Reader: {} ParseTextures", outMeshCollection.DebugName);
-                ParseTextures(outMeshCollection);
-            }
+            ParseMeshPrimitives(outMesh);
+            ParseNodes(outMesh);
+            ParseMaterials(outMesh);
+            ParseTextures(outMesh);
 
             ResetState();
 
@@ -110,7 +96,7 @@ namespace benzin
         };
 
         template <std::integral IndexType>
-        void ParseMeshPrimitive(const tinygltf::Primitive& gltfPrimitive, MeshCollectionResource& outMeshCollection)
+        void ParseMeshPrimitive(const tinygltf::Primitive& gltfPrimitive, MeshResource& outMesh)
         {
             MeshData mesh;
 
@@ -186,10 +172,10 @@ namespace benzin
 
             mesh.BoundingBox = ComputeBoundingBox(mesh.Vertices);
 
-            outMeshCollection.Meshes.push_back(std::move(mesh));
+            outMesh.SubMeshes.push_back(std::move(mesh));
         }
 
-        void ParseMesh(const tinygltf::Mesh& gltfMesh, MeshCollectionResource& outMeshCollection)
+        void ParseMesh(const tinygltf::Mesh& gltfMesh, MeshResource& outMesh)
         {
             for (const tinygltf::Primitive& gltfPrimitive : gltfMesh.primitives)
             {
@@ -200,17 +186,17 @@ namespace benzin
                 {
                     case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
                     {
-                        ParseMeshPrimitive<uint8_t>(gltfPrimitive, outMeshCollection);
+                        ParseMeshPrimitive<uint8_t>(gltfPrimitive, outMesh);
                         break;
                     }
                     case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
                     {
-                        ParseMeshPrimitive<uint16_t>(gltfPrimitive, outMeshCollection);
+                        ParseMeshPrimitive<uint16_t>(gltfPrimitive, outMesh);
                         break;
                     }
                     case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
                     {
-                        ParseMeshPrimitive<uint32_t>(gltfPrimitive, outMeshCollection);
+                        ParseMeshPrimitive<uint32_t>(gltfPrimitive, outMesh);
                         break;
                     }
                     default:
@@ -222,14 +208,16 @@ namespace benzin
             }
         }
 
-        void ParseMeshPrimitives(MeshCollectionResource& outMeshCollection)
+        void ParseMeshPrimitives(MeshResource& outMesh)
         {
-            const size_t totalMeshCount = std::ranges::fold_left(m_CurrentModel.meshes, 0, [](size_t sum, const auto& gltfMesh) { return sum + gltfMesh.primitives.size(); });
-            outMeshCollection.Meshes.reserve(totalMeshCount);
+            outMesh.SubMeshes.reserve(std::ranges::fold_left(m_CurrentModel.meshes, 0, [](size_t sum, const auto& gltfMesh)
+            {
+                return sum + gltfMesh.primitives.size();
+            }));
 
             for (const tinygltf::Mesh& gltfMesh : m_CurrentModel.meshes)
             {
-                ParseMesh(gltfMesh, outMeshCollection);
+                ParseMesh(gltfMesh, outMesh);
             }
         }
 
@@ -302,7 +290,7 @@ namespace benzin
             return nodeTransform * parentNodeTransform;
         }
 
-        void ParseNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentNodeTransform, MeshCollectionResource& outMeshCollection)
+        void ParseNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentNodeTransform, MeshResource& outMesh)
         {
             const tinygltf::Node& gltfNode = m_CurrentModel.nodes[gltfNodeIndex];
             const DirectX::XMMATRIX nodeTransform = ParseNodeTransform(gltfNode, parentNodeTransform);
@@ -313,9 +301,9 @@ namespace benzin
                 {
                     BenzinAssert(gltfPrimitive.material != -1);
 
-                    outMeshCollection.MeshInstances.push_back(MeshInstance
+                    outMesh.SubMeshInstances.push_back(joint::MeshInstance
                     {
-                        .MeshIndex = (uint32_t)(meshIndex + primitiveIndex),
+                        .SubMeshIndex = (uint32_t)(meshIndex + primitiveIndex),
                         .MaterialIndex = (uint32_t)gltfPrimitive.material,
                         .Transform = nodeTransform,
                     });
@@ -324,11 +312,11 @@ namespace benzin
 
             for (const int gltfChildNodeIndex : gltfNode.children)
             {
-                ParseNode(gltfChildNodeIndex, nodeTransform, outMeshCollection);
+                ParseNode(gltfChildNodeIndex, nodeTransform, outMesh);
             }
         }
 
-        void ParseNodes(MeshCollectionResource& outMeshCollection)
+        void ParseNodes(MeshResource& outMesh)
         {
             // Convert from right-handed to left-handed
             // Must be used with TriangleOrder::CounterClockwise in rasterizer state
@@ -338,20 +326,20 @@ namespace benzin
             {
                 for (const int gltfNodeIndex : gltfScene.nodes)
                 {
-                    ParseNode(gltfNodeIndex, parentNodeTransform, outMeshCollection);
+                    ParseNode(gltfNodeIndex, parentNodeTransform, outMesh);
                 }
             }
         }
 
-        void ParseMaterials(MeshCollectionResource& outMeshCollection)
+        void ParseMaterials(MeshResource& outMesh)
         {
-            outMeshCollection.Materials.reserve(m_CurrentModel.materials.size());
+            outMesh.Materials.reserve(m_CurrentModel.materials.size());
 
             for (const auto& gltfMaterial : m_CurrentModel.materials)
             {
                 const tinygltf::PbrMetallicRoughness& gltfPbrMetallicRoughness = gltfMaterial.pbrMetallicRoughness;
 
-                Material material;
+                joint::Material material;
 
                 // Albedo
                 {
@@ -389,13 +377,13 @@ namespace benzin
                     material.EmissiveFactor.z = (float)gltfMaterial.emissiveFactor[2];
                 }
 
-                outMeshCollection.Materials.push_back(std::move(material));
+                outMesh.Materials.push_back(std::move(material));
             }
         }
 
-        void ParseTextures(MeshCollectionResource& outMeshCollection)
+        void ParseTextures(MeshResource& outMesh)
         {
-            outMeshCollection.TextureImages.resize(m_TextureMappings.size());
+            outMesh.TextureImages.resize(m_TextureMappings.size());
 
             std::for_each(std::execution::par, m_TextureMappings.begin(), m_TextureMappings.end(), [&](const auto textureMappingEntry)
             {
@@ -431,7 +419,7 @@ namespace benzin
                 textureImage.ImageData.resize(gltfImage.image.size());
                 memcpy(textureImage.ImageData.data(), gltfImage.image.data(), gltfImage.image.size());
 
-                outMeshCollection.TextureImages[mappedIndex] = std::move(textureImage);
+                outMesh.TextureImages[mappedIndex] = std::move(textureImage);
             });
         }
 
@@ -529,11 +517,11 @@ namespace benzin
         return true;
     }
 
-    bool LoadMeshCollectionFromGltfFile(std::string_view fileName, MeshCollectionResource& outMeshCollection)
+    bool LoadMeshFromGltfFile(std::string_view fileName, MeshResource& outMesh)
     {
         static thread_local GltfReader gltfReader;
 
-        return gltfReader.ReadFromFile(fileName, outMeshCollection);
+        return gltfReader.ReadFromFile(fileName, outMesh);
     }
 
 }

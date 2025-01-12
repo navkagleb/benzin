@@ -6,7 +6,7 @@
 namespace benzin
 {
 
-    struct MeshCollectionResource;
+    struct MeshResource;
 
 }
 
@@ -40,8 +40,7 @@ namespace sandbox
         void InitSceneEntities();
         void InitCamera();
 
-        void LoadMeshes(std::span<benzin::MeshCollectionResource> outMeshResources);
-        void AddMeshesToScene(std::span<benzin::MeshCollectionResource> meshResources, std::span<entt::entity> outMeshHandles);
+        void AddMeshesToScene(std::span<benzin::MeshResource> meshResources, std::span<entt::entity> outMeshHandles);
         void CreateEntities(std::span<const entt::entity> meshHandles);
 
     private:

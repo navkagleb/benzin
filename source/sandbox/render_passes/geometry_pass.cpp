@@ -3,6 +3,7 @@
 
 #include <benzin/core/engine_math.hpp>
 #include <benzin/engine/entity_components.hpp>
+#include <benzin/engine/mesh.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
@@ -11,6 +12,7 @@
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 
+#include <shaders/joint/mesh_types.hpp>
 #include <shaders/joint/root_constants.hpp>
 
 #include "sandbox/resources.hpp"
@@ -150,7 +152,9 @@ namespace sandbox
 
         commandList.SetPipelineState(*m_Pso);
 
-        auto& stats = ms_Settings->GetSection<GBufferStats>();
+        const bool isFrustumCullingEnabled = ms_Settings->GetSection<GBufferSettings>().IsFrustumCullingEnabled;
+
+        auto& stats = ms_Settings->GetSection<GBufferSettings>().Stats;
         stats.MeshCount = 0;
         stats.RenderedMeshCount = 0;
         stats.RenderedTriangleCount = 0;
@@ -158,34 +162,35 @@ namespace sandbox
         const auto& worldToViewMatrix = m_Scene.GetCamera().GetWorldToViewMatrix();
         const auto& cameraFrustum = m_Scene.GetCamera().GetProjection().GetBoundingFrustum();
 
+        const auto& meshRegistry = m_Scene.GetMeshRegistry();
+
         const auto view = m_Scene.GetEntityRegistry().view<benzin::TransformComponent, benzin::MeshComponent>();
         for (const auto& [_, tc, mc] : view.each())
         {
-            const std::string_view meshCollectionDebugName = m_Scene.GetMeshCollectionDebugName(mc.MeshHandle);
-            BenzinPushGpuEvent(commandList, meshCollectionDebugName);
+            const std::string_view meshName = meshRegistry.get<std::string>(mc.MeshHandle);
+            BenzinPushGpuEvent(commandList, meshName);
 
-            const auto& meshCollection = m_Scene.GetMeshCollection(mc.MeshHandle);
-            const auto& meshCollectionGpuStorage = m_Scene.GetMeshCollectionGpuStorage(mc.MeshHandle);
+            const auto& mesh = meshRegistry.get<benzin::Mesh>(mc.MeshHandle);
+            const auto& meshGpuStorage = meshRegistry.get<benzin::MeshGpuStorage>(mc.MeshHandle);
 
-            commandList.SetRootResource(joint::GeometryPassRc_MeshVertexBuffer, meshCollectionGpuStorage.VertexBuffer->GetSrv());
-            commandList.SetRootResource(joint::GeometryPassRc_MeshIndexBuffer, meshCollectionGpuStorage.IndexBuffer->GetSrv());
-            commandList.SetRootResource(joint::GeometryPassRc_MeshInfoBuffer, meshCollectionGpuStorage.MeshInfoBuffer->GetSrv());
-            commandList.SetRootResource(joint::GeometryPassRc_MeshInstanceBuffer, meshCollectionGpuStorage.MeshInstanceBuffer->GetSrv());
-            commandList.SetRootResource(joint::GeometryPassRc_MaterialBuffer, meshCollectionGpuStorage.MaterialBuffer->GetSrv());
+            commandList.SetRootResource(joint::GeometryPassRc_MeshVertexBuffer, meshGpuStorage.VertexBuffer->GetSrv());
+            commandList.SetRootResource(joint::GeometryPassRc_MeshIndexBuffer, meshGpuStorage.IndexBuffer->GetSrv());
+            commandList.SetRootResource(joint::GeometryPassRc_MeshInfoBuffer, meshGpuStorage.MeshInfoBuffer->GetSrv());
+            commandList.SetRootResource(joint::GeometryPassRc_MeshInstanceBuffer, meshGpuStorage.MeshInstanceBuffer->GetSrv());
+            commandList.SetRootResource(joint::GeometryPassRc_MaterialBuffer, meshGpuStorage.MaterialBuffer->GetSrv());
             commandList.SetRootResource(joint::GeometryPassRc_MeshTransformConstantBuffer, tc.GetActiveTransformCbv());
 
-            const auto meshInstanceRange = mc.MeshInstanceRange.value_or(meshCollection.GetFullMeshInstanceRange());
-            for (const auto i : benzin::IndexRangeToView(meshInstanceRange))
+            for (const auto i : std::views::iota(0u, mesh.SubMeshInstances.size()))
             {
                 ++stats.MeshCount;
 
-                const auto& meshInstance = meshCollection.MeshInstances[i];
-                const auto& mesh = meshCollection.Meshes[meshInstance.MeshIndex];
+                const joint::MeshInstance& meshInstance = mesh.SubMeshInstances[i];
+                const benzin::MeshData& subMesh = mesh.SubMeshes[meshInstance.SubMeshIndex];
 
-                if (mesh.BoundingBox.has_value())
+                if (isFrustumCullingEnabled && subMesh.BoundingBox.has_value())
                 {
                     const DirectX::XMMATRIX localToViewMatrix = meshInstance.Transform * tc.GetLocalToWorldMatrix() * worldToViewMatrix;
-                    const auto viewBoundingBox = benzin::TransformBoundingBox(*mesh.BoundingBox, localToViewMatrix);
+                    const auto viewBoundingBox = benzin::TransformBoundingBox(*subMesh.BoundingBox, localToViewMatrix);
 
                     if (cameraFrustum.Contains(viewBoundingBox) == DirectX::DISJOINT)
                     {
@@ -195,11 +200,11 @@ namespace sandbox
 
                 commandList.SetRootConstant(joint::GeometryPassRc_MeshInstanceIndex, i);
 
-                commandList.SetPrimitiveTopology(mesh.PrimitiveTopology);
-                commandList.DrawVertexed((uint32_t)mesh.Indices.size());
+                commandList.SetPrimitiveTopology(subMesh.PrimitiveTopology);
+                commandList.DrawVertexed((uint32_t)subMesh.Indices.size());
 
                 ++stats.RenderedMeshCount;
-                stats.RenderedTriangleCount += (uint32_t)(mesh.Indices.size() / 3);
+                stats.RenderedTriangleCount += (uint32_t)(subMesh.Indices.size() / 3);
             }
         }
     }

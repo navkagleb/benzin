@@ -32,7 +32,3 @@ namespace joint
     BenzinEnableUnaryPlusForEnum(Rc_RayTracedShadows);
 
 }
-
-#if !defined(__cplusplus)
-    #define RenderPassConstantsType joint::RayTracedShadowsConsts
-#endif

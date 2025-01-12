@@ -8,9 +8,6 @@ namespace benzin
     class Scene;
     class TopLevelAccelerationStructure;
 
-    struct MeshCollection;
-    struct MeshCollectionGpuStorage;
-
     class RayTracingScene
     {
     public:

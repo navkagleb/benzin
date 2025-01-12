@@ -5,11 +5,16 @@
 namespace sandbox
 {
 
-    struct GBufferStats
+    struct GBufferSettings
     {
-        uint32_t MeshCount = 0;
-        uint32_t RenderedMeshCount = 0;
-        uint32_t RenderedTriangleCount = 0;
+        bool IsFrustumCullingEnabled = true;
+
+        struct
+        {
+            uint32_t MeshCount = 0;
+            uint32_t RenderedMeshCount = 0;
+            uint32_t RenderedTriangleCount = 0;
+        } Stats;
     };
 
     struct RayTracingShadowsSettings

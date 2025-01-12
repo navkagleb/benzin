@@ -1,11 +1,12 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/ray_tracing_scene.hpp"
 
-#include <shaders/joint/structured_buffer_types.hpp>
+#include <shaders/joint/mesh_types.hpp>
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/engine/entity_components.hpp"
+#include "benzin/engine/mesh.hpp"
 #include "benzin/engine/scene.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/device.hpp"
@@ -89,30 +90,30 @@ namespace benzin
 
         m_Scene.m_MeshRegistry.each([this](entt::entity meshHandle)
         {
-            const auto& meshCollection = m_Scene.GetMeshCollection(meshHandle);
-            const auto& gpuStorage = m_Scene.GetMeshCollectionGpuStorage(meshHandle);
+            const auto& mesh = m_Scene.m_MeshRegistry.get<Mesh>(meshHandle);
+            const auto& meshGpuStorage = m_Scene.m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
 
             std::vector<RtGeometryVariant> geometries;
-            geometries.reserve(meshCollection.MeshInstances.size());
+            geometries.reserve(mesh.SubMeshInstances.size());
 
             std::vector<DirectX::XMFLOAT3X4> localTransforms;
-            localTransforms.reserve(meshCollection.MeshInstances.size());
+            localTransforms.reserve(mesh.SubMeshInstances.size());
 
-            for (const MeshInstance& instance : meshCollection.MeshInstances)
+            for (const joint::MeshInstance& instance : mesh.SubMeshInstances)
             {
                 // TODO: There is duplication of Mesh due to using transform from MeshInstance
 
-                const MeshData& mesh = meshCollection.Meshes[instance.MeshIndex];
-                const joint::MeshInfo meshInfo = meshCollection.MeshInfos[instance.MeshIndex];
+                const MeshData& subMesh = mesh.SubMeshes[instance.SubMeshIndex];
+                const joint::MeshInfo meshInfo = mesh.SubMeshInfos[instance.SubMeshIndex];
 
                 geometries.push_back(RtTriangledGeometry
                 {
-                    .VertexBuffer = *gpuStorage.VertexBuffer,
-                    .IndexBuffer = *gpuStorage.IndexBuffer,
+                    .VertexBuffer = *meshGpuStorage.VertexBuffer,
+                    .IndexBuffer = *meshGpuStorage.IndexBuffer,
                     .VertexOffset = meshInfo.VertexOffset,
                     .IndexOffset = meshInfo.IndexOffset,
-                    .VertexCount = (uint32_t)mesh.Vertices.size(),
-                    .IndexCount = (uint32_t)mesh.Indices.size(),
+                    .VertexCount = (uint32_t)subMesh.Vertices.size(),
+                    .IndexCount = (uint32_t)subMesh.Indices.size(),
                 });
 
                 const DirectX::XMMATRIX transposedMatrix = DirectX::XMMatrixTranspose(instance.Transform);

@@ -4,17 +4,17 @@
 // Ref: https://blog.demofox.org/2017/10/31/animating-noise-for-integration-over-time/ - Animating Noise For Integration Over Time
 // Ref: https://blog.demofox.org/2017/11/03/animating-noise-for-integration-over-time-2-uniform-over-time/ - Animating Noise For Integration Over Time 2: Uniform Over Time
 
-#include "joint/ray_traced_shadows_resources.hpp"
-#include "unified_root_parameters.hlsli"
-
 #include "common.hlsli"
 #include "sigma_denoiser/sigma_public.hlsli"
 #include "space_convertions.hlsli"
 
+#include "joint/ray_traced_shadows_resources.hpp"
+#define RenderPassConstantsType joint::RayTracedShadowsConsts
+#include "unified_root_parameters.hlsli"
+
 BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::Rc_RayTracedShadows::WorldNormal);
 BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::Rc_RayTracedShadows::Depth);
 BenzinDeclareRootResource(Texture2D<float2>, g_BlueNoise, joint::Rc_RayTracedShadows::BlueNoise);
-
 BenzinDeclareRootResource(RWTexture2D<float>, g_OutNoisyPenumbra, joint::Rc_RayTracedShadows::OutNoisyPenumbra);
 
 float3 OffsetRayPosition(float3 position, float3 normal)

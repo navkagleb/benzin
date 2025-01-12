@@ -5,7 +5,7 @@ namespace joint
 
     struct MeshTransform;
 
-} // namespace joint
+}
 
 namespace benzin
 {

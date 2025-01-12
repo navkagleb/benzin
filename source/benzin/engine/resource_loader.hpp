@@ -1,34 +1,17 @@
 #pragma once
 
-#include "benzin/graphics/common.hpp"
-
 namespace joint
 {
 
-    struct MeshVertex;
+    struct Material;
+    struct MeshInstance;
 
-} // namespace joint
+}
 
 namespace benzin
 {
 
-    struct MeshData
-    {
-        std::vector<joint::MeshVertex> Vertices;
-        std::vector<uint32_t> Indices;
-
-        PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
-
-        std::optional<DirectX::BoundingBox> BoundingBox;
-    };
-
-    struct MeshInstance
-    {
-        uint32_t MeshIndex = g_InvalidUnsigned<uint32_t>;
-        uint32_t MaterialIndex = g_InvalidUnsigned<uint32_t>;
-
-        DirectX::XMMATRIX Transform = DirectX::XMMatrixIdentity();
-    };
+    struct MeshData;
 
     struct TextureImage
     {
@@ -42,36 +25,20 @@ namespace benzin
         std::vector<std::byte> ImageData;
     };
 
-    struct Material
-    {
-        uint32_t AlbedoTextureIndex = g_InvalidUnsigned<uint32_t>;
-        uint32_t NormalTextureIndex = g_InvalidUnsigned<uint32_t>;
-        uint32_t MetallicRoughnessTextureIndex = g_InvalidUnsigned<uint32_t>;
-        uint32_t EmissiveTextureIndex = g_InvalidUnsigned<uint32_t>;
-
-        DirectX::XMFLOAT4 AlbedoFactor{ 1.0f, 1.0f, 1.0f, 1.0f };
-        float AlphaCutoff = 0.0f;
-        float NormalScale = 1.0f;
-        float MetalnessFactor = 1.0f;
-        float RoughnessFactor = 1.0f;
-        float OcclusionStrenght = 1.0f;
-        DirectX::XMFLOAT3 EmissiveFactor{ 0.0f, 0.0f, 0.0f };
-    };
-
-    struct MeshCollectionResource
+    struct MeshResource
     {
         std::string DebugName;
 
-        std::vector<MeshData> Meshes;
-        std::vector<MeshInstance> MeshInstances;
+        std::vector<MeshData> SubMeshes;
+        std::vector<joint::MeshInstance> SubMeshInstances;
 
         std::vector<TextureImage> TextureImages;
-        std::vector<Material> Materials;
+        std::vector<joint::Material> Materials;
     };
 
     bool LoadTextureImageFromHdrFile(std::string_view fileName, TextureImage& textureImage);
     bool LoadTextureImageFromDdsFile(std::string_view fileName, TextureImage& textureImage);
 
-    bool LoadMeshCollectionFromGltfFile(std::string_view fileName, MeshCollectionResource& outMeshCollection);
+    bool LoadMeshFromGltfFile(std::string_view fileName, MeshResource& outMesh);
 
 }

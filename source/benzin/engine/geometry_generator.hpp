@@ -54,4 +54,4 @@ namespace benzin
     const MeshData& GetDefaultCyliderMesh();
     const MeshData& GetDefaultGeoSphereMesh();
 
-} // namespace benzin
+}

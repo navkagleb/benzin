@@ -1,10 +1,11 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/geometry_generator.hpp"
 
-#include <shaders/joint/structured_buffer_types.hpp>
+#include <shaders/joint/mesh_types.hpp>
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/engine_math.hpp"
+#include "benzin/engine/mesh.hpp"
 #include "benzin/engine/scene.hpp"
 
 namespace benzin

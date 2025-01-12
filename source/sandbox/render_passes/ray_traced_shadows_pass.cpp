@@ -2,6 +2,7 @@
 #include "sandbox/render_passes/ray_traced_shadows_pass.hpp"
 
 #include <benzin/core/asserter.hpp>
+#include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/buffer.hpp>
