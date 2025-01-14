@@ -4,8 +4,7 @@
 #include <third_party/tinygltf/stb_image.h>
 #include <third_party/tinygltf/tiny_gltf.h>
 
-#include <third_party/DirectXTex/include/DirectXTex.h>
-#pragma comment(lib, "DirectXTex.lib")
+#include <DirectXTex.h>
 
 #include <shaders/joint/mesh_types.hpp>
 

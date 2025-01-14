@@ -4,7 +4,6 @@
 // Ref: https://devblogs.microsoft.com/pix/winpixeventruntime/
 #define USE_PIX
 #include <pix3.h>
-#pragma comment(lib, "WinPixEventRuntime.lib")
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/graphics/buffer.hpp"

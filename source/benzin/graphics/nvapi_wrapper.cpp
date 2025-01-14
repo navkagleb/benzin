@@ -1,8 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/nvapi_wrapper.hpp"
 
-#include <third_party/nvapi/include/nvapi.h>
-#pragma comment(lib, "nvapi64.lib")
+#include <nvapi.h>
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
