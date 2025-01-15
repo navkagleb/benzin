@@ -12,6 +12,13 @@ namespace joint
         float3 ToSunTangent;
         float SunAngularRadiusInRadians;
         float3 ToSunBitangent;
+
+        float Padding;
+
+        float3 LightPosition;
+        float LightRadius;
+
+        uint IsShadowsFromSun : 1;
         uint IsBlueNoiseUsed : 1;
         uint IsNoiseAnimated : 1;
     };

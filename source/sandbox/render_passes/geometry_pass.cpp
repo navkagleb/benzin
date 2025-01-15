@@ -167,6 +167,11 @@ namespace sandbox
         const auto view = m_Scene.GetEntityRegistry().view<benzin::TransformComponent, benzin::MeshComponent>();
         for (const auto& [_, tc, mc] : view.each())
         {
+            if (!benzin::IsValidEnum(mc.MeshHandle))
+            {
+                continue;
+            }
+
             const std::string_view meshName = meshRegistry.get<std::string>(mc.MeshHandle);
             BenzinPushGpuEvent(commandList, meshName);
 

@@ -11,6 +11,8 @@ namespace joint
     {
         float StabilizationStrength;
         float3 WorldSunDirection;
+        uint IsShadowsFromSun;
+        float3 WorldLightPosition;
         float4 BlurRotator;
         float4 PostBlurRotator;
         uint2 TileCount;

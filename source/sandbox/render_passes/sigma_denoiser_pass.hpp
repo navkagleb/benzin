@@ -2,7 +2,6 @@
 
 #include <benzin/engine/render_pass.hpp>
 
-#include <shaders/joint/sigma_denoiser_resources.hpp>
 
 namespace benzin
 {
@@ -11,6 +10,14 @@ namespace benzin
     class ConstantBuffer;
 
     class PipelineState;
+    class Scene;
+
+}
+
+namespace joint
+{
+
+    struct SigmaConstants;
 
 }
 
@@ -24,7 +31,7 @@ namespace sandbox
         static const uint32_t s_MaxHistoryLength;
 
     public:
-        SigmaDenoiserPass();
+        explicit SigmaDenoiserPass(const benzin::Scene& scene);
         ~SigmaDenoiserPass() override;
 
         bool IsDependentOnViewport() const override { return true; }
@@ -52,6 +59,8 @@ namespace sandbox
             PostBlur,
             TemporalStabilization,
         };
+
+        const benzin::Scene& m_Scene;
 
         std::array<benzin::PipelineState*, magic_enum::enum_count<Step>()> m_Psos{};
 

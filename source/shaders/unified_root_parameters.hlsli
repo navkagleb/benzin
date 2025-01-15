@@ -27,7 +27,7 @@ ConstantBuffer<RootConstants> g_RootConstants : register(b0, space0);
 ConstantBuffer<joint::FrameConstants> g_FrameConstants : register(b0, space1);
 ConstantBuffer<RenderPassConstantsType> g_PassConstants : register(b0, space2);
 
-RaytracingAccelerationStructure g_TopLevelAs : register(t0, space0);
+RaytracingAccelerationStructure g_SceneTlas : register(t0, space0);
 
 SamplerState g_PointWrapSampler : register(s0, space0);
 SamplerState g_PointClampSampler : register(s0, space1);

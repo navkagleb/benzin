@@ -4,6 +4,8 @@
 #include <benzin/core/engine_math.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/core/tick_timer.hpp>
+#include <benzin/engine/entity_components.hpp>
+#include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
@@ -11,6 +13,8 @@
 #include <benzin/graphics/pipeline_state_manager.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
+
+#include <shaders/joint/sigma_denoiser_resources.hpp>
 
 #include "sandbox/sandbox_render_settings.hpp"
 #include "sandbox/resources.hpp"
@@ -23,7 +27,9 @@ namespace sandbox
 
     static uint32_t GetMaxHistoryLength(float fps)
     {
-        static constexpr float defaultAccumulationTimeInSec = 0.084f; // 5 (history length) / 60 (fps)
+        // TODO: Provide smooth fps
+
+        constexpr float defaultAccumulationTimeInSec = 0.084f; // 5 (history length) / 60 (fps)
 
         const auto allowedMaxHistoryLength = (uint32_t)(defaultAccumulationTimeInSec * fps);
         return std::min(allowedMaxHistoryLength, SigmaDenoiserPass::s_MaxHistoryLength);
@@ -34,7 +40,8 @@ namespace sandbox
     const benzin::GraphicsFormat SigmaDenoiserPass::s_PenumbraFormat = benzin::GraphicsFormat::R16Float;
     const uint32_t SigmaDenoiserPass::s_MaxHistoryLength = 7;
 
-    SigmaDenoiserPass::SigmaDenoiserPass()
+    SigmaDenoiserPass::SigmaDenoiserPass(const benzin::Scene& scene)
+        : m_Scene{ scene }
     {
         auto& psoManager = ms_Device->GetPipelineStateManager();
         m_Psos[+Step::ClassifyTiles] = psoManager.CreatePipelineState(benzin::ComputePipelineStateCreation{ .DebugName = "Sigma_ClassifyTiles", .CsFileName = "sigma_denoiser/classify_tiles.hlsl" });
@@ -110,10 +117,15 @@ namespace sandbox
         sigmaSettings.MaxHistoryLength = GetMaxHistoryLength(fps);
         sigmaSettings.StabilizationStrength = sigmaSettings.MaxHistoryLength / (1.0f + sigmaSettings.MaxHistoryLength);
 
+        const auto& shadowSettings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
+        const auto worldLightPosition = m_Scene.GetEntityRegistry().get<benzin::TransformComponent>(shadowSettings.LightHandle).GetTranslation();
+
         m_SigmaConstantBuffer->UpdateConstants(joint::SigmaConstants
         {
             .StabilizationStrength = sigmaSettings.StabilizationStrength,
             .WorldSunDirection = GetSunDirection(lightingSettings),
+            .IsShadowsFromSun = shadowSettings.IsShadowsFromSun,
+            .WorldLightPosition = worldLightPosition,
             .BlurRotator = blurRotator,
             .PostBlurRotator = postBlurRotator,
             .TileCount = m_TileCount,

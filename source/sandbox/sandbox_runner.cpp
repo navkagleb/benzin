@@ -39,7 +39,7 @@ namespace sandbox
         GltfMeshCount,
 
         Cylinder = GltfMeshCount,
-        Sphere,
+        UnitSphere,
     };
     BenzinEnableUnaryPlusForEnum(Mesh);
 
@@ -69,7 +69,7 @@ namespace sandbox
             };
         };
 
-        const auto createSphereLightMesh = []
+        const auto createUnitSphereMesh = []
         {
             const joint::Material material
             {
@@ -85,8 +85,8 @@ namespace sandbox
 
             return benzin::MeshResource
             {
-                .DebugName = "Sphere",
-                .SubMeshes{ benzin::GetDefaultGeoSphereMesh() },
+                .DebugName = "UnitSphere",
+                .SubMeshes{ benzin::GetUnitGeoSphereMesh() },
                 .SubMeshInstances{ meshInstance },
                 .Materials{ material },
             };
@@ -117,7 +117,7 @@ namespace sandbox
         }
 
         outMeshResources[+Mesh::Cylinder] = createCylinderMesh();
-        outMeshResources[+Mesh::Sphere] = createSphereLightMesh();
+        outMeshResources[+Mesh::UnitSphere] = createUnitSphereMesh();
 
         for (auto& future : gltfFutures)
         {
@@ -177,7 +177,7 @@ namespace sandbox
         m_RenderPasses[+RenderPasses::GlobalConstants] = std::make_unique<GlobalConstantsPass>(*m_Device, *m_Scene);
         m_RenderPasses[+RenderPasses::Geometry] = std::make_unique<GeometryPass>(*m_Scene);
         m_RenderPasses[+RenderPasses::RayTracedShadows] = std::make_unique<RayTracing_ShadowPass>(*m_Scene);
-        m_RenderPasses[+RenderPasses::SigmaDenoiser] = std::make_unique<SigmaDenoiserPass>();
+        m_RenderPasses[+RenderPasses::SigmaDenoiser] = std::make_unique<SigmaDenoiserPass>(*m_Scene);
         m_RenderPasses[+RenderPasses::DeferredLighting] = std::make_unique<DeferredLightingPass>(*m_Scene);
         m_RenderPasses[+RenderPasses::Environment] = std::make_unique<EnvironmentPass>();
         m_RenderPasses[+RenderPasses::FullScreenDebug] = std::make_unique<FullScreenDebugPass>();
@@ -247,11 +247,18 @@ namespace sandbox
             }
         });
 
-        m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<RayTracingShadowsSettings>("RayTracingShadows", true, [](RayTracingShadowsSettings& settings)
+        m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<RayTracing_ShadowSettings>("RayTracedShadows", true, [this](RayTracing_ShadowSettings& settings)
         {
             ImGui::Checkbox("IsEnabled###RayTracingShadows", &settings.IsEnabled);
+            ImGui::Checkbox("IsShadowsFromSun", &settings.IsShadowsFromSun);
             ImGui::Checkbox("IsBlueNoiseUsed", &settings.IsBlueNoiseUsed);
             ImGui::Checkbox("IsNoiseAnimated", &settings.IsNoiseAnimated);
+
+            if (ImGui::SliderFloat("LightDiameter", &settings.LightDiameter, 0.0f, 0.4f, "%.4f"))
+            {
+                auto& tc = m_Scene->GetEntityRegistry().get<benzin::TransformComponent>(settings.LightHandle);
+                tc.SetScale({ settings.LightDiameter, settings.LightDiameter, settings.LightDiameter });
+            }
         });
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<SigmaDenoiserSettings>("SigmaDenoiser", true, [](SigmaDenoiserSettings& settings)
@@ -331,10 +338,13 @@ namespace sandbox
         std::array<benzin::MeshResource, magic_enum::enum_count<Mesh>()> meshResources{};
         LoadMeshes(meshResources);
 
-        std::array<entt::entity, magic_enum::enum_count<Mesh>()> meshHandles{};
+        std::array<entt::entity, magic_enum::enum_count<Mesh>()> meshHandles;
+        meshHandles.fill(benzin::g_InvalidEnum<entt::entity>);
         AddMeshesToScene(meshResources, meshHandles);
 
-        CreateEntities(meshHandles);
+        AddStaticMeshEntities(meshHandles);
+        AddDynamicMeshEntities(meshHandles);
+        AddEmissiveEntities(meshHandles);
     }
 
     void SandboxRunner::AddMeshesToScene(std::span<benzin::MeshResource> meshResources, std::span<entt::entity> outMeshHandles)
@@ -347,10 +357,8 @@ namespace sandbox
         }
     }
 
-    void SandboxRunner::CreateEntities(std::span<const entt::entity> meshHandles)
+    void SandboxRunner::AddStaticMeshEntities(std::span<const entt::entity> meshHandles)
     {
-        BenzinLogTimeOnScopeExit("SandboxRunner::CreateEntities");
-
         auto& entityRegistry = m_Scene->GetEntityRegistry();
 
         {
@@ -363,6 +371,44 @@ namespace sandbox
             tc.SetRotation({ 0.0f, DirectX::XM_PI, 0.0f });
             tc.SetTranslation({ 5.0f, 0.0f, 0.0f });
         }
+
+        {
+            const auto entity = entityRegistry.create();
+
+            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
+            mc.MeshHandle = meshHandles[+Mesh::OrientationTest];
+
+            auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
+            tc.SetScale({ 0.05f, 0.05f, 0.05f });
+            tc.SetTranslation({ 2.5f, 0.2f, -0.25f });
+        }
+
+        {
+            const auto entity = entityRegistry.create();
+
+            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
+            mc.MeshHandle = meshHandles[+Mesh::MilkTruck];
+
+            auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
+            tc.SetScale({ 0.1f, 0.1f, 0.1f });
+            tc.SetTranslation({ -1.5f, 0.2f, 0.5f });
+        }
+
+        {
+            const auto entity = entityRegistry.create();
+
+            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
+            mc.MeshHandle = meshHandles[+Mesh::Cylinder];
+
+            auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
+            tc.SetScale({ 0.1f, 1.5f, 0.1f });
+            tc.SetTranslation({ -1.5f, 0.4f, -0.25f });
+        }
+    }
+
+    void SandboxRunner::AddDynamicMeshEntities(std::span<const entt::entity> meshHandles)
+    {
+        auto& entityRegistry = m_Scene->GetEntityRegistry();
 
         {
             const auto entity = entityRegistry.create();
@@ -421,48 +467,29 @@ namespace sandbox
                 tc.SetRotation(rotation);
             };
         }
+    }
 
+    void SandboxRunner::AddEmissiveEntities(std::span<const entt::entity> meshHandles)
+    {
+        entt::registry& entityRegistry = m_Scene->GetEntityRegistry();
+
+        // Sun
         {
-            const auto entity = entityRegistry.create();
+            auto& lightSettings = m_RenderSettings->GetSection<DeferredLightingSettings>();
+            lightSettings.SunIntensity = 0.0f;
 
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::OrientationTest];
+            const entt::entity entity = entityRegistry.create();
 
-            auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
-            tc.SetScale({ 0.05f, 0.05f, 0.05f });
-            tc.SetTranslation({ 2.5f, 0.2f, -0.25f });
-        }
-
-        {
-            const auto entity = entityRegistry.create();
-
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::MilkTruck];
-
-            auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
-            tc.SetScale({ 0.1f, 0.1f, 0.1f });
-            tc.SetTranslation({ -1.5f, 0.2f, 0.5f });
-        }
-
-        {
-            const auto entity = entityRegistry.create();
-
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::Cylinder];
-
-            auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
-            tc.SetScale({ 0.1f, 1.5f, 0.1f });
-            tc.SetTranslation({ -1.5f, 0.4f, -0.25f });
-        }
-
-        {
-            const auto sunEntity = entityRegistry.create();
-
-            auto& uc = entityRegistry.emplace<benzin::UpdateComponent>(sunEntity);
+            auto& uc = entityRegistry.emplace<benzin::UpdateComponent>(entity);
             uc.Callback = [this](entt::registry& entityRegistry, entt::entity entityHandle)
             {
                 BenzinUnused(entityRegistry);
                 BenzinUnused(entityHandle);
+
+                if (m_AnimationTimer.IsPaused())
+                {
+                    return;
+                }
 
                 const auto animateSunAngle = [this](
                     float minAngleInRadians,
@@ -481,39 +508,38 @@ namespace sandbox
                     }
                 };
 
-                if (m_AnimationTimer.IsPaused())
-                {
-                    return;
-                }
-
-                auto& settings = m_RenderSettings->GetSection<DeferredLightingSettings>();
 
                 static float elevationDirection = 1.0f;
                 static float azimithDirection = 1.0f;
+
+                auto& settings = m_RenderSettings->GetSection<DeferredLightingSettings>();
 
                 animateSunAngle(DirectX::XMConvertToRadians(41.0f), DirectX::XMConvertToRadians(52.0f), settings.SunElevationInRadians, elevationDirection);
                 animateSunAngle(DirectX::XMConvertToRadians(-2.0f), DirectX::XMConvertToRadians(3.0f), settings.SunAzimuthInRadians, azimithDirection);
             };
         }
 
-#if 0
+        BenzinUnused(meshHandles);
+#if 1
+        // Sphere light
         {
-            constexpr float sphereLightRadius = 0.02f;
+            const float diameter = m_RenderSettings->GetSection<RayTracing_ShadowSettings>().LightDiameter;
 
             const auto entity = entityRegistry.create();
 
-            auto& mic = entityRegistry.emplace<benzin::MeshInstanceComponent>(entity);
-            mic.MeshUnionIndex = sceneMeshes[+SceneMesh::Sphere];
+            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
+            mc.MeshHandle = meshHandles[+Mesh::UnitSphere];
+            mc.IsRayTracingMesh = false;
 
             auto& tc = entityRegistry.emplace<benzin::TransformComponent>(entity);
-            tc.SetScale({ sphereLightRadius, sphereLightRadius, sphereLightRadius });
+            tc.SetScale({ diameter, diameter, diameter });
             tc.SetTranslation({ 0.5f, 2.0f, -0.25f });
 
             auto& plc = entityRegistry.emplace<benzin::PointLightComponent>(entity);
-            plc.Color = { 1.0f, 1.0f, 1.0f };
-            plc.Intensity = 0.0f;
+            plc.Color = { 1.0f, 1.0f, 0.0f };
+            plc.Intensity = 5.0f;
             plc.Range = 30.0f;
-            plc.GeometryRadius = sphereLightRadius;
+            plc.GeometryRadius = diameter;
 
             auto& uc = entityRegistry.emplace<benzin::UpdateComponent>(entity);
             uc.Callback = [this](entt::registry& entityRegistry, entt::entity entityHandle)
@@ -525,19 +551,20 @@ namespace sandbox
 
                 auto& tc = entityRegistry.get<benzin::TransformComponent>(entityHandle);
 
-                static constexpr float travelRadius = 1.0f;
-                static constexpr float travelSpeed = 0.001f;
+                constexpr float travelRadius = 1.0f;
+                constexpr float travelSpeed = 0.5f;
 
                 static const float startX = tc.GetTranslation().x;
                 static const float startZ = tc.GetTranslation().z;
 
                 auto translation = tc.GetTranslation();
-                translation.x = startX + travelRadius * std::cos(travelSpeed * m_AnimationTimer.GetElapsedTimeInMs());
-                translation.z = startZ + travelRadius * std::sin(travelSpeed * m_AnimationTimer.GetElapsedTimeInMs());
+                translation.x = startX + travelRadius * std::cos(travelSpeed * m_AnimationTimer.GetElapsedTimeInSec());
+                translation.z = startZ + travelRadius * std::sin(travelSpeed * m_AnimationTimer.GetElapsedTimeInSec());
 
-                const auto& settings = m_RenderSettings->GetSection<DeferredLightingSettings>();
-                tc.SetTranslation(GetSunDirection(settings));
+                tc.SetTranslation(translation);
             };
+
+            m_RenderSettings->GetSection<RayTracing_ShadowSettings>().LightHandle = entity;
         }
 #endif
     }

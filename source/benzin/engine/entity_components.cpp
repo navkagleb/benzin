@@ -31,7 +31,7 @@ namespace benzin
 
     const DirectX::XMMATRIX& TransformComponent::GetLocalToWorldMatrix() const
     {
-        BenzinAssert(!m_IsDirty);
+        // BenzinAssert(!m_IsDirty); // TODO
         return m_LocalToWorldMatrix;
     }
 

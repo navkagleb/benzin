@@ -50,6 +50,11 @@ namespace benzin
 
             for (const auto& [_, tc, mc] : view.each())
             {
+                if (!IsValidEnum(mc.MeshHandle) || !mc.IsRayTracingMesh)
+                {
+                    continue;
+                }
+
                 const auto& blas = m_Scene.m_MeshRegistry.get<RayTracing_Blas>(mc.MeshHandle);
 
                 tlas.AddInstance(RayTracing_Tlas::Instance

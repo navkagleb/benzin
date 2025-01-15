@@ -41,7 +41,11 @@ namespace sandbox
         void InitCamera();
 
         void AddMeshesToScene(std::span<benzin::MeshResource> meshResources, std::span<entt::entity> outMeshHandles);
-        void CreateEntities(std::span<const entt::entity> meshHandles);
+
+        void AddStaticMeshEntities(std::span<const entt::entity> meshHandles);
+        void AddDynamicMeshEntities(std::span<const entt::entity> meshHandles);
+        void AddEmissiveEntities(std::span<const entt::entity> meshHandles);
+
 
     private:
         using TimingsTool = TimingsTool<RenderPasses, RenderPasses>;

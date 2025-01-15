@@ -39,7 +39,7 @@ namespace sandbox
             .CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex(),
 
             .IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y,
-            .IsShadowsEnabled = ms_Settings->GetSection<RayTracingShadowsSettings>().IsEnabled,
+            .IsShadowsEnabled = ms_Settings->GetSection<RayTracing_ShadowSettings>().IsEnabled,
             .IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled,
 
             .RandomFloats01

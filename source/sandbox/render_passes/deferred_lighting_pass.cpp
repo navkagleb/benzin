@@ -1,6 +1,7 @@
 #include "sandbox/bootstrap.hpp"
 #include "sandbox/render_passes/deferred_lighting_pass.hpp"
 
+#include <benzin/engine/entity_components.hpp> // TODO: Remove
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
@@ -70,7 +71,7 @@ namespace sandbox
             .SunColor = deferredLightingSettings.SunColor,
             .SunIntensity = deferredLightingSettings.SunIntensity,
             .SunDirection = GetSunDirection(deferredLightingSettings),
-            .ActivePointLightCount = 0, // TODO
+            .ActivePointLightCount = (uint32_t)m_Scene.GetEntityRegistry().view<benzin::PointLightComponent>().size(), // TODO
         });
     }
 

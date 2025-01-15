@@ -612,7 +612,7 @@ namespace benzin
         return meshData;
     }
 
-    const MeshData& GetDefaultGeoSphereMesh()
+    const MeshData& GetUnitGeoSphereMesh()
     {
         static const MeshData meshData = GenerateGeosphere(GeoSphereGeometryCreation
         {

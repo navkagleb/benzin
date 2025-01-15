@@ -17,11 +17,15 @@ namespace sandbox
         } Stats;
     };
 
-    struct RayTracingShadowsSettings
+    struct RayTracing_ShadowSettings
     {
         bool IsEnabled = true;
+        bool IsShadowsFromSun = false;
         bool IsBlueNoiseUsed = true;
         bool IsNoiseAnimated = false;
+
+        float LightDiameter = 0.01f;
+        entt::entity LightHandle = benzin::g_InvalidEnum<entt::entity>;
     };
 
     struct SigmaDenoiserSettings

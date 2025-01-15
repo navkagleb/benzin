@@ -2,6 +2,7 @@
 #include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
 
 #include <benzin/core/asserter.hpp>
+#include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/backend.hpp>
@@ -106,7 +107,7 @@ namespace sandbox
 
     void RayTracing_ShadowPass::OnUpdate()
     {
-        const auto& shadowSettings = ms_Settings->GetSection<RayTracingShadowsSettings>();
+        const auto& shadowSettings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
         const auto& lightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
 
         const float sunAngularRadiusInRadians = 0.5f * lightingSettings.SunAngularDiameterInRadians;
@@ -116,6 +117,8 @@ namespace sandbox
         DirectX::XMFLOAT3 toSunBitangent;
         BuildOrthonormalBasis(toSunDirection, toSunTangent, toSunBitangent);
 
+        const auto& localLight = m_Scene.GetEntityRegistry().get<benzin::TransformComponent>(shadowSettings.LightHandle);
+
         m_PassConstBuffer->UpdateConstants(joint::RayTracing_ShadowConsts
         {
             .ToSunDirection = toSunDirection,
@@ -123,6 +126,11 @@ namespace sandbox
             .ToSunTangent = toSunTangent,
             .SunAngularRadiusInRadians = sunAngularRadiusInRadians,
             .ToSunBitangent = toSunBitangent,
+
+            .LightPosition = localLight.GetTranslation(),
+            .LightRadius = localLight.GetScale().x * 0.5f,
+
+            .IsShadowsFromSun = shadowSettings.IsShadowsFromSun,
             .IsBlueNoiseUsed = shadowSettings.IsBlueNoiseUsed,
             .IsNoiseAnimated = shadowSettings.IsNoiseAnimated,
         });

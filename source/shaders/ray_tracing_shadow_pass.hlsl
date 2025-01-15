@@ -100,7 +100,7 @@ float3 CreateRandomUnitRay(float2 random)
     return ray;
 }
 
-float3 CalcRayDirection()
+float3 CalcToSunDirection()
 {
     float2 blueNoise = GetBlueNoise();
     blueNoise = CreateRandomUnitRay(blueNoise).xy; // TODO: Rename it. UnitRay.z we don't need? because it is 'ToSunDirection'?
@@ -114,8 +114,47 @@ float3 CalcRayDirection()
     return rayDirection;
 }
 
-float TraceSunShadowRay(float depth)
+void BuildOrthonormalBasis(float3 normal, out float3 outTangent, out float3 outBitangent)
 {
+    const float3 upDir = abs(normal.y) < 0.9999 ? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0);
+
+    outTangent = normalize(cross(upDir, normal));
+    outBitangent = cross(normal, outTangent);
+}
+
+float3 CalcToLocalLightDirection(float3 worldPosition, out float outDistanceToLight)
+{
+    float2 blueNoise = GetBlueNoise();
+    blueNoise = CreateRandomUnitRay(blueNoise).xy; // TODO: Rename it. UnitRay.z we don't need? because it is 'ToSunDirection'?
+    // blueNoise *= g_PassConstants.TanSunAngularRadius; // TODO: For local light we can skip it?
+    // blueNoise *= g_PassConstants.LightRadius;
+
+    float3 toLightDirection = g_PassConstants.LightPosition - worldPosition;
+    outDistanceToLight = length(toLightDirection);
+
+    toLightDirection = normalize(toLightDirection);
+
+    blueNoise *= g_PassConstants.LightRadius / outDistanceToLight;
+
+    float3 toLightTangent;
+    float3 toLightBitangent;
+    BuildOrthonormalBasis(toLightDirection, toLightTangent, toLightBitangent);
+
+    float3 rayDirection = toLightDirection;
+    rayDirection += toLightTangent * blueNoise.x;
+    rayDirection += toLightBitangent * blueNoise.y;
+    rayDirection = normalize(rayDirection);
+
+    return rayDirection;
+}
+
+void TraceShadowRay(float depth, out float outDistanceToLight, out float outDistanceToOccluder)
+{
+    if (g_PassConstants.IsShadowsFromSun)
+    {
+        outDistanceToLight = sigma::g_Fp16Max; // TODO
+    }
+
     const uint2 pixelPosition = DispatchRaysIndex().xy;
     const float3 worldNormal = g_WorldNormal[pixelPosition].xyz;
 
@@ -125,15 +164,14 @@ float TraceSunShadowRay(float depth)
 
     RayDesc rayDesc;
     rayDesc.Origin = OffsetRayPosition(worldPosition, worldNormal);
-    rayDesc.Direction = CalcRayDirection();
+    rayDesc.Direction = g_PassConstants.IsShadowsFromSun ? CalcToSunDirection() : CalcToLocalLightDirection(worldPosition, outDistanceToLight);
     rayDesc.TMin = 0.01;
-    rayDesc.TMax = sigma::g_Fp16Max;
+    rayDesc.TMax = outDistanceToLight;
 
+    // Ref: https://github.com/microsoft/DirectX-Specs/blob/master/d3d/Raytracing.md#ray-flags
     uint rayFlags = RAY_FLAG_NONE;
-    // rayFlags |= RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
-    // rayFlags |= RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
     rayFlags |= RAY_FLAG_FORCE_OPAQUE; // Skip any hit shaders
-    // rayFlags |= RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
+    rayFlags |= RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES;
 
     joint::RayTracing_ShadowPayload payload;
     payload.THit = 0.0;
@@ -143,7 +181,7 @@ float TraceSunShadowRay(float depth)
     const uint g_HitGroupStride = 1;
     const uint g_MissShaderIndex = 0;
     TraceRay(
-        g_TopLevelAs,
+        g_SceneTlas,
         rayFlags,
         g_InstanceMask,
         g_HitGroupIndex,
@@ -153,7 +191,7 @@ float TraceSunShadowRay(float depth)
         payload
     );
 
-    return payload.THit;
+    outDistanceToOccluder = payload.THit;
 }
 
 [shader("raygeneration")]
@@ -164,12 +202,17 @@ void RayGeneration()
     const float depth = g_Depth[pixelPosition];
     if (!g_FrameConstants.IsShadowsEnabled || depth == 1.0)
     {
-        g_OutNoisyPenumbra[pixelPosition] = sigma::PackPenumbra(sigma::g_Fp16Max, g_PassConstants.TanSunAngularRadius);
+        g_OutNoisyPenumbra[pixelPosition] = sigma::g_Fp16Max;
         return;
     }
 
-    const float distanceToOccluder = TraceSunShadowRay(depth);
-    g_OutNoisyPenumbra[pixelPosition] = sigma::PackPenumbra(distanceToOccluder, g_PassConstants.TanSunAngularRadius);
+    float distanceToLight;
+    float distanceToOccluder;
+    TraceShadowRay(depth, distanceToLight, distanceToOccluder);
+
+    g_OutNoisyPenumbra[pixelPosition] = g_PassConstants.IsShadowsFromSun
+        ? sigma::PackPenumbra(distanceToOccluder, g_PassConstants.TanSunAngularRadius)
+        : sigma::PackPenumbra(distanceToOccluder, distanceToLight, g_PassConstants.LightRadius / distanceToOccluder);
 }
 
 [shader("closesthit")]

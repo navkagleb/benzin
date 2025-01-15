@@ -133,14 +133,21 @@ SparseBlurKernel CalcSparseBlurKernel(BlurParams params, float blurredPenumbra, 
     kernel.Rotator = g_PassConstants.PostBlurRotator;
 #endif
 
-    const float3 viewSunDirection = mul(g_PassConstants.WorldSunDirection, (float3x3)g_FrameConstants.Camera.WorldToView); // TODO: Move to cpp side
-    const float3 tangentDirection = cross(viewSunDirection, params.BaseViewNormal); // NRD TODO: add support for other light types to bring proper anisotropic filtering
+    float3 worldToLightDirection = g_PassConstants.WorldSunDirection;
+    if (!g_PassConstants.IsShadowsFromSun)
+    {
+        const float3 worldPosition = mul(float4(params.BaseViewPosition, 1.0), g_FrameConstants.Camera.ViewToWorld).xyz;
+        worldToLightDirection = normalize(worldPosition - g_PassConstants.WorldLightPosition);
+    }
+
+    const float3 viewToLightDirection = mul(worldToLightDirection, (float3x3)g_FrameConstants.Camera.WorldToView); // TODO: Move to cpp side
+    const float3 tangentDirection = cross(viewToLightDirection, params.BaseViewNormal); // NRD TODO: add support for other light types to bring proper anisotropic filtering
     if (length(tangentDirection) > 0.001)
     {
         kernel.Tangent = normalize(tangentDirection);
         kernel.Bitangent = cross(kernel.Tangent, params.BaseViewNormal);
 
-        const float cosNormalSun = abs(dot(params.BaseViewNormal, viewSunDirection));
+        const float cosNormalSun = abs(dot(params.BaseViewNormal, viewToLightDirection));
         const float skewFactor = lerp(0.25, 1.0, cosNormalSun);
 
         // kernel.Tangent *= skewFactor; // TODO: let's not srink filtering in the other direction
