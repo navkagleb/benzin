@@ -37,8 +37,8 @@ namespace benzin
 
     bool ImGuiTool::SpawnImGuiCollapsingHeader(std::string_view name, bool isOpenByDefault) const
     {
-        static constexpr ImVec4 headerColor{ 0.7f, 1.0f, 0.7f, 1.0f };
-        static constexpr ImVec4 headerBackground{ 0.7f * 0.3f, 1.0f * 0.3f, 0.7f * 0.3f, 1.0f };
+        constexpr ImVec4 headerColor{ 0.7f, 1.0f, 0.7f, 1.0f };
+        constexpr ImVec4 headerBackground{ 0.7f * 0.3f, 1.0f * 0.3f, 0.7f * 0.3f, 1.0f };
 
         ImGui::PushStyleColor(ImGuiCol_Text, headerColor);
         ImGui::PushStyleColor(ImGuiCol_Header, headerBackground);
@@ -65,7 +65,7 @@ namespace benzin
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // TODO: Mouse events are broken
 
         ImGui::StyleColorsDark();
 
@@ -201,9 +201,9 @@ namespace benzin
 
     void ImGuiManager::SpawnImGuiDockSpace(const std::function<void()>& callback)
     {
-        static constexpr ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
+        constexpr ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
 
-        static constexpr ImGuiWindowFlags windowFlags =
+        constexpr ImGuiWindowFlags windowFlags =
             ImGuiWindowFlags_NoDocking |
             ImGuiWindowFlags_MenuBar |
             ImGuiWindowFlags_NoTitleBar |

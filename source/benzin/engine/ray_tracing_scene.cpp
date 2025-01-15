@@ -98,6 +98,10 @@ namespace benzin
 
             auto& blas = m_Scene.m_MeshRegistry.emplace<RayTracing_Blas>(meshHandle, (uint32_t)mesh.SubMeshInstances.size());
 
+            auto& blasStats = m_BlasStats.emplace_back();
+            blasStats.DebugName = m_Scene.m_MeshRegistry.get<std::string>(meshHandle);
+            blasStats.TriangleCountPerMesh.reserve(mesh.SubMeshInstances.size());
+
             for (const joint::MeshInstance& instance : mesh.SubMeshInstances)
             {
                 // TODO: There is duplication of Mesh due to using transform from MeshInstance
@@ -118,6 +122,10 @@ namespace benzin
 
                 const DirectX::XMMATRIX transposedMatrix = DirectX::XMMatrixTranspose(instance.Transform);
                 localTransforms.push_back(*(DirectX::XMFLOAT3X4*)&transposedMatrix);
+
+                const auto triangleCount = (uint32_t)(subMesh.Indices.size() / 3);
+                blasStats.TotalTriangleCount += triangleCount;
+                blasStats.TriangleCountPerMesh.push_back(triangleCount);
             }
         });
 

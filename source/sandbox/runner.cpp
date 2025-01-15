@@ -23,10 +23,10 @@
 #include <benzin/tools/performance_overlay_tool.hpp>
 #include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
+#include <benzin/tools/scene_stats_tool.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
 #include <benzin/utility/time_utils.hpp>
 
-#include "sandbox/tools/scene_stats_tool.hpp"
 #include "sandbox/tools/tick_timer_tool.hpp"
 
 namespace sandbox
@@ -63,7 +63,7 @@ namespace sandbox
         m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderResources);
         m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Device, *m_SwapChain, *m_RenderViewportTool);
         m_ImGuiManager->PushTool<benzin::FlyCameraTool>(m_RenderViewportTool->GetFlyCameraController());
-        m_ImGuiManager->PushTool<SceneStatsTool>(*m_Scene);
+        m_ImGuiManager->PushTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
         m_ImGuiManager->PushTool<TickTimerTool>(m_FrameTimer);
 
         m_ImGuiManager->PushSpawnImGuiMenuCallback([this]

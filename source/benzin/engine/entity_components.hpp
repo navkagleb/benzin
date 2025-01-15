@@ -21,6 +21,8 @@ namespace benzin
     {
         entt::entity MeshHandle = g_InvalidEnum<entt::entity>;
         std::optional<IndexRange32> MeshInstanceRange;
+
+        bool IsRayTracingMesh = true;
     };
 
     class TransformComponent
