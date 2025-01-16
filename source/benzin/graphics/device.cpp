@@ -7,7 +7,8 @@
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/gpu_timer.hpp"
-#include "benzin/graphics/pipeline_state_manager.hpp"
+#include "benzin/graphics/pso.hpp"
+#include "benzin/graphics/ray_tracing_pso.hpp"
 #include "benzin/graphics/resource.hpp"
 #include "benzin/graphics/sampler.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
@@ -45,7 +46,6 @@ namespace benzin
 
         MakeUniquePtr(m_UnifiedRootSignature, *this);
         MakeUniquePtr(m_DescriptorManager, *this);
-        MakeUniquePtr(m_PipelineStateManager, *this);
         MakeUniquePtr(m_GraphicsCommandQueue, *this);
         MakeUniquePtr(m_GpuTimer, *this, GpuTimer::s_MaxGpuTimerCount); // #TODO: Add more timers
     }
@@ -54,7 +54,6 @@ namespace benzin
     {
         m_UnifiedRootSignature.reset();
         m_DescriptorManager.reset();
-        m_PipelineStateManager.reset();
         m_GraphicsCommandQueue.reset();
         m_GpuTimer.reset();
 
@@ -84,22 +83,18 @@ namespace benzin
         m_DeferredReleaseDescriptorQueue.emplace(m_CpuFrameIndex, descriptor);
     }
 
-    void Device::DeferredRelease(const PipelineState& pso)
+    void Device::DeferredRelease(const Pso& pso)
     {
-        if (pso.IsRayTracing())
-        {
-            auto* d3d12StateObject = pso.GetD3D12StateObject();
+        BenzinAssert(pso.GetD3D12PipelineState() != nullptr);
 
-            BenzinAssert(d3d12StateObject != nullptr);
-            m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12StateObject);
+        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, pso.GetD3D12PipelineState());
+    }
 
-            return;
-        }
+    void Device::DeferredRelease(const RayTracing_Pso& pso)
+    {
+        BenzinAssert(pso.GetD3D12StateObject() != nullptr);
 
-        auto* d3d12PipelineState = pso.GetD3D12PipelineState();
-
-        BenzinAssert(d3d12PipelineState != nullptr);
-        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12PipelineState);
+        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, pso.GetD3D12StateObject());
     }
 
     void Device::DeferredRelease(const Resource& resource)

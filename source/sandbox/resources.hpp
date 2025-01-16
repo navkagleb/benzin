@@ -33,4 +33,20 @@ namespace sandbox
     };
     BenzinEnableUnaryPlusForEnum(Texture);
 
+    enum class Pso
+    {
+        GeometryPass,
+        ShadowPass,
+        SigmaClassifyTiles,
+        SigmaSmoothTiles,
+        SigmaBlur,
+        SigmaPostBlur,
+        SigmaTemporalStabilization,
+        DeferredLighting,
+        Environment,
+        Environment_EquirectangularToCube,
+        FullScreenDebug,
+    };
+    BenzinEnableUnaryPlusForEnum(Pso);
+
 }

@@ -6,7 +6,6 @@ namespace benzin
 {
 
     class Texture;
-    class PipelineState;
 
 }
 
@@ -30,7 +29,6 @@ namespace sandbox
         void ComputeCubeMapTexture(benzin::Texture& equirectangularTexture);
 
     private:
-        benzin::PipelineState* m_Pso = nullptr;
         std::unique_ptr<benzin::Texture> m_CubeTexture;
     };
 

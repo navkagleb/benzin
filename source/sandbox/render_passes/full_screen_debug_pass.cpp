@@ -6,7 +6,7 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
-#include <benzin/graphics/pipeline_state_manager.hpp>
+#include <benzin/graphics/pso_manager.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
 
 #include <shaders/joint/root_constants.hpp>
@@ -19,18 +19,18 @@ namespace sandbox
 
     FullScreenDebugPass::FullScreenDebugPass()
     {
-        m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
+        ms_PsoManager->CreateGraphicsPso(+Pso::FullScreenDebug, [](benzin::GraphicsPsoProxy& proxy)
         {
-            .DebugName = "FullScreenDebugPass",
-            .VsFileName = "fullscreen_triangle.hlsl",
-            .PsFileName = "fullscreen_debug_pass.hlsl",
-            .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
-            .DepthState
+            proxy.DebugName = "FullScreenDebugPass";
+            proxy.VsFileName = "fullscreen_triangle.hlsl";
+            proxy.PsFileName = "fullscreen_debug_pass.hlsl";
+            proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
+            proxy.DepthState = benzin::DepthState
             {
                 .IsEnabled = false,
                 .IsWriteEnabled = false,
-            },
-            .RenderTargetFormats{ benzin::GraphicsFormat::Rgba8Unorm },
+            };
+            proxy.RenderTargetFormats.push_back(benzin::GraphicsFormat::Rgba8Unorm);
         });
 
         benzin::MakeUniquePtr(m_PassConstantBuffer, *ms_Device, "FullScreenDebugConstantBuffer");
@@ -38,7 +38,7 @@ namespace sandbox
 
     FullScreenDebugPass::~FullScreenDebugPass()
     {
-        ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
+        ms_PsoManager->DestroyPso(+Pso::FullScreenDebug);
     }
 
     void FullScreenDebugPass::OnUpdate()
@@ -75,7 +75,7 @@ namespace sandbox
         commandList.SetRenderTargets({ finalTexture.GetRtv() });
         commandList.ClearRenderTarget(finalTexture);
 
-        commandList.SetPipelineState(*m_Pso);
+        commandList.SetPso(ms_PsoManager->GetPso(+Pso::FullScreenDebug));
 
         commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstantBuffer->GetActiveGpuVirtualAddress());
         commandList.SetRootResource(joint::FullScreenDebugRc_AlbedoAndRoughnessTexture, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());

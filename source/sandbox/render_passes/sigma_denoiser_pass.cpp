@@ -10,7 +10,7 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/pipeline_state_manager.hpp>
+#include <benzin/graphics/pso_manager.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 
@@ -19,11 +19,8 @@
 #include "sandbox/sandbox_render_settings.hpp"
 #include "sandbox/resources.hpp"
 
-BenzinEnableUnaryPlusForEnum(sandbox::SigmaDenoiserPass::Step);
-
 namespace sandbox
 {
-
 
     static uint32_t GetMaxHistoryLength(float fps)
     {
@@ -43,24 +40,38 @@ namespace sandbox
     SigmaDenoiserPass::SigmaDenoiserPass(const benzin::Scene& scene)
         : m_Scene{ scene }
     {
-        auto& psoManager = ms_Device->GetPipelineStateManager();
-        m_Psos[+Step::ClassifyTiles] = psoManager.CreatePipelineState(benzin::ComputePipelineStateCreation{ .DebugName = "Sigma_ClassifyTiles", .CsFileName = "sigma_denoiser/classify_tiles.hlsl" });
-        m_Psos[+Step::SmoothTiles] = psoManager.CreatePipelineState(benzin::ComputePipelineStateCreation{ .DebugName = "Sigma_SmoothTiles", .CsFileName = "sigma_denoiser/smooth_tiles.hlsl" });
-        m_Psos[+Step::CopyHistory] = psoManager.CreatePipelineState(benzin::ComputePipelineStateCreation{ .DebugName = "Sigma_CopyHistory", .CsFileName = "sigma_denoiser/copy_history.hlsl" });
-        m_Psos[+Step::Blur] = psoManager.CreatePipelineState(benzin::ComputePipelineStateCreation{ .DebugName = "Sigma_Blur", .CsFileName = "sigma_denoiser/blur.hlsl", .CsDefines{ "FIRST_BLUR_PASS"} });
-        m_Psos[+Step::PostBlur] = psoManager.CreatePipelineState(benzin::ComputePipelineStateCreation{ .DebugName = "Sigma_PostBlur", .CsFileName = "sigma_denoiser/blur.hlsl" });
-        m_Psos[+Step::TemporalStabilization] = psoManager.CreatePipelineState(benzin::ComputePipelineStateCreation{ .DebugName = "Sigma_TemporalStabilization", .CsFileName = "sigma_denoiser/temporal_stabilization.hlsl" });
+        const auto createPso = [](Pso psoIndex, std::string_view fileName, std::string_view define = {})
+        {
+            const std::string_view debugName = magic_enum::enum_name(psoIndex);
+
+            ms_PsoManager->CreateComputePso(+psoIndex, [debugName, fileName, define](benzin::ComputePsoProxy& proxy)
+            {
+                proxy.DebugName = debugName;
+                proxy.CsFileName = fileName;
+
+                if (!define.empty())
+                {
+                    proxy.CsDefines.push_back(define);
+                }
+            });
+        };
+
+        createPso(Pso::SigmaClassifyTiles, "sigma_denoiser/classify_tiles.hlsl");
+        createPso(Pso::SigmaSmoothTiles, "sigma_denoiser/smooth_tiles.hlsl");
+        createPso(Pso::SigmaBlur, "sigma_denoiser/blur.hlsl");
+        createPso(Pso::SigmaPostBlur, "sigma_denoiser/blur.hlsl", "POST_BLUR_PASS");
+        createPso(Pso::SigmaTemporalStabilization, "sigma_denoiser/temporal_stabilization.hlsl");
 
         MakeUniquePtr(m_SigmaConstantBuffer, *ms_Device, "SigmaConstantBuffer");
     }
 
     SigmaDenoiserPass::~SigmaDenoiserPass()
     {
-        auto& psoManager = ms_Device->GetPipelineStateManager();
-        for (auto*& pso : m_Psos)
-        {
-            psoManager.DestroyPipelineState(pso);
-        }
+        ms_PsoManager->DestroyPso(+Pso::SigmaClassifyTiles);
+        ms_PsoManager->DestroyPso(+Pso::SigmaSmoothTiles);
+        ms_PsoManager->DestroyPso(+Pso::SigmaBlur);
+        ms_PsoManager->DestroyPso(+Pso::SigmaPostBlur);
+        ms_PsoManager->DestroyPso(+Pso::SigmaTemporalStabilization);
 
         ms_Resources->DestroyTexture(+Texture::Sigma_Tiles);
         ms_Resources->DestroyTexture(+Texture::Sigma_SmoothTiles);
@@ -204,7 +215,7 @@ namespace sandbox
             benzin::TransitionBarrier{ tiles, benzin::ResourceState::UnorderedAccess },
         );
 
-        commandList.SetPipelineState(*m_Psos[+Step::ClassifyTiles]);
+        commandList.SetPso(ms_PsoManager->GetPso(+Pso::SigmaClassifyTiles));
         commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 16, 16, 1 });
     }
 
@@ -227,7 +238,7 @@ namespace sandbox
             benzin::TransitionBarrier{ smoothTiles, benzin::ResourceState::UnorderedAccess },
         );
 
-        commandList.SetPipelineState(*m_Psos[+Step::SmoothTiles]);
+        commandList.SetPso(ms_PsoManager->GetPso(+Pso::SigmaSmoothTiles));
         commandList.Dispatch({ m_TileCount.x, m_TileCount.y, 1 }, { 16, 16, 1 });
     }
 
@@ -257,7 +268,7 @@ namespace sandbox
             benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::UnorderedAccess },
         );
 
-        commandList.SetPipelineState(*m_Psos[+Step::Blur]);
+        commandList.SetPso(ms_PsoManager->GetPso(+Pso::SigmaBlur));
         commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
     }
 
@@ -306,7 +317,7 @@ namespace sandbox
             benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::UnorderedAccess },
         );
 
-        commandList.SetPipelineState(*m_Psos[+Step::PostBlur]);
+        commandList.SetPso(ms_PsoManager->GetPso(+Pso::SigmaPostBlur));
         commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
     }
 
@@ -354,7 +365,7 @@ namespace sandbox
             benzin::TransitionBarrier{ historyLength, benzin::ResourceState::UnorderedAccess },
         );
 
-        commandList.SetPipelineState(*m_Psos[+Step::TemporalStabilization]);
+        commandList.SetPso(ms_PsoManager->GetPso(+Pso::SigmaTemporalStabilization));
         commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
     }
 

@@ -4,6 +4,7 @@ namespace benzin
 {
 
     class Buffer;
+    class Device;
 
     class RayTracing_ShaderTable
     {
@@ -23,22 +24,25 @@ namespace benzin
             GpuAddress HitGroupTable;
         };
 
-    public:
+        ~RayTracing_ShaderTable();
+
         const auto& GetGpuAddresses() const { return m_GpuAddresses; };
 
         void SetRayGenerationShader(const void* rawId);
         void SetMissShader(const void* rawId);
         void SetHitGroupShaders(const void* rawId);
 
-        Bytes64 GetRequiredTableSize() const;
-        void UploadToGpu(Buffer* shaderTable);
+        void AllocateBuffer(Device& device);
+
+    private:
+        uint32_t GetRequiredTableSizeInBytes() const;
 
     private:
         ShaderIdentifier m_RayGenerationShader{};
         ShaderIdentifier m_MissShader{}; // TODO: For now supported only one record per table
         ShaderIdentifier m_HitGroupShaders{}; // TODO: For now supported only one record per table
 
-        Buffer* m_ShaderTable = nullptr;
+        std::unique_ptr<Buffer> m_ShaderTable;
         GpuAddresses m_GpuAddresses;
     };
 

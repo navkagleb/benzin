@@ -7,8 +7,9 @@
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/pipeline_state.hpp"
+#include "benzin/graphics/pso.hpp"
 #include "benzin/graphics/ray_tracing_acceleration_structures.hpp"
+#include "benzin/graphics/ray_tracing_pso.hpp"
 #include "benzin/graphics/ray_tracing_shader_table.hpp"
 #include "benzin/graphics/texture.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
@@ -247,18 +248,16 @@ namespace benzin
         m_D3D12GraphicsCommandList->SetComputeRootShaderResourceView(+rootParameter, D3D12_GPU_VIRTUAL_ADDRESS{ gpuVirtualAddress });
     }
 
-    void GraphicsCommandList::SetPipelineState(const PipelineState& pso)
+    void GraphicsCommandList::SetPso(const Pso& pso)
     {
-        if (pso.IsRayTracing())
-        {
-            BenzinAssert(pso.GetD3D12StateObject());
-            m_D3D12GraphicsCommandList->SetPipelineState1(pso.GetD3D12StateObject());
-
-            return;
-        }
-
         BenzinAssert(pso.GetD3D12PipelineState());
         m_D3D12GraphicsCommandList->SetPipelineState(pso.GetD3D12PipelineState());
+    }
+
+    void GraphicsCommandList::SetPso(const RayTracing_Pso& pso)
+    {
+        BenzinAssert(pso.GetD3D12StateObject());
+        m_D3D12GraphicsCommandList->SetPipelineState1(pso.GetD3D12StateObject());
     }
 
     void GraphicsCommandList::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)

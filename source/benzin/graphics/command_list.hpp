@@ -8,8 +8,9 @@ namespace benzin
 
     class Buffer;
     class Descriptor;
-    class PipelineState;
+    class Pso;
     class RayTracing_AcclerationStructure;
+    class RayTracing_Pso;
     class RayTracing_ShaderTable;
     class Texture;
 
@@ -50,7 +51,8 @@ namespace benzin
         void SetCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
         void SetSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
-        void SetPipelineState(const PipelineState& pso);
+        void SetPso(const Pso& pso);
+        void SetPso(const RayTracing_Pso& pso);
 
         void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
 

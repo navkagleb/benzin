@@ -10,6 +10,7 @@ namespace benzin
     class Texture;
     class TickTimer;
     class ScopedGpuGrabTimer;
+    class PsoManager;
 
     struct TextureCreation;
 
@@ -84,7 +85,13 @@ namespace benzin
     public:
         static uint32_t GetRegisteredRenderPassCount();
 
-        static void SetContext(Device& device, SwapChain& swapChain, RenderResources& resources, RenderSettings& settings);
+        static void SetContext(
+            Device& device,
+            SwapChain& swapChain,
+            PsoManager& psoManager,
+            RenderResources& resources,
+            RenderSettings& settings
+        );
 
         static void SetWindowViewport(uint32_t width, uint32_t height);
         static void SetRenderViewport(uint32_t width, uint32_t height);
@@ -110,6 +117,7 @@ namespace benzin
     protected:
         static inline Device* ms_Device = nullptr;
         static inline SwapChain* ms_SwapChain = nullptr;
+        static inline PsoManager* ms_PsoManager = nullptr;
         static inline RenderResources* ms_Resources = nullptr;
         static inline RenderSettings* ms_Settings = nullptr;
 

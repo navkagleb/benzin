@@ -9,7 +9,6 @@ namespace benzin
     class ConstantBuffer;
 
     class Buffer;
-    class PipelineState;
     class Scene;
     class Texture;
     class RayTracing_ShaderTable;
@@ -41,14 +40,7 @@ namespace sandbox
         void OnRender() const override;
 
     private:
-        void BuildShaderTable();
-
-    private:
         const benzin::Scene& m_Scene;
-
-        benzin::PipelineState* m_Pso = nullptr;
-        std::unique_ptr<benzin::RayTracing_ShaderTable> m_ShaderTable;
-        std::unique_ptr<benzin::Buffer> m_TableBuffer;
 
         using PassConstantBuffer = benzin::ConstantBuffer<joint::RayTracing_ShadowConsts>;
         std::unique_ptr<PassConstantBuffer> m_PassConstBuffer;

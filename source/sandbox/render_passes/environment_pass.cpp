@@ -6,7 +6,7 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/pipeline_state_manager.hpp>
+#include <benzin/graphics/pso_manager.hpp>
 #include <benzin/graphics/texture.hpp>
 
 #include <shaders/joint/root_constants.hpp>
@@ -19,26 +19,26 @@ namespace sandbox
 
     EnvironmentPass::EnvironmentPass()
     {
-        m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
+        ms_PsoManager->CreateGraphicsPso(+Pso::Environment, [](benzin::GraphicsPsoProxy& proxy)
         {
-            .DebugName = "EnvironmentPass",
-            .VsFileName = "fullscreen_triangle.hlsl",
-            .VsEntryPoint = "VsMainDepth1",
-            .PsFileName = "environment_pass.hlsl",
-            .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
-            .DepthState
+            proxy.DebugName = "EnvironmentPass";
+            proxy.VsFileName = "fullscreen_triangle.hlsl";
+            proxy.VsEntryPoint = "VsMainDepth1";
+            proxy.PsFileName = "environment_pass.hlsl";
+            proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
+            proxy.DepthState = benzin::DepthState
             {
                 .IsWriteEnabled = false,
                 .ComparisonFunction = benzin::ComparisonFunction::Equal,
-            },
-            .RenderTargetFormats{ benzin::GraphicsFormat::Rgba8Unorm },
-            .DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint,
+            };
+            proxy.RenderTargetFormats.push_back(benzin::GraphicsFormat::Rgba8Unorm),
+            proxy.DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
         });
     }
 
     EnvironmentPass::~EnvironmentPass()
     {
-        ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
+        ms_PsoManager->DestroyPso(+Pso::Environment);
     }
 
     void EnvironmentPass::OnZeroFrameInit()
@@ -74,7 +74,7 @@ namespace sandbox
 
         commandList.SetRenderTargets({ finalTexture.GetRtv() }, &depthStencilBuffer.GetDsv());
 
-        commandList.SetPipelineState(*m_Pso);
+        commandList.SetPso(ms_PsoManager->GetPso(+Pso::Environment));
         commandList.SetRootResource(joint::EnvironmentPassRc_CubeMapTexture, m_CubeTexture->GetSrv());
 
         commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
@@ -103,16 +103,15 @@ namespace sandbox
 
     void EnvironmentPass::ComputeCubeMapTexture(benzin::Texture& equirectangularTexture)
     {
-        auto& pipelineStateManager = ms_Device->GetPipelineStateManager();
-
-        auto* equirectangularToCubePso = pipelineStateManager.CreatePipelineState(benzin::ComputePipelineStateCreation
+        ms_PsoManager->CreateComputePso(+Pso::Environment_EquirectangularToCube, [](benzin::ComputePsoProxy& proxy)
         {
-            .DebugName = "EquirectangularToCube",
-            .CsFileName = "equirectangular_to_cube_pass.hlsl",
+            proxy.DebugName = "EquirectangularToCube";
+            proxy.CsFileName = "equirectangular_to_cube_pass.hlsl";
         });
-        BenzinExecuteOnScopeExit([&]
+
+        BenzinExecuteOnScopeExit([]
         {
-            pipelineStateManager.DestroyPipelineState(equirectangularToCubePso);
+            ms_PsoManager->DestroyPso(+Pso::Environment_EquirectangularToCube);
         });
 
         const uint32_t cubeMapSize = 1024;
@@ -130,7 +129,7 @@ namespace sandbox
 
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
-        commandList.SetPipelineState(*equirectangularToCubePso);
+        commandList.SetPso(ms_PsoManager->GetPso(+Pso::Environment_EquirectangularToCube));
         commandList.SetRootResource(joint::EquirectangularToCubeRc_EquirectangularTexture, equirectangularTexture.GetSrv());
         commandList.SetRootResource(joint::EquirectangularToCubeRc_OutCubeTexture, m_CubeTexture->GetUav());
 

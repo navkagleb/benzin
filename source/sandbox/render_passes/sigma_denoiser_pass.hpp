@@ -9,7 +9,6 @@ namespace benzin
     template <typename>
     class ConstantBuffer;
 
-    class PipelineState;
     class Scene;
 
 }
@@ -50,19 +49,7 @@ namespace sandbox
         void RunTemporalStabilizationPass(bool isEnabled) const;
 
     private:
-        enum class Step
-        {
-            ClassifyTiles,
-            SmoothTiles,
-            CopyHistory,
-            Blur,
-            PostBlur,
-            TemporalStabilization,
-        };
-
         const benzin::Scene& m_Scene;
-
-        std::array<benzin::PipelineState*, magic_enum::enum_count<Step>()> m_Psos{};
 
         using SigmaConstantBuffer = benzin::ConstantBuffer<joint::SigmaConstants>;
         std::unique_ptr<SigmaConstantBuffer> m_SigmaConstantBuffer;

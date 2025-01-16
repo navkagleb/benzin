@@ -67,7 +67,7 @@ namespace benzin
 
         for (const auto& blasStats : m_RayTracingScene.GetBlasStats())
         {
-            const auto meshHeaderName = std::format("{}: {}", blasStats.DebugName, blasStats.TotalTriangleCount);
+            const auto meshHeaderName = std::format("{}: {:L} triangles", blasStats.DebugName, blasStats.TotalTriangleCount);
             if (!SpawnImGuiCollapsingHeader(meshHeaderName.data(), false))
             {
                 continue;

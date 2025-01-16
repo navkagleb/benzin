@@ -55,7 +55,7 @@ namespace joint
         ViewDepth,
         SmoothTiles,
         Penumbra,
-        Shadow, // !FIRST_BLUR_PASS
+        Shadow, // POST_BLUR_PASS
 
         OutPenumbra,
         OutShadow,

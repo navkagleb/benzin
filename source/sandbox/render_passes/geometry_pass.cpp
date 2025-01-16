@@ -8,7 +8,7 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/pipeline_state_manager.hpp>
+#include <benzin/graphics/pso_manager.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 
@@ -34,32 +34,31 @@ namespace sandbox
     GeometryPass::GeometryPass(const benzin::Scene& scene)
         : m_Scene{ scene }
     {
-        m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
+        ms_PsoManager->CreateGraphicsPso(+Pso::GeometryPass, [](benzin::GraphicsPsoProxy& proxy)
         {
-            .DebugName = "GeometryPass",
-            .VsFileName = "geometry_pass.hlsl",
-            .PsFileName = "geometry_pass.hlsl",
-            .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
-            .RasterizerState
-            {
-                .CullMode = benzin::CullMode::None, // #TODO: Create different PSOs for left-handed and right-handed meshes
-                .TriangleOrder = benzin::TriangleOrder::CounterClockwise,
-            },
-            .RenderTargetFormats
-            {
-                g_GBufferColor0Format,
-                g_GBufferColor1Format,
-                g_GBufferColor2Format,
-                g_GBufferColor3Format,
-                g_GBufferColor4Format,
-            },
-            .DepthStencilFormat = g_DepthStencilFormat,
+            proxy.DebugName = "GeometryPass";
+            proxy.VsFileName = "geometry_pass.hlsl";
+            proxy.PsFileName = "geometry_pass.hlsl";
+            proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
+
+
+            proxy.RasterizerState.CullMode = benzin::CullMode::None; // TODO: Create different PSOs for left-handed and right-handed meshes (generated and GLTF meshes)
+            proxy.RasterizerState.TriangleOrder = benzin::TriangleOrder::CounterClockwise;
+
+            proxy.RenderTargetFormats.reserve(5);
+            proxy.RenderTargetFormats.push_back(g_GBufferColor0Format);
+            proxy.RenderTargetFormats.push_back(g_GBufferColor1Format);
+            proxy.RenderTargetFormats.push_back(g_GBufferColor2Format);
+            proxy.RenderTargetFormats.push_back(g_GBufferColor3Format);
+            proxy.RenderTargetFormats.push_back(g_GBufferColor4Format);
+
+            proxy.DepthStencilFormat = g_DepthStencilFormat;
         });
     }
 
     GeometryPass::~GeometryPass()
     {
-        ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
+        ms_PsoManager->DestroyPso(+Pso::GeometryPass);
 
         ms_Resources->DestroyTexture(+Texture::AlbedoAndRoughness);
         ms_Resources->DestroyTexture(+Texture::EmissiveAndMetallic);
@@ -150,7 +149,7 @@ namespace sandbox
         commandList.ClearRenderTarget(viewDepth);
         commandList.ClearDepthStencil(depthStencil);
 
-        commandList.SetPipelineState(*m_Pso);
+        commandList.SetPso(ms_PsoManager->GetPso(+Pso::GeometryPass));
 
         const bool isFrustumCullingEnabled = ms_Settings->GetSection<GBufferSettings>().IsFrustumCullingEnabled;
 

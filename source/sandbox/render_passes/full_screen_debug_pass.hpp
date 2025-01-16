@@ -11,7 +11,6 @@ namespace benzin
     class ConstantBuffer;
 
     class Scene;
-    class PipelineState;
 
 }
 
@@ -32,7 +31,6 @@ namespace sandbox
     private:
         using PassConstantBuffer = benzin::ConstantBuffer<joint::FullScreenDebugConstants>;
 
-        benzin::PipelineState* m_Pso = nullptr;
         std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
     };
 

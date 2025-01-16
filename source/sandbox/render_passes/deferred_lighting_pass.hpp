@@ -10,7 +10,6 @@ namespace benzin
     template <typename>
     class ConstantBuffer;
 
-    class PipelineState;
     class Scene;
 
 }
@@ -34,7 +33,7 @@ namespace sandbox
     private:
         const benzin::Scene& m_Scene;
 
-        benzin::PipelineState* m_Pso = nullptr;
+        benzin::GraphicsFormat m_RenderTargetFormat;
 
         using PassConstantBuffer = benzin::ConstantBuffer<joint::DeferredLightingPassConstants>;
         std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;

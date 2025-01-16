@@ -62,12 +62,6 @@ namespace benzin
         return VisitorMatch<Fs...>{ lambdas... };
     }
 
-    template <typename T>
-    auto ToSingleSpan(const T& value)
-    {
-        return std::span{ &value, 1 };
-    }
-
     template <typename UniquePtrT, typename... Args>
     void MakeUniquePtr(UniquePtrT& outUniquePtr, Args&&... args)
     {

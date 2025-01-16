@@ -120,12 +120,14 @@ namespace benzin
         // D3D12_RAYTRACING_INSTANCE_DESC::InstanceContributionToHitGroupIndex - 24 bit - Chose hit group shader
         // D3D12_RAYTRACING_INSTANCE_DESC::Flags - 8 bit
 
+        // TODO: Do I need D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE?
+
         D3D12_RAYTRACING_INSTANCE_DESC d3d12InstanceDesc
         {
             .InstanceID = 0,
             .InstanceMask = 1,
             .InstanceContributionToHitGroupIndex = instance.HitGroupIndex,
-            .Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE,
+            .Flags = D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE,
             .AccelerationStructure = instance.Blas.GetBuffer()->GetGpuVirtualAddress(),
         };
 

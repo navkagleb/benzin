@@ -4,6 +4,7 @@
 #include "benzin/core/math.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/shader_manager.hpp"
 #include "benzin/graphics/swap_chain.hpp"
 #include "benzin/system/window.hpp"
 #include "benzin/tools/render_viewport_tool.hpp"
@@ -28,12 +29,14 @@ namespace benzin
         const Window& window,
         const Device& device,
         const SwapChain& swapChain,
+        const ShaderManager& shaderManager,
         const RenderViewportTool& renderViewportTool
     )
         : ImGuiTool{ "PerformanceOverlayTool" }
         , m_Window{ window }
         , m_Device{ device }
         , m_SwapChain{ swapChain }
+        , m_ShaderManager{ shaderManager }
         , m_RenderViewportTool{ renderViewportTool }
     {}
 
@@ -90,7 +93,7 @@ namespace benzin
         const auto& backend = m_Device.GetBackend();
 
         ImGui::SetNextWindowBgAlpha(0.7f);
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, backgroundColors[backend.GetShaderManager().IsAllShadersGood()]);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, backgroundColors[m_ShaderManager.IsEachShaderGood()]);
 
         if (ImGui::Begin(m_Name.data(), &m_IsVisible, windowFlags))
         {

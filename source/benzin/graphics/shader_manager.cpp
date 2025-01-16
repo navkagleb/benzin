@@ -4,7 +4,6 @@
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
-#include "benzin/graphics/pipeline_state.hpp"
 #include "benzin/utility/time_utils.hpp"
 
 namespace benzin
@@ -49,12 +48,9 @@ namespace benzin
 
     // Win64ShaderFileWatcher
 
-    Win64ShaderFileWatcher::Win64ShaderFileWatcher(Callback&& callback)
+    Win64ShaderFileWatcher::Win64ShaderFileWatcher()
         : m_WatchDirectory{ GfxConfig::s_ShaderSourceDir }
-        , m_Callback{ callback }
     {
-        BenzinAssert((bool)callback);
-
         m_DirectoryHandle = ::CreateFileW(
             m_WatchDirectory.c_str(),
             FILE_LIST_DIRECTORY,
@@ -156,7 +152,7 @@ namespace benzin
                     // Visual Studio creates temp file and then rename it to original file name
                     fileInfo->Action == FILE_ACTION_RENAMED_NEW_NAME;
 
-                if (isFileChanged)
+                if (isFileChanged && m_Callback)
                 {
                     m_Callback(std::move(filePath));
                 }
@@ -172,9 +168,10 @@ namespace benzin
     // ShaderManager
 
     ShaderManager::ShaderManager()
-        : m_FileWatcher{ std::bind(&ShaderManager::FileWatcherCallback, this, std::placeholders::_1) }
     {
         LoadIncludeDependenciesCache();
+
+        m_FileWatcher.SetCallback([this](std::filesystem::path&& filePath) { return FileWatcherCallback(std::move(filePath)); });
     }
 
     ShaderManager::~ShaderManager()
@@ -182,127 +179,57 @@ namespace benzin
         CacheIncludeDependencies();
     }
 
-    std::span<const std::byte> ShaderManager::GetShaderDxil(const ShaderInfo& shader, bool isCacheIgnored)
+    ShaderBytecode ShaderManager::GetShaderBytecode(const ShaderInfo& shader)
     {
-        const auto it = m_ShaderDxils.find(shader.GetHash());
-        if (it != m_ShaderDxils.end())
+        if (!m_ShaderDxils.contains(shader.GetHash()))
         {
-            return it->second;
+            if (!LoadShader(shader) && !TryCompileShader(shader))
+            {
+                m_IsEachShaderGood = false;
+                return {};
+            }
         }
 
-        if (!isCacheIgnored && LoadShaderCacheIfPossible(shader))
-        {
-            return m_ShaderDxils.at(shader.GetHash());
-        }
-
-        BenzinEnsure(TryCompileShaderIfNeeded(shader));
         return m_ShaderDxils.at(shader.GetHash());
     }
 
-    bool ShaderManager::TryCompileShaderIfNeeded(const ShaderInfo& shader)
+    void ShaderManager::CheckForNewShader()
     {
-        auto& isShaderGood = m_IsShaderGoodMap[shader.GetHash()];
-        if (isShaderGood)
+        std::lock_guard guard{ m_NewShaderMutex };
+
+        if (IsNewShaderAvailable() && m_NewShaderAvailableCallback)
         {
-            return true;
+            m_IsEachShaderGood = true;
+
+            m_NewShaderAvailableCallback();
+            m_NewShader = std::nullopt;
         }
-
-        const ShaderPaths paths{ shader };
-        const ShaderArgs args{ shader };
-        auto [us, compiledShader] = BenzinProfileFunction(m_ShaderCompiler.CompileShader(paths, args));
-
-        if (!compiledShader.IsValid())
-        {
-            isShaderGood = false;
-            return false;
-        }
-
-        LogShaderInfo("Shader compiled", us, shader);
-
-        CacheShader(paths, compiledShader);
-
-        isShaderGood = true;
-        m_ShaderDxils[shader.GetHash()] = std::move(compiledShader.DxilBlob);
-        m_IncludeDependencies[shader.GetHash()] = std::move(compiledShader.IncludeFilePaths);
-
-        return true;
     }
 
-    bool ShaderManager::UpdateShaderState(const ShaderInfo& shader)
+    bool ShaderManager::CompareWithNewShader(const ShaderInfo& shader)
     {
-        BenzinAssert(IsPendingToReloadShaderAvailable());
+        BenzinAssert(IsNewShaderAvailable());
         BenzinAssert(shader.IsValid());
 
         const ShaderPaths paths{ shader };
 
         bool isShaderNeedsRecompilation = false;
-        if (IsSourceShader(m_PendingShaderToReload->c_str()))
+        if (IsSourceShader(m_NewShader->c_str()))
         {
-            isShaderNeedsRecompilation = *m_PendingShaderToReload == paths.SourceFilePath;
+            isShaderNeedsRecompilation = *m_NewShader == paths.SourceFilePath;
         }
-        else if (IsIncludeShader(m_PendingShaderToReload->c_str()))
+        else if (IsIncludeShader(m_NewShader->c_str()))
         {
             BenzinAssert(m_IncludeDependencies.contains(shader.GetHash()));
-            isShaderNeedsRecompilation = m_IncludeDependencies.at(shader.GetHash()).contains(*m_PendingShaderToReload);
+            isShaderNeedsRecompilation = m_IncludeDependencies.at(shader.GetHash()).contains(*m_NewShader);
         }
 
         if (isShaderNeedsRecompilation)
         {
-            m_IsShaderGoodMap[shader.GetHash()] = false;
             m_ShaderDxils.erase(shader.GetHash());
         }
 
         return isShaderNeedsRecompilation;
-    }
-
-    void ShaderManager::RunIfPendingToReloadShaderIsAvailable(std::function<void()>&& callback)
-    {
-        {
-            std::lock_guard guard{ m_PendingShaderToReloadMutex };
-
-            if (!IsPendingToReloadShaderAvailable())
-            {
-                return;
-            }
-
-            callback();
-
-            m_PendingShaderToReload = std::nullopt;
-        }
-
-        m_IsAllShaderGood = std::ranges::all_of(m_IsShaderGoodMap, [](const auto& pair)
-        {
-            return pair.second;
-        });
-    }
-
-    bool ShaderManager::IsPendingToReloadShaderAvailable() const
-    {
-        if (!m_PendingShaderToReload.has_value())
-        {
-            return false;
-        }
-
-        // Checks if the file is in use by another process
-        // If so, the shader compilation will fail
-
-        const HANDLE fileHandle = ::CreateFileW(
-            m_PendingShaderToReload->c_str(),
-            GENERIC_READ, // open for reading
-            0, // do not share
-            nullptr, // default security
-            OPEN_EXISTING, // existing file only
-            FILE_ATTRIBUTE_NORMAL, // normal file
-            nullptr // no attribute template
-        );
-
-        if (fileHandle == INVALID_HANDLE_VALUE)
-        {
-            return false;
-        }
-
-        ::CloseHandle(fileHandle);
-        return true;
     }
 
     void ShaderManager::CacheIncludeDependencies()
@@ -350,7 +277,32 @@ namespace benzin
         }
     }
 
-    bool ShaderManager::LoadShaderCacheIfPossible(const ShaderInfo& shader)
+    bool ShaderManager::TryCompileShader(const ShaderInfo& shader)
+    {
+        if (m_ShaderDxils.contains(shader.GetHash()))
+        {
+            return true;
+        }
+
+        const ShaderPaths paths{ shader };
+        const ShaderArgs args{ shader };
+        auto [us, compiledShader] = BenzinProfileFunction(m_ShaderCompiler.CompileShader(paths, args));
+
+        if (!compiledShader.IsValid())
+        {
+            return false;
+        }
+
+        LogShaderInfo("Shader compiled", us, shader);
+        CacheShader(paths, compiledShader);
+
+        m_ShaderDxils[shader.GetHash()] = std::move(compiledShader.DxilBlob);
+        m_IncludeDependencies[shader.GetHash()] = std::move(compiledShader.IncludeFilePaths);
+
+        return true;
+    }
+
+    bool ShaderManager::LoadShader(const ShaderInfo& shader)
     {
         if (CommandLineArgs::GetBool("IsShaderCacheIgnored"))
         {
@@ -385,8 +337,6 @@ namespace benzin
         }
 
         auto [us, shaderDxil] = BenzinProfileFunction(ReadFromFile(paths.DxilFilePath));
-
-        m_IsShaderGoodMap[shader.GetHash()] = true;
         m_ShaderDxils[shader.GetHash()] = std::move(shaderDxil);
 
         LogShaderInfo("Shader loaded  ", us, shader);
@@ -394,14 +344,43 @@ namespace benzin
         return true;
     }
 
+    bool ShaderManager::IsNewShaderAvailable() const
+    {
+        if (!m_NewShader.has_value())
+        {
+            return false;
+        }
+
+        // Checks if the file is in use by another process
+        // If so, the shader compilation will fail
+
+        const HANDLE fileHandle = ::CreateFileW(
+            m_NewShader->c_str(),
+            GENERIC_READ, // open for reading
+            0, // do not share
+            nullptr, // default security
+            OPEN_EXISTING, // existing file only
+            FILE_ATTRIBUTE_NORMAL, // normal file
+            nullptr // no attribute template
+        );
+
+        if (fileHandle == INVALID_HANDLE_VALUE)
+        {
+            return false;
+        }
+
+        ::CloseHandle(fileHandle);
+        return true;
+    }
+
     void ShaderManager::FileWatcherCallback(std::filesystem::path&& filePath)
     {
-        const std::lock_guard lock{ m_PendingShaderToReloadMutex };
+        const std::lock_guard lock{ m_NewShaderMutex };
 
-        BenzinAssert(!m_PendingShaderToReload.has_value() || m_PendingShaderToReload == filePath);
-        m_PendingShaderToReload = std::move(filePath);
+        BenzinAssert(!m_NewShader.has_value() || m_NewShader == filePath);
+        m_NewShader = std::move(filePath);
 
-        BenzinTrace("Shader '{}' updated", m_PendingShaderToReload->string());
+        BenzinTrace("Shader '{}' updated", m_NewShader->string());
     }
 
 }

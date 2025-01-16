@@ -13,7 +13,8 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/pipeline_state_manager.hpp>
+#include <benzin/graphics/pso_manager.hpp>
+#include <benzin/graphics/shader_manager.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/system/input.hpp>
@@ -27,6 +28,7 @@
 #include <benzin/tools/texture_viewer_tool.hpp>
 #include <benzin/utility/time_utils.hpp>
 
+#include "sandbox/resources.hpp"
 #include "sandbox/tools/tick_timer_tool.hpp"
 
 namespace sandbox
@@ -50,18 +52,21 @@ namespace sandbox
         benzin::MakeUniquePtr(m_Device, benzin::DeviceCreation{ "MainDevice", *m_Backend });
         benzin::MakeUniquePtr(m_SwapChain, benzin::SwapChainCreation{ "MainSwapChain", *m_MainWindow, *m_Device });
 
+        benzin::MakeUniquePtr(m_ShaderManager);
+        benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager, (uint32_t)magic_enum::enum_count<Pso>());
+
         benzin::MakeUniquePtr(m_Scene, *m_Device);
         benzin::MakeUniquePtr(m_RayTracingScene, *m_Device, *m_Scene);
 
         benzin::MakeUniquePtr(m_RenderResources, *m_Device);
         benzin::MakeUniquePtr(m_RenderSettings);
-        benzin::RenderPass::SetContext(*m_Device, *m_SwapChain, *m_RenderResources, *m_RenderSettings);
+        benzin::RenderPass::SetContext(*m_Device, *m_SwapChain, *m_PsoManager, *m_RenderResources, *m_RenderSettings);
 
         benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device);
         m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderResources, m_Scene->GetCamera());
         m_RenderSettingsTool = m_ImGuiManager->PushTool<benzin::RenderSettingsTool>(*m_RenderSettings);
         m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderResources);
-        m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Device, *m_SwapChain, *m_RenderViewportTool);
+        m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Device, *m_SwapChain, *m_ShaderManager, *m_RenderViewportTool);
         m_ImGuiManager->PushTool<benzin::FlyCameraTool>(m_RenderViewportTool->GetFlyCameraController());
         m_ImGuiManager->PushTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
         m_ImGuiManager->PushTool<TickTimerTool>(m_FrameTimer);
@@ -263,8 +268,7 @@ namespace sandbox
             }
         }
 
-        m_Device->GetPipelineStateManager().DestroyPendingPipelineStates();
-        m_Device->GetPipelineStateManager().ReloadPipelineStatesIfNeeded();
+        m_ShaderManager->CheckForNewShader();
         m_Device->ProcessDeferredReleaseQueues();
     }
 

@@ -7,7 +7,7 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/pipeline_state_manager.hpp>
+#include <benzin/graphics/pso_manager.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 
@@ -21,19 +21,20 @@ namespace sandbox
 
     DeferredLightingPass::DeferredLightingPass(const benzin::Scene& scene)
         : m_Scene{ scene }
+        , m_RenderTargetFormat{ (benzin::GraphicsFormat)benzin::CommandLineArgs::GetU32("BackBufferFormat") }
     {
-        m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::GraphicsPipelineStateCreation
+        ms_PsoManager->CreateGraphicsPso(+Pso::DeferredLighting, [this](benzin::GraphicsPsoProxy& proxy)
         {
-            .DebugName = "DeferredLightingPass",
-            .VsFileName = "fullscreen_triangle.hlsl",
-            .PsFileName = "deferred_lighting_pass.hlsl",
-            .PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle,
-            .DepthState
+            proxy.DebugName = "DeferredLightingPass";
+            proxy.VsFileName = "fullscreen_triangle.hlsl";
+            proxy.PsFileName = "deferred_lighting_pass.hlsl";
+            proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
+            proxy.DepthState = benzin::DepthState
             {
                 .IsEnabled = false,
                 .IsWriteEnabled = false,
-            },
-            .RenderTargetFormats{ benzin::GraphicsFormat::Rgba8Unorm },
+            };
+            proxy.RenderTargetFormats.push_back(m_RenderTargetFormat);
         });
 
         benzin::MakeUniquePtr(m_PassConstantBuffer, *ms_Device, "DeferredLightingPassConstantBuffer");
@@ -41,7 +42,7 @@ namespace sandbox
 
     DeferredLightingPass::~DeferredLightingPass()
     {
-        ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
+        ms_PsoManager->DestroyPso(+Pso::DeferredLighting);
 
         ms_Resources->DestroyTexture(+Texture::Final);
     }
@@ -51,7 +52,7 @@ namespace sandbox
         ms_Resources->CreateTexture(+Texture::Final, benzin::TextureCreation
         {
             .DebugName = magic_enum::enum_name(Texture::Final),
-            .Format = (benzin::GraphicsFormat)benzin::CommandLineArgs::GetU32("BackBufferFormat"),
+            .Format = m_RenderTargetFormat,
             .Width = GetRenderViewportWidth(),
             .Height = GetRenderViewportHeight(),
             .MipCount = 1,
@@ -97,7 +98,7 @@ namespace sandbox
         commandList.SetRenderTargets({ finalTexture.GetRtv() });
         commandList.ClearRenderTarget(finalTexture);
 
-        commandList.SetPipelineState(*m_Pso);
+        commandList.SetPso(ms_PsoManager->GetPso(+Pso::DeferredLighting));
 
         commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstantBuffer->GetActiveGpuVirtualAddress());
         commandList.SetRootResource(joint::DeferredLightingPassRc_AlbedoAndRoughnessTex, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());

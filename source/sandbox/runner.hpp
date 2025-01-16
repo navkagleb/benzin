@@ -15,12 +15,14 @@ namespace benzin
     class ImGuiManager;
     class ImGuiPass;
     class PerformanceOverlayTool;
+    class PsoManager;
     class RayTracing_Scene;
     class RenderPass;
     class RenderResources;
     class RenderSettingsTool;
     class RenderViewportTool;
     class Scene;
+    class ShaderManager;
     class SwapChain;
     class TextureViewerTool;
     class Window;
@@ -58,6 +60,9 @@ namespace sandbox
         std::unique_ptr<benzin::Backend> m_Backend;
         std::unique_ptr<benzin::Device> m_Device;
         std::unique_ptr<benzin::SwapChain> m_SwapChain;
+
+        std::unique_ptr<benzin::ShaderManager> m_ShaderManager;
+        std::unique_ptr<benzin::PsoManager> m_PsoManager;
 
         benzin::TickTimer m_FrameTimer;
         benzin::TickTimer m_AnimationTimer;

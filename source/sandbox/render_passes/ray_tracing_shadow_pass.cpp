@@ -10,8 +10,8 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/pipeline_state.hpp>
-#include <benzin/graphics/pipeline_state_manager.hpp>
+#include <benzin/graphics/pso_manager.hpp>
+#include <benzin/graphics/ray_tracing_pso.hpp>
 #include <benzin/graphics/ray_tracing_shader_table.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
@@ -24,8 +24,6 @@
 
 namespace sandbox
 {
-
-    static constexpr auto g_HitGroupName = "DefaultHitGroup"sv;
 
     static void BuildOrthonormalBasis(DirectX::XMFLOAT3 normal3, DirectX::XMFLOAT3& outTangent3, DirectX::XMFLOAT3& outBitangent3)
     {
@@ -44,33 +42,24 @@ namespace sandbox
     RayTracing_ShadowPass::RayTracing_ShadowPass(const benzin::Scene& scene)
         : m_Scene{ scene }
     {
-        m_Pso = ms_Device->GetPipelineStateManager().CreatePipelineState(benzin::RayTracingPipelineStateCreation
+        ms_PsoManager->CreateRayTracingPso(+Pso::ShadowPass, [](benzin::RayTracing_PsoProxy& proxy)
         {
-            .DebugName = "RayTracing_ShadowPass",
-            .ShaderLibrary
-            {
-                .FileName = "ray_tracing_shadow_pass.hlsl",
-            },
-            .HitGroup
-            {
-                .Name = g_HitGroupName,
-                .ClosestHitEntryPoint = "ClosestHit",
-            },
-            .ShaderConfig
-            {
-                .PayloadSize = sizeof(joint::RayTracing_ShadowPayload),
-                .AttributeSize = sizeof(DirectX::XMFLOAT2), // Barycentrics
-            },
+            proxy.DebugName = "RayTracing_ShadowPass";
+            proxy.ShaderLibrary.FileName = "ray_tracing_shadow_pass.hlsl";
+            proxy.RayGenerationEntryPoint = "RayGeneration";
+            proxy.MissEntryPoint = "Miss";
+            proxy.HitGroup.Name = "HitGroup";
+            proxy.HitGroup.ClosestHitEntryPoint = "ClosestHit";
+            proxy.ShaderConfig.PayloadSize = sizeof(joint::RayTracing_ShadowPayload);
+            proxy.ShaderConfig.AttributeSize = sizeof(DirectX::XMFLOAT2); // Barycentrics
         });
-
-        BuildShaderTable();
 
         benzin::MakeUniquePtr(m_PassConstBuffer, *ms_Device, "RayTracing_ShadowConsts");
     }
 
     RayTracing_ShadowPass::~RayTracing_ShadowPass()
     {
-        ms_Device->GetPipelineStateManager().DestroyPipelineState(m_Pso);
+        ms_PsoManager->DestroyPso(+Pso::ShadowPass);
         ms_Resources->DestroyTexture(+Texture::NoisyPenumbra);
     }
 
@@ -141,9 +130,10 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "RayTracingShadowPass");
 
+        const auto& pso = ms_PsoManager->GetRayTracingPso(+Pso::ShadowPass);
         const auto& noisyPenumbra = ms_Resources->GetTexture(+Texture::NoisyPenumbra);
 
-        commandList.SetPipelineState(*m_Pso);
+        commandList.SetPso(pso);
         commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstBuffer->GetActiveGpuVirtualAddress());
 
         {
@@ -161,38 +151,7 @@ namespace sandbox
             benzin::TransitionBarrier{ noisyPenumbra, benzin::ResourceState::UnorderedAccess },
         );
 
-        commandList.DispatchRays(*m_ShaderTable, { GetRenderViewportWidth(), GetRenderViewportHeight(), 1 });
-    }
-
-    void RayTracing_ShadowPass::BuildShaderTable()
-    {
-        BenzinEnsure(m_Pso->GetD3D12StateObject() != nullptr);
-
-        ComPtr<ID3D12StateObjectProperties> d3d12StateObjectProperties;
-        BenzinEnsure(m_Pso->GetD3D12StateObject()->QueryInterface(IID_PPV_ARGS(&d3d12StateObjectProperties)));
-
-        const auto getShaderIdentifier = [&d3d12StateObjectProperties](std::string_view idName)
-        {
-            const std::wstring wideIdName = benzin::ToWideString(idName);
-            const void* rawId = d3d12StateObjectProperties->GetShaderIdentifier(wideIdName.data());
-
-            return rawId;
-        };
-
-        benzin::MakeUniquePtr(m_ShaderTable);
-        m_ShaderTable->SetRayGenerationShader(getShaderIdentifier("RayGeneration"));
-        m_ShaderTable->SetMissShader(getShaderIdentifier("Miss"));
-        m_ShaderTable->SetHitGroupShaders(getShaderIdentifier(g_HitGroupName));
-
-        m_TableBuffer = std::make_unique<benzin::Buffer>(*ms_Device, benzin::BufferCreation
-        {
-            .DebugName = "RayTracedShadows_ShaderTable",
-            .MemoryType = benzin::ResourceMemoryType::Upload,
-            .ElementSize = (uint32_t)m_ShaderTable->GetRequiredTableSize(),
-            .ElementCount = 1,
-        });
-
-        m_ShaderTable->UploadToGpu(m_TableBuffer.get());
+        commandList.DispatchRays(pso.GetShaderTable(), { GetRenderViewportWidth(), GetRenderViewportHeight(), 1 });
     }
 
 }

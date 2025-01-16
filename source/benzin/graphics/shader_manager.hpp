@@ -1,19 +1,20 @@
 #pragma once
 
 #include "benzin/graphics/dxc_shader_compiler.hpp"
+#include "benzin/graphics/shader.hpp"
 
 namespace benzin
 {
-
-    class ShaderInfo;
 
     class Win64ShaderFileWatcher
     {
     public:
         using Callback = std::function<void(std::filesystem::path&& filePath)>;
 
-        Win64ShaderFileWatcher(Callback&& callback);
+        Win64ShaderFileWatcher();
         ~Win64ShaderFileWatcher();
+
+        void SetCallback(Callback&& callback) { m_Callback = std::move(callback); }
 
     private:
         using RawFileInfoBuffer = std::array<std::byte, 1_kb>;
@@ -36,41 +37,45 @@ namespace benzin
     class ShaderManager
     {
     public:
+        using NewShaderAvailableCallback = std::function<void()>;
+
         ShaderManager();
         ~ShaderManager();
 
-        bool IsAllShadersGood() const { return m_IsAllShaderGood; }
+        bool IsEachShaderGood() const { return m_IsEachShaderGood; }
 
-        std::span<const std::byte> GetShaderDxil(const ShaderInfo& shader, bool isCacheIgnored = false);
+        void SetNewShaderAvailableCallback(NewShaderAvailableCallback&& callback) { m_NewShaderAvailableCallback = std::move(callback); }
 
-        bool TryCompileShaderIfNeeded(const ShaderInfo& shader);
+    public:
+        ShaderBytecode GetShaderBytecode(const ShaderInfo& shader);
 
-        void RunIfPendingToReloadShaderIsAvailable(std::function<void()>&& callback);
-        bool UpdateShaderState(const ShaderInfo& shader);
+        void CheckForNewShader();
+        bool CompareWithNewShader(const ShaderInfo& shader);
 
     private:
-        bool IsPendingToReloadShaderAvailable() const;
-
         void CacheIncludeDependencies();
         void LoadIncludeDependenciesCache();
 
-        bool LoadShaderCacheIfPossible(const ShaderInfo& shader);
+        bool TryCompileShader(const ShaderInfo& shader);
+        bool LoadShader(const ShaderInfo& shader);
 
+        bool IsNewShaderAvailable() const;
         void FileWatcherCallback(std::filesystem::path&& filePath);
 
     private:
         const DxcShaderCompiler m_ShaderCompiler;
-        const Win64ShaderFileWatcher m_FileWatcher;
+        Win64ShaderFileWatcher m_FileWatcher;
 
         // TODO: Maybe replace with one big unordered_map?
-        std::unordered_map<uint64_t, bool> m_IsShaderGoodMap;
         std::unordered_map<uint64_t, std::vector<std::byte>> m_ShaderDxils;
         std::unordered_map<uint64_t, std::unordered_set<std::filesystem::path>> m_IncludeDependencies;
 
-        std::mutex m_PendingShaderToReloadMutex;
-        std::optional<std::filesystem::path> m_PendingShaderToReload;
+        std::mutex m_NewShaderMutex;
+        std::optional<std::filesystem::path> m_NewShader;
 
-        bool m_IsAllShaderGood = true;
+        NewShaderAvailableCallback m_NewShaderAvailableCallback;
+
+        bool m_IsEachShaderGood = true;
     };
 
 }

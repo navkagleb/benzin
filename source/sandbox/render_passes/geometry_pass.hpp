@@ -6,7 +6,6 @@ namespace benzin
 {
 
     class Scene;
-    class PipelineState;
 
 }
 
@@ -27,8 +26,6 @@ namespace sandbox
 
     private:
         const benzin::Scene& m_Scene;
-
-        benzin::PipelineState* m_Pso = nullptr;
     };
 
 }

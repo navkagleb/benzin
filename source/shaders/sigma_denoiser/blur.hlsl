@@ -14,7 +14,7 @@ BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::Rc_SigmaBlur:
 BenzinDeclareRootResource(Texture2D<float>, g_ViewDepth, joint::Rc_SigmaBlur::ViewDepth);
 BenzinDeclareRootResource(Texture2D<float>, g_Penumbra, joint::Rc_SigmaBlur::Penumbra);
 BenzinDeclareRootResource(Texture2D<float2>, g_SmoothTiles, joint::Rc_SigmaBlur::SmoothTiles);
-#if !defined(FIRST_BLUR_PASS)
+#if defined(POST_BLUR_PASS)
     BenzinDeclareRootResource(Texture2D<float>, g_Shadow, joint::Rc_SigmaBlur::Shadow);
 #endif
 
@@ -36,7 +36,7 @@ void Preload(uint2 sharedPos, uint2 pixelPos)
     pixel.Penumbra = g_Penumbra[pixelPos];
     pixel.ViewDepth = g_ViewDepth[pixelPos];
 
-#if defined(FIRST_BLUR_PASS)
+#if !defined(POST_BLUR_PASS)
     pixel.Shadow = sigma::IsLit(pixel.Penumbra); // This is ok. Full shadow - 0, No shadow = 1
 #else
     pixel.Shadow = sigma::UnpackShadow(g_Shadow[pixelPos]);
@@ -127,7 +127,7 @@ SparseBlurKernel CalcSparseBlurKernel(BlurParams params, float blurredPenumbra, 
     SparseBlurKernel kernel;
     kernel.Tangent = worldToLocal[0];
     kernel.Bitangent = worldToLocal[1];
-#if defined(FIRST_BLUR_PASS)
+#if !defined(POST_BLUR_PASS)
     kernel.Rotator = g_PassConstants.BlurRotator;
 #else
     kernel.Rotator = g_PassConstants.PostBlurRotator;
@@ -242,7 +242,7 @@ void RunAnisotropicBlur(BlurParams params, float tileValue, inout float2 outShad
         PixelData samplePixel;
         samplePixel.ViewDepth = g_ViewDepth.SampleLevel(g_PointClampSampler, uv, 0.0);
         samplePixel.Penumbra = g_Penumbra.SampleLevel(g_PointClampSampler, uv, 0.0);
-#if defined(FIRST_BLUR_PASS)
+#if !defined(POST_BLUR_PASS)
         samplePixel.Shadow = sigma::IsLit(samplePixel.Penumbra);
 #else
         samplePixel.Shadow = g_Shadow.SampleLevel(g_PointClampSampler, uv, 0.0);
@@ -330,7 +330,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     RunAnisotropicBlur(params, tileValue, blurredShadow, blurredPenumbra); // TODO: Normalize blurredShadow and blurredPenumbra when SIGMA_BLUR_USE_ANISOTROPIC_BLUR is 0
 #endif
 
-#if !defined(FIRST_BLUR_PASS)
+#if defined(POST_BLUR_PASS)
     if (g_PassConstants.StabilizationStrength != 0)
 #endif
     {

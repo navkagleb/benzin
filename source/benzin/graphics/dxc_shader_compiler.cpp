@@ -3,7 +3,7 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
-#include "benzin/graphics/pipeline_state.hpp"
+#include "benzin/graphics/shader.hpp"
 
 namespace benzin
 {

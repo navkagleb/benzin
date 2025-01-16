@@ -8,8 +8,8 @@ namespace benzin
     class Backend;
     class GpuTimer;
     class GraphicsCommandQueue;
-    class PipelineState;
-    class PipelineStateManager;
+    class Pso;
+    class RayTracing_Pso;
     class Resource;
     class UnifiedRootSignature;
 
@@ -45,7 +45,6 @@ namespace benzin
 
         auto& GetUnifiedRootSignature() { return *m_UnifiedRootSignature; }
         auto& GetDescriptorManager() { return *m_DescriptorManager; }
-        auto& GetPipelineStateManager() { return *m_PipelineStateManager; }
         auto& GetGraphicsCommandQueue() { return *m_GraphicsCommandQueue; }
 
         auto& GetGpuTimer() { return *m_GpuTimer; }
@@ -60,7 +59,8 @@ namespace benzin
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
         void DeferredRelease(const Descriptor& descriptor);
-        void DeferredRelease(const PipelineState& pso);
+        void DeferredRelease(const Pso& pso);
+        void DeferredRelease(const RayTracing_Pso& pso);
         void DeferredRelease(const Resource& resource);
         void ProcessDeferredReleaseQueues(bool isForceRelease = false); // Must be called after 'SwapChain::OnFlip' because 'm_CompletedGpuFrameIndex' will be updated there
 
@@ -76,7 +76,6 @@ namespace benzin
         // Must be released in desctructor before m_D3D12Device destroying
         std::unique_ptr<UnifiedRootSignature> m_UnifiedRootSignature;
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
-        std::unique_ptr<PipelineStateManager> m_PipelineStateManager;
         std::unique_ptr<GraphicsCommandQueue> m_GraphicsCommandQueue;
         std::unique_ptr<GpuTimer> m_GpuTimer;
 
