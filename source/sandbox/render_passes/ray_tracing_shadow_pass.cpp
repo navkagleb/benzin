@@ -10,11 +10,11 @@
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
-#include <benzin/graphics/pso_manager.hpp>
 #include <benzin/graphics/ray_tracing_pso.hpp>
 #include <benzin/graphics/ray_tracing_shader_table.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
+#include <benzin/graphics2/pso_manager.hpp>
 
 #include <shaders/joint/ray_tracing_shadow_resources.hpp>
 

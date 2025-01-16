@@ -1,7 +1,7 @@
 #pragma once
 
-#include "benzin/engine/render_pass.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
+#include "benzin/graphics2/render_pass.hpp"
 
 namespace benzin
 {

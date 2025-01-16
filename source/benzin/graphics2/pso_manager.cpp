@@ -1,5 +1,5 @@
 #include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/pso_manager.hpp"
+#include "benzin/graphics2/pso_manager.hpp"
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
@@ -7,7 +7,7 @@
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/pso.hpp"
 #include "benzin/graphics/ray_tracing_pso.hpp"
-#include "benzin/graphics/shader_manager.hpp"
+#include "benzin/graphics2/shader_manager.hpp"
 
 namespace benzin
 {

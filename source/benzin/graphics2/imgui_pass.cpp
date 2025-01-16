@@ -1,5 +1,5 @@
 #include "benzin/config/bootstrap.hpp"
-#include "benzin/engine/imgui_pass.hpp"
+#include "benzin/graphics2/imgui_pass.hpp"
 
 #include <third_party/imgui/backends/imgui_impl_dx12.h>
 #include <third_party/imgui/backends/imgui_impl_win32.h>

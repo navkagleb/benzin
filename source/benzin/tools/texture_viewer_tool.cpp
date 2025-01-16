@@ -2,7 +2,6 @@
 #include "benzin/tools/texture_viewer_tool.hpp"
 
 #include "benzin/core/asserter.hpp"
-#include "benzin/engine/render_pass.hpp"
 #include "benzin/graphics/texture.hpp"
 #include "benzin/system/event.hpp"
 #include "benzin/system/input.hpp"

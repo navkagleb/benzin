@@ -1,8 +1,8 @@
 #pragma once
 
-#include <benzin/engine/imgui_pass.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
+#include <benzin/graphics2/imgui_pass.hpp>
 #include <benzin/utility/time_utils.hpp>
 
 namespace benzin

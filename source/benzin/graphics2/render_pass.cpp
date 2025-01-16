@@ -1,5 +1,5 @@
 #include "benzin/config/bootstrap.hpp"
-#include "benzin/engine/render_pass.hpp"
+#include "benzin/graphics2/render_pass.hpp"
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/graphics/device.hpp"

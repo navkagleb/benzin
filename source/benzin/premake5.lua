@@ -63,6 +63,7 @@ project "BenzinFramework"
     add_folder_to_vpath("config")
     add_folder_to_vpath("core")
     add_folder_to_vpath("engine")
+    add_folder_to_vpath("graphics2")
     add_folder_to_vpath("graphics/ray_tracing")
     add_folder_to_vpath("graphics")
     add_folder_to_vpath("system")

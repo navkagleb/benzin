@@ -1,8 +1,6 @@
 #pragma once
 
-#include <benzin/engine/render_pass.hpp>
-
-#include <shaders/joint/constant_buffer_types.hpp>
+#include <benzin/graphics2/render_pass.hpp>
 
 namespace benzin
 {
@@ -11,6 +9,13 @@ namespace benzin
     class ConstantBuffer;
 
     class Scene;
+
+}
+
+namespace joint
+{
+
+    struct DeferredLightingPassConstants;
 
 }
 
