@@ -7,12 +7,12 @@ project "Sandbox"
 
     fatalwarnings { "All" }
 
-    pchheader "sandbox/bootstrap.hpp"
-    pchsource "bootstrap.cpp"
+    import {
+        ["BenzinFramework"] = "Anything",
+    }
 
     includedirs {
         source_dir,
-        nuget_include_dirs,
     }
 
     links {
@@ -24,14 +24,5 @@ project "Sandbox"
         "**.cpp",
     }
 
-    -- TODO: Inheritance from BenzinFramework?
-    filter "configurations:Debug"
-        defines { "BENZIN_DEBUG_BUILD" }
-
-    filter "configurations:Release"
-        defines { "BENZIN_RELEASE_BUILD" }
-
-    filter "platforms:Win64"
-        defines {
-            "BENZIN_PLATFORM_WIN64",
-        }
+    pchheader "sandbox/bootstrap.hpp"
+    pchsource "bootstrap.cpp"

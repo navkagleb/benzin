@@ -1,3 +1,27 @@
+local nuget_include_dirs = projects_dir .. "/packages/**/include"
+local nuget_lib_dirs = projects_dir .. "/packages/**/bin/x64/"
+
+local function apply_benzin_config()
+    includedirs {
+        source_dir,
+        nuget_include_dirs,
+    }
+
+    filter "configurations:Debug"
+        defines { "BENZIN_DEBUG_BUILD" }
+
+    filter "configurations:Release"
+        defines { "BENZIN_RELEASE_BUILD" }
+
+    filter "platforms:Win64"
+        systemversion "10.0.20348.0:latest" -- From Windows SDK 10.0.20348.0 shader model 6.6 support started
+        defines {
+            "BENZIN_PLATFORM_WIN64",
+        }
+
+    filter {}
+end
+
 project "BenzinFramework"
     kind "StaticLib"
     language "C++"
@@ -7,8 +31,10 @@ project "BenzinFramework"
 
     fatalwarnings { "All" }
 
-    pchheader "benzin/config/bootstrap.hpp"
-    pchsource "config/bootstrap.cpp"
+    import {
+        ["NvAPI"] = "Anything",
+        ["DirectXTex"] = "Anything",
+    }
 
     nuget {
         "Microsoft.Direct3D.D3D12:1.715.1-preview",
@@ -22,17 +48,8 @@ project "BenzinFramework"
         "BENZIN_AGILE_SDK_PATH=\"./D3D12\"",
     }
 
-    includedirs {
-        source_dir,
-        nuget_include_dirs,
-        third_party_include_dirs["DirectXTex"],
-        third_party_include_dirs["nvapi"],
-    }
-
     libdirs {
         nuget_lib_dirs,
-        third_party_lib_dirs["DirectXTex"],
-        third_party_lib_dirs["nvapi"],
     }
 
     links {
@@ -50,6 +67,9 @@ project "BenzinFramework"
         "**.inl",
         "**.cpp",
     }
+
+    pchheader "benzin/config/bootstrap.hpp"
+    pchsource "config/bootstrap.cpp"
 
     local add_folder_to_vpath = function(vpath_name)
         vpaths {
@@ -70,14 +90,9 @@ project "BenzinFramework"
     add_folder_to_vpath("tools")
     add_folder_to_vpath("utility")
 
-    filter "configurations:Debug"
-        defines { "BENZIN_DEBUG_BUILD" }
+    apply_benzin_config()
 
-    filter "configurations:Release"
-        defines { "BENZIN_RELEASE_BUILD" }
+    export "*"
+        apply_benzin_config()
 
-    filter "platforms:Win64"
-        systemversion "10.0.20348.0:latest" -- From Windows SDK 10.0.20348.0 shader model 6.6 support started
-        defines {
-            "BENZIN_PLATFORM_WIN64",
-        }
+    export {}

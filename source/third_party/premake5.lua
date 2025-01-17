@@ -14,6 +14,17 @@ project "DirectXTex"
         "DirectXTex/include/DirectX.inl",
     }
 
+    export "*"
+        includedirs {
+            "DirectXTex/include",
+        }
+
+        libdirs {
+            "DirectXTex/lib",
+        }
+
+    export {}
+
 
 project "EnTT"
     kind "None"
@@ -50,6 +61,17 @@ project "NvAPI"
         "nvapi/include/**.h",
     }
 
+    export "*"
+        includedirs {
+            "nvapi/include",
+        }
+
+        libdirs {
+            "nvapi/amd64",
+        }
+
+    export {}
+
 
 project "TinyGLTF"
     kind "StaticLib"
@@ -60,10 +82,3 @@ project "TinyGLTF"
         "tinygltf/**.h",
         "tinygltf/**.cc",
     }
-
-
-third_party_include_dirs["DirectXTex"] = third_party_dir .. "/DirectXTex/include"
-third_party_lib_dirs["DirectXTex"] = third_party_dir .. "/DirectXTex/lib"
-
-third_party_include_dirs["nvapi"] = third_party_dir .. "/nvapi/include"
-third_party_lib_dirs["nvapi"] = third_party_dir .. "/nvapi/amd64"
