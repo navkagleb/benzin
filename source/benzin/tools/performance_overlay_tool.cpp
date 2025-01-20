@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/tools/performance_overlay_tool.hpp"
 
+#include "benzin/core/command_line_args.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/device.hpp"
@@ -56,7 +57,7 @@ namespace benzin
 
         static auto location = OverlayLocation::BottomLeft;
         
-        ImGuiWindowFlags windowFlags =
+        auto windowFlags =
             ImGuiWindowFlags_NoDecoration |
             ImGuiWindowFlags_NoDocking |
             ImGuiWindowFlags_AlwaysAutoResize |
@@ -90,14 +91,13 @@ namespace benzin
             windowFlags |= ImGuiWindowFlags_NoMove;
         }
 
-        const auto& backend = m_Device.GetBackend();
-
         ImGui::SetNextWindowBgAlpha(0.7f);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, backgroundColors[m_ShaderManager.IsEachShaderGood()]);
 
-        if (ImGui::Begin(m_Name.data(), &m_IsVisible, windowFlags))
+        SpawnImGuiWindow(windowFlags, [this]
         {
-            const auto adapterMemoryInfo = backend.GetMainAdapterMemoryInfo();
+            const Backend& backend = m_Device.GetBackend();
+            const AdapterMemoryInfo adapterMemoryInfo = backend.GetMainAdapterMemoryInfo();
 
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0.0f, 0.0f });
 
@@ -110,6 +110,16 @@ namespace benzin
             ImGui::Text(BenzinFormatData("FrameDelay: {}", m_Device.GetCpuFrameIndex() - m_Device.GetCompletedGpuFrameIndex()));
             ImGui::Text(BenzinFormatData("Vram Local: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedDedicatedVram.GetMb(), adapterMemoryInfo.DedicatedVramOsBudget.GetMb()));
             ImGui::Text(BenzinFormatData("Vram NonLocal: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb(), adapterMemoryInfo.SharedRamOsBudget.GetMb()));
+
+            if (CommandLineArgs::GetBool("IsGpuValidationEnabled"))
+            {
+                ImGui::Text("!!! GPU Validation ENABLED");
+            }
+
+            if (CommandLineArgs::GetBool("IsSynchronizedCommandQueueValidationEnabled"))
+            {
+                ImGui::Text("!!! Debug Sync Queue ENABLED");
+            }
 
             ImGui::PopStyleVar();
 
@@ -137,8 +147,8 @@ namespace benzin
 
                 ImGui::EndPopup();
             }
-        }
-        ImGui::End();
+        });
+
         ImGui::PopStyleColor();
     }
 

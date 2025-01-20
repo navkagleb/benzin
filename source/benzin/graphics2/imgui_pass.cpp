@@ -28,7 +28,12 @@ namespace benzin
     
     void ImGuiTool::SpawnImGuiWindow(const std::function<void()>& callback)
     {
-        if (ImGui::Begin(m_Name.data(), &m_IsVisible))
+        SpawnImGuiWindow(ImGuiWindowFlags_None, callback);
+    }
+
+    void ImGuiTool::SpawnImGuiWindow(ImGuiWindowFlags flags, const std::function<void()>& callback)
+    {
+        if (ImGui::Begin(m_Name.data(), &m_IsVisible, flags))
         {
             callback();
         }
