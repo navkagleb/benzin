@@ -71,7 +71,7 @@ namespace benzin
         std::unordered_map<uint64_t, std::unordered_set<std::filesystem::path>> m_IncludeDependencies;
 
         std::mutex m_NewShaderMutex;
-        std::optional<std::filesystem::path> m_NewShader;
+        std::filesystem::path m_NewShader;
 
         NewShaderAvailableCallback m_NewShaderAvailableCallback;
 

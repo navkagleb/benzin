@@ -202,7 +202,7 @@ namespace benzin
             m_IsEachShaderGood = true;
 
             m_NewShaderAvailableCallback();
-            m_NewShader = std::nullopt;
+            m_NewShader.clear();
         }
     }
 
@@ -214,14 +214,14 @@ namespace benzin
         const ShaderPaths paths{ shader };
 
         bool isShaderNeedsRecompilation = false;
-        if (IsSourceShader(m_NewShader->c_str()))
+        if (IsSourceShader(m_NewShader.c_str()))
         {
-            isShaderNeedsRecompilation = *m_NewShader == paths.SourceFilePath;
+            isShaderNeedsRecompilation = m_NewShader == paths.SourceFilePath;
         }
-        else if (IsIncludeShader(m_NewShader->c_str()))
+        else if (IsIncludeShader(m_NewShader.c_str()))
         {
             BenzinAssert(m_IncludeDependencies.contains(shader.GetHash()));
-            isShaderNeedsRecompilation = m_IncludeDependencies.at(shader.GetHash()).contains(*m_NewShader);
+            isShaderNeedsRecompilation = m_IncludeDependencies.at(shader.GetHash()).contains(m_NewShader);
         }
 
         if (isShaderNeedsRecompilation)
@@ -346,7 +346,7 @@ namespace benzin
 
     bool ShaderManager::IsNewShaderAvailable() const
     {
-        if (!m_NewShader.has_value())
+        if (m_NewShader.empty())
         {
             return false;
         }
@@ -355,7 +355,7 @@ namespace benzin
         // If so, the shader compilation will fail
 
         const HANDLE fileHandle = ::CreateFileW(
-            m_NewShader->c_str(),
+            m_NewShader.c_str(),
             GENERIC_READ, // open for reading
             0, // do not share
             nullptr, // default security
@@ -377,10 +377,10 @@ namespace benzin
     {
         const std::lock_guard lock{ m_NewShaderMutex };
 
-        BenzinAssert(!m_NewShader.has_value() || m_NewShader == filePath);
+        BenzinAssert(m_NewShader.empty() || m_NewShader == filePath); // TODO: equal?
         m_NewShader = std::move(filePath);
 
-        BenzinTrace("Shader '{}' updated", m_NewShader->string());
+        BenzinTrace("Shader '{}' updated", m_NewShader.string());
     }
 
 }
