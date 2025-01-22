@@ -2,8 +2,6 @@
 #define g_ThreadCountY 16
 
 #include "joint/sigma_denoiser_resources.hpp"
-
-#define RenderPassConstantsType joint::SigmaConstants
 #include "unified_root_parameters.hlsli"
 
 #include "sigma_denoiser/group_shared_preloader.hlsli"
@@ -21,7 +19,7 @@ void Preload(uint2 localPos, uint2 globalPos)
 [numthreads(g_ThreadCountX, g_ThreadCountY, 1)]
 void CsMain(sigma::GroupSharedCsInput input)
 {
-    SigmaPreloadToGroupSharedMem(input, g_PassConstants.TileCount, Preload);
+    SigmaPreloadToGroupSharedMem(input, g_PassConsts0.TileCount, Preload);
     GroupMemoryBarrierWithGroupSync();
 
     const float3 centerTile = g_Tiles[input.PixelPos].xyz;
@@ -46,7 +44,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     smoothPenumbra.x /= smoothPenumbra.y;
 
     // TODO: Add SIGMA_DEBUG define
-    if (!g_PassConstants.IsTileSmoothingEnabled)
+    if (!g_PassConsts0.IsTileSmoothingEnabled)
     {
         smoothPenumbra.x = centerTile.x;
     }

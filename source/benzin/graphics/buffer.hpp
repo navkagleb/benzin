@@ -1,8 +1,5 @@
 #pragma once
 
-#include "benzin/core/command_line_args.hpp"
-#include "benzin/core/enum_flags.hpp"
-#include "benzin/core/memory_writer.hpp"
 #include "benzin/graphics/resource.hpp"
 
 namespace benzin
@@ -14,7 +11,7 @@ namespace benzin
         Format,
         Structured,
         Constant,
-        RtAccelerationStructure,
+        RayTracing_AccelerationStructure,
     };
 
     struct BufferCreation
@@ -34,11 +31,6 @@ namespace benzin
     class Buffer : public Resource
     {
     public:
-        friend class RtAccelerationStructure;
-
-        template <typename ConstantsT>
-        friend class ConstantBuffer;
-
         explicit Buffer(Device& device);
         Buffer(Device& device, const BufferCreation& creation);
         ~Buffer() override;
@@ -83,43 +75,4 @@ namespace benzin
         std::byte* m_CpuMappedData = nullptr;
     };
 
-    template <typename ConstantsT>
-    class ConstantBuffer
-    {
-    public:
-        ConstantBuffer(Device& device, std::string_view debugName)
-            : m_Buffer{ device }
-        {
-            m_Buffer.Create(BufferCreation
-            {
-                .DebugName = debugName,
-                .MemoryType = ResourceMemoryType::Upload,
-                .Type = BufferType::Constant,
-                .ElementSize = sizeof(ConstantsT),
-                .ElementCount = CommandLineArgs::GetU32("FrameInFlightCount"),
-            });
-
-            m_MappedDataWriter = MemoryWriter{ m_Buffer.GetCpuMappedData(), m_Buffer.GetSize() };
-        }
-
-        auto GetActiveGpuVirtualAddress() const
-        {
-            return m_Buffer.GetGpuVirtualAddress(m_Buffer.m_Device.GetActiveFrameIndex());
-        }
-
-        const auto& GetActiveCbv() const
-        {
-            return m_Buffer.GetCbv(m_Buffer.m_Device.GetActiveFrameIndex());
-        }
-
-        void UpdateConstants(const ConstantsT& constants)
-        {
-            m_MappedDataWriter.WriteSized(constants, m_Buffer.GetAlignedElementSize(), m_Buffer.m_Device.GetActiveFrameIndex());
-        }
-
-    private:
-        Buffer m_Buffer;
-        MemoryWriter m_MappedDataWriter;
-    };
-
-} // namespace benzin
+}

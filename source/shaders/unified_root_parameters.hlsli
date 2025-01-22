@@ -1,16 +1,19 @@
 #pragma once
 
-#include "joint/constant_buffer_types.hpp"
-#include "joint/enum_types.hpp"
-#include "joint/root_constants.hpp"
-#include "joint/structured_buffer_types.hpp"
+#include "joint/global_resources.hpp"
+#include "joint/light.hpp"
 
 // To prevent matrix transposition in CPU side
 #pragma pack_matrix(row_major)
 
-#if !defined(RenderPassConstantsType)
-    struct DummyRenderPassConstants {};
-    #define RenderPassConstantsType DummyRenderPassConstants
+struct DummyRenderPassConsts {};
+
+#if !defined(BenzinRenderPassConstsType0)
+    #define BenzinRenderPassConstsType0 DummyRenderPassConsts
+#endif
+
+#if !defined(BenzinRenderPassConstsType1)
+    #define BenzinRenderPassConstsType1 DummyRenderPassConsts
 #endif
 
 struct RootConstants
@@ -24,10 +27,12 @@ struct RootConstants
 };
 
 ConstantBuffer<RootConstants> g_RootConstants : register(b0, space0);
-ConstantBuffer<joint::FrameConstants> g_FrameConstants : register(b0, space1);
-ConstantBuffer<RenderPassConstantsType> g_PassConstants : register(b0, space2);
+ConstantBuffer<joint::FrameConsts> g_FrameConstants : register(b0, space1);
+ConstantBuffer<BenzinRenderPassConstsType0> g_PassConsts0 : register(b0, space2);
+ConstantBuffer<BenzinRenderPassConstsType1> g_PassConsts1 : register(b0, space3);
 
-RaytracingAccelerationStructure g_SceneTlas : register(t0, space0);
+StructuredBuffer<joint::Light> g_Lights : register(t0, space0);
+RaytracingAccelerationStructure g_SceneTlas : register(t0, space1);
 
 SamplerState g_PointWrapSampler : register(s0, space0);
 SamplerState g_PointClampSampler : register(s0, space1);
@@ -45,4 +50,5 @@ uint GetRootConstant(uint index)
     return g_RootConstants.GetConstant(index);
 }
 
+#define BenzinGetRootConstant(rootIndex) g_RootConstants.GetConstant((uint)rootIndex)
 #define BenzinDeclareRootResource(Type, name, rootIndex) static Type name = ResourceDescriptorHeap[GetRootConstant((uint)rootIndex)]

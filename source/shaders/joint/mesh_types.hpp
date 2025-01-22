@@ -34,8 +34,8 @@ namespace joint
 
     struct MeshTransform
     {
-        float4x4 WorldMatrix BenzinCppOnly( = DirectX::XMMatrixIdentity());
-        float4x4 PreviousWorldMatrix BenzinCppOnly( = DirectX::XMMatrixIdentity());
+        float4x4 LocalToWorld BenzinCppOnly( = DirectX::XMMatrixIdentity());
+        float4x4 PrevLocalToWorld BenzinCppOnly( = DirectX::XMMatrixIdentity());
     };
 
     struct Material

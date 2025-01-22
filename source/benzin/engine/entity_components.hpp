@@ -1,80 +1,38 @@
 #pragma once
 
-namespace joint
-{
-
-    struct MeshTransform;
-
-}
-
 namespace benzin
 {
 
-    class Descriptor;
-    class Device;
-    class TickTimer;
-
-    template <typename>
-    class ConstantBuffer;
-
-    struct MeshComponent
+    class Transform
     {
-        entt::entity MeshHandle = g_InvalidEnum<entt::entity>;
-        std::optional<IndexRange32> MeshInstanceRange;
-
-        bool IsRayTracingMesh = true;
-    };
-
-    class TransformComponent
-    {
-    public:
-        friend class Scene;
-
     public:
         const auto& GetScale() const { return m_Scale; }
-        void SetScale(const DirectX::XMFLOAT3& scale);
-
         const auto& GetRotation() const { return m_Rotation; }
-        void SetRotation(const DirectX::XMFLOAT3& rotation);
-
         const auto& GetTranslation() const { return m_Translation; }
-        void SetTranslation(const DirectX::XMFLOAT3& translation);
 
         const DirectX::XMMATRIX& GetLocalToWorldMatrix() const;
+        const DirectX::XMMATRIX& GetPrevLocalToWorldMatrix() const;
 
-        const Descriptor& GetActiveTransformCbv() const;
-
-        void UpdateMatricesIfNeeded();
-
-    private:
-        void CreateTransformConstantBuffer(Device& device, std::string_view debugName);
-        void UpdateTransformConstantBuffer();
+        void SetScale(const DirectX::XMFLOAT3& scale);
+        void SetRotation(const DirectX::XMFLOAT3& rotation);
+        void SetTranslation(const DirectX::XMFLOAT3& translation);
 
     private:
         DirectX::XMFLOAT3 m_Scale{ 1.0f, 1.0f, 1.0f };
         DirectX::XMFLOAT3 m_Rotation{ 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT3 m_Translation{ 0.0f, 0.0f, 0.0f };
 
-        bool m_IsDirty = true;
-        DirectX::XMMATRIX m_LocalToWorldMatrix = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_PrevLocalToWorldMatrix = DirectX::XMMatrixIdentity();
-
-        std::unique_ptr<ConstantBuffer<joint::MeshTransform>> m_TransformConstantBuffer;
+        mutable bool m_IsDirty = true;
+        mutable DirectX::XMMATRIX m_LocalToWorldMatrix = DirectX::XMMatrixIdentity();
+        mutable DirectX::XMMATRIX m_PrevLocalToWorldMatrix = DirectX::XMMatrixIdentity();
     };
 
-    struct UpdateComponent
+    // TODO: Rename to MeshInstance?
+    struct MeshComponent
     {
-        using FrameUpdateCallback = std::function<void(entt::registry&, entt::entity)>;
-        FrameUpdateCallback Callback;
+        entt::entity MeshHandle = g_InvalidEnum<entt::entity>;
     };
 
-    struct PointLightComponent
-    {
-        DirectX::XMFLOAT3 Color;
-        float Intensity;
-        float Range;
-
-        float GeometryRadius;
-    };
+    using EntityUpdateCallback = std::function<void()>;
 
 }

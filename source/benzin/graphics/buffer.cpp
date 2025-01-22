@@ -99,9 +99,9 @@ namespace benzin
     {
         static const auto getInitialResourceState = [](const Device& device, const BufferCreation& creation)
         {
-            if (creation.Type == BufferType::RtAccelerationStructure)
+            if (creation.Type == BufferType::RayTracing_AccelerationStructure)
             {
-                return ResourceState::RtAccelerationStructure;
+                return ResourceState::RayTracing_AccelerationStructure;
             }
             else if (creation.MemoryType == ResourceMemoryType::Upload && !device.GetCaps().IsGpuUploadHeapsSupported)
             {
@@ -196,7 +196,7 @@ namespace benzin
                     },
                 };
             }
-            case BufferType::RtAccelerationStructure:
+            case BufferType::RayTracing_AccelerationStructure:
             {
                 return D3D12_SHADER_RESOURCE_VIEW_DESC
                 {
@@ -328,7 +328,7 @@ namespace benzin
         }
 
         ID3D12Resource* d3d12Resource = nullptr;
-        if (m_Type != BufferType::RtAccelerationStructure)
+        if (m_Type != BufferType::RayTracing_AccelerationStructure)
         {
             BenzinAssert(m_D3D12Resource);
             d3d12Resource = m_D3D12Resource;

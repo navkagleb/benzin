@@ -1,36 +1,37 @@
 #pragma once
 
-#include <shaders/joint/enum_types.hpp>
+#include <shaders/joint/full_screen_debug_resources.hpp>
 
 namespace sandbox
 {
+
+    struct GBufferStats
+    {
+        uint32_t MeshCount = 0;
+        uint32_t RenderedMeshCount = 0;
+        uint32_t RenderedTriangleCount = 0;
+    };
 
     struct GBufferSettings
     {
         bool IsFrustumCullingEnabled = true;
 
-        struct
-        {
-            uint32_t MeshCount = 0;
-            uint32_t RenderedMeshCount = 0;
-            uint32_t RenderedTriangleCount = 0;
-        } Stats;
+        GBufferStats Stats;
     };
 
     struct RayTracing_ShadowSettings
     {
         bool IsEnabled = true;
-        bool IsShadowsFromSun = false;
         bool IsBlueNoiseUsed = true;
-        bool IsNoiseAnimated = false;
-
-        float LightDiameter = 0.01f;
-        entt::entity LightHandle = benzin::g_InvalidEnum<entt::entity>;
+        bool IsNoiseAnimated = true;
     };
 
     struct SigmaDenoiserSettings
     {
-        bool IsEnabled = false;
+        const benzin::GraphicsFormat PenumbraFormat = benzin::GraphicsFormat::R16Float;
+        const uint32_t MaxHistoryLength = 7;
+
+        bool IsEnabled = true;
         float PlaneDistanceSensitivity = 0.02f; // (normalized %) - represents maximum allowed deviation from the local tangent plane
         float DisocclusionThreshold = 0.02f; // (normalized %)
         bool IsClearEnabled = false;
@@ -38,28 +39,16 @@ namespace sandbox
         bool IsPostBlurEnabled = true;
         bool IsTemporalStabilizationEnabled = true;
 
-        uint32_t MaxHistoryLength = 5;
+        uint32_t HistoryLength = 5;
         float StabilizationStrength = 0.0;
-    };
-
-    struct DeferredLightingSettings
-    {
-        float SunIntensity = 4.0f;
-        DirectX::XMFLOAT3 SunColor{ 1.0f, 1.0f, 0.9f };
-
-        float SunAngularDiameterInRadians = DirectX::XMConvertToRadians(0.5f); // [0.01f, 5.0f]
-        float SunAzimuthInRadians = DirectX::XMConvertToRadians(0.0f); // [-180.0f, 180.0f]
-        float SunElevationInRadians = DirectX::XMConvertToRadians(45.0f); // [0.0f, 180.0]
     };
 
     struct FullScreenDebugSettings
     {
-        joint::DebugOutputType DebugOutputType = joint::DebugOutputType_None;
+        joint::DebugOutputType DebugOutputType = joint::DebugOutputType::None;
         uint32_t ViewDepthMipIndex = 0;
         float MinViewDepth = 0.0f;
         float MaxViewDepth = 20.0f;
     };
-
-    DirectX::XMFLOAT3 GetSunDirection(const DeferredLightingSettings& settings);
 
 }

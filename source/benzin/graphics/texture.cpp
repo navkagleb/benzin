@@ -36,7 +36,7 @@ namespace benzin
         BenzinAssert(texture.GetD3D12Resource());
         BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowUnorderedAccess));
         BenzinAssert(outTextureUav.MipIndex < texture.GetMipCount());
-        BenzinAssert(outTextureUav.DepthRange.Count < texture.GetDepth());
+        BenzinAssert(outTextureUav.DepthRange.Count < texture.GetDepth()); // TODO: <= ?
 
         outTextureUav.Format = outTextureUav.Format != GraphicsFormat::Unknown ? outTextureUav.Format : texture.GetFormat();
         outTextureUav.DepthRange.Count = outTextureUav.DepthRange.Count != 0 ? outTextureUav.DepthRange.Count : texture.GetDepth();
@@ -125,14 +125,14 @@ namespace benzin
                 d3d12ClearValue.Color[2] = clearColor.z;
                 d3d12ClearValue.Color[3] = clearColor.w;
             },
-                [&textureCreation, &d3d12ClearValue](const DepthStencilValue& depthStencil)
+            [&textureCreation, &d3d12ClearValue](const DepthStencilValue& depthStencil)
             {
                 BenzinAssert(textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil));
 
                 d3d12ClearValue.DepthStencil.Depth = depthStencil.Depth;
                 d3d12ClearValue.DepthStencil.Stencil = depthStencil.Stencil;
             },
-                [](std::monostate)
+            [](std::monostate)
             {
                 BenzinEnsure(false);
             }
@@ -181,7 +181,7 @@ namespace benzin
         BenzinEnsure(outD3D12Resource);
     }
 
-    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResourceViewDesc(const TextureSrv& textureSrv)
+    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResourceViewDesc(const Texture& texture, const TextureSrv& textureSrv)
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc
         {
@@ -191,7 +191,7 @@ namespace benzin
 
         const auto mipCount = GetValidUnsignedOr(textureSrv.MipRange.Count, g_InvalidUnsigned<uint32_t>);
 
-        const bool isArrayTexture = textureSrv.DepthRange.Count > 1;
+        const bool isArrayTexture = texture.GetDepth() > 1;;
         if (!isArrayTexture)
         {
             d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -230,11 +230,11 @@ namespace benzin
         return d3d12SrvDesc;
     }
 
-    static D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(const TextureUav& textureUav)
+    static D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(const Texture& texture, const TextureUav& textureUav)
     {
         D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc{ .Format = (DXGI_FORMAT)textureUav.Format };
 
-        const bool isArrayTexture = textureUav.DepthRange.Count > 1;
+        const bool isArrayTexture = texture.GetDepth() > 1;
         if (!isArrayTexture)
         {
             d3d12UavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
@@ -445,9 +445,9 @@ namespace benzin
             ValidateTextureSrv(*this, const_cast<TextureSrv&>(textureSrv));
         }
 
-        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv, [&](uint64_t cpuHandle)
+        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv, [this, &textureSrv](uint64_t cpuHandle)
         {
-            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResourceViewDesc(textureSrv);
+            const D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = ToD3D12ShaderResourceViewDesc(*this, textureSrv);
 
             m_Device.GetD3D12Device()->CreateShaderResourceView(
                 m_D3D12Resource,
@@ -464,9 +464,9 @@ namespace benzin
             ValidateTextureUav(*this, const_cast<TextureUav&>(textureUav));
         }
 
-        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav, [&](uint64_t cpuHandle)
+        return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav, [this, &textureUav](uint64_t cpuHandle)
         {
-            const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = ToD3D12UnorderedAccessViewDesc(textureUav);
+            const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = ToD3D12UnorderedAccessViewDesc(*this, textureUav);
 
             m_Device.GetD3D12Device()->CreateUnorderedAccessView(
                 m_D3D12Resource,

@@ -4,18 +4,17 @@
 // Ref: https://blog.demofox.org/2017/10/31/animating-noise-for-integration-over-time/ - Animating Noise For Integration Over Time
 // Ref: https://blog.demofox.org/2017/11/03/animating-noise-for-integration-over-time-2-uniform-over-time/ - Animating Noise For Integration Over Time 2: Uniform Over Time
 
+#include "joint/ray_tracing_shadow_resources.hpp"
+#include "unified_root_parameters.hlsli"
+
 #include "common.hlsli"
 #include "sigma_denoiser/sigma_public.hlsli"
 #include "space_convertions.hlsli"
 
-#include "joint/ray_tracing_shadow_resources.hpp"
-#define RenderPassConstantsType joint::RayTracing_ShadowConsts
-#include "unified_root_parameters.hlsli"
-
 BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::Rc_RayTracing_Shadow::WorldNormal);
 BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::Rc_RayTracing_Shadow::Depth);
 BenzinDeclareRootResource(Texture2D<float2>, g_BlueNoise, joint::Rc_RayTracing_Shadow::BlueNoise);
-BenzinDeclareRootResource(RWTexture2D<float>, g_OutNoisyPenumbra, joint::Rc_RayTracing_Shadow::OutNoisyPenumbra);
+BenzinDeclareRootResource(RWTexture2DArray<float>, g_OutNoisyPenumbra, joint::Rc_RayTracing_Shadow::OutNoisyPenumbra);
 
 float3 OffsetRayPosition(float3 position, float3 normal)
 {
@@ -53,13 +52,13 @@ float2 Hash23(float3 p3)
 
 float2 GetWhiteNoise()
 {
-    const uint frameIndex = g_PassConstants.IsNoiseAnimated * g_FrameConstants.CpuFrameIndex;
+    const uint frameIndex = g_PassConsts0.IsNoiseAnimated * g_FrameConstants.CpuFrameIndex;
     return Hash23(float3(DispatchRaysIndex().xy, frameIndex));
 }
 
 float2 GetBlueNoise()
 {
-    if (!g_PassConstants.IsBlueNoiseUsed)
+    if (!g_PassConsts0.IsBlueNoiseUsed)
     {
         return GetWhiteNoise();
     }
@@ -71,7 +70,7 @@ float2 GetBlueNoise()
     const float2 uv = DispatchRaysIndex().xy / width;
     float2 blueNoise = g_BlueNoise.SampleLevel(g_PointWrapSampler, uv, 0.0).rg;
 
-    if (g_PassConstants.IsNoiseAnimated)
+    if (g_PassConsts0.IsNoiseAnimated)
     {
         const float goldenRatioConjugate = 0.61803398875; // frac(GoldenRatio)
         const float maxFrameCount = 4;
@@ -100,20 +99,6 @@ float3 CreateRandomUnitRay(float2 random)
     return ray;
 }
 
-float3 CalcToSunDirection()
-{
-    float2 blueNoise = GetBlueNoise();
-    blueNoise = CreateRandomUnitRay(blueNoise).xy; // TODO: Rename it. UnitRay.z we don't need? because it is 'ToSunDirection'?
-    blueNoise *= g_PassConstants.TanSunAngularRadius;
-
-    float3 rayDirection = g_PassConstants.ToSunDirection;
-    rayDirection += g_PassConstants.ToSunTangent * blueNoise.x;
-    rayDirection += g_PassConstants.ToSunBitangent * blueNoise.y;
-    rayDirection = normalize(rayDirection);
-
-    return rayDirection;
-}
-
 void BuildOrthonormalBasis(float3 normal, out float3 outTangent, out float3 outBitangent)
 {
     const float3 upDir = abs(normal.y) < 0.9999 ? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0);
@@ -122,19 +107,11 @@ void BuildOrthonormalBasis(float3 normal, out float3 outTangent, out float3 outB
     outBitangent = cross(normal, outTangent);
 }
 
-float3 CalcToLocalLightDirection(float3 worldPosition, out float outDistanceToLight)
+float3 CalcShadowRayDirection(float3 toLightDirection, float tanLightAngularRadius)
 {
     float2 blueNoise = GetBlueNoise();
-    blueNoise = CreateRandomUnitRay(blueNoise).xy; // TODO: Rename it. UnitRay.z we don't need? because it is 'ToSunDirection'?
-    // blueNoise *= g_PassConstants.TanSunAngularRadius; // TODO: For local light we can skip it?
-    // blueNoise *= g_PassConstants.LightRadius;
-
-    float3 toLightDirection = g_PassConstants.LightPosition - worldPosition;
-    outDistanceToLight = length(toLightDirection);
-
-    toLightDirection = normalize(toLightDirection);
-
-    blueNoise *= g_PassConstants.LightRadius / outDistanceToLight;
+    blueNoise = CreateRandomUnitRay(blueNoise).xy;
+    blueNoise *= tanLightAngularRadius;
 
     float3 toLightTangent;
     float3 toLightBitangent;
@@ -148,25 +125,46 @@ float3 CalcToLocalLightDirection(float3 worldPosition, out float outDistanceToLi
     return rayDirection;
 }
 
-void TraceShadowRay(float depth, out float outDistanceToLight, out float outDistanceToOccluder)
+float TraceShadowRay(joint::Light light, float depth)
 {
-    if (g_PassConstants.IsShadowsFromSun)
-    {
-        outDistanceToLight = sigma::g_Fp16Max; // TODO
-    }
-
     const uint2 pixelPosition = DispatchRaysIndex().xy;
     const float3 worldNormal = g_WorldNormal[pixelPosition].xyz;
 
-    const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
+    const joint::CameraConsts cameraConstants = g_FrameConstants.Camera;
     const float2 pixelUv = (pixelPosition + 0.5) / DispatchRaysDimensions().xy;
     const float3 worldPosition = ReconstructWorldPosition(pixelUv, depth, cameraConstants.ClipToView, cameraConstants.ViewToWorld);
 
+    float3 toLightDirection;
+    float distanceToLight;
+    float tanLightAngularRadius;
+    switch (light.Type)
+    {
+        case joint::LightType::Sun:
+        {
+            toLightDirection = light.WorldPosition;
+            distanceToLight = sigma::g_Fp16Max;
+            tanLightAngularRadius = light.WorldRadius;
+
+            break;
+        }
+        case joint::LightType::Spherical:
+        {
+            toLightDirection = light.WorldPosition - worldPosition;
+            distanceToLight = length(toLightDirection);
+
+            toLightDirection = toLightDirection / distanceToLight;
+
+            tanLightAngularRadius = light.WorldRadius / distanceToLight;
+
+            break;
+        }
+    }
+
     RayDesc rayDesc;
     rayDesc.Origin = OffsetRayPosition(worldPosition, worldNormal);
-    rayDesc.Direction = g_PassConstants.IsShadowsFromSun ? CalcToSunDirection() : CalcToLocalLightDirection(worldPosition, outDistanceToLight);
+    rayDesc.Direction = CalcShadowRayDirection(toLightDirection, tanLightAngularRadius);
     rayDesc.TMin = 0.01;
-    rayDesc.TMax = outDistanceToLight;
+    rayDesc.TMax = distanceToLight;
 
     // Ref: https://github.com/microsoft/DirectX-Specs/blob/master/d3d/Raytracing.md#ray-flags
     uint rayFlags = RAY_FLAG_NONE;
@@ -174,7 +172,7 @@ void TraceShadowRay(float depth, out float outDistanceToLight, out float outDist
     rayFlags |= RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES;
 
     joint::RayTracing_ShadowPayload payload;
-    payload.THit = 0.0;
+    payload.DistanceToOccluder = 0.0;
 
     const uint g_InstanceMask = ~0;
     const uint g_HitGroupIndex = 0;
@@ -191,7 +189,24 @@ void TraceShadowRay(float depth, out float outDistanceToLight, out float outDist
         payload
     );
 
-    outDistanceToOccluder = payload.THit;
+    float penumbra;
+    switch (light.Type)
+    {
+        case joint::LightType::Sun:
+        {
+            penumbra = sigma::PackPenumbra(payload.DistanceToOccluder, tanLightAngularRadius); // TanSunAngularRadius
+            break;
+        }
+        case joint::LightType::Spherical:
+        {
+            const float lightRadius = light.WorldRadius / payload.DistanceToOccluder;
+            penumbra = sigma::PackPenumbra(payload.DistanceToOccluder, distanceToLight, lightRadius);
+
+            break;
+        }
+    }
+
+    return penumbra;
 }
 
 [shader("raygeneration")]
@@ -202,27 +217,31 @@ void RayGeneration()
     const float depth = g_Depth[pixelPosition];
     if (!g_FrameConstants.IsShadowsEnabled || depth == 1.0)
     {
-        g_OutNoisyPenumbra[pixelPosition] = sigma::g_Fp16Max;
+        [unroll(4)]
+        for (uint i = 0; i < g_FrameConstants.LightCount; ++i)
+        {
+            g_OutNoisyPenumbra[uint3(pixelPosition, i)] = sigma::g_Fp16Max;
+        }
+
         return;
     }
 
-    float distanceToLight;
-    float distanceToOccluder;
-    TraceShadowRay(depth, distanceToLight, distanceToOccluder);
-
-    g_OutNoisyPenumbra[pixelPosition] = g_PassConstants.IsShadowsFromSun
-        ? sigma::PackPenumbra(distanceToOccluder, g_PassConstants.TanSunAngularRadius)
-        : sigma::PackPenumbra(distanceToOccluder, distanceToLight, g_PassConstants.LightRadius / distanceToOccluder);
+    [unroll(4)]
+    for (uint i = 0; i < g_FrameConstants.LightCount; ++i)
+    {
+        const float penumbra = TraceShadowRay(g_Lights[i], depth);
+        g_OutNoisyPenumbra[uint3(pixelPosition, i)] = penumbra;
+    }
 }
 
 [shader("closesthit")]
 void ClosestHit(inout joint::RayTracing_ShadowPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
-    payload.THit = RayTCurrent();
+    payload.DistanceToOccluder = RayTCurrent();
 }
 
 [shader("miss")]
 void Miss(inout joint::RayTracing_ShadowPayload payload)
 {
-    payload.THit = sigma::g_Fp16Max;
+    payload.DistanceToOccluder = sigma::g_Fp16Max;
 }

@@ -8,6 +8,7 @@
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
+#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/utility/random.hpp>
 
 #include "sandbox/sandbox_render_settings.hpp"
@@ -15,46 +16,19 @@
 namespace sandbox
 {
 
-    GlobalConstantsPass::GlobalConstantsPass(benzin::Device& device, benzin::Scene& scene)
+    GlobalConstantsPass::GlobalConstantsPass(benzin::Device& device, const benzin::Scene& scene)
         : m_Device{ device }
         , m_Scene{ scene }
     {
-        benzin::MakeUniquePtr(m_FrameConstantBuffer, *ms_Device, "FrameConstantBuffer");
+        ms_ConstBufferPool->PreAllocate<joint::FrameConsts>();
     }
 
     GlobalConstantsPass::~GlobalConstantsPass() = default;
 
     void GlobalConstantsPass::OnUpdate()
     {
-        UpdateCameraConstants();
-
-        const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
-
-        m_FrameConstantBuffer->UpdateConstants(joint::FrameConstants
-        {
-            .RenderResolution = { (float)renderResolution.x, (float)renderResolution.y },
-            .InvRenderResolution{ 1.0f / (float)renderResolution.x, 1.0f / (float)renderResolution.y },
-            .MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y),
-
-            .CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex(),
-
-            .IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y,
-            .IsShadowsEnabled = ms_Settings->GetSection<RayTracing_ShadowSettings>().IsEnabled,
-            .IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled,
-
-            .RandomFloats01
-            {
-                benzin::Random::Get<float>(0.0f, 1.0f),
-                benzin::Random::Get<float>(0.0f, 1.0f),
-                benzin::Random::Get<float>(0.0f, 1.0f),
-                benzin::Random::Get<float>(0.0f, 1.0f),
-            },
-
-            .Camera = m_CameraConstants,
-            .PrevCamera = m_PrevCameraConstants,
-        });
-
-        m_PrevRenderResolution = renderResolution;
+        UpdateCameraConsts();
+        UpdateFrameConsts();
     }
 
     void GlobalConstantsPass::OnRender() const
@@ -62,15 +36,18 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "GlobalConstantsPass");
 
-        commandList.SetCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, m_FrameConstantBuffer->GetActiveGpuVirtualAddress());
+        const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
+
+        commandList.SetCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, ms_ConstBufferPool->Allocate(m_FrameConsts));
+        commandList.SetSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, m_Scene.GetLightBufferGpuAddress());
     }
 
-    void GlobalConstantsPass::UpdateCameraConstants()
+    void GlobalConstantsPass::UpdateCameraConsts()
     {
         const auto& camera = m_Scene.GetCamera();
         const auto& projection = m_Scene.GetPerspectiveProjection();
 
-        const joint::CameraConstants cameraConstants
+        const joint::CameraConsts cameraConstants
         {
             .WorldToView = camera.GetWorldToViewMatrix(),
             .ViewToWorld = camera.GetViewToWorldMatrix(),
@@ -91,13 +68,38 @@ namespace sandbox
 
         if (m_Device.GetCpuFrameIndex() != 0)
         {
-            m_PrevCameraConstants = std::exchange(m_CameraConstants, cameraConstants);
+            m_FrameConsts.PrevCamera = std::exchange(m_FrameConsts.Camera, cameraConstants);
         }
         else
         {
-            m_PrevCameraConstants = cameraConstants;
-            m_CameraConstants = cameraConstants;
+            m_FrameConsts.Camera = cameraConstants;
+            m_FrameConsts.PrevCamera = cameraConstants;
         }
+    }
+
+    void GlobalConstantsPass::UpdateFrameConsts()
+    {
+        const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
+
+        m_FrameConsts.RenderResolution = { (float)renderResolution.x, (float)renderResolution.y };
+        m_FrameConsts.InvRenderResolution = { 1.0f / (float)renderResolution.x, 1.0f / (float)renderResolution.y };
+        m_FrameConsts.MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y);
+
+        m_FrameConsts.CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex();
+        m_FrameConsts.LightCount = m_Scene.GetActiveLightCount();
+
+        m_FrameConsts.IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
+        m_FrameConsts.IsShadowsEnabled = ms_Settings->GetSection<RayTracing_ShadowSettings>().IsEnabled;
+        m_FrameConsts.IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled;
+        m_FrameConsts.RandomFloats01 =
+        {
+            benzin::Random::Get<float>(0.0f, 1.0f),
+            benzin::Random::Get<float>(0.0f, 1.0f),
+            benzin::Random::Get<float>(0.0f, 1.0f),
+            benzin::Random::Get<float>(0.0f, 1.0f),
+        };
+
+        m_PrevRenderResolution = renderResolution;
     }
 
 }

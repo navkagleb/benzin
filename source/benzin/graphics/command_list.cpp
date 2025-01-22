@@ -3,6 +3,7 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/math.hpp"
+#include "benzin/core/memory_writer.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
@@ -238,14 +239,14 @@ namespace benzin
 
     void GraphicsCommandList::SetCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
     {
-        m_D3D12GraphicsCommandList->SetComputeRootConstantBufferView(+rootParameter, D3D12_GPU_VIRTUAL_ADDRESS{ gpuVirtualAddress });
-        m_D3D12GraphicsCommandList->SetGraphicsRootConstantBufferView(+rootParameter, D3D12_GPU_VIRTUAL_ADDRESS{ gpuVirtualAddress });
+        m_D3D12GraphicsCommandList->SetComputeRootConstantBufferView(+rootParameter, gpuVirtualAddress);
+        m_D3D12GraphicsCommandList->SetGraphicsRootConstantBufferView(+rootParameter, gpuVirtualAddress);
     }
 
     void GraphicsCommandList::SetSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
     {
-        m_D3D12GraphicsCommandList->SetComputeRootShaderResourceView(+rootParameter, D3D12_GPU_VIRTUAL_ADDRESS{ gpuVirtualAddress });
-        m_D3D12GraphicsCommandList->SetComputeRootShaderResourceView(+rootParameter, D3D12_GPU_VIRTUAL_ADDRESS{ gpuVirtualAddress });
+        m_D3D12GraphicsCommandList->SetComputeRootShaderResourceView(+rootParameter, gpuVirtualAddress);
+        m_D3D12GraphicsCommandList->SetGraphicsRootShaderResourceView(+rootParameter, gpuVirtualAddress);
     }
 
     void GraphicsCommandList::SetPso(const Pso& pso)

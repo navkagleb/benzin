@@ -1,3 +1,4 @@
+#include "joint/environment_resources.hpp"
 #include "unified_root_parameters.hlsli"
 
 #include "common.hlsli"
@@ -36,25 +37,23 @@ float2 ConvertSphericalToUv(float phi, float theta)
     return float2(u, v);
 }
 
-[numthreads(joint::ThreadCount881_X, joint::ThreadCount881_Y, joint::ThreadCount881_Z)]
-void CsMain(uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-    Texture2D<float4> inEquirectangularTexture = ResourceDescriptorHeap[GetRootConstant(joint::EquirectangularToCubeRc_EquirectangularTexture)];
-    RWTexture2DArray<float4> outCubeTexture = ResourceDescriptorHeap[GetRootConstant(joint::EquirectangularToCubeRc_OutCubeTexture)];
+BenzinDeclareRootResource(Texture2D<float4>, g_EquirectangularTexture, joint::Rc_EquirectangularToCube::EquirectangularTexture);
+BenzinDeclareRootResource(RWTexture2DArray<float4>, g_OutCubeMap, joint::Rc_EquirectangularToCube::OutCubeMap);
 
+[numthreads(8, 8, 1)]
+void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
     float width;
     float height;
     float depth;
-    outCubeTexture.GetDimensions(width, height, depth);
+    g_OutCubeMap.GetDimensions(width, height, depth);
 
-    const float2 faceUv = (dispatchThreadID.xy + 0.5) / float2(width, height);
-    const float3 cubeUV = GetCubeUv(faceUv, dispatchThreadID.z);
+    const float2 faceUv = (dispatchThreadId.xy + 0.5) / float2(width, height);
+    const float3 cubeUV = GetCubeUv(faceUv, dispatchThreadId.z);
 
     const float3 direction = normalize(cubeUV);
     const float2 spherical = ConvertUnitCartesianToSpherical(direction);
     const float2 equirectangularUv = ConvertSphericalToUv(spherical.x, spherical.y);
 
-    const float4 color = inEquirectangularTexture.SampleLevel(g_Anisotropic16WrapSampler, equirectangularUv, 0.0f);
-
-    outCubeTexture[dispatchThreadID] = color;
+    g_OutCubeMap[dispatchThreadId] = g_EquirectangularTexture.SampleLevel(g_Anisotropic16WrapSampler, equirectangularUv, 0.0);
 }

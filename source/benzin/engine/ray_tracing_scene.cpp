@@ -4,6 +4,7 @@
 #include <shaders/joint/mesh_types.hpp>
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/engine/entity_components.hpp"
 #include "benzin/engine/mesh.hpp"
@@ -44,13 +45,13 @@ namespace benzin
         auto& tlas = m_Tlases[m_Device.GetActiveFrameIndex()];
 
         {
-            const auto view = m_Scene.m_EntityRegistry.view<TransformComponent, MeshComponent>();
+            const auto view = m_Scene.m_EntityRegistry.view<MeshComponent, Transform>();
 
             tlas.ResetInstances((uint32_t)view.size_hint());
 
-            for (const auto& [_, tc, mc] : view.each())
+            for (const auto& [_, mc, transform] : view.each())
             {
-                if (!IsValidEnum(mc.MeshHandle) || !mc.IsRayTracingMesh)
+                if (!IsValidEnum(mc.MeshHandle))
                 {
                     continue;
                 }
@@ -61,7 +62,7 @@ namespace benzin
                 {
                     .Blas = blas,
                     .HitGroupIndex = 0, // TODO: For now all instances have default hit group
-                    .Transform = tc.GetLocalToWorldMatrix(),
+                    .Transform = transform.GetLocalToWorldMatrix(),
                 });
             }
 
@@ -134,8 +135,8 @@ namespace benzin
             }
         });
 
-        const MemoryWriter writer{ localTransformBuffer->GetCpuMappedData(), localTransformBuffer->GetSize() };
-        writer.WriteArray<DirectX::XMFLOAT3X4>(localTransforms);
+        BufferWriter writer{ localTransformBuffer->GetCpuMappedData(), localTransformBuffer->GetSize() };
+        writer.WriteData(std::as_bytes(std::span{ localTransforms }));
     }
 
     void RayTracing_Scene::CreateBlases()

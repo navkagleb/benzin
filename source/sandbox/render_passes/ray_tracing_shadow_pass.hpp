@@ -2,23 +2,13 @@
 
 #include <benzin/graphics2/render_pass.hpp>
 
+#include <shaders/joint/ray_tracing_shadow_resources.hpp>
+
 namespace benzin
 {
 
-    template <typename>
-    class ConstantBuffer;
-
-    class Buffer;
     class Scene;
     class Texture;
-    class RayTracing_ShaderTable;
-
-}
-
-namespace joint
-{
-
-    struct RayTracing_ShadowConsts;
 
 }
 
@@ -35,16 +25,13 @@ namespace sandbox
 
         void OnZeroFrameInit() override;
         void OnRenderViewportResize() override;
-
         void OnUpdate() override;
         void OnRender() const override;
 
     private:
         const benzin::Scene& m_Scene;
 
-        using PassConstantBuffer = benzin::ConstantBuffer<joint::RayTracing_ShadowConsts>;
-        std::unique_ptr<PassConstantBuffer> m_PassConstBuffer;
-
+        joint::RayTracing_ShadowConsts m_Consts{};
         std::unique_ptr<benzin::Texture> m_BlueNoise;
     };
 

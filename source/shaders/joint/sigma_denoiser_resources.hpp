@@ -1,55 +1,46 @@
 #pragma once
 
 #include "hlsl_to_cpp.hpp"
+#include "light.hpp"
 
 namespace joint
 {
 
     static const uint g_SigmaTileSize = 16;
 
-    struct SigmaConstants
+    struct SigmaConsts
     {
-        float StabilizationStrength;
-        float3 WorldSunDirection;
-        uint IsShadowsFromSun;
-        float3 WorldLightPosition;
         float4 BlurRotator;
         float4 PostBlurRotator;
         uint2 TileCount;
+        float StabilizationStrength;
         float PlaneDistanceSensitivity;
         float DisocclusionThreshold;
         uint IsTileSmoothingEnabled;
     };
 
-    enum class Rc_SigmaClassifyTiles : uint32_t
+    struct SigmaPerLightConsts
+    {
+        LightType LightType;
+        float3 WorldLightPosition; // For sun - to sun direction
+    };
+
+    enum class Rc_SigmaClassifyTiles : uint
     {
         ViewDepth,
         Penumbra,
 
         OutTiles,
     };
-    BenzinEnableUnaryPlusForEnum(Rc_SigmaClassifyTiles);
 
-    enum class Rc_SigmaSmoothTiles : uint32_t
+    enum class Rc_SigmaSmoothTiles : uint
     {
         Tiles,
 
         OutSmoothTiles,
     };
-    BenzinEnableUnaryPlusForEnum(Rc_SigmaSmoothTiles);
 
-    enum class Rc_SigmaCopyHistory : uint32_t
-    {
-        SmoothTiles,
-        ShadowHistory,
-        HistoryLength,
-
-        OutShadowHistory,
-        OutHistoryLength,
-    };
-    BenzinEnableUnaryPlusForEnum(Rc_SigmaCopyHistory);
-
-    enum class Rc_SigmaBlur : uint32_t
+    enum class Rc_SigmaBlur : uint
     {
         WorldNormal,
         ViewDepth,
@@ -60,9 +51,8 @@ namespace joint
         OutPenumbra,
         OutShadow,
     };
-    BenzinEnableUnaryPlusForEnum(Rc_SigmaBlur);
 
-    enum class Rc_SigmaTemporalStabilization : uint32_t
+    enum class Rc_SigmaTemporalStabilization : uint
     {
         Mv,
         ViewDepth,
@@ -75,6 +65,13 @@ namespace joint
         OutShadow,
         OutHistoryLength,
     };
-    BenzinEnableUnaryPlusForEnum(Rc_SigmaTemporalStabilization)
 
 }
+
+#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0)
+    #define BenzinRenderPassConstsType0 joint::SigmaConsts
+#endif
+
+#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType1)
+    #define BenzinRenderPassConstsType1 joint::SigmaPerLightConsts
+#endif

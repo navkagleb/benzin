@@ -4,8 +4,6 @@
 #define SIGMA_USE_BORDER_2
 
 #include "joint/sigma_denoiser_resources.hpp"
-
-#define RenderPassConstantsType joint::SigmaConstants
 #include "unified_root_parameters.hlsli"
 
 #include "sigma_denoiser/group_shared_preloader.hlsli"
@@ -82,7 +80,7 @@ struct SparseBlurKernel
 
 BlurParams GetBlurParams(float2 baseUv, PixelData centerPixel)
 {
-    const joint::CameraConstants camera = g_FrameConstants.Camera;
+    const joint::CameraConsts camera = g_FrameConstants.Camera;
     const float pixelToWorldScale = g_FrameConstants.Camera.PixelToWorldScale;
     const float3 worldNormal = g_WorldNormal.SampleLevel(g_PointClampSampler, baseUv, 0.0).xyz;
     const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConstants.MinRenderDimension, pixelToWorldScale, centerPixel.ViewDepth);
@@ -95,7 +93,7 @@ BlurParams GetBlurParams(float2 baseUv, PixelData centerPixel)
     params.BaseViewPosition = ReconstructViewPosition(baseUv, centerPixel.ViewDepth, params.UvToViewScale, params.UvToViewBias);
     params.BaseViewNormal = mul(worldNormal, (float3x3)camera.WorldToView);
     params.WorldPixelSize = sigma::GetWorldPixelSize(pixelToWorldScale, centerPixel.ViewDepth);
-    params.GeometryWeightParams = sigma::GetGeometryWeightParams(g_PassConstants.PlaneDistanceSensitivity, params.BaseViewPosition, params.BaseViewNormal, worldFrustumSize);
+    params.GeometryWeightParams = sigma::GetGeometryWeightParams(g_PassConsts0.PlaneDistanceSensitivity, params.BaseViewPosition, params.BaseViewNormal, worldFrustumSize);
 
     return params;
 }
@@ -128,16 +126,26 @@ SparseBlurKernel CalcSparseBlurKernel(BlurParams params, float blurredPenumbra, 
     kernel.Tangent = worldToLocal[0];
     kernel.Bitangent = worldToLocal[1];
 #if !defined(POST_BLUR_PASS)
-    kernel.Rotator = g_PassConstants.BlurRotator;
+    kernel.Rotator = g_PassConsts0.BlurRotator;
 #else
-    kernel.Rotator = g_PassConstants.PostBlurRotator;
+    kernel.Rotator = g_PassConsts0.PostBlurRotator;
 #endif
 
-    float3 worldToLightDirection = g_PassConstants.WorldSunDirection;
-    if (!g_PassConstants.IsShadowsFromSun)
+    float3 worldToLightDirection;
+    switch (g_PassConsts1.LightType)
     {
-        const float3 worldPosition = mul(float4(params.BaseViewPosition, 1.0), g_FrameConstants.Camera.ViewToWorld).xyz;
-        worldToLightDirection = normalize(worldPosition - g_PassConstants.WorldLightPosition);
+        case joint::LightType::Sun:
+        {
+            worldToLightDirection = g_PassConsts1.WorldLightPosition;
+            break;
+        }
+        case joint::LightType::Spherical:
+        {
+            const float3 worldPosition = mul(float4(params.BaseViewPosition, 1.0), g_FrameConstants.Camera.ViewToWorld).xyz;
+            worldToLightDirection = normalize(worldPosition - g_PassConsts1.WorldLightPosition);
+
+            break;
+        }
     }
 
     const float3 viewToLightDirection = mul(worldToLightDirection, (float3x3)g_FrameConstants.Camera.WorldToView); // TODO: Move to cpp side
@@ -331,7 +339,7 @@ void CsMain(sigma::GroupSharedCsInput input)
 #endif
 
 #if defined(POST_BLUR_PASS)
-    if (g_PassConstants.StabilizationStrength != 0)
+    if (g_PassConsts0.StabilizationStrength != 0)
 #endif
     {
         g_OutPenumbra[input.PixelPos] = blurredPenumbra.x;

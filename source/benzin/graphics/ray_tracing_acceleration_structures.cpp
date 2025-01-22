@@ -2,6 +2,7 @@
 #include "benzin/graphics/ray_tracing_acceleration_structures.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/buffer_writer.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 
@@ -22,7 +23,7 @@ namespace benzin
 
         MakeUniquePtr(m_Buffer, device, BufferCreation
         {
-            .Type = BufferType::RtAccelerationStructure,
+            .Type = BufferType::RayTracing_AccelerationStructure,
             .ElementCount = (uint32_t)d3d12PrebuildInfo.ResultDataMaxSizeInBytes,
             .IsUnorderedAccessAllowed = true, // TODO: Do I need this?
         });
@@ -171,8 +172,8 @@ namespace benzin
             .ElementCount = (uint32_t)m_D3D12InstanceDescs.size(),
         });
 
-        const MemoryWriter instanceBufferWriter{ m_InstanceBuffer->GetCpuMappedData(), m_InstanceBuffer->GetSize() };
-        instanceBufferWriter.WriteArray<D3D12_RAYTRACING_INSTANCE_DESC>(m_D3D12InstanceDescs);
+        BufferWriter writer{ m_InstanceBuffer->GetCpuMappedData(), m_InstanceBuffer->GetSize() };
+        writer.WriteData(std::as_bytes(std::span{ m_D3D12InstanceDescs }));
     }
 
 }

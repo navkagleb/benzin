@@ -14,7 +14,8 @@ namespace benzin
     {
         std::array<D3D12_ROOT_PARAMETER1, magic_enum::enum_count<UnifiedRootParameter>()> d3d12RootParamers;
 
-        uint32_t constantBufferSpaceIndex = 0;
+        uint32_t cbvSpaceIndex = 0;
+        uint32_t srvSpaceIndex = 0;
 
         d3d12RootParamers[+UnifiedRootParameter::RootConstantBuffer] = D3D12_ROOT_PARAMETER1
         {
@@ -22,7 +23,7 @@ namespace benzin
             .Constants
             {
                 .ShaderRegister = 0,
-                .RegisterSpace = constantBufferSpaceIndex++,
+                .RegisterSpace = cbvSpaceIndex++,
                 .Num32BitValues = 32,
             },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
@@ -34,29 +35,51 @@ namespace benzin
             .Descriptor
             {
                 .ShaderRegister = 0,
-                .RegisterSpace = constantBufferSpaceIndex++,
+                .RegisterSpace = cbvSpaceIndex++,
             },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        d3d12RootParamers[+UnifiedRootParameter::RenderPassConstantBuffer] = D3D12_ROOT_PARAMETER1
+        d3d12RootParamers[+UnifiedRootParameter::RenderPassConstantBuffer0] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
             .Descriptor
             {
                 .ShaderRegister = 0,
-                .RegisterSpace = constantBufferSpaceIndex++,
+                .RegisterSpace = cbvSpaceIndex++,
             },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        d3d12RootParamers[+UnifiedRootParameter::TopLevelAs] = D3D12_ROOT_PARAMETER1
+        d3d12RootParamers[+UnifiedRootParameter::RenderPassConstantBuffer1] = D3D12_ROOT_PARAMETER1
+        {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
+            .Descriptor
+            {
+                .ShaderRegister = 0,
+                .RegisterSpace = cbvSpaceIndex++,
+            },
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        };
+
+        d3d12RootParamers[+UnifiedRootParameter::LightStructuredBuffer] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
             .Descriptor
             {
                 .ShaderRegister = 0,
-                .RegisterSpace = 0,
+                .RegisterSpace = srvSpaceIndex++,
+            },
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        };
+
+        d3d12RootParamers[+UnifiedRootParameter::SceneTlas] = D3D12_ROOT_PARAMETER1
+        {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
+            .Descriptor
+            {
+                .ShaderRegister = 0,
+                .RegisterSpace = srvSpaceIndex++,
             },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
@@ -193,7 +216,7 @@ namespace benzin
 
     UnifiedRootSignature::~UnifiedRootSignature()
     {
-        BenzinSafeDxObjectRelease(m_D3D12RootSignature);
+        BenzinSafeDxObjectRelease(m_D3D12RootSignature); // TODO: Ok or not ok? (deferred release)
     }
 
 }

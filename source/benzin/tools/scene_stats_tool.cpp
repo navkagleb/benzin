@@ -62,13 +62,10 @@ namespace benzin
 
         ImGui::Text(BenzinFormatData("BlasCount: {}", stats.size()));
 
-        ImGui::Indent();
-        BenzinExecuteOnScopeExit([] { ImGui::Unindent(); });
-
         for (const auto& blasStats : m_RayTracingScene.GetBlasStats())
         {
-            const auto meshHeaderName = std::format("{}: {:L} triangles", blasStats.DebugName, blasStats.TotalTriangleCount);
-            if (!SpawnImGuiCollapsingHeader(meshHeaderName.data(), false))
+            const auto meshHeaderName = std::format("{}: {} meshes - {:L} triangles", blasStats.DebugName, blasStats.TriangleCountPerMesh.size(), blasStats.TotalTriangleCount);
+            if (!ImGui::CollapsingHeader(meshHeaderName.c_str()))
             {
                 continue;
             }

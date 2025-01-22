@@ -128,11 +128,19 @@ namespace benzin
         return m_RenderPassCount;
     }
 
-    void RenderPass::SetContext(Device& device, SwapChain& swapChain, PsoManager& psoManager, RenderResources& resources, RenderSettings& settings)
+    void RenderPass::SetContext(
+        Device& device,
+        SwapChain& swapChain,
+        PsoManager& psoManager,
+        ConstBufferPool& constBufferPool,
+        RenderResources& resources,
+        RenderSettings& settings
+    )
     {
         ms_Device = &device;
         ms_SwapChain = &swapChain;
         ms_PsoManager = &psoManager;
+        ms_ConstBufferPool = &constBufferPool;
         ms_Resources = &resources;
         ms_Settings = &settings;
     }

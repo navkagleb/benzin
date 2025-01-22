@@ -7,12 +7,13 @@
 #include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
+#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
-
-#include <shaders/joint/root_constants.hpp>
 
 #include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
+
+BenzinEnableUnaryPlusForEnum(joint::Rc_FullScreenDebug);
 
 namespace sandbox
 {
@@ -33,7 +34,7 @@ namespace sandbox
             proxy.RenderTargetFormats.push_back(benzin::GraphicsFormat::Rgba8Unorm);
         });
 
-        benzin::MakeUniquePtr(m_PassConstantBuffer, *ms_Device, "FullScreenDebugConstantBuffer");
+        ms_ConstBufferPool->PreAllocate<joint::FullScreenDebugConsts>();
     }
 
     FullScreenDebugPass::~FullScreenDebugPass()
@@ -45,15 +46,12 @@ namespace sandbox
     {
         const auto& settings = ms_Settings->GetSection<FullScreenDebugSettings>();
 
-        m_IsRenderingEnabled = settings.DebugOutputType != joint::DebugOutputType_None;
+        m_IsRenderingEnabled = settings.DebugOutputType != joint::DebugOutputType::None;
 
-        m_PassConstantBuffer->UpdateConstants(joint::FullScreenDebugConstants
-        {
-            .OutputType = magic_enum::enum_integer(settings.DebugOutputType),
-            .ViewDepthMipIndex = settings.ViewDepthMipIndex,
-            .MinViewDepth = settings.MinViewDepth,
-            .MaxViewDepth = settings.MaxViewDepth,
-        });
+        m_Consts.OutputType = settings.DebugOutputType;
+        m_Consts.ViewDepthMipIndex = settings.ViewDepthMipIndex;
+        m_Consts.MinViewDepth = settings.MinViewDepth;
+        m_Consts.MaxViewDepth = settings.MaxViewDepth;
     }
 
     void FullScreenDebugPass::OnRender() const
@@ -77,14 +75,19 @@ namespace sandbox
 
         commandList.SetPso(ms_PsoManager->GetPso(+Pso::FullScreenDebug));
 
-        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstantBuffer->GetActiveGpuVirtualAddress());
-        commandList.SetRootResource(joint::FullScreenDebugRc_AlbedoAndRoughnessTexture, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());
-        commandList.SetRootResource(joint::FullScreenDebugRc_EmissiveAndMetallicTexture, ms_Resources->GetTexture(+Texture::EmissiveAndMetallic).GetSrv());
-        commandList.SetRootResource(joint::FullScreenDebugRc_WorldNormalTexture, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
-        commandList.SetRootResource(joint::FullScreenDebugRc_VelocityBuffer, ms_Resources->GetTexture(+Texture::VelocityBuffer).GetSrv());
-        commandList.SetRootResource(joint::FullScreenDebugRc_ViewDepthBuffer, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
-        commandList.SetRootResource(joint::FullScreenDebugRc_DepthBuffer, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv());
-        commandList.SetRootResource(joint::FullScreenDebugRc_NoisyPenumbraTexture, ms_Resources->GetTexture(+Texture::NoisyPenumbra).GetSrv());
+        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+
+        {
+            using enum joint::Rc_FullScreenDebug;
+
+            commandList.SetRootResource(+AlbedoAndRoughness, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());
+            commandList.SetRootResource(+EmissiveAndMetallic, ms_Resources->GetTexture(+Texture::EmissiveAndMetallic).GetSrv());
+            commandList.SetRootResource(+WorldNormal, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
+            commandList.SetRootResource(+Mv, ms_Resources->GetTexture(+Texture::Mv).GetSrv());
+            commandList.SetRootResource(+ViewDepth, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
+            commandList.SetRootResource(+Depth, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv());
+            commandList.SetRootResource(+NoisyPenumbra, ms_Resources->GetTexture(+Texture::NoisyPenumbra).GetSrv());
+        }
 
         commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
 

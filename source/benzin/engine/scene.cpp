@@ -2,13 +2,17 @@
 #include "benzin/engine/scene.hpp"
 
 #include <shaders/joint/mesh_types.hpp>
-#include <shaders/joint/structured_buffer_types.hpp> // TODO: Remove
+#include <shaders/joint/light.hpp>
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/buffer_writer.hpp"
+#include "benzin/core/command_line_args.hpp"
 #include "benzin/core/engine_math.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/core/math.hpp"
+#include "benzin/core/tick_timer.hpp"
 #include "benzin/engine/entity_components.hpp"
+#include "benzin/engine/light.hpp"
 #include "benzin/engine/mesh.hpp"
 #include "benzin/engine/resource_loader.hpp"
 #include "benzin/graphics/buffer.hpp"
@@ -18,8 +22,6 @@
 
 namespace benzin
 {
-
-    static constexpr uint32_t g_MaxPointLightCount = 200;
 
     static MeshGpuStorage CreateMeshGpuStorage(Device& device, std::string_view debugName, const Mesh& mesh)
     {
@@ -71,75 +73,49 @@ namespace benzin
 
     // Scene
 
-    Scene::Scene(Device& device)
+    Scene::Scene(Device& device, TickTimer& animationTimer)
         : m_Device{ device }
+        , m_AnimationTimer{ animationTimer }
     {
-        m_EntityRegistry.on_construct<TransformComponent>().connect<&Scene::OnTransformComponentConstuct>(this);
+        m_SunEntity = m_EntityRegistry.create();
+        m_EntityRegistry.emplace<SunLight>(m_SunEntity);
 
-        MakeUniquePtr(m_PointLightBuffer, m_Device, BufferCreation
+        const uint32_t frameInFlightCount = CommandLineArgs::GetU32("FrameInFlightCount");
+
+        MakeUniquePtr(m_LightBuffer, m_Device, BufferCreation
         {
-            .DebugName = "PointLightBuffer",
+            .DebugName = "LightBuffer",
             .MemoryType = ResourceMemoryType::Upload,
             .Type = BufferType::Structured,
-            .ElementSize = sizeof(joint::PointLight),
-            .ElementCount = g_MaxPointLightCount * CommandLineArgs::GetU32("FrameInFlightCount"),
+            .ElementSize = sizeof(joint::Light),
+            .ElementCount = s_MaxLightCount * frameInFlightCount,
         });
     }
 
     Scene::~Scene() = default;
 
-    const Descriptor& Scene::GetPointLightBufferStructuredSrv() const
+    Descriptor Scene::GetTransformBufferSrv() const
     {
-        return m_PointLightBuffer->GetSrv(IndexRange32
+        BenzinAssert(m_TransformBuffer.get() != nullptr);
+
+        return m_TransformBuffer->GetSrv(IndexRange32
         {
-            .StartIndex = m_Device.GetActiveFrameIndex() * g_MaxPointLightCount,
-            .Count = g_MaxPointLightCount,
+            m_TransformCount * m_Device.GetActiveFrameIndex(),
+            m_TransformCount,
         });
+    }
+
+    uint64_t Scene::GetLightBufferGpuAddress() const
+    {
+        return m_LightBuffer->GetGpuVirtualAddress(s_MaxLightCount * m_Device.GetActiveFrameIndex());
     }
 
     void Scene::OnUpdate()
     {
-        {
-            const auto view = m_EntityRegistry.view<UpdateComponent>();
-            for (const auto& [entityHandle, uc] : view.each())
-            {
-                BenzinAssert((bool)uc.Callback);
-                uc.Callback(m_EntityRegistry, entityHandle);
-            }
-        }
+        UpdateEntities();
 
-        {
-            const auto view = m_EntityRegistry.view<TransformComponent>();
-            for (const auto& [entityHandle, tc] : view.each())
-            {
-                tc.UpdateTransformConstantBuffer();
-            }
-        }
-
-        {
-            const uint32_t offset = g_MaxPointLightCount * m_Device.GetActiveFrameIndex();
-            const MemoryWriter writer{ m_PointLightBuffer->GetCpuMappedData(), m_PointLightBuffer->GetSize() };
-
-            const auto view = m_EntityRegistry.view<TransformComponent, PointLightComponent>();
-            for (const auto [i, entityHandle] : view | std::views::enumerate)
-            {
-                const auto& tc = view.get<TransformComponent>(entityHandle);
-                const auto& plc = view.get<PointLightComponent>(entityHandle);
-
-                const joint::PointLight entry
-                {
-                    .Color = plc.Color,
-                    .Intensity = plc.Intensity,
-                    .WorldPosition = tc.GetTranslation(),
-                    .ConstantAttenuation = 1.0f,
-                    .LinearAttenuation = 4.5f / plc.Range,
-                    .ExponentialAttenuation = 75.0f / (plc.Range * plc.Range),
-                    .GeometryRadius = plc.GeometryRadius,
-                };
-
-                writer.Write(entry, offset + i);
-            }
-        }
+        UploadTransformsToGpu();
+        UploadLightsToGpu();
     }
 
     entt::entity Scene::AddMesh(MeshResource&& meshResource)
@@ -215,12 +191,6 @@ namespace benzin
         UploadAllMeshInstances();
         UploadAllTextures();
         UploadAllMaterials();
-    }
-
-    void Scene::OnTransformComponentConstuct(entt::registry& registry, entt::entity entityHandle)
-    {
-        auto& tc = registry.get<TransformComponent>(entityHandle);
-        tc.CreateTransformConstantBuffer(m_Device, std::format("TransformBuffer_{}", magic_enum::enum_integer(entityHandle)));
     }
 
     void Scene::PushTextures(std::span<const TextureImage> textureImages)
@@ -347,6 +317,115 @@ namespace benzin
         m_Stats.MeshCount += (uint32_t)mesh.SubMeshes.size();
         m_Stats.MaterialCount += (uint32_t)mesh.Materials.size();
         m_Stats.MeshInstanceCount += (uint32_t)mesh.SubMeshInstances.size();
+    }
+
+    void Scene::UpdateEntities()
+    {
+        if (m_AnimationTimer.IsPaused())
+        {
+            return;
+        }
+
+        const auto view = m_EntityRegistry.view<EntityUpdateCallback>();
+        for (const auto& [_, callback] : view.each())
+        {
+            BenzinAssert((bool)callback);
+            callback();
+        }
+    }
+
+    void Scene::UploadTransformsToGpu()
+    {
+        const uint32_t frameInFlightCount = CommandLineArgs::GetU32("FrameInFlightCount");
+
+        const auto meshView = m_EntityRegistry.view<MeshComponent, Transform>();
+        const auto lightView = m_EntityRegistry.view<MeshComponent, SphericalLight>();
+
+        m_TransformCount = (uint32_t)(meshView.size_hint() + lightView.size_hint()); // TODO: Light::IsEnabled
+        if (m_TransformBuffer.get() == nullptr || m_TransformBuffer->GetElementCount() != m_TransformCount * frameInFlightCount)
+        {
+            MakeUniquePtr(m_TransformBuffer, m_Device, BufferCreation
+            {
+                .DebugName = "TransformBuffer",
+                .MemoryType = ResourceMemoryType::Upload, // TODO
+                .Type = BufferType::Structured,
+                .ElementSize = sizeof(joint::MeshTransform),
+                .ElementCount = m_TransformCount * frameInFlightCount,
+            });
+        }
+
+        BufferWriter transformWriter{ m_TransformBuffer->GetCpuMappedData(), m_TransformBuffer->GetSize() };
+        transformWriter.SetElementPosition<joint::MeshTransform>(m_TransformCount * m_Device.GetActiveFrameIndex());
+
+        for (const auto entity : meshView)
+        {
+            const auto& transform = meshView.get<Transform>(entity);
+
+            transformWriter.WriteRaw(joint::MeshTransform
+            {
+                .LocalToWorld = transform.GetLocalToWorldMatrix(),
+                .PrevLocalToWorld = transform.GetPrevLocalToWorldMatrix(),
+            });
+        }
+
+        for (const auto entity : lightView)
+        {
+            const auto& light = lightView.get<SphericalLight>(entity);
+
+            if (!light.IsEnabled())
+            {
+                continue;
+            }
+
+            transformWriter.WriteRaw(joint::MeshTransform
+            {
+                .LocalToWorld = light.GetTransform().GetLocalToWorldMatrix(),
+                .PrevLocalToWorld = light.GetTransform().GetPrevLocalToWorldMatrix(),
+            });
+        }
+    }
+
+    void Scene::UploadLightsToGpu()
+    {
+        m_ActiveLightCount = 1;
+
+        BufferWriter lights{ m_LightBuffer->GetCpuMappedData(), m_LightBuffer->GetSize() };
+        lights.SetElementPosition<joint::Light>(s_MaxLightCount * m_Device.GetActiveFrameIndex());
+
+        {
+            const auto& sunLight = m_EntityRegistry.get<SunLight>(m_SunEntity);
+
+            lights.WriteRaw(joint::Light
+            {
+                .Color = sunLight.GetColor(),
+                .Intensity = sunLight.GetIntensity(),
+                .WorldPosition = sunLight.CalcToSunDirection(),
+                .WorldRadius = std::tan(sunLight.GetAngularDiameterInRadians() * 0.5f),
+                .Attenuation = {},
+                .Type = joint::LightType::Sun,
+            });
+        }
+
+        const auto view = m_EntityRegistry.view<SphericalLight>();
+        for (const auto [entityHandle, light] : view.each())
+        {
+            if (!light.IsEnabled())
+            {
+                continue;
+            }
+
+            lights.WriteRaw(joint::Light
+            {
+                .Color = light.GetColor(),
+                .Intensity = light.GetIntensity(),
+                .WorldPosition = light.GetPosition(),
+                .WorldRadius = light.GetRadius(),
+                .Attenuation = light.GetAttenuation(),
+                .Type = joint::LightType::Spherical,
+            });
+
+            m_ActiveLightCount++;
+        }
     }
 
 }

@@ -37,7 +37,7 @@ namespace benzin
         ResolveDestination = D3D12_RESOURCE_STATE_RESOLVE_DEST,
         ResolveSource = D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
         GenericRead = D3D12_RESOURCE_STATE_GENERIC_READ,
-        RtAccelerationStructure = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+        RayTracing_AccelerationStructure = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
     };
 
     class Resource

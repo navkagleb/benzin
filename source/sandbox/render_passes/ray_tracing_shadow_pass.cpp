@@ -14,30 +14,17 @@
 #include <benzin/graphics/ray_tracing_shader_table.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
+#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
-
-#include <shaders/joint/ray_tracing_shadow_resources.hpp>
 
 #include "sandbox/sandbox_render_settings.hpp"
 #include "sandbox/resources.hpp"
 #include "sandbox/render_passes/sigma_denoiser_pass.hpp"
 
+BenzinEnableUnaryPlusForEnum(joint::Rc_RayTracing_Shadow);
+
 namespace sandbox
 {
-
-    static void BuildOrthonormalBasis(DirectX::XMFLOAT3 normal3, DirectX::XMFLOAT3& outTangent3, DirectX::XMFLOAT3& outBitangent3)
-    {
-        const DirectX::XMVECTOR up = abs(normal3.y) < 0.9999f ? DirectX::XMVECTOR{ 0.0f, 1.0f, 0.0f } : DirectX::XMVECTOR{ 1.0f, 0.0f, 0.0f };
-        const DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&normal3);
-
-        const DirectX::XMVECTOR tangent = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(up, normal));
-        const DirectX::XMVECTOR bitangent = DirectX::XMVector3Cross(normal, tangent);
-
-        DirectX::XMStoreFloat3(&outTangent3, tangent);
-        DirectX::XMStoreFloat3(&outBitangent3, bitangent);
-    }
-
-    //
 
     RayTracing_ShadowPass::RayTracing_ShadowPass(const benzin::Scene& scene)
         : m_Scene{ scene }
@@ -54,7 +41,7 @@ namespace sandbox
             proxy.ShaderConfig.AttributeSize = sizeof(DirectX::XMFLOAT2); // Barycentrics
         });
 
-        benzin::MakeUniquePtr(m_PassConstBuffer, *ms_Device, "RayTracing_ShadowConsts");
+        ms_ConstBufferPool->PreAllocate<joint::RayTracing_ShadowConsts>();
     }
 
     RayTracing_ShadowPass::~RayTracing_ShadowPass()
@@ -83,12 +70,15 @@ namespace sandbox
 
     void RayTracing_ShadowPass::OnRenderViewportResize()
     {
+        const auto penumbraFormat = ms_Settings->GetSection<SigmaDenoiserSettings>().PenumbraFormat;
+
         ms_Resources->CreateTexture(+Texture::NoisyPenumbra, benzin::TextureCreation
         {
             .DebugName = magic_enum::enum_name(Texture::NoisyPenumbra),
-            .Format = SigmaDenoiserPass::s_PenumbraFormat,
+            .Format = penumbraFormat,
             .Width = GetRenderViewportWidth(),
             .Height = GetRenderViewportHeight(),
+            .Depth = benzin::Scene::s_MaxLightCount,
             .MipCount = 1,
             .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
         });
@@ -97,32 +87,9 @@ namespace sandbox
     void RayTracing_ShadowPass::OnUpdate()
     {
         const auto& shadowSettings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
-        const auto& lightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
 
-        const float sunAngularRadiusInRadians = 0.5f * lightingSettings.SunAngularDiameterInRadians;
-        const DirectX::XMFLOAT3 toSunDirection = GetSunDirection(lightingSettings);
-
-        DirectX::XMFLOAT3 toSunTangent;
-        DirectX::XMFLOAT3 toSunBitangent;
-        BuildOrthonormalBasis(toSunDirection, toSunTangent, toSunBitangent);
-
-        const auto& localLight = m_Scene.GetEntityRegistry().get<benzin::TransformComponent>(shadowSettings.LightHandle);
-
-        m_PassConstBuffer->UpdateConstants(joint::RayTracing_ShadowConsts
-        {
-            .ToSunDirection = toSunDirection,
-            .TanSunAngularRadius = std::tan(sunAngularRadiusInRadians),
-            .ToSunTangent = toSunTangent,
-            .SunAngularRadiusInRadians = sunAngularRadiusInRadians,
-            .ToSunBitangent = toSunBitangent,
-
-            .LightPosition = localLight.GetTranslation(),
-            .LightRadius = localLight.GetScale().x * 0.5f,
-
-            .IsShadowsFromSun = shadowSettings.IsShadowsFromSun,
-            .IsBlueNoiseUsed = shadowSettings.IsBlueNoiseUsed,
-            .IsNoiseAnimated = shadowSettings.IsNoiseAnimated,
-        });
+        m_Consts.IsBlueNoiseUsed = shadowSettings.IsBlueNoiseUsed;
+        m_Consts.IsNoiseAnimated = shadowSettings.IsNoiseAnimated;
     }
 
     void RayTracing_ShadowPass::OnRender() const
@@ -134,7 +101,7 @@ namespace sandbox
         const auto& noisyPenumbra = ms_Resources->GetTexture(+Texture::NoisyPenumbra);
 
         commandList.SetPso(pso);
-        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_PassConstBuffer->GetActiveGpuVirtualAddress());
+        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
 
         {
             using enum joint::Rc_RayTracing_Shadow;

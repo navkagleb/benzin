@@ -6,12 +6,6 @@ namespace benzin
     template <typename T>
     concept EnumConcept = std::is_enum_v<T>;
 
-    template <typename T, EnumConcept EnumT>
-    using EnumArray = std::array<T, magic_enum::enum_count<EnumT>()>;
-
-    template <typename>
-    inline constexpr bool g_DependentFalse = false;
-
     template <std::unsigned_integral T>
     inline constexpr auto g_InvalidUnsigned = std::numeric_limits<T>::max();
 
@@ -41,16 +35,22 @@ namespace benzin
     {
         T StartIndex = 0;
         T Count = 0;
+
+        IndexRange() = default;
+
+        IndexRange(T startIndex)
+            : StartIndex{ startIndex }
+            , Count{ 1 }
+        {}
+
+        IndexRange(T startIndex, T count)
+            : StartIndex{ startIndex }
+            , Count{ count }
+        {}
     };
 
     using IndexRange16 = IndexRange<uint16_t>;
     using IndexRange32 = IndexRange<uint32_t>;
-
-    template <std::unsigned_integral T>
-    constexpr auto IndexRangeToView(IndexRange<T> indexRange)
-    {
-        return std::ranges::iota_view{ indexRange.StartIndex, indexRange.StartIndex + indexRange.Count };
-    }
 
     constexpr auto ToBit(std::integral auto bitPosition)
     {
@@ -82,7 +82,7 @@ namespace benzin
         const T m_Lambda;
     };
 
-} // namespace benzin
+}
 
 #define BenzinExecuteOnScopeExit(lambda) const benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }
 

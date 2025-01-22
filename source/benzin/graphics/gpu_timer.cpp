@@ -6,6 +6,7 @@
 #include <pix3.h>
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/command_line_args.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"

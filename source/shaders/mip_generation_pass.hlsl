@@ -8,7 +8,7 @@
 
 float4 ApplyFilterType(float4 color0, float4 color1)
 {
-    switch (g_PassConstants.FilterType)
+    switch (g_PassConsts0.FilterType)
     {
         case joint::MipGenerationFilterType_Min: return min(color0, color1);
         case joint::MipGenerationFilterType_Max: return max(color0, color1);
@@ -28,7 +28,7 @@ float4 ApplyFilterType(float4 color0, float4 color1, float4 color2, float4 color
 
 float4 SampleSourceMip(Texture2D<float4> sourceMip, float2 uv)
 {
-    switch (g_PassConstants.FilterType)
+    switch (g_PassConsts0.FilterType)
     {
         case joint::MipGenerationFilterType_Min:
         {
@@ -49,26 +49,26 @@ float4 SampleSourceMip(Texture2D<float4> sourceMip, float2 uv)
 
 float4 SampleSourceForDestinationMip0(Texture2D<float4> sourceMip, uint3 dispatchThreadId)
 {
-    if (!g_PassConstants.IsSourceWidthOdd && !g_PassConstants.IsSourceHeightOdd)
+    if (!g_PassConsts0.IsSourceWidthOdd && !g_PassConsts0.IsSourceHeightOdd)
     {
-        const float2 uv = (dispatchThreadId.xy + 0.5) * g_PassConstants.InvDispatchDimensions;
+        const float2 uv = (dispatchThreadId.xy + 0.5) * g_PassConsts0.InvDispatchDimensions;
 
         return SampleSourceMip(sourceMip, uv);
     }
-    else if (g_PassConstants.IsSourceWidthOdd && !g_PassConstants.IsSourceHeightOdd)
+    else if (g_PassConsts0.IsSourceWidthOdd && !g_PassConsts0.IsSourceHeightOdd)
     {
-        const float2 uv0 = (dispatchThreadId.xy + float2(0.25, 0.5)) * g_PassConstants.InvDispatchDimensions;
-        const float2 uv1 = uv0 + float2(0.5, 0.0) * g_PassConstants.InvDispatchDimensions;
+        const float2 uv0 = (dispatchThreadId.xy + float2(0.25, 0.5)) * g_PassConsts0.InvDispatchDimensions;
+        const float2 uv1 = uv0 + float2(0.5, 0.0) * g_PassConsts0.InvDispatchDimensions;
 
         return ApplyFilterType(
             SampleSourceMip(sourceMip, uv0),
             SampleSourceMip(sourceMip, uv1)
         );
     }
-    else if (!g_PassConstants.IsSourceWidthOdd && g_PassConstants.IsSourceHeightOdd)
+    else if (!g_PassConsts0.IsSourceWidthOdd && g_PassConsts0.IsSourceHeightOdd)
     {
-        const float2 uv0 = (dispatchThreadId.xy + float2(0.5, 0.25)) * g_PassConstants.InvDispatchDimensions;
-        const float2 uv1 = uv0 + float2(0.0, 0.5) * g_PassConstants.InvDispatchDimensions;
+        const float2 uv0 = (dispatchThreadId.xy + float2(0.5, 0.25)) * g_PassConsts0.InvDispatchDimensions;
+        const float2 uv1 = uv0 + float2(0.0, 0.5) * g_PassConsts0.InvDispatchDimensions;
 
         return ApplyFilterType(
             SampleSourceMip(sourceMip, uv0),
@@ -76,8 +76,8 @@ float4 SampleSourceForDestinationMip0(Texture2D<float4> sourceMip, uint3 dispatc
         );
     }
 
-    const float2 uv = (dispatchThreadId.xy + float2(0.25, 0.25)) * g_PassConstants.InvDispatchDimensions;
-    const float2 uvOffset = 0.5 * g_PassConstants.InvDispatchDimensions;
+    const float2 uv = (dispatchThreadId.xy + float2(0.25, 0.25)) * g_PassConsts0.InvDispatchDimensions;
+    const float2 uvOffset = 0.5 * g_PassConsts0.InvDispatchDimensions;
 
     return ApplyFilterType(
         SampleSourceMip(sourceMip, uv),
@@ -124,7 +124,7 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_Dispatc
     RWTexture2D<float4> destinationMip2 = ResourceDescriptorHeap[GetRootConstant(joint::MipGenerationRc_DestinationMip2)];
     RWTexture2D<float4> destinationMip3 = ResourceDescriptorHeap[GetRootConstant(joint::MipGenerationRc_DestinationMip3)];
 
-    if (g_PassConstants.DestinationMipCount == 0)
+    if (g_PassConsts0.DestinationMipCount == 0)
     {
         return;
     }
@@ -135,7 +135,7 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_Dispatc
     {
         destinationMip0[dispatchThreadId.xy] = sample0;
 
-        if (g_PassConstants.DestinationMipCount == 1)
+        if (g_PassConsts0.DestinationMipCount == 1)
         {
             return;
         }
@@ -175,7 +175,7 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_Dispatc
         }
     }
 
-    if (g_PassConstants.DestinationMipCount == 2)
+    if (g_PassConsts0.DestinationMipCount == 2)
     {
         return;
     }
@@ -197,7 +197,7 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint3 dispatchThreadId : SV_Dispatc
         }
     }
 
-    if (g_PassConstants.DestinationMipCount == 3)
+    if (g_PassConsts0.DestinationMipCount == 3)
     {
         return;
     }

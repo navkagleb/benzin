@@ -2,12 +2,10 @@
 
 #include "hlsl_to_cpp.hpp"
 
-#include "enum_types.hpp"
-
 namespace joint
 {
 
-    struct CameraConstants
+    struct CameraConsts
     {
         float4x4 WorldToView;
         float4x4 ViewToWorld;
@@ -26,39 +24,23 @@ namespace joint
         float2 UvToViewBias;
     };
 
-    struct FrameConstants
+    struct FrameConsts
     {
         float2 RenderResolution;
         float2 InvRenderResolution;
         float MinRenderDimension;
 
         uint CpuFrameIndex;
+        uint LightCount;
 
         uint IsRenderResolutionChanged : 1;
         uint IsShadowsEnabled : 1;
         uint IsDenoiserEnabled : 1;
 
-        BenzinAlign16 float4 RandomFloats01;
+        float4 RandomFloats01;
 
-        CameraConstants Camera;
-        CameraConstants PrevCamera;
-    };
-
-    struct DeferredLightingPassConstants
-    {
-        float3 SunColor;
-        float SunIntensity;
-        float3 SunDirection;
-        uint ActivePointLightCount;
-        uint OutputType;
-    };
-
-    struct FullScreenDebugConstants
-    {
-        uint OutputType;
-        uint ViewDepthMipIndex;
-        float MinViewDepth;
-        float MaxViewDepth;
+        CameraConsts Camera;
+        CameraConsts PrevCamera;
     };
 
 }

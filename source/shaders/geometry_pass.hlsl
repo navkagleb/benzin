@@ -1,9 +1,17 @@
+#include "joint/geometry_resources.hpp"
 #include "unified_root_parameters.hlsli"
 
 #include "common.hlsli"
 #include "gbuffer.hlsli"
 #include "joint/mesh_types.hpp"
 #include "space_convertions.hlsli"
+
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshTransform>, g_MeshTransforms, joint::Rc_Geometry::MeshTransforms);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_MeshVertices, joint::Rc_Geometry::MeshVertices);
+BenzinDeclareRootResource(StructuredBuffer<uint>, g_MeshIndices, joint::Rc_Geometry::MeshIndices);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshInfo>, g_SubMeshInfos, joint::Rc_Geometry::SubMeshInfos);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshInstance>, g_SubMeshInstances, joint::Rc_Geometry::SubMeshInstances);
+BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::Rc_Geometry::Materials);
 
 float3 ExpandNormal(float2 xyNormal)
 {
@@ -47,38 +55,19 @@ float3x3 GetTBNBasis(float3 position, float3 normal, float2 uv)
     return float3x3(tangent, bitangent, normal);
 }
 
-joint::MeshInstance FetchMeshInstance()
+joint::MeshInstance GetMeshInstance()
 {
-    StructuredBuffer<joint::MeshInstance> meshInstanceBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRc_MeshInstanceBuffer)];
-    const uint meshInstanceIndex = GetRootConstant(joint::GeometryPassRc_MeshInstanceIndex);
-
-    return meshInstanceBuffer[meshInstanceIndex];
+    return g_SubMeshInstances[BenzinGetRootConstant(joint::Rc_Geometry::SubMeshInstanceIndex)];
 }
 
-joint::MeshVertex FetchVertex(uint indexIndex, uint subMeshIndex)
+joint::MeshVertex GetMeshVertex(uint indexIndex, uint subMeshIndex)
 {
-    StructuredBuffer<joint::MeshVertex> vertexBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRc_MeshVertexBuffer)];
-    Buffer<uint> indexBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRc_MeshIndexBuffer)];
-    StructuredBuffer<joint::MeshInfo> meshInfoBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRc_MeshInfoBuffer)];
+    const joint::MeshInfo meshInfo = g_SubMeshInfos[subMeshIndex];
 
-    const joint::MeshInfo meshInfo = meshInfoBuffer[subMeshIndex];
-
-    const uint vertexIndex = indexBuffer[meshInfo.IndexOffset + indexIndex];
-    const joint::MeshVertex vertex = vertexBuffer[meshInfo.VertexOffset + vertexIndex];
+    const uint vertexIndex = g_MeshIndices[meshInfo.IndexOffset + indexIndex];
+    const joint::MeshVertex vertex = g_MeshVertices[meshInfo.VertexOffset + vertexIndex];
 
     return vertex;
-}
-
-joint::MeshTransform FetchMeshTransform()
-{
-    ConstantBuffer<joint::MeshTransform> transformConstantBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRc_MeshTransformConstantBuffer)];
-    return transformConstantBuffer;
-}
-
-joint::Material FetchMaterial(uint materialIndex)
-{
-    StructuredBuffer<joint::Material> materialBuffer = ResourceDescriptorHeap[GetRootConstant(joint::GeometryPassRc_MaterialBuffer)];
-    return materialBuffer[materialIndex];
 }
 
 struct VsOutput
@@ -93,18 +82,18 @@ struct VsOutput
 
 VsOutput VsMain(uint indexIndex : SV_VertexID)
 {
-    const joint::MeshInstance meshInstance = FetchMeshInstance();
-    const joint::MeshVertex vertex = FetchVertex(indexIndex, meshInstance.SubMeshIndex);
-    const joint::MeshTransform transform = FetchMeshTransform();
+    const joint::MeshInstance meshInstance = GetMeshInstance();
+    const joint::MeshVertex vertex = GetMeshVertex(indexIndex, meshInstance.SubMeshIndex);
+    const joint::MeshTransform transform = g_MeshTransforms[BenzinGetRootConstant(joint::Rc_Geometry::MeshTransformIndex)];
 
-    const joint::CameraConstants camera = g_FrameConstants.Camera;
+    const joint::CameraConsts camera = g_FrameConstants.Camera;
 
     const float4 objectPosition = mul(float4(vertex.Position, 1.0f), meshInstance.Transform);
     const float3 objectNormal = mul(vertex.Normal, (float3x3)meshInstance.Transform);
 
-    const float4 worldPosition = mul(objectPosition, transform.WorldMatrix);
-    const float4 prevWorldPosition = mul(objectPosition, transform.PreviousWorldMatrix);
-    const float3 worldNormal = mul(objectNormal, (float3x3)transform.WorldMatrix); // TODO: Maybe I still need to yse 'WorldMatrixForNormals'?
+    const float4 worldPosition = mul(objectPosition, transform.LocalToWorld);
+    const float4 prevWorldPosition = mul(objectPosition, transform.PrevLocalToWorld);
+    const float3 worldNormal = mul(objectNormal, (float3x3)transform.LocalToWorld); // TODO: Maybe I still need to yse 'WorldMatrixForNormals'?
 
     const float4 viewPosition = mul(worldPosition, camera.WorldToView);
 
@@ -130,8 +119,8 @@ struct PsOutput
 
 PsOutput PsMain(VsOutput input)
 {
-    const joint::MeshInstance meshInstance = FetchMeshInstance();
-    const joint::Material material = FetchMaterial(meshInstance.MaterialIndex);
+    const joint::MeshInstance meshInstance = GetMeshInstance();
+    const joint::Material material = g_Materials[meshInstance.MaterialIndex];
 
     UnpackedGBuffer gbuffer;
     gbuffer.Albedo = material.AlbedoFactor.rgb;
@@ -155,7 +144,7 @@ PsOutput PsMain(VsOutput input)
 
     if (material.NormalTextureIndex != g_InvalidIndex)
     {
-        const joint::CameraConstants cameraConstants = g_FrameConstants.Camera;
+        const joint::CameraConsts cameraConstants = g_FrameConstants.Camera;
 
         Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.NormalTextureIndex];
 

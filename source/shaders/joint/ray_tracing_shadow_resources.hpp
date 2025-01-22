@@ -7,25 +7,13 @@ namespace joint
 
     struct RayTracing_ShadowConsts
     {
-        float3 ToSunDirection;
-        float TanSunAngularRadius;
-        float3 ToSunTangent;
-        float SunAngularRadiusInRadians;
-        float3 ToSunBitangent;
-
-        float Padding;
-
-        float3 LightPosition;
-        float LightRadius;
-
-        uint IsShadowsFromSun : 1;
         uint IsBlueNoiseUsed : 1;
         uint IsNoiseAnimated : 1;
     };
 
     struct RayTracing_ShadowPayload
     {
-        float THit;
+        float DistanceToOccluder;
     };
 
     enum class Rc_RayTracing_Shadow : uint // TODO: Ugly name
@@ -36,6 +24,9 @@ namespace joint
 
         OutNoisyPenumbra,
     };
-    BenzinEnableUnaryPlusForEnum(Rc_RayTracing_Shadow);
 
 }
+
+#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0)
+    #define BenzinRenderPassConstsType0 joint::RayTracing_ShadowConsts
+#endif

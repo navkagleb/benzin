@@ -5,12 +5,13 @@
 namespace benzin
 {
 
+    class ConstBufferPool;
     class Device;
+    class PsoManager;
+    class ScopedGpuGrabTimer;
     class SwapChain;
     class Texture;
     class TickTimer;
-    class ScopedGpuGrabTimer;
-    class PsoManager;
 
     struct TextureCreation;
 
@@ -89,6 +90,7 @@ namespace benzin
             Device& device,
             SwapChain& swapChain,
             PsoManager& psoManager,
+            ConstBufferPool& constBufferPool,
             RenderResources& resources,
             RenderSettings& settings
         );
@@ -118,6 +120,7 @@ namespace benzin
         static inline Device* ms_Device = nullptr;
         static inline SwapChain* ms_SwapChain = nullptr;
         static inline PsoManager* ms_PsoManager = nullptr;
+        static inline ConstBufferPool* ms_ConstBufferPool = nullptr;
         static inline RenderResources* ms_Resources = nullptr;
         static inline RenderSettings* ms_Settings = nullptr;
 

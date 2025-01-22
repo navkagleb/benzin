@@ -9,8 +9,10 @@ namespace benzin
     {
         RootConstantBuffer,
         FrameConstantBuffer,
-        RenderPassConstantBuffer,
-        TopLevelAs,
+        RenderPassConstantBuffer0,
+        RenderPassConstantBuffer1,
+        LightStructuredBuffer,
+        SceneTlas,
     };
     BenzinEnableUnaryPlusForEnum(UnifiedRootParameter);
 
@@ -19,6 +21,9 @@ namespace benzin
     public:
         UnifiedRootSignature(Device& device);
         ~UnifiedRootSignature();
+
+        BenzinDefineNonCopyable(UnifiedRootSignature);
+        BenzinDefineNonMoveable(UnifiedRootSignature);
 
     public:
         auto* GetD3D12RootSignature() const { return m_D3D12RootSignature; }

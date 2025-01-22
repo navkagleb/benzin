@@ -24,7 +24,7 @@ namespace sandbox
         BenzinPushGpuEvent(commandList, "TlasBuildingPass");
 
         const uint64_t tlasGpuAddress = m_RayTracingScene.BuildTlas();
-        commandList.SetSrv(benzin::UnifiedRootParameter::TopLevelAs, tlasGpuAddress);
+        commandList.SetSrv(benzin::UnifiedRootParameter::SceneTlas, tlasGpuAddress);
     }
 
 }

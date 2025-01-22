@@ -9,10 +9,14 @@
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
-#include <shaders/joint/root_constants.hpp>
+#include <shaders/joint/environment_resources.hpp>
+#include <shaders/joint/full_screen_debug_resources.hpp>
 
 #include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
+
+BenzinEnableUnaryPlusForEnum(joint::Rc_Environment);
+BenzinEnableUnaryPlusForEnum(joint::Rc_EquirectangularToCube);
 
 namespace sandbox
 {
@@ -51,7 +55,7 @@ namespace sandbox
     {
         const auto& settings = ms_Settings->GetSection<FullScreenDebugSettings>();
 
-        m_IsRenderingEnabled = settings.DebugOutputType == joint::DebugOutputType_None;
+        m_IsRenderingEnabled = settings.DebugOutputType == joint::DebugOutputType::None;
     }
 
     void EnvironmentPass::OnRender() const
@@ -75,7 +79,7 @@ namespace sandbox
         commandList.SetRenderTargets({ finalTexture.GetRtv() }, &depthStencilBuffer.GetDsv());
 
         commandList.SetPso(ms_PsoManager->GetPso(+Pso::Environment));
-        commandList.SetRootResource(joint::EnvironmentPassRc_CubeMapTexture, m_CubeTexture->GetSrv());
+        commandList.SetRootResource(+joint::Rc_Environment::CubeMap, m_CubeTexture->GetSrv());
 
         commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
         commandList.DrawVertexed(3);
@@ -130,8 +134,8 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
         commandList.SetPso(ms_PsoManager->GetPso(+Pso::Environment_EquirectangularToCube));
-        commandList.SetRootResource(joint::EquirectangularToCubeRc_EquirectangularTexture, equirectangularTexture.GetSrv());
-        commandList.SetRootResource(joint::EquirectangularToCubeRc_OutCubeTexture, m_CubeTexture->GetUav());
+        commandList.SetRootResource(+joint::Rc_EquirectangularToCube::EquirectangularTexture, equirectangularTexture.GetSrv());
+        commandList.SetRootResource(+joint::Rc_EquirectangularToCube::OutCubeMap, m_CubeTexture->GetUav());
 
         BenzinMakeScopedResourceBarriers(
             commandList,
@@ -139,7 +143,7 @@ namespace sandbox
         );
 
         const DirectX::XMUINT3 dimensions{ cubeMapSize, cubeMapSize, m_CubeTexture->GetDepth() };
-        commandList.Dispatch(dimensions, joint::g_ThreadPerGroupCount881);
+        commandList.Dispatch(dimensions, { 8, 8, 1 });
     }
 
 }

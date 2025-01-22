@@ -10,7 +10,7 @@ namespace benzin
 
     static constexpr auto g_ShaderTargets = []
     {
-        EnumArray<std::wstring_view, ShaderType> shaderTargets;
+        std::array<std::wstring_view, magic_enum::enum_count<ShaderType>()> shaderTargets;
         shaderTargets[+ShaderType::Vertex] = L"vs_6_6";
         shaderTargets[+ShaderType::Pixel] = L"ps_6_6";
         shaderTargets[+ShaderType::Compute] = L"cs_6_6";

@@ -2,6 +2,7 @@
 #include "benzin/graphics/ray_tracing_shader_table.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/device.hpp"
@@ -48,16 +49,14 @@ namespace benzin
             .ElementCount = GetRequiredTableSizeInBytes(),
         });
 
-        const benzin::MemoryWriter tableWriter{ m_ShaderTable->GetCpuMappedData(), m_ShaderTable->GetSize() };
-        uint64_t offset = 0;
+        BufferWriter tableWriter{ m_ShaderTable->GetCpuMappedData(), m_ShaderTable->GetSize() };
 
-        const auto processIdentifier = [this, &tableWriter, &offset](ShaderIdentifier id, GpuAddress& outGpuAddress)
+        const auto processIdentifier = [this, &tableWriter](ShaderIdentifier id, GpuAddress& outGpuAddress)
         {
-            outGpuAddress.GpuVirtualAddress = m_ShaderTable->GetGpuVirtualAddress() + offset;
+            outGpuAddress.GpuVirtualAddress = m_ShaderTable->GetGpuVirtualAddress() + tableWriter.GetPosition();
             outGpuAddress.Size = id.size();
 
-            tableWriter.WriteBytes(id, offset);
-            offset += g_TableAlignment;
+            tableWriter.WriteData(std::span{ id.data(), g_TableAlignment });
         };
 
         processIdentifier(m_RayGenerationShader, m_GpuAddresses.RayGenerationShader);

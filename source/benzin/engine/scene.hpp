@@ -16,9 +16,6 @@ namespace benzin
     class Texture;
     class TickTimer;
 
-    template <typename>
-    class ConstantBuffer;
-
     struct SceneStats
     {
         uint32_t VertexCount = 0;
@@ -34,24 +31,26 @@ namespace benzin
     public:
         friend class RayTracing_Scene;
 
-        explicit Scene(Device& device);
+        static inline const uint32_t s_MaxLightCount = 4; // TODO: Sun + 3 Spherical Lights
+
+        Scene(Device& device, TickTimer& animationTimer);
         ~Scene();
 
     public:
-        auto& GetPerspectiveProjection() { return m_PerspectiveProjection; }
-        const auto& GetPerspectiveProjection() const { return m_PerspectiveProjection; }
-
-        auto& GetCamera() { return m_Camera; }
-        const auto& GetCamera() const { return m_Camera; }
-
         const auto& GetStats() const { return m_Stats; }
 
-        const Descriptor& GetPointLightBufferStructuredSrv() const;
+        auto& GetPerspectiveProjection(this auto&& self) { return self.m_PerspectiveProjection; }
+        auto& GetCamera(this auto&& self) { return self.m_Camera; }
 
-        auto& GetEntityRegistry() { return m_EntityRegistry; }
-        const auto& GetEntityRegistry() const { return m_EntityRegistry; }
+        Descriptor GetTransformBufferSrv() const;
 
+        auto& GetEntityRegistry(this auto&& self) { return self.m_EntityRegistry; }
         const auto& GetMeshRegistry() const { return m_MeshRegistry; }
+
+        auto GetSunEntity() const { return m_SunEntity; }
+
+        uint64_t GetLightBufferGpuAddress() const;
+        uint32_t GetActiveLightCount() const { return m_ActiveLightCount; }
 
     public:
         void OnUpdate();
@@ -61,8 +60,6 @@ namespace benzin
         void UploadMeshesToGpu();
 
     private:
-        void OnTransformComponentConstuct(entt::registry& registry, entt::entity entityHandle);
-
         void PushTextures(std::span<const TextureImage> textureImages);
 
         void UploadAllMeshData();
@@ -72,8 +69,13 @@ namespace benzin
 
         void UpdateStats(entt::entity meshHandle);
 
+        void UpdateEntities();
+        void UploadTransformsToGpu();
+        void UploadLightsToGpu();
+
     private:
         Device& m_Device;
+        TickTimer& m_AnimationTimer;
 
         SceneStats m_Stats;
 
@@ -83,7 +85,13 @@ namespace benzin
         std::vector<std::vector<std::byte>> m_TexturesData;
         std::vector<std::unique_ptr<Texture>> m_Textures;
 
-        std::unique_ptr<Buffer> m_PointLightBuffer;
+        entt::entity m_SunEntity;
+        std::vector<entt::entity> m_SphericalLightEntities;
+        std::unique_ptr<Buffer> m_LightBuffer;
+        uint32_t m_ActiveLightCount = 0;
+
+        uint32_t m_TransformCount = 0;
+        std::unique_ptr<Buffer> m_TransformBuffer;
 
         entt::registry m_EntityRegistry;
         entt::registry m_MeshRegistry;

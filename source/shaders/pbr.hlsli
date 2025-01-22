@@ -3,6 +3,7 @@
 #include "common.hlsli"
 
 // Ref: https://learnopengl.com/PBR/Theory
+// Ref: https://www.youtube.com/watch?v=RRE-F57fbXw&t=10s&ab_channel=VictorGordan
 
 struct PbrLight
 {
@@ -119,5 +120,5 @@ float3 GetPbrLitColor(PbrLight light, PbrMaterial material, float3 viewDirection
     const float3 brdf = BidirectionalReflectanceDistributionFunction(light, material, viewDirection, normal);
     const float3 lDotN = max(0.0f, dot(light.Direction, normal));
 
-    return (brdf * light.Color * lDotN) * light.Intensity;
+    return brdf * light.Color * light.Intensity * lDotN;
 }

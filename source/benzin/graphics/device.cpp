@@ -2,6 +2,7 @@
 #include "benzin/graphics/device.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"

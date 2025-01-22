@@ -2,17 +2,7 @@
 
 #include <benzin/graphics2/render_pass.hpp>
 
-#include <shaders/joint/constant_buffer_types.hpp>
-
-namespace benzin
-{
-
-    template <typename>
-    class ConstantBuffer;
-
-    class Scene;
-
-}
+#include <shaders/joint/full_screen_debug_resources.hpp>
 
 namespace sandbox
 {
@@ -29,9 +19,7 @@ namespace sandbox
         void OnRender() const override;
 
     private:
-        using PassConstantBuffer = benzin::ConstantBuffer<joint::FullScreenDebugConstants>;
-
-        std::unique_ptr<PassConstantBuffer> m_PassConstantBuffer;
+        joint::FullScreenDebugConsts m_Consts;
     };
 
 }

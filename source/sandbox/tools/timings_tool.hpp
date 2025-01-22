@@ -16,7 +16,7 @@ namespace sandbox
 {
 
     template <benzin::EnumConcept TimingT>
-    using Timings = benzin::EnumArray<std::chrono::microseconds, TimingT>;
+    using Timings = std::array<std::chrono::microseconds, magic_enum::enum_count<TimingT>()>;
 
     enum class RunnerTiming : uint32_t
     {

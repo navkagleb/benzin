@@ -5,6 +5,7 @@
 #include <benzin/core/math.hpp>
 #include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/entity_components.hpp>
+#include <benzin/engine/light.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
@@ -12,30 +13,31 @@
 #include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
+#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
-
-#include <shaders/joint/sigma_denoiser_resources.hpp>
 
 #include "sandbox/sandbox_render_settings.hpp"
 #include "sandbox/resources.hpp"
 
+BenzinEnableUnaryPlusForEnum(joint::Rc_SigmaClassifyTiles);
+BenzinEnableUnaryPlusForEnum(joint::Rc_SigmaSmoothTiles);
+BenzinEnableUnaryPlusForEnum(joint::Rc_SigmaBlur);
+BenzinEnableUnaryPlusForEnum(joint::Rc_SigmaTemporalStabilization)
+
 namespace sandbox
 {
 
-    static uint32_t GetMaxHistoryLength(float fps)
+    static uint32_t GetMaxHistoryLength(uint32_t maxHistoryLength, float fps)
     {
         // TODO: Provide smooth fps
 
         constexpr float defaultAccumulationTimeInSec = 0.084f; // 5 (history length) / 60 (fps)
 
         const auto allowedMaxHistoryLength = (uint32_t)(defaultAccumulationTimeInSec * fps);
-        return std::min(allowedMaxHistoryLength, SigmaDenoiserPass::s_MaxHistoryLength);
+        return std::min(allowedMaxHistoryLength, maxHistoryLength);
     }
 
     //
-
-    const benzin::GraphicsFormat SigmaDenoiserPass::s_PenumbraFormat = benzin::GraphicsFormat::R16Float;
-    const uint32_t SigmaDenoiserPass::s_MaxHistoryLength = 7;
 
     SigmaDenoiserPass::SigmaDenoiserPass(const benzin::Scene& scene)
         : m_Scene{ scene }
@@ -62,7 +64,13 @@ namespace sandbox
         createPso(Pso::SigmaPostBlur, "sigma_denoiser/blur.hlsl", "POST_BLUR_PASS");
         createPso(Pso::SigmaTemporalStabilization, "sigma_denoiser/temporal_stabilization.hlsl");
 
-        MakeUniquePtr(m_SigmaConstantBuffer, *ms_Device, "SigmaConstantBuffer");
+        ms_ConstBufferPool->PreAllocate<joint::SigmaConsts>();
+
+        m_PerLightConsts.resize(benzin::Scene::s_MaxLightCount);
+        for (uint32_t i = 0; i < m_PerLightConsts.size(); ++i)
+        {
+            ms_ConstBufferPool->PreAllocate<joint::SigmaPerLightConsts>();
+        }
     }
 
     SigmaDenoiserPass::~SigmaDenoiserPass()
@@ -85,13 +93,13 @@ namespace sandbox
 
     void SigmaDenoiserPass::OnRenderViewportResize()
     {
-        m_TileCount.x = benzin::DivideUp(GetRenderViewportWidth(), joint::g_SigmaTileSize);
-        m_TileCount.y = benzin::DivideUp(GetRenderViewportHeight(), joint::g_SigmaTileSize);
+        m_Consts.TileCount.x = benzin::DivideUp(GetRenderViewportWidth(), joint::g_SigmaTileSize);
+        m_Consts.TileCount.y = benzin::DivideUp(GetRenderViewportHeight(), joint::g_SigmaTileSize);
 
         const DirectX::XMUINT2 renderResolution = GetRenderResolution();
         const auto shadowFormat = benzin::GraphicsFormat::R8Unorm;
 
-        const auto createTexture = [](Texture texture, benzin::GraphicsFormat format, DirectX::XMUINT2 resolution)
+        const auto createTexture = [](Texture texture, benzin::GraphicsFormat format, DirectX::XMUINT2 resolution, uint16_t depth = 1)
         {
             ms_Resources->CreateTexture(+texture, benzin::TextureCreation
             {
@@ -99,18 +107,21 @@ namespace sandbox
                 .Format = format,
                 .Width = resolution.x,
                 .Height = resolution.y,
+                .Depth = depth,
                 .MipCount = 1,
                 .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
         };
 
-        createTexture(Texture::Sigma_Tiles, benzin::GraphicsFormat::Rgba8Unorm, m_TileCount);
-        createTexture(Texture::Sigma_SmoothTiles, benzin::GraphicsFormat::Rg8Unorm, m_TileCount);
-        createTexture(Texture::Sigma_BlurredPenumbra1, s_PenumbraFormat, renderResolution);
-        createTexture(Texture::Sigma_BlurredPenumbra2, s_PenumbraFormat, renderResolution);
+        const auto penumbraFormat = ms_Settings->GetSection<SigmaDenoiserSettings>().PenumbraFormat;
+
+        createTexture(Texture::Sigma_Tiles, benzin::GraphicsFormat::Rgba8Unorm, m_Consts.TileCount);
+        createTexture(Texture::Sigma_SmoothTiles, benzin::GraphicsFormat::Rg8Unorm, m_Consts.TileCount);
+        createTexture(Texture::Sigma_BlurredPenumbra1, penumbraFormat, renderResolution);
+        createTexture(Texture::Sigma_BlurredPenumbra2, penumbraFormat, renderResolution);
         createTexture(Texture::Sigma_BlurredShadowTemp1, shadowFormat, renderResolution);
         createTexture(Texture::Sigma_BlurredShadowTemp2, shadowFormat, renderResolution);
-        createTexture(Texture::Shadow, shadowFormat, renderResolution);
+        createTexture(Texture::Shadow, shadowFormat, renderResolution, benzin::Scene::s_MaxLightCount);
         createTexture(Texture::ShadowHistoryLength, benzin::GraphicsFormat::R32Uint, renderResolution);
     }
 
@@ -121,47 +132,76 @@ namespace sandbox
         const DirectX::XMFLOAT4 blurRotator = benzin::GetRotator(rotatorAngleInRadians);
         const DirectX::XMFLOAT4 postBlurRotator = benzin::GetRotator(rotatorAngleInRadians + DirectX::XMConvertToRadians(45.0f));
 
-        auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
-        const auto& lightingSettings = ms_Settings->GetSection<DeferredLightingSettings>();
+        auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 
         const float fps = 1.0f / tickTimer.GetDeltaTimeInSec();
-        sigmaSettings.MaxHistoryLength = GetMaxHistoryLength(fps);
-        sigmaSettings.StabilizationStrength = sigmaSettings.MaxHistoryLength / (1.0f + sigmaSettings.MaxHistoryLength);
+        settings.HistoryLength = GetMaxHistoryLength(settings.MaxHistoryLength, fps);
+        settings.StabilizationStrength = settings.HistoryLength / (1.0f + settings.HistoryLength);
 
-        const auto& shadowSettings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
-        const auto worldLightPosition = m_Scene.GetEntityRegistry().get<benzin::TransformComponent>(shadowSettings.LightHandle).GetTranslation();
+        m_Consts.BlurRotator = blurRotator;
+        m_Consts.PostBlurRotator = postBlurRotator;
+        m_Consts.StabilizationStrength = settings.StabilizationStrength;
+        m_Consts.PlaneDistanceSensitivity = settings.PlaneDistanceSensitivity;
+        m_Consts.DisocclusionThreshold = settings.DisocclusionThreshold;
+        m_Consts.IsTileSmoothingEnabled = settings.IsTileSmoothingEnabled;
 
-        m_SigmaConstantBuffer->UpdateConstants(joint::SigmaConstants
         {
-            .StabilizationStrength = sigmaSettings.StabilizationStrength,
-            .WorldSunDirection = GetSunDirection(lightingSettings),
-            .IsShadowsFromSun = shadowSettings.IsShadowsFromSun,
-            .WorldLightPosition = worldLightPosition,
-            .BlurRotator = blurRotator,
-            .PostBlurRotator = postBlurRotator,
-            .TileCount = m_TileCount,
-            .PlaneDistanceSensitivity = sigmaSettings.PlaneDistanceSensitivity,
-            .DisocclusionThreshold = sigmaSettings.DisocclusionThreshold,
-            .IsTileSmoothingEnabled = sigmaSettings.IsTileSmoothingEnabled,
-        });
+            const auto& entityRegistry = m_Scene.GetEntityRegistry();
+            uint32_t lightOffset = 0;
+
+            {
+                const auto& light = entityRegistry.get<benzin::SunLight>(m_Scene.GetSunEntity());
+
+                m_PerLightConsts[0].LightType = joint::LightType::Sun;
+                m_PerLightConsts[0].WorldLightPosition = light.CalcToSunDirection();
+                lightOffset++;
+            }
+
+
+            const auto view = entityRegistry.view<benzin::SphericalLight>();
+            for (const auto& [_, light] : view.each())
+            {
+                if (!light.IsEnabled())
+                {
+                    continue;
+                }
+
+                m_PerLightConsts[lightOffset].LightType = joint::LightType::Spherical;
+                m_PerLightConsts[lightOffset].WorldLightPosition = light.GetPosition();
+                lightOffset++;
+            }
+        }
     }
 
     void SigmaDenoiserPass::OnRender() const
     {
+        const auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
+        if (!settings.IsEnabled)
+        {
+            return;
+        }
+
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "SigmaDenoiserPass");
 
-        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer, m_SigmaConstantBuffer->GetActiveGpuVirtualAddress());
+        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
 
-        const auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
-        if (settings.IsEnabled)
+        const uint32_t lightCount = m_Scene.GetActiveLightCount();
+        for (uint16_t sliceIndex = 0; sliceIndex < lightCount; ++sliceIndex)
         {
+            if (lightCount != 1)
+            {
+                BenzinPushGpuEvent(commandList, "Step");
+            }
+
+            commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer1, ms_ConstBufferPool->Allocate(m_PerLightConsts[sliceIndex]));
+
             RunClearPass(settings.IsClearEnabled);
-            RunClassifyTilesPass();
+            RunClassifyTilesPass(sliceIndex);
             RunSmoothTilesPass();
-            RunBlurPass();
+            RunBlurPass(sliceIndex);
             RunPostBlurPass(settings.IsPostBlurEnabled);
-            RunTemporalStabilizationPass(settings.IsTemporalStabilizationEnabled);
+            RunTemporalStabilizationPass(settings.IsTemporalStabilizationEnabled, sliceIndex);
         }
     }
 
@@ -194,7 +234,7 @@ namespace sandbox
         commandList.ClearUnorderedAccess(ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp2), clearColor);
     }
 
-    void SigmaDenoiserPass::RunClassifyTilesPass() const
+    void SigmaDenoiserPass::RunClassifyTilesPass(uint16_t sliceIndex) const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "ClassifyTiles");
@@ -205,7 +245,7 @@ namespace sandbox
             using enum joint::Rc_SigmaClassifyTiles;
 
             commandList.SetRootResource(+ViewDepth, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
-            commandList.SetRootResource(+Penumbra, ms_Resources->GetTexture(+Texture::NoisyPenumbra).GetSrv());
+            commandList.SetRootResource(+Penumbra, ms_Resources->GetTexture(+Texture::NoisyPenumbra).GetSrv({ .DepthRange = sliceIndex }));
 
             commandList.SetRootResource(+OutTiles, tiles.GetUav());
         }
@@ -239,10 +279,10 @@ namespace sandbox
         );
 
         commandList.SetPso(ms_PsoManager->GetPso(+Pso::SigmaSmoothTiles));
-        commandList.Dispatch({ m_TileCount.x, m_TileCount.y, 1 }, { 16, 16, 1 });
+        commandList.Dispatch({ m_Consts.TileCount.x, m_Consts.TileCount.y, 1 }, { 16, 16, 1 });
     }
 
-    void SigmaDenoiserPass::RunBlurPass() const
+    void SigmaDenoiserPass::RunBlurPass(uint16_t sliceIndex) const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "Blur");
@@ -256,7 +296,7 @@ namespace sandbox
             commandList.SetRootResource(+WorldNormal, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
             commandList.SetRootResource(+ViewDepth, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
             commandList.SetRootResource(+SmoothTiles, ms_Resources->GetTexture(+Texture::Sigma_SmoothTiles).GetSrv());
-            commandList.SetRootResource(+Penumbra, ms_Resources->GetTexture(+Texture::NoisyPenumbra).GetSrv());
+            commandList.SetRootResource(+Penumbra, ms_Resources->GetTexture(+Texture::NoisyPenumbra).GetSrv({ .DepthRange = sliceIndex }));
 
             commandList.SetRootResource(+OutPenumbra, penumbra1.GetUav());
             commandList.SetRootResource(+OutShadow, shadowTemp1.GetUav());
@@ -321,7 +361,7 @@ namespace sandbox
         commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
     }
 
-    void SigmaDenoiserPass::RunTemporalStabilizationPass(bool isEnabled) const
+    void SigmaDenoiserPass::RunTemporalStabilizationPass(bool isEnabled, uint16_t sliceIndex) const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinPushGpuEvent(commandList, "TemporalStabilization");
@@ -347,15 +387,15 @@ namespace sandbox
         {
             using enum joint::Rc_SigmaTemporalStabilization;
 
-            commandList.SetRootResource(+Mv, ms_Resources->GetTexture(+Texture::VelocityBuffer).GetSrv());
+            commandList.SetRootResource(+Mv, ms_Resources->GetTexture(+Texture::Mv).GetSrv());
             commandList.SetRootResource(+ViewDepth, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
             commandList.SetRootResource(+SmoothTiles, ms_Resources->GetTexture(+Texture::Sigma_SmoothTiles).GetSrv());
             commandList.SetRootResource(+Penumbra, ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra2).GetSrv());
             commandList.SetRootResource(+Shadow, shadowTemp2.GetSrv());
-            commandList.SetRootResource(+ShadowHistory, ms_Resources->GetPrevTexture(+Texture::Shadow).GetSrv());
+            commandList.SetRootResource(+ShadowHistory, ms_Resources->GetPrevTexture(+Texture::Shadow).GetSrv({ .DepthRange = sliceIndex }));
             commandList.SetRootResource(+HistoryLength, ms_Resources->GetPrevTexture(+Texture::ShadowHistoryLength).GetSrv());
 
-            commandList.SetRootResource(+OutShadow, shadow.GetUav());
+            commandList.SetRootResource(+OutShadow, shadow.GetUav({ .DepthRange = sliceIndex }));
             commandList.SetRootResource(+OutHistoryLength, historyLength.GetUav());
         }
 

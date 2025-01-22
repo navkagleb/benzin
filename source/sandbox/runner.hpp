@@ -10,6 +10,7 @@ namespace benzin
 {
 
     class Backend;
+    class ConstBufferPool;
     class Device;
     class Event;
     class ImGuiManager;
@@ -63,6 +64,7 @@ namespace sandbox
 
         std::unique_ptr<benzin::ShaderManager> m_ShaderManager;
         std::unique_ptr<benzin::PsoManager> m_PsoManager;
+        std::unique_ptr<benzin::ConstBufferPool> m_ConstBufferPool;
 
         benzin::TickTimer m_FrameTimer;
         benzin::TickTimer m_AnimationTimer;

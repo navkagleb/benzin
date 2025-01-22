@@ -13,6 +13,7 @@
 #include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
+#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 #include <benzin/graphics2/render_pass.hpp>
@@ -25,6 +26,7 @@
 #include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
 #include <benzin/tools/scene_stats_tool.hpp>
+#include <benzin/tools/scene_tool.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
 #include <benzin/utility/time_utils.hpp>
 
@@ -54,13 +56,14 @@ namespace sandbox
 
         benzin::MakeUniquePtr(m_ShaderManager);
         benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager, (uint32_t)magic_enum::enum_count<Pso>());
+        benzin::MakeUniquePtr(m_ConstBufferPool, *m_Device);
 
-        benzin::MakeUniquePtr(m_Scene, *m_Device);
+        benzin::MakeUniquePtr(m_Scene, *m_Device, m_AnimationTimer);
         benzin::MakeUniquePtr(m_RayTracingScene, *m_Device, *m_Scene);
 
         benzin::MakeUniquePtr(m_RenderResources, *m_Device);
         benzin::MakeUniquePtr(m_RenderSettings);
-        benzin::RenderPass::SetContext(*m_Device, *m_SwapChain, *m_PsoManager, *m_RenderResources, *m_RenderSettings);
+        benzin::RenderPass::SetContext(*m_Device, *m_SwapChain, *m_PsoManager, *m_ConstBufferPool, *m_RenderResources, *m_RenderSettings);
 
         benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device);
         m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderResources, m_Scene->GetCamera());
@@ -69,6 +72,7 @@ namespace sandbox
         m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Device, *m_SwapChain, *m_ShaderManager, *m_RenderViewportTool);
         m_ImGuiManager->PushTool<benzin::FlyCameraTool>(m_RenderViewportTool->GetFlyCameraController());
         m_ImGuiManager->PushTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
+        m_ImGuiManager->PushTool<benzin::SceneTool>(*m_Scene);
         m_ImGuiManager->PushTool<TickTimerTool>(m_FrameTimer);
 
         m_ImGuiManager->PushSpawnImGuiMenuCallback([this]
@@ -232,6 +236,7 @@ namespace sandbox
         BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::BeginFrame]);
 
         m_Device->GetGraphicsCommandQueue().ResetCommandList();
+        m_ConstBufferPool->BeginFrame();
     }
 
     void Runner::EndFrame()
