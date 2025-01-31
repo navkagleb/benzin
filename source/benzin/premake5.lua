@@ -32,8 +32,13 @@ project "BenzinFramework"
     fatalwarnings { "All" }
 
     import {
-        ["NvAPI"] = "Anything",
+        ["ADL"] = "Anything",
         ["DirectXTex"] = "Anything",
+        ["EnTT"] = "Anything",
+        ["ImGui"] = "Anything",
+        ["magic_enum"] = "Anything",
+        ["NvAPI"] = "Anything",
+        ["TinyGLTF"] = "Anything",
     }
 
     nuget {

@@ -1,7 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/adl_wrapper.hpp"
 
-#include <third_party/adl/adl_sdk.h>
+#include <adl_sdk.h>
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"

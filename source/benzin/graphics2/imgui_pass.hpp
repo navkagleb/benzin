@@ -77,7 +77,7 @@ namespace benzin
     private:
         Device& m_Device;
 
-        Descriptor m_FontDescriptor;
+        Descriptor m_LegacySigleSrvDescriptor;
 
         std::unordered_map<std::string, bool> m_IsToolVisibleMap; // TODO: can std::string_view be used instead of std::string
 

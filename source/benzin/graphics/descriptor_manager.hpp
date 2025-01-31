@@ -55,7 +55,7 @@ namespace benzin
         BenzinDefineNonMoveable(DescriptorManager);
 
     public:
-        using DescriptorInitCallback = std::function<void(uint64_t handle)>;
+        using DescriptorInitCallback = std::function<void(uint64_t cpuHandle)>;
 
         ID3D12DescriptorHeap* GetD3D12GpuResourceDescriptorHeap() const;
 

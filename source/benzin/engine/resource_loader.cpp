@@ -1,8 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/engine/resource_loader.hpp"
 
-#include <third_party/tinygltf/stb_image.h>
-#include <third_party/tinygltf/tiny_gltf.h>
+#include <stb_image.h>
+#include <tiny_gltf.h>
 
 #include <DirectXTex.h>
 

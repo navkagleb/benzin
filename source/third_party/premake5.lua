@@ -5,6 +5,13 @@ project "ADL"
         "adl/**.h",
     }
 
+    export "*"
+        includedirs {
+            "adl",
+        }
+
+    export {}
+
 
 project "DirectXTex"
     kind "None"
@@ -34,6 +41,20 @@ project "EnTT"
         "entt/**.hpp",
     }
 
+    export "*"
+        includedirs {
+            "entt/single_include",
+        }
+
+    export {}
+
+
+local function apply_imgui_config()
+    includedirs {
+        "./imgui",
+    }
+end
+
 
 project "ImGui"
     kind "StaticLib"
@@ -41,9 +62,22 @@ project "ImGui"
     cppdialect "C++latest"
 
     files {
-        "imgui/**.h",
-        "imgui/**.cpp",
+        "imgui/*.h",
+        "imgui/*.cpp",
+        "imgui/backends/imgui_impl_dx12.h",
+        "imgui/backends/imgui_impl_dx12.cpp",
+        "imgui/backends/imgui_impl_win32.h",
+        "imgui/backends/imgui_impl_win32.cpp",
+        "imgui/misc/cpp/imgui_stdlib.h",
+        "imgui/misc/cpp/imgui_stdlib.cpp",
     }
+
+    apply_imgui_config()
+
+    export "*"
+        apply_imgui_config()
+
+    export {}
 
 
 project "magic_enum"
@@ -52,6 +86,13 @@ project "magic_enum"
     files {
         "magic_enum/**.hpp",
     }
+
+    export "*"
+        includedirs {
+            "magic_enum",
+        }
+
+    export {}
 
 
 project "NvAPI"
@@ -82,3 +123,10 @@ project "TinyGLTF"
         "tinygltf/**.h",
         "tinygltf/**.cc",
     }
+
+    export "*"
+        includedirs {
+            "tinygltf",
+        }
+
+    export {}

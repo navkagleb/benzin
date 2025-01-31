@@ -1,7 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/system/window.hpp"
 
-#include <third_party/imgui/backends/imgui_impl_win32.h>
+#include <backends/imgui_impl_win32.h>
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/graphics/common.hpp"

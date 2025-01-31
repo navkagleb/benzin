@@ -1,8 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics2/imgui_pass.hpp"
 
-#include <third_party/imgui/backends/imgui_impl_dx12.h>
-#include <third_party/imgui/backends/imgui_impl_win32.h>
+#include <backends/imgui_impl_dx12.h>
+#include <backends/imgui_impl_win32.h>
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
@@ -74,24 +74,28 @@ namespace benzin
 
         ImGui::StyleColorsDark();
 
-        m_FontDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
-
         BenzinEnsure(ImGui_ImplWin32_Init(window.GetWin64Window()));
-        BenzinEnsure(ImGui_ImplDX12_Init(
-            m_Device.GetD3D12Device(),
-            CommandLineArgs::GetU32("FrameInFlightCount"),
-            (DXGI_FORMAT)CommandLineArgs::GetU32("BackBufferFormat"),
-            m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap(),
-            D3D12_CPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetCpuHandle() },
-            D3D12_GPU_DESCRIPTOR_HANDLE{ m_FontDescriptor.GetGpuHandle() }
-        ));
+
+        m_LegacySigleSrvDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
+
+        ImGui_ImplDX12_InitInfo imguiInitInfo;
+        imguiInitInfo.Device = m_Device.GetD3D12Device();
+        imguiInitInfo.CommandQueue = m_Device.GetGraphicsCommandQueue().GetD3D12CommandQueue();
+        imguiInitInfo.NumFramesInFlight = CommandLineArgs::GetU32("FrameInFlightCount");
+        imguiInitInfo.RTVFormat = (DXGI_FORMAT)CommandLineArgs::GetU32("BackBufferFormat");
+        imguiInitInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
+        imguiInitInfo.SrvDescriptorHeap = m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap();
+        imguiInitInfo.LegacySingleSrvCpuDescriptor.ptr = m_LegacySigleSrvDescriptor.GetCpuHandle();
+        imguiInitInfo.LegacySingleSrvGpuDescriptor.ptr = m_LegacySigleSrvDescriptor.GetGpuHandle();
+
+        BenzinEnsure(ImGui_ImplDX12_Init(&imguiInitInfo));
 
         {
             // Force call 'ImGui_ImplDX12_CreateDeviceObjects' to copy
-            // font descriptor from CPU descriptor heap to GPU descriptor heap
+            // m_LegacySigleSrvDescriptor from CPU descriptor heap to GPU descriptor heap
 
             ImGui_ImplDX12_CreateDeviceObjects();
-            m_Device.GetDescriptorManager().CopyToGpuResourceHeap(m_FontDescriptor);
+            m_Device.GetDescriptorManager().CopyToGpuResourceHeap(m_LegacySigleSrvDescriptor);
         }
 
         ImGuiTool::ms_Window = &window;
@@ -109,7 +113,7 @@ namespace benzin
         }
         m_Tools.clear();
 
-        m_Device.GetDescriptorManager().FreeDescriptor(m_FontDescriptor);
+        m_Device.GetDescriptorManager().FreeDescriptor(m_LegacySigleSrvDescriptor);
 
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
