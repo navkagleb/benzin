@@ -7,8 +7,8 @@
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
-#include "benzin/graphics/gpu_timer.hpp"
 #include "benzin/graphics/pso.hpp"
+#include "benzin/graphics/query_heap.hpp"
 #include "benzin/graphics/ray_tracing_pso.hpp"
 #include "benzin/graphics/resource.hpp"
 #include "benzin/graphics/sampler.hpp"
@@ -48,7 +48,6 @@ namespace benzin
         MakeUniquePtr(m_UnifiedRootSignature, *this);
         MakeUniquePtr(m_DescriptorManager, *this);
         MakeUniquePtr(m_GraphicsCommandQueue, *this);
-        MakeUniquePtr(m_GpuTimer, *this, GpuTimer::s_MaxGpuTimerCount); // #TODO: Add more timers
     }
 
     Device::~Device()
@@ -56,7 +55,6 @@ namespace benzin
         m_UnifiedRootSignature.reset();
         m_DescriptorManager.reset();
         m_GraphicsCommandQueue.reset();
-        m_GpuTimer.reset();
 
         ProcessDeferredReleaseQueues(true);
 
@@ -86,23 +84,22 @@ namespace benzin
 
     void Device::DeferredRelease(const Pso& pso)
     {
-        BenzinAssert(pso.GetD3D12PipelineState() != nullptr);
+        DeferredRelease(pso.GetD3D12PipelineState());
+    }
 
-        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, pso.GetD3D12PipelineState());
+    void Device::DeferredRelease(const QueryHeap& queryHeap)
+    {
+        DeferredRelease(queryHeap.GetD3D12QueryHeap());
     }
 
     void Device::DeferredRelease(const RayTracing_Pso& pso)
     {
-        BenzinAssert(pso.GetD3D12StateObject() != nullptr);
-
-        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, pso.GetD3D12StateObject());
+        DeferredRelease(pso.GetD3D12StateObject());
     }
 
     void Device::DeferredRelease(const Resource& resource)
     {
-        BenzinAssert(resource.GetD3D12Resource() != nullptr);
-
-        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, resource.GetD3D12Resource());
+        DeferredRelease(resource.GetD3D12Resource());
     }
 
     void Device::ProcessDeferredReleaseQueues(bool isForceRelease)
@@ -189,4 +186,10 @@ namespace benzin
         BenzinTrace(Logger::s_LineSeparator);
     }
 
-} // namespace benzin
+    void Device::DeferredRelease(ID3D12Object* d3d12Object)
+    {
+        BenzinAssert(d3d12Object != nullptr);
+        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12Object);
+    }
+
+}

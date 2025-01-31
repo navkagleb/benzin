@@ -3,9 +3,9 @@
 
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp>
 
 #include "sandbox/resources.hpp"
 
@@ -16,7 +16,8 @@ namespace sandbox
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
-        BenzinPushGpuEvent(commandList, "BackBufferCopy");
+        BenzinGpuEvent(commandList, "BackBufferCopy");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "BackBufferCopy");
 
         const auto& currentBackBuffer = ms_SwapChain->GetCurrentBackBuffer();
         const auto& imGuiTexture = ms_Resources->GetTexture(+Texture::ImGui);

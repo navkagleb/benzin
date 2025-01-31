@@ -11,6 +11,7 @@
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/gpu_timer.hpp"
 #include "benzin/graphics/texture.hpp"
+#include "benzin/graphics2/gpu_profiler.hpp"
 #include "benzin/system/key_event.hpp"
 #include "benzin/system/window.hpp"
 
@@ -361,9 +362,10 @@ namespace benzin
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
-        BenzinPushGpuEvent(commandList, "ImGuiPass");
+        BenzinGpuEvent(commandList, "ImGui");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "ImGui");
 
-        const auto& imGuiTexture = ms_Resources->GetTexture(m_ImGuiTextureIndex);
+        const auto& imGuiTexture = ms_Textures->Get(m_ImGuiTextureIndex);
 
         commandList.SetViewport(ms_WindowViewport);
         commandList.SetScissorRect(ms_WindowScissorRect);

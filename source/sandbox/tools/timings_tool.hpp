@@ -1,19 +1,12 @@
 #pragma once
 
-#include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
 #include <benzin/utility/time_utils.hpp>
 
-namespace benzin
-{
-
-    class Device;
-
-}
-
 namespace sandbox
 {
+
+    // TODO: Remove this shit
 
     template <benzin::EnumConcept TimingT>
     using Timings = std::array<std::chrono::microseconds, magic_enum::enum_count<TimingT>()>;
@@ -44,9 +37,8 @@ namespace sandbox
         using CpuTimings = Timings<CpuTimingT>;
         using GpuTimings = Timings<GpuTimingT>;
 
-        explicit TimingsTool(const benzin::Device& device)
+        TimingsTool()
             : ImGuiTool{ "TimingsTool" }
-            , m_Device{ device }
         {}
 
         void SetRunnerTimings(const RunnerTimings& timings) { m_RunnerTimings = timings; }
@@ -55,20 +47,10 @@ namespace sandbox
     private:
         void SpawnImGui() override
         {
-            for (const auto& [i, timing] : m_GpuTimings | std::views::enumerate)
-            {
-                timing = m_Device.GetGpuTimer().GetElapsedTime((uint32_t)i);
-            }
-
             SpawnImGuiWindow([this]
             {
                 SpawnImGuiTimings<RunnerTiming>("RunnerTimings", m_RunnerTimings);
                 SpawnImGuiTimings<CpuTimingT>("CpuTimings", m_CpuTimings);
-
-                {
-                    SpawnImGuiTimings<GpuTimingT>("GpuTimings", m_GpuTimings);
-                    SpawnImGuiTimingText("FullGpuFrame", m_Device.GetGpuTimer().GetElapsedTime(benzin::RenderPass::GetRegisteredRenderPassCount()));
-                }
             });
         }
 
@@ -92,8 +74,6 @@ namespace sandbox
         }
 
     private:
-        const benzin::Device& m_Device;
-
         RunnerTimings m_RunnerTimings{};
         CpuTimings m_CpuTimings{};
         GpuTimings m_GpuTimings{};

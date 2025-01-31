@@ -186,13 +186,6 @@ namespace sandbox
         m_RenderPasses[+RenderPasses::CopuToBackBuffer] = std::make_unique<CopyToBackBufferPass>();
 
         m_ImGuiPass = (benzin::ImGuiPass*)m_RenderPasses[+RenderPasses::ImGui].get();
-
-#if BENZIN_IS_ASSERTS_ENABLED
-        for (const auto renderPass : magic_enum::enum_values<RenderPasses>())
-        {
-            BenzinAssert(+renderPass == m_RenderPasses[+renderPass]->GetGpuTimerIndex());
-        }
-#endif
     }
 
     void SandboxRunner::InitTools()
@@ -220,7 +213,7 @@ namespace sandbox
             return +selectedTexture;
         });
 
-        m_TimingsTool = m_ImGuiManager->PushTool<TimingsTool>(*m_Device);
+        m_TimingsTool = m_ImGuiManager->PushTool<TimingsTool>();
 
         BenzinAssert(m_RenderSettingsTool != nullptr);
 

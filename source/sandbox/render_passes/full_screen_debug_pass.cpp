@@ -4,10 +4,10 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/const_buffer_pool.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
 #include "sandbox/resources.hpp"
@@ -58,7 +58,8 @@ namespace sandbox
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
-        BenzinPushGpuEvent(commandList, "FullScreenDebugPass");
+        BenzinGpuEvent(commandList, "FullScreenDebug");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "FullScreenDebug");
 
         commandList.SetViewport(ms_RenderViewport);
         commandList.SetScissorRect(ms_RenderScissorRect);

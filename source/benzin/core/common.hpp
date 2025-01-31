@@ -9,7 +9,7 @@ namespace benzin
     template <std::unsigned_integral T>
     inline constexpr auto g_InvalidUnsigned = std::numeric_limits<T>::max();
 
-    template <typename T> requires std::is_enum_v<T>
+    template <EnumConcept T>
     inline constexpr auto g_InvalidEnum = (T)g_InvalidUnsigned<std::underlying_type_t<T>>;
 
     template <std::unsigned_integral T>

@@ -10,10 +10,10 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/const_buffer_pool.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
 #include "sandbox/sandbox_render_settings.hpp"
@@ -182,16 +182,17 @@ namespace sandbox
         }
 
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinPushGpuEvent(commandList, "SigmaDenoiserPass");
 
         commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        BenzinGpuEvent(commandList, "SigmaDenoiser");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "SigmaDenoiser");
 
         const uint32_t lightCount = m_Scene.GetActiveLightCount();
         for (uint16_t sliceIndex = 0; sliceIndex < lightCount; ++sliceIndex)
         {
             if (lightCount != 1)
             {
-                BenzinPushGpuEvent(commandList, "Step");
+                BenzinGpuEvent(commandList, "Step");
             }
 
             commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer1, ms_ConstBufferPool->Allocate(m_PerLightConsts[sliceIndex]));
@@ -237,9 +238,10 @@ namespace sandbox
     void SigmaDenoiserPass::RunClassifyTilesPass(uint16_t sliceIndex) const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinPushGpuEvent(commandList, "ClassifyTiles");
 
         const auto& tiles = ms_Resources->GetTexture(+Texture::Sigma_Tiles);
+        BenzinGpuEvent(commandList, "ClassifyTiles");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "ClassifyTiles");
 
         {
             using enum joint::Rc_SigmaClassifyTiles;
@@ -262,9 +264,10 @@ namespace sandbox
     void SigmaDenoiserPass::RunSmoothTilesPass() const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinPushGpuEvent(commandList, "SmoothTiles");
 
         const auto& smoothTiles = ms_Resources->GetTexture(+Texture::Sigma_SmoothTiles);
+        BenzinGpuEvent(commandList, "SmoothTiles");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "SmoothTiles");
 
         {
             using enum joint::Rc_SigmaSmoothTiles;
@@ -285,10 +288,11 @@ namespace sandbox
     void SigmaDenoiserPass::RunBlurPass(uint16_t sliceIndex) const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinPushGpuEvent(commandList, "Blur");
 
         const auto& penumbra1 = ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra1);
         const auto& shadowTemp1 = ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp1);
+        BenzinGpuEvent(commandList, "Blur");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "Blur");
 
         {
             using enum joint::Rc_SigmaBlur;
@@ -315,12 +319,13 @@ namespace sandbox
     void SigmaDenoiserPass::RunPostBlurPass(bool isEnabled) const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinPushGpuEvent(commandList, "PostBlur");
 
         const auto& penumbra1 = ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra1);
         const auto& penumbra2 = ms_Resources->GetTexture(+Texture::Sigma_BlurredPenumbra2);
         const auto& shadowTemp1 = ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp1);
         const auto& shadowTemp2 = ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp2);
+        BenzinGpuEvent(commandList, "PostBlur");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "PostBlur");
 
         if (!isEnabled)
         {
@@ -364,10 +369,11 @@ namespace sandbox
     void SigmaDenoiserPass::RunTemporalStabilizationPass(bool isEnabled, uint16_t sliceIndex) const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinPushGpuEvent(commandList, "TemporalStabilization");
 
         const auto& shadowTemp2 = ms_Resources->GetTexture(+Texture::Sigma_BlurredShadowTemp2);
         const auto& shadow = ms_Resources->GetTexture(+Texture::Shadow);
+        BenzinGpuEvent(commandList, "TemporalStabilization");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "TemporalStabilization");
 
         if (!isEnabled)
         {

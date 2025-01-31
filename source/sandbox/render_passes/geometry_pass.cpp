@@ -8,9 +8,9 @@
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
 #include <shaders/joint/geometry_resources.hpp>
@@ -118,7 +118,8 @@ namespace sandbox
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
-        BenzinPushGpuEvent(commandList, "GeometryPass");
+        BenzinGpuEvent(commandList, "Geometry");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "Geometry");
 
         const auto& albedoAndRoughness = ms_Resources->GetTexture(+Texture::AlbedoAndRoughness);
         const auto& emissiveAndMetallic = ms_Resources->GetTexture(+Texture::EmissiveAndMetallic);
@@ -201,7 +202,7 @@ namespace sandbox
         }
 
         const std::string_view meshName = meshRegistry.get<std::string>(meshHandle);
-        BenzinPushGpuEvent(commandList, meshName);
+        BenzinGpuEvent(commandList, meshName);
 
         const auto& mesh = meshRegistry.get<benzin::Mesh>(meshHandle);
         const auto& meshGpuStorage = meshRegistry.get<benzin::MeshGpuStorage>(meshHandle);

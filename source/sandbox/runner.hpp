@@ -13,13 +13,13 @@ namespace benzin
     class ConstBufferPool;
     class Device;
     class Event;
+    class GpuProfiler;
     class ImGuiManager;
     class ImGuiPass;
     class PerformanceOverlayTool;
     class PsoManager;
     class RayTracing_Scene;
     class RenderPass;
-    class RenderResources;
     class RenderSettingsTool;
     class RenderViewportTool;
     class Scene;
@@ -63,6 +63,7 @@ namespace sandbox
         std::unique_ptr<benzin::SwapChain> m_SwapChain;
 
         std::unique_ptr<benzin::ShaderManager> m_ShaderManager;
+        std::unique_ptr<benzin::GpuProfiler> m_GpuProfiler;
         std::unique_ptr<benzin::PsoManager> m_PsoManager;
         std::unique_ptr<benzin::ConstBufferPool> m_ConstBufferPool;
 
@@ -77,7 +78,8 @@ namespace sandbox
         std::unique_ptr<benzin::Scene> m_Scene;
         std::unique_ptr<benzin::RayTracing_Scene> m_RayTracingScene;
 
-        std::unique_ptr<benzin::RenderResources> m_RenderResources;
+        std::unique_ptr<benzin::RenderBuffers> m_RenderBuffers;
+        std::unique_ptr<benzin::RenderTextures> m_RenderTextures;
         std::unique_ptr<benzin::RenderSettings> m_RenderSettings;
         std::vector<std::unique_ptr<benzin::RenderPass>> m_RenderPasses;
         benzin::ImGuiPass* m_ImGuiPass = nullptr;

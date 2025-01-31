@@ -1,6 +1,10 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/command_list.hpp"
 
+// Ref: https://devblogs.microsoft.com/pix/winpixeventruntime/
+#define USE_PIX
+#include <pix3.h>
+
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/core/memory_writer.hpp"
@@ -9,6 +13,7 @@
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/pso.hpp"
+#include "benzin/graphics/query_heap.hpp"
 #include "benzin/graphics/ray_tracing_acceleration_structures.hpp"
 #include "benzin/graphics/ray_tracing_pso.hpp"
 #include "benzin/graphics/ray_tracing_shader_table.hpp"
@@ -238,6 +243,30 @@ namespace benzin
     }
 
     void GraphicsCommandList::SetCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
+
+    void GraphicsCommandList::SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index)
+    {
+        BenzinAssert(timestampQueryHeap.GetD3D12QueryHeap() != nullptr);
+        BenzinAssert(index < timestampQueryHeap.GetCount());
+
+        m_D3D12GraphicsCommandList->EndQuery(timestampQueryHeap.GetD3D12QueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP, index);
+    }
+
+    void GraphicsCommandList::ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffset)
+    {
+        BenzinAssert(timestampQueryHeap.GetD3D12QueryHeap() != nullptr);
+        BenzinAssert(readbackBuffer.GetD3D12Resource() != nullptr);
+
+        m_D3D12GraphicsCommandList->ResolveQueryData(
+            timestampQueryHeap.GetD3D12QueryHeap(),
+            D3D12_QUERY_TYPE_TIMESTAMP,
+            0,
+            timestampQueryHeap.GetCount(),
+            readbackBuffer.GetD3D12Resource(),
+            readbackBufferOffset
+        );
+    }
+
     {
         m_D3D12GraphicsCommandList->SetComputeRootConstantBufferView(+rootParameter, gpuVirtualAddress);
         m_D3D12GraphicsCommandList->SetGraphicsRootConstantBufferView(+rootParameter, gpuVirtualAddress);
@@ -522,6 +551,19 @@ namespace benzin
 
         auto* d3d12CommandList = m_CommandList.GetD3D12GraphicsCommandList();
         d3d12CommandList->ResourceBarrier((uint32_t)d3d12Barriers.size(), d3d12Barriers.data());
+    }
+
+    // ScopedGpuEvent
+
+    ScopedGpuEvent::ScopedGpuEvent(GraphicsCommandList& commandList, std::string_view name)
+        : m_D3D12GraphicsCommandList{ commandList.GetD3D12GraphicsCommandList() }
+    {
+        PIXBeginEvent(m_D3D12GraphicsCommandList, PIX_COLOR_DEFAULT, "%s", name.data());
+    }
+
+    ScopedGpuEvent::~ScopedGpuEvent()
+    {
+        PIXEndEvent(m_D3D12GraphicsCommandList);
     }
 
 }

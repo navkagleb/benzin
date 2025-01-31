@@ -10,18 +10,19 @@
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics2/const_buffer_pool.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp>
+#include <benzin/graphics2/gpu_profiler_pass.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
-#include <benzin/graphics2/render_pass.hpp>
 #include <benzin/graphics2/shader_manager.hpp>
 #include <benzin/system/input.hpp>
 #include <benzin/system/key_event.hpp>
 #include <benzin/system/window.hpp>
 #include <benzin/tools/fly_camera_tool.hpp>
+#include <benzin/tools/gpu_profiler_tool.hpp>
 #include <benzin/tools/performance_overlay_tool.hpp>
 #include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
@@ -55,15 +56,27 @@ namespace sandbox
         benzin::MakeUniquePtr(m_SwapChain, benzin::SwapChainCreation{ "MainSwapChain", *m_MainWindow, *m_Device });
 
         benzin::MakeUniquePtr(m_ShaderManager);
+        benzin::MakeUniquePtr(m_GpuProfiler, *m_Device);
         benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager, (uint32_t)magic_enum::enum_count<Pso>());
         benzin::MakeUniquePtr(m_ConstBufferPool, *m_Device);
 
         benzin::MakeUniquePtr(m_Scene, *m_Device, m_AnimationTimer);
         benzin::MakeUniquePtr(m_RayTracingScene, *m_Device, *m_Scene);
 
-        benzin::MakeUniquePtr(m_RenderResources, *m_Device);
+        benzin::MakeUniquePtr(m_RenderBuffers, *m_Device);
+        benzin::MakeUniquePtr(m_RenderTextures, *m_Device);
         benzin::MakeUniquePtr(m_RenderSettings);
-        benzin::RenderPass::SetContext(*m_Device, *m_SwapChain, *m_PsoManager, *m_ConstBufferPool, *m_RenderResources, *m_RenderSettings);
+
+        benzin::RenderPass::SetContext(
+            *m_Device,
+            *m_SwapChain,
+            *m_GpuProfiler,
+            *m_PsoManager,
+            *m_ConstBufferPool,
+            *m_RenderBuffers,
+            *m_RenderTextures,
+            *m_RenderSettings
+        );
 
         benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device);
         m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderResources, m_Scene->GetCamera());
@@ -132,6 +145,11 @@ namespace sandbox
 
             BeginFrame();
             {
+                auto& commandList = m_Device->GetGraphicsCommandQueue().GetCommandList();
+
+                BenzinGpuEvent(commandList, "Frame");
+                BenzinGpuProfile(*m_GpuProfiler, commandList, "Frame");
+
                 OnUpdate();
                 OnRender();
             }
@@ -142,6 +160,8 @@ namespace sandbox
     void Runner::RunZeroFrame()
     {
         BenzinLogTimeOnScopeExit("Runner::RunZeroFrame");
+
+        m_RenderPasses.push_back(std::make_unique<benzin::GpuProfilerPass>());
 
         // Force call window resize on render passes
         benzin::RenderPass::SetWindowViewport(m_SwapChain->GetWidth(), m_SwapChain->GetHeight());
@@ -236,6 +256,7 @@ namespace sandbox
         BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::BeginFrame]);
 
         m_Device->GetGraphicsCommandQueue().ResetCommandList();
+        m_GpuProfiler->BeginFrame(*m_Device);
         m_ConstBufferPool->BeginFrame();
     }
 
@@ -243,9 +264,8 @@ namespace sandbox
     {
         BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::EndFrame]);
 
-        m_Device->GetGpuTimer().ResolveTimestamps(m_Device->GetCpuFrameIndex());
         m_Device->GetGraphicsCommandQueue().SubmitCommandList();
-        
+
         const bool isResized = m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
         if (isResized)
         {
@@ -273,8 +293,10 @@ namespace sandbox
             }
         }
 
-        m_ShaderManager->CheckForNewShader();
         m_Device->ProcessDeferredReleaseQueues();
+
+        m_GpuProfiler->EndFrame();
+        m_ShaderManager->CheckForNewShader();
     }
 
     void Runner::OnUpdate()
@@ -307,9 +329,6 @@ namespace sandbox
     void Runner::OnRender()
     {
         BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::OnRender]);
-        BenzinPushGpuEvent(m_Device->GetGraphicsCommandQueue().GetCommandList(), "RenderPasses");
-
-        const benzin::ScopedGpuGrabTimer gpuFrameTimer{ m_Device->GetGpuTimer(), benzin::RenderPass::GetRegisteredRenderPassCount() };
 
         for (auto& renderPass : m_RenderPasses)
         {
@@ -321,10 +340,8 @@ namespace sandbox
 
             {
                 const auto scopeCpuTimer = renderPass->GrabCpuRenderTime();
-                const auto scopeGpuTimer = renderPass->GrabGpuRenderTime();
 
                 BenzinUnused(scopeCpuTimer);
-                BenzinUnused(scopeGpuTimer);
 
                 renderPass->OnRender();
             }

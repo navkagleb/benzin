@@ -6,9 +6,9 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
 #include <shaders/joint/deferred_lighting_resources.hpp>
@@ -71,7 +71,8 @@ namespace sandbox
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
-        BenzinPushGpuEvent(commandList, "DeferredLightingPass");
+        BenzinGpuEvent(commandList, "DeferredLighting");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "DeferredLighting");
 
         const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 

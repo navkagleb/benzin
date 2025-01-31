@@ -9,6 +9,7 @@ namespace benzin
     class Buffer;
     class Descriptor;
     class Pso;
+    class QueryHeap;
     class RayTracing_AcclerationStructure;
     class RayTracing_Pso;
     class RayTracing_ShaderTable;
@@ -56,6 +57,10 @@ namespace benzin
 
         void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
 
+        // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d12/timing
+        // D3D12_COMMAND_LIST_TYPE_DIRECT and D3D12_COMMAND_LIST_TYPE_COMPUTE always support timestamps
+        void SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index);
+        void ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffset);
         void SetViewport(const Viewport& viewport);
         void SetScissorRect(const ScissorRect& scissorRect);
 
@@ -121,6 +126,16 @@ namespace benzin
         bool m_IsScoped = false;
     };
 
+    class ScopedGpuEvent
+    {
+    public:
+        explicit ScopedGpuEvent(GraphicsCommandList& commandList, std::string_view name);
+        ~ScopedGpuEvent();
+
+    private:
+        ID3D12GraphicsCommandList* m_D3D12GraphicsCommandList = nullptr;
+    };
+
 }
 
 #define BenzinMakeResourceBarriers(commandList, ...) \
@@ -139,3 +154,5 @@ namespace benzin
         true, \
     }
 
+#define BenzinGpuEvent(commandList, name) \
+    const benzin::ScopedGpuEvent BenzinUniqueVariableName(_scopedGpuEvent){ commandList, name }

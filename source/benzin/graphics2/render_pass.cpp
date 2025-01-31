@@ -117,20 +117,10 @@ namespace benzin
 
     // RenderPass
 
-    static uint32_t m_RenderPassCount = 0;
-
-    RenderPass::RenderPass()
-        : m_GpuTimerIndex{ m_RenderPassCount++ }
-    {}
-
-    uint32_t RenderPass::GetRegisteredRenderPassCount()
-    {
-        return m_RenderPassCount;
-    }
-
     void RenderPass::SetContext(
         Device& device,
         SwapChain& swapChain,
+        GpuProfiler& gpuProfiler,
         PsoManager& psoManager,
         ConstBufferPool& constBufferPool,
         RenderResources& resources,
@@ -139,6 +129,7 @@ namespace benzin
     {
         ms_Device = &device;
         ms_SwapChain = &swapChain;
+        ms_GpuProfiler = &gpuProfiler;
         ms_PsoManager = &psoManager;
         ms_ConstBufferPool = &constBufferPool;
         ms_Resources = &resources;
@@ -173,12 +164,6 @@ namespace benzin
     ScopedGrabTimer RenderPass::GrabCpuRenderTime()
     {
         return ScopedGrabTimer{ m_CpuRenderTime };
-    }
-
-    ScopedGpuGrabTimer RenderPass::GrabGpuRenderTime()
-    {
-        BenzinAssert(ms_Device != nullptr);
-        return ScopedGpuGrabTimer{ ms_Device->GetGpuTimer(), m_GpuTimerIndex };
     }
 
 }

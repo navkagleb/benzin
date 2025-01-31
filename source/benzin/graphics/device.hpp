@@ -6,9 +6,9 @@ namespace benzin
 {
 
     class Backend;
-    class GpuTimer;
     class GraphicsCommandQueue;
     class Pso;
+    class QueryHeap;
     class RayTracing_Pso;
     class Resource;
     class UnifiedRootSignature;
@@ -47,9 +47,6 @@ namespace benzin
         auto& GetDescriptorManager() { return *m_DescriptorManager; }
         auto& GetGraphicsCommandQueue() { return *m_GraphicsCommandQueue; }
 
-        auto& GetGpuTimer() { return *m_GpuTimer; }
-        const auto& GetGpuTimer() const { return *m_GpuTimer; }
-
         auto GetCpuFrameIndex() const { return m_CpuFrameIndex; }
         auto GetCompletedGpuFrameIndex() const { return m_CompletedGpuFrameIndex; }
         auto GetActiveFrameIndex() const { return m_ActiveFrameIndex; }
@@ -60,12 +57,15 @@ namespace benzin
 
         void DeferredRelease(const Descriptor& descriptor);
         void DeferredRelease(const Pso& pso);
+        void DeferredRelease(const QueryHeap& queryHeap);
         void DeferredRelease(const RayTracing_Pso& pso);
         void DeferredRelease(const Resource& resource);
         void ProcessDeferredReleaseQueues(bool isForceRelease = false); // Must be called after 'SwapChain::OnFlip' because 'm_CompletedGpuFrameIndex' will be updated there
 
     private:
         void CheckFeaturesSupport();
+
+        void DeferredRelease(ID3D12Object* d3d12Object);
 
     private:
         Backend& m_Backend;
@@ -77,7 +77,6 @@ namespace benzin
         std::unique_ptr<UnifiedRootSignature> m_UnifiedRootSignature;
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
         std::unique_ptr<GraphicsCommandQueue> m_GraphicsCommandQueue;
-        std::unique_ptr<GpuTimer> m_GpuTimer;
 
         uint64_t m_CpuFrameIndex = 0;
         uint64_t m_CompletedGpuFrameIndex = 0;

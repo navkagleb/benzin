@@ -7,6 +7,7 @@ namespace benzin
 
     class ConstBufferPool;
     class Device;
+    class GpuProfiler;
     class PsoManager;
     class ScopedGpuGrabTimer;
     class SwapChain;
@@ -80,15 +81,14 @@ namespace benzin
     class RenderPass
     {
     public:
-        RenderPass();
+        RenderPass() = default;
         virtual ~RenderPass() = default;
 
     public:
-        static uint32_t GetRegisteredRenderPassCount();
-
         static void SetContext(
             Device& device,
             SwapChain& swapChain,
+            GpuProfiler& gpuProfiler,
             PsoManager& psoManager,
             ConstBufferPool& constBufferPool,
             RenderResources& resources,
@@ -98,10 +98,8 @@ namespace benzin
         static void SetWindowViewport(uint32_t width, uint32_t height);
         static void SetRenderViewport(uint32_t width, uint32_t height);
 
-        auto GetGpuTimerIndex() const { return m_GpuTimerIndex; }
-        auto IsRenderingEnabled() const { return m_IsRenderingEnabled; }
-
         auto GetCpuRenderTime() const { return m_CpuRenderTime; }
+        auto IsRenderingEnabled() const { return m_IsRenderingEnabled; }
 
         virtual bool IsDependentOnViewport() const = 0;
 
@@ -119,6 +117,7 @@ namespace benzin
     protected:
         static inline Device* ms_Device = nullptr;
         static inline SwapChain* ms_SwapChain = nullptr;
+        static inline GpuProfiler* ms_GpuProfiler = nullptr;
         static inline PsoManager* ms_PsoManager = nullptr;
         static inline ConstBufferPool* ms_ConstBufferPool = nullptr;
         static inline RenderResources* ms_Resources = nullptr;
@@ -138,10 +137,9 @@ namespace benzin
         static uint32_t GetRenderViewportHeight() { return (uint32_t)ms_RenderViewport.Height; }
         static DirectX::XMUINT2 GetRenderResolution() { return { GetRenderViewportWidth(), GetRenderViewportHeight() }; };
 
-        uint32_t m_GpuTimerIndex = g_InvalidUnsigned<uint32_t>;
-        bool m_IsRenderingEnabled = true;
-
         std::chrono::microseconds m_CpuRenderTime = std::chrono::microseconds::zero();
+
+        bool m_IsRenderingEnabled = true;
     };
 
 }

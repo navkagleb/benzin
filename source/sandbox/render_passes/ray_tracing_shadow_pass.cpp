@@ -9,12 +9,12 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/ray_tracing_pso.hpp>
 #include <benzin/graphics/ray_tracing_shader_table.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/const_buffer_pool.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
 #include "sandbox/sandbox_render_settings.hpp"
@@ -95,7 +95,9 @@ namespace sandbox
     void RayTracing_ShadowPass::OnRender() const
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinPushGpuEvent(commandList, "RayTracingShadowPass");
+
+        BenzinGpuEvent(commandList, "RayTracing_Shadow");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "RayTracing_Shadow");
 
         const auto& pso = ms_PsoManager->GetRayTracingPso(+Pso::ShadowPass);
         const auto& noisyPenumbra = ms_Resources->GetTexture(+Texture::NoisyPenumbra);

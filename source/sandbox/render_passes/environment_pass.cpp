@@ -5,8 +5,8 @@
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_timer.hpp>
 #include <benzin/graphics/texture.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
 #include <shaders/joint/environment_resources.hpp>
@@ -62,7 +62,8 @@ namespace sandbox
     {
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
-        BenzinPushGpuEvent(commandList, "EnvironmentPass");
+        BenzinGpuEvent(commandList, "Environment");
+        BenzinGpuProfile(*ms_GpuProfiler, commandList, "Environment");
 
         const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
         const auto& depthStencilBuffer = ms_Resources->GetTexture(+Texture::DepthStencil);
