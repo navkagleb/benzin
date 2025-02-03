@@ -10,10 +10,18 @@
 #include <benzin/graphics/query_heap.hpp>
 #include <benzin/utility/time_utils.hpp>
 
-#include <benzin/core/logger.hpp>
-
 namespace benzin
 {
+
+    static uint8_t CalcBeginTimestampIndex(uint8_t readbackIndex)
+    {
+        return readbackIndex * 2;
+    }
+
+    static uint8_t CalcEndTimestampIndex(uint8_t readbackIndex)
+    {
+        return readbackIndex * 2 + 1;
+    }
 
     // GpuProfiler
 
@@ -55,7 +63,7 @@ namespace benzin
         GetTimestampsFromReadbackBuffer();
     }
 
-    uint32_t GpuProfiler::AllocateEvent(std::string_view name)
+    uint8_t GpuProfiler::AllocateEvent(std::string_view name)
     {
         BenzinEnsure(m_EventInfos.size() < ms_MaxEventCount);
 
@@ -65,23 +73,20 @@ namespace benzin
             prevEvent.IsParent = prevEvent.Depth < m_CurrentDepth;
         }
 
-        auto&& [it, isNew] = m_EventInfos.try_emplace(name, (uint8_t)m_EventInfos.size(), m_CurrentDepth);
+        const auto readbackIndex = (uint8_t)m_EventInfos.size();
+        auto&& [it, _] = m_EventInfos.try_emplace(name, readbackIndex, m_CurrentDepth);
 
-        auto& eventData = (*it).second;
-        if (eventData.SortIndex < m_SortCounter)
-        {
-            eventData.SortIndex = m_SortCounter;
-        }
+        auto& eventInfo = (*it).second;
+        eventInfo.SortIndex = std::max(eventInfo.SortIndex, m_SortCounter++);
 
-        m_SortCounter++;
         m_PrevEventName = name;
 
-        return eventData.ReadbackIndex;
+        return eventInfo.ReadbackIndex;
     }
 
-    uint32_t GpuProfiler::GetBeginTimestampIndex(uint32_t eventIndex)
+    uint8_t GpuProfiler::GetBeginTimestampIndex(uint8_t eventIndex)
     {
-        const uint32_t index = eventIndex * 2;
+        const auto index = CalcBeginTimestampIndex(eventIndex);
 
         m_ProfiledTimestamps[index] = true;
         m_CurrentDepth++;
@@ -89,9 +94,9 @@ namespace benzin
         return index;
     }
 
-    uint32_t GpuProfiler::GetEndTimestampIndex(uint32_t eventIndex)
+    uint8_t GpuProfiler::GetEndTimestampIndex(uint8_t eventIndex)
     {
-        const uint32_t index = eventIndex * 2 + 1;
+        const auto index = CalcEndTimestampIndex(eventIndex);
 
         m_ProfiledTimestamps[index] = true;
         m_CurrentDepth--;
@@ -101,11 +106,11 @@ namespace benzin
 
     void GpuProfiler::ForceProfileUnprofiledTimestamps(const UnprofiledTimestampCallback& callback)
     {
-        for (const uint32_t timestampIndex : std::views::iota(0u, ms_MaxTimestampCount))
+        for (uint8_t i = 0; i < ms_MaxTimestampCount; ++i)
         {
-            if (!m_ProfiledTimestamps[timestampIndex])
+            if (!m_ProfiledTimestamps[i])
             {
-                callback(timestampIndex);
+                callback(i);
             }
         }
     }
@@ -122,37 +127,44 @@ namespace benzin
         BenzinEnsure(m_ReadbackBuffer->GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&timestamps)));
         BenzinExecuteOnScopeExit([this] { m_ReadbackBuffer->GetD3D12Resource()->Unmap(0, nullptr); });
 
-        m_SortedEvents.clear();
-        m_SortedEvents.reserve(m_EventInfos.size());
+        const bool isResized = m_SortedEvents.size() != m_EventInfos.size();
+        if (isResized)
+        {
+            m_SortedEvents.resize(m_EventInfos.size());
+        }
 
         for (auto& [name, eventInfo] : m_EventInfos)
         {
-            auto& readyEvent = m_SortedEvents.emplace_back();
-            readyEvent.m_Name = name;
-            readyEvent.m_Depth = eventInfo.Depth;
-            readyEvent.m_IsParent = eventInfo.IsParent;
-            readyEvent.m_SortIndex = eventInfo.SortIndex;
+            auto& sortEvent = m_SortedEvents[eventInfo.SortIndex];
 
-            const uint64_t beginTimestamp = timestamps[eventInfo.ReadbackIndex * 2];
-            const uint64_t endTimeStamp = timestamps[eventInfo.ReadbackIndex * 2 + 1];
-
-            if (endTimeStamp < beginTimestamp)
+            if (isResized)
             {
-                readyEvent.m_Us = std::chrono::microseconds::zero();
+                sortEvent.m_Name = name;
+                sortEvent.m_Depth = eventInfo.Depth;
+                sortEvent.m_IsParent = eventInfo.IsParent;
+            }
+
+            const auto beginTimestampIndex = CalcBeginTimestampIndex(eventInfo.ReadbackIndex);
+            const auto endTimestampIndex = CalcEndTimestampIndex(eventInfo.ReadbackIndex);
+
+            if (!m_ProfiledTimestamps[beginTimestampIndex] || !m_ProfiledTimestamps[endTimestampIndex])
+            {
+                sortEvent.m_Us = std::chrono::microseconds::zero();
             }
             else
             {
-                const std::chrono::duration<double> diff{ (endTimeStamp - beginTimestamp) * m_InverseFrequency };
-                readyEvent.m_Us = std::chrono::round<std::chrono::microseconds>(diff);
+                const auto beginTimestamp = timestamps[beginTimestampIndex];
+                const auto endTimestamp = timestamps[endTimestampIndex];
+
+                const std::chrono::duration<double> diff{ (endTimestamp - beginTimestamp) * m_InverseFrequency};
+                sortEvent.m_Us = std::chrono::round<std::chrono::microseconds>(diff);
             }
         }
-
-        std::ranges::sort(m_SortedEvents, {}, &Event::m_SortIndex);
     }
 
     // ScopedGpuProfileEvent
 
-    ScopedGpuProfileEvent::ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, uint32_t eventIndex)
+    ScopedGpuProfileEvent::ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, uint8_t eventIndex)
         : m_GpuProfiler{ gpuProfiler }
         , m_CommandList{ commandList }
         , m_EventIndex{ eventIndex }

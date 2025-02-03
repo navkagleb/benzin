@@ -26,10 +26,9 @@ namespace benzin
             std::chrono::microseconds m_Us = std::chrono::microseconds::zero();
             uint8_t m_Depth : 7 = 0;
             uint8_t m_IsParent : 1 = false;
-            uint8_t m_SortIndex = 0;
         };
 
-        using UnprofiledTimestampCallback = std::function<void(uint32_t timestampIndex)>;
+        using UnprofiledTimestampCallback = std::function<void(uint8_t timestampIndex)>;
 
         explicit GpuProfiler(Device& device);
         ~GpuProfiler();
@@ -46,10 +45,10 @@ namespace benzin
         void BeginFrame(const Device& device);
         void EndFrame();
 
-        uint32_t AllocateEvent(std::string_view name);
+        uint8_t AllocateEvent(std::string_view name);
 
-        uint32_t GetBeginTimestampIndex(uint32_t eventIndex);
-        uint32_t GetEndTimestampIndex(uint32_t eventIndex);
+        uint8_t GetBeginTimestampIndex(uint8_t eventIndex);
+        uint8_t GetEndTimestampIndex(uint8_t eventIndex);
 
         void ForceProfileUnprofiledTimestamps(const UnprofiledTimestampCallback& callback);
 
@@ -65,8 +64,8 @@ namespace benzin
             uint8_t SortIndex = 0;
         };
 
-        static constexpr uint32_t ms_MaxTimestampCount = std::numeric_limits<uint8_t>::max();
-        static constexpr uint32_t ms_MaxEventCount = ms_MaxTimestampCount / 2;
+        static constexpr uint8_t ms_MaxTimestampCount = std::numeric_limits<uint8_t>::max();
+        static constexpr uint8_t ms_MaxEventCount = ms_MaxTimestampCount / 2;
 
         double m_InverseFrequency = 0.0;
 
@@ -90,18 +89,18 @@ namespace benzin
     class ScopedGpuProfileEvent
     {
     public:
-        ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, uint32_t eventIndex);
+        ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, uint8_t eventIndex);
         ~ScopedGpuProfileEvent();
 
     private:
         GpuProfiler& m_GpuProfiler;
         GraphicsCommandList& m_CommandList;
 
-        const uint32_t m_EventIndex;
+        const uint8_t m_EventIndex;
     };
 
 }
 
 #define BenzinGpuProfile(gpuProfiler, commandList, name) \
-    const uint32_t BenzinUniqueVariableName(_gpuProfileEventIndex) = (gpuProfiler).AllocateEvent(name); \
+    const auto BenzinUniqueVariableName(_gpuProfileEventIndex) = (gpuProfiler).AllocateEvent(name); \
     const benzin::ScopedGpuProfileEvent BenzinUniqueVariableName(_scopedGpuProfileEvent){ gpuProfiler, commandList, BenzinUniqueVariableName(_gpuProfileEventIndex) }
