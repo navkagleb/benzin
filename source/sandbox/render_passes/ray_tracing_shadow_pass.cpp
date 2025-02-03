@@ -1,12 +1,10 @@
 #include "sandbox/bootstrap.hpp"
 #include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
 
-#include <benzin/core/asserter.hpp>
+#include <benzin/core/profiler.hpp>
 #include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
-#include <benzin/graphics/backend.hpp>
-#include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/ray_tracing_pso.hpp>
@@ -94,9 +92,9 @@ namespace sandbox
 
     void RayTracing_ShadowPass::OnRender() const
     {
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        BenzinProfile();
 
-        BenzinGpuEvent(commandList, "RayTracing_Shadow");
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "RayTracing_Shadow");
 
         const auto& pso = ms_PsoManager->GetRayTracingPso(+Pso::ShadowPass);

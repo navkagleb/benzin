@@ -98,7 +98,6 @@ namespace benzin
         static void SetWindowViewport(uint32_t width, uint32_t height);
         static void SetRenderViewport(uint32_t width, uint32_t height);
 
-        auto GetCpuRenderTime() const { return m_CpuRenderTime; }
         auto IsRenderingEnabled() const { return m_IsRenderingEnabled; }
 
         virtual bool IsDependentOnViewport() const = 0;
@@ -110,9 +109,6 @@ namespace benzin
         virtual void OnUpdate() {}
         virtual void OnUpdate(const TickTimer& tickTimer);
         virtual void OnRender() const = 0;
-
-        [[nodiscard]] ScopedGrabTimer GrabCpuRenderTime();
-        [[nodiscard]] ScopedGpuGrabTimer GrabGpuRenderTime();
 
     protected:
         static inline Device* ms_Device = nullptr;
@@ -136,8 +132,6 @@ namespace benzin
         static uint32_t GetRenderViewportWidth() { return (uint32_t)ms_RenderViewport.Width; }
         static uint32_t GetRenderViewportHeight() { return (uint32_t)ms_RenderViewport.Height; }
         static DirectX::XMUINT2 GetRenderResolution() { return { GetRenderViewportWidth(), GetRenderViewportHeight() }; };
-
-        std::chrono::microseconds m_CpuRenderTime = std::chrono::microseconds::zero();
 
         bool m_IsRenderingEnabled = true;
     };

@@ -8,7 +8,7 @@ namespace benzin
     class IntervalTimer
     {
     public:
-        using Callback = std::function<void()>;
+        using Callback = std::function<void(uint32_t frameCount)>;
 
         explicit IntervalTimer(std::chrono::microseconds interval);
 
@@ -20,7 +20,9 @@ namespace benzin
 
     private:
         const std::chrono::microseconds m_Interval{};
+
         std::chrono::microseconds m_AccumulatedInterval{};
+        uint32_t m_AccumulatedFrameCount = 0;
 
         std::vector<Callback> m_Callbacks;
     };

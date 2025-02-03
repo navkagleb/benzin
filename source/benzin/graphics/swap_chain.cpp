@@ -2,6 +2,7 @@
 #include "benzin/graphics/swap_chain.hpp"
 
 #include "benzin/core/asserter.hpp"
+#include "benzin/core/profiler.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
@@ -98,7 +99,7 @@ namespace benzin
         }
 
         {
-            BenzinGrabTimeOnScopeExit(m_PresentTime);
+            BenzinScopeProfile("SwapChain Present");
             BenzinEnsure(m_DxgiSwapChain->Present(isVerticalSyncEnabled, 0));
         }
 
@@ -108,7 +109,7 @@ namespace benzin
             if (cpuFrameIndex - gpuFrameIndex >= CommandLineArgs::GetU32("FrameInFlightCount"))
             {
                 {
-                    BenzinGrabTimeOnScopeExit(m_GpuWaitTime);
+                    BenzinScopeProfile("SwapChain WaitForGpu");
 
                     const uint64_t gpuFrameIndexToWait = cpuFrameIndex - CommandLineArgs::GetU32("FrameInFlightCount") + 1;
                     m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
@@ -117,10 +118,6 @@ namespace benzin
                 // 'm_FrameFence' completed value may differ from 'gpuFrameIndexToWait'
                 // Therefore, save 'm_FrameFence' completed value because it's may be updated during the waiting time
                 gpuFrameIndex = m_FrameFence->GetCompletedValue();
-            }
-            else
-            {
-                m_GpuWaitTime = std::chrono::microseconds::zero();
             }
         }
 

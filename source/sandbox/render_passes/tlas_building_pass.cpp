@@ -1,6 +1,7 @@
 #include "sandbox/bootstrap.hpp"
 #include "sandbox/render_passes/tlas_building_pass.hpp"
 
+#include <benzin/core/profiler.hpp>
 #include <benzin/engine/ray_tracing_scene.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/command_queue.hpp>
@@ -18,11 +19,11 @@ namespace sandbox
 
     void TlasBuildingPass::OnRender() const
     {
+        BenzinProfile();
+
         // Before updating TopLevel AccelerationStructure the TransformComponents must be updated
 
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-
-        BenzinGpuEvent(commandList, "TlasBuilding");
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "TlasBuilding");
 
         const uint64_t tlasGpuAddress = m_RayTracingScene.BuildTlas();

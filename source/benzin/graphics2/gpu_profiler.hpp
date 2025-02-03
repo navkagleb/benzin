@@ -8,26 +8,11 @@ namespace benzin
     class GraphicsCommandList;
     class QueryHeap;
 
+    struct ProfileEvent;
+
     class GpuProfiler
     {
     public:
-        class Event
-        {
-        public:
-            friend class GpuProfiler;
-
-            auto GetName() const { return m_Name; }
-            auto GetUs() const { return m_Us; }
-            auto GetDepth() const { return m_Depth; }
-            auto IsParent() const { return m_IsParent; }
-
-        private:
-            std::string_view m_Name;
-            std::chrono::microseconds m_Us = std::chrono::microseconds::zero();
-            uint8_t m_Depth : 7 = 0;
-            uint8_t m_IsParent : 1 = false;
-        };
-
         using UnprofiledTimestampCallback = std::function<void(uint8_t timestampIndex)>;
 
         explicit GpuProfiler(Device& device);
@@ -39,7 +24,7 @@ namespace benzin
 
         auto GetResolveReadbackBufferOffset() const { return m_ResolveReadbackBufferOffset; }
 
-        auto GetSortedEvents() const { return std::span<const Event>{ m_SortedEvents }; }
+        std::span<const ProfileEvent> GetSortedEvents() const;
 
     public:
         void BeginFrame(const Device& device);
@@ -78,7 +63,7 @@ namespace benzin
         std::bitset<ms_MaxTimestampCount> m_ProfiledTimestamps;
 
         std::unordered_map<std::string_view, EventInfo> m_EventInfos;
-        std::vector<Event> m_SortedEvents;
+        std::vector<ProfileEvent> m_SortedEvents;
 
         uint8_t m_SortCounter = 0;
         uint8_t m_CurrentDepth = 0;
@@ -102,5 +87,7 @@ namespace benzin
 }
 
 #define BenzinGpuProfile(gpuProfiler, commandList, name) \
+    BenzinGpuEvent(commandList, name); \
+    \
     const auto BenzinUniqueVariableName(_gpuProfileEventIndex) = (gpuProfiler).AllocateEvent(name); \
     const benzin::ScopedGpuProfileEvent BenzinUniqueVariableName(_scopedGpuProfileEvent){ gpuProfiler, commandList, BenzinUniqueVariableName(_gpuProfileEventIndex) }

@@ -29,6 +29,7 @@ namespace benzin
 
     protected:
         static inline const Window* ms_Window = nullptr;
+        static inline const TickTimer* ms_FrameTimer = nullptr; // TODO: Ugly solution
 
         std::string_view m_Name;
         std::string_view m_Shortcut;
@@ -40,7 +41,7 @@ namespace benzin
     public:
         friend class ImGuiPass;
 
-        ImGuiManager(const Window& window, Device& device);
+        ImGuiManager(const Window& window, Device& device, const TickTimer& frameTimer);
         ~ImGuiManager();
 
     public:

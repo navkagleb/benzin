@@ -5,11 +5,9 @@
 namespace benzin
 {
 
-    class Backend;
     class Device;
     class RenderViewportTool;
     class ShaderManager;
-    class SwapChain;
     class Window;
 
     class PerformanceOverlayTool : public ImGuiTool
@@ -18,7 +16,6 @@ namespace benzin
         PerformanceOverlayTool(
             const Window& window,
             const Device& device,
-            const SwapChain& swapChain,
             const ShaderManager& shaderManager,
             const RenderViewportTool& renderViewportTool
         );
@@ -31,7 +28,6 @@ namespace benzin
     private:
         const Window& m_Window;
         const Device& m_Device;
-        const SwapChain& m_SwapChain;
         const ShaderManager& m_ShaderManager;
         const RenderViewportTool& m_RenderViewportTool;
 

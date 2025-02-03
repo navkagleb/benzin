@@ -137,19 +137,6 @@ namespace sandbox
         
         InitCamera();
         InitSceneEntities();
-
-        m_1SecIntervalTimer.PushCallback([this]
-        {
-            for (const auto renderPass : magic_enum::enum_values<RenderPasses>())
-            {
-                m_CpuTimings[+renderPass] = m_RenderPasses[+renderPass]->GetCpuRenderTime();
-            }
-
-            m_TimingsTool->SetRunnerTimings(m_RunnerTimings);
-            m_TimingsTool->SetCpuTimings(m_CpuTimings);
-
-            m_CpuTimings = {}; // TODO: Reset it every frame
-        });
     }
 
     void SandboxRunner::InitRenderPasses()
@@ -212,8 +199,6 @@ namespace sandbox
 
             return +selectedTexture;
         });
-
-        m_TimingsTool = m_ImGuiManager->PushTool<TimingsTool>();
 
         BenzinAssert(m_RenderSettingsTool != nullptr);
 

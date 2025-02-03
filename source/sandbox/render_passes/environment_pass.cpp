@@ -2,6 +2,7 @@
 #include "sandbox/render_passes/environment_pass.hpp"
 
 #include <benzin/core/asserter.hpp>
+#include <benzin/core/profiler.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
@@ -60,9 +61,9 @@ namespace sandbox
 
     void EnvironmentPass::OnRender() const
     {
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        BenzinProfile();
 
-        BenzinGpuEvent(commandList, "Environment");
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "Environment");
 
         const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);

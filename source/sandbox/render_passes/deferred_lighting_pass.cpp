@@ -1,7 +1,7 @@
 #include "sandbox/bootstrap.hpp"
 #include "sandbox/render_passes/deferred_lighting_pass.hpp"
 
-#include <benzin/core/command_line_args.hpp>
+#include <benzin/core/profiler.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
@@ -69,9 +69,9 @@ namespace sandbox
 
     void DeferredLightingPass::OnRender() const
     {
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        BenzinProfile();
 
-        BenzinGpuEvent(commandList, "DeferredLighting");
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "DeferredLighting");
 
         const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();

@@ -5,12 +5,11 @@
 namespace benzin
 {
 
-    class Window;
-
     class Backend;
     class Device;
     class Fence;
     class Texture;
+    class Window;
 
     struct SwapChainCreation
     {
@@ -36,9 +35,6 @@ namespace benzin
         auto GetWidth() const { return m_Width; }
         auto GetHeight() const { return m_Height; }
 
-        auto GetPresentTime() const { return m_PresentTime; }
-        auto GetGpuWaitTime() const { return m_GpuWaitTime; }
-
     public:
         bool OnFlip(bool isVerticalSyncEnabled);
         void RequestResize(uint32_t width, uint32_t height);
@@ -57,9 +53,6 @@ namespace benzin
 
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
-
-        std::chrono::microseconds m_PresentTime = std::chrono::microseconds::zero();
-        std::chrono::microseconds m_GpuWaitTime = std::chrono::microseconds::zero();
     };
 
-} // namespace benzin
+}

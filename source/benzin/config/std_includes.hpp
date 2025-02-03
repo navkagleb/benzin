@@ -30,6 +30,7 @@
 #include <source_location>
 #include <span>
 #include <sstream>
+#include <stack>
 #include <string>
 #include <thread>
 #include <type_traits>

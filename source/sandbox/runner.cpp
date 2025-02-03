@@ -4,6 +4,7 @@
 #include <benzin/core/asserter.hpp>
 #include <benzin/core/command_line_args.hpp>
 #include <benzin/core/logger.hpp>
+#include <benzin/core/profiler.hpp>
 #include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/ray_tracing_scene.hpp>
 #include <benzin/engine/scene.hpp>
@@ -22,8 +23,8 @@
 #include <benzin/system/key_event.hpp>
 #include <benzin/system/window.hpp>
 #include <benzin/tools/fly_camera_tool.hpp>
-#include <benzin/tools/gpu_profiler_tool.hpp>
 #include <benzin/tools/performance_overlay_tool.hpp>
+#include <benzin/tools/profiler_tools.hpp>
 #include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
 #include <benzin/tools/scene_stats_tool.hpp>
@@ -78,35 +79,40 @@ namespace sandbox
             *m_RenderSettings
         );
 
-        benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device);
-        m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderResources, m_Scene->GetCamera());
-        m_RenderSettingsTool = m_ImGuiManager->PushTool<benzin::RenderSettingsTool>(*m_RenderSettings);
-        m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderResources);
-        m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Device, *m_SwapChain, *m_ShaderManager, *m_RenderViewportTool);
-        m_ImGuiManager->PushTool<benzin::FlyCameraTool>(m_RenderViewportTool->GetFlyCameraController());
-        m_ImGuiManager->PushTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
-        m_ImGuiManager->PushTool<benzin::SceneTool>(*m_Scene);
-        m_ImGuiManager->PushTool<TickTimerTool>(m_FrameTimer);
-
-        m_ImGuiManager->PushSpawnImGuiMenuCallback([this]
         {
-            if (ImGui::BeginMenu("Runner"))
+            benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device, m_FrameTimer);
+
+            m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderTextures, m_Scene->GetCamera());
+            m_RenderSettingsTool = m_ImGuiManager->PushTool<benzin::RenderSettingsTool>(*m_RenderSettings);
+            m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderTextures);
+            m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Device, *m_ShaderManager, *m_RenderViewportTool);
+
+            m_ImGuiManager->PushTool<benzin::ProfilerTool>();
+            m_ImGuiManager->PushTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
+            m_ImGuiManager->PushTool<benzin::FlyCameraTool>(m_RenderViewportTool->GetFlyCameraController());
+            m_ImGuiManager->PushTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
+            m_ImGuiManager->PushTool<benzin::SceneTool>(*m_Scene);
+
+            m_ImGuiManager->PushSpawnImGuiMenuCallback([this]
             {
-                if (ImGui::MenuItem("VerticalSync", "V", m_IsVerticalSyncEnabled))
+                if (ImGui::BeginMenu("Runner"))
                 {
-                    ToggleVerticalSync();
+                    if (ImGui::MenuItem("VerticalSync", "V", m_IsVerticalSyncEnabled))
+                    {
+                        ToggleVerticalSync();
+                    }
+
+                    if (ImGui::MenuItem("Animation", "F2", m_AnimationTimer.IsPaused()))
+                    {
+                        ToggleAnimation();
+                    }
+
+                    ImGui::EndMenu();
                 }
+            });
+        }
 
-                if (ImGui::MenuItem("Animation", "F2", m_AnimationTimer.IsPaused()))
-                {
-                    ToggleAnimation();
-                }
-
-                ImGui::EndMenu();
-            }
-        });
-
-        m_1SecIntervalTimer.PushCallback([this]
+        m_1SecIntervalTimer.PushCallback([this](uint32_t)
         {
             m_FpsCounter.UpdateFps(m_1SecIntervalTimer.GetInterval());
             m_PerformanceOverlayTool->SetFrameRateStats(m_FpsCounter.GetFps(), benzin::ToFloatMs(m_FpsCounter.GetDeltaTime()));
@@ -135,7 +141,7 @@ namespace sandbox
 
         while (m_IsRunning)
         {
-            BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::FullFrame]);
+            benzin::Profiler::BeginFrame();
 
             m_FrameTimer.Tick();
             m_AnimationTimer.Tick();
@@ -145,10 +151,7 @@ namespace sandbox
 
             BeginFrame();
             {
-                auto& commandList = m_Device->GetGraphicsCommandQueue().GetCommandList();
-
-                BenzinGpuEvent(commandList, "Frame");
-                BenzinGpuProfile(*m_GpuProfiler, commandList, "Frame");
+                BenzinScopeProfile("Frame");
 
                 OnUpdate();
                 OnRender();
@@ -253,8 +256,8 @@ namespace sandbox
 
     void Runner::BeginFrame()
     {
-        BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::BeginFrame]);
-
+        BenzinProfile();
+    
         m_Device->GetGraphicsCommandQueue().ResetCommandList();
         m_GpuProfiler->BeginFrame(*m_Device);
         m_ConstBufferPool->BeginFrame();
@@ -262,7 +265,7 @@ namespace sandbox
 
     void Runner::EndFrame()
     {
-        BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::EndFrame]);
+        BenzinProfile();
 
         m_Device->GetGraphicsCommandQueue().SubmitCommandList();
 
@@ -301,7 +304,7 @@ namespace sandbox
 
     void Runner::OnUpdate()
     {
-        BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::OnUpdate]);
+        BenzinProfile();
 
         if (m_FrameTimer.IsPaused())
         {
@@ -314,6 +317,8 @@ namespace sandbox
         m_Scene->OnUpdate();
 
         {
+            BenzinScopeProfile("ImGui Frame");
+
             m_ImGuiManager->BeginUiFrame();
             m_ImGuiManager->SpawnUi();
             m_ImGuiManager->EndUiFrame();
@@ -328,7 +333,10 @@ namespace sandbox
 
     void Runner::OnRender()
     {
-        BenzinGrabTimeOnScopeExit(m_RunnerTimings[+RunnerTiming::OnRender]);
+        BenzinProfile();
+
+        auto& commandList = m_Device->GetGraphicsCommandQueue().GetCommandList();
+        BenzinGpuProfile(*m_GpuProfiler, commandList, "Frame");
 
         for (auto& renderPass : m_RenderPasses)
         {
@@ -338,13 +346,7 @@ namespace sandbox
                 continue;
             }
 
-            {
-                const auto scopeCpuTimer = renderPass->GrabCpuRenderTime();
-
-                BenzinUnused(scopeCpuTimer);
-
-                renderPass->OnRender();
-            }
+            renderPass->OnRender();
         }
     }
 

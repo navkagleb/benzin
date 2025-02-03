@@ -3,7 +3,6 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/gpu_timer.hpp"
 #include "benzin/graphics/texture.hpp"
 
 namespace benzin
@@ -160,10 +159,5 @@ namespace benzin
 
         OnUpdate();
     };
-
-    ScopedGrabTimer RenderPass::GrabCpuRenderTime()
-    {
-        return ScopedGrabTimer{ m_CpuRenderTime };
-    }
 
 }

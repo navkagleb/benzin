@@ -8,8 +8,9 @@
 #include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/engine_math.hpp"
-#include "benzin/core/logger.hpp"
+#include "benzin/core/profiler.hpp"
 #include "benzin/core/math.hpp"
+#include "benzin/core/profiler.hpp"
 #include "benzin/core/tick_timer.hpp"
 #include "benzin/engine/entity_components.hpp"
 #include "benzin/engine/light.hpp"
@@ -112,6 +113,8 @@ namespace benzin
 
     void Scene::OnUpdate()
     {
+        BenzinProfile();
+
         UpdateEntities();
 
         UploadTransformsToGpu();

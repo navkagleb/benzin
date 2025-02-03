@@ -6,10 +6,10 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
+#include "benzin/core/profiler.hpp"
 #include "benzin/graphics/command_list.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/gpu_timer.hpp"
 #include "benzin/graphics/texture.hpp"
 #include "benzin/graphics2/gpu_profiler.hpp"
 #include "benzin/system/key_event.hpp"
@@ -61,7 +61,7 @@ namespace benzin
 
     // ImGuiManager
 
-    ImGuiManager::ImGuiManager(const Window& window, Device& device)
+    ImGuiManager::ImGuiManager(const Window& window, Device& device, const TickTimer& frameTimer)
         : m_Device{ device }
     {
         IMGUI_CHECKVERSION();
@@ -100,6 +100,7 @@ namespace benzin
         }
 
         ImGuiTool::ms_Window = &window;
+        ImGuiTool::ms_FrameTimer = &frameTimer;
 
         LoadToolsVisiblity();
     }
@@ -123,6 +124,8 @@ namespace benzin
 
     void ImGuiManager::BeginUiFrame() const
     {
+        BenzinProfile();
+
         ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
@@ -132,6 +135,8 @@ namespace benzin
 
     void ImGuiManager::EndUiFrame() const
     {
+        BenzinProfile();
+
         ImGui::EndFrame();
         ImGui::Render();
 
@@ -180,6 +185,8 @@ namespace benzin
 
     void ImGuiManager::SpawnUi()
     {
+        BenzinProfile();
+
         if (!m_IsUiSpawnEnabled)
         {
             return;
@@ -360,9 +367,9 @@ namespace benzin
 
     void ImGuiPass::OnRender() const
     {
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        BenzinProfile();
 
-        BenzinGpuEvent(commandList, "ImGui");
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "ImGui");
 
         const auto& imGuiTexture = ms_Textures->Get(m_ImGuiTextureIndex);

@@ -1,6 +1,7 @@
 #include "sandbox/bootstrap.hpp"
 #include "sandbox/render_passes/full_screen_debug_pass.hpp"
 
+#include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
@@ -56,9 +57,9 @@ namespace sandbox
 
     void FullScreenDebugPass::OnRender() const
     {
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        BenzinProfile();
 
-        BenzinGpuEvent(commandList, "FullScreenDebug");
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "FullScreenDebug");
 
         commandList.SetViewport(ms_RenderViewport);

@@ -3,6 +3,7 @@
 
 #include <benzin/core/asserter.hpp>
 #include <benzin/core/command_line_args.hpp>
+#include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_list.hpp>
 #include <benzin/graphics/command_queue.hpp>
@@ -45,6 +46,11 @@ namespace benzin
     }
 
     GpuProfiler::~GpuProfiler() = default;
+
+    std::span<const ProfileEvent> GpuProfiler::GetSortedEvents() const
+    {
+        return m_SortedEvents;
+    }
 
     void GpuProfiler::BeginFrame(const Device& device)
     {
@@ -127,8 +133,8 @@ namespace benzin
         BenzinEnsure(m_ReadbackBuffer->GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&timestamps)));
         BenzinExecuteOnScopeExit([this] { m_ReadbackBuffer->GetD3D12Resource()->Unmap(0, nullptr); });
 
-        const bool isResized = m_SortedEvents.size() != m_EventInfos.size();
-        if (isResized)
+        const bool isNeedResize = m_SortedEvents.size() != m_EventInfos.size();
+        if (isNeedResize)
         {
             m_SortedEvents.resize(m_EventInfos.size());
         }
@@ -137,11 +143,11 @@ namespace benzin
         {
             auto& sortEvent = m_SortedEvents[eventInfo.SortIndex];
 
-            if (isResized)
+            if (isNeedResize)
             {
-                sortEvent.m_Name = name;
-                sortEvent.m_Depth = eventInfo.Depth;
-                sortEvent.m_IsParent = eventInfo.IsParent;
+                sortEvent.Name = name;
+                sortEvent.Depth = eventInfo.Depth;
+                sortEvent.IsParent = eventInfo.IsParent;
             }
 
             const auto beginTimestampIndex = CalcBeginTimestampIndex(eventInfo.ReadbackIndex);
@@ -149,7 +155,7 @@ namespace benzin
 
             if (!m_ProfiledTimestamps[beginTimestampIndex] || !m_ProfiledTimestamps[endTimestampIndex])
             {
-                sortEvent.m_Us = std::chrono::microseconds::zero();
+                sortEvent.Us = std::chrono::microseconds::zero();
             }
             else
             {
@@ -157,7 +163,7 @@ namespace benzin
                 const auto endTimestamp = timestamps[endTimestampIndex];
 
                 const std::chrono::duration<double> diff{ (endTimestamp - beginTimestamp) * m_InverseFrequency};
-                sortEvent.m_Us = std::chrono::round<std::chrono::microseconds>(diff);
+                sortEvent.Us = std::chrono::round<std::chrono::microseconds>(diff);
             }
         }
     }

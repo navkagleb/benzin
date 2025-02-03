@@ -13,12 +13,17 @@ namespace benzin
     void IntervalTimer::AccumulateInterval(const TickTimer& frameTimer)
     {
         m_AccumulatedInterval += frameTimer.GetDeltaTime();
+        m_AccumulatedFrameCount++;
 
         if (m_AccumulatedInterval >= m_Interval)
         {
-            std::ranges::for_each(m_Callbacks, &Callback::operator());
+            for (const auto& callback : m_Callbacks)
+            {
+                callback(m_AccumulatedFrameCount);
+            }
 
             m_AccumulatedInterval -= m_Interval;
+            m_AccumulatedFrameCount = 0;
         }
     }
 

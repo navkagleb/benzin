@@ -2,6 +2,7 @@
 #include "sandbox/render_passes/geometry_pass.hpp"
 
 #include <benzin/core/engine_math.hpp>
+#include <benzin/core/profiler.hpp>
 #include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/light.hpp>
 #include <benzin/engine/mesh.hpp>
@@ -116,9 +117,9 @@ namespace sandbox
 
     void GeometryPass::OnRender() const
     {
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        BenzinProfile();
 
-        BenzinGpuEvent(commandList, "Geometry");
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "Geometry");
 
         const auto& albedoAndRoughness = ms_Resources->GetTexture(+Texture::AlbedoAndRoughness);

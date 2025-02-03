@@ -4,7 +4,6 @@
 #include <benzin/core/tick_timer.hpp>
 
 #include "sandbox/fps_counter.hpp"
-#include "sandbox/tools/timings_tool.hpp"
 
 namespace benzin
 {
@@ -88,8 +87,6 @@ namespace sandbox
         benzin::RenderViewportTool* m_RenderViewportTool = nullptr;
         benzin::RenderSettingsTool* m_RenderSettingsTool = nullptr;
         benzin::TextureViewerTool* m_TextureViewerTool = nullptr;
-
-        RunnerTimings m_RunnerTimings{};
 
         bool m_IsRunning = true;
         bool m_IsVerticalSyncEnabled = true;

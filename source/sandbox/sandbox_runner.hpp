@@ -1,7 +1,6 @@
 #pragma once
 
 #include "sandbox/runner.hpp"
-#include "sandbox/tools/timings_tool.hpp"
 
 namespace benzin
 {
@@ -45,13 +44,6 @@ namespace sandbox
         void AddStaticMeshEntities(std::span<const entt::entity> meshHandles);
         void AddDynamicMeshEntities(std::span<const entt::entity> meshHandles);
         void AddEmissiveEntities(std::span<const entt::entity> meshHandles);
-
-
-    private:
-        using TimingsTool = TimingsTool<RenderPasses, RenderPasses>;
-        TimingsTool* m_TimingsTool = nullptr;
-
-        Timings<RenderPasses> m_CpuTimings{};
     };
 
 }
