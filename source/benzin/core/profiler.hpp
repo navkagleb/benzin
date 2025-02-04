@@ -5,7 +5,7 @@ namespace benzin
 
     struct ProfileEvent
     {
-        std::string_view Name;
+        const char* Name = nullptr;
         std::chrono::microseconds Us = std::chrono::microseconds::zero();
         uint8_t Depth : 7 = 0;
         uint8_t IsParent : 1 = false;
@@ -28,6 +28,7 @@ namespace benzin
 
 }
 
+#if 1
 #define BenzinProfile() \
     benzin::Profiler::BeginScope(__FUNCTION__); \
     BenzinExecuteOnScopeExit([] { benzin::Profiler::EndScope(); })
@@ -35,3 +36,7 @@ namespace benzin
 #define BenzinScopeProfile(name) \
     benzin::Profiler::BeginScope(name); \
     BenzinExecuteOnScopeExit([] { benzin::Profiler::EndScope(); })
+#else
+    #define BenzinProfile()
+    #define BenzinScopeProfile(name)
+#endif

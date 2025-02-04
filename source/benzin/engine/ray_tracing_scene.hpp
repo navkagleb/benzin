@@ -24,8 +24,10 @@ namespace benzin
 
         auto GetBlasStats() const { return std::span<const BlasStats>{ m_BlasStats }; }
 
+        const RayTracing_Tlas& GetActiveTlas() const;
+
         void BuildBlases();
-        [[nodiscard]] uint64_t BuildTlas();
+        void UpdateTlasBuffers();
 
     private:
         void ProcessMeshes(std::unique_ptr<benzin::Buffer>& localTransformBuffer);

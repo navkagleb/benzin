@@ -33,7 +33,6 @@
 #include <benzin/utility/time_utils.hpp>
 
 #include "sandbox/resources.hpp"
-#include "sandbox/tools/tick_timer_tool.hpp"
 
 namespace sandbox
 {
@@ -142,6 +141,7 @@ namespace sandbox
         while (m_IsRunning)
         {
             benzin::Profiler::BeginFrame();
+            BenzinExecuteOnScopeExit([] { benzin::Profiler::EndFrame(); });
 
             m_FrameTimer.Tick();
             m_AnimationTimer.Tick();
@@ -164,6 +164,9 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("Runner::RunZeroFrame");
 
+        benzin::Profiler::BeginFrame();
+        BenzinExecuteOnScopeExit([] { benzin::Profiler::EndFrame(); });
+
         m_RenderPasses.push_back(std::make_unique<benzin::GpuProfilerPass>());
 
         // Force call window resize on render passes
@@ -175,8 +178,6 @@ namespace sandbox
 
         BeginFrame();
         {
-            OnUpdate(); // Updates the UI. On EndFrame calls RenderPass::OnRenderViewportResize
-
             for (auto& renderPass : m_RenderPasses)
             {
                 renderPass->OnZeroFrameInit();
@@ -184,6 +185,8 @@ namespace sandbox
 
             m_Scene->UploadMeshesToGpu();
             m_RayTracingScene->BuildBlases();
+
+            RunImGuiFrame(); // Force call ImGui frame to call RenderPass::OnRenderViewportResize on EndFrame
         }
         EndFrame();
     }
@@ -259,7 +262,7 @@ namespace sandbox
         BenzinProfile();
     
         m_Device->GetGraphicsCommandQueue().ResetCommandList();
-        m_GpuProfiler->BeginFrame(*m_Device);
+        m_GpuProfiler->BeginFrame(m_Device->GetCpuFrameIndex());
         m_ConstBufferPool->BeginFrame();
     }
 
@@ -316,13 +319,7 @@ namespace sandbox
         m_RenderViewportTool->GetFlyCameraController().OnUpdate(m_FrameTimer.GetDeltaTime());
         m_Scene->OnUpdate();
 
-        {
-            BenzinScopeProfile("ImGui Frame");
-
-            m_ImGuiManager->BeginUiFrame();
-            m_ImGuiManager->SpawnUi();
-            m_ImGuiManager->EndUiFrame();
-        }
+        RunImGuiFrame();
 
         m_RenderResources->FlipResources();
         for (auto& renderPass : m_RenderPasses)
@@ -348,6 +345,15 @@ namespace sandbox
 
             renderPass->OnRender();
         }
+    }
+
+    void Runner::RunImGuiFrame()
+    {
+        BenzinProfile();
+
+        m_ImGuiManager->BeginUiFrame();
+        m_ImGuiManager->SpawnUi();
+        m_ImGuiManager->EndUiFrame();
     }
 
     void Runner::RequestShutdown()

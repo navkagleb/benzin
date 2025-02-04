@@ -16,6 +16,15 @@ namespace benzin
         uint32_t AllocateIndex();
         void FreeIndex(uint32_t index);
 
+        template <std::unsigned_integral T>
+        void FreeIndices(std::span<const T> indices)
+        {
+            for (const T index : indices)
+            {
+                FreeIndex(index);
+            }
+        }
+
     private:
         struct SplittedIndex
         {

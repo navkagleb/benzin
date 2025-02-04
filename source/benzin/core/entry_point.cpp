@@ -4,6 +4,7 @@
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
+#include "benzin/core/profiler.hpp"
 
 #if BENZIN_IS_PLATFORM_WIN64
 

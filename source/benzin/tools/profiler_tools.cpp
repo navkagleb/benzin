@@ -16,6 +16,7 @@ namespace benzin
         }
 
         const auto& event = events[eventIndex++];
+        BenzinAssert(event.Name != nullptr);
 
         ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_SpanFullWidth;
         treeFlags |= ImGuiTreeNodeFlags_SpanAllColumns;
@@ -36,14 +37,14 @@ namespace benzin
             treeFlags |= ImGuiTreeNodeFlags_Leaf;
             treeFlags |= ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-            ImGui::TreeNodeEx((void*)(intptr_t)eventIndex, treeFlags, event.Name.data());
+            ImGui::TreeNodeEx((void*)(intptr_t)eventIndex, treeFlags, event.Name);
 
             ImGui::TableNextColumn();
             ImGui::Text(eventTime.c_str());
         }
         else
         {
-            isOpen = ImGui::TreeNodeEx((void*)(intptr_t)eventIndex, treeFlags, event.Name.data());
+            isOpen = ImGui::TreeNodeEx((void*)(intptr_t)eventIndex, treeFlags, event.Name);
 
             ImGui::TableNextColumn();
             ImGui::Text(eventTime.c_str());

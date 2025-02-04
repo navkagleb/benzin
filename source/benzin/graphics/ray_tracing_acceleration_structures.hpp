@@ -1,11 +1,10 @@
 #pragma once
 
-#include "benzin/graphics/buffer.hpp"
-
 namespace benzin
 {
 
     class Device;
+    class Buffer;
 
     class RayTracing_AcclerationStructure
     {
@@ -16,6 +15,8 @@ namespace benzin
         const auto& GetD3D12BuildInputs() const { return m_D3D12BuildInputs; }
         const auto* GetBuffer() const { return m_Buffer.get(); }
         const auto* GetScratchResource() const { return m_ScratchResource.get(); }
+
+        uint64_t GetGpuVirtualAddress() const;
 
     protected:
         void AllocateBuffers(Device& device, std::string_view debugName, const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& d3d12BuildInputs);

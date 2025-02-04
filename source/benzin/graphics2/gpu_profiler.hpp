@@ -1,5 +1,7 @@
 #pragma once
 
+#include <benzin/core/index_allocator.hpp>
+
 namespace benzin
 {
 
@@ -22,66 +24,78 @@ namespace benzin
         const auto& GetTimestampQueryHeap() const { return *m_TimestampQueryHeap; }
         const auto& GetReadbackBuffer() const { return *m_ReadbackBuffer; }
 
-        auto GetResolveReadbackBufferOffset() const { return m_ResolveReadbackBufferOffset; }
+        auto GetResolveReadbackBufferOffset() const { return m_ResolveFrameData->ReadbackBufferOffset; }
 
         std::span<const ProfileEvent> GetSortedEvents() const;
 
     public:
-        void BeginFrame(const Device& device);
+        void BeginFrame(uint64_t cpuFrameIndex);
         void EndFrame();
 
         uint8_t AllocateEvent(std::string_view name);
 
-        uint8_t GetBeginTimestampIndex(uint8_t eventIndex);
-        uint8_t GetEndTimestampIndex(uint8_t eventIndex);
+        uint8_t GetBeginTimestampIndex(uint8_t readbackIndex);
+        uint8_t GetEndTimestampIndex(uint8_t readbackIndex);
 
         void ForceProfileUnprofiledTimestamps(const UnprofiledTimestampCallback& callback);
 
     private:
+        uint64_t CalcEventHash(std::string_view name);
+
         void GetTimestampsFromReadbackBuffer();
 
     private:
+        static constexpr uint8_t ms_MaxTimestampCount = std::numeric_limits<uint8_t>::max();
+        static constexpr uint8_t ms_MaxEventCount = ms_MaxTimestampCount / 2 - 1;
+
         struct EventInfo
         {
-            uint8_t ReadbackIndex = 0;
-            uint8_t Depth : 7 = 0;
+            const char* Name = nullptr;
+
+            uint8_t Depth : 6 = 0;
             uint8_t IsParent : 1 = false;
             uint8_t SortIndex = 0;
         };
 
-        static constexpr uint8_t ms_MaxTimestampCount = std::numeric_limits<uint8_t>::max();
-        static constexpr uint8_t ms_MaxEventCount = ms_MaxTimestampCount / 2;
+        struct FrameData
+        {
+            std::unordered_map<uint64_t, std::vector<uint8_t>> EventReadbackIndices;
+
+            std::bitset<ms_MaxTimestampCount> ProfiledTimestamps;
+            IndexAllocator ReadbackIndexAllocator{ ms_MaxTimestampCount };
+
+            uint64_t ReadbackBufferOffset = 0;
+            uint64_t* MappedTimestamps = nullptr;
+        };
 
         double m_InverseFrequency = 0.0;
 
         std::unique_ptr<QueryHeap> m_TimestampQueryHeap;
         std::unique_ptr<Buffer> m_ReadbackBuffer;
 
-        uint64_t m_ResolveReadbackBufferOffset = 0;
-        uint64_t m_CopyReadbackBufferOffset = 0;
+        std::vector<FrameData> m_FrameData;
+        FrameData* m_ResolveFrameData = nullptr;
+        FrameData* m_CopyFrameData = nullptr;
 
-        std::bitset<ms_MaxTimestampCount> m_ProfiledTimestamps;
-
-        std::unordered_map<std::string_view, EventInfo> m_EventInfos;
+        std::unordered_map<uint64_t, EventInfo> m_EventInfos;
+        std::unordered_map<uint8_t, uint64_t> m_SortedEventHashes;
+        std::stack<uint64_t, std::vector<uint64_t>> m_EventHashStack;
         std::vector<ProfileEvent> m_SortedEvents;
 
         uint8_t m_SortCounter = 0;
-        uint8_t m_CurrentDepth = 0;
-
-        std::string_view m_PrevEventName;
     };
 
     class ScopedGpuProfileEvent
     {
     public:
-        ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, uint8_t eventIndex);
+        ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, uint8_t readbackIndex);
         ~ScopedGpuProfileEvent();
 
     private:
         GpuProfiler& m_GpuProfiler;
         GraphicsCommandList& m_CommandList;
 
-        const uint8_t m_EventIndex;
+        const uint8_t m_ReadbackIndex;
     };
 
 }
@@ -89,5 +103,5 @@ namespace benzin
 #define BenzinGpuProfile(gpuProfiler, commandList, name) \
     BenzinGpuEvent(commandList, name); \
     \
-    const auto BenzinUniqueVariableName(_gpuProfileEventIndex) = (gpuProfiler).AllocateEvent(name); \
-    const benzin::ScopedGpuProfileEvent BenzinUniqueVariableName(_scopedGpuProfileEvent){ gpuProfiler, commandList, BenzinUniqueVariableName(_gpuProfileEventIndex) }
+    const auto BenzinUniqueVariableName(_readbackIndex) = (gpuProfiler).AllocateEvent(name); \
+    const benzin::ScopedGpuProfileEvent BenzinUniqueVariableName(_scopedGpuProfileEvent){ gpuProfiler, commandList, BenzinUniqueVariableName(_readbackIndex) }

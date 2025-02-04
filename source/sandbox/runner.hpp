@@ -51,6 +51,8 @@ namespace sandbox
         void OnUpdate();
         void OnRender();
 
+        void RunImGuiFrame();
+
         void RequestShutdown();
         void ToggleVerticalSync();
         void ToggleAnimation();

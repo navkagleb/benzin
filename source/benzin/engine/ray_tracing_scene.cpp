@@ -6,9 +6,11 @@
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/command_line_args.hpp"
+#include "benzin/core/profiler.hpp"
 #include "benzin/engine/entity_components.hpp"
 #include "benzin/engine/mesh.hpp"
 #include "benzin/engine/scene.hpp"
+#include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/ray_tracing_acceleration_structures.hpp"
@@ -31,6 +33,11 @@ namespace benzin
         m_Scene.m_MeshRegistry.remove<RayTracing_Blas>(view.begin(), view.end());
     }
 
+    const RayTracing_Tlas& RayTracing_Scene::GetActiveTlas() const
+    {
+        return m_Tlases[m_Device.GetActiveFrameIndex()];
+    }
+
     void RayTracing_Scene::BuildBlases()
     {
         BenzinLogTimeOnScopeExit("RayTracing_Scene::BuildBlases");
@@ -40,43 +47,33 @@ namespace benzin
         CreateBlases();
     }
 
-    uint64_t RayTracing_Scene::BuildTlas()
+    void RayTracing_Scene::UpdateTlasBuffers()
     {
+        BenzinProfile();
+
+        const auto view = m_Scene.m_EntityRegistry.view<MeshComponent, Transform>();
+
         auto& tlas = m_Tlases[m_Device.GetActiveFrameIndex()];
+        tlas.ResetInstances((uint32_t)view.size_hint());
 
+        for (const auto& [_, mc, transform] : view.each())
         {
-            const auto view = m_Scene.m_EntityRegistry.view<MeshComponent, Transform>();
-
-            tlas.ResetInstances((uint32_t)view.size_hint());
-
-            for (const auto& [_, mc, transform] : view.each())
+            if (!IsValidEnum(mc.MeshHandle))
             {
-                if (!IsValidEnum(mc.MeshHandle))
-                {
-                    continue;
-                }
-
-                const auto& blas = m_Scene.m_MeshRegistry.get<RayTracing_Blas>(mc.MeshHandle);
-
-                tlas.AddInstance(RayTracing_Tlas::Instance
-                {
-                    .Blas = blas,
-                    .HitGroupIndex = 0, // TODO: For now all instances have default hit group
-                    .Transform = transform.GetLocalToWorldMatrix(),
-                });
+                continue;
             }
 
-            tlas.AllocateBuffers(m_Device, "RayTracing_Scene_Tlas");
+            const auto& blas = m_Scene.m_MeshRegistry.get<RayTracing_Blas>(mc.MeshHandle);
+
+            tlas.AddInstance(RayTracing_Tlas::Instance
+            {
+                .Blas = blas,
+                .HitGroupIndex = 0, // TODO: For now all instances have default hit group
+                .Transform = transform.GetLocalToWorldMatrix(),
+            });
         }
 
-        {
-            auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
-
-            BenzinMakeScopedResourceBarriers(commandList, TransitionBarrier{ *tlas.GetScratchResource(), ResourceState::UnorderedAccess });
-            commandList.BuildRayTracingAccelerationStructure(tlas);
-        }
-
-        return tlas.GetBuffer()->GetGpuVirtualAddress();
+        tlas.AllocateBuffers(m_Device, "RayTracing_Scene_Tlas");
     }
 
     void RayTracing_Scene::ProcessMeshes(std::unique_ptr<Buffer>& localTransformBuffer)
@@ -142,6 +139,8 @@ namespace benzin
     void RayTracing_Scene::CreateBlases()
     {
         BenzinLogTimeOnScopeExit("RayTracing_Scene::CreateBlases");
+
+        // TODO: Remove dependece from command list
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 

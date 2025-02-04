@@ -70,6 +70,18 @@ namespace benzin
         outUniquePtr = std::make_unique<InnerType>(std::forward<Args>(args)...);
     }
 
+    template <typename T>
+    auto ToSpan(std::vector<T>& vector)
+    {
+        return std::span<T>{ vector };
+    }
+
+    template <typename T>
+    auto ToConstSpan(const std::vector<T>& vector)
+    {
+        return std::span<const T>{ vector };
+    }
+
 }
 #define BenzinDefineStdHashForType(HashType, HashTypeVariableName, HashFunctionImpl) \
     template <> \

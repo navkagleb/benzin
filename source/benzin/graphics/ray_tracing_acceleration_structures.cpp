@@ -3,6 +3,7 @@
 
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/buffer_writer.hpp"
+#include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 
@@ -12,6 +13,11 @@ namespace benzin
     // RayTracing_AcclerationStructure
 
     RayTracing_AcclerationStructure::~RayTracing_AcclerationStructure() = default;
+
+    uint64_t RayTracing_AcclerationStructure::GetGpuVirtualAddress() const
+    {
+        return m_Buffer->GetGpuVirtualAddress();
+    }
 
     void RayTracing_AcclerationStructure::AllocateBuffers(Device& device, std::string_view debugName, const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& d3d12BuildInputs)
     {
@@ -25,7 +31,7 @@ namespace benzin
         {
             .Type = BufferType::RayTracing_AccelerationStructure,
             .ElementCount = (uint32_t)d3d12PrebuildInfo.ResultDataMaxSizeInBytes,
-            .IsUnorderedAccessAllowed = true, // TODO: Do I need this?
+            .IsUnorderedAccessAllowed = true,
         });
 
         MakeUniquePtr(m_ScratchResource, device, BufferCreation

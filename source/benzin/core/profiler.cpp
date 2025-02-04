@@ -11,21 +11,22 @@ namespace benzin
     {
         struct EventInfo
         {
-            uint8_t Depth : 7 = 0;
+            const char* Name = nullptr;
+
+            uint8_t Depth : 6 = 0;
             uint8_t IsParent : 1 = false;
+            uint8_t IsProcessed : 1 = false;
             uint8_t SortIndex = 0;
 
-            union
-            {
-                std::chrono::high_resolution_clock::time_point BeginTimePoint{};
-                std::chrono::microseconds Us;
-            };
+            std::chrono::high_resolution_clock::time_point BeginTimePoint{};
+            std::chrono::microseconds Us = std::chrono::microseconds::zero();
         };
 
         static constexpr auto s_MaxEventCount = std::numeric_limits<uint8_t>::max();
 
-        std::unordered_map<std::string_view, EventInfo> EventInfos;
-        std::stack<std::string_view, std::vector<std::string_view>> ScopeNames;
+        std::unordered_map<uint64_t, EventInfo> EventInfos;
+        std::unordered_map<uint8_t, uint64_t> SortedEventHashes;
+        std::stack<uint64_t, std::vector<uint64_t>> EventHashStack;
 
         std::vector<ProfileEvent> SortedEvents;
 
@@ -33,6 +34,41 @@ namespace benzin
     };
 
     static ProfilerData g_Data;
+
+    uint64_t CalcEventHash(std::string_view name)
+    {
+        if (g_Data.EventHashStack.empty())
+        {
+            return std::hash<std::string_view>{}(name);
+        }
+
+        auto& parentEventInfo = g_Data.EventInfos[g_Data.EventHashStack.top()];
+        parentEventInfo.IsParent = true;
+
+        return HashCombine(g_Data.EventHashStack.top(), name);
+    }
+
+    auto CreateOrUpdateEventInfo(std::string_view name)
+    {
+        const uint64_t hash = CalcEventHash(name);
+
+        auto&& [it, _] = g_Data.EventInfos.try_emplace(hash, name.data(), (uint8_t)g_Data.EventHashStack.size());
+        auto& eventInfo = it->second;
+
+        if (!eventInfo.IsProcessed)
+        {
+            eventInfo.IsProcessed = true;
+            eventInfo.SortIndex = std::max(eventInfo.SortIndex, g_Data.SortCounter++);
+
+            const uint64_t prevHash = std::exchange(g_Data.SortedEventHashes[eventInfo.SortIndex], hash);
+            if (prevHash != 0 && prevHash != hash)
+            {
+                g_Data.EventInfos.erase(prevHash);
+            }
+        }
+
+        return std::pair<uint64_t, decltype(eventInfo)>{ hash, eventInfo };
+    }
 
     //
 
@@ -48,31 +84,24 @@ namespace benzin
 
     void Profiler::BeginScope(std::string_view name)
     {
+        BenzinEnsure(!name.empty());
         BenzinEnsure(g_Data.EventInfos.size() < ProfilerData::s_MaxEventCount);
 
-        if (!g_Data.ScopeNames.empty())
-        {
-            auto& parentEventInfo = g_Data.EventInfos[g_Data.ScopeNames.top()];
-            parentEventInfo.IsParent = true;
-        }
+        auto&& [hash, eventInfo] = CreateOrUpdateEventInfo(name);
 
-        auto&& [it, _] = g_Data.EventInfos.try_emplace(name, (uint8_t)g_Data.ScopeNames.size());
+        g_Data.EventHashStack.push(hash);
 
-        auto& eventInfo = (*it).second;
-        eventInfo.SortIndex = std::max(eventInfo.SortIndex, g_Data.SortCounter++);
         eventInfo.BeginTimePoint = std::chrono::high_resolution_clock::now();
-
-        g_Data.ScopeNames.push(name);
     }
 
     void Profiler::EndScope()
     {
         const auto endTimePoint = std::chrono::high_resolution_clock::now();
 
-        auto& eventInfo = g_Data.EventInfos[g_Data.ScopeNames.top()];
-        eventInfo.Us = std::chrono::duration_cast<std::chrono::microseconds>(endTimePoint - eventInfo.BeginTimePoint);
+        auto& eventInfo = g_Data.EventInfos[g_Data.EventHashStack.top()];
+        eventInfo.Us += std::chrono::duration_cast<std::chrono::microseconds>(endTimePoint - eventInfo.BeginTimePoint);
 
-        g_Data.ScopeNames.pop();
+        g_Data.EventHashStack.pop();
     }
 
     void Profiler::SortEvents()
@@ -83,18 +112,19 @@ namespace benzin
             g_Data.SortedEvents.resize(g_Data.EventInfos.size());
         }
 
-        for (const auto& [name, eventInfo] : g_Data.EventInfos)
+        for (auto& [_, eventInfo] : g_Data.EventInfos)
         {
+            eventInfo.IsProcessed = false;
+
             auto& sortedEvent = g_Data.SortedEvents[eventInfo.SortIndex];
+            sortedEvent.Us = std::exchange(eventInfo.Us, std::chrono::microseconds::zero());
 
             if (isNeedResize)
             {
-                sortedEvent.Name = name;
+                sortedEvent.Name = eventInfo.Name;
                 sortedEvent.Depth = eventInfo.Depth;
                 sortedEvent.IsParent = eventInfo.IsParent;
             }
-
-            sortedEvent.Us = eventInfo.Us;
         }
     }
 
