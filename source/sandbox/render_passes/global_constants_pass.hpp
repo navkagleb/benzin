@@ -23,12 +23,12 @@ namespace sandbox
 
         bool IsDependentOnViewport() const override { return false; }
 
-        void OnUpdate() override;
+        void OnUpdate(const benzin::TickTimer& frameTimer) override;
         void OnRender() const override;
 
     private:
         void UpdateCameraConsts();
-        void UpdateFrameConsts();
+        void UpdateFrameConsts(const benzin::TickTimer& frameTimer);
 
     private:
         benzin::Device& m_Device;

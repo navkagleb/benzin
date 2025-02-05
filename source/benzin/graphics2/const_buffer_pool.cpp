@@ -35,10 +35,10 @@ namespace benzin
         }
     }
 
-    void ConstBufferPool::PreAllocate(uint32_t sizeInBytes)
+    void ConstBufferPool::PreAllocate(uint32_t sizeInBytes, uint32_t count)
     {
         const auto [_, poolIndex] = ParseSize(sizeInBytes);
-        m_Pools[poolIndex].PreAllocatedElementCount++;
+        m_Pools[poolIndex].PreAllocatedElementCount += count;
     }
 
     uint64_t ConstBufferPool::Allocate(std::span<const std::byte> data)
@@ -48,7 +48,9 @@ namespace benzin
         auto& pool = m_Pools[poolIndex];
         BenzinAssert(pool.AllocatedCount < pool.PreAllocatedElementCount);
 
-        if (pool.BufferPool.get() == nullptr || pool.BufferPool->GetElementCount() != pool.PreAllocatedElementCount)
+        const uint32_t poolElementCount = pool.PreAllocatedElementCount * CommandLineArgs::GetU32("FrameInFlightCount");
+
+        if (pool.BufferPool.get() == nullptr || pool.BufferPool->GetElementCount() != poolElementCount)
         {
             MakeUniquePtr(pool.BufferPool, m_Device, BufferCreation
             {
@@ -56,7 +58,7 @@ namespace benzin
                 .MemoryType = ResourceMemoryType::Upload,
                 .Type = BufferType::Constant,
                 .ElementSize = alignedSize,
-                .ElementCount = pool.PreAllocatedElementCount * CommandLineArgs::GetU32("FrameInFlightCount"),
+                .ElementCount = poolElementCount,
             });
         }
 
@@ -68,6 +70,5 @@ namespace benzin
 
         return pool.BufferPool->GetGpuVirtualAddress(elementIndexInBufferPool);
     }
-
 
 }

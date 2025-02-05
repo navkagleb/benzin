@@ -35,7 +35,7 @@ namespace sandbox
             proxy.RenderTargetFormats.push_back(benzin::GraphicsFormat::Rgba8Unorm);
         });
 
-        ms_ConstBufferPool->PreAllocate<joint::FullScreenDebugConsts>();
+        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     FullScreenDebugPass::~FullScreenDebugPass()

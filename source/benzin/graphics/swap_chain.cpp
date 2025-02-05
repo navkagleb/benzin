@@ -90,6 +90,8 @@ namespace benzin
 
     bool SwapChain::OnFlip(bool isVerticalSyncEnabled)
     {
+        BenzinProfile();
+
         uint64_t cpuFrameIndex = m_Device.m_CpuFrameIndex;
         uint64_t gpuFrameIndex = m_Device.m_CompletedGpuFrameIndex;
 

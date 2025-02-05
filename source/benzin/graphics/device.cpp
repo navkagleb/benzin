@@ -4,6 +4,7 @@
 #include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
+#include "benzin/core/profiler.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
@@ -104,6 +105,8 @@ namespace benzin
 
     void Device::ProcessDeferredReleaseQueues(bool isForceRelease)
     {
+        BenzinProfile();
+
         while (!m_DeferredReleaseResourceQueue.empty())
         {
             auto&& [cpuFrameIndex, d3d12Object] = m_DeferredReleaseResourceQueue.front();

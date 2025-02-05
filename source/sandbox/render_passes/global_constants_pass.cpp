@@ -19,15 +19,15 @@ namespace sandbox
         : m_Device{ device }
         , m_Scene{ scene }
     {
-        ms_ConstBufferPool->PreAllocate<joint::FrameConsts>();
+        ms_ConstBufferPool->PreAllocate(sizeof(m_FrameConsts));
     }
 
     GlobalConstantsPass::~GlobalConstantsPass() = default;
 
-    void GlobalConstantsPass::OnUpdate()
+    void GlobalConstantsPass::OnUpdate(const benzin::TickTimer& frameTimer)
     {
         UpdateCameraConsts();
-        UpdateFrameConsts();
+        UpdateFrameConsts(frameTimer);
     }
 
     void GlobalConstantsPass::OnRender() const
@@ -77,7 +77,7 @@ namespace sandbox
         }
     }
 
-    void GlobalConstantsPass::UpdateFrameConsts()
+    void GlobalConstantsPass::UpdateFrameConsts(const benzin::TickTimer& frameTimer)
     {
         const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
 
@@ -91,13 +91,8 @@ namespace sandbox
         m_FrameConsts.IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
         m_FrameConsts.IsShadowsEnabled = ms_Settings->GetSection<RayTracing_ShadowSettings>().IsEnabled;
         m_FrameConsts.IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled;
-        m_FrameConsts.RandomFloats01 =
-        {
-            benzin::Random::Get<float>(0.0f, 1.0f),
-            benzin::Random::Get<float>(0.0f, 1.0f),
-            benzin::Random::Get<float>(0.0f, 1.0f),
-            benzin::Random::Get<float>(0.0f, 1.0f),
-        };
+
+        m_FrameConsts.DeltaTimeInSec = frameTimer.GetDeltaTimeInSec();
 
         m_PrevRenderResolution = renderResolution;
     }

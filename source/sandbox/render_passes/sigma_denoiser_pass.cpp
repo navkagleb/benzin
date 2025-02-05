@@ -65,13 +65,10 @@ namespace sandbox
         createPso(Pso::SigmaPostBlur, "sigma_denoiser/blur.hlsl", "POST_BLUR_PASS");
         createPso(Pso::SigmaTemporalStabilization, "sigma_denoiser/temporal_stabilization.hlsl");
 
-        ms_ConstBufferPool->PreAllocate<joint::SigmaConsts>();
-
         m_PerLightConsts.resize(benzin::Scene::s_MaxLightCount);
-        for (uint32_t i = 0; i < m_PerLightConsts.size(); ++i)
-        {
-            ms_ConstBufferPool->PreAllocate<joint::SigmaPerLightConsts>();
-        }
+
+        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
+        ms_ConstBufferPool->PreAllocate(sizeof(joint::SigmaPerLightConsts), benzin::Scene::s_MaxLightCount);
     }
 
     SigmaDenoiserPass::~SigmaDenoiserPass()

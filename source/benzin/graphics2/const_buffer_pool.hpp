@@ -13,14 +13,8 @@ namespace benzin
 
         void BeginFrame();
 
-        void PreAllocate(uint32_t sizeInBytes);
+        void PreAllocate(uint32_t sizeInBytes, uint32_t count = 1);
         uint64_t Allocate(std::span<const std::byte> data);
-
-        template <typename T>
-        void PreAllocate()
-        {
-            PreAllocate(sizeof(T));
-        }
 
         template <typename T>
         uint64_t Allocate(const T& data)

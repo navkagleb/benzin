@@ -17,8 +17,7 @@ namespace benzin
 
     void BufferWriter::WriteData(ConstByteBuffer data)
     {
-        const bool isValid = m_BufferPosition + data.size() <= m_TargetBuffer.size();
-        BenzinAssert(isValid);
+        BenzinAssert(m_BufferPosition + data.size() <= m_TargetBuffer.size());
 
         memcpy(m_TargetBuffer.data() + m_BufferPosition, data.data(), data.size());
         m_BufferPosition += data.size();

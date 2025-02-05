@@ -39,7 +39,7 @@ namespace sandbox
             proxy.ShaderConfig.AttributeSize = sizeof(DirectX::XMFLOAT2); // Barycentrics
         });
 
-        ms_ConstBufferPool->PreAllocate<joint::RayTracing_ShadowConsts>();
+        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     RayTracing_ShadowPass::~RayTracing_ShadowPass()
