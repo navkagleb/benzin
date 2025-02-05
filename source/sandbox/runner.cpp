@@ -136,12 +136,16 @@ namespace sandbox
         m_MainWindow->SetVisible(true);
 
         m_FrameTimer.Reset();
+
         m_AnimationTimer.Reset();
+        m_AnimationTimer.SetPaused(true);
 
         while (m_IsRunning)
         {
             benzin::Profiler::BeginFrame();
             BenzinExecuteOnScopeExit([] { benzin::Profiler::EndFrame(); });
+
+            BenzinScopeProfile("Frame");
 
             m_FrameTimer.Tick();
             m_AnimationTimer.Tick();
@@ -193,6 +197,8 @@ namespace sandbox
 
     void Runner::WindowEventCallback(benzin::Event& event)
     {
+        BenzinProfile();
+
         const benzin::EventDispatcher dispatcher{ event };
         {
             dispatcher.Dispatch<benzin::WindowCloseEvent>([this]
@@ -204,7 +210,11 @@ namespace sandbox
             dispatcher.Dispatch<benzin::WindowEnterResizingEvent>([this]
             {
                 m_FrameTimer.SetPaused(true);
-                // m_AnimationTimer.SetPaused(true);
+
+                if (m_IsAnimationEnabled)
+                {
+                    m_AnimationTimer.SetPaused(true);
+                }
 
                 return false;
             });
@@ -215,7 +225,7 @@ namespace sandbox
 
                 if (m_IsAnimationEnabled)
                 {
-                    // m_AnimationTimer.SetPaused(false);
+                    m_AnimationTimer.SetPaused(false);
                 }
 
                 return false;

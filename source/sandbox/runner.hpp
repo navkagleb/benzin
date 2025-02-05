@@ -72,7 +72,7 @@ namespace sandbox
         benzin::TickTimer m_AnimationTimer;
         benzin::IntervalTimer m_1SecIntervalTimer;
 
-        bool m_IsAnimationEnabled = true;
+        bool m_IsAnimationEnabled = false;
 
         FpsCounter m_FpsCounter;
 
