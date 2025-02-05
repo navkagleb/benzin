@@ -100,61 +100,6 @@ namespace benzin
         GetTimestampsFromReadbackBuffer();
     }
 
-    uint8_t GpuProfiler::AllocateEvent(std::string_view name)
-    {
-        BenzinEnsure(!name.empty());
-        BenzinEnsure(m_EventInfos.size() < ms_MaxEventCount);
-
-        const uint64_t hash = CalcEventHash(name);
-
-        auto&& [it, _] = m_EventInfos.try_emplace(hash, name.data(), (uint8_t)m_EventHashStack.size());
-        EventInfo& eventInfo = it->second;
-
-        auto& readbackIndices = m_ResolveFrameData->EventReadbackIndices[hash];
-        readbackIndices.push_back((uint8_t)m_ResolveFrameData->ReadbackIndexAllocator.AllocateIndex());
-
-        BenzinAssert(m_EventInfos.size() == m_ResolveFrameData->EventReadbackIndices.size());
-
-        if (readbackIndices.size() == 1)
-        {
-            eventInfo.SortIndex = std::max(eventInfo.SortIndex, m_SortCounter++);
-
-            const uint64_t prevHash = std::exchange(m_SortedEventHashes[eventInfo.SortIndex], hash);
-            if (prevHash != 0 && prevHash != hash)
-            {
-                for (auto& frameData : m_FrameData)
-                {
-                    frameData.ReadbackIndexAllocator.FreeIndices(ToConstSpan(frameData.EventReadbackIndices[prevHash]));
-                    frameData.EventReadbackIndices.erase(prevHash);
-                }
-
-                m_EventInfos.erase(prevHash);
-            }
-        }
-
-        m_EventHashStack.push(hash);
-
-        return readbackIndices.back();
-    }
-
-    uint8_t GpuProfiler::GetBeginTimestampIndex(uint8_t readbackIndex)
-    {
-        const auto timestampIndex = CalcBeginTimestampIndex(readbackIndex);
-        m_ResolveFrameData->ProfiledTimestamps[timestampIndex] = true;
-
-        return timestampIndex;
-    }
-
-    uint8_t GpuProfiler::GetEndTimestampIndex(uint8_t readbackIndex)
-    {
-        m_EventHashStack.pop();
-
-        const auto timestampIndex = CalcEndTimestampIndex(readbackIndex);
-        m_ResolveFrameData->ProfiledTimestamps[timestampIndex] = true;
-
-        return timestampIndex;
-    }
-
     void GpuProfiler::ForceProfileUnprofiledTimestamps(const UnprofiledTimestampCallback& callback)
     {
         for (uint8_t i = 0; i < ms_MaxTimestampCount; ++i)
@@ -181,6 +126,68 @@ namespace benzin
         return HashCombine(parentHash, name);
     }
 
+    std::pair<uint64_t, uint8_t> GpuProfiler::CreateOrUpdateEventInfo(std::string_view name)
+    {
+        BenzinEnsure(!name.empty());
+        BenzinEnsure(m_EventInfos.size() < ms_MaxEventCount);
+
+        const uint64_t hash = CalcEventHash(name);
+
+        auto&& [it, _] = m_EventInfos.try_emplace(hash, name.data(), (uint8_t)m_EventHashStack.size());
+        EventInfo& eventInfo = it->second;
+
+        auto& readbackIndices = m_ResolveFrameData->EventReadbackIndices[hash];
+        readbackIndices.push_back((uint8_t)m_ResolveFrameData->ReadbackIndexAllocator.AllocateIndex());
+
+        BenzinAssert(m_EventInfos.size() == m_ResolveFrameData->EventReadbackIndices.size());
+
+        if (readbackIndices.size() == 1)
+        {
+            m_SortCounter = std::max(eventInfo.SortIndex, m_SortCounter);
+
+            eventInfo.SortIndex = m_SortCounter++;
+
+            const uint64_t prevHash = std::exchange(m_SortedEventHashes[eventInfo.SortIndex], hash);
+            if (prevHash != 0 && prevHash != hash)
+            {
+                m_EventInfos.erase(prevHash);
+
+                for (auto& frameData : m_FrameData)
+                {
+                    frameData.ReadbackIndexAllocator.FreeIndices(ToConstSpan(frameData.EventReadbackIndices[prevHash]));
+                    frameData.EventReadbackIndices.erase(prevHash);
+                }
+            }
+
+            BenzinAssert(m_EventInfos.size() == m_SortedEventHashes.size());
+            BenzinAssert(m_ResolveFrameData->EventReadbackIndices.size() == m_SortedEventHashes.size());
+        }
+
+        return { hash, readbackIndices.back() };
+    }
+
+    uint8_t GpuProfiler::GetBeginTimestampIndex(std::string_view name)
+    {
+        const auto [hash, readbackIndex] = CreateOrUpdateEventInfo(name);
+        m_EventHashStack.push(hash);
+
+        const auto timestampIndex = CalcBeginTimestampIndex(readbackIndex);
+        m_ResolveFrameData->ProfiledTimestamps[timestampIndex] = true;
+
+        return timestampIndex;
+    }
+
+    uint8_t GpuProfiler::GetEndTimestampIndex()
+    {
+        const auto readbackIndex = m_ResolveFrameData->EventReadbackIndices[m_EventHashStack.top()].back();
+        m_EventHashStack.pop();
+
+        const auto timestampIndex = CalcEndTimestampIndex(readbackIndex);
+        m_ResolveFrameData->ProfiledTimestamps[timestampIndex] = true;
+
+        return timestampIndex;
+    }
+
     void GpuProfiler::GetTimestampsFromReadbackBuffer()
     {
         BenzinProfile();
@@ -193,14 +200,14 @@ namespace benzin
 
         for (auto& [hash, eventInfo] : m_EventInfos)
         {
-            auto& sortEvent = m_SortedEvents[eventInfo.SortIndex];
-            sortEvent.Us = std::chrono::microseconds::zero();
+            auto& sortedEvent = m_SortedEvents[eventInfo.SortIndex];
+            sortedEvent.Us = std::chrono::microseconds::zero();
 
             if (isNeedResize)
             {
-                sortEvent.Name = eventInfo.Name;
-                sortEvent.Depth = eventInfo.Depth;
-                sortEvent.IsParent = eventInfo.IsParent;
+                sortedEvent.Name = eventInfo.Name;
+                sortedEvent.Depth = eventInfo.Depth;
+                sortedEvent.IsParent = eventInfo.IsParent;
             }
 
             auto& readbackIndices = m_CopyFrameData->EventReadbackIndices[hash];
@@ -218,7 +225,7 @@ namespace benzin
                 const auto endTimestamp = m_CopyFrameData->MappedTimestamps[endTimestampIndex];
 
                 const std::chrono::duration<double> diff{ (endTimestamp - beginTimestamp) * m_InverseFrequency };
-                sortEvent.Us += std::chrono::round<std::chrono::microseconds>(diff);
+                sortedEvent.Us += std::chrono::round<std::chrono::microseconds>(diff);
 
                 m_CopyFrameData->ReadbackIndexAllocator.FreeIndex(readbackIndex);
             }
@@ -229,17 +236,16 @@ namespace benzin
 
     // ScopedGpuProfileEvent
 
-    ScopedGpuProfileEvent::ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, uint8_t readbackIndex)
+    ScopedGpuProfileEvent::ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, std::string_view name)
         : m_GpuProfiler{ gpuProfiler }
         , m_CommandList{ commandList }
-        , m_ReadbackIndex{ readbackIndex }
     {
-        m_CommandList.SetTimestamp(m_GpuProfiler.GetTimestampQueryHeap(), m_GpuProfiler.GetBeginTimestampIndex(m_ReadbackIndex));
+        m_CommandList.SetTimestamp(m_GpuProfiler.GetTimestampQueryHeap(), m_GpuProfiler.GetBeginTimestampIndex(name));
     }
 
     ScopedGpuProfileEvent::~ScopedGpuProfileEvent()
     {
-        m_CommandList.SetTimestamp(m_GpuProfiler.GetTimestampQueryHeap(), m_GpuProfiler.GetEndTimestampIndex(m_ReadbackIndex));
+        m_CommandList.SetTimestamp(m_GpuProfiler.GetTimestampQueryHeap(), m_GpuProfiler.GetEndTimestampIndex());
     }
 
 }

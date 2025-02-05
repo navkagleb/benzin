@@ -15,6 +15,8 @@ namespace benzin
     class GpuProfiler
     {
     public:
+        friend class ScopedGpuProfileEvent;
+
         using UnprofiledTimestampCallback = std::function<void(uint8_t timestampIndex)>;
 
         explicit GpuProfiler(Device& device);
@@ -32,15 +34,14 @@ namespace benzin
         void BeginFrame(uint64_t cpuFrameIndex);
         void EndFrame();
 
-        uint8_t AllocateEvent(std::string_view name);
-
-        uint8_t GetBeginTimestampIndex(uint8_t readbackIndex);
-        uint8_t GetEndTimestampIndex(uint8_t readbackIndex);
-
         void ForceProfileUnprofiledTimestamps(const UnprofiledTimestampCallback& callback);
 
     private:
         uint64_t CalcEventHash(std::string_view name);
+        std::pair<uint64_t, uint8_t> CreateOrUpdateEventInfo(std::string_view name);
+
+        uint8_t GetBeginTimestampIndex(std::string_view name);
+        uint8_t GetEndTimestampIndex();
 
         void GetTimestampsFromReadbackBuffer();
 
@@ -52,7 +53,7 @@ namespace benzin
         {
             const char* Name = nullptr;
 
-            uint8_t Depth : 6 = 0;
+            uint8_t Depth : 7 = 0;
             uint8_t IsParent : 1 = false;
             uint8_t SortIndex = 0;
         };
@@ -88,20 +89,16 @@ namespace benzin
     class ScopedGpuProfileEvent
     {
     public:
-        ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, uint8_t readbackIndex);
+        ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, std::string_view name);
         ~ScopedGpuProfileEvent();
 
     private:
         GpuProfiler& m_GpuProfiler;
         GraphicsCommandList& m_CommandList;
-
-        const uint8_t m_ReadbackIndex;
     };
 
 }
 
 #define BenzinGpuProfile(gpuProfiler, commandList, name) \
     BenzinGpuEvent(commandList, name); \
-    \
-    const auto BenzinUniqueVariableName(_readbackIndex) = (gpuProfiler).AllocateEvent(name); \
-    const benzin::ScopedGpuProfileEvent BenzinUniqueVariableName(_scopedGpuProfileEvent){ gpuProfiler, commandList, BenzinUniqueVariableName(_readbackIndex) }
+    const benzin::ScopedGpuProfileEvent BenzinUniqueVariableName(_scopedGpuProfileEvent){ gpuProfiler, commandList, name }

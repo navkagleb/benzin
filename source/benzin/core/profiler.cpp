@@ -35,7 +35,7 @@ namespace benzin
 
     static ProfilerData g_Data;
 
-    uint64_t CalcEventHash(std::string_view name)
+    static uint64_t CalcEventHash(std::string_view name)
     {
         if (g_Data.EventHashStack.empty())
         {
@@ -48,7 +48,7 @@ namespace benzin
         return HashCombine(g_Data.EventHashStack.top(), name);
     }
 
-    auto CreateOrUpdateEventInfo(std::string_view name)
+    static auto CreateOrUpdateEventInfo(std::string_view name)
     {
         const uint64_t hash = CalcEventHash(name);
 
@@ -57,14 +57,18 @@ namespace benzin
 
         if (!eventInfo.IsProcessed)
         {
+            g_Data.SortCounter = std::max(eventInfo.SortIndex, g_Data.SortCounter);
+
             eventInfo.IsProcessed = true;
-            eventInfo.SortIndex = std::max(eventInfo.SortIndex, g_Data.SortCounter++);
+            eventInfo.SortIndex = g_Data.SortCounter++;
 
             const uint64_t prevHash = std::exchange(g_Data.SortedEventHashes[eventInfo.SortIndex], hash);
             if (prevHash != 0 && prevHash != hash)
             {
                 g_Data.EventInfos.erase(prevHash);
             }
+
+            BenzinAssert(g_Data.EventInfos.size() == g_Data.SortedEventHashes.size());
         }
 
         return std::pair<uint64_t, decltype(eventInfo)>{ hash, eventInfo };
