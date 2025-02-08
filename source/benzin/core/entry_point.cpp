@@ -31,6 +31,7 @@ namespace benzin
 
         CommandLineArgs::Initialize(argc, argv);
         Logger::Initialize((LogOptionFlag)CommandLineArgs::GetU32("RawLoggerLogOptionFlags"));
+        Profiler::Initialize();
 
         return ClientMain();
     }

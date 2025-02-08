@@ -78,8 +78,8 @@ namespace benzin
         FrameData* m_ResolveFrameData = nullptr;
         FrameData* m_CopyFrameData = nullptr;
 
-        std::unordered_map<uint64_t, EventInfo> m_EventInfos;
-        std::unordered_map<uint8_t, uint64_t> m_SortedEventHashes;
+        std::unordered_map<uint64_t, EventInfo> m_HashToEventInfo;
+        std::unordered_map<uint8_t, uint64_t> m_SortIndexToHash;
         std::stack<uint64_t, std::vector<uint64_t>> m_EventHashStack;
         std::vector<ProfileEvent> m_SortedEvents;
 

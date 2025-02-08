@@ -7,116 +7,143 @@
 namespace benzin
 {
 
+    struct EventInfo
+    {
+        const char* Name = nullptr;
+
+        uint8_t Depth : 6 = 0;
+        uint8_t IsParent : 1 = false;
+        uint8_t IsProcessed : 1 = false;
+        uint8_t SortIndex = 0;
+
+        std::chrono::microseconds Us = std::chrono::microseconds::zero();
+    };
+
+    struct EventStackInfo
+    {
+        uint64_t Hash = 0;
+        std::chrono::high_resolution_clock::time_point BeginTimePoint{};
+    };
+
     struct ProfilerData
     {
-        struct EventInfo
-        {
-            const char* Name = nullptr;
-
-            uint8_t Depth : 6 = 0;
-            uint8_t IsParent : 1 = false;
-            uint8_t IsProcessed : 1 = false;
-            uint8_t SortIndex = 0;
-
-            std::chrono::high_resolution_clock::time_point BeginTimePoint{};
-            std::chrono::microseconds Us = std::chrono::microseconds::zero();
-        };
-
         static constexpr auto s_MaxEventCount = std::numeric_limits<uint8_t>::max();
 
-        std::unordered_map<uint64_t, EventInfo> EventInfos;
-        std::unordered_map<uint8_t, uint64_t> SortedEventHashes;
-        std::stack<uint64_t, std::vector<uint64_t>> EventHashStack;
+        std::unordered_map<uint64_t, EventInfo> HashToEventInfo;
+        std::unordered_map<uint8_t, uint64_t> SortIndexToHash; // TODO: Try to replace with std::vector
+        std::stack<EventStackInfo, std::vector<EventStackInfo>> EventStack;
 
         std::vector<ProfileEvent> SortedEvents;
 
-        uint8_t SortCounter = 0;
+        uint8_t CurrentSortIndex = 0;
     };
 
     static ProfilerData g_Data;
 
     static uint64_t CalcEventHash(std::string_view name)
     {
-        if (g_Data.EventHashStack.empty())
+        if (g_Data.EventStack.empty())
         {
             return std::hash<std::string_view>{}(name);
         }
 
-        auto& parentEventInfo = g_Data.EventInfos[g_Data.EventHashStack.top()];
-        parentEventInfo.IsParent = true;
+        const uint64_t parentHash = g_Data.EventStack.top().Hash;
 
-        return HashCombine(g_Data.EventHashStack.top(), name);
+        g_Data.HashToEventInfo[parentHash].IsParent = true;
+
+        return HashCombine(parentHash, name);
     }
 
-    static auto CreateOrUpdateEventInfo(std::string_view name)
+    static uint64_t CreateOrUpdateEventInfo(std::string_view name)
     {
+        BenzinEnsure(!name.empty());
+        BenzinEnsure(g_Data.HashToEventInfo.size() < ProfilerData::s_MaxEventCount);
+
         const uint64_t hash = CalcEventHash(name);
 
-        auto&& [it, _] = g_Data.EventInfos.try_emplace(hash, name.data(), (uint8_t)g_Data.EventHashStack.size());
+        auto&& [it, _] = g_Data.HashToEventInfo.try_emplace(hash, name.data(), (uint8_t)g_Data.EventStack.size());
         auto& eventInfo = it->second;
 
         if (!eventInfo.IsProcessed)
         {
-            g_Data.SortCounter = std::max(eventInfo.SortIndex, g_Data.SortCounter);
+            g_Data.CurrentSortIndex = std::max(eventInfo.SortIndex, g_Data.CurrentSortIndex);
 
             eventInfo.IsProcessed = true;
-            eventInfo.SortIndex = g_Data.SortCounter++;
+            eventInfo.SortIndex = g_Data.CurrentSortIndex++;
 
-            const uint64_t prevHash = std::exchange(g_Data.SortedEventHashes[eventInfo.SortIndex], hash);
+            const uint64_t prevHash = std::exchange(g_Data.SortIndexToHash[eventInfo.SortIndex], hash);
             if (prevHash != 0 && prevHash != hash)
             {
-                g_Data.EventInfos.erase(prevHash);
+                g_Data.HashToEventInfo.erase(prevHash);
             }
 
-            BenzinAssert(g_Data.EventInfos.size() == g_Data.SortedEventHashes.size());
+            BenzinAssert(g_Data.HashToEventInfo.size() == g_Data.SortIndexToHash.size());
         }
 
-        return std::pair<uint64_t, decltype(eventInfo)>{ hash, eventInfo };
+        return hash;
     }
 
-    //
+    // Profiler
+
+    void Profiler::Initialize()
+    {
+        g_Data.SortedEvents.reserve(ProfilerData::s_MaxEventCount);
+    }
 
     void Profiler::BeginFrame()
     {
-        g_Data.SortCounter = 0;
+        BenzinAssert(g_Data.EventStack.empty());
+
+        g_Data.CurrentSortIndex = 0;
     }
 
     void Profiler::EndFrame()
     {
+        BenzinAssert(g_Data.EventStack.empty());
+
         SortEvents();
+    }
+
+    std::span<const ProfileEvent> Profiler::GetSortedEvents()
+    {
+        return g_Data.SortedEvents;
     }
 
     void Profiler::BeginScope(std::string_view name)
     {
-        BenzinEnsure(!name.empty());
-        BenzinEnsure(g_Data.EventInfos.size() < ProfilerData::s_MaxEventCount);
+        const uint64_t hash = CreateOrUpdateEventInfo(name);
 
-        auto&& [hash, eventInfo] = CreateOrUpdateEventInfo(name);
-
-        g_Data.EventHashStack.push(hash);
-
-        eventInfo.BeginTimePoint = std::chrono::high_resolution_clock::now();
+        g_Data.EventStack.push(EventStackInfo
+        {
+            .Hash = hash,
+            .BeginTimePoint = std::chrono::high_resolution_clock::now(),
+        });
     }
 
     void Profiler::EndScope()
     {
+        BenzinAssert(!g_Data.EventStack.empty());
+
         const auto endTimePoint = std::chrono::high_resolution_clock::now();
+        const auto& stackEventInfo = g_Data.EventStack.top();
 
-        auto& eventInfo = g_Data.EventInfos[g_Data.EventHashStack.top()];
-        eventInfo.Us += std::chrono::duration_cast<std::chrono::microseconds>(endTimePoint - eventInfo.BeginTimePoint);
+        auto& eventInfo = g_Data.HashToEventInfo[stackEventInfo.Hash];
+        eventInfo.Us += std::chrono::duration_cast<std::chrono::microseconds>(endTimePoint - stackEventInfo.BeginTimePoint);
 
-        g_Data.EventHashStack.pop();
+        g_Data.EventStack.pop();
     }
 
     void Profiler::SortEvents()
     {
-        const bool isNeedResize = g_Data.SortedEvents.size() != g_Data.EventInfos.size();
+        const auto eventCount = g_Data.HashToEventInfo.size();
+
+        const bool isNeedResize = g_Data.SortedEvents.size() != eventCount;
         if (isNeedResize)
         {
-            g_Data.SortedEvents.resize(g_Data.EventInfos.size());
+            g_Data.SortedEvents.resize(eventCount);
         }
 
-        for (auto& [_, eventInfo] : g_Data.EventInfos)
+        for (auto& [_, eventInfo] : g_Data.HashToEventInfo)
         {
             eventInfo.IsProcessed = false;
 
@@ -132,9 +159,16 @@ namespace benzin
         }
     }
 
-    std::span<const ProfileEvent> Profiler::GetSortedEvents()
+    // ScopedProfileEvent
+
+    ScopedProfileEvent::ScopedProfileEvent(std::string_view name)
     {
-        return g_Data.SortedEvents;
+        Profiler::BeginScope(name);
+    }
+
+    ScopedProfileEvent::~ScopedProfileEvent()
+    {
+        Profiler::EndScope();
     }
 
 }

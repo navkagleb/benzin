@@ -58,6 +58,8 @@ namespace benzin
 
             BenzinEnsure(m_ReadbackBuffer->GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&frameData.MappedTimestamps)));
         }
+
+        m_SortedEvents.reserve(ms_MaxEventCount);
     }
 
     GpuProfiler::~GpuProfiler()
@@ -120,8 +122,7 @@ namespace benzin
 
         const uint64_t parentHash = m_EventHashStack.top();
 
-        auto& parentEventInfo = m_EventInfos[parentHash];
-        parentEventInfo.IsParent = true;
+        m_HashToEventInfo[parentHash].IsParent = true;;
 
         return HashCombine(parentHash, name);
     }
@@ -129,17 +130,17 @@ namespace benzin
     std::pair<uint64_t, uint8_t> GpuProfiler::CreateOrUpdateEventInfo(std::string_view name)
     {
         BenzinEnsure(!name.empty());
-        BenzinEnsure(m_EventInfos.size() < ms_MaxEventCount);
+        BenzinEnsure(m_HashToEventInfo.size() < ms_MaxEventCount);
 
         const uint64_t hash = CalcEventHash(name);
 
-        auto&& [it, _] = m_EventInfos.try_emplace(hash, name.data(), (uint8_t)m_EventHashStack.size());
+        auto&& [it, _] = m_HashToEventInfo.try_emplace(hash, name.data(), (uint8_t)m_EventHashStack.size());
         EventInfo& eventInfo = it->second;
 
         auto& readbackIndices = m_ResolveFrameData->EventReadbackIndices[hash];
         readbackIndices.push_back((uint8_t)m_ResolveFrameData->ReadbackIndexAllocator.AllocateIndex());
 
-        BenzinAssert(m_EventInfos.size() == m_ResolveFrameData->EventReadbackIndices.size());
+        BenzinAssert(m_HashToEventInfo.size() == m_ResolveFrameData->EventReadbackIndices.size());
 
         if (readbackIndices.size() == 1)
         {
@@ -147,10 +148,10 @@ namespace benzin
 
             eventInfo.SortIndex = m_SortCounter++;
 
-            const uint64_t prevHash = std::exchange(m_SortedEventHashes[eventInfo.SortIndex], hash);
+            const uint64_t prevHash = std::exchange(m_SortIndexToHash[eventInfo.SortIndex], hash);
             if (prevHash != 0 && prevHash != hash)
             {
-                m_EventInfos.erase(prevHash);
+                m_HashToEventInfo.erase(prevHash);
 
                 for (auto& frameData : m_FrameData)
                 {
@@ -159,8 +160,8 @@ namespace benzin
                 }
             }
 
-            BenzinAssert(m_EventInfos.size() == m_SortedEventHashes.size());
-            BenzinAssert(m_ResolveFrameData->EventReadbackIndices.size() == m_SortedEventHashes.size());
+            BenzinAssert(m_HashToEventInfo.size() == m_SortIndexToHash.size());
+            BenzinAssert(m_ResolveFrameData->EventReadbackIndices.size() == m_SortIndexToHash.size());
         }
 
         return { hash, readbackIndices.back() };
@@ -192,13 +193,15 @@ namespace benzin
     {
         BenzinProfile();
 
-        const bool isNeedResize = m_SortedEvents.size() != m_EventInfos.size();
+        const auto eventCount = m_HashToEventInfo.size();
+
+        const bool isNeedResize = m_SortedEvents.size() != eventCount;
         if (isNeedResize)
         {
-            m_SortedEvents.resize(m_EventInfos.size());
+            m_SortedEvents.resize(eventCount);
         }
 
-        for (auto& [hash, eventInfo] : m_EventInfos)
+        for (auto& [hash, eventInfo] : m_HashToEventInfo)
         {
             auto& sortedEvent = m_SortedEvents[eventInfo.SortIndex];
             sortedEvent.Us = std::chrono::microseconds::zero();
