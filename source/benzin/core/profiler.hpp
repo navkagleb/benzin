@@ -14,29 +14,30 @@ namespace benzin
     class Profiler
     {
     public:
+        friend class ScopedProfileEvent;
+
+        static void Initialize();
+
         static void BeginFrame();
         static void EndFrame();
-
-        static void BeginScope(std::string_view name);
-        static void EndScope();
 
         static std::span<const ProfileEvent> GetSortedEvents();
 
     private:
+        static void BeginScope(std::string_view name);
+        static void EndScope();
+
         static void SortEvents();
+    };
+
+    class ScopedProfileEvent
+    {
+    public:
+        explicit ScopedProfileEvent(std::string_view name);
+        ~ScopedProfileEvent();
     };
 
 }
 
-#if 1
-#define BenzinProfile() \
-    benzin::Profiler::BeginScope(__FUNCTION__); \
-    BenzinExecuteOnScopeExit([] { benzin::Profiler::EndScope(); })
-
-#define BenzinScopeProfile(name) \
-    benzin::Profiler::BeginScope(name); \
-    BenzinExecuteOnScopeExit([] { benzin::Profiler::EndScope(); })
-#else
-    #define BenzinProfile()
-    #define BenzinScopeProfile(name)
-#endif
+#define BenzinScopeProfile(name) const benzin::ScopedProfileEvent BenzinUniqueVariableName(_scopedProfilerEvent){ name }
+#define BenzinProfile() BenzinScopeProfile(__FUNCTION__)
