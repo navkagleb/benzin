@@ -15,6 +15,8 @@
 #include "benzin/system/key_event.hpp"
 #include "benzin/system/window.hpp"
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+
 namespace benzin
 {
 
@@ -61,7 +63,7 @@ namespace benzin
 
     // ImGuiManager
 
-    ImGuiManager::ImGuiManager(const Window& window, Device& device, const TickTimer& frameTimer)
+    ImGuiManager::ImGuiManager(Window& window, Device& device, const TickTimer& frameTimer)
         : m_Device{ device }
     {
         IMGUI_CHECKVERSION();
@@ -71,13 +73,13 @@ namespace benzin
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // TODO: Mouse events are broken
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         ImGui::StyleColorsDark();
 
         BenzinEnsure(ImGui_ImplWin32_Init(window.GetWin64Window()));
 
-        m_LegacySigleSrvDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
+        m_LegacySingleSrvDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
 
         ImGui_ImplDX12_InitInfo imguiInitInfo;
         imguiInitInfo.Device = m_Device.GetD3D12Device();
@@ -86,21 +88,23 @@ namespace benzin
         imguiInitInfo.RTVFormat = (DXGI_FORMAT)CommandLineArgs::GetU32("BackBufferFormat");
         imguiInitInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
         imguiInitInfo.SrvDescriptorHeap = m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap();
-        imguiInitInfo.LegacySingleSrvCpuDescriptor.ptr = m_LegacySigleSrvDescriptor.GetCpuHandle();
-        imguiInitInfo.LegacySingleSrvGpuDescriptor.ptr = m_LegacySigleSrvDescriptor.GetGpuHandle();
+        imguiInitInfo.LegacySingleSrvCpuDescriptor.ptr = m_LegacySingleSrvDescriptor.GetCpuHandle();
+        imguiInitInfo.LegacySingleSrvGpuDescriptor.ptr = m_LegacySingleSrvDescriptor.GetGpuHandle();
 
         BenzinEnsure(ImGui_ImplDX12_Init(&imguiInitInfo));
 
         {
             // Force call 'ImGui_ImplDX12_CreateDeviceObjects' to copy
-            // m_LegacySigleSrvDescriptor from CPU descriptor heap to GPU descriptor heap
+            // m_LegacySingleSrvDescriptor from CPU descriptor heap to GPU descriptor heap
 
             ImGui_ImplDX12_CreateDeviceObjects();
-            m_Device.GetDescriptorManager().CopyToGpuResourceHeap(m_LegacySigleSrvDescriptor);
+            m_Device.GetDescriptorManager().CopyToGpuResourceHeap(m_LegacySingleSrvDescriptor);
         }
 
         ImGuiTool::ms_Window = &window;
         ImGuiTool::ms_FrameTimer = &frameTimer;
+
+        window.SetPreMessageHandlerCallback(ImGui_ImplWin32_WndProcHandler);
 
         LoadToolsVisiblity();
     }
@@ -115,7 +119,7 @@ namespace benzin
         }
         m_Tools.clear();
 
-        m_Device.GetDescriptorManager().FreeDescriptor(m_LegacySigleSrvDescriptor);
+        m_Device.DeferredRelease(m_LegacySingleSrvDescriptor);
 
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
@@ -142,8 +146,7 @@ namespace benzin
 
         m_CurrentImGuiDrawData = ImGui::GetDrawData();
 
-        const ImGuiIO& io = ImGui::GetIO();
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();
@@ -152,6 +155,8 @@ namespace benzin
 
     void ImGuiManager::OnEvent(Event& event)
     {
+        BenzinProfile();
+
         const EventDispatcher dispatcher{ event };
         dispatcher.Dispatch<KeyPressedEvent>([this](const auto& event)
         {
@@ -172,15 +177,15 @@ namespace benzin
             return false;
         });
 
-        // ImGuiManager handles system events
-        const ImGuiIO& io = ImGui::GetIO();
-        event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Keyboard) & io.WantCaptureKeyboard;
-        event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Mouse) & io.WantCaptureMouse;
-
         for (auto& tool : m_Tools)
         {
             tool->OnEvent(event);
         }
+
+        // ImGuiManager handles system events
+        const ImGuiIO& io = ImGui::GetIO();
+        event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Keyboard) & io.WantCaptureKeyboard;
+        event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Mouse) & io.WantCaptureMouse;
     }
 
     void ImGuiManager::SpawnUi()
@@ -218,7 +223,14 @@ namespace benzin
 
     void ImGuiManager::SpawnImGuiDockSpace(const std::function<void()>& callback)
     {
-        constexpr ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
+        ImGui::SetNextWindowViewport(viewport->ID);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
 
         constexpr ImGuiWindowFlags windowFlags =
             ImGuiWindowFlags_NoDocking |
@@ -231,15 +243,6 @@ namespace benzin
             ImGuiWindowFlags_NoNavFocus |
             ImGuiWindowFlags_MenuBar;
 
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->WorkPos);
-        ImGui::SetNextWindowSize(viewport->WorkSize);
-        ImGui::SetNextWindowViewport(viewport->ID);
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
-
         ImGui::Begin("DockSpace", nullptr, windowFlags);
         {
             ImGui::PopStyleVar(3);
@@ -248,7 +251,7 @@ namespace benzin
             BenzinAssert((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable) != 0);
 
             const ImGuiID dockspaceId = ImGui::GetID("BenzinDockSpace");
-            ImGui::DockSpace(dockspaceId, ImVec2{ 0.0f, 0.0f }, dockspaceFlags);
+            ImGui::DockSpace(dockspaceId, ImVec2{ 0.0f, 0.0f }, ImGuiDockNodeFlags_None);
 
             callback();
         }

@@ -41,7 +41,7 @@ namespace benzin
     public:
         friend class ImGuiPass;
 
-        ImGuiManager(const Window& window, Device& device, const TickTimer& frameTimer);
+        ImGuiManager(Window& window, Device& device, const TickTimer& frameTimer);
         ~ImGuiManager();
 
     public:
@@ -78,7 +78,7 @@ namespace benzin
     private:
         Device& m_Device;
 
-        Descriptor m_LegacySigleSrvDescriptor;
+        Descriptor m_LegacySingleSrvDescriptor;
 
         std::unordered_map<std::string, bool> m_IsToolVisibleMap; // TODO: can std::string_view be used instead of std::string
 

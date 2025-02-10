@@ -48,8 +48,8 @@ namespace sandbox
             .Width = benzin::CommandLineArgs::GetU32("WindowWidth"),
             .Height = benzin::CommandLineArgs::GetU32("WindowHeight"),
             .IsResizable = benzin::CommandLineArgs::GetBool("IsWindowResizable"),
-            .EventCallback = [this](benzin::Event& event) { WindowEventCallback(event); },
         });
+        m_MainWindow->SetEventCallback([this](benzin::Event& event) { WindowEventCallback(event); });
 
         benzin::MakeUniquePtr(m_Backend);
         benzin::MakeUniquePtr(m_Device, benzin::DeviceCreation{ "MainDevice", *m_Backend });
@@ -204,7 +204,7 @@ namespace sandbox
             dispatcher.Dispatch<benzin::WindowCloseEvent>([this]
             {
                 RequestShutdown();
-                return false;
+                return true;
             });
 
             dispatcher.Dispatch<benzin::WindowEnterResizingEvent>([this]
@@ -234,7 +234,7 @@ namespace sandbox
             dispatcher.Dispatch<benzin::WindowResizedEvent>([&](const auto& event)
             {
                 m_SwapChain->RequestResize(event.GetWidth(), event.GetHeight());
-                return false;
+                return true;
             });
 
             dispatcher.Dispatch<benzin::KeyPressedEvent>([&](const auto& event)
@@ -244,17 +244,17 @@ namespace sandbox
                     case benzin::KeyCode::Escape:
                     {
                         RequestShutdown();
-                        break;
+                        return true;
                     }
                     case benzin::KeyCode::V:
                     {
                         ToggleVerticalSync();
-                        break;
+                        return true;
                     }
                     case benzin::KeyCode::F2:
                     {
                         ToggleAnimation();
-                        break;
+                        return true;
                     }
                 }
 

@@ -1,12 +1,9 @@
 #pragma once
 
-#include "benzin/system/event.hpp"
-#include "benzin/system/input.hpp"
-
 namespace benzin
 {
 
-    using WindowEventCallback = std::function<void(Event& event)>;
+    class Event;
 
     struct WindowCreation
     {
@@ -14,28 +11,32 @@ namespace benzin
         uint32_t Width = 0;
         uint32_t Height = 0;
         bool IsResizable = true;
-        WindowEventCallback EventCallback;
     };
 
     class Window
     {
-    private:
-        friend LRESULT Win64_MessageHandler(HWND windowHandle, UINT messageCode, WPARAM wparam, LPARAM lparam);
-
     public:
+        friend struct Win64_RegisterManager;
+
+        using PreMessageHandlerCallback = std::function<LRESULT(HWND windowHandle, UINT messageCode, WPARAM wparam, LPARAM lparam)>;
+        using EventCallback = std::function<void(Event& event)>;
+
         Window(const WindowCreation& creation);
         ~Window();
 
     public:
-        const HWND GetWin64Window() const { return m_Win64Window; }
+        auto GetWin64Window() const { return m_Win64Window; }
 
-        uint32_t GetWidth() const { return m_Width; }
-        uint32_t GetHeight() const { return m_Height; }
+        auto GetWidth() const { return m_Width; }
+        auto GetHeight() const { return m_Height; }
 
-        bool IsResizing() const { return m_IsResizing; }
-        bool IsMinimized() const { return m_IsMinimized; }
-        bool IsMaximized() const { return m_IsMaximized; }
-        bool IsFocused() const { return m_IsFocused; }
+        auto IsResizing() const { return m_IsResizing; }
+        auto IsMinimized() const { return m_IsMinimized; }
+        auto IsMaximized() const { return m_IsMaximized; }
+        auto IsFocused() const { return m_IsFocused; }
+
+        void SetPreMessageHandlerCallback(PreMessageHandlerCallback&& callback) { m_PreMessageHandlerCallback = std::move(callback); }
+        void SetEventCallback(EventCallback&& callback) { m_EventCallback = std::move(callback); }
 
     public:
         void ProcessEvents();
@@ -44,6 +45,11 @@ namespace benzin
         void SetVisible(bool isVisible);
 
     private:
+        static LRESULT MessageHandler(HWND windowHandle, UINT messageCode, WPARAM wparam, LPARAM lparam);
+        static bool HandleWindowEvents(Window& window, UINT messageCode, WPARAM wparam, LPARAM lparam);
+        static bool HandleMouseEvents(Window& window, UINT messageCode, WPARAM wparam, LPARAM lparam);
+        static bool HandleKeyEvents(Window& window, UINT messageCode, WPARAM wparam, LPARAM lparam);
+
         template <typename Event, typename... Args>
         void CreateAndPushEvent(Args&&... args)
         {
@@ -61,7 +67,8 @@ namespace benzin
         bool m_IsMaximized = false;
         bool m_IsFocused = true;
 
-        WindowEventCallback m_EventCallback;
+        PreMessageHandlerCallback m_PreMessageHandlerCallback;
+        EventCallback m_EventCallback;
     };
 
-} // namespace benzin
+}
