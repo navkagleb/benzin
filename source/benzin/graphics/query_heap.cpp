@@ -1,9 +1,9 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics/query_heap.hpp>
 
-#include <benzin/core/asserter.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/hr_assert.hpp>
 
 namespace benzin
 {
@@ -21,7 +21,7 @@ namespace benzin
             .NodeMask = 0,
         };
 
-        BenzinEnsure(m_Device.GetD3D12Device()->CreateQueryHeap(&d3d12QueryHeapDesc, IID_PPV_ARGS(&m_D3D12QueryHeap)));
+        BenzinHrEnsure(m_Device.GetD3D12Device()->CreateQueryHeap(&d3d12QueryHeapDesc, IID_PPV_ARGS(&m_D3D12QueryHeap)));
         SetDxObjectDebugName(m_D3D12QueryHeap, creation.DebugName);
 
         m_Count = creation.Count;

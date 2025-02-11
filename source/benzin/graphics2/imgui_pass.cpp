@@ -4,7 +4,6 @@
 #include <backends/imgui_impl_dx12.h>
 #include <backends/imgui_impl_win32.h>
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/profiler.hpp"
 #include "benzin/graphics/command_list.hpp"

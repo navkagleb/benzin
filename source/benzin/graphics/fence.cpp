@@ -1,16 +1,16 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/fence.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 
 namespace benzin
 {
 
     Fence::Fence(Device& device, const FenceCreation& creation)
     {
-        BenzinEnsure(device.GetD3D12Device()->CreateFence(
+        BenzinHrEnsure(device.GetD3D12Device()->CreateFence(
             creation.InitialValue,
             D3D12_FENCE_FLAG_NONE,
             IID_PPV_ARGS(&m_D3D12Fence)

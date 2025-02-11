@@ -1,8 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/utility/file_utils.hpp"
 
-#include "benzin/core/asserter.hpp"
-
 namespace benzin
 {
 

@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/system/window.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/common.hpp"
 #include "benzin/system/input.hpp"
 #include "benzin/system/key_event.hpp"
@@ -81,7 +80,7 @@ namespace benzin
             (void*)this
         );
 
-        BenzinEnsure(m_Win64Window);
+        BenzinEnsure(m_Win64Window != nullptr);
     }
 
     Window::~Window()

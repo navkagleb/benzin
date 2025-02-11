@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics2/const_buffer_pool.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/math.hpp"

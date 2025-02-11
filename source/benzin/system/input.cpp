@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/system/input.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/system/window.hpp"
 
 namespace benzin
@@ -36,7 +35,7 @@ namespace benzin
 
     DirectX::XMINT2 Input::GetMousePosition(const Window& window)
     {
-        BenzinAssert(window.GetWin64Window());
+        BenzinAssert(window.GetWin64Window() != nullptr);
 
         POINT mousePosition{ 0, 0 };
         BenzinAssertExpr(::GetCursorPos(&mousePosition) != 0);

@@ -8,7 +8,6 @@
 
 #include <shaders/joint/mesh_types.hpp>
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/engine_math.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/engine/mesh.hpp"

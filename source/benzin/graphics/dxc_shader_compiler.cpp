@@ -1,9 +1,9 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/dxc_shader_compiler.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/shader.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 
 namespace benzin
 {
@@ -201,8 +201,8 @@ namespace benzin
 
     DxcShaderCompiler::DxcShaderCompiler()
     {
-        BenzinEnsure(::DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils)));
-        BenzinEnsure(::DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler)));
+        BenzinHrEnsure(::DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils)));
+        BenzinHrEnsure(::DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler)));
 
         MakeUniquePtr(m_IncludeHandler, m_DxcUtils.Get());
     }
@@ -225,7 +225,7 @@ namespace benzin
     {
         uint32_t codePage = CP_UTF8;
         ComPtr<IDxcBlobEncoding> dxcShaderSource;
-        BenzinEnsure(m_DxcUtils->LoadFile(paths.SourceFilePath.c_str(), &codePage, &dxcShaderSource));
+        BenzinHrEnsure(m_DxcUtils->LoadFile(paths.SourceFilePath.c_str(), &codePage, &dxcShaderSource));
 
         const DxcBuffer dxcSourceBuffer
         {
@@ -237,7 +237,7 @@ namespace benzin
         const std::vector<const wchar_t*> compileArgs = GetCompileArgs(paths, args);
 
         ComPtr<IDxcResult> dxcResult;
-        BenzinEnsure(m_DxcCompiler->Compile(
+        BenzinHrEnsure(m_DxcCompiler->Compile(
             &dxcSourceBuffer,
             (LPCWSTR*)compileArgs.data(),
             (uint32_t)compileArgs.size(),
@@ -268,7 +268,7 @@ namespace benzin
     {
         {
             ComPtr<IDxcBlob> dxcBinaryBlob;
-            BenzinEnsure(dxcResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&dxcBinaryBlob), nullptr));
+            BenzinHrEnsure(dxcResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&dxcBinaryBlob), nullptr));
             BenzinAssert(dxcBinaryBlob.Get() && dxcBinaryBlob->GetBufferSize() != 0);
 
             const auto* data = reinterpret_cast<const std::byte*>(dxcBinaryBlob->GetBufferPointer());
@@ -280,7 +280,7 @@ namespace benzin
         if (GfxConfig::s_IsShaderSymbolsEnabled)
         {
             ComPtr<IDxcBlob> dxcDebugBlob;
-            BenzinEnsure(dxcResult->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&dxcDebugBlob), nullptr));
+            BenzinHrEnsure(dxcResult->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&dxcDebugBlob), nullptr));
             BenzinAssert(dxcDebugBlob.Get() && dxcDebugBlob->GetBufferPointer());
 
             const auto* data = reinterpret_cast<const std::byte*>(dxcDebugBlob->GetBufferPointer());

@@ -5,13 +5,13 @@
 #define USE_PIX
 #include <pix3.h>
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/core/memory_writer.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 #include "benzin/graphics/pso.hpp"
 #include "benzin/graphics/query_heap.hpp"
 #include "benzin/graphics/ray_tracing_acceleration_structures.hpp"
@@ -64,14 +64,14 @@ namespace benzin
     GraphicsCommandList::GraphicsCommandList(Device& device)
     {
         ComPtr<ID3D12GraphicsCommandList1> d3d12GraphicsCommandList1;
-        BenzinEnsure(device.GetD3D12Device()->CreateCommandList1(
+        BenzinHrEnsure(device.GetD3D12Device()->CreateCommandList1(
             0,
             D3D12_COMMAND_LIST_TYPE_DIRECT,
             D3D12_COMMAND_LIST_FLAG_NONE,
             IID_PPV_ARGS(&d3d12GraphicsCommandList1)
         ));
 
-        BenzinEnsure(d3d12GraphicsCommandList1->QueryInterface(IID_PPV_ARGS(&m_D3D12GraphicsCommandList)));
+        BenzinHrEnsure(d3d12GraphicsCommandList1->QueryInterface(IID_PPV_ARGS(&m_D3D12GraphicsCommandList)));
         SetDxObjectDebugName(m_D3D12GraphicsCommandList, "GraphicsCommandList");
     }
 
@@ -87,10 +87,10 @@ namespace benzin
 
     void GraphicsCommandList::UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, Bytes64 offset)
     {
-        BenzinAssert(buffer.GetD3D12Resource());
+        BenzinAssert(buffer.GetD3D12Resource() != nullptr);
         BenzinAssert(!data.empty());
 
-        BenzinAssert(m_UploadBuffer->GetD3D12Resource());
+        BenzinAssert(m_UploadBuffer->GetD3D12Resource() != nullptr);
 
         const size_t uploadBufferOffset = AllocateInUploadBuffer(data.size_bytes());
 
@@ -123,7 +123,7 @@ namespace benzin
             }
         };
 
-        BenzinAssert(texture.GetD3D12Resource());
+        BenzinAssert(texture.GetD3D12Resource() != nullptr);
         BenzinAssert(!subResources.empty());
 
         constexpr uint32_t firstSubresource = 0;
@@ -135,7 +135,7 @@ namespace benzin
             Bytes64 resourceSize = 0;
 
             ComPtr<ID3D12Device> d3d12Device;
-            BenzinEnsure(texture.GetD3D12Resource()->GetDevice(IID_PPV_ARGS(&d3d12Device)));
+            BenzinHrEnsure(texture.GetD3D12Resource()->GetDevice(IID_PPV_ARGS(&d3d12Device)));
 
             const D3D12_RESOURCE_DESC d3d12TextureDesc = texture.GetD3D12Resource()->GetDesc();
             const Bytes64 offset = AllocateInUploadBuffer(0, GfxConfig::s_TextureAlignment);

@@ -1,13 +1,13 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/command_queue.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/fence.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
 
 namespace benzin
@@ -25,7 +25,7 @@ namespace benzin
             .NodeMask = 0,
         };
 
-        BenzinEnsure(device.GetD3D12Device()->CreateCommandQueue(&d3d12CommandQueueDesc, IID_PPV_ARGS(&m_D3D12CommandQueue)));
+        BenzinHrEnsure(device.GetD3D12Device()->CreateCommandQueue(&d3d12CommandQueueDesc, IID_PPV_ARGS(&m_D3D12CommandQueue)));
         SetDxObjectDebugName(m_D3D12CommandQueue, "GraphicsCommandQueue");
 
         m_FrameContexts.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
@@ -33,7 +33,7 @@ namespace benzin
         {
             auto*& d3d12CommandAllocator = frameContext.D3D12CommandAllocator;
 
-            BenzinEnsure(device.GetD3D12Device()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&d3d12CommandAllocator)));
+            BenzinHrEnsure(device.GetD3D12Device()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&d3d12CommandAllocator)));
             SetDxObjectDebugName(d3d12CommandAllocator, std::format("GraphicsCommandAllocator{}", i));
         }
 
@@ -81,7 +81,7 @@ namespace benzin
     uint64_t GraphicsCommandQueue::GetTimestampFrequency() const
     {
         uint64_t frequency = 0;
-        BenzinEnsure(m_D3D12CommandQueue->GetTimestampFrequency(&frequency));
+        BenzinHrEnsure(m_D3D12CommandQueue->GetTimestampFrequency(&frequency));
 
         return frequency;
     }
@@ -91,12 +91,12 @@ namespace benzin
         auto& frameContext = m_FrameContexts[m_Device.GetActiveFrameIndex()];
 
         auto* d3d12CommandAllocator = frameContext.D3D12CommandAllocator;
-        BenzinEnsure(d3d12CommandAllocator->Reset());
+        BenzinHrEnsure(d3d12CommandAllocator->Reset());
 
         frameContext.UploadBuffers.clear();
 
         ID3D12GraphicsCommandList1* d3d12GraphicsCommandList = m_CommandList.GetD3D12GraphicsCommandList();
-        BenzinEnsure(d3d12GraphicsCommandList->Reset(d3d12CommandAllocator, nullptr));
+        BenzinHrEnsure(d3d12GraphicsCommandList->Reset(d3d12CommandAllocator, nullptr));
 
         ID3D12DescriptorHeap* const d3d12DescriptorHeaps[]
         {
@@ -111,7 +111,7 @@ namespace benzin
     void GraphicsCommandQueue::SubmitCommandList()
     {
         ID3D12GraphicsCommandList* d3d12GraphicsCommandList = m_CommandList.GetD3D12GraphicsCommandList();
-        BenzinEnsure(d3d12GraphicsCommandList->Close());
+        BenzinHrEnsure(d3d12GraphicsCommandList->Close());
 
         ID3D12CommandList* const d3d12CommandLists[]{ d3d12GraphicsCommandList };
         m_D3D12CommandQueue->ExecuteCommandLists((uint32_t)std::size(d3d12CommandLists), d3d12CommandLists);
@@ -129,7 +129,7 @@ namespace benzin
 
     void GraphicsCommandQueue::SignalFence(Fence& fence, uint64_t value)
     {
-        BenzinEnsure(m_D3D12CommandQueue->Signal(fence.GetD3D12Fence(), value));
+        BenzinHrEnsure(m_D3D12CommandQueue->Signal(fence.GetD3D12Fence(), value));
     }
 
 } // namespace benzin

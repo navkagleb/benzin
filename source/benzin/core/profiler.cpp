@@ -1,7 +1,6 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/core/profiler.hpp>
 
-#include <benzin/core/asserter.hpp>
 #include <benzin/utility/time_utils.hpp>
 
 namespace benzin

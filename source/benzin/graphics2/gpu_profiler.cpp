@@ -1,13 +1,13 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 
-#include <benzin/core/asserter.hpp>
 #include <benzin/core/command_line_args.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_list.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/hr_assert.hpp>
 #include <benzin/graphics/query_heap.hpp>
 #include <benzin/utility/time_utils.hpp>
 
@@ -56,7 +56,7 @@ namespace benzin
                 .End = frameData.ReadbackBufferOffset + m_ReadbackBuffer->GetElementSize(),
             };
 
-            BenzinEnsure(m_ReadbackBuffer->GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&frameData.MappedTimestamps)));
+            BenzinHrEnsure(m_ReadbackBuffer->GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&frameData.MappedTimestamps)));
         }
 
         m_SortedEvents.reserve(ms_MaxEventCount);

@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/index_allocator.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/math.hpp"
 
 namespace benzin

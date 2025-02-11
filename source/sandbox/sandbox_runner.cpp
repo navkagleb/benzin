@@ -1,7 +1,6 @@
 #include "sandbox/bootstrap.hpp"
 #include "sandbox/sandbox_runner.hpp"
 
-#include <benzin/core/asserter.hpp>
 #include <benzin/core/logger.hpp>
 #include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/geometry_generator.hpp>

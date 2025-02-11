@@ -1,11 +1,11 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/buffer.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 
 namespace benzin
 {
@@ -122,7 +122,7 @@ namespace benzin
 
         outInitialState = getInitialResourceState(device, bufferCreation);
 
-        BenzinEnsure(device.GetD3D12Device()->CreateCommittedResource(
+        BenzinHrEnsure(device.GetD3D12Device()->CreateCommittedResource(
             &d3d12HeapProperties,
             D3D12_HEAP_FLAG_NONE,
             &d3d12ResourceDesc,
@@ -131,7 +131,7 @@ namespace benzin
             IID_PPV_ARGS(&outD3D12Resource)
         ));
 
-        BenzinEnsure(outD3D12Resource);
+        BenzinEnsure(outD3D12Resource != nullptr);
     }
 
     static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, IndexRange32 elementRange)
@@ -264,7 +264,7 @@ namespace benzin
 
     uint64_t Buffer::GetGpuVirtualAddress(uint32_t elementIndex) const
     {
-        BenzinAssert(m_D3D12Resource);
+        BenzinAssert(m_D3D12Resource != nullptr);
         BenzinAssert(elementIndex < m_ElementCount);
 
         return m_D3D12Resource->GetGPUVirtualAddress() + elementIndex * m_AlignedElementSize;
@@ -272,7 +272,7 @@ namespace benzin
 
     void Buffer::Create(const BufferCreation& creation)
     {
-        BenzinAssert(!m_D3D12Resource);
+        BenzinAssert(m_D3D12Resource == nullptr);
 
         CreateD3D12Resource(creation, m_Device, m_D3D12Resource, m_CurrentState);
         SetDxObjectDebugName(m_D3D12Resource, creation.DebugName);
@@ -290,7 +290,7 @@ namespace benzin
         if (creation.MemoryType == ResourceMemoryType::Upload)
         {
             const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // Writing only range
-            BenzinEnsure(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_CpuMappedData)));
+            BenzinHrEnsure(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_CpuMappedData)));
         }
     }
 
@@ -330,7 +330,7 @@ namespace benzin
         ID3D12Resource* d3d12Resource = nullptr;
         if (m_Type != BufferType::RayTracing_AccelerationStructure)
         {
-            BenzinAssert(m_D3D12Resource);
+            BenzinAssert(m_D3D12Resource != nullptr);
             d3d12Resource = m_D3D12Resource;
         }
 
@@ -348,7 +348,7 @@ namespace benzin
 
     Descriptor Buffer::CreateDetachedUav() const
     {
-        BenzinAssert(m_D3D12Resource);
+        BenzinAssert(m_D3D12Resource != nullptr);
         BenzinAssert(m_IsUnorderedAccessAllowed);
 
         return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav, [&](uint64_t cpuHandle)
@@ -366,7 +366,7 @@ namespace benzin
 
     Descriptor Buffer::CreateDetachedCbv(uint32_t elementIndex) const
     {
-        BenzinAssert(m_D3D12Resource);
+        BenzinAssert(m_D3D12Resource != nullptr);
         BenzinAssert(m_Type == BufferType::Constant);
         BenzinAssert(elementIndex < m_ElementCount);
 

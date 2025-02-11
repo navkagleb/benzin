@@ -3,7 +3,6 @@
 
 #include <ShlObj.h>
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
 

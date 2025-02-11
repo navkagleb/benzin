@@ -1,11 +1,11 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/descriptor_manager.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/index_allocator.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 
 namespace benzin
 {
@@ -51,7 +51,7 @@ namespace benzin
                 .NodeMask = 0,
             };
 
-            BenzinEnsure(device.GetD3D12Device()->CreateDescriptorHeap(&d3d12DescriptorHeapDesc, IID_PPV_ARGS(&m_D3D12DescriptorHeap)));
+            BenzinHrEnsure(device.GetD3D12Device()->CreateDescriptorHeap(&d3d12DescriptorHeapDesc, IID_PPV_ARGS(&m_D3D12DescriptorHeap)));
             SetDxObjectDebugName(m_D3D12DescriptorHeap, creation.DebugName);
 
             m_DescriptorSize = device.GetD3D12Device()->GetDescriptorHandleIncrementSize(d3d12DescriptorHeapDesc.Type);

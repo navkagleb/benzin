@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics2/pso_manager.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"

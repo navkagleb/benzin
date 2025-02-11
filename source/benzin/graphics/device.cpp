@@ -1,13 +1,13 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/device.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/core/profiler.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 #include "benzin/graphics/pso.hpp"
 #include "benzin/graphics/query_heap.hpp"
 #include "benzin/graphics/ray_tracing_pso.hpp"
@@ -22,13 +22,13 @@ namespace benzin
         : m_Backend{ creation.BackendRef }
     {
         ComPtr<ID3D12Device> d3d12Device;
-        BenzinEnsure(::D3D12CreateDevice(m_Backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d3d12Device)));
-        BenzinEnsure(d3d12Device->QueryInterface(&m_D3D12Device));
+        BenzinHrEnsure(::D3D12CreateDevice(m_Backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d3d12Device)));
+        BenzinHrEnsure(d3d12Device->QueryInterface(&m_D3D12Device));
         SetDxObjectDebugName(m_D3D12Device, creation.DebugName);
 
         EnableD3D12DebugBreakOn(m_D3D12Device, true, D3D12BreakReasonFlag::Warning | D3D12BreakReasonFlag::Error | D3D12BreakReasonFlag::Corruption);
 
-        Asserter::SetDeviceRemovedCallback([this]
+        HrAsserter::SetDeviceRemovedCallback([this]
         {
             const HRESULT removedReason = m_D3D12Device->GetDeviceRemovedReason();
             BenzinError(
@@ -71,7 +71,7 @@ namespace benzin
         BenzinAssert(format != GraphicsFormat::Unknown);
 
         D3D12_FEATURE_DATA_FORMAT_INFO d3d12FormatInfo{ .Format = (DXGI_FORMAT)format };
-        BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_INFO, &d3d12FormatInfo, sizeof(d3d12FormatInfo)));
+        BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_INFO, &d3d12FormatInfo, sizeof(d3d12FormatInfo)));
 
         return d3d12FormatInfo.PlaneCount;
     }
@@ -139,7 +139,7 @@ namespace benzin
         // Dynamic Resources
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS d3d12Options{};
-            BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &d3d12Options, sizeof(d3d12Options)));
+            BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &d3d12Options, sizeof(d3d12Options)));
             BenzinEnsure(d3d12Options.ResourceBindingTier >= D3D12_RESOURCE_BINDING_TIER_3);
 
             BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12Options.ResourceBindingTier));
@@ -149,7 +149,7 @@ namespace benzin
                 .HighestShaderModel = D3D_SHADER_MODEL_6_6,
             };
 
-            BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &d3d12FeatureDataShaderModel, sizeof(d3d12FeatureDataShaderModel)));
+            BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &d3d12FeatureDataShaderModel, sizeof(d3d12FeatureDataShaderModel)));
             BenzinEnsure(d3d12FeatureDataShaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_6);
 
             BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12FeatureDataShaderModel.HighestShaderModel));
@@ -158,7 +158,7 @@ namespace benzin
         // Ray Tracing
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS5 d3d12Options{};
-            BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &d3d12Options, sizeof(d3d12Options)));
+            BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &d3d12Options, sizeof(d3d12Options)));
             BenzinEnsure(d3d12Options.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
 
             BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12Options.RaytracingTier));
@@ -167,7 +167,7 @@ namespace benzin
         // DRED Breadcrumb
         {
             D3D12_FEATURE_DATA_EXISTING_HEAPS d3d12Options{};
-            BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_EXISTING_HEAPS, &d3d12Options, sizeof(d3d12Options)));
+            BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_EXISTING_HEAPS, &d3d12Options, sizeof(d3d12Options)));
 
             m_Caps.IsDredSupported = d3d12Options.Supported = 1;
 
@@ -177,7 +177,7 @@ namespace benzin
         // GPU Upload Heaps
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS16 d3d12Options{};
-            BenzinEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS16, &d3d12Options, sizeof(d3d12Options)));
+            BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS16, &d3d12Options, sizeof(d3d12Options)));
 
             m_Caps.IsGpuUploadHeapsSupported = d3d12Options.GPUUploadHeapSupported == 1;
             BenzinTrace("Is GpuUploadHeaps supported: {}", m_Caps.IsGpuUploadHeapsSupported);

@@ -1,9 +1,9 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/pso.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 #include "benzin/graphics/render_states.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
 
@@ -175,7 +175,7 @@ namespace benzin
         }
 #endif
 
-        BenzinEnsure(m_Device.GetD3D12Device()->CreateGraphicsPipelineState(&m_D3D12Desc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+        BenzinHrEnsure(m_Device.GetD3D12Device()->CreateGraphicsPipelineState(&m_D3D12Desc, IID_PPV_ARGS(&m_D3D12PipelineState)));
     }
 
     std::span<const ShaderInfo> GraphicsPso::GetShaders() const
@@ -271,7 +271,7 @@ namespace benzin
     {
         BenzinAssert(m_D3D12Desc.CS.pShaderBytecode != nullptr && m_D3D12Desc.CS.BytecodeLength != 0);
 
-        BenzinEnsure(m_Device.GetD3D12Device()->CreateComputePipelineState(&m_D3D12Desc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+        BenzinHrEnsure(m_Device.GetD3D12Device()->CreateComputePipelineState(&m_D3D12Desc, IID_PPV_ARGS(&m_D3D12PipelineState)));
     }
 
     std::span<const ShaderInfo> ComputePso::GetShaders() const

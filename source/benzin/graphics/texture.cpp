@@ -1,12 +1,10 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/texture.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/common.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
-
-#include "benzin/core/logger.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 
 namespace benzin
 {
@@ -17,7 +15,7 @@ namespace benzin
     {
         // #TODO: Validation for 'TextureSrv::MipRange'
 
-        BenzinAssert(texture.GetD3D12Resource());
+        BenzinAssert(texture.GetD3D12Resource() != nullptr);
         BenzinAssert(outTextureSrv.DepthRange.Count < texture.GetDepth());
 
         // Set default format for depth stencil if format is not set
@@ -33,7 +31,7 @@ namespace benzin
 
     static void ValidateTextureUav(const Texture& texture, TextureUav& outTextureUav)
     {
-        BenzinAssert(texture.GetD3D12Resource());
+        BenzinAssert(texture.GetD3D12Resource() != nullptr);
         BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowUnorderedAccess));
         BenzinAssert(outTextureUav.MipIndex < texture.GetMipCount());
         BenzinAssert(outTextureUav.DepthRange.Count < texture.GetDepth()); // TODO: <= ?
@@ -44,7 +42,7 @@ namespace benzin
 
     static void ValidateTextureRtv(const Texture& texture, TextureRtv& outTextureRtv)
     {
-        BenzinAssert(texture.GetD3D12Resource());
+        BenzinAssert(texture.GetD3D12Resource() != nullptr);
         BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowRenderTarget));
         BenzinAssert(outTextureRtv.DepthRange.Count < texture.GetDepth());
 
@@ -58,7 +56,7 @@ namespace benzin
 
         // A stopgap for future implementation
 
-        BenzinAssert(texture.GetD3D12Resource());
+        BenzinAssert(texture.GetD3D12Resource() != nullptr);
         BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowDepthStencil));
     }
 
@@ -157,7 +155,7 @@ namespace benzin
         {
             const D3D12_CLEAR_VALUE d3d12ClearValue = ToD3D12ClearValue(textureCreation);
 
-            BenzinEnsure(device.GetD3D12Device()->CreateCommittedResource(
+            BenzinHrEnsure(device.GetD3D12Device()->CreateCommittedResource(
                 &d3d12HeapProperties,
                 D3D12_HEAP_FLAG_NONE,
                 &d3d12ResourceDesc,
@@ -168,7 +166,7 @@ namespace benzin
         }
         else
         {
-            BenzinEnsure(device.GetD3D12Device()->CreateCommittedResource(
+            BenzinHrEnsure(device.GetD3D12Device()->CreateCommittedResource(
                 &d3d12HeapProperties,
                 D3D12_HEAP_FLAG_NONE,
                 &d3d12ResourceDesc,
@@ -178,7 +176,7 @@ namespace benzin
             ));
         }
 
-        BenzinEnsure(outD3D12Resource);
+        BenzinEnsure(outD3D12Resource != nullptr);
     }
 
     static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResourceViewDesc(const Texture& texture, const TextureSrv& textureSrv)
@@ -319,7 +317,7 @@ namespace benzin
     Texture::Texture(Device& device, ID3D12Resource* d3d12Resource)
         : Resource{ device }
     {
-        BenzinAssert(d3d12Resource);
+        BenzinAssert(d3d12Resource != nullptr);
         m_D3D12Resource = d3d12Resource;
 
         {
@@ -361,7 +359,7 @@ namespace benzin
 
     Bytes32 Texture::GetSize() const
     {
-        BenzinAssert(m_D3D12Resource);
+        BenzinAssert(m_D3D12Resource != nullptr);
 
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = m_D3D12Resource->GetDesc();
         const uint32_t firstSubResource = 0;

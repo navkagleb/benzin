@@ -3,7 +3,6 @@
 
 #include <adl_sdk.h>
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
 
@@ -134,7 +133,7 @@ namespace benzin
         AdlState()
         {
             m_DllHandle = ::LoadLibrary("atiadlxx.dll");
-            BenzinAssert(m_DllHandle);
+            BenzinAssert(m_DllHandle != nullptr);
 
             ADL2_Main_Control_Create = (decltype(ADL2_Main_Control_Create))::GetProcAddress(m_DllHandle, BenzinStringify(ADL2_Main_Control_Create));
             ADL2_Main_Control_Destroy = (decltype(ADL2_Main_Control_Destroy))::GetProcAddress(m_DllHandle, BenzinStringify(ADL2_Main_Control_Destroy));
@@ -144,13 +143,13 @@ namespace benzin
             ADL2_Adapter_ID_Get = (decltype(ADL2_Adapter_ID_Get))::GetProcAddress(m_DllHandle, BenzinStringify(ADL2_Adapter_ID_Get));
             ADL2_Adapter_VRAMUsage_Get = (decltype(ADL2_Adapter_VRAMUsage_Get))::GetProcAddress(m_DllHandle, BenzinStringify(ADL2_Adapter_VRAMUsage_Get));
 
-            BenzinAssert(ADL2_Main_Control_Create);
-            BenzinAssert(ADL2_Main_Control_Destroy);
+            BenzinAssert(ADL2_Main_Control_Create != nullptr);
+            BenzinAssert(ADL2_Main_Control_Destroy != nullptr);
 
-            BenzinAssert(ADL2_Adapter_AdapterInfoX4_Get);
-            BenzinAssert(ADL2_Adapter_DedicatedVRAMUsage_Get);
-            BenzinAssert(ADL2_Adapter_ID_Get);
-            BenzinAssert(ADL2_Adapter_VRAMUsage_Get);
+            BenzinAssert(ADL2_Adapter_AdapterInfoX4_Get != nullptr);
+            BenzinAssert(ADL2_Adapter_DedicatedVRAMUsage_Get != nullptr);
+            BenzinAssert(ADL2_Adapter_ID_Get != nullptr);
+            BenzinAssert(ADL2_Adapter_VRAMUsage_Get != nullptr);
 
             BenzinAdlEnsure(ADL2_Main_Control_Create(ADL_Main_Memory_Alloc, 1, &m_Context));
 

@@ -1,10 +1,10 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 #include "benzin/graphics/sampler.hpp"
 
 namespace benzin
@@ -201,10 +201,10 @@ namespace benzin
         const HRESULT hr = ::D3D12SerializeVersionedRootSignature(&d3d12RootSignatureDesc, &d3d12Blob, &d3d12Error);
         if (FAILED(hr))
         {
-            BenzinEnsure(hr, "Failed to Serialize RootSignature. Error: {}", (const char*)d3d12Error->GetBufferPointer());
+            BenzinHrEnsure(hr, "Failed to Serialize RootSignature. Error: {}", (const char*)d3d12Error->GetBufferPointer());
         }
 
-        BenzinEnsure(device.GetD3D12Device()->CreateRootSignature(
+        BenzinHrEnsure(device.GetD3D12Device()->CreateRootSignature(
             0,
             d3d12Blob->GetBufferPointer(),
             d3d12Blob->GetBufferSize(),

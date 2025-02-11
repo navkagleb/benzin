@@ -3,7 +3,6 @@
 
 #include <shaders/joint/mesh_types.hpp>
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/profiler.hpp"

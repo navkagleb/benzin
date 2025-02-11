@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/resource.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/graphics/device.hpp"
 
 namespace benzin
@@ -25,7 +24,7 @@ namespace benzin
 
     Bytes32 Resource::GetAllocationSize() const
     {
-        BenzinAssert(m_D3D12Resource);
+        BenzinAssert(m_D3D12Resource != nullptr);
 
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = m_D3D12Resource->GetDesc();
         const D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo = m_Device.GetD3D12Device()->GetResourceAllocationInfo(0, 1, &d3d12ResourceDesc);

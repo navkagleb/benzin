@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/ray_tracing_shader_table.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/graphics/buffer.hpp"

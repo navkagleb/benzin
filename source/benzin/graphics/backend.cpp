@@ -1,12 +1,12 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/backend.hpp"
 
-#include "benzin/core/asserter.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/adl_wrapper.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/hr_assert.hpp"
 #include "benzin/graphics/nvapi_wrapper.hpp"
 #include "benzin/graphics/pix_capturer.hpp"
 
@@ -85,10 +85,10 @@ namespace benzin
         auto* dxgiAdapter = m_DxgiAdapters[adapterIndex];
 
         DXGI_QUERY_VIDEO_MEMORY_INFO d3d12LocalVideoMemoryInfo;
-        BenzinEnsure(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &d3d12LocalVideoMemoryInfo));
+        BenzinHrEnsure(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &d3d12LocalVideoMemoryInfo));
 
         DXGI_QUERY_VIDEO_MEMORY_INFO d3d12NonLocalVideoMemoryInfo;
-        BenzinEnsure(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &d3d12NonLocalVideoMemoryInfo));
+        BenzinHrEnsure(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &d3d12NonLocalVideoMemoryInfo));
 
         Bytes64 vendorTotalUsedDedicatedVram = g_InvalidUnsigned<uint64_t>;
         if (AdlWrapper::IsInitialized() && adapterInfo.IsAmd())
@@ -125,8 +125,8 @@ namespace benzin
         const uint32_t dxgiFactoryFlags = BENZIN_IS_DEBUG_BUILD ? DXGI_CREATE_FACTORY_DEBUG : 0;
 
         ComPtr<IDXGIFactory2> dxgiFactory2;
-        BenzinEnsure(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&dxgiFactory2)));
-        BenzinEnsure(dxgiFactory2->QueryInterface(IID_PPV_ARGS(&m_DxgiFactory)));
+        BenzinHrEnsure(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&dxgiFactory2)));
+        BenzinHrEnsure(dxgiFactory2->QueryInterface(IID_PPV_ARGS(&m_DxgiFactory)));
         SetDxObjectDebugName(m_DxgiFactory, "MainFactory");
     }
 
@@ -143,7 +143,7 @@ namespace benzin
             }
 
             DXGI_ADAPTER_DESC1 dxgiAdapterDesc{};
-            BenzinEnsure(dxgiAdapter->GetDesc1(&dxgiAdapterDesc));
+            BenzinHrEnsure(dxgiAdapter->GetDesc1(&dxgiAdapterDesc));
 
             if ((dxgiAdapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0 || dxgiAdapterDesc.DedicatedVideoMemory == 0)
             {
@@ -176,7 +176,7 @@ namespace benzin
             }
 
             IDXGIAdapter3* dxgiAdapter3 = nullptr;
-            BenzinEnsure(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&dxgiAdapter3)));
+            BenzinHrEnsure(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&dxgiAdapter3)));
             SetDxObjectDebugName(dxgiAdapter3, std::format("Adapter: {}", adapterInfo.Name));
 
             m_DxgiAdapters.push_back(dxgiAdapter3);
