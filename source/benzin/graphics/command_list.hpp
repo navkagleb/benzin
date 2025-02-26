@@ -61,6 +61,8 @@ namespace benzin
         // D3D12_COMMAND_LIST_TYPE_DIRECT and D3D12_COMMAND_LIST_TYPE_COMPUTE always support timestamps
         void SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index);
         void ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffset);
+        void SetVertexBuffer(const Buffer& vertexBuffer);
+        void SetIndexBuffer(const Buffer& indexBuffer);
         void SetViewport(const Viewport& viewport);
         void SetScissorRect(const ScissorRect& scissorRect);
 

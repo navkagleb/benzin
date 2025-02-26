@@ -125,6 +125,35 @@ namespace sandbox
         }
     }
 
+    template <typename T>
+    static bool ImGui_SelectComboName(void* data, int index, const char** outName)
+    {
+        const auto& names = *(T*)data;
+
+        if (index < 0 || index >= names.size())
+        {
+            return false;
+        }
+
+        *outName = names[index].data();
+        return true;
+    };
+
+    static void ImGui_CollapsingHeaderWithIndent(std::string_view name, const std::function<void()>& callback)
+    {
+        const ImGuiTreeNodeFlags treeNodeFlags =
+            ImGuiTreeNodeFlags_FramePadding |
+            ImGuiTreeNodeFlags_Selected;
+
+        if (ImGui::TreeNodeEx(name.data(), treeNodeFlags))
+        {
+            BenzinAssert(callback);
+            callback();
+
+            ImGui::TreePop();
+        }
+    }
+
     //
 
     SandboxRunner::SandboxRunner()
@@ -182,21 +211,26 @@ namespace sandbox
 
         m_TextureViewerTool->SetTextureSelectorCallback([]
         {
-            static const auto textureNames =
-                magic_enum::enum_names<Texture>() |
-                std::views::transform([](std::string_view name) { return name.data(); }) |
-                std::ranges::to<std::vector>();
+            static const auto textureNames = magic_enum::enum_names<Texture>();
+            static const auto textureIndices = magic_enum::enum_values<Texture>();
 
-            static auto selectedTexture = Texture::Shadow;
-
-            ImGui::Combo("Texture", (int*)&selectedTexture, textureNames.data(), (int)textureNames.size());
+            static int textureNameIndex = -1;
 
             if (ImGui::Button("Reset"))
             {
-                selectedTexture = (Texture)benzin::g_InvalidUnsigned<uint32_t>;
+                textureNameIndex = -1;
             }
 
-            return +selectedTexture;
+            ImGui::SameLine();
+            ImGui::Combo(
+                "Texture",
+                &textureNameIndex,
+                ImGui_SelectComboName<decltype(textureNames)>,
+                (void*)&textureNames,
+                (int)textureNames.size() - 1 // Removes Texture::Count value. Ugly solution
+            );
+
+            return textureNameIndex != -1 ? +textureIndices[textureNameIndex] : benzin::g_InvalidUnsigned<uint32_t>;
         });
 
         BenzinAssert(m_RenderSettingsTool != nullptr);

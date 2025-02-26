@@ -124,7 +124,7 @@ namespace benzin
     struct BlendEquation
     {
         BlendFactor SourceFactor = BlendFactor::One;
-        BlendFactor DestinationFactor = BlendFactor::One;
+        BlendFactor DestinationFactor = BlendFactor::Zero;
         BlendOperation Operation = BlendOperation::Add;
     };
 

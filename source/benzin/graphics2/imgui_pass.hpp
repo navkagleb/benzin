@@ -1,13 +1,16 @@
 #pragma once
 
-#include "benzin/graphics/descriptor_manager.hpp"
+#include <shaders/joint/imgui_resources.hpp>
+
 #include "benzin/graphics2/render_pass.hpp"
 
 namespace benzin
 {
 
+    class Descriptor;
     class Device;
     class Event;
+    class GraphicsCommandList;
     class Window;
 
     class ImGuiTool
@@ -66,6 +69,8 @@ namespace benzin
         void PushSpawnImGuiMenuCallback(std::function<void()>&& callback);
 
     private:
+        const ImDrawData& GetImDrawData() const { BenzinAssert(m_CurrentImGuiDrawData != nullptr); return *m_CurrentImGuiDrawData; }
+
         void SpawnImGuiDockSpace(const std::function<void()>& callback);
         void SpawnImGuiManuBar();
 
@@ -77,8 +82,6 @@ namespace benzin
 
     private:
         Device& m_Device;
-
-        Descriptor m_LegacySingleSrvDescriptor;
 
         std::unordered_map<std::string, bool> m_IsToolVisibleMap; // TODO: can std::string_view be used instead of std::string
 
@@ -94,18 +97,39 @@ namespace benzin
     class ImGuiPass : public RenderPass
     {
     public:
-        ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureIndex);
-        ~ImGuiPass() override;
+        static uint64_t PackImTextureId(const Descriptor& viewDescriptor, joint::ImGuiSamplerIndex samplerIndex);
 
-        bool IsDependentOnViewport() const override { return false; }
-
-        void OnWindowResize() override;
-        void OnRender() const override;
+    public:
+        ImGuiPass(ImGuiManager& imGuiManager, uint32_t psoIndex);
 
     private:
+        bool IsDependentOnViewport() const override { return false; }
+
+        void OnZeroFrameInit() override;
+        void OnUpdate() override;
+        void OnRender() const override;
+
+        void UploadFontTexture();
+        void UpdateConsts(const ImDrawData& imDrawData);
+        void UpdateVertexAndIndexBuffers(const ImDrawData& imDrawData);
+        void RenderImDrawData(GraphicsCommandList& commandList) const;
+
+        void GetImGuiResources(const ImDrawCmd& imDrawCmd, uint32_t& outTextureSrvHeapIndex, joint::ImGuiSamplerIndex& outSamplerIndex) const;
+
+    private:
+        struct FrameContext
+        {
+            std::unique_ptr<Buffer> m_VertexBuffer;
+            std::unique_ptr<Buffer> m_IndexBuffer;
+        };
+
         ImGuiManager& m_ImGuiManager;
-        
-        uint32_t m_ImGuiTextureIndex;
+
+        std::vector<FrameContext> m_FrameContexts;
+        std::unique_ptr<Texture> m_FontTexture;
+
+        joint::ImGuiConsts m_Consts{};
+        uint32_t m_PsoIndex;
     };
 
 }

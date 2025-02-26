@@ -4,17 +4,28 @@
 #include <backends/imgui_impl_dx12.h>
 #include <backends/imgui_impl_win32.h>
 
+#include <shaders/joint/imgui_resources.hpp>
+
+#include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/profiler.hpp"
 #include "benzin/graphics/command_list.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/pso.hpp"
+#include "benzin/graphics/swap_chain.hpp"
 #include "benzin/graphics/texture.hpp"
+#include "benzin/graphics/unified_root_signature.hpp"
+#include "benzin/graphics2/const_buffer_pool.hpp"
 #include "benzin/graphics2/gpu_profiler.hpp"
+#include "benzin/graphics2/pso_manager.hpp"
 #include "benzin/system/key_event.hpp"
 #include "benzin/system/window.hpp"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+
+BenzinEnableUnaryPlusForEnum(joint::ImGuiResources);
+BenzinEnableUnaryPlusForEnum(joint::ImGuiSamplerIndex);
 
 namespace benzin
 {
@@ -74,31 +85,9 @@ namespace benzin
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-        ImGui::StyleColorsDark();
+        ImGui::StyleColorsClassic();
 
         BenzinEnsure(ImGui_ImplWin32_Init(window.GetWin64Window()));
-
-        m_LegacySingleSrvDescriptor = m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv);
-
-        ImGui_ImplDX12_InitInfo imguiInitInfo;
-        imguiInitInfo.Device = m_Device.GetD3D12Device();
-        imguiInitInfo.CommandQueue = m_Device.GetGraphicsCommandQueue().GetD3D12CommandQueue();
-        imguiInitInfo.NumFramesInFlight = CommandLineArgs::GetU32("FrameInFlightCount");
-        imguiInitInfo.RTVFormat = (DXGI_FORMAT)CommandLineArgs::GetU32("BackBufferFormat");
-        imguiInitInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
-        imguiInitInfo.SrvDescriptorHeap = m_Device.GetDescriptorManager().GetD3D12GpuResourceDescriptorHeap();
-        imguiInitInfo.LegacySingleSrvCpuDescriptor.ptr = m_LegacySingleSrvDescriptor.GetCpuHandle();
-        imguiInitInfo.LegacySingleSrvGpuDescriptor.ptr = m_LegacySingleSrvDescriptor.GetGpuHandle();
-
-        BenzinEnsure(ImGui_ImplDX12_Init(&imguiInitInfo));
-
-        {
-            // Force call 'ImGui_ImplDX12_CreateDeviceObjects' to copy
-            // m_LegacySingleSrvDescriptor from CPU descriptor heap to GPU descriptor heap
-
-            ImGui_ImplDX12_CreateDeviceObjects();
-            m_Device.GetDescriptorManager().CopyToGpuResourceHeap(m_LegacySingleSrvDescriptor);
-        }
 
         ImGuiTool::ms_Window = &window;
         ImGuiTool::ms_FrameTimer = &frameTimer;
@@ -118,9 +107,6 @@ namespace benzin
         }
         m_Tools.clear();
 
-        m_Device.DeferredRelease(m_LegacySingleSrvDescriptor);
-
-        ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
     }
@@ -129,7 +115,6 @@ namespace benzin
     {
         BenzinProfile();
 
-        ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
@@ -344,27 +329,83 @@ namespace benzin
 
     // ImGuiPass
 
-    ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager, uint32_t imGuiTextureIndex)
-        : m_ImGuiManager{ imGuiManager }
-        , m_ImGuiTextureIndex{ imGuiTextureIndex }
-    {}
-
-    ImGuiPass::~ImGuiPass()
+    uint64_t ImGuiPass::PackImTextureId(const Descriptor& viewDescriptor, joint::ImGuiSamplerIndex samplerIndex)
     {
-        ms_Resources->DestroyTexture(m_ImGuiTextureIndex);
+        static_assert(sizeof(ImTextureID) == sizeof(uint64_t));
+
+        uint64_t packedData = 0;
+        packedData |= ((uint64_t)viewDescriptor.GetGpuHeapIndex()) << 32;
+        packedData |= (uint32_t)samplerIndex;
+
+        return packedData;
     }
 
-    void ImGuiPass::OnWindowResize()
+    static void UnpackImTextureId(ImTextureID imTextureId, uint32_t& outTextureSrvHeapIndex, joint::ImGuiSamplerIndex& outSamplerIndex)
     {
-        ms_Resources->CreateTexture(m_ImGuiTextureIndex, TextureCreation
+        outTextureSrvHeapIndex = (uint32_t)(imTextureId >> 32);
+        outSamplerIndex = (joint::ImGuiSamplerIndex)(imTextureId & std::numeric_limits<uint32_t>::max());
+
+        BenzinAssert(magic_enum::enum_contains(outSamplerIndex));
+    }
+
+    ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager, uint32_t psoIndex)
+        : m_ImGuiManager{ imGuiManager }
+        , m_PsoIndex{ psoIndex }
+    {
+        m_FrameContexts.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
+
+        ms_PsoManager->CreateGraphicsPso(m_PsoIndex, [](GraphicsPsoProxy& proxy)
         {
-            .DebugName = "ImGuiTexture",
-            .Format = (GraphicsFormat)CommandLineArgs::GetU32("BackBufferFormat"),
-            .Width = GetWindowViewportWidth(),
-            .Height = GetWindowViewportHeight(),
-            .MipCount = 1,
-            .AccessFlags = TextureAccessFlag::AllowRenderTarget,
+            proxy.DebugName = "ImGui";
+            proxy.InputLayout.emplace_back("Position", GraphicsFormat::Rg32Float);
+            proxy.InputLayout.emplace_back("Uv", GraphicsFormat::Rg32Float);
+            proxy.InputLayout.emplace_back("Color", GraphicsFormat::Rgba8Unorm);
+            proxy.VsFileName = "imgui_pass.hlsl";
+            proxy.PsFileName = "imgui_pass.hlsl";
+
+            proxy.PrimitiveTopologyType = PrimitiveTopologyType::Triangle;
+
+            proxy.RasterizerState.CullMode = CullMode::None;
+
+            proxy.DepthState.IsEnabled = false;
+            proxy.DepthState.IsWriteEnabled = false;
+            proxy.StencilState.IsEnabled = false;
+
+            proxy.RenderTargetFormats.emplace_back(GraphicsFormat::Rgba8Unorm);
+
+            proxy.BlendState.IsAlphaToCoverageStateEnabled = false;
+            proxy.BlendState.RenderTargetStates.push_back(BlendState::RenderTargetState
+            {
+                .IsEnabled = true,
+                .ColorEquation
+                {
+                    .SourceFactor = BlendColorFactor::SourceAlpha,
+                    .DestinationFactor = BlendColorFactor::InverseSourceAlpha,
+                    .Operation = BlendOperation::Add,
+                },
+                .AlphaEquation
+                {
+                    .SourceFactor = BlendAlphaFactor::SourceAlpha,
+                    .DestinationFactor = BlendAlphaFactor::InverseSourceAlpha,
+                    .Operation = BlendOperation::Add,
+                },
+            });
         });
+
+        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
+    }
+
+    void ImGuiPass::OnZeroFrameInit()
+    {
+        UploadFontTexture();
+    }
+
+    void ImGuiPass::OnUpdate()
+    {
+        const ImDrawData& imDrawData = m_ImGuiManager.GetImDrawData();
+
+        UpdateConsts(imDrawData);
+        UpdateVertexAndIndexBuffers(imDrawData);
     }
 
     void ImGuiPass::OnRender() const
@@ -374,10 +415,17 @@ namespace benzin
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "ImGui");
 
-        const auto& imGuiTexture = ms_Textures->Get(m_ImGuiTextureIndex);
-
         commandList.SetViewport(ms_WindowViewport);
-        commandList.SetScissorRect(ms_WindowScissorRect);
+        commandList.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
+        commandList.SetGraphicsPso(ms_PsoManager->GetGraphicsPso(m_PsoIndex));
+        commandList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        commandList.SetBlendFactor({});
+
+        auto& [vertexBuffer, indexBuffer] = m_FrameContexts[ms_Device->GetActiveFrameIndex()];
+        commandList.SetVertexBuffer(*vertexBuffer);
+        commandList.SetIndexBuffer(*indexBuffer);
+
+        const auto& imGuiTexture = ms_SwapChain->GetCurrentBackBuffer();
 
         BenzinMakeScopedResourceBarriers(
             commandList,
@@ -385,9 +433,148 @@ namespace benzin
         );
 
         commandList.SetRenderTargets({ imGuiTexture.GetRtv() });
-        commandList.ClearRenderTarget(imGuiTexture);
+        commandList.ClearRenderTarget(imGuiTexture, DirectX::XMFLOAT4{});
 
-        ImGui_ImplDX12_RenderDrawData(m_ImGuiManager.m_CurrentImGuiDrawData, commandList.GetD3D12GraphicsCommandList());
+        RenderImDrawData(commandList);
+    }
+
+    void ImGuiPass::UploadFontTexture()
+    {
+        ImGuiIO& io = ImGui::GetIO();
+
+        unsigned char* pixels;
+        int width, height;
+        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+
+        MakeUniquePtr(m_FontTexture, *ms_Device, TextureCreation
+        {
+            .DebugName = "ImGui_Font",
+            .Format = GraphicsFormat::Rgba8Unorm,
+            .Width = (uint32_t)width,
+            .Height = (uint32_t)height,
+            .MipCount = 1,
+        });
+
+        const uint32_t textureSize = width * height * 4;
+        BenzinAssert(textureSize == m_FontTexture->GetSize());
+
+        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList(m_FontTexture->GetSize());
+        commandList.UploadToTextureTopMip(*m_FontTexture, std::as_bytes(ToSpan(pixels, textureSize)));
+    }
+
+    void ImGuiPass::UpdateConsts(const ImDrawData& imDrawData)
+    {
+        const float left = imDrawData.DisplayPos.x;
+        const float right = imDrawData.DisplayPos.x + imDrawData.DisplaySize.x;
+        const float top = imDrawData.DisplayPos.y;
+        const float bottom = imDrawData.DisplayPos.y + imDrawData.DisplaySize.y;
+        const float nearZ = 1.0f;
+        const float farZ = -1.0f;
+
+        m_Consts.ViewToClipOrtho = DirectX::XMMatrixOrthographicOffCenterRH(left, right, bottom, top, nearZ, farZ);
+    }
+
+    void ImGuiPass::UpdateVertexAndIndexBuffers(const ImDrawData& imDrawData)
+    {
+        BenzinProfile();
+
+        auto& [vertexBuffer, indexBuffer] = m_FrameContexts[ms_Device->GetActiveFrameIndex()];
+
+        if (vertexBuffer.get() == nullptr || (int)vertexBuffer->GetElementCount() < imDrawData.TotalVtxCount)
+        {
+            MakeUniquePtr(vertexBuffer, *ms_Device, BufferCreation
+            {
+                .DebugName = "ImGui_VertexBuffer",
+                .MemoryType = ResourceMemoryType::Upload,
+                .Type = BufferType::Vertex,
+                .ElementSize = sizeof(ImDrawVert),
+                .ElementCount = (uint32_t)imDrawData.TotalVtxCount + 5000, // TODO: 5000 magic number
+            });
+        }
+
+        if (indexBuffer.get() == nullptr || (int)indexBuffer->GetElementCount() < imDrawData.TotalIdxCount)
+        {
+            BenzinAssert(sizeof(ImDrawIdx) == GetFormatSize(GraphicsFormat::R16Uint));
+
+            MakeUniquePtr(indexBuffer, *ms_Device, BufferCreation
+            {
+                .DebugName = "ImGui_IndexBuffer",
+                .MemoryType = ResourceMemoryType::Upload,
+                .Type = BufferType::Index,
+                .Format = GraphicsFormat::R16Uint,
+                .ElementSize = sizeof(ImDrawIdx),
+                .ElementCount = (uint32_t)imDrawData.TotalIdxCount + 10000, // TODO: 10000 magic number
+            });
+        }
+
+        BufferWriter vertexWriter{ vertexBuffer->GetCpuMappedData(), vertexBuffer->GetSize() };
+        BufferWriter indexWriter{ indexBuffer->GetCpuMappedData(), indexBuffer->GetSize() };
+        for (int cmdListIndex = 0; cmdListIndex < imDrawData.CmdListsCount; cmdListIndex++)
+        {
+            const ImDrawList* cmdList = imDrawData.CmdLists[cmdListIndex];
+
+            vertexWriter.WriteArray(ToSpan(cmdList->VtxBuffer.Data, cmdList->VtxBuffer.Size));
+            indexWriter.WriteArray(ToSpan(cmdList->IdxBuffer.Data, cmdList->IdxBuffer.Size));
+        }
+    }
+
+    void ImGuiPass::RenderImDrawData(GraphicsCommandList& commandList) const
+    {
+        BenzinProfile();
+
+        const ImDrawData& imDrawData = m_ImGuiManager.GetImDrawData();
+        const ImVec2 clipOff = imDrawData.DisplayPos;
+
+        int globalVertexOffset = 0;
+        int globalIndexOffset = 0;
+        for (int cmdListIndex = 0; cmdListIndex < imDrawData.CmdListsCount; cmdListIndex++)
+        {
+            const ImDrawList* imCmdList = imDrawData.CmdLists[cmdListIndex];
+            BenzinAssert(imCmdList != nullptr);
+
+            for (const ImDrawCmd& imDrawCmd : imCmdList->CmdBuffer)
+            {
+                const ImVec2 clipMin{ imDrawCmd.ClipRect.x - clipOff.x, imDrawCmd.ClipRect.y - clipOff.y };
+                const ImVec2 clipMax{ imDrawCmd.ClipRect.z - clipOff.x, imDrawCmd.ClipRect.w - clipOff.y };
+
+                if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
+                {
+                    continue;
+                }
+
+                commandList.SetScissorRect(ScissorRect
+                {
+                    .X = clipMin.x,
+                    .Y = clipMin.y,
+                    .Width = clipMax.x - clipMin.x,
+                    .Height = clipMax.y - clipMin.y,
+                });
+
+                uint32_t srvGpuHeapIndex;
+                joint::ImGuiSamplerIndex samplerIndex;
+                GetImGuiResources(imDrawCmd, srvGpuHeapIndex, samplerIndex);
+
+                commandList.SetGraphicsRootConstant(+joint::ImGuiResources::Texture, srvGpuHeapIndex);
+                commandList.SetGraphicsRootConstant(+joint::ImGuiResources::SamplerIndex, +samplerIndex);
+
+                commandList.DrawIndexed(imDrawCmd.ElemCount, imDrawCmd.IdxOffset + globalIndexOffset, imDrawCmd.VtxOffset + globalVertexOffset);
+            }
+
+            globalVertexOffset += imCmdList->VtxBuffer.Size;
+            globalIndexOffset += imCmdList->IdxBuffer.Size;
+        }
+    }
+
+    void ImGuiPass::GetImGuiResources(const ImDrawCmd& imDrawCmd, uint32_t& outTextureSrvHeapIndex, joint::ImGuiSamplerIndex& outSamplerIndex) const
+    {
+        if (imDrawCmd.TextureId != 0)
+        {
+            UnpackImTextureId(imDrawCmd.TextureId, outTextureSrvHeapIndex, outSamplerIndex);
+            return;
+        }
+
+        outTextureSrvHeapIndex = m_FontTexture->GetSrv().GetGpuHeapIndex();
+        outSamplerIndex = joint::ImGuiSamplerIndex::Linear;
     }
 
 }

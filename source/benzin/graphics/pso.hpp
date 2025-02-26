@@ -42,6 +42,12 @@ namespace benzin
         ID3D12PipelineState* m_D3D12PipelineState = nullptr;
     };
 
+    struct GraphicsInputElement
+    {
+        std::string_view Name;
+        GraphicsFormat Format;
+    };
+
     class GraphicsPso : public Pso
     {
     public:
@@ -50,6 +56,7 @@ namespace benzin
         void Compile() override;
         std::span<const ShaderInfo> GetShaders() const override;
 
+        void SetInputLayout(std::span<const GraphicsInputElement> inputLayout);
         void SetVs(ShaderInfo&& shader, ShaderBytecode bytecode);
         void SetPs(ShaderInfo&& shader, ShaderBytecode bytecode);
         void SetPrimitiveTopologyType(PrimitiveTopologyType type);
@@ -64,6 +71,7 @@ namespace benzin
 
     private:
         D3D12_GRAPHICS_PIPELINE_STATE_DESC m_D3D12Desc{};
+        std::vector<D3D12_INPUT_ELEMENT_DESC> m_D3D12InputLayout;
 
         std::array<ShaderInfo, 2> m_Shaders;
     };

@@ -6,6 +6,9 @@
 namespace benzin
 {
 
+    class MouseMovedEvent;
+    class MouseScrolledEvent;
+
     class RenderViewportTool : public ImGuiTool
     {
     public:
@@ -28,6 +31,9 @@ namespace benzin
         void SpawnImGui() override;
 
         void UpdateImGuiDimensions();
+
+        bool OnMouseMovedEvent(const MouseMovedEvent& event);
+        bool OnMouseScrolledEvent(const MouseScrolledEvent& event);
 
     private:
         RenderResources& m_RenderResources;

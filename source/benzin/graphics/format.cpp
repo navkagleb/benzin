@@ -18,6 +18,7 @@ namespace benzin
             case Rgb32Float: return 3 * (32 / 8);
             case Rg11B10Float: return 1 * ((11 + 11 + 10) / 8);
 
+            case Rg32Float: return 2 * (32 / 8);
             case Rg16Float: return 2 * (16 / 8);
             case Rg8Unorm: return 2 * (8 / 8);
 
@@ -32,13 +33,10 @@ namespace benzin
             case R32Float:
             case R32Uint:
             case R32Typeless: return 1 * (32 / 8);
-
-            default:
-            {
-                BenzinAssert(false, "Not supported GraphicsFormat value");
-                return 0;
-            }
         }
+
+        BenzinAssert(false, "Not supported GraphicsFormat value");
+        return 0;
     }
 
 }

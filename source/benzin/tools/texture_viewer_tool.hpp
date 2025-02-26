@@ -5,7 +5,9 @@
 namespace benzin
 {
 
-    class RenderResources;
+    class KeyPressedEvent;
+    class MouseMovedEvent;
+    class MouseScrolledEvent;
 
     class TextureViewerTool : public ImGuiTool
     {
@@ -20,7 +22,9 @@ namespace benzin
         void OnEvent(Event& event) override;
         void SpawnImGui() override;
 
-        void ClampUvs();
+        bool OnKeyPressedEvent(const KeyPressedEvent& event);
+        bool OnMouseMovedEvent(const MouseMovedEvent& event);
+        bool OnMouseScrolledEvent(const MouseScrolledEvent& event);
 
     private:
         const RenderResources& m_RenderResources;
@@ -29,7 +33,6 @@ namespace benzin
 
         ImVec2 m_UvMin{ 0.0f, 0.0f };
         ImVec2 m_UvMax{ 1.0f, 1.0f };
-        ImVec4 m_TintColor{ 1.0f, 1.0f, 1.0f, 1.0f };
 
         bool m_IsHovered = false;
     };

@@ -138,11 +138,6 @@ namespace benzin
             .SampleMask = 0xffffffff,
             .RasterizerState = ToD3D12RasterizerState(RasterizerState{}),
             .DepthStencilState = ToD3D12DepthStencilState(DepthState{}, StencilState{}),
-            .InputLayout
-            {
-                .pInputElementDescs = nullptr,
-                .NumElements = 0,
-            },
             .IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
             .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED,
             .NumRenderTargets = 0,
@@ -181,6 +176,34 @@ namespace benzin
     std::span<const ShaderInfo> GraphicsPso::GetShaders() const
     {
         return m_Shaders;
+    }
+
+    void GraphicsPso::SetInputLayout(std::span<const GraphicsInputElement> inputLayout)
+    {
+        BenzinAssert(!inputLayout.empty());
+        BenzinAssert(m_D3D12InputLayout.empty());
+
+        uint32_t fieldByteOffset = 0;
+
+        m_D3D12InputLayout.reserve(inputLayout.size());
+        for (const auto& element : inputLayout)
+        {
+            m_D3D12InputLayout.push_back(D3D12_INPUT_ELEMENT_DESC
+            {
+                .SemanticName = element.Name.data(),
+                .SemanticIndex = 0,
+                .Format = (DXGI_FORMAT)element.Format,
+                .InputSlot = 0,
+                .AlignedByteOffset = fieldByteOffset,
+                .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                .InstanceDataStepRate = 0,
+            });
+
+            fieldByteOffset += GetFormatSize(element.Format);
+        }
+
+        m_D3D12Desc.InputLayout.pInputElementDescs = m_D3D12InputLayout.data();
+        m_D3D12Desc.InputLayout.NumElements = (UINT)m_D3D12InputLayout.size();
     }
 
     void GraphicsPso::SetVs(ShaderInfo&& shader, ShaderBytecode bytecode)

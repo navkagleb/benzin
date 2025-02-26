@@ -285,9 +285,35 @@ namespace benzin
     }
 
     void GraphicsCommandList::SetPso(const RayTracing_Pso& pso)
+    void GraphicsCommandList::SetVertexBuffer(const Buffer& vertexBuffer)
+    {
+        BenzinAssert(vertexBuffer.GetType() == BufferType::Vertex);
+
+        const D3D12_VERTEX_BUFFER_VIEW d3d12VertexBufferView
+        {
+            .BufferLocation = vertexBuffer.GetGpuVirtualAddress(),
+            .SizeInBytes = vertexBuffer.GetSize(),
+            .StrideInBytes = vertexBuffer.GetElementSize(),
+        };
+
+        m_D3D12GraphicsCommandList->IASetVertexBuffers(0, 1, &d3d12VertexBufferView);
+    }
+
+    void GraphicsCommandList::SetIndexBuffer(const Buffer& indexBuffer)
     {
         BenzinAssert(pso.GetD3D12StateObject());
         m_D3D12GraphicsCommandList->SetPipelineState1(pso.GetD3D12StateObject());
+        BenzinAssert(indexBuffer.GetType() == BufferType::Index);
+        BenzinAssert(indexBuffer.GetFormat() == GraphicsFormat::R16Uint || indexBuffer.GetFormat() == GraphicsFormat::R32Uint);
+
+        const D3D12_INDEX_BUFFER_VIEW d3d12VertexBufferView
+        {
+            .BufferLocation = indexBuffer.GetGpuVirtualAddress(),
+            .SizeInBytes = indexBuffer.GetSize(),
+            .Format = (DXGI_FORMAT)indexBuffer.GetFormat(),
+        };
+
+        m_D3D12GraphicsCommandList->IASetIndexBuffer(&d3d12VertexBufferView);
     }
 
     void GraphicsCommandList::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)

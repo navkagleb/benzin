@@ -46,6 +46,8 @@ namespace sandbox
         Environment,
         Environment_EquirectangularToCube,
         FullScreenDebug,
+
+        ImGui,
     };
     BenzinEnableUnaryPlusForEnum(Pso);
 

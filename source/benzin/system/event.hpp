@@ -121,7 +121,7 @@ namespace benzin
         }
 
         template <std::derived_from<Event> EventT, typename ClassT>
-        bool ForceDispatch(bool (ClassT::* MemberCallback)(EventT&), ClassT& classInstance) const
+        bool ForceDispatch(bool (ClassT::* MemberCallback)(const EventT&), ClassT* classInstance) const
         {
             return ForceDispatch<EventT>([&](const EventT& event)
             {
@@ -152,7 +152,7 @@ namespace benzin
         }
 
         template <std::derived_from<Event> EventT, typename ClassT>
-        bool Dispatch(bool (ClassT::*MemberCallback)(EventT&), ClassT& classInstance) const
+        bool Dispatch(bool (ClassT::*MemberCallback)(const EventT&), ClassT* classInstance) const
         {
             return Dispatch<EventT>([&](const EventT& event)
             {

@@ -10,8 +10,8 @@ namespace benzin
 {
 
     RenderViewportTool::RenderViewportTool(RenderResources& renderResources, Camera& camera)
-        : ImGuiTool{ "RenderViewportTool" }
         , m_RenderResources{ renderResources }
+        : ImGuiTool{ "RenderViewport" }
         , m_FlyCameraController{ camera }
     {}
 
@@ -24,28 +24,8 @@ namespace benzin
 
         const EventDispatcher dispatcher{ event };
 
-        dispatcher.ForceDispatch<MouseMovedEvent>([this](const auto& event)
-        {
-            if (!Input::IsMouseButtonPressed(MouseButton::Right))
-            {
-                Input::UnlockCursor();
-                return true;
-            }
-
-            const DirectX::XMINT2 mousePosition = event.GetPosition();
-            const DirectX::XMINT2 lockedCursorPosition = Input::LockCursor(*ms_Window);
-
-            m_FlyCameraController.RotateCamera(mousePosition, lockedCursorPosition);
-
-            return true;
-        });
-
-        dispatcher.ForceDispatch<MouseScrolledEvent>([this](const auto& event)
-        {
-            m_FlyCameraController.IncrementFov((float)event.GetOffsetX());
-
-            return true;
-        });
+        dispatcher.ForceDispatch<MouseMovedEvent>(&RenderViewportTool::OnMouseMovedEvent, this);
+        dispatcher.ForceDispatch<MouseScrolledEvent>(&RenderViewportTool::OnMouseScrolledEvent, this);
     }
 
     void RenderViewportTool::SpawnImGui()
@@ -61,16 +41,13 @@ namespace benzin
                 return;
             }
 
-            const auto* finalTexture = m_RenderResources.GetTexturePtr(m_FinalTextureIndex);
-            if (finalTexture == nullptr)
-            {
-                return;
-            }
+            const auto& finalTexture = m_Textures.Get(m_FinalTextureIndex);
+            const auto imTextureId = ImGuiPass::PackImTextureId(finalTexture.GetSrv(), joint::ImGuiSamplerIndex::Point);
 
-            ImGui::Image((ImTextureID)finalTexture->GetSrv().GetGpuHandle(), ImVec2
+            ImGui::Image(imTextureId, ImVec2
             {
-                (float)finalTexture->GetWidth(),
-                (float)finalTexture->GetHeight(),
+                (float)finalTexture.GetWidth(),
+                (float)finalTexture.GetHeight(),
             });
 
             m_IsViewportHovered = ImGui::IsItemHovered();
@@ -103,5 +80,29 @@ namespace benzin
 
         m_FlyCameraController.OnRenderViewportResized(m_ViewportSize.x, m_ViewportSize.y);
     }
+
+    bool RenderViewportTool::OnMouseMovedEvent(const MouseMovedEvent& event)
+    {
+        if (!Input::IsMouseButtonPressed(MouseButton::Right))
+        {
+            Input::UnlockCursor();
+            return true;
+        }
+
+        const DirectX::XMINT2 mousePosition = event.GetPosition();
+        const DirectX::XMINT2 lockedCursorPosition = Input::LockCursor(*ms_Window);
+
+        m_FlyCameraController.RotateCamera(mousePosition, lockedCursorPosition);
+
+        return true;
+    }
+
+    bool RenderViewportTool::OnMouseScrolledEvent(const MouseScrolledEvent& event)
+    {
+        m_FlyCameraController.IncrementFov((float)event.GetOffsetX());
+
+        return true;
+    }
+
 
 }

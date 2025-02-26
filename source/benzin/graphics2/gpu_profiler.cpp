@@ -70,7 +70,7 @@ namespace benzin
         {
             for (const auto& [_, readbackIndices] : frameData.EventReadbackIndices)
             {
-                frameData.ReadbackIndexAllocator.FreeIndices(ToConstSpan(readbackIndices));
+                frameData.ReadbackIndexAllocator.FreeIndices(ToSpan(readbackIndices));
             }
 
             frameData.EventReadbackIndices.clear();
@@ -155,7 +155,7 @@ namespace benzin
 
                 for (auto& frameData : m_FrameData)
                 {
-                    frameData.ReadbackIndexAllocator.FreeIndices(ToConstSpan(frameData.EventReadbackIndices[prevHash]));
+                    frameData.ReadbackIndexAllocator.FreeIndices(ToSpan(frameData.EventReadbackIndices[prevHash]));
                     frameData.EventReadbackIndices.erase(prevHash);
                 }
             }

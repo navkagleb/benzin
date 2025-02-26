@@ -10,10 +10,14 @@ namespace benzin
     class PsoBase;
     class RayTracing_Pso;
     class ShaderManager;
+    
+    struct GraphicsInputElement;
 
     struct GraphicsPsoProxy
     {
         std::string DebugName;
+
+        std::vector<GraphicsInputElement> InputLayout;
 
         std::string_view VsFileName;
         std::string_view VsEntryPoint = "VsMain";

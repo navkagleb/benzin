@@ -15,6 +15,7 @@ namespace benzin
         Rgb32Float = DXGI_FORMAT_R32G32B32_FLOAT,
         Rg11B10Float = DXGI_FORMAT_R11G11B10_FLOAT, // Position-only format
 
+        Rg32Float = DXGI_FORMAT_R32G32_FLOAT,
         Rg16Float = DXGI_FORMAT_R16G16_FLOAT,
         Rg8Unorm = DXGI_FORMAT_R8G8_UNORM,
 

@@ -56,6 +56,12 @@ namespace benzin
         const auto psBytecode = m_ShaderManager.GetShaderBytecode(ps);
 
         auto graphicsPso = std::make_unique<GraphicsPso>(m_Device);
+        
+        if (!proxy.InputLayout.empty())
+        {
+            graphicsPso->SetInputLayout(proxy.InputLayout);
+        }
+        
         graphicsPso->SetVs(std::move(vs), vsBytecode);
         graphicsPso->SetPs(std::move(ps), psBytecode);
         graphicsPso->SetPrimitiveTopologyType(proxy.PrimitiveTopologyType);

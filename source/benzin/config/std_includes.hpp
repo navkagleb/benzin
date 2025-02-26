@@ -64,20 +64,20 @@ namespace benzin
     }
 
     template <typename UniquePtrT, typename... Args>
-    void MakeUniquePtr(UniquePtrT& outUniquePtr, Args&&... args)
+    __forceinline void MakeUniquePtr(UniquePtrT& outUniquePtr, Args&&... args)
     {
         using InnerType = std::decay_t<UniquePtrT>::element_type;
         outUniquePtr = std::make_unique<InnerType>(std::forward<Args>(args)...);
     }
 
     template <typename T>
-    auto ToSpan(std::vector<T>& vector)
+    __forceinline auto ToSpan(const T* data, size_t count)
     {
-        return std::span<T>{ vector };
+        return std::span{ data, count };
     }
 
     template <typename T>
-    auto ToConstSpan(const std::vector<T>& vector)
+    __forceinline auto ToSpan(const std::vector<T>& vector)
     {
         return std::span<const T>{ vector };
     }

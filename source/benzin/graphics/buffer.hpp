@@ -7,6 +7,9 @@ namespace benzin
 
     enum class BufferType : uint8_t
     {
+        Vertex,
+        Index,
+
         Byte, // ByteAddress
         Format,
         Structured,

@@ -36,6 +36,12 @@ namespace benzin
             WriteData(data);
         }
 
+        template <typename T>
+        void WriteArray(std::span<const T> array)
+        {
+            WriteData(std::as_bytes(array));
+        }
+
     private:
         ByteBuffer m_TargetBuffer;
         uint64_t m_BufferPosition = 0;
