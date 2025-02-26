@@ -5,7 +5,19 @@
 namespace benzin
 {
 
-    void Assert(std::string_view conditionString, const std::source_location& sourceLocation, std::string_view message1, std::string_view message2)
+    static void ShowAbortMessageBox()
+    {
+        ::MessageBox(
+            nullptr,
+            "Assertion failed!\nClick Abort to exit",
+            "Error",
+            MB_OK | MB_ICONERROR
+        );
+
+        ::ExitProcess(0);
+    }
+
+    bool Assert(std::string_view conditionString, const std::source_location& sourceLocation, std::string_view message1, std::string_view message2)
     {
         std::string buffer;
         buffer.reserve(1_kb);
@@ -33,6 +45,13 @@ namespace benzin
         }
 
         BenzinError("{}", buffer);
+
+        if (!::IsDebuggerPresent())
+        {
+            ShowAbortMessageBox();
+        }
+
+        return true;
     }
 
 }

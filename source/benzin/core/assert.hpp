@@ -9,7 +9,7 @@ namespace benzin
         return std::format(format, std::forward<Args>(args)...);
     }
 
-    void Assert(std::string_view conditionString, const std::source_location& sourceLocation, std::string_view message1 = {}, std::string_view messagte2 = {});
+    bool Assert(std::string_view conditionString, const std::source_location& sourceLocation, std::string_view message1 = {}, std::string_view messagte2 = {});
 
 }
 
@@ -27,8 +27,10 @@ namespace benzin
         if (const bool isOk{ condition }; !isOk) \
         { \
             const std::string message = benzin::ArgsToFormatString(__VA_ARGS__); \
-            benzin::Assert(#condition, std::source_location::current(), message); \
-            BenzinDebugBreak(); \
+            if (benzin::Assert(#condition, std::source_location::current(), message)) \
+            { \
+                BenzinDebugBreak(); \
+            }\
         } \
     } while (0)
 
