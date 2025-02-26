@@ -10,6 +10,14 @@
 #include "benzin/graphics/nvapi_wrapper.hpp"
 #include "benzin/graphics/pix_capturer.hpp"
 
+// DirectX Agile SDK
+// Ref: https://devblogs.microsoft.com/directx/gettingstarted-dx12agility/
+extern "C"
+{
+    __declspec(dllexport) extern const UINT D3D12SDKVersion = BENZIN_AGILE_SDK_VERSION;
+    __declspec(dllexport) extern const char* D3D12SDKPath = BENZIN_AGILE_SDK_PATH;
+}
+
 namespace benzin
 {
 

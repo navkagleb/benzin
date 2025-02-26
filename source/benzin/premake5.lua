@@ -58,6 +58,11 @@ project "BenzinFramework"
     }
 
     links {
+        "d3d12.lib",
+        "dxgi.lib",
+        "dxguid.lib",
+        "dxcompiler.lib",
+
         "WinPixEventRuntime.lib",
         "DirectXTex.lib",
         "nvapi64.lib",
