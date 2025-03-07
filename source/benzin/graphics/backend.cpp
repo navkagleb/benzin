@@ -99,11 +99,11 @@ namespace benzin
         BenzinHrEnsure(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &d3d12NonLocalVideoMemoryInfo));
 
         Bytes64 vendorTotalUsedDedicatedVram = g_InvalidUnsigned<uint64_t>;
-        if (AdlWrapper::IsInitialized() && adapterInfo.IsAmd())
+        if (adapterInfo.IsAmd())
         {
             vendorTotalUsedDedicatedVram = AdlWrapper::GetUsedDedicatedVram(adapterInfo.DeviceId);
         }
-        else if (NvApiWrapper::IsInitialized() && adapterInfo.IsNvidia())
+        else if (adapterInfo.IsNvidia())
         {
 #if BENZIN_IS_ASSERTS_ENABLED
             const Bytes64 totalUsedDedicatedVram = NvApiWrapper::GetTotalDedicatedVram(adapterInfo.DeviceId);

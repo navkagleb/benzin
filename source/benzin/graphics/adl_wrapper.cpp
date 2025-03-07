@@ -130,10 +130,13 @@ namespace benzin
     class AdlState
     {
     public:
-        AdlState()
+        void Initialize()
         {
             m_DllHandle = ::LoadLibrary("atiadlxx.dll");
-            BenzinAssert(m_DllHandle != nullptr);
+            if (m_DllHandle == nullptr)
+            {
+                return;
+            }
 
             ADL2_Main_Control_Create = (decltype(ADL2_Main_Control_Create))::GetProcAddress(m_DllHandle, BenzinStringify(ADL2_Main_Control_Create));
             ADL2_Main_Control_Destroy = (decltype(ADL2_Main_Control_Destroy))::GetProcAddress(m_DllHandle, BenzinStringify(ADL2_Main_Control_Destroy));
@@ -151,26 +154,38 @@ namespace benzin
             BenzinAssert(ADL2_Adapter_ID_Get != nullptr);
             BenzinAssert(ADL2_Adapter_VRAMUsage_Get != nullptr);
 
-            BenzinAdlEnsure(ADL2_Main_Control_Create(ADL_Main_Memory_Alloc, 1, &m_Context));
+            m_IsInitialized = ADL2_Main_Control_Create(ADL_Main_Memory_Alloc, 1, &m_Context) == ADL_OK;
+            
+            if (!m_IsInitialized)
+            {
+                return;
+            }
 
             GatherAdapters();
         }
 
-        ~AdlState()
+        void Shutdown()
         {
-            BenzinAdlEnsure(ADL2_Main_Control_Destroy(m_Context));
+            if (m_IsInitialized)
+            {
+                BenzinAdlEnsure(ADL2_Main_Control_Destroy(m_Context));
 
-            ::FreeLibrary(m_DllHandle);
+                ::FreeLibrary(m_DllHandle);
+            }
         }
 
         int GetAdapterIndex(uint32_t deviceId) const
         {
+            BenzinAssert(m_IsInitialized);
             BenzinAssert(m_AdlAdapterIndices.contains(deviceId));
+
             return m_AdlAdapterIndices.at(deviceId);
         }
 
         Bytes64 GetUsedVram(int adlAdapterIndex)
         {
+            BenzinAssert(m_IsInitialized);
+
             int vramUsageInMb = 0;
             BenzinAdlEnsure(ADL2_Adapter_VRAMUsage_Get(m_Context, adlAdapterIndex, &vramUsageInMb));
 
@@ -179,6 +194,8 @@ namespace benzin
 
         Bytes64 GetUsedDedicatedVram(int adlAdapterIndex)
         {
+            BenzinAssert(m_IsInitialized);
+
             int vramUsageInMb = 0;
             BenzinAdlEnsure(ADL2_Adapter_DedicatedVRAMUsage_Get(m_Context, adlAdapterIndex, &vramUsageInMb));
 
@@ -246,40 +263,44 @@ namespace benzin
         ADL_CONTEXT_HANDLE m_Context = nullptr;
 
         std::unordered_map<uint32_t, int> m_AdlAdapterIndices;
+
+        bool m_IsInitialized = false;
     };
 
-    static std::unique_ptr<AdlState> g_AdlState;
+    static AdlState g_AdlState;
 
     //
 
     void AdlWrapper::Initialize()
     {
+        if (CommandLineArgs::GetBool("IsPixCapturerEnabled"))
+        {
+            // PIX for windows says: PIX has detected that the application was using NVAPI when this capture was taken
+            // This may result in PIX crashing during analysis and/or PIX showing misleading data
+            return;
+        }
+
         if (CommandLineArgs::GetBool("IsAdlWrapperEnabled"))
         {
-            MakeUniquePtr(g_AdlState);
+            g_AdlState.Initialize();
         }
     }
 
     void AdlWrapper::Shutdown()
     {
-        g_AdlState.reset();
-    }
-
-    bool AdlWrapper::IsInitialized()
-    {
-        return g_AdlState.get();
+        g_AdlState.Shutdown();
     }
 
     Bytes64 AdlWrapper::GetUsedVram(uint32_t deviceId)
     {
-        const uint32_t internalAdapterIndex = g_AdlState->GetAdapterIndex(deviceId);
-        return g_AdlState->GetUsedVram(internalAdapterIndex);
+        const uint32_t internalAdapterIndex = g_AdlState.GetAdapterIndex(deviceId);
+        return g_AdlState.GetUsedVram(internalAdapterIndex);
     }
 
     Bytes64 AdlWrapper::GetUsedDedicatedVram(uint32_t deviceId)
     {
-        const uint32_t internalAdapterIndex = g_AdlState->GetAdapterIndex(deviceId);
-        return g_AdlState->GetUsedDedicatedVram(internalAdapterIndex);
+        const uint32_t internalAdapterIndex = g_AdlState.GetAdapterIndex(deviceId);
+        return g_AdlState.GetUsedDedicatedVram(internalAdapterIndex);
     }
 
-} // namespace benzin
+}

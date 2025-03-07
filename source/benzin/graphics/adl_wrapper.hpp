@@ -3,20 +3,13 @@
 namespace benzin
 {
 
-    struct PciIdentifiers;
-
-    class AdlWrapper
+    namespace AdlWrapper
     {
-    public:
-        BenzinDefineNonConstructable(AdlWrapper);
+        void Initialize();
+        void Shutdown();
 
-        static void Initialize();
-        static void Shutdown();
-
-        static bool IsInitialized();
-
-        static Bytes64 GetUsedVram(uint32_t deviceId); // ???
-        static Bytes64 GetUsedDedicatedVram(uint32_t deviceId);
+        Bytes64 GetUsedVram(uint32_t deviceId); // ???
+        Bytes64 GetUsedDedicatedVram(uint32_t deviceId);
     };
 
-} // namespace benzin
+}

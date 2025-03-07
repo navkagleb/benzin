@@ -3,22 +3,15 @@
 namespace benzin
 {
 
-    struct PciIdentifiers;
-
-    class NvApiWrapper
+    namespace NvApiWrapper
     {
-    public:
-        BenzinDefineNonConstructable(NvApiWrapper);
+        void Initialize();
+        void Shutdown();
 
-        static void Initialize();
-        static void Shutdown();
+        Bytes64 GetTotalDedicatedVram(uint32_t deviceId);
+        Bytes64 GetUsedDedicatedVram(uint32_t deviceId);
 
-        static bool IsInitialized();
-
-        static Bytes64 GetTotalDedicatedVram(uint32_t deviceId);
-        static Bytes64 GetUsedDedicatedVram(uint32_t deviceId);
-
-        static std::pair<Bytes64, Bytes64> GetCpuVisibleVram(ID3D12Device* d3d12Device);
+        std::pair<Bytes64, Bytes64> GetCpuVisibleVram(ID3D12Device* d3d12Device);
     };
 
-} // namespace benzin
+}

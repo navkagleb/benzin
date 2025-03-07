@@ -21,26 +21,40 @@ namespace benzin
     class NvApiState
     {
     public:
-        NvApiState()
+        bool IsInitialized() const { return m_IsInitialized; }
+
+        void Initialize()
         {
-            BenzinNvApiEnsure(NvAPI_Initialize());
+            m_IsInitialized = NvAPI_Initialize() == NVAPI_OK;
+            
+            if (!m_IsInitialized)
+            {
+                return;
+            }
 
             GatherAdapters();
         }
 
-        ~NvApiState()
+        void Shutdown()
         {
-            BenzinNvApiEnsure(NvAPI_Unload());
+            if (m_IsInitialized)
+            {
+                BenzinNvApiEnsure(NvAPI_Unload());
+            }
         }
 
         NvPhysicalGpuHandle GetPhysicalGpuHandle(uint32_t deviceId) const
         {
+            BenzinAssert(m_IsInitialized);
             BenzinAssert(m_PhysicalGpuHandles.contains(deviceId));
+
             return m_PhysicalGpuHandles.at(deviceId);
         }
 
         NV_GPU_MEMORY_INFO_EX GetGpuMemoryInfo(NvPhysicalGpuHandle gpuHandle)
         {
+            BenzinAssert(m_IsInitialized);
+
             NV_GPU_MEMORY_INFO_EX gpuMemoryInfo{};
             gpuMemoryInfo.version = NV_GPU_MEMORY_INFO_EX_VER_1;
             BenzinNvApiEnsure(NvAPI_GPU_GetMemoryInfoEx(gpuHandle, &gpuMemoryInfo));
@@ -84,42 +98,45 @@ namespace benzin
 
     private:
         std::unordered_map<uint32_t, NvPhysicalGpuHandle> m_PhysicalGpuHandles;
+        bool m_IsInitialized = false;
     };
 
-    static std::unique_ptr<NvApiState> g_NvApiState;
+    static NvApiState g_NvApiState;
 
     //
 
     void NvApiWrapper::Initialize()
     {
+        if (CommandLineArgs::GetBool("IsPixCapturerEnabled"))
+        {
+            // PIX for windows says: PIX has detected that the application was using NVAPI when this capture was taken
+            // This may result in PIX crashing during analysis and/or PIX showing misleading data
+            return;
+        }
+
         if (CommandLineArgs::GetBool("IsNvApiWrapperEnabled"))
         {
-            MakeUniquePtr(g_NvApiState);
+            g_NvApiState.Initialize();
         }
     }
 
     void NvApiWrapper::Shutdown()
     {
-        g_NvApiState.reset();
-    }
-
-    bool NvApiWrapper::IsInitialized()
-    {
-        return g_NvApiState.get();
+        g_NvApiState.Shutdown();
     }
 
     Bytes64 NvApiWrapper::GetTotalDedicatedVram(uint32_t deviceId)
     {
-        const NvPhysicalGpuHandle gpuHandle = g_NvApiState->GetPhysicalGpuHandle(deviceId);
-        const NV_GPU_MEMORY_INFO_EX gpuMemoryInfo = g_NvApiState->GetGpuMemoryInfo(gpuHandle);
+        const NvPhysicalGpuHandle gpuHandle = g_NvApiState.GetPhysicalGpuHandle(deviceId);
+        const NV_GPU_MEMORY_INFO_EX gpuMemoryInfo = g_NvApiState.GetGpuMemoryInfo(gpuHandle);
 
         return gpuMemoryInfo.availableDedicatedVideoMemory;
     }
 
     Bytes64 NvApiWrapper::GetUsedDedicatedVram(uint32_t deviceId)
     {
-        const NvPhysicalGpuHandle gpuHandle = g_NvApiState->GetPhysicalGpuHandle(deviceId);
-        const NV_GPU_MEMORY_INFO_EX gpuMemoryInfo = g_NvApiState->GetGpuMemoryInfo(gpuHandle);
+        const NvPhysicalGpuHandle gpuHandle = g_NvApiState.GetPhysicalGpuHandle(deviceId);
+        const NV_GPU_MEMORY_INFO_EX gpuMemoryInfo = g_NvApiState.GetGpuMemoryInfo(gpuHandle);
 
         return gpuMemoryInfo.availableDedicatedVideoMemory - gpuMemoryInfo.curAvailableDedicatedVideoMemory;
     }
@@ -134,4 +151,4 @@ namespace benzin
         return std::make_pair(totalSize, freeSize);
     }
 
-} // namespace benzin
+}
