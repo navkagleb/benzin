@@ -22,6 +22,7 @@
 #include <benzin/system/key_event.hpp>
 #include <benzin/system/window.hpp>
 #include <benzin/tools/fly_camera_tool.hpp>
+#include <benzin/tools/gpu_info_tool.hpp>
 #include <benzin/tools/performance_overlay_tool.hpp>
 #include <benzin/tools/profiler_tools.hpp>
 #include <benzin/tools/render_settings_tool.hpp>
@@ -83,11 +84,12 @@ namespace sandbox
             m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderTextures, m_Scene->GetCamera());
             m_RenderSettingsTool = m_ImGuiManager->PushTool<benzin::RenderSettingsTool>(*m_RenderSettings);
             m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderTextures);
-            m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Device, *m_ShaderManager, *m_RenderViewportTool);
+            m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Backend, *m_Device, *m_ShaderManager, *m_RenderViewportTool);
 
-            m_ImGuiManager->PushTool<benzin::ProfilerTool>();
-            m_ImGuiManager->PushTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
             m_ImGuiManager->PushTool<benzin::FlyCameraTool>(m_RenderViewportTool->GetFlyCameraController());
+            m_ImGuiManager->PushTool<benzin::GpuInfoTool>(*m_Backend);
+            m_ImGuiManager->PushTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
+            m_ImGuiManager->PushTool<benzin::ProfilerTool>();
             m_ImGuiManager->PushTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
             m_ImGuiManager->PushTool<benzin::SceneTool>(*m_Scene);
 

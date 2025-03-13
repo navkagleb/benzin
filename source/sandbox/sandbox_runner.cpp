@@ -8,6 +8,7 @@
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
+#include <benzin/graphics2/imgui_helpers.hpp>
 #include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
@@ -139,21 +140,6 @@ namespace sandbox
         return true;
     };
 
-    static void ImGui_CollapsingHeaderWithIndent(std::string_view name, const std::function<void()>& callback)
-    {
-        const ImGuiTreeNodeFlags treeNodeFlags =
-            ImGuiTreeNodeFlags_FramePadding |
-            ImGuiTreeNodeFlags_Selected;
-
-        if (ImGui::TreeNodeEx(name.data(), treeNodeFlags))
-        {
-            BenzinAssert(callback);
-            callback();
-
-            ImGui::TreePop();
-        }
-    }
-
     //
 
     SandboxRunner::SandboxRunner()
@@ -237,26 +223,29 @@ namespace sandbox
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<GBufferSettings>("GBufferSettings", true, [](GBufferSettings& settings)
         {
-            struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
-            {
-                char do_thousands_sep() const override { return '\''; }
-
-                std::string do_grouping() const override { return "\3"; }
-            };
-
-            static const std::locale customLocale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
-
-            std::locale::global(customLocale);
-            BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
-
             ImGui::Checkbox("IsFrustumCullingEnabled", &settings.IsFrustumCullingEnabled);
 
-            if (ImGui::CollapsingHeader("Stats"))
+            ImGui_CollapsingHeaderWithIndent("Stats", [&settings]
             {
-                ImGui::Text(BenzinFormatData("MeshCount: {:L}", settings.Stats.MeshCount));
-                ImGui::Text(BenzinFormatData("RenderedMeshCount: {:L}", settings.Stats.RenderedMeshCount));
-                ImGui::Text(BenzinFormatData("RenderedTriangleCount: {:L}", settings.Stats.RenderedTriangleCount));
-            }
+                // TODO: Move to global space
+                struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
+                {
+                    char do_thousands_sep() const override { return '\''; }
+
+                    std::string do_grouping() const override { return "\3"; }
+                };
+
+                static const std::locale customLocale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
+
+                std::locale::global(customLocale);
+                BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
+
+                const auto& stats = settings.Stats;
+
+                ImGui::Text(BenzinFormatData("MeshCount: {:L}", stats.MeshCount));
+                ImGui::Text(BenzinFormatData("RenderedMeshCount: {:L}", stats.RenderedMeshCount));
+                ImGui::Text(BenzinFormatData("RenderedTriangleCount: {:L}", stats.RenderedTriangleCount));
+            });
         });
 
         m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<RayTracing_ShadowSettings>("RayTracedShadows", true, [this](RayTracing_ShadowSettings& settings)

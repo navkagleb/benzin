@@ -17,8 +17,8 @@ namespace benzin
         AdapterVendorType VendorType = AdapterVendorType::Other;
         uint32_t DeviceId = g_InvalidUnsigned<uint32_t>;
 
-        Bytes64 TotalDedicatedVram;
-        Bytes64 TotalDedicatedRam;
+        Bytes64 TotalVram;
+        Bytes64 TotalRam;
         Bytes64 TotalSharedRam;
 
         bool IsAmd() const { return VendorType == AdapterVendorType::Amd ;}
@@ -29,16 +29,16 @@ namespace benzin
     struct AdapterMemoryInfo
     {
         // Query from DXGI
-        Bytes64 DedicatedVramOsBudget;
-        Bytes64 ProcessUsedDedicatedVram;
+        Bytes64 VramOsBudget;
+        Bytes64 ProcessUsedVram;
 
         Bytes64 SharedRamOsBudget;
         Bytes64 ProcessUsedSharedRam;
 
         // Query from ADL or NvAPI
-        Bytes64 TotalUsedDedicatedVram;
-        Bytes64 AvailableDedicatedVram;
-        Bytes64 AvailableDedicatedVramRelativeToOsBudget;
+        Bytes64 TotalUsedVram;
+        Bytes64 AvailableVram;
+        Bytes64 AvailableVramRelativeToOsBudget;
     };
 
     class Backend
@@ -52,12 +52,12 @@ namespace benzin
         auto* GetDxgiMainAdapter() const { return m_DxgiAdapters[m_MainAdapterIndex]; }
 
         auto GetMainAdapterIndex() const { return m_MainAdapterIndex; }
-        auto GetAdapterCount() const { return m_DxgiAdapters.size(); }
+        auto GetAdapterCount() const { return (uint32_t)m_DxgiAdapters.size(); }
 
-        const AdapterInfo& GetAdaptersInfo(uint32_t adapterIndex) const;
+        const AdapterInfo& GetAdapterInfo(uint32_t adapterIndex) const;
         AdapterMemoryInfo GetAdapterMemoryInfo(uint32_t adapterIndex) const;
 
-        const auto& GetMainAdapterInfo() const { return GetAdaptersInfo(m_MainAdapterIndex); }
+        const auto& GetMainAdapterInfo() const { return GetAdapterInfo(m_MainAdapterIndex); }
         auto GetMainAdapterMemoryInfo() const { return GetAdapterMemoryInfo(m_MainAdapterIndex); }
 
     private:
@@ -73,4 +73,4 @@ namespace benzin
         uint32_t m_MainAdapterIndex = g_InvalidUnsigned<uint32_t>;
     };
 
-} // namespace benzin
+}

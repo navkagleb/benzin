@@ -28,12 +28,14 @@ namespace benzin
 
     PerformanceOverlayTool::PerformanceOverlayTool(
         const Window& window,
+        const Backend& backend,
         const Device& device,
         const ShaderManager& shaderManager,
         const RenderViewportTool& renderViewportTool
     )
         : ImGuiTool{ "PerformanceOverlay" }
         , m_Window{ window }
+        , m_Backend{ backend }
         , m_Device{ device }
         , m_ShaderManager{ shaderManager }
         , m_RenderViewportTool{ renderViewportTool }
@@ -94,19 +96,18 @@ namespace benzin
 
         SpawnImGuiWindow(windowFlags, [this]
         {
-            const Backend& backend = m_Device.GetBackend();
-            const AdapterMemoryInfo adapterMemoryInfo = backend.GetMainAdapterMemoryInfo();
+            const AdapterMemoryInfo adapterMemoryInfo = m_Backend.GetMainAdapterMemoryInfo();
 
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0.0f, 0.0f });
 
             ImGui::Text(BenzinFormatData("Window: {} x {}", m_Window.GetWidth(), m_Window.GetHeight()));
             ImGui::Text(BenzinFormatData("Viewport: {} x {} {}", m_RenderViewportTool.GetWidth(), m_RenderViewportTool.GetHeight(), m_RenderViewportTool.IsValidForRendering() ? '+' : '-'));
-            ImGui::Text(BenzinFormatData("{}", backend.GetMainAdapterInfo().Name));
+            ImGui::Text(BenzinFormatData("{}", m_Backend.GetMainAdapterInfo().Name));
             ImGui::Text(BenzinFormatData("Fps: {:.1f} ({:.3f} ms)", m_FrameRate, m_FrameDeltaTimeMs));
             ImGui::Text(BenzinFormatData("Cpu: {}, Gpu: {}, Frame: {}", m_Device.GetCpuFrameIndex(), m_Device.GetCompletedGpuFrameIndex(), m_Device.GetActiveFrameIndex()));
             ImGui::Text(BenzinFormatData("FrameDelay: {}", m_Device.GetCpuFrameIndex() - m_Device.GetCompletedGpuFrameIndex()));
-            ImGui::Text(BenzinFormatData("Vram Local: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedDedicatedVram.GetMb(), adapterMemoryInfo.DedicatedVramOsBudget.GetMb()));
-            ImGui::Text(BenzinFormatData("Vram NonLocal: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb(), adapterMemoryInfo.SharedRamOsBudget.GetMb()));
+            ImGui::Text(BenzinFormatData("VRAM: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedVram.GetMb(), adapterMemoryInfo.VramOsBudget.GetMb()));
+            ImGui::Text(BenzinFormatData("Shared RAM: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb(), adapterMemoryInfo.SharedRamOsBudget.GetMb()));
 
             if (CommandLineArgs::GetBool("IsGpuValidationEnabled"))
             {
