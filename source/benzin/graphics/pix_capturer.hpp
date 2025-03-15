@@ -3,13 +3,10 @@
 namespace benzin
 {
 
-    class PixCapturer
+    namespace PixCapturer
     {
-    public:
-        BenzinDefineNonConstructable(PixCapturer);
-
-        static void Initialize();
-        static void Shutdown();
+        void Initialize();
+        void Shutdown();
     };
 
 }

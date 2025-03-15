@@ -9,6 +9,7 @@
 #include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/command_line_args.hpp"
 #include "benzin/core/profiler.hpp"
+#include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/command_list.hpp"
 #include "benzin/graphics/command_queue.hpp"
 #include "benzin/graphics/device.hpp"
@@ -17,6 +18,7 @@
 #include "benzin/graphics/texture.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
 #include "benzin/graphics2/const_buffer_pool.hpp"
+#include "benzin/graphics2/game_specific_resource_ids.hpp"
 #include "benzin/graphics2/gpu_profiler.hpp"
 #include "benzin/graphics2/pso_manager.hpp"
 #include "benzin/system/key_event.hpp"
@@ -348,13 +350,12 @@ namespace benzin
         BenzinAssert(magic_enum::enum_contains(outSamplerIndex));
     }
 
-    ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager, uint32_t psoIndex)
+    ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager)
         : m_ImGuiManager{ imGuiManager }
-        , m_PsoIndex{ psoIndex }
     {
         m_FrameContexts.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
 
-        ms_PsoManager->CreateGraphicsPso(m_PsoIndex, [](GraphicsPsoProxy& proxy)
+        ms_PsoManager->Create(PsoId::ImGui, [](GraphicsPsoProxy& proxy)
         {
             proxy.DebugName = "ImGui";
             proxy.InputLayout.emplace_back("Position", GraphicsFormat::Rg32Float);
@@ -395,6 +396,11 @@ namespace benzin
         ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
+    ImGuiPass::~ImGuiPass()
+    {
+        ms_PsoManager->Destroy(PsoId::ImGui);
+    }
+
     void ImGuiPass::OnZeroFrameInit()
     {
         UploadFontTexture();
@@ -417,7 +423,7 @@ namespace benzin
 
         commandList.SetViewport(ms_WindowViewport);
         commandList.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
-        commandList.SetGraphicsPso(ms_PsoManager->GetGraphicsPso(m_PsoIndex));
+        commandList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::ImGui));
         commandList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
         commandList.SetBlendFactor({});
 

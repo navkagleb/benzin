@@ -12,21 +12,6 @@ namespace benzin
 namespace sandbox
 {
 
-    enum class RenderPasses : uint32_t
-    {
-        TlasBuilding,
-        GlobalConstants,
-        Geometry,
-        RayTracedShadows,
-        SigmaDenoiser,
-        DeferredLighting,
-        Environment,
-        FullScreenDebug,
-        ImGui,
-        CopuToBackBuffer,
-    };
-    BenzinEnableUnaryPlusForEnum(RenderPasses);
-
     class SandboxRunner : public Runner
     {
     public:
@@ -43,7 +28,7 @@ namespace sandbox
 
         void AddStaticMeshEntities(std::span<const entt::entity> meshHandles);
         void AddDynamicMeshEntities(std::span<const entt::entity> meshHandles);
-        void AddEmissiveEntities(std::span<const entt::entity> meshHandles);
+        void AddLightEntities(std::span<const entt::entity> meshHandles);
     };
 
 }

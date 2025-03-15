@@ -28,7 +28,7 @@ namespace benzin
     protected:
         void SpawnImGuiWindow(const std::function<void()>& callback);
         void SpawnImGuiWindow(ImGuiWindowFlags flags, const std::function<void()>& callback);
-        bool SpawnImGuiCollapsingHeader(std::string_view name, bool isOpenByDefault = true) const;
+        bool SpawnImGuiCollapsingHeader(std::string_view name, bool isOpenByDefault = true) const; // TODO: Move to imgui_helpers.hpp
 
     protected:
         static inline const Window* ms_Window = nullptr;
@@ -100,7 +100,8 @@ namespace benzin
         static uint64_t PackImTextureId(const Descriptor& viewDescriptor, joint::ImGuiSamplerIndex samplerIndex);
 
     public:
-        ImGuiPass(ImGuiManager& imGuiManager, uint32_t psoIndex);
+        explicit ImGuiPass(ImGuiManager& imGuiManager);
+        ~ImGuiPass();
 
     private:
         bool IsDependentOnViewport() const override { return false; }
@@ -129,7 +130,6 @@ namespace benzin
         std::unique_ptr<Texture> m_FontTexture;
 
         joint::ImGuiConsts m_Consts{};
-        uint32_t m_PsoIndex;
     };
 
 }

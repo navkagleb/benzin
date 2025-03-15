@@ -38,8 +38,12 @@ namespace sandbox
 
         const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
 
-        commandList.SetCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, ms_ConstBufferPool->Allocate(m_FrameConsts));
-        commandList.SetSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, m_Scene.GetLightBufferGpuAddress());
+        const auto frameConstsGpuAddress = ms_ConstBufferPool->Allocate(m_FrameConsts);
+        commandList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, frameConstsGpuAddress);
+        commandList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, frameConstsGpuAddress);
+
+        commandList.SetComputeSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, m_Scene.GetLightBufferGpuAddress());
+        commandList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, m_Scene.GetLightBufferGpuAddress());
     }
 
     void GlobalConstantsPass::UpdateCameraConsts()

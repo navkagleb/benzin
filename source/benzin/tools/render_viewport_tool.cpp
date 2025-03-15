@@ -2,6 +2,8 @@
 #include "benzin/tools/render_viewport_tool.hpp"
 
 #include "benzin/graphics/texture.hpp"
+#include "benzin/graphics2/game_specific_resource_ids.hpp"
+#include "benzin/graphics2/render_pass.hpp"
 #include "benzin/system/event.hpp"
 #include "benzin/system/input.hpp"
 #include "benzin/system/mouse_event.hpp"
@@ -9,9 +11,9 @@
 namespace benzin
 {
 
-    RenderViewportTool::RenderViewportTool(RenderResources& renderResources, Camera& camera)
-        , m_RenderResources{ renderResources }
+    RenderViewportTool::RenderViewportTool(RenderResources& resources, Camera& camera)
         : ImGuiTool{ "RenderViewport" }
+        , m_Resources{ resources }
         , m_FlyCameraController{ camera }
     {}
 
@@ -36,12 +38,12 @@ namespace benzin
         {
             UpdateImGuiDimensions();
 
-            if (!IsValidUnsigned(m_FinalTextureIndex))
+            if (!m_Resources.IsCreated(TextureId::Final))
             {
                 return;
             }
 
-            const auto& finalTexture = m_Textures.Get(m_FinalTextureIndex);
+            const auto& finalTexture = m_Resources.Get(TextureId::Final);
             const auto imTextureId = ImGuiPass::PackImTextureId(finalTexture.GetSrv(), joint::ImGuiSamplerIndex::Point);
 
             ImGui::Image(imTextureId, ImVec2

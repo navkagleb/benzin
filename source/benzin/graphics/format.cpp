@@ -13,7 +13,8 @@ namespace benzin
             case Rgba32Float: return 4 * (32 / 8);
             case Rgba16Float:
             case Rgba16Unorm: return 4 * (16 / 8);
-            case Rgba8Unorm: return 4 * (8 / 8);
+            case Rgba8Unorm:
+            case Rgba8Unorm_Srgb: return 4 * (8 / 8);
 
             case Rgb32Float: return 3 * (32 / 8);
             case Rg11B10Float: return 1 * ((11 + 11 + 10) / 8);

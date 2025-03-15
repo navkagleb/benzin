@@ -2,6 +2,8 @@
 #include "benzin/tools/texture_viewer_tool.hpp"
 
 #include "benzin/graphics/texture.hpp"
+#include "benzin/graphics2/game_specific_resource_ids.hpp"
+#include "benzin/graphics2/imgui_helpers.hpp"
 #include "benzin/system/event.hpp"
 #include "benzin/system/input.hpp"
 #include "benzin/system/key_event.hpp"
@@ -12,11 +14,35 @@ namespace benzin
 
     static constexpr auto g_ToggleVisibilityKeyCode = KeyCode::F3;
 
+    static TextureId DrawTextureSelector()
+    {
+        static const auto textureNames = magic_enum::enum_names<TextureId>();
+        static const auto textureIndices = magic_enum::enum_values<TextureId>();
+
+        static int textureNameIndex = -1;
+
+        if (ImGui::Button("Reset"))
+        {
+            textureNameIndex = -1;
+        }
+
+        ImGui::SameLine();
+        ImGui::Combo(
+            "Texture",
+            &textureNameIndex,
+            ImGui_SelectComboName<decltype(textureNames)>,
+            (void*)&textureNames,
+            (int)textureNames.size() - 1
+        );
+
+        return textureNameIndex != -1 ? textureIndices[textureNameIndex] : g_InvalidTextureId;
+    }
+
     //
 
-    TextureViewerTool::TextureViewerTool(const RenderResources& renderResources)
-        , m_RenderResources{ renderResources }
+    TextureViewerTool::TextureViewerTool(const RenderResources& resources)
         : ImGuiTool{ "TextureViewer", magic_enum::enum_name(g_ToggleVisibilityKeyCode) }
+        , m_Resources{ resources }
     {}
 
     void TextureViewerTool::OnEvent(Event& event)
@@ -38,15 +64,17 @@ namespace benzin
     {
         ImGui::SetNextWindowBgAlpha(1.0);
 
-        SpawnImGuiWindow([this]
+        SpawnImGuiWindow(ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse, [this]
         {
-            const uint32_t textureIndex = m_SelectorCallback ? m_SelectorCallback() : g_InvalidUnsigned<uint32_t>;
-            if (!IsValidUnsigned(textureIndex) || !m_Textures.IsCreated(textureIndex))
+            const TextureId textureId = DrawTextureSelector();
+            if (!magic_enum::enum_contains(textureId) || !m_Resources.IsCreated(textureId))
             {
                 return;
             }
 
-            const auto& texture = m_Textures.Get(textureIndex);
+            const auto& texture = m_Resources.Get(textureId);
+
+            ImGui::Text(BenzinFormatData("Texture Size: [{}, {}]", texture.GetWidth(), texture.GetHeight()));
 
             const ImVec2 widgetSize = ImGui::GetContentRegionAvail();
             const float widgetAspectRatio = widgetSize.x / widgetSize.y;
@@ -63,17 +91,25 @@ namespace benzin
                 widgetTextureSize.x = widgetSize.x;
                 widgetTextureSize.y = widgetSize.x * (1.0f / textureAspectRatio);
             }
+            const ImVec2 imagePos = ImGui::GetCursorScreenPos();
 
-            ImGui::Text(BenzinFormatData("Uv Min: [{}, {}]", m_UvMin.x, m_UvMin.y));
-            ImGui::Text(BenzinFormatData("Uv Max: [{}, {}]", m_UvMax.x, m_UvMax.y));
-            ImGui::Text(BenzinFormatData("Texture Size: [{}, {}]", texture.GetWidth(), texture.GetHeight()));
             ImGui::Separator();
-
             ImGui::Image(
                 ImGuiPass::PackImTextureId(texture.GetSrv(), joint::ImGuiSamplerIndex::Point),
                 widgetTextureSize,
                 m_UvMin,
                 m_UvMax
+            );
+
+            const float rounding = 0.0f;
+            const float borderThickness = 3.0f;
+            ImGui::GetWindowDrawList()->AddRect(
+                imagePos,
+                imagePos + widgetTextureSize,
+                IM_COL32(255, 165, 0, 255),
+                rounding,
+                ImDrawFlags_None,
+                borderThickness
             );
 
             m_IsHovered = ImGui::IsItemHovered();

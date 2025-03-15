@@ -7,6 +7,7 @@
 #include <benzin/engine/light.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/scene.hpp>
+#include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/texture.hpp>
@@ -39,7 +40,7 @@ namespace sandbox
         : m_Scene{ scene }
         , m_Stats{ ms_Settings->GetSection<GBufferSettings>().Stats }
     {
-        ms_PsoManager->CreateGraphicsPso(+Pso::GeometryPass, [](benzin::GraphicsPsoProxy& proxy)
+        ms_PsoManager->Create(PsoId::GeometryPass, [](benzin::GraphicsPsoProxy& proxy)
         {
             proxy.DebugName = "GeometryPass";
             proxy.VsFileName = "geometry_pass.hlsl";
@@ -63,27 +64,23 @@ namespace sandbox
 
     GeometryPass::~GeometryPass()
     {
-        ms_PsoManager->DestroyPso(+Pso::GeometryPass);
+        ms_PsoManager->Destroy(PsoId::GeometryPass);
 
-        ms_Resources->DestroyTexture(+Texture::AlbedoAndRoughness);
-        ms_Resources->DestroyTexture(+Texture::EmissiveAndMetallic);
-        ms_Resources->DestroyTexture(+Texture::WorldNormal);
-        ms_Resources->DestroyTexture(+Texture::Mv);
-        ms_Resources->DestroyTexture(+Texture::ViewDepth);
-        ms_Resources->DestroyTexture(+Texture::DepthStencil);
+        ms_Resources->Destroy(TextureId::AlbedoAndRoughness);
+        ms_Resources->Destroy(TextureId::EmissiveAndMetallic);
+        ms_Resources->Destroy(TextureId::WorldNormal);
+        ms_Resources->Destroy(TextureId::Mv);
+        ms_Resources->Destroy(TextureId::ViewDepth);
+        ms_Resources->Destroy(TextureId::DepthStencil);
     }
 
     void GeometryPass::OnRenderViewportResize()
     {
-        const auto createGBufferTexture = [&](
-            Texture textureIndex,
-            benzin::GraphicsFormat format,
-            benzin::TextureAccessFlag accessFlag
-        )
+        const auto createGBufferTexture = [](TextureId id, benzin::GraphicsFormat format, benzin::TextureAccessFlag accessFlag)
         {
-            ms_Resources->CreateTexture(+textureIndex, benzin::TextureCreation
+            ms_Resources->Create(id, benzin::TextureCreation
             {
-                .DebugName = magic_enum::enum_name(textureIndex),
+                .DebugName = magic_enum::enum_name(id),
                 .Format = format,
                 .Width = GetRenderViewportWidth(),
                 .Height = GetRenderViewportHeight(),
@@ -92,15 +89,15 @@ namespace sandbox
             });
         };
 
-        createGBufferTexture(Texture::AlbedoAndRoughness, g_GBufferColor0Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(Texture::EmissiveAndMetallic, g_GBufferColor1Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(Texture::WorldNormal, g_GBufferColor2Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(Texture::Mv, g_GBufferColor3Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(Texture::DepthStencil, g_DepthStencilFormat, benzin::TextureAccessFlag::AllowDepthStencil);
+        createGBufferTexture(TextureId::AlbedoAndRoughness, g_GBufferColor0Format, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::EmissiveAndMetallic, g_GBufferColor1Format, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::WorldNormal, g_GBufferColor2Format, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::Mv, g_GBufferColor3Format, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::DepthStencil, g_DepthStencilFormat, benzin::TextureAccessFlag::AllowDepthStencil);
 
-        ms_Resources->CreateTexture(+Texture::ViewDepth, benzin::TextureCreation
+        ms_Resources->Create(TextureId::ViewDepth, benzin::TextureCreation
         {
-            .DebugName = magic_enum::enum_name(Texture::ViewDepth),
+            .DebugName = magic_enum::enum_name(TextureId::ViewDepth),
             .Format = g_GBufferColor4Format,
             .Width = GetRenderViewportWidth(),
             .Height = GetRenderViewportHeight(),
@@ -122,12 +119,12 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "Geometry");
 
-        const auto& albedoAndRoughness = ms_Resources->GetTexture(+Texture::AlbedoAndRoughness);
-        const auto& emissiveAndMetallic = ms_Resources->GetTexture(+Texture::EmissiveAndMetallic);
-        const auto& worldNormal = ms_Resources->GetTexture(+Texture::WorldNormal);
-        const auto& mv = ms_Resources->GetTexture(+Texture::Mv);
-        const auto& viewDepth = ms_Resources->GetTexture(+Texture::ViewDepth);
-        const auto& depthStencil = ms_Resources->GetTexture(+Texture::DepthStencil);
+        const auto& albedoAndRoughness = ms_Resources->Get(TextureId::AlbedoAndRoughness);
+        const auto& emissiveAndMetallic = ms_Resources->Get(TextureId::EmissiveAndMetallic);
+        const auto& worldNormal = ms_Resources->Get(TextureId::WorldNormal);
+        const auto& mv = ms_Resources->Get(TextureId::Mv);
+        const auto& viewDepth = ms_Resources->Get(TextureId::ViewDepth);
+        const auto& depthStencil = ms_Resources->Get(TextureId::DepthStencil);
 
         commandList.SetViewport(ms_RenderViewport);
         commandList.SetScissorRect(ms_RenderScissorRect);
@@ -150,7 +147,7 @@ namespace sandbox
                 mv.GetRtv(),
                 viewDepth.GetRtv(),
             },
-            &ms_Resources->GetTexture(+Texture::DepthStencil).GetDsv()
+            &ms_Resources->Get(TextureId::DepthStencil).GetDsv()
         );
 
         commandList.ClearRenderTarget(albedoAndRoughness);
@@ -166,24 +163,32 @@ namespace sandbox
 
         m_TransformIndex = 0;
 
-        commandList.SetPso(ms_PsoManager->GetPso(+Pso::GeometryPass));
-        commandList.SetRootResource(+joint::Rc_Geometry::MeshTransforms, m_Scene.GetTransformBufferSrv());
+        commandList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::GeometryPass));
+        commandList.SetGraphicsRootResource(+joint::Rc_Geometry::MeshTransforms, m_Scene.GetTransformBufferSrv());
 
-        const auto view = m_Scene.GetEntityRegistry().view<benzin::MeshComponent, benzin::Transform>();
-        for (const auto& [_, mc, transform] : view.each())
         {
-            RenderMesh(mc.MeshHandle, transform.GetLocalToWorldMatrix());
+            BenzinScopeProfile("Render Meshes");
+
+            const auto view = m_Scene.GetEntityRegistry().view<benzin::MeshComponent, benzin::Transform>();
+            for (const auto& [_, mc, transform] : view.each())
+            {
+                RenderMesh(mc.MeshHandle, transform.GetLocalToWorldMatrix());
+            }
         }
 
-        const auto lightView = m_Scene.GetEntityRegistry().view<benzin::MeshComponent, benzin::SphericalLight>();
-        for (const auto& [_, mc, light] : lightView.each())
         {
-            if (!light.IsEnabled())
-            {
-                continue;
-            }
+            BenzinScopeProfile("Render Lights");
 
-            RenderMesh(mc.MeshHandle, light.GetTransform().GetLocalToWorldMatrix());
+            const auto view = m_Scene.GetEntityRegistry().view<benzin::MeshComponent, benzin::SphericalLight>();
+            for (const auto& [_, mc, light] : view.each())
+            {
+                if (!light.IsEnabled())
+                {
+                    continue;
+                }
+
+                RenderMesh(mc.MeshHandle, light.GetTransform().GetLocalToWorldMatrix());
+            }
         }
     }
 
@@ -208,12 +213,12 @@ namespace sandbox
         const auto& mesh = meshRegistry.get<benzin::Mesh>(meshHandle);
         const auto& meshGpuStorage = meshRegistry.get<benzin::MeshGpuStorage>(meshHandle);
 
-        commandList.SetRootConstant(+MeshTransformIndex, m_TransformIndex++);
-        commandList.SetRootResource(+MeshVertices, meshGpuStorage.VertexBuffer->GetSrv());
-        commandList.SetRootResource(+MeshIndices, meshGpuStorage.IndexBuffer->GetSrv());
-        commandList.SetRootResource(+SubMeshInfos, meshGpuStorage.MeshInfoBuffer->GetSrv());
-        commandList.SetRootResource(+SubMeshInstances, meshGpuStorage.MeshInstanceBuffer->GetSrv());
-        commandList.SetRootResource(+Materials, meshGpuStorage.MaterialBuffer->GetSrv());
+        commandList.SetGraphicsRootConstant(+MeshTransformIndex, m_TransformIndex++);
+        commandList.SetGraphicsRootResource(+MeshVertices, meshGpuStorage.VertexBuffer->GetSrv());
+        commandList.SetGraphicsRootResource(+MeshIndices, meshGpuStorage.IndexBuffer->GetSrv());
+        commandList.SetGraphicsRootResource(+SubMeshInfos, meshGpuStorage.MeshInfoBuffer->GetSrv());
+        commandList.SetGraphicsRootResource(+SubMeshInstances, meshGpuStorage.MeshInstanceBuffer->GetSrv());
+        commandList.SetGraphicsRootResource(+Materials, meshGpuStorage.MaterialBuffer->GetSrv());
 
         for (const auto i : std::views::iota(0u, mesh.SubMeshInstances.size()))
         {
@@ -233,7 +238,7 @@ namespace sandbox
                 }
             }
 
-            commandList.SetRootConstant(+SubMeshInstanceIndex, i);
+            commandList.SetGraphicsRootConstant(+SubMeshInstanceIndex, i);
 
             commandList.SetPrimitiveTopology(subMesh.PrimitiveTopology);
             commandList.DrawVertexed((uint32_t)subMesh.Indices.size());

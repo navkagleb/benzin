@@ -10,6 +10,7 @@ namespace benzin
     {
     public:
         explicit ConstBufferPool(Device& device);
+        ~ConstBufferPool();
 
         void BeginFrame();
 

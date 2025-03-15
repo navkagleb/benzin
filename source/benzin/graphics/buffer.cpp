@@ -216,21 +216,49 @@ namespace benzin
 
     static D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(const Buffer& buffer)
     {
-        BenzinAssert(buffer.GetType() == BufferType::Structured);
-
-        return D3D12_UNORDERED_ACCESS_VIEW_DESC
+        switch (buffer.GetType())
         {
-            .Format = DXGI_FORMAT_UNKNOWN,
-            .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
-            .Buffer
+            case BufferType::Format:
             {
-                .FirstElement = 0,
-                .NumElements = buffer.GetElementCount(),
-                .StructureByteStride = buffer.GetElementSize(),
-                .CounterOffsetInBytes = 0,
-                .Flags = D3D12_BUFFER_UAV_FLAG_NONE,
+                BenzinAssert(buffer.GetFormat() != GraphicsFormat::Unknown);
+
+                return D3D12_UNORDERED_ACCESS_VIEW_DESC
+                {
+                    .Format = (DXGI_FORMAT)buffer.GetFormat(),
+                    .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
+                    .Buffer
+                    {
+                        .FirstElement = 0,
+                        .NumElements = buffer.GetElementCount(),
+                        .StructureByteStride = 0,
+                        .CounterOffsetInBytes = 0,
+                        .Flags = D3D12_BUFFER_UAV_FLAG_NONE,
+                    },
+                };
             }
-        };
+            case BufferType::Structured:
+            {
+                return D3D12_UNORDERED_ACCESS_VIEW_DESC
+                {
+                    .Format = DXGI_FORMAT_UNKNOWN,
+                    .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
+                    .Buffer
+                    {
+                        .FirstElement = 0,
+                        .NumElements = buffer.GetElementCount(),
+                        .StructureByteStride = buffer.GetElementSize(),
+                        .CounterOffsetInBytes = 0,
+                        .Flags = D3D12_BUFFER_UAV_FLAG_NONE,
+                    },
+                };
+            }
+            default:
+            {
+                BenzinAssert(false);
+            }
+        }
+
+        std::unreachable();
     }
 
     static D3D12_CONSTANT_BUFFER_VIEW_DESC ToD3D12ConstantBufferViewDesc(const Buffer& buffer, uint32_t elementIndex)

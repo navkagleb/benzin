@@ -27,7 +27,7 @@ namespace sandbox
     RayTracing_ShadowPass::RayTracing_ShadowPass(const benzin::Scene& scene)
         : m_Scene{ scene }
     {
-        ms_PsoManager->CreateRayTracingPso(+Pso::ShadowPass, [](benzin::RayTracing_PsoProxy& proxy)
+        ms_PsoManager->Create(PsoId::ShadowPass, [](benzin::RayTracing_PsoProxy& proxy)
         {
             proxy.DebugName = "RayTracing_ShadowPass";
             proxy.ShaderLibrary.FileName = "ray_tracing_shadow_pass.hlsl";
@@ -44,8 +44,8 @@ namespace sandbox
 
     RayTracing_ShadowPass::~RayTracing_ShadowPass()
     {
-        ms_PsoManager->DestroyPso(+Pso::ShadowPass);
-        ms_Resources->DestroyTexture(+Texture::NoisyPenumbra);
+        ms_PsoManager->Destroy(PsoId::ShadowPass);
+        ms_Resources->Destroy(TextureId::NoisyPenumbra);
     }
 
     void RayTracing_ShadowPass::OnZeroFrameInit()
@@ -70,9 +70,9 @@ namespace sandbox
     {
         const auto penumbraFormat = ms_Settings->GetSection<SigmaDenoiserSettings>().PenumbraFormat;
 
-        ms_Resources->CreateTexture(+Texture::NoisyPenumbra, benzin::TextureCreation
+        ms_Resources->Create(TextureId::NoisyPenumbra, benzin::TextureCreation
         {
-            .DebugName = magic_enum::enum_name(Texture::NoisyPenumbra),
+            .DebugName = magic_enum::enum_name(TextureId::NoisyPenumbra),
             .Format = penumbraFormat,
             .Width = GetRenderViewportWidth(),
             .Height = GetRenderViewportHeight(),
@@ -97,20 +97,20 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "RayTracing_Shadow");
 
-        const auto& pso = ms_PsoManager->GetRayTracingPso(+Pso::ShadowPass);
-        const auto& noisyPenumbra = ms_Resources->GetTexture(+Texture::NoisyPenumbra);
+        const auto& pso = ms_PsoManager->GetRayTracing(PsoId::ShadowPass);
+        const auto& noisyPenumbra = ms_Resources->Get(TextureId::NoisyPenumbra);
 
-        commandList.SetPso(pso);
-        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        commandList.SetRayTracingPso(pso);
+        commandList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
 
         {
             using enum joint::Rc_RayTracing_Shadow;
 
-            commandList.SetRootResource(+WorldNormal, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
-            commandList.SetRootResource(+Depth, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv());
-            commandList.SetRootResource(+BlueNoise, m_BlueNoise->GetSrv());
+            commandList.SetComputeRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+            commandList.SetComputeRootResource(+Depth, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
+            commandList.SetComputeRootResource(+BlueNoise, m_BlueNoise->GetSrv());
 
-            commandList.SetRootResource(+OutNoisyPenumbra, noisyPenumbra.GetUav());
+            commandList.SetComputeRootResource(+OutNoisyPenumbra, noisyPenumbra.GetUav());
         }
 
         BenzinMakeScopedResourceBarriers(

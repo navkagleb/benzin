@@ -43,13 +43,6 @@ void Preload(uint2 sharedPos, uint2 pixelPos)
     g_PixelsData[sharedPos.y][sharedPos.x] = pixel;
 }
 
-struct CsInput
-{
-    uint2 ThreadPos : SV_GroupThreadID;
-    uint2 PixelPos : SV_DispatchThreadID;
-    uint FlatThreadIndex : SV_GroupIndex;
-};
-
 struct BlurParams
 {
     float2 UvToViewScale;

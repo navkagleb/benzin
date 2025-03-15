@@ -8,13 +8,14 @@ namespace benzin
 
     class MouseMovedEvent;
     class MouseScrolledEvent;
+    class RenderResources;
 
     class RenderViewportTool : public ImGuiTool
     {
     public:
         friend class FlyCameraController;
 
-        RenderViewportTool(RenderResources& renderResources, Camera& camera);
+        RenderViewportTool(RenderResources& resources, Camera& camera);
 
         auto& GetFlyCameraController() { return m_FlyCameraController; }
 
@@ -23,8 +24,6 @@ namespace benzin
 
         bool IsViewportSizeRelevant() const { return m_IsViewportSizeRelevant; }
         bool IsValidForRendering() const { return m_IsViewportSizeRelevant && m_IsVisible; }
-
-        void SetFinalTextureIndex(uint32_t finalTextureIndex) { m_FinalTextureIndex = finalTextureIndex; }
 
     private:
         void OnEvent(Event& event) override;
@@ -36,10 +35,8 @@ namespace benzin
         bool OnMouseScrolledEvent(const MouseScrolledEvent& event);
 
     private:
-        RenderResources& m_RenderResources;
+        RenderResources& m_Resources;
         FlyCameraController m_FlyCameraController;
-
-        uint32_t m_FinalTextureIndex = g_InvalidUnsigned<uint32_t>;
         
         DirectX::XMINT2 m_ViewportSize{};
         bool m_IsViewportSizeRelevant = true;

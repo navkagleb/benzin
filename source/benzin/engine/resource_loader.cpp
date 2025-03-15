@@ -341,7 +341,7 @@ namespace benzin
 
                 // Albedo
                 {
-                    material.AlbedoTextureIndex = PushTextureMapping(gltfPbrMetallicRoughness.baseColorTexture.index);
+                    material.AlbedoTextureIndex = PushTextureMapping(gltfPbrMetallicRoughness.baseColorTexture.index, true);
 
                     BenzinAssert(gltfPbrMetallicRoughness.baseColorFactor.size() == 4);
                     material.AlbedoFactor.x = (float)gltfPbrMetallicRoughness.baseColorFactor[0];
@@ -354,20 +354,20 @@ namespace benzin
 
                 // Normal
                 {
-                    material.NormalTextureIndex = PushTextureMapping(gltfMaterial.normalTexture.index);
+                    material.NormalTextureIndex = PushTextureMapping(gltfMaterial.normalTexture.index, false);
                     material.NormalScale = (float)gltfMaterial.normalTexture.scale;
                 }
 
                 // MetalRoughness
                 {
-                    material.MetallicRoughnessTextureIndex = PushTextureMapping(gltfPbrMetallicRoughness.metallicRoughnessTexture.index);
+                    material.MetallicRoughnessTextureIndex = PushTextureMapping(gltfPbrMetallicRoughness.metallicRoughnessTexture.index, false);
                     material.MetalnessFactor = (float)gltfPbrMetallicRoughness.metallicFactor;
                     material.RoughnessFactor = (float)gltfPbrMetallicRoughness.roughnessFactor;
                 }
 
                 // Emissive
                 {
-                    material.EmissiveTextureIndex = PushTextureMapping(gltfMaterial.emissiveTexture.index);
+                    material.EmissiveTextureIndex = PushTextureMapping(gltfMaterial.emissiveTexture.index, true);
 
                     BenzinAssert(gltfMaterial.emissiveFactor.size() == 3);
                     material.EmissiveFactor.x = (float)gltfMaterial.emissiveFactor[0];
@@ -386,7 +386,7 @@ namespace benzin
             std::for_each(std::execution::par, m_TextureMappings.begin(), m_TextureMappings.end(), [&](const auto textureMappingEntry)
             {
                 const uint32_t gltfTextureIndex = textureMappingEntry.first;
-                const uint32_t mappedIndex = textureMappingEntry.second;
+                const TextureMapping textureMapping = textureMappingEntry.second;
 
                 const tinygltf::Texture gltfTexture = m_CurrentModel.textures[gltfTextureIndex];
                 const tinygltf::Image& gltfImage = m_CurrentModel.images[gltfTexture.source];
@@ -395,7 +395,7 @@ namespace benzin
 
                 TextureImage textureImage
                 {
-                    .Format = GraphicsFormat::Rgba8Unorm,
+                    .Format = textureMapping.IsSrgb ? GraphicsFormat::Rgba8Unorm_Srgb : GraphicsFormat::Rgba8Unorm,
                     .Width = (uint32_t)gltfImage.width,
                     .Height = (uint32_t)gltfImage.height,
                 };
@@ -417,11 +417,11 @@ namespace benzin
                 textureImage.ImageData.resize(gltfImage.image.size());
                 memcpy(textureImage.ImageData.data(), gltfImage.image.data(), gltfImage.image.size());
 
-                outMesh.TextureImages[mappedIndex] = std::move(textureImage);
+                outMesh.TextureImages[textureMapping.MappedIndex] = std::move(textureImage);
             });
         }
 
-        uint32_t PushTextureMapping(int gltfTextureIndex)
+        uint32_t PushTextureMapping(int gltfTextureIndex, bool isSrgb)
         {
             if (gltfTextureIndex == -1)
             {
@@ -430,10 +430,14 @@ namespace benzin
 
             if (!m_TextureMappings.contains(gltfTextureIndex))
             {
-                m_TextureMappings[gltfTextureIndex] = (uint32_t)m_TextureMappings.size();
+                const auto mappedIndex = (uint32_t)m_TextureMappings.size();
+
+                auto& textureMapping = m_TextureMappings[gltfTextureIndex];
+                textureMapping.MappedIndex = mappedIndex;
+                textureMapping.IsSrgb = isSrgb;
             }
 
-            return m_TextureMappings[gltfTextureIndex];
+            return m_TextureMappings[gltfTextureIndex].MappedIndex;
         }
 
         void ResetState()
@@ -443,9 +447,16 @@ namespace benzin
         }
 
     private:
+        struct TextureMapping
+        {
+            uint16_t MappedIndex : 15 = 0;
+            uint16_t IsSrgb : 1 = false;
+        };
+
         tinygltf::TinyGLTF m_Context;
         tinygltf::Model m_CurrentModel;
-        std::unordered_map<uint32_t, uint32_t> m_TextureMappings;
+
+        std::unordered_map<uint32_t, TextureMapping> m_TextureMappings;
     };
 
     //

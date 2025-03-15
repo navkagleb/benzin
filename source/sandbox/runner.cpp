@@ -1,5 +1,5 @@
-#include "sandbox/bootstrap.hpp"
-#include "sandbox/runner.hpp"
+#include <sandbox/bootstrap.hpp>
+#include <sandbox/runner.hpp>
 
 #include <benzin/core/command_line_args.hpp>
 #include <benzin/core/logger.hpp>
@@ -30,9 +30,6 @@
 #include <benzin/tools/scene_stats_tool.hpp>
 #include <benzin/tools/scene_tool.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
-#include <benzin/utility/time_utils.hpp>
-
-#include "sandbox/resources.hpp"
 
 namespace sandbox
 {
@@ -53,18 +50,17 @@ namespace sandbox
 
         benzin::MakeUniquePtr(m_Backend);
         benzin::MakeUniquePtr(m_Device, benzin::DeviceCreation{ "MainDevice", *m_Backend });
-        benzin::MakeUniquePtr(m_SwapChain, benzin::SwapChainCreation{ "MainSwapChain", *m_MainWindow, *m_Device });
+        benzin::MakeUniquePtr(m_SwapChain, benzin::SwapChainCreation{ "MainSwapChain", *m_MainWindow, *m_Backend, *m_Device });
 
         benzin::MakeUniquePtr(m_ShaderManager);
         benzin::MakeUniquePtr(m_GpuProfiler, *m_Device);
-        benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager, (uint32_t)magic_enum::enum_count<Pso>());
+        benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager);
         benzin::MakeUniquePtr(m_ConstBufferPool, *m_Device);
 
         benzin::MakeUniquePtr(m_Scene, *m_Device, m_AnimationTimer);
         benzin::MakeUniquePtr(m_RayTracingScene, *m_Device, *m_Scene);
 
-        benzin::MakeUniquePtr(m_RenderBuffers, *m_Device);
-        benzin::MakeUniquePtr(m_RenderTextures, *m_Device);
+        benzin::MakeUniquePtr(m_RenderResources, *m_Device);
         benzin::MakeUniquePtr(m_RenderSettings);
 
         benzin::RenderPass::SetContext(
@@ -73,17 +69,16 @@ namespace sandbox
             *m_GpuProfiler,
             *m_PsoManager,
             *m_ConstBufferPool,
-            *m_RenderBuffers,
-            *m_RenderTextures,
+            *m_RenderResources,
             *m_RenderSettings
         );
 
         {
             benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device, m_FrameTimer);
 
-            m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderTextures, m_Scene->GetCamera());
+            m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderResources, m_Scene->GetCamera());
             m_RenderSettingsTool = m_ImGuiManager->PushTool<benzin::RenderSettingsTool>(*m_RenderSettings);
-            m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderTextures);
+            m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderResources);
             m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Backend, *m_Device, *m_ShaderManager, *m_RenderViewportTool);
 
             m_ImGuiManager->PushTool<benzin::FlyCameraTool>(m_RenderViewportTool->GetFlyCameraController());
@@ -130,7 +125,6 @@ namespace sandbox
     void Runner::RunMainLoop()
     {
         BenzinEnsure(m_IsRunning);
-        BenzinEnsure(m_ImGuiPass != nullptr);
 
         RunZeroFrame();
 
@@ -156,8 +150,6 @@ namespace sandbox
 
             BeginFrame();
             {
-                BenzinScopeProfile("Frame");
-
                 OnUpdate();
                 OnRender();
             }
@@ -169,9 +161,7 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("Runner::RunZeroFrame");
 
-        benzin::Profiler::BeginFrame();
-        BenzinExecuteOnScopeExit([] { benzin::Profiler::EndFrame(); });
-
+        m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager));
         m_RenderPasses.push_back(std::make_unique<benzin::GpuProfilerPass>());
 
         // Force call window resize on render passes
@@ -343,8 +333,10 @@ namespace sandbox
     {
         BenzinProfile();
 
+#if BENZIN_IS_GPU_PROFILER_ENABLED
         auto& commandList = m_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*m_GpuProfiler, commandList, "Frame");
+#endif
 
         for (auto& renderPass : m_RenderPasses)
         {

@@ -11,6 +11,7 @@ namespace benzin
         Rgba16Float = DXGI_FORMAT_R16G16B16A16_FLOAT,
         Rgba16Unorm = DXGI_FORMAT_R16G16B16A16_UNORM,
         Rgba8Unorm = DXGI_FORMAT_R8G8B8A8_UNORM,
+        Rgba8Unorm_Srgb = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
 
         Rgb32Float = DXGI_FORMAT_R32G32B32_FLOAT,
         Rg11B10Float = DXGI_FORMAT_R11G11B10_FLOAT, // Position-only format

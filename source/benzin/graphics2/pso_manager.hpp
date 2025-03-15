@@ -5,8 +5,9 @@
 namespace benzin
 {
 
+    class ComputePso;
     class Device;
-    class Pso;
+    class GraphicsPso;
     class PsoBase;
     class RayTracing_Pso;
     class ShaderManager;
@@ -73,23 +74,26 @@ namespace benzin
         } ShaderConfig;
     };
 
+    enum class PsoId : uint32_t;
+
     class PsoManager
     {
     public:
-        using GraphicsPsoConfigurator = std::function<void(GraphicsPsoProxy&)>;
-        using ComputePsoConfigurator = std::function<void(ComputePsoProxy&)>;
-        using RayTracingPsoConfigurator = std::function<void(RayTracing_PsoProxy&)>;
+        using GraphicsPsoConfigurator = std::function<void(GraphicsPsoProxy& proxy)>;
+        using ComputePsoConfigurator = std::function<void(ComputePsoProxy& proxy)>;
+        using RayTracingPsoConfigurator = std::function<void(RayTracing_PsoProxy& proxy)>;
 
-        PsoManager(Device& device, ShaderManager& shaderManager, uint32_t psoCount);
+        PsoManager(Device& device, ShaderManager& shaderManager);
         ~PsoManager();
 
-        void CreateGraphicsPso(uint32_t index, const GraphicsPsoConfigurator& configurator);
-        void CreateComputePso(uint32_t index, const ComputePsoConfigurator& configurator);
-        void CreateRayTracingPso(uint32_t index, const RayTracingPsoConfigurator& configurator);
-        void DestroyPso(uint32_t index);
+        void Create(PsoId id, const GraphicsPsoConfigurator& configurator);
+        void Create(PsoId id, const ComputePsoConfigurator& configurator);
+        void Create(PsoId id, const RayTracingPsoConfigurator& configurator);
+        void Destroy(PsoId id);
 
-        Pso& GetPso(uint32_t index);
-        RayTracing_Pso& GetRayTracingPso(uint32_t index);
+        const GraphicsPso& GetGraphics(PsoId id) const;
+        const ComputePso& GetCompute(PsoId id) const;
+        const RayTracing_Pso& GetRayTracing(PsoId id) const;
 
     private:
         void RecompilePsoCallback();
@@ -98,7 +102,7 @@ namespace benzin
         Device& m_Device;
         ShaderManager& m_ShaderManager;
 
-        std::vector<std::unique_ptr<PsoBase>> m_Psos;
+        std::vector<std::unique_ptr<PsoBase>> m_Psos; // TODO: Pointer tagging can be used there to remove 3 different getters
     };
 
 }

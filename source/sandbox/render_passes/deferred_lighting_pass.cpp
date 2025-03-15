@@ -22,10 +22,11 @@ BenzinEnableUnaryPlusForEnum(joint::Rc_DeferredLighting);
 namespace sandbox
 {
 
+    constexpr auto g_LightingFormat = benzin::GraphicsFormat::Rgba16Float;
+
     DeferredLightingPass::DeferredLightingPass()
-        : m_RenderTargetFormat{ (benzin::GraphicsFormat)benzin::CommandLineArgs::GetU32("BackBufferFormat") }
     {
-        ms_PsoManager->CreateGraphicsPso(+Pso::DeferredLighting, [this](benzin::GraphicsPsoProxy& proxy)
+        ms_PsoManager->Create(PsoId::DeferredLighting, [this](benzin::GraphicsPsoProxy& proxy)
         {
             proxy.DebugName = "DeferredLightingPass";
             proxy.VsFileName = "fullscreen_triangle.hlsl";
@@ -36,23 +37,22 @@ namespace sandbox
                 .IsEnabled = false,
                 .IsWriteEnabled = false,
             };
-            proxy.RenderTargetFormats.push_back(m_RenderTargetFormat);
+            proxy.RenderTargetFormats.push_back(g_LightingFormat);
         });
     }
 
     DeferredLightingPass::~DeferredLightingPass()
     {
-        ms_PsoManager->DestroyPso(+Pso::DeferredLighting);
-
-        ms_Resources->DestroyTexture(+Texture::Final);
+        ms_PsoManager->Destroy(PsoId::DeferredLighting);
+        ms_Resources->Destroy(TextureId::HdrColor);
     }
 
     void DeferredLightingPass::OnRenderViewportResize()
     {
-        ms_Resources->CreateTexture(+Texture::Final, benzin::TextureCreation
+        ms_Resources->Create(TextureId::HdrColor, benzin::TextureCreation
         {
-            .DebugName = magic_enum::enum_name(Texture::Final),
-            .Format = m_RenderTargetFormat,
+            .DebugName = "DeferredLighting_HdrColor",
+            .Format = g_LightingFormat,
             .Width = GetRenderViewportWidth(),
             .Height = GetRenderViewportHeight(),
             .MipCount = 1,
@@ -76,30 +76,30 @@ namespace sandbox
 
         const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 
-        const auto& shadow = ms_Resources->GetTexture(sigmaSettings.IsEnabled ? +Texture::Shadow : +Texture::NoisyPenumbra);
-        const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
+        const auto& shadow = ms_Resources->Get(sigmaSettings.IsEnabled ? TextureId::Shadow : TextureId::NoisyPenumbra);
+        const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
 
         commandList.SetViewport(ms_RenderViewport);
         commandList.SetScissorRect(ms_RenderScissorRect);
 
         BenzinMakeScopedResourceBarriers(
             commandList,
-            benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::RenderTarget },
+            benzin::TransitionBarrier{ hdrColor, benzin::ResourceState::RenderTarget },
         );
 
-        commandList.SetRenderTargets({ finalTexture.GetRtv() });
-        commandList.ClearRenderTarget(finalTexture);
+        commandList.SetRenderTargets({ hdrColor.GetRtv() });
+        commandList.ClearRenderTarget(hdrColor);
 
-        commandList.SetPso(ms_PsoManager->GetPso(+Pso::DeferredLighting));
+        commandList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::DeferredLighting));
 
         {
             using enum joint::Rc_DeferredLighting;
 
-            commandList.SetRootResource(+AlbedoAndRoughness, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());
-            commandList.SetRootResource(+EmissiveAndMetallic, ms_Resources->GetTexture(+Texture::EmissiveAndMetallic).GetSrv());
-            commandList.SetRootResource(+WorldNormal, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
-            commandList.SetRootResource(+DepthStencil, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv());
-            commandList.SetRootResource(+Shadow, shadow.GetSrv());
+            commandList.SetGraphicsRootResource(+AlbedoAndRoughness, ms_Resources->Get(TextureId::AlbedoAndRoughness).GetSrv());
+            commandList.SetGraphicsRootResource(+EmissiveAndMetallic, ms_Resources->Get(TextureId::EmissiveAndMetallic).GetSrv());
+            commandList.SetGraphicsRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+            commandList.SetGraphicsRootResource(+DepthStencil, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
+            commandList.SetGraphicsRootResource(+Shadow, shadow.GetSrv());
         }
 
         commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);

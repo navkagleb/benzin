@@ -37,9 +37,9 @@ namespace joint
         uint IsShadowsEnabled : 1;
         uint IsDenoiserEnabled : 1;
 
-        float4 RandomFloats01;
+        float DeltaTimeInSec;
 
-        CameraConsts Camera;
+        BenzinAlign16 CameraConsts Camera;
         CameraConsts PrevCamera;
     };
 

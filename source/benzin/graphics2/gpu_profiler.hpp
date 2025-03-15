@@ -99,6 +99,17 @@ namespace benzin
 
 }
 
-#define BenzinGpuProfile(gpuProfiler, commandList, name) \
-    BenzinGpuEvent(commandList, name); \
-    const benzin::ScopedGpuProfileEvent BenzinUniqueVariableName(_scopedGpuProfileEvent){ gpuProfiler, commandList, name }
+#define BENZIN_IS_GPU_PROFILER_ENABLED 1
+
+#if BENZIN_IS_GPU_PROFILER_ENABLED
+
+    #define BenzinGpuProfile(gpuProfiler, commandList, name) \
+        BenzinGpuEvent(commandList, name); \
+        const benzin::ScopedGpuProfileEvent BenzinUniqueVariableName(_scopedGpuProfileEvent){ gpuProfiler, commandList, name }
+
+#else
+
+    #define BenzinGpuProfile(gpuProfiler, commandList, name) \
+        BenzinGpuEvent(commandList, name); \
+
+#endif

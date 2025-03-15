@@ -1,54 +1,16 @@
 #pragma once
 
+#include <benzin/graphics2/game_specific_resource_ids.hpp>
+
 namespace sandbox
 {
 
-    enum class Texture : uint32_t
-    {
-        // GBuffer
-        AlbedoAndRoughness,
-        EmissiveAndMetallic,
-        WorldNormal,
-        Mv,
-        ViewDepth,
-        DepthStencil,
+    using benzin::BufferId;
+    using benzin::TextureId;
+    using benzin::PsoId;
 
-        // RayTraced Shadows
-        NoisyPenumbra,
-
-        // SigmaDenoiser
-        Sigma_Tiles,
-        Sigma_SmoothTiles,
-        Sigma_BlurredPenumbra1,
-        Sigma_BlurredPenumbra2,
-        Sigma_BlurredShadowTemp1,
-        Sigma_BlurredShadowTemp2,
-        Shadow = Sigma_BlurredShadowTemp2 + 2,
-        ShadowHistoryLength = Shadow + 2,
-
-        Final,
-        ImGui,
-
-        Count,
-    };
-    BenzinEnableUnaryPlusForEnum(Texture);
-
-    enum class Pso
-    {
-        GeometryPass,
-        ShadowPass,
-        SigmaClassifyTiles,
-        SigmaSmoothTiles,
-        SigmaBlur,
-        SigmaPostBlur,
-        SigmaTemporalStabilization,
-        DeferredLighting,
-        Environment,
-        Environment_EquirectangularToCube,
-        FullScreenDebug,
-
-        ImGui,
-    };
-    BenzinEnableUnaryPlusForEnum(Pso);
+    inline constexpr auto g_InvalidBufferId = benzin::g_InvalidBufferId;
+    inline constexpr auto g_InvalidTextureId = benzin::g_InvalidTextureId;
+    inline constexpr auto g_InvalidPsoId = benzin::g_InvalidPsoId;
 
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shaders/joint/full_screen_debug_resources.hpp>
+#include <shaders/joint/tone_mapping_resources.hpp>
 
 namespace sandbox
 {
@@ -41,6 +42,31 @@ namespace sandbox
 
         uint32_t HistoryLength = 5;
         float StabilizationStrength = 0.0;
+    };
+
+    struct ToneMappingSettings
+    {
+        struct LuminanceHistogram
+        {
+            float MinLogLuminance = -12.0f;
+            float MaxLogLuminance = 2.0;
+            float Tau = 1.1f;
+        };
+
+        bool IsToneMappingEnabled = true;
+        bool IsAutoExposureUsed = true;
+        bool IsAccurateGammaCorrectionUsed = true;
+
+        LuminanceHistogram LuminanceHistogram;
+
+        joint::PbrCameraConsts PbrCamera
+        {
+            .Aperture = 8.0,
+            .ShutterSpeed = 1.0f / 125.0f,
+            .Iso = 100.0f,
+        };
+
+        joint::ToneReproductionTransform ToneReproductionTransform = joint::ToneReproductionTransform::AcesFilm;
     };
 
     struct FullScreenDebugSettings

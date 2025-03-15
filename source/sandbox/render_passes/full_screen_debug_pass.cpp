@@ -21,7 +21,7 @@ namespace sandbox
 
     FullScreenDebugPass::FullScreenDebugPass()
     {
-        ms_PsoManager->CreateGraphicsPso(+Pso::FullScreenDebug, [](benzin::GraphicsPsoProxy& proxy)
+        ms_PsoManager->Create(PsoId::FullScreenDebug, [](benzin::GraphicsPsoProxy& proxy)
         {
             proxy.DebugName = "FullScreenDebugPass";
             proxy.VsFileName = "fullscreen_triangle.hlsl";
@@ -40,7 +40,7 @@ namespace sandbox
 
     FullScreenDebugPass::~FullScreenDebugPass()
     {
-        ms_PsoManager->DestroyPso(+Pso::FullScreenDebug);
+        ms_PsoManager->Destroy(PsoId::FullScreenDebug);
     }
 
     void FullScreenDebugPass::OnUpdate()
@@ -65,7 +65,7 @@ namespace sandbox
         commandList.SetViewport(ms_RenderViewport);
         commandList.SetScissorRect(ms_RenderScissorRect);
 
-        const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
+        const auto& finalTexture = ms_Resources->Get(TextureId::Final);
 
         BenzinMakeScopedResourceBarriers(
             commandList,
@@ -75,20 +75,20 @@ namespace sandbox
         commandList.SetRenderTargets({ finalTexture.GetRtv() });
         commandList.ClearRenderTarget(finalTexture);
 
-        commandList.SetPso(ms_PsoManager->GetPso(+Pso::FullScreenDebug));
+        commandList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::FullScreenDebug));
 
-        commandList.SetCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        commandList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
 
         {
             using enum joint::Rc_FullScreenDebug;
 
-            commandList.SetRootResource(+AlbedoAndRoughness, ms_Resources->GetTexture(+Texture::AlbedoAndRoughness).GetSrv());
-            commandList.SetRootResource(+EmissiveAndMetallic, ms_Resources->GetTexture(+Texture::EmissiveAndMetallic).GetSrv());
-            commandList.SetRootResource(+WorldNormal, ms_Resources->GetTexture(+Texture::WorldNormal).GetSrv());
-            commandList.SetRootResource(+Mv, ms_Resources->GetTexture(+Texture::Mv).GetSrv());
-            commandList.SetRootResource(+ViewDepth, ms_Resources->GetTexture(+Texture::ViewDepth).GetSrv());
-            commandList.SetRootResource(+Depth, ms_Resources->GetTexture(+Texture::DepthStencil).GetSrv());
-            commandList.SetRootResource(+NoisyPenumbra, ms_Resources->GetTexture(+Texture::NoisyPenumbra).GetSrv());
+            commandList.SetGraphicsRootResource(+AlbedoAndRoughness, ms_Resources->Get(TextureId::AlbedoAndRoughness).GetSrv());
+            commandList.SetGraphicsRootResource(+EmissiveAndMetallic, ms_Resources->Get(TextureId::EmissiveAndMetallic).GetSrv());
+            commandList.SetGraphicsRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+            commandList.SetGraphicsRootResource(+Mv, ms_Resources->Get(TextureId::Mv).GetSrv());
+            commandList.SetGraphicsRootResource(+ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
+            commandList.SetGraphicsRootResource(+Depth, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
+            commandList.SetGraphicsRootResource(+NoisyPenumbra, ms_Resources->Get(TextureId::NoisyPenumbra).GetSrv());
         }
 
         commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);

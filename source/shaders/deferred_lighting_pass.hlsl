@@ -121,5 +121,5 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
     }
 
     const float3 finalLitColor = ambientColor + gbuffer.Emissive + directColor;
-    return float4(saturate(finalLitColor), 1.0);
+    return float4(finalLitColor, 1.0);
 }

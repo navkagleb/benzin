@@ -16,9 +16,6 @@ namespace sandbox
         void OnRenderViewportResize() override;
         void OnUpdate() override;
         void OnRender() const override;
-
-    private:
-        benzin::GraphicsFormat m_RenderTargetFormat;
     };
 
 }

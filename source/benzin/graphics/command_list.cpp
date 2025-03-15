@@ -229,20 +229,63 @@ namespace benzin
         UploadToTexture(texture, { topMipSubResource });
     }
 
-    void GraphicsCommandList::SetRootConstant(uint32_t rootIndex, uint32_t value)
+    // Compute
+    void GraphicsCommandList::SetComputeCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
+    {
+        m_D3D12GraphicsCommandList->SetComputeRootConstantBufferView(+rootParameter, gpuVirtualAddress);
+    }
+
+    void GraphicsCommandList::SetComputeSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
+    {
+        m_D3D12GraphicsCommandList->SetComputeRootShaderResourceView(+rootParameter, gpuVirtualAddress);
+    }
+
+    void GraphicsCommandList::SetComputeRootConstant(uint32_t rootIndex, uint32_t value)
     {
         m_D3D12GraphicsCommandList->SetComputeRoot32BitConstant(+UnifiedRootParameter::RootConstantBuffer, value, rootIndex);
-        m_D3D12GraphicsCommandList->SetGraphicsRoot32BitConstant(+UnifiedRootParameter::RootConstantBuffer, value, rootIndex);
     }
 
-    void GraphicsCommandList::SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
+    void GraphicsCommandList::SetComputeRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
     {
         BenzinAssert(viewDescriptor.IsGpuValid());
-
-        SetRootConstant(rootIndex, viewDescriptor.GetGpuHeapIndex());
+        SetComputeRootConstant(rootIndex, viewDescriptor.GetGpuHeapIndex());
     }
 
-    void GraphicsCommandList::SetCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
+    void GraphicsCommandList::SetComputePso(const ComputePso& pso)
+    {
+        BenzinAssert(pso.GetD3D12PipelineState() != nullptr);
+        m_D3D12GraphicsCommandList->SetPipelineState(pso.GetD3D12PipelineState());
+    }
+
+    void GraphicsCommandList::ClearUnorderedAccess(const Resource& resource, const Descriptor& uav, const DirectX::XMFLOAT4& color)
+    {
+        BenzinAssert(uav.IsCpuValid());
+        BenzinAssert(uav.IsGpuValid());
+
+        m_D3D12GraphicsCommandList->ClearUnorderedAccessViewFloat(
+            D3D12_GPU_DESCRIPTOR_HANDLE{ uav.GetGpuHandle() },
+            D3D12_CPU_DESCRIPTOR_HANDLE{ uav.GetCpuHandle() },
+            resource.GetD3D12Resource(),
+            (const float*)&color,
+            0,
+            nullptr // Clears entire texture
+        );
+    }
+
+    void GraphicsCommandList::Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize)
+    {
+        BenzinAssert(dimension.x != 0 && dimension.y != 0 && dimension.z != 0);
+        BenzinAssert(threadGroupSize.x != 0 && threadGroupSize.y != 0 && threadGroupSize.z != 0);
+
+        const DirectX::XMUINT3 threadGroupCount
+        {
+            std::max(DivideUp(dimension.x, threadGroupSize.x), 1u),
+            std::max(DivideUp(dimension.y, threadGroupSize.y), 1u),
+            std::max(DivideUp(dimension.z, threadGroupSize.z), 1u),
+        };
+
+        m_D3D12GraphicsCommandList->Dispatch(threadGroupCount.x, threadGroupCount.y, threadGroupCount.z);
+    }
 
     void GraphicsCommandList::SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index)
     {
@@ -267,24 +310,34 @@ namespace benzin
         );
     }
 
+    // Graphics
+    void GraphicsCommandList::SetGraphicsCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
     {
-        m_D3D12GraphicsCommandList->SetComputeRootConstantBufferView(+rootParameter, gpuVirtualAddress);
         m_D3D12GraphicsCommandList->SetGraphicsRootConstantBufferView(+rootParameter, gpuVirtualAddress);
     }
 
-    void GraphicsCommandList::SetSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
+    void GraphicsCommandList::SetGraphicsSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
     {
-        m_D3D12GraphicsCommandList->SetComputeRootShaderResourceView(+rootParameter, gpuVirtualAddress);
         m_D3D12GraphicsCommandList->SetGraphicsRootShaderResourceView(+rootParameter, gpuVirtualAddress);
     }
 
-    void GraphicsCommandList::SetPso(const Pso& pso)
+    void GraphicsCommandList::SetGraphicsRootConstant(uint32_t rootIndex, uint32_t value)
     {
-        BenzinAssert(pso.GetD3D12PipelineState());
+        m_D3D12GraphicsCommandList->SetGraphicsRoot32BitConstant(+UnifiedRootParameter::RootConstantBuffer, value, rootIndex);
+    }
+
+    void GraphicsCommandList::SetGraphicsRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
+    {
+        BenzinAssert(viewDescriptor.IsGpuValid());
+        SetGraphicsRootConstant(rootIndex, viewDescriptor.GetGpuHeapIndex());
+    }
+
+    void GraphicsCommandList::SetGraphicsPso(const GraphicsPso& pso)
+    {
+        BenzinAssert(pso.GetD3D12PipelineState() != nullptr);
         m_D3D12GraphicsCommandList->SetPipelineState(pso.GetD3D12PipelineState());
     }
 
-    void GraphicsCommandList::SetPso(const RayTracing_Pso& pso)
     void GraphicsCommandList::SetVertexBuffer(const Buffer& vertexBuffer)
     {
         BenzinAssert(vertexBuffer.GetType() == BufferType::Vertex);
@@ -301,8 +354,6 @@ namespace benzin
 
     void GraphicsCommandList::SetIndexBuffer(const Buffer& indexBuffer)
     {
-        BenzinAssert(pso.GetD3D12StateObject());
-        m_D3D12GraphicsCommandList->SetPipelineState1(pso.GetD3D12StateObject());
         BenzinAssert(indexBuffer.GetType() == BufferType::Index);
         BenzinAssert(indexBuffer.GetFormat() == GraphicsFormat::R16Uint || indexBuffer.GetFormat() == GraphicsFormat::R32Uint);
 
@@ -339,6 +390,11 @@ namespace benzin
         };
 
         m_D3D12GraphicsCommandList->RSSetScissorRects(1, &d3d12Rect);
+    }
+
+    void GraphicsCommandList::SetBlendFactor(const DirectX::XMFLOAT4& color)
+    {
+        m_D3D12GraphicsCommandList->OMSetBlendFactor((const float*)&color);
     }
 
     void GraphicsCommandList::SetRenderTargets(const std::vector<Descriptor>& rtvs, const Descriptor* dsv)
@@ -379,12 +435,12 @@ namespace benzin
         }
     }
 
-    void GraphicsCommandList::ClearRenderTarget(const Texture& renderTarget)
+    void GraphicsCommandList::ClearRenderTarget(const Texture& renderTarget, std::optional<DirectX::XMFLOAT4> overrideClearColor)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RtvDescriptorHandle{ renderTarget.GetRtv().GetCpuHandle() };
-        const auto& clearColor = renderTarget.GetClearColor();
+        const DirectX::XMFLOAT4& clearValue = overrideClearColor.value_or(MakeLazyConverter([&renderTarget] { return renderTarget.GetClearColor(); }));
 
-        m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RtvDescriptorHandle, reinterpret_cast<const float*>(&clearColor), 0, nullptr);
+        m_D3D12GraphicsCommandList->ClearRenderTargetView(d3d12RtvDescriptorHandle, reinterpret_cast<const float*>(&clearValue), 0, nullptr);
     }
 
     void GraphicsCommandList::ClearDepthStencil(const Texture& depthStencil)
@@ -414,40 +470,7 @@ namespace benzin
         m_D3D12GraphicsCommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, 0);
     }
 
-    void GraphicsCommandList::ClearUnorderedAccess(const Texture& unorderedAccess, const DirectX::XMFLOAT4& color)
-    {
-        BenzinUnused(unorderedAccess);
-        BenzinUnused(color);
-
-        // For now supported only default uavs
-
-        const auto& uav = unorderedAccess.GetUav();
-
-        m_D3D12GraphicsCommandList->ClearUnorderedAccessViewFloat(
-            D3D12_GPU_DESCRIPTOR_HANDLE{ uav.GetGpuHandle() },
-            D3D12_CPU_DESCRIPTOR_HANDLE{ uav.GetCpuHandle() },
-            unorderedAccess.GetD3D12Resource(),
-            (const float*)&color,
-            0,
-            nullptr // Clears entire texture
-        );
-    }
-
-    void GraphicsCommandList::Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize)
-    {
-        BenzinAssert(dimension.x != 0 && dimension.y != 0 && dimension.z != 0);
-        BenzinAssert(threadGroupSize.x != 0 && threadGroupSize.y != 0 && threadGroupSize.z != 0);
-
-        const DirectX::XMUINT3 threadGroupCount
-        {
-            std::max(DivideUp(dimension.x, threadGroupSize.x), 1u),
-            std::max(DivideUp(dimension.y, threadGroupSize.y), 1u),
-            std::max(DivideUp(dimension.z, threadGroupSize.z), 1u),
-        };
-
-        m_D3D12GraphicsCommandList->Dispatch(threadGroupCount.x, threadGroupCount.y, threadGroupCount.z);
-    }
-
+    // RayTracing
     void GraphicsCommandList::BuildRayTracingAccelerationStructure(const RayTracing_AcclerationStructure& accelerationStructure)
     {
         BenzinAssert(accelerationStructure.GetScratchResource()->GetCurrentState() == ResourceState::UnorderedAccess);
@@ -461,6 +484,12 @@ namespace benzin
         };
 
         m_D3D12GraphicsCommandList->BuildRaytracingAccelerationStructure(&d3d12BuildAccelerationStructureDesc, 0, nullptr);
+    }
+
+    void GraphicsCommandList::SetRayTracingPso(const RayTracing_Pso& pso)
+    {
+        BenzinAssert(pso.GetD3D12StateObject() != nullptr);
+        m_D3D12GraphicsCommandList->SetPipelineState1(pso.GetD3D12StateObject());
     }
 
     void GraphicsCommandList::DispatchRays(const RayTracing_ShaderTable& shaderTable, const DirectX::XMUINT3 dimenions)

@@ -17,7 +17,8 @@ namespace benzin
             {
                 if (SpawnImGuiCollapsingHeader(sectionInfo.TitleName, sectionInfo.IsOpenByDefault))
                 {
-                    sectionInfo.ImGuiSpawnCallback();
+                    BenzinAssert(sectionInfo.SpawnCallback);
+                    sectionInfo.SpawnCallback();
                 }
             }
         });

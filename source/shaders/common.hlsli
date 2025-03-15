@@ -15,16 +15,6 @@ uint DivideUp(uint value, uint divisor)
     return (value + divisor - 1) / divisor;
 }
 
-float3 LinearToGamma(float3 color)
-{
-    return pow(color, 1.0f / 2.2f);
-}
-
-float4 LinearToGamma(float4 color)
-{
-    return pow(color, 1.0f / 2.2f);
-}
-
 template <typename T>
 bool IsInRange(T value, T min, T max)
 {

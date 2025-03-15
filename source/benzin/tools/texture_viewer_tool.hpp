@@ -8,15 +8,12 @@ namespace benzin
     class KeyPressedEvent;
     class MouseMovedEvent;
     class MouseScrolledEvent;
+    class RenderResources;
 
     class TextureViewerTool : public ImGuiTool
     {
     public:
-        using TextureSelectorCallback = std::function<uint32_t()>;
-
-        explicit TextureViewerTool(const RenderResources& renderResources);
-
-        void SetTextureSelectorCallback(TextureSelectorCallback&& callback) { m_SelectorCallback = std::move(callback); }
+        explicit TextureViewerTool(const RenderResources& resources);
 
     private:
         void OnEvent(Event& event) override;
@@ -27,9 +24,7 @@ namespace benzin
         bool OnMouseScrolledEvent(const MouseScrolledEvent& event);
 
     private:
-        const RenderResources& m_RenderResources;
-
-        TextureSelectorCallback m_SelectorCallback;
+        const RenderResources& m_Resources;
 
         ImVec2 m_UvMin{ 0.0f, 0.0f };
         ImVec2 m_UvMax{ 1.0f, 1.0f };

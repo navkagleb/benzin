@@ -17,7 +17,7 @@ namespace benzin
         void SpawnImGui() override;
 
         void SpawnSceneStats() const;
-        void SpawnRayTracingnSceneStats() const;
+        void SpawnRayTracingSceneStats() const;
 
     private:
         const Scene& m_Scene;

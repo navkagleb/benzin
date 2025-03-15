@@ -17,7 +17,7 @@ namespace benzin
     {
         std::string_view DebugName;
 
-        Backend& BackendRef;
+        Backend& Backend;
     };
 
     struct DeviceCaps
@@ -38,9 +38,6 @@ namespace benzin
         BenzinDefineNonMoveable(Device);
 
     public:
-        auto& GetBackend() { return m_Backend; }
-        const auto& GetBackend() const { return m_Backend; }
-
         auto* GetD3D12Device() const { return m_D3D12Device; }
 
         auto& GetUnifiedRootSignature() { return *m_UnifiedRootSignature; }
@@ -68,12 +65,11 @@ namespace benzin
         void DeferredRelease(ID3D12Object* d3d12Object);
 
     private:
-        Backend& m_Backend;
-
         // ID3D12Device5 supports RT
         ID3D12Device5* m_D3D12Device = nullptr;
 
-        // Must be released in desctructor before m_D3D12Device destroying
+        // Must be released in destructor before m_D3D12Device destroying
+        // std::unique_ptr to indicate that the device owns these member lifetime
         std::unique_ptr<UnifiedRootSignature> m_UnifiedRootSignature;
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
         std::unique_ptr<GraphicsCommandQueue> m_GraphicsCommandQueue;

@@ -4,6 +4,7 @@
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/ray_tracing_scene.hpp>
 #include <benzin/engine/scene.hpp>
+#include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_list.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>

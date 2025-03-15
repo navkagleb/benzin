@@ -19,10 +19,10 @@ namespace benzin
 {
 
     Device::Device(const DeviceCreation& creation)
-        : m_Backend{ creation.BackendRef }
     {
         ComPtr<ID3D12Device> d3d12Device;
-        BenzinHrEnsure(::D3D12CreateDevice(m_Backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d3d12Device)));
+        BenzinHrEnsure(::D3D12CreateDevice(creation.Backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d3d12Device)));
+
         BenzinHrEnsure(d3d12Device->QueryInterface(&m_D3D12Device));
         SetDxObjectDebugName(m_D3D12Device, creation.DebugName);
 
@@ -53,6 +53,8 @@ namespace benzin
 
     Device::~Device()
     {
+        BenzinLogTimeOnScopeExit("Device::~Device");
+
         m_UnifiedRootSignature.reset();
         m_DescriptorManager.reset();
         m_GraphicsCommandQueue.reset();

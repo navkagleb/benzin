@@ -26,6 +26,8 @@ namespace benzin
         : m_Device{ device }
     {}
 
+    ConstBufferPool::~ConstBufferPool() = default;
+
     void ConstBufferPool::BeginFrame()
     {
         for (auto& [_, pool] : m_Pools)

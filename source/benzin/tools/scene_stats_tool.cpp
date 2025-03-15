@@ -30,7 +30,6 @@ namespace benzin
             BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
             SpawnSceneStats();
-            SpawnRayTracingnSceneStats();
         });
     }
 
@@ -51,7 +50,6 @@ namespace benzin
         ImGui::Text(BenzinFormatData("TriangleCount: {:L}", sceneStats.TriangleCount));
     }
 
-    void SceneStatsTool::SpawnRayTracingnSceneStats() const
     {
         if (!SpawnImGuiCollapsingHeader("RayTracing_Scene"))
         {

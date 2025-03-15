@@ -8,18 +8,21 @@ namespace benzin
     class RenderSettingsTool : public ImGuiTool
     {
     public:
+        template <typename T>
+        using SettingsSpawnCallback = std::function<void(T& settings)>;
+
         RenderSettingsTool(RenderSettings& renderSettings);
 
         template <typename T>
-        void RegisterSectionImGuiSpawnCallback(std::string_view name, bool isOpenByDefault, const std::function<void(T&)>& imGuiSpawnCallback)
+        void RegisterSectionSpawnCallback(std::string_view name, bool isOpenByDefault, const SettingsSpawnCallback<T>& spawnCallback)
         {
             m_SectionInfos.push_back(SectionInfo
             {
                 .TitleName = name,
                 .IsOpenByDefault = isOpenByDefault,
-                .ImGuiSpawnCallback = [this, imGuiSpawnCallback]
+                .SpawnCallback = [this, spawnCallback]
                 {
-                    imGuiSpawnCallback(m_RenderSettings.GetSection<T>());
+                    spawnCallback(m_RenderSettings.GetSection<T>());
                 },
             });
         }
@@ -32,7 +35,7 @@ namespace benzin
         {
             std::string_view TitleName;
             bool IsOpenByDefault = false;
-            std::function<void()> ImGuiSpawnCallback;
+            std::function<void()> SpawnCallback;
         };
 
         RenderSettings& m_RenderSettings;

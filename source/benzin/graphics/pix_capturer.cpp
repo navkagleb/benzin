@@ -51,7 +51,9 @@ namespace benzin
         if (::GetModuleHandleW(g_PixCapturerDllName.data()) == nullptr)
         {
             const std::filesystem::path pixCapturerPath = GetLatestWinPixGpuCapturerPath();
-            ::LoadLibraryW(pixCapturerPath.c_str());
+
+            const HMODULE pixHandle = ::LoadLibraryW(pixCapturerPath.c_str());
+            BenzinEnsure(pixHandle != nullptr);
 
             BenzinTrace("PixGpuCapturer DLL loaded. FilePath: {}", pixCapturerPath.string());
         }

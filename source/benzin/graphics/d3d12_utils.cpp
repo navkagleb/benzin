@@ -261,10 +261,7 @@ namespace benzin
             const auto debugName = GetDxObjectDebugName(dxObject);
             const uint32_t referenceCount = dxObject->Release();
 
-            if (referenceCount != 0)
-            {
-                BenzinWarning("Remaining reference count {}. DxObject '{}'", referenceCount, debugName);
-            }
+            BenzinWarningIf(referenceCount != 0, "Remaining reference count {}. DxObject '{}'", referenceCount, debugName);
         });
     }
 

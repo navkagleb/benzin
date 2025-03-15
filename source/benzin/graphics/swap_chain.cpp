@@ -16,11 +16,12 @@ namespace benzin
 {
 
     SwapChain::SwapChain(const SwapChainCreation& creation)
-        : m_Device{ creation.DeviceRef }
-        , m_Width{ creation.WindowRef.GetWidth() }
-        , m_Height{ creation.WindowRef.GetHeight() }
+        : m_Device{ creation.Device }
+        , m_Width{ creation.Window.GetWidth() }
+        , m_Height{ creation.Window.GetHeight() }
     {
-        const auto& backend = m_Device.GetBackend();
+        const HWND win64Window = creation.Window.GetWin64Window();
+        const Backend& backend = creation.Backend;
 
         uint32_t isAllowTearing = 0;
         BenzinHrEnsure(backend.GetDxgiFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &isAllowTearing, sizeof(isAllowTearing)));
@@ -33,9 +34,9 @@ namespace benzin
 
         const DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc1
         {
-            .Width = creation.WindowRef.GetWidth(),
-            .Height = creation.WindowRef.GetHeight(),
-            .Format = (DXGI_FORMAT)CommandLineArgs::GetU32("BackBufferFormat"),
+            .Width = m_Width,
+            .Height = m_Height,
+            .Format = (DXGI_FORMAT)GraphicsFormat::Rgba8Unorm,
             .Stereo = false,
             .SampleDesc{ 1, 0 },
             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
@@ -49,7 +50,7 @@ namespace benzin
         ComPtr<IDXGISwapChain1> dxgiSwapChain1;
         BenzinHrEnsure(backend.GetDxgiFactory()->CreateSwapChainForHwnd(
             m_Device.GetGraphicsCommandQueue().GetD3D12CommandQueue(),
-            creation.WindowRef.GetWin64Window(),
+            win64Window,
             &dxgiSwapChainDesc1,
             nullptr,
             nullptr,
@@ -59,7 +60,7 @@ namespace benzin
         SetDxObjectDebugName(m_DxgiSwapChain, creation.DebugName);
 
         // Disable fullscreen using Alt + Enter
-        BenzinHrEnsure(backend.GetDxgiFactory()->MakeWindowAssociation(creation.WindowRef.GetWin64Window(), DXGI_MWA_NO_ALT_ENTER));
+        BenzinHrEnsure(backend.GetDxgiFactory()->MakeWindowAssociation(win64Window, DXGI_MWA_NO_ALT_ENTER));
 
         m_BackBuffers.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
         ResizeBackBuffers();

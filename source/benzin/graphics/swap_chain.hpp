@@ -15,8 +15,10 @@ namespace benzin
     {
         std::string_view DebugName;
 
-        const Window& WindowRef;
-        Device& DeviceRef;
+        const Window& Window;
+        const Backend& Backend;
+
+        Device& Device;
     };
 
     class SwapChain

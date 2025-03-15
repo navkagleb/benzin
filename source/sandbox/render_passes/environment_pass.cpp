@@ -1,7 +1,6 @@
 #include "sandbox/bootstrap.hpp"
 #include "sandbox/render_passes/environment_pass.hpp"
 
-#include <benzin/core/asserter.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/graphics/command_queue.hpp>
@@ -24,7 +23,7 @@ namespace sandbox
 
     EnvironmentPass::EnvironmentPass()
     {
-        ms_PsoManager->CreateGraphicsPso(+Pso::Environment, [](benzin::GraphicsPsoProxy& proxy)
+        ms_PsoManager->Create(PsoId::Environment, [](benzin::GraphicsPsoProxy& proxy)
         {
             proxy.DebugName = "EnvironmentPass";
             proxy.VsFileName = "fullscreen_triangle.hlsl";
@@ -36,14 +35,14 @@ namespace sandbox
                 .IsWriteEnabled = false,
                 .ComparisonFunction = benzin::ComparisonFunction::Equal,
             };
-            proxy.RenderTargetFormats.push_back(benzin::GraphicsFormat::Rgba8Unorm),
+            proxy.RenderTargetFormats.push_back(benzin::GraphicsFormat::Rgba16Float),
             proxy.DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
         });
     }
 
     EnvironmentPass::~EnvironmentPass()
     {
-        ms_PsoManager->DestroyPso(+Pso::Environment);
+        ms_PsoManager->Destroy(PsoId::Environment);
     }
 
     void EnvironmentPass::OnZeroFrameInit()
@@ -66,22 +65,22 @@ namespace sandbox
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
         BenzinGpuProfile(*ms_GpuProfiler, commandList, "Environment");
 
-        const auto& finalTexture = ms_Resources->GetTexture(+Texture::Final);
-        const auto& depthStencilBuffer = ms_Resources->GetTexture(+Texture::DepthStencil);
+        const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
+        const auto& depthStencil = ms_Resources->Get(TextureId::DepthStencil);
 
         commandList.SetViewport(ms_RenderViewport);
         commandList.SetScissorRect(ms_RenderScissorRect);
 
         BenzinMakeScopedResourceBarriers(
             commandList,
-            benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::RenderTarget },
-            benzin::TransitionBarrier{ depthStencilBuffer, benzin::ResourceState::DepthRead },
+            benzin::TransitionBarrier{ hdrColor, benzin::ResourceState::RenderTarget },
+            benzin::TransitionBarrier{ depthStencil, benzin::ResourceState::DepthRead },
         );
 
-        commandList.SetRenderTargets({ finalTexture.GetRtv() }, &depthStencilBuffer.GetDsv());
+        commandList.SetRenderTargets({ hdrColor.GetRtv() }, &depthStencil.GetDsv());
 
-        commandList.SetPso(ms_PsoManager->GetPso(+Pso::Environment));
-        commandList.SetRootResource(+joint::Rc_Environment::CubeMap, m_CubeTexture->GetSrv());
+        commandList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::Environment));
+        commandList.SetGraphicsRootResource(+joint::Rc_Environment::CubeMap, m_CubeTexture->GetSrv());
 
         commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
         commandList.DrawVertexed(3);
@@ -109,7 +108,7 @@ namespace sandbox
 
     void EnvironmentPass::ComputeCubeMapTexture(benzin::Texture& equirectangularTexture)
     {
-        ms_PsoManager->CreateComputePso(+Pso::Environment_EquirectangularToCube, [](benzin::ComputePsoProxy& proxy)
+        ms_PsoManager->Create(PsoId::Environment_EquirectangularToCube, [](benzin::ComputePsoProxy& proxy)
         {
             proxy.DebugName = "EquirectangularToCube";
             proxy.CsFileName = "equirectangular_to_cube_pass.hlsl";
@@ -117,7 +116,7 @@ namespace sandbox
 
         BenzinExecuteOnScopeExit([]
         {
-            ms_PsoManager->DestroyPso(+Pso::Environment_EquirectangularToCube);
+            ms_PsoManager->Destroy(PsoId::Environment_EquirectangularToCube);
         });
 
         const uint32_t cubeMapSize = 1024;
@@ -125,7 +124,7 @@ namespace sandbox
         {
             .DebugName = "EnvironmentCubeMap",
             .IsCubeMap = true,
-            .Format = benzin::GraphicsFormat::Rgba32Float,
+            .Format = benzin::GraphicsFormat::Rgba16Float,
             .Width = cubeMapSize,
             .Height = cubeMapSize,
             .Depth = 6,
@@ -135,9 +134,9 @@ namespace sandbox
 
         auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
-        commandList.SetPso(ms_PsoManager->GetPso(+Pso::Environment_EquirectangularToCube));
-        commandList.SetRootResource(+joint::Rc_EquirectangularToCube::EquirectangularTexture, equirectangularTexture.GetSrv());
-        commandList.SetRootResource(+joint::Rc_EquirectangularToCube::OutCubeMap, m_CubeTexture->GetUav());
+        commandList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Environment_EquirectangularToCube));
+        commandList.SetComputeRootResource(+joint::Rc_EquirectangularToCube::EquirectangularTexture, equirectangularTexture.GetSrv());
+        commandList.SetComputeRootResource(+joint::Rc_EquirectangularToCube::OutCubeMap, m_CubeTexture->GetUav());
 
         BenzinMakeScopedResourceBarriers(
             commandList,

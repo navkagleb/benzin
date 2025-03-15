@@ -1,116 +1,250 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics2/render_pass.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics2/render_pass.hpp>
 
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/texture.hpp"
+#include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/texture.hpp>
+#include <benzin/graphics2/game_specific_resource_ids.hpp>
 
 namespace benzin
 {
 
-    // RenderResources
-
-    RenderResources::RenderResources(Device& device)
-        : m_Device{ device }
-    {}
-
-    RenderResources::~RenderResources()
+    template <typename ResourceIdT> requires std::is_enum_v<ResourceIdT>
+    static uint32_t GetMaxResourceCount()
     {
-#if BENZIN_IS_ASSERTS_ENABLED
-        uint32_t nonReleasedTextureCount = 0;
-        for (const auto& texture : m_Textures)
+        const auto maxResourceId = +magic_enum::enum_values<ResourceIdT>().back();
+
+        return maxResourceId + 1;
+    }
+
+    template <typename ResourceIdT> requires std::is_enum_v<ResourceIdT>
+    static bool IsFlippableResourceExists()
+    {
+        const auto ids = magic_enum::enum_values<ResourceIdT>();
+
+        for (size_t i = 1; i < ids.size(); ++i)
         {
-            nonReleasedTextureCount += texture.get() != nullptr;
+            if (+ids[i] - +ids[i - 1] == 2)
+            {
+                return true;
+            }
         }
 
-        BenzinAssert(nonReleasedTextureCount == 0, "Not all textures are released! Non released texture count: {}", nonReleasedTextureCount);
-#endif
+        return false;
     }
 
-    void RenderResources::SetMaxTextureCount(uint32_t maxTextureCount)
+    template <typename ResourceIdT> requires std::is_enum_v<ResourceIdT>
+    static bool IsResourceFlippable(uint32_t id)
     {
-        BenzinAssert(m_Textures.empty());
-        m_Textures.resize(maxTextureCount);
-    }
+        static const bool isFlippableResourceExists = IsFlippableResourceExists<ResourceIdT>();
 
-    void RenderResources::SetIsTextureFlippableCallback(IsResourceFlippableCallback&& callback)
-    {
-        m_IsTextureFlippable = std::move(callback);
-    }
-
-    void RenderResources::CreateTexture(uint32_t index, const TextureCreation& creation)
-    {
-        BenzinAssert(index < m_Textures.size());
-
-        if (m_IsTextureFlippable(index))
+        if (!isFlippableResourceExists)
         {
-            auto validatedCreation = creation;
+            return false;
+        }
+
+        const uint32_t maxId = +magic_enum::enum_values<ResourceIdT>().back();
+        const uint32_t prevId = id - 1;
+
+        const bool isInBounds = prevId <= maxId;
+        const bool isGapExists = !magic_enum::enum_contains<ResourceIdT>(prevId); // There must be a gap between enum values, so the enum value must not exist
+
+        return isInBounds && isGapExists;
+    }
+
+    template <typename ResourceIdT> requires std::is_enum_v<ResourceIdT>
+    static bool IsResourceIdValid(uint32_t id)
+    {
+        return magic_enum::enum_contains<ResourceIdT>(id);
+    }
+
+    template <typename ResourceT, typename CreationT>
+    RenderResourceStorage<ResourceT, CreationT>::RenderResourceStorage(
+        uint32_t maxResourceCount,
+        IsResourceFlippableCallback&& isRsourceFlippableCallback,
+        IsResourceIdValidCallback&& isResourceIdValidCallback
+    )
+        : m_IsResourceFlippableCallback{ std::move(isRsourceFlippableCallback) }
+        , m_IsResourceIdValidCallback{ std::move(isResourceIdValidCallback) }
+    {
+        BenzinEnsure(m_IsResourceFlippableCallback);
+        BenzinAssert(m_IsResourceIdValidCallback);
+
+        m_Resources.resize(maxResourceCount);
+    }
+
+    template <typename ResourceT, typename CreationT>
+    RenderResourceStorage<ResourceT, CreationT>::~RenderResourceStorage() = default;
+
+    template <typename ResourceT, typename CreationT>
+    bool RenderResourceStorage<ResourceT, CreationT>::IsCreated(uint32_t id) const
+    {
+        BenzinAssert(m_IsResourceIdValidCallback(id));
+
+        return m_Resources[+id].get() != nullptr;
+    }
+
+    template <typename ResourceT, typename CreationT>
+    void RenderResourceStorage<ResourceT, CreationT>::Create(uint32_t id, Device& device, const CreationT& creation)
+    {
+        BenzinAssert(m_IsResourceIdValidCallback(id));
+
+        if (m_IsResourceFlippableCallback(id))
+        {
+            auto& nonConstCreation = const_cast<CreationT&>(creation);
 
             for (const uint32_t i : std::views::iota(0u, 2u))
             {
                 const std::string debugName = std::format("{}{}", creation.DebugName, 0);
-                validatedCreation.DebugName = debugName;
+                nonConstCreation.DebugName = debugName;
 
-                MakeUniquePtr(m_Textures[index - i], m_Device, validatedCreation);
+                MakeUniquePtr(m_Resources[id - i], device, nonConstCreation);
             }
 
             return;
         }
 
-        MakeUniquePtr(m_Textures[index], m_Device, creation);
+        MakeUniquePtr(m_Resources[id], device, creation);
     }
 
-    void RenderResources::DestroyTexture(uint32_t index)
+    template <typename ResourceT, typename CreationT>
+    void RenderResourceStorage<ResourceT, CreationT>::Destroy(uint32_t id)
     {
-        BenzinAssert(index < m_Textures.size());
+        BenzinAssert(m_IsResourceIdValidCallback(id));
 
-        if (m_IsTextureFlippable(index))
+        if (m_IsResourceFlippableCallback(id))
         {
-            m_Textures[index - 1].reset();
+            m_Resources[id - 1].reset();
         }
 
-        m_Textures[index].reset();
+        m_Resources[id].reset();
     }
 
-    const Texture& RenderResources::GetTexture(uint32_t index) const
+    template <typename ResourceT, typename CreationT>
+    const ResourceT& RenderResourceStorage<ResourceT, CreationT>::Get(uint32_t id, uint8_t flipOffset) const
     {
-        const auto* texture = GetTexturePtr(index);
-        BenzinAssert(texture != nullptr);
+        BenzinAssert(m_IsResourceIdValidCallback(id));
 
-        return *texture;
-    }
-
-    const Texture& RenderResources::GetPrevTexture(uint32_t index) const
-    {
-        const auto* texture = GetPrevTexturePtr(index);
-        BenzinAssert(texture != nullptr);
-
-        return *texture;
-    }
-
-    const Texture* RenderResources::GetTexturePtr(uint32_t index) const
-    {
-        BenzinAssert(index < m_Textures.size());
-
-        if (m_IsTextureFlippable(index))
+        if (!m_IsResourceFlippableCallback(id))
         {
-            return m_Textures[index - m_FlipIndex].get();
+            flipOffset = 0;
         }
 
-        return m_Textures[index].get();
+        BenzinAssert(flipOffset == 0 || flipOffset == 1);
+
+        const auto& resource = m_Resources[id - flipOffset];
+        BenzinAssert(resource.get() != nullptr);
+
+        return *resource;
     }
 
-    const Texture* RenderResources::GetPrevTexturePtr(uint32_t index) const
+    template <typename ResourceT, typename CreationT>
+    const ResourceT& RenderResourceStorage<ResourceT, CreationT>::GetPrev(uint32_t id, uint8_t flipOffset) const
     {
-        BenzinAssert(index < m_Textures.size());
-        BenzinAssert(m_IsTextureFlippable(index));
+        BenzinAssert(m_IsResourceIdValidCallback(id));
+        BenzinAssert(m_IsResourceFlippableCallback(id));
+        BenzinAssert(flipOffset == 0 || flipOffset == 1);
 
-        const uint8_t prevFlipIndex = (m_FlipIndex + 1) & 1;
-        return m_Textures[index - prevFlipIndex].get();
+        const auto& resource = m_Resources[id - flipOffset];
+        BenzinAssert(resource.get() != nullptr);
+
+        return *resource;
+    }
+
+#if BENZIN_IS_ASSERTS_ENABLED
+    template <typename ResourceT, typename CreationT>
+    uint32_t RenderResourceStorage<ResourceT, CreationT>::GetAliveResourceCount() const
+    {
+        uint32_t aliveCount = 0;
+        for (const auto& resource : m_Resources)
+        {
+            aliveCount += resource.get() != nullptr;
+        }
+
+        return aliveCount;
+    }
+#endif
+
+    template class RenderResourceStorage<Buffer, BufferCreation>;
+    template class RenderResourceStorage<Texture, TextureCreation>;
+
+    // RenderResources
+
+    RenderResources::RenderResources(Device& device)
+        : m_Device{ device }
+        , m_Buffers{ GetMaxResourceCount<BufferId>(), IsResourceFlippable<BufferId>, IsResourceIdValid<BufferId> }
+        , m_Textures{ GetMaxResourceCount<TextureId>(), IsResourceFlippable<TextureId>, IsResourceIdValid<TextureId> }
+    {}
+
+    RenderResources::~RenderResources()
+    {
+#if BENZIN_IS_ASSERTS_ENABLED
+        const uint32_t aliveBufferCount = m_Buffers.GetAliveResourceCount();
+        const uint32_t aliveTextureCount = m_Buffers.GetAliveResourceCount();
+
+        BenzinAssert(aliveBufferCount == 0, "Not all buffers are released! Alive buffer count: {}", aliveBufferCount);
+        BenzinAssert(aliveTextureCount == 0, "Not all textures are released! Alive texture count: {}", aliveTextureCount);
+#endif
+    }
+
+    bool RenderResources::IsCreated(BufferId id) const
+    {
+        return m_Buffers.IsCreated(+id);
+    }
+
+    void RenderResources::Create(BufferId id, const BufferCreation& creation)
+    {
+        m_Buffers.Create(+id, m_Device, creation);
+    }
+
+    void RenderResources::Destroy(BufferId id)
+    {
+        m_Buffers.Destroy(+id);
+    }
+
+    const Buffer& RenderResources::Get(BufferId id) const
+    {
+        return m_Buffers.Get(+id, m_FlipIndex);
+    }
+
+    const Buffer& RenderResources::GetPrev(BufferId id) const
+    {
+        return m_Buffers.GetPrev(+id, m_FlipIndex);
+    }
+
+    bool RenderResources::IsCreated(TextureId id) const
+    {
+        return m_Textures.IsCreated(+id);
+    }
+
+    void RenderResources::Create(TextureId id, const TextureCreation& creation)
+    {
+        m_Textures.Create(+id, m_Device, creation);
+    }
+    
+    void RenderResources::Destroy(TextureId id)
+    {
+        m_Textures.Destroy(+id);
+    }
+
+    const Texture& RenderResources::Get(TextureId id) const
+    {
+        return m_Textures.Get(+id, m_FlipIndex);
+    }
+
+    const Texture& RenderResources::GetPrev(TextureId id) const
+    {
+        return m_Textures.GetPrev(+id, GetNextFlipIndex(m_FlipIndex));
     }
 
     void RenderResources::FlipResources()
     {
-        m_FlipIndex = (m_FlipIndex + 1) & 1;
+        m_FlipIndex = GetNextFlipIndex(m_FlipIndex);
+    }
+
+    uint8_t RenderResources::GetNextFlipIndex(uint8_t index)
+    {
+        return (index + 1) & 1;
     }
 
     // RenderPass

@@ -7,8 +7,9 @@ namespace benzin
 {
 
     class Buffer;
+    class ComputePso;
     class Descriptor;
-    class Pso;
+    class GraphicsPso;
     class QueryHeap;
     class RayTracing_AcclerationStructure;
     class RayTracing_Pso;
@@ -34,6 +35,8 @@ namespace benzin
     public:
         auto* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList; }
 
+    public:
+        // TODO: This part is for CopyCommandList?
         void CopyResource(const Resource& destination, const Resource& source);
 
         void UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, Bytes64 offset);
@@ -47,38 +50,55 @@ namespace benzin
         void UploadToTexture(Texture& texture, const std::vector<SubResourceData>& subResources);
         void UploadToTextureTopMip(Texture& texture, std::span<const std::byte> data);
 
-        void SetRootConstant(uint32_t rootIndex, uint32_t value);
-        void SetRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
-        void SetCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
-        void SetSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
+        // Compute
+        void SetComputeCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
+        void SetComputeSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
-        void SetPso(const Pso& pso);
-        void SetPso(const RayTracing_Pso& pso);
+        void SetComputeRootConstant(uint32_t rootIndex, uint32_t value);
+        void SetComputeRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
 
-        void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
+        void SetComputePso(const ComputePso& pso);
+
+        void ClearUnorderedAccess(const Resource& resource, const Descriptor& viewDescriptor, const DirectX::XMFLOAT4& color);
+
+        void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize);
 
         // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d12/timing
         // D3D12_COMMAND_LIST_TYPE_DIRECT and D3D12_COMMAND_LIST_TYPE_COMPUTE always support timestamps
         void SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index);
         void ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffset);
+
+        // Graphics 
+        void SetGraphicsCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
+        void SetGraphicsSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
+
+        void SetGraphicsRootConstant(uint32_t rootIndex, uint32_t value);
+        void SetGraphicsRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
+
+        void SetGraphicsPso(const GraphicsPso& pso);
+
         void SetVertexBuffer(const Buffer& vertexBuffer);
         void SetIndexBuffer(const Buffer& indexBuffer);
+
+        void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
         void SetViewport(const Viewport& viewport);
         void SetScissorRect(const ScissorRect& scissorRect);
 
+        void SetBlendFactor(const DirectX::XMFLOAT4& color);
+
         void SetRenderTargets(const std::vector<Descriptor>& rtvs, const Descriptor* dsv = nullptr);
 
-        void ClearRenderTarget(const Texture& renderTarget);
+        void ClearRenderTarget(const Texture& renderTarget, std::optional<DirectX::XMFLOAT4> overrideClearColor = std::nullopt);
         void ClearDepthStencil(const Texture& depthStencil);
 
         void DrawVertexed(uint32_t vertexCount, uint32_t instanceCount = 1);
         void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount = 1);
 
-        void ClearUnorderedAccess(const Texture& unorderedAccess, const DirectX::XMFLOAT4& color);
-        void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize);
-
         // RayTracing
         void BuildRayTracingAccelerationStructure(const RayTracing_AcclerationStructure& accelerationStructure);
+
+        void SetRayTracingPso(const RayTracing_Pso& pso);
+
         void DispatchRays(const RayTracing_ShaderTable& shaderTable, const DirectX::XMUINT3 dimenions);
 
     private:

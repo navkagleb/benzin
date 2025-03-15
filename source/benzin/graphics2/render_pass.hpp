@@ -1,19 +1,20 @@
 #pragma once
 
-#include "benzin/graphics/common.hpp"
+#include <benzin/graphics/common.hpp>
 
 namespace benzin
 {
 
+    class Buffer;
     class ConstBufferPool;
     class Device;
     class GpuProfiler;
     class PsoManager;
-    class ScopedGpuGrabTimer;
     class SwapChain;
     class Texture;
     class TickTimer;
 
+    struct BufferCreation;
     struct TextureCreation;
 
     class RenderSettings
@@ -46,36 +47,78 @@ namespace benzin
         std::unordered_map<uint64_t, VoidUniquePtr> m_Sections;
     };
 
+    template <typename ResourceT, typename CreationT>
+    class RenderResourceStorage
+    {
+    public:
+        using IsResourceFlippableCallback = std::function<bool(uint32_t id)>;
+        using IsResourceIdValidCallback = std::function<bool(uint32_t id)>;
+
+        RenderResourceStorage(
+            uint32_t maxResourceCount,
+            IsResourceFlippableCallback&& isRsourceFlippableCallback,
+            IsResourceIdValidCallback&& isResourceIdValidCallback
+        );
+        ~RenderResourceStorage();
+
+        bool IsCreated(uint32_t id) const;
+        void Create(uint32_t id, Device& device, const CreationT& creation);
+        void Destroy(uint32_t id);
+
+        const ResourceT& Get(uint32_t id, uint8_t flipOffset) const;
+        const ResourceT& GetPrev(uint32_t id, uint8_t flipOffset) const;
+
+#if BENZIN_IS_ASSERTS_ENABLED
+        uint32_t GetAliveResourceCount() const;
+#endif
+
+    private:
+        const IsResourceFlippableCallback m_IsResourceFlippableCallback;
+        const IsResourceIdValidCallback m_IsResourceIdValidCallback;
+
+        std::vector<std::unique_ptr<ResourceT>> m_Resources;
+    };
+
+    extern template class RenderResourceStorage<Buffer, BufferCreation>;
+    extern template class RenderResourceStorage<Texture, TextureCreation>;
+
+    enum class BufferId : uint32_t;
+    enum class TextureId : uint32_t;
+
     class RenderResources
     {
     public:
-        using IsResourceFlippableCallback = std::function<bool(uint32_t)>;
-
         explicit RenderResources(Device& device);
         ~RenderResources();
 
-        void SetMaxTextureCount(uint32_t maxTextureCount);
-        void SetIsTextureFlippableCallback(IsResourceFlippableCallback&& callback);
+        // Buffers
+        bool IsCreated(BufferId id) const;
+        void Create(BufferId id, const BufferCreation& creation);
+        void Destroy(BufferId id);
 
-        void CreateTexture(uint32_t index, const TextureCreation& creation);
-        void DestroyTexture(uint32_t index);
+        const Buffer& Get(BufferId id) const;
+        const Buffer& GetPrev(BufferId id) const;
 
-        const Texture& GetTexture(uint32_t index) const;
-        const Texture& GetPrevTexture(uint32_t index) const;
+        // Textures
+        bool IsCreated(TextureId id) const;
+        void Create(TextureId id, const TextureCreation& creation);
+        void Destroy(TextureId id);
 
-        const Texture* GetTexturePtr(uint32_t index) const;
-        const Texture* GetPrevTexturePtr(uint32_t index) const;
+        const Texture& Get(TextureId id) const;
+        const Texture& GetPrev(TextureId id) const;
 
         void FlipResources();
 
-    public:
+    private:
+        static uint8_t GetNextFlipIndex(uint8_t index);
+
+    private:
         Device& m_Device;
 
+        RenderResourceStorage<Buffer, BufferCreation> m_Buffers;
+        RenderResourceStorage<Texture, TextureCreation> m_Textures;
+
         uint8_t m_FlipIndex = 0;
-
-        std::vector<std::unique_ptr<Texture>> m_Textures;
-
-        IsResourceFlippableCallback m_IsTextureFlippable;
     };
 
     class RenderPass

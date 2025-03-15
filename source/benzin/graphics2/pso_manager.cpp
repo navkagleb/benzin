@@ -6,47 +6,46 @@
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/pso.hpp"
 #include "benzin/graphics/ray_tracing_pso.hpp"
+#include "benzin/graphics2/game_specific_resource_ids.hpp"
 #include "benzin/graphics2/shader_manager.hpp"
 
 namespace benzin
 {
 
-    PsoManager::PsoManager(Device& device, ShaderManager& shaderManager, uint32_t psoCount)
+    PsoManager::PsoManager(Device& device, ShaderManager& shaderManager)
         : m_Device{ device }
         , m_ShaderManager{ shaderManager }
     {
-        m_Psos.resize(psoCount);
+        m_Psos.resize(magic_enum::enum_count<PsoId>());
 
         m_ShaderManager.SetNewShaderAvailableCallback([this] { RecompilePsoCallback(); });
     }
 
     PsoManager::~PsoManager()
     {
-#if BENZIN_IS_DEBUG_BUILD
-        uint32_t nonReleasedPsoCount = 0;
+#if BENZIN_IS_ASSERTS_ENABLED
+        uint32_t aliveCount = 0;
         for (const auto& pso : m_Psos)
         {
-            nonReleasedPsoCount += (pso.get() != nullptr);
+            aliveCount += (pso.get() != nullptr);
         }
 
-        BenzinWarningIf(
-            nonReleasedPsoCount != 0,
-            "Not all PSOs are released properly. Non released PSO count: {}",
-            nonReleasedPsoCount
-        );
+        BenzinAssert(aliveCount == 0, "Not all PSOs are released properly. Alive PSO count: {}", aliveCount);
 #endif
-
-        m_Psos.clear();
     }
 
-    void PsoManager::CreateGraphicsPso(uint32_t index, const GraphicsPsoConfigurator& configurator)
+    void PsoManager::Create(PsoId id, const GraphicsPsoConfigurator& configurator)
     {
+        BenzinAssert(magic_enum::enum_contains(id));
         BenzinAssert((bool)configurator);
 
         GraphicsPsoProxy proxy;
         configurator(proxy);
 
-        auto& pso = m_Psos[index];
+        BenzinAssert(!proxy.VsFileName.empty());
+        BenzinAssert(!proxy.PsFileName.empty());
+
+        auto& pso = m_Psos[+id];
         BenzinAssert(pso.get() == nullptr);
 
         ShaderInfo vs{ ShaderType::Vertex, proxy.VsFileName, proxy.VsEntryPoint, std::move(proxy.VsDefines) };
@@ -77,14 +76,17 @@ namespace benzin
         pso = std::move(graphicsPso);
     }
 
-    void PsoManager::CreateComputePso(uint32_t index, const ComputePsoConfigurator& configurator)
+    void PsoManager::Create(PsoId id, const ComputePsoConfigurator& configurator)
     {
+        BenzinAssert(magic_enum::enum_contains(id));
         BenzinAssert((bool)configurator);
 
         ComputePsoProxy proxy;
         configurator(proxy);
 
-        auto& pso = m_Psos[index];
+        BenzinAssert(!proxy.CsFileName.empty());
+
+        auto& pso = m_Psos[+id];
         BenzinAssert(pso.get() == nullptr);
 
         ShaderInfo cs{ ShaderType::Compute, proxy.CsFileName, proxy.CsEntryPoint, std::move(proxy.CsDefines) };
@@ -99,14 +101,18 @@ namespace benzin
         pso = std::move(computePso);
     }
 
-    void PsoManager::CreateRayTracingPso(uint32_t index, const RayTracingPsoConfigurator& configurator)
+    void PsoManager::Create(PsoId id, const RayTracingPsoConfigurator& configurator)
     {
+        BenzinAssert(magic_enum::enum_contains(id));
         BenzinAssert((bool)configurator);
 
         RayTracing_PsoProxy proxy;
         configurator(proxy);
 
-        auto& pso = m_Psos[index];
+        BenzinAssert(!proxy.ShaderLibrary.FileName.empty());
+        // TODO: Add more checks for mandatory entry points
+
+        auto& pso = m_Psos[+id];
         BenzinAssert(pso.get() == nullptr);
 
         ShaderInfo library{ ShaderType::Library, proxy.ShaderLibrary.FileName, {}, std::move(proxy.ShaderLibrary.Defines)};
@@ -125,29 +131,40 @@ namespace benzin
         pso = std::move(rayTracingPso);
     }
 
-    void PsoManager::DestroyPso(uint32_t index)
+    void PsoManager::Destroy(PsoId id)
     {
-        BenzinAssert(index < m_Psos.size());
+        BenzinAssert(magic_enum::enum_contains(id));
 
-        m_Psos[index].reset();
+        m_Psos[+id].reset();
     }
 
-    Pso& PsoManager::GetPso(uint32_t index)
+    const GraphicsPso& PsoManager::GetGraphics(PsoId id) const
     {
-        BenzinAssert(index < m_Psos.size());
+        BenzinAssert(magic_enum::enum_contains(id));
 
-        auto* pso = m_Psos[index].get();
+        auto* pso = m_Psos[+id].get();
         BenzinAssert(pso != nullptr);
-        BenzinAssert(dynamic_cast<Pso*>(pso) != nullptr);
+        BenzinAssert(dynamic_cast<GraphicsPso*>(pso) != nullptr);
 
-        return *(Pso*)m_Psos[index].get();
+        return *(const GraphicsPso*)pso;
     }
 
-    RayTracing_Pso& PsoManager::GetRayTracingPso(uint32_t index)
+    const ComputePso& PsoManager::GetCompute(PsoId id) const
     {
-        BenzinAssert(index < m_Psos.size());
+        BenzinAssert(magic_enum::enum_contains(id));
 
-        auto* pso = m_Psos[index].get();
+        auto* pso = m_Psos[+id].get();
+        BenzinAssert(pso != nullptr);
+        BenzinAssert(dynamic_cast<ComputePso*>(pso) != nullptr);
+
+        return *(ComputePso*)pso;
+    }
+
+    const RayTracing_Pso& PsoManager::GetRayTracing(PsoId id) const
+    {
+        BenzinAssert(magic_enum::enum_contains(id));
+
+        auto* pso = m_Psos[+id].get();
         BenzinAssert(pso != nullptr);
         BenzinAssert(dynamic_cast<RayTracing_Pso*>(pso) != nullptr);
 

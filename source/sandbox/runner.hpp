@@ -3,11 +3,10 @@
 #include <benzin/core/interval_timer.hpp>
 #include <benzin/core/tick_timer.hpp>
 
-#include "sandbox/fps_counter.hpp"
+#include <sandbox/fps_counter.hpp>
 
 namespace benzin
 {
-
     class Backend;
     class ConstBufferPool;
     class Device;
@@ -19,6 +18,8 @@ namespace benzin
     class PsoManager;
     class RayTracing_Scene;
     class RenderPass;
+    class RenderResources;
+    class RenderSettings;
     class RenderSettingsTool;
     class RenderViewportTool;
     class Scene;
@@ -26,7 +27,6 @@ namespace benzin
     class SwapChain;
     class TextureViewerTool;
     class Window;
-
 }
 
 namespace sandbox
@@ -79,11 +79,9 @@ namespace sandbox
         std::unique_ptr<benzin::Scene> m_Scene;
         std::unique_ptr<benzin::RayTracing_Scene> m_RayTracingScene;
 
-        std::unique_ptr<benzin::RenderBuffers> m_RenderBuffers;
-        std::unique_ptr<benzin::RenderTextures> m_RenderTextures;
+        std::unique_ptr<benzin::RenderResources> m_RenderResources;
         std::unique_ptr<benzin::RenderSettings> m_RenderSettings;
         std::vector<std::unique_ptr<benzin::RenderPass>> m_RenderPasses;
-        benzin::ImGuiPass* m_ImGuiPass = nullptr;
 
         std::unique_ptr<benzin::ImGuiManager> m_ImGuiManager;
         benzin::RenderViewportTool* m_RenderViewportTool = nullptr;

@@ -15,7 +15,6 @@
 
 #include <shaders/joint/mesh_types.hpp>
 
-#include "sandbox/render_passes/copy_to_back_buffer_pass.hpp"
 #include "sandbox/render_passes/deferred_lighting_pass.hpp"
 #include "sandbox/render_passes/environment_pass.hpp"
 #include "sandbox/render_passes/full_screen_debug_pass.hpp"
@@ -24,6 +23,7 @@
 #include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
 #include "sandbox/render_passes/sigma_denoiser_pass.hpp"
 #include "sandbox/render_passes/tlas_building_pass.hpp"
+#include "sandbox/render_passes/tone_mapping_pass.hpp"
 #include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
 
@@ -126,20 +126,6 @@ namespace sandbox
         }
     }
 
-    template <typename T>
-    static bool ImGui_SelectComboName(void* data, int index, const char** outName)
-    {
-        const auto& names = *(T*)data;
-
-        if (index < 0 || index >= names.size())
-        {
-            return false;
-        }
-
-        *outName = names[index].data();
-        return true;
-    };
-
     //
 
     SandboxRunner::SandboxRunner()
@@ -157,71 +143,27 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::InitRenderPasses");
 
-        auto isRenderTextureFlippableCallback = [](uint32_t key)
-        {
-            const uint32_t maxKey = +magic_enum::enum_values<Texture>().back();
-            const uint32_t previousTextureKey = key - 1;
-
-            const bool isInBounds = previousTextureKey <= maxKey;
-            const bool isGapExists = !magic_enum::enum_contains<Texture>(previousTextureKey); // There must be a gap between enum values, so the enum value must not exist
-
-            return isInBounds && isGapExists;
-        };
-
-        m_RenderResources->SetMaxTextureCount(+Texture::Count);
-        m_RenderResources->SetIsTextureFlippableCallback(std::move(isRenderTextureFlippableCallback));
-
         // The order in which render passes are added is important
         BenzinAssert(m_RenderPasses.empty());
-        m_RenderPasses.resize(magic_enum::enum_count<RenderPasses>());
 
-        m_RenderPasses[+RenderPasses::TlasBuilding] = std::make_unique<TlasBuildingPass>(*m_Device, *m_RayTracingScene);
-        m_RenderPasses[+RenderPasses::GlobalConstants] = std::make_unique<GlobalConstantsPass>(*m_Device, *m_Scene);
-        m_RenderPasses[+RenderPasses::Geometry] = std::make_unique<GeometryPass>(*m_Scene);
-        m_RenderPasses[+RenderPasses::RayTracedShadows] = std::make_unique<RayTracing_ShadowPass>(*m_Scene);
-        m_RenderPasses[+RenderPasses::SigmaDenoiser] = std::make_unique<SigmaDenoiserPass>(*m_Scene);
-        m_RenderPasses[+RenderPasses::DeferredLighting] = std::make_unique<DeferredLightingPass>();
-        m_RenderPasses[+RenderPasses::Environment] = std::make_unique<EnvironmentPass>();
-        m_RenderPasses[+RenderPasses::FullScreenDebug] = std::make_unique<FullScreenDebugPass>();
-        m_RenderPasses[+RenderPasses::ImGui] = std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager, +Texture::ImGui);
-        m_RenderPasses[+RenderPasses::CopuToBackBuffer] = std::make_unique<CopyToBackBufferPass>();
-
-        m_ImGuiPass = (benzin::ImGuiPass*)m_RenderPasses[+RenderPasses::ImGui].get();
+        m_RenderPasses.push_back(std::make_unique<TlasBuildingPass>(*m_Device, *m_RayTracingScene));
+        m_RenderPasses.push_back(std::make_unique<GlobalConstantsPass>(*m_Device, *m_Scene));
+        m_RenderPasses.push_back(std::make_unique<GeometryPass>(*m_Scene));
+        m_RenderPasses.push_back(std::make_unique<RayTracing_ShadowPass>(*m_Scene));
+        m_RenderPasses.push_back(std::make_unique<SigmaDenoiserPass>(*m_Scene));
+        m_RenderPasses.push_back(std::make_unique<DeferredLightingPass>());
+        m_RenderPasses.push_back(std::make_unique<EnvironmentPass>());
+        m_RenderPasses.push_back(std::make_unique<ToneMappingPass>());
+        m_RenderPasses.push_back(std::make_unique<FullScreenDebugPass>());
     }
 
     void SandboxRunner::InitTools()
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::InitTools");
 
-        m_RenderViewportTool->SetFinalTextureIndex(+Texture::Final);
-
-        m_TextureViewerTool->SetTextureSelectorCallback([]
-        {
-            static const auto textureNames = magic_enum::enum_names<Texture>();
-            static const auto textureIndices = magic_enum::enum_values<Texture>();
-
-            static int textureNameIndex = -1;
-
-            if (ImGui::Button("Reset"))
-            {
-                textureNameIndex = -1;
-            }
-
-            ImGui::SameLine();
-            ImGui::Combo(
-                "Texture",
-                &textureNameIndex,
-                ImGui_SelectComboName<decltype(textureNames)>,
-                (void*)&textureNames,
-                (int)textureNames.size() - 1 // Removes Texture::Count value. Ugly solution
-            );
-
-            return textureNameIndex != -1 ? +textureIndices[textureNameIndex] : benzin::g_InvalidUnsigned<uint32_t>;
-        });
-
         BenzinAssert(m_RenderSettingsTool != nullptr);
 
-        m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<GBufferSettings>("GBufferSettings", true, [](GBufferSettings& settings)
+        m_RenderSettingsTool->RegisterSectionSpawnCallback<GBufferSettings>("GBuffer", true, [](GBufferSettings& settings)
         {
             ImGui::Checkbox("IsFrustumCullingEnabled", &settings.IsFrustumCullingEnabled);
 
@@ -248,14 +190,14 @@ namespace sandbox
             });
         });
 
-        m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<RayTracing_ShadowSettings>("RayTracedShadows", true, [this](RayTracing_ShadowSettings& settings)
+        m_RenderSettingsTool->RegisterSectionSpawnCallback<RayTracing_ShadowSettings>("RayTracedShadows", true, [](RayTracing_ShadowSettings& settings)
         {
             ImGui::Checkbox("IsEnabled###RayTracingShadows", &settings.IsEnabled);
             ImGui::Checkbox("IsBlueNoiseUsed", &settings.IsBlueNoiseUsed);
             ImGui::Checkbox("IsNoiseAnimated", &settings.IsNoiseAnimated);
         });
 
-        m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<SigmaDenoiserSettings>("SigmaDenoiser", true, [](SigmaDenoiserSettings& settings)
+        m_RenderSettingsTool->RegisterSectionSpawnCallback<SigmaDenoiserSettings>("SigmaDenoiser", true, [](SigmaDenoiserSettings& settings)
         {
             ImGui::Checkbox("IsEnabled###SigmaDenoiser", &settings.IsEnabled);
             ImGui::DragFloat("PlaneDistanceSensitivity %", &settings.PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
@@ -273,17 +215,80 @@ namespace sandbox
             ImGui::Checkbox("IsTemporalStabilizationEnabled", &settings.IsTemporalStabilizationEnabled);
         });
 
-        m_RenderSettingsTool->RegisterSectionImGuiSpawnCallback<FullScreenDebugSettings>("FullScreenDebug", false, [this](FullScreenDebugSettings& settings)
+        m_RenderSettingsTool->RegisterSectionSpawnCallback<ToneMappingSettings>("ToneMapping", true, [](ToneMappingSettings& settings)
+        {
+            ImGui::PushItemWidth(120.0f);
+            BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
+
+            ImGui::Checkbox("IsToneMappingEnabled", &settings.IsToneMappingEnabled);
+
+            ImGui_CollapsingHeaderWithIndent("Luminance Histogram", [&settings]
+            {
+                auto& luminanceHistogram = settings.LuminanceHistogram;
+
+                if (ImGui::InputFloat("MinLogLuminance", &luminanceHistogram.MinLogLuminance))
+                {
+                    luminanceHistogram.MinLogLuminance = std::clamp(
+                        luminanceHistogram.MinLogLuminance,
+                        luminanceHistogram.MinLogLuminance,
+                        luminanceHistogram.MaxLogLuminance
+                    );
+                }
+
+                if (ImGui::InputFloat("MaxLogLuminance", &luminanceHistogram.MaxLogLuminance))
+                {
+                    luminanceHistogram.MaxLogLuminance = std::clamp(
+                        luminanceHistogram.MaxLogLuminance,
+                        luminanceHistogram.MinLogLuminance,
+                        luminanceHistogram.MaxLogLuminance
+                    );
+                }
+
+                ImGui::InputFloat("Tau", &luminanceHistogram.Tau);
+            });
+
+            ImGui_CollapsingHeaderWithIndent("PBR Camera", [&settings]
+            {
+                auto& pbrCamera = settings.PbrCamera;
+
+                ImGui::Checkbox("IsAutoExposureUsed", &settings.IsAutoExposureUsed);
+
+                ImGui::InputFloat("Aperture (in f-stops)", &pbrCamera.Aperture);
+                ImGui::InputFloat("Shutter Speed (in sec)", &pbrCamera.ShutterSpeed);
+                ImGui::InputFloat("Sensor sensitivity (in ISO)", &pbrCamera.Iso);
+            });
+
+            ImGui_CollapsingHeaderWithIndent("Tone Mapping", [&settings]
+            {
+                ImGui::Checkbox("IsAccurateGammaCorrectionUsed", &settings.IsAccurateGammaCorrectionUsed);
+
+                static const auto toneReproductionTransformNames = magic_enum::enum_names<joint::ToneReproductionTransform>();
+
+                ImGui::Combo(
+                    "ToneReproductionTransform",
+                    (int*)&settings.ToneReproductionTransform,
+                    ImGui_SelectComboName<decltype(toneReproductionTransformNames)>,
+                    (void*)&toneReproductionTransformNames,
+                    (int)toneReproductionTransformNames.size()
+                );
+            });
+        });
+
+        m_RenderSettingsTool->RegisterSectionSpawnCallback<FullScreenDebugSettings>("FullScreenDebug", false, [](FullScreenDebugSettings& settings)
         {
             ImGui::SliderInt("ViewDepthMipIndex", (int*)&settings.ViewDepthMipIndex, 0, 4);
             ImGui::SliderFloat("MinViewDepth", &settings.MinViewDepth, 0.001f, 2.0f, "%.4f");
             ImGui::SliderFloat("MaxViewDepth", &settings.MaxViewDepth, 0.001f, 30.0f);
 
-            const auto debugOutputTypeNames = magic_enum::enum_names<joint::DebugOutputType>() |
-                std::views::transform([](std::string_view name) { return name.data(); }) |
-                std::ranges::to<std::vector>();
+            static const auto debugOutputNames = magic_enum::enum_names<joint::DebugOutputType>();
 
-            ImGui::Combo("DebugOutputType", (int*)&settings.DebugOutputType, debugOutputTypeNames.data(), (int)debugOutputTypeNames.size());
+            ImGui::Combo(
+                "DebugOutputType",
+                (int*)&settings.DebugOutputType,
+                ImGui_SelectComboName<decltype(debugOutputNames)>,
+                (void*)debugOutputNames.data(),
+                (int)debugOutputNames.size()
+            );
 
             const auto spawnButton = [&settings](joint::DebugOutputType type)
             {
@@ -309,8 +314,6 @@ namespace sandbox
         auto& camera = m_Scene->GetCamera();
         camera.SetPosition({ -1.649f, 1.007f, -1.555f });
         camera.SetFrontDirection({ 0.769f, 0.129f, 0.627f });
-
-        m_AnimationTimer.SetPaused(true);
     }
 
     void SandboxRunner::InitSceneEntities()
@@ -324,7 +327,7 @@ namespace sandbox
 
         AddStaticMeshEntities(meshHandles);
         AddDynamicMeshEntities(meshHandles);
-        AddEmissiveEntities(meshHandles);
+        AddLightEntities(meshHandles);
     }
 
     void SandboxRunner::AddMeshesToScene(std::span<benzin::MeshResource> meshResources, std::span<entt::entity> outMeshHandles)
@@ -437,7 +440,7 @@ namespace sandbox
         }
     }
 
-    void SandboxRunner::AddEmissiveEntities(std::span<const entt::entity> meshHandles)
+    void SandboxRunner::AddLightEntities(std::span<const entt::entity> meshHandles)
     {
         entt::registry& entityRegistry = m_Scene->GetEntityRegistry();
 
@@ -446,7 +449,7 @@ namespace sandbox
 
             auto& light = entityRegistry.get_or_emplace<benzin::SunLight>(entity);
             light.SetColor({ 1.0f, 1.0f, 0.7f });
-            light.SetIntensity(5.0f);
+            light.SetIntensity(1'000.0f);
 
             entityRegistry.emplace<benzin::EntityUpdateCallback>(entity, [this, &entityRegistry, entity]
             {
@@ -493,6 +496,7 @@ namespace sandbox
             light.SetPosition({ 0.5f, 2.0f, -0.25f });
             light.SetRadius(0.03f);
             light.SetRange(10.0f);
+            light.SetEnabled(false);
 
             entityRegistry.emplace<benzin::EntityUpdateCallback>(entity, [this, &entityRegistry, entity]
             {
@@ -524,6 +528,7 @@ namespace sandbox
             light.SetPosition({ 0.0f, 3.0f, 1.25f });
             light.SetRadius(0.01f);
             light.SetRange(30.0f);
+            light.SetEnabled(false);
         }
 
         {
@@ -538,6 +543,7 @@ namespace sandbox
             light.SetPosition({ 1.5f, 4.0f, -1.0f });
             light.SetRadius(0.02f);
             light.SetRange(20.0f);
+            light.SetEnabled(false);
 
             entityRegistry.emplace<benzin::EntityUpdateCallback>(entity, [this, &entityRegistry, entity]
             {
