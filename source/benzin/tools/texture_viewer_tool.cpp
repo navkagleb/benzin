@@ -3,7 +3,6 @@
 
 #include "benzin/graphics/texture.hpp"
 #include "benzin/graphics2/game_specific_resource_ids.hpp"
-#include "benzin/graphics2/imgui_helpers.hpp"
 #include "benzin/system/event.hpp"
 #include "benzin/system/input.hpp"
 #include "benzin/system/key_event.hpp"
@@ -60,60 +59,62 @@ namespace benzin
         }
     }
 
-    void TextureViewerTool::SpawnImGui()
+    void TextureViewerTool::DrawWindow()
     {
         ImGui::SetNextWindowBgAlpha(1.0);
+        ImGuiTool::DrawWindow(ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    }
 
-        SpawnImGuiWindow(ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse, [this]
+    void TextureViewerTool::DrawWindowContent()
+    {
+        const TextureId textureId = DrawTextureSelector();
+        if (!magic_enum::enum_contains(textureId) || !m_Resources.IsCreated(textureId))
         {
-            const TextureId textureId = DrawTextureSelector();
-            if (!magic_enum::enum_contains(textureId) || !m_Resources.IsCreated(textureId))
-            {
-                return;
-            }
+            return;
+        }
 
-            const auto& texture = m_Resources.Get(textureId);
+        const auto& texture = m_Resources.Get(textureId);
 
-            ImGui::Text(BenzinFormatData("Texture Size: [{}, {}]", texture.GetWidth(), texture.GetHeight()));
+        ImGui::Text(BenzinFormatData("Texture Size: [{}, {}]", texture.GetWidth(), texture.GetHeight()));
+        ImGui::Separator();
 
-            const ImVec2 widgetSize = ImGui::GetContentRegionAvail();
-            const float widgetAspectRatio = widgetSize.x / widgetSize.y;
-            const float textureAspectRatio = (float)texture.GetWidth() / texture.GetHeight();
+        const ImVec2 widgetSize = ImGui::GetContentRegionAvail();
+        const float widgetAspectRatio = widgetSize.x / widgetSize.y;
+        const float textureAspectRatio = (float)texture.GetWidth() / texture.GetHeight();
 
-            ImVec2 widgetTextureSize{ 0.0f, 0.0f };
-            if (widgetAspectRatio > textureAspectRatio)
-            {
-                widgetTextureSize.x = widgetSize.y * textureAspectRatio;
-                widgetTextureSize.y = widgetSize.y;
-            }
-            else
-            {
-                widgetTextureSize.x = widgetSize.x;
-                widgetTextureSize.y = widgetSize.x * (1.0f / textureAspectRatio);
-            }
-            const ImVec2 imagePos = ImGui::GetCursorScreenPos();
+        ImVec2 widgetTextureSize{ 0.0f, 0.0f };
+        if (widgetAspectRatio > textureAspectRatio)
+        {
+            widgetTextureSize.x = widgetSize.y * textureAspectRatio;
+            widgetTextureSize.y = widgetSize.y;
+        }
+        else
+        {
+            widgetTextureSize.x = widgetSize.x;
+            widgetTextureSize.y = widgetSize.x * (1.0f / textureAspectRatio);
+        }
 
-            ImGui::Separator();
-            ImGui::Image(
-                ImGuiPass::PackImTextureId(texture.GetSrv(), joint::ImGuiSamplerIndex::Point),
-                widgetTextureSize,
-                m_UvMin,
-                m_UvMax
-            );
+        const ImVec2 imagePos = ImGui::GetCursorScreenPos();
 
-            const float rounding = 0.0f;
-            const float borderThickness = 3.0f;
-            ImGui::GetWindowDrawList()->AddRect(
-                imagePos,
-                imagePos + widgetTextureSize,
-                IM_COL32(255, 165, 0, 255),
-                rounding,
-                ImDrawFlags_None,
-                borderThickness
-            );
+        ImGui::Image(
+            ImGuiPass::PackImTextureId(texture.GetSrv(), joint::ImGuiSamplerIndex::Point),
+            widgetTextureSize,
+            m_UvMin,
+            m_UvMax
+        );
 
-            m_IsHovered = ImGui::IsItemHovered();
-        });
+        const float rounding = 0.0f;
+        const float borderThickness = 3.0f;
+        ImGui::GetWindowDrawList()->AddRect(
+            imagePos,
+            imagePos + widgetTextureSize,
+            IM_COL32(255, 165, 0, 255),
+            rounding,
+            ImDrawFlags_None,
+            borderThickness
+        );
+
+        m_IsHovered = ImGui::IsItemHovered();
     }
 
     bool TextureViewerTool::OnKeyPressedEvent(const KeyPressedEvent& event)

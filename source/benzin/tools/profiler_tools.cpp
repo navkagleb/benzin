@@ -8,7 +8,7 @@
 namespace benzin
 {
 
-    static uint32_t SpawnEventRow(std::span<const ProfileEvent> events, uint32_t eventIndex, bool isOpen)
+    static uint32_t DrawEventRow(std::span<const ProfileEvent> events, uint32_t eventIndex, bool isOpen)
     {
         if (!isOpen)
         {
@@ -51,7 +51,7 @@ namespace benzin
 
             while (eventIndex < events.size() && event.Depth < events[eventIndex].Depth)
             {
-                eventIndex = SpawnEventRow(events, eventIndex, isOpen);
+                eventIndex = DrawEventRow(events, eventIndex, isOpen);
             }
 
             if (isOpen)
@@ -63,11 +63,11 @@ namespace benzin
         return eventIndex;
     }
 
-    static void SpawnEventRows(std::span<const ProfileEvent> events)
+    static void DrawEventRows(std::span<const ProfileEvent> events)
     {
         for (uint32_t eventIndex = 0; eventIndex < events.size();)
         {
-            eventIndex = SpawnEventRow(events, eventIndex, true);
+            eventIndex = DrawEventRow(events, eventIndex, true);
         }
     }
 
@@ -88,7 +88,7 @@ namespace benzin
         });
     }
 
-    void ProfilerToolBase::SpawnImGui()
+    void ProfilerToolBase::DrawWindow()
     {
         const auto events = GetSortedEvents();
 
@@ -107,29 +107,29 @@ namespace benzin
 
         m_IntervalTimer.AccumulateInterval(*ms_FrameTimer);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-        BenzinExecuteOnScopeExit([] { ImGui::PopStyleVar(); });
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
+        ImGuiTool::DrawWindow(ImGuiWindowFlags_NoScrollbar);
+        ImGui::PopStyleVar();
+    }
 
-        const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar;
-        SpawnImGuiWindow(windowFlags, [this]
+    void ProfilerToolBase::DrawWindowContent()
+    {
+        const ImGuiTableFlags tableFlags =
+            ImGuiTableFlags_Resizable |
+            ImGuiTableFlags_RowBg |
+            ImGuiTableFlags_NoBordersInBody |
+            ImGuiTableFlags_SizingStretchProp |
+            ImGuiTableFlags_NoSavedSettings;
+
+        if (ImGui::BeginTable("ProfilerData", 2, tableFlags, ImGui::GetContentRegionAvail()))
         {
-            const ImGuiTableFlags tableFlags =
-                ImGuiTableFlags_Resizable |
-                ImGuiTableFlags_RowBg |
-                ImGuiTableFlags_NoBordersInBody |
-                ImGuiTableFlags_SizingStretchProp |
-                ImGuiTableFlags_NoSavedSettings;
+            ImGui::TableSetupColumn("Name");
+            ImGui::TableSetupColumn("Ms", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("A").x * 10.0f);
 
-            if (ImGui::BeginTable("GpuProfilerData", 2, tableFlags, ImGui::GetContentRegionAvail()))
-            {
-                ImGui::TableSetupColumn("Name");
-                ImGui::TableSetupColumn("Ms", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("A").x * 10.0f);
+            DrawEventRows(m_ReadySmoothEvents);
 
-                SpawnEventRows(m_ReadySmoothEvents);
-
-                ImGui::EndTable();
-            }
-        });
+            ImGui::EndTable();
+        }
     }
 
     // ProfilerTool

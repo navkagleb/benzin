@@ -13,7 +13,7 @@ namespace benzin
         explicit GpuInfoTool(const Backend& backend);
 
     private:
-        void SpawnImGui() override;
+        void DrawWindowContent() override;
 
     private:
         const Backend& m_Backend;

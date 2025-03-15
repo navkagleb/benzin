@@ -3,6 +3,8 @@
 
 #include "benzin/engine/ray_tracing_scene.hpp"
 #include "benzin/engine/scene.hpp"
+#include "benzin/graphics/buffer.hpp"
+#include "benzin/graphics/ray_tracing_acceleration_structures.hpp"
 
 namespace benzin
 {
@@ -13,29 +15,28 @@ namespace benzin
         , m_RayTracingScene{ rayTracingScene }
     {}
 
-    void SceneStatsTool::SpawnImGui()
+    void SceneStatsTool::DrawWindowContent()
     {
-        SpawnImGuiWindow([this]
+        struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
         {
-            struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
-            {
-                char do_thousands_sep() const override { return '\''; }
+            char do_thousands_sep() const override { return '\''; }
 
-                std::string do_grouping() const override { return "\3"; }
-            };
+            std::string do_grouping() const override { return "\3"; }
+        };
 
-            static const std::locale customLocale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
+        static const std::locale customLocale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
 
-            std::locale::global(customLocale);
-            BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
+        std::locale::global(customLocale);
+        BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
-            SpawnSceneStats();
-        });
+        DrawSceneStats();
+        DrawRayTracingAccelerationStructuresStats();
+        DrawRayTracingSceneStats();
     }
 
-    void SceneStatsTool::SpawnSceneStats() const
+    void SceneStatsTool::DrawSceneStats() const
     {
-        if (!SpawnImGuiCollapsingHeader("Scene"))
+        if (!Imgui_MainCollapsingHeader("Scene"))
         {
             return;
         }
@@ -50,28 +51,80 @@ namespace benzin
         ImGui::Text(BenzinFormatData("TriangleCount: {:L}", sceneStats.TriangleCount));
     }
 
+    void SceneStatsTool::DrawRayTracingAccelerationStructuresStats() const
     {
-        if (!SpawnImGuiCollapsingHeader("RayTracing_Scene"))
+        if (!Imgui_MainCollapsingHeader("RayTracing_AccelerationStructures"))
         {
             return;
         }
 
-        const auto stats = m_RayTracingScene.GetBlasStats();
-
-        ImGui::Text(BenzinFormatData("BlasCount: {}", stats.size()));
-
-        for (const auto& blasStats : m_RayTracingScene.GetBlasStats())
         {
-            const auto meshHeaderName = std::format("{}: {} meshes - {:L} triangles", blasStats.DebugName, blasStats.TriangleCountPerMesh.size(), blasStats.TotalTriangleCount);
-            if (!ImGui::CollapsingHeader(meshHeaderName.c_str()))
+            Bytes32 buffersSize = 0;
+            Bytes32 scratchResourcesSize = 0;
+
+            const auto view = m_Scene.GetMeshRegistry().view<RayTracing_Blas>();
+            for (const auto& [_, blas] : view.each())
             {
-                continue;
+                if (!blas.IsAllocated())
+                {
+                    continue;
+                }
+
+                buffersSize += blas.GetBuffer()->GetAllocationSize();
+                scratchResourcesSize += blas.GetScratchResource()->GetAllocationSize();
             }
 
-            for (const auto [i, triangleCount] : blasStats.TriangleCountPerMesh | std::views::enumerate)
+            const Bytes32 totalSize = buffersSize + scratchResourcesSize;
+
+            ImGui::SeparatorText(BenzinFormatData("BLASes ({:.2f} mb)", totalSize.GetMb()));
+            ImGui::BulletText(BenzinFormatData("Buffer: {:.2f} mb", buffersSize.GetMb()));
+            ImGui::BulletText(BenzinFormatData("ScratchResource: {:.2f} mb", scratchResourcesSize.GetMb()));
+        }
+
+        {
+            const auto& tlas = m_RayTracingScene.GetActiveTlas();
+            if (tlas.IsAllocated())
             {
-                ImGui::Text(BenzinFormatData("{}: {:L}", i, triangleCount));
+                Bytes32 totalSize = 0;
+                totalSize += tlas.GetBuffer()->GetAllocationSize();
+                totalSize += tlas.GetScratchResource()->GetAllocationSize();
+                totalSize += tlas.GetInstanceBuffer()->GetAllocationSize();
+
+                ImGui::SeparatorText(BenzinFormatData("TLAS ({:.2f})", totalSize.GetMb()));
+                ImGui::BulletText(BenzinFormatData("Buffer: {:.2f} mb", tlas.GetBuffer()->GetAllocationSize().GetMb()));
+                ImGui::BulletText(BenzinFormatData("ScratchResource: {:.2f} mb", tlas.GetScratchResource()->GetAllocationSize().GetMb()));
+                ImGui::BulletText(BenzinFormatData("InstanceBuffer: {:.2f} mb", tlas.GetInstanceBuffer()->GetAllocationSize().GetMb()));
             }
+        }
+    }
+
+    void SceneStatsTool::DrawRayTracingSceneStats() const
+    {
+        if (!Imgui_MainCollapsingHeader("RayTracing_Scene"))
+        {
+            return;
+        }
+
+        const auto blasesStats = m_RayTracingScene.GetBlasesStats();
+
+        ImGui::Text(BenzinFormatData("BlasCount: {}", blasesStats.size()));
+
+        for (const auto& blasStats : blasesStats)
+        {
+            const auto meshHeaderName = std::format(
+                "{}: {} meshes - {:L} triangles",
+                blasStats.DebugName,
+                blasStats.TriangleCountPerMesh.size(),
+                blasStats.TotalTriangleCount
+            );
+
+            ImGui_CollapsingHeaderWithIndent(meshHeaderName, [&blasStats]
+            {
+                for (const auto [i, triangleCount] : blasStats.TriangleCountPerMesh | std::views::enumerate)
+                {
+                    ImGui::Text(BenzinFormatData("{}: {:L}", i, triangleCount));
+                }
+            });
         }
     }
 

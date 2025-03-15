@@ -1,13 +1,25 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics2/imgui_helpers.hpp>
 
-void ImGui_CollapsingHeaderWithIndent(std::string_view name, const ImGui_DrawCallback& callback, ImGuiTreeNodeFlags additionalFlags)
+bool Imgui_MainCollapsingHeader(std::string_view name, ImGuiTreeNodeFlags flags)
 {
-    ImGuiTreeNodeFlags treeNodeFlags = additionalFlags;
-    treeNodeFlags |= ImGuiTreeNodeFlags_FramePadding;
-    treeNodeFlags |= ImGuiTreeNodeFlags_Selected;
+    const ImVec4 headerColor{ 0.7f, 1.0f, 0.7f, 1.0f };
+    const ImVec4 headerBackground{ 0.7f * 0.3f, 1.0f * 0.3f, 0.7f * 0.3f, 1.0f };
 
-    if (ImGui::TreeNodeEx(name.data(), treeNodeFlags))
+    ImGui::PushStyleColor(ImGuiCol_Text, headerColor);
+    ImGui::PushStyleColor(ImGuiCol_Header, headerBackground);
+    BenzinExecuteOnScopeExit([] { ImGui::PopStyleColor(2); });
+
+    flags |= ImGuiTreeNodeFlags_CollapsingHeader;
+    return ImGui::CollapsingHeader(name.data(), flags);
+}
+
+void ImGui_CollapsingHeaderWithIndent(std::string_view name, const ImGui_DrawCallback& callback, ImGuiTreeNodeFlags flags)
+{
+    flags |= ImGuiTreeNodeFlags_FramePadding;
+    flags |= ImGuiTreeNodeFlags_Selected;
+
+    if (ImGui::TreeNodeEx(name.data(), flags))
     {
         BenzinAssert(callback);
         callback();

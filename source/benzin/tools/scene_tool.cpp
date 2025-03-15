@@ -12,18 +12,15 @@ namespace benzin
         , m_Scene{ scene }
     {}
 
-    void SceneTool::SpawnImGui()
+    void SceneTool::DrawWindowContent()
     {
-        SpawnImGuiWindow([this]
-        {
-            SpawnSun();
-            SpawnSphericalLights();
-        });
+        DrawSun();
+        DrawSphericalLights();
     }
 
-    void SceneTool::SpawnSun()
+    void SceneTool::DrawSun()
     {
-        if (!SpawnImGuiCollapsingHeader("Sun"))
+        if (!Imgui_MainCollapsingHeader("Sun"))
         {
             return;
         }
@@ -61,9 +58,9 @@ namespace benzin
         }
     }
 
-    void SceneTool::SpawnSphericalLights()
+    void SceneTool::DrawSphericalLights()
     {
-        if (!SpawnImGuiCollapsingHeader("SphericalLights"))
+        if (!Imgui_MainCollapsingHeader("SphericalLights"))
         {
             return;
         }

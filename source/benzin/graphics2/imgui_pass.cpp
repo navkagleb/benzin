@@ -40,37 +40,19 @@ namespace benzin
         : m_Name{ name }
         , m_Shortcut{ shortcut }
     {}
-    
-    void ImGuiTool::SpawnImGuiWindow(const std::function<void()>& callback)
+
+    void ImGuiTool::DrawWindow()
     {
-        SpawnImGuiWindow(ImGuiWindowFlags_None, callback);
+        DrawWindow(ImGuiWindowFlags_None);
     }
 
-    void ImGuiTool::SpawnImGuiWindow(ImGuiWindowFlags flags, const std::function<void()>& callback)
+    void ImGuiTool::DrawWindow(ImGuiWindowFlags flags)
     {
         if (ImGui::Begin(m_Name.data(), &m_IsVisible, flags))
         {
-            callback();
+            DrawWindowContent();
         }
         ImGui::End();
-    }
-
-    bool ImGuiTool::SpawnImGuiCollapsingHeader(std::string_view name, bool isOpenByDefault) const
-    {
-        constexpr ImVec4 headerColor{ 0.7f, 1.0f, 0.7f, 1.0f };
-        constexpr ImVec4 headerBackground{ 0.7f * 0.3f, 1.0f * 0.3f, 0.7f * 0.3f, 1.0f };
-
-        ImGui::PushStyleColor(ImGuiCol_Text, headerColor);
-        ImGui::PushStyleColor(ImGuiCol_Header, headerBackground);
-        BenzinExecuteOnScopeExit([]{ ImGui::PopStyleColor(2); });
-
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_CollapsingHeader;
-        if (isOpenByDefault)
-        {
-            flags |= ImGuiTreeNodeFlags_DefaultOpen;
-        }
-
-        return ImGui::CollapsingHeader(name.data(), flags);
     }
 
     // ImGuiManager
@@ -155,7 +137,7 @@ namespace benzin
                 }
                 case KeyCode::F1:
                 {
-                    ToggleUiSpawn();
+                    ToggleUiDraw();
                     break;
                 }
             }
@@ -174,40 +156,22 @@ namespace benzin
         event.m_IsHandled |= event.IsInCategory(EventCategoryFlag::Mouse) & io.WantCaptureMouse;
     }
 
-    void ImGuiManager::SpawnUi()
+    void ImGuiManager::DrawUi()
     {
         BenzinProfile();
 
-        if (!m_IsUiSpawnEnabled)
+        if (m_IsUiDrawEnabled)
         {
-            return;
+            DrawDockSpace();
         }
-
-        SpawnImGuiDockSpace([this]
-        {
-            SpawnImGuiManuBar();
-
-            if (m_IsImGuiDemoWindowVisible)
-            {
-                ImGui::ShowDemoWindow(&m_IsImGuiDemoWindowVisible);
-            }
-
-            for (auto* tool : m_Tools)
-            {
-                if (tool->m_IsVisible)
-                {
-                    tool->SpawnImGui();
-                }
-            };
-        });
     }
 
-    void ImGuiManager::PushSpawnImGuiMenuCallback(std::function<void()>&& callback)
+    void ImGuiManager::AddDrawMenuCallback(ImGui_DrawCallback&& callback)
     {
-        m_ImGuiSpawnMenuCallbacks.push_back(std::move(callback));
+        m_DrawMenuCallbacks.push_back(std::move(callback));
     }
 
-    void ImGuiManager::SpawnImGuiDockSpace(const std::function<void()>& callback)
+    void ImGuiManager::DrawDockSpace()
     {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -239,12 +203,30 @@ namespace benzin
             const ImGuiID dockspaceId = ImGui::GetID("BenzinDockSpace");
             ImGui::DockSpace(dockspaceId, ImVec2{ 0.0f, 0.0f }, ImGuiDockNodeFlags_None);
 
-            callback();
+            DrawDockSpaceContent();
         }
         ImGui::End();
     }
 
-    void ImGuiManager::SpawnImGuiManuBar()
+    void ImGuiManager::DrawDockSpaceContent()
+    {
+        DrawManuBar();
+
+        if (m_IsImGuiDemoWindowVisible)
+        {
+            ImGui::ShowDemoWindow(&m_IsImGuiDemoWindowVisible);
+        }
+
+        for (auto* tool : m_Tools)
+        {
+            if (tool->m_IsVisible)
+            {
+                tool->DrawWindow();
+            }
+        };
+    }
+
+    void ImGuiManager::DrawManuBar()
     {
         ImGui::BeginMenuBar();
         {
@@ -262,17 +244,17 @@ namespace benzin
                     ToggleImGuiDemoWindow();
                 }
 
-                if (ImGui::MenuItem("UiSpawn", "F1", m_IsUiSpawnEnabled))
+                if (ImGui::MenuItem("UiDraw", "F1", m_IsUiDrawEnabled))
                 {
-                    ToggleUiSpawn();
+                    ToggleUiDraw();
                 }
 
                 ImGui::EndMenu();
             }
 
-            for (const auto& spawnImGuiMenu : m_ImGuiSpawnMenuCallbacks)
+            for (const auto& drawMenuCallback : m_DrawMenuCallbacks)
             {
-                spawnImGuiMenu();
+                drawMenuCallback();
             }
         }
         ImGui::EndMenuBar();
@@ -283,9 +265,9 @@ namespace benzin
         m_IsImGuiDemoWindowVisible = !m_IsImGuiDemoWindowVisible;
     }
 
-    void ImGuiManager::ToggleUiSpawn()
+    void ImGuiManager::ToggleUiDraw()
     {
-        m_IsUiSpawnEnabled = !m_IsUiSpawnEnabled;
+        m_IsUiDrawEnabled = !m_IsUiDrawEnabled;
     }
 
     void ImGuiManager::SaveToolsVisiblity()

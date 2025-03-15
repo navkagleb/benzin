@@ -2,7 +2,8 @@
 
 using ImGui_DrawCallback = std::function<void()>;
 
-void ImGui_CollapsingHeaderWithIndent(std::string_view name, const ImGui_DrawCallback& callback, ImGuiTreeNodeFlags additionalFlags = ImGuiTreeNodeFlags_None);
+bool Imgui_MainCollapsingHeader(std::string_view name, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None);
+void ImGui_CollapsingHeaderWithIndent(std::string_view name, const ImGui_DrawCallback& callback, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None);
 
 template <typename T>
 static bool ImGui_SelectComboName(void* data, int index, const char** outName)

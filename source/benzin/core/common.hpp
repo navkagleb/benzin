@@ -82,6 +82,21 @@ namespace benzin
         const T m_Lambda;
     };
 
+    template <typename T>
+    std::string_view GetClassName()
+    {
+        std::string_view name = typeid(T).name();
+
+        // Removes namespace name
+        const size_t lastDoubleColonPosition = name.find_last_of("::");
+        if (lastDoubleColonPosition != std::string_view::npos)
+        {
+            name = name.substr(lastDoubleColonPosition + 1);
+        }
+
+        return name;
+    }
+
 }
 
 #define BenzinExecuteOnScopeExit(lambda) const benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }

@@ -205,7 +205,18 @@ namespace benzin
         m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
     }
 
-    void FlyCameraController::OnUpdate(std::chrono::microseconds dt)
+    bool FlyCameraController::OnRenderViewportResized(uint32_t width, uint32_t height)
+    {
+        if (auto* perspectiveProjection = GetPerspectiveProjection())
+        {
+            const float aspectRatio = (float)width / height;
+            perspectiveProjection->SetAspectRatio(aspectRatio);
+        }
+
+        return false;
+    }
+
+    void FlyCameraController::MoveCamera(std::chrono::microseconds dt)
     {
         UpdatePitchAndYawIfNeeded();
 
@@ -271,17 +282,6 @@ namespace benzin
         {
             m_Camera.SetPosition(updatedPosition);
         }
-    }
-
-    bool FlyCameraController::OnRenderViewportResized(uint32_t width, uint32_t height)
-    {
-        if (auto* perspectiveProjection = GetPerspectiveProjection())
-        {
-            const float aspectRatio = (float)width / height;
-            perspectiveProjection->SetAspectRatio(aspectRatio);
-        }
-
-        return false;
     }
 
     void FlyCameraController::RotateCamera(DirectX::XMINT2 mousePosition, DirectX::XMINT2 prevMousePosition)

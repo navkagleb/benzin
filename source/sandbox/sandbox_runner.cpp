@@ -8,7 +8,6 @@
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
-#include <benzin/graphics2/imgui_helpers.hpp>
 #include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
@@ -126,6 +125,148 @@ namespace sandbox
         }
     }
 
+    static void DrawGBufferSettings(GBufferSettings& settings)
+    {
+        ImGui::Checkbox("IsFrustumCullingEnabled", &settings.IsFrustumCullingEnabled);
+
+        ImGui_CollapsingHeaderWithIndent("Stats", [&settings]
+        {
+            // TODO: Move to global space
+            struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
+            {
+                char do_thousands_sep() const override { return '\''; }
+
+                std::string do_grouping() const override { return "\3"; }
+            };
+
+            static const std::locale customLocale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
+
+            std::locale::global(customLocale);
+            BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
+
+            const auto& stats = settings.Stats;
+
+            ImGui::Text(BenzinFormatData("MeshCount: {:L}", stats.MeshCount));
+            ImGui::Text(BenzinFormatData("RenderedMeshCount: {:L}", stats.RenderedMeshCount));
+            ImGui::Text(BenzinFormatData("RenderedTriangleCount: {:L}", stats.RenderedTriangleCount));
+        });
+    }
+
+    static void DrawRayTracingShadowsSettings(RayTracing_ShadowSettings& settings)
+    {
+        ImGui::Checkbox("IsEnabled###RayTracingShadows", &settings.IsEnabled);
+        ImGui::Checkbox("IsBlueNoiseUsed", &settings.IsBlueNoiseUsed);
+        ImGui::Checkbox("IsNoiseAnimated", &settings.IsNoiseAnimated);
+    }
+
+    static void DrawSigmaDenoiserSettings(SigmaDenoiserSettings& settings)
+    {
+        ImGui::Checkbox("IsEnabled###SigmaDenoiser", &settings.IsEnabled);
+        ImGui::DragFloat("PlaneDistanceSensitivity %", &settings.PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
+        ImGui::DragFloat("DisocclusionThreshold %", &settings.DisocclusionThreshold, 0.0001f, 0.0f, 0.2f);
+
+        ImGui::BeginDisabled(true);
+        ImGui::SliderInt("HistoryLength", (int*)&settings.HistoryLength, 0, settings.MaxHistoryLength, "%d", ImGuiSliderFlags_NoInput);
+        ImGui::EndDisabled();
+        ImGui::Text(BenzinFormatData("StabilizationStrength: {:.3f}", settings.StabilizationStrength));
+
+        ImGui::Separator();
+        ImGui::Checkbox("IsClearEnabled", &settings.IsClearEnabled);
+        ImGui::Checkbox("IsTileSmoothingeEnabled", &settings.IsTileSmoothingEnabled);
+        ImGui::Checkbox("IsPostBlurEnabled", &settings.IsPostBlurEnabled);
+        ImGui::Checkbox("IsTemporalStabilizationEnabled", &settings.IsTemporalStabilizationEnabled);
+    }
+
+    static void DrawToneMappingSettings(ToneMappingSettings& settings)
+    {
+        ImGui::PushItemWidth(120.0f);
+        BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
+
+        ImGui::Checkbox("IsToneMappingEnabled", &settings.IsToneMappingEnabled);
+
+        ImGui_CollapsingHeaderWithIndent("Luminance Histogram", [&settings]
+        {
+            auto& luminanceHistogram = settings.LuminanceHistogram;
+
+            if (ImGui::InputFloat("MinLogLuminance", &luminanceHistogram.MinLogLuminance))
+            {
+                luminanceHistogram.MinLogLuminance = std::clamp(
+                    luminanceHistogram.MinLogLuminance,
+                    luminanceHistogram.MinLogLuminance,
+                    luminanceHistogram.MaxLogLuminance
+                );
+            }
+
+            if (ImGui::InputFloat("MaxLogLuminance", &luminanceHistogram.MaxLogLuminance))
+            {
+                luminanceHistogram.MaxLogLuminance = std::clamp(
+                    luminanceHistogram.MaxLogLuminance,
+                    luminanceHistogram.MinLogLuminance,
+                    luminanceHistogram.MaxLogLuminance
+                );
+            }
+
+            ImGui::InputFloat("Tau", &luminanceHistogram.Tau);
+        });
+
+        ImGui_CollapsingHeaderWithIndent("PBR Camera", [&settings]
+        {
+            auto& pbrCamera = settings.PbrCamera;
+
+            ImGui::Checkbox("IsAutoExposureUsed", &settings.IsAutoExposureUsed);
+
+            ImGui::InputFloat("Aperture (in f-stops)", &pbrCamera.Aperture);
+            ImGui::InputFloat("Shutter Speed (in sec)", &pbrCamera.ShutterSpeed);
+            ImGui::InputFloat("Sensor sensitivity (in ISO)", &pbrCamera.Iso);
+        });
+
+        ImGui_CollapsingHeaderWithIndent("Tone Mapping", [&settings]
+        {
+            ImGui::Checkbox("IsAccurateGammaCorrectionUsed", &settings.IsAccurateGammaCorrectionUsed);
+
+            static const auto toneReproductionTransformNames = magic_enum::enum_names<joint::ToneReproductionTransform>();
+
+            ImGui::Combo(
+                "ToneReproductionTransform",
+                (int*)&settings.ToneReproductionTransform,
+                ImGui_SelectComboName<decltype(toneReproductionTransformNames)>,
+                (void*)&toneReproductionTransformNames,
+                (int)toneReproductionTransformNames.size()
+            );
+        });
+    }
+
+    static void DrawFullScreenDebug(FullScreenDebugSettings& settings)
+    {
+        ImGui::SliderInt("ViewDepthMipIndex", (int*)&settings.ViewDepthMipIndex, 0, 4);
+        ImGui::SliderFloat("MinViewDepth", &settings.MinViewDepth, 0.001f, 2.0f, "%.4f");
+        ImGui::SliderFloat("MaxViewDepth", &settings.MaxViewDepth, 0.001f, 30.0f);
+
+        static const auto debugOutputNames = magic_enum::enum_names<joint::DebugOutputType>();
+
+        ImGui::Combo(
+            "DebugOutputType",
+            (int*)&settings.DebugOutputType,
+            ImGui_SelectComboName<decltype(debugOutputNames)>,
+            (void*)debugOutputNames.data(),
+            (int)debugOutputNames.size()
+        );
+
+        const auto spawnButton = [&settings](joint::DebugOutputType type)
+        {
+            if (ImGui::Button(magic_enum::enum_name(type).data()))
+            {
+                settings.DebugOutputType = type;
+            }
+        };
+
+        spawnButton(joint::DebugOutputType::None);
+        ImGui::SameLine();
+        spawnButton(joint::DebugOutputType::SigmaSmoothTiles);
+        ImGui::SameLine();
+        spawnButton(joint::DebugOutputType::SigmaShadow);
+    }
+
     //
 
     SandboxRunner::SandboxRunner()
@@ -145,7 +286,6 @@ namespace sandbox
 
         // The order in which render passes are added is important
         BenzinAssert(m_RenderPasses.empty());
-
         m_RenderPasses.push_back(std::make_unique<TlasBuildingPass>(*m_Device, *m_RayTracingScene));
         m_RenderPasses.push_back(std::make_unique<GlobalConstantsPass>(*m_Device, *m_Scene));
         m_RenderPasses.push_back(std::make_unique<GeometryPass>(*m_Scene));
@@ -159,151 +299,12 @@ namespace sandbox
 
     void SandboxRunner::InitTools()
     {
-        BenzinLogTimeOnScopeExit("SandboxRunner::InitTools");
-
         BenzinAssert(m_RenderSettingsTool != nullptr);
-
-        m_RenderSettingsTool->RegisterSectionSpawnCallback<GBufferSettings>("GBuffer", true, [](GBufferSettings& settings)
-        {
-            ImGui::Checkbox("IsFrustumCullingEnabled", &settings.IsFrustumCullingEnabled);
-
-            ImGui_CollapsingHeaderWithIndent("Stats", [&settings]
-            {
-                // TODO: Move to global space
-                struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
-                {
-                    char do_thousands_sep() const override { return '\''; }
-
-                    std::string do_grouping() const override { return "\3"; }
-                };
-
-                static const std::locale customLocale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
-
-                std::locale::global(customLocale);
-                BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
-
-                const auto& stats = settings.Stats;
-
-                ImGui::Text(BenzinFormatData("MeshCount: {:L}", stats.MeshCount));
-                ImGui::Text(BenzinFormatData("RenderedMeshCount: {:L}", stats.RenderedMeshCount));
-                ImGui::Text(BenzinFormatData("RenderedTriangleCount: {:L}", stats.RenderedTriangleCount));
-            });
-        });
-
-        m_RenderSettingsTool->RegisterSectionSpawnCallback<RayTracing_ShadowSettings>("RayTracedShadows", true, [](RayTracing_ShadowSettings& settings)
-        {
-            ImGui::Checkbox("IsEnabled###RayTracingShadows", &settings.IsEnabled);
-            ImGui::Checkbox("IsBlueNoiseUsed", &settings.IsBlueNoiseUsed);
-            ImGui::Checkbox("IsNoiseAnimated", &settings.IsNoiseAnimated);
-        });
-
-        m_RenderSettingsTool->RegisterSectionSpawnCallback<SigmaDenoiserSettings>("SigmaDenoiser", true, [](SigmaDenoiserSettings& settings)
-        {
-            ImGui::Checkbox("IsEnabled###SigmaDenoiser", &settings.IsEnabled);
-            ImGui::DragFloat("PlaneDistanceSensitivity %", &settings.PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
-            ImGui::DragFloat("DisocclusionThreshold %", &settings.DisocclusionThreshold, 0.0001f, 0.0f, 0.2f);
-            
-            ImGui::BeginDisabled(true);
-            ImGui::SliderInt("HistoryLength", (int*)&settings.HistoryLength, 0, settings.MaxHistoryLength, "%d", ImGuiSliderFlags_NoInput);
-            ImGui::EndDisabled();
-            ImGui::Text(BenzinFormatData("StabilizationStrength: {:.3f}", settings.StabilizationStrength));
-
-            ImGui::Separator();
-            ImGui::Checkbox("IsClearEnabled", &settings.IsClearEnabled);
-            ImGui::Checkbox("IsTileSmoothingeEnabled", &settings.IsTileSmoothingEnabled);
-            ImGui::Checkbox("IsPostBlurEnabled", &settings.IsPostBlurEnabled);
-            ImGui::Checkbox("IsTemporalStabilizationEnabled", &settings.IsTemporalStabilizationEnabled);
-        });
-
-        m_RenderSettingsTool->RegisterSectionSpawnCallback<ToneMappingSettings>("ToneMapping", true, [](ToneMappingSettings& settings)
-        {
-            ImGui::PushItemWidth(120.0f);
-            BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
-
-            ImGui::Checkbox("IsToneMappingEnabled", &settings.IsToneMappingEnabled);
-
-            ImGui_CollapsingHeaderWithIndent("Luminance Histogram", [&settings]
-            {
-                auto& luminanceHistogram = settings.LuminanceHistogram;
-
-                if (ImGui::InputFloat("MinLogLuminance", &luminanceHistogram.MinLogLuminance))
-                {
-                    luminanceHistogram.MinLogLuminance = std::clamp(
-                        luminanceHistogram.MinLogLuminance,
-                        luminanceHistogram.MinLogLuminance,
-                        luminanceHistogram.MaxLogLuminance
-                    );
-                }
-
-                if (ImGui::InputFloat("MaxLogLuminance", &luminanceHistogram.MaxLogLuminance))
-                {
-                    luminanceHistogram.MaxLogLuminance = std::clamp(
-                        luminanceHistogram.MaxLogLuminance,
-                        luminanceHistogram.MinLogLuminance,
-                        luminanceHistogram.MaxLogLuminance
-                    );
-                }
-
-                ImGui::InputFloat("Tau", &luminanceHistogram.Tau);
-            });
-
-            ImGui_CollapsingHeaderWithIndent("PBR Camera", [&settings]
-            {
-                auto& pbrCamera = settings.PbrCamera;
-
-                ImGui::Checkbox("IsAutoExposureUsed", &settings.IsAutoExposureUsed);
-
-                ImGui::InputFloat("Aperture (in f-stops)", &pbrCamera.Aperture);
-                ImGui::InputFloat("Shutter Speed (in sec)", &pbrCamera.ShutterSpeed);
-                ImGui::InputFloat("Sensor sensitivity (in ISO)", &pbrCamera.Iso);
-            });
-
-            ImGui_CollapsingHeaderWithIndent("Tone Mapping", [&settings]
-            {
-                ImGui::Checkbox("IsAccurateGammaCorrectionUsed", &settings.IsAccurateGammaCorrectionUsed);
-
-                static const auto toneReproductionTransformNames = magic_enum::enum_names<joint::ToneReproductionTransform>();
-
-                ImGui::Combo(
-                    "ToneReproductionTransform",
-                    (int*)&settings.ToneReproductionTransform,
-                    ImGui_SelectComboName<decltype(toneReproductionTransformNames)>,
-                    (void*)&toneReproductionTransformNames,
-                    (int)toneReproductionTransformNames.size()
-                );
-            });
-        });
-
-        m_RenderSettingsTool->RegisterSectionSpawnCallback<FullScreenDebugSettings>("FullScreenDebug", false, [](FullScreenDebugSettings& settings)
-        {
-            ImGui::SliderInt("ViewDepthMipIndex", (int*)&settings.ViewDepthMipIndex, 0, 4);
-            ImGui::SliderFloat("MinViewDepth", &settings.MinViewDepth, 0.001f, 2.0f, "%.4f");
-            ImGui::SliderFloat("MaxViewDepth", &settings.MaxViewDepth, 0.001f, 30.0f);
-
-            static const auto debugOutputNames = magic_enum::enum_names<joint::DebugOutputType>();
-
-            ImGui::Combo(
-                "DebugOutputType",
-                (int*)&settings.DebugOutputType,
-                ImGui_SelectComboName<decltype(debugOutputNames)>,
-                (void*)debugOutputNames.data(),
-                (int)debugOutputNames.size()
-            );
-
-            const auto spawnButton = [&settings](joint::DebugOutputType type)
-            {
-                if (ImGui::Button(magic_enum::enum_name(type).data()))
-                {
-                    settings.DebugOutputType = type;
-                }
-            };
-
-            spawnButton(joint::DebugOutputType::None);
-            ImGui::SameLine();
-            spawnButton(joint::DebugOutputType::SigmaSmoothTiles);
-            ImGui::SameLine();
-            spawnButton(joint::DebugOutputType::SigmaShadow);
-        });
+        m_RenderSettingsTool->RegisterSectionDrawCallback<GBufferSettings>(DrawGBufferSettings, ImGuiTreeNodeFlags_DefaultOpen);
+        m_RenderSettingsTool->RegisterSectionDrawCallback<RayTracing_ShadowSettings>(DrawRayTracingShadowsSettings, ImGuiTreeNodeFlags_DefaultOpen);
+        m_RenderSettingsTool->RegisterSectionDrawCallback<SigmaDenoiserSettings>(DrawSigmaDenoiserSettings, ImGuiTreeNodeFlags_DefaultOpen);
+        m_RenderSettingsTool->RegisterSectionDrawCallback<ToneMappingSettings>(DrawToneMappingSettings, ImGuiTreeNodeFlags_DefaultOpen);
+        m_RenderSettingsTool->RegisterSectionDrawCallback<FullScreenDebugSettings>(DrawFullScreenDebug, ImGuiTreeNodeFlags_None);
     }
 
     void SandboxRunner::InitCamera()
@@ -318,6 +319,8 @@ namespace sandbox
 
     void SandboxRunner::InitSceneEntities()
     {
+        BenzinLogTimeOnScopeExit("SandboxRunner::InitSceneEntities");
+
         std::array<benzin::MeshResource, magic_enum::enum_count<Mesh>()> meshResources{};
         LoadMeshes(meshResources);
 

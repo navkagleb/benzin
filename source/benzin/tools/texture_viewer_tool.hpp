@@ -17,7 +17,8 @@ namespace benzin
 
     private:
         void OnEvent(Event& event) override;
-        void SpawnImGui() override;
+        void DrawWindow() override;
+        void DrawWindowContent() override;
 
         bool OnKeyPressedEvent(const KeyPressedEvent& event);
         bool OnMouseMovedEvent(const MouseMovedEvent& event);

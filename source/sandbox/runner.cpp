@@ -81,14 +81,14 @@ namespace sandbox
             m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderResources);
             m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Backend, *m_Device, *m_ShaderManager, *m_RenderViewportTool);
 
-            m_ImGuiManager->PushTool<benzin::FlyCameraTool>(m_RenderViewportTool->GetFlyCameraController());
+            m_ImGuiManager->PushTool<benzin::FlyCameraTool>(*m_RenderViewportTool);
             m_ImGuiManager->PushTool<benzin::GpuInfoTool>(*m_Backend);
             m_ImGuiManager->PushTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
             m_ImGuiManager->PushTool<benzin::ProfilerTool>();
             m_ImGuiManager->PushTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
             m_ImGuiManager->PushTool<benzin::SceneTool>(*m_Scene);
 
-            m_ImGuiManager->PushSpawnImGuiMenuCallback([this]
+            m_ImGuiManager->AddDrawMenuCallback([this]
             {
                 if (ImGui::BeginMenu("Runner"))
                 {
@@ -317,7 +317,7 @@ namespace sandbox
 
         m_FpsCounter.TickFrame(m_FrameTimer);
 
-        m_RenderViewportTool->GetFlyCameraController().OnUpdate(m_FrameTimer.GetDeltaTime());
+        m_RenderViewportTool->MoveCamera(m_FrameTimer.GetDeltaTime());
         m_Scene->OnUpdate();
 
         RunImGuiFrame();
@@ -355,7 +355,7 @@ namespace sandbox
         BenzinProfile();
 
         m_ImGuiManager->BeginUiFrame();
-        m_ImGuiManager->SpawnUi();
+        m_ImGuiManager->DrawUi();
         m_ImGuiManager->EndUiFrame();
     }
 

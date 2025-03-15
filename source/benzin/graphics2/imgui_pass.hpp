@@ -2,7 +2,8 @@
 
 #include <shaders/joint/imgui_resources.hpp>
 
-#include "benzin/graphics2/render_pass.hpp"
+#include <benzin/graphics2/render_pass.hpp>
+#include <benzin/graphics2/imgui_helpers.hpp>
 
 namespace benzin
 {
@@ -23,12 +24,12 @@ namespace benzin
 
     public:
         virtual void OnEvent(Event& event) { BenzinUnused(event); };
-        virtual void SpawnImGui() = 0;
+        virtual void DrawWindow();
 
     protected:
-        void SpawnImGuiWindow(const std::function<void()>& callback);
-        void SpawnImGuiWindow(ImGuiWindowFlags flags, const std::function<void()>& callback);
-        bool SpawnImGuiCollapsingHeader(std::string_view name, bool isOpenByDefault = true) const; // TODO: Move to imgui_helpers.hpp
+        virtual void DrawWindowContent() = 0;
+
+        void DrawWindow(ImGuiWindowFlags flags);
 
     protected:
         static inline const Window* ms_Window = nullptr;
@@ -52,7 +53,7 @@ namespace benzin
         void EndUiFrame() const;
 
         void OnEvent(Event& event);
-        void SpawnUi();
+        void DrawUi();
 
         template <std::derived_from<ImGuiTool> T, typename... Args>
         T* PushTool(Args&&... args)
@@ -66,16 +67,17 @@ namespace benzin
             return tool;
         }
 
-        void PushSpawnImGuiMenuCallback(std::function<void()>&& callback);
+        void AddDrawMenuCallback(ImGui_DrawCallback&& callback);
 
     private:
         const ImDrawData& GetImDrawData() const { BenzinAssert(m_CurrentImGuiDrawData != nullptr); return *m_CurrentImGuiDrawData; }
 
-        void SpawnImGuiDockSpace(const std::function<void()>& callback);
-        void SpawnImGuiManuBar();
+        void DrawDockSpace();
+        void DrawDockSpaceContent();
+        void DrawManuBar();
 
         void ToggleImGuiDemoWindow();
-        void ToggleUiSpawn();
+        void ToggleUiDraw();
 
         void SaveToolsVisiblity();
         void LoadToolsVisiblity();
@@ -86,10 +88,10 @@ namespace benzin
         std::unordered_map<std::string, bool> m_IsToolVisibleMap; // TODO: can std::string_view be used instead of std::string
 
         std::vector<ImGuiTool*> m_Tools;
-        std::vector<std::function<void()>> m_ImGuiSpawnMenuCallbacks;
+        std::vector<ImGui_DrawCallback> m_DrawMenuCallbacks;
 
         bool m_IsImGuiDemoWindowVisible = false;
-        bool m_IsUiSpawnEnabled = true;
+        bool m_IsUiDrawEnabled = true;
 
         mutable ImDrawData* m_CurrentImGuiDrawData = nullptr;
     };

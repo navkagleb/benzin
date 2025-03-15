@@ -11,20 +11,10 @@
 #include "benzin/tools/render_viewport_tool.hpp"
 #include "benzin/utility/time_utils.hpp"
 
+BenzinEnableUnaryPlusForEnum(benzin::PerformanceOverlayTool::OverlayLocation);
+
 namespace benzin
 {
-
-    enum class OverlayLocation : int8_t
-    {
-        Custom = -1,
-        TopLeft = 0,
-        TopRight,
-        BottomLeft,
-        BottomRight,
-    };
-    BenzinEnableUnaryPlusForEnum(OverlayLocation);
-
-    //
 
     PerformanceOverlayTool::PerformanceOverlayTool(
         const Window& window,
@@ -47,17 +37,15 @@ namespace benzin
         m_FrameDeltaTimeMs = dt;
     }
 
-    void PerformanceOverlayTool::SpawnImGui()
+    void PerformanceOverlayTool::DrawWindow()
     {
         static constexpr auto backgroundColors = std::to_array(
         {
             IM_COL32(200, 50, 0, 255),
             IM_COL32(184, 100, 0, 255),
         });
-
-        static auto location = OverlayLocation::BottomLeft;
         
-        auto windowFlags =
+        ImGuiWindowFlags windowFlags =
             ImGuiWindowFlags_NoDecoration |
             ImGuiWindowFlags_NoDocking |
             ImGuiWindowFlags_AlwaysAutoResize |
@@ -65,7 +53,7 @@ namespace benzin
             ImGuiWindowFlags_NoFocusOnAppearing |
             ImGuiWindowFlags_NoNav;
 
-        if (location != OverlayLocation::Custom)
+        if (m_Location != OverlayLocation::Custom)
         {
             const float padding = 10.0f;
 
@@ -75,14 +63,14 @@ namespace benzin
 
             const ImVec2 windowPosition
             {
-                IsEvenQuickly(+location) ? workPosition.x + padding : workPosition.x + workSize.x - padding,
-                IsDividedBy2Quickly(+location) ? workPosition.y + padding : workPosition.y + workSize.y - padding,
+                IsEvenQuickly(+m_Location) ? workPosition.x + padding : workPosition.x + workSize.x - padding,
+                IsDividedBy2Quickly(+m_Location) ? workPosition.y + padding : workPosition.y + workSize.y - padding,
             };
 
             const ImVec2 windowPositionPivot
             {
-                IsEvenQuickly(+location) ? 0.0f : 1.0f,
-                IsDividedBy2Quickly(+location) ? 0.0f : 1.0f,
+                IsEvenQuickly(+m_Location) ? 0.0f : 1.0f,
+                IsDividedBy2Quickly(+m_Location) ? 0.0f : 1.0f,
             };
 
             ImGui::SetNextWindowPos(windowPosition, ImGuiCond_Always, windowPositionPivot);
@@ -93,61 +81,61 @@ namespace benzin
 
         ImGui::SetNextWindowBgAlpha(0.7f);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, backgroundColors[m_ShaderManager.IsEachShaderGood()]);
-
-        SpawnImGuiWindow(windowFlags, [this]
-        {
-            const AdapterMemoryInfo adapterMemoryInfo = m_Backend.GetMainAdapterMemoryInfo();
-
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0.0f, 0.0f });
-
-            ImGui::Text(BenzinFormatData("Window: {} x {}", m_Window.GetWidth(), m_Window.GetHeight()));
-            ImGui::Text(BenzinFormatData("Viewport: {} x {} {}", m_RenderViewportTool.GetWidth(), m_RenderViewportTool.GetHeight(), m_RenderViewportTool.IsValidForRendering() ? '+' : '-'));
-            ImGui::Text(BenzinFormatData("{}", m_Backend.GetMainAdapterInfo().Name));
-            ImGui::Text(BenzinFormatData("Fps: {:.1f} ({:.3f} ms)", m_FrameRate, m_FrameDeltaTimeMs));
-            ImGui::Text(BenzinFormatData("Cpu: {}, Gpu: {}, Frame: {}", m_Device.GetCpuFrameIndex(), m_Device.GetCompletedGpuFrameIndex(), m_Device.GetActiveFrameIndex()));
-            ImGui::Text(BenzinFormatData("FrameDelay: {}", m_Device.GetCpuFrameIndex() - m_Device.GetCompletedGpuFrameIndex()));
-            ImGui::Text(BenzinFormatData("VRAM: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedVram.GetMb(), adapterMemoryInfo.VramOsBudget.GetMb()));
-            ImGui::Text(BenzinFormatData("Shared RAM: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb(), adapterMemoryInfo.SharedRamOsBudget.GetMb()));
-
-            if (CommandLineArgs::GetBool("IsGpuValidationEnabled"))
-            {
-                ImGui::Text("!!! GPU Validation ENABLED");
-            }
-
-            if (CommandLineArgs::GetBool("IsSynchronizedCommandQueueValidationEnabled"))
-            {
-                ImGui::Text("!!! Debug Sync Queue ENABLED");
-            }
-
-            ImGui::PopStyleVar();
-
-            if (ImGui::BeginPopupContextWindow())
-            {
-                const auto spawnMenuItem = [&](OverlayLocation selectedLocation)
-                {
-                    const auto name = magic_enum::enum_name(selectedLocation);
-                    if (ImGui::MenuItem(name.data(), nullptr, location == selectedLocation))
-                    {
-                        location = selectedLocation;
-                    }
-                };
-
-                spawnMenuItem(OverlayLocation::Custom);
-                spawnMenuItem(OverlayLocation::TopLeft);
-                spawnMenuItem(OverlayLocation::TopRight);
-                spawnMenuItem(OverlayLocation::BottomLeft);
-                spawnMenuItem(OverlayLocation::BottomRight);
-
-                if (ImGui::MenuItem("Close"))
-                {
-                    m_IsVisible = false;
-                }
-
-                ImGui::EndPopup();
-            }
-        });
-
+        ImGuiTool::DrawWindow(windowFlags);
         ImGui::PopStyleColor();
+    }
+
+    void PerformanceOverlayTool::DrawWindowContent()
+    {
+        const AdapterMemoryInfo adapterMemoryInfo = m_Backend.GetMainAdapterMemoryInfo();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0.0f, 0.0f });
+
+        ImGui::Text(BenzinFormatData("Window: {} x {}", m_Window.GetWidth(), m_Window.GetHeight()));
+        ImGui::Text(BenzinFormatData("Viewport: {} x {} {}", m_RenderViewportTool.GetWidth(), m_RenderViewportTool.GetHeight(), m_RenderViewportTool.IsValidForRendering() ? '+' : '-'));
+        ImGui::Text(BenzinFormatData("{}", m_Backend.GetMainAdapterInfo().Name));
+        ImGui::Text(BenzinFormatData("Fps: {:.1f} ({:.3f} ms)", m_FrameRate, m_FrameDeltaTimeMs));
+        ImGui::Text(BenzinFormatData("Cpu: {}, Gpu: {}, Frame: {}", m_Device.GetCpuFrameIndex(), m_Device.GetCompletedGpuFrameIndex(), m_Device.GetActiveFrameIndex()));
+        ImGui::Text(BenzinFormatData("FrameDelay: {}", m_Device.GetCpuFrameIndex() - m_Device.GetCompletedGpuFrameIndex()));
+        ImGui::Text(BenzinFormatData("Local VRAM: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedVram.GetMb(), adapterMemoryInfo.VramOsBudget.GetMb()));
+        ImGui::Text(BenzinFormatData("Host RAM: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb(), adapterMemoryInfo.SharedRamOsBudget.GetMb()));
+
+        if (CommandLineArgs::GetBool("IsGpuValidationEnabled"))
+        {
+            ImGui::Text("!!! GPU Validation ENABLED");
+        }
+
+        if (CommandLineArgs::GetBool("IsSynchronizedCommandQueueValidationEnabled"))
+        {
+            ImGui::Text("!!! Debug Sync Queue ENABLED");
+        }
+
+        ImGui::PopStyleVar();
+
+        if (ImGui::BeginPopupContextWindow())
+        {
+            const auto spawnMenuItem = [&](OverlayLocation selectedLocation)
+            {
+                const auto name = magic_enum::enum_name(selectedLocation);
+                if (ImGui::MenuItem(name.data(), nullptr, m_Location == selectedLocation))
+                {
+                    m_Location = selectedLocation;
+                }
+            };
+
+            spawnMenuItem(OverlayLocation::Custom);
+            spawnMenuItem(OverlayLocation::TopLeft);
+            spawnMenuItem(OverlayLocation::TopRight);
+            spawnMenuItem(OverlayLocation::BottomLeft);
+            spawnMenuItem(OverlayLocation::BottomRight);
+
+            if (ImGui::MenuItem("Close"))
+            {
+                m_IsVisible = false;
+            }
+
+            ImGui::EndPopup();
+        }
     }
 
 }

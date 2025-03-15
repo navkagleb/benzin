@@ -16,6 +16,8 @@ namespace benzin
         const auto* GetBuffer() const { return m_Buffer.get(); }
         const auto* GetScratchResource() const { return m_ScratchResource.get(); }
 
+        bool IsAllocated() const { return m_Buffer.get() != nullptr && m_ScratchResource.get() != nullptr; }
+
         uint64_t GetGpuVirtualAddress() const;
 
     protected:
@@ -68,6 +70,8 @@ namespace benzin
 
         RayTracing_Tlas() = default;
         RayTracing_Tlas(RayTracing_Tlas&& other) noexcept;
+
+        auto* GetInstanceBuffer() const { return m_InstanceBuffer.get(); }
 
         void AddInstance(const Instance& instance);
         void ResetInstances(uint32_t reservedInstanceCount = 0);

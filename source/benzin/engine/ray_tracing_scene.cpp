@@ -41,7 +41,7 @@ namespace benzin
     {
         BenzinLogTimeOnScopeExit("RayTracing_Scene::BuildBlases");
 
-        std::unique_ptr<benzin::Buffer> localTransformBuffer;
+        std::unique_ptr<benzin::Buffer> localTransformBuffer; // Must live until CreateBlases works
         ProcessMeshes(localTransformBuffer);
         CreateBlases();
     }
@@ -100,7 +100,7 @@ namespace benzin
 
             auto& blas = m_Scene.m_MeshRegistry.emplace<RayTracing_Blas>(meshHandle, (uint32_t)mesh.SubMeshInstances.size());
 
-            auto& blasStats = m_BlasStats.emplace_back();
+            auto& blasStats = m_BlasesStats.emplace_back();
             blasStats.DebugName = m_Scene.m_MeshRegistry.get<std::string>(meshHandle);
             blasStats.TriangleCountPerMesh.reserve(mesh.SubMeshInstances.size());
 
@@ -138,8 +138,6 @@ namespace benzin
     void RayTracing_Scene::CreateBlases()
     {
         BenzinLogTimeOnScopeExit("RayTracing_Scene::CreateBlases");
-
-        // TODO: Remove dependece from command list
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
 

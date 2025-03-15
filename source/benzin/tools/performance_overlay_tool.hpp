@@ -25,9 +25,19 @@ namespace benzin
         void SetFrameRateStats(float frameRate, float dt);
 
     private:
-        void SpawnImGui() override;
+        void DrawWindow() override;
+        void DrawWindowContent() override;
 
     private:
+        enum class OverlayLocation : int8_t
+        {
+            Custom = -1,
+            TopLeft = 0,
+            TopRight,
+            BottomLeft,
+            BottomRight,
+        };
+
         const Window& m_Window;
         const Backend& m_Backend;
         const Device& m_Device;
@@ -36,6 +46,8 @@ namespace benzin
 
         float m_FrameRate = 0.0f;
         float m_FrameDeltaTimeMs = 0.0f;
+
+        OverlayLocation m_Location = OverlayLocation::BottomLeft;
     };
 
 }

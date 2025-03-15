@@ -4,9 +4,7 @@
 
 namespace benzin
 {
-
     struct MeshResource;
-
 }
 
 namespace sandbox

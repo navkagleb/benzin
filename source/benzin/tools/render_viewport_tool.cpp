@@ -17,6 +17,14 @@ namespace benzin
         , m_FlyCameraController{ camera }
     {}
 
+    void RenderViewportTool::MoveCamera(std::chrono::microseconds dt)
+    {
+        if (m_IsViewportHovered && m_IsViewportActive)
+        {
+            m_FlyCameraController.MoveCamera(dt);
+        }
+    }
+
     void RenderViewportTool::OnEvent(Event& event)
     {
         if (!m_IsViewportHovered || !m_IsViewportActive)
@@ -30,33 +38,33 @@ namespace benzin
         dispatcher.ForceDispatch<MouseScrolledEvent>(&RenderViewportTool::OnMouseScrolledEvent, this);
     }
 
-    void RenderViewportTool::SpawnImGui()
+    void RenderViewportTool::DrawWindow()
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
+        ImGuiTool::DrawWindow();
+        ImGui::PopStyleVar();
+    }
 
-        SpawnImGuiWindow([this]
+    void RenderViewportTool::DrawWindowContent()
+    {
+        UpdateImGuiDimensions();
+
+        if (!m_Resources.IsCreated(TextureId::Final))
         {
-            UpdateImGuiDimensions();
+            return;
+        }
 
-            if (!m_Resources.IsCreated(TextureId::Final))
-            {
-                return;
-            }
+        const auto& finalTexture = m_Resources.Get(TextureId::Final);
+        const auto imTextureId = ImGuiPass::PackImTextureId(finalTexture.GetSrv(), joint::ImGuiSamplerIndex::Point);
 
-            const auto& finalTexture = m_Resources.Get(TextureId::Final);
-            const auto imTextureId = ImGuiPass::PackImTextureId(finalTexture.GetSrv(), joint::ImGuiSamplerIndex::Point);
-
-            ImGui::Image(imTextureId, ImVec2
-            {
-                (float)finalTexture.GetWidth(),
-                (float)finalTexture.GetHeight(),
-            });
-
-            m_IsViewportHovered = ImGui::IsItemHovered();
-            m_IsViewportActive = true; // TODO: ImGui::IsWindowFocused don't work
+        ImGui::Image(imTextureId, ImVec2
+        {
+            (float)finalTexture.GetWidth(),
+            (float)finalTexture.GetHeight(),
         });
 
-        ImGui::PopStyleVar();
+        m_IsViewportHovered = ImGui::IsItemHovered();
+        m_IsViewportActive = true; // TODO: ImGui::IsWindowFocused don't work
     }
 
     void RenderViewportTool::UpdateImGuiDimensions()

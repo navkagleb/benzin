@@ -14,10 +14,11 @@ namespace benzin
         SceneStatsTool(const Scene& scene, const RayTracing_Scene& rayTracingScene);
 
     private:
-        void SpawnImGui() override;
+        void DrawWindowContent() override;
 
-        void SpawnSceneStats() const;
-        void SpawnRayTracingSceneStats() const;
+        void DrawSceneStats() const;
+        void DrawRayTracingAccelerationStructuresStats() const;
+        void DrawRayTracingSceneStats() const;
 
     private:
         const Scene& m_Scene;

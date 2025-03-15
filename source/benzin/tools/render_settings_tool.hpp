@@ -9,33 +9,33 @@ namespace benzin
     {
     public:
         template <typename T>
-        using SettingsSpawnCallback = std::function<void(T& settings)>;
+        using SettingsDrawCallback = std::function<void(T& settings)>;
 
         RenderSettingsTool(RenderSettings& renderSettings);
 
         template <typename T>
-        void RegisterSectionSpawnCallback(std::string_view name, bool isOpenByDefault, const SettingsSpawnCallback<T>& spawnCallback)
+        void RegisterSectionDrawCallback(const SettingsDrawCallback<T>& drawCallback, ImGuiTreeNodeFlags flags)
         {
             m_SectionInfos.push_back(SectionInfo
             {
-                .TitleName = name,
-                .IsOpenByDefault = isOpenByDefault,
-                .SpawnCallback = [this, spawnCallback]
+                .TitleName = GetClassName<T>(),
+                .Flags = flags,
+                .DrawCallback = [this, drawCallback]
                 {
-                    spawnCallback(m_RenderSettings.GetSection<T>());
+                    drawCallback(m_RenderSettings.GetSection<T>());
                 },
             });
         }
 
     private:
-        void SpawnImGui() override;
+        void DrawWindowContent() override;
 
     private:
         struct SectionInfo
         {
             std::string_view TitleName;
-            bool IsOpenByDefault = false;
-            std::function<void()> SpawnCallback;
+            ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_None;
+            ImGui_DrawCallback DrawCallback;
         };
 
         RenderSettings& m_RenderSettings;

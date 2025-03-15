@@ -141,15 +141,13 @@ namespace benzin
 
         explicit FlyCameraController(Camera& camera);
 
-    public:
+    private:
         void SetCameraTranslationSpeed(float speed) { m_CameraTranslationSpeed = speed; }
         void SetCameraPitchYaw(float pitch, float yaw);
 
-        void OnUpdate(std::chrono::microseconds dt);
-
         bool OnRenderViewportResized(uint32_t width, uint32_t height);
-    
-    private:
+
+        void MoveCamera(std::chrono::microseconds dt);
         void RotateCamera(DirectX::XMINT2 mousePosition, DirectX::XMINT2 prevMousePosition);
         void IncrementFov(float direction);
 

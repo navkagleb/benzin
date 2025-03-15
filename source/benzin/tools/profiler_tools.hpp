@@ -18,7 +18,8 @@ namespace benzin
         virtual std::span<const ProfileEvent> GetSortedEvents() const = 0;
 
     private:
-        void SpawnImGui() override;
+        void DrawWindow() override;
+        void DrawWindowContent() override;
 
     private:
         IntervalTimer m_IntervalTimer;

@@ -2,12 +2,12 @@
 #include "benzin/tools/fly_camera_tool.hpp"
 
 #include "benzin/core/engine_math.hpp"
-#include "benzin/engine/camera.hpp"
+#include "benzin/tools/render_viewport_tool.hpp"
 
 namespace benzin
 {
 
-    static void RenderImGuiMatrix4x4(const DirectX::XMMATRIX& matrix)
+    static void DrawMatrix4x4(const DirectX::XMMATRIX& matrix)
     {
         constexpr uint32_t matrixSize = 4;
 
@@ -34,39 +34,36 @@ namespace benzin
 
     //
 
-    FlyCameraTool::FlyCameraTool(FlyCameraController& controller)
+    FlyCameraTool::FlyCameraTool(RenderViewportTool& renderViewportTool)
         : ImGuiTool{ "FlyCameraTool" }
-        , m_Controller{ controller }
+        , m_Controller{ renderViewportTool.m_FlyCameraController }
     {}
 
-    void FlyCameraTool::SpawnImGui()
+    void FlyCameraTool::DrawWindowContent()
     {
-        SpawnImGuiWindow([this]
+        if (Imgui_MainCollapsingHeader("Controller Props"))
         {
-            if (SpawnImGuiCollapsingHeader("Controller Props"))
-            {
-                RenderImGuiControllerProperties();
-            }
+            DrawControllerProperties();
+        }
             
-            if (SpawnImGuiCollapsingHeader("View Props"))
-            {
-                RenderImGuiViewProperties();
-            }
+        if (Imgui_MainCollapsingHeader("View Props"))
+        {
+            DrawViewProperties();
+        }
             
-            if (SpawnImGuiCollapsingHeader("Projection Props"))
-            {
-                RenderImGuiProjectionProperties();
-            }
-        });
+        if (Imgui_MainCollapsingHeader("Projection Props"))
+        {
+            DrawProjectionProperties();
+        }
     }
 
-    void FlyCameraTool::RenderImGuiControllerProperties()
+    void FlyCameraTool::DrawControllerProperties()
     {
         ImGui::SliderFloat("CameraTranslationSpeed", &m_Controller.m_CameraTranslationSpeed, 0.001f, 0.03f);
         ImGui::SliderFloat("MouseSensitivity", &m_Controller.m_MouseSensitivity, 0.001f, 0.007f, "%.3f");
     }
 
-    void FlyCameraTool::RenderImGuiViewProperties()
+    void FlyCameraTool::DrawViewProperties()
     {
         auto& camera = m_Controller.m_Camera;
 
@@ -98,10 +95,10 @@ namespace benzin
 
         ImGui::Separator();
         ImGui::Text("WorldToViewMatrix");
-        RenderImGuiMatrix4x4(camera.GetWorldToViewMatrix());
+        DrawMatrix4x4(camera.GetWorldToViewMatrix());
     }
 
-    void FlyCameraTool::RenderImGuiProjectionProperties()
+    void FlyCameraTool::DrawProjectionProperties()
     {
         auto& camera = m_Controller.m_Camera;
         auto* perspectiveProjection = m_Controller.GetPerspectiveProjection();
@@ -123,7 +120,7 @@ namespace benzin
 
             ImGui::Separator();
             ImGui::Text("ViewToClipMatrix");
-            RenderImGuiMatrix4x4(camera.GetViewToClipMatrix());
+            DrawMatrix4x4(camera.GetViewToClipMatrix());
         }
     }
 

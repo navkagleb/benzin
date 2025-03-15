@@ -2,7 +2,6 @@
 #include <benzin/tools/gpu_info_tool.hpp>
 
 #include <benzin/graphics/backend.hpp>
-#include <benzin/graphics2/imgui_helpers.hpp>
 
 namespace benzin
 {
@@ -52,24 +51,21 @@ namespace benzin
         , m_Backend{ backend }
     {}
 
-    void GpuInfoTool::SpawnImGui()
+    void GpuInfoTool::DrawWindowContent()
     {
-        SpawnImGuiWindow([this]
+        const uint32_t adapterCount = m_Backend.GetAdapterCount();
+
+        for (uint32_t i = 0; i < adapterCount; ++i)
         {
-            const uint32_t adapterCount = m_Backend.GetAdapterCount();
+            const AdapterInfo& info = m_Backend.GetAdapterInfo(i);
+            const AdapterMemoryInfo memoryInfo = m_Backend.GetAdapterMemoryInfo(i);
 
-            for (uint32_t i = 0; i < adapterCount; ++i)
-            {
-                const AdapterInfo& info = m_Backend.GetAdapterInfo(i);
-                const AdapterMemoryInfo memoryInfo = m_Backend.GetAdapterMemoryInfo(i);
-
-                ImGui_CollapsingHeaderWithIndent(
-                    info.Name,
-                    [&info, &memoryInfo] { DrawGpuInfo(info, memoryInfo); },
-                    m_Backend.GetMainAdapterIndex() == i ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None
-                );
-            }
-        });
+            ImGui_CollapsingHeaderWithIndent(
+                info.Name,
+                [&info, &memoryInfo] { DrawGpuInfo(info, memoryInfo); },
+                m_Backend.GetMainAdapterIndex() == i ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None
+            );
+        }
     }
 
 

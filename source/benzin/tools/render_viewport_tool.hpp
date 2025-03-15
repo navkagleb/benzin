@@ -14,10 +14,9 @@ namespace benzin
     {
     public:
         friend class FlyCameraController;
+        friend class FlyCameraTool;
 
         RenderViewportTool(RenderResources& resources, Camera& camera);
-
-        auto& GetFlyCameraController() { return m_FlyCameraController; }
 
         uint32_t GetWidth() const { return (uint32_t)m_ViewportSize.x; }
         uint32_t GetHeight() const { return (uint32_t)m_ViewportSize.y; }
@@ -25,9 +24,12 @@ namespace benzin
         bool IsViewportSizeRelevant() const { return m_IsViewportSizeRelevant; }
         bool IsValidForRendering() const { return m_IsViewportSizeRelevant && m_IsVisible; }
 
+        void MoveCamera(std::chrono::microseconds dt);
+
     private:
         void OnEvent(Event& event) override;
-        void SpawnImGui() override;
+        void DrawWindow() override;
+        void DrawWindowContent() override;
 
         void UpdateImGuiDimensions();
 

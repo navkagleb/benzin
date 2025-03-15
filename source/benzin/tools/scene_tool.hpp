@@ -13,10 +13,10 @@ namespace benzin
         explicit SceneTool(Scene& scene);
 
     private:
-        void SpawnImGui() override;
+        void DrawWindowContent() override;
 
-        void SpawnSun();
-        void SpawnSphericalLights();
+        void DrawSun();
+        void DrawSphericalLights();
 
     private:
         Scene& m_Scene;

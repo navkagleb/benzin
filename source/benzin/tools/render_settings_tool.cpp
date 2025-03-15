@@ -9,19 +9,16 @@ namespace benzin
         , m_RenderSettings{ renderSettings }
     {}
 
-    void RenderSettingsTool::SpawnImGui()
+    void RenderSettingsTool::DrawWindowContent()
     {
-        SpawnImGuiWindow([this]
+        for (const auto& sectionInfo : m_SectionInfos)
         {
-            for (const auto& sectionInfo : m_SectionInfos)
+            if (Imgui_MainCollapsingHeader(sectionInfo.TitleName, sectionInfo.Flags))
             {
-                if (SpawnImGuiCollapsingHeader(sectionInfo.TitleName, sectionInfo.IsOpenByDefault))
-                {
-                    BenzinAssert(sectionInfo.SpawnCallback);
-                    sectionInfo.SpawnCallback();
-                }
+                BenzinAssert(sectionInfo.DrawCallback);
+                sectionInfo.DrawCallback();
             }
-        });
+        }
     }
 
 }
