@@ -6,12 +6,12 @@
 #include "joint/mesh_types.hpp"
 #include "space_convertions.hlsli"
 
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshTransform>, g_MeshTransforms, joint::Rc_Geometry::MeshTransforms);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_MeshVertices, joint::Rc_Geometry::MeshVertices);
-BenzinDeclareRootResource(StructuredBuffer<uint>, g_MeshIndices, joint::Rc_Geometry::MeshIndices);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshInfo>, g_SubMeshInfos, joint::Rc_Geometry::SubMeshInfos);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshInstance>, g_SubMeshInstances, joint::Rc_Geometry::SubMeshInstances);
-BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::Rc_Geometry::Materials);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshTransform>, g_MeshTransforms, joint::GeometryResources::MeshTransforms);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_MeshVertices, joint::GeometryResources::MeshVertices);
+BenzinDeclareRootResource(StructuredBuffer<uint>, g_MeshIndices, joint::GeometryResources::MeshIndices);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshInfo>, g_SubMeshInfos, joint::GeometryResources::SubMeshInfos);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshInstance>, g_SubMeshInstances, joint::GeometryResources::SubMeshInstances);
+BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::GeometryResources::Materials);
 
 float3 ExpandNormal(float2 xyNormal)
 {
@@ -57,7 +57,7 @@ float3x3 GetTBNBasis(float3 position, float3 normal, float2 uv)
 
 joint::MeshInstance GetMeshInstance()
 {
-    return g_SubMeshInstances[BenzinGetRootConstant(joint::Rc_Geometry::SubMeshInstanceIndex)];
+    return g_SubMeshInstances[BenzinGetRootConstant(joint::GeometryResources::SubMeshInstanceIndex)];
 }
 
 joint::MeshVertex GetMeshVertex(uint indexIndex, uint subMeshIndex)
@@ -84,7 +84,7 @@ VsOutput VsMain(uint indexIndex : SV_VertexID)
 {
     const joint::MeshInstance meshInstance = GetMeshInstance();
     const joint::MeshVertex vertex = GetMeshVertex(indexIndex, meshInstance.SubMeshIndex);
-    const joint::MeshTransform transform = g_MeshTransforms[BenzinGetRootConstant(joint::Rc_Geometry::MeshTransformIndex)];
+    const joint::MeshTransform transform = g_MeshTransforms[BenzinGetRootConstant(joint::GeometryResources::MeshTransformIndex)];
 
     const joint::CameraConsts camera = g_FrameConstants.Camera;
 

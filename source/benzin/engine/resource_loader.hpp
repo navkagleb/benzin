@@ -2,10 +2,8 @@
 
 namespace joint
 {
-
     struct Material;
     struct MeshInstance;
-
 }
 
 namespace benzin
@@ -34,6 +32,8 @@ namespace benzin
 
         std::vector<TextureImage> TextureImages;
         std::vector<joint::Material> Materials;
+
+        bool IsIndexOrderClockwise = true;
     };
 
     bool LoadTextureImageFromHdrFile(std::string_view fileName, TextureImage& textureImage);

@@ -5,7 +5,7 @@
 namespace joint
 {
 
-    enum class Rc_Geometry : uint
+    enum class GeometryResources : uint
     {
         MeshTransforms,
 

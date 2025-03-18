@@ -4,9 +4,10 @@
 
 namespace benzin
 {
+    struct MeshComponent;
 
     class Scene;
-
+    class GraphicsCommandList;
 }
 
 namespace sandbox
@@ -21,20 +22,31 @@ namespace sandbox
         ~GeometryPass() override;
 
     private:
+        struct MeshRenderContext
+        {
+            benzin::GraphicsCommandList& CmdList;
+
+            const DirectX::XMMATRIX& WorldToViewMatrix;
+            const DirectX::BoundingFrustum& CameraFrustum;
+
+            const entt::registry& EntityRegistry;
+            const entt::registry& MeshRegistry;
+
+            bool IsFrustumCullingEnabled = true;
+            GBufferStats& Stats;
+        };
+
         bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize() override;
-        void OnUpdate() override;
         void OnRender() const override;
 
-        void RenderMesh(entt::entity meshHandle, const DirectX::XMMATRIX& localToWorldMatrix) const;
+        void RenderMeshes(const MeshRenderContext& context, bool isIndexOrderClockwise) const;
+        void RenderLights(const MeshRenderContext& context) const;
+        void RenderMesh(const MeshRenderContext& context, const benzin::MeshComponent& meshComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;
 
     private:
         const benzin::Scene& m_Scene;
-        GBufferStats& m_Stats;
-
-        mutable uint32_t m_TransformIndex = 0;
-        bool m_IsFrustumCullingEnabled = true;
     };
 
 }

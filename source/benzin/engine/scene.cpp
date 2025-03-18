@@ -175,6 +175,8 @@ namespace benzin
         mesh.SubMeshes = std::move(meshResource.SubMeshes);
         mesh.SubMeshInstances = std::move(meshResource.SubMeshInstances);
         mesh.Materials = std::move(meshResource.Materials);
+        mesh.IsIndexOrderClockwise = meshResource.IsIndexOrderClockwise;
+
         createSubMeshInfos(mesh);
 
         auto& meshGpuStorage = m_MeshRegistry.emplace<MeshGpuStorage>(meshHandle);
@@ -187,6 +189,8 @@ namespace benzin
 
     void Scene::UploadMeshesToGpu()
     {
+        // TODO: CalcUploadBufferSize + UploadToGpu methods to remove reference to GraphicsCommandList in Scene class
+
         BenzinLogTimeOnScopeExit("Scene::UploadMeshesToGpu");
 
         UploadAllMeshData();
@@ -359,10 +363,14 @@ namespace benzin
         BufferWriter transformWriter{ m_TransformBuffer->GetCpuMappedData(), m_TransformBuffer->GetSize() };
         transformWriter.SetElementPosition<joint::MeshTransform>(m_TransformCount * m_Device.GetActiveFrameIndex());
 
+        uint32_t gpuTransformIndex = 0;
+
         for (const auto entity : meshView)
         {
-            const auto& transform = meshView.get<Transform>(entity);
+            auto& meshCompoonent = meshView.get<MeshComponent>(entity);
+            meshCompoonent.GpuTransformIndex = gpuTransformIndex++;
 
+            const auto& transform = meshView.get<Transform>(entity);
             transformWriter.WriteRaw(joint::MeshTransform
             {
                 .LocalToWorld = transform.GetLocalToWorldMatrix(),
@@ -378,6 +386,9 @@ namespace benzin
             {
                 continue;
             }
+
+            auto& meshCompoonent = meshView.get<MeshComponent>(entity);
+            meshCompoonent.GpuTransformIndex = gpuTransformIndex++;
 
             transformWriter.WriteRaw(joint::MeshTransform
             {

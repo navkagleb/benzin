@@ -36,6 +36,8 @@ namespace benzin
 
         uint32_t TotalVertexCount = 0;
         uint32_t TotalIndexCount = 0;
+
+        bool IsIndexOrderClockwise = true;
     };
 
     struct MeshGpuStorage

@@ -5,8 +5,6 @@
 namespace benzin
 {
 
-    struct Mesh;
-    struct MeshGpuStorage;
     struct MeshResource;
     struct TextureImage;
 

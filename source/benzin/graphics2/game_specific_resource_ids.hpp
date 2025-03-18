@@ -42,7 +42,9 @@ namespace benzin
 
     enum class PsoId : uint32_t
     {
-        GeometryPass,
+        GeometryPassClockwise,
+        GeometryPassCounterClockwise,
+
         ShadowPass,
         SigmaClassifyTiles,
         SigmaSmoothTiles,

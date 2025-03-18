@@ -16,7 +16,7 @@ namespace benzin
         {
             .FillMode = (D3D12_FILL_MODE)rasterizerState.FillMode,
             .CullMode = (D3D12_CULL_MODE)rasterizerState.CullMode,
-            .FrontCounterClockwise = rasterizerState.TriangleOrder == TriangleOrder::CounterClockwise,
+            .FrontCounterClockwise = rasterizerState.IndexOrder == IndexOrder::CounterClockwise,
             .DepthBias = rasterizerState.DepthBias,
             .DepthBiasClamp = rasterizerState.DepthBiasClamp,
             .SlopeScaledDepthBias = rasterizerState.SlopeScaledDepthBias,

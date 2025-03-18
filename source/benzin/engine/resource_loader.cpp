@@ -327,6 +327,8 @@ namespace benzin
                     ParseNode(gltfNodeIndex, parentNodeTransform, outMesh);
                 }
             }
+
+            outMesh.IsIndexOrderClockwise = false;
         }
 
         void ParseMaterials(MeshResource& outMesh)

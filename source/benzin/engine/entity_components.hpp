@@ -31,6 +31,7 @@ namespace benzin
     struct MeshComponent
     {
         entt::entity MeshHandle = g_InvalidEnum<entt::entity>;
+        uint32_t GpuTransformIndex = g_InvalidUnsigned<uint32_t>;
     };
 
     using EntityUpdateCallback = std::function<void()>;
