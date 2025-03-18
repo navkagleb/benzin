@@ -21,7 +21,7 @@ namespace benzin
     class NvApiState
     {
     public:
-        bool IsInitialized() const { return m_IsInitialized; }
+        friend bool NvApiWrapper::IsAvailable();
 
         void Initialize()
         {
@@ -104,6 +104,11 @@ namespace benzin
     static NvApiState g_NvApiState;
 
     //
+
+    bool NvApiWrapper::IsAvailable()
+    {
+        return g_NvApiState.m_IsInitialized;
+    }
 
     void NvApiWrapper::Initialize()
     {

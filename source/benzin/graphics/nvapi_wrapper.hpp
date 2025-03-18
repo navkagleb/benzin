@@ -5,6 +5,8 @@ namespace benzin
 
     namespace NvApiWrapper
     {
+        bool IsAvailable();
+
         void Initialize();
         void Shutdown();
 

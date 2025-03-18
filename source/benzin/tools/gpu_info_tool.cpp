@@ -23,12 +23,12 @@ namespace benzin
             ImGui::SeparatorText("VRAM (in MB)");
 
             DrawColoredBulletText("Used by process:", memoryInfo.ProcessUsedVram.GetMb());
-            DrawColoredBulletText("Available:", memoryInfo.AvailableVram.GetMb());
+            DrawColoredBulletText("Available in system (vendor specific):", memoryInfo.AvailableVram.GetMb());
 
             ImGui::BeginDisabled();
             ImGui::BulletText(BenzinFormatData("Total: {:.2f}", info.TotalVram.GetMb()));
             ImGui::BulletText(BenzinFormatData("OS Budget: {:.2f}", memoryInfo.VramOsBudget.GetMb()));
-            ImGui::BulletText(BenzinFormatData("Available relative to OS Budget: {:.2f}", memoryInfo.AvailableVramRelativeToOsBudget.GetMb()));
+            ImGui::BulletText(BenzinFormatData("Available relative to OS Budget (vendor specific): {:.2f}", memoryInfo.AvailableVramRelativeToOsBudget.GetMb()));
             ImGui::EndDisabled();
         }
 

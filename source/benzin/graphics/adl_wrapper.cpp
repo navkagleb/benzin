@@ -130,6 +130,8 @@ namespace benzin
     class AdlState
     {
     public:
+        friend bool AdlWrapper::IsAvailable();
+
         void Initialize()
         {
             m_DllHandle = ::LoadLibrary("atiadlxx.dll");
@@ -270,6 +272,11 @@ namespace benzin
     static AdlState g_AdlState;
 
     //
+
+    bool AdlWrapper::IsAvailable()
+    {
+        return g_AdlState.m_IsInitialized;
+    }
 
     void AdlWrapper::Initialize()
     {

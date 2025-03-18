@@ -36,7 +36,6 @@ namespace benzin
     Backend::Backend()
     {
         PixCapturer::Initialize(); // Need to be loaded first of all if needed
-
         AdlWrapper::Initialize();
         NvApiWrapper::Initialize();
 
@@ -60,11 +59,18 @@ namespace benzin
     {
         BenzinLogTimeOnScopeExit("Backend::~Backend");
 
+        NvApiWrapper::Shutdown();
+        AdlWrapper::Shutdown();
+        PixCapturer::Shutdown();
+
 #if BENZIN_IS_ASSERTS_ENABLED
-        const auto adapterMemoryInfo = GetMainAdapterMemoryInfo();
-        BenzinAssert(adapterMemoryInfo.ProcessUsedVram == 0, "Process used VRAM: {} mb", adapterMemoryInfo.ProcessUsedVram.GetMb());
-        BenzinAssert(adapterMemoryInfo.ProcessUsedSharedRam == 0, "Process used Shared Ram: {} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb());
-#endif;
+        if (!CommandLineArgs::GetBool("IsPixCapturerEnabled"))
+        {
+            const auto adapterMemoryInfo = GetMainAdapterMemoryInfo();
+            BenzinAssert(adapterMemoryInfo.ProcessUsedVram == 0, "Process used VRAM: {} mb", adapterMemoryInfo.ProcessUsedVram.GetMb());
+            BenzinAssert(adapterMemoryInfo.ProcessUsedSharedRam == 0, "Process used Shared Ram: {} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb());
+        }
+#endif
 
         for (auto& dxgiAdapter : m_DxgiAdapters)
         {
@@ -73,11 +79,6 @@ namespace benzin
         m_DxgiAdapters.clear();
 
         BenzinSafeDxObjectRelease(m_DxgiFactory);
-
-        AdlWrapper::Shutdown();
-        NvApiWrapper::Shutdown();
-
-        PixCapturer::Shutdown();
     }
 
     const AdapterInfo& Backend::GetAdapterInfo(uint32_t adapterIndex) const
@@ -100,11 +101,11 @@ namespace benzin
         BenzinHrEnsure(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &d3d12NonLocalVideoMemoryInfo));
 
         Bytes64 vendorTotalUsedVram = g_InvalidUnsigned<uint64_t>;
-        if (adapterInfo.IsAmd())
+        if (AdlWrapper::IsAvailable() && adapterInfo.IsAmd())
         {
             vendorTotalUsedVram = AdlWrapper::GetUsedDedicatedVram(adapterInfo.DeviceId);
         }
-        else if (adapterInfo.IsNvidia())
+        else if (NvApiWrapper::IsAvailable() && adapterInfo.IsNvidia())
         {
 #if BENZIN_IS_ASSERTS_ENABLED
             const Bytes64 totalVram = NvApiWrapper::GetTotalDedicatedVram(adapterInfo.DeviceId);

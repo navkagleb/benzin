@@ -5,6 +5,7 @@ namespace benzin
 
     namespace AdlWrapper
     {
+        bool IsAvailable();
         void Initialize();
         void Shutdown();
 
