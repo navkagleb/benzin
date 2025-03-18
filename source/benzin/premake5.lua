@@ -15,9 +15,6 @@ local function apply_benzin_config()
 
     filter "platforms:Win64"
         systemversion "10.0.20348.0:latest" -- From Windows SDK 10.0.20348.0 shader model 6.6 support started
-        defines {
-            "BENZIN_PLATFORM_WIN64",
-        }
 
     filter {}
 end

@@ -5,12 +5,10 @@
 #include "benzin/core/logger.hpp"
 #include "benzin/core/profiler.hpp"
 
-#if BENZIN_IS_PLATFORM_WIN64
-
 namespace benzin
 {
 
-    BOOL WINAPI Wint64_ConsoleHandler(DWORD signal)
+    BOOL WINAPI Win64_ConsoleHandler(DWORD signal)
     {
         // Console close event should work like 'Stop Debugging'
         // It's unplanned application closure
@@ -26,7 +24,7 @@ namespace benzin
 
     int Main(int argc, char** argv)
     {
-        BenzinEnsure(::SetConsoleCtrlHandler(Wint64_ConsoleHandler, true) != 0);
+        BenzinEnsure(::SetConsoleCtrlHandler(Win64_ConsoleHandler, true) != 0);
 
         CommandLineArgs::Initialize(argc, argv);
         Logger::Initialize((LogOptionFlag)CommandLineArgs::GetU32("RawLoggerLogOptionFlags"));
@@ -35,11 +33,9 @@ namespace benzin
         return ClientMain();
     }
 
-} // namespace benzin
+}
 
 int main(int argc, char** argv)
 {
     return benzin::Main(argc, argv);
 }
-
-#endif // BENZIN_IS_PLATFORM_WIN64

@@ -11,7 +11,7 @@ workspace "Benzin"
     platforms { "Win64" }
 
     targetdir "bin"
-    objdir "build/%{prj.name}_%{cfg.buildcfg}"
+    objdir "build/%{cfg.buildcfg}_%{prj.name}"
 
     flags {
         "MultiProcessorCompile",
