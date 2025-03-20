@@ -4,12 +4,10 @@
 
 namespace joint
 {
-
     struct Material;
     struct MeshInfo;
     struct MeshInstance;
     struct MeshVertex;
-
 }
 
 namespace benzin
@@ -47,6 +45,33 @@ namespace benzin
         std::unique_ptr<Buffer> MeshInfoBuffer;
         std::unique_ptr<Buffer> MeshInstanceBuffer;
         std::unique_ptr<Buffer> MaterialBuffer;
+    };
+
+    // Types for loading from disk
+
+    struct TextureImage
+    {
+        std::string DebugName;
+
+        GraphicsFormat Format = GraphicsFormat::Unknown;
+        bool IsCubeMap = false;
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+
+        std::vector<std::byte> ImageData;
+    };
+
+    struct MeshResource
+    {
+        std::string DebugName;
+
+        std::vector<MeshData> SubMeshes;
+        std::vector<joint::MeshInstance> SubMeshInstances;
+
+        std::vector<TextureImage> TextureImages;
+        std::vector<joint::Material> Materials;
+
+        bool IsIndexOrderClockwise = true;
     };
 
 }

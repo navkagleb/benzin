@@ -2,6 +2,7 @@
 #include "sandbox/render_passes/environment_pass.hpp"
 
 #include <benzin/core/profiler.hpp>
+#include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
