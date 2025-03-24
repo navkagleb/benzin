@@ -10,6 +10,7 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/pso.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
@@ -44,6 +45,15 @@ namespace sandbox
             ms_PsoManager->Create(id, [id, indexOrder](benzin::GraphicsPsoProxy& proxy)
             {
                 proxy.DebugName = magic_enum::enum_name(id);
+
+                proxy.InputLayout.emplace_back("Position", benzin::GraphicsFormat::Rgb32Float);
+                proxy.InputLayout.emplace_back("Normal", benzin::GraphicsFormat::Rgb32Float);
+                proxy.InputLayout.emplace_back("Uv", benzin::GraphicsFormat::Rg32Float);
+                
+                BenzinAssert(benzin::GetFormatSize(proxy.InputLayout[0].Format) == sizeof(joint::MeshVertex::Position));
+                BenzinAssert(benzin::GetFormatSize(proxy.InputLayout[1].Format) == sizeof(joint::MeshVertex::Normal));
+                BenzinAssert(benzin::GetFormatSize(proxy.InputLayout[2].Format) == sizeof(joint::MeshVertex::Uv));
+
                 proxy.VsFileName = "geometry_pass.hlsl";
                 proxy.PsFileName = "geometry_pass.hlsl";
                 proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
@@ -244,16 +254,14 @@ namespace sandbox
         const std::string_view meshName = context.MeshRegistry.get<std::string>(meshComponent.MeshHandle);
         BenzinGpuEvent(context.CmdList, meshName);
 
-        const auto& mesh = context.MeshRegistry.get<benzin::Mesh>(meshComponent.MeshHandle);
         const auto& meshGpuStorage = context.MeshRegistry.get<benzin::MeshGpuStorage>(meshComponent.MeshHandle);
-
+        context.CmdList.SetVertexBuffer(*meshGpuStorage.VertexBuffer);
+        context.CmdList.SetIndexBuffer(*meshGpuStorage.IndexBuffer);
         context.CmdList.SetGraphicsRootConstant(+joint::GeometryResources::MeshTransformIndex, meshComponent.GpuTransformIndex);
-        context.CmdList.SetGraphicsRootResource(+joint::GeometryResources::MeshVertices, meshGpuStorage.VertexBuffer->GetSrv());
-        context.CmdList.SetGraphicsRootResource(+joint::GeometryResources::MeshIndices, meshGpuStorage.IndexBuffer->GetSrv());
-        context.CmdList.SetGraphicsRootResource(+joint::GeometryResources::SubMeshInfos, meshGpuStorage.MeshInfoBuffer->GetSrv());
         context.CmdList.SetGraphicsRootResource(+joint::GeometryResources::SubMeshInstances, meshGpuStorage.MeshInstanceBuffer->GetSrv());
         context.CmdList.SetGraphicsRootResource(+joint::GeometryResources::Materials, meshGpuStorage.MaterialBuffer->GetSrv());
 
+        const auto& mesh = context.MeshRegistry.get<benzin::Mesh>(meshComponent.MeshHandle);
         for (const auto i : std::views::iota(0u, mesh.SubMeshInstances.size()))
         {
             context.Stats.MeshCount++;
@@ -275,7 +283,9 @@ namespace sandbox
             context.CmdList.SetGraphicsRootConstant(+joint::GeometryResources::SubMeshInstanceIndex, i);
 
             context.CmdList.SetPrimitiveTopology(subMesh.PrimitiveTopology);
-            context.CmdList.DrawVertexed((uint32_t)subMesh.Indices.size());
+
+            const joint::MeshInfo& subMeshInfo = mesh.SubMeshInfos[meshInstance.SubMeshIndex];
+            context.CmdList.DrawIndexed((uint32_t)subMesh.Indices.size(), subMeshInfo.IndexOffset, subMeshInfo.VertexOffset);
 
             context.Stats.RenderedMeshCount++;
             context.Stats.RenderedTriangleCount += (uint32_t)(subMesh.Indices.size() / 3);

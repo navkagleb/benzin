@@ -30,7 +30,7 @@ namespace benzin
         MakeUniquePtr(meshGpuStorage.VertexBuffer, device, BufferCreation
         {
             .DebugName = std::format("{}_VertexBuffer", debugName),
-            .Type = BufferType::Structured,
+            .Type = BufferType::Vertex,
             .ElementSize = sizeof(joint::MeshVertex),
             .ElementCount = (uint32_t)mesh.TotalVertexCount,
         });
@@ -38,18 +38,10 @@ namespace benzin
         MakeUniquePtr(meshGpuStorage.IndexBuffer, device, BufferCreation
         {
             .DebugName = std::format("{}_IndexBuffer", debugName),
-            .Type = BufferType::Format,
+            .Type = BufferType::Index,
             .Format = GraphicsFormat::R32Uint,
             .ElementSize = sizeof(uint32_t),
             .ElementCount = (uint32_t)mesh.TotalIndexCount,
-        });
-
-        MakeUniquePtr(meshGpuStorage.MeshInfoBuffer, device, BufferCreation
-        {
-            .DebugName = std::format("{}_MeshInfoBuffer", debugName),
-            .Type = BufferType::Structured,
-            .ElementSize = sizeof(joint::MeshInfo),
-            .ElementCount = (uint32_t)mesh.SubMeshes.size(),
         });
 
         MakeUniquePtr(meshGpuStorage.MeshInstanceBuffer, device, BufferCreation
@@ -233,7 +225,6 @@ namespace benzin
 
             uploadBufferSize += meshGpuStorage.VertexBuffer->GetSize();
             uploadBufferSize += meshGpuStorage.IndexBuffer->GetSize();
-            uploadBufferSize += meshGpuStorage.MeshInfoBuffer->GetSize();
         });
 
         auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
@@ -247,8 +238,6 @@ namespace benzin
                 commandList.UploadToBuffer<joint::MeshVertex>(*meshGpuStorage.VertexBuffer, subMesh.Vertices, subMeshInfo.VertexOffset);
                 commandList.UploadToBuffer<uint32_t>(*meshGpuStorage.IndexBuffer, subMesh.Indices, subMeshInfo.IndexOffset);
             }
-
-            commandList.UploadToBuffer<joint::MeshInfo>(*meshGpuStorage.MeshInfoBuffer, mesh.SubMeshInfos);
         });
     }
 

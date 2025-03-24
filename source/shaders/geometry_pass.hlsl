@@ -7,9 +7,6 @@
 #include "space_convertions.hlsli"
 
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshTransform>, g_MeshTransforms, joint::GeometryResources::MeshTransforms);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_MeshVertices, joint::GeometryResources::MeshVertices);
-BenzinDeclareRootResource(StructuredBuffer<uint>, g_MeshIndices, joint::GeometryResources::MeshIndices);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshInfo>, g_SubMeshInfos, joint::GeometryResources::SubMeshInfos);
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshInstance>, g_SubMeshInstances, joint::GeometryResources::SubMeshInstances);
 BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::GeometryResources::Materials);
 
@@ -60,15 +57,12 @@ joint::MeshInstance GetMeshInstance()
     return g_SubMeshInstances[BenzinGetRootConstant(joint::GeometryResources::SubMeshInstanceIndex)];
 }
 
-joint::MeshVertex GetMeshVertex(uint indexIndex, uint subMeshIndex)
+struct VsInput
 {
-    const joint::MeshInfo meshInfo = g_SubMeshInfos[subMeshIndex];
-
-    const uint vertexIndex = g_MeshIndices[meshInfo.IndexOffset + indexIndex];
-    const joint::MeshVertex vertex = g_MeshVertices[meshInfo.VertexOffset + vertexIndex];
-
-    return vertex;
-}
+    float3 Position : Position;
+    float3 Normal : Normal;
+    float2 Uv : Uv;
+};
 
 struct VsOutput
 {
@@ -80,10 +74,9 @@ struct VsOutput
     float2 Uv : Uv;
 };
 
-VsOutput VsMain(uint indexIndex : SV_VertexID)
+VsOutput VsMain(VsInput vertex)
 {
     const joint::MeshInstance meshInstance = GetMeshInstance();
-    const joint::MeshVertex vertex = GetMeshVertex(indexIndex, meshInstance.SubMeshIndex);
     const joint::MeshTransform transform = g_MeshTransforms[BenzinGetRootConstant(joint::GeometryResources::MeshTransformIndex)];
 
     const joint::CameraConsts camera = g_FrameConstants.Camera;

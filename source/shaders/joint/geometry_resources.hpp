@@ -11,9 +11,6 @@ namespace joint
 
         // Per mesh
         MeshTransformIndex,
-        MeshVertices,
-        MeshIndices,
-        SubMeshInfos,
         SubMeshInstances,
         Materials,
 

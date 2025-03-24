@@ -211,6 +211,7 @@ namespace benzin
             }
         }
 
+        BenzinEnsure(false, "Unknown or unhandled BufferType: {} ({})", magic_enum::enum_name(buffer.GetType()), magic_enum::enum_integer(buffer.GetType()));
         std::unreachable();
     }
 

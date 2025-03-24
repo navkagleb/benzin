@@ -42,7 +42,6 @@ namespace benzin
     {
         std::unique_ptr<Buffer> VertexBuffer;
         std::unique_ptr<Buffer> IndexBuffer;
-        std::unique_ptr<Buffer> MeshInfoBuffer;
         std::unique_ptr<Buffer> MeshInstanceBuffer;
         std::unique_ptr<Buffer> MaterialBuffer;
     };
