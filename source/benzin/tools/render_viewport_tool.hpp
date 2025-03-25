@@ -21,8 +21,8 @@ namespace benzin
         uint32_t GetWidth() const { return (uint32_t)m_ViewportSize.x; }
         uint32_t GetHeight() const { return (uint32_t)m_ViewportSize.y; }
 
-        bool IsViewportSizeRelevant() const { return m_IsViewportSizeRelevant; }
-        bool IsValidForRendering() const { return m_IsViewportSizeRelevant && m_IsVisible; }
+        bool IsViewportSizeValid() const { return m_IsViewportSizeValid; }
+        bool IsValidForRendering() const { return m_IsViewportSizeValid && ImGuiTool::m_IsVisible; }
 
         void MoveCamera(std::chrono::microseconds dt);
 
@@ -41,10 +41,8 @@ namespace benzin
         FlyCameraController m_FlyCameraController;
         
         DirectX::XMINT2 m_ViewportSize{};
-        bool m_IsViewportSizeRelevant = true;
-
+        bool m_IsViewportSizeValid = true;
         bool m_IsViewportHovered = false;
-        bool m_IsViewportActive = false;
     };
 
 }

@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/system/window.hpp"
 
+#include "benzin/core/logger.hpp"
 #include "benzin/graphics/common.hpp"
 #include "benzin/system/input.hpp"
 #include "benzin/system/key_event.hpp"
@@ -81,6 +82,8 @@ namespace benzin
         );
 
         BenzinEnsure(m_Win64Window != nullptr);
+
+        BenzinTrace("Window is created: {} x {}", m_Width, m_Height);
     }
 
     Window::~Window()

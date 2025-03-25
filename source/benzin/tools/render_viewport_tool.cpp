@@ -19,7 +19,7 @@ namespace benzin
 
     void RenderViewportTool::MoveCamera(std::chrono::microseconds dt)
     {
-        if (m_IsViewportHovered && m_IsViewportActive)
+        if (m_IsViewportHovered)
         {
             m_FlyCameraController.MoveCamera(dt);
         }
@@ -27,7 +27,7 @@ namespace benzin
 
     void RenderViewportTool::OnEvent(Event& event)
     {
-        if (!m_IsViewportHovered || !m_IsViewportActive)
+        if (!m_IsViewportHovered)
         {
             return;
         }
@@ -64,12 +64,11 @@ namespace benzin
         });
 
         m_IsViewportHovered = ImGui::IsItemHovered();
-        m_IsViewportActive = true; // TODO: ImGui::IsWindowFocused don't work
     }
 
     void RenderViewportTool::UpdateImGuiDimensions()
     {
-        m_IsViewportSizeRelevant = true;
+        m_IsViewportSizeValid = true;
 
         const DirectX::XMINT2 viewportSize
         {
@@ -79,14 +78,13 @@ namespace benzin
 
         const bool isInResizingState = ImGui::IsAnyItemActive();
         const bool isEqual = viewportSize.x == m_ViewportSize.x && viewportSize.y == m_ViewportSize.y;
-        const bool isCollapsed = viewportSize.x <= 0 || viewportSize.y <= 0;
-        if (isInResizingState || isEqual || isCollapsed)
+        if (isInResizingState || isEqual || ImGui::IsWindowAppearing() || ImGui::IsWindowCollapsed())
         {
             return;
         }
 
         m_ViewportSize = viewportSize;
-        m_IsViewportSizeRelevant = false;
+        m_IsViewportSizeValid = false;
 
         m_FlyCameraController.OnRenderViewportResized(m_ViewportSize.x, m_ViewportSize.y);
     }

@@ -128,10 +128,7 @@ namespace sandbox
 
         RunZeroFrame();
 
-        m_MainWindow->SetVisible(true);
-
         m_FrameTimer.Reset();
-
         m_AnimationTimer.Reset();
         m_AnimationTimer.SetPaused(true);
 
@@ -184,6 +181,8 @@ namespace sandbox
             RunImGuiFrame(); // Force call ImGui frame to call RenderPass::OnRenderViewportResize on EndFrame
         }
         EndFrame();
+
+        m_MainWindow->SetVisible(true);
     }
 
     void Runner::WindowEventCallback(benzin::Event& event)
@@ -284,9 +283,11 @@ namespace sandbox
             {
                 renderPass->OnWindowResize();
             }
+
+            BenzinTrace("Window is resized: {} x {}. CpuFrame: {}", windowWidth, windowHeight, m_Device->GetCpuFrameIndex());
         }
 
-        if (!m_RenderViewportTool->IsViewportSizeRelevant())
+        if (!m_RenderViewportTool->IsViewportSizeValid())
         {
             // Viewport size is controlled by UI. So first update UI and then resize render passes
 
@@ -298,6 +299,8 @@ namespace sandbox
             {
                 renderPass->OnRenderViewportResize();
             }
+
+            BenzinTrace("Viewport is resized: {} x {}. CpuFrame: {}", viewportWidth, viewportHeight, m_Device->GetCpuFrameIndex());
         }
 
         m_Device->ProcessDeferredReleaseQueues();
