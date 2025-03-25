@@ -47,7 +47,7 @@ namespace benzin
         std::unordered_map<uint64_t, VoidUniquePtr> m_Sections;
     };
 
-    template <typename ResourceT, typename CreationT>
+    template <typename ResourceT>
     class RenderResourceStorage
     {
     public:
@@ -62,7 +62,10 @@ namespace benzin
         ~RenderResourceStorage();
 
         bool IsCreated(uint32_t id) const;
+
+        template <typename CreationT>
         void Create(uint32_t id, Device& device, const CreationT& creation);
+
         void Destroy(uint32_t id);
 
         const ResourceT& Get(uint32_t id, uint8_t flipOffset) const;
@@ -79,8 +82,8 @@ namespace benzin
         std::vector<std::unique_ptr<ResourceT>> m_Resources;
     };
 
-    extern template class RenderResourceStorage<Buffer, BufferCreation>;
-    extern template class RenderResourceStorage<Texture, TextureCreation>;
+    extern template class RenderResourceStorage<Buffer>;
+    extern template class RenderResourceStorage<Texture>;
 
     enum class BufferId : uint32_t;
     enum class TextureId : uint32_t;
@@ -115,8 +118,8 @@ namespace benzin
     private:
         Device& m_Device;
 
-        RenderResourceStorage<Buffer, BufferCreation> m_Buffers;
-        RenderResourceStorage<Texture, TextureCreation> m_Textures;
+        RenderResourceStorage<Buffer> m_Buffers;
+        RenderResourceStorage<Texture> m_Textures;
 
         uint8_t m_FlipIndex = 0;
     };

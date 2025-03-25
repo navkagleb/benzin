@@ -58,8 +58,8 @@ namespace benzin
         return magic_enum::enum_contains<ResourceIdT>(id);
     }
 
-    template <typename ResourceT, typename CreationT>
-    RenderResourceStorage<ResourceT, CreationT>::RenderResourceStorage(
+    template <typename ResourceT>
+    RenderResourceStorage<ResourceT>::RenderResourceStorage(
         uint32_t maxResourceCount,
         IsResourceFlippableCallback&& isRsourceFlippableCallback,
         IsResourceIdValidCallback&& isResourceIdValidCallback
@@ -73,20 +73,26 @@ namespace benzin
         m_Resources.resize(maxResourceCount);
     }
 
-    template <typename ResourceT, typename CreationT>
-    RenderResourceStorage<ResourceT, CreationT>::~RenderResourceStorage() = default;
+    template <typename ResourceT>
+    RenderResourceStorage<ResourceT>::~RenderResourceStorage() = default;
 
-    template <typename ResourceT, typename CreationT>
-    bool RenderResourceStorage<ResourceT, CreationT>::IsCreated(uint32_t id) const
+    template <typename ResourceT>
+    bool RenderResourceStorage<ResourceT>::IsCreated(uint32_t id) const
     {
         BenzinAssert(m_IsResourceIdValidCallback(id));
 
         return m_Resources[+id].get() != nullptr;
     }
 
-    template <typename ResourceT, typename CreationT>
-    void RenderResourceStorage<ResourceT, CreationT>::Create(uint32_t id, Device& device, const CreationT& creation)
+    template <typename ResourceT>
+    template <typename CreationT>
+    void RenderResourceStorage<ResourceT>::Create(uint32_t id, Device& device, const CreationT& creation)
     {
+        static_assert(
+            (std::is_same_v<Buffer, ResourceT> && std::is_same_v<BufferCreation, CreationT>) ||
+            (std::is_same_v<Texture, ResourceT> && std::is_same_v<TextureCreation, CreationT>)
+        );
+
         BenzinAssert(m_IsResourceIdValidCallback(id));
 
         if (m_IsResourceFlippableCallback(id))
@@ -107,8 +113,8 @@ namespace benzin
         MakeUniquePtr(m_Resources[id], device, creation);
     }
 
-    template <typename ResourceT, typename CreationT>
-    void RenderResourceStorage<ResourceT, CreationT>::Destroy(uint32_t id)
+    template <typename ResourceT>
+    void RenderResourceStorage<ResourceT>::Destroy(uint32_t id)
     {
         BenzinAssert(m_IsResourceIdValidCallback(id));
 
@@ -120,8 +126,8 @@ namespace benzin
         m_Resources[id].reset();
     }
 
-    template <typename ResourceT, typename CreationT>
-    const ResourceT& RenderResourceStorage<ResourceT, CreationT>::Get(uint32_t id, uint8_t flipOffset) const
+    template <typename ResourceT>
+    const ResourceT& RenderResourceStorage<ResourceT>::Get(uint32_t id, uint8_t flipOffset) const
     {
         BenzinAssert(m_IsResourceIdValidCallback(id));
 
@@ -138,8 +144,8 @@ namespace benzin
         return *resource;
     }
 
-    template <typename ResourceT, typename CreationT>
-    const ResourceT& RenderResourceStorage<ResourceT, CreationT>::GetPrev(uint32_t id, uint8_t flipOffset) const
+    template <typename ResourceT>
+    const ResourceT& RenderResourceStorage<ResourceT>::GetPrev(uint32_t id, uint8_t flipOffset) const
     {
         BenzinAssert(m_IsResourceIdValidCallback(id));
         BenzinAssert(m_IsResourceFlippableCallback(id));
@@ -152,8 +158,8 @@ namespace benzin
     }
 
 #if BENZIN_IS_ASSERTS_ENABLED
-    template <typename ResourceT, typename CreationT>
-    uint32_t RenderResourceStorage<ResourceT, CreationT>::GetAliveResourceCount() const
+    template <typename ResourceT>
+    uint32_t RenderResourceStorage<ResourceT>::GetAliveResourceCount() const
     {
         uint32_t aliveCount = 0;
         for (const auto& resource : m_Resources)
@@ -165,8 +171,8 @@ namespace benzin
     }
 #endif
 
-    template class RenderResourceStorage<Buffer, BufferCreation>;
-    template class RenderResourceStorage<Texture, TextureCreation>;
+    template class RenderResourceStorage<Buffer>;
+    template class RenderResourceStorage<Texture>;
 
     // RenderResources
 
