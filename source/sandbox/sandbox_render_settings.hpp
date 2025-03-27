@@ -1,6 +1,5 @@
 #pragma once
 
-#include <shaders/joint/full_screen_debug_resources.hpp>
 #include <shaders/joint/tone_mapping_resources.hpp>
 
 namespace sandbox
@@ -67,14 +66,6 @@ namespace sandbox
         };
 
         joint::ToneReproductionTransform ToneReproductionTransform = joint::ToneReproductionTransform::AcesFilm;
-    };
-
-    struct FullScreenDebugSettings
-    {
-        joint::DebugOutputType DebugOutputType = joint::DebugOutputType::None;
-        uint32_t ViewDepthMipIndex = 0;
-        float MinViewDepth = 0.0f;
-        float MaxViewDepth = 20.0f;
     };
 
 }

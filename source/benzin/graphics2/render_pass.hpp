@@ -85,9 +85,6 @@ namespace benzin
     extern template class RenderResourceStorage<Buffer>;
     extern template class RenderResourceStorage<Texture>;
 
-    enum class BufferId : uint32_t;
-    enum class TextureId : uint32_t;
-
     class RenderResources
     {
     public:

@@ -14,7 +14,6 @@ namespace sandbox
         bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize() override;
-        void OnUpdate() override;
         void OnRender() const override;
     };
 

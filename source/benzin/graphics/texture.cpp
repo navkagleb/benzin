@@ -16,7 +16,7 @@ namespace benzin
         // #TODO: Validation for 'TextureSrv::MipRange'
 
         BenzinAssert(texture.GetD3D12Resource() != nullptr);
-        BenzinAssert(outTextureSrv.DepthRange.Count < texture.GetDepth());
+        BenzinAssert(outTextureSrv.DepthRange.Count <= texture.GetDepth());
 
         // Set default format for depth stencil if format is not set
         if (texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowDepthStencil) && outTextureSrv.Format == GraphicsFormat::Unknown)
@@ -146,6 +146,8 @@ namespace benzin
         ResourceState& outInitialState
     )
     {
+        BenzinAssert(textureCreation.Format != GraphicsFormat::Unknown);
+
         const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(textureCreation);
 

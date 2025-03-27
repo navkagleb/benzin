@@ -3,6 +3,18 @@
 namespace benzin
 {
 
+    // Forward declaration of resource ids
+
+    enum class BufferId : uint32_t;
+    enum class PsoId : uint32_t;
+    enum class TextureId : uint32_t;
+
+    inline constexpr auto g_InvalidBufferId = BufferId{ g_InvalidUnsigned<uint32_t> };
+    inline constexpr auto g_InvalidTextureId = TextureId{ g_InvalidUnsigned<uint32_t> };
+    inline constexpr auto g_InvalidPsoId = PsoId{ g_InvalidUnsigned<uint32_t> };
+
+    //
+
     enum class ShaderVisibility : std::underlying_type_t<D3D12_SHADER_VISIBILITY>
     {
         All = D3D12_SHADER_VISIBILITY_ALL,

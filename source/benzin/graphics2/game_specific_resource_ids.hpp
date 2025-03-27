@@ -38,6 +38,9 @@ namespace benzin
         ToneMapping_AvgLuminance,
         ToneMapping_DebugLuminanceHistogram,
         Final,
+
+        // Engine Textures
+        DebugTexture,
     };
 
     enum class PsoId : uint32_t
@@ -54,18 +57,15 @@ namespace benzin
         DeferredLighting,
         Environment,
         Environment_EquirectangularToCube,
-        FullScreenDebug,
 
         ToneMapping_CalcLuminanceHistogram,
         ToneMapping_CalcAvgLuminance,
         ToneMapping_ApplyToneMapOperator,
 
+        // Engine PSOs
+        TextureViewer,
         ImGui,
     };
-
-    inline constexpr auto g_InvalidBufferId = BufferId{ g_InvalidUnsigned<uint32_t> };
-    inline constexpr auto g_InvalidTextureId = TextureId{ g_InvalidUnsigned<uint32_t> };
-    inline constexpr auto g_InvalidPsoId = PsoId{ g_InvalidUnsigned<uint32_t> };
 
 }
 

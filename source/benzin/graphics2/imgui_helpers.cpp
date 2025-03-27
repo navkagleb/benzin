@@ -18,6 +18,7 @@ void ImGui_CollapsingHeaderWithIndent(std::string_view name, const ImGui_DrawCal
 {
     flags |= ImGuiTreeNodeFlags_FramePadding;
     flags |= ImGuiTreeNodeFlags_Selected;
+    flags |= ImGuiTreeNodeFlags_SpanFullWidth;
 
     if (ImGui::TreeNodeEx(name.data(), flags))
     {

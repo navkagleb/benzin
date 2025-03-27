@@ -18,6 +18,7 @@
 #include <benzin/graphics2/imgui_pass.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 #include <benzin/graphics2/shader_manager.hpp>
+#include <benzin/graphics2/texture_viewer_pass.hpp>
 #include <benzin/system/input.hpp>
 #include <benzin/system/key_event.hpp>
 #include <benzin/system/window.hpp>
@@ -158,6 +159,7 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("Runner::RunZeroFrame");
 
+        m_RenderPasses.push_back(std::make_unique<benzin::TextureViewerPass>(*m_TextureViewerTool));
         m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager));
         m_RenderPasses.push_back(std::make_unique<benzin::GpuProfilerPass>());
 

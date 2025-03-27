@@ -38,6 +38,9 @@ namespace benzin
         std::string_view m_Name;
         std::string_view m_Shortcut;
         bool m_IsVisible = false;
+
+        bool m_IsHovered = false;
+        bool m_IsCollapsed = false;
     };
 
     class ImGuiManager

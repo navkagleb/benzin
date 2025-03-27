@@ -52,7 +52,17 @@ namespace benzin
         {
             DrawWindowContent();
         }
+
+        m_IsHovered = ImGui::IsWindowHovered();
+        m_IsCollapsed = ImGui::IsWindowCollapsed();
+
         ImGui::End();
+
+        if (!m_IsVisible)
+        {
+            m_IsHovered = false;
+            m_IsCollapsed = false;
+        }
     }
 
     // ImGuiManager

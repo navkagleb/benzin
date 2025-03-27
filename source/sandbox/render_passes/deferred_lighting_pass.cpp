@@ -12,7 +12,6 @@
 #include <benzin/graphics2/pso_manager.hpp>
 
 #include <shaders/joint/deferred_lighting_resources.hpp>
-#include <shaders/joint/full_screen_debug_resources.hpp>
 
 #include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
@@ -58,13 +57,6 @@ namespace sandbox
             .MipCount = 1,
             .AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget,
         });
-    }
-
-    void DeferredLightingPass::OnUpdate()
-    {
-        const auto& fullScreenDebugSettings = ms_Settings->GetSection<FullScreenDebugSettings>();
-
-        m_IsRenderingEnabled = fullScreenDebugSettings.DebugOutputType == joint::DebugOutputType::None;
     }
 
     void DeferredLightingPass::OnRender() const

@@ -11,7 +11,6 @@
 #include <benzin/graphics2/pso_manager.hpp>
 
 #include <shaders/joint/environment_resources.hpp>
-#include <shaders/joint/full_screen_debug_resources.hpp>
 
 #include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
@@ -50,13 +49,6 @@ namespace sandbox
     {
         std::unique_ptr equirectangularTexture = LoadEquirectangularTexture();
         ComputeCubeMapTexture(*equirectangularTexture);
-    }
-
-    void EnvironmentPass::OnUpdate()
-    {
-        const auto& settings = ms_Settings->GetSection<FullScreenDebugSettings>();
-
-        m_IsRenderingEnabled = settings.DebugOutputType == joint::DebugOutputType::None;
     }
 
     void EnvironmentPass::OnRender() const

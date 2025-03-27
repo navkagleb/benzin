@@ -16,7 +16,6 @@
 
 #include "sandbox/render_passes/deferred_lighting_pass.hpp"
 #include "sandbox/render_passes/environment_pass.hpp"
-#include "sandbox/render_passes/full_screen_debug_pass.hpp"
 #include "sandbox/render_passes/geometry_pass.hpp"
 #include "sandbox/render_passes/global_constants_pass.hpp"
 #include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
@@ -236,37 +235,6 @@ namespace sandbox
         });
     }
 
-    static void DrawFullScreenDebug(FullScreenDebugSettings& settings)
-    {
-        ImGui::SliderInt("ViewDepthMipIndex", (int*)&settings.ViewDepthMipIndex, 0, 4);
-        ImGui::SliderFloat("MinViewDepth", &settings.MinViewDepth, 0.001f, 2.0f, "%.4f");
-        ImGui::SliderFloat("MaxViewDepth", &settings.MaxViewDepth, 0.001f, 30.0f);
-
-        static const auto debugOutputNames = magic_enum::enum_names<joint::DebugOutputType>();
-
-        ImGui::Combo(
-            "DebugOutputType",
-            (int*)&settings.DebugOutputType,
-            ImGui_SelectComboName<decltype(debugOutputNames)>,
-            (void*)debugOutputNames.data(),
-            (int)debugOutputNames.size()
-        );
-
-        const auto spawnButton = [&settings](joint::DebugOutputType type)
-        {
-            if (ImGui::Button(magic_enum::enum_name(type).data()))
-            {
-                settings.DebugOutputType = type;
-            }
-        };
-
-        spawnButton(joint::DebugOutputType::None);
-        ImGui::SameLine();
-        spawnButton(joint::DebugOutputType::SigmaSmoothTiles);
-        ImGui::SameLine();
-        spawnButton(joint::DebugOutputType::SigmaShadow);
-    }
-
     //
 
     SandboxRunner::SandboxRunner()
@@ -294,7 +262,6 @@ namespace sandbox
         m_RenderPasses.push_back(std::make_unique<DeferredLightingPass>());
         m_RenderPasses.push_back(std::make_unique<EnvironmentPass>());
         m_RenderPasses.push_back(std::make_unique<ToneMappingPass>());
-        m_RenderPasses.push_back(std::make_unique<FullScreenDebugPass>());
     }
 
     void SandboxRunner::InitTools()
@@ -304,7 +271,6 @@ namespace sandbox
         m_RenderSettingsTool->RegisterSectionDrawCallback<RayTracing_ShadowSettings>(DrawRayTracingShadowsSettings, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<SigmaDenoiserSettings>(DrawSigmaDenoiserSettings, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<ToneMappingSettings>(DrawToneMappingSettings, ImGuiTreeNodeFlags_DefaultOpen);
-        m_RenderSettingsTool->RegisterSectionDrawCallback<FullScreenDebugSettings>(DrawFullScreenDebug, ImGuiTreeNodeFlags_None);
     }
 
     void SandboxRunner::InitCamera()
