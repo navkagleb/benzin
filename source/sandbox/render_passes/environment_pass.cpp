@@ -25,7 +25,6 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::Environment, [](benzin::GraphicsPsoProxy& proxy)
         {
-            proxy.DebugName = "EnvironmentPass";
             proxy.VsFileName = "fullscreen_triangle.hlsl";
             proxy.VsEntryPoint = "VsMainDepth1";
             proxy.PsFileName = "environment_pass.hlsl";
@@ -103,7 +102,6 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::Environment_EquirectangularToCube, [](benzin::ComputePsoProxy& proxy)
         {
-            proxy.DebugName = "EquirectangularToCube";
             proxy.CsFileName = "equirectangular_to_cube_pass.hlsl";
         });
 

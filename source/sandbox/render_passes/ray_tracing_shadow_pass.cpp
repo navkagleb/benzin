@@ -30,7 +30,6 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::ShadowPass, [](benzin::RayTracing_PsoProxy& proxy)
         {
-            proxy.DebugName = "RayTracing_ShadowPass";
             proxy.ShaderLibrary.FileName = "ray_tracing_shadow_pass.hlsl";
             proxy.RayGenerationEntryPoint = "RayGeneration";
             proxy.MissEntryPoint = "Miss";

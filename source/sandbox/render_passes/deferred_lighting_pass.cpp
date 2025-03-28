@@ -27,7 +27,6 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::DeferredLighting, [this](benzin::GraphicsPsoProxy& proxy)
         {
-            proxy.DebugName = "DeferredLightingPass";
             proxy.VsFileName = "fullscreen_triangle.hlsl";
             proxy.PsFileName = "deferred_lighting_pass.hlsl";
             proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;

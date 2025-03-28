@@ -349,10 +349,14 @@ namespace benzin
 
         ms_PsoManager->Create(PsoId::ImGui, [](GraphicsPsoProxy& proxy)
         {
-            proxy.DebugName = "ImGui";
             proxy.InputLayout.emplace_back("Position", GraphicsFormat::Rg32Float);
             proxy.InputLayout.emplace_back("Uv", GraphicsFormat::Rg32Float);
             proxy.InputLayout.emplace_back("Color", GraphicsFormat::Rgba8Unorm);
+
+            BenzinAssert(GetFormatSize(proxy.InputLayout[0].Format) == sizeof(ImDrawVert::pos));
+            BenzinAssert(GetFormatSize(proxy.InputLayout[1].Format) == sizeof(ImDrawVert::uv));
+            BenzinAssert(GetFormatSize(proxy.InputLayout[2].Format) == sizeof(ImDrawVert::col));
+
             proxy.VsFileName = "imgui_pass.hlsl";
             proxy.PsFileName = "imgui_pass.hlsl";
 

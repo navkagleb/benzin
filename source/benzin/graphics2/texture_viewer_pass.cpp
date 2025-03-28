@@ -23,7 +23,6 @@ namespace benzin
     {
         ms_PsoManager->Create(PsoId::TextureViewer, [](ComputePsoProxy& proxy)
         {
-            proxy.DebugName = "TextureViewer";
             proxy.CsFileName = "texture_viewer_pass.hlsl";
         });
 

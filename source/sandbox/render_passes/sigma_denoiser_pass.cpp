@@ -47,7 +47,6 @@ namespace sandbox
         {
             ms_PsoManager->Create(id, [id, fileName, define](benzin::ComputePsoProxy& proxy)
             {
-                proxy.DebugName = magic_enum::enum_name(id);
                 proxy.CsFileName = fileName;
 
                 if (!define.empty())

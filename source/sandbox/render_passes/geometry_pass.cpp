@@ -44,8 +44,6 @@ namespace sandbox
         {
             ms_PsoManager->Create(id, [id, indexOrder](benzin::GraphicsPsoProxy& proxy)
             {
-                proxy.DebugName = magic_enum::enum_name(id);
-
                 proxy.InputLayout.emplace_back("Position", benzin::GraphicsFormat::Rgb32Float);
                 proxy.InputLayout.emplace_back("Normal", benzin::GraphicsFormat::Rgb32Float);
                 proxy.InputLayout.emplace_back("Uv", benzin::GraphicsFormat::Rg32Float);

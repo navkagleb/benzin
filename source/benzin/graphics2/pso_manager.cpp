@@ -71,7 +71,7 @@ namespace benzin
         graphicsPso->SetDepthStencilFormat(proxy.DepthStencilFormat);
         graphicsPso->Compile();
 
-        SetDxObjectDebugName(graphicsPso->GetD3D12PipelineState(), proxy.DebugName);
+        SetDxObjectDebugName(graphicsPso->GetD3D12PipelineState(), magic_enum::enum_name(id));
 
         pso = std::move(graphicsPso);
     }
@@ -96,7 +96,7 @@ namespace benzin
         computePso->SetCs(std::move(cs), csBytecode);
         computePso->Compile();
 
-        SetDxObjectDebugName(computePso->GetD3D12PipelineState(), proxy.DebugName);
+        SetDxObjectDebugName(computePso->GetD3D12PipelineState(), magic_enum::enum_name(id));
 
         pso = std::move(computePso);
     }
@@ -126,7 +126,7 @@ namespace benzin
         rayTracingPso->SetShaderConfig(proxy.ShaderConfig.PayloadSize, proxy.ShaderConfig.AttributeSize);
         rayTracingPso->Compile();
 
-        SetDxObjectDebugName(rayTracingPso->GetD3D12StateObject(), proxy.DebugName);
+        SetDxObjectDebugName(rayTracingPso->GetD3D12StateObject(), magic_enum::enum_name(id));
 
         pso = std::move(rayTracingPso);
     }

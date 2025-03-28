@@ -16,8 +16,6 @@ namespace benzin
 
     struct GraphicsPsoProxy
     {
-        std::string DebugName;
-
         std::vector<GraphicsInputElement> InputLayout;
 
         std::string_view VsFileName;
@@ -41,8 +39,6 @@ namespace benzin
 
     struct ComputePsoProxy
     {
-        std::string_view DebugName;
-
         std::string_view CsFileName;
         std::string_view CsEntryPoint = "CsMain";
         std::vector<std::string_view> CsDefines;
@@ -50,8 +46,6 @@ namespace benzin
 
     struct RayTracing_PsoProxy
     {
-        std::string_view DebugName;
-
         struct
         {
             std::string_view FileName;
