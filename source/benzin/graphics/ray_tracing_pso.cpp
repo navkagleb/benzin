@@ -28,12 +28,13 @@ namespace benzin
 
     RayTracing_Pso::~RayTracing_Pso()
     {
-        m_Device.DeferredRelease(*this);
-        m_D3D12StateObject = nullptr;
+        Release();
     }
 
     void RayTracing_Pso::Compile()
     {
+        BenzinAssert(m_D3D12StateObject == nullptr);
+
         const auto d3d12StateSubObjects = std::to_array(
         {
             D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE, &m_D3D12GlobalRootSignature },
@@ -53,6 +54,12 @@ namespace benzin
         BenzinHrEnsure(m_Device.GetD3D12Device()->CreateStateObject(&d3d12StateObjectDesc, IID_PPV_ARGS(&m_D3D12StateObject)));
 
         BuildShaderTable();
+    }
+
+    void RayTracing_Pso::Release()
+    {
+        m_Device.DeferredRelease(*this);
+        m_D3D12StateObject = nullptr;
     }
 
     std::span<const ShaderInfo> RayTracing_Pso::GetShaders() const

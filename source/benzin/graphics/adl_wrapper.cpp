@@ -173,6 +173,7 @@ namespace benzin
                 BenzinAdlEnsure(ADL2_Main_Control_Destroy(m_Context));
 
                 ::FreeLibrary(m_DllHandle);
+                m_IsInitialized = false;
             }
         }
 

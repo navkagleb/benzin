@@ -13,6 +13,7 @@ namespace benzin
         ~RayTracing_Pso() override;
 
         void Compile() override;
+        void Release() override;
         std::span<const ShaderInfo> GetShaders() const override;
 
         auto* GetD3D12StateObject() const { return m_D3D12StateObject; }

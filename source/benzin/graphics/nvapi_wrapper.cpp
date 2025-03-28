@@ -40,6 +40,7 @@ namespace benzin
             if (m_IsInitialized)
             {
                 BenzinNvApiEnsure(NvAPI_Unload());
+                m_IsInitialized = false;
             }
         }
 

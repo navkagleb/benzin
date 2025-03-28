@@ -109,6 +109,11 @@ namespace benzin
 
     Pso::~Pso()
     {
+        Release();
+    }
+
+    void Pso::Release()
+    {
         m_Device.DeferredRelease(*this);
         m_D3D12PipelineState = nullptr;
     }
@@ -157,6 +162,8 @@ namespace benzin
 
     void GraphicsPso::Compile()
     {
+        BenzinAssert(m_D3D12PipelineState == nullptr);
+
         BenzinAssert(m_D3D12Desc.VS.pShaderBytecode != nullptr && m_D3D12Desc.VS.BytecodeLength != 0);
         BenzinAssert(m_D3D12Desc.PS.pShaderBytecode != nullptr && m_D3D12Desc.PS.BytecodeLength != 0);
 
@@ -292,6 +299,7 @@ namespace benzin
 
     void ComputePso::Compile()
     {
+        BenzinAssert(m_D3D12PipelineState == nullptr);
         BenzinAssert(m_D3D12Desc.CS.pShaderBytecode != nullptr && m_D3D12Desc.CS.BytecodeLength != 0);
 
         BenzinHrEnsure(m_Device.GetD3D12Device()->CreateComputePipelineState(&m_D3D12Desc, IID_PPV_ARGS(&m_D3D12PipelineState)));

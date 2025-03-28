@@ -59,10 +59,6 @@ namespace benzin
     {
         BenzinLogTimeOnScopeExit("Backend::~Backend");
 
-        NvApiWrapper::Shutdown();
-        AdlWrapper::Shutdown();
-        PixCapturer::Shutdown();
-
 #if BENZIN_IS_ASSERTS_ENABLED
         if (!CommandLineArgs::GetBool("IsPixCapturerEnabled"))
         {
@@ -71,6 +67,10 @@ namespace benzin
             BenzinAssert(adapterMemoryInfo.ProcessUsedSharedRam == 0, "Process used Shared Ram: {} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb());
         }
 #endif
+
+        NvApiWrapper::Shutdown();
+        AdlWrapper::Shutdown();
+        PixCapturer::Shutdown();
 
         for (auto& dxgiAdapter : m_DxgiAdapters)
         {

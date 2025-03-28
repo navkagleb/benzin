@@ -222,6 +222,7 @@ namespace benzin
 
             if (isPsoNeedsRecompilation)
             {
+                pso->Release();
                 pso->Compile();
             }
         }

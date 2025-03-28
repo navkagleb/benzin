@@ -23,6 +23,7 @@ namespace benzin
         virtual ~PsoBase() = default;
 
         virtual void Compile() = 0;
+        virtual void Release() = 0;
         virtual std::span<const ShaderInfo> GetShaders() const = 0;
 
     protected:
@@ -37,6 +38,9 @@ namespace benzin
         ~Pso();
 
         auto* GetD3D12PipelineState() const { return m_D3D12PipelineState; }
+
+    private:
+        void Release() override;
 
     protected:
         ID3D12PipelineState* m_D3D12PipelineState = nullptr;
