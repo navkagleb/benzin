@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/dxc_shader_compiler.hpp"
 
-#include "benzin/core/logger.hpp"
 #include "benzin/graphics/shader.hpp"
 #include "benzin/graphics/hr_assert.hpp"
 

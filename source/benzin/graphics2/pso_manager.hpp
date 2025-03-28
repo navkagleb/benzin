@@ -68,8 +68,6 @@ namespace benzin
         } ShaderConfig;
     };
 
-    enum class PsoId : uint32_t;
-
     class PsoManager
     {
     public:

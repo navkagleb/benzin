@@ -3,12 +3,6 @@
 namespace benzin
 {
 
-    template <typename... Args>
-    std::string ArgsToFormatString(std::format_string<Args...> format = "", Args&&... args)
-    {
-        return std::format(format, std::forward<Args>(args)...);
-    }
-
     bool Assert(std::string_view conditionString, const std::source_location& sourceLocation, std::string_view message1 = {}, std::string_view messagte2 = {});
 
 }

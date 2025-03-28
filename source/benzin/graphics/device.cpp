@@ -188,7 +188,7 @@ namespace benzin
             BenzinTrace("Is GpuUploadHeaps enabled: {}", m_Caps.IsGpuUploadHeapsSupported);
         }
 
-        BenzinTrace(Logger::s_LineSeparator);
+        BenzinTrace(Logger::GetLineSeparator());
     }
 
     void Device::DeferredRelease(ID3D12Object* d3d12Object)

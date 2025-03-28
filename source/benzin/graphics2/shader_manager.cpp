@@ -2,7 +2,6 @@
 #include "benzin/graphics2/shader_manager.hpp"
 
 #include "benzin/core/command_line_args.hpp"
-#include "benzin/core/logger.hpp"
 #include "benzin/utility/time_utils.hpp"
 
 namespace benzin

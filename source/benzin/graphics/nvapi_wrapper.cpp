@@ -4,7 +4,6 @@
 #include <nvapi.h>
 
 #include "benzin/core/command_line_args.hpp"
-#include "benzin/core/logger.hpp"
 
 #define BenzinNvApiEnsure(nvCall) \
     const NvAPI_Status BenzinUniqueVariableName(nvStatus) = nvCall; \

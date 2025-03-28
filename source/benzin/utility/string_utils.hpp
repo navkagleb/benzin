@@ -3,6 +3,12 @@
 namespace benzin
 {
 
+    template <typename... Args>
+    std::string ArgsToFormatString(std::format_string<Args...> format = "", Args&&... args)
+    {
+        return std::format(format, std::forward<Args>(args)...);
+    }
+
     std::string ToNarrowString(std::wstring_view wideString);
     std::wstring ToWideString(std::string_view narrowString);
 
@@ -10,6 +16,6 @@ namespace benzin
 
     bool IsStringContainsCaseInsensitive(std::string_view haystack, std::string_view needle);
 
-} // namespace benzin
+}
 
 #define BenzinFormatData(formatString, ...) std::format(formatString, __VA_ARGS__).c_str()

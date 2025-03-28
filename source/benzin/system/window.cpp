@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/system/window.hpp"
 
-#include "benzin/core/logger.hpp"
 #include "benzin/graphics/common.hpp"
 #include "benzin/system/input.hpp"
 #include "benzin/system/key_event.hpp"

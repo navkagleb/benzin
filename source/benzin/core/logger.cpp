@@ -1,8 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/logger.hpp"
 
-#include "benzin/core/command_line_args.hpp"
-
 namespace benzin
 {
 
@@ -67,7 +65,7 @@ namespace benzin
         g_LogOptionFlags = logOptionFlags;
     }
 
-    void Logger::LogImpl(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
+    void Log(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
     {
         const auto output = GetOutput(severity, sourceLocation, message);
 
@@ -75,4 +73,4 @@ namespace benzin
         OutputDebugStringA(output.c_str());
     }
 
-} // namespace benzin
+}

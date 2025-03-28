@@ -46,13 +46,13 @@ namespace benzin
         GatherDxgiAdapters();
 
         const auto& mainAdapterInfo = GetMainAdapterInfo();
-        BenzinTrace(Logger::s_LineSeparator);
+        BenzinTrace(Logger::GetLineSeparator());
         BenzinTrace("Main Adapter:");
         BenzinTrace("{}", m_AdaptersInfo[m_MainAdapterIndex].Name);
         BenzinTrace("VRAM: {:.2f} mb, {:.2f} gb", mainAdapterInfo.TotalVram.GetMb(), mainAdapterInfo.TotalVram.GetGb());
         BenzinTrace("RAM: {:.2f} mb, {:.2f} gb", mainAdapterInfo.TotalRam.GetMb(), mainAdapterInfo.TotalRam.GetGb());
         BenzinTrace("Shared RAM: {:.2f} mb, {:.2f} gb", mainAdapterInfo.TotalSharedRam.GetMb(), mainAdapterInfo.TotalSharedRam.GetGb());
-        BenzinTrace(Logger::s_LineSeparator);
+        BenzinTrace(Logger::GetLineSeparator());
     }
 
     Backend::~Backend()

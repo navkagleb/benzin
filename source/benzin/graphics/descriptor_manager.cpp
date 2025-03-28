@@ -2,7 +2,6 @@
 #include "benzin/graphics/descriptor_manager.hpp"
 
 #include "benzin/core/index_allocator.hpp"
-#include "benzin/core/logger.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/hr_assert.hpp"

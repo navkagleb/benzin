@@ -1,7 +1,6 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/core/scoped_timer.hpp"
 
-#include "benzin/core/logger.hpp"
 #include "benzin/utility/time_utils.hpp"
 
 namespace benzin

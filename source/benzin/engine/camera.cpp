@@ -4,7 +4,6 @@
 #include "benzin/utility/time_utils.hpp"
 #include "benzin/tools/render_viewport_tool.hpp"
 #include "benzin/system/input.hpp"
-#include "benzin/core/logger.hpp"
 #include "benzin/core/engine_math.hpp"
 
 namespace benzin

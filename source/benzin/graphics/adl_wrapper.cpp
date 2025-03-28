@@ -4,7 +4,6 @@
 #include <adl_sdk.h>
 
 #include "benzin/core/command_line_args.hpp"
-#include "benzin/core/logger.hpp"
 
 static constexpr std::string_view AdlReturnCodeToString(int adlReturnCode)
 {

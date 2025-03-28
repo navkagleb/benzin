@@ -1,7 +1,5 @@
 #include "benzin/config/bootstrap.hpp"
 
-#include "benzin/core/logger.hpp"
-
 namespace benzin
 {
 

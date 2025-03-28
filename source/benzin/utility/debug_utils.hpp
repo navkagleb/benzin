@@ -1,7 +1,5 @@
 #pragma once
 
-#include "benzin/core/logger.hpp"
-
 namespace benzin
 {
 
