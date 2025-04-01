@@ -7,22 +7,21 @@
 #include "benzin/system/event.hpp"
 #include "benzin/system/input.hpp"
 #include "benzin/system/mouse_event.hpp"
+#include "benzin/tools/texture_viewer_tool.hpp"
 
 namespace benzin
 {
 
-    RenderViewportTool::RenderViewportTool(RenderResources& resources, Camera& camera)
+    RenderViewportTool::RenderViewportTool(RenderResources& resources, TextureViewerTool& textureViewerTool, Camera& camera)
         : ImGuiTool{ "RenderViewport" }
         , m_Resources{ resources }
+        , m_TextureViewerTool{ textureViewerTool }
         , m_FlyCameraController{ camera }
     {}
 
     void RenderViewportTool::MoveCamera(std::chrono::microseconds dt)
     {
-        if (m_IsViewportHovered)
-        {
-            m_FlyCameraController.MoveCamera(dt);
-        }
+        m_FlyCameraController.MoveCamera(dt);
     }
 
     void RenderViewportTool::OnEvent(Event& event)
@@ -49,19 +48,41 @@ namespace benzin
     {
         UpdateImGuiDimensions();
 
-        if (!m_Resources.IsCreated(TextureId::Final))
+        const auto viewportTextureId = m_TextureViewerTool.m_IsFullViewportPreview ? TextureId::DebugTexture : TextureId::Final;
+        if (!m_Resources.IsCreated(viewportTextureId))
         {
             return;
         }
 
-        const auto& finalTexture = m_Resources.Get(TextureId::Final);
-        const auto imTextureId = ImGuiPass::PackImTextureId(finalTexture.GetSrv(), joint::ImGuiSamplerIndex::Point);
+        const auto& viewportTexture = m_Resources.Get(viewportTextureId);
 
-        ImGui::Image(imTextureId, ImVec2
+        ImVec2 imageSize = m_ViewportSize;
+        if (viewportTexture.GetWidth() != m_ViewportSize.x || viewportTexture.GetHeight() != m_ViewportSize.y)
         {
-            (float)finalTexture.GetWidth(),
-            (float)finalTexture.GetHeight(),
-        });
+            const ImVec2 cursorPosition = ImGui::GetCursorScreenPos();
+            ImGui::GetWindowDrawList()->AddRectFilled(
+                cursorPosition,
+                cursorPosition + m_ViewportSize,
+                IM_COL32(50, 50, 50, 255)
+            );
+
+            const float viewportAspectRatio = m_ViewportSize.x / m_ViewportSize.y;
+            const float textureAspectRatio = (float)viewportTexture.GetWidth() / viewportTexture.GetHeight();
+
+            if (viewportAspectRatio > textureAspectRatio)
+            {
+                imageSize.x = imageSize.y * textureAspectRatio;
+            }
+            else
+            {
+                imageSize.y = imageSize.x / textureAspectRatio;
+            }
+        }
+
+        ImGui::Image(
+            ImGuiPass::PackImTextureId(viewportTexture.GetSrv(), joint::ImGuiSamplerIndex::Point),
+            imageSize
+        );
 
         m_IsViewportHovered = ImGui::IsItemHovered();
     }
@@ -70,14 +91,10 @@ namespace benzin
     {
         m_IsViewportSizeValid = true;
 
-        const DirectX::XMINT2 viewportSize
-        {
-            (int32_t)ImGui::GetContentRegionAvail().x,
-            (int32_t)ImGui::GetContentRegionAvail().y,
-        };
+        const ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
         const bool isInResizingState = ImGui::IsAnyItemActive();
-        const bool isEqual = viewportSize.x == m_ViewportSize.x && viewportSize.y == m_ViewportSize.y;
+        const bool isEqual = viewportSize == m_ViewportSize;
         if (isInResizingState || isEqual || ImGui::IsWindowAppearing() || ImGui::IsWindowCollapsed())
         {
             return;
@@ -86,7 +103,7 @@ namespace benzin
         m_ViewportSize = viewportSize;
         m_IsViewportSizeValid = false;
 
-        m_FlyCameraController.OnRenderViewportResized(m_ViewportSize.x, m_ViewportSize.y);
+        m_FlyCameraController.OnRenderViewportResized((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
     }
 
     bool RenderViewportTool::OnMouseMovedEvent(const MouseMovedEvent& event)

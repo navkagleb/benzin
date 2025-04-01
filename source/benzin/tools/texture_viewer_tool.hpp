@@ -14,6 +14,7 @@ namespace benzin
     {
     public:
         friend class TextureViewerPass;
+        friend class RenderViewportTool;
 
         explicit TextureViewerTool(const RenderResources& resources);
 
@@ -44,6 +45,8 @@ namespace benzin
         const RenderResources& m_Resources;
 
         TextureId m_ReferenceTextureId = g_InvalidTextureId;
+
+        bool m_IsFullViewportPreview = false;
 
         ImVec2 m_UvMin{ 0.0f, 0.0f };
         ImVec2 m_UvMax{ 1.0f, 1.0f };

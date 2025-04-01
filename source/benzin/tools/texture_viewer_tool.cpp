@@ -89,6 +89,8 @@ namespace benzin
 
         const auto& texture = m_Resources.Get(m_ReferenceTextureId);
 
+        ImGui::Checkbox("Full Viewport Preview", &m_IsFullViewportPreview);
+
         ImGui_CollapsingHeaderWithIndent("Texture Config", [this, &texture]
         {
             DrawTextureConfig(texture);

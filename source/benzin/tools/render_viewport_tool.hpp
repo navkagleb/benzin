@@ -9,6 +9,7 @@ namespace benzin
     class MouseMovedEvent;
     class MouseScrolledEvent;
     class RenderResources;
+    class TextureViewerTool;
 
     class RenderViewportTool : public ImGuiTool
     {
@@ -16,7 +17,7 @@ namespace benzin
         friend class FlyCameraController;
         friend class FlyCameraTool;
 
-        RenderViewportTool(RenderResources& resources, Camera& camera);
+        RenderViewportTool(RenderResources& resources, TextureViewerTool& textureViewerTool, Camera& camera);
 
         uint32_t GetWidth() const { return (uint32_t)m_ViewportSize.x; }
         uint32_t GetHeight() const { return (uint32_t)m_ViewportSize.y; }
@@ -38,9 +39,11 @@ namespace benzin
 
     private:
         RenderResources& m_Resources;
+        TextureViewerTool& m_TextureViewerTool;
+
         FlyCameraController m_FlyCameraController;
-        
-        DirectX::XMINT2 m_ViewportSize{};
+
+        ImVec2 m_ViewportSize{};
         bool m_IsViewportSizeValid = true;
         bool m_IsViewportHovered = false;
     };

@@ -40,8 +40,8 @@ namespace benzin
         BenzinProfile();
 
         RenderPass::m_IsRenderingEnabled = m_TextureViewerTool.IsReferenceTextureIdValid();
-        RenderPass::m_IsRenderingEnabled &= !m_TextureViewerTool.m_IsCollapsed;
         RenderPass::m_IsRenderingEnabled &= m_TextureViewerTool.m_IsVisible;
+        RenderPass::m_IsRenderingEnabled &= m_TextureViewerTool.m_IsCollapsed ? m_TextureViewerTool.m_IsFullViewportPreview : true;
 
         if (!RenderPass::m_IsRenderingEnabled)
         {

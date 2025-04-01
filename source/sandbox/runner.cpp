@@ -77,9 +77,9 @@ namespace sandbox
         {
             benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device, m_FrameTimer);
 
-            m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderResources, m_Scene->GetCamera());
-            m_RenderSettingsTool = m_ImGuiManager->PushTool<benzin::RenderSettingsTool>(*m_RenderSettings);
             m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderResources);
+            m_RenderSettingsTool = m_ImGuiManager->PushTool<benzin::RenderSettingsTool>(*m_RenderSettings);
+            m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderResources, *m_TextureViewerTool, m_Scene->GetCamera());
             m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Backend, *m_Device, *m_ShaderManager, *m_RenderViewportTool);
 
             m_ImGuiManager->PushTool<benzin::FlyCameraTool>(*m_RenderViewportTool);
@@ -117,7 +117,7 @@ namespace sandbox
 
     Runner::~Runner()
     {
-        BenzinTrace(benzin::Logger::s_LineSeparator);
+        BenzinTrace(benzin::Logger::GetLineSeparator());
         BenzinLogTimeOnScopeExit("Runner::~Runner");
 
         m_Device->GetGraphicsCommandQueue().Flush();
