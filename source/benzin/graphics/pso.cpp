@@ -163,14 +163,15 @@ namespace benzin
     void GraphicsPso::Compile()
     {
         BenzinAssert(m_D3D12PipelineState == nullptr);
-
         BenzinAssert(m_D3D12Desc.VS.pShaderBytecode != nullptr && m_D3D12Desc.VS.BytecodeLength != 0);
-        BenzinAssert(m_D3D12Desc.PS.pShaderBytecode != nullptr && m_D3D12Desc.PS.BytecodeLength != 0);
-
         BenzinAssert(m_D3D12Desc.PrimitiveTopologyType != D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED);
 
-        BenzinAssert(m_D3D12Desc.NumRenderTargets != 0);
 #if BENZIN_IS_ASSERTS_ENABLED
+        if (m_D3D12Desc.NumRenderTargets != 0)
+        {
+            BenzinAssert(m_D3D12Desc.PS.pShaderBytecode != nullptr && m_D3D12Desc.PS.BytecodeLength != 0);
+        }
+
         for (uint32_t i = 0; i < m_D3D12Desc.NumRenderTargets; ++i)
         {
             BenzinAssert(m_D3D12Desc.RTVFormats[i] != DXGI_FORMAT_UNKNOWN);

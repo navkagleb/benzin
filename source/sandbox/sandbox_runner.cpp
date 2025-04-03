@@ -47,7 +47,7 @@ namespace sandbox
 
         const auto createCylinderMesh = []
         {
-            const joint::Material material
+            const benzin::Material material
             {
                 .AlbedoFactor{ 0.7f, 0.7f, 0.7f, 1.0f },
             };
@@ -69,7 +69,7 @@ namespace sandbox
 
         const auto createUnitSphereMesh = []
         {
-            const joint::Material material
+            const benzin::Material material
             {
                 .AlbedoFactor{ 0.0f, 0.0f, 0.0f, 0.0f },
                 .EmissiveFactor{ 1.0f, 1.0f, 1.0f },
@@ -92,6 +92,11 @@ namespace sandbox
 
         const auto loadFromFile = [](std::string_view fileName)
         {
+            if (fileName.empty())
+            {
+                return benzin::MeshResource{};
+            }
+
             benzin::MeshResource resource;
             BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, resource));
 
@@ -125,9 +130,13 @@ namespace sandbox
 
     static void DrawGBufferSettings(GBufferSettings& settings)
     {
-        ImGui::Checkbox("IsFrustumCullingEnabled", &settings.IsFrustumCullingEnabled);
+        ImGui::Checkbox("Depth PrePass", &settings.IsDepthPrePassEnabled);
+        ImGui::Checkbox("Frustum Culling", &settings.IsFrustumCullingEnabled);
+    }
 
-        ImGui_CollapsingHeaderWithIndent("Stats", [&settings]
+    static void DrawGBufferStats(GBufferStats& stats)
+    {
+        ImGui_CollapsingHeaderWithIndent("Stats", [&stats]
         {
             // TODO: Move to global space
             struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
@@ -141,8 +150,6 @@ namespace sandbox
 
             std::locale::global(customLocale);
             BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
-
-            const auto& stats = settings.Stats;
 
             ImGui::Text(BenzinFormatData("MeshCount: {:L}", stats.MeshCount));
             ImGui::Text(BenzinFormatData("RenderedMeshCount: {:L}", stats.RenderedMeshCount));
@@ -236,17 +243,6 @@ namespace sandbox
 
     //
 
-    SandboxRunner::SandboxRunner()
-    {
-        BenzinLogTimeOnScopeExit("SandboxRunner::SandboxRunner");
-
-        InitRenderPasses();
-        InitTools();
-        
-        InitCamera();
-        InitSceneEntities();
-    }
-
     void SandboxRunner::InitRenderPasses()
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::InitRenderPasses");
@@ -267,6 +263,7 @@ namespace sandbox
     {
         BenzinAssert(m_RenderSettingsTool != nullptr);
         m_RenderSettingsTool->RegisterSectionDrawCallback<GBufferSettings>(DrawGBufferSettings, ImGuiTreeNodeFlags_DefaultOpen);
+        m_RenderSettingsTool->RegisterSectionDrawCallback<GBufferStats>(DrawGBufferStats, ImGuiTreeNodeFlags_None);
         m_RenderSettingsTool->RegisterSectionDrawCallback<RayTracing_ShadowSettings>(DrawRayTracingShadowsSettings, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<SigmaDenoiserSettings>(DrawSigmaDenoiserSettings, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<ToneMappingSettings>(DrawToneMappingSettings, ImGuiTreeNodeFlags_DefaultOpen);

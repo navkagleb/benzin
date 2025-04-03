@@ -42,16 +42,16 @@ namespace benzin
         configurator(proxy);
 
         BenzinAssert(!proxy.VsFileName.empty());
-        BenzinAssert(!proxy.PsFileName.empty());
+        if (!proxy.RenderTargetFormats.empty())
+        {
+            BenzinAssert(!proxy.PsFileName.empty());
+        }
 
         auto& pso = m_Psos[+id];
         BenzinAssert(pso.get() == nullptr);
 
         ShaderInfo vs{ ShaderType::Vertex, proxy.VsFileName, proxy.VsEntryPoint, std::move(proxy.VsDefines) };
         ShaderInfo ps{ ShaderType::Pixel, proxy.PsFileName, proxy.PsEntryPoint, std::move(proxy.PsDefines) };
-
-        const auto vsBytecode = m_ShaderManager.GetShaderBytecode(vs);
-        const auto psBytecode = m_ShaderManager.GetShaderBytecode(ps);
 
         auto graphicsPso = std::make_unique<GraphicsPso>(m_Device);
         
@@ -60,8 +60,15 @@ namespace benzin
             graphicsPso->SetInputLayout(proxy.InputLayout);
         }
         
+        const auto vsBytecode = m_ShaderManager.GetShaderBytecode(vs);
         graphicsPso->SetVs(std::move(vs), vsBytecode);
-        graphicsPso->SetPs(std::move(ps), psBytecode);
+
+        if (ps.IsValid())
+        {
+            const auto psBytecode = m_ShaderManager.GetShaderBytecode(ps);
+            graphicsPso->SetPs(std::move(ps), psBytecode);
+        }
+
         graphicsPso->SetPrimitiveTopologyType(proxy.PrimitiveTopologyType);
         graphicsPso->SetRasterizerState(proxy.RasterizerState);
         graphicsPso->SetDepthStencilState(proxy.DepthState, proxy.StencilState);

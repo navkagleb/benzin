@@ -18,12 +18,6 @@ namespace joint
         float2 Uv BenzinCppOnly({});
     };
 
-    struct MeshInfo
-    {
-        uint VertexOffset BenzinCppOnly( = 0);
-        uint IndexOffset BenzinCppOnly( = 0);
-    };
-
     struct MeshInstance
     {
         uint SubMeshIndex BenzinCppOnly( = 0);
@@ -40,18 +34,18 @@ namespace joint
 
     struct Material
     {
-        uint AlbedoTextureIndex BenzinCppOnly( = benzin::g_InvalidUnsigned<uint>);
-        uint NormalTextureIndex BenzinCppOnly( = benzin::g_InvalidUnsigned<uint>);
-        uint MetallicRoughnessTextureIndex BenzinCppOnly( = benzin::g_InvalidUnsigned<uint>);
-        uint EmissiveTextureIndex BenzinCppOnly( = benzin::g_InvalidUnsigned<uint>);
+        uint AlbedoTextureIndex;
+        uint NormalTextureIndex;
+        uint MetallicRoughnessTextureIndex;
+        uint EmissiveTextureIndex;
 
-        float4 AlbedoFactor BenzinCppOnly({ 1.0f, 1.0f, 1.0f, 1.0f });
-        float AlphaCutoff BenzinCppOnly( = 0.0f);
-        float NormalScale BenzinCppOnly( = 1.0f);
-        float MetalnessFactor BenzinCppOnly( = 1.0f);
-        float RoughnessFactor BenzinCppOnly( = 1.0f);
-        float OcclusionStrenght BenzinCppOnly( = 1.0f);
-        float3 EmissiveFactor BenzinCppOnly({ 0.0f, 0.0f, 0.0f });
+        float4 AlbedoFactor;
+        float AlphaCutoff;
+        float NormalScale;
+        float MetalnessFactor;
+        float RoughnessFactor;
+        float OcclusionStrenght;
+        float3 EmissiveFactor;
     };
 
 }

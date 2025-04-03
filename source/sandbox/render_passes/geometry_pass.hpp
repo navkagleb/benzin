@@ -8,12 +8,16 @@ namespace benzin
 
     class Scene;
     class GraphicsCommandList;
+
+    enum class IndexOrder : bool;
+    enum class PsoId : uint32_t;
 }
 
 namespace sandbox
 {
 
     struct GBufferStats;
+    struct GBufferSettings;
 
     class GeometryPass : public benzin::RenderPass
     {
@@ -32,13 +36,18 @@ namespace sandbox
             const entt::registry& EntityRegistry;
             const entt::registry& MeshRegistry;
 
-            bool IsFrustumCullingEnabled = true;
+            const GBufferSettings& Settings;
             GBufferStats& Stats;
+
+            bool IsDepthPrePass = false;
         };
+
+        void CreatePso(benzin::PsoId id, benzin::IndexOrder indexOrder, bool isDepthPrePass);
 
         bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize() override;
+        void OnUpdate() override;
         void OnRender() const override;
 
         void RenderMeshes(const MeshRenderContext& context, bool isIndexOrderClockwise) const;
@@ -47,6 +56,8 @@ namespace sandbox
 
     private:
         const benzin::Scene& m_Scene;
+
+        bool m_IsDepthPrePassEnabled = true;
     };
 
 }

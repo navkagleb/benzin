@@ -82,6 +82,12 @@ namespace benzin
         return std::span<const T>{ vector };
     }
 
+    template <typename T>
+    __forceinline auto ToSingleByteSpan(const T* data, size_t sizeInBytes = sizeof(T))
+    {
+        return std::span{ (const std::byte*)data, sizeInBytes };
+    }
+
 }
 #define BenzinDefineStdHashForType(HashType, HashTypeVariableName, HashFunctionImpl) \
     template <> \

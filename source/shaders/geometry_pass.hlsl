@@ -110,30 +110,38 @@ struct PsOutput
     float4 Color4 : SV_Target4;
 };
 
+#if !defined(IS_DEPTH_PREPASS)
 PsOutput PsMain(VsOutput input)
+#else
+void PsMain(VsOutput input)
+#endif
 {
     const joint::MeshInstance meshInstance = GetMeshInstance();
     const joint::Material material = g_Materials[meshInstance.MaterialIndex];
 
-    UnpackedGBuffer gbuffer;
-    gbuffer.Albedo = material.AlbedoFactor.rgb;
-    gbuffer.Roughness = material.RoughnessFactor;
-    gbuffer.Emissive = material.EmissiveFactor;
-    gbuffer.Metallic = material.MetalnessFactor;
-    gbuffer.WorldNormal = normalize(input.WorldNormal);
-
+    float3 albedo = material.AlbedoFactor.rgb;
     if (material.AlbedoTextureIndex != g_InvalidIndex)
     {
         Texture2D<float4> albedoTexture = ResourceDescriptorHeap[material.AlbedoTextureIndex];
         const float4 albedoSample = albedoTexture.Sample(g_LinearWrapSampler, input.Uv);
 
+#if defined(IS_ALPHA_TEST_ENABLED)
         if (albedoSample.a < material.AlphaCutoff)
         {
             discard;
         }
+#endif
 
-        gbuffer.Albedo *= albedoSample.rgb;
+        albedo *= albedoSample.rgb;
     }
+
+#if !defined(IS_DEPTH_PREPASS)
+    UnpackedGBuffer gbuffer;
+    gbuffer.Albedo = albedo;
+    gbuffer.Roughness = material.RoughnessFactor;
+    gbuffer.Emissive = material.EmissiveFactor;
+    gbuffer.Metallic = material.MetalnessFactor;
+    gbuffer.WorldNormal = normalize(input.WorldNormal);
 
     if (material.NormalTextureIndex != g_InvalidIndex)
     {
@@ -186,8 +194,6 @@ PsOutput PsMain(VsOutput input)
         gbuffer.ViewDepth = input.ViewPosition.z;
     }
 
-    // gbuffer.Albedo = 0.6;
-
     const PackedGBuffer packedGBuffer = PackGBuffer(gbuffer);
 
     PsOutput output = (PsOutput)0;
@@ -198,4 +204,5 @@ PsOutput PsMain(VsOutput input)
     output.Color4 = packedGBuffer.Color4;
 
     return output;
+#endif
 }

@@ -14,9 +14,8 @@ namespace sandbox
 
     struct GBufferSettings
     {
+        bool IsDepthPrePassEnabled = true;
         bool IsFrustumCullingEnabled = true;
-
-        GBufferStats Stats;
     };
 
     struct RayTracing_ShadowSettings

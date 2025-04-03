@@ -179,6 +179,8 @@ namespace benzin
 
     ShaderBytecode ShaderManager::GetShaderBytecode(const ShaderInfo& shader)
     {
+        BenzinAssert(shader.IsValid());
+
         if (!m_ShaderDxils.contains(shader.GetHash()))
         {
             if (!LoadShader(shader) && !TryCompileShader(shader))

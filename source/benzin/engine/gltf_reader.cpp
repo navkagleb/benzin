@@ -334,11 +334,11 @@ namespace benzin
         BenzinAssert(m_OutMesh->Materials.empty());
         m_OutMesh->Materials.reserve(m_GltfModel->materials.size());
 
-        for (const auto& gltfMaterial : m_GltfModel->materials)
+        for (const tinygltf::Material& gltfMaterial : m_GltfModel->materials)
         {
             const tinygltf::PbrMetallicRoughness& gltfPbrMetallicRoughness = gltfMaterial.pbrMetallicRoughness;
 
-            joint::Material& material = m_OutMesh->Materials.emplace_back();
+            Material& material = m_OutMesh->Materials.emplace_back();
 
             // Albedo
             {
@@ -374,6 +374,16 @@ namespace benzin
                 material.EmissiveFactor.x = (float)gltfMaterial.emissiveFactor[0];
                 material.EmissiveFactor.y = (float)gltfMaterial.emissiveFactor[1];
                 material.EmissiveFactor.z = (float)gltfMaterial.emissiveFactor[2];
+            }
+
+            if (gltfMaterial.alphaMode == "MASK")
+            {
+                material.IsAlphaTestRequired = true;
+            }
+            else
+            {
+                BenzinAssert(gltfMaterial.alphaMode == "OPAQUE");
+                material.IsAlphaTestRequired = false;
             }
         }
     }

@@ -109,7 +109,7 @@ namespace benzin
                 // TODO: There is duplication of Mesh due to using transform from MeshInstance
 
                 const MeshData& subMesh = mesh.SubMeshes[instance.SubMeshIndex];
-                const joint::MeshInfo meshInfo = mesh.SubMeshInfos[instance.SubMeshIndex];
+                const MeshInfo meshInfo = mesh.SubMeshInfos[instance.SubMeshIndex];
 
                 blas.AddGeometry(RayTracing_Blas::Geometry
                 {

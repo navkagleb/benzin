@@ -298,7 +298,14 @@ namespace benzin
             const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
             const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
 
-            commandList.UploadToBuffer<joint::Material>(*meshGpuStorage.MaterialBuffer, mesh.Materials);
+            for (const auto& [i, material] : mesh.Materials | std::views::enumerate)
+            {
+                // TODO: Potentially very tricky place
+                // Cut the last member of benzin::Material
+                const auto data = ToSingleByteSpan(&material, sizeof(joint::Material)); 
+                const size_t offsetInBytes = i * data.size_bytes();
+                commandList.UploadToBuffer(*meshGpuStorage.MaterialBuffer, data, offsetInBytes);
+            }
         });
     }
 

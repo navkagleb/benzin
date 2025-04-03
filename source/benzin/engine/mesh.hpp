@@ -4,8 +4,6 @@
 
 namespace joint
 {
-    struct Material;
-    struct MeshInfo;
     struct MeshInstance;
     struct MeshVertex;
 }
@@ -25,11 +23,35 @@ namespace benzin
         std::optional<DirectX::BoundingBox> BoundingBox;
     };
 
+    struct MeshInfo
+    {
+        uint32_t VertexOffset = 0;
+        uint32_t IndexOffset = 0;
+    };
+
+    struct Material
+    {
+        uint32_t AlbedoTextureIndex = g_InvalidUnsigned<uint32_t>;
+        uint32_t NormalTextureIndex = g_InvalidUnsigned<uint32_t>;
+        uint32_t MetallicRoughnessTextureIndex = g_InvalidUnsigned<uint32_t>;
+        uint32_t EmissiveTextureIndex = g_InvalidUnsigned<uint32_t>;
+
+        DirectX::XMFLOAT4 AlbedoFactor{ 1.0f, 1.0f, 1.0f, 1.0f };
+        float AlphaCutoff = 0.0f;
+        float NormalScale = 1.0f;
+        float MetalnessFactor = 1.0f;
+        float RoughnessFactor = 1.0f;
+        float OcclusionStrenght = 1.0f;
+        DirectX::XMFLOAT3 EmissiveFactor{ 0.0f, 0.0f, 0.0f };
+
+        bool IsAlphaTestRequired = false;
+    };
+
     struct Mesh
     {
         std::vector<MeshData> SubMeshes;
-        std::vector<joint::MeshInfo> SubMeshInfos;
-        std::vector<joint::Material> Materials;
+        std::vector<MeshInfo> SubMeshInfos;
+        std::vector<Material> Materials;
         std::vector<joint::MeshInstance> SubMeshInstances;
 
         uint32_t TotalVertexCount = 0;
@@ -68,7 +90,7 @@ namespace benzin
         std::vector<joint::MeshInstance> SubMeshInstances;
 
         std::vector<TextureImage> TextureImages;
-        std::vector<joint::Material> Materials;
+        std::vector<Material> Materials;
 
         bool IsIndexOrderClockwise = true;
     };
