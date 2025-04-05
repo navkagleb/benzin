@@ -85,7 +85,17 @@ namespace benzin
         m_DeferredReleaseDescriptorQueue.emplace(m_CpuFrameIndex, descriptor);
     }
 
-    void Device::DeferredRelease(const Pso& pso)
+    void Device::DeferredRelease(const VertexPso& pso)
+    {
+        DeferredRelease(pso.GetD3D12PipelineState());
+    }
+
+    void Device::DeferredRelease(const MeshPso& pso)
+    {
+        DeferredRelease(pso.GetD3D12PipelineState());
+    }
+
+    void Device::DeferredRelease(const ComputePso& pso)
     {
         DeferredRelease(pso.GetD3D12PipelineState());
     }
@@ -154,7 +164,7 @@ namespace benzin
             BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &d3d12FeatureDataShaderModel, sizeof(d3d12FeatureDataShaderModel)));
             BenzinEnsure(d3d12FeatureDataShaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_6);
 
-            BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12FeatureDataShaderModel.HighestShaderModel));
+            BenzinTrace("Device supports '{}'", magic_enum::enum_name(d3d12FeatureDataShaderModel.HighestShaderModel));
         }
        
         // Ray Tracing
@@ -163,17 +173,25 @@ namespace benzin
             BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &d3d12Options, sizeof(d3d12Options)));
             BenzinEnsure(d3d12Options.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
 
-            BenzinTrace("Device supports {}", magic_enum::enum_name(d3d12Options.RaytracingTier));
+            BenzinTrace("Device supports '{}'", magic_enum::enum_name(d3d12Options.RaytracingTier));
         }
 
         // DRED Breadcrumb
         {
             D3D12_FEATURE_DATA_EXISTING_HEAPS d3d12Options{};
             BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_EXISTING_HEAPS, &d3d12Options, sizeof(d3d12Options)));
+            BenzinEnsure((bool)d3d12Options.Supported);
 
-            m_Caps.IsDredSupported = d3d12Options.Supported = 1;
+            BenzinTrace("Device supports 'D3D12_FEATURE_EXISTING_HEAPS' (DRED)");
+        }
 
-            BenzinTrace("Is Dred supported: {}", m_Caps.IsDredSupported);
+        // Mesh shaders
+        {
+            D3D12_FEATURE_DATA_D3D12_OPTIONS9 d3d12Options{};
+            BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS9, &d3d12Options, sizeof(d3d12Options)));
+            BenzinEnsure((bool)d3d12Options.MeshShaderPipelineStatsSupported);
+
+            BenzinTrace("Device supports 'Mesh Shaders'");
         }
 
         // GPU Upload Heaps
@@ -182,10 +200,11 @@ namespace benzin
             BenzinHrEnsure(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS16, &d3d12Options, sizeof(d3d12Options)));
 
             m_Caps.IsGpuUploadHeapsSupported = d3d12Options.GPUUploadHeapSupported == 1;
-            BenzinTrace("Is GpuUploadHeaps supported: {}", m_Caps.IsGpuUploadHeapsSupported);
-
-            m_Caps.IsGpuUploadHeapsSupported &= CommandLineArgs::GetBool("IsGpuUploadHeapsEnabled");
-            BenzinTrace("Is GpuUploadHeaps enabled: {}", m_Caps.IsGpuUploadHeapsSupported);
+            if (m_Caps.IsGpuUploadHeapsSupported)
+            {
+                m_Caps.IsGpuUploadHeapsSupported &= CommandLineArgs::GetBool("IsGpuUploadHeapsEnabled");
+                BenzinTrace("Device supports 'GPU_UPLOAD_HEAPS' (IsEnabled: {})", m_Caps.IsGpuUploadHeapsSupported);
+            }
         }
 
         BenzinTrace(Logger::GetLineSeparator());

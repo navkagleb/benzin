@@ -66,7 +66,7 @@ namespace sandbox
 
     void GeometryPass::CreatePso(PsoId id, benzin::IndexOrder indexOrder, bool isDepthPrePass)
     {
-        ms_PsoManager->Create(id, [this, indexOrder, isDepthPrePass](benzin::GraphicsPsoProxy& proxy)
+        ms_PsoManager->Create(id, [this, indexOrder, isDepthPrePass](benzin::VertexPsoProxy& proxy)
         {
             proxy.InputLayout.emplace_back("Position", benzin::GraphicsFormat::Rgb32Float);
             proxy.InputLayout.emplace_back("Normal", benzin::GraphicsFormat::Rgb32Float);
@@ -76,9 +76,9 @@ namespace sandbox
             BenzinAssert(benzin::GetFormatSize(proxy.InputLayout[1].Format) == sizeof(joint::MeshVertex::Normal));
             BenzinAssert(benzin::GetFormatSize(proxy.InputLayout[2].Format) == sizeof(joint::MeshVertex::Uv));
 
-            proxy.VsFileName = "geometry_pass.hlsl";
-            proxy.PsFileName = "geometry_pass.hlsl";
-            proxy.PsDefines.push_back("IS_ALPHA_TEST_ENABLED");
+            proxy.Vs.FileName = "geometry_pass.hlsl";
+            proxy.Ps.FileName = "geometry_pass.hlsl";
+            proxy.Ps.Defines.push_back("IS_ALPHA_TEST_ENABLED");
 
             proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
             proxy.RasterizerState.CullMode = benzin::CullMode::Back;
@@ -87,7 +87,7 @@ namespace sandbox
 
             if (isDepthPrePass)
             {
-                proxy.PsDefines.push_back("IS_DEPTH_PREPASS");
+                proxy.Ps.Defines.push_back("IS_DEPTH_PREPASS");
             }
             else
             {
@@ -196,10 +196,10 @@ namespace sandbox
             context.IsDepthPrePass = true;
 
             cmdList.SetRenderTargets({}, &ms_Resources->Get(TextureId::DepthStencil).GetDsv());
-            cmdList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::GeometryPass_DepthCounterClockwise));
+            cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_DepthCounterClockwise));
             RenderMeshes(context, (bool)benzin::IndexOrder::CounterClockwise);
 
-            cmdList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::GeometryPass_DepthClockwise));
+            cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_DepthClockwise));
             RenderMeshes(context, (bool)benzin::IndexOrder::Clockwise);
             RenderLights(context);
         }
@@ -241,10 +241,10 @@ namespace sandbox
             cmdList.ClearRenderTarget(worldNormal);
             cmdList.ClearRenderTarget(mv);
 
-            cmdList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::GeometryPass_CounterClockwise));
+            cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_CounterClockwise));
             RenderMeshes(context, (bool)benzin::IndexOrder::CounterClockwise);
 
-            cmdList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::GeometryPass_Clockwise));
+            cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Clockwise));
             RenderMeshes(context, (bool)benzin::IndexOrder::Clockwise);
             RenderLights(context);
         }

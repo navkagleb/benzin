@@ -347,7 +347,7 @@ namespace benzin
     {
         m_FrameContexts.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
 
-        ms_PsoManager->Create(PsoId::ImGui, [](GraphicsPsoProxy& proxy)
+        ms_PsoManager->Create(PsoId::ImGui, [](VertexPsoProxy& proxy)
         {
             proxy.InputLayout.emplace_back("Position", GraphicsFormat::Rg32Float);
             proxy.InputLayout.emplace_back("Uv", GraphicsFormat::Rg32Float);
@@ -357,8 +357,8 @@ namespace benzin
             BenzinAssert(GetFormatSize(proxy.InputLayout[1].Format) == sizeof(ImDrawVert::uv));
             BenzinAssert(GetFormatSize(proxy.InputLayout[2].Format) == sizeof(ImDrawVert::col));
 
-            proxy.VsFileName = "imgui_pass.hlsl";
-            proxy.PsFileName = "imgui_pass.hlsl";
+            proxy.Vs.FileName = "imgui_pass.hlsl";
+            proxy.Ps.FileName = "imgui_pass.hlsl";
 
             proxy.PrimitiveTopologyType = PrimitiveTopologyType::Triangle;
 
@@ -419,7 +419,7 @@ namespace benzin
 
         commandList.SetViewport(ms_WindowViewport);
         commandList.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
-        commandList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::ImGui));
+        commandList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::ImGui));
         commandList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
         commandList.SetBlendFactor({});
 

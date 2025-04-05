@@ -97,6 +97,26 @@ namespace benzin
         return name;
     }
 
+    template <typename T, uint32_t _MaxElementCount>
+    class StaticArray
+    {
+    public:
+        void Add(T&& element)
+        {
+            BenzinAssert(m_Count < _MaxElementCount);
+            m_Elements[m_Count++] = std::forward<T>(element);
+        }
+
+        auto Get() const
+        {
+            return ToSpan(m_Elements.data(), m_Count);
+        }
+
+    private:
+        std::array<T, _MaxElementCount> m_Elements{};
+        uint32_t m_Count = 0;
+    };
+
 }
 
 #define BenzinExecuteOnScopeExit(lambda) const benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }

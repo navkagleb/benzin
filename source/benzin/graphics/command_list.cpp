@@ -332,7 +332,7 @@ namespace benzin
         SetGraphicsRootConstant(rootIndex, viewDescriptor.GetGpuHeapIndex());
     }
 
-    void GraphicsCommandList::SetGraphicsPso(const GraphicsPso& pso)
+    void GraphicsCommandList::SetVertexPso(const VertexPso& pso)
     {
         BenzinAssert(pso.GetD3D12PipelineState() != nullptr);
         m_D3D12GraphicsCommandList->SetPipelineState(pso.GetD3D12PipelineState());

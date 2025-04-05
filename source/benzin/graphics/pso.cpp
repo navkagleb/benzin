@@ -105,217 +105,272 @@ namespace benzin
         return d3d12BlendDesc;
     }
 
+#if BENZIN_IS_ASSERTS_ENABLED
+    static void ValidateShaderBytecode(const D3D12_SHADER_BYTECODE& d3d12ShaderBytecode)
+    {
+        BenzinAssert(d3d12ShaderBytecode.pShaderBytecode != nullptr && d3d12ShaderBytecode.BytecodeLength != 0);
+    }
+
+    static void ValidatePsoStream(const PsoStreamBase& stream)
+    {
+        BenzinAssert(*stream.RootSignature != nullptr);
+    }
+
+    static void ValidatePsoStream(const GraphicsPsoStream& stream)
+    {
+        ValidatePsoStream((const PsoStreamBase&)stream);
+
+        if (stream.RenderTargetFormats->NumRenderTargets != 0)
+        {
+            ValidateShaderBytecode(*stream.Ps);
+        }
+
+        for (uint32_t i = 0; i < stream.RenderTargetFormats->NumRenderTargets; ++i)
+        {
+            BenzinAssert(stream.RenderTargetFormats->RTFormats[i] != DXGI_FORMAT_UNKNOWN);
+        }
+    }
+
+    static void ValidatePsoStream(const VertexPsoStream& stream)
+    {
+        ValidatePsoStream((const GraphicsPsoStream&)stream);
+
+        ValidateShaderBytecode(*stream.Vs);
+        BenzinAssert(*stream.PrimitiveTopologyType != D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED);
+    }
+
+    static void ValidatePsoStream(const MeshPsoStream& stream)
+    {
+        ValidatePsoStream((const GraphicsPsoStream&)stream);
+
+        ValidateShaderBytecode(*stream.Ms);
+    }
+
+    static void ValidatePsoStream(const ComputePsoStream& stream)
+    {
+        ValidatePsoStream((const PsoStreamBase&)stream);
+
+        ValidateShaderBytecode(*stream.Cs);
+    }
+#endif
+
+    template class Pso<VertexPso, VertexPsoStream, 2>;
+    template class Pso<MeshPso, MeshPsoStream, 2>;
+    template class Pso<ComputePso, ComputePsoStream, 1>;
+
+    template class GraphicsPso<VertexPso, VertexPsoStream, 2>;
+    template class GraphicsPso<MeshPso, MeshPsoStream, 2>;
+
+    // PsoStreamBase
+
+    PsoStreamBase::PsoStreamBase(Device& device)
+    {
+        RootSignature = device.GetUnifiedRootSignature().GetD3D12RootSignature();
+    }
+
+    // GraphicsPsoStream
+
+    GraphicsPsoStream::GraphicsPsoStream(Device& device)
+        : PsoStreamBase{ device }
+    {
+        RasterizerState = ToD3D12RasterizerState(benzin::RasterizerState{});
+        DepthStencilState = ToD3D12DepthStencilState(DepthState{}, StencilState{});
+        BlendState = ToD3D12BlendState(benzin::BlendState{});
+        DepthStencilFormat = DXGI_FORMAT_UNKNOWN;
+
+        std::fill_n(RenderTargetFormats->RTFormats, std::size(RenderTargetFormats->RTFormats), DXGI_FORMAT_UNKNOWN);
+    }
+
+    // VertexPsoStream
+
+    VertexPsoStream::VertexPsoStream(Device& device)
+        : GraphicsPsoStream{ device }
+    {
+        PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
+    }
+
     // Pso
 
-    Pso::~Pso()
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::Pso(Device& device)
+        : PsoBase{ device }
+        , m_Stream{ device }
+    {}
+
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    void Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::Compile()
+    {
+        BenzinAssert(m_D3D12PipelineState == nullptr);
+#if BENZIN_IS_ASSERTS_ENABLED
+        ValidatePsoStream(m_Stream);
+#endif
+
+        const D3D12_PIPELINE_STATE_STREAM_DESC d3d12PsoStreamDesc
+        {
+            .SizeInBytes = sizeof(m_Stream),
+            .pPipelineStateSubobjectStream = (void*)&m_Stream,
+        };
+
+        BenzinHrEnsure(m_Device.GetD3D12Device()->CreatePipelineState(&d3d12PsoStreamDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+    }
+
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    void Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::Release()
+    {
+        PsoBase::m_Device.DeferredRelease(*(DerivedPsoT*)this);
+        m_D3D12PipelineState = nullptr;
+    }
+
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::~Pso()
     {
         Release();
     }
 
-    void Pso::Release()
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    void Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::AddShader(ShaderInfo&& shader, ShaderType shaderType)
     {
-        m_Device.DeferredRelease(*this);
-        m_D3D12PipelineState = nullptr;
+        BenzinUnused(shaderType);
+        BenzinAssert(shader.IsValid() && shader.GetType() == shaderType);
+
+        m_Shaders.Add(std::move(shader));
     }
 
     // GraphicsPso
 
-    GraphicsPso::GraphicsPso(Device& device)
-        : Pso{ device }
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetPs(ShaderInfo&& shader, ShaderBytecode bytecode)
     {
-        m_D3D12Desc = D3D12_GRAPHICS_PIPELINE_STATE_DESC
-        {
-            .pRootSignature = m_Device.GetUnifiedRootSignature().GetD3D12RootSignature(),
-            .VS{ nullptr, 0 },
-            .PS{ nullptr, 0 },
-            .DS{ nullptr, 0 },
-            .HS{ nullptr, 0 },
-            .GS{ nullptr, 0 },
-            .StreamOutput
-            {
-                .pSODeclaration = nullptr,
-                .NumEntries = 0,
-                .pBufferStrides = nullptr,
-                .NumStrides = 0,
-                .RasterizedStream = 0,
-            },
-            .BlendState = ToD3D12BlendState(BlendState{}),
-            .SampleMask = 0xffffffff,
-            .RasterizerState = ToD3D12RasterizerState(RasterizerState{}),
-            .DepthStencilState = ToD3D12DepthStencilState(DepthState{}, StencilState{}),
-            .IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
-            .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED,
-            .NumRenderTargets = 0,
-            .DSVFormat = DXGI_FORMAT_UNKNOWN,
-            .SampleDesc{ 1, 0 },
-            .NodeMask = 0,
-            .CachedPSO
-            {
-                .pCachedBlob = nullptr,
-                .CachedBlobSizeInBytes = 0,
-            },
-            .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
-        };
-
-        std::fill_n(m_D3D12Desc.RTVFormats, 8, DXGI_FORMAT_UNKNOWN);
-    }
-
-    void GraphicsPso::Compile()
-    {
-        BenzinAssert(m_D3D12PipelineState == nullptr);
-        BenzinAssert(m_D3D12Desc.VS.pShaderBytecode != nullptr && m_D3D12Desc.VS.BytecodeLength != 0);
-        BenzinAssert(m_D3D12Desc.PrimitiveTopologyType != D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED);
-
-#if BENZIN_IS_ASSERTS_ENABLED
-        if (m_D3D12Desc.NumRenderTargets != 0)
-        {
-            BenzinAssert(m_D3D12Desc.PS.pShaderBytecode != nullptr && m_D3D12Desc.PS.BytecodeLength != 0);
-        }
-
-        for (uint32_t i = 0; i < m_D3D12Desc.NumRenderTargets; ++i)
-        {
-            BenzinAssert(m_D3D12Desc.RTVFormats[i] != DXGI_FORMAT_UNKNOWN);
-        }
-#endif
-
-        BenzinHrEnsure(m_Device.GetD3D12Device()->CreateGraphicsPipelineState(&m_D3D12Desc, IID_PPV_ARGS(&m_D3D12PipelineState)));
-    }
-
-    std::span<const ShaderInfo> GraphicsPso::GetShaders() const
-    {
-        return m_Shaders;
-    }
-
-    void GraphicsPso::SetInputLayout(std::span<const GraphicsInputElement> inputLayout)
-    {
-        BenzinAssert(!inputLayout.empty());
-        BenzinAssert(m_D3D12InputLayout.empty());
-
-        uint32_t fieldByteOffset = 0;
-
-        m_D3D12InputLayout.reserve(inputLayout.size());
-        for (const auto& element : inputLayout)
-        {
-            m_D3D12InputLayout.push_back(D3D12_INPUT_ELEMENT_DESC
-            {
-                .SemanticName = element.Name.data(),
-                .SemanticIndex = 0,
-                .Format = (DXGI_FORMAT)element.Format,
-                .InputSlot = 0,
-                .AlignedByteOffset = fieldByteOffset,
-                .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-                .InstanceDataStepRate = 0,
-            });
-
-            fieldByteOffset += GetFormatSize(element.Format);
-        }
-
-        m_D3D12Desc.InputLayout.pInputElementDescs = m_D3D12InputLayout.data();
-        m_D3D12Desc.InputLayout.NumElements = (UINT)m_D3D12InputLayout.size();
-    }
-
-    void GraphicsPso::SetVs(ShaderInfo&& shader, ShaderBytecode bytecode)
-    {
-        BenzinAssert(shader.IsValid() && shader.GetType() == ShaderType::Vertex);
-        m_Shaders[0] = std::move(shader);
-
-        ChangeVs(bytecode);
-    }
-
-    void GraphicsPso::SetPs(ShaderInfo&& shader, ShaderBytecode bytecode)
-    {
-        BenzinAssert(shader.IsValid() && shader.GetType() == ShaderType::Pixel);
-        m_Shaders[1] = std::move(shader);
-
+        Super::AddShader(std::move(shader), ShaderType::Pixel);
         ChangePs(bytecode);
     }
 
-    void GraphicsPso::SetPrimitiveTopologyType(PrimitiveTopologyType type)
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetRasterizerState(RasterizerState state)
     {
-        m_D3D12Desc.PrimitiveTopologyType = (D3D12_PRIMITIVE_TOPOLOGY_TYPE)type;
+        m_Stream.RasterizerState = ToD3D12RasterizerState(state);
     }
 
-    void GraphicsPso::SetRasterizerState(RasterizerState state)
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetDepthStencilState(DepthState depthState, StencilState stencilState)
     {
-        m_D3D12Desc.RasterizerState = ToD3D12RasterizerState(state);
+        this->m_Stream.DepthStencilState = ToD3D12DepthStencilState(depthState, stencilState);
     }
 
-    void GraphicsPso::SetDepthStencilState(DepthState depthState, StencilState stencilState)
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetBlendState(BlendState state)
     {
-        m_D3D12Desc.DepthStencilState = ToD3D12DepthStencilState(depthState, stencilState);
+        m_Stream.BlendState = ToD3D12BlendState(state);
     }
 
-    void GraphicsPso::SetBlendState(BlendState state)
-    {
-        m_D3D12Desc.BlendState = ToD3D12BlendState(state);
-    }
-
-    void GraphicsPso::SetRenderTargetFormats(std::span<const GraphicsFormat> formats)
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetRenderTargetFormats(std::span<const GraphicsFormat> formats)
     {
         BenzinAssert(formats.size() <= 8);
 
-        m_D3D12Desc.NumRenderTargets = (uint8_t)formats.size();
-        memcpy(m_D3D12Desc.RTVFormats, formats.data(), formats.size() * sizeof(GraphicsFormat));
+        m_Stream.RenderTargetFormats->NumRenderTargets = (uint8_t)formats.size();
+        memcpy(m_Stream.RenderTargetFormats->RTFormats, formats.data(), formats.size() * sizeof(GraphicsFormat));
     }
 
-    void GraphicsPso::SetDepthStencilFormat(GraphicsFormat format)
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetDepthStencilFormat(GraphicsFormat format)
     {
-        m_D3D12Desc.DSVFormat = (DXGI_FORMAT)format;
+        m_Stream.DepthStencilFormat = (DXGI_FORMAT)format;
     }
 
-    void GraphicsPso::ChangeVs(ShaderBytecode bytecode)
-    {
-        BenzinAssert(!bytecode.empty());
-
-        m_D3D12Desc.VS.pShaderBytecode = bytecode.data();
-        m_D3D12Desc.VS.BytecodeLength = bytecode.size();
-    }
-
-    void GraphicsPso::ChangePs(ShaderBytecode bytecode)
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::ChangePs(ShaderBytecode bytecode)
     {
         BenzinAssert(!bytecode.empty());
 
-        m_D3D12Desc.PS.pShaderBytecode = bytecode.data();
-        m_D3D12Desc.PS.BytecodeLength = bytecode.size();
+        m_Stream.Ps->pShaderBytecode = bytecode.data();
+        m_Stream.Ps->BytecodeLength = bytecode.size();
+    }
+
+    // VertexPso
+
+    VertexPso::~VertexPso()
+    {
+        auto* d3d12InputElements = const_cast<D3D12_INPUT_ELEMENT_DESC*>(Pso::m_Stream.InputLayout->pInputElementDescs);
+        if (d3d12InputElements != nullptr)
+        {
+            delete[] d3d12InputElements;
+
+            Pso::m_Stream.InputLayout->pInputElementDescs = nullptr;
+            Pso::m_Stream.InputLayout->NumElements = 0;
+        }
+    }
+
+    void VertexPso::SetInputLayout(std::span<const VertexInputElement> inputLayout)
+    {
+        BenzinAssert(!inputLayout.empty());
+        BenzinAssert(Pso::m_Stream.InputLayout->pInputElementDescs == nullptr);
+
+        uint32_t fieldByteOffset = 0;
+
+        auto& inputElementCount = Pso::m_Stream.InputLayout->NumElements;
+        inputElementCount = (uint32_t)inputLayout.size();
+
+        auto*& d3d12InputElements = const_cast<D3D12_INPUT_ELEMENT_DESC*&>(Pso::m_Stream.InputLayout->pInputElementDescs);
+        d3d12InputElements = new D3D12_INPUT_ELEMENT_DESC[inputElementCount];
+
+        for (uint32_t i = 0; i < inputElementCount; ++i)
+        {
+            const VertexInputElement& inputElement = inputLayout[i];
+
+            D3D12_INPUT_ELEMENT_DESC& d3d12InputElement = d3d12InputElements[i];
+            d3d12InputElement.SemanticName = inputElement.Name.data();
+            d3d12InputElement.SemanticIndex = 0;
+            d3d12InputElement.Format = (DXGI_FORMAT)inputElement.Format;
+            d3d12InputElement.InputSlot = 0;
+            d3d12InputElement.AlignedByteOffset = fieldByteOffset;
+            d3d12InputElement.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+            d3d12InputElement.InstanceDataStepRate = 0;
+
+            fieldByteOffset += GetFormatSize(inputElement.Format);
+        }
+    }
+
+    void VertexPso::SetVs(ShaderInfo&& shader, ShaderBytecode bytecode)
+    {
+        Pso::AddShader(std::move(shader), ShaderType::Vertex);
+        ChangeVs(bytecode);
+    }
+
+    void VertexPso::SetPrimitiveTopologyType(PrimitiveTopologyType type)
+    {
+        Pso::m_Stream.PrimitiveTopologyType = (D3D12_PRIMITIVE_TOPOLOGY_TYPE)type;
+    }
+
+    void VertexPso::ChangeVs(ShaderBytecode bytecode)
+    {
+        BenzinAssert(!bytecode.empty());
+
+        Pso::m_Stream.Vs->pShaderBytecode = bytecode.data();
+        Pso::m_Stream.Vs->BytecodeLength = bytecode.size();
+    }
+
+    // MeshPso
+
+    void MeshPso::SetMs(ShaderInfo&& shader, ShaderBytecode bytecode)
+    {
+        Pso::AddShader(std::move(shader), ShaderType::Mesh);
+        ChangeMs(bytecode);
+    }
+
+    void MeshPso::ChangeMs(ShaderBytecode bytecode)
+    {
+        BenzinAssert(!bytecode.empty());
+
+        Pso::m_Stream.Ms->pShaderBytecode = bytecode.data();
+        Pso::m_Stream.Ms->BytecodeLength = bytecode.size();
     }
 
     // ComputePso
 
-    ComputePso::ComputePso(Device& device)
-        : Pso{ device }
+    void ComputePso::SetCs(ShaderInfo&& shader, ShaderBytecode bytecode)
     {
-        m_D3D12Desc = D3D12_COMPUTE_PIPELINE_STATE_DESC
-        {
-            .pRootSignature = m_Device.GetUnifiedRootSignature().GetD3D12RootSignature(),
-            .CS{ nullptr, 0 },
-            .NodeMask = 0,
-            .CachedPSO
-            {
-                .pCachedBlob = nullptr,
-                .CachedBlobSizeInBytes = 0,
-            },
-            .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
-        };
-    }
-
-    void ComputePso::Compile()
-    {
-        BenzinAssert(m_D3D12PipelineState == nullptr);
-        BenzinAssert(m_D3D12Desc.CS.pShaderBytecode != nullptr && m_D3D12Desc.CS.BytecodeLength != 0);
-
-        BenzinHrEnsure(m_Device.GetD3D12Device()->CreateComputePipelineState(&m_D3D12Desc, IID_PPV_ARGS(&m_D3D12PipelineState)));
-    }
-
-    std::span<const ShaderInfo> ComputePso::GetShaders() const
-    {
-        return std::span<const ShaderInfo>{ &m_Cs, 1 };
-    }
-
-    void ComputePso::SetCs(const ShaderInfo& shader, ShaderBytecode bytecode)
-    {
-        BenzinAssert(shader.IsValid() && shader.GetType() == ShaderType::Compute);
-        m_Cs = shader;
-
+        Pso::AddShader(std::move(shader), ShaderType::Compute);
         ChangeCs(bytecode);
     }
 
@@ -323,8 +378,8 @@ namespace benzin
     {
         BenzinAssert(!bytecode.empty());
 
-        m_D3D12Desc.CS.pShaderBytecode = bytecode.data();
-        m_D3D12Desc.CS.BytecodeLength = bytecode.size();
+        Pso::m_Stream.Cs->pShaderBytecode = bytecode.data();
+        Pso::m_Stream.Cs->BytecodeLength = bytecode.size();
     }
 
 }

@@ -8,6 +8,7 @@ namespace benzin
     enum class ShaderType : uint8_t
     {
         Vertex,
+        Mesh,
         Pixel,
         Compute,
         Library,

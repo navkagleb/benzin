@@ -7,41 +7,51 @@ namespace benzin
 
     class ComputePso;
     class Device;
-    class GraphicsPso;
+    class MeshPso;
     class PsoBase;
     class RayTracing_Pso;
     class ShaderManager;
+    class VertexPso;
     
-    struct GraphicsInputElement;
+    struct VertexInputElement;
+
+    struct ShaderProxy
+    {
+        std::string_view FileName;
+        std::string_view EntryPoint;
+        std::vector<std::string_view> Defines;
+
+        explicit ShaderProxy(std::string_view entryPoint)
+            : EntryPoint{ entryPoint }
+        {}
+    };
 
     struct GraphicsPsoProxy
     {
-        std::vector<GraphicsInputElement> InputLayout;
-
-        std::string_view VsFileName;
-        std::string_view VsEntryPoint = "VsMain";
-        std::vector<std::string_view> VsDefines;
-
-        std::string_view PsFileName;
-        std::string_view PsEntryPoint = "PsMain";
-        std::vector<std::string_view> PsDefines;
-
-        PrimitiveTopologyType PrimitiveTopologyType = PrimitiveTopologyType::Unknown;
+        ShaderProxy Ps{ "PsMain" };
         RasterizerState RasterizerState;
-
         DepthState DepthState;
         StencilState StencilState;
-
         std::vector<GraphicsFormat> RenderTargetFormats;
         GraphicsFormat DepthStencilFormat = GraphicsFormat::Unknown;
         BlendState BlendState;
     };
 
+    struct VertexPsoProxy : GraphicsPsoProxy
+    {
+        ShaderProxy Vs{ "VsMain" };
+        std::vector<VertexInputElement> InputLayout;
+        PrimitiveTopologyType PrimitiveTopologyType = PrimitiveTopologyType::Unknown;
+    };
+
+    struct MeshPsoProxy : GraphicsPsoProxy
+    {
+        ShaderProxy Ms{ "MsMain" };
+    };
+
     struct ComputePsoProxy
     {
-        std::string_view CsFileName;
-        std::string_view CsEntryPoint = "CsMain";
-        std::vector<std::string_view> CsDefines;
+        ShaderProxy Cs{ "CsMain" };
     };
 
     struct RayTracing_PsoProxy
@@ -71,23 +81,35 @@ namespace benzin
     class PsoManager
     {
     public:
-        using GraphicsPsoConfigurator = std::function<void(GraphicsPsoProxy& proxy)>;
+        using VertexPsoConfigurator = std::function<void(VertexPsoProxy& proxy)>;
+        using MeshPsoConfigurator = std::function<void(MeshPsoProxy& proxy)>;
         using ComputePsoConfigurator = std::function<void(ComputePsoProxy& proxy)>;
         using RayTracingPsoConfigurator = std::function<void(RayTracing_PsoProxy& proxy)>;
 
         PsoManager(Device& device, ShaderManager& shaderManager);
         ~PsoManager();
 
-        void Create(PsoId id, const GraphicsPsoConfigurator& configurator);
+        void Create(PsoId id, const VertexPsoConfigurator& configurator);
+        void Create(PsoId id, const MeshPsoConfigurator& configurator);
         void Create(PsoId id, const ComputePsoConfigurator& configurator);
         void Create(PsoId id, const RayTracingPsoConfigurator& configurator);
         void Destroy(PsoId id);
 
-        const GraphicsPso& GetGraphics(PsoId id) const;
+        const VertexPso& GetVertex(PsoId id) const;
+        const MeshPso& GetMesh(PsoId id) const;
         const ComputePso& GetCompute(PsoId id) const;
         const RayTracing_Pso& GetRayTracing(PsoId id) const;
 
     private:
+        template <typename PsoT>
+        using PsoCreator = std::function<void(PsoT& pso)>;
+
+        template <typename PsoT>
+        void Create(PsoId id, const PsoCreator<PsoT>& creator);
+
+        template <typename PsoT>
+        const PsoT& Get(PsoId id) const;
+
         void RecompilePsoCallback();
 
     private:

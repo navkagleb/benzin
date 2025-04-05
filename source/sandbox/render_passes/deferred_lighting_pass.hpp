@@ -11,6 +11,7 @@ namespace sandbox
         DeferredLightingPass();
         ~DeferredLightingPass() override;
 
+    private:
         bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize() override;

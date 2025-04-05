@@ -25,10 +25,10 @@ namespace sandbox
 
     DeferredLightingPass::DeferredLightingPass()
     {
-        ms_PsoManager->Create(PsoId::DeferredLighting, [this](benzin::GraphicsPsoProxy& proxy)
+        ms_PsoManager->Create(PsoId::DeferredLighting, [this](benzin::VertexPsoProxy& proxy)
         {
-            proxy.VsFileName = "fullscreen_triangle.hlsl";
-            proxy.PsFileName = "deferred_lighting_pass.hlsl";
+            proxy.Vs.FileName = "fullscreen_triangle.hlsl";
+            proxy.Ps.FileName = "deferred_lighting_pass.hlsl";
             proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
             proxy.DepthState = benzin::DepthState
             {
@@ -81,7 +81,7 @@ namespace sandbox
         commandList.SetRenderTargets({ hdrColor.GetRtv() });
         commandList.ClearRenderTarget(hdrColor);
 
-        commandList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::DeferredLighting));
+        commandList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::DeferredLighting));
 
         {
             using enum joint::Rc_DeferredLighting;

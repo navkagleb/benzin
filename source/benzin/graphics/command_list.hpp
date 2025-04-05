@@ -9,12 +9,12 @@ namespace benzin
     class Buffer;
     class ComputePso;
     class Descriptor;
-    class GraphicsPso;
     class QueryHeap;
     class RayTracing_AcclerationStructure;
     class RayTracing_Pso;
     class RayTracing_ShaderTable;
     class Texture;
+    class VertexPso;
 
     struct SubResourceData;
 
@@ -75,7 +75,7 @@ namespace benzin
         void SetGraphicsRootConstant(uint32_t rootIndex, uint32_t value);
         void SetGraphicsRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
 
-        void SetGraphicsPso(const GraphicsPso& pso);
+        void SetVertexPso(const VertexPso& pso);
 
         void SetVertexBuffer(const Buffer& vertexBuffer);
         void SetIndexBuffer(const Buffer& indexBuffer);

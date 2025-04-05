@@ -11,6 +11,34 @@
 namespace benzin
 {
 
+    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    static void CreateGraphicsPso(
+        GraphicsPsoProxy& proxy,
+        ShaderManager& shaderManager,
+        GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>& pso
+    )
+    {
+        ShaderInfo ps{ ShaderType::Pixel, proxy.Ps.FileName, proxy.Ps.EntryPoint, std::move(proxy.Ps.Defines) };
+        if (!proxy.RenderTargetFormats.empty())
+        {
+            BenzinAssert(ps.IsValid());
+        }
+
+        if (ps.IsValid())
+        {
+            const auto psBytecode = shaderManager.GetShaderBytecode(ps);
+            pso.SetPs(std::move(ps), psBytecode);
+        }
+
+        pso.SetRasterizerState(proxy.RasterizerState);
+        pso.SetDepthStencilState(proxy.DepthState, proxy.StencilState);
+        pso.SetBlendState(proxy.BlendState);
+        pso.SetRenderTargetFormats(proxy.RenderTargetFormats);
+        pso.SetDepthStencilFormat(proxy.DepthStencilFormat);
+    }
+
+    //
+
     PsoManager::PsoManager(Device& device, ShaderManager& shaderManager)
         : m_Device{ device }
         , m_ShaderManager{ shaderManager }
@@ -33,108 +61,90 @@ namespace benzin
 #endif
     }
 
-    void PsoManager::Create(PsoId id, const GraphicsPsoConfigurator& configurator)
+    void PsoManager::Create(PsoId id, const VertexPsoConfigurator& configurator)
     {
-        BenzinAssert(magic_enum::enum_contains(id));
         BenzinAssert((bool)configurator);
 
-        GraphicsPsoProxy proxy;
+        VertexPsoProxy proxy;
         configurator(proxy);
 
-        BenzinAssert(!proxy.VsFileName.empty());
-        if (!proxy.RenderTargetFormats.empty())
+        Create<VertexPso>(id, [this, &proxy](VertexPso& pso)
         {
-            BenzinAssert(!proxy.PsFileName.empty());
-        }
+            CreateGraphicsPso(proxy, m_ShaderManager, pso);
 
-        auto& pso = m_Psos[+id];
-        BenzinAssert(pso.get() == nullptr);
+            ShaderInfo vs{ ShaderType::Vertex, proxy.Vs.FileName, proxy.Vs.EntryPoint, std::move(proxy.Vs.Defines) };
+            BenzinAssert(vs.IsValid());
 
-        ShaderInfo vs{ ShaderType::Vertex, proxy.VsFileName, proxy.VsEntryPoint, std::move(proxy.VsDefines) };
-        ShaderInfo ps{ ShaderType::Pixel, proxy.PsFileName, proxy.PsEntryPoint, std::move(proxy.PsDefines) };
+            const auto vsBytecode = m_ShaderManager.GetShaderBytecode(vs);
+            pso.SetVs(std::move(vs), vsBytecode);
 
-        auto graphicsPso = std::make_unique<GraphicsPso>(m_Device);
-        
-        if (!proxy.InputLayout.empty())
+            if (!proxy.InputLayout.empty())
+            {
+                pso.SetInputLayout(proxy.InputLayout);
+            }
+
+            pso.SetPrimitiveTopologyType(proxy.PrimitiveTopologyType);
+        });
+    }
+
+    void PsoManager::Create(PsoId id, const MeshPsoConfigurator& configurator)
+    {
+        BenzinAssert((bool)configurator);
+
+        MeshPsoProxy proxy;
+        configurator(proxy);
+
+        Create<MeshPso>(id, [this, &proxy](MeshPso& pso)
         {
-            graphicsPso->SetInputLayout(proxy.InputLayout);
-        }
-        
-        const auto vsBytecode = m_ShaderManager.GetShaderBytecode(vs);
-        graphicsPso->SetVs(std::move(vs), vsBytecode);
+            CreateGraphicsPso(proxy, m_ShaderManager, pso);
 
-        if (ps.IsValid())
-        {
-            const auto psBytecode = m_ShaderManager.GetShaderBytecode(ps);
-            graphicsPso->SetPs(std::move(ps), psBytecode);
-        }
+            ShaderInfo ms{ ShaderType::Vertex, proxy.Ms.FileName, proxy.Ms.EntryPoint, std::move(proxy.Ms.Defines) };
+            BenzinAssert(ms.IsValid());
 
-        graphicsPso->SetPrimitiveTopologyType(proxy.PrimitiveTopologyType);
-        graphicsPso->SetRasterizerState(proxy.RasterizerState);
-        graphicsPso->SetDepthStencilState(proxy.DepthState, proxy.StencilState);
-        graphicsPso->SetBlendState(proxy.BlendState);
-        graphicsPso->SetRenderTargetFormats(proxy.RenderTargetFormats);
-        graphicsPso->SetDepthStencilFormat(proxy.DepthStencilFormat);
-        graphicsPso->Compile();
-
-        SetDxObjectDebugName(graphicsPso->GetD3D12PipelineState(), magic_enum::enum_name(id));
-
-        pso = std::move(graphicsPso);
+            const auto msBytecode = m_ShaderManager.GetShaderBytecode(ms);
+            pso.SetMs(std::move(ms), msBytecode);
+        });
     }
 
     void PsoManager::Create(PsoId id, const ComputePsoConfigurator& configurator)
     {
-        BenzinAssert(magic_enum::enum_contains(id));
         BenzinAssert((bool)configurator);
 
         ComputePsoProxy proxy;
         configurator(proxy);
 
-        BenzinAssert(!proxy.CsFileName.empty());
+        Create<ComputePso>(id, [this, &proxy](ComputePso& pso)
+        {
+            ShaderInfo cs{ ShaderType::Compute, proxy.Cs.FileName, proxy.Cs.EntryPoint, std::move(proxy.Cs.Defines) };
+            BenzinAssert(cs.IsValid());
 
-        auto& pso = m_Psos[+id];
-        BenzinAssert(pso.get() == nullptr);
-
-        ShaderInfo cs{ ShaderType::Compute, proxy.CsFileName, proxy.CsEntryPoint, std::move(proxy.CsDefines) };
-        const auto csBytecode = m_ShaderManager.GetShaderBytecode(cs);
-
-        auto computePso = std::make_unique<ComputePso>(m_Device);
-        computePso->SetCs(std::move(cs), csBytecode);
-        computePso->Compile();
-
-        SetDxObjectDebugName(computePso->GetD3D12PipelineState(), magic_enum::enum_name(id));
-
-        pso = std::move(computePso);
+            const auto csBytecode = m_ShaderManager.GetShaderBytecode(cs);
+            pso.SetCs(std::move(cs), csBytecode);
+        });
     }
 
     void PsoManager::Create(PsoId id, const RayTracingPsoConfigurator& configurator)
     {
-        BenzinAssert(magic_enum::enum_contains(id));
         BenzinAssert((bool)configurator);
 
         RayTracing_PsoProxy proxy;
         configurator(proxy);
 
-        BenzinAssert(!proxy.ShaderLibrary.FileName.empty());
-        // TODO: Add more checks for mandatory entry points
+        Create<RayTracing_Pso>(id, [this, &proxy](RayTracing_Pso& pso)
+        {
+            // TODO: Add more checks for mandatory entry points
 
-        auto& pso = m_Psos[+id];
-        BenzinAssert(pso.get() == nullptr);
+            ShaderInfo library{ ShaderType::Library, proxy.ShaderLibrary.FileName, {}, std::move(proxy.ShaderLibrary.Defines) };
+            BenzinAssert(library.IsValid());
 
-        ShaderInfo library{ ShaderType::Library, proxy.ShaderLibrary.FileName, {}, std::move(proxy.ShaderLibrary.Defines)};
-        const auto libraryBytecode = m_ShaderManager.GetShaderBytecode(library);
+            const auto libraryBytecode = m_ShaderManager.GetShaderBytecode(library);
+            pso.SetShaderLibrary(std::move(library), libraryBytecode);
 
-        auto rayTracingPso = std::make_unique<RayTracing_Pso>(m_Device);
-        rayTracingPso->SetShaderLibrary(std::move(library), libraryBytecode);
-        rayTracingPso->SetRayGenerationShader(proxy.RayGenerationEntryPoint);
-        rayTracingPso->SetMissShader(proxy.MissEntryPoint);
-        rayTracingPso->SetHitGroup(proxy.HitGroup.Name, proxy.HitGroup.ClosestHitEntryPoint);
-        rayTracingPso->SetShaderConfig(proxy.ShaderConfig.PayloadSize, proxy.ShaderConfig.AttributeSize);
-        rayTracingPso->Compile();
-
-        SetDxObjectDebugName(rayTracingPso->GetD3D12StateObject(), magic_enum::enum_name(id));
-
-        pso = std::move(rayTracingPso);
+            pso.SetRayGenerationShader(proxy.RayGenerationEntryPoint);
+            pso.SetMissShader(proxy.MissEntryPoint);
+            pso.SetHitGroup(proxy.HitGroup.Name, proxy.HitGroup.ClosestHitEntryPoint);
+            pso.SetShaderConfig(proxy.ShaderConfig.PayloadSize, proxy.ShaderConfig.AttributeSize);
+        });
     }
 
     void PsoManager::Destroy(PsoId id)
@@ -144,37 +154,61 @@ namespace benzin
         m_Psos[+id].reset();
     }
 
-    const GraphicsPso& PsoManager::GetGraphics(PsoId id) const
+    const VertexPso& PsoManager::GetVertex(PsoId id) const
     {
-        BenzinAssert(magic_enum::enum_contains(id));
+        return Get<VertexPso>(id);
+    }
 
-        auto* pso = m_Psos[+id].get();
-        BenzinAssert(pso != nullptr);
-        BenzinAssert(dynamic_cast<GraphicsPso*>(pso) != nullptr);
-
-        return *(const GraphicsPso*)pso;
+    const MeshPso& PsoManager::GetMesh(PsoId id) const
+    {
+        return Get<MeshPso>(id);
     }
 
     const ComputePso& PsoManager::GetCompute(PsoId id) const
     {
-        BenzinAssert(magic_enum::enum_contains(id));
-
-        auto* pso = m_Psos[+id].get();
-        BenzinAssert(pso != nullptr);
-        BenzinAssert(dynamic_cast<ComputePso*>(pso) != nullptr);
-
-        return *(ComputePso*)pso;
+        return Get<ComputePso>(id);
     }
 
     const RayTracing_Pso& PsoManager::GetRayTracing(PsoId id) const
+    {
+        return Get<RayTracing_Pso>(id);
+    }
+
+    template <typename PsoT>
+    void PsoManager::Create(PsoId id, const PsoCreator<PsoT>& creator)
+    {
+        BenzinAssert(magic_enum::enum_contains(id));
+
+        auto& pso = m_Psos[+id];
+        BenzinAssert(pso.get() == nullptr);
+
+        auto psoT = std::make_unique<PsoT>(m_Device);
+        creator(*psoT);
+
+        psoT->Compile();
+
+        if constexpr (std::is_same_v<PsoT, RayTracing_Pso>)
+        {
+            SetDxObjectDebugName(psoT->GetD3D12StateObject(), magic_enum::enum_name(id));
+        }
+        else
+        {
+            SetDxObjectDebugName(psoT->GetD3D12PipelineState(), magic_enum::enum_name(id));
+        }
+
+        pso = std::move(psoT);
+    }
+
+    template <typename PsoT>
+    const PsoT& PsoManager::Get(PsoId id) const
     {
         BenzinAssert(magic_enum::enum_contains(id));
 
         auto* pso = m_Psos[+id].get();
         BenzinAssert(pso != nullptr);
-        BenzinAssert(dynamic_cast<RayTracing_Pso*>(pso) != nullptr);
+        BenzinAssert(dynamic_cast<PsoT*>(pso) != nullptr);
 
-        return *(RayTracing_Pso*)pso;
+        return *(PsoT*)pso;
     }
 
     void PsoManager::RecompilePsoCallback()
@@ -205,12 +239,12 @@ namespace benzin
                 {
                     case ShaderType::Vertex:
                     {
-                        ((GraphicsPso*)pso.get())->ChangeVs(bytecode);
+                        ((VertexPso*)pso.get())->ChangeVs(bytecode);
                         break;
                     }
                     case ShaderType::Pixel:
                     {
-                        ((GraphicsPso*)pso.get())->ChangePs(bytecode);
+                        ((VertexPso*)pso.get())->ChangePs(bytecode);
                         break;
                     }
                     case ShaderType::Compute:
@@ -221,6 +255,11 @@ namespace benzin
                     case ShaderType::Library:
                     {
                         ((RayTracing_Pso*)pso.get())->ChangeShaderLibrary(bytecode);
+                        break;
+                    }
+                    default:
+                    {
+                        BenzinAssert(false, "Missing ShaderType: {}", magic_enum::enum_name(shader.GetType()));
                         break;
                     }
                 }

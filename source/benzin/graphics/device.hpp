@@ -6,12 +6,14 @@ namespace benzin
 {
 
     class Backend;
+    class ComputePso;
     class GraphicsCommandQueue;
-    class Pso;
+    class MeshPso;
     class QueryHeap;
     class RayTracing_Pso;
     class Resource;
     class UnifiedRootSignature;
+    class VertexPso;
 
     struct DeviceCreation
     {
@@ -23,7 +25,6 @@ namespace benzin
     struct DeviceCaps
     {
         bool IsGpuUploadHeapsSupported = false;
-        bool IsDredSupported = false;
     };
 
     class Device
@@ -53,7 +54,9 @@ namespace benzin
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
         void DeferredRelease(const Descriptor& descriptor);
-        void DeferredRelease(const Pso& pso);
+        void DeferredRelease(const VertexPso& pso);
+        void DeferredRelease(const MeshPso& pso);
+        void DeferredRelease(const ComputePso& pso);
         void DeferredRelease(const QueryHeap& queryHeap);
         void DeferredRelease(const RayTracing_Pso& pso);
         void DeferredRelease(const Resource& resource);

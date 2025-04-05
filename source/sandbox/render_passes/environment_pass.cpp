@@ -23,11 +23,11 @@ namespace sandbox
 
     EnvironmentPass::EnvironmentPass()
     {
-        ms_PsoManager->Create(PsoId::Environment, [](benzin::GraphicsPsoProxy& proxy)
+        ms_PsoManager->Create(PsoId::Environment, [](benzin::VertexPsoProxy& proxy)
         {
-            proxy.VsFileName = "fullscreen_triangle.hlsl";
-            proxy.VsEntryPoint = "VsMainDepth1";
-            proxy.PsFileName = "environment_pass.hlsl";
+            proxy.Vs.FileName = "fullscreen_triangle.hlsl";
+            proxy.Vs.EntryPoint = "VsMainDepth1";
+            proxy.Ps.FileName = "environment_pass.hlsl";
             proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
             proxy.DepthState = benzin::DepthState
             {
@@ -71,7 +71,7 @@ namespace sandbox
 
         commandList.SetRenderTargets({ hdrColor.GetRtv() }, &depthStencil.GetDsv());
 
-        commandList.SetGraphicsPso(ms_PsoManager->GetGraphics(PsoId::Environment));
+        commandList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::Environment));
         commandList.SetGraphicsRootResource(+joint::Rc_Environment::CubeMap, m_CubeTexture->GetSrv());
 
         commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
@@ -102,7 +102,7 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::Environment_EquirectangularToCube, [](benzin::ComputePsoProxy& proxy)
         {
-            proxy.CsFileName = "equirectangular_to_cube_pass.hlsl";
+            proxy.Cs.FileName = "equirectangular_to_cube_pass.hlsl";
         });
 
         BenzinExecuteOnScopeExit([]

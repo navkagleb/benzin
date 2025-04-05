@@ -28,7 +28,7 @@ namespace sandbox
         {
             ms_PsoManager->Create(id, [id, csFileName](benzin::ComputePsoProxy& proxy)
             {
-                proxy.CsFileName = csFileName;
+                proxy.Cs.FileName = csFileName;
             });
         };
 

@@ -47,11 +47,11 @@ namespace sandbox
         {
             ms_PsoManager->Create(id, [id, fileName, define](benzin::ComputePsoProxy& proxy)
             {
-                proxy.CsFileName = fileName;
+                proxy.Cs.FileName = fileName;
 
                 if (!define.empty())
                 {
-                    proxy.CsDefines.push_back(define);
+                    proxy.Cs.Defines.push_back(define);
                 }
             });
         };
