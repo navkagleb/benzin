@@ -26,6 +26,7 @@ namespace sandbox
 
         void AddStaticMeshEntities(std::span<const entt::entity> meshHandles);
         void AddDynamicMeshEntities(std::span<const entt::entity> meshHandles);
+        void AddProceduralGrass();
         void AddLightEntities(std::span<const entt::entity> meshHandles);
     };
 

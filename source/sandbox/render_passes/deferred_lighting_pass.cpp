@@ -21,8 +21,6 @@ BenzinEnableUnaryPlusForEnum(joint::Rc_DeferredLighting);
 namespace sandbox
 {
 
-    constexpr auto g_LightingFormat = benzin::GraphicsFormat::Rgba16Float;
-
     DeferredLightingPass::DeferredLightingPass()
     {
         ms_PsoManager->Create(PsoId::DeferredLighting, [this](benzin::VertexPsoProxy& proxy)
@@ -35,7 +33,7 @@ namespace sandbox
                 .IsEnabled = false,
                 .IsWriteEnabled = false,
             };
-            proxy.RenderTargetFormats.push_back(g_LightingFormat);
+            proxy.RenderTargetFormats.push_back(DeferredLightingSettings::s_HdrColorFormat);
         });
     }
 
@@ -50,7 +48,7 @@ namespace sandbox
         ms_Resources->Create(TextureId::HdrColor, benzin::TextureCreation
         {
             .DebugName = "DeferredLighting_HdrColor",
-            .Format = g_LightingFormat,
+            .Format = DeferredLightingSettings::s_HdrColorFormat,
             .Width = GetRenderViewportWidth(),
             .Height = GetRenderViewportHeight(),
             .MipCount = 1,

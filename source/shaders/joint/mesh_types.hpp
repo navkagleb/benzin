@@ -13,9 +13,9 @@ namespace joint
 
     struct MeshVertex
     {
-        float3 Position BenzinCppOnly({});
-        float3 Normal BenzinCppOnly({});
-        float2 Uv BenzinCppOnly({});
+        float3 Position;
+        float3 Normal;
+        float2 Uv;
     };
 
     struct MeshInstance

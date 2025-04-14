@@ -11,6 +11,31 @@
 namespace benzin
 {
 
+    class PsoBaseWrapper
+    {
+    public:
+        using PsoBasePtrRef = std::unique_ptr<PsoBase>&;
+
+        PsoBaseWrapper(PsoBasePtrRef pso)
+            : m_Pso{ pso }
+        {}
+
+        template <std::derived_from<PsoBase> PsoT>
+        PsoT& GetAs()
+        {
+            return *(PsoT*)m_Pso.get();
+        }
+
+        template <std::derived_from<PsoBase> PsoT>
+        PsoT* GetAsPtr()
+        {
+            return dynamic_cast<PsoT*>(m_Pso.get());
+        }
+
+    private:
+        PsoBasePtrRef m_Pso;
+    };
+
     template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
     static void CreateGraphicsPso(
         GraphicsPsoProxy& proxy,
@@ -19,9 +44,19 @@ namespace benzin
     )
     {
         ShaderInfo ps{ ShaderType::Pixel, proxy.Ps.FileName, proxy.Ps.EntryPoint, std::move(proxy.Ps.Defines) };
+
         if (!proxy.RenderTargetFormats.empty())
         {
             BenzinAssert(ps.IsValid());
+        }
+
+        if (proxy.DepthStencilFormat == GraphicsFormat::Unknown)
+        {
+            BenzinAssert(!proxy.DepthState.IsEnabled && !proxy.DepthState.IsWriteEnabled);
+        }
+        else
+        {
+            BenzinAssert(proxy.DepthState.IsEnabled);
         }
 
         if (ps.IsValid())
@@ -98,7 +133,7 @@ namespace benzin
         {
             CreateGraphicsPso(proxy, m_ShaderManager, pso);
 
-            ShaderInfo ms{ ShaderType::Vertex, proxy.Ms.FileName, proxy.Ms.EntryPoint, std::move(proxy.Ms.Defines) };
+            ShaderInfo ms{ ShaderType::Mesh, proxy.Ms.FileName, proxy.Ms.EntryPoint, std::move(proxy.Ms.Defines) };
             BenzinAssert(ms.IsValid());
 
             const auto msBytecode = m_ShaderManager.GetShaderBytecode(ms);
@@ -220,6 +255,8 @@ namespace benzin
                 continue;
             }
 
+            PsoBaseWrapper psoWrapper = pso;
+
             bool isPsoNeedsRecompilation = false;
             for (const auto& shader : pso->GetShaders())
             {
@@ -239,22 +276,37 @@ namespace benzin
                 {
                     case ShaderType::Vertex:
                     {
-                        ((VertexPso*)pso.get())->ChangeVs(bytecode);
+                        psoWrapper.GetAs<VertexPso>().ChangeVs(bytecode);
+                        break;
+                    }
+                    case ShaderType::Mesh:
+                    {
+                        psoWrapper.GetAs<MeshPso>().ChangeMs(bytecode);
                         break;
                     }
                     case ShaderType::Pixel:
                     {
-                        ((VertexPso*)pso.get())->ChangePs(bytecode);
+                        if (auto* vertexPso = psoWrapper.GetAsPtr<VertexPso>(); vertexPso != nullptr)
+                        {
+                            vertexPso->ChangePs(bytecode);
+                            break;
+                        }
+
+                        auto* meshPso = psoWrapper.GetAsPtr<MeshPso>();
+                        BenzinAssert(meshPso != nullptr);
+
+                        meshPso->ChangePs(bytecode);
+
                         break;
                     }
                     case ShaderType::Compute:
                     {
-                        ((ComputePso*)pso.get())->ChangeCs(bytecode);
+                        psoWrapper.GetAs<ComputePso>().ChangeCs(bytecode);
                         break;
                     }
                     case ShaderType::Library:
                     {
-                        ((RayTracing_Pso*)pso.get())->ChangeShaderLibrary(bytecode);
+                        psoWrapper.GetAs<RayTracing_Pso>().ChangeShaderLibrary(bytecode);
                         break;
                     }
                     default:

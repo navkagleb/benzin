@@ -35,24 +35,19 @@ namespace benzin
         std::string logOptions;
         logOptions.reserve(256);
 
-        const auto pushLogOptionToBuffer = [&logOptions](const auto& option)
-        {
-            std::format_to(std::back_inserter(logOptions), "[{}]", option);
-        };
-
         if (g_LogOptionFlags.IsSet(LogOptionFlag::Time))
         {
-            pushLogOptionToBuffer(GetTimePointFormat());
+            std::format_to(std::back_inserter(logOptions), "[{}]", GetTimePointFormat());
         }
 
         if (g_LogOptionFlags.IsSet(LogOptionFlag::ThreadId))
         {
-            pushLogOptionToBuffer(std::this_thread::get_id());
+            std::format_to(std::back_inserter(logOptions), "[{:5}]", std::this_thread::get_id());
         }
 
         if (g_LogOptionFlags.IsSet(LogOptionFlag::FileName))
         {
-            pushLogOptionToBuffer(GetFileNameFormat(sourceLocation));
+            std::format_to(std::back_inserter(logOptions), "[{}]", (GetFileNameFormat(sourceLocation)));
         }
 
         return std::format("{}[{}]: {}\n", logOptions, magic_enum::enum_name(severity), message);
@@ -63,6 +58,20 @@ namespace benzin
     void Logger::Initialize(LogOptionFlags logOptionFlags)
     {
         g_LogOptionFlags = logOptionFlags;
+    }
+
+    const std::locale& Logger::GetThoudandSeperatorApostrophe3()
+    {
+        struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
+        {
+            char do_thousands_sep() const override { return '\''; }
+
+            std::string do_grouping() const override { return "\3"; }
+        };
+
+        static const std::locale locale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
+
+        return locale;
     }
 
     void Log(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)

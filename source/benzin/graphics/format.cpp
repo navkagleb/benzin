@@ -29,7 +29,8 @@ namespace benzin
             case R8Unorm: return 1 * (8 / 8);
 
             case R16Float:
-            case R16Uint: return 1 * (16 / 8);
+            case R16Uint:
+            case R16Unorm: return 1 * (16 / 8);
 
             case R32Float:
             case R32Uint:

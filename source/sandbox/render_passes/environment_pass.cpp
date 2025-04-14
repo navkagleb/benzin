@@ -34,8 +34,8 @@ namespace sandbox
                 .IsWriteEnabled = false,
                 .ComparisonFunction = benzin::ComparisonFunction::Equal,
             };
-            proxy.RenderTargetFormats.push_back(benzin::GraphicsFormat::Rgba16Float),
-            proxy.DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
+            proxy.RenderTargetFormats.push_back(DeferredLightingSettings::s_HdrColorFormat),
+            proxy.DepthStencilFormat = GBufferSettings::s_DepthStencilFormat;
         });
     }
 

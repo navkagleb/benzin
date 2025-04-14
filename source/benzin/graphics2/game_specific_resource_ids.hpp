@@ -5,6 +5,7 @@ namespace benzin
 
     enum class BufferId : uint32_t
     {
+        ProceduralGrass_GrassPatches,
         ToneMapping_LuminanceHistogram,
     };
 
@@ -49,6 +50,8 @@ namespace benzin
         GeometryPass_DepthCounterClockwise,
         GeometryPass_Clockwise,
         GeometryPass_CounterClockwise,
+
+        ProceduralGrass,
 
         ShadowPass,
         SigmaClassifyTiles,

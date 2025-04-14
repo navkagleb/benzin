@@ -57,6 +57,7 @@ joint::MeshInstance GetMeshInstance()
     return g_SubMeshInstances[BenzinGetRootConstant(joint::GeometryResources::SubMeshInstanceIndex)];
 }
 
+// Must match with joint::MeshVertex
 struct VsInput
 {
     float3 Position : Position;
@@ -68,7 +69,7 @@ struct VsOutput
 {
     float4 ClipPosition : SV_Position;
     float3 WorldPosition : WorldPosition;
-    float3 ViewPosition : ViewPosition;
+    float ViewDepth : ViewDepth;
     float3 PrevViewPosition : PrevViewPosition;
     float3 WorldNormal : WorldNormal;
     float2 Uv : Uv;
@@ -79,8 +80,6 @@ VsOutput VsMain(VsInput vertex)
     const joint::MeshInstance meshInstance = GetMeshInstance();
     const joint::MeshTransform transform = g_MeshTransforms[BenzinGetRootConstant(joint::GeometryResources::MeshTransformIndex)];
 
-    const joint::CameraConsts camera = g_FrameConstants.Camera;
-
     const float4 objectPosition = mul(float4(vertex.Position, 1.0f), meshInstance.Transform);
     const float3 objectNormal = mul(vertex.Normal, (float3x3)meshInstance.Transform);
 
@@ -88,30 +87,21 @@ VsOutput VsMain(VsInput vertex)
     const float4 prevWorldPosition = mul(objectPosition, transform.PrevLocalToWorld);
     const float3 worldNormal = mul(objectNormal, (float3x3)transform.LocalToWorld); // TODO: Maybe I still need to yse 'WorldMatrixForNormals'?
 
-    const float4 viewPosition = mul(worldPosition, camera.WorldToView);
+    const float4 viewPosition = mul(worldPosition, GetCameraConsts().WorldToView);
 
     VsOutput output = (VsOutput)0;
-    output.ClipPosition = mul(worldPosition, camera.WorldToClip);
+    output.ClipPosition = mul(worldPosition, GetCameraConsts().WorldToClip);
     output.WorldPosition = worldPosition.xyz;
-    output.ViewPosition = viewPosition.xyz;
-    output.PrevViewPosition = mul(prevWorldPosition, g_FrameConstants.PrevCamera.WorldToView).xyz;
+    output.ViewDepth = viewPosition.z;
+    output.PrevViewPosition = mul(prevWorldPosition, GetPrevCameraConsts().WorldToView).xyz;
     output.WorldNormal = worldNormal;
     output.Uv = vertex.Uv;
 
     return output;
 }
 
-struct PsOutput
-{
-    float4 Color0 : SV_Target0;
-    float4 Color1 : SV_Target1;
-    float4 Color2 : SV_Target2;
-    float4 Color3 : SV_Target3;
-    float4 Color4 : SV_Target4;
-};
-
 #if !defined(IS_DEPTH_PREPASS)
-PsOutput PsMain(VsOutput input)
+PackedGBuffer PsMain(VsOutput input)
 #else
 void PsMain(VsOutput input)
 #endif
@@ -136,17 +126,16 @@ void PsMain(VsOutput input)
     }
 
 #if !defined(IS_DEPTH_PREPASS)
-    UnpackedGBuffer gbuffer;
+    GBuffer gbuffer;
     gbuffer.Albedo = albedo;
     gbuffer.Roughness = material.RoughnessFactor;
     gbuffer.Emissive = material.EmissiveFactor;
     gbuffer.Metallic = material.MetalnessFactor;
     gbuffer.WorldNormal = normalize(input.WorldNormal);
+    gbuffer.ViewDepth = input.ViewDepth;
 
     if (material.NormalTextureIndex != g_InvalidIndex)
     {
-        const joint::CameraConsts cameraConstants = g_FrameConstants.Camera;
-
         Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.NormalTextureIndex];
 
         float3 normalSample = normalTexture.Sample(g_LinearWrapSampler, input.Uv).xyz;
@@ -154,7 +143,7 @@ void PsMain(VsOutput input)
         normalSample = normalize(normalSample * float3(material.NormalScale, material.NormalScale, 1.0));
         normalSample = ExpandNormal(normalSample.xy);
 
-        const float3 worldViewDirection = normalize(cameraConstants.WorldPosition - input.WorldPosition);
+        const float3 worldViewDirection = normalize(GetCameraConsts().WorldPosition - input.WorldPosition);
 
         const float3x3 tbn = CotangentFrame(gbuffer.WorldNormal, -worldViewDirection, input.Uv);
         //const float3x3 tbn = GetTBNBasis(worldPosition, input.WorldNormal, input.TexCoord);
@@ -180,29 +169,8 @@ void PsMain(VsOutput input)
         gbuffer.Roughness *= roughnessSample;
     }
 
-    {
-        const float4 clipPosition = mul(float4(input.ViewPosition, 1.0), g_FrameConstants.Camera.ViewToClip);
-        const float4 prevClipPosition = mul(float4(input.PrevViewPosition, 1.0), g_FrameConstants.PrevCamera.ViewToClip);
+    CalcGBufferMv(input.ClipPosition.xy, input.ViewDepth, input.PrevViewPosition, gbuffer);
 
-        // const float2 uv = input.ClipPosition.xy * g_FrameConstants.InvRenderResolution;
-        const float2 uv = ClipToUv(clipPosition);
-        const float2 prevUv = ClipToUv(prevClipPosition);
-
-        gbuffer.UvMv = (uv - prevUv) * g_FrameConstants.RenderResolution; // TODO: Pack/Unpack Mv
-        gbuffer.ViewDepthMv = input.ViewPosition.z - input.PrevViewPosition.z;
-
-        gbuffer.ViewDepth = input.ViewPosition.z;
-    }
-
-    const PackedGBuffer packedGBuffer = PackGBuffer(gbuffer);
-
-    PsOutput output = (PsOutput)0;
-    output.Color0 = packedGBuffer.Color0;
-    output.Color1 = packedGBuffer.Color1;
-    output.Color2 = packedGBuffer.Color2;
-    output.Color3 = packedGBuffer.Color3;
-    output.Color4 = packedGBuffer.Color4;
-
-    return output;
+    return PackGBuffer(gbuffer);
 #endif
 }

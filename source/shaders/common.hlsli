@@ -10,6 +10,8 @@ static const float g_PiDiv180 = g_Pi / 180.0;
 static const float g_Epsilon = 0.0001;
 static const float g_NaN = 0.0 / 0.0;
 
+static const float3 g_UpDir = float3(0.0, 1.0, 0.0);
+
 uint DivideUp(uint value, uint divisor)
 {
     return (value + divisor - 1) / divisor;

@@ -71,7 +71,9 @@ namespace sandbox
             *m_PsoManager,
             *m_ConstBufferPool,
             *m_RenderResources,
-            *m_RenderSettings
+            *m_RenderSettings,
+            m_FrameTimer,
+            m_AnimationTimer
         );
 
         {
@@ -330,7 +332,7 @@ namespace sandbox
         m_RenderResources->FlipResources();
         for (auto& renderPass : m_RenderPasses)
         {
-            renderPass->OnUpdate(m_FrameTimer);
+            renderPass->OnUpdate();
         }
     }
 

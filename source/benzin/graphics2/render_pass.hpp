@@ -135,7 +135,9 @@ namespace benzin
             PsoManager& psoManager,
             ConstBufferPool& constBufferPool,
             RenderResources& resources,
-            RenderSettings& settings
+            RenderSettings& settings,
+            TickTimer& frameTimer,
+            TickTimer& animationTimer
         );
 
         static void SetWindowViewport(uint32_t width, uint32_t height);
@@ -149,8 +151,7 @@ namespace benzin
         virtual void OnWindowResize() {}
         virtual void OnRenderViewportResize() {}
 
-        virtual void OnUpdate() {}
-        virtual void OnUpdate(const TickTimer& tickTimer);
+        virtual void OnUpdate() {};
         virtual void OnRender() const = 0;
 
     protected:
@@ -167,6 +168,9 @@ namespace benzin
 
         static inline Viewport ms_RenderViewport;
         static inline ScissorRect ms_RenderScissorRect;
+
+        static inline const TickTimer* ms_FrameTimer = nullptr;
+        static inline const TickTimer* ms_AnimationTimer = nullptr;
 
         static uint32_t GetWindowViewportWidth() { return (uint32_t)ms_WindowViewport.Width; }
         static uint32_t GetWindowViewportHeight() { return (uint32_t)ms_WindowViewport.Height; }

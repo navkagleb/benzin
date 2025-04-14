@@ -72,7 +72,7 @@ BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::Rc_DeferredLi
 BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::Rc_DeferredLighting::DepthStencil);
 BenzinDeclareRootResource(Texture2DArray<float>, g_Shadow, joint::Rc_DeferredLighting::Shadow);
 
-UnpackedGBuffer FetchGBuffer(float2 uv)
+GBuffer FetchGBuffer(float2 uv)
 {
     PackedGBuffer packedGBuffer = (PackedGBuffer)0;
     packedGBuffer.Color0 = g_AlbedoAndRoughness.SampleLevel(g_PointClampSampler, uv, 0.0);
@@ -90,12 +90,10 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
         discard;
     }
 
-    const UnpackedGBuffer gbuffer = FetchGBuffer(input.Uv);
+    const GBuffer gbuffer = FetchGBuffer(input.Uv);
 
-    const joint::CameraConsts cameraConstants = g_FrameConstants.Camera;
-
-    const float3 worldPosition = ReconstructWorldPosition(input.Uv, depth, cameraConstants.ClipToView, cameraConstants.ViewToWorld);
-    const float3 worldViewDirection = normalize(cameraConstants.WorldPosition - worldPosition);
+    const float3 worldPosition = ReconstructWorldPosition(input.Uv, depth, GetCameraConsts().ClipToView, GetCameraConsts().ViewToWorld);
+    const float3 worldViewDirection = normalize(GetCameraConsts().WorldPosition - worldPosition);
 
     PbrMaterial material;
     material.Albedo = gbuffer.Albedo;

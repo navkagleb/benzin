@@ -1,6 +1,7 @@
 #include "sandbox/bootstrap.hpp"
 #include "sandbox/sandbox_runner.hpp"
 
+#include <benzin/core/logger.hpp>
 #include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/geometry_generator.hpp>
 #include <benzin/engine/light.hpp>
@@ -10,6 +11,7 @@
 #include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
+#include <benzin/utility/random.hpp>
 
 #include <shaders/joint/mesh_types.hpp>
 
@@ -17,12 +19,15 @@
 #include "sandbox/render_passes/environment_pass.hpp"
 #include "sandbox/render_passes/geometry_pass.hpp"
 #include "sandbox/render_passes/global_constants_pass.hpp"
+#include "sandbox/render_passes/procedural_grass_pass.hpp"
 #include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
 #include "sandbox/render_passes/sigma_denoiser_pass.hpp"
 #include "sandbox/render_passes/tlas_building_pass.hpp"
 #include "sandbox/render_passes/tone_mapping_pass.hpp"
 #include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
+
+BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassMsConsts);
 
 namespace sandbox
 {
@@ -136,25 +141,47 @@ namespace sandbox
 
     static void DrawGBufferStats(GBufferStats& stats)
     {
-        ImGui_CollapsingHeaderWithIndent("Stats", [&stats]
+        std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
+        BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
+
+        ImGui::Text(BenzinFormatData("MeshCount: {:L}", stats.MeshCount));
+        ImGui::Text(BenzinFormatData("RenderedMeshCount: {:L}", stats.RenderedMeshCount));
+        ImGui::Text(BenzinFormatData("RenderedTriangleCount: {:L}", stats.RenderedTriangleCount));
+    }
+
+    static void DrawProceduralGrassSettings(ProceduralGrassSettings& settings)
+    {
+        ImGui::Checkbox("Enabled", &settings.IsEnabled);
+
+        ImGui::PushItemWidth(150.0f);
+        BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
+
+        joint::ProceduralGrassConsts& consts = settings.Consts;
+        ImGui::ColorEdit3("Base color", (float*)&consts.BaseColor);
+        ImGui::DragFloat("Grass end distance", &consts.GrassEndDistance, 0.01f);
+        ImGui::DragFloat("Wind direction", &consts.WindDirection, 0.01f, 0.0f, DirectX::XM_2PI);
+
+        if (ImGui::DragFloat("Spacing in patch (between blades)", &consts.SpacingInPatch, 0.0001f))
         {
-            // TODO: Move to global space
-            struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
-            {
-                char do_thousands_sep() const override { return '\''; }
+            consts.SpacingInPatch = std::max(consts.SpacingInPatch, 0.001f);
+        }
 
-                std::string do_grouping() const override { return "\3"; }
-            };
+        ImGui::DragFloat("Blade width", &consts.BladeWidth, 0.0001f, std::numeric_limits<float>::min());
+    }
 
-            static const std::locale customLocale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
+    static void DrawProceduralGrassStats(ProceduralGrassStats& stats)
+    {
+        using enum joint::ProceduralGrassMsConsts;
 
-            std::locale::global(customLocale);
-            BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
+        std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
+        BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
-            ImGui::Text(BenzinFormatData("MeshCount: {:L}", stats.MeshCount));
-            ImGui::Text(BenzinFormatData("RenderedMeshCount: {:L}", stats.RenderedMeshCount));
-            ImGui::Text(BenzinFormatData("RenderedTriangleCount: {:L}", stats.RenderedTriangleCount));
-        });
+        const uint32_t maxBladeCount = stats.PatchCount * +MaxBladeCountPerPatch;
+
+        ImGui::Text(BenzinFormatData("Patch count: {:L}", stats.PatchCount));
+        ImGui::Text(BenzinFormatData("Max blade count: {:L}", maxBladeCount));
+        ImGui::Text(BenzinFormatData("Max vertex count: {:L}", maxBladeCount * +VertexCountPerBlade));
+        ImGui::Text(BenzinFormatData("Max triangle count: {:L}", maxBladeCount * +TriangleCountPerBlade));
     }
 
     static void DrawRayTracingShadowsSettings(RayTracing_ShadowSettings& settings)
@@ -193,7 +220,7 @@ namespace sandbox
         {
             auto& luminanceHistogram = settings.LuminanceHistogram;
 
-            if (ImGui::InputFloat("MinLogLuminance", &luminanceHistogram.MinLogLuminance))
+            if (ImGui::DragFloat("MinLogLuminance", &luminanceHistogram.MinLogLuminance))
             {
                 luminanceHistogram.MinLogLuminance = std::clamp(
                     luminanceHistogram.MinLogLuminance,
@@ -202,7 +229,7 @@ namespace sandbox
                 );
             }
 
-            if (ImGui::InputFloat("MaxLogLuminance", &luminanceHistogram.MaxLogLuminance))
+            if (ImGui::DragFloat("MaxLogLuminance", &luminanceHistogram.MaxLogLuminance))
             {
                 luminanceHistogram.MaxLogLuminance = std::clamp(
                     luminanceHistogram.MaxLogLuminance,
@@ -220,9 +247,9 @@ namespace sandbox
 
             ImGui::Checkbox("IsAutoExposureUsed", &settings.IsAutoExposureUsed);
 
-            ImGui::InputFloat("Aperture (in f-stops)", &pbrCamera.Aperture);
-            ImGui::InputFloat("Shutter Speed (in sec)", &pbrCamera.ShutterSpeed);
-            ImGui::InputFloat("Sensor sensitivity (in ISO)", &pbrCamera.Iso);
+            ImGui::DragFloat("Aperture (in f-stops)", &pbrCamera.Aperture, 0.001f);
+            ImGui::DragFloat("Shutter Speed (in sec)", &pbrCamera.ShutterSpeed, 0.001f);
+            ImGui::DragFloat("Sensor sensitivity (in ISO)", &pbrCamera.Iso, 0.01f);
         });
 
         ImGui_CollapsingHeaderWithIndent("Tone Mapping", [&settings]
@@ -249,9 +276,10 @@ namespace sandbox
 
         // The order in which render passes are added is important
         BenzinAssert(m_RenderPasses.empty());
-        m_RenderPasses.push_back(std::make_unique<TlasBuildingPass>(*m_Device, *m_RayTracingScene));
-        m_RenderPasses.push_back(std::make_unique<GlobalConstantsPass>(*m_Device, *m_Scene));
+        m_RenderPasses.push_back(std::make_unique<TlasBuildingPass>(*m_RayTracingScene));
+        m_RenderPasses.push_back(std::make_unique<GlobalConstantsPass>(*m_Scene));
         m_RenderPasses.push_back(std::make_unique<GeometryPass>(*m_Scene));
+        m_RenderPasses.push_back(std::make_unique<ProceduralGrassPass>(*m_Scene));
         m_RenderPasses.push_back(std::make_unique<RayTracing_ShadowPass>(*m_Scene));
         m_RenderPasses.push_back(std::make_unique<SigmaDenoiserPass>(*m_Scene));
         m_RenderPasses.push_back(std::make_unique<DeferredLightingPass>());
@@ -264,6 +292,8 @@ namespace sandbox
         BenzinAssert(m_RenderSettingsTool != nullptr);
         m_RenderSettingsTool->RegisterSectionDrawCallback<GBufferSettings>(DrawGBufferSettings, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<GBufferStats>(DrawGBufferStats, ImGuiTreeNodeFlags_None);
+        m_RenderSettingsTool->RegisterSectionDrawCallback<ProceduralGrassSettings>(DrawProceduralGrassSettings, ImGuiTreeNodeFlags_DefaultOpen);
+        m_RenderSettingsTool->RegisterSectionDrawCallback<ProceduralGrassStats>(DrawProceduralGrassStats, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<RayTracing_ShadowSettings>(DrawRayTracingShadowsSettings, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<SigmaDenoiserSettings>(DrawSigmaDenoiserSettings, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<ToneMappingSettings>(DrawToneMappingSettings, ImGuiTreeNodeFlags_DefaultOpen);
@@ -292,6 +322,7 @@ namespace sandbox
 
         AddStaticMeshEntities(meshHandles);
         AddDynamicMeshEntities(meshHandles);
+        AddProceduralGrass();
         AddLightEntities(meshHandles);
     }
 
@@ -365,7 +396,7 @@ namespace sandbox
             mc.MeshHandle = meshHandles[+Mesh::BoomBox];
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
-            transform.SetRotation({ 0.0f, DirectX::XMConvertToRadians(-135.0f), 0.0f });
+            transform.SetRotation({ 0.0f, DirectX::XMConvertToRadians(45.0f), 0.0f });
             transform.SetScale({ 30.0f, 30.0f, 30.0f });
             transform.SetTranslation({ 0.0f, 0.6f, 0.0f });
 
@@ -388,7 +419,7 @@ namespace sandbox
             mc.MeshHandle = meshHandles[+Mesh::DamagedHelmet];
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
-            transform.SetRotation({ 0.0f, DirectX::XMConvertToRadians(-135.0f), 0.0f });
+            transform.SetRotation({ 0.0f, DirectX::XMConvertToRadians(45.0f), 0.0f });
             transform.SetScale({ 0.4f, 0.4f, 0.4f });
             transform.SetTranslation({ 1.0f, 0.5f, -0.5f });
 
@@ -405,6 +436,40 @@ namespace sandbox
         }
     }
 
+    void SandboxRunner::AddProceduralGrass()
+    {
+        const int32_t xRadius = 160;
+        const int32_t zRadius = 70;
+        const int32_t totalCount = (xRadius * 2 + 1) * (zRadius * 2 + 1);
+
+        std::vector<joint::GrassPatch> grassPatches;
+        grassPatches.reserve(totalCount);
+
+        auto& entityRegistry = m_Scene->GetEntityRegistry();
+
+        for (auto x = -xRadius; x <= xRadius; ++x)
+        {
+            for (auto z = -zRadius; z <= zRadius; ++z)
+            {
+                auto& grassPatch = entityRegistry.emplace<joint::GrassPatch>(entityRegistry.create());
+
+                grassPatch.Pos.x = (float)x * 0.07f + 6.0f;
+                grassPatch.Pos.z = (float)z * 0.07f - 0.3f;
+
+                const DirectX::XMVECTOR normal = DirectX::XMVector3Normalize(DirectX::XMVECTOR
+                {
+                    benzin::Random::Get<float>(-0.1f, 0.1f),
+                    1.0f,
+                    benzin::Random::Get<float>(-0.1f, 0.1f),
+                    0.0f
+                });
+                DirectX::XMStoreFloat3(&grassPatch.Normal, normal);
+
+                grassPatch.Height = benzin::Random::Get<float>(0.07f, 0.13f);
+            }
+        }
+    }
+
     void SandboxRunner::AddLightEntities(std::span<const entt::entity> meshHandles)
     {
         entt::registry& entityRegistry = m_Scene->GetEntityRegistry();
@@ -414,7 +479,7 @@ namespace sandbox
 
             auto& light = entityRegistry.get_or_emplace<benzin::SunLight>(entity);
             light.SetColor({ 1.0f, 1.0f, 0.7f });
-            light.SetIntensity(1'000.0f);
+            light.SetIntensity(10.0f);
 
             entityRegistry.emplace<benzin::EntityUpdateCallback>(entity, [this, &entityRegistry, entity]
             {

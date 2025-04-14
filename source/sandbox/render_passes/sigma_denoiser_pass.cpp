@@ -120,7 +120,7 @@ namespace sandbox
         createTexture(TextureId::ShadowHistoryLength, benzin::GraphicsFormat::R32Uint, renderResolution);
     }
 
-    void SigmaDenoiserPass::OnUpdate(const benzin::TickTimer& tickTimer)
+    void SigmaDenoiserPass::OnUpdate()
     {
         // TODO: Do I need cast to u32?
         const float rotatorAngleInRadians = benzin::GetWeylSequence(0.0f, (uint32_t)ms_Device->GetCpuFrameIndex()) * DirectX::XMConvertToRadians(90.0f);
@@ -129,7 +129,7 @@ namespace sandbox
 
         auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 
-        const float fps = 1.0f / tickTimer.GetDeltaTimeInSec();
+        const float fps = 1.0f / ms_FrameTimer->GetDeltaTimeInSec();
         settings.HistoryLength = GetMaxHistoryLength(settings.MaxHistoryLength, fps);
         settings.StabilizationStrength = settings.HistoryLength / (1.0f + settings.HistoryLength);
 

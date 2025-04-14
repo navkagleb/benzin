@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/tools/scene_stats_tool.hpp"
 
+#include "benzin/core/logger.hpp"
 #include "benzin/engine/ray_tracing_scene.hpp"
 #include "benzin/engine/scene.hpp"
 #include "benzin/graphics/buffer.hpp"
@@ -17,16 +18,7 @@ namespace benzin
 
     void SceneStatsTool::DrawWindowContent()
     {
-        struct ThoudandSeperatorApostrophe3 : std::numpunct<char>
-        {
-            char do_thousands_sep() const override { return '\''; }
-
-            std::string do_grouping() const override { return "\3"; }
-        };
-
-        static const std::locale customLocale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
-
-        std::locale::global(customLocale);
+        std::locale::global(Logger::GetThoudandSeperatorApostrophe3());
         BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
         DrawSceneStats();

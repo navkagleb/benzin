@@ -9,6 +9,7 @@ namespace benzin
     class Buffer;
     class ComputePso;
     class Descriptor;
+    class MeshPso;
     class QueryHeap;
     class RayTracing_AcclerationStructure;
     class RayTracing_Pso;
@@ -94,6 +95,10 @@ namespace benzin
         void DrawVertexed(uint32_t vertexCount, uint32_t instanceCount = 1);
         void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount = 1);
 
+        // Mesh shaders
+        void SetMeshPso(const MeshPso& pso);
+        void DispatchMesh(const DirectX::XMUINT3& threadGroupCount);
+
         // RayTracing
         void BuildRayTracingAccelerationStructure(const RayTracing_AcclerationStructure& accelerationStructure);
 
@@ -107,6 +112,7 @@ namespace benzin
 
     private:
         ID3D12GraphicsCommandList4* m_D3D12GraphicsCommandList = nullptr;
+        ID3D12GraphicsCommandList6* m_D3D12GraphicsCommandList6 = nullptr;
 
         Buffer* m_UploadBuffer = nullptr;
         Bytes64 m_UploadBufferOffset = 0;

@@ -262,7 +262,9 @@ namespace benzin
         PsoManager& psoManager,
         ConstBufferPool& constBufferPool,
         RenderResources& resources,
-        RenderSettings& settings
+        RenderSettings& settings,
+        TickTimer& frameTimer,
+        TickTimer& animationTimer
     )
     {
         ms_Device = &device;
@@ -272,6 +274,9 @@ namespace benzin
         ms_ConstBufferPool = &constBufferPool;
         ms_Resources = &resources;
         ms_Settings = &settings;
+
+        ms_FrameTimer = &frameTimer;
+        ms_AnimationTimer = &animationTimer;
     }
 
     void RenderPass::SetWindowViewport(uint32_t width, uint32_t height)
@@ -291,12 +296,5 @@ namespace benzin
         ms_RenderScissorRect.Width = (float)width;
         ms_RenderScissorRect.Height = (float)height;
     }
-
-    void RenderPass::OnUpdate(const TickTimer& tickTimer)
-    {
-        BenzinUnused(tickTimer);
-
-        OnUpdate();
-    };
 
 }

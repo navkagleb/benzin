@@ -16,12 +16,14 @@ namespace benzin
 
     namespace Logger
     {
+        void Initialize(LogOptionFlags logOptionFlags = LogOptionFlag::All);
+
         constexpr std::string_view GetLineSeparator()
         {
             return "-----------------------------------------------------------------------------------";
         }
 
-        void Initialize(LogOptionFlags logOptionFlags = LogOptionFlag::All);
+        const std::locale& GetThoudandSeperatorApostrophe3();
     };
 
 }

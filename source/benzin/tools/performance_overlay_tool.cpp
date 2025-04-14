@@ -79,7 +79,7 @@ namespace benzin
             windowFlags |= ImGuiWindowFlags_NoMove;
         }
 
-        ImGui::SetNextWindowBgAlpha(0.7f);
+        ImGui::SetNextWindowBgAlpha(0.9f);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, backgroundColors[m_ShaderManager.IsEachShaderGood()]);
         ImGuiTool::DrawWindow(windowFlags);
         ImGui::PopStyleColor();

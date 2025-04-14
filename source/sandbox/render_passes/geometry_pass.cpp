@@ -1,5 +1,5 @@
-#include "sandbox/bootstrap.hpp"
-#include "sandbox/render_passes/geometry_pass.hpp"
+#include <sandbox/bootstrap.hpp>
+#include <sandbox/render_passes/geometry_pass.hpp>
 
 #include <benzin/core/engine_math.hpp>
 #include <benzin/core/profiler.hpp>
@@ -19,23 +19,14 @@
 #include <shaders/joint/geometry_resources.hpp>
 #include <shaders/joint/mesh_types.hpp>
 
-#include "sandbox/resources.hpp"
-#include "sandbox/sandbox_render_settings.hpp"
+#include <sandbox/render_passes/gbuffer.hpp>
+#include <sandbox/resources.hpp>
+#include <sandbox/sandbox_render_settings.hpp>
 
 BenzinEnableUnaryPlusForEnum(joint::GeometryResources);
 
 namespace sandbox
 {
-
-    static constexpr auto g_GBufferColor0Format = benzin::GraphicsFormat::Rgba8Unorm; // Albedo, Albedo, Albedo, Roughness
-    static constexpr auto g_GBufferColor1Format = benzin::GraphicsFormat::Rgba8Unorm; // Emissive, Emissive, Emissive, Metallic
-    static constexpr auto g_GBufferColor2Format = benzin::GraphicsFormat::Rgba16Float; // WorldNormal, WorldNormal, WorldNormal, None
-    static constexpr auto g_GBufferColor3Format = benzin::GraphicsFormat::Rgba16Float; // UvMv, UvMv, ViewDepthMv, None
-    static constexpr auto g_GBufferColor4Format = benzin::GraphicsFormat::R32Float; // ViewDepth
-
-    static constexpr auto g_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
-
-    //
 
     GeometryPass::GeometryPass(const benzin::Scene& scene)
         : m_Scene{ scene }
@@ -78,31 +69,49 @@ namespace sandbox
 
             proxy.Vs.FileName = "geometry_pass.hlsl";
             proxy.Ps.FileName = "geometry_pass.hlsl";
-            proxy.Ps.Defines.push_back("IS_ALPHA_TEST_ENABLED");
 
             proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
             proxy.RasterizerState.CullMode = benzin::CullMode::Back;
             proxy.RasterizerState.IndexOrder = indexOrder;
-            proxy.DepthStencilFormat = g_DepthStencilFormat;
+            proxy.DepthState.IsEnabled = true;
+            proxy.DepthStencilFormat = GBufferSettings::s_DepthStencilFormat;
+
+            const auto setWriteDepth = [&proxy]
+            {
+                proxy.Ps.Defines.push_back("IS_ALPHA_TEST_ENABLED");
+
+                proxy.DepthState.IsWriteEnabled = true;
+                proxy.DepthState.ComparisonFunction = benzin::ComparisonFunction::Less;
+            };
+
+            const auto setReadDepth = [&proxy]
+            {
+                proxy.DepthState.IsWriteEnabled = false;
+                proxy.DepthState.ComparisonFunction = benzin::ComparisonFunction::Equal;
+            };
 
             if (isDepthPrePass)
             {
                 proxy.Ps.Defines.push_back("IS_DEPTH_PREPASS");
+
+                setWriteDepth();
             }
             else
             {
                 proxy.RenderTargetFormats.reserve(5);
-                proxy.RenderTargetFormats.push_back(g_GBufferColor0Format);
-                proxy.RenderTargetFormats.push_back(g_GBufferColor1Format);
-                proxy.RenderTargetFormats.push_back(g_GBufferColor2Format);
-                proxy.RenderTargetFormats.push_back(g_GBufferColor3Format);
-                proxy.RenderTargetFormats.push_back(g_GBufferColor4Format);
+                proxy.RenderTargetFormats.push_back(GBufferSettings::s_Color0Format);
+                proxy.RenderTargetFormats.push_back(GBufferSettings::s_Color1Format);
+                proxy.RenderTargetFormats.push_back(GBufferSettings::s_Color2Format);
+                proxy.RenderTargetFormats.push_back(GBufferSettings::s_Color3Format);
+                proxy.RenderTargetFormats.push_back(GBufferSettings::s_Color4Format);
 
                 if (m_IsDepthPrePassEnabled)
                 {
-                    proxy.DepthState.IsEnabled = true;
-                    proxy.DepthState.IsWriteEnabled = false;
-                    proxy.DepthState.ComparisonFunction = benzin::ComparisonFunction::Equal;
+                    setReadDepth();
+                }
+                else
+                {
+                    setWriteDepth();
                 }
             }
         });
@@ -123,16 +132,16 @@ namespace sandbox
             });
         };
 
-        createGBufferTexture(TextureId::AlbedoAndRoughness, g_GBufferColor0Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::EmissiveAndMetallic, g_GBufferColor1Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::WorldNormal, g_GBufferColor2Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::Mv, g_GBufferColor3Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::DepthStencil, g_DepthStencilFormat, benzin::TextureAccessFlag::AllowDepthStencil);
+        createGBufferTexture(TextureId::AlbedoAndRoughness, GBufferSettings::s_Color0Format, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::EmissiveAndMetallic, GBufferSettings::s_Color1Format, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::WorldNormal, GBufferSettings::s_Color2Format, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::Mv, GBufferSettings::s_Color3Format, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::DepthStencil, GBufferSettings::s_DepthStencilFormat, benzin::TextureAccessFlag::AllowDepthStencil);
 
         ms_Resources->Create(TextureId::ViewDepth, benzin::TextureCreation
         {
             .DebugName = magic_enum::enum_name(TextureId::ViewDepth),
-            .Format = g_GBufferColor4Format,
+            .Format = GBufferSettings::s_Color4Format,
             .Width = GetRenderViewportWidth(),
             .Height = GetRenderViewportHeight(),
             .MipCount = 1,
@@ -179,29 +188,31 @@ namespace sandbox
         cmdList.SetScissorRect(ms_RenderScissorRect);
         cmdList.SetGraphicsRootResource(+joint::GeometryResources::MeshTransforms, m_Scene.GetTransformBufferSrv());
 
-        const auto& depthStencil = ms_Resources->Get(TextureId::DepthStencil);
+        const GBuffer gbuffer{ *ms_Resources };
 
-        BenzinMakeScopedResourceBarriers(
-            cmdList,
-            benzin::TransitionBarrier{ depthStencil, benzin::ResourceState::DepthWrite},
-        );
-
-        cmdList.ClearDepthStencil(depthStencil);
-
-        if (m_IsDepthPrePassEnabled)
         {
             BenzinScopeProfile("DepthPrePass");
             BenzinGpuProfile(*ms_GpuProfiler, cmdList, "DepthPrePass");
 
-            context.IsDepthPrePass = true;
+            BenzinMakeScopedResourceBarriers(
+                cmdList,
+                benzin::TransitionBarrier{ gbuffer.DepthStencil, benzin::ResourceState::DepthWrite },
+            );
 
-            cmdList.SetRenderTargets({}, &ms_Resources->Get(TextureId::DepthStencil).GetDsv());
-            cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_DepthCounterClockwise));
-            RenderMeshes(context, (bool)benzin::IndexOrder::CounterClockwise);
+            cmdList.ClearDepthStencil(gbuffer.DepthStencil);
 
-            cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_DepthClockwise));
-            RenderMeshes(context, (bool)benzin::IndexOrder::Clockwise);
-            RenderLights(context);
+            if (m_IsDepthPrePassEnabled)
+            {
+                context.IsDepthPrePass = true;
+
+                cmdList.SetRenderTargets({}, &ms_Resources->Get(TextureId::DepthStencil).GetDsv());
+                cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_DepthCounterClockwise));
+                RenderMeshes(context, (bool)benzin::IndexOrder::CounterClockwise);
+
+                cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_DepthClockwise));
+                RenderMeshes(context, (bool)benzin::IndexOrder::Clockwise);
+                RenderLights(context);
+            }
         }
 
         {
@@ -210,36 +221,16 @@ namespace sandbox
 
             context.IsDepthPrePass = false;
 
-            const auto& albedoAndRoughness = ms_Resources->Get(TextureId::AlbedoAndRoughness);
-            const auto& emissiveAndMetallic = ms_Resources->Get(TextureId::EmissiveAndMetallic);
-            const auto& worldNormal = ms_Resources->Get(TextureId::WorldNormal);
-            const auto& mv = ms_Resources->Get(TextureId::Mv);
-            const auto& viewDepth = ms_Resources->Get(TextureId::ViewDepth);
+            const benzin::ResourceState depthStencilState = m_IsDepthPrePassEnabled ? benzin::ResourceState::DepthRead : benzin::ResourceState::DepthWrite;
+            const benzin::ResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, depthStencilState);
 
-            BenzinMakeScopedResourceBarriers(
-                cmdList,
-                benzin::TransitionBarrier{ albedoAndRoughness, benzin::ResourceState::RenderTarget },
-                benzin::TransitionBarrier{ emissiveAndMetallic, benzin::ResourceState::RenderTarget },
-                benzin::TransitionBarrier{ worldNormal, benzin::ResourceState::RenderTarget },
-                benzin::TransitionBarrier{ mv, benzin::ResourceState::RenderTarget },
-                benzin::TransitionBarrier{ viewDepth, benzin::ResourceState::RenderTarget },
-            );
+            gbuffer.SetRenderTargets(cmdList);
 
-            cmdList.SetRenderTargets(
-                {
-                    albedoAndRoughness.GetRtv(),
-                    emissiveAndMetallic.GetRtv(),
-                    worldNormal.GetRtv(),
-                    mv.GetRtv(),
-                    viewDepth.GetRtv(),
-                },
-                &ms_Resources->Get(TextureId::DepthStencil).GetDsv()
-            );
-
-            cmdList.ClearRenderTarget(albedoAndRoughness);
-            cmdList.ClearRenderTarget(emissiveAndMetallic);
-            cmdList.ClearRenderTarget(worldNormal);
-            cmdList.ClearRenderTarget(mv);
+            cmdList.ClearRenderTarget(gbuffer.AlbedoAndRoughness);
+            cmdList.ClearRenderTarget(gbuffer.EmissiveAndMetallic);
+            cmdList.ClearRenderTarget(gbuffer.WorldNormal);
+            cmdList.ClearRenderTarget(gbuffer.Mv);
+            cmdList.ClearRenderTarget(gbuffer.ViewDepth);
 
             cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_CounterClockwise));
             RenderMeshes(context, (bool)benzin::IndexOrder::CounterClockwise);

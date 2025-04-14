@@ -31,6 +31,7 @@ namespace benzin
 
         R16Float = DXGI_FORMAT_R16_FLOAT,
         R16Uint = DXGI_FORMAT_R16_UINT,
+        R16Unorm = DXGI_FORMAT_R16_UNORM,
 
         R32Float = DXGI_FORMAT_R32_FLOAT,
         R32Uint = DXGI_FORMAT_R32_UINT,

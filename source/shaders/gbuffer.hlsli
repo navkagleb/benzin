@@ -1,15 +1,18 @@
 #pragma once
 
+#include "space_convertions.hlsli"
+#include "unified_root_parameters.hlsli"
+
 struct PackedGBuffer
 {
-    float4 Color0; // Albedo, Albedo, Albedo, Roughness
-    float4 Color1; // Emissive, Emissive, Emissive, Metallic
-    float4 Color2; // WorldNormal, WorldNormal, WorldNormal, None
-    float4 Color3; // UvMv, UvMv, ViewDepthMv, None
-    float4 Color4; // ViewDepth
+    float4 Color0 : SV_Target0; // Albedo, Albedo, Albedo, Roughness
+    float4 Color1 : SV_Target1; // Emissive, Emissive, Emissive, Metallic
+    float4 Color2 : SV_Target2; // WorldNormal, WorldNormal, WorldNormal, None
+    float4 Color3 : SV_Target3; // UvMv, UvMv, ViewDepthMv, None
+    float4 Color4 : SV_Target4; // ViewDepth
 };
 
-struct UnpackedGBuffer
+struct GBuffer
 {
     float3 Albedo;
     float Roughness;
@@ -22,7 +25,7 @@ struct UnpackedGBuffer
     float ViewDepthMv;
 };
 
-PackedGBuffer PackGBuffer(UnpackedGBuffer unpacked)
+PackedGBuffer PackGBuffer(GBuffer unpacked)
 {
     PackedGBuffer packed = (PackedGBuffer)0;
     packed.Color0 = float4(unpacked.Albedo, unpacked.Roughness);
@@ -34,9 +37,9 @@ PackedGBuffer PackGBuffer(UnpackedGBuffer unpacked)
     return packed;
 }
 
-UnpackedGBuffer UnpackGBuffer(PackedGBuffer packed)
+GBuffer UnpackGBuffer(PackedGBuffer packed)
 {
-    UnpackedGBuffer unpacked = (UnpackedGBuffer)0;
+    GBuffer unpacked = (GBuffer)0;
     unpacked.Albedo = packed.Color0.rgb;
     unpacked.Roughness = packed.Color0.a;
     unpacked.Emissive = packed.Color1.rgb;
@@ -47,4 +50,15 @@ UnpackedGBuffer UnpackGBuffer(PackedGBuffer packed)
     unpacked.ViewDepthMv = packed.Color3.b;
 
     return unpacked;
+}
+
+void CalcGBufferMv(float2 pixelPos, float viewDepth, float3 prevViewPos, out GBuffer outGBuffer)
+{
+    const float4 prevClipPos = mul(float4(prevViewPos, 1.0), GetPrevCameraConsts().ViewToClip);
+
+    const float2 uv = pixelPos * g_FrameConstants.InvRenderResolution;
+    const float2 prevUv = ClipToUv(prevClipPos);
+
+    outGBuffer.UvMv = (uv - prevUv) * g_FrameConstants.RenderResolution; // TODO: Pack/Unpack Mv
+    outGBuffer.ViewDepthMv = viewDepth - prevViewPos.z;
 }

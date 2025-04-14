@@ -302,7 +302,7 @@ namespace benzin
             {
                 // TODO: Potentially very tricky place
                 // Cut the last member of benzin::Material
-                const auto data = ToSingleByteSpan(&material, sizeof(joint::Material)); 
+                const auto data = ToSingleByteSpan(material, sizeof(joint::Material)); 
                 const size_t offsetInBytes = i * data.size_bytes();
                 commandList.UploadToBuffer(*meshGpuStorage.MaterialBuffer, data, offsetInBytes);
             }

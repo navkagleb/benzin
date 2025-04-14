@@ -30,7 +30,11 @@ namespace benzin
     {
         ShaderProxy Ps{ "PsMain" };
         RasterizerState RasterizerState;
-        DepthState DepthState;
+        DepthState DepthState
+        {
+            .IsEnabled = false,
+            .IsWriteEnabled = false,
+        };
         StencilState StencilState;
         std::vector<GraphicsFormat> RenderTargetFormats;
         GraphicsFormat DepthStencilFormat = GraphicsFormat::Unknown;
@@ -116,7 +120,7 @@ namespace benzin
         Device& m_Device;
         ShaderManager& m_ShaderManager;
 
-        std::vector<std::unique_ptr<PsoBase>> m_Psos; // TODO: Pointer tagging can be used there to remove 3 different getters
+        std::vector<std::unique_ptr<PsoBase>> m_Psos;
     };
 
 }

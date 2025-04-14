@@ -3,47 +3,42 @@
 
 #include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/scene.hpp>
-#include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/command_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/const_buffer_pool.hpp>
-#include <benzin/utility/random.hpp>
 
-#include "sandbox/sandbox_render_settings.hpp"
+#include <sandbox/sandbox_render_settings.hpp>
 
 namespace sandbox
 {
 
-    GlobalConstantsPass::GlobalConstantsPass(benzin::Device& device, const benzin::Scene& scene)
-        : m_Device{ device }
-        , m_Scene{ scene }
+    GlobalConstantsPass::GlobalConstantsPass(const benzin::Scene& scene)
+        : m_Scene{ scene }
     {
         ms_ConstBufferPool->PreAllocate(sizeof(m_FrameConsts));
     }
 
-    GlobalConstantsPass::~GlobalConstantsPass() = default;
-
-    void GlobalConstantsPass::OnUpdate(const benzin::TickTimer& frameTimer)
+    void GlobalConstantsPass::OnUpdate()
     {
         UpdateCameraConsts();
-        UpdateFrameConsts(frameTimer);
+        UpdateFrameConsts();
     }
 
     void GlobalConstantsPass::OnRender() const
     {
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        auto& cmdList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
 
-        BenzinGpuEvent(commandList, "GlobalConstants");
+        BenzinGpuEvent(cmdList, "GlobalConstants");
 
         const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
 
-        const auto frameConstsGpuAddress = ms_ConstBufferPool->Allocate(m_FrameConsts);
-        commandList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, frameConstsGpuAddress);
-        commandList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, frameConstsGpuAddress);
+        const uint64_t frameConstsGpuAddress = ms_ConstBufferPool->Allocate(m_FrameConsts);
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, frameConstsGpuAddress);
+        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, frameConstsGpuAddress);
 
-        commandList.SetComputeSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, m_Scene.GetLightBufferGpuAddress());
-        commandList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, m_Scene.GetLightBufferGpuAddress());
+        cmdList.SetComputeSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, m_Scene.GetLightBufferGpuAddress());
+        cmdList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, m_Scene.GetLightBufferGpuAddress());
     }
 
     void GlobalConstantsPass::UpdateCameraConsts()
@@ -70,7 +65,7 @@ namespace sandbox
             .UvToViewBias = projection.GetUvToViewBias(),
         };
 
-        if (m_Device.GetCpuFrameIndex() != 0)
+        if (ms_Device->GetCpuFrameIndex() != 0)
         {
             m_FrameConsts.PrevCamera = std::exchange(m_FrameConsts.Camera, cameraConstants);
         }
@@ -81,9 +76,10 @@ namespace sandbox
         }
     }
 
-    void GlobalConstantsPass::UpdateFrameConsts(const benzin::TickTimer& frameTimer)
+    void GlobalConstantsPass::UpdateFrameConsts()
     {
         const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
+        const float animationTimeInSec = ms_AnimationTimer->GetElapsedTimeInSec();
 
         m_FrameConsts.RenderResolution = { (float)renderResolution.x, (float)renderResolution.y };
         m_FrameConsts.InvRenderResolution = { 1.0f / (float)renderResolution.x, 1.0f / (float)renderResolution.y };
@@ -96,9 +92,12 @@ namespace sandbox
         m_FrameConsts.IsShadowsEnabled = ms_Settings->GetSection<RayTracing_ShadowSettings>().IsEnabled;
         m_FrameConsts.IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled;
 
-        m_FrameConsts.DeltaTimeInSec = frameTimer.GetDeltaTimeInSec();
+        m_FrameConsts.DeltaTimeInSec = ms_FrameTimer->GetDeltaTimeInSec();
+        m_FrameConsts.AnimationElapsedTimeInSec = animationTimeInSec;
+        m_FrameConsts.PrevAnimationElapsedTimeInSec = m_PrevAnimationElapsedTimeInSec;
 
         m_PrevRenderResolution = renderResolution;
+        m_PrevAnimationElapsedTimeInSec = animationTimeInSec;
     }
 
 }

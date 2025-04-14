@@ -72,11 +72,14 @@ namespace benzin
         ));
 
         BenzinHrEnsure(d3d12GraphicsCommandList1->QueryInterface(IID_PPV_ARGS(&m_D3D12GraphicsCommandList)));
+        BenzinHrEnsure(d3d12GraphicsCommandList1->QueryInterface(IID_PPV_ARGS(&m_D3D12GraphicsCommandList6)));
+
         SetDxObjectDebugName(m_D3D12GraphicsCommandList, "GraphicsCommandList");
     }
 
     GraphicsCommandList::~GraphicsCommandList()
     {
+        BenzinSafeDxObjectRelease(m_D3D12GraphicsCommandList6);
         BenzinSafeDxObjectRelease(m_D3D12GraphicsCommandList);
     }
 
@@ -468,6 +471,23 @@ namespace benzin
     void GraphicsCommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount)
     {
         m_D3D12GraphicsCommandList->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, 0);
+    }
+
+    // Mesh shaders
+    void GraphicsCommandList::SetMeshPso(const MeshPso& pso)
+    {
+        BenzinAssert(m_D3D12GraphicsCommandList6 != nullptr);
+        BenzinAssert(pso.GetD3D12PipelineState() != nullptr);
+
+        m_D3D12GraphicsCommandList6->SetPipelineState(pso.GetD3D12PipelineState());
+    }
+
+    void GraphicsCommandList::DispatchMesh(const DirectX::XMUINT3& threadGroupCount)
+    {
+        BenzinAssert(m_D3D12GraphicsCommandList6 != nullptr);
+        BenzinAssert(threadGroupCount.x != 0 && threadGroupCount.y != 0 && threadGroupCount.z != 0);
+
+        m_D3D12GraphicsCommandList6->DispatchMesh(threadGroupCount.x, threadGroupCount.y, threadGroupCount.z);
     }
 
     // RayTracing

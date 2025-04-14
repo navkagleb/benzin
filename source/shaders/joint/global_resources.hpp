@@ -38,6 +38,8 @@ namespace joint
         uint IsDenoiserEnabled : 1;
 
         float DeltaTimeInSec;
+        float AnimationElapsedTimeInSec;
+        float PrevAnimationElapsedTimeInSec;
 
         BenzinAlign16 CameraConsts Camera;
         CameraConsts PrevCamera;

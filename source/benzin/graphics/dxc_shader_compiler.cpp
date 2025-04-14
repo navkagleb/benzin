@@ -7,13 +7,19 @@
 namespace benzin
 {
 
-    static constexpr auto g_ShaderTargets = []
+    static const auto g_ShaderTargets = []
     {
         std::array<std::wstring_view, magic_enum::enum_count<ShaderType>()> shaderTargets;
         shaderTargets[+ShaderType::Vertex] = L"vs_6_6";
+        shaderTargets[+ShaderType::Mesh] = L"ms_6_6";
         shaderTargets[+ShaderType::Pixel] = L"ps_6_6";
         shaderTargets[+ShaderType::Compute] = L"cs_6_6";
         shaderTargets[+ShaderType::Library] = L"lib_6_6";
+
+        for (const auto shaderType : magic_enum::enum_values<ShaderType>())
+        {
+            BenzinAssert(!shaderTargets[+shaderType].empty(), "Missing shader target for '{}' shader", magic_enum::enum_name(shaderType));
+        }
 
         return shaderTargets;
     }();
@@ -101,7 +107,7 @@ namespace benzin
     // ShaderArgs
 
     ShaderArgs::ShaderArgs(const ShaderInfo& shader)
-        : Target{ g_ShaderTargets[+shader.GetType()]}
+        : Target{ g_ShaderTargets[+shader.GetType()] }
         , EntryPoint{ ToWideString(shader.GetEntryPoint()) }
         , Defines{ std::from_range, shader.GetDefines() | std::views::transform(ToWideString) }
     {}

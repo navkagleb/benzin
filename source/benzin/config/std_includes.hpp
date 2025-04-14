@@ -83,9 +83,9 @@ namespace benzin
     }
 
     template <typename T>
-    __forceinline auto ToSingleByteSpan(const T* data, size_t sizeInBytes = sizeof(T))
+    __forceinline auto ToSingleByteSpan(const T& data, size_t sizeInBytes = sizeof(T))
     {
-        return std::span{ (const std::byte*)data, sizeInBytes };
+        return std::span{ (const std::byte*)&data, sizeInBytes };
     }
 
 }

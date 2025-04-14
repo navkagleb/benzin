@@ -45,6 +45,16 @@ SamplerState g_MinLinearClampSampler : register(s0, space6);
 SamplerState g_MaxLinearClampSampler : register(s0, space7);
 SamplerState g_PointWithTransparentBlackBorderSampler : register(s0, space8);
 
+const joint::CameraConsts GetCameraConsts()
+{
+    return g_FrameConstants.Camera;
+}
+
+const joint::CameraConsts GetPrevCameraConsts()
+{
+    return g_FrameConstants.PrevCamera;
+}
+
 uint GetRootConstant(uint index)
 {
     return g_RootConstants.GetConstant(index);

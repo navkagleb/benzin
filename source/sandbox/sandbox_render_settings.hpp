@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shaders/joint/tone_mapping_resources.hpp>
+#include <shaders/joint/procedural_grass_resources.hpp>
 
 namespace sandbox
 {
@@ -14,8 +15,28 @@ namespace sandbox
 
     struct GBufferSettings
     {
+        static constexpr auto s_Color0Format = benzin::GraphicsFormat::Rgba8Unorm; // Albedo, Albedo, Albedo, Roughness
+        static constexpr auto s_Color1Format = benzin::GraphicsFormat::Rgba8Unorm; // Emissive, Emissive, Emissive, Metallic
+        static constexpr auto s_Color2Format = benzin::GraphicsFormat::Rgba16Float; // WorldNormal, WorldNormal, WorldNormal, None
+        static constexpr auto s_Color3Format = benzin::GraphicsFormat::Rgba16Float; // UvMv, UvMv, ViewDepthMv, None
+        static constexpr auto s_Color4Format = benzin::GraphicsFormat::R32Float; // ViewDepth
+
+        static constexpr auto s_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
+
         bool IsDepthPrePassEnabled = true;
         bool IsFrustumCullingEnabled = true;
+    };
+
+    struct ProceduralGrassStats
+    {
+        uint32_t PatchCount = 0;
+    };
+
+    struct ProceduralGrassSettings
+    {
+        bool IsEnabled = true;
+
+        joint::ProceduralGrassConsts Consts;
     };
 
     struct RayTracing_ShadowSettings
@@ -40,6 +61,11 @@ namespace sandbox
 
         uint32_t HistoryLength = 5;
         float StabilizationStrength = 0.0;
+    };
+
+    struct DeferredLightingSettings
+    {
+        static constexpr auto s_HdrColorFormat = benzin::GraphicsFormat::Rgba16Float;
     };
 
     struct ToneMappingSettings
