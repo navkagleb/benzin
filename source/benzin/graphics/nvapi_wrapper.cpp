@@ -14,6 +14,8 @@
         magic_enum::enum_integer(BenzinUniqueVariableName(nvStatus)) \
     )
 
+#define BenzinNvApiTrace(format, ...) BenzinTrace("[NvAPI] "##format, __VA_ARGS__)
+
 namespace benzin
 {
 
@@ -30,7 +32,8 @@ namespace benzin
             {
                 return;
             }
-
+            
+            GetDriverVersion();
             GatherAdapters();
         }
 
@@ -63,6 +66,15 @@ namespace benzin
         }
 
     private:
+        void GetDriverVersion()
+        {
+            NvU32 driverVersion = 0;
+            NvAPI_ShortString buildBranch{};
+            NvAPI_SYS_GetDriverAndBranchVersion(&driverVersion, buildBranch);
+
+            BenzinNvApiTrace("DriverVersion: {}.{}, (BuildBranch: {})", driverVersion / 100, driverVersion % 100, buildBranch);
+        }
+
         void GatherAdapters()
         {
             NvPhysicalGpuHandle gpuHandles[NVAPI_MAX_PHYSICAL_GPUS];
@@ -82,8 +94,8 @@ namespace benzin
                 NvU32 extDeviceId = 0;
                 BenzinNvApiEnsure(NvAPI_GPU_GetPCIIdentifiers(physicalGpuHandle, &deviceId, &subSystemId, &revisionId, &extDeviceId));
 
-                BenzinTrace(
-                    "NvApi Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
+                BenzinNvApiTrace(
+                    "Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
                     i,
                     gpuName,
                     0x10DE, // Force set VendorId for NvAPI,

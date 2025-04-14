@@ -45,6 +45,8 @@ static constexpr std::string_view AdlReturnCodeToString(int adlReturnCode)
         BenzinUniqueVariableName(adlReturnCode) \
     )
 
+#define BenzinAdlTrace(format, ...) BenzinTrace("[ADL] "##format, __VA_ARGS__)
+
 namespace benzin
 {
 
@@ -212,7 +214,7 @@ namespace benzin
             AdapterInfoX2* adapterInfoData = nullptr;
             BenzinAdlEnsure(ADL2_Adapter_AdapterInfoX4_Get(m_Context, adapterIndex, &adapterCount, &adapterInfoData));
 
-            const std::span<const AdapterInfoX2> adapterInfos{ adapterInfoData, (size_t)adapterCount };
+            const std::span adapterInfos = benzin::ToSpan(adapterInfoData, adapterCount);
 
             std::set<int> existedBusIndices;
             for (const auto& [i, adapterInfo] : adapterInfos | std::views::enumerate)
@@ -232,8 +234,8 @@ namespace benzin
                 uint32_t revisionId;
                 ParseUniqueDeviceIdString(adapterInfo.strUDID, vendorId, deviceId, subSysId, revisionId);
 
-                BenzinTrace(
-                    "Adl Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
+                BenzinAdlTrace(
+                    "Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
                     i,
                     adapterInfo.strAdapterName,
                     vendorId,
