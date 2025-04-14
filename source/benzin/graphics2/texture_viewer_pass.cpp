@@ -35,6 +35,14 @@ namespace benzin
         ms_Resources->Destroy(TextureId::DebugTexture);
     }
 
+    void TextureViewerPass::OnRenderViewportResize()
+    {
+        if (m_ReferenceTextureId != g_InvalidTextureId)
+        {
+            CreateDebugTexture();
+        }
+    }
+
     void TextureViewerPass::OnUpdate()
     {
         BenzinProfile();
@@ -52,20 +60,7 @@ namespace benzin
         {
             m_ReferenceTextureId = m_TextureViewerTool.m_ReferenceTextureId;
 
-            const Texture& referenceTexture = ms_Resources->Get(m_ReferenceTextureId);
-            ms_Resources->Create(TextureId::DebugTexture, TextureCreation
-            {
-                .DebugName = "DebugTexture",
-                .Format = referenceTexture.GetFormat(),
-                .Width = referenceTexture.GetWidth(),
-                .Height = referenceTexture.GetHeight(),
-                .Depth = 1,
-                .MipCount = 1, // TODO: Add support multiple mip levels
-                .AccessFlags = TextureAccessFlag::AllowUnorderedAccess,
-            });
-
-            m_Consts.TextureResolution.x = referenceTexture.GetWidth();
-            m_Consts.TextureResolution.y = referenceTexture.GetHeight();
+            CreateDebugTexture();
         }
 
         m_Consts.ChannelMask.x = m_TextureViewerTool.m_IsChannelActive[0];
@@ -102,6 +97,24 @@ namespace benzin
         }
 
         cmdList.Dispatch({ debugTexture.GetWidth(), debugTexture.GetHeight(), 1 }, { 16, 16, 1 });
+    }
+
+    void TextureViewerPass::CreateDebugTexture()
+    {
+        const Texture& referenceTexture = ms_Resources->Get(m_ReferenceTextureId);
+        ms_Resources->Create(TextureId::DebugTexture, TextureCreation
+        {
+            .DebugName = "DebugTexture",
+            .Format = referenceTexture.GetFormat(),
+            .Width = referenceTexture.GetWidth(),
+            .Height = referenceTexture.GetHeight(),
+            .Depth = 1,
+            .MipCount = 1, // TODO: Add support multiple mip levels
+            .AccessFlags = TextureAccessFlag::AllowUnorderedAccess,
+        });
+
+        m_Consts.TextureResolution.x = referenceTexture.GetWidth();
+        m_Consts.TextureResolution.y = referenceTexture.GetHeight();
     }
 
 }

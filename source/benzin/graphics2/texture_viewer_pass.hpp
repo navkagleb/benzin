@@ -16,9 +16,13 @@ namespace benzin
         ~TextureViewerPass() override;
 
     private:
-        bool IsDependentOnViewport() const override { return false; }
+        bool IsDependentOnViewport() const override { return true; }
+
+        void OnRenderViewportResize() override;
         void OnUpdate() override;
         void OnRender() const override;
+
+        void CreateDebugTexture();
 
     private:
         const TextureViewerTool& m_TextureViewerTool;
