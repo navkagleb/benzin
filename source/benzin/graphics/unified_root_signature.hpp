@@ -7,10 +7,10 @@ namespace benzin
 
     enum class UnifiedRootParameter
     {
-        RootConstantBuffer,
-        FrameConstantBuffer,
-        RenderPassConstantBuffer0,
-        RenderPassConstantBuffer1,
+        Root32Consts,
+        FrameConstBuffer,
+        RenderPassConstBuffer0,
+        RenderPassConstBuffer1,
         LightStructuredBuffer,
         SceneTlas,
     };

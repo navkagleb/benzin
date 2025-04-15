@@ -31,12 +31,12 @@ namespace benzin
         bool IsValid() const;
 
     private:
-        ShaderType m_Type = g_InvalidEnum<ShaderType>;
+        ShaderType m_Type = g_BadEnum<ShaderType>;
         std::string_view m_FileName;
         std::string_view m_EntryPoint;
         std::vector<std::string_view> m_Defines;
 
-        uint64_t m_Hash = g_InvalidUnsigned<uint64_t>;
+        uint64_t m_Hash = g_Bad64;
     };
 
 }

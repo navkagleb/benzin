@@ -12,12 +12,10 @@ namespace sandbox
 
     class SandboxRunner : public Runner
     {
-    public:
-        SandboxRunner();
-
     private:
-        void InitRenderPasses();
-        void InitTools();
+        void InitRenderPasses() override;
+        void InitTools() override;
+        void InitScene() override;
 
         void InitSceneEntities();
         void InitCamera();

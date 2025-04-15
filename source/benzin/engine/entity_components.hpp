@@ -30,8 +30,8 @@ namespace benzin
     // TODO: Rename to MeshInstance?
     struct MeshComponent
     {
-        entt::entity MeshHandle = g_InvalidEnum<entt::entity>;
-        uint32_t GpuTransformIndex = g_InvalidUnsigned<uint32_t>;
+        entt::entity MeshHandle = g_BadEnum<entt::entity>;
+        uint32_t GpuTransformIndex = g_Bad32;
     };
 
     using EntityUpdateCallback = std::function<void()>;

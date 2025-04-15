@@ -9,9 +9,9 @@ namespace benzin
     enum class PsoId : uint32_t;
     enum class TextureId : uint32_t;
 
-    inline constexpr auto g_InvalidBufferId = BufferId{ g_InvalidUnsigned<uint32_t> };
-    inline constexpr auto g_InvalidTextureId = TextureId{ g_InvalidUnsigned<uint32_t> };
-    inline constexpr auto g_InvalidPsoId = PsoId{ g_InvalidUnsigned<uint32_t> };
+    inline constexpr auto g_InvalidBufferId = BufferId{ g_Bad32 };
+    inline constexpr auto g_InvalidTextureId = TextureId{ g_Bad32 };
+    inline constexpr auto g_InvalidPsoId = PsoId{ g_Bad32 };
 
     //
 
@@ -85,4 +85,4 @@ namespace benzin
         float Height = 0.0f;
     };
 
-} // namespace benzin
+}

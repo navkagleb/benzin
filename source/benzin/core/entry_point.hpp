@@ -5,4 +5,4 @@ namespace benzin
 
     int ClientMain();
 
-} // namespace benzin
+}

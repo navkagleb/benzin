@@ -7,7 +7,7 @@ namespace benzin
 
     class Buffer;
     class Device;
-    class GraphicsCommandList;
+    class ComputeCmdList;
     class QueryHeap;
 
     struct ProfileEvent;
@@ -89,12 +89,12 @@ namespace benzin
     class ScopedGpuProfileEvent
     {
     public:
-        ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, std::string_view name);
+        ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, ComputeCmdList& cmdList, std::string_view name);
         ~ScopedGpuProfileEvent();
 
     private:
         GpuProfiler& m_GpuProfiler;
-        GraphicsCommandList& m_CommandList;
+        ComputeCmdList& m_CmdList;
     };
 
 }
@@ -103,13 +103,13 @@ namespace benzin
 
 #if BENZIN_IS_GPU_PROFILER_ENABLED
 
-    #define BenzinGpuProfile(gpuProfiler, commandList, name) \
-        BenzinGpuEvent(commandList, name); \
-        const benzin::ScopedGpuProfileEvent BenzinUniqueVariableName(_scopedGpuProfileEvent){ gpuProfiler, commandList, name }
+    #define BenzinGpuProfile(gpuProfiler, cmdList, name) \
+        BenzinGpuEvent(cmdList, name); \
+        const benzin::ScopedGpuProfileEvent BenzinUniqueVariableName(_scopedGpuProfileEvent){ gpuProfiler, cmdList, name }
 
 #else
 
-    #define BenzinGpuProfile(gpuProfiler, commandList, name) \
-        BenzinGpuEvent(commandList, name); \
+    #define BenzinGpuProfile(gpuProfiler, cmdList, name) \
+        BenzinGpuEvent(cmdList, name); \
 
 #endif

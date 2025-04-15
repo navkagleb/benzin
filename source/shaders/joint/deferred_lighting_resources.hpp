@@ -1,9 +1,11 @@
 #pragma once
 
+#include "hlsl_to_cpp.hpp"
+
 namespace joint
 {
 
-    enum class Rc_DeferredLighting : uint32_t
+    enum class DeferredLightingResources : uint
     {
         AlbedoAndRoughness,
         EmissiveAndMetallic,

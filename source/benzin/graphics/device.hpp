@@ -7,7 +7,7 @@ namespace benzin
 
     class Backend;
     class ComputePso;
-    class GraphicsCommandQueue;
+    class GraphicsCmdQueue;
     class MeshPso;
     class QueryHeap;
     class RayTracing_Pso;
@@ -43,7 +43,7 @@ namespace benzin
 
         auto& GetUnifiedRootSignature() { return *m_UnifiedRootSignature; }
         auto& GetDescriptorManager() { return *m_DescriptorManager; }
-        auto& GetGraphicsCommandQueue() { return *m_GraphicsCommandQueue; }
+        auto& GetGraphicsCmdQueue() { return *m_GraphicsCmdQueue; }
 
         auto GetCpuFrameIndex() const { return m_CpuFrameIndex; }
         auto GetCompletedGpuFrameIndex() const { return m_CompletedGpuFrameIndex; }
@@ -53,13 +53,11 @@ namespace benzin
 
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
+        void DeferredRelease(ID3D12PipelineState*& d3d12PipelineState);
+        void DeferredRelease(ID3D12QueryHeap*& d3d12QueryHeap);
+        void DeferredRelease(ID3D12Resource*& d3d12Resource);
+        void DeferredRelease(ID3D12StateObject*& d3d12StateObject);
         void DeferredRelease(const Descriptor& descriptor);
-        void DeferredRelease(const VertexPso& pso);
-        void DeferredRelease(const MeshPso& pso);
-        void DeferredRelease(const ComputePso& pso);
-        void DeferredRelease(const QueryHeap& queryHeap);
-        void DeferredRelease(const RayTracing_Pso& pso);
-        void DeferredRelease(const Resource& resource);
         void ProcessDeferredReleaseQueues(bool isForceRelease = false); // Must be called after 'SwapChain::OnFlip' because 'm_CompletedGpuFrameIndex' will be updated there
 
     private:
@@ -75,7 +73,7 @@ namespace benzin
         // std::unique_ptr to indicate that the device owns these member lifetime
         std::unique_ptr<UnifiedRootSignature> m_UnifiedRootSignature;
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
-        std::unique_ptr<GraphicsCommandQueue> m_GraphicsCommandQueue;
+        std::unique_ptr<GraphicsCmdQueue> m_GraphicsCmdQueue;
 
         uint64_t m_CpuFrameIndex = 0;
         uint64_t m_CompletedGpuFrameIndex = 0;

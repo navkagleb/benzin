@@ -4,7 +4,7 @@
 #include "benzin/core/index_allocator.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/hr_assert.hpp"
+#include "benzin/graphics/d3d12_assert.hpp"
 
 namespace benzin
 {
@@ -38,35 +38,8 @@ namespace benzin
     class DescriptorHeap
     {
     public:
-        DescriptorHeap(Device& device, const DescriptorHeapCreation& creation)
-            : m_IsShaderVisible{ creation.IsShaderVisible }
-            , m_IndexAllocator{ creation.MaxDescriptorCount }
-        {
-            const D3D12_DESCRIPTOR_HEAP_DESC d3d12DescriptorHeapDesc
-            {
-                .Type = creation.D3D12Type,
-                .NumDescriptors = creation.MaxDescriptorCount,
-                .Flags = m_IsShaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
-                .NodeMask = 0,
-            };
-
-            BenzinHrEnsure(device.GetD3D12Device()->CreateDescriptorHeap(&d3d12DescriptorHeapDesc, IID_PPV_ARGS(&m_D3D12DescriptorHeap)));
-            SetDxObjectDebugName(m_D3D12DescriptorHeap, creation.DebugName);
-
-            m_DescriptorSize = device.GetD3D12Device()->GetDescriptorHandleIncrementSize(d3d12DescriptorHeapDesc.Type);
-        }
-
-        ~DescriptorHeap()
-        {
-            BenzinWarningIf(
-                m_IndexAllocator.GetAllocatedIndexCount() != 0,
-                "Descriptor heap '{}' has {} allocated descriptors",
-                GetDxObjectDebugName(m_D3D12DescriptorHeap),
-                m_IndexAllocator.GetAllocatedIndexCount()
-            );
-
-            BenzinSafeDxObjectRelease(m_D3D12DescriptorHeap);
-        }
+        DescriptorHeap(Device& device, const DescriptorHeapCreation& creation);
+        ~DescriptorHeap();
 
         BenzinDefineNonCopyable(DescriptorHeap);
         BenzinDefineNonMoveable(DescriptorHeap);
@@ -74,35 +47,13 @@ namespace benzin
     public:
         auto* GetD3D12DescriptorHeap() const { return m_D3D12DescriptorHeap; }
 
-        uint32_t AllocateDescriptorIndex()
-        {
-            return m_IndexAllocator.AllocateIndex();
-        }
+        uint32_t AllocateDescriptorIndex();
+        void FreeDescriptorIndex(uint32_t descriptorIndex);
 
-        void FreeDescriptorIndex(uint32_t descriptorIndex)
-        {
-            m_IndexAllocator.FreeIndex(descriptorIndex);
-        }
+        uint64_t GetCpuHandle(uint32_t descriptorIndex) const;
+        uint64_t GetGpuHandle(uint32_t descriptorIndex) const;
 
-        uint64_t GetCpuHandle(uint32_t descriptorIndex) const
-        {
-            return m_D3D12DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + (uint64_t)descriptorIndex * m_DescriptorSize;
-        }
-
-        uint64_t GetGpuHandle(uint32_t descriptorIndex) const
-        {
-            BenzinAssert(m_IsShaderVisible, "GPU handle can only be obtained from shader visible heap");
-
-            return m_D3D12DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + (uint64_t)descriptorIndex * m_DescriptorSize;
-        }
-
-        uint32_t GetDescriptorIndexByCpuHandle(uint64_t cpuHandle)
-        {
-            const auto descriptorIndex = (uint32_t)(cpuHandle - m_D3D12DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr) / m_DescriptorSize;
-            BenzinAssert(descriptorIndex < m_IndexAllocator.GetMaxIndexCount());
-
-            return descriptorIndex;
-        }
+        uint32_t GetDescriptorIndexByCpuHandle(uint64_t cpuHandle);
 
     private:
         ID3D12DescriptorHeap* m_D3D12DescriptorHeap = nullptr;
@@ -112,6 +63,66 @@ namespace benzin
 
         IndexAllocator m_IndexAllocator;
     };
+
+    DescriptorHeap::DescriptorHeap(Device& device, const DescriptorHeapCreation& creation)
+        : m_IsShaderVisible{ creation.IsShaderVisible }
+        , m_IndexAllocator{ creation.MaxDescriptorCount }
+    {
+        const D3D12_DESCRIPTOR_HEAP_DESC d3d12DescriptorHeapDesc
+        {
+            .Type = creation.D3D12Type,
+            .NumDescriptors = creation.MaxDescriptorCount,
+            .Flags = m_IsShaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+            .NodeMask = 0,
+        };
+
+        BenzinD3D12Call(device.GetD3D12Device()->CreateDescriptorHeap(&d3d12DescriptorHeapDesc, IID_PPV_ARGS(&m_D3D12DescriptorHeap)));
+        SetD3DObjectDebugName(m_D3D12DescriptorHeap, creation.DebugName);
+
+        m_DescriptorSize = device.GetD3D12Device()->GetDescriptorHandleIncrementSize(d3d12DescriptorHeapDesc.Type);
+    }
+
+    DescriptorHeap::~DescriptorHeap()
+    {
+        BenzinWarningIf(
+            m_IndexAllocator.GetAllocatedIndexCount() != 0,
+            "Descriptor heap '{}' has {} allocated descriptors",
+            GetD3DObjectDebugName(m_D3D12DescriptorHeap),
+            m_IndexAllocator.GetAllocatedIndexCount()
+        );
+
+        SafeReleaseD3DObject(m_D3D12DescriptorHeap);
+    }
+
+    uint32_t DescriptorHeap::AllocateDescriptorIndex()
+    {
+        return m_IndexAllocator.AllocateIndex();
+    }
+
+    void DescriptorHeap::FreeDescriptorIndex(uint32_t descriptorIndex)
+    {
+        m_IndexAllocator.FreeIndex(descriptorIndex);
+    }
+
+    uint64_t DescriptorHeap::GetCpuHandle(uint32_t descriptorIndex) const
+    {
+        return m_D3D12DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + (uint64_t)descriptorIndex * m_DescriptorSize;
+    }
+
+    uint64_t DescriptorHeap::GetGpuHandle(uint32_t descriptorIndex) const
+    {
+        BenzinAssert(m_IsShaderVisible, "GPU handle can only be obtained from shader visible heap");
+
+        return m_D3D12DescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + (uint64_t)descriptorIndex * m_DescriptorSize;
+    }
+
+    uint32_t DescriptorHeap::GetDescriptorIndexByCpuHandle(uint64_t cpuHandle)
+    {
+        const auto descriptorIndex = (uint32_t)(cpuHandle - m_D3D12DescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr) / m_DescriptorSize;
+        BenzinAssert(descriptorIndex < m_IndexAllocator.GetMaxIndexCount());
+
+        return descriptorIndex;
+    }
 
     // DescriptorManager
 

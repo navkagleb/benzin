@@ -20,7 +20,7 @@ namespace benzin
 
     void SceneTool::DrawSun()
     {
-        if (!Imgui_MainCollapsingHeader("Sun"))
+        if (!Imgui_MainCollapsingHeader("Sun", ImGuiTreeNodeFlags_DefaultOpen))
         {
             return;
         }

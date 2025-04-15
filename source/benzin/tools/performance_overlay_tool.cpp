@@ -1,7 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/tools/performance_overlay_tool.hpp"
 
-#include "benzin/core/command_line_args.hpp"
+#include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/device.hpp"
@@ -100,12 +100,12 @@ namespace benzin
         ImGui::Text(BenzinFormatData("Local VRAM: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedVram.GetMb(), adapterMemoryInfo.VramOsBudget.GetMb()));
         ImGui::Text(BenzinFormatData("Host RAM: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb(), adapterMemoryInfo.SharedRamOsBudget.GetMb()));
 
-        if (CommandLineArgs::GetBool("IsGpuValidationEnabled"))
+        if (CmdLineArgs::IsGpuValidationEnabled())
         {
             ImGui::Text("!!! GPU Validation ENABLED");
         }
 
-        if (CommandLineArgs::GetBool("IsSynchronizedCommandQueueValidationEnabled"))
+        if (CmdLineArgs::IsSynchronizedCommandQueueValidationEnabled())
         {
             ImGui::Text("!!! Debug Sync Queue ENABLED");
         }

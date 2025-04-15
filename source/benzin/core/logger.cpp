@@ -50,7 +50,7 @@ namespace benzin
             std::format_to(std::back_inserter(logOptions), "[{}]", (GetFileNameFormat(sourceLocation)));
         }
 
-        return std::format("{}[{}]: {}\n", logOptions, magic_enum::enum_name(severity), message);
+        return std::format("{}[{:^7}]: {}\n", logOptions, magic_enum::enum_name(severity), message);
     }
 
     //

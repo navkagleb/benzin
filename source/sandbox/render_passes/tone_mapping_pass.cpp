@@ -3,8 +3,7 @@
 
 #include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
-#include <benzin/graphics/command_list.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
@@ -123,10 +122,10 @@ namespace sandbox
     {
         BenzinProfile();
 
-        auto& cmdList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ToneMapping");
 
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
 
         RunClearPass(cmdList);
         RunCalcLuminanceHistogramPass(cmdList);
@@ -134,7 +133,7 @@ namespace sandbox
         RunApplyToneMapOperatorPass(cmdList);
     }
 
-    void ToneMappingPass::RunClearPass(benzin::GraphicsCommandList& cmdList) const
+    void ToneMappingPass::RunClearPass(benzin::ComputeCmdList& cmdList) const
     {
         static bool isFirstTime = true;
 
@@ -148,10 +147,10 @@ namespace sandbox
         const auto& luminanceHistogram = ms_Resources->Get(BufferId::ToneMapping_LuminanceHistogram);
         const auto& avgLuminance = ms_Resources->Get(TextureId::ToneMapping_AvgLuminance);
 
-        BenzinMakeScopedResourceBarriers(
+        BenzinScopedResourceBarriers(
             cmdList,
             benzin::TransitionBarrier{ luminanceHistogram, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ avgLuminance, benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ avgLuminance, benzin::ResourceState::UnorderedAccess }
         );
 
         cmdList.ClearUnorderedAccess(luminanceHistogram, luminanceHistogram.GetUav(), {});
@@ -160,7 +159,7 @@ namespace sandbox
         isFirstTime = false;
     }
 
-    void ToneMappingPass::RunCalcLuminanceHistogramPass(benzin::GraphicsCommandList& cmdList) const
+    void ToneMappingPass::RunCalcLuminanceHistogramPass(benzin::ComputeCmdList& cmdList) const
     {
         BenzinProfile();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "CalcLuminanceHistogram");
@@ -176,17 +175,17 @@ namespace sandbox
             cmdList.SetComputeRootResource(+OutDebugLuminanceHistogram, debugLuminanceHistogram.GetUav());
         }
 
-        BenzinMakeScopedResourceBarriers(
+        BenzinScopedResourceBarriers(
             cmdList,
             benzin::TransitionBarrier{ luminanceHistogram, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ debugLuminanceHistogram, benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ debugLuminanceHistogram, benzin::ResourceState::UnorderedAccess }
         );
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcLuminanceHistogram));
         cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 16, 16, 1 });
     }
 
-    void ToneMappingPass::RunCalcAvgLuminancePass(benzin::GraphicsCommandList& cmdList) const
+    void ToneMappingPass::RunCalcAvgLuminancePass(benzin::ComputeCmdList& cmdList) const
     {
         BenzinProfile();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "CalcAvgLuminance");
@@ -201,17 +200,17 @@ namespace sandbox
             cmdList.SetComputeRootResource(+OutAvgLuminance, avgLuminance.GetUav());
         }
 
-        BenzinMakeScopedResourceBarriers(
+        BenzinScopedResourceBarriers(
             cmdList,
             benzin::TransitionBarrier{ luminanceHistogram, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ avgLuminance, benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ avgLuminance, benzin::ResourceState::UnorderedAccess }
         );
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcAvgLuminance));
         cmdList.Dispatch({ 1, 1, 1 }, { 1, 1, 1 });
     }
 
-    void ToneMappingPass::RunApplyToneMapOperatorPass(benzin::GraphicsCommandList& cmdList) const
+    void ToneMappingPass::RunApplyToneMapOperatorPass(benzin::ComputeCmdList& cmdList) const
     {
         BenzinProfile();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ApplyToneMapOperator");
@@ -226,9 +225,9 @@ namespace sandbox
             cmdList.SetComputeRootResource(+OutFinal, finalTexture.GetUav());
         }
 
-        BenzinMakeScopedResourceBarriers(
+        BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::UnorderedAccess }
         );
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_ApplyToneMapOperator));

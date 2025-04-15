@@ -6,8 +6,8 @@
 
 #include "sigma_denoiser/group_shared_preloader.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float4>, g_Tiles, joint::Rc_SigmaSmoothTiles::Tiles);
-BenzinDeclareRootResource(RWTexture2D<float2>, g_OutSmoothTiles, joint::Rc_SigmaSmoothTiles::OutSmoothTiles);
+BenzinDeclareRootResource(Texture2D<float4>, g_Tiles, joint::SigmaSmoothTilesResources::Tiles);
+BenzinDeclareRootResource(RWTexture2D<float2>, g_OutSmoothTiles, joint::SigmaSmoothTilesResources::OutSmoothTiles);
 
 groupshared float g_IsPenumbra[g_SharedBufferSizeY][g_SharedBufferSizeX];
 

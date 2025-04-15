@@ -1,7 +1,7 @@
 #pragma once
 
-#include "benzin/graphics/common.hpp"
-#include "benzin/graphics/resource.hpp"
+#include <benzin/graphics/common.hpp>
+#include <benzin/graphics/resource.hpp>
 
 namespace benzin
 {
@@ -21,27 +21,54 @@ namespace benzin
 
     enum class UnifiedRootParameter;
 
-    class GraphicsCommandList
+    struct TransitionBarrier
+    {
+        const Resource& TransitionResource;
+        ResourceState StateBefore;
+        ResourceState StateAfter;
+
+        TransitionBarrier(const Resource& resource, ResourceState stateAfter)
+            : TransitionResource{ resource }
+            , StateBefore{ resource.GetCurrentState() }
+            , StateAfter{ stateAfter }
+        {}
+    };
+
+    struct UnorderedAccessBarrier
+    {
+        const Resource& Resource;
+    };
+
+    using ResourceBarrierVariant = std::variant<TransitionBarrier, UnorderedAccessBarrier>;
+
+    class CmdList
     {
     public:
-        friend class GraphicsCommandQueue;
-        friend class ScopedResourceBarriers;
+        explicit CmdList(Device& device);
+        virtual ~CmdList();
 
-        explicit GraphicsCommandList(Device& device);
-        ~GraphicsCommandList();
+        auto* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList1; }
 
-        BenzinDefineNonCopyable(GraphicsCommandList);
-        BenzinDefineNonMoveable(GraphicsCommandList);
+        void AddResourceBarrier(const ResourceBarrierVariant& resourceBarrierVariant, bool isNeedToFlush = false);
+        void FlushResourceBarriers();
 
+    protected:
+        ID3D12GraphicsCommandList1* m_D3D12GraphicsCommandList1 = nullptr;
+
+        std::vector<D3D12_RESOURCE_BARRIER> m_D3D12Barriers;
+    };
+
+    class CopyCmdList : public CmdList
+    {
     public:
-        auto* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList; }
+        friend class GraphicsCmdQueue;
 
-    public:
-        // TODO: This part is for CopyCommandList?
+        using CmdList::CmdList;
+
         void CopyResource(const Resource& destination, const Resource& source);
 
         void UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, Bytes64 offset);
-        
+
         template <typename T>
         void UploadToBuffer(Buffer& buffer, std::span<const T> elements, size_t offsetElement = 0)
         {
@@ -51,7 +78,26 @@ namespace benzin
         void UploadToTexture(Texture& texture, const std::vector<SubResourceData>& subResources);
         void UploadToTextureTopMip(Texture& texture, std::span<const std::byte> data);
 
-        // Compute
+    private:
+        void SetUploadBuffer(Buffer& uploadBuffer);
+        Bytes64 AllocateInUploadBuffer(Bytes64 size, Bytes64 alignment = 0);
+
+    private:
+        Buffer* m_UploadBuffer = nullptr;
+        Bytes64 m_UploadBufferOffset = 0;
+    };
+
+    class ComputeCmdList : public CopyCmdList
+    {
+    public:
+        explicit ComputeCmdList(Device& device);
+        ~ComputeCmdList() override;
+
+        // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d12/timing
+        // D3D12_COMMAND_LIST_TYPE_DIRECT and D3D12_COMMAND_LIST_TYPE_COMPUTE always support timestamps
+        void SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index);
+        void ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffset);
+
         void SetComputeCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
         void SetComputeSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
@@ -64,12 +110,22 @@ namespace benzin
 
         void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize);
 
-        // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d12/timing
-        // D3D12_COMMAND_LIST_TYPE_DIRECT and D3D12_COMMAND_LIST_TYPE_COMPUTE always support timestamps
-        void SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index);
-        void ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffset);
+        // RayTracing
+        void BuildRayTracingAccelerationStructure(const RayTracing_AcclerationStructure& accelerationStructure);
 
-        // Graphics 
+        void SetRayTracingPso(const RayTracing_Pso& pso);
+        void DispatchRays(const RayTracing_ShaderTable& shaderTable, const DirectX::XMUINT3 dimenions);
+
+    protected:
+        ID3D12GraphicsCommandList4* m_D3D12GraphicsCommandList4 = nullptr;
+    };
+
+    class GraphicsCmdList : public ComputeCmdList
+    {
+    public:
+        explicit GraphicsCmdList(Device& device);
+        ~GraphicsCmdList() override;
+
         void SetGraphicsCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
         void SetGraphicsSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
@@ -99,65 +155,26 @@ namespace benzin
         void SetMeshPso(const MeshPso& pso);
         void DispatchMesh(const DirectX::XMUINT3& threadGroupCount);
 
-        // RayTracing
-        void BuildRayTracingAccelerationStructure(const RayTracing_AcclerationStructure& accelerationStructure);
-
-        void SetRayTracingPso(const RayTracing_Pso& pso);
-
-        void DispatchRays(const RayTracing_ShaderTable& shaderTable, const DirectX::XMUINT3 dimenions);
-
-    private:
-        void SetUploadBuffer(Buffer& uploadBuffer);
-        Bytes64 AllocateInUploadBuffer(Bytes64 size, Bytes64 alignment = 0);
-
-    private:
-        ID3D12GraphicsCommandList4* m_D3D12GraphicsCommandList = nullptr;
+    protected:
         ID3D12GraphicsCommandList6* m_D3D12GraphicsCommandList6 = nullptr;
-
-        Buffer* m_UploadBuffer = nullptr;
-        Bytes64 m_UploadBufferOffset = 0;
     };
 
-    struct TransitionBarrier
-    {
-        const Resource& TransitionResource;
-        ResourceState StateBefore;
-        ResourceState StateAfter;
-
-        TransitionBarrier(const Resource& resource, ResourceState stateAfter)
-            : TransitionResource{ resource }
-            , StateBefore{ resource.GetCurrentState() }
-            , StateAfter{ stateAfter }
-        {}
-    };
-
-    struct UnorderedAccessBarrier
-    {
-        const Resource& Resource;
-    };
-
-    using ResourceBarrierVariant = std::variant<TransitionBarrier, UnorderedAccessBarrier>;
-
-    class ResourceBarriers
+    class ScopedResourceBarriers
     {
     public:
-        ResourceBarriers(GraphicsCommandList& commandList, const std::vector<ResourceBarrierVariant>& resourceBarriers, bool isScoped);
-        ~ResourceBarriers();
+        ScopedResourceBarriers(CmdList& cmdList, std::span<const ResourceBarrierVariant> resourceBarriers);
+        ~ScopedResourceBarriers();
 
     private:
-        void SetD3D12Barriers(std::span<const D3D12_RESOURCE_BARRIER> d3d12Barriers) const;
-
-    private:
-        GraphicsCommandList& m_CommandList;
+        CmdList& m_CmdList;
 
         std::vector<TransitionBarrier> m_SwappedTransitionBarriers;
-        bool m_IsScoped = false;
     };
 
     class ScopedGpuEvent
     {
     public:
-        explicit ScopedGpuEvent(GraphicsCommandList& commandList, std::string_view name);
+        explicit ScopedGpuEvent(CmdList& cmdList, std::string_view name);
         ~ScopedGpuEvent();
 
     private:
@@ -166,21 +183,12 @@ namespace benzin
 
 }
 
-#define BenzinMakeResourceBarriers(commandList, ...) \
-    const benzin::ResourceBarriers BenzinUniqueVariableName(scopedResourceBarriers) \
+#define BenzinScopedResourceBarriers(cmdList, ...) \
+    const benzin::ScopedResourceBarriers BenzinUniqueVariableName(scopedResourceBarriers) \
     { \
-        commandList, \
-        std::vector<benzin::ResourceBarrierVariant>{ __VA_ARGS__ }, \
-        false, \
+        cmdList, \
+        std::to_array<benzin::ResourceBarrierVariant>({ __VA_ARGS__ }), \
     }
 
-#define BenzinMakeScopedResourceBarriers(commandList, ...) \
-    const benzin::ResourceBarriers BenzinUniqueVariableName(scopedResourceBarriers) \
-    { \
-        commandList, \
-        std::vector<benzin::ResourceBarrierVariant>{ __VA_ARGS__ }, \
-        true, \
-    }
-
-#define BenzinGpuEvent(commandList, name) \
-    const benzin::ScopedGpuEvent BenzinUniqueVariableName(_scopedGpuEvent){ commandList, name }
+#define BenzinGpuEvent(cmdList, name) \
+    const benzin::ScopedGpuEvent BenzinUniqueVariableName(_scopedGpuEvent){ cmdList, name }

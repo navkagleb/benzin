@@ -3,7 +3,7 @@
 namespace benzin
 {
 
-    bool Assert(std::string_view conditionString, const std::source_location& sourceLocation, std::string_view message1 = {}, std::string_view messagte2 = {});
+    bool Assert(std::string_view conditionString, const std::source_location& sourceLocation, std::span<const std::string> messages = {});
 
 }
 
@@ -21,7 +21,7 @@ namespace benzin
         if (const bool isOk{ condition }; !isOk) \
         { \
             const std::string message = benzin::ArgsToFormatString(__VA_ARGS__); \
-            if (benzin::Assert(#condition, std::source_location::current(), message)) \
+            if (benzin::Assert(#condition, std::source_location::current(), std::span{ &message, 1 })) \
             { \
                 BenzinDebugBreak(); \
             }\

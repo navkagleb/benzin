@@ -6,7 +6,7 @@
 
 namespace benzin
 {
-    class GraphicsCommandList;
+    class ComputeCmdList;
 }
 
 namespace sandbox
@@ -25,10 +25,10 @@ namespace sandbox
         void OnRender() const override;
 
     private:
-        void RunClearPass(benzin::GraphicsCommandList& cmdList) const;
-        void RunCalcLuminanceHistogramPass(benzin::GraphicsCommandList& cmdList) const;
-        void RunCalcAvgLuminancePass(benzin::GraphicsCommandList& cmdList) const;
-        void RunApplyToneMapOperatorPass(benzin::GraphicsCommandList& cmdList) const;
+        void RunClearPass(benzin::ComputeCmdList& cmdList) const;
+        void RunCalcLuminanceHistogramPass(benzin::ComputeCmdList& cmdList) const;
+        void RunCalcAvgLuminancePass(benzin::ComputeCmdList& cmdList) const;
+        void RunApplyToneMapOperatorPass(benzin::ComputeCmdList& cmdList) const;
 
     private:
         joint::ToneMappingConsts m_Consts{};

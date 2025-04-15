@@ -11,7 +11,7 @@ namespace benzin
     class Descriptor;
     class Device;
     class Event;
-    class GraphicsCommandList;
+    class GraphicsCmdList;
     class Window;
 
     class ImGuiTool
@@ -118,7 +118,7 @@ namespace benzin
         void UploadFontTexture();
         void UpdateConsts(const ImDrawData& imDrawData);
         void UpdateVertexAndIndexBuffers(const ImDrawData& imDrawData);
-        void RenderImDrawData(GraphicsCommandList& commandList) const;
+        void RenderImDrawData(GraphicsCmdList& cmdList) const;
 
         void GetImGuiResources(const ImDrawCmd& imDrawCmd, uint32_t& outTextureSrvHeapIndex, joint::ImGuiSamplerIndex& outSamplerIndex) const;
 

@@ -1,7 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics2/shader_manager.hpp"
 
-#include "benzin/core/command_line_args.hpp"
+#include "benzin/core/cmd_line_args.hpp"
 #include "benzin/utility/time_utils.hpp"
 
 namespace benzin
@@ -304,7 +304,7 @@ namespace benzin
 
     bool ShaderManager::LoadShader(const ShaderInfo& shader)
     {
-        if (CommandLineArgs::GetBool("IsShaderCacheIgnored"))
+        if (CmdLineArgs::IsShaderCacheIgnored())
         {
             return false;
         }

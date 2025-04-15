@@ -1,9 +1,9 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/adl_wrapper.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/adl_wrapper.hpp>
 
 #include <adl_sdk.h>
 
-#include "benzin/core/command_line_args.hpp"
+#include <benzin/core/cmd_line_args.hpp>
 
 static constexpr std::string_view AdlReturnCodeToString(int adlReturnCode)
 {
@@ -110,9 +110,9 @@ namespace benzin
 
         static const auto ConvertFrom16to10Base = [](std::string_view valueString)
         {
-            uint32_t value = g_InvalidUnsigned<uint32_t>;
+            uint32_t value = g_Bad32;
             const auto result = std::from_chars(valueString.data(), valueString.data() + valueString.size(), value, 16);
-            BenzinAssert(result.ec == std::errc{} && IsValidUnsigned(value));
+            BenzinAssert(result.ec == std::errc{} && IsGoodUint(value));
 
             return value;
         };
@@ -282,14 +282,14 @@ namespace benzin
 
     void AdlWrapper::Initialize()
     {
-        if (CommandLineArgs::GetBool("IsPixCapturerEnabled"))
+        if (CmdLineArgs::IsPixCapturerEnabled())
         {
             // PIX for windows says: PIX has detected that the application was using NVAPI when this capture was taken
             // This may result in PIX crashing during analysis and/or PIX showing misleading data
             return;
         }
 
-        if (CommandLineArgs::GetBool("IsAdlWrapperEnabled"))
+        if (CmdLineArgs::IsAdlWrapperEnabled())
         {
             g_AdlState.Initialize();
         }

@@ -26,8 +26,12 @@ namespace benzin
         device.GetD3D12Device()->GetRaytracingAccelerationStructurePrebuildInfo(&m_D3D12BuildInputs, &d3d12PrebuildInfo);
         BenzinEnsure(d3d12PrebuildInfo.ResultDataMaxSizeInBytes > 0);
 
+        const bool isTlas = m_D3D12BuildInputs.Type == D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+        const std::string_view typeName = isTlas ? "TLAS" : "BLAS";
+
         MakeUniquePtr(m_Buffer, device, BufferCreation
         {
+            .DebugName = std::format("{}_AccelerationStructure_{}", typeName, debugName),
             .Type = BufferType::RayTracing_AccelerationStructure,
             .ElementCount = (uint32_t)d3d12PrebuildInfo.ResultDataMaxSizeInBytes,
             .IsUnorderedAccessAllowed = true,
@@ -35,18 +39,10 @@ namespace benzin
 
         MakeUniquePtr(m_ScratchResource, device, BufferCreation
         {
+            .DebugName = std::format("{}_ScratchResource_{}", typeName, debugName),
             .ElementCount = (uint32_t)d3d12PrebuildInfo.ScratchDataSizeInBytes,
             .IsUnorderedAccessAllowed = true,
         });
-
-        if (!debugName.empty())
-        {
-            const bool isTlas = m_D3D12BuildInputs.Type == D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-            const std::string_view typeName = isTlas ? "TLAS" : "BLAS";
-
-            SetDxObjectDebugName(m_Buffer->GetD3D12Resource(), std::format("{}_AccelerationStructure_{}", typeName, debugName));
-            SetDxObjectDebugName(m_ScratchResource->GetD3D12Resource(), std::format("{}_ScratchResource_{}", typeName, debugName));
-        }
     }
 
     // RayTracing_Blas
@@ -58,8 +54,8 @@ namespace benzin
 
     void RayTracing_Blas::AddGeometry(const Geometry& geometry)
     {
-        const uint32_t validatedVertexCount = !IsValidUnsigned(geometry.VertexCount) && geometry.VertexOffset == 0 ? geometry.VertexBuffer.GetElementCount() : geometry.VertexCount;
-        const uint32_t validatedIndexCount = !IsValidUnsigned(geometry.IndexCount) && geometry.IndexOffset == 0 ? geometry.IndexBuffer.GetElementCount() : geometry.IndexCount;
+        const uint32_t validatedVertexCount = !IsGoodUint(geometry.VertexCount) && geometry.VertexOffset == 0 ? geometry.VertexBuffer.GetElementCount() : geometry.VertexCount;
+        const uint32_t validatedIndexCount = !IsGoodUint(geometry.IndexCount) && geometry.IndexOffset == 0 ? geometry.IndexBuffer.GetElementCount() : geometry.IndexCount;
 
         BenzinAssert(validatedVertexCount + geometry.VertexOffset <= geometry.VertexBuffer.GetElementCount());
         BenzinAssert(validatedIndexCount + geometry.IndexOffset <= geometry.IndexBuffer.GetElementCount());

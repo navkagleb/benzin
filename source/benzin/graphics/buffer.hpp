@@ -34,8 +34,7 @@ namespace benzin
     class Buffer : public Resource
     {
     public:
-        explicit Buffer(Device& device);
-        Buffer(Device& device, const BufferCreation& creation);
+        explicit Buffer(Device& device, const BufferCreation& creation);
         ~Buffer() override;
 
     public:
@@ -53,8 +52,6 @@ namespace benzin
         auto* GetCpuMappedData() const { return m_CpuMappedData; }
 
         uint64_t GetGpuVirtualAddress(uint32_t elementIndex = 0) const;
-
-        void Create(const BufferCreation& creation);
 
         const Descriptor& GetSrv(IndexRange32 elementRange = {}) const;
         const Descriptor& GetUav() const;

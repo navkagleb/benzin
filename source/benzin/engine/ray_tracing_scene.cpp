@@ -4,13 +4,13 @@
 #include <shaders/joint/mesh_types.hpp>
 
 #include "benzin/core/buffer_writer.hpp"
-#include "benzin/core/command_line_args.hpp"
+#include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/profiler.hpp"
 #include "benzin/engine/entity_components.hpp"
 #include "benzin/engine/mesh.hpp"
 #include "benzin/engine/scene.hpp"
 #include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/command_queue.hpp"
+#include "benzin/graphics/cmd_queue.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/ray_tracing_acceleration_structures.hpp"
 
@@ -21,7 +21,7 @@ namespace benzin
         : m_Device{ device }
         , m_Scene{ scene }
     {
-        m_Tlases.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
+        m_Tlases.resize(CmdLineArgs::GetFrameInFlightCount());
     }
 
     RayTracing_Scene::~RayTracing_Scene()
@@ -57,7 +57,7 @@ namespace benzin
 
         for (const auto& [_, mc, transform] : view.each())
         {
-            if (!IsValidEnum(mc.MeshHandle))
+            if (!IsGoodEnum(mc.MeshHandle))
             {
                 continue;
             }
@@ -139,7 +139,7 @@ namespace benzin
     {
         BenzinLogTimeOnScopeExit("RayTracing_Scene::CreateBlases");
 
-        auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList();
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList();
 
         m_Scene.m_MeshRegistry.each([&](entt::entity meshHandle)
         {
@@ -148,16 +148,21 @@ namespace benzin
             auto& blas = m_Scene.m_MeshRegistry.get<RayTracing_Blas>(meshHandle);
             blas.AllocateBuffers(m_Device, meshName);
 
-            BenzinMakeResourceBarriers(commandList, TransitionBarrier{ *blas.GetScratchResource(), ResourceState::UnorderedAccess });
-            commandList.BuildRayTracingAccelerationStructure(blas);
+            cmdList.AddResourceBarrier(TransitionBarrier{ *blas.GetScratchResource(), ResourceState::UnorderedAccess });
         });
 
+        cmdList.FlushResourceBarriers();
+
         // Wait for blases
-        m_Scene.m_MeshRegistry.each([this, &commandList](entt::entity meshHandle)
+        m_Scene.m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
         {
             auto& blas = m_Scene.m_MeshRegistry.get<RayTracing_Blas>(meshHandle);
-            BenzinMakeResourceBarriers(commandList, UnorderedAccessBarrier{ *blas.GetBuffer() });
+
+            cmdList.BuildRayTracingAccelerationStructure(blas);
+            cmdList.AddResourceBarrier(UnorderedAccessBarrier{ *blas.GetBuffer() });
         });
+
+        cmdList.FlushResourceBarriers();
     }
 
 }

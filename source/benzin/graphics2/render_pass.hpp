@@ -10,6 +10,8 @@ namespace benzin
     class Device;
     class GpuProfiler;
     class PsoManager;
+    class RayTracing_Scene;
+    class Scene;
     class SwapChain;
     class Texture;
     class TickTimer;
@@ -136,8 +138,10 @@ namespace benzin
             ConstBufferPool& constBufferPool,
             RenderResources& resources,
             RenderSettings& settings,
-            TickTimer& frameTimer,
-            TickTimer& animationTimer
+            const TickTimer& frameTimer,
+            const TickTimer& animationTimer,
+            const Scene& scene,
+            RayTracing_Scene& rayTracingScene
         );
 
         static void SetWindowViewport(uint32_t width, uint32_t height);
@@ -163,14 +167,17 @@ namespace benzin
         static inline RenderResources* ms_Resources = nullptr;
         static inline RenderSettings* ms_Settings = nullptr;
 
+        static inline const TickTimer* ms_FrameTimer = nullptr;
+        static inline const TickTimer* ms_AnimationTimer = nullptr;
+
+        static inline const Scene* ms_Scene = nullptr;
+        static inline RayTracing_Scene* ms_RayTracingScene = nullptr;
+
         static inline Viewport ms_WindowViewport;
         static inline ScissorRect ms_WindowScissorRect;
 
         static inline Viewport ms_RenderViewport;
         static inline ScissorRect ms_RenderScissorRect;
-
-        static inline const TickTimer* ms_FrameTimer = nullptr;
-        static inline const TickTimer* ms_AnimationTimer = nullptr;
 
         static uint32_t GetWindowViewportWidth() { return (uint32_t)ms_WindowViewport.Width; }
         static uint32_t GetWindowViewportHeight() { return (uint32_t)ms_WindowViewport.Height; }

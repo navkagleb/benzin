@@ -9,7 +9,7 @@
 #include <benzin/engine/light.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
@@ -20,10 +20,10 @@
 #include "sandbox/sandbox_render_settings.hpp"
 #include "sandbox/resources.hpp"
 
-BenzinEnableUnaryPlusForEnum(joint::Rc_SigmaClassifyTiles);
-BenzinEnableUnaryPlusForEnum(joint::Rc_SigmaSmoothTiles);
-BenzinEnableUnaryPlusForEnum(joint::Rc_SigmaBlur);
-BenzinEnableUnaryPlusForEnum(joint::Rc_SigmaTemporalStabilization)
+BenzinEnableUnaryPlusForEnum(joint::SigmaClassifyTilesResources);
+BenzinEnableUnaryPlusForEnum(joint::SigmaSmoothTilesResources);
+BenzinEnableUnaryPlusForEnum(joint::SigmaBlurResources);
+BenzinEnableUnaryPlusForEnum(joint::SigmaTemporalStabilizationResources)
 
 namespace sandbox
 {
@@ -40,8 +40,7 @@ namespace sandbox
 
     //
 
-    SigmaDenoiserPass::SigmaDenoiserPass(const benzin::Scene& scene)
-        : m_Scene{ scene }
+    SigmaDenoiserPass::SigmaDenoiserPass()
     {
         const auto createPso = [](PsoId id, std::string_view fileName, std::string_view define = {})
         {
@@ -141,11 +140,11 @@ namespace sandbox
         m_Consts.IsTileSmoothingEnabled = settings.IsTileSmoothingEnabled;
 
         {
-            const auto& entityRegistry = m_Scene.GetEntityRegistry();
+            const auto& entityRegistry = ms_Scene->GetEntityRegistry();
             uint32_t lightOffset = 0;
 
             {
-                const auto& light = entityRegistry.get<benzin::SunLight>(m_Scene.GetSunEntity());
+                const auto& light = entityRegistry.get<benzin::SunLight>(ms_Scene->GetSunEntity());
 
                 m_PerLightConsts[0].LightType = joint::LightType::Sun;
                 m_PerLightConsts[0].WorldLightPosition = light.CalcToSunDirection();
@@ -178,20 +177,20 @@ namespace sandbox
             return;
         }
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "SigmaDenoiser");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "SigmaDenoiser");
 
-        commandList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
 
-        const uint32_t lightCount = m_Scene.GetActiveLightCount();
+        const uint32_t lightCount = ms_Scene->GetActiveLightCount();
         for (uint16_t sliceIndex = 0; sliceIndex < lightCount; ++sliceIndex)
         {
             if (lightCount != 1)
             {
-                BenzinGpuEvent(commandList, "Step");
+                BenzinGpuEvent(cmdList, "Step");
             }
 
-            commandList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer1, ms_ConstBufferPool->Allocate(m_PerLightConsts[sliceIndex]));
+            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer1, ms_ConstBufferPool->Allocate(m_PerLightConsts[sliceIndex]));
 
             RunClearPass(settings.IsClearEnabled);
             RunClassifyTilesPass(sliceIndex);
@@ -211,118 +210,118 @@ namespace sandbox
             return;
         }
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "Clear");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "Clear");
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
+        BenzinScopedResourceBarriers(
+            cmdList,
             benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_Tiles), benzin::ResourceState::UnorderedAccess },
             benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_SmoothTiles), benzin::ResourceState::UnorderedAccess },
             benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1), benzin::ResourceState::UnorderedAccess },
             benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2), benzin::ResourceState::UnorderedAccess },
             benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2), benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2), benzin::ResourceState::UnorderedAccess }
         );
 
         const DirectX::XMFLOAT4 clearColor{};
-        commandList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_Tiles), ms_Resources->Get(TextureId::Sigma_Tiles).GetUav(), clearColor);
-        commandList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_SmoothTiles), ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetUav(), clearColor);
-        commandList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1), ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1).GetUav(), clearColor);
-        commandList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2), ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2).GetUav(), clearColor);
-        commandList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1), ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1).GetUav(), clearColor);
-        commandList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2), ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2).GetUav(), clearColor);
+        cmdList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_Tiles), ms_Resources->Get(TextureId::Sigma_Tiles).GetUav(), clearColor);
+        cmdList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_SmoothTiles), ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetUav(), clearColor);
+        cmdList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1), ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1).GetUav(), clearColor);
+        cmdList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2), ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2).GetUav(), clearColor);
+        cmdList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1), ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1).GetUav(), clearColor);
+        cmdList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2), ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2).GetUav(), clearColor);
     }
 
     void SigmaDenoiserPass::RunClassifyTilesPass(uint16_t sliceIndex) const
     {
         BenzinProfile();
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "ClassifyTiles");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ClassifyTiles");
 
         const auto& tiles = ms_Resources->Get(TextureId::Sigma_Tiles);
 
         {
-            using enum joint::Rc_SigmaClassifyTiles;
+            using enum joint::SigmaClassifyTilesResources;
 
-            commandList.SetComputeRootResource(+ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
-            commandList.SetComputeRootResource(+Penumbra, ms_Resources->Get(TextureId::NoisyPenumbra).GetSrv({ .DepthRange = sliceIndex }));
+            cmdList.SetComputeRootResource(+ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
+            cmdList.SetComputeRootResource(+Penumbra, ms_Resources->Get(TextureId::NoisyPenumbra).GetSrv({ .DepthRange = sliceIndex }));
 
-            commandList.SetComputeRootResource(+OutTiles, tiles.GetUav());
+            cmdList.SetComputeRootResource(+OutTiles, tiles.GetUav());
         }
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
-            benzin::TransitionBarrier{ tiles, benzin::ResourceState::UnorderedAccess },
+        BenzinScopedResourceBarriers(
+            cmdList,
+            benzin::TransitionBarrier{ tiles, benzin::ResourceState::UnorderedAccess }
         );
 
-        commandList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaClassifyTiles));
-        commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 16, 16, 1 });
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaClassifyTiles));
+        cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 16, 16, 1 });
     }
 
     void SigmaDenoiserPass::RunSmoothTilesPass() const
     {
         BenzinProfile();
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "SmoothTiles");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "SmoothTiles");
 
         const auto& smoothTiles = ms_Resources->Get(TextureId::Sigma_SmoothTiles);
 
         {
-            using enum joint::Rc_SigmaSmoothTiles;
+            using enum joint::SigmaSmoothTilesResources;
 
-            commandList.SetComputeRootResource(+Tiles, ms_Resources->Get(TextureId::Sigma_Tiles).GetSrv());
-            commandList.SetComputeRootResource(+OutSmoothTiles, smoothTiles.GetUav());
+            cmdList.SetComputeRootResource(+Tiles, ms_Resources->Get(TextureId::Sigma_Tiles).GetSrv());
+            cmdList.SetComputeRootResource(+OutSmoothTiles, smoothTiles.GetUav());
         }
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
-            benzin::TransitionBarrier{ smoothTiles, benzin::ResourceState::UnorderedAccess },
+        BenzinScopedResourceBarriers(
+            cmdList,
+            benzin::TransitionBarrier{ smoothTiles, benzin::ResourceState::UnorderedAccess }
         );
 
-        commandList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaSmoothTiles));
-        commandList.Dispatch({ m_Consts.TileCount.x, m_Consts.TileCount.y, 1 }, { 16, 16, 1 });
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaSmoothTiles));
+        cmdList.Dispatch({ m_Consts.TileCount.x, m_Consts.TileCount.y, 1 }, { 16, 16, 1 });
     }
 
     void SigmaDenoiserPass::RunBlurPass(uint16_t sliceIndex) const
     {
         BenzinProfile();
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "Blur");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "Blur");
 
         const auto& penumbra1 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1);
         const auto& shadowTemp1 = ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1);
 
         {
-            using enum joint::Rc_SigmaBlur;
+            using enum joint::SigmaBlurResources;
 
-            commandList.SetComputeRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
-            commandList.SetComputeRootResource(+ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
-            commandList.SetComputeRootResource(+SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
-            commandList.SetComputeRootResource(+Penumbra, ms_Resources->Get(TextureId::NoisyPenumbra).GetSrv({ .DepthRange = sliceIndex }));
+            cmdList.SetComputeRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+            cmdList.SetComputeRootResource(+ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
+            cmdList.SetComputeRootResource(+SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
+            cmdList.SetComputeRootResource(+Penumbra, ms_Resources->Get(TextureId::NoisyPenumbra).GetSrv({ .DepthRange = sliceIndex }));
 
-            commandList.SetComputeRootResource(+OutPenumbra, penumbra1.GetUav());
-            commandList.SetComputeRootResource(+OutShadow, shadowTemp1.GetUav());
+            cmdList.SetComputeRootResource(+OutPenumbra, penumbra1.GetUav());
+            cmdList.SetComputeRootResource(+OutShadow, shadowTemp1.GetUav());
         }
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
+        BenzinScopedResourceBarriers(
+            cmdList,
             benzin::TransitionBarrier{ penumbra1, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::UnorderedAccess }
         );
 
-        commandList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaBlur));
-        commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaBlur));
+        cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
     }
 
     void SigmaDenoiserPass::RunPostBlurPass(bool isEnabled) const
     {
         BenzinProfile();
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "PostBlur");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "PostBlur");
 
         const auto& penumbra1 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1);
         const auto& penumbra2 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2);
@@ -331,62 +330,62 @@ namespace sandbox
 
         if (!isEnabled)
         {
-            BenzinMakeScopedResourceBarriers(
-                commandList,
+            BenzinScopedResourceBarriers(
+                cmdList,
                 benzin::TransitionBarrier{ penumbra2, benzin::ResourceState::CopyDestination },
                 benzin::TransitionBarrier{ penumbra1, benzin::ResourceState::CopySource },
                 benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::CopyDestination },
-                benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::CopySource },
+                benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::CopySource }
             );
 
-            commandList.CopyResource(penumbra2, penumbra1);
-            commandList.CopyResource(shadowTemp2, shadowTemp1);
+            cmdList.CopyResource(penumbra2, penumbra1);
+            cmdList.CopyResource(shadowTemp2, shadowTemp1);
         
             return;
         }
 
         {
-            using enum joint::Rc_SigmaBlur;
+            using enum joint::SigmaBlurResources;
 
-            commandList.SetComputeRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
-            commandList.SetComputeRootResource(+ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
-            commandList.SetComputeRootResource(+SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
-            commandList.SetComputeRootResource(+Penumbra, penumbra1.GetSrv());
-            commandList.SetComputeRootResource(+Shadow, shadowTemp1.GetSrv());
+            cmdList.SetComputeRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+            cmdList.SetComputeRootResource(+ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
+            cmdList.SetComputeRootResource(+SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
+            cmdList.SetComputeRootResource(+Penumbra, penumbra1.GetSrv());
+            cmdList.SetComputeRootResource(+Shadow, shadowTemp1.GetSrv());
 
-            commandList.SetComputeRootResource(+OutPenumbra, penumbra2.GetUav());
-            commandList.SetComputeRootResource(+OutShadow, shadowTemp2.GetUav());
+            cmdList.SetComputeRootResource(+OutPenumbra, penumbra2.GetUav());
+            cmdList.SetComputeRootResource(+OutShadow, shadowTemp2.GetUav());
         }
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
+        BenzinScopedResourceBarriers(
+            cmdList,
             benzin::TransitionBarrier{ penumbra2, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::UnorderedAccess }
         );
 
-        commandList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaPostBlur));
-        commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaPostBlur));
+        cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
     }
 
     void SigmaDenoiserPass::RunTemporalStabilizationPass(bool isEnabled, uint16_t sliceIndex) const
     {
         BenzinProfile();
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "TemporalStabilization");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "TemporalStabilization");
 
         const auto& shadowTemp2 = ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2);
         const auto& shadow = ms_Resources->Get(TextureId::Shadow);
 
         if (!isEnabled)
         {
-            BenzinMakeScopedResourceBarriers(
-                commandList,
+            BenzinScopedResourceBarriers(
+                cmdList,
                 benzin::TransitionBarrier{ shadow, benzin::ResourceState::CopyDestination },
-                benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::CopySource },
+                benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::CopySource }
             );
 
-            commandList.CopyResource(shadow, shadowTemp2);
+            cmdList.CopyResource(shadow, shadowTemp2);
 
             return;
         }
@@ -394,28 +393,28 @@ namespace sandbox
         const auto& historyLength = ms_Resources->Get(TextureId::ShadowHistoryLength);
 
         {
-            using enum joint::Rc_SigmaTemporalStabilization;
+            using enum joint::SigmaTemporalStabilizationResources;
 
-            commandList.SetComputeRootResource(+Mv, ms_Resources->Get(TextureId::Mv).GetSrv());
-            commandList.SetComputeRootResource(+ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
-            commandList.SetComputeRootResource(+SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
-            commandList.SetComputeRootResource(+Penumbra, ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2).GetSrv());
-            commandList.SetComputeRootResource(+Shadow, shadowTemp2.GetSrv());
-            commandList.SetComputeRootResource(+ShadowHistory, ms_Resources->GetPrev(TextureId::Shadow).GetSrv({ .DepthRange = sliceIndex }));
-            commandList.SetComputeRootResource(+HistoryLength, ms_Resources->GetPrev(TextureId::ShadowHistoryLength).GetSrv());
+            cmdList.SetComputeRootResource(+Mv, ms_Resources->Get(TextureId::Mv).GetSrv());
+            cmdList.SetComputeRootResource(+ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
+            cmdList.SetComputeRootResource(+SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
+            cmdList.SetComputeRootResource(+Penumbra, ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2).GetSrv());
+            cmdList.SetComputeRootResource(+Shadow, shadowTemp2.GetSrv());
+            cmdList.SetComputeRootResource(+ShadowHistory, ms_Resources->GetPrev(TextureId::Shadow).GetSrv({ .DepthRange = sliceIndex }));
+            cmdList.SetComputeRootResource(+HistoryLength, ms_Resources->GetPrev(TextureId::ShadowHistoryLength).GetSrv());
 
-            commandList.SetComputeRootResource(+OutShadow, shadow.GetUav({ .DepthRange = sliceIndex }));
-            commandList.SetComputeRootResource(+OutHistoryLength, historyLength.GetUav());
+            cmdList.SetComputeRootResource(+OutShadow, shadow.GetUav({ .DepthRange = sliceIndex }));
+            cmdList.SetComputeRootResource(+OutHistoryLength, historyLength.GetUav());
         }
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
+        BenzinScopedResourceBarriers(
+            cmdList,
             benzin::TransitionBarrier{ shadow, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ historyLength, benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ historyLength, benzin::ResourceState::UnorderedAccess }
         );
 
-        commandList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaTemporalStabilization));
-        commandList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaTemporalStabilization));
+        cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
     }
 
 }

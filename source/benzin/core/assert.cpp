@@ -15,7 +15,7 @@ namespace benzin
         ::ExitProcess(0);
     }
 
-    bool Assert(std::string_view conditionString, const std::source_location& sourceLocation, std::string_view message1, std::string_view message2)
+    bool Assert(std::string_view conditionString, const std::source_location& sourceLocation, std::span<const std::string> messages)
     {
         std::string buffer;
         buffer.reserve(1_kb);
@@ -32,14 +32,13 @@ namespace benzin
             conditionString
         );
 
-        if (!message1.empty())
+        uint32_t messageCount = 0;
+        for (const auto& message : messages)
         {
-            std::format_to(std::back_inserter(buffer), "-- Message1: {}\n", message1);
-        }
-
-        if (!message2.empty())
-        {
-            std::format_to(std::back_inserter(buffer), "-- Message2: {}\n", message2);
+            if (!message.empty())
+            {
+                std::format_to(std::back_inserter(buffer), "-- Message{}: {}\n", messageCount++, message);
+            }
         }
 
         BenzinError("{}", buffer);

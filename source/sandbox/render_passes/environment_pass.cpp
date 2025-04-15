@@ -4,7 +4,7 @@
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
@@ -15,8 +15,8 @@
 #include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
 
-BenzinEnableUnaryPlusForEnum(joint::Rc_Environment);
-BenzinEnableUnaryPlusForEnum(joint::Rc_EquirectangularToCube);
+BenzinEnableUnaryPlusForEnum(joint::EnvironmentResources);
+BenzinEnableUnaryPlusForEnum(joint::EquirectangularToCubeResources);
 
 namespace sandbox
 {
@@ -54,28 +54,28 @@ namespace sandbox
     {
         BenzinProfile();
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "Environment");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "Environment");
 
         const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
         const auto& depthStencil = ms_Resources->Get(TextureId::DepthStencil);
 
-        commandList.SetViewport(ms_RenderViewport);
-        commandList.SetScissorRect(ms_RenderScissorRect);
+        cmdList.SetViewport(ms_RenderViewport);
+        cmdList.SetScissorRect(ms_RenderScissorRect);
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
+        BenzinScopedResourceBarriers(
+            cmdList,
             benzin::TransitionBarrier{ hdrColor, benzin::ResourceState::RenderTarget },
-            benzin::TransitionBarrier{ depthStencil, benzin::ResourceState::DepthRead },
+            benzin::TransitionBarrier{ depthStencil, benzin::ResourceState::DepthRead }
         );
 
-        commandList.SetRenderTargets({ hdrColor.GetRtv() }, &depthStencil.GetDsv());
+        cmdList.SetRenderTargets({ hdrColor.GetRtv() }, &depthStencil.GetDsv());
 
-        commandList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::Environment));
-        commandList.SetGraphicsRootResource(+joint::Rc_Environment::CubeMap, m_CubeTexture->GetSrv());
+        cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::Environment));
+        cmdList.SetGraphicsRootResource(+joint::EnvironmentResources::CubeMap, m_CubeTexture->GetSrv());
 
-        commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
-        commandList.DrawVertexed(3);
+        cmdList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+        cmdList.DrawVertexed(3);
     }
 
     std::unique_ptr<benzin::Texture> EnvironmentPass::LoadEquirectangularTexture()
@@ -92,8 +92,8 @@ namespace sandbox
             .MipCount = 1,
         });
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList(equirectangularTexture->GetSize());
-        commandList.UploadToTextureTopMip(*equirectangularTexture, std::as_bytes(std::span{ equirectangularTextureImage.ImageData }));
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(equirectangularTexture->GetSize());
+        cmdList.UploadToTextureTopMip(*equirectangularTexture, std::as_bytes(std::span{ equirectangularTextureImage.ImageData }));
         
         return equirectangularTexture;
     }
@@ -123,19 +123,19 @@ namespace sandbox
             .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
         });
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-        commandList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Environment_EquirectangularToCube));
-        commandList.SetComputeRootResource(+joint::Rc_EquirectangularToCube::EquirectangularTexture, equirectangularTexture.GetSrv());
-        commandList.SetComputeRootResource(+joint::Rc_EquirectangularToCube::OutCubeMap, m_CubeTexture->GetUav());
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Environment_EquirectangularToCube));
+        cmdList.SetComputeRootResource(+joint::EquirectangularToCubeResources::EquirectangularTexture, equirectangularTexture.GetSrv());
+        cmdList.SetComputeRootResource(+joint::EquirectangularToCubeResources::OutCubeMap, m_CubeTexture->GetUav());
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
-            benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::UnorderedAccess },
+        BenzinScopedResourceBarriers(
+            cmdList,
+            benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::UnorderedAccess }
         );
 
         const DirectX::XMUINT3 dimensions{ cubeMapSize, cubeMapSize, m_CubeTexture->GetDepth() };
-        commandList.Dispatch(dimensions, { 8, 8, 1 });
+        cmdList.Dispatch(dimensions, { 8, 8, 1 });
     }
 
 }

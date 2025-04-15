@@ -245,8 +245,8 @@ void MsMain(
         bladeWidth *= g_MaxBladeCount / floatBladeCount;
         bladeWidth *= (bladeIndex == bladeCount - 1) ? frac(floatBladeCount) : 1.0;
 
-        ApplyBladeWindOffset(g_FrameConstants.AnimationElapsedTimeInSec, bladePoints);
-        ApplyBladeWindOffset(g_FrameConstants.PrevAnimationElapsedTimeInSec, prevBladePoints);
+        ApplyBladeWindOffset(g_FrameConsts.AnimationElapsedTimeInSec, bladePoints);
+        ApplyBladeWindOffset(g_FrameConsts.PrevAnimationElapsedTimeInSec, prevBladePoints);
 
         ApplyBladeWidthOffset(bladeArgs, localVertexIndex, bladeWidth, bladePoints);
         ApplyBladeWidthOffset(bladeArgs, localVertexIndex, bladeWidth, prevBladePoints);

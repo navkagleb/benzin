@@ -1,9 +1,8 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/d3d12_utils.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
 
-#include "benzin/core/command_line_args.hpp"
-#include "benzin/core/logger.hpp"
-#include "benzin/graphics/hr_assert.hpp"
+#include <benzin/core/cmd_line_args.hpp>
+#include <benzin/core/logger.hpp>
 
 namespace benzin
 {
@@ -108,18 +107,18 @@ namespace benzin
         // Note: Enabling the debug layer after device creation will invalidate the active device
 
         ComPtr<ID3D12Debug5> d3d12Debug;
-        BenzinHrEnsure(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12Debug)));
+        BenzinD3D12Call(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12Debug)));
 
         d3d12Debug->EnableDebugLayer();
 
-        d3d12Debug->SetEnableGPUBasedValidation(CommandLineArgs::GetBool("IsGpuValidationEnabled"));
-        d3d12Debug->SetEnableSynchronizedCommandQueueValidation(CommandLineArgs::GetBool("IsSynchronizedCommandQueueValidationEnabled"));
+        d3d12Debug->SetEnableGPUBasedValidation(CmdLineArgs::IsGpuValidationEnabled());
+        d3d12Debug->SetEnableSynchronizedCommandQueueValidation(CmdLineArgs::IsSynchronizedCommandQueueValidationEnabled());
         d3d12Debug->SetEnableAutoName(true);
 
         BenzinTrace(Logger::GetLineSeparator());
         BenzinTrace("D3D12DebugLayer enabled");
-        BenzinTrace("GPUBasedValidation enabled: {}", CommandLineArgs::GetBool("IsGpuValidationEnabled"));
-        BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", CommandLineArgs::GetBool("IsSynchronizedCommandQueueValidationEnabled"));
+        BenzinTrace("GPUBasedValidation enabled: {}", CmdLineArgs::IsGpuValidationEnabled());
+        BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", CmdLineArgs::IsSynchronizedCommandQueueValidationEnabled());
         BenzinTrace("AutoName enabled: true");
         BenzinTrace(Logger::GetLineSeparator());
     }
@@ -127,10 +126,10 @@ namespace benzin
     void EnableD3D12DebugBreakOn(ID3D12Device* d3d12Device, bool isEnabled, D3D12BreakReasonFlags flags)
     {
         ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
-        BenzinHrEnsure(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));
+        BenzinD3D12Call(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));
         
         ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
-        BenzinHrEnsure(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
+        BenzinD3D12Call(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
         
         if (flags.IsSet(D3D12BreakReasonFlag::Warning))
         {
@@ -154,7 +153,7 @@ namespace benzin
     void ReportLiveD3D12Objects(ID3D12Device* d3d12Device)
     {
         ComPtr<ID3D12DebugDevice2> d3d12DebugDevice;
-        BenzinHrEnsure(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
+        BenzinD3D12Call(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
 
         d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_IGNORE_INTERNAL | D3D12_RLDO_DETAIL | D3D12_RLDO_SUMMARY);
     }
@@ -178,7 +177,7 @@ namespace benzin
     void EnableDred()
     {
         ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> d3d12DredSettings;
-        BenzinHrEnsure(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12DredSettings)));
+        BenzinD3D12Call(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12DredSettings)));
 
         d3d12DredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
         d3d12DredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
@@ -191,13 +190,13 @@ namespace benzin
         buffer.reserve(1_mb);
 
         ComPtr<ID3D12DeviceRemovedExtendedData2> d3d12Dred;
-        BenzinHrEnsure(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12Dred)));
+        BenzinD3D12Call(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12Dred)));
 
         D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 d3d12DredAutoBreadcrumbsOutput;
-        BenzinHrEnsure(d3d12Dred->GetAutoBreadcrumbsOutput1(&d3d12DredAutoBreadcrumbsOutput));
+        BenzinD3D12Call(d3d12Dred->GetAutoBreadcrumbsOutput1(&d3d12DredAutoBreadcrumbsOutput));
 
         D3D12_DRED_PAGE_FAULT_OUTPUT2 d3d12DredPageFaultOutput;
-        BenzinHrEnsure(d3d12Dred->GetPageFaultAllocationOutput2(&d3d12DredPageFaultOutput));
+        BenzinD3D12Call(d3d12Dred->GetPageFaultAllocationOutput2(&d3d12DredPageFaultOutput));
 
         const D3D12_DRED_DEVICE_STATE d3d12DredDeviceState = d3d12Dred->GetDeviceState();
         std::format_to(std::back_inserter(buffer), "D3D12_DRED_DEVICE_STATE: {}\n", magic_enum::enum_name(d3d12DredDeviceState));
@@ -208,61 +207,4 @@ namespace benzin
         return buffer;
     }
 
-    std::string GetDxObjectDebugName(DxObjectVariant dxObjectVariant)
-    {
-        return dxObjectVariant | MakeVisitorMatch([](auto* dxObject)
-        {
-            constexpr size_t maxDebugNameSize = 128;
-            constexpr std::string_view defaultName = "Unnamed DxObject";
-
-            BenzinEnsure(dxObject != nullptr);
-
-            std::string debugName;
-            debugName.resize_and_overwrite(maxDebugNameSize, [&](char* data, size_t size) noexcept -> size_t
-            {
-                auto alignedSize = (uint32_t)size;
-
-                if (SUCCEEDED(dxObject->GetPrivateData(WKPDID_D3DDebugObjectName, &alignedSize, data)))
-                {
-                    return alignedSize;
-                }
-
-                memcpy(data, defaultName.data(), defaultName.size());
-                return defaultName.size();
-            });
-
-            return debugName;
-        });
-    }
-
-    void SetDxObjectDebugName(DxObjectVariant dxObjectVariant, std::string_view debugName)
-    {
-        if (debugName.empty())
-        {
-            return;
-        }
-
-        dxObjectVariant | MakeVisitorMatch([&](auto* dxObject)
-        {
-            BenzinEnsure(dxObject != nullptr);
-            BenzinHrEnsure(dxObject->SetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t)debugName.size(), debugName.data()));
-        });
-    }
-
-    void ReleaseDxObject(DxObjectVariant dxObjectVariant)
-    {
-        dxObjectVariant | MakeVisitorMatch([](auto* dxObject)
-        {
-            if (dxObject == nullptr)
-            {
-                return;
-            }
-
-            const auto debugName = GetDxObjectDebugName(dxObject);
-            const uint32_t referenceCount = dxObject->Release();
-
-            BenzinWarningIf(referenceCount != 0, "Remaining reference count {}. DxObject '{}'", referenceCount, debugName);
-        });
-    }
-
-} // namespace benzin
+}

@@ -10,16 +10,16 @@
 #include "sigma_denoiser/group_shared_preloader.hlsli"
 #include "space_convertions.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float4>, g_Mv, joint::Rc_SigmaTemporalStabilization::Mv);
-BenzinDeclareRootResource(Texture2D<float>, g_ViewDepth, joint::Rc_SigmaTemporalStabilization::ViewDepth);
-BenzinDeclareRootResource(Texture2D<float2>, g_SmoothTiles, joint::Rc_SigmaTemporalStabilization::SmoothTiles);
-BenzinDeclareRootResource(Texture2D<float>, g_Penumbra, joint::Rc_SigmaTemporalStabilization::Penumbra);
-BenzinDeclareRootResource(Texture2D<float>, g_Shadow, joint::Rc_SigmaTemporalStabilization::Shadow);
-BenzinDeclareRootResource(Texture2D<float>, g_ShadowHistory, joint::Rc_SigmaTemporalStabilization::ShadowHistory);
-BenzinDeclareRootResource(Texture2D<uint>, g_HistoryLength, joint::Rc_SigmaTemporalStabilization::HistoryLength);
+BenzinDeclareRootResource(Texture2D<float4>, g_Mv, joint::SigmaTemporalStabilizationResources::Mv);
+BenzinDeclareRootResource(Texture2D<float>, g_ViewDepth, joint::SigmaTemporalStabilizationResources::ViewDepth);
+BenzinDeclareRootResource(Texture2D<float2>, g_SmoothTiles, joint::SigmaTemporalStabilizationResources::SmoothTiles);
+BenzinDeclareRootResource(Texture2D<float>, g_Penumbra, joint::SigmaTemporalStabilizationResources::Penumbra);
+BenzinDeclareRootResource(Texture2D<float>, g_Shadow, joint::SigmaTemporalStabilizationResources::Shadow);
+BenzinDeclareRootResource(Texture2D<float>, g_ShadowHistory, joint::SigmaTemporalStabilizationResources::ShadowHistory);
+BenzinDeclareRootResource(Texture2D<uint>, g_HistoryLength, joint::SigmaTemporalStabilizationResources::HistoryLength);
 
-BenzinDeclareRootResource(RWTexture2D<float>, g_OutShadow, joint::Rc_SigmaTemporalStabilization::OutShadow);
-BenzinDeclareRootResource(RWTexture2D<uint>, g_OutHistoryLength, joint::Rc_SigmaTemporalStabilization::OutHistoryLength);
+BenzinDeclareRootResource(RWTexture2D<float>, g_OutShadow, joint::SigmaTemporalStabilizationResources::OutShadow);
+BenzinDeclareRootResource(RWTexture2D<uint>, g_OutHistoryLength, joint::SigmaTemporalStabilizationResources::OutHistoryLength);
 
 struct PixelData
 {
@@ -100,21 +100,18 @@ float GetStdDeviation(float m1, float m2)
 
 void CalcPrevPositions(uint2 pixelPos, float2 pixelUv, float viewDepth, out float2 outPrevPixelUv, out float3 outPrevViewPos)
 {
-    const joint::CameraConsts camera = g_FrameConstants.Camera;
-    const joint::CameraConsts prevCamera = g_FrameConstants.PrevCamera;
-
-    const float3 viewPos = ReconstructViewPosition(pixelUv, viewDepth, camera.UvToViewScale, camera.UvToViewBias);
-    const float3 worldPos = mul(float4(viewPos, 1.0), camera.ViewToWorld).xyz;
+    const float3 viewPos = ReconstructViewPosition(pixelUv, viewDepth, GetCameraConsts().UvToViewScale, GetCameraConsts().UvToViewBias);
+    const float3 worldPos = mul(float4(viewPos, 1.0), GetCameraConsts().ViewToWorld).xyz;
 
     float3 mv = g_Mv[pixelPos].xyz;
-    mv.xy *= g_FrameConstants.InvRenderResolution; // TODO: Pack/Unpack Mv
+    mv.xy *= g_FrameConsts.InvRenderResolution; // TODO: Pack/Unpack Mv
 
     const float2 prevPixelUv = pixelUv - mv.xy;
 
     const float prevViewDepth = viewDepth - mv.z;
-    const float3 tempPrevViewPos = ReconstructViewPosition(prevPixelUv, prevViewDepth, prevCamera.UvToViewScale, prevCamera.UvToViewBias); // TODO: Does there is any difference between 'prevViewPos'?
-    const float3 prevWorldPos = mul(float4(tempPrevViewPos, 1.0), prevCamera.ViewToWorld).xyz;
-    const float3 prevViewPos = mul(float4(prevWorldPos, 1.0), prevCamera.WorldToView).xyz;
+    const float3 tempPrevViewPos = ReconstructViewPosition(prevPixelUv, prevViewDepth, GetPrevCameraConsts().UvToViewScale, GetPrevCameraConsts().UvToViewBias); // TODO: Does there is any difference between 'prevViewPos'?
+    const float3 prevWorldPos = mul(float4(tempPrevViewPos, 1.0), GetPrevCameraConsts().ViewToWorld).xyz;
+    const float3 prevViewPos = mul(float4(prevWorldPos, 1.0), GetPrevCameraConsts().WorldToView).xyz;
 
     outPrevPixelUv = prevPixelUv;
     outPrevViewPos = prevViewPos;
@@ -124,7 +121,7 @@ float GetDisocclusionThreshold(float viewDepth)
 {
     // Only for viewDepth comparisons for close to each other pixels (not sparse filters!)
 
-    const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConstants.MinRenderDimension, g_FrameConstants.Camera.PixelToWorldScale, viewDepth);
+    const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConsts.MinRenderDimension, GetCameraConsts().PixelToWorldScale, viewDepth);
 
     return worldFrustumSize * g_PassConsts0.DisocclusionThreshold;
 }
@@ -132,9 +129,9 @@ float GetDisocclusionThreshold(float viewDepth)
 void SampleHistoryData(float2 prevPixelUv, float viewDepth, float prevViewDepth, out float outHistoryLength, out float outShadowHistory)
 {
     // History length
-    const BilinearFilter prevFilter = CreateBilinearFilter(prevPixelUv, g_FrameConstants.RenderResolution);
+    const BilinearFilter prevFilter = CreateBilinearFilter(prevPixelUv, g_FrameConsts.RenderResolution);
 
-    const float2 gatherUv = (prevFilter.TopLeftTexelPos + 1.0) * g_FrameConstants.InvRenderResolution;
+    const float2 gatherUv = (prevFilter.TopLeftTexelPos + 1.0) * g_FrameConsts.InvRenderResolution;
     const uint4 prevHistoryData = g_HistoryLength.GatherRed(g_PointClampSampler, gatherUv).wzxy;
 
     float4 prevViewDepths;
@@ -159,8 +156,8 @@ void SampleHistoryData(float2 prevPixelUv, float viewDepth, float prevViewDepth,
 
     float shadowHistory;
     BicubicFilterNoCornersWithFallbackToBilinearFilterWithCustomWeights(
-        saturate(prevPixelUv) * g_FrameConstants.RenderResolution,
-        g_FrameConstants.InvRenderResolution,
+        saturate(prevPixelUv) * g_FrameConsts.RenderResolution,
+        g_FrameConsts.InvRenderResolution,
         customWeights,
         isCatRomAllowed,
         g_ShadowHistory,
@@ -188,7 +185,7 @@ float CalcAntilagFactor(float history, float clampedHistory)
 float SampleShadowHistory(float2 prevPixelUv, bool isBicubicSamplingUsed)
 {
     float history = isBicubicSamplingUsed && g_PassConsts0.IsBicubicSamplingUsedForHistory
-        ? BicubicFilterNoCorners(g_ShadowHistory, saturate(prevPixelUv) * g_FrameConstants.RenderResolution, g_FrameConstants.InvRenderResolution).x
+        ? BicubicFilterNoCorners(g_ShadowHistory, saturate(prevPixelUv) * g_FrameConsts.RenderResolution, g_FrameConsts.InvRenderResolution).x
         : g_ShadowHistory.SampleLevel(g_LinearClampSampler, prevPixelUv, 0.0).x;
 
     history = saturate(history);
@@ -207,7 +204,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     if (!isSky)
     {
         // TODO: Will it still work even if it is false?
-        SigmaPreloadToGroupSharedMem(input, g_FrameConstants.RenderResolution, Preload);
+        SigmaPreloadToGroupSharedMem(input, g_FrameConsts.RenderResolution, Preload);
     }
 
     GroupMemoryBarrierWithGroupSync();
@@ -215,14 +212,14 @@ void CsMain(sigma::GroupSharedCsInput input)
     const uint2 sharedPos = input.ThreadPos + SIGMA_BORDER;
     const PixelData centerPixel = g_Pixels[sharedPos.y][sharedPos.x];
 
-    const bool isOutOfBounds = any(input.PixelPos >= g_FrameConstants.RenderResolution);
+    const bool isOutOfBounds = any(input.PixelPos >= g_FrameConsts.RenderResolution);
     const bool isOutOfDenoisingRange = centerPixel.ViewDepth > SIGMA_DENOISING_RANGE;
     if (isSky || isOutOfBounds || isOutOfDenoisingRange)
     {
         return;
     }
 
-    const float2 pixelUv = (input.PixelPos + 0.5) * g_FrameConstants.InvRenderResolution;
+    const float2 pixelUv = (input.PixelPos + 0.5) * g_FrameConsts.InvRenderResolution;
     const float tileValue = sigma::TextureCubicX(g_SmoothTiles, pixelUv);
 
     bool isHardShadow = SIGMA_TS_USE_EARLY_OUT;

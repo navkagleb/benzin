@@ -5,7 +5,7 @@
 #include <shaders/joint/light.hpp>
 
 #include "benzin/core/buffer_writer.hpp"
-#include "benzin/core/command_line_args.hpp"
+#include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/engine_math.hpp"
 #include "benzin/core/profiler.hpp"
 #include "benzin/core/math.hpp"
@@ -16,7 +16,7 @@
 #include "benzin/engine/mesh.hpp"
 #include "benzin/engine/resource_loader.hpp"
 #include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/command_queue.hpp"
+#include "benzin/graphics/cmd_queue.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/texture.hpp"
 
@@ -72,15 +72,13 @@ namespace benzin
         m_SunEntity = m_EntityRegistry.create();
         m_EntityRegistry.emplace<SunLight>(m_SunEntity);
 
-        const uint32_t frameInFlightCount = CommandLineArgs::GetU32("FrameInFlightCount");
-
         MakeUniquePtr(m_LightBuffer, m_Device, BufferCreation
         {
             .DebugName = "LightBuffer",
             .MemoryType = ResourceMemoryType::Upload,
             .Type = BufferType::Structured,
             .ElementSize = sizeof(joint::Light),
-            .ElementCount = s_MaxLightCount * frameInFlightCount,
+            .ElementCount = s_MaxLightCount * CmdLineArgs::GetFrameInFlightCount(),
         });
     }
 
@@ -124,7 +122,7 @@ namespace benzin
 
         const auto updateTextureIndexIfNeeded = [&](uint32_t& outTextureIndex)
         {
-            if (IsValidUnsigned(outTextureIndex))
+            if (IsGoodUint(outTextureIndex))
             {
                 outTextureIndex = m_Textures[textureOffset + outTextureIndex]->GetSrv().GetGpuHeapIndex();
             }
@@ -181,7 +179,7 @@ namespace benzin
 
     void Scene::UploadMeshesToGpu()
     {
-        // TODO: CalcUploadBufferSize + UploadToGpu methods to remove reference to GraphicsCommandList in Scene class
+        // TODO: CalcUploadBufferSize + UploadToGpu methods to remove reference to GraphicsCmdList in Scene class
 
         BenzinLogTimeOnScopeExit("Scene::UploadMeshesToGpu");
 
@@ -227,16 +225,16 @@ namespace benzin
             uploadBufferSize += meshGpuStorage.IndexBuffer->GetSize();
         });
 
-        auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
-        m_MeshRegistry.each([this, &commandList](entt::entity meshHandle)
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSize);
+        m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
         {
             const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
             const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
 
             for (const auto [subMesh, subMeshInfo] : std::views::zip(mesh.SubMeshes, mesh.SubMeshInfos))
             {
-                commandList.UploadToBuffer<joint::MeshVertex>(*meshGpuStorage.VertexBuffer, subMesh.Vertices, subMeshInfo.VertexOffset);
-                commandList.UploadToBuffer<uint32_t>(*meshGpuStorage.IndexBuffer, subMesh.Indices, subMeshInfo.IndexOffset);
+                cmdList.UploadToBuffer<joint::MeshVertex>(*meshGpuStorage.VertexBuffer, subMesh.Vertices, subMeshInfo.VertexOffset);
+                cmdList.UploadToBuffer<uint32_t>(*meshGpuStorage.IndexBuffer, subMesh.Indices, subMeshInfo.IndexOffset);
             }
         });
     }
@@ -251,13 +249,13 @@ namespace benzin
             uploadBufferSize += meshGpuStorage.MeshInstanceBuffer->GetSize();
         });
 
-        auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
-        m_MeshRegistry.each([this, &commandList](entt::entity meshHandle)
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSize);
+        m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
         {
             const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
             const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
 
-            commandList.UploadToBuffer<joint::MeshInstance>(*meshGpuStorage.MeshInstanceBuffer, mesh.SubMeshInstances);
+            cmdList.UploadToBuffer<joint::MeshInstance>(*meshGpuStorage.MeshInstanceBuffer, mesh.SubMeshInstances);
         });
     }
 
@@ -274,11 +272,11 @@ namespace benzin
             uploadBufferSize += Bytes32{ AlignUp(texture->GetSize().GetByteCount(), GfxConfig::s_TextureAlignment.GetByteCount()) };
         }
 
-        auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSize);
 
         for (const auto& [textureData, texture] : std::views::zip(m_TexturesData, m_Textures))
         {
-            commandList.UploadToTextureTopMip(*texture, textureData);
+            cmdList.UploadToTextureTopMip(*texture, textureData);
         }
     }
 
@@ -292,8 +290,8 @@ namespace benzin
             uploadBufferSize += meshGpuStorage.MaterialBuffer->GetSize();
         });
 
-        auto& commandList = m_Device.GetGraphicsCommandQueue().GetCommandList(uploadBufferSize);
-        m_MeshRegistry.each([this, &commandList](entt::entity meshHandle)
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSize);
+        m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
         {
             const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
             const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
@@ -304,7 +302,7 @@ namespace benzin
                 // Cut the last member of benzin::Material
                 const auto data = ToSingleByteSpan(material, sizeof(joint::Material)); 
                 const size_t offsetInBytes = i * data.size_bytes();
-                commandList.UploadToBuffer(*meshGpuStorage.MaterialBuffer, data, offsetInBytes);
+                cmdList.UploadToBuffer(*meshGpuStorage.MaterialBuffer, data, offsetInBytes);
             }
         });
     }
@@ -338,7 +336,7 @@ namespace benzin
 
     void Scene::UploadTransformsToGpu()
     {
-        const uint32_t frameInFlightCount = CommandLineArgs::GetU32("FrameInFlightCount");
+        const uint32_t frameInFlightCount = CmdLineArgs::GetFrameInFlightCount();
 
         const auto meshView = m_EntityRegistry.view<MeshComponent, Transform>();
         const auto lightView = m_EntityRegistry.view<MeshComponent, SphericalLight>();

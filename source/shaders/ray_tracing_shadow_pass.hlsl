@@ -11,10 +11,10 @@
 #include "sigma_denoiser/sigma_public.hlsli"
 #include "space_convertions.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::Rc_RayTracing_Shadow::WorldNormal);
-BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::Rc_RayTracing_Shadow::Depth);
-BenzinDeclareRootResource(Texture2D<float2>, g_BlueNoise, joint::Rc_RayTracing_Shadow::BlueNoise);
-BenzinDeclareRootResource(RWTexture2DArray<float>, g_OutNoisyPenumbra, joint::Rc_RayTracing_Shadow::OutNoisyPenumbra);
+BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::RayTracing_ShadowResources::WorldNormal);
+BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::RayTracing_ShadowResources::Depth);
+BenzinDeclareRootResource(Texture2D<float2>, g_BlueNoise, joint::RayTracing_ShadowResources::BlueNoise);
+BenzinDeclareRootResource(RWTexture2DArray<float>, g_OutNoisyPenumbra, joint::RayTracing_ShadowResources::OutNoisyPenumbra);
 
 float3 OffsetRayPosition(float3 position, float3 normal)
 {
@@ -52,7 +52,7 @@ float2 Hash23(float3 p3)
 
 float2 GetWhiteNoise()
 {
-    const uint frameIndex = g_PassConsts0.IsNoiseAnimated * g_FrameConstants.CpuFrameIndex;
+    const uint frameIndex = g_PassConsts0.IsNoiseAnimated * g_FrameConsts.CpuFrameIndex;
     return Hash23(float3(DispatchRaysIndex().xy, frameIndex));
 }
 
@@ -75,7 +75,7 @@ float2 GetBlueNoise()
         const float goldenRatioConjugate = 0.61803398875; // frac(GoldenRatio)
         const float maxFrameCount = 4;
 
-        const uint frameIndex = g_FrameConstants.CpuFrameIndex % maxFrameCount;
+        const uint frameIndex = g_FrameConsts.CpuFrameIndex % maxFrameCount;
         blueNoise = frac(blueNoise + goldenRatioConjugate * frameIndex);
     }
 
@@ -130,9 +130,8 @@ float TraceShadowRay(joint::Light light, float depth)
     const uint2 pixelPosition = DispatchRaysIndex().xy;
     const float3 worldNormal = g_WorldNormal[pixelPosition].xyz;
 
-    const joint::CameraConsts cameraConstants = g_FrameConstants.Camera;
     const float2 pixelUv = (pixelPosition + 0.5) / DispatchRaysDimensions().xy;
-    const float3 worldPosition = ReconstructWorldPosition(pixelUv, depth, cameraConstants.ClipToView, cameraConstants.ViewToWorld);
+    const float3 worldPosition = ReconstructWorldPosition(pixelUv, depth, GetCameraConsts().ClipToView, GetCameraConsts().ViewToWorld);
 
     float3 toLightDirection;
     float distanceToLight;
@@ -215,10 +214,10 @@ void RayGeneration()
     const uint2 pixelPosition = DispatchRaysIndex().xy;
 
     const float depth = g_Depth[pixelPosition];
-    if (!g_FrameConstants.IsShadowsEnabled || depth == 1.0)
+    if (!g_FrameConsts.IsShadowsEnabled || depth == 1.0)
     {
         [unroll(4)]
-        for (uint i = 0; i < g_FrameConstants.LightCount; ++i)
+        for (uint i = 0; i < g_FrameConsts.LightCount; ++i)
         {
             g_OutNoisyPenumbra[uint3(pixelPosition, i)] = sigma::g_Fp16Max;
         }
@@ -227,7 +226,7 @@ void RayGeneration()
     }
 
     [unroll(4)]
-    for (uint i = 0; i < g_FrameConstants.LightCount; ++i)
+    for (uint i = 0; i < g_FrameConsts.LightCount; ++i)
     {
         const float penumbra = TraceShadowRay(g_Lights[i], depth);
         g_OutNoisyPenumbra[uint3(pixelPosition, i)] = penumbra;

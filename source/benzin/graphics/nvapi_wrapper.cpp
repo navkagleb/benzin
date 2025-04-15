@@ -1,9 +1,9 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/nvapi_wrapper.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/nvapi_wrapper.hpp>
 
 #include <nvapi.h>
 
-#include "benzin/core/command_line_args.hpp"
+#include <benzin/core/cmd_line_args.hpp>
 
 #define BenzinNvApiEnsure(nvCall) \
     const NvAPI_Status BenzinUniqueVariableName(nvStatus) = nvCall; \
@@ -124,14 +124,14 @@ namespace benzin
 
     void NvApiWrapper::Initialize()
     {
-        if (CommandLineArgs::GetBool("IsPixCapturerEnabled"))
+        if (CmdLineArgs::IsPixCapturerEnabled())
         {
             // PIX for windows says: PIX has detected that the application was using NVAPI when this capture was taken
             // This may result in PIX crashing during analysis and/or PIX showing misleading data
             return;
         }
 
-        if (CommandLineArgs::GetBool("IsNvApiWrapperEnabled"))
+        if (CmdLineArgs::IsNvApiWrapperEnabled())
         {
             g_NvApiState.Initialize();
         }

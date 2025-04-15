@@ -15,7 +15,7 @@ namespace benzin
         std::string Name;
 
         AdapterVendorType VendorType = AdapterVendorType::Other;
-        uint32_t DeviceId = g_InvalidUnsigned<uint32_t>;
+        uint32_t DeviceId = g_Bad32;
 
         Bytes64 TotalVram;
         Bytes64 TotalRam;
@@ -70,7 +70,7 @@ namespace benzin
         std::vector<IDXGIAdapter3*> m_DxgiAdapters;
         std::vector<AdapterInfo> m_AdaptersInfo;
 
-        uint32_t m_MainAdapterIndex = g_InvalidUnsigned<uint32_t>;
+        uint32_t m_MainAdapterIndex = g_Bad32;
     };
 
 }

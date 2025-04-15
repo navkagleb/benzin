@@ -66,11 +66,11 @@ float3 GetLitColor(joint::Light light, PbrMaterial material, float3 worldPositio
     return GetPbrLitColor(_light, material, worldViewDirection, worldNormal);
 }
 
-BenzinDeclareRootResource(Texture2D<float4>, g_AlbedoAndRoughness, joint::Rc_DeferredLighting::AlbedoAndRoughness);
-BenzinDeclareRootResource(Texture2D<float4>, g_EmissiveAndMetallic, joint::Rc_DeferredLighting::EmissiveAndMetallic);
-BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::Rc_DeferredLighting::WorldNormal);
-BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::Rc_DeferredLighting::DepthStencil);
-BenzinDeclareRootResource(Texture2DArray<float>, g_Shadow, joint::Rc_DeferredLighting::Shadow);
+BenzinDeclareRootResource(Texture2D<float4>, g_AlbedoAndRoughness, joint::DeferredLightingResources::AlbedoAndRoughness);
+BenzinDeclareRootResource(Texture2D<float4>, g_EmissiveAndMetallic, joint::DeferredLightingResources::EmissiveAndMetallic);
+BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::DeferredLightingResources::WorldNormal);
+BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::DeferredLightingResources::DepthStencil);
+BenzinDeclareRootResource(Texture2DArray<float>, g_Shadow, joint::DeferredLightingResources::Shadow);
 
 GBuffer FetchGBuffer(float2 uv)
 {
@@ -106,11 +106,11 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
     float3 directColor = 0.0;
 
     [unroll(4)]
-    for (uint i = 0; i < g_FrameConstants.LightCount; ++i)
+    for (uint i = 0; i < g_FrameConsts.LightCount; ++i)
     {
         // float shadowFactor = g_Shadow.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
         float shadowFactor = g_Shadow[uint3(input.SvPosition.xy, i)];
-        shadowFactor = g_FrameConstants.IsDenoiserEnabled ? sigma::UnpackShadow(shadowFactor) : sigma::IsLit(shadowFactor);
+        shadowFactor = g_FrameConsts.IsDenoiserEnabled ? sigma::UnpackShadow(shadowFactor) : sigma::IsLit(shadowFactor);
 
         float3 litColorFromLight = GetLitColor(g_Lights[i], material, worldPosition, worldViewDirection, gbuffer.WorldNormal);
         litColorFromLight *= shadowFactor;

@@ -37,8 +37,8 @@ float2 ConvertSphericalToUv(float phi, float theta)
     return float2(u, v);
 }
 
-BenzinDeclareRootResource(Texture2D<float4>, g_EquirectangularTexture, joint::Rc_EquirectangularToCube::EquirectangularTexture);
-BenzinDeclareRootResource(RWTexture2DArray<float4>, g_OutCubeMap, joint::Rc_EquirectangularToCube::OutCubeMap);
+BenzinDeclareRootResource(Texture2D<float4>, g_EquirectangularTexture, joint::EquirectangularToCubeResources::EquirectangularTexture);
+BenzinDeclareRootResource(RWTexture2DArray<float4>, g_OutCubeMap, joint::EquirectangularToCubeResources::OutCubeMap);
 
 [numthreads(8, 8, 1)]
 void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)

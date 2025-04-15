@@ -6,8 +6,7 @@ namespace benzin
 {
     struct MeshComponent;
 
-    class Scene;
-    class GraphicsCommandList;
+    class GraphicsCmdList;
 
     enum class IndexOrder : bool;
     enum class PsoId : uint32_t;
@@ -22,13 +21,13 @@ namespace sandbox
     class GeometryPass : public benzin::RenderPass
     {
     public:
-        explicit GeometryPass(const benzin::Scene& scene);
+        GeometryPass();
         ~GeometryPass() override;
 
     private:
         struct MeshRenderContext
         {
-            benzin::GraphicsCommandList& CmdList;
+            benzin::GraphicsCmdList& CmdList;
 
             const DirectX::XMMATRIX& WorldToViewMatrix;
             const DirectX::BoundingFrustum& CameraFrustum;
@@ -55,8 +54,6 @@ namespace sandbox
         void RenderMesh(const MeshRenderContext& context, const benzin::MeshComponent& meshComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;
 
     private:
-        const benzin::Scene& m_Scene;
-
         bool m_IsDepthPrePassEnabled = true;
     };
 

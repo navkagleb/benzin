@@ -2,8 +2,7 @@
 #include <benzin/graphics2/texture_viewer_pass.hpp>
 
 #include <benzin/core/profiler.hpp>
-#include <benzin/graphics/command_list.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
@@ -76,18 +75,18 @@ namespace benzin
     {
         BenzinProfile();
 
-        auto& cmdList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "TextureViewer");
 
         const auto& debugTexture = ms_Resources->Get(TextureId::DebugTexture);
 
-        BenzinMakeScopedResourceBarriers(
+        BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ debugTexture, benzin::ResourceState::UnorderedAccess },
+            benzin::TransitionBarrier{ debugTexture, benzin::ResourceState::UnorderedAccess }
         );
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
 
         {
             using enum joint::TextureViewerResources;

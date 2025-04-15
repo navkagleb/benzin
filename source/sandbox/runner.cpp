@@ -1,14 +1,14 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/runner.hpp>
 
-#include <benzin/core/command_line_args.hpp>
+#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/logger.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/ray_tracing_scene.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/backend.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
@@ -43,9 +43,9 @@ namespace sandbox
         benzin::MakeUniquePtr(m_MainWindow, benzin::WindowCreation
         {
             .Title = "benzin::SandboxRunner",
-            .Width = benzin::CommandLineArgs::GetU32("WindowWidth"),
-            .Height = benzin::CommandLineArgs::GetU32("WindowHeight"),
-            .IsResizable = benzin::CommandLineArgs::GetBool("IsWindowResizable"),
+            .Width = benzin::CmdLineArgs::GetWindowWidth(),
+            .Height = benzin::CmdLineArgs::GetWindowHeight(),
+            .IsResizable = benzin::CmdLineArgs::IsWindowResizable(),
         });
         m_MainWindow->SetEventCallback([this](benzin::Event& event) { WindowEventCallback(event); });
 
@@ -73,7 +73,9 @@ namespace sandbox
             *m_RenderResources,
             *m_RenderSettings,
             m_FrameTimer,
-            m_AnimationTimer
+            m_AnimationTimer,
+            *m_Scene,
+            *m_RayTracingScene
         );
 
         {
@@ -122,7 +124,7 @@ namespace sandbox
         BenzinTrace(benzin::Logger::GetLineSeparator());
         BenzinLogTimeOnScopeExit("Runner::~Runner");
 
-        m_Device->GetGraphicsCommandQueue().Flush();
+        m_Device->GetGraphicsCmdQueue().Flush();
     }
 
     void Runner::RunMainLoop()
@@ -161,9 +163,15 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("Runner::RunZeroFrame");
 
-        m_RenderPasses.push_back(std::make_unique<benzin::TextureViewerPass>(*m_TextureViewerTool));
-        m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager));
-        m_RenderPasses.push_back(std::make_unique<benzin::GpuProfilerPass>());
+        InitRenderPasses();
+        InitTools();
+        InitScene();
+
+        {
+            m_RenderPasses.push_back(std::make_unique<benzin::TextureViewerPass>(*m_TextureViewerTool));
+            m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager));
+            m_RenderPasses.push_back(std::make_unique<benzin::GpuProfilerPass>());
+        }
 
         // Force call window resize on render passes
         benzin::RenderPass::SetWindowViewport(m_SwapChain->GetWidth(), m_SwapChain->GetHeight());
@@ -265,7 +273,7 @@ namespace sandbox
     {
         BenzinProfile();
     
-        m_Device->GetGraphicsCommandQueue().ResetCommandList();
+        m_Device->GetGraphicsCmdQueue().ResetCmdList();
         m_GpuProfiler->BeginFrame(m_Device->GetCpuFrameIndex());
         m_ConstBufferPool->BeginFrame();
     }
@@ -274,7 +282,7 @@ namespace sandbox
     {
         BenzinProfile();
 
-        m_Device->GetGraphicsCommandQueue().SubmitCommandList();
+        m_Device->GetGraphicsCmdQueue().SubmitCmdList();
 
         const bool isResized = m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
         if (isResized)
@@ -341,8 +349,8 @@ namespace sandbox
         BenzinProfile();
 
 #if BENZIN_IS_GPU_PROFILER_ENABLED
-        auto& commandList = m_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*m_GpuProfiler, commandList, "Frame");
+        auto& cmdList = m_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*m_GpuProfiler, cmdList, "Frame");
 #endif
 
         for (auto& renderPass : m_RenderPasses)

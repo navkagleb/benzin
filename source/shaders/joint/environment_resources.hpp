@@ -5,12 +5,12 @@
 namespace joint
 {
 
-    enum class Rc_Environment : uint
+    enum class EnvironmentResources : uint
     {
         CubeMap,
     };
 
-    enum class Rc_EquirectangularToCube : uint
+    enum class EquirectangularToCubeResources : uint
     {
         EquirectangularTexture,
         OutCubeMap,

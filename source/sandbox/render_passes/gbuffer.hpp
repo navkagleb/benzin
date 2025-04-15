@@ -2,9 +2,9 @@
 
 namespace benzin
 {
-    class GraphicsCommandList;
+    class GraphicsCmdList;
     class RenderResources;
-    class ResourceBarriers;
+    class ScopedResourceBarriers;
     class Texture;
 
     enum class ResourceState : int; // TODO
@@ -24,11 +24,11 @@ namespace sandbox
 
         explicit GBuffer(const benzin::RenderResources& resources);
 
-        void SetRenderTargets(benzin::GraphicsCommandList& cmdList) const;
+        void SetRenderTargets(benzin::GraphicsCmdList& cmdList) const;
 
         [[nodiscard]]
-        benzin::ResourceBarriers CreateResourceBarriers(
-            benzin::GraphicsCommandList& cmdList,
+        benzin::ScopedResourceBarriers CreateResourceBarriers(
+            benzin::GraphicsCmdList& cmdList,
             benzin::ResourceState depthStencilState
         ) const;
     };

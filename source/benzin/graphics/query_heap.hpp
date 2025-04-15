@@ -15,7 +15,7 @@ namespace benzin
     struct QueryHeapCreation
     {
         std::string_view DebugName;
-        QueryHeapType Type = g_InvalidEnum<QueryHeapType>;
+        QueryHeapType Type = g_BadEnum<QueryHeapType>;
         uint32_t Count = 0;
     };
 

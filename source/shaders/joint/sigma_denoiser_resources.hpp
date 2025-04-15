@@ -25,7 +25,7 @@ namespace joint
         float3 WorldLightPosition; // For sun - to sun direction
     };
 
-    enum class Rc_SigmaClassifyTiles : uint
+    enum class SigmaClassifyTilesResources : uint
     {
         ViewDepth,
         Penumbra,
@@ -33,14 +33,14 @@ namespace joint
         OutTiles,
     };
 
-    enum class Rc_SigmaSmoothTiles : uint
+    enum class SigmaSmoothTilesResources : uint
     {
         Tiles,
 
         OutSmoothTiles,
     };
 
-    enum class Rc_SigmaBlur : uint
+    enum class SigmaBlurResources : uint
     {
         WorldNormal,
         ViewDepth,
@@ -52,7 +52,7 @@ namespace joint
         OutShadow,
     };
 
-    enum class Rc_SigmaTemporalStabilization : uint
+    enum class SigmaTemporalStabilizationResources : uint
     {
         Mv,
         ViewDepth,

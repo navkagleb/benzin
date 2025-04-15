@@ -42,8 +42,8 @@ namespace benzin
             uint32_t VertexOffset = 0;
             uint32_t IndexOffset = 0;
 
-            uint32_t VertexCount = g_InvalidUnsigned<uint32_t>;
-            uint32_t IndexCount = g_InvalidUnsigned<uint32_t>;
+            uint32_t VertexCount = g_Bad32;
+            uint32_t IndexCount = g_Bad32;
 
             uint64_t TransformGpuAddress = 0;
         };

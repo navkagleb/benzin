@@ -4,29 +4,22 @@
 
 #include <shaders/joint/sigma_denoiser_resources.hpp>
 
-namespace benzin
-{
-
-    class Scene;
-
-}
-
 namespace sandbox
 {
 
     class SigmaDenoiserPass : public benzin::RenderPass
     {
     public:
-        explicit SigmaDenoiserPass(const benzin::Scene& scene);
+        SigmaDenoiserPass();
         ~SigmaDenoiserPass() override;
 
+    private:
         bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize() override;
         void OnUpdate() override;
         void OnRender() const override;
 
-    private:
         void RunClearPass(bool isEnabled) const;
         void RunClassifyTilesPass(uint16_t sliceIndex) const;
         void RunSmoothTilesPass() const;
@@ -35,8 +28,6 @@ namespace sandbox
         void RunTemporalStabilizationPass(bool isEnabled, uint16_t sliceIndex) const;
 
     private:
-        const benzin::Scene& m_Scene;
-
         joint::SigmaConsts m_Consts{};
         std::vector<joint::SigmaPerLightConsts> m_PerLightConsts;
     };

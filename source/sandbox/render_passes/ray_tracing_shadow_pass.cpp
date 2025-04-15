@@ -6,7 +6,7 @@
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/ray_tracing_pso.hpp>
 #include <benzin/graphics/ray_tracing_shader_table.hpp>
@@ -16,17 +16,16 @@
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
-#include "sandbox/sandbox_render_settings.hpp"
-#include "sandbox/resources.hpp"
 #include "sandbox/render_passes/sigma_denoiser_pass.hpp"
+#include "sandbox/resources.hpp"
+#include "sandbox/sandbox_render_settings.hpp"
 
-BenzinEnableUnaryPlusForEnum(joint::Rc_RayTracing_Shadow);
+BenzinEnableUnaryPlusForEnum(joint::RayTracing_ShadowResources);
 
 namespace sandbox
 {
 
-    RayTracing_ShadowPass::RayTracing_ShadowPass(const benzin::Scene& scene)
-        : m_Scene{ scene }
+    RayTracing_ShadowPass::RayTracing_ShadowPass()
     {
         ms_PsoManager->Create(PsoId::ShadowPass, [](benzin::RayTracing_PsoProxy& proxy)
         {
@@ -62,8 +61,8 @@ namespace sandbox
             .MipCount = 1,
         });
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList(m_BlueNoise->GetSize());
-        commandList.UploadToTextureTopMip(*m_BlueNoise, std::as_bytes(std::span{ blueNoiseImage.ImageData }));
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoise->GetSize());
+        cmdList.UploadToTextureTopMip(*m_BlueNoise, std::as_bytes(std::span{ blueNoiseImage.ImageData }));
     }
 
     void RayTracing_ShadowPass::OnRenderViewportResize()
@@ -94,31 +93,31 @@ namespace sandbox
     {
         BenzinProfile();
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "RayTracing_Shadow");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "RayTracing_Shadow");
 
         const auto& pso = ms_PsoManager->GetRayTracing(PsoId::ShadowPass);
         const auto& noisyPenumbra = ms_Resources->Get(TextureId::NoisyPenumbra);
 
-        commandList.SetRayTracingPso(pso);
-        commandList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetRayTracingPso(pso);
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
 
         {
-            using enum joint::Rc_RayTracing_Shadow;
+            using enum joint::RayTracing_ShadowResources;
 
-            commandList.SetComputeRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
-            commandList.SetComputeRootResource(+Depth, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
-            commandList.SetComputeRootResource(+BlueNoise, m_BlueNoise->GetSrv());
+            cmdList.SetComputeRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+            cmdList.SetComputeRootResource(+Depth, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
+            cmdList.SetComputeRootResource(+BlueNoise, m_BlueNoise->GetSrv());
 
-            commandList.SetComputeRootResource(+OutNoisyPenumbra, noisyPenumbra.GetUav());
+            cmdList.SetComputeRootResource(+OutNoisyPenumbra, noisyPenumbra.GetUav());
         }
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
-            benzin::TransitionBarrier{ noisyPenumbra, benzin::ResourceState::UnorderedAccess },
+        BenzinScopedResourceBarriers(
+            cmdList,
+            benzin::TransitionBarrier{ noisyPenumbra, benzin::ResourceState::UnorderedAccess }
         );
 
-        commandList.DispatchRays(pso.GetShaderTable(), { GetRenderViewportWidth(), GetRenderViewportHeight(), 1 });
+        cmdList.DispatchRays(pso.GetShaderTable(), { GetRenderViewportWidth(), GetRenderViewportHeight(), 1 });
     }
 
 }

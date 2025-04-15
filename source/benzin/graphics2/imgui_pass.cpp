@@ -7,11 +7,10 @@
 #include <shaders/joint/imgui_resources.hpp>
 
 #include "benzin/core/buffer_writer.hpp"
-#include "benzin/core/command_line_args.hpp"
+#include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/profiler.hpp"
 #include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/command_list.hpp"
-#include "benzin/graphics/command_queue.hpp"
+#include "benzin/graphics/cmd_queue.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/pso.hpp"
 #include "benzin/graphics/swap_chain.hpp"
@@ -345,7 +344,7 @@ namespace benzin
     ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager)
         : m_ImGuiManager{ imGuiManager }
     {
-        m_FrameContexts.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
+        m_FrameContexts.resize(CmdLineArgs::GetFrameInFlightCount());
 
         ms_PsoManager->Create(PsoId::ImGui, [](VertexPsoProxy& proxy)
         {
@@ -414,30 +413,30 @@ namespace benzin
     {
         BenzinProfile();
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "ImGui");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ImGui");
 
-        commandList.SetViewport(ms_WindowViewport);
-        commandList.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
-        commandList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::ImGui));
-        commandList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
-        commandList.SetBlendFactor({});
+        cmdList.SetViewport(ms_WindowViewport);
+        cmdList.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
+        cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::ImGui));
+        cmdList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetBlendFactor({});
 
         auto& [vertexBuffer, indexBuffer] = m_FrameContexts[ms_Device->GetActiveFrameIndex()];
-        commandList.SetVertexBuffer(*vertexBuffer);
-        commandList.SetIndexBuffer(*indexBuffer);
+        cmdList.SetVertexBuffer(*vertexBuffer);
+        cmdList.SetIndexBuffer(*indexBuffer);
 
-        const auto& imGuiTexture = ms_SwapChain->GetCurrentBackBuffer();
+        const auto& backBuffer = ms_SwapChain->GetCurrentBackBuffer();
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
-            TransitionBarrier{ imGuiTexture, ResourceState::RenderTarget },
+        BenzinScopedResourceBarriers(
+            cmdList,
+            TransitionBarrier{ backBuffer, ResourceState::RenderTarget }
         );
 
-        commandList.SetRenderTargets({ imGuiTexture.GetRtv() });
-        commandList.ClearRenderTarget(imGuiTexture, DirectX::XMFLOAT4{});
+        cmdList.SetRenderTargets({ backBuffer.GetRtv() });
+        cmdList.ClearRenderTarget(backBuffer, DirectX::XMFLOAT4{});
 
-        RenderImDrawData(commandList);
+        RenderImDrawData(cmdList);
     }
 
     void ImGuiPass::UploadFontTexture()
@@ -460,8 +459,8 @@ namespace benzin
         const uint32_t textureSize = width * height * 4;
         BenzinAssert(textureSize == m_FontTexture->GetSize());
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList(m_FontTexture->GetSize());
-        commandList.UploadToTextureTopMip(*m_FontTexture, std::as_bytes(ToSpan(pixels, textureSize)));
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_FontTexture->GetSize());
+        cmdList.UploadToTextureTopMip(*m_FontTexture, std::as_bytes(ToSpan(pixels, textureSize)));
     }
 
     void ImGuiPass::UpdateConsts(const ImDrawData& imDrawData)
@@ -520,7 +519,7 @@ namespace benzin
         }
     }
 
-    void ImGuiPass::RenderImDrawData(GraphicsCommandList& commandList) const
+    void ImGuiPass::RenderImDrawData(GraphicsCmdList& cmdList) const
     {
         BenzinProfile();
 
@@ -544,7 +543,7 @@ namespace benzin
                     continue;
                 }
 
-                commandList.SetScissorRect(ScissorRect
+                cmdList.SetScissorRect(ScissorRect
                 {
                     .X = clipMin.x,
                     .Y = clipMin.y,
@@ -556,10 +555,10 @@ namespace benzin
                 joint::ImGuiSamplerIndex samplerIndex;
                 GetImGuiResources(imDrawCmd, srvGpuHeapIndex, samplerIndex);
 
-                commandList.SetGraphicsRootConstant(+joint::ImGuiResources::Texture, srvGpuHeapIndex);
-                commandList.SetGraphicsRootConstant(+joint::ImGuiResources::SamplerIndex, +samplerIndex);
+                cmdList.SetGraphicsRootConstant(+joint::ImGuiResources::Texture, srvGpuHeapIndex);
+                cmdList.SetGraphicsRootConstant(+joint::ImGuiResources::SamplerIndex, +samplerIndex);
 
-                commandList.DrawIndexed(imDrawCmd.ElemCount, imDrawCmd.IdxOffset + globalIndexOffset, imDrawCmd.VtxOffset + globalVertexOffset);
+                cmdList.DrawIndexed(imDrawCmd.ElemCount, imDrawCmd.IdxOffset + globalIndexOffset, imDrawCmd.VtxOffset + globalVertexOffset);
             }
 
             globalVertexOffset += imCmdList->VtxBuffer.Size;

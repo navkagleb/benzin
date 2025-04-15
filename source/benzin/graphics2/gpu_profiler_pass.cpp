@@ -1,8 +1,7 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics2/gpu_profiler_pass.hpp>
 
-#include <benzin/graphics/command_list.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 
@@ -11,17 +10,17 @@ namespace benzin
 
     void GpuProfilerPass::OnRender() const
     {
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         auto& timestampQueryHeap = ms_GpuProfiler->GetTimestampQueryHeap();
 
-        BenzinGpuEvent(commandList, "ResolveTimestamps");
+        BenzinGpuEvent(cmdList, "ResolveTimestamps");
 
-        ms_GpuProfiler->ForceProfileUnprofiledTimestamps([&commandList, &timestampQueryHeap](uint32_t timestampIndex)
+        ms_GpuProfiler->ForceProfileUnprofiledTimestamps([&cmdList, &timestampQueryHeap](uint32_t timestampIndex)
         {
-            commandList.SetTimestamp(timestampQueryHeap, timestampIndex);
+                cmdList.SetTimestamp(timestampQueryHeap, timestampIndex);
         });
 
-        commandList.ResolveTimestamps(timestampQueryHeap, ms_GpuProfiler->GetReadbackBuffer(), ms_GpuProfiler->GetResolveReadbackBufferOffset());
+        cmdList.ResolveTimestamps(timestampQueryHeap, ms_GpuProfiler->GetReadbackBuffer(), ms_GpuProfiler->GetResolveReadbackBufferOffset());
     }
 
 }

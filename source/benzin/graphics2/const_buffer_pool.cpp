@@ -2,7 +2,7 @@
 #include "benzin/graphics2/const_buffer_pool.hpp"
 
 #include "benzin/core/buffer_writer.hpp"
-#include "benzin/core/command_line_args.hpp"
+#include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/math.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/device.hpp"
@@ -10,7 +10,7 @@
 namespace benzin
 {
 
-    std::pair<uint32_t, uint32_t> ParseSize(uint32_t sizeInBytes)
+    static std::pair<uint32_t, uint32_t> ParseSize(uint32_t sizeInBytes)
     {
         const uint32_t constBufferAlignment = GfxConfig::s_ConstantBufferAlignment.GetByteCount();
 
@@ -49,7 +49,7 @@ namespace benzin
         auto& pool = m_Pools[poolIndex];
         BenzinAssert(pool.AllocatedCount < pool.PreAllocatedElementCount);
 
-        const uint32_t poolElementCount = pool.PreAllocatedElementCount * CommandLineArgs::GetU32("FrameInFlightCount");
+        const uint32_t poolElementCount = pool.PreAllocatedElementCount * CmdLineArgs::GetFrameInFlightCount();
 
         if (pool.BufferPool.get() == nullptr || pool.BufferPool->GetElementCount() != poolElementCount)
         {

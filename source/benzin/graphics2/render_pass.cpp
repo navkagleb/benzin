@@ -94,14 +94,16 @@ namespace benzin
         );
 
         BenzinAssert(m_IsResourceIdValidCallback(id));
+        BenzinAssert(!creation.DebugName.empty());
 
         if (m_IsResourceFlippableCallback(id))
         {
+            const std::string_view referenceDebugName = creation.DebugName;
             auto& nonConstCreation = const_cast<CreationT&>(creation);
 
-            for (const uint32_t i : std::views::iota(0u, 2u))
+            for (uint32_t i = 0; i < 2; ++i)
             {
-                const std::string debugName = std::format("{}{}", creation.DebugName, 0);
+                const std::string debugName = std::format("{}{}", referenceDebugName, i);
                 nonConstCreation.DebugName = debugName;
 
                 MakeUniquePtr(m_Resources[id - i], device, nonConstCreation);
@@ -263,8 +265,10 @@ namespace benzin
         ConstBufferPool& constBufferPool,
         RenderResources& resources,
         RenderSettings& settings,
-        TickTimer& frameTimer,
-        TickTimer& animationTimer
+        const TickTimer& frameTimer,
+        const TickTimer& animationTimer,
+        const Scene& scene,
+        RayTracing_Scene& rayTracingScene
     )
     {
         ms_Device = &device;
@@ -277,6 +281,9 @@ namespace benzin
 
         ms_FrameTimer = &frameTimer;
         ms_AnimationTimer = &animationTimer;
+
+        ms_Scene = &scene;
+        ms_RayTracingScene = &rayTracingScene;
     }
 
     void RenderPass::SetWindowViewport(uint32_t width, uint32_t height)

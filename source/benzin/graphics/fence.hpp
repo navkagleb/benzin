@@ -8,7 +8,7 @@ namespace benzin
     struct FenceCreation
     {
         std::string_view DebugName;
-        uint64_t InitialValue = g_InvalidUnsigned<uint64_t>;
+        uint64_t InitialValue = g_Bad64;
     };
 
     class Fence

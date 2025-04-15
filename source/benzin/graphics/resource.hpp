@@ -79,4 +79,4 @@ namespace benzin
         mutable std::unordered_map<size_t, Descriptor> m_ViewDescriptors;
     };
 
-} // namespace benzin
+}

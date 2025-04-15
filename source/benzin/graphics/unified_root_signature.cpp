@@ -3,7 +3,7 @@
 
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/hr_assert.hpp"
+#include "benzin/graphics/d3d12_assert.hpp"
 #include "benzin/graphics/sampler.hpp"
 
 namespace benzin
@@ -16,7 +16,7 @@ namespace benzin
         uint32_t cbvSpaceIndex = 0;
         uint32_t srvSpaceIndex = 0;
 
-        d3d12RootParamers[+UnifiedRootParameter::RootConstantBuffer] = D3D12_ROOT_PARAMETER1
+        d3d12RootParamers[+UnifiedRootParameter::Root32Consts] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
             .Constants
@@ -28,7 +28,7 @@ namespace benzin
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        d3d12RootParamers[+UnifiedRootParameter::FrameConstantBuffer] = D3D12_ROOT_PARAMETER1
+        d3d12RootParamers[+UnifiedRootParameter::FrameConstBuffer] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
             .Descriptor
@@ -39,7 +39,7 @@ namespace benzin
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        d3d12RootParamers[+UnifiedRootParameter::RenderPassConstantBuffer0] = D3D12_ROOT_PARAMETER1
+        d3d12RootParamers[+UnifiedRootParameter::RenderPassConstBuffer0] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
             .Descriptor
@@ -50,7 +50,7 @@ namespace benzin
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        d3d12RootParamers[+UnifiedRootParameter::RenderPassConstantBuffer1] = D3D12_ROOT_PARAMETER1
+        d3d12RootParamers[+UnifiedRootParameter::RenderPassConstBuffer1] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
             .Descriptor
@@ -200,22 +200,22 @@ namespace benzin
         const HRESULT hr = ::D3D12SerializeVersionedRootSignature(&d3d12RootSignatureDesc, &d3d12Blob, &d3d12Error);
         if (FAILED(hr))
         {
-            BenzinHrEnsure(hr, "Failed to Serialize RootSignature. Error: {}", (const char*)d3d12Error->GetBufferPointer());
+            BenzinD3D12Call(hr, "Failed to Serialize RootSignature. Error: {}", (const char*)d3d12Error->GetBufferPointer());
         }
 
-        BenzinHrEnsure(device.GetD3D12Device()->CreateRootSignature(
+        BenzinD3D12Call(device.GetD3D12Device()->CreateRootSignature(
             0,
             d3d12Blob->GetBufferPointer(),
             d3d12Blob->GetBufferSize(),
             IID_PPV_ARGS(&m_D3D12RootSignature)
         ));
 
-        SetDxObjectDebugName(m_D3D12RootSignature, "UnifiedRootSignature");
+        SetD3DObjectDebugName(m_D3D12RootSignature, "UnifiedRootSignature");
     }
 
     UnifiedRootSignature::~UnifiedRootSignature()
     {
-        BenzinSafeDxObjectRelease(m_D3D12RootSignature); // TODO: Ok or not ok? (deferred release)
+        SafeReleaseD3DObject(m_D3D12RootSignature); // TODO: Ok or not ok? (deferred release)
     }
 
 }

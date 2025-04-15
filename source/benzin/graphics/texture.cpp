@@ -4,7 +4,7 @@
 #include "benzin/graphics/common.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/hr_assert.hpp"
+#include "benzin/graphics/d3d12_assert.hpp"
 
 namespace benzin
 {
@@ -157,7 +157,7 @@ namespace benzin
         {
             const D3D12_CLEAR_VALUE d3d12ClearValue = ToD3D12ClearValue(textureCreation);
 
-            BenzinHrEnsure(device.GetD3D12Device()->CreateCommittedResource(
+            BenzinD3D12Call(device.GetD3D12Device()->CreateCommittedResource(
                 &d3d12HeapProperties,
                 D3D12_HEAP_FLAG_NONE,
                 &d3d12ResourceDesc,
@@ -168,7 +168,7 @@ namespace benzin
         }
         else
         {
-            BenzinHrEnsure(device.GetD3D12Device()->CreateCommittedResource(
+            BenzinD3D12Call(device.GetD3D12Device()->CreateCommittedResource(
                 &d3d12HeapProperties,
                 D3D12_HEAP_FLAG_NONE,
                 &d3d12ResourceDesc,
@@ -189,7 +189,7 @@ namespace benzin
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
         };
 
-        const auto mipCount = GetValidUnsignedOr(textureSrv.MipRange.Count, g_InvalidUnsigned<uint32_t>);
+        const auto mipCount = GetGoodUintOr(textureSrv.MipRange.Count, g_Bad32);
 
         const bool isArrayTexture = texture.GetDepth() > 1;;
         if (!isArrayTexture)
@@ -304,7 +304,7 @@ namespace benzin
         : Resource{ device }
     {
         CreateD3D12Resource(creation, m_Device, m_D3D12Resource, m_CurrentState);
-        SetDxObjectDebugName(m_D3D12Resource, std::format("Texture_{}", creation.DebugName));
+        SetD3DObjectDebugName(m_D3D12Resource, std::format("Texture_{}", creation.DebugName));
 
         m_IsCubeMap = creation.IsCubeMap;
         m_Format = creation.Format;
@@ -513,7 +513,7 @@ namespace benzin
         });
     }
 
-} // namespace benzin
+}
 
 BenzinDefineStdHashForType(benzin::TextureSrv, textureSrv,
 {

@@ -1,13 +1,12 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 
-#include <benzin/core/command_line_args.hpp>
+#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
-#include <benzin/graphics/command_list.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/hr_assert.hpp>
+#include <benzin/graphics/d3d12_assert.hpp>
 #include <benzin/graphics/query_heap.hpp>
 #include <benzin/utility/time_utils.hpp>
 
@@ -27,7 +26,7 @@ namespace benzin
     // GpuProfiler
 
     GpuProfiler::GpuProfiler(Device& device)
-        : m_InverseFrequency{ 1.0 / (double)device.GetGraphicsCommandQueue().GetTimestampFrequency() }
+        : m_InverseFrequency{ 1.0 / (double)device.GetGraphicsCmdQueue().GetTimestampFrequency() }
     {
         MakeUniquePtr(m_TimestampQueryHeap, device, QueryHeapCreation
         {
@@ -41,7 +40,7 @@ namespace benzin
             .DebugName = "GpuProfiler_ReadbackBuffer",
             .MemoryType = ResourceMemoryType::Readback,
             .ElementSize = sizeof(uint64_t) * ms_MaxTimestampCount,
-            .ElementCount = CommandLineArgs::GetU32("FrameInFlightCount") + 1,
+            .ElementCount = CmdLineArgs::GetFrameInFlightCount() + 1,
         });
 
         m_FrameData.resize(m_ReadbackBuffer->GetElementCount());
@@ -56,7 +55,7 @@ namespace benzin
                 .End = frameData.ReadbackBufferOffset + m_ReadbackBuffer->GetElementSize(),
             };
 
-            BenzinHrEnsure(m_ReadbackBuffer->GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&frameData.MappedTimestamps)));
+            BenzinD3D12Call(m_ReadbackBuffer->GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&frameData.MappedTimestamps)));
         }
 
         m_SortedEvents.reserve(ms_MaxEventCount);
@@ -239,16 +238,16 @@ namespace benzin
 
     // ScopedGpuProfileEvent
 
-    ScopedGpuProfileEvent::ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, GraphicsCommandList& commandList, std::string_view name)
+    ScopedGpuProfileEvent::ScopedGpuProfileEvent(GpuProfiler& gpuProfiler, ComputeCmdList& cmdList, std::string_view name)
         : m_GpuProfiler{ gpuProfiler }
-        , m_CommandList{ commandList }
+        , m_CmdList{ cmdList }
     {
-        m_CommandList.SetTimestamp(m_GpuProfiler.GetTimestampQueryHeap(), m_GpuProfiler.GetBeginTimestampIndex(name));
+        m_CmdList.SetTimestamp(m_GpuProfiler.GetTimestampQueryHeap(), m_GpuProfiler.GetBeginTimestampIndex(name));
     }
 
     ScopedGpuProfileEvent::~ScopedGpuProfileEvent()
     {
-        m_CommandList.SetTimestamp(m_GpuProfiler.GetTimestampQueryHeap(), m_GpuProfiler.GetEndTimestampIndex());
+        m_CmdList.SetTimestamp(m_GpuProfiler.GetTimestampQueryHeap(), m_GpuProfiler.GetEndTimestampIndex());
     }
 
 }

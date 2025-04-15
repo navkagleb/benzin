@@ -31,10 +31,10 @@ namespace benzin
 
     struct Material
     {
-        uint32_t AlbedoTextureIndex = g_InvalidUnsigned<uint32_t>;
-        uint32_t NormalTextureIndex = g_InvalidUnsigned<uint32_t>;
-        uint32_t MetallicRoughnessTextureIndex = g_InvalidUnsigned<uint32_t>;
-        uint32_t EmissiveTextureIndex = g_InvalidUnsigned<uint32_t>;
+        uint32_t AlbedoTextureIndex = g_Bad32;
+        uint32_t NormalTextureIndex = g_Bad32;
+        uint32_t MetallicRoughnessTextureIndex = g_Bad32;
+        uint32_t EmissiveTextureIndex = g_Bad32;
 
         DirectX::XMFLOAT4 AlbedoFactor{ 1.0f, 1.0f, 1.0f, 1.0f };
         float AlphaCutoff = 0.0f;

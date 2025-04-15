@@ -8,7 +8,7 @@
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/pso.hpp>
 #include <benzin/graphics/texture.hpp>
@@ -28,8 +28,7 @@ BenzinEnableUnaryPlusForEnum(joint::GeometryResources);
 namespace sandbox
 {
 
-    GeometryPass::GeometryPass(const benzin::Scene& scene)
-        : m_Scene{ scene }
+    GeometryPass::GeometryPass()
     {
         using enum benzin::IndexOrder;
 
@@ -169,16 +168,16 @@ namespace sandbox
     {
         BenzinProfile();
 
-        auto& cmdList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "Geometry");
 
         MeshRenderContext context
         {
             .CmdList = cmdList,
-            .WorldToViewMatrix = m_Scene.GetCamera().GetWorldToViewMatrix(),
-            .CameraFrustum = m_Scene.GetPerspectiveProjection().GetBoundingFrustum(),
-            .EntityRegistry = m_Scene.GetEntityRegistry(),
-            .MeshRegistry = m_Scene.GetMeshRegistry(),
+            .WorldToViewMatrix = ms_Scene->GetCamera().GetWorldToViewMatrix(),
+            .CameraFrustum = ms_Scene->GetPerspectiveProjection().GetBoundingFrustum(),
+            .EntityRegistry = ms_Scene->GetEntityRegistry(),
+            .MeshRegistry = ms_Scene->GetMeshRegistry(),
             .Settings = ms_Settings->GetSection<GBufferSettings>(),
             .Stats = ms_Settings->GetSection<GBufferStats>(),
         };
@@ -186,7 +185,7 @@ namespace sandbox
 
         cmdList.SetViewport(ms_RenderViewport);
         cmdList.SetScissorRect(ms_RenderScissorRect);
-        cmdList.SetGraphicsRootResource(+joint::GeometryResources::MeshTransforms, m_Scene.GetTransformBufferSrv());
+        cmdList.SetGraphicsRootResource(+joint::GeometryResources::MeshTransforms, ms_Scene->GetTransformBufferSrv());
 
         const GBuffer gbuffer{ *ms_Resources };
 
@@ -194,9 +193,9 @@ namespace sandbox
             BenzinScopeProfile("DepthPrePass");
             BenzinGpuProfile(*ms_GpuProfiler, cmdList, "DepthPrePass");
 
-            BenzinMakeScopedResourceBarriers(
+            BenzinScopedResourceBarriers(
                 cmdList,
-                benzin::TransitionBarrier{ gbuffer.DepthStencil, benzin::ResourceState::DepthWrite },
+                benzin::TransitionBarrier{ gbuffer.DepthStencil, benzin::ResourceState::DepthWrite }
             );
 
             cmdList.ClearDepthStencil(gbuffer.DepthStencil);
@@ -222,7 +221,7 @@ namespace sandbox
             context.IsDepthPrePass = false;
 
             const benzin::ResourceState depthStencilState = m_IsDepthPrePassEnabled ? benzin::ResourceState::DepthRead : benzin::ResourceState::DepthWrite;
-            const benzin::ResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, depthStencilState);
+            const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, depthStencilState);
 
             gbuffer.SetRenderTargets(cmdList);
 
@@ -280,7 +279,7 @@ namespace sandbox
 
     void GeometryPass::RenderMesh(const MeshRenderContext& context, const benzin::MeshComponent& meshComponent, const DirectX::XMMATRIX& localToWorldMatrix) const
     {
-        if (!benzin::IsValidEnum(meshComponent.MeshHandle))
+        if (!benzin::IsGoodEnum(meshComponent.MeshHandle))
         {
             return;
         }

@@ -4,7 +4,7 @@
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/hr_assert.hpp"
+#include "benzin/graphics/d3d12_assert.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
 
 namespace benzin
@@ -51,15 +51,14 @@ namespace benzin
             .pSubobjects = d3d12StateSubObjects.data(),
         };
 
-        BenzinHrEnsure(m_Device.GetD3D12Device()->CreateStateObject(&d3d12StateObjectDesc, IID_PPV_ARGS(&m_D3D12StateObject)));
+        BenzinD3D12Call(m_Device.GetD3D12Device()->CreateStateObject(&d3d12StateObjectDesc, IID_PPV_ARGS(&m_D3D12StateObject)));
 
         BuildShaderTable();
     }
 
     void RayTracing_Pso::Release()
     {
-        m_Device.DeferredRelease(*this);
-        m_D3D12StateObject = nullptr;
+        m_Device.DeferredRelease(m_D3D12StateObject);
     }
 
     std::span<const ShaderInfo> RayTracing_Pso::GetShaders() const
@@ -113,7 +112,7 @@ namespace benzin
         BenzinEnsure(m_D3D12StateObject != nullptr);
 
         ComPtr<ID3D12StateObjectProperties> d3d12StateObjectProperties;
-        BenzinHrEnsure(m_D3D12StateObject->QueryInterface(IID_PPV_ARGS(&d3d12StateObjectProperties)));
+        BenzinD3D12Call(m_D3D12StateObject->QueryInterface(IID_PPV_ARGS(&d3d12StateObjectProperties)));
 
         m_ShaderTable.SetRayGenerationShader(d3d12StateObjectProperties->GetShaderIdentifier(m_RayGenerationEntryPoint.c_str()));
         m_ShaderTable.SetMissShader(d3d12StateObjectProperties->GetShaderIdentifier(m_MissShaderEntryPoint.c_str()));

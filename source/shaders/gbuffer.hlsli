@@ -56,9 +56,9 @@ void CalcGBufferMv(float2 pixelPos, float viewDepth, float3 prevViewPos, out GBu
 {
     const float4 prevClipPos = mul(float4(prevViewPos, 1.0), GetPrevCameraConsts().ViewToClip);
 
-    const float2 uv = pixelPos * g_FrameConstants.InvRenderResolution;
+    const float2 uv = pixelPos * g_FrameConsts.InvRenderResolution;
     const float2 prevUv = ClipToUv(prevClipPos);
 
-    outGBuffer.UvMv = (uv - prevUv) * g_FrameConstants.RenderResolution; // TODO: Pack/Unpack Mv
+    outGBuffer.UvMv = (uv - prevUv) * g_FrameConsts.RenderResolution; // TODO: Pack/Unpack Mv
     outGBuffer.ViewDepthMv = viewDepth - prevViewPos.z;
 }

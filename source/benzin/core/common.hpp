@@ -7,27 +7,31 @@ namespace benzin
     concept EnumConcept = std::is_enum_v<T>;
 
     template <std::unsigned_integral T>
-    inline constexpr auto g_InvalidUnsigned = std::numeric_limits<T>::max();
+    inline constexpr auto g_BadUint = std::numeric_limits<T>::max();
 
-    template <EnumConcept T>
-    inline constexpr auto g_InvalidEnum = (T)g_InvalidUnsigned<std::underlying_type_t<T>>;
+    inline constexpr auto g_Bad16 = g_BadUint<uint16_t>;
+    inline constexpr auto g_Bad32 = g_BadUint<uint32_t>;
+    inline constexpr auto g_Bad64 = g_BadUint<uint64_t>;
 
     template <std::unsigned_integral T>
-    constexpr bool IsValidUnsigned(T value)
+    constexpr bool IsGoodUint(T value)
     {
-        return value != g_InvalidUnsigned<T>;
-    }
-
-    template <typename T> requires std::is_enum_v<T>
-    constexpr bool IsValidEnum(T value)
-    {
-        return value != g_InvalidEnum<T>;
+        return value != g_BadUint<T>;
     }
 
     template <std::unsigned_integral T, std::unsigned_integral U>
-    constexpr auto GetValidUnsignedOr(T value, U orValue)
+    constexpr auto GetGoodUintOr(T value, U orValue)
     {
-        return (std::common_type_t<T, U>)(IsValidUnsigned(value) ? value : orValue);
+        return (std::common_type_t<T, U>)(IsGoodUint(value) ? value : orValue);
+    }
+
+    template <EnumConcept T>
+    inline constexpr auto g_BadEnum = (T)g_BadUint<std::underlying_type_t<T>>;
+
+    template <EnumConcept T>
+    constexpr bool IsGoodEnum(T value)
+    {
+        return value != g_BadEnum<T>;
     }
 
     template <std::unsigned_integral T>

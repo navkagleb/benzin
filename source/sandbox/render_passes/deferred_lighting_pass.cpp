@@ -4,7 +4,7 @@
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
@@ -16,7 +16,7 @@
 #include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
 
-BenzinEnableUnaryPlusForEnum(joint::Rc_DeferredLighting);
+BenzinEnableUnaryPlusForEnum(joint::DeferredLightingResources);
 
 namespace sandbox
 {
@@ -60,39 +60,39 @@ namespace sandbox
     {
         BenzinProfile();
 
-        auto& commandList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
-        BenzinGpuProfile(*ms_GpuProfiler, commandList, "DeferredLighting");
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "DeferredLighting");
 
         const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 
         const auto& shadow = ms_Resources->Get(sigmaSettings.IsEnabled ? TextureId::Shadow : TextureId::NoisyPenumbra);
         const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
 
-        commandList.SetViewport(ms_RenderViewport);
-        commandList.SetScissorRect(ms_RenderScissorRect);
+        cmdList.SetViewport(ms_RenderViewport);
+        cmdList.SetScissorRect(ms_RenderScissorRect);
 
-        BenzinMakeScopedResourceBarriers(
-            commandList,
-            benzin::TransitionBarrier{ hdrColor, benzin::ResourceState::RenderTarget },
+        BenzinScopedResourceBarriers(
+            cmdList,
+            benzin::TransitionBarrier{ hdrColor, benzin::ResourceState::RenderTarget }
         );
 
-        commandList.SetRenderTargets({ hdrColor.GetRtv() });
-        commandList.ClearRenderTarget(hdrColor);
+        cmdList.SetRenderTargets({ hdrColor.GetRtv() });
+        cmdList.ClearRenderTarget(hdrColor);
 
-        commandList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::DeferredLighting));
+        cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::DeferredLighting));
 
         {
-            using enum joint::Rc_DeferredLighting;
+            using enum joint::DeferredLightingResources;
 
-            commandList.SetGraphicsRootResource(+AlbedoAndRoughness, ms_Resources->Get(TextureId::AlbedoAndRoughness).GetSrv());
-            commandList.SetGraphicsRootResource(+EmissiveAndMetallic, ms_Resources->Get(TextureId::EmissiveAndMetallic).GetSrv());
-            commandList.SetGraphicsRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
-            commandList.SetGraphicsRootResource(+DepthStencil, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
-            commandList.SetGraphicsRootResource(+Shadow, shadow.GetSrv());
+            cmdList.SetGraphicsRootResource(+AlbedoAndRoughness, ms_Resources->Get(TextureId::AlbedoAndRoughness).GetSrv());
+            cmdList.SetGraphicsRootResource(+EmissiveAndMetallic, ms_Resources->Get(TextureId::EmissiveAndMetallic).GetSrv());
+            cmdList.SetGraphicsRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+            cmdList.SetGraphicsRootResource(+DepthStencil, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
+            cmdList.SetGraphicsRootResource(+Shadow, shadow.GetSrv());
         }
 
-        commandList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
-        commandList.DrawVertexed(3);
+        cmdList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+        cmdList.DrawVertexed(3);
     }
 
 }

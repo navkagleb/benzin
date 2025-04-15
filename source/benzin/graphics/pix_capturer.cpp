@@ -1,9 +1,9 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/pix_capturer.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/pix_capturer.hpp>
 
 #include <ShlObj.h>
 
-#include "benzin/core/command_line_args.hpp"
+#include <benzin/core/cmd_line_args.hpp>
 
 namespace benzin
 {
@@ -42,7 +42,7 @@ namespace benzin
 
     void PixCapturer::Initialize()
     {
-        if (!CommandLineArgs::GetBool("IsPixCapturerEnabled"))
+        if (!CmdLineArgs::IsPixCapturerEnabled())
         {
             return;
         }
@@ -60,7 +60,7 @@ namespace benzin
 
     void PixCapturer::Shutdown()
     {
-        if (!CommandLineArgs::GetBool("IsPixCapturerEnabled"))
+        if (!CmdLineArgs::IsPixCapturerEnabled())
         {
             return;
         }

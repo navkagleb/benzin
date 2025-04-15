@@ -44,7 +44,7 @@ namespace benzin
         bool IsCubeMap = false;
         GraphicsFormat Format = GraphicsFormat::Unknown;
         IndexRange16 DepthRange;
-        IndexRange16 MipRange{ 0, g_InvalidUnsigned<uint16_t> }; // By default select all mips
+        IndexRange16 MipRange{ 0, g_Bad16 }; // By default select all mips
     };
 
     struct TextureUav
@@ -106,4 +106,4 @@ namespace benzin
         ClearValueVariant m_ClearValueVariant;
     };
 
-} // namespace benzin
+}

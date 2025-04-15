@@ -4,7 +4,7 @@
 #include "benzin/core/math.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/hr_assert.hpp"
+#include "benzin/graphics/d3d12_assert.hpp"
 
 namespace benzin
 {
@@ -121,7 +121,7 @@ namespace benzin
 
         outInitialState = getInitialResourceState(device, bufferCreation);
 
-        BenzinHrEnsure(device.GetD3D12Device()->CreateCommittedResource(
+        BenzinD3D12Call(device.GetD3D12Device()->CreateCommittedResource(
             &d3d12HeapProperties,
             D3D12_HEAP_FLAG_NONE,
             &d3d12ResourceDesc,
@@ -272,14 +272,30 @@ namespace benzin
 
     //
 
-    Buffer::Buffer(Device& device)
-        : Resource{ device }
-    {}
 
     Buffer::Buffer(Device& device, const BufferCreation& creation)
-        : Buffer{ device }
+        : Resource{ device }
     {
-        Create(creation);
+        BenzinAssert(m_D3D12Resource == nullptr);
+
+        CreateD3D12Resource(creation, m_Device, m_D3D12Resource, m_CurrentState);
+        SetD3DObjectDebugName(m_D3D12Resource, creation.DebugName);
+
+        m_MemoryType = creation.MemoryType;
+        m_Type = creation.Type;
+        m_Format = creation.Format;
+
+        m_ElementSize = creation.ElementSize;
+        m_ElementCount = creation.ElementCount;
+        m_AlignedElementSize = (uint32_t)m_D3D12Resource->GetDesc().Width / creation.ElementCount; // HACK
+
+        m_IsUnorderedAccessAllowed = creation.IsUnorderedAccessAllowed;
+
+        if (creation.MemoryType == ResourceMemoryType::Upload)
+        {
+            const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // Writing only range
+            BenzinD3D12Call(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_CpuMappedData)));
+        }
     }
 
     Buffer::~Buffer()
@@ -296,30 +312,6 @@ namespace benzin
         BenzinAssert(elementIndex < m_ElementCount);
 
         return m_D3D12Resource->GetGPUVirtualAddress() + elementIndex * m_AlignedElementSize;
-    }
-
-    void Buffer::Create(const BufferCreation& creation)
-    {
-        BenzinAssert(m_D3D12Resource == nullptr);
-
-        CreateD3D12Resource(creation, m_Device, m_D3D12Resource, m_CurrentState);
-        SetDxObjectDebugName(m_D3D12Resource, creation.DebugName);
-
-        m_MemoryType = creation.MemoryType;
-        m_Type = creation.Type;
-        m_Format = creation.Format;
-
-        m_ElementSize = creation.ElementSize;
-        m_ElementCount = creation.ElementCount;
-        m_AlignedElementSize = (uint32_t)m_D3D12Resource->GetDesc().Width / creation.ElementCount; // HACK
-
-        m_IsUnorderedAccessAllowed = creation.IsUnorderedAccessAllowed;
-
-        if (creation.MemoryType == ResourceMemoryType::Upload)
-        {
-            const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // Writing only range
-            BenzinHrEnsure(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_CpuMappedData)));
-        }
     }
 
     const Descriptor& Buffer::GetSrv(IndexRange32 elementRange) const

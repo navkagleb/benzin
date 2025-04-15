@@ -1,12 +1,12 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/backend.hpp"
 
-#include "benzin/core/command_line_args.hpp"
+#include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/logger.hpp"
 #include "benzin/graphics/adl_wrapper.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/hr_assert.hpp"
+#include "benzin/graphics/d3d12_assert.hpp"
 #include "benzin/graphics/nvapi_wrapper.hpp"
 #include "benzin/graphics/pix_capturer.hpp"
 
@@ -60,7 +60,7 @@ namespace benzin
         BenzinLogTimeOnScopeExit("Backend::~Backend");
 
 #if BENZIN_IS_ASSERTS_ENABLED
-        if (!CommandLineArgs::GetBool("IsPixCapturerEnabled"))
+        if (!CmdLineArgs::IsPixCapturerEnabled())
         {
             const auto adapterMemoryInfo = GetMainAdapterMemoryInfo();
             BenzinAssert(adapterMemoryInfo.ProcessUsedVram == 0, "Process used VRAM: {} mb", adapterMemoryInfo.ProcessUsedVram.GetMb());
@@ -74,11 +74,11 @@ namespace benzin
 
         for (auto& dxgiAdapter : m_DxgiAdapters)
         {
-            BenzinSafeDxObjectRelease(dxgiAdapter);
+            SafeReleaseD3DObject(dxgiAdapter);
         }
         m_DxgiAdapters.clear();
 
-        BenzinSafeDxObjectRelease(m_DxgiFactory);
+        SafeReleaseD3DObject(m_DxgiFactory);
     }
 
     const AdapterInfo& Backend::GetAdapterInfo(uint32_t adapterIndex) const
@@ -95,12 +95,12 @@ namespace benzin
         auto* dxgiAdapter = m_DxgiAdapters[adapterIndex];
 
         DXGI_QUERY_VIDEO_MEMORY_INFO d3d12LocalVideoMemoryInfo;
-        BenzinHrEnsure(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &d3d12LocalVideoMemoryInfo));
+        BenzinD3D12Call(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &d3d12LocalVideoMemoryInfo));
 
         DXGI_QUERY_VIDEO_MEMORY_INFO d3d12NonLocalVideoMemoryInfo;
-        BenzinHrEnsure(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &d3d12NonLocalVideoMemoryInfo));
+        BenzinD3D12Call(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &d3d12NonLocalVideoMemoryInfo));
 
-        Bytes64 vendorTotalUsedVram = g_InvalidUnsigned<uint64_t>;
+        Bytes64 vendorTotalUsedVram = g_Bad64;
         if (AdlWrapper::IsAvailable() && adapterInfo.IsAmd())
         {
             vendorTotalUsedVram = AdlWrapper::GetUsedDedicatedVram(adapterInfo.DeviceId);
@@ -121,7 +121,7 @@ namespace benzin
         }
 
         const Bytes64 vramOsBudget = d3d12LocalVideoMemoryInfo.Budget;
-        const bool isVendorDataValid = IsValidUnsigned(vendorTotalUsedVram.GetByteCount());
+        const bool isVendorDataValid = IsGoodUint(vendorTotalUsedVram.GetByteCount());
 
         return AdapterMemoryInfo
         {
@@ -143,9 +143,9 @@ namespace benzin
         const uint32_t dxgiFactoryFlags = BENZIN_IS_DEBUG_BUILD ? DXGI_CREATE_FACTORY_DEBUG : 0;
 
         ComPtr<IDXGIFactory2> dxgiFactory2;
-        BenzinHrEnsure(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&dxgiFactory2)));
-        BenzinHrEnsure(dxgiFactory2->QueryInterface(IID_PPV_ARGS(&m_DxgiFactory)));
-        SetDxObjectDebugName(m_DxgiFactory, "MainFactory");
+        BenzinD3D12Call(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&dxgiFactory2)));
+        BenzinD3D12Call(dxgiFactory2->QueryInterface(IID_PPV_ARGS(&m_DxgiFactory)));
+        SetD3DObjectDebugName(m_DxgiFactory, "MainFactory");
     }
 
     void Backend::GatherDxgiAdapters()
@@ -161,7 +161,7 @@ namespace benzin
             }
 
             DXGI_ADAPTER_DESC1 dxgiAdapterDesc{};
-            BenzinHrEnsure(dxgiAdapter->GetDesc1(&dxgiAdapterDesc));
+            BenzinD3D12Call(dxgiAdapter->GetDesc1(&dxgiAdapterDesc));
 
             if ((dxgiAdapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0 || dxgiAdapterDesc.DedicatedVideoMemory == 0)
             {
@@ -188,22 +188,22 @@ namespace benzin
                 dxgiAdapterDesc.Revision
             );
 
-            if (IsStringContainsCaseInsensitive(adapterInfo.Name, CommandLineArgs::GetString("AdapterName")))
+            if (IsStringContainsCaseInsensitive(adapterInfo.Name, CmdLineArgs::GetAdapterName()))
             {
                 m_MainAdapterIndex = adapterIndex;
             }
 
             IDXGIAdapter3* dxgiAdapter3 = nullptr;
-            BenzinHrEnsure(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&dxgiAdapter3)));
-            SetDxObjectDebugName(dxgiAdapter3, std::format("Adapter: {}", adapterInfo.Name));
+            BenzinD3D12Call(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&dxgiAdapter3)));
+            SetD3DObjectDebugName(dxgiAdapter3, std::format("Adapter: {}", adapterInfo.Name));
 
             m_DxgiAdapters.push_back(dxgiAdapter3);
             m_AdaptersInfo.push_back(std::move(adapterInfo));
         }
 
-        if (!IsValidUnsigned(m_MainAdapterIndex))
+        if (!IsGoodUint(m_MainAdapterIndex))
         {
-            m_MainAdapterIndex = GetValidUnsignedOr(CommandLineArgs::GetU32("AdapterIndex"), 0u);
+            m_MainAdapterIndex = GetGoodUintOr(CmdLineArgs::GetAdapterIndex(), 0u);
             BenzinEnsure(m_MainAdapterIndex < m_DxgiAdapters.size());
         }
     }

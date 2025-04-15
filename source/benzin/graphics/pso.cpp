@@ -3,7 +3,7 @@
 
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/hr_assert.hpp"
+#include "benzin/graphics/d3d12_assert.hpp"
 #include "benzin/graphics/render_states.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
 
@@ -154,12 +154,12 @@ namespace benzin
     }
 #endif
 
-    template class Pso<VertexPso, VertexPsoStream, 2>;
-    template class Pso<MeshPso, MeshPsoStream, 2>;
-    template class Pso<ComputePso, ComputePsoStream, 1>;
+    template class Pso<VertexPsoStream, 2>;
+    template class Pso<MeshPsoStream, 2>;
+    template class Pso<ComputePsoStream, 1>;
 
-    template class GraphicsPso<VertexPso, VertexPsoStream, 2>;
-    template class GraphicsPso<MeshPso, MeshPsoStream, 2>;
+    template class GraphicsPso<VertexPsoStream, 2>;
+    template class GraphicsPso<MeshPsoStream, 2>;
 
     // PsoStreamBase
 
@@ -191,14 +191,14 @@ namespace benzin
 
     // Pso
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::Pso(Device& device)
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    Pso<PsoStreamT, _MaxShaderCount>::Pso(Device& device)
         : PsoBase{ device }
         , m_Stream{ device }
     {}
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    void Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::Compile()
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    void Pso<PsoStreamT, _MaxShaderCount>::Compile()
     {
         BenzinAssert(m_D3D12PipelineState == nullptr);
 #if BENZIN_IS_ASSERTS_ENABLED
@@ -211,24 +211,23 @@ namespace benzin
             .pPipelineStateSubobjectStream = (void*)&m_Stream,
         };
 
-        BenzinHrEnsure(m_Device.GetD3D12Device()->CreatePipelineState(&d3d12PsoStreamDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+        BenzinD3D12Call(m_Device.GetD3D12Device()->CreatePipelineState(&d3d12PsoStreamDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
     }
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    void Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::Release()
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    void Pso<PsoStreamT, _MaxShaderCount>::Release()
     {
-        PsoBase::m_Device.DeferredRelease(*(DerivedPsoT*)this);
-        m_D3D12PipelineState = nullptr;
+        PsoBase::m_Device.DeferredRelease(m_D3D12PipelineState);
     }
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::~Pso()
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    Pso<PsoStreamT, _MaxShaderCount>::~Pso()
     {
         Release();
     }
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    void Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::AddShader(ShaderInfo&& shader, ShaderType shaderType)
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    void Pso<PsoStreamT, _MaxShaderCount>::AddShader(ShaderInfo&& shader, ShaderType shaderType)
     {
         BenzinUnused(shaderType);
         BenzinAssert(shader.IsValid() && shader.GetType() == shaderType);
@@ -238,33 +237,33 @@ namespace benzin
 
     // GraphicsPso
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetPs(ShaderInfo&& shader, ShaderBytecode bytecode)
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetPs(ShaderInfo&& shader, ShaderBytecode bytecode)
     {
         Super::AddShader(std::move(shader), ShaderType::Pixel);
         ChangePs(bytecode);
     }
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetRasterizerState(RasterizerState state)
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetRasterizerState(RasterizerState state)
     {
         m_Stream.RasterizerState = ToD3D12RasterizerState(state);
     }
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetDepthStencilState(DepthState depthState, StencilState stencilState)
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetDepthStencilState(DepthState depthState, StencilState stencilState)
     {
         this->m_Stream.DepthStencilState = ToD3D12DepthStencilState(depthState, stencilState);
     }
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetBlendState(BlendState state)
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetBlendState(BlendState state)
     {
         m_Stream.BlendState = ToD3D12BlendState(state);
     }
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetRenderTargetFormats(std::span<const GraphicsFormat> formats)
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetRenderTargetFormats(std::span<const GraphicsFormat> formats)
     {
         BenzinAssert(formats.size() <= 8);
 
@@ -272,14 +271,14 @@ namespace benzin
         memcpy(m_Stream.RenderTargetFormats->RTFormats, formats.data(), formats.size() * sizeof(GraphicsFormat));
     }
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::SetDepthStencilFormat(GraphicsFormat format)
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetDepthStencilFormat(GraphicsFormat format)
     {
         m_Stream.DepthStencilFormat = (DXGI_FORMAT)format;
     }
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>::ChangePs(ShaderBytecode bytecode)
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::ChangePs(ShaderBytecode bytecode)
     {
         BenzinAssert(!bytecode.empty());
 

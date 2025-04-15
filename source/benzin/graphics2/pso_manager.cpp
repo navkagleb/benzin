@@ -36,11 +36,11 @@ namespace benzin
         PsoBasePtrRef m_Pso;
     };
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
     static void CreateGraphicsPso(
         GraphicsPsoProxy& proxy,
         ShaderManager& shaderManager,
-        GraphicsPso<DerivedPsoT, PsoStreamT, _MaxShaderCount>& pso
+        GraphicsPso<PsoStreamT, _MaxShaderCount>& pso
     )
     {
         ShaderInfo ps{ ShaderType::Pixel, proxy.Ps.FileName, proxy.Ps.EntryPoint, std::move(proxy.Ps.Defines) };
@@ -224,11 +224,11 @@ namespace benzin
 
         if constexpr (std::is_same_v<PsoT, RayTracing_Pso>)
         {
-            SetDxObjectDebugName(psoT->GetD3D12StateObject(), magic_enum::enum_name(id));
+            SetD3DObjectDebugName(psoT->GetD3D12StateObject(), magic_enum::enum_name(id));
         }
         else
         {
-            SetDxObjectDebugName(psoT->GetD3D12PipelineState(), magic_enum::enum_name(id));
+            SetD3DObjectDebugName(psoT->GetD3D12PipelineState(), magic_enum::enum_name(id));
         }
 
         pso = std::move(psoT);

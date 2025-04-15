@@ -3,19 +3,19 @@
 
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/hr_assert.hpp"
+#include "benzin/graphics/d3d12_assert.hpp"
 
 namespace benzin
 {
 
     Fence::Fence(Device& device, const FenceCreation& creation)
     {
-        BenzinHrEnsure(device.GetD3D12Device()->CreateFence(
+        BenzinD3D12Call(device.GetD3D12Device()->CreateFence(
             creation.InitialValue,
             D3D12_FENCE_FLAG_NONE,
             IID_PPV_ARGS(&m_D3D12Fence)
         ));
-        SetDxObjectDebugName(m_D3D12Fence, creation.DebugName);
+        SetD3DObjectDebugName(m_D3D12Fence, creation.DebugName);
 
         m_WaitEvent = ::CreateEvent(nullptr, false, false, nullptr);
         BenzinEnsure(m_WaitEvent != INVALID_HANDLE_VALUE);
@@ -25,7 +25,7 @@ namespace benzin
     {
         ::CloseHandle(m_WaitEvent);
 
-        BenzinSafeDxObjectRelease(m_D3D12Fence);
+        SafeReleaseD3DObject(m_D3D12Fence);
     }
 
     uint64_t Fence::GetCompletedValue() const
@@ -39,4 +39,4 @@ namespace benzin
         BenzinEnsure(::WaitForSingleObject(m_WaitEvent, INFINITE) == WAIT_OBJECT_0);
     }
 
-} // namespace benzin
+}

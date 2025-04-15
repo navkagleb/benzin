@@ -1,29 +1,29 @@
 #pragma once
 
-#include "benzin/graphics/command_list.hpp"
+#include <benzin/graphics/cmd_list.hpp>
 
 namespace benzin
 {
 
     class Fence;
 
-    class GraphicsCommandQueue
+    class GraphicsCmdQueue
     {
     public:
-        GraphicsCommandQueue(Device& device);
-        ~GraphicsCommandQueue();
+        GraphicsCmdQueue(Device& device);
+        ~GraphicsCmdQueue();
 
-        BenzinDefineNonCopyable(GraphicsCommandQueue);
-        BenzinDefineNonMoveable(GraphicsCommandQueue);
+        BenzinDefineNonCopyable(GraphicsCmdQueue);
+        BenzinDefineNonMoveable(GraphicsCmdQueue);
 
     public:
         auto* GetD3D12CommandQueue() const { return m_D3D12CommandQueue; }
 
-        GraphicsCommandList& GetCommandList(Bytes32 uploadBufferSize = 0);
+        GraphicsCmdList& GetCmdList(Bytes32 uploadBufferSize = 0);
         uint64_t GetTimestampFrequency() const;
 
-        void ResetCommandList();
-        void SubmitCommandList();
+        void ResetCmdList();
+        void SubmitCmdList();
 
         void Flush();
         void SignalFence(Fence& fence, uint64_t value);
@@ -40,10 +40,10 @@ namespace benzin
         ID3D12CommandQueue* m_D3D12CommandQueue = nullptr;
 
         std::vector<FrameContext> m_FrameContexts;
-        GraphicsCommandList m_CommandList;
+        GraphicsCmdList m_CmdList;
 
         std::unique_ptr<Fence> m_FlushFence;
         uint64_t m_FlushCount = 0;
     };
 
-} // namespace benzin
+}

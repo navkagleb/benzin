@@ -276,12 +276,12 @@ namespace sandbox
 
         // The order in which render passes are added is important
         BenzinAssert(m_RenderPasses.empty());
-        m_RenderPasses.push_back(std::make_unique<TlasBuildingPass>(*m_RayTracingScene));
-        m_RenderPasses.push_back(std::make_unique<GlobalConstantsPass>(*m_Scene));
-        m_RenderPasses.push_back(std::make_unique<GeometryPass>(*m_Scene));
-        m_RenderPasses.push_back(std::make_unique<ProceduralGrassPass>(*m_Scene));
-        m_RenderPasses.push_back(std::make_unique<RayTracing_ShadowPass>(*m_Scene));
-        m_RenderPasses.push_back(std::make_unique<SigmaDenoiserPass>(*m_Scene));
+        m_RenderPasses.push_back(std::make_unique<TlasBuildingPass>());
+        m_RenderPasses.push_back(std::make_unique<GlobalConstantsPass>());
+        m_RenderPasses.push_back(std::make_unique<GeometryPass>());
+        m_RenderPasses.push_back(std::make_unique<ProceduralGrassPass>());
+        m_RenderPasses.push_back(std::make_unique<RayTracing_ShadowPass>());
+        m_RenderPasses.push_back(std::make_unique<SigmaDenoiserPass>());
         m_RenderPasses.push_back(std::make_unique<DeferredLightingPass>());
         m_RenderPasses.push_back(std::make_unique<EnvironmentPass>());
         m_RenderPasses.push_back(std::make_unique<ToneMappingPass>());
@@ -297,6 +297,12 @@ namespace sandbox
         m_RenderSettingsTool->RegisterSectionDrawCallback<RayTracing_ShadowSettings>(DrawRayTracingShadowsSettings, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<SigmaDenoiserSettings>(DrawSigmaDenoiserSettings, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<ToneMappingSettings>(DrawToneMappingSettings, ImGuiTreeNodeFlags_DefaultOpen);
+    }
+
+    void SandboxRunner::InitScene()
+    {
+        InitCamera();
+        InitSceneEntities();
     }
 
     void SandboxRunner::InitCamera()
@@ -317,7 +323,7 @@ namespace sandbox
         LoadMeshes(meshResources);
 
         std::array<entt::entity, magic_enum::enum_count<Mesh>()> meshHandles;
-        meshHandles.fill(benzin::g_InvalidEnum<entt::entity>);
+        meshHandles.fill(benzin::g_BadEnum<entt::entity>);
         AddMeshesToScene(meshResources, meshHandles);
 
         AddStaticMeshEntities(meshHandles);
@@ -332,7 +338,7 @@ namespace sandbox
 
         for (auto&& [outMeshHandle, meshResource] : std::views::zip(outMeshHandles, meshResources))
         {
-            outMeshHandle = m_Scene->AddMesh(std::move(meshResource));
+            outMeshHandle = !meshResource.SubMeshes.empty() ? m_Scene->AddMesh(std::move(meshResource)) : benzin::g_BadEnum<entt::entity>;
         }
     }
 
@@ -340,6 +346,7 @@ namespace sandbox
     {
         auto& entityRegistry = m_Scene->GetEntityRegistry();
 
+        if (benzin::IsGoodEnum(meshHandles[+Mesh::Sponza]))
         {
             const auto entity = entityRegistry.create();
 
@@ -351,6 +358,7 @@ namespace sandbox
             transform.SetTranslation({ 5.0f, 0.0f, 0.0f });
         }
 
+        if (benzin::IsGoodEnum(meshHandles[+Mesh::OrientationTest]))
         {
             const auto entity = entityRegistry.create();
 
@@ -362,6 +370,7 @@ namespace sandbox
             transform.SetTranslation({ 2.5f, 0.2f, -0.25f });
         }
 
+        if (benzin::IsGoodEnum(meshHandles[+Mesh::MilkTruck]))
         {
             const auto entity = entityRegistry.create();
 
@@ -373,6 +382,7 @@ namespace sandbox
             transform.SetTranslation({ -1.5f, 0.2f, 0.5f });
         }
 
+        if (benzin::IsGoodEnum(meshHandles[+Mesh::Cylinder]))
         {
             const auto entity = entityRegistry.create();
 
@@ -389,6 +399,7 @@ namespace sandbox
     {
         auto& entityRegistry = m_Scene->GetEntityRegistry();
 
+        if (benzin::IsGoodEnum(meshHandles[+Mesh::BoomBox]))
         {
             const auto entity = entityRegistry.create();
 
@@ -412,6 +423,7 @@ namespace sandbox
             });
         }
 
+        if (benzin::IsGoodEnum(meshHandles[+Mesh::DamagedHelmet]))
         {
             const auto entity = entityRegistry.create();
 

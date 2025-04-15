@@ -19,7 +19,7 @@ void CsMain(uint2 pixelPosition : SV_DispatchThreadID, uint binIndex : SV_GroupI
     g_GroupLuminanceHistogram[binIndex] = 0;
     GroupMemoryBarrierWithGroupSync();
 
-    if (all(pixelPosition < g_FrameConstants.RenderResolution))
+    if (all(pixelPosition < g_FrameConsts.RenderResolution))
     {
         const float luminance = RgbToLuminance(g_HdrColor[pixelPosition].xyz);
         const uint groupBinIndex = LuminanceToBinIndex(luminance);
@@ -37,7 +37,7 @@ void CsMain(uint2 pixelPosition : SV_DispatchThreadID, uint binIndex : SV_GroupI
     {
         // TODO
         // To visualize histogram buffer distribution
-        const float maxBinValue = (g_FrameConstants.RenderResolution.x * g_FrameConstants.RenderResolution.y) / (g_ThreadCountX * g_ThreadCountY);
+        const float maxBinValue = (g_FrameConsts.RenderResolution.x * g_FrameConsts.RenderResolution.y) / (g_ThreadCountX * g_ThreadCountY);
         g_OutDebugLuminanceHistogram[pixelPosition] = (float)g_OutLuminanceHistogram[binIndex] / maxBinValue;
     }
 }

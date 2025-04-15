@@ -6,8 +6,7 @@
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
-#include <benzin/graphics/command_list.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
@@ -25,8 +24,7 @@ BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassResources);
 namespace sandbox
 {
 
-    ProceduralGrassPass::ProceduralGrassPass(const benzin::Scene& scene)
-        : m_Scene{ scene }
+    ProceduralGrassPass::ProceduralGrassPass()
     {
         ms_PsoManager->Create(PsoId::ProceduralGrass, [](benzin::MeshPsoProxy& outProxy)
         {
@@ -79,12 +77,12 @@ namespace sandbox
                 .MipCount = 1,
             });
 
-            auto& cmdList = ms_Device->GetGraphicsCommandQueue().GetCommandList(m_PerlinNoiseTexture->GetSize());
+            auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_PerlinNoiseTexture->GetSize());
             cmdList.UploadToTextureTopMip(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.ImageData));
         }
         
         {
-            const auto grassPatchView = m_Scene.GetEntityRegistry().view<joint::GrassPatch>();
+            const auto grassPatchView = ms_Scene->GetEntityRegistry().view<joint::GrassPatch>();
             if (grassPatchView.empty())
             {
                 return;
@@ -100,7 +98,7 @@ namespace sandbox
 
             auto& grassPatchBuffer = const_cast<benzin::Buffer&>(ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches));
 
-            auto& cmdList = ms_Device->GetGraphicsCommandQueue().GetCommandList(grassPatchBuffer.GetSize());
+            auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(grassPatchBuffer.GetSize());
             for (const auto [i, entityHandle] : grassPatchView | std::views::enumerate)
             {
                 // TODO: Maybe there is opportunity to use raw pointer as array to upload to GPU?
@@ -128,19 +126,19 @@ namespace sandbox
     {
         BenzinProfile();
 
-        auto& cmdList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ProceduralGrass");
 
         cmdList.SetViewport(ms_RenderViewport);
         cmdList.SetScissorRect(ms_RenderScissorRect);
 
-        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConstantBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
         cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::ProceduralGrass));
 
         const GBuffer gbuffer{ *ms_Resources };
         gbuffer.SetRenderTargets(cmdList);
 
-        const benzin::ResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, benzin::ResourceState::DepthWrite);
+        const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, benzin::ResourceState::DepthWrite);
 
         const auto& grassPatchBuffer = ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches);
 

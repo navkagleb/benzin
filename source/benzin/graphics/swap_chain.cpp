@@ -1,14 +1,14 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics/swap_chain.hpp"
 
-#include "benzin/core/command_line_args.hpp"
+#include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/profiler.hpp"
 #include "benzin/graphics/backend.hpp"
-#include "benzin/graphics/command_queue.hpp"
+#include "benzin/graphics/cmd_queue.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/fence.hpp"
-#include "benzin/graphics/hr_assert.hpp"
+#include "benzin/graphics/d3d12_assert.hpp"
 #include "benzin/graphics/texture.hpp"
 #include "benzin/system/window.hpp"
 
@@ -24,7 +24,7 @@ namespace benzin
         const Backend& backend = creation.Backend;
 
         uint32_t isAllowTearing = 0;
-        BenzinHrEnsure(backend.GetDxgiFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &isAllowTearing, sizeof(isAllowTearing)));
+        BenzinD3D12Call(backend.GetDxgiFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &isAllowTearing, sizeof(isAllowTearing)));
 
         uint32_t dxgiSwapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
         if (isAllowTearing)
@@ -40,7 +40,7 @@ namespace benzin
             .Stereo = false,
             .SampleDesc{ 1, 0 },
             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-            .BufferCount = CommandLineArgs::GetU32("FrameInFlightCount"),
+            .BufferCount = CmdLineArgs::GetFrameInFlightCount(),
             .Scaling = DXGI_SCALING_STRETCH,
             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
             .AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED,
@@ -48,21 +48,21 @@ namespace benzin
         };
 
         ComPtr<IDXGISwapChain1> dxgiSwapChain1;
-        BenzinHrEnsure(backend.GetDxgiFactory()->CreateSwapChainForHwnd(
-            m_Device.GetGraphicsCommandQueue().GetD3D12CommandQueue(),
+        BenzinD3D12Call(backend.GetDxgiFactory()->CreateSwapChainForHwnd(
+            m_Device.GetGraphicsCmdQueue().GetD3D12CommandQueue(),
             win64Window,
             &dxgiSwapChainDesc1,
             nullptr,
             nullptr,
             &dxgiSwapChain1
         ));
-        BenzinHrEnsure(dxgiSwapChain1->QueryInterface(IID_PPV_ARGS(&m_DxgiSwapChain)));
-        SetDxObjectDebugName(m_DxgiSwapChain, creation.DebugName);
+        BenzinD3D12Call(dxgiSwapChain1->QueryInterface(IID_PPV_ARGS(&m_DxgiSwapChain)));
+        SetD3DObjectDebugName(m_DxgiSwapChain, creation.DebugName);
 
         // Disable fullscreen using Alt + Enter
-        BenzinHrEnsure(backend.GetDxgiFactory()->MakeWindowAssociation(win64Window, DXGI_MWA_NO_ALT_ENTER));
+        BenzinD3D12Call(backend.GetDxgiFactory()->MakeWindowAssociation(win64Window, DXGI_MWA_NO_ALT_ENTER));
 
-        m_BackBuffers.resize(CommandLineArgs::GetU32("FrameInFlightCount"));
+        m_BackBuffers.resize(CmdLineArgs::GetFrameInFlightCount());
         ResizeBackBuffers();
 
         MakeUniquePtr(m_FrameFence, m_Device, FenceCreation
@@ -75,7 +75,7 @@ namespace benzin
     SwapChain::~SwapChain()
     {
         ReleaseBackBuffers();
-        BenzinSafeDxObjectRelease(m_DxgiSwapChain);
+        SafeReleaseD3DObject(m_DxgiSwapChain);
     }
 
     Texture& SwapChain::GetCurrentBackBuffer()
@@ -97,23 +97,23 @@ namespace benzin
 
         {
             cpuFrameIndex++;
-            m_Device.GetGraphicsCommandQueue().SignalFence(*m_FrameFence, cpuFrameIndex);
+            m_Device.GetGraphicsCmdQueue().SignalFence(*m_FrameFence, cpuFrameIndex);
         }
 
         {
             BenzinScopeProfile("SwapChain Present");
-            BenzinHrEnsure(m_DxgiSwapChain->Present(isVerticalSyncEnabled, 0));
+            BenzinD3D12Call(m_DxgiSwapChain->Present(isVerticalSyncEnabled, 0));
         }
 
         {
             gpuFrameIndex = m_FrameFence->GetCompletedValue();
 
-            if (cpuFrameIndex - gpuFrameIndex >= CommandLineArgs::GetU32("FrameInFlightCount"))
+            if (cpuFrameIndex - gpuFrameIndex >= CmdLineArgs::GetFrameInFlightCount())
             {
                 {
                     BenzinScopeProfile("SwapChain WaitForGpu");
 
-                    const uint64_t gpuFrameIndexToWait = cpuFrameIndex - CommandLineArgs::GetU32("FrameInFlightCount") + 1;
+                    const uint64_t gpuFrameIndexToWait = cpuFrameIndex - CmdLineArgs::GetFrameInFlightCount() + 1;
                     m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
                 }
 
@@ -131,7 +131,7 @@ namespace benzin
         });
 
         DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc;
-        BenzinHrEnsure(m_DxgiSwapChain->GetDesc1(&dxgiSwapChainDesc));
+        BenzinD3D12Call(m_DxgiSwapChain->GetDesc1(&dxgiSwapChainDesc));
         if (m_Width != dxgiSwapChainDesc.Width || m_Height != dxgiSwapChainDesc.Height)
         {
             BenzinLogTimeOnScopeExit(
@@ -140,7 +140,7 @@ namespace benzin
                 m_Width, m_Height
             );
 
-            m_Device.GetGraphicsCommandQueue().Flush();
+            m_Device.GetGraphicsCmdQueue().Flush();
 
             ReleaseBackBuffers();
             ResizeBackBuffers();
@@ -164,10 +164,10 @@ namespace benzin
         for (const auto& [i, backBuffer] : m_BackBuffers | std::views::enumerate)
         {
             ID3D12Resource* d3d12BackBuffer;
-            BenzinHrEnsure(m_DxgiSwapChain->GetBuffer((uint32_t)i, IID_PPV_ARGS(&d3d12BackBuffer))); // Increases reference count
+            BenzinD3D12Call(m_DxgiSwapChain->GetBuffer((uint32_t)i, IID_PPV_ARGS(&d3d12BackBuffer))); // Increases reference count
             
             MakeUniquePtr(backBuffer, m_Device, d3d12BackBuffer);
-            SetDxObjectDebugName(d3d12BackBuffer, std::format("SwapChainBackBuffer{}", i));
+            SetD3DObjectDebugName(d3d12BackBuffer, std::format("SwapChainBackBuffer{}", i));
         }
     }
 
@@ -191,9 +191,9 @@ namespace benzin
 #endif
 
         DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc;
-        BenzinHrEnsure(m_DxgiSwapChain->GetDesc1(&dxgiSwapChainDesc));
+        BenzinD3D12Call(m_DxgiSwapChain->GetDesc1(&dxgiSwapChainDesc));
 
-        BenzinHrEnsure(m_DxgiSwapChain->ResizeBuffers(
+        BenzinD3D12Call(m_DxgiSwapChain->ResizeBuffers(
             dxgiSwapChainDesc.BufferCount,
             m_Width,
             m_Height,
@@ -203,4 +203,4 @@ namespace benzin
         RegisterBackBuffers();
     }
 
-} // namespace benzin
+}

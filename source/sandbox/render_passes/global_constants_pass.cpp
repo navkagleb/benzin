@@ -1,9 +1,10 @@
 #include "sandbox/bootstrap.hpp"
 #include "sandbox/render_passes/global_constants_pass.hpp"
 
+#include <benzin/core/profiler.hpp>
 #include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/scene.hpp>
-#include <benzin/graphics/command_queue.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/const_buffer_pool.hpp>
@@ -13,38 +14,39 @@
 namespace sandbox
 {
 
-    GlobalConstantsPass::GlobalConstantsPass(const benzin::Scene& scene)
-        : m_Scene{ scene }
+    GlobalConstantsPass::GlobalConstantsPass()
     {
         ms_ConstBufferPool->PreAllocate(sizeof(m_FrameConsts));
     }
 
     void GlobalConstantsPass::OnUpdate()
     {
+        BenzinProfile();
+
         UpdateCameraConsts();
         UpdateFrameConsts();
     }
 
     void GlobalConstantsPass::OnRender() const
     {
-        auto& cmdList = ms_Device->GetGraphicsCommandQueue().GetCommandList();
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         BenzinGpuEvent(cmdList, "GlobalConstants");
 
         const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
 
         const uint64_t frameConstsGpuAddress = ms_ConstBufferPool->Allocate(m_FrameConsts);
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, frameConstsGpuAddress);
-        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstantBuffer, frameConstsGpuAddress);
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
+        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
 
-        cmdList.SetComputeSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, m_Scene.GetLightBufferGpuAddress());
-        cmdList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, m_Scene.GetLightBufferGpuAddress());
+        cmdList.SetComputeSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, ms_Scene->GetLightBufferGpuAddress());
+        cmdList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, ms_Scene->GetLightBufferGpuAddress());
     }
 
     void GlobalConstantsPass::UpdateCameraConsts()
     {
-        const auto& camera = m_Scene.GetCamera();
-        const auto& projection = m_Scene.GetPerspectiveProjection();
+        const benzin::Camera& camera = ms_Scene->GetCamera();
+        const benzin::PerspectiveProjection& projection = ms_Scene->GetPerspectiveProjection();
 
         const joint::CameraConsts cameraConstants
         {
@@ -86,7 +88,7 @@ namespace sandbox
         m_FrameConsts.MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y);
 
         m_FrameConsts.CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex();
-        m_FrameConsts.LightCount = m_Scene.GetActiveLightCount();
+        m_FrameConsts.LightCount = ms_Scene->GetActiveLightCount();
 
         m_FrameConsts.IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
         m_FrameConsts.IsShadowsEnabled = ms_Settings->GetSection<RayTracing_ShadowSettings>().IsEnabled;

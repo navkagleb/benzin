@@ -12,8 +12,13 @@ namespace benzin
     template <EnumConcept T>
     class EnumFlags
     {
+    private:
+        using UnderlyingTypeT = std::underlying_type_t<T>;
+
     public:
-        EnumFlags() = default;
+        EnumFlags(UnderlyingTypeT rawBits = 0)
+            : m_Bits{ rawBits }
+        {}
 
         EnumFlags(T flag)
             : m_Bits{ ToBit(flag) }
@@ -49,8 +54,6 @@ namespace benzin
         }
 
     private:
-        using UnderlyingTypeT = std::underlying_type_t<T>;
-
         static UnderlyingTypeT ToBit(T flag)
         {
             if constexpr (IsFlagsEnabledForBitEnum<T>::value)
@@ -63,10 +66,10 @@ namespace benzin
             }
         }
 
-        UnderlyingTypeT m_Bits = 0;
+        UnderlyingTypeT m_Bits;
     };
 
-} // namespace benzin
+}
 
 template <typename T> requires IsFlagsEnabledForEnum<T>::value
 auto operator|(T first, T second)

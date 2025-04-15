@@ -16,7 +16,7 @@ namespace joint
         float DistanceToOccluder;
     };
 
-    enum class Rc_RayTracing_Shadow : uint // TODO: Ugly name
+    enum class RayTracing_ShadowResources : uint
     {
         WorldNormal,
         Depth,

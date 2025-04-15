@@ -27,7 +27,7 @@ struct RootConstants
 };
 
 ConstantBuffer<RootConstants> g_RootConstants : register(b0, space0);
-ConstantBuffer<joint::FrameConsts> g_FrameConstants : register(b0, space1);
+ConstantBuffer<joint::FrameConsts> g_FrameConsts : register(b0, space1);
 ConstantBuffer<BenzinRenderPassConstsType0> g_PassConsts0 : register(b0, space2);
 ConstantBuffer<BenzinRenderPassConstsType1> g_PassConsts1 : register(b0, space3);
 
@@ -47,12 +47,12 @@ SamplerState g_PointWithTransparentBlackBorderSampler : register(s0, space8);
 
 const joint::CameraConsts GetCameraConsts()
 {
-    return g_FrameConstants.Camera;
+    return g_FrameConsts.Camera;
 }
 
 const joint::CameraConsts GetPrevCameraConsts()
 {
-    return g_FrameConstants.PrevCamera;
+    return g_FrameConsts.PrevCamera;
 }
 
 uint GetRootConstant(uint index)

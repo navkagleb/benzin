@@ -3,9 +3,9 @@
 #include "joint/sigma_denoiser_resources.hpp"
 #include "sigma_denoiser/sigma_common.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float>, g_ViewDepth, joint::Rc_SigmaClassifyTiles::ViewDepth);
-BenzinDeclareRootResource(Texture2D<float>, g_Penumbra, joint::Rc_SigmaClassifyTiles::Penumbra);
-BenzinDeclareRootResource(RWTexture2D<float4>, g_OutTiles, joint::Rc_SigmaClassifyTiles::OutTiles);
+BenzinDeclareRootResource(Texture2D<float>, g_ViewDepth, joint::SigmaClassifyTilesResources::ViewDepth);
+BenzinDeclareRootResource(Texture2D<float>, g_Penumbra, joint::SigmaClassifyTilesResources::Penumbra);
+BenzinDeclareRootResource(RWTexture2D<float4>, g_OutTiles, joint::SigmaClassifyTilesResources::OutTiles);
 
 groupshared uint g_TileMask;
 groupshared uint g_TilePixelRadius; // Stores float value. Use asuint and asfloat
@@ -49,7 +49,7 @@ void FetchThreadTileInfo(CsInput input, out uint outThreadMask, out float outThr
             threadMask += ((!isLit || isInf || isShadow) ? 1 : 0) << 9;
             threadMask += (isInf ? 1 : 0) << 18;
 
-            const float worldPixelSize = sigma::GetWorldPixelSize(g_FrameConstants.Camera.PixelToWorldScale, viewDepth);
+            const float worldPixelSize = sigma::GetWorldPixelSize(GetCameraConsts().PixelToWorldScale, viewDepth);
             const float blurPixelRadius = (isLit || isInf) ? 0.0 : sigma::GetKernelPixelRadius(penumbra, worldPixelSize);
 
             threadPixelRadius = max(threadPixelRadius, blurPixelRadius);

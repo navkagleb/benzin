@@ -40,6 +40,11 @@ namespace sandbox
 
         void RunMainLoop();
 
+    protected:
+        virtual void InitRenderPasses() = 0;
+        virtual void InitTools() = 0;
+        virtual void InitScene() = 0;
+
     private:
         void RunZeroFrame();
 

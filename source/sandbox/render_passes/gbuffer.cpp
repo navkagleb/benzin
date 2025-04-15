@@ -1,7 +1,7 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/render_passes/gbuffer.hpp>
 
-#include <benzin/graphics/command_list.hpp>
+#include <benzin/graphics/cmd_list.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics2/render_pass.hpp>
 
@@ -19,7 +19,7 @@ namespace sandbox
         , DepthStencil{ resources.Get(TextureId::DepthStencil) }
     {}
 
-    void GBuffer::SetRenderTargets(benzin::GraphicsCommandList& cmdList) const
+    void GBuffer::SetRenderTargets(benzin::GraphicsCmdList& cmdList) const
     {
         cmdList.SetRenderTargets(
             {
@@ -33,7 +33,7 @@ namespace sandbox
         );
     }
 
-    benzin::ResourceBarriers GBuffer::CreateResourceBarriers(benzin::GraphicsCommandList& cmdList, benzin::ResourceState depthStencilState) const
+    benzin::ScopedResourceBarriers GBuffer::CreateResourceBarriers(benzin::GraphicsCmdList& cmdList, benzin::ResourceState depthStencilState) const
     {
         std::vector<benzin::ResourceBarrierVariant> resourceBarriers;
         resourceBarriers.reserve(6);
@@ -47,11 +47,10 @@ namespace sandbox
         BenzinAssert(depthStencilState == benzin::ResourceState::DepthWrite || depthStencilState == benzin::ResourceState::DepthRead);
         resourceBarriers.push_back(benzin::TransitionBarrier{ DepthStencil, depthStencilState });
 
-        return benzin::ResourceBarriers
+        return benzin::ScopedResourceBarriers
         {
             cmdList,
             resourceBarriers,
-            true,
         };
     }
 

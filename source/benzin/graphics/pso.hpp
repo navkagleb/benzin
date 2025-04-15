@@ -109,7 +109,7 @@ namespace benzin
         Device& m_Device;
     };
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
     class Pso : public PsoBase
     {
     public:
@@ -134,11 +134,11 @@ namespace benzin
         StaticArray<ShaderInfo, _MaxShaderCount> m_Shaders;
     };
 
-    template <typename DerivedPsoT, typename PsoStreamT, uint32_t _MaxShaderCount>
-    class GraphicsPso : public Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>
+    template <typename PsoStreamT, uint32_t _MaxShaderCount>
+    class GraphicsPso : public Pso<PsoStreamT, _MaxShaderCount>
     {
     private:
-        using Super = Pso<DerivedPsoT, PsoStreamT, _MaxShaderCount>;
+        using Super = Pso<PsoStreamT, _MaxShaderCount>;
         using Super::Super;
         using Super::m_Stream;
 
@@ -159,10 +159,10 @@ namespace benzin
         GraphicsFormat Format;
     };
 
-    class VertexPso : public GraphicsPso<VertexPso, VertexPsoStream, 2>
+    class VertexPso : public GraphicsPso<VertexPsoStream, 2>
     {
     public:
-        using Super = GraphicsPso<VertexPso, VertexPsoStream, 2>;
+        using Super = GraphicsPso<VertexPsoStream, 2>;
         using Super::Super;
 
         ~VertexPso() override;
@@ -174,20 +174,20 @@ namespace benzin
         void ChangeVs(ShaderBytecode bytecode);
     };
 
-    class MeshPso : public GraphicsPso<MeshPso, MeshPsoStream, 2>
+    class MeshPso : public GraphicsPso<MeshPsoStream, 2>
     {
     public:
-        using Super = GraphicsPso<MeshPso, MeshPsoStream, 2>;
+        using Super = GraphicsPso<MeshPsoStream, 2>;
         using Super::Super;
 
         void SetMs(ShaderInfo&& shader, ShaderBytecode bytecode);
         void ChangeMs(ShaderBytecode bytecode);
     };
 
-    class ComputePso : public Pso<ComputePso, ComputePsoStream, 1>
+    class ComputePso : public Pso<ComputePsoStream, 1>
     {
     public:
-        using Super = Pso<ComputePso, ComputePsoStream, 1>;
+        using Super = Pso<ComputePsoStream, 1>;
         using Super::Super;
 
         void SetCs(ShaderInfo&& shader, ShaderBytecode bytecode);

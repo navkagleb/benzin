@@ -5,7 +5,7 @@
 namespace benzin
 {
 
-    enum class LogOptionFlag
+    enum class LogOptionFlag : uint32_t
     {
         Time = ToBit(0),
         ThreadId = ToBit(1),
