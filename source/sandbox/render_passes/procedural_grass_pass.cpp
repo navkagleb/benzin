@@ -78,7 +78,7 @@ namespace sandbox
             });
 
             auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_PerlinNoiseTexture->GetSize());
-            cmdList.UploadToTextureTopMip(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.ImageData));
+            cmdList.UploadToTexture(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.PixelData));
         }
         
         {

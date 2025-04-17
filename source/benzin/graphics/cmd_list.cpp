@@ -104,30 +104,37 @@ namespace benzin
 
     // CopyCmdList
 
-     void CopyCmdList::CopyResource(const Resource& destination, const Resource& source)
+    void CopyCmdList::CopyResource(const Resource& destResource, const Resource& sourceResource)
     {
-        m_D3D12GraphicsCommandList1->CopyResource(destination.GetD3D12Resource(), source.GetD3D12Resource());
+        BenzinAssert(
+            (dynamic_cast<const Buffer*>(&destResource) != nullptr && dynamic_cast<const Buffer*>(&sourceResource) != nullptr) ||
+            (dynamic_cast<const Texture*>(&destResource) != nullptr && dynamic_cast<const Texture*>(&sourceResource) != nullptr)
+        );
+
+        BenzinAssert(destResource.GetD3D12Resource() != nullptr && sourceResource.GetD3D12Resource() != nullptr);
+
+        m_D3D12GraphicsCommandList1->CopyResource(destResource.GetD3D12Resource(), sourceResource.GetD3D12Resource());
     }
 
-    void CopyCmdList::UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, Bytes64 offset)
+    void CopyCmdList::UploadToBuffer(Buffer& destBuffer, std::span<const std::byte> data, uint64_t destOffsetInBytes)
     {
-        BenzinAssert(buffer.GetD3D12Resource() != nullptr);
-        BenzinAssert(!data.empty());
-
         BenzinAssert(m_UploadBuffer->GetD3D12Resource() != nullptr);
 
-        const size_t uploadBufferOffset = AllocateInUploadBuffer(data.size_bytes());
+        BenzinAssert(destBuffer.GetD3D12Resource() != nullptr);
+        BenzinAssert(!data.empty());
+
+        const uint64_t offsetInBytes = AllocateInUploadBuffer(data.size_bytes());
 
         const MemoryWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSize() };
-        writer.WriteBytes(data, uploadBufferOffset);
+        writer.WriteBytes(data, offsetInBytes);
 
-        BenzinScopedResourceBarriers(*this, TransitionBarrier{ buffer, ResourceState::CopyDestination });
+        BenzinScopedResourceBarriers(*this, TransitionBarrier{ destBuffer, ResourceState::CopyDestination });
         
         m_D3D12GraphicsCommandList1->CopyBufferRegion(
-            buffer.GetD3D12Resource(),
-            offset,
+            destBuffer.GetD3D12Resource(),
+            destOffsetInBytes,
             m_UploadBuffer->GetD3D12Resource(),
-            uploadBufferOffset,
+            offsetInBytes,
             data.size_bytes()
         );
     }
@@ -138,93 +145,91 @@ namespace benzin
         {
             std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> D3D12Layouts; // RowPitch aligned by D3D12_TEXTURE_DATA_PITCH_ALIGNMENT
             std::vector<uint32_t> RowCounts;
-            std::vector<uint64_t> RowSizes;
+            std::vector<uint64_t> RowSizesInBytes;
 
             CopyableFootprints(size_t size)
             {
                 D3D12Layouts.resize(size);
                 RowCounts.resize(size);
-                RowSizes.resize(size);
+                RowSizesInBytes.resize(size);
             }
         };
 
         BenzinAssert(texture.GetD3D12Resource() != nullptr);
         BenzinAssert(!subResources.empty());
 
-        constexpr uint32_t firstSubresource = 0;
-
         CopyableFootprints copyableFootprits{ subResources.size() };
 
         // Init CopyableFootprints and allocate memory in UploadBuffer
         {
-            Bytes64 resourceSize = 0;
+            uint64_t resourceSizeInBytes = 0;
 
             ComPtr<ID3D12Device> d3d12Device;
             BenzinD3D12Call(texture.GetD3D12Resource()->GetDevice(IID_PPV_ARGS(&d3d12Device)));
 
             const D3D12_RESOURCE_DESC d3d12TextureDesc = texture.GetD3D12Resource()->GetDesc();
-            const Bytes64 offset = AllocateInUploadBuffer(0, GfxConfig::s_TextureAlignment);
+            const uint64_t offsetInBytes = AllocateInUploadBuffer(0, GfxConfig::s_TextureAlignment);
 
             d3d12Device->GetCopyableFootprints(
                 &d3d12TextureDesc,
-                firstSubresource,
+                0, // first sub resource index
                 (uint32_t)subResources.size(),
-                offset,
+                offsetInBytes,
                 copyableFootprits.D3D12Layouts.data(),
                 copyableFootprits.RowCounts.data(),
-                copyableFootprits.RowSizes.data(),
-                &resourceSize
+                copyableFootprits.RowSizesInBytes.data(),
+                &resourceSizeInBytes
             );
 
-            AllocateInUploadBuffer(resourceSize, GfxConfig::s_TextureAlignment);
+            AllocateInUploadBuffer(resourceSizeInBytes, GfxConfig::s_TextureAlignment);
         }
 
-        // Copying subresources to UploadBuffer
+        // Copying sub-resources to UploadBuffer
         // Go down to rows and copy it
         {
             const MemoryWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSize() };
 
-            for (size_t subResourceIndex = 0; subResourceIndex < subResources.size(); ++subResourceIndex)
+            for (uint32_t subResourceIndex = 0; subResourceIndex < (uint32_t)subResources.size(); ++subResourceIndex)
             {
                 const SubResourceData& subResource = subResources[subResourceIndex];
                 const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& d3d12Layout = copyableFootprits.D3D12Layouts[subResourceIndex];
 
                 // SubResource data
-                const Bytes64 destinationOffset = d3d12Layout.Offset;
+                const uint64_t destOffsetInBytes = d3d12Layout.Offset;
                 const std::byte* sourceData = subResource.Data;
 
                 for (uint32_t sliceIndex = 0; sliceIndex < d3d12Layout.Footprint.Depth; ++sliceIndex)
                 {
                     const uint64_t rowCount = copyableFootprits.RowCounts[subResourceIndex];
-                    const uint64_t destinationSlicePitch = d3d12Layout.Footprint.RowPitch * rowCount;
+                    const uint64_t destSlicePitchInBytes = d3d12Layout.Footprint.RowPitch * rowCount;
 
                     // Slice data
-                    const Bytes64 destinationSliceOffset = destinationOffset + destinationSlicePitch * sliceIndex;
-                    const std::byte* sourceSliceData = sourceData + subResource.SlicePitch * sliceIndex;
+                    const uint64_t destSliceOffsetInBytes = destOffsetInBytes + destSlicePitchInBytes * sliceIndex;
+                    const std::byte* sourceSliceData = sourceData + subResource.SlicePitchInBytes * sliceIndex;
 
                     for (uint32_t rowIndex = 0; rowIndex < rowCount; ++rowIndex)
                     {
-                        const Bytes64 destinationRowPitch = d3d12Layout.Footprint.RowPitch;
+                        const uint64_t destRowPitchInBytes = d3d12Layout.Footprint.RowPitch;
 
                         // Row data
-                        const Bytes64 destinationRowOffset = destinationSliceOffset + destinationRowPitch * rowIndex;
-                        const std::byte* sourceRowData = sourceSliceData + subResource.RowPitch * rowIndex;
+                        const uint64_t destRowOffsetInBytes = destSliceOffsetInBytes + destRowPitchInBytes * rowIndex;
+                        const std::byte* sourceRowData = sourceSliceData + subResource.RowPitchInBytes * rowIndex;
 
-                        const Bytes64 rowSize = copyableFootprits.RowSizes[subResourceIndex];
-                        writer.WriteBytes(std::span{ sourceRowData, rowSize }, destinationRowOffset);
+                        const uint64_t rowSizeInBytes = copyableFootprits.RowSizesInBytes[subResourceIndex];
+                        writer.WriteBytes(std::span{ sourceRowData, rowSizeInBytes }, destRowOffsetInBytes);
                     }
                 }
             }
         }
 
         // Copy to texture
-        for (size_t i = 0; i < subResources.size(); ++i)
+        for (uint32_t i = 0; i < (uint32_t)subResources.size(); ++i)
         {
             const D3D12_TEXTURE_COPY_LOCATION destination
             {
                 .pResource = texture.GetD3D12Resource(),
                 .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-                .SubresourceIndex = (uint32_t)i + firstSubresource,
+                .SubresourceIndex = i,
             };
 
             const D3D12_TEXTURE_COPY_LOCATION source
@@ -239,41 +244,52 @@ namespace benzin
         }
     }
 
-    void CopyCmdList::UploadToTextureTopMip(Texture& texture, std::span<const std::byte> data)
+    void CopyCmdList::UploadToTexture(Texture& texture, std::span<const std::byte> data)
     {
-        const Bytes pixelSize = GetFormatSize(texture.GetFormat());
+        BenzinAssert(texture.GetMipCount() == 1);
 
-        const SubResourceData topMipSubResource
+        const uint32_t pixelSizeInBytes = GetFormatSize(texture.GetFormat());
+        const uint64_t rowPitchInBytes = pixelSizeInBytes * texture.GetWidth();
+        const uint64_t slicePitchInBytes = rowPitchInBytes * texture.GetHeight();
+
+        BenzinAssert(slicePitchInBytes * texture.GetDepth() == data.size_bytes());
+
+        std::vector<SubResourceData> subResources;
+        subResources.reserve(texture.GetDepth());
+
+        for (uint16_t depthIndex = 0; depthIndex < texture.GetDepth(); ++depthIndex)
         {
-            .Data = data.data(),
-            .RowPitch = pixelSize * texture.GetWidth(),
-            .SlicePitch = pixelSize * texture.GetWidth() * texture.GetHeight(),
-        };
+            subResources.push_back(SubResourceData
+            {
+                .Data = data.data() + slicePitchInBytes * depthIndex,
+                .RowPitchInBytes = rowPitchInBytes,
+                .SlicePitchInBytes = slicePitchInBytes,
+            });
+        }
 
-        BenzinAssert(topMipSubResource.SlicePitch == data.size_bytes());
-        UploadToTexture(texture, { topMipSubResource });
+        UploadToTexture(texture, subResources);
     }
 
     void CopyCmdList::SetUploadBuffer(Buffer& uploadBuffer)
     {
         m_UploadBuffer = &uploadBuffer;
-        m_UploadBufferOffset = 0;
+        m_UploadBufferOffsetInBytes = 0;
     }
 
-    Bytes64 CopyCmdList::AllocateInUploadBuffer(Bytes64 size, Bytes64 alignment)
+    uint64_t CopyCmdList::AllocateInUploadBuffer(uint64_t sizeInBytes, uint64_t alignmentInBytes)
     {
         BenzinEnsure(m_UploadBuffer != nullptr);
 
-        Bytes64 alignedOffset = m_UploadBufferOffset;
-        if (alignment != 0)
+        uint64_t alignedOffsetInBytes = m_UploadBufferOffsetInBytes;
+        if (alignmentInBytes != 0)
         {
-            alignedOffset = AlignUp(m_UploadBufferOffset.GetByteCount(), alignment.GetByteCount());
+            alignedOffsetInBytes = AlignUp(m_UploadBufferOffsetInBytes, alignmentInBytes);
         }
 
-        m_UploadBufferOffset = alignedOffset + size;
-        BenzinEnsure(m_UploadBufferOffset <= m_UploadBuffer->GetSize());
+        m_UploadBufferOffsetInBytes = alignedOffsetInBytes + sizeInBytes;
+        BenzinEnsure(m_UploadBufferOffsetInBytes <= m_UploadBuffer->GetSize());
 
-        return alignedOffset;
+        return alignedOffsetInBytes;
     }
 
     // ComputeCmdList
@@ -297,10 +313,10 @@ namespace benzin
         m_D3D12GraphicsCommandList1->EndQuery(timestampQueryHeap.GetD3D12QueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP, index);
     }
 
-    void ComputeCmdList::ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffset)
+    void ComputeCmdList::ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffsetInBytes)
     {
         BenzinAssert(timestampQueryHeap.GetD3D12QueryHeap() != nullptr);
-        BenzinAssert(readbackBuffer.GetD3D12Resource() != nullptr);
+        BenzinAssert(readbackBuffer.GetD3D12Resource() != nullptr && readbackBuffer.GetMemoryType() == ResourceMemoryType::Readback);
 
         m_D3D12GraphicsCommandList1->ResolveQueryData(
             timestampQueryHeap.GetD3D12QueryHeap(),
@@ -308,7 +324,7 @@ namespace benzin
             0,
             timestampQueryHeap.GetCount(),
             readbackBuffer.GetD3D12Resource(),
-            readbackBufferOffset
+            readbackBufferOffsetInBytes
         );
     }
 

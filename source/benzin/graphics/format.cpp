@@ -4,7 +4,7 @@
 namespace benzin
 {
 
-    Bytes32 GetFormatSize(GraphicsFormat format)
+    uint32_t GetFormatSize(GraphicsFormat format)
     {
         switch (format)
         {
@@ -37,7 +37,7 @@ namespace benzin
             case R32Typeless: return 1 * (32 / 8);
         }
 
-        BenzinAssert(false, "Not supported GraphicsFormat value");
+        BenzinAssert(false, "Not supported GraphicsFormat: {}", magic_enum::enum_integer(format));
         return 0;
     }
 

@@ -424,8 +424,8 @@ namespace benzin
             }
 
             // Fill image
-            textureImage.ImageData.resize(gltfImage.image.size());
-            memcpy(textureImage.ImageData.data(), gltfImage.image.data(), gltfImage.image.size());
+            textureImage.PixelData.resize(gltfImage.image.size());
+            memcpy(textureImage.PixelData.data(), gltfImage.image.data(), gltfImage.image.size());
 
             m_OutMesh->TextureImages[textureMapping.MappedIndex] = std::move(textureImage);
         });

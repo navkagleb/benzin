@@ -78,8 +78,9 @@ namespace benzin
         bool IsCubeMap = false;
         uint32_t Width = 0;
         uint32_t Height = 0;
+        uint16_t Depth = 1;
 
-        std::vector<std::byte> ImageData;
+        std::vector<std::byte> PixelData;
     };
 
     struct MeshResource

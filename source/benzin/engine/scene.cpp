@@ -189,7 +189,7 @@ namespace benzin
         UploadAllMaterials();
     }
 
-    void Scene::PushTextures(std::span<const TextureImage> textureImages)
+    void Scene::PushTextures(std::span<TextureImage> textureImages)
     {
         if (textureImages.empty())
         {
@@ -199,9 +199,9 @@ namespace benzin
         m_TexturesData.reserve(m_TexturesData.size() + textureImages.size());
         m_Textures.reserve(m_Textures.size() + textureImages.size());
 
-        for (const auto& textureImage : textureImages)
+        for (TextureImage& textureImage : textureImages)
         {
-            m_TexturesData.push_back(std::move(textureImage.ImageData));
+            m_TexturesData.push_back(std::move(textureImage.PixelData));
 
             m_Textures.push_back(std::make_unique<Texture>(m_Device, TextureCreation
             {
@@ -276,7 +276,7 @@ namespace benzin
 
         for (const auto& [textureData, texture] : std::views::zip(m_TexturesData, m_Textures))
         {
-            cmdList.UploadToTextureTopMip(*texture, textureData);
+            cmdList.UploadToTexture(*texture, textureData);
         }
     }
 

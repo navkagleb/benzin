@@ -186,13 +186,27 @@ namespace sandbox
 
     static void DrawRayTracingShadowsSettings(RayTracing_ShadowSettings& settings)
     {
-        ImGui::Checkbox("IsEnabled###RayTracingShadows", &settings.IsEnabled);
-        ImGui::Checkbox("IsBlueNoiseUsed", &settings.IsBlueNoiseUsed);
-        ImGui::Checkbox("IsNoiseAnimated", &settings.IsNoiseAnimated);
+        ImGui::PushItemWidth(150.0f);
+        BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
+
+        ImGui::Checkbox("Enabled###RayTracingShadows", &settings.IsEnabled);
+
+        ImGui::Checkbox("Use blue noise", &settings.IsBlueNoiseUsed);
+        ImGui::Checkbox("Animate noise", &settings.IsNoiseAnimated);
+
+        ImGui::Checkbox("Freeze blue noise depth", &settings.IsBlueNoiseDepthFreezed);
+
+        ImGui::BeginDisabled();
+        auto tempBlueNoiseDepthIndex = (int)settings.BlueNoiseDepthIndex;
+        ImGui::SliderInt("Blue noise depth index", &tempBlueNoiseDepthIndex, 0, settings.BlueNoiseDepth - 1);
+        ImGui::EndDisabled();
     }
 
     static void DrawSigmaDenoiserSettings(SigmaDenoiserSettings& settings)
     {
+        ImGui::PushItemWidth(150.0f);
+        BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
+
         ImGui::Checkbox("IsEnabled###SigmaDenoiser", &settings.IsEnabled);
         ImGui::DragFloat("PlaneDistanceSensitivity %", &settings.PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
         ImGui::DragFloat("DisocclusionThreshold %", &settings.DisocclusionThreshold, 0.0001f, 0.0f, 0.2f);

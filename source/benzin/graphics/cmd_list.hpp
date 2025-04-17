@@ -65,26 +65,26 @@ namespace benzin
 
         using CmdList::CmdList;
 
-        void CopyResource(const Resource& destination, const Resource& source);
+        void CopyResource(const Resource& destResource, const Resource& sourceResource);
 
-        void UploadToBuffer(Buffer& buffer, std::span<const std::byte> data, Bytes64 offset);
+        void UploadToBuffer(Buffer& destBuffer, std::span<const std::byte> data, uint64_t destOffsetInBytes);
 
         template <typename T>
-        void UploadToBuffer(Buffer& buffer, std::span<const T> elements, size_t offsetElement = 0)
+        void UploadToBuffer(Buffer& destBuffer, std::span<const T> elements, uint32_t offsetElement = 0)
         {
-            UploadToBuffer(buffer, std::as_bytes(elements), Bytes64{ offsetElement * sizeof(T) });
+            UploadToBuffer(destBuffer, std::as_bytes(elements), offsetElement * sizeof(T));
         }
 
         void UploadToTexture(Texture& texture, const std::vector<SubResourceData>& subResources);
-        void UploadToTextureTopMip(Texture& texture, std::span<const std::byte> data);
+        void UploadToTexture(Texture& texture, std::span<const std::byte> data);
 
     private:
         void SetUploadBuffer(Buffer& uploadBuffer);
-        Bytes64 AllocateInUploadBuffer(Bytes64 size, Bytes64 alignment = 0);
+        uint64_t AllocateInUploadBuffer(uint64_t sizeInBytes, uint64_t alignmentInBytes = 0);
 
     private:
         Buffer* m_UploadBuffer = nullptr;
-        Bytes64 m_UploadBufferOffset = 0;
+        uint64_t m_UploadBufferOffsetInBytes = 0;
     };
 
     class ComputeCmdList : public CopyCmdList
@@ -96,7 +96,7 @@ namespace benzin
         // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d12/timing
         // D3D12_COMMAND_LIST_TYPE_DIRECT and D3D12_COMMAND_LIST_TYPE_COMPUTE always support timestamps
         void SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index);
-        void ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffset);
+        void ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffsetInBytes);
 
         void SetComputeCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
         void SetComputeSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);

@@ -50,19 +50,23 @@ namespace sandbox
     void RayTracing_ShadowPass::OnZeroFrameInit()
     {
         benzin::TextureImage blueNoiseImage;
-        benzin::LoadTextureImageFromDdsFile("blue_noise_64.dds", blueNoiseImage);
+        benzin::LoadTextureImageFromDdsFile("blue_noise_128_rgba_array.dds", blueNoiseImage);
 
-        benzin::MakeUniquePtr(m_BlueNoise, *ms_Device, benzin::TextureCreation
+        benzin::MakeUniquePtr(m_BlueNoiseTexture, *ms_Device, benzin::TextureCreation
         {
-            .DebugName = "BlueNoise64",
+            .DebugName = "BlueNoise",
             .Format = blueNoiseImage.Format,
             .Width = blueNoiseImage.Width,
             .Height = blueNoiseImage.Height,
+            .Depth = blueNoiseImage.Depth,
             .MipCount = 1,
         });
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoise->GetSize());
-        cmdList.UploadToTextureTopMip(*m_BlueNoise, std::as_bytes(std::span{ blueNoiseImage.ImageData }));
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoiseTexture->GetSize());
+        cmdList.UploadToTexture(*m_BlueNoiseTexture, benzin::ToSpan(blueNoiseImage.PixelData));
+
+        auto& settings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
+        settings.BlueNoiseDepth = m_BlueNoiseTexture->GetDepth();
     }
 
     void RayTracing_ShadowPass::OnRenderViewportResize()
@@ -83,10 +87,16 @@ namespace sandbox
 
     void RayTracing_ShadowPass::OnUpdate()
     {
-        const auto& shadowSettings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
+        auto& settings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
 
-        m_Consts.IsBlueNoiseUsed = shadowSettings.IsBlueNoiseUsed;
-        m_Consts.IsNoiseAnimated = shadowSettings.IsNoiseAnimated;
+        m_Consts.IsBlueNoiseUsed = settings.IsBlueNoiseUsed;
+        m_Consts.IsNoiseAnimated = settings.IsNoiseAnimated;
+
+        if (!settings.IsBlueNoiseDepthFreezed)
+        {
+            settings.BlueNoiseDepthIndex = (settings.BlueNoiseDepthIndex + 1) % settings.BlueNoiseDepth;
+            m_BlueNoiseDepthIndex = settings.BlueNoiseDepthIndex;
+        }
     }
 
     void RayTracing_ShadowPass::OnRender() const
@@ -107,7 +117,7 @@ namespace sandbox
 
             cmdList.SetComputeRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
             cmdList.SetComputeRootResource(+Depth, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
-            cmdList.SetComputeRootResource(+BlueNoise, m_BlueNoise->GetSrv());
+            cmdList.SetComputeRootResource(+BlueNoise, m_BlueNoiseTexture->GetSrv({ .DepthRange = m_BlueNoiseDepthIndex }));
 
             cmdList.SetComputeRootResource(+OutNoisyPenumbra, noisyPenumbra.GetUav());
         }

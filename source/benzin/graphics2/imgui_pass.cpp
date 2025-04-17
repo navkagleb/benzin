@@ -456,11 +456,11 @@ namespace benzin
             .MipCount = 1,
         });
 
-        const uint32_t textureSize = width * height * 4;
-        BenzinAssert(textureSize == m_FontTexture->GetSize());
+        const uint32_t textureSizeInBytes = width * height * GetFormatSize(m_FontTexture->GetFormat());
+        BenzinAssert(textureSizeInBytes == m_FontTexture->GetSize());
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_FontTexture->GetSize());
-        cmdList.UploadToTextureTopMip(*m_FontTexture, std::as_bytes(ToSpan(pixels, textureSize)));
+        cmdList.UploadToTexture(*m_FontTexture, std::as_bytes(ToSpan(pixels, textureSizeInBytes)));
     }
 
     void ImGuiPass::UpdateConsts(const ImDrawData& imDrawData)

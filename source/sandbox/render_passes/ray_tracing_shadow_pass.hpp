@@ -22,7 +22,9 @@ namespace sandbox
 
     private:
         joint::RayTracing_ShadowConsts m_Consts{};
-        std::unique_ptr<benzin::Texture> m_BlueNoise;
+
+        std::unique_ptr<benzin::Texture> m_BlueNoiseTexture;
+        uint16_t m_BlueNoiseDepthIndex = 0;
     };
 
 }

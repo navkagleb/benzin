@@ -9,8 +9,8 @@ namespace benzin
     {
         const std::byte* Data = nullptr;
 
-        size_t RowPitch = 0;
-        size_t SlicePitch = 0;
+        uint64_t RowPitchInBytes = 0;
+        uint64_t SlicePitchInBytes = 0;
     };
 
     enum class ResourceMemoryType : uint8_t

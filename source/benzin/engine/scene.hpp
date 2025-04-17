@@ -58,7 +58,7 @@ namespace benzin
         void UploadMeshesToGpu();
 
     private:
-        void PushTextures(std::span<const TextureImage> textureImages);
+        void PushTextures(std::span<TextureImage> textureImages);
 
         void UploadAllMeshData();
         void UploadAllMeshInstances();
