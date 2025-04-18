@@ -1,6 +1,7 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/render_passes/procedural_grass_pass.hpp>
 
+#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
@@ -20,6 +21,7 @@
 #include <sandbox/sandbox_render_settings.hpp>
 
 BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassResources);
+BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassStat);
 
 namespace sandbox
 {
@@ -29,6 +31,8 @@ namespace sandbox
         ms_PsoManager->Create(PsoId::ProceduralGrass, [](benzin::MeshPsoProxy& outProxy)
         {
             outProxy.Ms.FileName = "procedural_grass_pass.hlsl";
+            outProxy.Ms.Defines.push_back("CALC_STATS");
+
             outProxy.Ps.FileName = "procedural_grass_pass.hlsl";
             
             outProxy.RasterizerState.CullMode = benzin::CullMode::None;
@@ -46,6 +50,33 @@ namespace sandbox
             outProxy.DepthStencilFormat = GBufferSettings::s_DepthStencilFormat;
         });
 
+        const auto statFormat = benzin::GraphicsFormat::R32Uint;
+        const uint32_t statElementSize = benzin::GetFormatSize(statFormat);
+        const uint32_t statElementCount = (uint32_t)magic_enum::enum_count<joint::ProceduralGrassStat>();
+
+        ms_Resources->Create(BufferId::ProceduralGrass_UavStats, benzin::BufferCreation
+        {
+            .DebugName = magic_enum::enum_name(BufferId::ProceduralGrass_UavStats),
+            .Type = benzin::BufferType::Format,
+            .Format = statFormat,
+            .ElementSize = statElementSize,
+            .ElementCount = statElementCount,
+            .IsUnorderedAccessAllowed = true,
+        });
+
+        ms_Resources->Create(BufferId::ProceduralGrass_ReadbackStats, benzin::BufferCreation
+        {
+            .DebugName = magic_enum::enum_name(BufferId::ProceduralGrass_ReadbackStats),
+            .MemoryType = benzin::ResourceMemoryType::Readback,
+            .Type = benzin::BufferType::Format,
+            .Format = statFormat,
+            .ElementSize = statElementSize,
+            .ElementCount = statElementCount * benzin::CmdLineArgs::GetReadbackLatency(),
+        });
+
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ ms_Resources->Get(BufferId::ProceduralGrass_ReadbackStats), benzin::ResourceState::Common });
+
         ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
 
         auto& settings = ms_Settings->GetSection<ProceduralGrassSettings>();
@@ -59,7 +90,10 @@ namespace sandbox
     ProceduralGrassPass::~ProceduralGrassPass()
     {
         ms_PsoManager->Destroy(PsoId::ProceduralGrass);
+
         ms_Resources->Destroy(BufferId::ProceduralGrass_GrassPatches);
+        ms_Resources->Destroy(BufferId::ProceduralGrass_UavStats);
+        ms_Resources->Destroy(BufferId::ProceduralGrass_ReadbackStats);
     }
 
     void ProceduralGrassPass::OnZeroFrameInit()
@@ -110,7 +144,7 @@ namespace sandbox
             }
 
             auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
-            stats.PatchCount = grassPatchBuffer.GetElementCount();
+            stats.MaxPatchCount = grassPatchBuffer.GetElementCount();
         }
     }
 
@@ -129,6 +163,15 @@ namespace sandbox
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ProceduralGrass");
 
+        RenderBlades(cmdList);
+        CopyStats(cmdList);
+    }
+
+    void ProceduralGrassPass::RenderBlades(benzin::GraphicsCmdList& cmdList) const
+    {
+        BenzinProfile();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "RenderBlades");
+
         cmdList.SetViewport(ms_RenderViewport);
         cmdList.SetScissorRect(ms_RenderScissorRect);
 
@@ -140,6 +183,11 @@ namespace sandbox
 
         const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, benzin::ResourceState::DepthWrite);
 
+        const auto& statsBuffer = ms_Resources->Get(BufferId::ProceduralGrass_UavStats);
+        BenzinScopedResourceBarriers(cmdList, benzin::TransitionBarrier{ statsBuffer, benzin::ResourceState::UnorderedAccess });
+
+        cmdList.ClearUnorderedAccess(statsBuffer, statsBuffer.GetUav(), {});
+
         const auto& grassPatchBuffer = ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches);
 
         {
@@ -147,9 +195,36 @@ namespace sandbox
 
             cmdList.SetGraphicsRootResource(+GrassPatches, grassPatchBuffer.GetSrv());
             cmdList.SetGraphicsRootResource(+PerlinNoise, m_PerlinNoiseTexture->GetSrv());
+            cmdList.SetGraphicsRootResource(+Stats, statsBuffer.GetUav());
         }
 
-        cmdList.DispatchMesh({ grassPatchBuffer.GetElementCount(), 1, 1});
+        cmdList.DispatchMesh({ grassPatchBuffer.GetElementCount(), 1, 1 });
+    }
+
+    void ProceduralGrassPass::CopyStats(benzin::GraphicsCmdList& cmdList) const
+    {
+        BenzinProfile();
+        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "CopyStats");
+
+        const benzin::Buffer& destBuffer = ms_Resources->Get(BufferId::ProceduralGrass_ReadbackStats);
+        const benzin::Buffer& sourceBuffer = ms_Resources->Get(BufferId::ProceduralGrass_UavStats);
+
+        const uint32_t dataSizeInBytes = sourceBuffer.GetSize();
+        const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % benzin::CmdLineArgs::GetReadbackLatency()) * dataSizeInBytes;
+        const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % benzin::CmdLineArgs::GetReadbackLatency()) * dataSizeInBytes;
+
+        cmdList.CopyBufferRegion(destBuffer, destOffsetInBytes, sourceBuffer, 0, dataSizeInBytes);
+
+        destBuffer.MapReadbackData(readbackOffsetInBytes, dataSizeInBytes, [](const std::byte* mappedData)
+        {
+            const auto statValues = benzin::ToSpan((const uint32_t*)mappedData, magic_enum::enum_count<joint::ProceduralGrassStat>());
+
+            auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
+            stats.PatchCount = statValues[+joint::ProceduralGrassStat::PatchCount];
+            stats.BladeCount = statValues[+joint::ProceduralGrassStat::BladeCount];
+            stats.VertexCount = statValues[+joint::ProceduralGrassStat::VertexCount];
+            stats.TriangleCount = statValues[+joint::ProceduralGrassStat::TriangleCount];
+        });
     }
 
 }

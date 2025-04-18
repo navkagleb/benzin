@@ -142,6 +142,7 @@ namespace benzin
     BenzinImplCmdLineArg(GetAdapterIndex, g_AdapterIndex)
     BenzinImplCmdLineArg(GetAdapterName, g_AdapterName)
     BenzinImplCmdLineArg(GetFrameInFlightCount, g_FrameInFlightCount)
+    BenzinImplCmdLineArg(GetReadbackLatency, g_FrameInFlightCount + 1)
     BenzinImplCmdLineArg(GetBackBufferFormat, g_BackBufferFormat)
     BenzinImplCmdLineArg(IsGpuUploadHeapsEnabled, g_IsGpuUploadHeapsEnabled)
     BenzinImplCmdLineArg(IsGpuValidationEnabled, g_IsGpuValidationEnabled)

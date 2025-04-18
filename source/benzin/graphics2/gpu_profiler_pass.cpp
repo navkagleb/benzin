@@ -17,10 +17,10 @@ namespace benzin
 
         ms_GpuProfiler->ForceProfileUnprofiledTimestamps([&cmdList, &timestampQueryHeap](uint32_t timestampIndex)
         {
-                cmdList.SetTimestamp(timestampQueryHeap, timestampIndex);
+            cmdList.SetTimestamp(timestampQueryHeap, timestampIndex);
         });
 
-        cmdList.ResolveTimestamps(timestampQueryHeap, ms_GpuProfiler->GetReadbackBuffer(), ms_GpuProfiler->GetResolveReadbackBufferOffset());
+        cmdList.ResolveTimestamps(timestampQueryHeap, ms_GpuProfiler->GetReadbackBuffer(), ms_GpuProfiler->GetResolveReadbackOffsetInBytes());
     }
 
 }

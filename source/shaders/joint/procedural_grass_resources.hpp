@@ -15,6 +15,14 @@ namespace joint
         MaxBladeCountPerPatch = MaxVertexCountPerThreadGroup / VertexCountPerBlade,
     };
 
+    enum class ProceduralGrassStat
+    {
+        PatchCount,
+        BladeCount,
+        VertexCount,
+        TriangleCount,
+    };
+
     struct ProceduralGrassConsts
     {
         float3 BaseColor;
@@ -35,6 +43,7 @@ namespace joint
     {
         GrassPatches,
         PerlinNoise,
+        Stats,
     };
 
 }

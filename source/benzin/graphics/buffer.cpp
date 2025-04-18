@@ -401,7 +401,27 @@ namespace benzin
         });
     }
 
-} // namespace benzin
+    void Buffer::MapReadbackData(uint64_t offsetInBytes, uint32_t dataSizeInBytes, const MapReadbackCallback& callback) const
+    {
+        BenzinAssert(m_MemoryType == ResourceMemoryType::Readback);
+        BenzinAssert(offsetInBytes + dataSizeInBytes <= GetSize());
+        BenzinAssert(callback);
+
+        const D3D12_RANGE d3d12ReadbackRange
+        {
+            .Begin = offsetInBytes,
+            .End = offsetInBytes + dataSizeInBytes,
+        };
+
+        std::byte* mappedData = nullptr;
+        BenzinD3D12Call(m_D3D12Resource->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&mappedData)));
+
+        callback(mappedData);
+
+        m_D3D12Resource->Unmap(0, nullptr);
+    }
+
+}
 
 BenzinDefineStdHashForType(benzin::BufferSrv, bufferSrv,
 {

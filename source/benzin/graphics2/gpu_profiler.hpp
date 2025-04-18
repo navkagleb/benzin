@@ -26,7 +26,7 @@ namespace benzin
         const auto& GetTimestampQueryHeap() const { return *m_TimestampQueryHeap; }
         const auto& GetReadbackBuffer() const { return *m_ReadbackBuffer; }
 
-        auto GetResolveReadbackBufferOffset() const { return m_ResolveFrameData->ReadbackBufferOffset; }
+        auto GetResolveReadbackOffsetInBytes() const { return m_ResolveFrameData->ReadbackOffsetInBytes; }
 
         std::span<const ProfileEvent> GetSortedEvents() const;
 
@@ -42,7 +42,7 @@ namespace benzin
         uint8_t GetBeginTimestampIndex(std::string_view name);
         uint8_t GetEndTimestampIndex();
 
-        void GetTimestampsFromReadbackBuffer();
+        void GetTimestampsFromReadbackBuffer(const uint64_t* mappedTimestamps);
 
     private:
         static constexpr uint8_t ms_MaxTimestampCount = std::numeric_limits<uint8_t>::max();
@@ -64,8 +64,7 @@ namespace benzin
             std::bitset<ms_MaxTimestampCount> ProfiledTimestamps;
             IndexAllocator ReadbackIndexAllocator{ ms_MaxTimestampCount };
 
-            uint64_t ReadbackBufferOffset = 0;
-            uint64_t* MappedTimestamps = nullptr;
+            uint64_t ReadbackOffsetInBytes = 0;
         };
 
         double m_InverseFrequency = 0.0;

@@ -18,7 +18,7 @@ namespace benzin
 #define BenzinD3D12Call(hrExpression, ...) \
     do \
     { \
-        const HRESULT _hr = D3D12Asserter::ValidateHr(hrExpression); \
+        const HRESULT _hr = benzin::D3D12Asserter::ValidateHr(hrExpression); \
         if (FAILED(_hr)) \
         { \
             const auto messages = std::to_array<std::string>({ benzin::ArgsToFormatString(__VA_ARGS__), benzin::D3D12Asserter::GetHrMessage(_hr) }); \

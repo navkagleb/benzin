@@ -116,27 +116,38 @@ namespace benzin
         m_D3D12GraphicsCommandList1->CopyResource(destResource.GetD3D12Resource(), sourceResource.GetD3D12Resource());
     }
 
-    void CopyCmdList::UploadToBuffer(Buffer& destBuffer, std::span<const std::byte> data, uint64_t destOffsetInBytes)
+    void CopyCmdList::CopyBufferRegion(const Buffer& destBuffer, uint64_t destOffsetInBytes, const Buffer& sourceBuffer, uint64_t sourceOffsetInBytes, uint64_t dataSizeInBytes)
     {
-        BenzinAssert(m_UploadBuffer->GetD3D12Resource() != nullptr);
-
         BenzinAssert(destBuffer.GetD3D12Resource() != nullptr);
-        BenzinAssert(!data.empty());
+        BenzinAssert(sourceBuffer.GetD3D12Resource() != nullptr);
+        BenzinAssert(dataSizeInBytes != 0);
 
-        const uint64_t offsetInBytes = AllocateInUploadBuffer(data.size_bytes());
+        BenzinScopedResourceBarriers(
+            *this,
+            TransitionBarrier{ destBuffer, ResourceState::CopyDestination },
+            TransitionBarrier{ sourceBuffer, ResourceState::CopySource },
+        );
 
-        const MemoryWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSize() };
-        writer.WriteBytes(data, offsetInBytes);
-
-        BenzinScopedResourceBarriers(*this, TransitionBarrier{ destBuffer, ResourceState::CopyDestination });
-        
         m_D3D12GraphicsCommandList1->CopyBufferRegion(
             destBuffer.GetD3D12Resource(),
             destOffsetInBytes,
-            m_UploadBuffer->GetD3D12Resource(),
-            offsetInBytes,
-            data.size_bytes()
+            sourceBuffer.GetD3D12Resource(),
+            sourceOffsetInBytes,
+            dataSizeInBytes
         );
+    }
+
+    void CopyCmdList::UploadToBuffer(Buffer& destBuffer, std::span<const std::byte> data, uint64_t destOffsetInBytes)
+    {
+        BenzinAssert(m_UploadBuffer != nullptr);
+        BenzinAssert(!data.empty());
+
+        const uint64_t uploadOffsetInBytes = AllocateInUploadBuffer(data.size_bytes());
+
+        const MemoryWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSize() };
+        writer.WriteBytes(data, uploadOffsetInBytes);
+
+        CopyBufferRegion(destBuffer, destOffsetInBytes, *m_UploadBuffer, uploadOffsetInBytes, data.size_bytes());
     }
 
     void CopyCmdList::UploadToTexture(Texture& texture, const std::vector<SubResourceData>& subResources)
@@ -313,7 +324,7 @@ namespace benzin
         m_D3D12GraphicsCommandList1->EndQuery(timestampQueryHeap.GetD3D12QueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP, index);
     }
 
-    void ComputeCmdList::ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffsetInBytes)
+    void ComputeCmdList::ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackOffsetInBytes)
     {
         BenzinAssert(timestampQueryHeap.GetD3D12QueryHeap() != nullptr);
         BenzinAssert(readbackBuffer.GetD3D12Resource() != nullptr && readbackBuffer.GetMemoryType() == ResourceMemoryType::Readback);
@@ -324,7 +335,7 @@ namespace benzin
             0,
             timestampQueryHeap.GetCount(),
             readbackBuffer.GetD3D12Resource(),
-            readbackBufferOffsetInBytes
+            readbackOffsetInBytes
         );
     }
 

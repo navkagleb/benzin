@@ -176,12 +176,10 @@ namespace sandbox
         std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
         BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
-        const uint32_t maxBladeCount = stats.PatchCount * +MaxBladeCountPerPatch;
-
-        ImGui::Text(BenzinFormatData("Patch count: {:L}", stats.PatchCount));
-        ImGui::Text(BenzinFormatData("Max blade count: {:L}", maxBladeCount));
-        ImGui::Text(BenzinFormatData("Max vertex count: {:L}", maxBladeCount * +VertexCountPerBlade));
-        ImGui::Text(BenzinFormatData("Max triangle count: {:L}", maxBladeCount * +TriangleCountPerBlade));
+        ImGui::Text(BenzinFormatData("Patch count: {:L} (Max: {:L})", stats.PatchCount, stats.MaxPatchCount));
+        ImGui::Text(BenzinFormatData("Blade count: {:L} (Max: {:L})", stats.BladeCount, stats.MaxPatchCount * +MaxBladeCountPerPatch));
+        ImGui::Text(BenzinFormatData("Vertex count: {:L}", stats.VertexCount));
+        ImGui::Text(BenzinFormatData("Triangle count: {:L}", stats.TriangleCount));
     }
 
     static void DrawRayTracingShadowsSettings(RayTracing_ShadowSettings& settings)

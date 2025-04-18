@@ -6,6 +6,9 @@ namespace benzin
     enum class BufferId : uint32_t
     {
         ProceduralGrass_GrassPatches,
+        ProceduralGrass_UavStats,
+        ProceduralGrass_ReadbackStats,
+
         ToneMapping_LuminanceHistogram,
     };
 

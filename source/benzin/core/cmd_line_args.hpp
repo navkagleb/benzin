@@ -20,6 +20,7 @@ namespace benzin
         auto GetAdapterIndex() -> uint32_t;
         auto GetAdapterName() -> std::string_view;
         auto GetFrameInFlightCount() -> uint32_t;
+        auto GetReadbackLatency() -> uint32_t;
         auto GetBackBufferFormat() -> GraphicsFormat;
         auto IsGpuUploadHeapsEnabled() -> bool;
 

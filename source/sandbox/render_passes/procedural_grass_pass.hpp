@@ -4,6 +4,11 @@
 
 #include <shaders/joint/procedural_grass_resources.hpp>
 
+namespace benzin
+{
+    class GraphicsCmdList;
+}
+
 namespace sandbox
 {
 
@@ -19,6 +24,9 @@ namespace sandbox
         void OnZeroFrameInit() override;
         void OnUpdate() override;
         void OnRender() const override;
+
+        void RenderBlades(benzin::GraphicsCmdList& cmdList) const;
+        void CopyStats(benzin::GraphicsCmdList& cmdList) const;
 
     private:
         std::unique_ptr<benzin::Texture> m_PerlinNoiseTexture;

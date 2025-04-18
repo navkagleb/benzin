@@ -34,6 +34,8 @@ namespace benzin
     class Buffer : public Resource
     {
     public:
+        using MapReadbackCallback = std::function<void(const std::byte* mappedData)>;
+
         explicit Buffer(Device& device, const BufferCreation& creation);
         ~Buffer() override;
 
@@ -60,6 +62,8 @@ namespace benzin
         Descriptor CreateDetachedSrv(IndexRange32 elementRange = {}, bool isValidationEnabled = true) const;
         Descriptor CreateDetachedUav() const;
         Descriptor CreateDetachedCbv(uint32_t elementIndex) const;
+
+        void MapReadbackData(uint64_t offsetInBytes, uint32_t dataSizeInBytes, const MapReadbackCallback& callback) const;
 
     private:
         ResourceMemoryType m_MemoryType = ResourceMemoryType::Default;

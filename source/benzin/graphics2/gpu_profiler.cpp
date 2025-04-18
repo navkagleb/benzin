@@ -6,7 +6,6 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/d3d12_assert.hpp>
 #include <benzin/graphics/query_heap.hpp>
 #include <benzin/utility/time_utils.hpp>
 
@@ -40,22 +39,14 @@ namespace benzin
             .DebugName = "GpuProfiler_ReadbackBuffer",
             .MemoryType = ResourceMemoryType::Readback,
             .ElementSize = sizeof(uint64_t) * ms_MaxTimestampCount,
-            .ElementCount = CmdLineArgs::GetFrameInFlightCount() + 1,
+            .ElementCount = CmdLineArgs::GetReadbackLatency(),
         });
 
-        m_FrameData.resize(m_ReadbackBuffer->GetElementCount());
+        m_FrameData.resize(CmdLineArgs::GetReadbackLatency());
         for (uint32_t i = 0; i < m_FrameData.size(); ++i)
         {
             auto& frameData = m_FrameData[i];
-            frameData.ReadbackBufferOffset = m_ReadbackBuffer->GetElementSize() * i;
-
-            const D3D12_RANGE d3d12ReadbackRange
-            {
-                .Begin = frameData.ReadbackBufferOffset,
-                .End = frameData.ReadbackBufferOffset + m_ReadbackBuffer->GetElementSize(),
-            };
-
-            BenzinD3D12Call(m_ReadbackBuffer->GetD3D12Resource()->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&frameData.MappedTimestamps)));
+            frameData.ReadbackOffsetInBytes = m_ReadbackBuffer->GetElementSize() * i;
         }
 
         m_SortedEvents.reserve(ms_MaxEventCount);
@@ -63,8 +54,6 @@ namespace benzin
 
     GpuProfiler::~GpuProfiler()
     {
-        m_ReadbackBuffer->GetD3D12Resource()->Unmap(0, nullptr);
-
         for (auto& frameData : m_FrameData)
         {
             for (const auto& [_, readbackIndices] : frameData.EventReadbackIndices)
@@ -87,12 +76,19 @@ namespace benzin
     {
         BenzinProfile();
 
-        GetTimestampsFromReadbackBuffer();
+        if (m_CopyFrameData != nullptr)
+        {
+            m_ReadbackBuffer->MapReadbackData(m_CopyFrameData->ReadbackOffsetInBytes, m_ReadbackBuffer->GetElementSize(), [this](const std::byte* mappedData)
+            {
+                const auto* mappedTimestamps = (const uint64_t*)mappedData;
+                GetTimestampsFromReadbackBuffer(mappedTimestamps);
+            });
+        }
 
         m_SortCounter = 0;
 
-        const auto resolveIndex = cpuFrameIndex % m_ReadbackBuffer->GetElementCount();
-        const auto copyIndex = (cpuFrameIndex + 1) % m_ReadbackBuffer->GetElementCount();
+        const auto resolveIndex = cpuFrameIndex % CmdLineArgs::GetReadbackLatency();
+        const auto copyIndex = (cpuFrameIndex + 1) % CmdLineArgs::GetReadbackLatency();
 
         m_ResolveFrameData = &m_FrameData[resolveIndex];
         m_CopyFrameData = &m_FrameData[copyIndex];
@@ -187,7 +183,7 @@ namespace benzin
         return timestampIndex;
     }
 
-    void GpuProfiler::GetTimestampsFromReadbackBuffer()
+    void GpuProfiler::GetTimestampsFromReadbackBuffer(const uint64_t* mappedTimestamps)
     {
         const auto eventCount = m_HashToEventInfo.size();
 
@@ -220,8 +216,8 @@ namespace benzin
                     continue;
                 }
 
-                const auto beginTimestamp = m_CopyFrameData->MappedTimestamps[beginTimestampIndex];
-                const auto endTimestamp = m_CopyFrameData->MappedTimestamps[endTimestampIndex];
+                const auto beginTimestamp = mappedTimestamps[beginTimestampIndex];
+                const auto endTimestamp = mappedTimestamps[endTimestampIndex];
 
                 const std::chrono::duration<double> diff{ (endTimestamp - beginTimestamp) * m_InverseFrequency };
                 sortedEvent.Us += std::chrono::round<std::chrono::microseconds>(diff);

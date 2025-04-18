@@ -66,6 +66,7 @@ namespace benzin
         using CmdList::CmdList;
 
         void CopyResource(const Resource& destResource, const Resource& sourceResource);
+        void CopyBufferRegion(const Buffer& destBuffer, uint64_t destOffsetInBytes, const Buffer& sourceBuffer, uint64_t sourceOffsetInBytes, uint64_t dataSizeInBytes);
 
         void UploadToBuffer(Buffer& destBuffer, std::span<const std::byte> data, uint64_t destOffsetInBytes);
 
@@ -96,7 +97,7 @@ namespace benzin
         // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d12/timing
         // D3D12_COMMAND_LIST_TYPE_DIRECT and D3D12_COMMAND_LIST_TYPE_COMPUTE always support timestamps
         void SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index);
-        void ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackBufferOffsetInBytes);
+        void ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackOffsetInBytes);
 
         void SetComputeCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
         void SetComputeSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);

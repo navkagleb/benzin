@@ -29,7 +29,12 @@ namespace sandbox
 
     struct ProceduralGrassStats
     {
+        uint32_t MaxPatchCount = 0;
+
         uint32_t PatchCount = 0;
+        uint32_t BladeCount = 0;
+        uint32_t VertexCount = 0;
+        uint32_t TriangleCount = 0;
     };
 
     struct ProceduralGrassSettings
