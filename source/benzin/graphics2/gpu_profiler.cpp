@@ -85,6 +85,10 @@ namespace benzin
 
     void GpuProfiler::BeginFrame(uint64_t cpuFrameIndex)
     {
+        BenzinProfile();
+
+        GetTimestampsFromReadbackBuffer();
+
         m_SortCounter = 0;
 
         const auto resolveIndex = cpuFrameIndex % m_ReadbackBuffer->GetElementCount();
@@ -94,11 +98,6 @@ namespace benzin
         m_CopyFrameData = &m_FrameData[copyIndex];
 
         m_ResolveFrameData->ProfiledTimestamps.reset();
-    }
-
-    void GpuProfiler::EndFrame()
-    {
-        GetTimestampsFromReadbackBuffer();
     }
 
     void GpuProfiler::ForceProfileUnprofiledTimestamps(const UnprofiledTimestampCallback& callback)
@@ -190,8 +189,6 @@ namespace benzin
 
     void GpuProfiler::GetTimestampsFromReadbackBuffer()
     {
-        BenzinProfile();
-
         const auto eventCount = m_HashToEventInfo.size();
 
         const bool isNeedResize = m_SortedEvents.size() != eventCount;

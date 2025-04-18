@@ -185,6 +185,8 @@ namespace sandbox
         const uint32_t lightCount = ms_Scene->GetActiveLightCount();
         for (uint16_t sliceIndex = 0; sliceIndex < lightCount; ++sliceIndex)
         {
+            BenzinScopeProfile(std::format("Step: {}", sliceIndex));
+
             if (lightCount != 1)
             {
                 BenzinGpuEvent(cmdList, "Step");

@@ -8,7 +8,7 @@ namespace benzin
 
     struct EventInfo
     {
-        const char* Name = nullptr;
+        std::string Name;
 
         uint8_t Depth : 6 = 0;
         uint8_t IsParent : 1 = false;
@@ -53,14 +53,14 @@ namespace benzin
         return HashCombine(parentHash, name);
     }
 
-    static uint64_t CreateOrUpdateEventInfo(std::string_view name)
+    static uint64_t CreateOrUpdateEventInfo(std::string&& name)
     {
         BenzinEnsure(!name.empty());
         BenzinEnsure(g_Data.HashToEventInfo.size() < ProfilerData::s_MaxEventCount);
 
         const uint64_t hash = CalcEventHash(name);
 
-        auto&& [it, _] = g_Data.HashToEventInfo.try_emplace(hash, name.data(), (uint8_t)g_Data.EventStack.size());
+        auto&& [it, _] = g_Data.HashToEventInfo.try_emplace(hash, std::move(name), (uint8_t)g_Data.EventStack.size());
         auto& eventInfo = it->second;
 
         if (!eventInfo.IsProcessed)
@@ -108,9 +108,9 @@ namespace benzin
         return g_Data.SortedEvents;
     }
 
-    void Profiler::BeginScope(std::string_view name)
+    void Profiler::BeginScope(std::string&& name)
     {
-        const uint64_t hash = CreateOrUpdateEventInfo(name);
+        const uint64_t hash = CreateOrUpdateEventInfo(std::move(name));
 
         g_Data.EventStack.push(EventStackInfo
         {
@@ -144,25 +144,27 @@ namespace benzin
 
         for (auto& [_, eventInfo] : g_Data.HashToEventInfo)
         {
-            eventInfo.IsProcessed = false;
+            BenzinAssert(!eventInfo.Name.empty());
 
             auto& sortedEvent = g_Data.SortedEvents[eventInfo.SortIndex];
             sortedEvent.Us = std::exchange(eventInfo.Us, std::chrono::microseconds::zero());
 
             if (isNeedResize)
             {
-                sortedEvent.Name = eventInfo.Name;
+                sortedEvent.Name = eventInfo.Name.c_str();
                 sortedEvent.Depth = eventInfo.Depth;
                 sortedEvent.IsParent = eventInfo.IsParent;
             }
+
+            eventInfo.IsProcessed = false;
         }
     }
 
     // ScopedProfileEvent
 
-    ScopedProfileEvent::ScopedProfileEvent(std::string_view name)
+    ScopedProfileEvent::ScopedProfileEvent(std::string&& name)
     {
-        Profiler::BeginScope(name);
+        Profiler::BeginScope(std::move(name));
     }
 
     ScopedProfileEvent::~ScopedProfileEvent()

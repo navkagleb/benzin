@@ -2,6 +2,7 @@
 #include <benzin/graphics/cmd_queue.hpp>
 
 #include <benzin/core/cmd_line_args.hpp>
+#include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/descriptor_manager.hpp>
@@ -88,6 +89,8 @@ namespace benzin
 
     void GraphicsCmdQueue::ResetCmdList()
     {
+        BenzinProfile();
+
         auto& frameContext = m_FrameContexts[m_Device.GetActiveFrameIndex()];
 
         auto* d3d12CommandAllocator = frameContext.D3D12CommandAllocator;
@@ -110,6 +113,8 @@ namespace benzin
 
     void GraphicsCmdQueue::SubmitCmdList()
     {
+        BenzinProfile();
+
         ID3D12GraphicsCommandList* d3d12GraphicsCommandList = m_CmdList.GetD3D12GraphicsCommandList();
         BenzinD3D12Call(d3d12GraphicsCommandList->Close());
 

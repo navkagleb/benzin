@@ -24,7 +24,7 @@ namespace benzin
         static std::span<const ProfileEvent> GetSortedEvents();
 
     private:
-        static void BeginScope(std::string_view name);
+        static void BeginScope(std::string&& name);
         static void EndScope();
 
         static void SortEvents();
@@ -33,7 +33,7 @@ namespace benzin
     class ScopedProfileEvent
     {
     public:
-        explicit ScopedProfileEvent(std::string_view name);
+        explicit ScopedProfileEvent(std::string&& name);
         ~ScopedProfileEvent();
     };
 
@@ -41,3 +41,6 @@ namespace benzin
 
 #define BenzinScopeProfile(name) const benzin::ScopedProfileEvent BenzinUniqueVariableName(_scopedProfilerEvent){ name }
 #define BenzinProfile() BenzinScopeProfile(__FUNCTION__)
+
+// NOTE: Do not use Profiler macros in OnEvent method/functions.
+//       Window::MessageHandler can be called several times per frame which breaks the structure of events

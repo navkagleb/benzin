@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/system/window.hpp"
 
+#include "benzin/core/profiler.hpp"
 #include "benzin/graphics/common.hpp"
 #include "benzin/system/input.hpp"
 #include "benzin/system/key_event.hpp"
@@ -98,6 +99,8 @@ namespace benzin
 
     void Window::ProcessEvents()
     {
+        BenzinProfile();
+
         MSG message{ nullptr };
 
         while (::PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))

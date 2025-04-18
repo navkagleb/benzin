@@ -32,7 +32,6 @@ namespace benzin
 
     public:
         void BeginFrame(uint64_t cpuFrameIndex);
-        void EndFrame();
 
         void ForceProfileUnprofiledTimestamps(const UnprofiledTimestampCallback& callback);
 

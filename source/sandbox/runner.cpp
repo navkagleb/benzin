@@ -199,8 +199,6 @@ namespace sandbox
 
     void Runner::WindowEventCallback(benzin::Event& event)
     {
-        BenzinProfile();
-
         const benzin::EventDispatcher dispatcher{ event };
         {
             dispatcher.Dispatch<benzin::WindowCloseEvent>([this]
@@ -276,6 +274,9 @@ namespace sandbox
         m_Device->GetGraphicsCmdQueue().ResetCmdList();
         m_GpuProfiler->BeginFrame(m_Device->GetCpuFrameIndex());
         m_ConstBufferPool->BeginFrame();
+
+        m_ShaderManager->CheckForNewShader();
+        m_Device->ProcessDeferredReleaseQueues();
     }
 
     void Runner::EndFrame()
@@ -314,11 +315,6 @@ namespace sandbox
 
             BenzinTrace("Viewport is resized: {} x {}. CpuFrame: {}", viewportWidth, viewportHeight, m_Device->GetCpuFrameIndex());
         }
-
-        m_Device->ProcessDeferredReleaseQueues();
-
-        m_GpuProfiler->EndFrame();
-        m_ShaderManager->CheckForNewShader();
     }
 
     void Runner::OnUpdate()

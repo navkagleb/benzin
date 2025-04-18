@@ -132,8 +132,6 @@ namespace benzin
 
     void ImGuiManager::OnEvent(Event& event)
     {
-        BenzinProfile();
-
         const EventDispatcher dispatcher{ event };
         dispatcher.Dispatch<KeyPressedEvent>([this](const auto& event)
         {
