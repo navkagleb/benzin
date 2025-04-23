@@ -50,6 +50,7 @@ namespace benzin
 
     struct MeshPsoProxy : GraphicsPsoProxy
     {
+        ShaderProxy As{ "AsMain" };
         ShaderProxy Ms{ "MsMain" };
     };
 

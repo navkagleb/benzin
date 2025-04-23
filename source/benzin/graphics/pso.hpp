@@ -37,10 +37,11 @@ namespace benzin
     #pragma warning(pop)
 #endif
 
+    using PsoStreamElement_AmplificationShader = PsoStreamElement<D3D12_SHADER_BYTECODE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS>;
     using PsoStreamElement_BlendState = PsoStreamElement<D3D12_BLEND_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND>;
     using PsoStreamElement_ComputeShader = PsoStreamElement<D3D12_SHADER_BYTECODE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS>;
-    using PsoStreamElement_DepthStencilState = PsoStreamElement<D3D12_DEPTH_STENCIL_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL>;
     using PsoStreamElement_DepthStencilFormat = PsoStreamElement< DXGI_FORMAT, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT>;
+    using PsoStreamElement_DepthStencilState = PsoStreamElement<D3D12_DEPTH_STENCIL_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL>;
     using PsoStreamElement_InputLayout = PsoStreamElement<D3D12_INPUT_LAYOUT_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_INPUT_LAYOUT>;
     using PsoStreamElement_MeshShader = PsoStreamElement<D3D12_SHADER_BYTECODE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS>;
     using PsoStreamElement_PixelShader = PsoStreamElement<D3D12_SHADER_BYTECODE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS>;
@@ -80,6 +81,7 @@ namespace benzin
 
     struct MeshPsoStream : GraphicsPsoStream
     {
+        PsoStreamElement_AmplificationShader As;
         PsoStreamElement_MeshShader Ms;
 
         using GraphicsPsoStream::GraphicsPsoStream;
@@ -174,13 +176,16 @@ namespace benzin
         void ChangeVs(ShaderBytecode bytecode);
     };
 
-    class MeshPso : public GraphicsPso<MeshPsoStream, 2>
+    class MeshPso : public GraphicsPso<MeshPsoStream, 3>
     {
     public:
-        using Super = GraphicsPso<MeshPsoStream, 2>;
+        using Super = GraphicsPso<MeshPsoStream, 3>;
         using Super::Super;
 
+        void SetAs(ShaderInfo&& shader, ShaderBytecode bytecode);
         void SetMs(ShaderInfo&& shader, ShaderBytecode bytecode);
+
+        void ChangeAs(ShaderBytecode bytecode);
         void ChangeMs(ShaderBytecode bytecode);
     };
 

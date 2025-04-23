@@ -156,11 +156,11 @@ namespace benzin
 #endif
 
     template class Pso<VertexPsoStream, 2>;
-    template class Pso<MeshPsoStream, 2>;
+    template class Pso<MeshPsoStream, 3>;
     template class Pso<ComputePsoStream, 1>;
 
     template class GraphicsPso<VertexPsoStream, 2>;
-    template class GraphicsPso<MeshPsoStream, 2>;
+    template class GraphicsPso<MeshPsoStream, 3>;
 
     // PsoStreamBase
 
@@ -353,10 +353,24 @@ namespace benzin
 
     // MeshPso
 
+    void MeshPso::SetAs(ShaderInfo&& shader, ShaderBytecode bytecode)
+    {
+        Pso::AddShader(std::move(shader), ShaderType::Amplification);
+        ChangeAs(bytecode);
+    }
+
     void MeshPso::SetMs(ShaderInfo&& shader, ShaderBytecode bytecode)
     {
         Pso::AddShader(std::move(shader), ShaderType::Mesh);
         ChangeMs(bytecode);
+    }
+
+    void MeshPso::ChangeAs(ShaderBytecode bytecode)
+    {
+        BenzinAssert(!bytecode.empty());
+
+        Pso::m_Stream.As->pShaderBytecode = bytecode.data();
+        Pso::m_Stream.As->BytecodeLength = bytecode.size();
     }
 
     void MeshPso::ChangeMs(ShaderBytecode bytecode)

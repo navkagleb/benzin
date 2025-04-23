@@ -11,10 +11,11 @@ namespace benzin
     {
         std::array<std::wstring_view, magic_enum::enum_count<ShaderType>()> shaderTargets;
         shaderTargets[+ShaderType::Vertex] = L"vs_6_6";
-        shaderTargets[+ShaderType::Mesh] = L"ms_6_6";
         shaderTargets[+ShaderType::Pixel] = L"ps_6_6";
         shaderTargets[+ShaderType::Compute] = L"cs_6_6";
         shaderTargets[+ShaderType::Library] = L"lib_6_6";
+        shaderTargets[+ShaderType::Amplification] = L"as_6_6";
+        shaderTargets[+ShaderType::Mesh] = L"ms_6_6";
 
         for (const auto shaderType : magic_enum::enum_values<ShaderType>())
         {

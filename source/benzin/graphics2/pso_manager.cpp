@@ -36,6 +36,17 @@ namespace benzin
         PsoBasePtrRef m_Pso;
     };
 
+    static ShaderInfo ShaderProxyToShaderInfo(ShaderType type, ShaderProxy&& proxy)
+    {
+        return ShaderInfo
+        {
+            type,
+            proxy.FileName,
+            proxy.EntryPoint,
+            std::move(proxy.Defines),
+        };
+    }
+
     template <typename PsoStreamT, uint32_t _MaxShaderCount>
     static void CreateGraphicsPso(
         GraphicsPsoProxy& proxy,
@@ -43,7 +54,7 @@ namespace benzin
         GraphicsPso<PsoStreamT, _MaxShaderCount>& pso
     )
     {
-        ShaderInfo ps{ ShaderType::Pixel, proxy.Ps.FileName, proxy.Ps.EntryPoint, std::move(proxy.Ps.Defines) };
+        ShaderInfo ps = ShaderProxyToShaderInfo(ShaderType::Pixel, std::move(proxy.Ps));
 
         if (!proxy.RenderTargetFormats.empty())
         {
@@ -61,8 +72,7 @@ namespace benzin
 
         if (ps.IsValid())
         {
-            const auto psBytecode = shaderManager.GetShaderBytecode(ps);
-            pso.SetPs(std::move(ps), psBytecode);
+            pso.SetPs(std::move(ps), shaderManager.GetShaderBytecode(ps));
         }
 
         pso.SetRasterizerState(proxy.RasterizerState);
@@ -107,11 +117,10 @@ namespace benzin
         {
             CreateGraphicsPso(proxy, m_ShaderManager, pso);
 
-            ShaderInfo vs{ ShaderType::Vertex, proxy.Vs.FileName, proxy.Vs.EntryPoint, std::move(proxy.Vs.Defines) };
-            BenzinAssert(vs.IsValid());
+            ShaderInfo vs = ShaderProxyToShaderInfo(ShaderType::Vertex, std::move(proxy.Vs));
 
-            const auto vsBytecode = m_ShaderManager.GetShaderBytecode(vs);
-            pso.SetVs(std::move(vs), vsBytecode);
+            BenzinAssert(vs.IsValid());
+            pso.SetVs(std::move(vs), m_ShaderManager.GetShaderBytecode(vs));
 
             if (!proxy.InputLayout.empty())
             {
@@ -133,11 +142,16 @@ namespace benzin
         {
             CreateGraphicsPso(proxy, m_ShaderManager, pso);
 
-            ShaderInfo ms{ ShaderType::Mesh, proxy.Ms.FileName, proxy.Ms.EntryPoint, std::move(proxy.Ms.Defines) };
-            BenzinAssert(ms.IsValid());
+            ShaderInfo as = ShaderProxyToShaderInfo(ShaderType::Amplification, std::move(proxy.As));
+            ShaderInfo ms = ShaderProxyToShaderInfo(ShaderType::Mesh, std::move(proxy.Ms));
 
-            const auto msBytecode = m_ShaderManager.GetShaderBytecode(ms);
-            pso.SetMs(std::move(ms), msBytecode);
+            if (as.IsValid())
+            {
+                pso.SetAs(std::move(as), m_ShaderManager.GetShaderBytecode(as));
+            }
+
+            BenzinAssert(ms.IsValid());
+            pso.SetMs(std::move(ms), m_ShaderManager.GetShaderBytecode(ms));
         });
     }
 
@@ -150,11 +164,10 @@ namespace benzin
 
         Create<ComputePso>(id, [this, &proxy](ComputePso& pso)
         {
-            ShaderInfo cs{ ShaderType::Compute, proxy.Cs.FileName, proxy.Cs.EntryPoint, std::move(proxy.Cs.Defines) };
+            ShaderInfo cs = ShaderProxyToShaderInfo(ShaderType::Compute, std::move(proxy.Cs));
             BenzinAssert(cs.IsValid());
 
-            const auto csBytecode = m_ShaderManager.GetShaderBytecode(cs);
-            pso.SetCs(std::move(cs), csBytecode);
+            pso.SetCs(std::move(cs), m_ShaderManager.GetShaderBytecode(cs));
         });
     }
 
@@ -172,9 +185,7 @@ namespace benzin
             ShaderInfo library{ ShaderType::Library, proxy.ShaderLibrary.FileName, {}, std::move(proxy.ShaderLibrary.Defines) };
             BenzinAssert(library.IsValid());
 
-            const auto libraryBytecode = m_ShaderManager.GetShaderBytecode(library);
-            pso.SetShaderLibrary(std::move(library), libraryBytecode);
-
+            pso.SetShaderLibrary(std::move(library), m_ShaderManager.GetShaderBytecode(library));
             pso.SetRayGenerationShader(proxy.RayGenerationEntryPoint);
             pso.SetMissShader(proxy.MissEntryPoint);
             pso.SetHitGroup(proxy.HitGroup.Name, proxy.HitGroup.ClosestHitEntryPoint);
@@ -272,11 +283,6 @@ namespace benzin
                         psoWrapper.GetAs<VertexPso>().ChangeVs(bytecode);
                         break;
                     }
-                    case ShaderType::Mesh:
-                    {
-                        psoWrapper.GetAs<MeshPso>().ChangeMs(bytecode);
-                        break;
-                    }
                     case ShaderType::Pixel:
                     {
                         if (auto* vertexPso = psoWrapper.GetAsPtr<VertexPso>(); vertexPso != nullptr)
@@ -300,6 +306,15 @@ namespace benzin
                     case ShaderType::Library:
                     {
                         psoWrapper.GetAs<RayTracing_Pso>().ChangeShaderLibrary(bytecode);
+                        break;
+                    }
+                    case ShaderType::Amplification:
+                    {
+                        psoWrapper.GetAs<MeshPso>().ChangeAs(bytecode);
+                    }
+                    case ShaderType::Mesh:
+                    {
+                        psoWrapper.GetAs<MeshPso>().ChangeMs(bytecode);
                         break;
                     }
                     default:
