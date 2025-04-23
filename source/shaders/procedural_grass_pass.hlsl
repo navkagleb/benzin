@@ -60,16 +60,18 @@ static Rand01 g_Rand;
 static const float g_WindAnimationScale = 0.05;
 static const float g_GrassLeaningFactor = 0.3;
 
-static const uint g_VertexCountPerBladeEdge = (uint)joint::ProceduralGrassMsConsts::VertexCountPerBladeEdge;
-static const uint g_VertexCountPerBlade = (uint)joint::ProceduralGrassMsConsts::VertexCountPerBlade;
-static const uint g_TriangleCountPerBlade = (uint)joint::ProceduralGrassMsConsts::TriangleCountPerBlade;
+static const uint g_VertexCountPerBladeEdge = (uint)joint::ProceduralGrassConsts::VertexCountPerBladeEdge;
+static const uint g_VertexCountPerBlade = (uint)joint::ProceduralGrassConsts::VertexCountPerBlade;
+static const uint g_TriangleCountPerBlade = (uint)joint::ProceduralGrassConsts::TriangleCountPerBlade;
 
-static const uint g_MaxVertexCount = (uint)joint::ProceduralGrassMsConsts::MaxVertexCountPerThreadGroup;
-static const uint g_MaxBladeCount = (uint)joint::ProceduralGrassMsConsts::MaxBladeCountPerPatch;
+static const uint g_MaxVertexCount = (uint)joint::ProceduralGrassConsts::MaxVertexCountPerThreadGroup;
+static const uint g_MaxBladeCount = (uint)joint::ProceduralGrassConsts::MaxBladeCountPerPatch;
 static const uint g_MaxTriangleCount = g_MaxBladeCount * g_TriangleCountPerBlade;
 
 static const uint g_VertexPerThreadCount = 2;
-static const uint g_GroupSize = g_MaxVertexCount / g_VertexPerThreadCount;
+
+static const uint g_AsGroupSize = (uint)joint::ProceduralGrassConsts::AsGroupSize;
+static const uint g_MsGroupSize = g_MaxVertexCount / g_VertexPerThreadCount;
 
 struct BladeArgs
 {
@@ -103,7 +105,7 @@ BladeArgs GenBladeArgs(float3 patchNormal)
     const float dirAngle = 2.0 * g_Pi * g_Rand.Next(53);
 
     const float offsetAngle = 2.0 * g_Pi * g_Rand.Next(71);
-    const float offsetRadius = g_PassConsts0.SpacingInPatch * sqrt(g_Rand.Next(48));
+    const float offsetRadius = g_PassConsts0.SpacingInGrassPatch * sqrt(g_Rand.Next(48));
 
     const float3 tangent = normalize(cross(g_UpDir, patchNormal));
     const float3 bitangent = normalize(cross(patchNormal, tangent));
@@ -200,20 +202,77 @@ float3 CalcQuadraticBezierDerivative(float3 p0, float3 p1, float3 p2, float t)
     return 2.0 * (1.0 - t) * (p1 - p0) + 2.0 * t * (p2 - p1);
 }
 
-[NumThreads(g_GroupSize, 1, 1)]
+bool IsVisible(float3 center, float radius)
+{
+    if (!g_PassConsts0.IsFrustumCullingEnabled)
+    {
+        return true;
+    }
+
+    for (uint i = 0; i < (uint)joint::FrustumPlane::Count; ++i)
+    {
+        const float4 frustumPlane = GetCameraConsts().WorldFrustumPlanes[i];
+        const float distance = dot(frustumPlane.xyz, center) + frustumPlane.w;
+
+        if (distance > radius)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+struct Payload
+{
+    uint GrassPatchIndices[g_AsGroupSize];
+};
+
+groupshared Payload g_Payload;
+
+[NumThreads(g_AsGroupSize, 1, 1)]
+void AsMain(uint dtid : SV_DispatchThreadID)
+{
+    bool isVisible = false;
+
+    if (dtid < g_PassConsts0.GrassPatchCount)
+    {
+        isVisible = IsVisible(g_GrassPatches[dtid].Pos, g_PassConsts0.GrassPatchCullRadius);
+    }
+
+    if (isVisible)
+    {
+        const uint index = WavePrefixCountBits(isVisible); // TODO: Need to understand the WavePrefixCountBits
+        g_Payload.GrassPatchIndices[index] = dtid;
+    }
+
+    const uint visibleCount = WaveActiveCountBits(isVisible);
+    DispatchMesh(visibleCount, 1, 1, g_Payload);
+}
+
+[NumThreads(g_MsGroupSize, 1, 1)]
 [OutputTopology("triangle")]
 void MsMain(
     uint gtid : SV_GroupThreadID,
     uint gid : SV_GroupID,
+    in payload Payload payload,
     out vertices Vertex outVertices[g_MaxVertexCount],
     out indices uint3 outTriangles[g_MaxTriangleCount]
 )
 {
     // Ref: https://gpuopen.com/learn/mesh_shaders/mesh_shaders-procedural_grass_rendering/
 
-    const joint::GrassPatch patch = g_GrassPatches[gid];
+    const uint patchIndex = payload.GrassPatchIndices[gid];
+
+    if (patchIndex >= g_PassConsts0.GrassPatchCount)
+    {
+        return;
+    }
+
+    const joint::GrassPatch patch = g_GrassPatches[patchIndex];
 
     const float distanceToCamera = length(patch.Pos - GetCameraConsts().WorldPosition);
+
     const float floatBladeCount = lerp(float(g_MaxBladeCount), 2.0, pow(saturate(distanceToCamera / (g_PassConsts0.GrassEndDistance * 1.05)), 0.75)); // TODO: Some magic math
     const uint bladeCount = ceil(floatBladeCount);
 
@@ -231,12 +290,12 @@ void MsMain(
     // NOTE: In Nvidia GPU you must provide exact quantity of vertex and primitives (g_MaxVertexCount and g_MaxTriangleCount won't work)
     SetMeshOutputCounts(vertexCount, triangleCount);
 
-    g_Rand.CombineSeed((uint)(patch.Pos.x / g_PassConsts0.SpacingInPatch));
-    g_Rand.CombineSeed((uint)(patch.Pos.y / g_PassConsts0.SpacingInPatch));
+    g_Rand.CombineSeed((uint)(patch.Pos.x / g_PassConsts0.SpacingInGrassPatch));
+    g_Rand.CombineSeed((uint)(patch.Pos.y / g_PassConsts0.SpacingInGrassPatch));
 
     for (uint i = 0; i < g_VertexPerThreadCount; ++i)
     {
-        const uint vertexIndex = gtid + g_GroupSize * i;
+        const uint vertexIndex = gtid + g_MsGroupSize * i;
 
         if (vertexIndex >= vertexCount)
         {
@@ -288,7 +347,7 @@ void MsMain(
 
     for (uint i = 0; i < g_VertexPerThreadCount; ++i)
     {
-        const int triangleIndex = gtid + g_GroupSize * i;
+        const int triangleIndex = gtid + g_MsGroupSize * i;
 
         if (triangleIndex >= triangleCount)
         {
@@ -316,7 +375,7 @@ PackedGBuffer PsMain(const Vertex input, bool isFrontFace : SV_IsFrontFace)
 
     GBuffer gbuffer;
     gbuffer.Roughness = lerp(0.3, 0.8, perlinNoiseFactor);
-    gbuffer.Metallic = 0.5;
+    gbuffer.Metallic = 0.0;
     gbuffer.ViewDepth = input.ViewDepth;
 
     const float selfshadowFactor = saturate(pow((input.WorldPos.y - input.BladeRootHeight) / input.PatchHeight, 1.5)) + 0.1;

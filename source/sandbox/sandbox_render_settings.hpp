@@ -1,7 +1,6 @@
 #pragma once
 
 #include <shaders/joint/tone_mapping_resources.hpp>
-#include <shaders/joint/procedural_grass_resources.hpp>
 
 namespace sandbox
 {
@@ -40,8 +39,14 @@ namespace sandbox
     struct ProceduralGrassSettings
     {
         bool IsEnabled = true;
+        bool IsFrustumCullingEnabled = true;
 
-        joint::ProceduralGrassConsts Consts;
+        float GrassPatchCullRadius = 0.1f;
+        float GrassEndDistance = 20.0f;
+        float SpacingInGrassPatch = 0.04f;
+        float WindDirection = DirectX::XM_PI;
+        float BladeWidth = 0.01f;
+        DirectX::XMFLOAT3 BaseColor{ 189.0f / 256.0f, 236.0f / 256.0f, 76.0f / 256.0f };
     };
 
     struct RayTracing_ShadowSettings

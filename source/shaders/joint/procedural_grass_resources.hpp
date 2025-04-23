@@ -5,7 +5,7 @@
 namespace joint
 {
 
-    enum class ProceduralGrassMsConsts
+    enum class ProceduralGrassConsts
     {
         VertexCountPerBladeEdge = 4,
         VertexCountPerBlade = VertexCountPerBladeEdge * 2,
@@ -13,6 +13,8 @@ namespace joint
 
         MaxVertexCountPerThreadGroup = 256,
         MaxBladeCountPerPatch = MaxVertexCountPerThreadGroup / VertexCountPerBlade,
+
+        AsGroupSize = 32, // There is max amplification shader group size due to wave size (max == 32)
     };
 
     enum class ProceduralGrassStat
@@ -23,20 +25,25 @@ namespace joint
         TriangleCount,
     };
 
-    struct ProceduralGrassConsts
-    {
-        float3 BaseColor;
-        float GrassEndDistance;
-        float WindDirection;
-        float SpacingInPatch;
-        float BladeWidth;
-    };
-
     struct GrassPatch
     {
         float3 Pos;
         float3 Normal;
         float Height;
+    };
+
+    struct ProceduralGrassPassConsts
+    {
+        uint GrassPatchCount;
+        uint IsFrustumCullingEnabled;
+
+        float GrassPatchCullRadius;
+        float GrassEndDistance;
+        float SpacingInGrassPatch;
+        float WindDirection;
+        float BladeWidth;
+        float _Padding;
+        float3 BaseColor;
     };
 
     enum class ProceduralGrassResources : uint
@@ -49,5 +56,5 @@ namespace joint
 }
 
 #if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0)
-    #define BenzinRenderPassConstsType0 joint::ProceduralGrassConsts
+    #define BenzinRenderPassConstsType0 joint::ProceduralGrassPassConsts
 #endif

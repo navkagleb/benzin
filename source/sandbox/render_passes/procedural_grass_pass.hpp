@@ -30,7 +30,7 @@ namespace sandbox
 
     private:
         std::unique_ptr<benzin::Texture> m_PerlinNoiseTexture;
-        joint::ProceduralGrassConsts m_Consts{};
+        joint::ProceduralGrassPassConsts m_Consts{};
     };
 
 }

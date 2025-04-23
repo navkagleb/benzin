@@ -27,7 +27,7 @@
 #include "sandbox/resources.hpp"
 #include "sandbox/sandbox_render_settings.hpp"
 
-BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassMsConsts);
+BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassConsts);
 
 namespace sandbox
 {
@@ -151,27 +151,39 @@ namespace sandbox
 
     static void DrawProceduralGrassSettings(ProceduralGrassSettings& settings)
     {
-        ImGui::Checkbox("Enabled", &settings.IsEnabled);
+        ImGui::Checkbox("Enabled###ProceduralGrass", &settings.IsEnabled);
 
         ImGui::PushItemWidth(150.0f);
         BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
 
-        joint::ProceduralGrassConsts& consts = settings.Consts;
-        ImGui::ColorEdit3("Base color", (float*)&consts.BaseColor);
-        ImGui::DragFloat("Grass end distance", &consts.GrassEndDistance, 0.01f);
-        ImGui::DragFloat("Wind direction", &consts.WindDirection, 0.01f, 0.0f, DirectX::XM_2PI);
-
-        if (ImGui::DragFloat("Spacing in patch (between blades)", &consts.SpacingInPatch, 0.0001f))
+        ImGui::SeparatorText("Amplification");
         {
-            consts.SpacingInPatch = std::max(consts.SpacingInPatch, 0.001f);
+            ImGui::Checkbox("Frustum culling", &settings.IsFrustumCullingEnabled);
+            ImGui::DragFloat("Patch cull radius", &settings.GrassPatchCullRadius, 0.0001f);
         }
 
-        ImGui::DragFloat("Blade width", &consts.BladeWidth, 0.0001f, std::numeric_limits<float>::min());
+        ImGui::SeparatorText("Mesh");
+        {
+            ImGui::DragFloat("Grass end distance", &settings.GrassEndDistance, 0.01f);
+
+            if (ImGui::DragFloat("Spacing in patch (between blades)", &settings.SpacingInGrassPatch, 0.0001f))
+            {
+                settings.SpacingInGrassPatch = std::max(settings.SpacingInGrassPatch, 0.001f);
+            }
+
+            ImGui::DragFloat("Wind direction", &settings.WindDirection, 0.01f, 0.0f, DirectX::XM_2PI);
+            ImGui::DragFloat("Blade width", &settings.BladeWidth, 0.0001f, std::numeric_limits<float>::min());
+        }
+
+        ImGui::SeparatorText("Pixel");
+        {
+            ImGui::ColorEdit3("Base color", (float*)&settings.BaseColor);
+        }
     }
 
     static void DrawProceduralGrassStats(ProceduralGrassStats& stats)
     {
-        using enum joint::ProceduralGrassMsConsts;
+        using enum joint::ProceduralGrassConsts;
 
         std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
         BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
@@ -320,7 +332,6 @@ namespace sandbox
     void SandboxRunner::InitCamera()
     {
         auto& perspectiveProjection = m_Scene->GetPerspectiveProjection();
-        perspectiveProjection.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.1f, 1000.0f);
         perspectiveProjection.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.1f, 100.0f);
 
         auto& camera = m_Scene->GetCamera();

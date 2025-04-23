@@ -22,6 +22,7 @@
 
 BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassResources);
 BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassStat);
+BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassConsts);
 
 namespace sandbox
 {
@@ -30,10 +31,11 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::ProceduralGrass, [](benzin::MeshPsoProxy& outProxy)
         {
+            outProxy.As.FileName = "procedural_grass_pass.hlsl";
             outProxy.Ms.FileName = "procedural_grass_pass.hlsl";
-            outProxy.Ms.Defines.push_back("CALC_STATS");
-
             outProxy.Ps.FileName = "procedural_grass_pass.hlsl";
+
+            outProxy.Ms.Defines.push_back("CALC_STATS");
             
             outProxy.RasterizerState.CullMode = benzin::CullMode::None;
             outProxy.RasterizerState.IndexOrder = benzin::IndexOrder::Clockwise;
@@ -78,13 +80,6 @@ namespace sandbox
         cmdList.AddResourceBarrier(benzin::TransitionBarrier{ ms_Resources->Get(BufferId::ProceduralGrass_ReadbackStats), benzin::ResourceState::Common });
 
         ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
-
-        auto& settings = ms_Settings->GetSection<ProceduralGrassSettings>();
-        settings.Consts.BaseColor = { 0.243f, 0.525f, 0.235f };
-        settings.Consts.GrassEndDistance = 20.0f;
-        settings.Consts.WindDirection = DirectX::XM_PI;
-        settings.Consts.SpacingInPatch = 0.04f;
-        settings.Consts.BladeWidth = 0.01f;
     }
 
     ProceduralGrassPass::~ProceduralGrassPass()
@@ -151,9 +146,18 @@ namespace sandbox
     void ProceduralGrassPass::OnUpdate()
     {
         const auto& settings = ms_Settings->GetSection<ProceduralGrassSettings>();
+        const auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
 
-        benzin::RenderPass::m_IsRenderingEnabled = settings.IsEnabled;
-        m_Consts = settings.Consts;
+        RenderPass::m_IsRenderingEnabled = settings.IsEnabled;
+
+        m_Consts.GrassPatchCount = stats.MaxPatchCount;
+        m_Consts.IsFrustumCullingEnabled = settings.IsFrustumCullingEnabled;
+        m_Consts.GrassPatchCullRadius = settings.GrassPatchCullRadius;
+        m_Consts.GrassEndDistance = settings.GrassEndDistance;
+        m_Consts.SpacingInGrassPatch = settings.SpacingInGrassPatch;
+        m_Consts.WindDirection = settings.WindDirection;
+        m_Consts.BladeWidth = settings.BladeWidth;
+        m_Consts.BaseColor = settings.BaseColor;
     }
 
     void ProceduralGrassPass::OnRender() const
@@ -188,17 +192,15 @@ namespace sandbox
 
         cmdList.ClearUnorderedAccess(statsBuffer, statsBuffer.GetUav(), {});
 
-        const auto& grassPatchBuffer = ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches);
-
         {
             using enum joint::ProceduralGrassResources;
 
-            cmdList.SetGraphicsRootResource(+GrassPatches, grassPatchBuffer.GetSrv());
+            cmdList.SetGraphicsRootResource(+GrassPatches, ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches).GetSrv());
             cmdList.SetGraphicsRootResource(+PerlinNoise, m_PerlinNoiseTexture->GetSrv());
             cmdList.SetGraphicsRootResource(+Stats, statsBuffer.GetUav());
         }
 
-        cmdList.DispatchMesh({ grassPatchBuffer.GetElementCount(), 1, 1 });
+        cmdList.DispatchMesh({ m_Consts.GrassPatchCount, 1, 1 }, { +joint::ProceduralGrassConsts::AsGroupSize, 1, 1 });
     }
 
     void ProceduralGrassPass::CopyStats(benzin::GraphicsCmdList& cmdList) const

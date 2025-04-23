@@ -154,7 +154,7 @@ namespace benzin
 
         // Mesh shaders
         void SetMeshPso(const MeshPso& pso);
-        void DispatchMesh(const DirectX::XMUINT3& threadGroupCount);
+        void DispatchMesh(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize = DirectX::XMUINT3{ 1, 1, 1 });
 
     protected:
         ID3D12GraphicsCommandList6* m_D3D12GraphicsCommandList6 = nullptr;

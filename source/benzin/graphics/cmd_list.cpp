@@ -640,10 +640,18 @@ namespace benzin
         m_D3D12GraphicsCommandList6->SetPipelineState(pso.GetD3D12PipelineState());
     }
 
-    void GraphicsCmdList::DispatchMesh(const DirectX::XMUINT3& threadGroupCount)
+    void GraphicsCmdList::DispatchMesh(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize)
     {
         BenzinAssert(m_D3D12GraphicsCommandList6 != nullptr);
-        BenzinAssert(threadGroupCount.x != 0 && threadGroupCount.y != 0 && threadGroupCount.z != 0);
+        BenzinAssert(dimension.x != 0 && dimension.y != 0 && dimension.z != 0);
+        BenzinAssert(threadGroupSize.x != 0 && threadGroupSize.y != 0 && threadGroupSize.z != 0);
+
+        const DirectX::XMUINT3 threadGroupCount
+        {
+            std::max(DivideUp(dimension.x, threadGroupSize.x), 1u),
+            std::max(DivideUp(dimension.y, threadGroupSize.y), 1u),
+            std::max(DivideUp(dimension.z, threadGroupSize.z), 1u),
+        };
 
         m_D3D12GraphicsCommandList6->DispatchMesh(threadGroupCount.x, threadGroupCount.y, threadGroupCount.z);
     }
