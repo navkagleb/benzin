@@ -5,6 +5,18 @@
 namespace joint
 {
 
+    enum class FrustumPlane
+    {
+        Near = 0,
+        Far,
+        Right,
+        Left,
+        Top,
+        Bottom,
+
+        Count,
+    };
+
     struct CameraConsts
     {
         float4x4 WorldToView;
@@ -22,6 +34,9 @@ namespace joint
 
         float2 UvToViewScale;
         float2 UvToViewBias;
+
+        // NOTE: The frustum planes are directed outside the frustum
+        float4 WorldFrustumPlanes[(uint)FrustumPlane::Count];
     };
 
     struct FrameConsts

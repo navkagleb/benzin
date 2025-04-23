@@ -29,8 +29,7 @@ namespace sandbox
         {
             benzin::GraphicsCmdList& CmdList;
 
-            const DirectX::XMMATRIX& WorldToViewMatrix;
-            const DirectX::BoundingFrustum& CameraFrustum;
+            const DirectX::BoundingFrustum& WorldFrustum;
 
             const entt::registry& EntityRegistry;
             const entt::registry& MeshRegistry;

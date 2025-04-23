@@ -12,22 +12,21 @@ namespace benzin
     class Projection
     {
     public:
-        const DirectX::XMMATRIX& GetViewToClipMatrix() const { return m_ViewToClipMatrix; }
-        const DirectX::XMMATRIX& GetClipToViewMatrix() const { return m_ClipToViewMatrix; }
+        const auto& GetViewToClipMatrix() const { return m_ViewToClipMatrix; }
+        const auto& GetClipToViewMatrix() const { return m_ClipToViewMatrix; }
 
-        const DirectX::BoundingFrustum& GetBoundingFrustum() const { return m_BoundingFrustum; }
+        const auto& GetViewFrustum() const { return m_ViewFrustum; }
 
         void UpdateViewToClipMatrix();
 
     protected:
         virtual DirectX::XMMATRIX CreateViewToClipMatrix() const = 0;
 
-    protected:
-        DirectX::BoundingFrustum m_BoundingFrustum;
-
     private:
         DirectX::XMMATRIX m_ViewToClipMatrix = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX m_ClipToViewMatrix = DirectX::XMMatrixIdentity();
+
+        DirectX::BoundingFrustum m_ViewFrustum;
     };
 
     class PerspectiveProjection : public Projection
@@ -88,6 +87,7 @@ namespace benzin
     {
     public:
         friend class FlyCameraTool;
+        friend class FlyCameraController;
 
         explicit Camera(Projection& projection);
 
@@ -106,11 +106,11 @@ namespace benzin
         const auto& GetWorldToViewMatrix() const { return m_WorldToViewMatrix; }
         const auto& GetViewToWorldMatrix() const { return m_ViewToWorldMatrix; }
 
-        auto& GetProjection() { return m_Projection; }
-        const auto& GetProjection() const { return m_Projection; }
+        const auto& GetWorldFrustum() const { return m_WorldFrustum; }
 
-        const DirectX::XMMATRIX& GetViewToClipMatrix() const;
-        const DirectX::XMMATRIX& GetClipToViewMatrix() const;
+        const auto& GetViewToClipMatrix() const { return m_Projection.GetViewToClipMatrix(); }
+        const auto& GetClipToViewMatrix() const { return m_Projection.GetClipToViewMatrix(); }
+        const auto& GetViewFrustum() const { return m_Projection.GetViewFrustum(); }
 
         DirectX::XMMATRIX GetWorldToClipMatrix() const;
         DirectX::XMMATRIX GetClipToWorldMatrix() const;
@@ -129,6 +129,8 @@ namespace benzin
 
         DirectX::XMMATRIX m_WorldToViewMatrix = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX m_ViewToWorldMatrix = DirectX::XMMatrixIdentity();
+
+        DirectX::BoundingFrustum m_WorldFrustum;
 
         Projection& m_Projection;
     };
@@ -168,4 +170,4 @@ namespace benzin
         DirectX::XMFLOAT2 m_LastMousePosition{ 0.0f, 0.0f };
     };
 
-} // namespace benzin
+}

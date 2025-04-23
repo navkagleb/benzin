@@ -7,10 +7,10 @@
 namespace sandbox
 {
 
-    class GlobalConstantsPass : public benzin::RenderPass
+    class GlobalConstsPass : public benzin::RenderPass
     {
     public:
-        GlobalConstantsPass();
+        GlobalConstsPass();
 
     private:
         bool IsDependentOnViewport() const override { return false; }

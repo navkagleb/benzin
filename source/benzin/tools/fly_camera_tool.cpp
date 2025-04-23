@@ -7,9 +7,12 @@
 namespace benzin
 {
 
-    static void DrawMatrix4x4(const DirectX::XMMATRIX& matrix)
+    static void DrawMatrix4x4(const char* matrixName, const DirectX::XMMATRIX& matrix)
     {
         constexpr uint32_t matrixSize = 4;
+
+        ImGui::Spacing();
+        ImGui::Text(matrixName);
 
         const auto flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
         if (ImGui::BeginTable("MatrixTable", matrixSize, flags))
@@ -25,7 +28,53 @@ namespace benzin
                     ImGui::TableSetColumnIndex(columnIndex);
 
                     const float cellValue = *(reinterpret_cast<const float*>(&row) + columnIndex);
-                    ImGui::Text("%0.4f", cellValue);
+                    ImGui::Text(BenzinFormatData("{:.4f}", cellValue));
+                }
+            }
+            ImGui::EndTable();
+        }
+    }
+
+    static void DrawFrustumPlaneTable(const char* tableName, const DirectX::BoundingFrustum& frustum)
+    {
+        const auto planeNames = std::to_array(
+        {
+            "Near",
+            "Far",
+            "Right",
+            "Left",
+            "Top",
+            "Bottom",
+        });
+
+        std::array<DirectX::XMVECTOR, 6> planes{};
+        frustum.GetPlanes(&planes[0], &planes[1], &planes[2], &planes[3], &planes[4], &planes[5]);
+
+        ImGui::Spacing();
+        ImGui::Text(tableName);
+
+        ImGui_WarningBox("NOTE: The frustum planes are directed outside the frustum", tableName);
+
+        const auto flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
+        if (ImGui::BeginTable("FrustumTable", 5, flags))
+        {
+            for (uint32_t rowIndex = 0; rowIndex < 6; ++rowIndex)
+            {
+                ImGui::TableNextRow();
+
+                const DirectX::XMVECTOR& plane = planes[rowIndex];
+
+                for (uint32_t columnIndex = 0; columnIndex < 5; ++columnIndex)
+                {
+                    ImGui::TableSetColumnIndex(columnIndex);
+
+                    if (columnIndex == 0)
+                    {
+                        ImGui::Text(planeNames[rowIndex]);
+                        continue;
+                    }
+
+                    ImGui::Text(BenzinFormatData("{:.4f}", DirectX::XMVectorGetByIndex(plane, columnIndex - 1)));
                 }
             }
             ImGui::EndTable();
@@ -41,30 +90,29 @@ namespace benzin
 
     void FlyCameraTool::DrawWindowContent()
     {
-        if (Imgui_MainCollapsingHeader("Controller Props"))
-        {
-            DrawControllerProperties();
-        }
-            
-        if (Imgui_MainCollapsingHeader("View Props"))
-        {
-            DrawViewProperties();
-        }
-            
-        if (Imgui_MainCollapsingHeader("Projection Props"))
-        {
-            DrawProjectionProperties();
-        }
+        DrawControllerProperties();
+        DrawViewProperties();
+        DrawProjectionProperties();
     }
 
     void FlyCameraTool::DrawControllerProperties()
     {
-        ImGui::SliderFloat("CameraTranslationSpeed", &m_Controller.m_CameraTranslationSpeed, 0.001f, 0.03f);
-        ImGui::SliderFloat("MouseSensitivity", &m_Controller.m_MouseSensitivity, 0.001f, 0.007f, "%.3f");
+        if (!ImGui_MainCollapsingHeader("Controller Props"))
+        {
+            return;
+        }
+
+        ImGui::SliderFloat("Camera translation speed", &m_Controller.m_CameraTranslationSpeed, 0.001f, 0.03f);
+        ImGui::SliderFloat("Mouse sensitivity", &m_Controller.m_MouseSensitivity, 0.001f, 0.007f, "%.3f");
     }
 
     void FlyCameraTool::DrawViewProperties()
     {
+        if (!ImGui_MainCollapsingHeader("View Props", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            return;
+        }
+
         auto& camera = m_Controller.m_Camera;
 
         if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&camera.m_Position)))
@@ -93,35 +141,42 @@ namespace benzin
             camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Controller.m_Pitch, m_Controller.m_Yaw));
         }
 
-        ImGui::Separator();
-        ImGui::Text("WorldToViewMatrix");
-        DrawMatrix4x4(camera.GetWorldToViewMatrix());
+        DrawMatrix4x4("World To View", camera.GetWorldToViewMatrix());
+        DrawFrustumPlaneTable("World frustum", camera.GetWorldFrustum());
     }
 
     void FlyCameraTool::DrawProjectionProperties()
     {
+        if (!ImGui_MainCollapsingHeader("Projection Props", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            return;
+        }
+
         auto& camera = m_Controller.m_Camera;
         auto* perspectiveProjection = m_Controller.GetPerspectiveProjection();
 
         if (!perspectiveProjection)
         {
             ImGui::Text("Projection isn't Perspective! FlyCameraTool supports only PerspectiveProjection");
+            return;
         }
-        else
+
+        bool isNeedToUpdateViewToClipMatrix = false;
+        isNeedToUpdateViewToClipMatrix |= ImGui::SliderAngle("Vertical FOV", &perspectiveProjection->m_VerticalFovInRadians, 45.0f, 120.0f);
+        isNeedToUpdateViewToClipMatrix |= ImGui::DragFloat("Near plane", &perspectiveProjection->m_NearPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
+        isNeedToUpdateViewToClipMatrix |= ImGui::DragFloat("Far plane", &perspectiveProjection->m_FarPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
+
+        if (isNeedToUpdateViewToClipMatrix)
         {
-            if (ImGui::SliderAngle("VerticalFov", &perspectiveProjection->m_VerticalFovInRadians, 45.0f, 120.0f))
-            {
-                perspectiveProjection->UpdateViewToClipMatrix();
-            }
-
-            ImGui::Text("AspectRatio: %f", perspectiveProjection->m_AspectRatio);
-            ImGui::Text("NearPlane: %f", perspectiveProjection->m_NearPlane);
-            ImGui::Text("FarPlane: %f", perspectiveProjection->m_FarPlane);
-
-            ImGui::Separator();
-            ImGui::Text("ViewToClipMatrix");
-            DrawMatrix4x4(camera.GetViewToClipMatrix());
+            perspectiveProjection->UpdateViewToClipMatrix();
         }
+
+        ImGui::BeginDisabled();
+        ImGui::DragFloat("Aspect ratio", &perspectiveProjection->m_AspectRatio);
+        ImGui::EndDisabled();
+
+        DrawMatrix4x4("View To Clip", camera.GetViewToClipMatrix());
+        DrawFrustumPlaneTable("View frustum", perspectiveProjection->GetViewFrustum());
     }
 
 }

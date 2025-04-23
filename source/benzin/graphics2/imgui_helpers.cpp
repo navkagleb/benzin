@@ -28,3 +28,18 @@ void ImGui_CollapsingHeaderWithIndent(std::string_view name, const ImGui_DrawCal
         ImGui::TreePop();
     }
 }
+
+void ImGui_WarningBox(std::string_view text, std::string_view id)
+{
+    constexpr ImVec4 warningColor{ 1.0f, 0.5f, 0.0f, 1.0f };
+
+    ImGui::BeginChild(id.data(), ImVec2{ 0.0f, 0.0f }, ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders, ImGuiWindowFlags_None);
+
+    ImGui::PushStyleColor(ImGuiCol_Text, warningColor);
+    ImGui::PushTextWrapPos(0.0f); // Wrap at the right edge of the child window
+    ImGui::Text(text.data());
+    ImGui::PopTextWrapPos();
+    ImGui::PopStyleColor();
+
+    ImGui::EndChild();
+}

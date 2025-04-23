@@ -16,7 +16,7 @@ namespace benzin
         m_ViewToClipMatrix = CreateViewToClipMatrix();
         m_ClipToViewMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewToClipMatrix);
 
-        DirectX::BoundingFrustum::CreateFromMatrix(m_BoundingFrustum, m_ViewToClipMatrix);
+        DirectX::BoundingFrustum::CreateFromMatrix(m_ViewFrustum, m_ViewToClipMatrix);
     };
 
     // PerspectiveProjection
@@ -40,30 +40,24 @@ namespace benzin
         UpdateViewToClipMatrix();
     }
 
-    // x0 = vPlane[PLANE_LEFT].z / vPlane[PLANE_LEFT].x;
-    // x1 = vPlane[PLANE_RIGHT].z / vPlane[PLANE_RIGHT].x;
-    // y0 = vPlane[PLANE_BOTTOM].z / vPlane[PLANE_BOTTOM].y;
-    // y1 = vPlane[PLANE_TOP].z / vPlane[PLANE_TOP].y;
-
-    // pfFrustum4[0] = -x0;
-    // pfFrustum4[2] = x0 - x1;
-    // pfFrustum4[1] = -y1;
-    // pfFrustum4[3] = y1 - y0;
-
     DirectX::XMFLOAT2 PerspectiveProjection::GetUvToViewScale() const
     {
+        // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
+
         DirectX::XMFLOAT2 scale{};
-        scale.x = m_BoundingFrustum.RightSlope - m_BoundingFrustum.LeftSlope;
-        scale.y = m_BoundingFrustum.BottomSlope - m_BoundingFrustum.TopSlope;
+        scale.x = Projection::GetViewFrustum().RightSlope - Projection::GetViewFrustum().LeftSlope;
+        scale.y = Projection::GetViewFrustum().BottomSlope - Projection::GetViewFrustum().TopSlope;
 
         return scale;
     }
 
     DirectX::XMFLOAT2 PerspectiveProjection::GetUvToViewBias() const
     {
+        // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
+
         DirectX::XMFLOAT2 bias{};
-        bias.x = m_BoundingFrustum.LeftSlope;
-        bias.y = m_BoundingFrustum.TopSlope;
+        bias.x = Projection::GetViewFrustum().LeftSlope;
+        bias.y = Projection::GetViewFrustum().TopSlope;
 
         return bias;
     }
@@ -148,16 +142,6 @@ namespace benzin
         UpdateWorldToViewMatrix();
     }
 
-    const DirectX::XMMATRIX& Camera::GetViewToClipMatrix() const
-    {
-        return m_Projection.GetViewToClipMatrix();
-    }
-
-    const DirectX::XMMATRIX& Camera::GetClipToViewMatrix() const
-    {
-        return m_Projection.GetClipToViewMatrix();
-    }
-
     DirectX::XMMATRIX Camera::GetWorldToClipMatrix() const
     {
         return m_WorldToViewMatrix * GetViewToClipMatrix();
@@ -186,6 +170,8 @@ namespace benzin
     {
         m_WorldToViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
         m_ViewToWorldMatrix = DirectX::XMMatrixInverse(nullptr, m_WorldToViewMatrix);
+
+        m_Projection.GetViewFrustum().Transform(m_WorldFrustum, m_ViewToWorldMatrix);
     }
 
     // CameraController
@@ -322,7 +308,7 @@ namespace benzin
 
     PerspectiveProjection* FlyCameraController::GetPerspectiveProjection()
     {
-        const auto* perspectiveProjection = dynamic_cast<const PerspectiveProjection*>(&m_Camera.GetProjection());
+        const auto* perspectiveProjection = dynamic_cast<const PerspectiveProjection*>(&m_Camera.m_Projection);
 
         if (!perspectiveProjection)
         {
@@ -348,4 +334,4 @@ namespace benzin
         }
     }
 
-} // namespace benzin
+}

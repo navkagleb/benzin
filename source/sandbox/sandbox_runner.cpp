@@ -18,7 +18,7 @@
 #include "sandbox/render_passes/deferred_lighting_pass.hpp"
 #include "sandbox/render_passes/environment_pass.hpp"
 #include "sandbox/render_passes/geometry_pass.hpp"
-#include "sandbox/render_passes/global_constants_pass.hpp"
+#include "sandbox/render_passes/global_consts_pass.hpp"
 #include "sandbox/render_passes/procedural_grass_pass.hpp"
 #include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
 #include "sandbox/render_passes/sigma_denoiser_pass.hpp"
@@ -289,7 +289,7 @@ namespace sandbox
         // The order in which render passes are added is important
         BenzinAssert(m_RenderPasses.empty());
         m_RenderPasses.push_back(std::make_unique<TlasBuildingPass>());
-        m_RenderPasses.push_back(std::make_unique<GlobalConstantsPass>());
+        m_RenderPasses.push_back(std::make_unique<GlobalConstsPass>());
         m_RenderPasses.push_back(std::make_unique<GeometryPass>());
         m_RenderPasses.push_back(std::make_unique<ProceduralGrassPass>());
         m_RenderPasses.push_back(std::make_unique<RayTracing_ShadowPass>());
@@ -321,6 +321,7 @@ namespace sandbox
     {
         auto& perspectiveProjection = m_Scene->GetPerspectiveProjection();
         perspectiveProjection.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.1f, 1000.0f);
+        perspectiveProjection.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.1f, 100.0f);
 
         auto& camera = m_Scene->GetCamera();
         camera.SetPosition({ -1.649f, 1.007f, -1.555f });

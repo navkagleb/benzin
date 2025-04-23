@@ -1,5 +1,5 @@
 #include "sandbox/bootstrap.hpp"
-#include "sandbox/render_passes/global_constants_pass.hpp"
+#include "sandbox/render_passes/global_consts_pass.hpp"
 
 #include <benzin/core/profiler.hpp>
 #include <benzin/core/tick_timer.hpp>
@@ -11,15 +11,17 @@
 
 #include <sandbox/sandbox_render_settings.hpp>
 
+BenzinEnableUnaryPlusForEnum(joint::FrustumPlane);
+
 namespace sandbox
 {
 
-    GlobalConstantsPass::GlobalConstantsPass()
+    GlobalConstsPass::GlobalConstsPass()
     {
         ms_ConstBufferPool->PreAllocate(sizeof(m_FrameConsts));
     }
 
-    void GlobalConstantsPass::OnUpdate()
+    void GlobalConstsPass::OnUpdate()
     {
         BenzinProfile();
 
@@ -27,13 +29,10 @@ namespace sandbox
         UpdateFrameConsts();
     }
 
-    void GlobalConstantsPass::OnRender() const
+    void GlobalConstsPass::OnRender() const
     {
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-
-        BenzinGpuEvent(cmdList, "GlobalConstants");
-
-        const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
+        BenzinGpuEvent(cmdList, "GlobalConstsPass");
 
         const uint64_t frameConstsGpuAddress = ms_ConstBufferPool->Allocate(m_FrameConsts);
         cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
@@ -43,12 +42,12 @@ namespace sandbox
         cmdList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, ms_Scene->GetLightBufferGpuAddress());
     }
 
-    void GlobalConstantsPass::UpdateCameraConsts()
+    void GlobalConstsPass::UpdateCameraConsts()
     {
         const benzin::Camera& camera = ms_Scene->GetCamera();
         const benzin::PerspectiveProjection& projection = ms_Scene->GetPerspectiveProjection();
 
-        const joint::CameraConsts cameraConstants
+        joint::CameraConsts cameraConsts
         {
             .WorldToView = camera.GetWorldToViewMatrix(),
             .ViewToWorld = camera.GetViewToWorldMatrix(),
@@ -67,18 +66,27 @@ namespace sandbox
             .UvToViewBias = projection.GetUvToViewBias(),
         };
 
-        if (ms_Device->GetCpuFrameIndex() != 0)
+        camera.GetWorldFrustum().GetPlanes(
+            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Near],
+            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Far],
+            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Right],
+            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Left],
+            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Top],
+            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Bottom]
+        );
+
+        if (ms_Device->GetCpuFrameIndex() != 0) [[likely]]
         {
-            m_FrameConsts.PrevCamera = std::exchange(m_FrameConsts.Camera, cameraConstants);
+            m_FrameConsts.PrevCamera = std::exchange(m_FrameConsts.Camera, cameraConsts);
         }
         else
         {
-            m_FrameConsts.Camera = cameraConstants;
-            m_FrameConsts.PrevCamera = cameraConstants;
+            m_FrameConsts.Camera = cameraConsts;
+            m_FrameConsts.PrevCamera = cameraConsts;
         }
     }
 
-    void GlobalConstantsPass::UpdateFrameConsts()
+    void GlobalConstsPass::UpdateFrameConsts()
     {
         const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
         const float animationTimeInSec = ms_AnimationTimer->GetElapsedTimeInSec();

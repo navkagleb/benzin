@@ -174,8 +174,7 @@ namespace sandbox
         MeshRenderContext context
         {
             .CmdList = cmdList,
-            .WorldToViewMatrix = ms_Scene->GetCamera().GetWorldToViewMatrix(),
-            .CameraFrustum = ms_Scene->GetPerspectiveProjection().GetBoundingFrustum(),
+            .WorldFrustum = ms_Scene->GetCamera().GetWorldFrustum(),
             .EntityRegistry = ms_Scene->GetEntityRegistry(),
             .MeshRegistry = ms_Scene->GetMeshRegistry(),
             .Settings = ms_Settings->GetSection<GBufferSettings>(),
@@ -303,10 +302,8 @@ namespace sandbox
 
             if (context.Settings.IsFrustumCullingEnabled && subMesh.BoundingBox.has_value())
             {
-                const DirectX::XMMATRIX localToViewMatrix = meshInstance.Transform * localToWorldMatrix * context.WorldToViewMatrix;
-                const auto viewBoundingBox = benzin::TransformBoundingBox(*subMesh.BoundingBox, localToViewMatrix);
-
-                if (context.CameraFrustum.Contains(viewBoundingBox) == DirectX::DISJOINT)
+                const auto worldBoundingBox = benzin::TransformBoundingBox(*subMesh.BoundingBox, meshInstance.Transform * localToWorldMatrix);
+                if (context.WorldFrustum.Contains(worldBoundingBox) == DirectX::DISJOINT)
                 {
                     continue;
                 }
