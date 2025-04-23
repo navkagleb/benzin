@@ -11,9 +11,9 @@ namespace benzin
 
     void RenderSettingsTool::DrawWindowContent()
     {
-        for (const auto& sectionInfo : m_SectionInfos)
+        for (const SectionInfo& sectionInfo : m_SectionInfos)
         {
-            if (Imgui_MainCollapsingHeader(sectionInfo.TitleName, sectionInfo.Flags))
+            if (ImGui_MainCollapsingHeader(sectionInfo.TitleName, sectionInfo.Flags))
             {
                 BenzinAssert(sectionInfo.DrawCallback);
                 sectionInfo.DrawCallback();

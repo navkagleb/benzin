@@ -28,7 +28,7 @@ namespace benzin
 
     void SceneStatsTool::DrawSceneStats() const
     {
-        if (!Imgui_MainCollapsingHeader("Scene"))
+        if (!ImGui_MainCollapsingHeader("Scene"))
         {
             return;
         }
@@ -45,7 +45,7 @@ namespace benzin
 
     void SceneStatsTool::DrawRayTracingAccelerationStructuresStats() const
     {
-        if (!Imgui_MainCollapsingHeader("RayTracing_AccelerationStructures"))
+        if (!ImGui_MainCollapsingHeader("RayTracing_AccelerationStructures"))
         {
             return;
         }
@@ -92,7 +92,7 @@ namespace benzin
 
     void SceneStatsTool::DrawRayTracingSceneStats() const
     {
-        if (!Imgui_MainCollapsingHeader("RayTracing_Scene"))
+        if (!ImGui_MainCollapsingHeader("RayTracing_Scene"))
         {
             return;
         }
