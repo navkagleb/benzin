@@ -101,7 +101,7 @@ namespace benzin
 
         virtual ~PsoBase() = default;
 
-        virtual void Compile() = 0;
+        virtual void Compile(std::string_view debugName) = 0;
         virtual void Release() = 0;
         virtual std::span<const ShaderInfo> GetShaders() const = 0;
 
@@ -119,7 +119,7 @@ namespace benzin
         auto* GetD3D12PipelineState() const { return m_D3D12PipelineState; }
 
     public:
-        void Compile() override;
+        void Compile(std::string_view debugName) override;
         void Release() override;
         std::span<const ShaderInfo> GetShaders() const override { return m_Shaders.Get(); }
 

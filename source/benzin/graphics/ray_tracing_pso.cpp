@@ -3,8 +3,9 @@
 
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/device.hpp"
 #include "benzin/graphics/d3d12_assert.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
+#include "benzin/graphics/device.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
 
 namespace benzin
@@ -31,7 +32,7 @@ namespace benzin
         Release();
     }
 
-    void RayTracing_Pso::Compile()
+    void RayTracing_Pso::Compile(std::string_view debugName)
     {
         BenzinAssert(m_D3D12StateObject == nullptr);
 
@@ -52,6 +53,7 @@ namespace benzin
         };
 
         BenzinD3D12Call(m_Device.GetD3D12Device()->CreateStateObject(&d3d12StateObjectDesc, IID_PPV_ARGS(&m_D3D12StateObject)));
+        SetD3DObjectDebugName(m_D3D12StateObject, debugName);
 
         BuildShaderTable();
     }

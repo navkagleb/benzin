@@ -6,6 +6,8 @@
 namespace benzin
 {
 
+    static constexpr uint32_t g_MaxDebugNameSize = 128;
+
     D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType);
 
     enum class D3D12BreakReasonFlag
@@ -32,11 +34,8 @@ namespace benzin
 
         BenzinAssert(d3dObject != nullptr);
 
-        constexpr size_t maxDebugNameSize = 128;
-        constexpr std::string_view defaultName = "Unnamed D3DObject";
-
         std::string debugName;
-        debugName.resize_and_overwrite(maxDebugNameSize, [&](char* data, size_t size) noexcept -> size_t
+        debugName.resize_and_overwrite(g_MaxDebugNameSize, [&](char* data, size_t size) noexcept -> size_t
         {
             auto alignedSize = (uint32_t)size;
 
@@ -45,7 +44,7 @@ namespace benzin
                 return alignedSize;
             }
 
-            BenzinAssert(false);
+            BenzinAssert(false, "The debug name isn't set! Set debug name before get it!");
             return 0;
         });
 
@@ -58,7 +57,7 @@ namespace benzin
         static_assert(std::derived_from<D3DObjectT, ID3D12Object> || std::derived_from<D3DObjectT, IDXGIObject>);
 
         BenzinAssert(d3dObject != nullptr);
-        BenzinAssert(!debugName.empty());
+        BenzinAssert(!debugName.empty() && debugName.size() <= g_MaxDebugNameSize);
 
         BenzinD3D12Call(d3dObject->SetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t)debugName.size(), debugName.data()));
     }
@@ -67,11 +66,6 @@ namespace benzin
     void SafeReleaseD3DObject(D3DObjectT*& d3dObject, bool isWarningEnabled = true)
     {
         static_assert(std::derived_from<D3DObjectT, ID3D12Object> || std::derived_from<D3DObjectT, IDXGIObject>);
-
-        if (d3dObject == nullptr)
-        {
-            return;
-        }
 
         const auto debugName = GetD3DObjectDebugName(d3dObject);
         const uint32_t referenceCount = d3dObject->Release();

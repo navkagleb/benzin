@@ -220,16 +220,7 @@ namespace benzin
         auto psoT = std::make_unique<PsoT>(m_Device);
         creator(*psoT);
 
-        psoT->Compile();
-
-        if constexpr (std::is_same_v<PsoT, RayTracing_Pso>)
-        {
-            SetD3DObjectDebugName(psoT->GetD3D12StateObject(), magic_enum::enum_name(id));
-        }
-        else
-        {
-            SetD3DObjectDebugName(psoT->GetD3D12PipelineState(), magic_enum::enum_name(id));
-        }
+        psoT->Compile(magic_enum::enum_name(id));
 
         pso = std::move(psoT);
     }
@@ -248,8 +239,10 @@ namespace benzin
 
     void PsoManager::RecompilePsoCallback()
     {
-        for (std::unique_ptr<PsoBase>& pso : m_Psos)
+        for (uint32_t rawId = 0; rawId < m_Psos.size(); ++rawId)
         {
+            std::unique_ptr<PsoBase>& pso = m_Psos[rawId];
+
             if (pso.get() == nullptr)
             {
                 continue;
@@ -258,7 +251,7 @@ namespace benzin
             PsoBaseWrapper psoWrapper = pso;
 
             bool isPsoNeedsRecompilation = false;
-            for (const auto& shader : pso->GetShaders())
+            for (const ShaderInfo& shader : pso->GetShaders())
             {
                 isPsoNeedsRecompilation |= m_ShaderManager.CompareWithNewShader(shader);
                 if (!isPsoNeedsRecompilation)
@@ -320,7 +313,7 @@ namespace benzin
             if (isPsoNeedsRecompilation)
             {
                 pso->Release();
-                pso->Compile();
+                pso->Compile(magic_enum::enum_name(PsoId{ rawId }));
             }
         }
     }

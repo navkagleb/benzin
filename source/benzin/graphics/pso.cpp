@@ -2,8 +2,9 @@
 #include "benzin/graphics/pso.hpp"
 
 #include "benzin/graphics/backend.hpp"
-#include "benzin/graphics/device.hpp"
 #include "benzin/graphics/d3d12_assert.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
+#include "benzin/graphics/device.hpp"
 #include "benzin/graphics/render_states.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
 
@@ -198,7 +199,7 @@ namespace benzin
     {}
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>
-    void Pso<PsoStreamT, _MaxShaderCount>::Compile()
+    void Pso<PsoStreamT, _MaxShaderCount>::Compile(std::string_view debugName)
     {
         BenzinAssert(m_D3D12PipelineState == nullptr);
 #if BENZIN_IS_ASSERTS_ENABLED
@@ -211,7 +212,8 @@ namespace benzin
             .pPipelineStateSubobjectStream = (void*)&m_Stream,
         };
 
-        BenzinD3D12Call(m_Device.GetD3D12Device()->CreatePipelineState(&d3d12PsoStreamDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+        BenzinD3D12Call(PsoBase::m_Device.GetD3D12Device()->CreatePipelineState(&d3d12PsoStreamDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+        SetD3DObjectDebugName(m_D3D12PipelineState, debugName);
     }
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>

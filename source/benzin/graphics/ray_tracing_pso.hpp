@@ -12,7 +12,7 @@ namespace benzin
         explicit RayTracing_Pso(Device& device);
         ~RayTracing_Pso() override;
 
-        void Compile() override;
+        void Compile(std::string_view debugName) override;
         void Release() override;
         std::span<const ShaderInfo> GetShaders() const override;
 
