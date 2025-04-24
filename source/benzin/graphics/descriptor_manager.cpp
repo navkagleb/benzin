@@ -133,7 +133,7 @@ namespace benzin
         {
             .DebugName = "DescriptorHeap_CpuRtv",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-            .MaxDescriptorCount = GfxConfig::s_MaxRtvDescriptorCount,
+            .MaxDescriptorCount = GraphicsConfig::GetMaxRtvDescriptorCount(),
             .IsShaderVisible = false,
         });
 
@@ -141,7 +141,7 @@ namespace benzin
         {
             .DebugName = "DescriptorHeap_CpuDsv",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-            .MaxDescriptorCount = GfxConfig::s_MaxDsvDescriptorCount,
+            .MaxDescriptorCount = GraphicsConfig::GetMaxDsvDescriptorCount(),
             .IsShaderVisible = false,
         });
 
@@ -149,7 +149,7 @@ namespace benzin
         {
             .DebugName = "DescriptorHeap_CpuResource",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            .MaxDescriptorCount = GfxConfig::s_MaxResourceDescriptorCount,
+            .MaxDescriptorCount = GraphicsConfig::GetMaxResourceDescriptorCount(),
             .IsShaderVisible = false,
         });
 
@@ -157,7 +157,7 @@ namespace benzin
         {
             .DebugName = "DescriptorHeap_GpuResource",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            .MaxDescriptorCount = GfxConfig::s_MaxResourceDescriptorCount,
+            .MaxDescriptorCount = GraphicsConfig::GetMaxResourceDescriptorCount(),
             .IsShaderVisible = true,
         });
     }

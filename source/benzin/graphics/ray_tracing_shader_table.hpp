@@ -14,7 +14,7 @@ namespace benzin
         struct GpuAddress
         {
             uint64_t GpuVirtualAddress = 0;
-            Bytes64 Size = 0;
+            uint64_t SizeInBytes = 0;
         };
 
         struct GpuAddresses

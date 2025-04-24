@@ -55,9 +55,9 @@ namespace benzin
         auto GetCurrentState() const { return m_CurrentState; }
         void SetCurrentState(ResourceState resourceState) const { m_CurrentState = resourceState; }
 
-        Bytes32 GetAllocationSize() const;
+        uint64_t GetAllocationSizeInBytes() const;
 
-        virtual Bytes32 GetSize() const = 0;
+        virtual uint64_t GetSizeInBytes() const = 0;
 
     protected:
         template <typename T>

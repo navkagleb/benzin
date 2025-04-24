@@ -31,7 +31,7 @@ namespace benzin
         {
             .DebugName = std::format("{}_VertexBuffer", debugName),
             .Type = BufferType::Vertex,
-            .ElementSize = sizeof(joint::MeshVertex),
+            .ElementSizeInBytes = sizeof(joint::MeshVertex),
             .ElementCount = (uint32_t)mesh.TotalVertexCount,
         });
 
@@ -40,7 +40,7 @@ namespace benzin
             .DebugName = std::format("{}_IndexBuffer", debugName),
             .Type = BufferType::Index,
             .Format = GraphicsFormat::R32Uint,
-            .ElementSize = sizeof(uint32_t),
+            .ElementSizeInBytes = sizeof(uint32_t),
             .ElementCount = (uint32_t)mesh.TotalIndexCount,
         });
 
@@ -48,7 +48,7 @@ namespace benzin
         {
             .DebugName = std::format("{}_MeshInstanceBuffer", debugName),
             .Type = BufferType::Structured,
-            .ElementSize = sizeof(joint::MeshInstance),
+            .ElementSizeInBytes = sizeof(joint::MeshInstance),
             .ElementCount = (uint32_t)mesh.SubMeshInstances.size(),
         });
 
@@ -56,7 +56,7 @@ namespace benzin
         {
             .DebugName = std::format("{}_MaterialBuffer", debugName),
             .Type = BufferType::Structured,
-            .ElementSize = sizeof(joint::Material),
+            .ElementSizeInBytes = sizeof(joint::Material),
             .ElementCount = (uint32_t)mesh.Materials.size(),
         });
 
@@ -77,7 +77,7 @@ namespace benzin
             .DebugName = "LightBuffer",
             .MemoryType = ResourceMemoryType::Upload,
             .Type = BufferType::Structured,
-            .ElementSize = sizeof(joint::Light),
+            .ElementSizeInBytes = sizeof(joint::Light),
             .ElementCount = s_MaxLightCount * CmdLineArgs::GetFrameInFlightCount(),
         });
     }
@@ -88,7 +88,7 @@ namespace benzin
     {
         BenzinAssert(m_TransformBuffer.get() != nullptr);
 
-        return m_TransformBuffer->GetSrv(IndexRange32
+        return m_TransformBuffer->GetSrv(IndexRange64
         {
             m_TransformCount * m_Device.GetActiveFrameIndex(),
             m_TransformCount,
@@ -216,16 +216,16 @@ namespace benzin
 
     void Scene::UploadAllMeshData()
     {
-        Bytes32 uploadBufferSize;
-        m_MeshRegistry.each([this, &uploadBufferSize](entt::entity meshHandle)
+        uint64_t uploadBufferSizeInBytes = 0;
+        m_MeshRegistry.each([this, &uploadBufferSizeInBytes](entt::entity meshHandle)
         {
             const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
 
-            uploadBufferSize += meshGpuStorage.VertexBuffer->GetSize();
-            uploadBufferSize += meshGpuStorage.IndexBuffer->GetSize();
+            uploadBufferSizeInBytes += meshGpuStorage.VertexBuffer->GetSizeInBytes();
+            uploadBufferSizeInBytes += meshGpuStorage.IndexBuffer->GetSizeInBytes();
         });
 
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSize);
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSizeInBytes);
         m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
         {
             const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
@@ -241,15 +241,15 @@ namespace benzin
 
     void Scene::UploadAllMeshInstances()
     {
-        Bytes32 uploadBufferSize;
-        m_MeshRegistry.each([this, &uploadBufferSize](entt::entity meshHandle)
+        uint64_t uploadBufferSizeInBytes = 0;
+        m_MeshRegistry.each([this, &uploadBufferSizeInBytes](entt::entity meshHandle)
         {
             const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
 
-            uploadBufferSize += meshGpuStorage.MeshInstanceBuffer->GetSize();
+            uploadBufferSizeInBytes += meshGpuStorage.MeshInstanceBuffer->GetSizeInBytes();
         });
 
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSize);
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSizeInBytes);
         m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
         {
             const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
@@ -266,13 +266,13 @@ namespace benzin
             return;
         }
 
-        Bytes32 uploadBufferSize;
+        uint64_t uploadBufferSizeInBytes = 0;
         for (const auto& texture : m_Textures)
         {
-            uploadBufferSize += Bytes32{ AlignUp(texture->GetSize().GetByteCount(), GfxConfig::s_TextureAlignment.GetByteCount()) };
+            uploadBufferSizeInBytes += AlignUp(texture->GetSizeInBytes(), GraphicsConfig::GetTextureAlignmentInBytes());
         }
 
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSize);
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSizeInBytes);
 
         for (const auto& [textureData, texture] : std::views::zip(m_TexturesData, m_Textures))
         {
@@ -282,15 +282,15 @@ namespace benzin
 
     void Scene::UploadAllMaterials()
     {
-        Bytes32 uploadBufferSize;
-        m_MeshRegistry.each([this, &uploadBufferSize](entt::entity meshHandle)
+        uint64_t uploadBufferSizeInBytes = 0;
+        m_MeshRegistry.each([this, &uploadBufferSizeInBytes](entt::entity meshHandle)
         {
             const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
 
-            uploadBufferSize += meshGpuStorage.MaterialBuffer->GetSize();
+            uploadBufferSizeInBytes += meshGpuStorage.MaterialBuffer->GetSizeInBytes();
         });
 
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSize);
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSizeInBytes);
         m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
         {
             const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
@@ -349,12 +349,12 @@ namespace benzin
                 .DebugName = "TransformBuffer",
                 .MemoryType = ResourceMemoryType::Upload, // TODO
                 .Type = BufferType::Structured,
-                .ElementSize = sizeof(joint::MeshTransform),
+                .ElementSizeInBytes = sizeof(joint::MeshTransform),
                 .ElementCount = m_TransformCount * frameInFlightCount,
             });
         }
 
-        BufferWriter transformWriter{ m_TransformBuffer->GetCpuMappedData(), m_TransformBuffer->GetSize() };
+        BufferWriter transformWriter{ m_TransformBuffer->GetCpuMappedData(), m_TransformBuffer->GetSizeInBytes() };
         transformWriter.SetElementPosition<joint::MeshTransform>(m_TransformCount * m_Device.GetActiveFrameIndex());
 
         uint32_t gpuTransformIndex = 0;
@@ -396,7 +396,7 @@ namespace benzin
     {
         m_ActiveLightCount = 1;
 
-        BufferWriter lights{ m_LightBuffer->GetCpuMappedData(), m_LightBuffer->GetSize() };
+        BufferWriter lights{ m_LightBuffer->GetCpuMappedData(), m_LightBuffer->GetSizeInBytes() };
         lights.SetElementPosition<joint::Light>(s_MaxLightCount * m_Device.GetActiveFrameIndex());
 
         {

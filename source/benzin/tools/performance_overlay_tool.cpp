@@ -97,8 +97,8 @@ namespace benzin
         ImGui::Text(BenzinFormatData("Fps: {:.1f} ({:.3f} ms)", m_FrameRate, m_FrameDeltaTimeMs));
         ImGui::Text(BenzinFormatData("Cpu: {}, Gpu: {}, Frame: {}", m_Device.GetCpuFrameIndex(), m_Device.GetCompletedGpuFrameIndex(), m_Device.GetActiveFrameIndex()));
         ImGui::Text(BenzinFormatData("FrameDelay: {}", m_Device.GetCpuFrameIndex() - m_Device.GetCompletedGpuFrameIndex()));
-        ImGui::Text(BenzinFormatData("Local VRAM: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedVram.GetMb(), adapterMemoryInfo.VramOsBudget.GetMb()));
-        ImGui::Text(BenzinFormatData("Host RAM: {:.0f} / {:.0f} mb", adapterMemoryInfo.ProcessUsedSharedRam.GetMb(), adapterMemoryInfo.SharedRamOsBudget.GetMb()));
+        ImGui::Text(BenzinFormatData("Local VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.ProcessUsedVramInBytes), ToMb(adapterMemoryInfo.VramOsBudgetInBytes)));
+        ImGui::Text(BenzinFormatData("Host RAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.ProcessUsedSharedRamInBytes), ToMb(adapterMemoryInfo.SharedRamOsBudgetInBytes)));
 
         if (CmdLineArgs::IsGpuValidationEnabled())
         {

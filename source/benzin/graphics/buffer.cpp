@@ -12,7 +12,7 @@ namespace benzin
     struct BufferSrv
     {
         BufferType BufferType = BufferType::Byte;
-        IndexRange32 ElementRange{};
+        IndexRange64 ElementRange{};
     };
 
     struct BufferUav {};
@@ -22,7 +22,7 @@ namespace benzin
         uint32_t ElementIndex = 0;
     };
 
-    static void ValidateBufferElementRange(const Buffer& buffer, IndexRange32& outElementRange)
+    static void ValidateBufferElementRange(const Buffer& buffer, IndexRange64& outElementRange)
     {
         BenzinAssert(outElementRange.StartIndex < buffer.GetElementCount());
         BenzinAssert(outElementRange.Count <= buffer.GetElementCount());
@@ -44,15 +44,15 @@ namespace benzin
 
     static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& bufferCreation)
     {
-        BenzinAssert(bufferCreation.ElementSize != 0);
+        BenzinAssert(bufferCreation.ElementSizeInBytes != 0);
         BenzinAssert(bufferCreation.ElementCount != 0);
 
-        Bytes32 alignedElementSize = bufferCreation.ElementSize;
-        if (bufferCreation.Type == BufferType::Constant)
+        uint32_t alignedElementSizeInBytes = bufferCreation.ElementSizeInBytes;
+        if (bufferCreation.Type == BufferType::Const)
         {
-            // Align the 'BufferCreation::ElementSize', not the entire buffer size 'BufferFlag::ConstantBuffer'
+            // Align the 'BufferCreation::ElementSize', not the entire buffer size 'BufferType::Const'
             // This is done so that each element can be used as a separate constant buffer using ConstantBufferView
-            alignedElementSize = AlignUp(alignedElementSize.GetByteCount(), GfxConfig::s_ConstantBufferAlignment.GetByteCount());
+            alignedElementSizeInBytes = AlignUp(alignedElementSizeInBytes, GraphicsConfig::GetConstBufferAlignmentInBytes());
         }
         else if (bufferCreation.Type == BufferType::Structured)
         {
@@ -60,11 +60,11 @@ namespace benzin
             // Ref: https://developer.nvidia.com/content/understanding-structured-buffer-performance
 
             BenzinWarningIf(
-                alignedElementSize % GfxConfig::s_StructuredBufferAlignment != 0,
+                alignedElementSizeInBytes % GraphicsConfig::GetStructuredBufferAlignmentInBytes() != 0,
                 "Buffer '{}' is not properly aligned. BufferElementSize: {}, StructuredBufferAlignment: {}",
                 bufferCreation.DebugName,
-                alignedElementSize.GetByteCount(),
-                GfxConfig::s_StructuredBufferAlignment.GetByteCount()
+                alignedElementSizeInBytes,
+                GraphicsConfig::GetStructuredBufferAlignmentInBytes()
             );
         }
 
@@ -78,7 +78,7 @@ namespace benzin
         {
             .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
             .Alignment = 0,
-            .Width = alignedElementSize * bufferCreation.ElementCount,
+            .Width = alignedElementSizeInBytes * bufferCreation.ElementCount,
             .Height = 1,
             .DepthOrArraySize = 1,
             .MipLevels = 1,
@@ -133,7 +133,7 @@ namespace benzin
         BenzinEnsure(outD3D12Resource != nullptr);
     }
 
-    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, IndexRange32 elementRange)
+    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, IndexRange64 elementRange)
     {
         switch (buffer.GetType())
         {
@@ -143,9 +143,9 @@ namespace benzin
                 // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
 
                 static const auto rawBufferFormat = GraphicsFormat::R32Typeless;
-                static const auto rawBufferFormatSize = GetFormatSize(rawBufferFormat);
+                static const auto rawBufferFormatSizeInBytes = GetFormatSizeInBytes(rawBufferFormat);
 
-                BenzinAssert(buffer.GetSize() % rawBufferFormatSize == 0);
+                BenzinAssert(buffer.GetSizeInBytes() % rawBufferFormatSizeInBytes == 0);
 
                 return D3D12_SHADER_RESOURCE_VIEW_DESC
                 {
@@ -155,7 +155,7 @@ namespace benzin
                     .Buffer
                     {
                         .FirstElement = 0,
-                        .NumElements = buffer.GetSize() / rawBufferFormatSize,
+                        .NumElements = (uint32_t)(buffer.GetSizeInBytes() / rawBufferFormatSizeInBytes),
                         .StructureByteStride = 0,
                         .Flags = D3D12_BUFFER_SRV_FLAG_RAW,
                     },
@@ -171,7 +171,7 @@ namespace benzin
                     .Buffer
                     {
                         .FirstElement = elementRange.StartIndex,
-                        .NumElements = elementRange.Count,
+                        .NumElements = (uint32_t)elementRange.Count,
                         .StructureByteStride = 0,
                         .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
                     },
@@ -189,8 +189,8 @@ namespace benzin
                     .Buffer
                     {
                         .FirstElement = elementRange.StartIndex,
-                        .NumElements = elementRange.Count,
-                        .StructureByteStride = buffer.GetAlignedElementSize(), // #TODO: 'm_AlignedElementSize' when using 'StructuredBuffer'?
+                        .NumElements = (uint32_t)elementRange.Count,
+                        .StructureByteStride = buffer.GetAlignedElementSizeInBytes(), // #TODO: 'm_AlignedElementSize' when using 'StructuredBuffer'?
                         .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
                     },
                 };
@@ -229,7 +229,7 @@ namespace benzin
                     .Buffer
                     {
                         .FirstElement = 0,
-                        .NumElements = buffer.GetElementCount(),
+                        .NumElements = (uint32_t)buffer.GetElementCount(),
                         .StructureByteStride = 0,
                         .CounterOffsetInBytes = 0,
                         .Flags = D3D12_BUFFER_UAV_FLAG_NONE,
@@ -245,8 +245,8 @@ namespace benzin
                     .Buffer
                     {
                         .FirstElement = 0,
-                        .NumElements = buffer.GetElementCount(),
-                        .StructureByteStride = buffer.GetElementSize(),
+                        .NumElements = (uint32_t)buffer.GetElementCount(),
+                        .StructureByteStride = buffer.GetElementSizeInBytes(),
                         .CounterOffsetInBytes = 0,
                         .Flags = D3D12_BUFFER_UAV_FLAG_NONE,
                     },
@@ -266,7 +266,7 @@ namespace benzin
         return D3D12_CONSTANT_BUFFER_VIEW_DESC
         {
             .BufferLocation = buffer.GetGpuVirtualAddress(elementIndex),
-            .SizeInBytes = buffer.GetAlignedElementSize(),
+            .SizeInBytes = buffer.GetAlignedElementSizeInBytes(),
         };
     }
 
@@ -285,9 +285,9 @@ namespace benzin
         m_Type = creation.Type;
         m_Format = creation.Format;
 
-        m_ElementSize = creation.ElementSize;
+        m_ElementSizeInBytes = creation.ElementSizeInBytes;
         m_ElementCount = creation.ElementCount;
-        m_AlignedElementSize = (uint32_t)m_D3D12Resource->GetDesc().Width / creation.ElementCount; // HACK
+        m_AlignedElementSizeInBytes = (uint32_t)(m_D3D12Resource->GetDesc().Width / creation.ElementCount); // HACK
 
         m_IsUnorderedAccessAllowed = creation.IsUnorderedAccessAllowed;
 
@@ -311,10 +311,10 @@ namespace benzin
         BenzinAssert(m_D3D12Resource != nullptr);
         BenzinAssert(elementIndex < m_ElementCount);
 
-        return m_D3D12Resource->GetGPUVirtualAddress() + elementIndex * m_AlignedElementSize;
+        return m_D3D12Resource->GetGPUVirtualAddress() + elementIndex * m_AlignedElementSizeInBytes;
     }
 
-    const Descriptor& Buffer::GetSrv(IndexRange32 elementRange) const
+    const Descriptor& Buffer::GetSrv(IndexRange64 elementRange) const
     {
         ValidateBufferElementRange(*this, elementRange);
 
@@ -340,7 +340,7 @@ namespace benzin
         );
     }
 
-    Descriptor Buffer::CreateDetachedSrv(IndexRange32 elementRange, bool isValidationEnabled) const
+    Descriptor Buffer::CreateDetachedSrv(IndexRange64 elementRange, bool isValidationEnabled) const
     {
         if (isValidationEnabled)
         {
@@ -387,7 +387,7 @@ namespace benzin
     Descriptor Buffer::CreateDetachedCbv(uint32_t elementIndex) const
     {
         BenzinAssert(m_D3D12Resource != nullptr);
-        BenzinAssert(m_Type == BufferType::Constant);
+        BenzinAssert(m_Type == BufferType::Const);
         BenzinAssert(elementIndex < m_ElementCount);
 
         return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Cbv, [&](uint64_t cpuHandle)
@@ -404,7 +404,7 @@ namespace benzin
     void Buffer::MapReadbackData(uint64_t offsetInBytes, uint32_t dataSizeInBytes, const MapReadbackCallback& callback) const
     {
         BenzinAssert(m_MemoryType == ResourceMemoryType::Readback);
-        BenzinAssert(offsetInBytes + dataSizeInBytes <= GetSize());
+        BenzinAssert(offsetInBytes + dataSizeInBytes <= GetSizeInBytes());
         BenzinAssert(callback);
 
         const D3D12_RANGE d3d12ReadbackRange

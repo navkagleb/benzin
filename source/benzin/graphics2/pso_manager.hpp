@@ -78,8 +78,8 @@ namespace benzin
 
         struct
         {
-            Bytes32 PayloadSize;
-            Bytes32 AttributeSize;
+            uint32_t PayloadSizeInBytes;
+            uint32_t AttributeSizeInBytes;
         } ShaderConfig;
     };
 

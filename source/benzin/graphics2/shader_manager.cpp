@@ -37,7 +37,7 @@ namespace benzin
     {
         WriteToFile(paths.DxilFilePath, compiledShader.DxilBlob);
 
-        if (GfxConfig::s_IsShaderSymbolsEnabled)
+        if (GraphicsConfig::IsShaderSymbolsEnabled())
         {
             BenzinAssert(!compiledShader.PdbBlob.empty());
             WriteToFile(paths.PdbFilePath, compiledShader.PdbBlob);
@@ -47,7 +47,7 @@ namespace benzin
     // Win64ShaderFileWatcher
 
     Win64ShaderFileWatcher::Win64ShaderFileWatcher()
-        : m_WatchDirectory{ GfxConfig::s_ShaderSourceDir }
+        : m_WatchDirectory{ GraphicsConfig::GetShaderSourceDir() }
     {
         m_DirectoryHandle = ::CreateFileW(
             m_WatchDirectory.c_str(),

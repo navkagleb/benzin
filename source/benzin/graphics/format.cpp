@@ -4,7 +4,7 @@
 namespace benzin
 {
 
-    uint32_t GetFormatSize(GraphicsFormat format)
+    uint32_t GetFormatSizeInBytes(GraphicsFormat format)
     {
         switch (format)
         {

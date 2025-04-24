@@ -82,7 +82,7 @@ namespace benzin
 
     private:
         void SetUploadBuffer(Buffer& uploadBuffer);
-        uint64_t AllocateInUploadBuffer(uint64_t sizeInBytes, uint64_t alignmentInBytes = 0);
+        uint64_t AllocateInUploadBuffer(uint64_t sizeInBytes, uint32_t alignmentInBytes = 0);
 
     private:
         Buffer* m_UploadBuffer = nullptr;

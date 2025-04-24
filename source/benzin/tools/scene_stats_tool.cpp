@@ -51,8 +51,8 @@ namespace benzin
         }
 
         {
-            Bytes32 buffersSize = 0;
-            Bytes32 scratchResourcesSize = 0;
+            uint64_t buffersSizeInBytes = 0;
+            uint64_t scratchResourcesSizeInBytes = 0;
 
             const auto view = m_Scene.GetMeshRegistry().view<RayTracing_Blas>();
             for (const auto& [_, blas] : view.each())
@@ -62,30 +62,30 @@ namespace benzin
                     continue;
                 }
 
-                buffersSize += blas.GetBuffer()->GetAllocationSize();
-                scratchResourcesSize += blas.GetScratchResource()->GetAllocationSize();
+                buffersSizeInBytes += blas.GetBuffer()->GetAllocationSizeInBytes();
+                scratchResourcesSizeInBytes += blas.GetScratchResource()->GetAllocationSizeInBytes();
             }
 
-            const Bytes32 totalSize = buffersSize + scratchResourcesSize;
+            const uint64_t totalSizeInBytes = buffersSizeInBytes + scratchResourcesSizeInBytes;
 
-            ImGui::SeparatorText(BenzinFormatData("BLASes ({:.2f} mb)", totalSize.GetMb()));
-            ImGui::BulletText(BenzinFormatData("Buffer: {:.2f} mb", buffersSize.GetMb()));
-            ImGui::BulletText(BenzinFormatData("ScratchResource: {:.2f} mb", scratchResourcesSize.GetMb()));
+            ImGui::SeparatorText(BenzinFormatData("BLASes ({:.2f} mb)", ToMb(totalSizeInBytes)));
+            ImGui::BulletText(BenzinFormatData("Buffer: {:.2f} mb", ToMb(buffersSizeInBytes)));
+            ImGui::BulletText(BenzinFormatData("ScratchResource: {:.2f} mb", ToMb(scratchResourcesSizeInBytes)));
         }
 
         {
             const auto& tlas = m_RayTracingScene.GetActiveTlas();
             if (tlas.IsAllocated())
             {
-                Bytes32 totalSize = 0;
-                totalSize += tlas.GetBuffer()->GetAllocationSize();
-                totalSize += tlas.GetScratchResource()->GetAllocationSize();
-                totalSize += tlas.GetInstanceBuffer()->GetAllocationSize();
+                uint64_t totalSizeInBytes = 0;
+                totalSizeInBytes += tlas.GetBuffer()->GetAllocationSizeInBytes();
+                totalSizeInBytes += tlas.GetScratchResource()->GetAllocationSizeInBytes();
+                totalSizeInBytes += tlas.GetInstanceBuffer()->GetAllocationSizeInBytes();
 
-                ImGui::SeparatorText(BenzinFormatData("TLAS ({:.2f})", totalSize.GetMb()));
-                ImGui::BulletText(BenzinFormatData("Buffer: {:.2f} mb", tlas.GetBuffer()->GetAllocationSize().GetMb()));
-                ImGui::BulletText(BenzinFormatData("ScratchResource: {:.2f} mb", tlas.GetScratchResource()->GetAllocationSize().GetMb()));
-                ImGui::BulletText(BenzinFormatData("InstanceBuffer: {:.2f} mb", tlas.GetInstanceBuffer()->GetAllocationSize().GetMb()));
+                ImGui::SeparatorText(BenzinFormatData("TLAS ({:.2f})", ToMb(totalSizeInBytes)));
+                ImGui::BulletText(BenzinFormatData("Buffer: {:.2f} mb", ToMb(tlas.GetBuffer()->GetAllocationSizeInBytes())));
+                ImGui::BulletText(BenzinFormatData("ScratchResource: {:.2f} mb", ToMb(tlas.GetScratchResource()->GetAllocationSizeInBytes())));
+                ImGui::BulletText(BenzinFormatData("InstanceBuffer: {:.2f} mb", ToMb(tlas.GetInstanceBuffer()->GetAllocationSizeInBytes())));
             }
         }
     }

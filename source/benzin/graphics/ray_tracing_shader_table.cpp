@@ -44,16 +44,16 @@ namespace benzin
         {
             .DebugName = "RayTracedShadows_ShaderTable",
             .MemoryType = benzin::ResourceMemoryType::Upload, // TODO: Replace with default heap
-            .ElementSize = sizeof(std::byte),
+            .ElementSizeInBytes = sizeof(std::byte),
             .ElementCount = GetRequiredTableSizeInBytes(),
         });
 
-        BufferWriter tableWriter{ m_ShaderTable->GetCpuMappedData(), m_ShaderTable->GetSize() };
+        BufferWriter tableWriter{ m_ShaderTable->GetCpuMappedData(), m_ShaderTable->GetSizeInBytes() };
 
         const auto processIdentifier = [this, &tableWriter](ShaderIdentifier id, GpuAddress& outGpuAddress)
         {
-            outGpuAddress.GpuVirtualAddress = m_ShaderTable->GetGpuVirtualAddress() + tableWriter.GetPosition();
-            outGpuAddress.Size = id.size();
+            outGpuAddress.GpuVirtualAddress = m_ShaderTable->GetGpuVirtualAddress() + tableWriter.GetPositionInBytes();
+            outGpuAddress.SizeInBytes = id.size();
 
             tableWriter.WriteData(std::span{ id.data(), g_TableAlignment });
         };

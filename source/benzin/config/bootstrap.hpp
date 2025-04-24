@@ -20,4 +20,4 @@
 
 // Global configs
 #include "benzin/config/engine_config.hpp"
-#include "benzin/config/gfx_config.hpp"
+#include "benzin/config/graphics_config.hpp"

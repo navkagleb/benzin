@@ -6,7 +6,7 @@
 #include <pix3.h>
 
 #include <benzin/core/math.hpp>
-#include <benzin/core/memory_writer.hpp>
+#include <benzin/core/buffer_writer.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/descriptor_manager.hpp>
@@ -172,8 +172,8 @@ namespace benzin
 
         const uint64_t uploadOffsetInBytes = AllocateInUploadBuffer(data.size_bytes());
 
-        const MemoryWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSize() };
-        writer.WriteBytes(data, uploadOffsetInBytes);
+        BufferWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSizeInBytes(), uploadOffsetInBytes };
+        writer.WriteData(data);
 
         CopyBufferRegion(destBuffer, destOffsetInBytes, *m_UploadBuffer, uploadOffsetInBytes, data.size_bytes());
     }
@@ -207,7 +207,7 @@ namespace benzin
             BenzinD3D12Call(texture.GetD3D12Resource()->GetDevice(IID_PPV_ARGS(&d3d12Device)));
 
             const D3D12_RESOURCE_DESC d3d12TextureDesc = texture.GetD3D12Resource()->GetDesc();
-            const uint64_t offsetInBytes = AllocateInUploadBuffer(0, GfxConfig::s_TextureAlignment);
+            const uint64_t offsetInBytes = AllocateInUploadBuffer(0, GraphicsConfig::GetTextureAlignmentInBytes());
 
             d3d12Device->GetCopyableFootprints(
                 &d3d12TextureDesc,
@@ -220,13 +220,13 @@ namespace benzin
                 &resourceSizeInBytes
             );
 
-            AllocateInUploadBuffer(resourceSizeInBytes, GfxConfig::s_TextureAlignment);
+            AllocateInUploadBuffer(resourceSizeInBytes, GraphicsConfig::GetTextureAlignmentInBytes());
         }
 
         // Copying sub-resources to UploadBuffer
         // Go down to rows and copy it
         {
-            const MemoryWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSize() };
+            BufferWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSizeInBytes() };
 
             for (uint32_t subResourceIndex = 0; subResourceIndex < (uint32_t)subResources.size(); ++subResourceIndex)
             {
@@ -255,7 +255,9 @@ namespace benzin
                         const std::byte* sourceRowData = sourceSliceData + subResource.RowPitchInBytes * rowIndex;
 
                         const uint64_t rowSizeInBytes = copyableFootprits.RowSizesInBytes[subResourceIndex];
-                        writer.WriteBytes(std::span{ sourceRowData, rowSizeInBytes }, destRowOffsetInBytes);
+
+                        writer.SetPositionInBytes(destRowOffsetInBytes);
+                        writer.WriteData(ToSpan(sourceRowData, rowSizeInBytes));
                     }
                 }
             }
@@ -287,7 +289,7 @@ namespace benzin
     {
         BenzinAssert(texture.GetMipCount() == 1);
 
-        const uint32_t pixelSizeInBytes = GetFormatSize(texture.GetFormat());
+        const uint32_t pixelSizeInBytes = GetFormatSizeInBytes(texture.GetFormat());
         const uint64_t rowPitchInBytes = pixelSizeInBytes * texture.GetWidth();
         const uint64_t slicePitchInBytes = rowPitchInBytes * texture.GetHeight();
 
@@ -315,7 +317,7 @@ namespace benzin
         m_UploadBufferOffsetInBytes = 0;
     }
 
-    uint64_t CopyCmdList::AllocateInUploadBuffer(uint64_t sizeInBytes, uint64_t alignmentInBytes)
+    uint64_t CopyCmdList::AllocateInUploadBuffer(uint64_t sizeInBytes, uint32_t alignmentInBytes)
     {
         BenzinEnsure(m_UploadBuffer != nullptr);
 
@@ -326,7 +328,7 @@ namespace benzin
         }
 
         m_UploadBufferOffsetInBytes = alignedOffsetInBytes + sizeInBytes;
-        BenzinEnsure(m_UploadBufferOffsetInBytes <= m_UploadBuffer->GetSize());
+        BenzinEnsure(m_UploadBufferOffsetInBytes <= m_UploadBuffer->GetSizeInBytes());
 
         return alignedOffsetInBytes;
     }
@@ -460,18 +462,18 @@ namespace benzin
             .RayGenerationShaderRecord
             {
                 .StartAddress = gpuAddresses.RayGenerationShader.GpuVirtualAddress,
-                .SizeInBytes = gpuAddresses.RayGenerationShader.Size,
+                .SizeInBytes = gpuAddresses.RayGenerationShader.SizeInBytes,
             },
             .MissShaderTable
             {
                 .StartAddress = gpuAddresses.MissTable.GpuVirtualAddress,
-                .SizeInBytes = gpuAddresses.MissTable.Size,
+                .SizeInBytes = gpuAddresses.MissTable.SizeInBytes,
                 .StrideInBytes = 0, // TODO: For now supported only one record per table
             },
             .HitGroupTable
             {
                 .StartAddress = gpuAddresses.HitGroupTable.GpuVirtualAddress,
-                .SizeInBytes = gpuAddresses.MissTable.Size,
+                .SizeInBytes = gpuAddresses.MissTable.SizeInBytes,
                 .StrideInBytes = 0, // TODO: For now supported only one record per table
             },
             .CallableShaderTable
@@ -535,8 +537,8 @@ namespace benzin
         const D3D12_VERTEX_BUFFER_VIEW d3d12VertexBufferView
         {
             .BufferLocation = vertexBuffer.GetGpuVirtualAddress(),
-            .SizeInBytes = vertexBuffer.GetSize(),
-            .StrideInBytes = vertexBuffer.GetElementSize(),
+            .SizeInBytes = (uint32_t)vertexBuffer.GetSizeInBytes(),
+            .StrideInBytes = vertexBuffer.GetElementSizeInBytes(),
         };
 
         m_D3D12GraphicsCommandList1->IASetVertexBuffers(0, 1, &d3d12VertexBufferView);
@@ -550,7 +552,7 @@ namespace benzin
         const D3D12_INDEX_BUFFER_VIEW d3d12VertexBufferView
         {
             .BufferLocation = indexBuffer.GetGpuVirtualAddress(),
-            .SizeInBytes = indexBuffer.GetSize(),
+            .SizeInBytes = (uint32_t)indexBuffer.GetSizeInBytes(),
             .Format = (DXGI_FORMAT)indexBuffer.GetFormat(),
         };
 

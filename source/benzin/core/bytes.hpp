@@ -1,6 +1,5 @@
 #pragma once
 
-// Returns byte count
 constexpr uint64_t operator"" _kb(uint64_t kb) { return kb * 1024; }
 constexpr uint64_t operator"" _mb(uint64_t mb) { return mb * 1024 * 1024; }
 constexpr uint64_t operator"" _gb(uint64_t gb) { return gb * 1024 * 1024 * 1024; }
@@ -8,66 +7,8 @@ constexpr uint64_t operator"" _gb(uint64_t gb) { return gb * 1024 * 1024 * 1024;
 namespace benzin
 {
 
-    template <std::unsigned_integral T>
-    class Bytes
-    {
-    public:
-        constexpr Bytes() = default;
+    inline float ToKb(uint64_t sizeInBytes) { return (float)sizeInBytes / 1_kb; }
+    inline float ToMb(uint64_t sizeInBytes) { return (float)sizeInBytes / 1_mb; }
+    inline float ToGb(uint64_t sizeInBytes) { return (float)sizeInBytes / 1_gb; }
 
-        constexpr Bytes(T byteCount)
-            : m_ByteCount{ byteCount }
-        {}
-
-        template <std::unsigned_integral U>
-        constexpr Bytes(Bytes<U> other)
-            : m_ByteCount{ other.GetByteCount() }
-        {}
-
-        constexpr T GetByteCount() const { return m_ByteCount; }
-        constexpr void SetByteCount(T byteCount) { m_ByteCount = byteCount; }
-
-        constexpr float GetKb() const { return (float)m_ByteCount / 1_kb; };
-        constexpr float GetMb() const { return (float)m_ByteCount / 1_mb; };
-        constexpr float GetGb() const { return (float)m_ByteCount / 1_gb; };
-
-        constexpr operator T() const { return m_ByteCount; }
-
-        constexpr T* operator&() { return &m_ByteCount; }
-
-    private:
-        T m_ByteCount = 0;
-    };
-
-    using Bytes32 = Bytes<uint32_t>;
-    using Bytes64 = Bytes<uint64_t>;
-
-}
-
-constexpr benzin::Bytes32 operator"" _bytes32(uint64_t byteCount) { return (uint32_t)byteCount; }
-constexpr benzin::Bytes64 operator"" _bytes64(uint64_t byteCount) { return byteCount; }
-
-template <std::unsigned_integral T, std::unsigned_integral U>
-constexpr auto operator+(benzin::Bytes<T> lhs, benzin::Bytes<U> rhs)
-{
-    return benzin::Bytes{ lhs.GetByteCount() + rhs.GetByteCount() };
-}
-
-template <std::unsigned_integral T, std::unsigned_integral U>
-constexpr auto& operator+=(benzin::Bytes<T>& lhs, benzin::Bytes<U> rhs)
-{
-    lhs.SetByteCount(lhs.GetByteCount() + rhs.GetByteCount());
-    return lhs;
-}
-
-template <std::unsigned_integral T, std::unsigned_integral U>
-constexpr auto operator-(benzin::Bytes<T> lhs, benzin::Bytes<U> rhs)
-{
-    return benzin::Bytes{ lhs.GetByteCount() - rhs.GetByteCount() };
-}
-
-template <std::unsigned_integral T, std::unsigned_integral U>
-constexpr auto& operator-=(benzin::Bytes<T>& lhs, benzin::Bytes<U> rhs)
-{
-    lhs.SetByteCount(lhs.GetByteCount() - rhs.GetByteCount());
-    return lhs;
 }

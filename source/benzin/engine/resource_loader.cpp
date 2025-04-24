@@ -35,7 +35,7 @@ namespace benzin
         outTextureImage.Width = (uint32_t)width;
         outTextureImage.Height = (uint32_t)height;
 
-        const uint32_t pixelDataSizeInBytes = width * height * GetFormatSize(outTextureImage.Format);
+        const uint32_t pixelDataSizeInBytes = width * height * GetFormatSizeInBytes(outTextureImage.Format);
         outTextureImage.PixelData.resize(pixelDataSizeInBytes);
         memcpy(outTextureImage.PixelData.data(), imageData, pixelDataSizeInBytes);
 

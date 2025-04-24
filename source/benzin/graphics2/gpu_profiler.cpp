@@ -38,7 +38,7 @@ namespace benzin
         {
             .DebugName = "GpuProfiler_ReadbackBuffer",
             .MemoryType = ResourceMemoryType::Readback,
-            .ElementSize = sizeof(uint64_t) * ms_MaxTimestampCount,
+            .ElementSizeInBytes = sizeof(uint64_t) * ms_MaxTimestampCount,
             .ElementCount = CmdLineArgs::GetReadbackLatency(),
         });
 
@@ -46,7 +46,7 @@ namespace benzin
         for (uint32_t i = 0; i < m_FrameData.size(); ++i)
         {
             auto& frameData = m_FrameData[i];
-            frameData.ReadbackOffsetInBytes = m_ReadbackBuffer->GetElementSize() * i;
+            frameData.ReadbackOffsetInBytes = m_ReadbackBuffer->GetElementSizeInBytes() * i;
         }
 
         m_SortedEvents.reserve(ms_MaxEventCount);
@@ -78,7 +78,7 @@ namespace benzin
 
         if (m_CopyFrameData != nullptr)
         {
-            m_ReadbackBuffer->MapReadbackData(m_CopyFrameData->ReadbackOffsetInBytes, m_ReadbackBuffer->GetElementSize(), [this](const std::byte* mappedData)
+            m_ReadbackBuffer->MapReadbackData(m_CopyFrameData->ReadbackOffsetInBytes, m_ReadbackBuffer->GetElementSizeInBytes(), [this](const std::byte* mappedData)
             {
                 const auto* mappedTimestamps = (const uint64_t*)mappedData;
                 GetTimestampsFromReadbackBuffer(mappedTimestamps);

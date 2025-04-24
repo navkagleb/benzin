@@ -20,7 +20,7 @@ namespace benzin
 
     void SceneTool::DrawSun()
     {
-        if (!Imgui_MainCollapsingHeader("Sun", ImGuiTreeNodeFlags_DefaultOpen))
+        if (!ImGui_MainCollapsingHeader("Sun", ImGuiTreeNodeFlags_DefaultOpen))
         {
             return;
         }
@@ -60,7 +60,7 @@ namespace benzin
 
     void SceneTool::DrawSphericalLights()
     {
-        if (!Imgui_MainCollapsingHeader("SphericalLights"))
+        if (!ImGui_MainCollapsingHeader("SphericalLights"))
         {
             return;
         }

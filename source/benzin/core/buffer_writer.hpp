@@ -9,24 +9,24 @@ namespace benzin
     class BufferWriter
     {
     public:
-        explicit BufferWriter(ByteBuffer targetBuffer, uint64_t position = 0);
-        BufferWriter(std::byte* targetBuffer, uint64_t bufferSize, uint64_t position = 0);
+        explicit BufferWriter(ByteBuffer targetBuffer, uint64_t positionInBytes = 0);
+        BufferWriter(std::byte* targetBuffer, uint64_t bufferSizeInBytes, uint64_t positionInBytes = 0);
         BufferWriter(const BufferWriter&) = delete;
 
-        uint64_t GetPosition() { return m_BufferPosition; }
-        void SetPosition(uint64_t position) { m_BufferPosition = position; }
+        auto GetPositionInBytes() { return m_BufferPositionInBytes; }
+        void SetPositionInBytes(uint64_t positionInBytes) { m_BufferPositionInBytes = positionInBytes; }
 
         void WriteData(ConstByteBuffer data);
 
-        void SetElementPosition(uint64_t offsetElement, uint64_t elementSizeInBytes)
+        void SetElementPosition(uint32_t offsetElement, uint64_t elementSizeInBytes)
         {
-            SetPosition(offsetElement * elementSizeInBytes);
+            SetPositionInBytes(offsetElement * elementSizeInBytes);
         }
 
         template <typename T>
-        void SetElementPosition(uint64_t offsetElement)
+        void SetElementPosition(uint32_t offsetElement)
         {
-            SetPosition(offsetElement * sizeof(T));
+            SetPositionInBytes(offsetElement * sizeof(T));
         }
 
         template <typename T>
@@ -44,7 +44,7 @@ namespace benzin
 
     private:
         ByteBuffer m_TargetBuffer;
-        uint64_t m_BufferPosition = 0;
+        uint64_t m_BufferPositionInBytes = 0;
     };
 
 }

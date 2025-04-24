@@ -89,7 +89,7 @@ namespace benzin
             .DebugName = "RayTracingScene_TempLocalTransforms",
             .MemoryType = ResourceMemoryType::Upload,
             .Type = BufferType::Structured,
-            .ElementSize = sizeof(DirectX::XMFLOAT3X4),
+            .ElementSizeInBytes = sizeof(DirectX::XMFLOAT3X4),
             .ElementCount = transformCount,
         });
 
@@ -131,7 +131,7 @@ namespace benzin
             }
         });
 
-        BufferWriter writer{ localTransformBuffer->GetCpuMappedData(), localTransformBuffer->GetSize() };
+        BufferWriter writer{ localTransformBuffer->GetCpuMappedData(), localTransformBuffer->GetSizeInBytes() };
         writer.WriteData(std::as_bytes(std::span{ localTransforms }));
     }
 

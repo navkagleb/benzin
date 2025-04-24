@@ -53,7 +53,7 @@ namespace sandbox
         });
 
         const auto statFormat = benzin::GraphicsFormat::R32Uint;
-        const uint32_t statElementSize = benzin::GetFormatSize(statFormat);
+        const uint32_t statElementSizeInBytes = benzin::GetFormatSizeInBytes(statFormat);
         const uint32_t statElementCount = (uint32_t)magic_enum::enum_count<joint::ProceduralGrassStat>();
 
         ms_Resources->Create(BufferId::ProceduralGrass_UavStats, benzin::BufferCreation
@@ -61,7 +61,7 @@ namespace sandbox
             .DebugName = magic_enum::enum_name(BufferId::ProceduralGrass_UavStats),
             .Type = benzin::BufferType::Format,
             .Format = statFormat,
-            .ElementSize = statElementSize,
+            .ElementSizeInBytes = statElementSizeInBytes,
             .ElementCount = statElementCount,
             .IsUnorderedAccessAllowed = true,
         });
@@ -72,7 +72,7 @@ namespace sandbox
             .MemoryType = benzin::ResourceMemoryType::Readback,
             .Type = benzin::BufferType::Format,
             .Format = statFormat,
-            .ElementSize = statElementSize,
+            .ElementSizeInBytes = statElementSizeInBytes,
             .ElementCount = statElementCount * benzin::CmdLineArgs::GetReadbackLatency(),
         });
 
@@ -106,7 +106,7 @@ namespace sandbox
                 .MipCount = 1,
             });
 
-            auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_PerlinNoiseTexture->GetSize());
+            auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_PerlinNoiseTexture->GetSizeInBytes());
             cmdList.UploadToTexture(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.PixelData));
         }
         
@@ -121,13 +121,13 @@ namespace sandbox
             {
                 .DebugName = magic_enum::enum_name(BufferId::ProceduralGrass_GrassPatches),
                 .Type = benzin::BufferType::Structured,
-                .ElementSize = sizeof(joint::GrassPatch),
+                .ElementSizeInBytes = sizeof(joint::GrassPatch),
                 .ElementCount = (uint32_t)grassPatchView.size(),
             });
 
             auto& grassPatchBuffer = const_cast<benzin::Buffer&>(ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches));
 
-            auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(grassPatchBuffer.GetSize());
+            auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(grassPatchBuffer.GetSizeInBytes());
             for (const auto [i, entityHandle] : grassPatchView | std::views::enumerate)
             {
                 // TODO: Maybe there is opportunity to use raw pointer as array to upload to GPU?
@@ -139,7 +139,7 @@ namespace sandbox
             }
 
             auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
-            stats.MaxPatchCount = grassPatchBuffer.GetElementCount();
+            stats.MaxPatchCount = (uint32_t)grassPatchBuffer.GetElementCount();
         }
     }
 
@@ -211,7 +211,7 @@ namespace sandbox
         const benzin::Buffer& destBuffer = ms_Resources->Get(BufferId::ProceduralGrass_ReadbackStats);
         const benzin::Buffer& sourceBuffer = ms_Resources->Get(BufferId::ProceduralGrass_UavStats);
 
-        const uint32_t dataSizeInBytes = sourceBuffer.GetSize();
+        const uint32_t dataSizeInBytes = (uint32_t)sourceBuffer.GetSizeInBytes();
         const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % benzin::CmdLineArgs::GetReadbackLatency()) * dataSizeInBytes;
         const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % benzin::CmdLineArgs::GetReadbackLatency()) * dataSizeInBytes;
 

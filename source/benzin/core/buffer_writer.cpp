@@ -4,21 +4,21 @@
 namespace benzin
 {
 
-    BufferWriter::BufferWriter(ByteBuffer targetBuffer, uint64_t position)
+    BufferWriter::BufferWriter(ByteBuffer targetBuffer, uint64_t positionInBytes)
         : m_TargetBuffer{ targetBuffer }
-        , m_BufferPosition{ position }
+        , m_BufferPositionInBytes{ positionInBytes }
     {}
 
-    BufferWriter::BufferWriter(std::byte* targetBuffer, uint64_t bufferSize, uint64_t position)
-        : BufferWriter{ std::span{ targetBuffer, bufferSize }, position }
+    BufferWriter::BufferWriter(std::byte* targetBuffer, uint64_t bufferSize, uint64_t positionInBytes)
+        : BufferWriter{ std::span{ targetBuffer, bufferSize }, positionInBytes }
     {}
 
     void BufferWriter::WriteData(ConstByteBuffer data)
     {
-        BenzinAssert(m_BufferPosition + data.size() <= m_TargetBuffer.size());
+        BenzinAssert(m_BufferPositionInBytes + data.size() <= m_TargetBuffer.size());
 
-        memcpy(m_TargetBuffer.data() + m_BufferPosition, data.data(), data.size());
-        m_BufferPosition += data.size();
+        memcpy(m_TargetBuffer.data() + m_BufferPositionInBytes, data.data(), data.size());
+        m_BufferPositionInBytes += data.size();
     }
 
 }

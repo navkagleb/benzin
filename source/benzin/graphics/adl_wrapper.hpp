@@ -9,8 +9,8 @@ namespace benzin
         void Initialize();
         void Shutdown();
 
-        Bytes64 GetUsedVram(uint32_t deviceId); // ???
-        Bytes64 GetUsedDedicatedVram(uint32_t deviceId);
+        uint64_t GetUsedVramInBytes(uint32_t deviceId); // ???
+        uint64_t GetUsedDedicatedVramInBytes(uint32_t deviceId);
     };
 
 }

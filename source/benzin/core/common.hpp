@@ -55,6 +55,7 @@ namespace benzin
 
     using IndexRange16 = IndexRange<uint16_t>;
     using IndexRange32 = IndexRange<uint32_t>;
+    using IndexRange64 = IndexRange<uint64_t>;
 
     constexpr auto ToBit(std::integral auto bitPosition)
     {

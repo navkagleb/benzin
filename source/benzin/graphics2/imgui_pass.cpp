@@ -350,9 +350,9 @@ namespace benzin
             proxy.InputLayout.emplace_back("Uv", GraphicsFormat::Rg32Float);
             proxy.InputLayout.emplace_back("Color", GraphicsFormat::Rgba8Unorm);
 
-            BenzinAssert(GetFormatSize(proxy.InputLayout[0].Format) == sizeof(ImDrawVert::pos));
-            BenzinAssert(GetFormatSize(proxy.InputLayout[1].Format) == sizeof(ImDrawVert::uv));
-            BenzinAssert(GetFormatSize(proxy.InputLayout[2].Format) == sizeof(ImDrawVert::col));
+            BenzinAssert(GetFormatSizeInBytes(proxy.InputLayout[0].Format) == sizeof(ImDrawVert::pos));
+            BenzinAssert(GetFormatSizeInBytes(proxy.InputLayout[1].Format) == sizeof(ImDrawVert::uv));
+            BenzinAssert(GetFormatSizeInBytes(proxy.InputLayout[2].Format) == sizeof(ImDrawVert::col));
 
             proxy.Vs.FileName = "imgui_pass.hlsl";
             proxy.Ps.FileName = "imgui_pass.hlsl";
@@ -454,10 +454,10 @@ namespace benzin
             .MipCount = 1,
         });
 
-        const uint32_t textureSizeInBytes = width * height * GetFormatSize(m_FontTexture->GetFormat());
-        BenzinAssert(textureSizeInBytes == m_FontTexture->GetSize());
+        const uint32_t textureSizeInBytes = width * height * GetFormatSizeInBytes(m_FontTexture->GetFormat());
+        BenzinAssert(textureSizeInBytes == m_FontTexture->GetSizeInBytes());
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_FontTexture->GetSize());
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_FontTexture->GetSizeInBytes());
         cmdList.UploadToTexture(*m_FontTexture, std::as_bytes(ToSpan(pixels, textureSizeInBytes)));
     }
 
@@ -486,14 +486,14 @@ namespace benzin
                 .DebugName = "ImGui_VertexBuffer",
                 .MemoryType = ResourceMemoryType::Upload,
                 .Type = BufferType::Vertex,
-                .ElementSize = sizeof(ImDrawVert),
+                .ElementSizeInBytes = sizeof(ImDrawVert),
                 .ElementCount = (uint32_t)imDrawData.TotalVtxCount + 5000, // TODO: 5000 magic number
             });
         }
 
         if (indexBuffer.get() == nullptr || (int)indexBuffer->GetElementCount() < imDrawData.TotalIdxCount)
         {
-            BenzinAssert(sizeof(ImDrawIdx) == GetFormatSize(GraphicsFormat::R16Uint));
+            BenzinAssert(GetFormatSizeInBytes(GraphicsFormat::R16Uint) == sizeof(ImDrawIdx));
 
             MakeUniquePtr(indexBuffer, *ms_Device, BufferCreation
             {
@@ -501,13 +501,13 @@ namespace benzin
                 .MemoryType = ResourceMemoryType::Upload,
                 .Type = BufferType::Index,
                 .Format = GraphicsFormat::R16Uint,
-                .ElementSize = sizeof(ImDrawIdx),
+                .ElementSizeInBytes = sizeof(ImDrawIdx),
                 .ElementCount = (uint32_t)imDrawData.TotalIdxCount + 10000, // TODO: 10000 magic number
             });
         }
 
-        BufferWriter vertexWriter{ vertexBuffer->GetCpuMappedData(), vertexBuffer->GetSize() };
-        BufferWriter indexWriter{ indexBuffer->GetCpuMappedData(), indexBuffer->GetSize() };
+        BufferWriter vertexWriter{ vertexBuffer->GetCpuMappedData(), vertexBuffer->GetSizeInBytes() };
+        BufferWriter indexWriter{ indexBuffer->GetCpuMappedData(), indexBuffer->GetSizeInBytes() };
         for (int cmdListIndex = 0; cmdListIndex < imDrawData.CmdListsCount; cmdListIndex++)
         {
             const ImDrawList* cmdList = imDrawData.CmdLists[cmdListIndex];

@@ -13,7 +13,7 @@ namespace benzin
         Byte, // ByteAddress
         Format,
         Structured,
-        Constant,
+        Const,
         RayTracing_AccelerationStructure,
     };
 
@@ -25,8 +25,8 @@ namespace benzin
         BufferType Type = BufferType::Byte;
         GraphicsFormat Format = GraphicsFormat::Unknown; // Optional. Uses for BufferType::Format
 
-        Bytes32 ElementSize = sizeof(std::byte);
-        uint32_t ElementCount = 0;
+        uint32_t ElementSizeInBytes = sizeof(std::byte);
+        uint64_t ElementCount = 0;
 
         bool IsUnorderedAccessAllowed = false;
     };
@@ -44,22 +44,22 @@ namespace benzin
         auto GetType() const { return m_Type; }
         auto GetFormat() const { return m_Format; }
 
-        auto GetElementSize() const { return m_ElementSize; }
+        auto GetElementSizeInBytes() const { return m_ElementSizeInBytes; }
+        auto GetAlignedElementSizeInBytes() const { return m_AlignedElementSizeInBytes; }
         auto GetElementCount() const { return m_ElementCount; }
-        auto GetAlignedElementSize() const { return m_AlignedElementSize; }
 
-        Bytes32 GetNotAlignedSize() const { return m_ElementSize * m_ElementCount; }
-        Bytes32 GetSize() const override { return m_AlignedElementSize * m_ElementCount; }
+        uint64_t GetNotAlignedSizeInBytes() const { return m_ElementSizeInBytes * m_ElementCount; }
+        uint64_t GetSizeInBytes() const override { return m_AlignedElementSizeInBytes * m_ElementCount; }
 
         auto* GetCpuMappedData() const { return m_CpuMappedData; }
 
         uint64_t GetGpuVirtualAddress(uint32_t elementIndex = 0) const;
 
-        const Descriptor& GetSrv(IndexRange32 elementRange = {}) const;
+        const Descriptor& GetSrv(IndexRange64 elementRange = {}) const;
         const Descriptor& GetUav() const;
         const Descriptor& GetCbv(uint32_t elementIndex = 0) const;
 
-        Descriptor CreateDetachedSrv(IndexRange32 elementRange = {}, bool isValidationEnabled = true) const;
+        Descriptor CreateDetachedSrv(IndexRange64 elementRange = {}, bool isValidationEnabled = true) const;
         Descriptor CreateDetachedUav() const;
         Descriptor CreateDetachedCbv(uint32_t elementIndex) const;
 
@@ -70,9 +70,9 @@ namespace benzin
         BufferType m_Type = BufferType::Byte;
         GraphicsFormat m_Format = GraphicsFormat::Unknown;
 
-        Bytes32 m_ElementSize = 0;
-        Bytes32 m_AlignedElementSize = 0; // For ConstantBufferView
-        uint32_t m_ElementCount = 0;
+        uint32_t m_ElementSizeInBytes = 0;
+        uint32_t m_AlignedElementSizeInBytes = 0; // For ConstantBufferView
+        uint64_t m_ElementCount = 0;
 
         bool m_IsUnorderedAccessAllowed = false;
 

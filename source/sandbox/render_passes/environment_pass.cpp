@@ -92,7 +92,7 @@ namespace sandbox
             .MipCount = 1,
         });
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(equirectangularTexture->GetSize());
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(equirectangularTexture->GetSizeInBytes());
         cmdList.UploadToTexture(*equirectangularTexture, std::as_bytes(std::span{ equirectangularTextureImage.PixelData }));
         
         return equirectangularTexture;

@@ -159,11 +159,11 @@ namespace benzin
         const tinygltf::BufferView& gltfBufferView = m_GltfModel->bufferViews[gltfAccessor.bufferView];
         const tinygltf::Buffer& gltfBuffer = m_GltfModel->buffers[gltfBufferView.buffer];
 
-        const Bytes64 offset = gltfBufferView.byteOffset + gltfAccessor.byteOffset;
+        const uint64_t dataOffsetInBytes = gltfBufferView.byteOffset + gltfAccessor.byteOffset;
 
         return std::span
         {
-            reinterpret_cast<const T*>(gltfBuffer.data.data() + offset),
+            reinterpret_cast<const T*>(gltfBuffer.data.data() + dataOffsetInBytes),
             gltfAccessor.count
         };
     }

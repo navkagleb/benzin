@@ -307,7 +307,7 @@ namespace benzin
         BenzinAssert(!inputLayout.empty());
         BenzinAssert(Pso::m_Stream.InputLayout->pInputElementDescs == nullptr);
 
-        uint32_t fieldByteOffset = 0;
+        uint32_t fieldByteOffsetInBytes = 0;
 
         auto& inputElementCount = Pso::m_Stream.InputLayout->NumElements;
         inputElementCount = (uint32_t)inputLayout.size();
@@ -324,11 +324,11 @@ namespace benzin
             d3d12InputElement.SemanticIndex = 0;
             d3d12InputElement.Format = (DXGI_FORMAT)inputElement.Format;
             d3d12InputElement.InputSlot = 0;
-            d3d12InputElement.AlignedByteOffset = fieldByteOffset;
+            d3d12InputElement.AlignedByteOffset = fieldByteOffsetInBytes;
             d3d12InputElement.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
             d3d12InputElement.InstanceDataStepRate = 0;
 
-            fieldByteOffset += GetFormatSize(inputElement.Format);
+            fieldByteOffsetInBytes += GetFormatSizeInBytes(inputElement.Format);
         }
     }
 

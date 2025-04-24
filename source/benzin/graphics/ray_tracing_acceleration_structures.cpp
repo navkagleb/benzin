@@ -54,8 +54,8 @@ namespace benzin
 
     void RayTracing_Blas::AddGeometry(const Geometry& geometry)
     {
-        const uint32_t validatedVertexCount = !IsGoodUint(geometry.VertexCount) && geometry.VertexOffset == 0 ? geometry.VertexBuffer.GetElementCount() : geometry.VertexCount;
-        const uint32_t validatedIndexCount = !IsGoodUint(geometry.IndexCount) && geometry.IndexOffset == 0 ? geometry.IndexBuffer.GetElementCount() : geometry.IndexCount;
+        const uint32_t validatedVertexCount = !IsGoodUint(geometry.VertexCount) && geometry.VertexOffset == 0 ? (uint32_t)geometry.VertexBuffer.GetElementCount() : geometry.VertexCount;
+        const uint32_t validatedIndexCount = !IsGoodUint(geometry.IndexCount) && geometry.IndexOffset == 0 ? (uint32_t)geometry.IndexBuffer.GetElementCount() : geometry.IndexCount;
 
         BenzinAssert(validatedVertexCount + geometry.VertexOffset <= geometry.VertexBuffer.GetElementCount());
         BenzinAssert(validatedIndexCount + geometry.IndexOffset <= geometry.IndexBuffer.GetElementCount());
@@ -76,7 +76,7 @@ namespace benzin
                 .VertexBuffer
                 {
                     .StartAddress = geometry.VertexBuffer.GetGpuVirtualAddress(geometry.VertexOffset),
-                    .StrideInBytes = geometry.VertexBuffer.GetElementSize(),
+                    .StrideInBytes = geometry.VertexBuffer.GetElementSizeInBytes(),
                 },
             },
         });
@@ -169,11 +169,11 @@ namespace benzin
         {
             .DebugName = std::format("TLAS_InstanceBuffer_{}", debugName),
             .MemoryType = ResourceMemoryType::Upload,// TODO: Remove UploadBuffer
-            .ElementSize = sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
+            .ElementSizeInBytes = sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
             .ElementCount = (uint32_t)m_D3D12InstanceDescs.size(),
         });
 
-        BufferWriter writer{ m_InstanceBuffer->GetCpuMappedData(), m_InstanceBuffer->GetSize() };
+        BufferWriter writer{ m_InstanceBuffer->GetCpuMappedData(), m_InstanceBuffer->GetSizeInBytes() };
         writer.WriteData(std::as_bytes(std::span{ m_D3D12InstanceDescs }));
     }
 

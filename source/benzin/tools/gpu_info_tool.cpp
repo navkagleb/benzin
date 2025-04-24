@@ -22,24 +22,24 @@ namespace benzin
         {
             ImGui::SeparatorText("VRAM (in MB)");
 
-            DrawColoredBulletText("Used by process:", memoryInfo.ProcessUsedVram.GetMb());
-            DrawColoredBulletText("Available in system (vendor specific):", memoryInfo.AvailableVram.GetMb());
+            DrawColoredBulletText("Used by process:", ToMb(memoryInfo.ProcessUsedVramInBytes));
+            DrawColoredBulletText("Available in system (vendor specific):", ToMb(memoryInfo.AvailableVramInBytes));
 
             ImGui::BeginDisabled();
-            ImGui::BulletText(BenzinFormatData("Total: {:.2f}", info.TotalVram.GetMb()));
-            ImGui::BulletText(BenzinFormatData("OS Budget: {:.2f}", memoryInfo.VramOsBudget.GetMb()));
-            ImGui::BulletText(BenzinFormatData("Available relative to OS Budget (vendor specific): {:.2f}", memoryInfo.AvailableVramRelativeToOsBudget.GetMb()));
+            ImGui::BulletText(BenzinFormatData("Total: {:.2f}", ToMb(info.TotalVramInBytes)));
+            ImGui::BulletText(BenzinFormatData("OS Budget: {:.2f}", ToMb(memoryInfo.VramOsBudgetInBytes)));
+            ImGui::BulletText(BenzinFormatData("Available relative to OS Budget (vendor specific): {:.2f}", ToMb(memoryInfo.AvailableVramRelativeToOsBudgetInBytes)));
             ImGui::EndDisabled();
         }
 
         {
             ImGui::SeparatorText("Shared RAM (in MB)");
 
-            DrawColoredBulletText("Used by process:", memoryInfo.ProcessUsedSharedRam.GetMb());
+            DrawColoredBulletText("Used by process:", ToMb(memoryInfo.ProcessUsedSharedRamInBytes));
 
             ImGui::BeginDisabled();
-            ImGui::BulletText(BenzinFormatData("Total: {:.2f}", info.TotalSharedRam.GetMb()));
-            ImGui::BulletText(BenzinFormatData("OS Budget: {:.2f}", memoryInfo.SharedRamOsBudget.GetMb()));
+            ImGui::BulletText(BenzinFormatData("Total: {:.2f}", ToMb(info.TotalSharedRamInBytes)));
+            ImGui::BulletText(BenzinFormatData("OS Budget: {:.2f}", ToMb(memoryInfo.SharedRamOsBudgetInBytes)));
             ImGui::EndDisabled();
         }
     }

@@ -359,18 +359,17 @@ namespace benzin
         return std::get<DepthStencilValue>(m_ClearValueVariant);
     }
 
-    Bytes32 Texture::GetSize() const
+    uint64_t Texture::GetSizeInBytes() const
     {
         BenzinAssert(m_D3D12Resource != nullptr);
 
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = m_D3D12Resource->GetDesc();
-        const uint32_t firstSubResource = 0;
         const uint32_t subResourceCount = GetSubResourceCount();
 
         uint64_t sizeInBytes = 0;
         m_Device.GetD3D12Device()->GetCopyableFootprints(
             &d3d12ResourceDesc,
-            firstSubResource,
+            0, // first sub-resource
             subResourceCount,
             0,
             nullptr,
@@ -379,8 +378,7 @@ namespace benzin
             &sizeInBytes
         );
 
-        BenzinAssert(sizeInBytes != 0 && sizeInBytes <= std::numeric_limits<uint32_t>::max());
-        return (uint32_t)sizeInBytes;
+        return sizeInBytes;
     }
 
     uint32_t Texture::GetSubResourceCount() const

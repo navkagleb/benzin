@@ -43,7 +43,7 @@ namespace sandbox
             .DebugName = "ToneMapping_LuminanceHistogram",
             .Type = benzin::BufferType::Format,
             .Format = benzin::GraphicsFormat::R32Uint,
-            .ElementSize = sizeof(uint32_t),
+            .ElementSizeInBytes = sizeof(uint32_t),
             .ElementCount = luminanceHistogramWidth * luminanceHistogramHeight,
             .IsUnorderedAccessAllowed = true,
         });

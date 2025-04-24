@@ -189,7 +189,7 @@ namespace benzin
             pso.SetRayGenerationShader(proxy.RayGenerationEntryPoint);
             pso.SetMissShader(proxy.MissEntryPoint);
             pso.SetHitGroup(proxy.HitGroup.Name, proxy.HitGroup.ClosestHitEntryPoint);
-            pso.SetShaderConfig(proxy.ShaderConfig.PayloadSize, proxy.ShaderConfig.AttributeSize);
+            pso.SetShaderConfig(proxy.ShaderConfig.PayloadSizeInBytes, proxy.ShaderConfig.AttributeSizeInBytes);
         });
     }
 

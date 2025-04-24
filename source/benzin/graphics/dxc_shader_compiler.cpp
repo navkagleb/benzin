@@ -36,12 +36,12 @@ namespace benzin
 
             // Include directory
             compileArgs.push_back(L"-I");
-            compileArgs.push_back(GfxConfig::s_ShaderSourceDir.c_str());
+            compileArgs.push_back(GraphicsConfig::GetShaderSourceDir().c_str());
 
             // Optimizations
-            compileArgs.push_back(GfxConfig::s_IsShaderDebugEnabled ? DXC_ARG_SKIP_OPTIMIZATIONS : DXC_ARG_OPTIMIZATION_LEVEL3);
+            compileArgs.push_back(GraphicsConfig::IsShaderDebugEnabled() ? DXC_ARG_SKIP_OPTIMIZATIONS : DXC_ARG_OPTIMIZATION_LEVEL3);
 
-            if (GfxConfig::s_IsShaderSymbolsEnabled)
+            if (GraphicsConfig::IsShaderSymbolsEnabled())
             {
                 compileArgs.push_back(DXC_ARG_DEBUG); // Generate symbols
 
@@ -94,9 +94,9 @@ namespace benzin
     // ShaderPaths
 
     ShaderPaths::ShaderPaths(const ShaderInfo& shader)
-        : SourceFilePath{ GfxConfig::s_ShaderSourceDir / shader.GetFileName() }
-        , DxilFilePath{ GfxConfig::s_ShaderDxilDir / std::format("{}.bin", shader.GetHash()) }
-        , PdbFilePath{ GfxConfig::s_ShaderPdbDir / std::format("{}.pdb", shader.GetHash()) }
+        : SourceFilePath{ GraphicsConfig::GetShaderSourceDir() / shader.GetFileName() }
+        , DxilFilePath{ GraphicsConfig::GetShaderDxilDir() / std::format("{}.bin", shader.GetHash()) }
+        , PdbFilePath{ GraphicsConfig::GetShaderPdbDir() / std::format("{}.pdb", shader.GetHash()) }
     {
         BenzinEnsure(std::filesystem::exists(SourceFilePath));
 
@@ -153,7 +153,7 @@ namespace benzin
 
                     includeFilePathToParse = includeFilePathToParse.substr(slashPos + 1);
 
-                    includeFilePath = GfxConfig::s_ShaderSourceDir / includeFilePathToParse;
+                    includeFilePath = GraphicsConfig::GetShaderSourceDir() / includeFilePathToParse;
                     if (std::filesystem::exists(includeFilePath.make_preferred()))
                     {
                         break;
@@ -283,7 +283,7 @@ namespace benzin
             outCompiledShader.DxilBlob.assign(data, data + size);
         }
 
-        if (GfxConfig::s_IsShaderSymbolsEnabled)
+        if (GraphicsConfig::IsShaderSymbolsEnabled())
         {
             ComPtr<IDxcBlob> dxcDebugBlob;
             BenzinD3D12Call(dxcResult->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&dxcDebugBlob), nullptr));

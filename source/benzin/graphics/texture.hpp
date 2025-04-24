@@ -78,7 +78,7 @@ namespace benzin
         const DirectX::XMFLOAT4& GetClearColor() const;
         DepthStencilValue GetClearDepthStencil() const;
 
-        Bytes32 GetSize() const override;
+        uint64_t GetSizeInBytes() const override;
         uint32_t GetSubResourceCount() const;
 
         uint32_t GetMipWidth(uint16_t mipIndex) const;

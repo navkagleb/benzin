@@ -62,9 +62,9 @@ namespace sandbox
             proxy.InputLayout.emplace_back("Normal", benzin::GraphicsFormat::Rgb32Float);
             proxy.InputLayout.emplace_back("Uv", benzin::GraphicsFormat::Rg32Float);
 
-            BenzinAssert(benzin::GetFormatSize(proxy.InputLayout[0].Format) == sizeof(joint::MeshVertex::Position));
-            BenzinAssert(benzin::GetFormatSize(proxy.InputLayout[1].Format) == sizeof(joint::MeshVertex::Normal));
-            BenzinAssert(benzin::GetFormatSize(proxy.InputLayout[2].Format) == sizeof(joint::MeshVertex::Uv));
+            BenzinAssert(benzin::GetFormatSizeInBytes(proxy.InputLayout[0].Format) == sizeof(joint::MeshVertex::Position));
+            BenzinAssert(benzin::GetFormatSizeInBytes(proxy.InputLayout[1].Format) == sizeof(joint::MeshVertex::Normal));
+            BenzinAssert(benzin::GetFormatSizeInBytes(proxy.InputLayout[2].Format) == sizeof(joint::MeshVertex::Uv));
 
             proxy.Vs.FileName = "geometry_pass.hlsl";
             proxy.Ps.FileName = "geometry_pass.hlsl";

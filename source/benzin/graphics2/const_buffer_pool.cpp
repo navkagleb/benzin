@@ -12,12 +12,10 @@ namespace benzin
 
     static std::pair<uint32_t, uint32_t> ParseSize(uint32_t sizeInBytes)
     {
-        const uint32_t constBufferAlignment = GfxConfig::s_ConstantBufferAlignment.GetByteCount();
+        const uint32_t alignedSizeInBytes = AlignUp(sizeInBytes, GraphicsConfig::GetConstBufferAlignmentInBytes());
+        const uint32_t poolIndex = alignedSizeInBytes / GraphicsConfig::GetConstBufferAlignmentInBytes();
 
-        const uint32_t alignedSize = AlignUp(sizeInBytes, constBufferAlignment);
-        const uint32_t poolIndex = alignedSize / constBufferAlignment;
-
-        return { alignedSize, poolIndex - 1 };
+        return { alignedSizeInBytes, poolIndex - 1 };
     }
 
     // 
@@ -44,7 +42,7 @@ namespace benzin
 
     uint64_t ConstBufferPool::Allocate(std::span<const std::byte> data)
     {
-        const auto [alignedSize, poolIndex] = ParseSize((uint32_t)data.size_bytes());
+        const auto [alignedSizeInBytes, poolIndex] = ParseSize((uint32_t)data.size_bytes());
 
         auto& pool = m_Pools[poolIndex];
         BenzinAssert(pool.AllocatedCount < pool.PreAllocatedElementCount);
@@ -55,18 +53,18 @@ namespace benzin
         {
             MakeUniquePtr(pool.BufferPool, m_Device, BufferCreation
             {
-                .DebugName = std::format("ConstBuffer_{}", alignedSize),
+                .DebugName = std::format("ConstBuffer_{}", alignedSizeInBytes),
                 .MemoryType = ResourceMemoryType::Upload,
-                .Type = BufferType::Constant,
-                .ElementSize = alignedSize,
+                .Type = BufferType::Const,
+                .ElementSizeInBytes = alignedSizeInBytes,
                 .ElementCount = poolElementCount,
             });
         }
 
         const uint32_t elementIndexInBufferPool = m_Device.GetActiveFrameIndex() * pool.PreAllocatedElementCount + pool.AllocatedCount++;
 
-        BufferWriter writer{ pool.BufferPool->GetCpuMappedData(), pool.BufferPool->GetSize() };
-        writer.SetElementPosition(elementIndexInBufferPool, alignedSize);
+        BufferWriter writer{ pool.BufferPool->GetCpuMappedData(), pool.BufferPool->GetSizeInBytes() };
+        writer.SetElementPosition(elementIndexInBufferPool, alignedSizeInBytes);
         writer.WriteData(data);
 
         return pool.BufferPool->GetGpuVirtualAddress(elementIndexInBufferPool);

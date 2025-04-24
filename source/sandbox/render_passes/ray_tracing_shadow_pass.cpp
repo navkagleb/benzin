@@ -34,8 +34,8 @@ namespace sandbox
             proxy.MissEntryPoint = "Miss";
             proxy.HitGroup.Name = "HitGroup";
             proxy.HitGroup.ClosestHitEntryPoint = "ClosestHit";
-            proxy.ShaderConfig.PayloadSize = sizeof(joint::RayTracing_ShadowPayload);
-            proxy.ShaderConfig.AttributeSize = sizeof(DirectX::XMFLOAT2); // Barycentrics
+            proxy.ShaderConfig.PayloadSizeInBytes = sizeof(joint::RayTracing_ShadowPayload);
+            proxy.ShaderConfig.AttributeSizeInBytes = sizeof(DirectX::XMFLOAT2); // Barycentrics
         });
 
         ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
@@ -62,7 +62,7 @@ namespace sandbox
             .MipCount = 1,
         });
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoiseTexture->GetSize());
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoiseTexture->GetSizeInBytes());
         cmdList.UploadToTexture(*m_BlueNoiseTexture, benzin::ToSpan(blueNoiseImage.PixelData));
 
         auto& settings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
