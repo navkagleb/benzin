@@ -83,6 +83,7 @@ namespace benzin
 
         uint32_t GetMipWidth(uint16_t mipIndex) const;
         uint32_t GetMipHeight(uint16_t mipIndex) const;
+        uint32_t CalcSubResourceIndex(uint16_t mipIndex, uint16_t depthIndex) const;
 
         const Descriptor& GetSrv(const TextureSrv& textureSrv = {}) const;
         const Descriptor& GetUav(const TextureUav& textureUav = {}) const;

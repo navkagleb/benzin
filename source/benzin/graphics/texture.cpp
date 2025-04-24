@@ -398,6 +398,14 @@ namespace benzin
         return GetMipDimensions({ m_Width, m_Height, m_Depth }, mipIndex).y;
     }
 
+    uint32_t Texture::CalcSubResourceIndex(uint16_t mipIndex, uint16_t depthIndex) const
+    {
+        // Ref: https://github.com/microsoft/DirectX-Graphics-Samples/blob/096d935f7f4a420cf96ecd6a010dce82f794e448/Libraries/D3D12RaytracingFallback/Include/d3dx12.h#L1684C13-L1684C33
+        // TODO: Add plande slice index support
+
+        return mipIndex + (depthIndex * m_MipCount);
+    }
+
     const Descriptor& Texture::GetSrv(const TextureSrv& textureSrv) const
     {
         ValidateTextureSrv(*this, const_cast<TextureSrv&>(textureSrv));

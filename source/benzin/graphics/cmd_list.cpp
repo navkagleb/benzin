@@ -137,6 +137,34 @@ namespace benzin
         );
     }
 
+    void CopyCmdList::CopyTextureRegion(const Texture& destTexture, uint32_t destSubResourceIndex, const Texture& sourceTexture, uint32_t sourceSubresourceIndex)
+    {
+        BenzinAssert(destTexture.GetD3D12Resource() != nullptr && sourceTexture.GetD3D12Resource() != nullptr);
+        BenzinAssert(destTexture.GetFormat() == sourceTexture.GetFormat());
+
+        const D3D12_TEXTURE_COPY_LOCATION d3d12DestLocatiton
+        {
+            .pResource = destTexture.GetD3D12Resource(),
+            .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            .SubresourceIndex = destSubResourceIndex,
+        };
+
+        const D3D12_TEXTURE_COPY_LOCATION d3d12SourceLocatiton
+        {
+            .pResource = sourceTexture.GetD3D12Resource(),
+            .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            .SubresourceIndex = sourceSubresourceIndex,
+        };
+
+        BenzinScopedResourceBarriers(
+            *this,
+            TransitionBarrier{ destTexture, ResourceState::CopyDestination },
+            TransitionBarrier{ sourceTexture, ResourceState::CopySource }
+        );
+
+        m_D3D12GraphicsCommandList1->CopyTextureRegion(&d3d12DestLocatiton, 0, 0, 0, &d3d12SourceLocatiton, nullptr);
+    }
+
     void CopyCmdList::UploadToBuffer(Buffer& destBuffer, std::span<const std::byte> data, uint64_t destOffsetInBytes)
     {
         BenzinAssert(m_UploadBuffer != nullptr);

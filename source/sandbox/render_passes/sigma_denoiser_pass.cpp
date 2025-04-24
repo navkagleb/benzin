@@ -381,14 +381,7 @@ namespace sandbox
 
         if (!isEnabled)
         {
-            BenzinScopedResourceBarriers(
-                cmdList,
-                benzin::TransitionBarrier{ shadow, benzin::ResourceState::CopyDestination },
-                benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::CopySource }
-            );
-
-            cmdList.CopyResource(shadow, shadowTemp2);
-
+            cmdList.CopyTextureRegion(shadow, shadow.CalcSubResourceIndex(0, sliceIndex), shadowTemp2, 0);
             return;
         }
 
