@@ -71,7 +71,7 @@ namespace benzin
     }
 
     template <typename T>
-    __forceinline auto ToSpan(const T* data, size_t count)
+    __forceinline auto ToSpan(const T* data, size_t count = 1)
     {
         return std::span{ data, count };
     }

@@ -4,11 +4,9 @@
 
 namespace benzin
 {
-    struct MeshComponent;
-
     class GraphicsCmdList;
+    class MeshInstanceComponent;
 
-    enum class IndexOrder : bool;
     enum class PsoId : uint32_t;
 }
 
@@ -40,7 +38,7 @@ namespace sandbox
             bool IsDepthPrePass = false;
         };
 
-        void CreatePso(benzin::PsoId id, benzin::IndexOrder indexOrder, bool isDepthPrePass);
+        void CreatePso(benzin::PsoId id, bool isIndexOrderClockwise, bool isDepthPrePass);
 
         bool IsDependentOnViewport() const override { return true; }
 
@@ -50,7 +48,7 @@ namespace sandbox
 
         void RenderMeshes(const MeshRenderContext& context, bool isIndexOrderClockwise) const;
         void RenderLights(const MeshRenderContext& context) const;
-        void RenderMesh(const MeshRenderContext& context, const benzin::MeshComponent& meshComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;
+        void RenderMesh(const MeshRenderContext& context, const benzin::MeshInstanceComponent& meshInstanceComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;
 
     private:
         bool m_IsDepthPrePassEnabled = true;

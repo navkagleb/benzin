@@ -25,10 +25,8 @@ namespace benzin
 
     static MeshGpuStorage CreateMeshGpuStorage(Device& device, std::string_view debugName, const Mesh& mesh)
     {
-        MeshGpuStorage meshGpuStorage;
 
         MakeUniquePtr(meshGpuStorage.VertexBuffer, device, BufferCreation
-        {
             .DebugName = std::format("{}_VertexBuffer", debugName),
             .Type = BufferType::Vertex,
             .ElementSizeInBytes = sizeof(joint::MeshVertex),
@@ -37,15 +35,12 @@ namespace benzin
 
         MakeUniquePtr(meshGpuStorage.IndexBuffer, device, BufferCreation
         {
-            .DebugName = std::format("{}_IndexBuffer", debugName),
             .Type = BufferType::Index,
             .Format = GraphicsFormat::R32Uint,
             .ElementSizeInBytes = sizeof(uint32_t),
             .ElementCount = (uint32_t)mesh.TotalIndexCount,
         });
-
         MakeUniquePtr(meshGpuStorage.MeshInstanceBuffer, device, BufferCreation
-        {
             .DebugName = std::format("{}_MeshInstanceBuffer", debugName),
             .Type = BufferType::Structured,
             .ElementSizeInBytes = sizeof(joint::MeshInstance),
@@ -53,21 +48,8 @@ namespace benzin
         });
 
         MakeUniquePtr(meshGpuStorage.MaterialBuffer, device, BufferCreation
-        {
-            .DebugName = std::format("{}_MaterialBuffer", debugName),
-            .Type = BufferType::Structured,
-            .ElementSizeInBytes = sizeof(joint::Material),
-            .ElementCount = (uint32_t)mesh.Materials.size(),
-        });
-
-        return meshGpuStorage;
-    }
-
-    // Scene
-
-    Scene::Scene(Device& device, TickTimer& animationTimer)
+    Scene::Scene(Device& device)
         : m_Device{ device }
-        , m_AnimationTimer{ animationTimer }
     {
         m_SunEntity = m_EntityRegistry.create();
         m_EntityRegistry.emplace<SunLight>(m_SunEntity);
@@ -84,15 +66,20 @@ namespace benzin
 
     Scene::~Scene() = default;
 
-    Descriptor Scene::GetTransformBufferSrv() const
+    const Descriptor& Scene::GetEntityTransformBufferSrv() const
     {
-        BenzinAssert(m_TransformBuffer.get() != nullptr);
+        BenzinAssert(m_EntityTransformBuffer.get() != nullptr);
 
-        return m_TransformBuffer->GetSrv(IndexRange64
+        return m_EntityTransformBuffer->GetSrv(IndexRange64
         {
-            m_TransformCount * m_Device.GetActiveFrameIndex(),
-            m_TransformCount,
+            m_EntityTransformCount * m_Device.GetActiveFrameIndex(),
+            m_EntityTransformCount,
         });
+    }
+
+    const Descriptor& Scene::GetUnifiedMaterialBufferSrv() const
+    {
+        return m_UnifiedMaterialBuffer->GetSrv();
     }
 
     uint64_t Scene::GetLightBufferGpuAddress() const
@@ -100,79 +87,35 @@ namespace benzin
         return m_LightBuffer->GetGpuVirtualAddress(s_MaxLightCount * m_Device.GetActiveFrameIndex());
     }
 
-    void Scene::OnUpdate()
-    {
-        BenzinProfile();
-
-        UpdateEntities();
-
-        UploadTransformsToGpu();
-        UploadLightsToGpu();
-    }
-
     entt::entity Scene::AddMesh(MeshResource&& meshResource)
     {
         BenzinAssert(!meshResource.DebugName.empty());
-        BenzinAssert(!meshResource.SubMeshes.empty());
-        BenzinAssert(!meshResource.SubMeshInstances.empty());
-        BenzinAssert(!meshResource.Materials.empty());
+        BenzinAssert(!meshResource.Vertices.empty());
+        BenzinAssert(!meshResource.Indices.empty());
+        BenzinAssert(!meshResource.DrawRanges.empty());
+        BenzinAssert(!meshResource.Instances.empty());
 
-        const auto textureOffset = (uint32_t)m_Textures.size();
-        PushTextures(meshResource.TextureImages);
-
-        const auto updateTextureIndexIfNeeded = [&](uint32_t& outTextureIndex)
-        {
-            if (IsGoodUint(outTextureIndex))
-            {
-                outTextureIndex = m_Textures[textureOffset + outTextureIndex]->GetSrv().GetGpuHeapIndex();
-            }
-        };
-
-        for (auto& material : meshResource.Materials)
-        {
-            updateTextureIndexIfNeeded(material.AlbedoTextureIndex);
-            updateTextureIndexIfNeeded(material.NormalTextureIndex);
-            updateTextureIndexIfNeeded(material.MetallicRoughnessTextureIndex);
-            updateTextureIndexIfNeeded(material.EmissiveTextureIndex);
-        }
-
-        const auto createSubMeshInfos = [](Mesh& outMesh)
-        {
-            BenzinAssert(outMesh.SubMeshInfos.empty());
-            outMesh.SubMeshInfos.reserve(outMesh.SubMeshes.size());
-
-            uint32_t vertexOffset = 0;
-            uint32_t indexOffset = 0;
-
-            for (const auto& subMesh : outMesh.SubMeshes)
-            {
-                outMesh.SubMeshInfos.emplace_back(vertexOffset, indexOffset);
-
-                vertexOffset += (uint32_t)subMesh.Vertices.size();
-                indexOffset += (uint32_t)subMesh.Indices.size();
-            }
-
-            outMesh.TotalVertexCount = vertexOffset;
-            outMesh.TotalIndexCount = indexOffset;
-        };
+        const uint32_t materialOffset = AddMaterials(meshResource.TextureImages, meshResource.Materials);
 
         const entt::entity meshHandle = m_MeshRegistry.create();
 
-        auto& meshDebugName = m_MeshRegistry.emplace<std::string>(meshHandle);
-        meshDebugName = std::move(meshResource.DebugName);
+        auto& meshTag = m_MeshRegistry.emplace<MeshTag>(meshHandle);
+        meshTag.Name = std::move(meshResource.DebugName);
 
         auto& mesh = m_MeshRegistry.emplace<Mesh>(meshHandle);
-        mesh.SubMeshes = std::move(meshResource.SubMeshes);
-        mesh.SubMeshInstances = std::move(meshResource.SubMeshInstances);
-        mesh.Materials = std::move(meshResource.Materials);
+        mesh.Vertices = std::move(meshResource.Vertices);
+        mesh.Indices = std::move(meshResource.Indices);
+        mesh.DrawRanges = std::move(meshResource.DrawRanges);
+        mesh.Instances = std::move(meshResource.Instances);
         mesh.IsIndexOrderClockwise = meshResource.IsIndexOrderClockwise;
 
-        createSubMeshInfos(mesh);
+        for (MeshInstance& meshInstance : mesh.Instances)
+        {
+            meshInstance.MaterialIndex += materialOffset;
+        }
 
         auto& meshGpuStorage = m_MeshRegistry.emplace<MeshGpuStorage>(meshHandle);
-        meshGpuStorage = CreateMeshGpuStorage(m_Device, meshDebugName, mesh);
-
-        UpdateStats(meshHandle);
+        meshGpuStorage = mesh.CreateGpuStorage(m_Device, meshTag.Name);
 
         return meshHandle;
     }
@@ -183,25 +126,82 @@ namespace benzin
 
         BenzinLogTimeOnScopeExit("Scene::UploadMeshesToGpu");
 
-        UploadAllMeshData();
-        UploadAllMeshInstances();
-        UploadAllTextures();
-        UploadAllMaterials();
+        const auto view = m_MeshRegistry.view<Mesh, MeshGpuStorage>();
+
+        uint64_t uploadSizeInBytes = 0;
+        for (const entt::entity meshHandle : view)
+        {
+            const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
+
+            uploadSizeInBytes += meshGpuStorage.VertexBuffer->GetSizeInBytes();
+            uploadSizeInBytes += meshGpuStorage.IndexBuffer->GetSizeInBytes();
+            uploadSizeInBytes += meshGpuStorage.InstanceTransformBuffer->GetSizeInBytes();
+        };
+
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
+        for (const entt::entity meshHandle : view)
+        {
+            const auto& mesh = view.get<Mesh>(meshHandle);
+            const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
+
+            cmdList.UploadToBuffer<joint::MeshVertex>(*meshGpuStorage.VertexBuffer, mesh.Vertices);
+            cmdList.UploadToBuffer<uint32_t>(*meshGpuStorage.IndexBuffer, mesh.Indices);
+
+            for (const auto& [i, instance] : mesh.Instances | std::views::enumerate)
+            {
+                cmdList.UploadToBuffer(*meshGpuStorage.InstanceTransformBuffer, ToSpan(&instance.LocalTransform), (uint32_t)i);
+            }
+        }
     }
 
-    void Scene::PushTextures(std::span<TextureImage> textureImages)
+    void Scene::UploadMaterialsToGpu()
     {
-        if (textureImages.empty())
-        {
-            return;
-        }
+        BenzinLogTimeOnScopeExit("Scene::UploadMaterialsToGpu");
 
-        m_TexturesData.reserve(m_TexturesData.size() + textureImages.size());
-        m_Textures.reserve(m_Textures.size() + textureImages.size());
+        UploadPixelDataSetToGpu();
+
+        MakeUniquePtr(m_UnifiedMaterialBuffer, m_Device, BufferCreation
+        {
+            .DebugName = "Scene_UnifiedMaterialBuffer",
+            .Type = BufferType::Structured,
+            .ElementSizeInBytes = sizeof(joint::Material),
+            .ElementCount = (uint32_t)m_UnifiedMaterials.size(),
+        });
+
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(m_UnifiedMaterialBuffer->GetSizeInBytes());
+        for (uint32_t i = 0; i < m_UnifiedMaterials.size(); ++i)
+        {
+            const Material& material = m_UnifiedMaterials[i];
+
+            const joint::Material gpuMaterial
+            {
+                .AlbedoTextureHeapIndex = material.TextureGpuHeapIndices.Albedo,
+                .NormalTextureHeapIndex = material.TextureGpuHeapIndices.Normal,
+                .MetallicRoughnessTextureHeapIndex = material.TextureGpuHeapIndices.MetallicRoughness,
+                .EmissiveTextureHeapIndex = material.TextureGpuHeapIndices.Emissive,
+                .AlbedoFactor = material.Consts.AlbedoFactor,
+                .AlphaCutoff = material.Consts.AlphaCutoff,
+                .NormalScale = material.Consts.NormalScale,
+                .MetalnessFactor = material.Consts.MetalnessFactor,
+                .RoughnessFactor = material.Consts.RoughnessFactor,
+                .OcclusionStrenght = material.Consts.OcclusionStrenght,
+                .EmissiveFactor = material.Consts.EmissiveFactor,
+            };
+
+            cmdList.UploadToBuffer(*m_UnifiedMaterialBuffer, ToSpan(&gpuMaterial), i);
+        }
+    }
+
+    uint32_t Scene::AddTextures(std::span<TextureImage> textureImages)
+    {
+        const auto textureOffset = (uint32_t)m_Textures.size();
+
+        m_PixelDataSet.reserve(textureOffset + textureImages.size());
+        m_Textures.reserve(textureOffset + textureImages.size());
 
         for (TextureImage& textureImage : textureImages)
         {
-            m_TexturesData.push_back(std::move(textureImage.PixelData));
+            m_PixelDataSet.push_back(std::move(textureImage.PixelData));
 
             m_Textures.push_back(std::make_unique<Texture>(m_Device, TextureCreation
             {
@@ -209,57 +209,47 @@ namespace benzin
                 .Format = textureImage.Format,
                 .Width = textureImage.Width,
                 .Height = textureImage.Height,
-                .MipCount = 1, // #TODO: Mip generation
+                .MipCount = 1, // TODO: Mip generation
             }));
         }
+
+        return textureOffset;
     }
 
-    void Scene::UploadAllMeshData()
+    uint32_t Scene::AddMaterials(std::span<TextureImage> textureImages, std::span<const MeshResource::Material> materials)
     {
-        uint64_t uploadBufferSizeInBytes = 0;
-        m_MeshRegistry.each([this, &uploadBufferSizeInBytes](entt::entity meshHandle)
+        BenzinAssert(!materials.empty());
+
+        const uint32_t textureOffset = AddTextures(textureImages);
+
+        const auto materialOffset = (uint32_t)m_UnifiedMaterials.size();
+        m_UnifiedMaterials.reserve(materialOffset + materials.size());
+
+        for (const MeshResource::Material& materialResource : materials)
         {
-            const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
+            Material& material = m_UnifiedMaterials.emplace_back();
+            material.Consts = materialResource.Consts;
+            material.TextureGpuHeapIndices.Albedo = GetTextureGpuHeapIndex(textureOffset, materialResource.TextureIndices.Albedo);
+            material.TextureGpuHeapIndices.Normal = GetTextureGpuHeapIndex(textureOffset, materialResource.TextureIndices.Normal);
+            material.TextureGpuHeapIndices.MetallicRoughness = GetTextureGpuHeapIndex(textureOffset, materialResource.TextureIndices.MetallicRoughness);
+            material.TextureGpuHeapIndices.Emissive = GetTextureGpuHeapIndex(textureOffset, materialResource.TextureIndices.Emissive);
+        }
 
-            uploadBufferSizeInBytes += meshGpuStorage.VertexBuffer->GetSizeInBytes();
-            uploadBufferSizeInBytes += meshGpuStorage.IndexBuffer->GetSizeInBytes();
-        });
-
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSizeInBytes);
-        m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
-        {
-            const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
-            const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
-
-            for (const auto [subMesh, subMeshInfo] : std::views::zip(mesh.SubMeshes, mesh.SubMeshInfos))
-            {
-                cmdList.UploadToBuffer<joint::MeshVertex>(*meshGpuStorage.VertexBuffer, subMesh.Vertices, subMeshInfo.VertexOffset);
-                cmdList.UploadToBuffer<uint32_t>(*meshGpuStorage.IndexBuffer, subMesh.Indices, subMeshInfo.IndexOffset);
-            }
-        });
+        return materialOffset;
     }
 
-    void Scene::UploadAllMeshInstances()
+    uint32_t Scene::GetTextureGpuHeapIndex(uint32_t textureOffset, uint32_t localTextureIndex) const
     {
-        uint64_t uploadBufferSizeInBytes = 0;
-        m_MeshRegistry.each([this, &uploadBufferSizeInBytes](entt::entity meshHandle)
+        if (!IsGoodUint(localTextureIndex))
         {
-            const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
+            return g_Bad32;
+        }
 
-            uploadBufferSizeInBytes += meshGpuStorage.MeshInstanceBuffer->GetSizeInBytes();
-        });
-
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSizeInBytes);
-        m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
-        {
-            const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
-            const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
-
-            cmdList.UploadToBuffer<joint::MeshInstance>(*meshGpuStorage.MeshInstanceBuffer, mesh.SubMeshInstances);
-        });
+        BenzinAssert(textureOffset + localTextureIndex < m_Textures.size());
+        return m_Textures[textureOffset + localTextureIndex]->GetSrv().GetGpuHeapIndex();
     }
 
-    void Scene::UploadAllTextures()
+    void Scene::UploadPixelDataSetToGpu()
     {
         if (m_Textures.empty())
         {
@@ -273,99 +263,58 @@ namespace benzin
         }
 
         auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSizeInBytes);
-
-        for (const auto& [textureData, texture] : std::views::zip(m_TexturesData, m_Textures))
+        for (const auto& [pixelData, texture] : std::views::zip(m_PixelDataSet, m_Textures))
         {
-            cmdList.UploadToTexture(*texture, textureData);
+            cmdList.UploadToTexture(*texture, pixelData);
         }
-    }
 
-    void Scene::UploadAllMaterials()
-    {
-        uint64_t uploadBufferSizeInBytes = 0;
-        m_MeshRegistry.each([this, &uploadBufferSizeInBytes](entt::entity meshHandle)
-        {
-            const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
-
-            uploadBufferSizeInBytes += meshGpuStorage.MaterialBuffer->GetSizeInBytes();
-        });
-
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSizeInBytes);
-        m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
-        {
-            const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
-            const auto& meshGpuStorage = m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
-
-            for (const auto& [i, material] : mesh.Materials | std::views::enumerate)
-            {
-                // TODO: Potentially very tricky place
-                // Cut the last member of benzin::Material
-                const auto data = ToSingleByteSpan(material, sizeof(joint::Material)); 
-                const size_t offsetInBytes = i * data.size_bytes();
-                cmdList.UploadToBuffer(*meshGpuStorage.MaterialBuffer, data, offsetInBytes);
-            }
-        });
-    }
-
-    void Scene::UpdateStats(entt::entity meshHandle)
-    {
-        const auto& mesh = m_MeshRegistry.get<Mesh>(meshHandle);
-
-        m_Stats.VertexCount += mesh.TotalVertexCount;
-        m_Stats.TriangleCount += mesh.TotalIndexCount / 3;
-
-        m_Stats.MeshCount += (uint32_t)mesh.SubMeshes.size();
-        m_Stats.MaterialCount += (uint32_t)mesh.Materials.size();
-        m_Stats.MeshInstanceCount += (uint32_t)mesh.SubMeshInstances.size();
+        m_PixelDataSet.clear();
     }
 
     void Scene::UpdateEntities()
     {
-        if (m_AnimationTimer.IsPaused())
-        {
-            return;
-        }
-
         const auto view = m_EntityRegistry.view<EntityUpdateCallback>();
-        for (const auto& [_, callback] : view.each())
+        for (const entt::entity entityHandle : view)
         {
+            const auto& callback = view.get<EntityUpdateCallback>(entityHandle);
+
             BenzinAssert((bool)callback);
             callback();
         }
     }
 
-    void Scene::UploadTransformsToGpu()
+    void Scene::UploadEntityTransformsToGpu()
     {
         const uint32_t frameInFlightCount = CmdLineArgs::GetFrameInFlightCount();
 
-        const auto meshView = m_EntityRegistry.view<MeshComponent, Transform>();
-        const auto lightView = m_EntityRegistry.view<MeshComponent, SphericalLight>();
+        const auto meshView = m_EntityRegistry.view<MeshInstanceComponent, Transform>();
+        const auto lightView = m_EntityRegistry.view<MeshInstanceComponent, SphericalLight>();
 
-        m_TransformCount = (uint32_t)(meshView.size_hint() + lightView.size_hint()); // TODO: Light::IsEnabled
-        if (m_TransformBuffer.get() == nullptr || m_TransformBuffer->GetElementCount() != m_TransformCount * frameInFlightCount)
+        m_EntityTransformCount = (uint32_t)(meshView.size_hint() + lightView.size_hint()); // TODO: Light::IsEnabled
+        if (m_EntityTransformBuffer.get() == nullptr || m_EntityTransformBuffer->GetElementCount() != m_EntityTransformCount * frameInFlightCount)
         {
-            MakeUniquePtr(m_TransformBuffer, m_Device, BufferCreation
+            MakeUniquePtr(m_EntityTransformBuffer, m_Device, BufferCreation
             {
-                .DebugName = "TransformBuffer",
+                .DebugName = "Scene_EntityTransformBuffer",
                 .MemoryType = ResourceMemoryType::Upload, // TODO
                 .Type = BufferType::Structured,
-                .ElementSizeInBytes = sizeof(joint::MeshTransform),
-                .ElementCount = m_TransformCount * frameInFlightCount,
+                .ElementSizeInBytes = sizeof(joint::EntityTransform),
+                .ElementCount = m_EntityTransformCount * frameInFlightCount,
             });
         }
 
-        BufferWriter transformWriter{ m_TransformBuffer->GetCpuMappedData(), m_TransformBuffer->GetSizeInBytes() };
-        transformWriter.SetElementPosition<joint::MeshTransform>(m_TransformCount * m_Device.GetActiveFrameIndex());
+        BufferWriter entityTransformWriter{ m_EntityTransformBuffer->GetCpuMappedData(), m_EntityTransformBuffer->GetSizeInBytes() };
+        entityTransformWriter.SetElementPosition<joint::EntityTransform>(m_EntityTransformCount * m_Device.GetActiveFrameIndex());
 
-        uint32_t gpuTransformIndex = 0;
+        uint32_t entityTransformIndex = 0;
 
         for (const auto entity : meshView)
         {
-            auto& meshCompoonent = meshView.get<MeshComponent>(entity);
-            meshCompoonent.GpuTransformIndex = gpuTransformIndex++;
+            auto& meshInstanceComponent = meshView.get<MeshInstanceComponent>(entity);
+            meshInstanceComponent.m_EntityTransformIndex = entityTransformIndex++;
 
             const auto& transform = meshView.get<Transform>(entity);
-            transformWriter.WriteRaw(joint::MeshTransform
+            entityTransformWriter.WriteRaw(joint::EntityTransform
             {
                 .LocalToWorld = transform.GetLocalToWorldMatrix(),
                 .PrevLocalToWorld = transform.GetPrevLocalToWorldMatrix(),
@@ -381,10 +330,10 @@ namespace benzin
                 continue;
             }
 
-            auto& meshCompoonent = meshView.get<MeshComponent>(entity);
-            meshCompoonent.GpuTransformIndex = gpuTransformIndex++;
+            auto& meshInstanceComponent = meshView.get<MeshInstanceComponent>(entity);
+            meshInstanceComponent.m_EntityTransformIndex = entityTransformIndex++;
 
-            transformWriter.WriteRaw(joint::MeshTransform
+            entityTransformWriter.WriteRaw(joint::EntityTransform
             {
                 .LocalToWorld = light.GetTransform().GetLocalToWorldMatrix(),
                 .PrevLocalToWorld = light.GetTransform().GetPrevLocalToWorldMatrix(),

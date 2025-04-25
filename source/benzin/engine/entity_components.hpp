@@ -27,11 +27,21 @@ namespace benzin
         mutable DirectX::XMMATRIX m_PrevLocalToWorldMatrix = DirectX::XMMatrixIdentity();
     };
 
-    // TODO: Rename to MeshInstance?
-    struct MeshComponent
+    class MeshInstanceComponent
     {
-        entt::entity MeshHandle = g_BadEnum<entt::entity>;
-        uint32_t GpuTransformIndex = g_Bad32;
+    public:
+        friend class Scene;
+
+        explicit MeshInstanceComponent(entt::entity meshHandle)
+            : m_MeshHandle{ meshHandle }
+        {}
+
+        auto GetMeshHandle() const { return m_MeshHandle; }
+        auto GetEntityTransformIndex() const { return m_EntityTransformIndex; }
+
+    private:
+        entt::entity m_MeshHandle = g_BadEnum<entt::entity>;
+        uint32_t m_EntityTransformIndex = g_Bad32;
     };
 
     using EntityUpdateCallback = std::function<void()>;

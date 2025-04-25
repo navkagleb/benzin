@@ -38,7 +38,7 @@ namespace sandbox
             outProxy.Ms.Defines.push_back("CALC_STATS");
             
             outProxy.RasterizerState.CullMode = benzin::CullMode::None;
-            outProxy.RasterizerState.IndexOrder = benzin::IndexOrder::Clockwise;
+            outProxy.RasterizerState.IsIndexOrderClockwise = true;
 
             outProxy.DepthState.IsEnabled = true;
             outProxy.DepthState.IsWriteEnabled = true;

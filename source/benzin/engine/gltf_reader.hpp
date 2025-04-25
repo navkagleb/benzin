@@ -6,14 +6,12 @@ namespace tinygltf
     struct Primitive;
 
     class Model;
-    class Node;
     class TinyGLTF;
 }
 
 namespace benzin
 {
 
-    struct MeshData;
     struct MeshResource;
 
     class GltfReader
@@ -29,7 +27,7 @@ namespace benzin
         std::span<const T> ParseGltfAccessor(int gltfAccessorIndex);
 
         template <std::integral IndexType>
-        MeshData ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive);
+        void ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive);
 
         void ParseGltfMesh(const tinygltf::Mesh& gltfMesh);
         void ParseGltfMeshes();

@@ -21,17 +21,11 @@ namespace benzin
         Back = D3D12_CULL_MODE_BACK,
     };
 
-    enum class IndexOrder : bool
-    {
-        CounterClockwise = false,
-        Clockwise = true,
-    };
-
     struct RasterizerState
     {
         FillMode FillMode = FillMode::Solid;
         CullMode CullMode = CullMode::Back;
-        IndexOrder IndexOrder = IndexOrder::Clockwise;
+        bool IsIndexOrderClockwise = true;
         int32_t DepthBias = D3D12_DEFAULT_DEPTH_BIAS; // In Shader = DepthBias / 2 ^ 24
         float DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
         float SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;

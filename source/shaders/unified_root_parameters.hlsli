@@ -55,10 +55,5 @@ const joint::CameraConsts GetPrevCameraConsts()
     return g_FrameConsts.PrevCamera;
 }
 
-uint GetRootConstant(uint index)
-{
-    return g_RootConstants.GetConstant(index);
-}
-
 #define BenzinGetRootConstant(rootIndex) g_RootConstants.GetConstant((uint)rootIndex)
-#define BenzinDeclareRootResource(Type, name, rootIndex) static Type name = ResourceDescriptorHeap[GetRootConstant((uint)rootIndex)]
+#define BenzinDeclareRootResource(Type, name, rootIndex) static Type name = ResourceDescriptorHeap[BenzinGetRootConstant(rootIndex)]

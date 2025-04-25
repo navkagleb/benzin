@@ -6,9 +6,9 @@
 #include "joint/mesh_types.hpp"
 #include "space_convertions.hlsli"
 
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshTransform>, g_MeshTransforms, joint::GeometryResources::MeshTransforms);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshInstance>, g_SubMeshInstances, joint::GeometryResources::SubMeshInstances);
-BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::GeometryResources::Materials);
+BenzinDeclareRootResource(StructuredBuffer<joint::EntityTransform>, g_EntityTransforms, joint::GeometryResources::EntityTransforms);
+BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_UnifiedMaterials, joint::GeometryResources::UnifiedMaterials);
+BenzinDeclareRootResource(StructuredBuffer<float4x4>, g_InstanceTransforms, joint::GeometryResources::InstanceTransforms);
 
 float3 ExpandNormal(float2 xyNormal)
 {
@@ -52,11 +52,6 @@ float3x3 GetTBNBasis(float3 position, float3 normal, float2 uv)
     return float3x3(tangent, bitangent, normal);
 }
 
-joint::MeshInstance GetMeshInstance()
-{
-    return g_SubMeshInstances[BenzinGetRootConstant(joint::GeometryResources::SubMeshInstanceIndex)];
-}
-
 // Must match with joint::MeshVertex
 struct VsInput
 {
@@ -77,15 +72,14 @@ struct VsOutput
 
 VsOutput VsMain(VsInput vertex)
 {
-    const joint::MeshInstance meshInstance = GetMeshInstance();
-    const joint::MeshTransform transform = g_MeshTransforms[BenzinGetRootConstant(joint::GeometryResources::MeshTransformIndex)];
+    const float4x4 instanceLocalTranform = g_InstanceTransforms[BenzinGetRootConstant(joint::GeometryResources::InstanceTransformIndex)];
+    const float4 objectPosition = mul(float4(vertex.Position, 1.0), instanceLocalTranform);
+    const float3 objectNormal = mul(vertex.Normal, (float3x3)instanceLocalTranform);
 
-    const float4 objectPosition = mul(float4(vertex.Position, 1.0f), meshInstance.Transform);
-    const float3 objectNormal = mul(vertex.Normal, (float3x3)meshInstance.Transform);
-
-    const float4 worldPosition = mul(objectPosition, transform.LocalToWorld);
-    const float4 prevWorldPosition = mul(objectPosition, transform.PrevLocalToWorld);
-    const float3 worldNormal = mul(objectNormal, (float3x3)transform.LocalToWorld); // TODO: Maybe I still need to yse 'WorldMatrixForNormals'?
+    const joint::EntityTransform entityTransform = g_EntityTransforms[BenzinGetRootConstant(joint::GeometryResources::EntityTransformIndex)];
+    const float4 worldPosition = mul(objectPosition, entityTransform.LocalToWorld);
+    const float4 prevWorldPosition = mul(objectPosition, entityTransform.PrevLocalToWorld);
+    const float3 worldNormal = mul(objectNormal, (float3x3)entityTransform.LocalToWorld); // TODO: Maybe I still need to use 'WorldMatrixForNormals'?
 
     const float4 viewPosition = mul(worldPosition, GetCameraConsts().WorldToView);
 
@@ -106,13 +100,12 @@ PackedGBuffer PsMain(VsOutput input)
 void PsMain(VsOutput input)
 #endif
 {
-    const joint::MeshInstance meshInstance = GetMeshInstance();
-    const joint::Material material = g_Materials[meshInstance.MaterialIndex];
+    const joint::Material material = g_UnifiedMaterials[BenzinGetRootConstant(joint::GeometryResources::InstanceMaterialIndex)];
 
     float3 albedo = material.AlbedoFactor.rgb;
-    if (material.AlbedoTextureIndex != g_InvalidIndex)
+    if (material.AlbedoTextureHeapIndex != g_InvalidIndex)
     {
-        Texture2D<float4> albedoTexture = ResourceDescriptorHeap[material.AlbedoTextureIndex];
+        Texture2D<float4> albedoTexture = ResourceDescriptorHeap[material.AlbedoTextureHeapIndex];
         const float4 albedoSample = albedoTexture.Sample(g_LinearWrapSampler, input.Uv);
 
 #if defined(IS_ALPHA_TEST_ENABLED)
@@ -134,9 +127,9 @@ void PsMain(VsOutput input)
     gbuffer.WorldNormal = normalize(input.WorldNormal);
     gbuffer.ViewDepth = input.ViewDepth;
 
-    if (material.NormalTextureIndex != g_InvalidIndex)
+    if (material.NormalTextureHeapIndex != g_InvalidIndex)
     {
-        Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.NormalTextureIndex];
+        Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.NormalTextureHeapIndex];
 
         float3 normalSample = normalTexture.Sample(g_LinearWrapSampler, input.Uv).xyz;
         normalSample = 2.0 * normalSample - 1.0;
@@ -151,17 +144,17 @@ void PsMain(VsOutput input)
         gbuffer.WorldNormal = normalize(mul(normalSample, tbn));
     }
 
-    if (material.EmissiveTextureIndex != g_InvalidIndex)
+    if (material.EmissiveTextureHeapIndex != g_InvalidIndex)
     {
-        Texture2D<float4> emissiveTexture = ResourceDescriptorHeap[material.EmissiveTextureIndex];
+        Texture2D<float4> emissiveTexture = ResourceDescriptorHeap[material.EmissiveTextureHeapIndex];
         const float3 emissiveSample = emissiveTexture.Sample(g_LinearWrapSampler, input.Uv).rgb;
 
         gbuffer.Emissive *= emissiveSample;
     }
 
-    if (material.MetallicRoughnessTextureIndex != g_InvalidIndex)
+    if (material.MetallicRoughnessTextureHeapIndex != g_InvalidIndex)
     {
-        Texture2D<float4> metallicRoughnessTexture = ResourceDescriptorHeap[material.MetallicRoughnessTextureIndex];
+        Texture2D<float4> metallicRoughnessTexture = ResourceDescriptorHeap[material.MetallicRoughnessTextureHeapIndex];
         const float metallicSample = metallicRoughnessTexture.Sample(g_LinearWrapSampler, input.Uv).b;
         const float roughnessSample = metallicRoughnessTexture.Sample(g_LinearWrapSampler, input.Uv).g;
 

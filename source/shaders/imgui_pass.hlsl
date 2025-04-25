@@ -29,7 +29,7 @@ VsOutput VsMain(VsInput input)
 
 float4 PsMain(VsOutput input) : SV_Target
 {
-    const joint::ImGuiSamplerIndex samplerIndex = (joint::ImGuiSamplerIndex)GetRootConstant((uint)joint::ImGuiResources::SamplerIndex);
+    const joint::ImGuiSamplerIndex samplerIndex = (joint::ImGuiSamplerIndex)BenzinGetRootConstant(joint::ImGuiResources::SamplerIndex);
 
     if (samplerIndex == joint::ImGuiSamplerIndex::Linear)
     {

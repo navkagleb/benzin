@@ -7,15 +7,14 @@ namespace joint
 
     enum class GeometryResources : uint
     {
-        MeshTransforms,
+        EntityTransforms,
+        UnifiedMaterials,
 
-        // Per mesh
-        MeshTransformIndex,
-        SubMeshInstances,
-        Materials,
+        EntityTransformIndex,
 
-        // Per mesh instance
-        SubMeshInstanceIndex,
+        InstanceTransforms,
+        InstanceTransformIndex,
+        InstanceMaterialIndex,
     };
 
 }

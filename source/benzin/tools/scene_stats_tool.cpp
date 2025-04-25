@@ -1,6 +1,8 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/tools/scene_stats_tool.hpp"
 
+#include <shaders/joint/mesh_types.hpp>
+
 #include "benzin/core/logger.hpp"
 #include "benzin/engine/ray_tracing_scene.hpp"
 #include "benzin/engine/scene.hpp"
@@ -23,7 +25,6 @@ namespace benzin
 
         DrawSceneStats();
         DrawRayTracingAccelerationStructuresStats();
-        DrawRayTracingSceneStats();
     }
 
     void SceneStatsTool::DrawSceneStats() const
@@ -33,14 +34,51 @@ namespace benzin
             return;
         }
 
-        const auto& sceneStats = m_Scene.GetStats();
-        ImGui::Text(BenzinFormatData("MeshCount: {:L}", sceneStats.MeshCount));
-        ImGui::Text(BenzinFormatData("MaterialCount: {:L}", sceneStats.MaterialCount));
-        ImGui::Text(BenzinFormatData("MeshInstanceCount: {:L}", sceneStats.MeshInstanceCount));
+        uint32_t vertexCount = 0;
+        uint32_t triangleCount = 0;
+        uint32_t drawRangeCount = 0;
+        uint32_t meshInstanceCount = 0;
 
+        const auto view = m_Scene.m_MeshRegistry.view<MeshTag, Mesh>();
+        for (const entt::entity meshHandle : view)
+        {
+            const auto& mesh = view.get<Mesh>(meshHandle);
+
+            vertexCount += (uint32_t)mesh.Vertices.size();
+            triangleCount += (uint32_t)mesh.Indices.size() / 3;
+            drawRangeCount += (uint32_t)mesh.DrawRanges.size();
+            meshInstanceCount += (uint32_t)mesh.Instances.size();
+        }
+
+        ImGui::Text(BenzinFormatData("Vertices: {:L}", vertexCount));
+        ImGui::Text(BenzinFormatData("Triangles: {:L}", triangleCount));
+        ImGui::Text(BenzinFormatData("Draw ranges: {:L}", drawRangeCount));
         ImGui::Separator();
-        ImGui::Text(BenzinFormatData("VertexCount: {:L}", sceneStats.VertexCount));
-        ImGui::Text(BenzinFormatData("TriangleCount: {:L}", sceneStats.TriangleCount));
+
+        ImGui::Text(BenzinFormatData("Materials: {:L}", m_Scene.m_UnifiedMaterials.size()));
+        ImGui::Text(BenzinFormatData("Mesh instances: {:L}", meshInstanceCount));
+        ImGui::Separator();
+
+        for (const entt::entity meshHandle : view)
+        {
+            const auto& meshTag = view.get<MeshTag>(meshHandle);
+            const auto& mesh = view.get<Mesh>(meshHandle);
+
+            const auto meshHeaderName = std::format(
+                "{}: {} draw ranges - {:L} triangles",
+                meshTag.Name,
+                mesh.DrawRanges.size(),
+                mesh.Indices.size()
+            );
+
+            ImGui_CollapsingHeaderWithIndent(meshHeaderName, [&mesh]
+            {
+                for (const auto& [i, drawRange] : mesh.DrawRanges | std::views::enumerate)
+                {
+                    ImGui::Text(BenzinFormatData("{}: {:L}", i, drawRange.IndexCount / 3));
+                }
+            });
+        }
     }
 
     void SceneStatsTool::DrawRayTracingAccelerationStructuresStats() const
@@ -54,9 +92,11 @@ namespace benzin
             uint64_t buffersSizeInBytes = 0;
             uint64_t scratchResourcesSizeInBytes = 0;
 
-            const auto view = m_Scene.GetMeshRegistry().view<RayTracing_Blas>();
-            for (const auto& [_, blas] : view.each())
+            const auto view = m_Scene.m_MeshRegistry.view<RayTracing_Blas>();
+            for (const entt::entity meshHandle : view)
             {
+                const auto& blas = view.get<RayTracing_Blas>(meshHandle);
+
                 if (!blas.IsAllocated())
                 {
                     continue;
@@ -87,36 +127,6 @@ namespace benzin
                 ImGui::BulletText(BenzinFormatData("ScratchResource: {:.2f} mb", ToMb(tlas.GetScratchResource()->GetAllocationSizeInBytes())));
                 ImGui::BulletText(BenzinFormatData("InstanceBuffer: {:.2f} mb", ToMb(tlas.GetInstanceBuffer()->GetAllocationSizeInBytes())));
             }
-        }
-    }
-
-    void SceneStatsTool::DrawRayTracingSceneStats() const
-    {
-        if (!ImGui_MainCollapsingHeader("RayTracing_Scene"))
-        {
-            return;
-        }
-
-        const auto blasesStats = m_RayTracingScene.GetBlasesStats();
-
-        ImGui::Text(BenzinFormatData("BlasCount: {}", blasesStats.size()));
-
-        for (const auto& blasStats : blasesStats)
-        {
-            const auto meshHeaderName = std::format(
-                "{}: {} meshes - {:L} triangles",
-                blasStats.DebugName,
-                blasStats.TriangleCountPerMesh.size(),
-                blasStats.TotalTriangleCount
-            );
-
-            ImGui_CollapsingHeaderWithIndent(meshHeaderName, [&blasStats]
-            {
-                for (const auto [i, triangleCount] : blasStats.TriangleCountPerMesh | std::views::enumerate)
-                {
-                    ImGui::Text(BenzinFormatData("{}: {:L}", i, triangleCount));
-                }
-            });
         }
     }
 

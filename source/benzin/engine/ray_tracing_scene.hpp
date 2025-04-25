@@ -11,18 +11,8 @@ namespace benzin
     class RayTracing_Scene
     {
     public:
-        struct BlasStats
-        {
-            std::string_view DebugName;
-
-            std::vector<uint32_t> TriangleCountPerMesh;
-            uint32_t TotalTriangleCount = 0;
-        };
-
         RayTracing_Scene(Device& device, Scene& scene);
         ~RayTracing_Scene();
-
-        auto GetBlasesStats() const { return ToSpan(m_BlasesStats); }
 
         const RayTracing_Tlas& GetActiveTlas() const;
 
@@ -38,7 +28,6 @@ namespace benzin
         Scene& m_Scene;
 
         std::vector<RayTracing_Tlas> m_Tlases;
-        std::vector<BlasStats> m_BlasesStats;
     };
 
 }

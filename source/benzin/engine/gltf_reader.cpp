@@ -169,34 +169,13 @@ namespace benzin
     }
 
     template <std::integral IndexType>
-    MeshData GltfReader::ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive)
+    void GltfReader::ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive)
     {
-        MeshData mesh;
-
-        switch (gltfPrimitive.mode)
-        {
-            case TINYGLTF_MODE_TRIANGLES:
-            {
-                mesh.PrimitiveTopology = PrimitiveTopology::TriangleList;
-                break;
-            }
-            case TINYGLTF_MODE_TRIANGLE_STRIP:
-            {
-                mesh.PrimitiveTopology = PrimitiveTopology::TriangleStrip;
-                break;
-            }
-            default:
-            {
-                BenzinEnsure(false);
-                break;
-            }
-        }
-
         const int positionAccessorIndex = gltfPrimitive.attributes.contains("POSITION") ? gltfPrimitive.attributes.at("POSITION") : -1;
         const int normalAccessorIndex = gltfPrimitive.attributes.contains("NORMAL") ? gltfPrimitive.attributes.at("NORMAL") : -1;
         const int uvAccessorIndex = gltfPrimitive.attributes.contains("TEXCOORD_0") ? gltfPrimitive.attributes.at("TEXCOORD_0") : -1;
         const int indexAccessorIndex = gltfPrimitive.indices;
-        BenzinEnsure(!gltfPrimitive.attributes.contains("TEXCOORD_1")); // #TODO
+        BenzinEnsure(!gltfPrimitive.attributes.contains("TEXCOORD_1"));
 
         const std::span positions = ParseGltfAccessor<DirectX::XMFLOAT3>(positionAccessorIndex);
         const std::span normals = ParseGltfAccessor<DirectX::XMFLOAT3>(normalAccessorIndex);
@@ -204,50 +183,47 @@ namespace benzin
         const std::span indices = ParseGltfAccessor<IndexType>(indexAccessorIndex);
 
         BenzinEnsure(!positions.empty());
+        BenzinEnsure(normals.empty() || normals.size() == positions.size());
+        BenzinEnsure(uvs.empty() || uvs.size() == uvs.size());
 
-#if BENZIN_IS_ASSERTS_ENABLED
-        if (!normals.empty())
+        const auto vertexCount = (uint32_t)positions.size();
+
+        BenzinAssert(gltfPrimitive.material != -1);
+        m_OutMesh->DrawRanges.push_back(MeshDrawRange
         {
-            BenzinAssert(normals.size() == positions.size());
-        }
+            .VertexOffset = (uint32_t)m_OutMesh->Vertices.size(),
+            .IndexOffset = (uint32_t)m_OutMesh->Indices.size(),
 
-        if (!uvs.empty())
-        {
-            BenzinAssert(uvs.size() == positions.size());
-        }
-#endif
+            .VertexCount = vertexCount,
+            .IndexCount = (uint32_t)indices.size(),
 
-        // Fill vertices
-        mesh.Vertices.resize(positions.size());
-        for (const auto& [i, meshVertex] : mesh.Vertices | std::views::enumerate)
-        {
-            meshVertex.Position = positions[i];
-
-            if (!normals.empty())
+            .PrimitiveTopology = [&gltfPrimitive]
             {
-                meshVertex.Normal = normals[i];
-            }
+                switch (gltfPrimitive.mode)
+                {
+                    case TINYGLTF_MODE_TRIANGLES: return PrimitiveTopology::TriangleList;
+                    case TINYGLTF_MODE_TRIANGLE_STRIP: return PrimitiveTopology::TriangleStrip;
+                }
 
-            if (!uvs.empty())
+                BenzinEnsure(false, "Unsupported primitive topology type: {}", gltfPrimitive.mode);
+                return PrimitiveTopology::Unknown;
+            }(),
+        });
+
+        m_OutMesh->Vertices.reserve(m_OutMesh->Vertices.size() + vertexCount);
+        m_OutMesh->Indices.reserve(m_OutMesh->Indices.size() + indices.size());
+
+        for (uint32_t i = 0; i < vertexCount; ++i)
+        {
+            m_OutMesh->Vertices.push_back(joint::MeshVertex
             {
-                meshVertex.Uv = uvs[i];
-            }
+                .Position = positions[i],
+                .Normal = !normals.empty() ? normals[i] : DirectX::XMFLOAT3{},
+                .Uv = !uvs.empty() ? uvs[i] : DirectX::XMFLOAT2{},
+            });
         }
 
-        // Fill indices
-        mesh.Indices.resize(indices.size());
-        if constexpr (std::is_same_v<IndexType, uint32_t>)
-        {
-            memcpy(mesh.Indices.data(), indices.data(), indices.size());
-        }
-        else
-        {
-            std::ranges::copy(indices, mesh.Indices.begin());
-        }
-
-        mesh.BoundingBox = ComputeBoundingBox(mesh.Vertices);
-
-        return mesh;
+        m_OutMesh->Indices.insert_range(m_OutMesh->Indices.end(), indices);
     }
 
     void GltfReader::ParseGltfMesh(const tinygltf::Mesh& gltfMesh)
@@ -257,28 +233,28 @@ namespace benzin
             BenzinAssert(gltfPrimitive.indices != -1);
             const tinygltf::Accessor& indexBufferAccessor = m_GltfModel->accessors[gltfPrimitive.indices];
 
-            m_OutMesh->SubMeshes.push_back([this, &gltfPrimitive, &indexBufferAccessor]
+            switch (indexBufferAccessor.componentType)
             {
-                switch (indexBufferAccessor.componentType)
-                {
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE: return ParseGltfPrimitive<uint8_t>(gltfPrimitive);
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: return ParseGltfPrimitive<uint16_t>(gltfPrimitive);
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: return ParseGltfPrimitive<uint32_t>(gltfPrimitive);
-                }
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE: ParseGltfPrimitive<uint8_t>(gltfPrimitive); continue;
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: ParseGltfPrimitive<uint16_t>(gltfPrimitive); continue;
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: ParseGltfPrimitive<uint32_t>(gltfPrimitive); continue;
+            }
 
-                BenzinEnsure(false);
-                return MeshData{};
-            }());
+            BenzinAssert(false, "Unsupported index buffer component type: {}", indexBufferAccessor.componentType);
         }
     }
 
     void GltfReader::ParseGltfMeshes()
     {
-        BenzinAssert(m_OutMesh->SubMeshes.empty());
-        m_OutMesh->SubMeshes.reserve(std::ranges::fold_left(m_GltfModel->meshes, 0, [](size_t sum, const tinygltf::Mesh& gltfMesh)
+        BenzinAssert(m_OutMesh->DrawRanges.empty());
+
+        uint32_t drawRangeCount = 0;
+        for (const tinygltf::Mesh gltfMesh : m_GltfModel->meshes)
         {
-            return sum + gltfMesh.primitives.size();
-        }));
+            drawRangeCount += (uint32_t)gltfMesh.primitives.size();
+        }
+
+        m_OutMesh->DrawRanges.reserve(drawRangeCount);
 
         for (const tinygltf::Mesh& gltfMesh : m_GltfModel->meshes)
         {
@@ -297,11 +273,11 @@ namespace benzin
             {
                 BenzinAssert(gltfPrimitive.material != -1);
 
-                m_OutMesh->SubMeshInstances.push_back(joint::MeshInstance
+                m_OutMesh->Instances.push_back(MeshInstance
                 {
-                    .SubMeshIndex = (uint32_t)(gltfMeshIndex + primitiveIndex),
+                    .LocalTransform = nodeTransform,
+                    .DrawRangeIndex = (uint32_t)(gltfMeshIndex + primitiveIndex),
                     .MaterialIndex = (uint32_t)gltfPrimitive.material,
-                    .Transform = nodeTransform,
                 });
             }
         }
@@ -316,6 +292,8 @@ namespace benzin
     {
         // Convert from right-handed to left-handed
         // Must be used with TriangleOrder::CounterClockwise in rasterizer state
+        m_OutMesh->IsIndexOrderClockwise = false;
+
         const DirectX::XMMATRIX parentNodeTransform = DirectX::XMMatrixScaling(1.0f, 1.0f, -1.0f);
 
         for (const tinygltf::Scene& gltfScene : m_GltfModel->scenes)
@@ -325,8 +303,6 @@ namespace benzin
                 ParseGltfNode(gltfNodeIndex, parentNodeTransform);
             }
         }
-
-        m_OutMesh->IsIndexOrderClockwise = false;
     }
 
     void GltfReader::ParseGltfMaterials()
@@ -338,52 +314,54 @@ namespace benzin
         {
             const tinygltf::PbrMetallicRoughness& gltfPbrMetallicRoughness = gltfMaterial.pbrMetallicRoughness;
 
-            Material& material = m_OutMesh->Materials.emplace_back();
+            MeshResource::Material& material = m_OutMesh->Materials.emplace_back();
 
             // Albedo
             {
-                material.AlbedoTextureIndex = AddTextureMapping(gltfPbrMetallicRoughness.baseColorTexture.index, true);
+                material.TextureIndices.Albedo = AddTextureMapping(gltfPbrMetallicRoughness.baseColorTexture.index, true);
 
                 BenzinAssert(gltfPbrMetallicRoughness.baseColorFactor.size() == 4);
-                material.AlbedoFactor.x = (float)gltfPbrMetallicRoughness.baseColorFactor[0];
-                material.AlbedoFactor.y = (float)gltfPbrMetallicRoughness.baseColorFactor[1];
-                material.AlbedoFactor.z = (float)gltfPbrMetallicRoughness.baseColorFactor[2];
-                material.AlbedoFactor.w = (float)gltfPbrMetallicRoughness.baseColorFactor[3];
+                material.Consts.AlbedoFactor.x = (float)gltfPbrMetallicRoughness.baseColorFactor[0];
+                material.Consts.AlbedoFactor.y = (float)gltfPbrMetallicRoughness.baseColorFactor[1];
+                material.Consts.AlbedoFactor.z = (float)gltfPbrMetallicRoughness.baseColorFactor[2];
+                material.Consts.AlbedoFactor.w = (float)gltfPbrMetallicRoughness.baseColorFactor[3];
 
-                material.AlphaCutoff = (float)gltfMaterial.alphaCutoff;
+                material.Consts.AlphaCutoff = (float)gltfMaterial.alphaCutoff;
             }
 
             // Normal
             {
-                material.NormalTextureIndex = AddTextureMapping(gltfMaterial.normalTexture.index, false);
-                material.NormalScale = (float)gltfMaterial.normalTexture.scale;
+                material.TextureIndices.Normal = AddTextureMapping(gltfMaterial.normalTexture.index, false);
+
+                material.Consts.NormalScale = (float)gltfMaterial.normalTexture.scale;
             }
 
             // MetalRoughness
             {
-                material.MetallicRoughnessTextureIndex = AddTextureMapping(gltfPbrMetallicRoughness.metallicRoughnessTexture.index, false);
-                material.MetalnessFactor = (float)gltfPbrMetallicRoughness.metallicFactor;
-                material.RoughnessFactor = (float)gltfPbrMetallicRoughness.roughnessFactor;
+                material.TextureIndices.MetallicRoughness = AddTextureMapping(gltfPbrMetallicRoughness.metallicRoughnessTexture.index, false);
+
+                material.Consts.MetalnessFactor = (float)gltfPbrMetallicRoughness.metallicFactor;
+                material.Consts.RoughnessFactor = (float)gltfPbrMetallicRoughness.roughnessFactor;
             }
 
             // Emissive
             {
-                material.EmissiveTextureIndex = AddTextureMapping(gltfMaterial.emissiveTexture.index, true);
+                material.TextureIndices.Emissive = AddTextureMapping(gltfMaterial.emissiveTexture.index, true);
 
                 BenzinAssert(gltfMaterial.emissiveFactor.size() == 3);
-                material.EmissiveFactor.x = (float)gltfMaterial.emissiveFactor[0];
-                material.EmissiveFactor.y = (float)gltfMaterial.emissiveFactor[1];
-                material.EmissiveFactor.z = (float)gltfMaterial.emissiveFactor[2];
+                material.Consts.EmissiveFactor.x = (float)gltfMaterial.emissiveFactor[0];
+                material.Consts.EmissiveFactor.y = (float)gltfMaterial.emissiveFactor[1];
+                material.Consts.EmissiveFactor.z = (float)gltfMaterial.emissiveFactor[2];
             }
 
             if (gltfMaterial.alphaMode == "MASK")
             {
-                material.IsAlphaTestRequired = true;
+                material.Consts.IsAlphaTestRequired = true;
             }
             else
             {
                 BenzinAssert(gltfMaterial.alphaMode == "OPAQUE");
-                material.IsAlphaTestRequired = false;
+                material.Consts.IsAlphaTestRequired = false;
             }
         }
     }
@@ -398,7 +376,7 @@ namespace benzin
             const uint32_t gltfTextureIndex = textureMappingEntry.first;
             const TextureMapping textureMapping = textureMappingEntry.second;
 
-            const tinygltf::Texture gltfTexture = m_GltfModel->textures[gltfTextureIndex];
+            const tinygltf::Texture& gltfTexture = m_GltfModel->textures[gltfTextureIndex];
             const tinygltf::Image& gltfImage = m_GltfModel->images[gltfTexture.source];
             BenzinAssert(gltfImage.bits == 8);
             BenzinAssert(gltfImage.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE);

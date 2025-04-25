@@ -50,25 +50,29 @@ namespace benzin
     {
         BenzinProfile();
 
-        const auto view = m_Scene.m_EntityRegistry.view<MeshComponent, Transform>();
+        const auto view = m_Scene.m_EntityRegistry.view<MeshInstanceComponent, Transform>();
+        const auto blasView = m_Scene.m_MeshRegistry.view<RayTracing_Blas>();
 
         auto& tlas = m_Tlases[m_Device.GetActiveFrameIndex()];
         tlas.ResetInstances((uint32_t)view.size_hint());
 
-        for (const auto& [_, mc, transform] : view.each())
+        for (const entt::entity entityHandle : view)
         {
-            if (!IsGoodEnum(mc.MeshHandle))
+            const auto& meshInstanceComponent = view.get<MeshInstanceComponent>(entityHandle);
+            const auto& transformComponent = view.get<Transform>(entityHandle);
+
+            if (!IsGoodEnum(meshInstanceComponent.GetMeshHandle()))
             {
                 continue;
             }
 
-            const auto& blas = m_Scene.m_MeshRegistry.get<RayTracing_Blas>(mc.MeshHandle);
+            const auto& blas = blasView.get<RayTracing_Blas>(meshInstanceComponent.GetMeshHandle());
 
             tlas.AddInstance(RayTracing_Tlas::Instance
             {
                 .Blas = blas,
                 .HitGroupIndex = 0, // TODO: For now all instances have default hit group
-                .Transform = transform.GetLocalToWorldMatrix(),
+                .Transform = transformComponent.GetLocalToWorldMatrix(),
             });
         }
 
@@ -79,10 +83,17 @@ namespace benzin
     {
         BenzinLogTimeOnScopeExit("RayTracing_Scene::ProcessMeshes");
 
-        const uint32_t transformCount = m_Scene.GetStats().MeshInstanceCount;
+        const auto view = m_Scene.m_MeshRegistry.view<Mesh, MeshGpuStorage>();
+
+        uint32_t meshInstanceCount = 0;
+        for (const entt::entity meshHandle : view)
+        {
+            const auto& mesh = view.get<Mesh>(meshHandle);
+            meshInstanceCount += (uint32_t)mesh.Instances.size();
+        }
 
         std::vector<DirectX::XMFLOAT3X4> localTransforms;
-        localTransforms.reserve(transformCount);
+        localTransforms.reserve(meshInstanceCount);
 
         MakeUniquePtr(localTransformBuffer, m_Device, BufferCreation
         {
@@ -90,46 +101,40 @@ namespace benzin
             .MemoryType = ResourceMemoryType::Upload,
             .Type = BufferType::Structured,
             .ElementSizeInBytes = sizeof(DirectX::XMFLOAT3X4),
-            .ElementCount = transformCount,
+            .ElementCount = meshInstanceCount,
         });
 
-        m_Scene.m_MeshRegistry.each([this, &localTransformBuffer, &localTransforms](entt::entity meshHandle)
+        for (const entt::entity meshHandle : view)
         {
-            const auto& mesh = m_Scene.m_MeshRegistry.get<Mesh>(meshHandle);
-            const auto& meshGpuStorage = m_Scene.m_MeshRegistry.get<MeshGpuStorage>(meshHandle);
+            const auto& mesh = view.get<Mesh>(meshHandle);
+            const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
 
-            auto& blas = m_Scene.m_MeshRegistry.emplace<RayTracing_Blas>(meshHandle, (uint32_t)mesh.SubMeshInstances.size());
+            const auto instanceCount = (uint32_t)mesh.Instances.size();
 
-            auto& blasStats = m_BlasesStats.emplace_back();
-            blasStats.DebugName = m_Scene.m_MeshRegistry.get<std::string>(meshHandle);
-            blasStats.TriangleCountPerMesh.reserve(mesh.SubMeshInstances.size());
+            auto& blas = m_Scene.m_MeshRegistry.emplace<RayTracing_Blas>(meshHandle, instanceCount);
 
-            for (const joint::MeshInstance& instance : mesh.SubMeshInstances)
+            for (const MeshInstance& instance : mesh.Instances)
             {
                 // TODO: There is duplication of Mesh due to using transform from MeshInstance
+                // TODO: Can InstanceTransformBuffer be used here!
 
-                const MeshData& subMesh = mesh.SubMeshes[instance.SubMeshIndex];
-                const MeshInfo meshInfo = mesh.SubMeshInfos[instance.SubMeshIndex];
+                const MeshDrawRange& drawRange = mesh.DrawRanges[instance.DrawRangeIndex];
 
                 blas.AddGeometry(RayTracing_Blas::Geometry
                 {
                     .VertexBuffer = *meshGpuStorage.VertexBuffer,
                     .IndexBuffer = *meshGpuStorage.IndexBuffer,
-                    .VertexOffset = meshInfo.VertexOffset,
-                    .IndexOffset = meshInfo.IndexOffset,
-                    .VertexCount = (uint32_t)subMesh.Vertices.size(),
-                    .IndexCount = (uint32_t)subMesh.Indices.size(),
+                    .VertexOffset = drawRange.VertexOffset,
+                    .IndexOffset = drawRange.IndexOffset,
+                    .VertexCount = drawRange.VertexCount,
+                    .IndexCount = drawRange.IndexCount,
                     .TransformGpuAddress = localTransformBuffer->GetGpuVirtualAddress((uint32_t)localTransforms.size())
                 });
 
-                const DirectX::XMMATRIX transposedMatrix = DirectX::XMMatrixTranspose(instance.Transform);
+                const DirectX::XMMATRIX transposedMatrix = DirectX::XMMatrixTranspose(instance.LocalTransform);
                 localTransforms.push_back(*(DirectX::XMFLOAT3X4*)&transposedMatrix);
-
-                const auto triangleCount = (uint32_t)(subMesh.Indices.size() / 3);
-                blasStats.TotalTriangleCount += triangleCount;
-                blasStats.TriangleCountPerMesh.push_back(triangleCount);
             }
-        });
+        }
 
         BufferWriter writer{ localTransformBuffer->GetCpuMappedData(), localTransformBuffer->GetSizeInBytes() };
         writer.WriteData(std::as_bytes(std::span{ localTransforms }));
@@ -141,26 +146,28 @@ namespace benzin
 
         auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList();
 
-        m_Scene.m_MeshRegistry.each([&](entt::entity meshHandle)
-        {
-            const std::string_view meshName = m_Scene.m_MeshRegistry.get<std::string>(meshHandle);
+        const auto view = m_Scene.m_MeshRegistry.view<MeshTag, RayTracing_Blas>();
 
-            auto& blas = m_Scene.m_MeshRegistry.get<RayTracing_Blas>(meshHandle);
-            blas.AllocateBuffers(m_Device, meshName);
+        for (const entt::entity meshHandle : view)
+        {
+            const auto& meshTag = view.get<MeshTag>(meshHandle);
+
+            auto& blas = view.get<RayTracing_Blas>(meshHandle);
+            blas.AllocateBuffers(m_Device, meshTag.Name);
 
             cmdList.AddResourceBarrier(TransitionBarrier{ *blas.GetScratchResource(), ResourceState::UnorderedAccess });
-        });
+        }
 
         cmdList.FlushResourceBarriers();
 
         // Wait for blases
-        m_Scene.m_MeshRegistry.each([this, &cmdList](entt::entity meshHandle)
+        for (const entt::entity meshHandle : view)
         {
-            auto& blas = m_Scene.m_MeshRegistry.get<RayTracing_Blas>(meshHandle);
+            auto& blas = view.get<RayTracing_Blas>(meshHandle);
 
             cmdList.BuildRayTracingAccelerationStructure(blas);
             cmdList.AddResourceBarrier(UnorderedAccessBarrier{ *blas.GetBuffer() });
-        });
+        }
 
         cmdList.FlushResourceBarriers();
     }

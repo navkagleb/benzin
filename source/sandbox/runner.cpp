@@ -58,7 +58,7 @@ namespace sandbox
         benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager);
         benzin::MakeUniquePtr(m_ConstBufferPool, *m_Device);
 
-        benzin::MakeUniquePtr(m_Scene, *m_Device, m_AnimationTimer);
+        benzin::MakeUniquePtr(m_Scene, *m_Device);
         benzin::MakeUniquePtr(m_RayTracingScene, *m_Device, *m_Scene);
 
         benzin::MakeUniquePtr(m_RenderResources, *m_Device);
@@ -188,6 +188,7 @@ namespace sandbox
             }
 
             m_Scene->UploadMeshesToGpu();
+            m_Scene->UploadMaterialsToGpu();
             m_RayTracingScene->BuildBlases();
 
             RunImGuiFrame(); // Force call ImGui frame to call RenderPass::OnRenderViewportResize on EndFrame
@@ -329,7 +330,18 @@ namespace sandbox
         m_FpsCounter.TickFrame(m_FrameTimer);
 
         m_RenderViewportTool->MoveCamera(m_FrameTimer.GetDeltaTime());
-        m_Scene->OnUpdate();
+
+        {
+            BenzinScopeProfile("Update scene");
+
+            if (m_AnimationTimer.IsPaused())
+            {
+                m_Scene->UpdateEntities();
+            }
+
+            m_Scene->UploadEntityTransformsToGpu();
+            m_Scene->UploadLightsToGpu();
+        }
 
         RunImGuiFrame();
 

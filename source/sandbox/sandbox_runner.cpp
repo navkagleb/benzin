@@ -52,65 +52,90 @@ namespace sandbox
 
         const auto createCylinderMesh = []
         {
-            const benzin::Material material
+            benzin::MeshData meshData = benzin::GetDefaultCyliderMesh();
+
+            const benzin::MeshDrawRange drawRange
             {
-                .AlbedoFactor{ 0.7f, 0.7f, 0.7f, 1.0f },
+                .VertexCount = (uint32_t)meshData.Vertices.size(),
+                .IndexCount = (uint32_t)meshData.Indices.size(),
+                .PrimitiveTopology = meshData.PrimitiveTopology,
             };
 
-            const joint::MeshInstance meshInstance
+            const benzin::MeshResource::Material material
             {
-                .SubMeshIndex = 0,
+                .Consts
+                {
+                    .AlbedoFactor{ 0.7f, 0.7f, 0.7f, 1.0f },
+                },
+            };
+
+            const benzin::MeshInstance instance
+            {
+                .DrawRangeIndex = 0,
                 .MaterialIndex = 0,
             };
 
             return benzin::MeshResource
             {
                 .DebugName = "Cylinder",
-                .SubMeshes{ benzin::GetDefaultCyliderMesh() },
-                .SubMeshInstances{ meshInstance },
+                .Vertices = std::move(meshData.Vertices),
+                .Indices = std::move(meshData.Indices),
+                .DrawRanges{ drawRange },
                 .Materials{ material },
+                .Instances{ instance },
             };
         };
 
         const auto createUnitSphereMesh = []
         {
-            const benzin::Material material
+            benzin::MeshData meshData = benzin::GetUnitGeoSphereMesh();
+
+            const benzin::MeshDrawRange drawRange
             {
-                .AlbedoFactor{ 0.0f, 0.0f, 0.0f, 0.0f },
-                .EmissiveFactor{ 1.0f, 1.0f, 1.0f },
+                .VertexCount = (uint32_t)meshData.Vertices.size(),
+                .IndexCount = (uint32_t)meshData.Indices.size(),
+                .PrimitiveTopology = meshData.PrimitiveTopology,
             };
 
-            const joint::MeshInstance meshInstance
+            const benzin::MeshResource::Material material
             {
-                .SubMeshIndex = 0,
+                .Consts
+                {
+                    .AlbedoFactor{ 0.0f, 0.0f, 0.0f, 0.0f },
+                    .EmissiveFactor{ 1.0f, 1.0f, 1.0f },
+                },
+            };
+
+            const benzin::MeshInstance instance
+            {
+                .DrawRangeIndex = 0,
                 .MaterialIndex = 0,
             };
 
             return benzin::MeshResource
             {
                 .DebugName = "UnitSphere",
-                .SubMeshes{ benzin::GetUnitGeoSphereMesh() },
-                .SubMeshInstances{ meshInstance },
+                .Vertices = std::move(meshData.Vertices),
+                .Indices = std::move(meshData.Indices),
+                .DrawRanges{ drawRange },
                 .Materials{ material },
+                .Instances{ instance },
             };
         };
 
-        const auto loadFromFile = [](std::string_view fileName)
+        const auto loadFromFile = [](std::string_view fileName, benzin::MeshResource& outMesh)
         {
             if (fileName.empty())
             {
-                return benzin::MeshResource{};
+                return;
             }
 
-            benzin::MeshResource resource;
-            BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, resource));
-
-            return resource;
+            BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, outMesh));
         };
 
         std::array<std::string_view, +Mesh::GltfMeshCount> gltfFileNames;
         gltfFileNames[+Mesh::Sponza] = "Sponza/glTF/Sponza.gltf";
-        gltfFileNames[+Mesh::BoomBox] = "BoomBox/glTF/BoomBox.gltf";
+        gltfFileNames[+Mesh::BoomBox] = "BoomBox/glTF-Binary/BoomBox.glb";
         gltfFileNames[+Mesh::DamagedHelmet] = "DamagedHelmet/glTF/DamagedHelmet.gltf";
         gltfFileNames[+Mesh::OrientationTest] = "OrientationTest/OrientationTest.gltf";
         gltfFileNames[+Mesh::MilkTruck] = "CesiumMilkTruck/glTF/CesiumMilkTruck.gltf";
@@ -120,7 +145,7 @@ namespace sandbox
         {
             gltfFutures[i] = std::async(std::launch::async, [&, i]
             {
-                outMeshResources[i] = loadFromFile(gltfFileNames[i]);
+                loadFromFile(gltfFileNames[i], outMeshResources[i]);
             });
         }
 
@@ -373,7 +398,7 @@ namespace sandbox
 
         for (auto&& [outMeshHandle, meshResource] : std::views::zip(outMeshHandles, meshResources))
         {
-            outMeshHandle = !meshResource.SubMeshes.empty() ? m_Scene->AddMesh(std::move(meshResource)) : benzin::g_BadEnum<entt::entity>;
+            outMeshHandle = !meshResource.DrawRanges.empty() ? m_Scene->AddMesh(std::move(meshResource)) : benzin::g_BadEnum<entt::entity>;
         }
     }
 
@@ -385,8 +410,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::Sponza];
+            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::Sponza]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetRotation({ 0.0f, DirectX::XM_PI, 0.0f });
@@ -397,8 +421,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::OrientationTest];
+            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::OrientationTest]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetScale({ 0.05f, 0.05f, 0.05f });
@@ -409,8 +432,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::MilkTruck];
+            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::MilkTruck]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetScale({ 0.1f, 0.1f, 0.1f });
@@ -421,8 +443,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::Cylinder];
+            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::Cylinder]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetScale({ 0.1f, 1.5f, 0.1f });
@@ -438,8 +459,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::BoomBox];
+            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::BoomBox]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetRotation({ 0.0f, DirectX::XMConvertToRadians(45.0f), 0.0f });
@@ -462,8 +482,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::DamagedHelmet];
+            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::DamagedHelmet]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetRotation({ 0.0f, DirectX::XMConvertToRadians(45.0f), 0.0f });
@@ -562,11 +581,11 @@ namespace sandbox
             });
         }
 
+        if (benzin::IsGoodEnum(meshHandles[+Mesh::UnitSphere]))
         {
             const auto entity = entityRegistry.create();
 
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::UnitSphere];
+            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::UnitSphere]);
 
             auto& light = entityRegistry.emplace<benzin::SphericalLight>(entity);
             light.SetIntensity(5.0f);
@@ -593,11 +612,11 @@ namespace sandbox
             });
         }
 
+        if (benzin::IsGoodEnum(meshHandles[+Mesh::UnitSphere]))
         {
             const auto entity = entityRegistry.create();
 
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::UnitSphere];
+            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::UnitSphere]);
 
             auto& light = entityRegistry.emplace<benzin::SphericalLight>(entity);
             light.SetColor({ 0.7f, 0.8f, 0.3f });
@@ -608,11 +627,11 @@ namespace sandbox
             light.SetEnabled(false);
         }
 
+        if (benzin::IsGoodEnum(meshHandles[+Mesh::UnitSphere]))
         {
             const auto entity = entityRegistry.create();
 
-            auto& mc = entityRegistry.emplace<benzin::MeshComponent>(entity);
-            mc.MeshHandle = meshHandles[+Mesh::UnitSphere];
+            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::UnitSphere]);
 
             auto& light = entityRegistry.emplace<benzin::SphericalLight>(entity);
             light.SetColor({ 0.9f, 0.7f, 0.8f });
