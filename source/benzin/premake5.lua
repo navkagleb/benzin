@@ -34,6 +34,7 @@ project "BenzinFramework"
         ["EnTT"] = "Anything",
         ["ImGui"] = "Anything",
         ["magic_enum"] = "Anything",
+        ["meshoptimizer"] = "Anything",
         ["NvAPI"] = "Anything",
         ["TinyGLTF"] = "Anything",
     }

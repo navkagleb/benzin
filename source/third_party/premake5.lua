@@ -49,14 +49,13 @@ project "EnTT"
     export {}
 
 
-local function apply_imgui_config()
-    includedirs {
-        "./imgui",
-    }
-end
-
-
 project "ImGui"
+    function apply_config()
+        includedirs {
+            "imgui",
+        }
+    end
+
     kind "StaticLib"
     language "C++"
     cppdialect "C++latest"
@@ -72,10 +71,10 @@ project "ImGui"
         "imgui/misc/cpp/imgui_stdlib.cpp",
     }
 
-    apply_imgui_config()
+    apply_config()
 
     export "*"
-        apply_imgui_config()
+        apply_config()
 
     export {}
 
@@ -91,6 +90,30 @@ project "magic_enum"
         includedirs {
             "magic_enum",
         }
+
+    export {}
+
+
+project "meshoptimizer"
+    function apply_config()
+        includedirs {
+            "meshoptimizer/src",
+        }
+    end
+
+    kind "StaticLib"
+    language "C++"
+    cppdialect "C++latest"
+
+    files {
+        "meshoptimizer/src/**.h",
+        "meshoptimizer/src/**.cpp",
+    }
+
+    apply_config()
+
+    export "*"
+        apply_config()
 
     export {}
 
