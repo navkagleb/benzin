@@ -37,7 +37,7 @@ namespace benzin
     }
 
     static std::string_view g_ExeFilePath;
-    static LogOptionFlags g_LogOptionFlags;
+    static EnumFlags<LogOptionFlag> g_LogOptionFlags;
 
     static uint32_t g_WindowWidth = 1280;
     static uint32_t g_WindowHeight = 720;

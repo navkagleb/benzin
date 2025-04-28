@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benzin/core/enum_flags.hpp"
+#include <benzin/core/enum_flags.hpp>
 
 namespace benzin
 {
@@ -16,7 +16,7 @@ namespace benzin
 
     namespace Logger
     {
-        void Initialize(LogOptionFlags logOptionFlags = LogOptionFlag::All);
+        void Initialize(EnumFlags<LogOptionFlag> flags = LogOptionFlag::All);
 
         constexpr std::string_view GetLineSeparator()
         {

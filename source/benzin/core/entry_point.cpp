@@ -27,7 +27,7 @@ namespace benzin
         BenzinEnsure(::SetConsoleCtrlHandler(Win64_ConsoleHandler, true) != 0);
 
         CmdLineArgs::Initialize(argc, argv);
-        Logger::Initialize(LogOptionFlags{ CmdLineArgs::GetRawLogOptionFlags() });
+        Logger::Initialize(CmdLineArgs::GetRawLogOptionFlags());
         Profiler::Initialize();
 
         return ClientMain();

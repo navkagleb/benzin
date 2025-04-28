@@ -19,7 +19,7 @@ namespace benzin
     BenzinEnableFlagsForEnum(D3D12BreakReasonFlag);
 
     void EnableD3D12DebugLayer();
-    void EnableD3D12DebugBreakOn(ID3D12Device* d3d12Device, bool isEnabled, D3D12BreakReasonFlags flags);
+    void EnableD3D12DebugBreakOn(ID3D12Device* d3d12Device, bool isEnabled, EnumFlags<D3D12BreakReasonFlag> flags);
     void ReportLiveD3D12Objects(ID3D12Device* d3d12Device);
 
     std::string_view DxgiErrorToString(HRESULT hr);

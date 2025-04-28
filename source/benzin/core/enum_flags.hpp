@@ -77,12 +77,9 @@ auto operator|(T first, T second)
     return benzin::EnumFlags<T>{ first } | benzin::EnumFlags<T>{ second };
 }
 
-#define BenzinEnableFlagsForEnum(EnumTypeName) \
-    template <> \
-    struct IsFlagsEnabledForEnum<EnumTypeName> : std::true_type {}; \
-    using BenzinStringConcatenate2(EnumTypeName, s) = benzin::EnumFlags<EnumTypeName>
+#define BenzinEnableFlagsForEnum(enumTypeName) \
+    template <> struct IsFlagsEnabledForEnum<enumTypeName> : std::true_type {}
 
-#define BenzinEnableFlagsForBitEnum(EnumTypeName) \
-    template <> \
-    struct IsFlagsEnabledForBitEnum<EnumTypeName> : std::true_type {}; \
-    BenzinEnableFlagsForEnum(EnumTypeName)
+#define BenzinEnableFlagsForBitEnum(enumTypeName) \
+    template <> struct IsFlagsEnabledForBitEnum<enumTypeName> : std::true_type {}; \
+    BenzinEnableFlagsForEnum(enumTypeName)

@@ -66,7 +66,7 @@ namespace benzin
             return T;
         }
 
-        EventInfo(EventCategoryFlags flags)
+        EventInfo(EnumFlags<EventCategoryFlag> flags)
             : m_CategoryFlags{ flags }
         {}
 
@@ -81,7 +81,7 @@ namespace benzin
         }
 
     private:
-        EventCategoryFlags m_CategoryFlags;
+        EnumFlags<EventCategoryFlag> m_CategoryFlags;
     };
 
     class EventDispatcher

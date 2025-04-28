@@ -123,7 +123,7 @@ namespace benzin
         BenzinTrace(Logger::GetLineSeparator());
     }
 
-    void EnableD3D12DebugBreakOn(ID3D12Device* d3d12Device, bool isEnabled, D3D12BreakReasonFlags flags)
+    void EnableD3D12DebugBreakOn(ID3D12Device* d3d12Device, bool isEnabled, EnumFlags<D3D12BreakReasonFlag> flags)
     {
         ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
         BenzinD3D12Call(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));

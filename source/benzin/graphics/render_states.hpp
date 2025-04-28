@@ -142,7 +142,7 @@ namespace benzin
             bool IsEnabled = false;
             BlendColorEquation ColorEquation;
             BlendAlphaEquation AlphaEquation;
-            ColorChannelFlags ColorChannelFlags = ColorChannelFlag::All;
+            EnumFlags<ColorChannelFlag> ColorChannelFlags = ColorChannelFlag::All;
         };
 
         bool IsAlphaToCoverageStateEnabled = false;

@@ -6,7 +6,7 @@ namespace benzin
 
     static const auto g_StartTimePoint = std::chrono::system_clock::now().time_since_epoch();
 
-    static LogOptionFlags g_LogOptionFlags;
+    static EnumFlags<LogOptionFlag> g_LogOptionFlags;
 
     static std::string GetTimePointFormat()
     {
@@ -55,9 +55,9 @@ namespace benzin
 
     //
 
-    void Logger::Initialize(LogOptionFlags logOptionFlags)
+    void Logger::Initialize(EnumFlags<LogOptionFlag> flags)
     {
-        g_LogOptionFlags = logOptionFlags;
+        g_LogOptionFlags = flags;
     }
 
     const std::locale& Logger::GetThoudandSeperatorApostrophe3()

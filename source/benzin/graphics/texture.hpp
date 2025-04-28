@@ -35,7 +35,7 @@ namespace benzin
         uint16_t Depth = 1; // ArraySize
         uint16_t MipCount = 0; // By default select all mip levels
 
-        TextureAccessFlags AccessFlags;
+        EnumFlags<TextureAccessFlag> AccessFlags;
         ClearValueVariant ClearValueVariant;
     };
 
@@ -103,7 +103,7 @@ namespace benzin
         uint16_t m_Depth = 0;
         uint16_t m_MipCount = 0;
 
-        TextureAccessFlags m_AccessFlags;
+        EnumFlags<TextureAccessFlag> m_AccessFlags;
         ClearValueVariant m_ClearValueVariant;
     };
 
