@@ -56,6 +56,9 @@ namespace benzin
         using IsResourceFlippableCallback = std::function<bool(uint32_t id)>;
         using IsResourceIdValidCallback = std::function<bool(uint32_t id)>;
 
+        template <typename CreationT>
+        using ResourceConfigurator = std::function<void(CreationT& outCreation)>; // TODO
+
         RenderResourceStorage(
             uint32_t maxResourceCount,
             IsResourceFlippableCallback&& isRsourceFlippableCallback,

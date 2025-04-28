@@ -22,10 +22,7 @@ namespace benzin
         uint32_t MeshInstanceCount = 0;
     };
 
-    struct MeshTag
-    {
-        std::string Name;
-    };
+    using MeshTag = std::string;
 
     class Scene
     {
@@ -57,6 +54,7 @@ namespace benzin
         entt::entity AddMesh(MeshResource&& meshResource);
 
         void UploadMeshesToGpu();
+        void UploadMeshletsToGpu();
         void UploadMaterialsToGpu();
 
         void UpdateEntities();

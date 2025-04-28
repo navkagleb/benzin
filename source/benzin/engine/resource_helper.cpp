@@ -2,9 +2,158 @@
 #include <benzin/engine/resource_helper.hpp>
 
 #include <DirectXTex.h>
+#include <meshoptimizer.h>
+
+#include <shaders/joint/mesh_types.hpp>
+
+#include <benzin/engine/mesh.hpp>
+
+#define BENZIN_IS_MESH_OPTIMIZATION_ENABLED 1
 
 namespace benzin
 {
+
+    void OptimizeMesh(Mesh& mesh)
+    {
+        BenzinUnused(mesh);
+
+#if BENZIN_IS_MESH_OPTIMIZATION_ENABLED
+        // Optimize each mesh separately
+
+        std::vector<joint::MeshVertex> newVertices;
+        std::vector<uint32_t> newIndices;
+
+        for (MeshDrawRange& drawRange : mesh.DrawRanges)
+        {
+            static_assert(sizeof(uint32_t) == sizeof(unsigned int));
+
+            const size_t vertexSizeInBytes = sizeof(joint::MeshVertex);
+
+            const auto drawVertices = mesh.GetDrawRangeVertices(drawRange);
+            const auto drawIndices = mesh.GetDrawRangeIndices(drawRange);
+
+            std::vector<uint32_t> remapIndices;
+            remapIndices.resize(drawIndices.size());
+
+            const size_t vertexCount = meshopt_generateVertexRemap(
+                remapIndices.data(),
+                drawIndices.data(),
+                drawIndices.size(),
+                drawVertices.data(),
+                drawVertices.size(),
+                sizeof(joint::MeshVertex)
+            );
+
+            std::vector<joint::MeshVertex> optVertices;
+            std::vector<uint32_t> optIndices;
+
+            optVertices.resize(vertexCount);
+            optIndices.resize(drawIndices.size());
+
+            meshopt_remapVertexBuffer(optVertices.data(), drawVertices.data(), drawVertices.size(), vertexSizeInBytes, remapIndices.data());
+            meshopt_remapIndexBuffer(optIndices.data(), drawIndices.data(), drawIndices.size(), remapIndices.data());
+            meshopt_optimizeVertexCache(optIndices.data(), optIndices.data(), optIndices.size(), optVertices.size());
+            meshopt_optimizeOverdraw(optIndices.data(), optIndices.data(), optIndices.size(), &optVertices.front().Position.x, optVertices.size(), vertexSizeInBytes, 1.05f);
+            meshopt_optimizeVertexFetch(optVertices.data(), optIndices.data(), optIndices.size(), optVertices.data(), optVertices.size(), vertexSizeInBytes);
+
+            {
+                // Update draw range
+
+                drawRange.VertexOffset = (uint32_t)newVertices.size();
+                drawRange.IndexOffset = (uint32_t)newIndices.size();
+                drawRange.VertexCount = (uint32_t)optVertices.size();
+                drawRange.IndexCount = (uint32_t)optIndices.size();
+            }
+
+            newVertices.append_range(optVertices);
+            newIndices.append_range(optIndices);
+        }
+
+        mesh.Vertices = std::move(newVertices);
+        mesh.Indices = std::move(newIndices);
+#endif
+    }
+
+    void GenerateMeshlets(Mesh& mesh)
+    {
+        BenzinAssert(mesh.Meshlets.empty());
+        BenzinAssert(mesh.MeshletVertices.empty());
+        BenzinAssert(mesh.MeshletTriangles.empty());
+
+        const size_t maxMeshletVertexCount = 64;
+        const size_t maxMeshletTriangleCount = 124;
+        const float meshletConeWeight = 0.0f;
+
+        for (MeshDrawRange& drawRange : mesh.DrawRanges)
+        {
+            const auto drawVertices = mesh.GetDrawRangeVertices(drawRange);
+            const auto drawIndices = mesh.GetDrawRangeIndices(drawRange);
+
+            const size_t maxMeshletCount = meshopt_buildMeshletsBound(drawIndices.size(), maxMeshletVertexCount, maxMeshletTriangleCount);
+
+            std::vector<meshopt_Meshlet> meshlets;
+            std::vector<uint32_t> meshletVertices;
+            std::vector<uint8_t> meshletTriangles;
+
+            meshlets.resize(maxMeshletCount);
+            meshletVertices.resize(maxMeshletCount * maxMeshletVertexCount);
+            meshletTriangles.resize(maxMeshletCount * maxMeshletTriangleCount * 3);
+
+            const size_t meshletCount = meshopt_buildMeshlets(
+                meshlets.data(),
+                meshletVertices.data(),
+                meshletTriangles.data(),
+                drawIndices.data(),
+                drawIndices.size(),
+                &drawVertices.front().Position.x,
+                drawVertices.size(),
+                sizeof(joint::MeshVertex),
+                maxMeshletVertexCount,
+                maxMeshletTriangleCount,
+                meshletConeWeight
+            );
+
+            const meshopt_Meshlet& lastMeshlet = meshlets[meshletCount - 1];
+
+            meshletVertices.resize(lastMeshlet.vertex_offset + lastMeshlet.vertex_count);
+            meshletTriangles.resize(lastMeshlet.triangle_offset + ((lastMeshlet.triangle_count * 3 + 3) & ~3));
+            meshlets.resize(meshletCount);
+
+            for (const meshopt_Meshlet& meshlet : meshlets)
+            {
+                meshopt_optimizeMeshlet(
+                    &meshletVertices[meshlet.vertex_offset],
+                    &meshletTriangles[meshlet.triangle_offset],
+                    meshlet.triangle_count,
+                    meshlet.vertex_count
+                );
+            }
+
+            for (uint32_t index : meshletTriangles)
+            {
+                BenzinAssert(index <= BENZIN_PACKED_TRIANGLE_MAX_INDEX);
+            }
+
+            static_assert(sizeof(joint::Meshlet) == sizeof(meshopt_Meshlet));
+
+            {
+                // Update draw range
+
+                drawRange.MeshletOffset = (uint32_t)mesh.Meshlets.size();
+                drawRange.MeshletCount = (uint32_t)meshlets.size();
+
+                drawRange.MeshletVertexOffset = (uint32_t)mesh.MeshletVertices.size();
+                drawRange.MeshletVertexCount = (uint32_t)meshletVertices.size();
+
+                drawRange.MeshletTriangleOffset = (uint32_t)mesh.MeshletTriangles.size();
+                drawRange.MeshletTriangleCount = (uint32_t)meshletTriangles.size();
+            }
+
+            mesh.Meshlets.append_range(std::move(*decltype(&mesh.Meshlets)(&meshlets)));
+            mesh.MeshletVertices.append_range(std::move(meshletVertices));
+            mesh.MeshletTriangles.append_range(std::move(meshletTriangles));
+        }
+    }
 
     bool SaveTextureArrayToDds(std::span<const std::string_view> fileNames, std::string_view outputFileName)
     {

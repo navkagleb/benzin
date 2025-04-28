@@ -66,6 +66,7 @@ project "BenzinFramework"
         "nvapi64.lib",
 
         "ImGui",
+        "meshoptimizer",
         "TinyGLTF",
         "Shaders",
     }

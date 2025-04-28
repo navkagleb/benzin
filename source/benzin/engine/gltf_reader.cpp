@@ -188,27 +188,32 @@ namespace benzin
 
         const auto vertexCount = (uint32_t)positions.size();
 
-        BenzinAssert(gltfPrimitive.material != -1);
-        m_OutMesh->DrawRanges.push_back(MeshDrawRange
         {
-            .VertexOffset = (uint32_t)m_OutMesh->Vertices.size(),
-            .IndexOffset = (uint32_t)m_OutMesh->Indices.size(),
-
-            .VertexCount = vertexCount,
-            .IndexCount = (uint32_t)indices.size(),
-
-            .PrimitiveTopology = [&gltfPrimitive]
+            MeshDrawRange drawRange
             {
-                switch (gltfPrimitive.mode)
-                {
-                    case TINYGLTF_MODE_TRIANGLES: return PrimitiveTopology::TriangleList;
-                    case TINYGLTF_MODE_TRIANGLE_STRIP: return PrimitiveTopology::TriangleStrip;
-                }
+                .VertexOffset = (uint32_t)m_OutMesh->Vertices.size(),
+                .IndexOffset = (uint32_t)m_OutMesh->Indices.size(),
 
-                BenzinEnsure(false, "Unsupported primitive topology type: {}", gltfPrimitive.mode);
-                return PrimitiveTopology::Unknown;
-            }(),
-        });
+                .VertexCount = vertexCount,
+                .IndexCount = (uint32_t)indices.size(),
+
+                .PrimitiveTopology = [&gltfPrimitive]
+                {
+                    switch (gltfPrimitive.mode)
+                    {
+                        case TINYGLTF_MODE_TRIANGLES: return PrimitiveTopology::TriangleList;
+                        case TINYGLTF_MODE_TRIANGLE_STRIP: return PrimitiveTopology::TriangleStrip;
+                    }
+
+                    BenzinEnsure(false, "Unsupported primitive topology type: {}", gltfPrimitive.mode);
+                    return PrimitiveTopology::Unknown;
+                }(),
+            };
+
+            DirectX::BoundingSphere::CreateFromPoints(drawRange.BoundingSphere, positions.size(), positions.data(), sizeof(DirectX::XMFLOAT3));
+
+            m_OutMesh->DrawRanges.push_back(drawRange);
+        }
 
         m_OutMesh->Vertices.reserve(m_OutMesh->Vertices.size() + vertexCount);
         m_OutMesh->Indices.reserve(m_OutMesh->Indices.size() + indices.size());
@@ -223,7 +228,7 @@ namespace benzin
             });
         }
 
-        m_OutMesh->Indices.insert_range(m_OutMesh->Indices.end(), indices);
+        m_OutMesh->Indices.append_range(indices);
     }
 
     void GltfReader::ParseGltfMesh(const tinygltf::Mesh& gltfMesh)

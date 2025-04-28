@@ -122,12 +122,14 @@ namespace benzin
         BenzinAssert(sourceBuffer.GetD3D12Resource() != nullptr);
         BenzinAssert(dataSizeInBytes != 0);
 
+        BenzinAssert(destOffsetInBytes + dataSizeInBytes <= destBuffer.GetSizeInBytes());
+        BenzinAssert(sourceOffsetInBytes + dataSizeInBytes <= sourceBuffer.GetSizeInBytes());
+
         BenzinScopedResourceBarriers(
             *this,
             TransitionBarrier{ destBuffer, ResourceState::CopyDestination },
             TransitionBarrier{ sourceBuffer, ResourceState::CopySource },
         );
-
         m_D3D12GraphicsCommandList1->CopyBufferRegion(
             destBuffer.GetD3D12Resource(),
             destOffsetInBytes,

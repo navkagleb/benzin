@@ -1,5 +1,6 @@
 #pragma once
 
+#include <benzin/core/enum_flags.hpp>
 #include <benzin/graphics2/render_pass.hpp>
 
 namespace benzin
@@ -23,22 +24,14 @@ namespace sandbox
         ~GeometryPass() override;
 
     private:
-        struct MeshRenderContext
+        enum class PsoFlag
         {
-            benzin::GraphicsCmdList& CmdList;
-
-            const DirectX::BoundingFrustum& WorldFrustum;
-
-            const entt::registry& EntityRegistry;
-            const entt::registry& MeshRegistry;
-
-            const GBufferSettings& Settings;
-            GBufferStats& Stats;
-
-            bool IsDepthPrePass = false;
+            Mesh,
+            DepthPrePass,
+            IndexOrderClockwise,
         };
 
-        void CreatePso(benzin::PsoId id, bool isIndexOrderClockwise, bool isDepthPrePass);
+        void CreatePso(benzin::PsoId id, benzin::EnumFlags<PsoFlag> flags = {});
 
         bool IsDependentOnViewport() const override { return true; }
 
@@ -46,12 +39,22 @@ namespace sandbox
         void OnUpdate() override;
         void OnRender() const override;
 
-        void RenderMeshes(const MeshRenderContext& context, bool isIndexOrderClockwise) const;
-        void RenderLights(const MeshRenderContext& context) const;
-        void RenderMesh(const MeshRenderContext& context, const benzin::MeshInstanceComponent& meshInstanceComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;
+        bool IsSphereCulled(
+            const DirectX::BoundingSphere& localBoundingSphere,
+            const DirectX::XMMATRIX& localToWorldMatrix,
+            const DirectX::XMMATRIX& localInstanceMatrix = DirectX::XMMatrixIdentity()
+        ) const;
+
+        void RenderMeshes(benzin::GraphicsCmdList& cmdList, bool isIndexOrderClockwise) const;
+        void RenderLights(benzin::GraphicsCmdList& cmdList) const;
+
+        void RenderMesh(benzin::GraphicsCmdList& cmdList, const benzin::MeshInstanceComponent& meshInstanceComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;
+        void RenderMeshlets(benzin::GraphicsCmdList& cmdList, const benzin::MeshInstanceComponent& meshInstanceComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;
 
     private:
         bool m_IsDepthPrePassEnabled = true;
+        bool m_IsCpuFrustumCullingEnabled = true;
+        bool m_IsMeshShaderUsed = true;
     };
 
 }

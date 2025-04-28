@@ -7,13 +7,14 @@
 #include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/engine_math.hpp"
-#include "benzin/core/profiler.hpp"
 #include "benzin/core/math.hpp"
+#include "benzin/core/profiler.hpp"
 #include "benzin/core/profiler.hpp"
 #include "benzin/core/tick_timer.hpp"
 #include "benzin/engine/entity_components.hpp"
 #include "benzin/engine/light.hpp"
 #include "benzin/engine/mesh.hpp"
+#include "benzin/engine/resource_helper.hpp"
 #include "benzin/engine/resource_loader.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/cmd_queue.hpp"
@@ -23,31 +24,6 @@
 namespace benzin
 {
 
-    static MeshGpuStorage CreateMeshGpuStorage(Device& device, std::string_view debugName, const Mesh& mesh)
-    {
-
-        MakeUniquePtr(meshGpuStorage.VertexBuffer, device, BufferCreation
-            .DebugName = std::format("{}_VertexBuffer", debugName),
-            .Type = BufferType::Vertex,
-            .ElementSizeInBytes = sizeof(joint::MeshVertex),
-            .ElementCount = (uint32_t)mesh.TotalVertexCount,
-        });
-
-        MakeUniquePtr(meshGpuStorage.IndexBuffer, device, BufferCreation
-        {
-            .Type = BufferType::Index,
-            .Format = GraphicsFormat::R32Uint,
-            .ElementSizeInBytes = sizeof(uint32_t),
-            .ElementCount = (uint32_t)mesh.TotalIndexCount,
-        });
-        MakeUniquePtr(meshGpuStorage.MeshInstanceBuffer, device, BufferCreation
-            .DebugName = std::format("{}_MeshInstanceBuffer", debugName),
-            .Type = BufferType::Structured,
-            .ElementSizeInBytes = sizeof(joint::MeshInstance),
-            .ElementCount = (uint32_t)mesh.SubMeshInstances.size(),
-        });
-
-        MakeUniquePtr(meshGpuStorage.MaterialBuffer, device, BufferCreation
     Scene::Scene(Device& device)
         : m_Device{ device }
     {
@@ -100,7 +76,7 @@ namespace benzin
         const entt::entity meshHandle = m_MeshRegistry.create();
 
         auto& meshTag = m_MeshRegistry.emplace<MeshTag>(meshHandle);
-        meshTag.Name = std::move(meshResource.DebugName);
+        meshTag = std::move(meshResource.DebugName);
 
         auto& mesh = m_MeshRegistry.emplace<Mesh>(meshHandle);
         mesh.Vertices = std::move(meshResource.Vertices);
@@ -109,13 +85,16 @@ namespace benzin
         mesh.Instances = std::move(meshResource.Instances);
         mesh.IsIndexOrderClockwise = meshResource.IsIndexOrderClockwise;
 
+        OptimizeMesh(mesh);
+        GenerateMeshlets(mesh);
+
         for (MeshInstance& meshInstance : mesh.Instances)
         {
             meshInstance.MaterialIndex += materialOffset;
         }
 
         auto& meshGpuStorage = m_MeshRegistry.emplace<MeshGpuStorage>(meshHandle);
-        meshGpuStorage = mesh.CreateGpuStorage(m_Device, meshTag.Name);
+        meshGpuStorage = mesh.CreateGpuStorage(m_Device, meshTag);
 
         return meshHandle;
     }
@@ -144,13 +123,39 @@ namespace benzin
             const auto& mesh = view.get<Mesh>(meshHandle);
             const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
 
-            cmdList.UploadToBuffer<joint::MeshVertex>(*meshGpuStorage.VertexBuffer, mesh.Vertices);
-            cmdList.UploadToBuffer<uint32_t>(*meshGpuStorage.IndexBuffer, mesh.Indices);
+            cmdList.UploadToBuffer(*meshGpuStorage.VertexBuffer, ToSpan(mesh.Vertices));
+            cmdList.UploadToBuffer(*meshGpuStorage.IndexBuffer, ToSpan(mesh.Indices));
 
             for (const auto& [i, instance] : mesh.Instances | std::views::enumerate)
             {
                 cmdList.UploadToBuffer(*meshGpuStorage.InstanceTransformBuffer, ToSpan(&instance.LocalTransform), (uint32_t)i);
             }
+        }
+    }
+
+    void Scene::UploadMeshletsToGpu()
+    {
+        const auto view = m_MeshRegistry.view<Mesh, MeshGpuStorage>();
+
+        uint64_t uploadSizeInBytes = 0;
+        for (const entt::entity meshHandle : view)
+        {
+            const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
+
+            uploadSizeInBytes += meshGpuStorage.MeshletBuffer->GetSizeInBytes();
+            uploadSizeInBytes += meshGpuStorage.MeshletVertexBuffer->GetSizeInBytes();
+            uploadSizeInBytes += meshGpuStorage.MeshletTriangleBuffer->GetSizeInBytes();
+        };
+
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
+        for (const entt::entity meshHandle : view)
+        {
+            const auto& mesh = view.get<Mesh>(meshHandle);
+            const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
+
+            cmdList.UploadToBuffer(*meshGpuStorage.MeshletBuffer, ToSpan(mesh.Meshlets));
+            cmdList.UploadToBuffer(*meshGpuStorage.MeshletVertexBuffer, ToSpan(mesh.MeshletVertices));
+            cmdList.UploadToBuffer(*meshGpuStorage.MeshletTriangleBuffer, ToSpan(mesh.MeshletTriangles));
         }
     }
 
@@ -256,13 +261,13 @@ namespace benzin
             return;
         }
 
-        uint64_t uploadBufferSizeInBytes = 0;
+        uint64_t uploadSizeInBytes = 0;
         for (const auto& texture : m_Textures)
         {
-            uploadBufferSizeInBytes += AlignUp(texture->GetSizeInBytes(), GraphicsConfig::GetTextureAlignmentInBytes());
+            uploadSizeInBytes += AlignUp(texture->GetSizeInBytes(), GraphicsConfig::GetTextureAlignmentInBytes());
         }
 
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadBufferSizeInBytes);
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
         for (const auto& [pixelData, texture] : std::views::zip(m_PixelDataSet, m_Textures))
         {
             cmdList.UploadToTexture(*texture, pixelData);

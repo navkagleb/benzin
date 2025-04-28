@@ -5,6 +5,7 @@
 namespace joint
 {
     struct MeshInstance;
+    struct Meshlet;
     struct MeshVertex;
 }
 
@@ -13,6 +14,9 @@ namespace benzin
 
     class Buffer;
     class Device;
+
+    inline constexpr float g_BadBoundingSphereRadius = -1.0f;
+    inline constexpr DirectX::BoundingSphere g_BadBoundingSphere{ DirectX::XMFLOAT3{}, g_BadBoundingSphereRadius };
 
     struct MeshData
     {
@@ -32,7 +36,18 @@ namespace benzin
         uint32_t VertexCount = g_Bad32;
         uint32_t IndexCount = g_Bad32;
 
+        uint32_t MeshletOffset = 0;
+        uint32_t MeshletCount = g_Bad32;
+
+        uint32_t MeshletVertexOffset = 0;
+        uint32_t MeshletVertexCount = g_Bad32;
+
+        uint32_t MeshletTriangleOffset = 0;
+        uint32_t MeshletTriangleCount = g_Bad32;
+
         PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
+
+        DirectX::BoundingSphere BoundingSphere = g_BadBoundingSphere;
     };
 
     struct MeshInstance
@@ -47,6 +62,10 @@ namespace benzin
         std::unique_ptr<Buffer> VertexBuffer;
         std::unique_ptr<Buffer> IndexBuffer;
         std::unique_ptr<Buffer> InstanceTransformBuffer;
+
+        std::unique_ptr<Buffer> MeshletBuffer;
+        std::unique_ptr<Buffer> MeshletVertexBuffer;
+        std::unique_ptr<Buffer> MeshletTriangleBuffer;
     };
 
     struct Mesh
@@ -56,7 +75,16 @@ namespace benzin
         std::vector<MeshDrawRange> DrawRanges;
         std::vector<MeshInstance> Instances;
 
+        std::vector<joint::Meshlet> Meshlets;
+        std::vector<uint32_t> MeshletVertices;
+        std::vector<uint8_t> MeshletTriangles;
+
+        DirectX::BoundingSphere BoundingSphere = g_BadBoundingSphere;
+
         bool IsIndexOrderClockwise = true;
+
+        std::span<const joint::MeshVertex> GetDrawRangeVertices(const MeshDrawRange& drawRange) const;
+        std::span<const uint32_t> GetDrawRangeIndices(const MeshDrawRange& drawRange) const;
 
         MeshGpuStorage CreateGpuStorage(Device& device, std::string_view debugName) const;
     };

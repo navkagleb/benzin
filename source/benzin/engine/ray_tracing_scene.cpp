@@ -153,7 +153,7 @@ namespace benzin
             const auto& meshTag = view.get<MeshTag>(meshHandle);
 
             auto& blas = view.get<RayTracing_Blas>(meshHandle);
-            blas.AllocateBuffers(m_Device, meshTag.Name);
+            blas.AllocateBuffers(m_Device, meshTag);
 
             cmdList.AddResourceBarrier(TransitionBarrier{ *blas.GetScratchResource(), ResourceState::UnorderedAccess });
         }

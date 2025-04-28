@@ -17,10 +17,12 @@ namespace benzin
         shaderTargets[+ShaderType::Amplification] = L"as_6_6";
         shaderTargets[+ShaderType::Mesh] = L"ms_6_6";
 
+#if BENZIN_IS_ASSERTS_ENABLED
         for (const auto shaderType : magic_enum::enum_values<ShaderType>())
         {
             BenzinAssert(!shaderTargets[+shaderType].empty(), "Missing shader target for '{}' shader", magic_enum::enum_name(shaderType));
         }
+#endif
 
         return shaderTargets;
     }();

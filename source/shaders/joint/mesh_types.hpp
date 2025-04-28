@@ -5,13 +5,22 @@
 namespace joint
 {
 
-    // NOTE: StructuredBuffer alignment is different from ConstantBuffer alignment!
+    // NOTE: StructuredBuffer alignment is different from ConstBuffer alignment!
 
     struct MeshVertex
     {
         float3 Position;
         float3 Normal;
         float2 Uv;
+    };
+
+    struct Meshlet
+    {
+        uint VertexOffset;
+        uint TriangleOffset;
+
+        uint VertexCount;
+        uint TriangleCount;
     };
 
     struct EntityTransform

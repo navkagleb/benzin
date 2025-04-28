@@ -49,10 +49,15 @@ namespace benzin
 
     enum class PsoId : uint32_t
     {
-        GeometryPass_DepthClockwise,
-        GeometryPass_DepthCounterClockwise,
+        GeometryPass_Depth_Clockwise,
+        GeometryPass_Depth_CounterClockwise,
         GeometryPass_Clockwise,
         GeometryPass_CounterClockwise,
+
+        GeometryPass_Meshlet_Depth_Clockwise,
+        GeometryPass_Meshlet_Depth_CounterClockwise,
+        GeometryPass_Meshlet_Clockwise,
+        GeometryPass_Meshlet_CounterClockwise,
 
         ProceduralGrass,
 

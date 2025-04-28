@@ -33,16 +33,42 @@ namespace sandbox
         );
     }
 
-    benzin::ScopedResourceBarriers GBuffer::CreateResourceBarriers(benzin::GraphicsCmdList& cmdList, benzin::ResourceState depthStencilState) const
+    void GBuffer::SetDepthStencilOnly(benzin::GraphicsCmdList& cmdList) const
+    {
+        cmdList.SetRenderTargets({}, &DepthStencil.GetDsv());
+    }
+
+    void GBuffer::ClearRenderTargets(benzin::GraphicsCmdList& cmdList) const
+    {
+        cmdList.ClearRenderTarget(AlbedoAndRoughness);
+        cmdList.ClearRenderTarget(EmissiveAndMetallic);
+        cmdList.ClearRenderTarget(WorldNormal);
+        cmdList.ClearRenderTarget(Mv);
+        cmdList.ClearRenderTarget(ViewDepth);
+    }
+
+    void GBuffer::ClearDepthStencil(benzin::GraphicsCmdList& cmdList) const
+    {
+        cmdList.ClearDepthStencil(DepthStencil);
+    }
+
+    benzin::ScopedResourceBarriers GBuffer::CreateResourceBarriers(
+        benzin::GraphicsCmdList& cmdList,
+        benzin::ResourceState depthStencilState,
+        bool isDepthStencilOnly
+    ) const
     {
         std::vector<benzin::ResourceBarrierVariant> resourceBarriers;
-        resourceBarriers.reserve(6);
+        resourceBarriers.reserve(isDepthStencilOnly ? 1 : 6);
 
-        resourceBarriers.push_back(benzin::TransitionBarrier{ AlbedoAndRoughness, benzin::ResourceState::RenderTarget });
-        resourceBarriers.push_back(benzin::TransitionBarrier{ EmissiveAndMetallic, benzin::ResourceState::RenderTarget });
-        resourceBarriers.push_back(benzin::TransitionBarrier{ WorldNormal, benzin::ResourceState::RenderTarget });
-        resourceBarriers.push_back(benzin::TransitionBarrier{ Mv, benzin::ResourceState::RenderTarget });
-        resourceBarriers.push_back(benzin::TransitionBarrier{ ViewDepth, benzin::ResourceState::RenderTarget });
+        if (!isDepthStencilOnly)
+        {
+            resourceBarriers.push_back(benzin::TransitionBarrier{ AlbedoAndRoughness, benzin::ResourceState::RenderTarget });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ EmissiveAndMetallic, benzin::ResourceState::RenderTarget });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ WorldNormal, benzin::ResourceState::RenderTarget });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ Mv, benzin::ResourceState::RenderTarget });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ ViewDepth, benzin::ResourceState::RenderTarget });
+        }
 
         BenzinAssert(depthStencilState == benzin::ResourceState::DepthWrite || depthStencilState == benzin::ResourceState::DepthRead);
         resourceBarriers.push_back(benzin::TransitionBarrier{ DepthStencil, depthStencilState });

@@ -47,6 +47,11 @@ namespace benzin
         BenzinAssert(bufferCreation.ElementSizeInBytes != 0);
         BenzinAssert(bufferCreation.ElementCount != 0);
 
+        if (bufferCreation.Type == BufferType::Format)
+        {
+            BenzinAssert(bufferCreation.ElementSizeInBytes == GetFormatSizeInBytes(bufferCreation.Format));
+        }
+
         uint32_t alignedElementSizeInBytes = bufferCreation.ElementSizeInBytes;
         if (bufferCreation.Type == BufferType::Const)
         {
@@ -163,6 +168,8 @@ namespace benzin
             }
             case BufferType::Format:
             {
+                BenzinAssert(buffer.GetFormat() != GraphicsFormat::Unknown);
+
                 return D3D12_SHADER_RESOURCE_VIEW_DESC
                 {
                     .Format = (DXGI_FORMAT)buffer.GetFormat(),
@@ -177,6 +184,7 @@ namespace benzin
                     },
                 };
             }
+            case BufferType::Vertex:
             case BufferType::Structured:
             {
                 // Ref: https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_buffer_srv#remarks
@@ -271,7 +279,6 @@ namespace benzin
     }
 
     //
-
 
     Buffer::Buffer(Device& device, const BufferCreation& creation)
         : Resource{ device }

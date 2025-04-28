@@ -188,6 +188,7 @@ namespace sandbox
             }
 
             m_Scene->UploadMeshesToGpu();
+            m_Scene->UploadMeshletsToGpu();
             m_Scene->UploadMaterialsToGpu();
             m_RayTracingScene->BuildBlases();
 
@@ -334,7 +335,7 @@ namespace sandbox
         {
             BenzinScopeProfile("Update scene");
 
-            if (m_AnimationTimer.IsPaused())
+            if (!m_AnimationTimer.IsPaused())
             {
                 m_Scene->UpdateEntities();
             }

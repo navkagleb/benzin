@@ -66,7 +66,7 @@ namespace benzin
 
             const auto meshHeaderName = std::format(
                 "{}: {} draw ranges - {:L} triangles",
-                meshTag.Name,
+                meshTag,
                 mesh.DrawRanges.size(),
                 mesh.Indices.size()
             );

@@ -27,6 +27,7 @@ namespace benzin
         Bc3Unorm = DXGI_FORMAT_BC3_UNORM,
         Bc7Unorm = DXGI_FORMAT_BC7_UNORM,
 
+        R8Uint = DXGI_FORMAT_R8_UINT,
         R8Unorm = DXGI_FORMAT_R8_UNORM,
 
         R16Float = DXGI_FORMAT_R16_FLOAT,
