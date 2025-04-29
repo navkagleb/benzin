@@ -54,11 +54,11 @@ namespace benzin
 
     void RayTracing_Blas::AddGeometry(const Geometry& geometry)
     {
-        const uint32_t validatedVertexCount = !IsGoodUint(geometry.VertexCount) && geometry.VertexOffset == 0 ? (uint32_t)geometry.VertexBuffer.GetElementCount() : geometry.VertexCount;
-        const uint32_t validatedIndexCount = !IsGoodUint(geometry.IndexCount) && geometry.IndexOffset == 0 ? (uint32_t)geometry.IndexBuffer.GetElementCount() : geometry.IndexCount;
+        const uint32_t validatedVertexCount = geometry.VertexRange.IsGoodRange() ? geometry.VertexRange.Count : (uint32_t)geometry.VertexBuffer.GetElementCount();
+        const uint32_t validatedIndexCount = geometry.IndexRange.IsGoodRange() ? geometry.IndexRange.Count : (uint32_t)geometry.IndexBuffer.GetElementCount();
 
-        BenzinAssert(validatedVertexCount + geometry.VertexOffset <= geometry.VertexBuffer.GetElementCount());
-        BenzinAssert(validatedIndexCount + geometry.IndexOffset <= geometry.IndexBuffer.GetElementCount());
+        BenzinAssert(validatedVertexCount + geometry.VertexRange.Offset <= geometry.VertexBuffer.GetElementCount());
+        BenzinAssert(validatedIndexCount + geometry.IndexRange.Offset <= geometry.IndexBuffer.GetElementCount());
         BenzinAssert(geometry.TransformGpuAddress % D3D12_RAYTRACING_TRANSFORM3X4_BYTE_ALIGNMENT == 0);
 
         m_D3D12GeometryDescs.push_back(D3D12_RAYTRACING_GEOMETRY_DESC
@@ -72,10 +72,10 @@ namespace benzin
                 .VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT,
                 .IndexCount = validatedIndexCount,
                 .VertexCount = validatedVertexCount,
-                .IndexBuffer = geometry.IndexBuffer.GetGpuVirtualAddress(geometry.IndexOffset),
+                .IndexBuffer = geometry.IndexBuffer.GetGpuVirtualAddress(geometry.IndexRange.Offset),
                 .VertexBuffer
                 {
-                    .StartAddress = geometry.VertexBuffer.GetGpuVirtualAddress(geometry.VertexOffset),
+                    .StartAddress = geometry.VertexBuffer.GetGpuVirtualAddress(geometry.VertexRange.Offset),
                     .StrideInBytes = geometry.VertexBuffer.GetElementSizeInBytes(),
                 },
             },

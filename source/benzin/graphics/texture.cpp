@@ -11,22 +11,39 @@ namespace benzin
 
     struct TextureDsv {};
 
+    static void ValidateFormat(GraphicsFormat referenceFormat, GraphicsFormat& outFormat)
+    {
+        outFormat = outFormat != GraphicsFormat::Unknown ? outFormat : referenceFormat;
+    }
+
+    static void ValidateRange(uint16_t maxCount, SubRange16& outRange)
+    {
+        if (outRange.IsGoodRange())
+        {
+            BenzinAssert(outRange.GetEndCount() <= maxCount);
+            return;
+        }
+
+        BenzinAssert(outRange.Offset == 0);
+        outRange.Count = GetGoodUintOr(outRange.Count, maxCount);
+    }
+
     static void ValidateTextureSrv(const Texture& texture, TextureSrv& outTextureSrv)
     {
-        // #TODO: Validation for 'TextureSrv::MipRange'
-
         BenzinAssert(texture.GetD3D12Resource() != nullptr);
-        BenzinAssert(outTextureSrv.DepthRange.Count <= texture.GetDepth());
 
         // Set default format for depth stencil if format is not set
         if (texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowDepthStencil) && outTextureSrv.Format == GraphicsFormat::Unknown)
         {
+            BenzinAssert(texture.GetFormat() == GraphicsFormat::D24Unorm_S8Uint);
             outTextureSrv.Format = GraphicsFormat::D24Unorm_X8Typeless;
         }
 
-        outTextureSrv.Format = outTextureSrv.Format != GraphicsFormat::Unknown ? outTextureSrv.Format : texture.GetFormat();
         outTextureSrv.IsCubeMap = outTextureSrv.IsCubeMap ? true : texture.IsCubeMap();
-        outTextureSrv.DepthRange.Count = outTextureSrv.DepthRange.Count != 0 ? outTextureSrv.DepthRange.Count : texture.GetDepth();
+
+        ValidateFormat(texture.GetFormat(), outTextureSrv.Format);
+        ValidateRange(texture.GetDepth(), outTextureSrv.DepthRange);
+        ValidateRange(texture.GetMipCount(), outTextureSrv.MipRange);
     }
 
     static void ValidateTextureUav(const Texture& texture, TextureUav& outTextureUav)
@@ -34,20 +51,18 @@ namespace benzin
         BenzinAssert(texture.GetD3D12Resource() != nullptr);
         BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowUnorderedAccess));
         BenzinAssert(outTextureUav.MipIndex < texture.GetMipCount());
-        BenzinAssert(outTextureUav.DepthRange.Count < texture.GetDepth()); // TODO: <= ?
 
-        outTextureUav.Format = outTextureUav.Format != GraphicsFormat::Unknown ? outTextureUav.Format : texture.GetFormat();
-        outTextureUav.DepthRange.Count = outTextureUav.DepthRange.Count != 0 ? outTextureUav.DepthRange.Count : texture.GetDepth();
+        ValidateFormat(texture.GetFormat(), outTextureUav.Format);
+        ValidateRange(texture.GetDepth(), outTextureUav.DepthRange);
     }
 
     static void ValidateTextureRtv(const Texture& texture, TextureRtv& outTextureRtv)
     {
         BenzinAssert(texture.GetD3D12Resource() != nullptr);
         BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowRenderTarget));
-        BenzinAssert(outTextureRtv.DepthRange.Count < texture.GetDepth());
 
-        outTextureRtv.Format = outTextureRtv.Format != GraphicsFormat::Unknown ? outTextureRtv.Format : texture.GetFormat();
-        outTextureRtv.DepthRange.Count = outTextureRtv.DepthRange.Count != 0 ? outTextureRtv.DepthRange.Count : texture.GetDepth();
+        ValidateFormat(texture.GetFormat(), outTextureRtv.Format);
+        ValidateRange(texture.GetDepth(), outTextureRtv.DepthRange);
     }
 
     static void ValidateTextureDsv(const Texture& texture)
@@ -197,7 +212,7 @@ namespace benzin
             d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
             d3d12SrvDesc.Texture2D = D3D12_TEX2D_SRV
             {
-                .MostDetailedMip = textureSrv.MipRange.StartIndex,
+                .MostDetailedMip = textureSrv.MipRange.Offset,
                 .MipLevels = mipCount,
                 .PlaneSlice = 0,
                 .ResourceMinLODClamp = 0.0f,
@@ -208,7 +223,7 @@ namespace benzin
             d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
             d3d12SrvDesc.TextureCube = D3D12_TEXCUBE_SRV
             {
-                .MostDetailedMip = textureSrv.MipRange.StartIndex,
+                .MostDetailedMip = textureSrv.MipRange.Offset,
                 .MipLevels = mipCount,
                 .ResourceMinLODClamp = 0.0f,
             };
@@ -218,9 +233,9 @@ namespace benzin
             d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
             d3d12SrvDesc.Texture2DArray = D3D12_TEX2D_ARRAY_SRV
             {
-                .MostDetailedMip = textureSrv.MipRange.StartIndex,
+                .MostDetailedMip = textureSrv.MipRange.Offset,
                 .MipLevels = mipCount,
-                .FirstArraySlice = textureSrv.DepthRange.StartIndex,
+                .FirstArraySlice = textureSrv.DepthRange.Offset,
                 .ArraySize = textureSrv.DepthRange.Count,
                 .PlaneSlice = 0,
                 .ResourceMinLODClamp = 0.0f,
@@ -250,7 +265,7 @@ namespace benzin
             d3d12UavDesc.Texture2DArray = D3D12_TEX2D_ARRAY_UAV
             {
                 .MipSlice = textureUav.MipIndex,
-                .FirstArraySlice = textureUav.DepthRange.StartIndex,
+                .FirstArraySlice = textureUav.DepthRange.Offset,
                 .ArraySize = textureUav.DepthRange.Count,
                 .PlaneSlice = 0,
             };
@@ -279,7 +294,7 @@ namespace benzin
             d3d12RtvDesc.Texture2DArray = D3D12_TEX2D_ARRAY_RTV
             {
                 .MipSlice = 0,
-                .FirstArraySlice = textureRtv.DepthRange.StartIndex,
+                .FirstArraySlice = textureRtv.DepthRange.Offset,
                 .ArraySize = textureRtv.DepthRange.Count,
                 .PlaneSlice = 0,
             };
@@ -526,9 +541,9 @@ BenzinDefineStdHashForType(benzin::TextureSrv, textureSrv,
     size_t hash = typeid(benzin::TextureSrv).hash_code();
     hash = benzin::HashCombine(hash, textureSrv.Format);
     hash = benzin::HashCombine(hash, textureSrv.IsCubeMap);
-    hash = benzin::HashCombine(hash, textureSrv.DepthRange.StartIndex);
+    hash = benzin::HashCombine(hash, textureSrv.DepthRange.Offset);
     hash = benzin::HashCombine(hash, textureSrv.DepthRange.Count);
-    hash = benzin::HashCombine(hash, textureSrv.MipRange.StartIndex);
+    hash = benzin::HashCombine(hash, textureSrv.MipRange.Offset);
     hash = benzin::HashCombine(hash, textureSrv.MipRange.Count);
 
     return hash;
@@ -539,7 +554,7 @@ BenzinDefineStdHashForType(benzin::TextureUav, textureUav,
     size_t hash = typeid(benzin::TextureUav).hash_code();
     hash = benzin::HashCombine(hash, textureUav.Format);
     hash = benzin::HashCombine(hash, textureUav.MipIndex);
-    hash = benzin::HashCombine(hash, textureUav.DepthRange.StartIndex);
+    hash = benzin::HashCombine(hash, textureUav.DepthRange.Offset);
     hash = benzin::HashCombine(hash, textureUav.DepthRange.Count);
 
     return hash;
@@ -549,7 +564,7 @@ BenzinDefineStdHashForType(benzin::TextureRtv, textureRtv,
 {
     size_t hash = typeid(benzin::TextureRtv).hash_code();
     hash = benzin::HashCombine(hash, textureRtv.Format);
-    hash = benzin::HashCombine(hash, textureRtv.DepthRange.StartIndex);
+    hash = benzin::HashCombine(hash, textureRtv.DepthRange.Offset);
     hash = benzin::HashCombine(hash, textureRtv.DepthRange.Count);
 
     return hash;

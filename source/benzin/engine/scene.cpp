@@ -46,7 +46,7 @@ namespace benzin
     {
         BenzinAssert(m_EntityTransformBuffer.get() != nullptr);
 
-        return m_EntityTransformBuffer->GetSrv(IndexRange64
+        return m_EntityTransformBuffer->GetSrv(SubRange64
         {
             m_EntityTransformCount * m_Device.GetActiveFrameIndex(),
             m_EntityTransformCount,

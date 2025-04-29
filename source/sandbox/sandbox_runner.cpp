@@ -56,8 +56,8 @@ namespace sandbox
 
             const benzin::MeshDrawRange drawRange
             {
-                .VertexCount = (uint32_t)meshData.Vertices.size(),
-                .IndexCount = (uint32_t)meshData.Indices.size(),
+                .VertexRange{ 0, (uint32_t)meshData.Vertices.size() },
+                .IndexRange{ 0, (uint32_t)meshData.Indices.size() },
                 .PrimitiveTopology = meshData.PrimitiveTopology,
             };
 
@@ -92,8 +92,8 @@ namespace sandbox
 
             const benzin::MeshDrawRange drawRange
             {
-                .VertexCount = (uint32_t)meshData.Vertices.size(),
-                .IndexCount = (uint32_t)meshData.Indices.size(),
+                .VertexRange{ 0, (uint32_t)meshData.Vertices.size() },
+                .IndexRange{ 0, (uint32_t)meshData.Indices.size() },
                 .PrimitiveTopology = meshData.PrimitiveTopology,
             };
 

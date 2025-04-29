@@ -124,10 +124,8 @@ namespace benzin
                 {
                     .VertexBuffer = *meshGpuStorage.VertexBuffer,
                     .IndexBuffer = *meshGpuStorage.IndexBuffer,
-                    .VertexOffset = drawRange.VertexOffset,
-                    .IndexOffset = drawRange.IndexOffset,
-                    .VertexCount = drawRange.VertexCount,
-                    .IndexCount = drawRange.IndexCount,
+                    .VertexRange = drawRange.VertexRange,
+                    .IndexRange = drawRange.IndexRange,
                     .TransformGpuAddress = localTransformBuffer->GetGpuVirtualAddress((uint32_t)localTransforms.size())
                 });
 

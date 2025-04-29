@@ -367,17 +367,17 @@ namespace sandbox
 
             if (m_IsMeshPipelineUsed)
             {
-                cmdList.SetGraphicsRootResource(+Resources::Vertices, meshGpuStorage.VertexBuffer->GetSrv({ drawRange.VertexOffset, drawRange.VertexCount }));
-                cmdList.SetGraphicsRootResource(+Resources::Meshlets, meshGpuStorage.MeshletBuffer->GetSrv({ drawRange.MeshletOffset, drawRange.MeshletCount }));
-                cmdList.SetGraphicsRootResource(+Resources::MeshletIndirectVertices, meshGpuStorage.MeshletIndirectVertexBuffer->GetSrv({ drawRange.MeshletIndirectVertexOffset, drawRange.MeshletIndirectVertexCount }));
-                cmdList.SetGraphicsRootResource(+Resources::MeshletIndices, meshGpuStorage.MeshletIndexBuffer->GetSrv({ drawRange.MeshletIndexOffset, drawRange.MeshletIndexCount }));
+                cmdList.SetGraphicsRootResource(+Resources::Vertices, meshGpuStorage.VertexBuffer->GetSrv(drawRange.VertexRange));
+                cmdList.SetGraphicsRootResource(+Resources::Meshlets, meshGpuStorage.MeshletBuffer->GetSrv(drawRange.MeshletRange));
+                cmdList.SetGraphicsRootResource(+Resources::MeshletIndirectVertices, meshGpuStorage.MeshletIndirectVertexBuffer->GetSrv(drawRange.MeshletIndirectVertexRange));
+                cmdList.SetGraphicsRootResource(+Resources::MeshletIndices, meshGpuStorage.MeshletIndexBuffer->GetSrv(drawRange.MeshletIndexRange));
 
-                cmdList.DispatchMesh({ drawRange.MeshletCount, 1, 1 });
+                cmdList.DispatchMesh({ drawRange.MeshletRange.Count, 1, 1 });
             }
             else
             {
                 cmdList.SetPrimitiveTopology(drawRange.PrimitiveTopology);
-                cmdList.DrawIndexed(drawRange.IndexCount, drawRange.IndexOffset, drawRange.VertexOffset);
+                cmdList.DrawIndexed(drawRange.IndexRange.Count, drawRange.IndexRange.Offset, drawRange.VertexRange.Offset);
             }
         }
     }

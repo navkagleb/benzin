@@ -30,20 +30,12 @@ namespace benzin
 
     struct MeshDrawRange
     {
-        uint32_t VertexOffset = 0;
-        uint32_t IndexOffset = 0;
+        SubRange32 VertexRange;
+        SubRange32 IndexRange;
 
-        uint32_t VertexCount = g_Bad32;
-        uint32_t IndexCount = g_Bad32;
-
-        uint32_t MeshletOffset = 0;
-        uint32_t MeshletCount = g_Bad32;
-
-        uint32_t MeshletIndirectVertexOffset = 0;
-        uint32_t MeshletIndirectVertexCount = g_Bad32;
-
-        uint32_t MeshletIndexOffset = 0;
-        uint32_t MeshletIndexCount = g_Bad32;
+        SubRange32 MeshletRange;
+        SubRange32 MeshletIndirectVertexRange;
+        SubRange32 MeshletIndexRange;
 
         PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
 

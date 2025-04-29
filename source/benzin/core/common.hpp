@@ -35,27 +35,46 @@ namespace benzin
     }
 
     template <std::unsigned_integral T>
-    struct IndexRange
+    struct SubRange
     {
-        T StartIndex = 0;
-        T Count = 0;
+        T Offset = 0;
+        T Count = g_BadUint<T>;
 
-        IndexRange() = default;
+        SubRange() = default;
 
-        IndexRange(T startIndex)
-            : StartIndex{ startIndex }
+        SubRange(T offset)
+            : Offset{ offset }
             , Count{ 1 }
         {}
 
-        IndexRange(T startIndex, T count)
-            : StartIndex{ startIndex }
+        SubRange(T offset, T count)
+            : Offset{ offset }
             , Count{ count }
         {}
+
+        template <std::unsigned_integral U>
+        SubRange(const SubRange<U>& other)
+        {
+            static_assert(sizeof(U) <= sizeof(T));
+
+            Offset = (T)other.Offset;
+            Count = (T)other.Count;
+        }
+
+        bool IsGoodRange() const
+        {
+            return IsGoodUint(Count);
+        }
+
+        T GetEndCount() const
+        {
+            return Offset + Count;
+        }
     };
 
-    using IndexRange16 = IndexRange<uint16_t>;
-    using IndexRange32 = IndexRange<uint32_t>;
-    using IndexRange64 = IndexRange<uint64_t>;
+    using SubRange16 = SubRange<uint16_t>;
+    using SubRange32 = SubRange<uint32_t>;
+    using SubRange64 = SubRange<uint64_t>;
 
     constexpr auto ToBit(std::integral auto bitPosition)
     {

@@ -191,11 +191,8 @@ namespace benzin
         {
             MeshDrawRange drawRange
             {
-                .VertexOffset = (uint32_t)m_OutMesh->Vertices.size(),
-                .IndexOffset = (uint32_t)m_OutMesh->Indices.size(),
-
-                .VertexCount = vertexCount,
-                .IndexCount = (uint32_t)indices.size(),
+                .VertexRange{ (uint32_t)m_OutMesh->Vertices.size(), vertexCount },
+                .IndexRange{ (uint32_t)m_OutMesh->Indices.size(), (uint32_t)indices.size() },
 
                 .PrimitiveTopology = [&gltfPrimitive]
                 {

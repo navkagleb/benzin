@@ -62,10 +62,11 @@ namespace benzin
             {
                 // Update draw range
 
-                drawRange.VertexOffset = (uint32_t)newVertices.size();
-                drawRange.IndexOffset = (uint32_t)newIndices.size();
-                drawRange.VertexCount = (uint32_t)optVertices.size();
-                drawRange.IndexCount = (uint32_t)optIndices.size();
+                drawRange.VertexRange.Offset = (uint32_t)newVertices.size();
+                drawRange.VertexRange.Count = (uint32_t)optVertices.size();
+
+                drawRange.IndexRange.Offset = (uint32_t)newIndices.size();
+                drawRange.IndexRange.Count = (uint32_t)optIndices.size();
             }
 
             newVertices.append_range(optVertices);
@@ -145,14 +146,14 @@ namespace benzin
             {
                 // Update draw range
 
-                drawRange.MeshletOffset = (uint32_t)mesh.Meshlets.size();
-                drawRange.MeshletCount = (uint32_t)meshlets.size();
+                drawRange.MeshletRange.Offset = (uint32_t)mesh.Meshlets.size();
+                drawRange.MeshletRange.Count = (uint32_t)meshlets.size();
 
-                drawRange.MeshletIndirectVertexOffset = (uint32_t)mesh.MeshletIndirectVertices.size();
-                drawRange.MeshletIndirectVertexCount = (uint32_t)meshletIndirectVertices.size();
+                drawRange.MeshletIndirectVertexRange.Offset = (uint32_t)mesh.MeshletIndirectVertices.size();
+                drawRange.MeshletIndirectVertexRange.Count = (uint32_t)meshletIndirectVertices.size();
 
-                drawRange.MeshletIndexOffset = (uint32_t)mesh.MeshletIndices.size();
-                drawRange.MeshletIndexCount = (uint32_t)meshletIndices.size();
+                drawRange.MeshletIndexRange.Offset = (uint32_t)mesh.MeshletIndices.size();
+                drawRange.MeshletIndexRange.Count = (uint32_t)meshletIndices.size();
             }
 
             mesh.Meshlets.append_range(std::move(*decltype(&mesh.Meshlets)(&meshlets)));

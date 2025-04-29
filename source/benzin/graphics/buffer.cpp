@@ -12,7 +12,7 @@ namespace benzin
     struct BufferSrv
     {
         BufferType BufferType = BufferType::Byte;
-        IndexRange64 ElementRange{};
+        SubRange64 ElementRange{};
     };
 
     struct BufferUav {};
@@ -22,12 +22,16 @@ namespace benzin
         uint32_t ElementIndex = 0;
     };
 
-    static void ValidateBufferElementRange(const Buffer& buffer, IndexRange64& outElementRange)
+    static void ValidateBufferElementRange(const Buffer& buffer, SubRange64& outElementRange)
     {
-        BenzinAssert(outElementRange.StartIndex < buffer.GetElementCount());
-        BenzinAssert(outElementRange.Count <= buffer.GetElementCount());
+        if (outElementRange.IsGoodRange())
+        {
+            BenzinAssert(outElementRange.GetEndCount() <= buffer.GetElementCount());
+            return;
+        }
 
-        outElementRange.Count = outElementRange.Count != 0 ? outElementRange.Count : buffer.GetElementCount();
+        BenzinAssert(outElementRange.Offset == 0);
+        outElementRange.Count = buffer.GetElementCount();
     }
 
     static D3D12_HEAP_TYPE ToD3D12HeapType(const Device& device, const ResourceMemoryType& memoryType)
@@ -138,7 +142,7 @@ namespace benzin
         BenzinEnsure(outD3D12Resource != nullptr);
     }
 
-    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, IndexRange64 elementRange)
+    static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, const SubRange64& elementRange)
     {
         switch (buffer.GetType())
         {
@@ -177,7 +181,7 @@ namespace benzin
                     .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
                     .Buffer
                     {
-                        .FirstElement = elementRange.StartIndex,
+                        .FirstElement = elementRange.Offset,
                         .NumElements = (uint32_t)elementRange.Count,
                         .StructureByteStride = 0,
                         .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
@@ -196,7 +200,7 @@ namespace benzin
                     .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
                     .Buffer
                     {
-                        .FirstElement = elementRange.StartIndex,
+                        .FirstElement = elementRange.Offset,
                         .NumElements = (uint32_t)elementRange.Count,
                         .StructureByteStride = buffer.GetAlignedElementSizeInBytes(), // #TODO: 'm_AlignedElementSize' when using 'StructuredBuffer'?
                         .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
@@ -321,9 +325,9 @@ namespace benzin
         return m_D3D12Resource->GetGPUVirtualAddress() + elementIndex * m_AlignedElementSizeInBytes;
     }
 
-    const Descriptor& Buffer::GetSrv(IndexRange64 elementRange) const
+    const Descriptor& Buffer::GetSrv(const SubRange64& elementRange) const
     {
-        ValidateBufferElementRange(*this, elementRange);
+        ValidateBufferElementRange(*this, const_cast<SubRange64&>(elementRange));
 
         return TryGetViewDescriptor(
             GetStdHash(BufferSrv{ m_Type, elementRange }),
@@ -347,11 +351,11 @@ namespace benzin
         );
     }
 
-    Descriptor Buffer::CreateDetachedSrv(IndexRange64 elementRange, bool isValidationEnabled) const
+    Descriptor Buffer::CreateDetachedSrv(const SubRange64& elementRange, bool isValidationEnabled) const
     {
         if (isValidationEnabled)
         {
-            ValidateBufferElementRange(*this, elementRange);
+            ValidateBufferElementRange(*this, const_cast<SubRange64&>(elementRange));
         }
 
         ID3D12Resource* d3d12Resource = nullptr;
@@ -434,7 +438,7 @@ BenzinDefineStdHashForType(benzin::BufferSrv, bufferSrv,
 {
     size_t hash = typeid(benzin::BufferSrv).hash_code();
     hash = benzin::HashCombine(hash, bufferSrv.BufferType);
-    hash = benzin::HashCombine(hash, bufferSrv.ElementRange.StartIndex);
+    hash = benzin::HashCombine(hash, bufferSrv.ElementRange.Offset);
     hash = benzin::HashCombine(hash, bufferSrv.ElementRange.Count);
 
     return hash;

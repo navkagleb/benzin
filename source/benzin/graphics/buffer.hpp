@@ -55,11 +55,11 @@ namespace benzin
 
         uint64_t GetGpuVirtualAddress(uint32_t elementIndex = 0) const;
 
-        const Descriptor& GetSrv(IndexRange64 elementRange = {}) const;
+        const Descriptor& GetSrv(const SubRange64& elementRange = {}) const;
         const Descriptor& GetUav() const;
         const Descriptor& GetCbv(uint32_t elementIndex = 0) const;
 
-        Descriptor CreateDetachedSrv(IndexRange64 elementRange = {}, bool isValidationEnabled = true) const;
+        Descriptor CreateDetachedSrv(const SubRange64& elementRange = {}, bool isValidationEnabled = true) const;
         Descriptor CreateDetachedUav() const;
         Descriptor CreateDetachedCbv(uint32_t elementIndex) const;
 

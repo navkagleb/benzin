@@ -39,11 +39,8 @@ namespace benzin
             const Buffer& VertexBuffer;
             const Buffer& IndexBuffer;
 
-            uint32_t VertexOffset = 0;
-            uint32_t IndexOffset = 0;
-
-            uint32_t VertexCount = g_Bad32;
-            uint32_t IndexCount = g_Bad32;
+            SubRange32 VertexRange;
+            SubRange32 IndexRange;
 
             uint64_t TransformGpuAddress = 0;
         };

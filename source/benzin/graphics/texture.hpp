@@ -43,21 +43,21 @@ namespace benzin
     {
         bool IsCubeMap = false;
         GraphicsFormat Format = GraphicsFormat::Unknown;
-        IndexRange16 DepthRange;
-        IndexRange16 MipRange{ 0, g_Bad16 }; // By default select all mips
+        SubRange16 DepthRange; // By default select all slices
+        SubRange16 MipRange; // By default select all mips
     };
 
     struct TextureUav
     {
         GraphicsFormat Format = GraphicsFormat::Unknown;
         uint32_t MipIndex = 0;
-        IndexRange16 DepthRange;
+        SubRange16 DepthRange;
     };
 
     struct TextureRtv
     {
         GraphicsFormat Format = GraphicsFormat::Unknown;
-        IndexRange16 DepthRange;
+        SubRange16 DepthRange;
     };
 
     class Texture : public Resource

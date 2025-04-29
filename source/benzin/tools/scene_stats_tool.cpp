@@ -75,7 +75,7 @@ namespace benzin
             {
                 for (const auto& [i, drawRange] : mesh.DrawRanges | std::views::enumerate)
                 {
-                    ImGui::Text(BenzinFormatData("{}: {:L}", i, drawRange.IndexCount / 3));
+                    ImGui::Text(BenzinFormatData("{}: {:L}", i, drawRange.IndexRange.Count / 3));
                 }
             });
         }

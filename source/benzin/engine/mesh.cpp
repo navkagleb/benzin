@@ -11,12 +11,12 @@ namespace benzin
 
     std::span<const joint::MeshVertex> Mesh::GetDrawRangeVertices(const MeshDrawRange& drawRange) const
     {
-        return ToSpan(Vertices.data() + drawRange.VertexOffset, drawRange.VertexCount);
+        return ToSpan(Vertices.data() + drawRange.VertexRange.Offset, drawRange.VertexRange.Count);
     }
     
     std::span<const uint32_t> Mesh::GetDrawRangeIndices(const MeshDrawRange& drawRange) const
     {
-        return ToSpan(Indices.data() + drawRange.IndexOffset, drawRange.IndexCount);
+        return ToSpan(Indices.data() + drawRange.IndexRange.Offset, drawRange.IndexRange.Count);
     }
 
     MeshGpuStorage Mesh::CreateGpuStorage(Device& device, std::string_view debugName) const
