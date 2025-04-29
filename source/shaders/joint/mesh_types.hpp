@@ -17,10 +17,18 @@ namespace joint
     struct Meshlet
     {
         uint VertexOffset;
-        uint TriangleOffset;
+        uint IndexOffset;
 
         uint VertexCount;
         uint TriangleCount;
+    };
+
+    enum class MeshletConsts
+    {
+        MaxVertexCount = 64,
+        MaxTriangleCount = 124, // Must be multiple of 4 (for meshoptimizer library)
+
+        GroupSize = 128,
     };
 
     struct EntityTransform

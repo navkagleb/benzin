@@ -145,6 +145,19 @@ namespace sandbox
         }
     }
 
+
+    void GeometryPass::SetPso(benzin::GraphicsCmdList& cmdList, benzin::PsoId meshId, benzin::PsoId vertexId) const
+    {
+        if (m_IsMeshPipelineUsed)
+        {
+            cmdList.SetMeshPso(ms_PsoManager->GetMesh(meshId));
+        }
+        else
+        {
+            cmdList.SetVertexPso(ms_PsoManager->GetVertex(vertexId));
+        }
+    }
+
     void GeometryPass::OnRenderViewportResize()
     {
         const auto createGBufferTexture = [](TextureId id, benzin::GraphicsFormat format, benzin::TextureAccessFlag accessFlag)
@@ -200,7 +213,7 @@ namespace sandbox
         }
 
         m_IsCpuFrustumCullingEnabled = settings.IsFrustumCullingEnabled;
-        m_IsMeshShaderUsed = settings.IsMeshShaderUsed;
+        m_IsMeshPipelineUsed = settings.IsMeshPipelineUsed;
     }
 
     bool GeometryPass::IsSphereCulled(
@@ -245,24 +258,10 @@ namespace sandbox
             gbuffer.SetDepthStencilOnly(cmdList);
             gbuffer.ClearDepthStencil(cmdList);
 
-            if (m_IsMeshShaderUsed)
-            {
-                cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Meshlet_Depth_CounterClockwise));
-            }
-            else
-            {
-                cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Depth_CounterClockwise));
-            }
+            SetPso(cmdList, PsoId::GeometryPass_Meshlet_Depth_CounterClockwise, PsoId::GeometryPass_Depth_CounterClockwise);
             RenderMeshes(cmdList, false);
 
-            if (m_IsMeshShaderUsed)
-            {
-                cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Meshlet_Depth_Clockwise));
-            }
-            else
-            {
-                cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Depth_Clockwise));
-            }
+            SetPso(cmdList, PsoId::GeometryPass_Meshlet_Depth_Clockwise, PsoId::GeometryPass_Depth_Clockwise);
             RenderMeshes(cmdList, true);
             RenderLights(cmdList);
         }
@@ -282,24 +281,10 @@ namespace sandbox
                 gbuffer.ClearDepthStencil(cmdList);
             }
 
-            if (m_IsMeshShaderUsed)
-            {
-                cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Meshlet_CounterClockwise));
-            }
-            else
-            {
-                cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_CounterClockwise));
-            }
+            SetPso(cmdList, PsoId::GeometryPass_Meshlet_CounterClockwise, PsoId::GeometryPass_CounterClockwise);
             RenderMeshes(cmdList, false);
 
-            if (m_IsMeshShaderUsed)
-            {
-                cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Meshlet_Clockwise));
-            }
-            else
-            {
-                cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Clockwise));
-            }
+            SetPso(cmdList, PsoId::GeometryPass_Meshlet_Clockwise, PsoId::GeometryPass_Clockwise);
             RenderMeshes(cmdList, true);
             RenderLights(cmdList);
         }
@@ -319,15 +304,7 @@ namespace sandbox
             }
 
             const auto& transform = view.get<benzin::Transform>(entityHandle);
-
-            if (m_IsMeshShaderUsed)
-            {
-                RenderMeshlets(cmdList, meshInstanceComponent, transform.GetLocalToWorldMatrix());
-            }
-            else
-            {
-                RenderMesh(cmdList, meshInstanceComponent, transform.GetLocalToWorldMatrix());
-            }
+            RenderMesh(cmdList, meshInstanceComponent, transform.GetLocalToWorldMatrix());
         }
     }
 
@@ -348,19 +325,14 @@ namespace sandbox
             const auto& mesh = ms_Scene->GetMeshRegistry().get<benzin::Mesh>(meshInstanceComponent.GetMeshHandle());
             BenzinEnsure(mesh.IsIndexOrderClockwise);
 
-            if (m_IsMeshShaderUsed)
-            {
-                RenderMeshlets(cmdList, meshInstanceComponent, light.GetTransform().GetLocalToWorldMatrix());
-            }
-            else
-            {
-                RenderMesh(cmdList, meshInstanceComponent, light.GetTransform().GetLocalToWorldMatrix());
-            }
+            RenderMesh(cmdList, meshInstanceComponent, light.GetTransform().GetLocalToWorldMatrix());
         }
     }
 
     void GeometryPass::RenderMesh(benzin::GraphicsCmdList& cmdList, const benzin::MeshInstanceComponent& meshInstanceComponent, const DirectX::XMMATRIX& localToWorldMatrix) const
     {
+        using Resources = joint::GeometryResources;
+
         const entt::entity meshHandle = meshInstanceComponent.GetMeshHandle();
         BenzinAssert(benzin::IsGoodEnum(meshHandle));
 
@@ -378,8 +350,8 @@ namespace sandbox
         cmdList.SetVertexBuffer(*meshGpuStorage.VertexBuffer);
         cmdList.SetIndexBuffer(*meshGpuStorage.IndexBuffer);
 
-        cmdList.SetGraphicsRootConstant(+joint::GeometryResources::EntityTransformIndex, meshInstanceComponent.GetEntityTransformIndex());
-        cmdList.SetGraphicsRootResource(+joint::GeometryResources::InstanceTransforms, meshGpuStorage.InstanceTransformBuffer->GetSrv());
+        cmdList.SetGraphicsRootConstant(+Resources::EntityTransformIndex, meshInstanceComponent.GetEntityTransformIndex());
+        cmdList.SetGraphicsRootResource(+Resources::InstanceTransforms, meshGpuStorage.InstanceTransformBuffer->GetSrv());
 
         for (const auto& [i, instance] : mesh.Instances | std::views::enumerate)
         {
@@ -390,56 +362,23 @@ namespace sandbox
                 continue;
             }
 
-            cmdList.SetGraphicsRootConstant(+joint::GeometryResources::InstanceTransformIndex, (uint32_t)i);
-            cmdList.SetGraphicsRootConstant(+joint::GeometryResources::InstanceMaterialIndex, instance.MaterialIndex);
+            cmdList.SetGraphicsRootConstant(+Resources::InstanceTransformIndex, (uint32_t)i);
+            cmdList.SetGraphicsRootConstant(+Resources::InstanceMaterialIndex, instance.MaterialIndex);
 
-            cmdList.SetPrimitiveTopology(drawRange.PrimitiveTopology);
-            cmdList.DrawIndexed(drawRange.IndexCount, drawRange.IndexOffset, drawRange.VertexOffset);
-        }
-    }
-
-    void GeometryPass::RenderMeshlets(benzin::GraphicsCmdList& cmdList, const benzin::MeshInstanceComponent& meshInstanceComponent, const DirectX::XMMATRIX& localToWorldMatrix) const
-    {
-        const entt::entity meshHandle = meshInstanceComponent.GetMeshHandle();
-        BenzinAssert(benzin::IsGoodEnum(meshHandle));
-
-        const auto& meshTag = ms_Scene->GetMeshRegistry().get<benzin::MeshTag>(meshHandle);
-        const auto& mesh = ms_Scene->GetMeshRegistry().get<benzin::Mesh>(meshHandle);
-        const auto& meshGpuStorage = ms_Scene->GetMeshRegistry().get<benzin::MeshGpuStorage>(meshHandle);
-
-        if (IsSphereCulled(mesh.BoundingSphere, localToWorldMatrix))
-        {
-            return;
-        }
-
-        BenzinGpuEvent(cmdList, meshTag);
-
-        cmdList.SetVertexBuffer(*meshGpuStorage.VertexBuffer);
-        cmdList.SetIndexBuffer(*meshGpuStorage.IndexBuffer);
-
-        cmdList.SetGraphicsRootConstant(+joint::GeometryResources::EntityTransformIndex, meshInstanceComponent.GetEntityTransformIndex());
-        cmdList.SetGraphicsRootResource(+joint::GeometryResources::InstanceTransforms, meshGpuStorage.InstanceTransformBuffer->GetSrv());
-
-
-        for (const auto& [i, instance] : mesh.Instances | std::views::enumerate)
-        {
-            const benzin::MeshDrawRange& drawRange = mesh.DrawRanges[instance.DrawRangeIndex];
-
-            if (IsSphereCulled(drawRange.BoundingSphere, localToWorldMatrix, instance.LocalTransform))
+            if (m_IsMeshPipelineUsed)
             {
-                continue;
+                cmdList.SetGraphicsRootResource(+Resources::Vertices, meshGpuStorage.VertexBuffer->GetSrv({ drawRange.VertexOffset, drawRange.VertexCount }));
+                cmdList.SetGraphicsRootResource(+Resources::Meshlets, meshGpuStorage.MeshletBuffer->GetSrv({ drawRange.MeshletOffset, drawRange.MeshletCount }));
+                cmdList.SetGraphicsRootResource(+Resources::MeshletIndirectVertices, meshGpuStorage.MeshletIndirectVertexBuffer->GetSrv({ drawRange.MeshletIndirectVertexOffset, drawRange.MeshletIndirectVertexCount }));
+                cmdList.SetGraphicsRootResource(+Resources::MeshletIndices, meshGpuStorage.MeshletIndexBuffer->GetSrv({ drawRange.MeshletIndexOffset, drawRange.MeshletIndexCount }));
+
+                cmdList.DispatchMesh({ drawRange.MeshletCount, 1, 1 });
             }
-
-            cmdList.SetGraphicsRootConstant(+joint::GeometryResources::InstanceTransformIndex, (uint32_t)i);
-            cmdList.SetGraphicsRootConstant(+joint::GeometryResources::InstanceMaterialIndex, instance.MaterialIndex);
-
-            // For meshlets
-            cmdList.SetGraphicsRootResource(+joint::GeometryResources::Vertices, meshGpuStorage.VertexBuffer->GetSrv({ drawRange.VertexOffset, drawRange.VertexCount }));
-            cmdList.SetGraphicsRootResource(+joint::GeometryResources::Meshlets, meshGpuStorage.MeshletBuffer->GetSrv({ drawRange.MeshletOffset, drawRange.MeshletCount }));
-            cmdList.SetGraphicsRootResource(+joint::GeometryResources::MeshletVertices, meshGpuStorage.MeshletVertexBuffer->GetSrv({ drawRange.MeshletVertexOffset, drawRange.MeshletVertexCount }));
-            cmdList.SetGraphicsRootResource(+joint::GeometryResources::MeshletTriangles, meshGpuStorage.MeshletTriangleBuffer->GetSrv({ drawRange.MeshletTriangleOffset, drawRange.MeshletTriangleCount }));
-
-            cmdList.DispatchMesh({ drawRange.MeshletCount, 1, 1 });
+            else
+            {
+                cmdList.SetPrimitiveTopology(drawRange.PrimitiveTopology);
+                cmdList.DrawIndexed(drawRange.IndexCount, drawRange.IndexOffset, drawRange.VertexOffset);
+            }
         }
     }
 

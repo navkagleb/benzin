@@ -32,6 +32,7 @@ namespace sandbox
         };
 
         void CreatePso(benzin::PsoId id, benzin::EnumFlags<PsoFlag> flags = {});
+        void SetPso(benzin::GraphicsCmdList& cmdList, benzin::PsoId meshId, benzin::PsoId vertexId) const;
 
         bool IsDependentOnViewport() const override { return true; }
 
@@ -49,12 +50,11 @@ namespace sandbox
         void RenderLights(benzin::GraphicsCmdList& cmdList) const;
 
         void RenderMesh(benzin::GraphicsCmdList& cmdList, const benzin::MeshInstanceComponent& meshInstanceComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;
-        void RenderMeshlets(benzin::GraphicsCmdList& cmdList, const benzin::MeshInstanceComponent& meshInstanceComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;
 
     private:
         bool m_IsDepthPrePassEnabled = true;
         bool m_IsCpuFrustumCullingEnabled = true;
-        bool m_IsMeshShaderUsed = true;
+        bool m_IsMeshPipelineUsed = true;
     };
 
 }

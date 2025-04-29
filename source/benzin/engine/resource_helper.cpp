@@ -6,9 +6,12 @@
 
 #include <shaders/joint/mesh_types.hpp>
 
+#include <benzin/core/math.hpp>
 #include <benzin/engine/mesh.hpp>
 
 #define BENZIN_IS_MESH_OPTIMIZATION_ENABLED 1
+
+BenzinEnableUnaryPlusForEnum(joint::MeshletConsts);
 
 namespace benzin
 {
@@ -76,13 +79,15 @@ namespace benzin
 
     void GenerateMeshlets(Mesh& mesh)
     {
-        BenzinAssert(mesh.Meshlets.empty());
-        BenzinAssert(mesh.MeshletVertices.empty());
-        BenzinAssert(mesh.MeshletTriangles.empty());
+        // NOTE: meshlet.triangle_offset is actually 'index offset' (not triangle) !!!
 
-        const size_t maxMeshletVertexCount = 64;
-        const size_t maxMeshletTriangleCount = 124;
-        const float meshletConeWeight = 0.0f;
+        BenzinAssert(mesh.Meshlets.empty());
+        BenzinAssert(mesh.MeshletIndirectVertices.empty());
+        BenzinAssert(mesh.MeshletIndices.empty());
+
+        constexpr size_t maxMeshletVertexCount = +joint::MeshletConsts::MaxVertexCount;
+        constexpr size_t maxMeshletTriangleCount = +joint::MeshletConsts::MaxTriangleCount;
+        constexpr float meshletConeWeight = 0.0f;
 
         for (MeshDrawRange& drawRange : mesh.DrawRanges)
         {
@@ -92,17 +97,17 @@ namespace benzin
             const size_t maxMeshletCount = meshopt_buildMeshletsBound(drawIndices.size(), maxMeshletVertexCount, maxMeshletTriangleCount);
 
             std::vector<meshopt_Meshlet> meshlets;
-            std::vector<uint32_t> meshletVertices;
-            std::vector<uint8_t> meshletTriangles;
+            std::vector<uint32_t> meshletIndirectVertices;
+            std::vector<uint8_t> meshletIndices;
 
             meshlets.resize(maxMeshletCount);
-            meshletVertices.resize(maxMeshletCount * maxMeshletVertexCount);
-            meshletTriangles.resize(maxMeshletCount * maxMeshletTriangleCount * 3);
+            meshletIndirectVertices.resize(maxMeshletCount * maxMeshletVertexCount);
+            meshletIndices.resize(maxMeshletCount * maxMeshletTriangleCount * 3);
 
             const size_t meshletCount = meshopt_buildMeshlets(
                 meshlets.data(),
-                meshletVertices.data(),
-                meshletTriangles.data(),
+                meshletIndirectVertices.data(),
+                meshletIndices.data(),
                 drawIndices.data(),
                 drawIndices.size(),
                 &drawVertices.front().Position.x,
@@ -113,25 +118,26 @@ namespace benzin
                 meshletConeWeight
             );
 
-            const meshopt_Meshlet& lastMeshlet = meshlets[meshletCount - 1];
+            {
+                // Trim buffers
 
-            meshletVertices.resize(lastMeshlet.vertex_offset + lastMeshlet.vertex_count);
-            meshletTriangles.resize(lastMeshlet.triangle_offset + ((lastMeshlet.triangle_count * 3 + 3) & ~3));
-            meshlets.resize(meshletCount);
+                meshlets.resize(meshletCount);
+
+                const meshopt_Meshlet& lastMeshlet = meshlets.back();
+
+                meshletIndirectVertices.resize(lastMeshlet.vertex_offset + lastMeshlet.vertex_count);
+                meshletIndices.resize(lastMeshlet.triangle_offset + AlignUp(lastMeshlet.triangle_count * 3, 4u)); // Size must be multiple of 4
+            }
+
 
             for (const meshopt_Meshlet& meshlet : meshlets)
             {
                 meshopt_optimizeMeshlet(
-                    &meshletVertices[meshlet.vertex_offset],
-                    &meshletTriangles[meshlet.triangle_offset],
+                    &meshletIndirectVertices[meshlet.vertex_offset],
+                    &meshletIndices[meshlet.triangle_offset],
                     meshlet.triangle_count,
                     meshlet.vertex_count
                 );
-            }
-
-            for (uint32_t index : meshletTriangles)
-            {
-                BenzinAssert(index <= BENZIN_PACKED_TRIANGLE_MAX_INDEX);
             }
 
             static_assert(sizeof(joint::Meshlet) == sizeof(meshopt_Meshlet));
@@ -142,16 +148,16 @@ namespace benzin
                 drawRange.MeshletOffset = (uint32_t)mesh.Meshlets.size();
                 drawRange.MeshletCount = (uint32_t)meshlets.size();
 
-                drawRange.MeshletVertexOffset = (uint32_t)mesh.MeshletVertices.size();
-                drawRange.MeshletVertexCount = (uint32_t)meshletVertices.size();
+                drawRange.MeshletIndirectVertexOffset = (uint32_t)mesh.MeshletIndirectVertices.size();
+                drawRange.MeshletIndirectVertexCount = (uint32_t)meshletIndirectVertices.size();
 
-                drawRange.MeshletTriangleOffset = (uint32_t)mesh.MeshletTriangles.size();
-                drawRange.MeshletTriangleCount = (uint32_t)meshletTriangles.size();
+                drawRange.MeshletIndexOffset = (uint32_t)mesh.MeshletIndices.size();
+                drawRange.MeshletIndexCount = (uint32_t)meshletIndices.size();
             }
 
             mesh.Meshlets.append_range(std::move(*decltype(&mesh.Meshlets)(&meshlets)));
-            mesh.MeshletVertices.append_range(std::move(meshletVertices));
-            mesh.MeshletTriangles.append_range(std::move(meshletTriangles));
+            mesh.MeshletIndirectVertices.append_range(std::move(meshletIndirectVertices));
+            mesh.MeshletIndices.append_range(std::move(meshletIndices));
         }
     }
 

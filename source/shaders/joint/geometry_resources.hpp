@@ -12,14 +12,14 @@ namespace joint
 
         EntityTransformIndex,
 
-        Vertices,
-        Meshlets,
-        MeshletVertices,
-        MeshletTriangles,
-
         InstanceTransforms,
         InstanceTransformIndex,
         InstanceMaterialIndex,
+
+        Vertices,
+        Meshlets,
+        MeshletIndirectVertices,
+        MeshletIndices,
     };
 
 }

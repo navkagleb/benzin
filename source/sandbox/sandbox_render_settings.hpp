@@ -24,7 +24,7 @@ namespace sandbox
 
         bool IsDepthPrePassEnabled = true;
         bool IsFrustumCullingEnabled = true;
-        bool IsMeshShaderUsed = true;
+        bool IsMeshPipelineUsed = true;
     };
 
     struct ProceduralGrassStats

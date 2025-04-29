@@ -162,7 +162,7 @@ namespace sandbox
     {
         ImGui::Checkbox("Depth pre-pass", &settings.IsDepthPrePassEnabled);
         ImGui::Checkbox("CPU frustum culling", &settings.IsFrustumCullingEnabled);
-        ImGui::Checkbox("Mesh shaders", &settings.IsMeshShaderUsed);
+        ImGui::Checkbox("Mesh pipeline", &settings.IsMeshPipelineUsed);
     }
 
     static void DrawGBufferStats(GBufferStats& stats)

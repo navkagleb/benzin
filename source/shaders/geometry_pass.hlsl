@@ -70,64 +70,7 @@ struct VsOutput
     float2 Uv : Uv;
 };
 
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
-BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletVertices, joint::GeometryResources::MeshletVertices);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletTriangles, joint::GeometryResources::MeshletTriangles);
-
-[NumThreads(128, 1, 1)]
-[OutputTopology("triangle")]
-void MsMain(
-    uint gtid : SV_GroupThreadID,
-    uint gid : SV_GroupID,
-    out vertices VsOutput outVertices[64],
-    out indices uint3 outTriangles[124]
-)
-{
-    const joint::Meshlet meshlet = g_Meshlets[gid];
-
-    SetMeshOutputCounts(meshlet.VertexCount, meshlet.TriangleCount);
-
-    if (gtid < meshlet.VertexCount)
-    {
-        const uint vertexIndex = g_MeshletVertices[meshlet.VertexOffset + gtid];
-        const joint::MeshVertex vertex = g_Vertices[vertexIndex];
-
-        const float4x4 instanceLocalTranform = g_InstanceTransforms[BenzinGetRootConstant(joint::GeometryResources::InstanceTransformIndex)];
-        const float4 objectPosition = mul(float4(vertex.Position, 1.0), instanceLocalTranform);
-        const float3 objectNormal = mul(vertex.Normal, (float3x3)instanceLocalTranform);
-
-        const joint::EntityTransform entityTransform = g_EntityTransforms[BenzinGetRootConstant(joint::GeometryResources::EntityTransformIndex)];
-        const float4 worldPosition = mul(objectPosition, entityTransform.LocalToWorld);
-        const float4 prevWorldPosition = mul(objectPosition, entityTransform.PrevLocalToWorld);
-        const float3 worldNormal = mul(objectNormal, (float3x3)entityTransform.LocalToWorld); // TODO: Maybe I still need to use 'WorldMatrixForNormals'?
-
-        const float4 viewPosition = mul(worldPosition, GetCameraConsts().WorldToView);
-
-        VsOutput output = (VsOutput)0;
-        output.ClipPosition = mul(worldPosition, GetCameraConsts().WorldToClip);
-        output.WorldPosition = worldPosition.xyz;
-        output.ViewDepth = viewPosition.z;
-        output.PrevViewPosition = mul(prevWorldPosition, GetPrevCameraConsts().WorldToView).xyz;
-        output.WorldNormal = worldNormal;
-        output.Uv = vertex.Uv;
-
-        outVertices[gtid] = output;
-    }
-
-    if (gtid < meshlet.TriangleCount)
-    {
-        const uint triangleOffset = meshlet.TriangleOffset + gtid * 3;
-
-        outTriangles[gtid] = uint3(
-            g_MeshletTriangles[triangleOffset + 0],
-            g_MeshletTriangles[triangleOffset + 1],
-            g_MeshletTriangles[triangleOffset + 2]
-        );
-    }
-}
-
-VsOutput VsMain(VsInput vertex)
+VsOutput ProcessVertex(joint::MeshVertex vertex)
 {
     const float4x4 instanceLocalTranform = g_InstanceTransforms[BenzinGetRootConstant(joint::GeometryResources::InstanceTransformIndex)];
     const float4 objectPosition = mul(float4(vertex.Position, 1.0), instanceLocalTranform);
@@ -149,6 +92,51 @@ VsOutput VsMain(VsInput vertex)
     output.Uv = vertex.Uv;
 
     return output;
+}
+
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
+BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
+BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndirectVertices, joint::GeometryResources::MeshletIndirectVertices);
+BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
+
+[NumThreads((uint)joint::MeshletConsts::GroupSize, 1, 1)]
+[OutputTopology("triangle")]
+void MsMain(
+    uint gtid : SV_GroupThreadID,
+    uint gid : SV_GroupID,
+    out vertices VsOutput outVertices[(uint)joint::MeshletConsts::MaxVertexCount],
+    out indices uint3 outTriangles[(uint)joint::MeshletConsts::MaxTriangleCount]
+)
+{
+    const joint::Meshlet meshlet = g_Meshlets[gid];
+
+    SetMeshOutputCounts(meshlet.VertexCount, meshlet.TriangleCount);
+
+    if (gtid < meshlet.VertexCount)
+    {
+        const uint vertexIndex = g_MeshletIndirectVertices[meshlet.VertexOffset + gtid];
+        const joint::MeshVertex vertex = g_Vertices[vertexIndex];
+
+        outVertices[gtid] = ProcessVertex(vertex);
+    }
+
+    if (gtid < meshlet.TriangleCount)
+    {
+        const uint triangleIndex = meshlet.IndexOffset + gtid * 3;
+
+        const uint3 indices = uint3(
+            g_MeshletIndices[triangleIndex + 0],
+            g_MeshletIndices[triangleIndex + 1],
+            g_MeshletIndices[triangleIndex + 2]
+        );
+
+        outTriangles[gtid] = indices;
+    }
+}
+
+VsOutput VsMain(VsInput vertex)
+{
+    return ProcessVertex((joint::MeshVertex)vertex);
 }
 
 #if !defined(IS_DEPTH_PREPASS)

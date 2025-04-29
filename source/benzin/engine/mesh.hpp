@@ -39,11 +39,11 @@ namespace benzin
         uint32_t MeshletOffset = 0;
         uint32_t MeshletCount = g_Bad32;
 
-        uint32_t MeshletVertexOffset = 0;
-        uint32_t MeshletVertexCount = g_Bad32;
+        uint32_t MeshletIndirectVertexOffset = 0;
+        uint32_t MeshletIndirectVertexCount = g_Bad32;
 
-        uint32_t MeshletTriangleOffset = 0;
-        uint32_t MeshletTriangleCount = g_Bad32;
+        uint32_t MeshletIndexOffset = 0;
+        uint32_t MeshletIndexCount = g_Bad32;
 
         PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
 
@@ -64,8 +64,8 @@ namespace benzin
         std::unique_ptr<Buffer> InstanceTransformBuffer;
 
         std::unique_ptr<Buffer> MeshletBuffer;
-        std::unique_ptr<Buffer> MeshletVertexBuffer;
-        std::unique_ptr<Buffer> MeshletTriangleBuffer;
+        std::unique_ptr<Buffer> MeshletIndirectVertexBuffer;
+        std::unique_ptr<Buffer> MeshletIndexBuffer;
     };
 
     struct Mesh
@@ -76,8 +76,8 @@ namespace benzin
         std::vector<MeshInstance> Instances;
 
         std::vector<joint::Meshlet> Meshlets;
-        std::vector<uint32_t> MeshletVertices;
-        std::vector<uint8_t> MeshletTriangles;
+        std::vector<uint32_t> MeshletIndirectVertices;
+        std::vector<uint8_t> MeshletIndices;
 
         DirectX::BoundingSphere BoundingSphere = g_BadBoundingSphere;
 

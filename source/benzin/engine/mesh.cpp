@@ -27,7 +27,7 @@ namespace benzin
         {
             .DebugName = std::format("{}_VertexBuffer", debugName),
             .Type = BufferType::Vertex,
-            .ElementSizeInBytes = sizeof(joint::MeshVertex),
+            .ElementSizeInBytes = sizeof(decltype(Vertices)::value_type),
             .ElementCount = (uint32_t)Vertices.size(),
         });
 
@@ -52,26 +52,26 @@ namespace benzin
         {
             .DebugName = std::format("{}_MeshletBuffer", debugName),
             .Type = BufferType::Structured,
-            .ElementSizeInBytes = sizeof(joint::Meshlet),
+            .ElementSizeInBytes = sizeof(decltype(Meshlets)::value_type),
             .ElementCount = (uint32_t)Meshlets.size(),
         });
 
-        MakeUniquePtr(meshGpuStorage.MeshletVertexBuffer, device, BufferCreation
+        MakeUniquePtr(meshGpuStorage.MeshletIndirectVertexBuffer, device, BufferCreation
         {
-            .DebugName = std::format("{}_MeshletVertexBuffer", debugName),
+            .DebugName = std::format("{}_MeshletIndirectVertexBuffer", debugName),
             .Type = BufferType::Format,
             .Format = GraphicsFormat::R32Uint,
-            .ElementSizeInBytes = sizeof(uint32_t),
-            .ElementCount = (uint32_t)MeshletVertices.size(),
+            .ElementSizeInBytes = sizeof(decltype(MeshletIndirectVertices)::value_type),
+            .ElementCount = (uint32_t)MeshletIndirectVertices.size(),
         });
 
-        MakeUniquePtr(meshGpuStorage.MeshletTriangleBuffer, device, BufferCreation
+        MakeUniquePtr(meshGpuStorage.MeshletIndexBuffer, device, BufferCreation
         {
-            .DebugName = std::format("{}_MeshletTriangleBuffer", debugName),
+            .DebugName = std::format("{}_MeshletIndexBuffer", debugName),
             .Type = BufferType::Format,
             .Format = GraphicsFormat::R8Uint,
-            .ElementSizeInBytes = sizeof(uint8_t),
-            .ElementCount = (uint32_t)MeshletTriangles.size(),
+            .ElementSizeInBytes = sizeof(decltype(MeshletIndices)::value_type),
+            .ElementCount = (uint32_t)MeshletIndices.size(),
         });
 
         return meshGpuStorage;

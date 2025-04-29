@@ -143,8 +143,8 @@ namespace benzin
             const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
 
             uploadSizeInBytes += meshGpuStorage.MeshletBuffer->GetSizeInBytes();
-            uploadSizeInBytes += meshGpuStorage.MeshletVertexBuffer->GetSizeInBytes();
-            uploadSizeInBytes += meshGpuStorage.MeshletTriangleBuffer->GetSizeInBytes();
+            uploadSizeInBytes += meshGpuStorage.MeshletIndirectVertexBuffer->GetSizeInBytes();
+            uploadSizeInBytes += meshGpuStorage.MeshletIndexBuffer->GetSizeInBytes();
         };
 
         auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
@@ -154,8 +154,8 @@ namespace benzin
             const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
 
             cmdList.UploadToBuffer(*meshGpuStorage.MeshletBuffer, ToSpan(mesh.Meshlets));
-            cmdList.UploadToBuffer(*meshGpuStorage.MeshletVertexBuffer, ToSpan(mesh.MeshletVertices));
-            cmdList.UploadToBuffer(*meshGpuStorage.MeshletTriangleBuffer, ToSpan(mesh.MeshletTriangles));
+            cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndirectVertexBuffer, ToSpan(mesh.MeshletIndirectVertices));
+            cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndexBuffer, ToSpan(mesh.MeshletIndices));
         }
     }
 
