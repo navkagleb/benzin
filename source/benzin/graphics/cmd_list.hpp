@@ -102,13 +102,14 @@ namespace benzin
 
         void SetComputeCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
         void SetComputeSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
+        void SetComputeUav(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
         void SetComputeRootConstant(uint32_t rootIndex, uint32_t value);
         void SetComputeRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
 
         void SetComputePso(const ComputePso& pso);
 
-        void ClearUnorderedAccess(const Resource& resource, const Descriptor& viewDescriptor, const DirectX::XMFLOAT4& color);
+        void ClearUnorderedAccess(const Resource& resource, const Descriptor& uav, const DirectX::XMFLOAT4& color);
 
         void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize);
 
@@ -130,6 +131,7 @@ namespace benzin
 
         void SetGraphicsCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
         void SetGraphicsSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
+        void SetGraphicsUav(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
         void SetGraphicsRootConstant(uint32_t rootIndex, uint32_t value);
         void SetGraphicsRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);

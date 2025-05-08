@@ -17,14 +17,6 @@ namespace joint
         AsGroupSize = 32, // There is max amplification shader group size due to wave size (max == 32)
     };
 
-    enum class ProceduralGrassStat
-    {
-        PatchCount,
-        BladeCount,
-        VertexCount,
-        TriangleCount,
-    };
-
     struct GrassPatch
     {
         float3 Pos;
@@ -50,7 +42,6 @@ namespace joint
     {
         GrassPatches,
         PerlinNoise,
-        Stats,
     };
 
 }

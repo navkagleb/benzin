@@ -9,10 +9,6 @@
 BenzinDeclareRootResource(StructuredBuffer<joint::GrassPatch>, g_GrassPatches, joint::ProceduralGrassResources::GrassPatches);
 BenzinDeclareRootResource(Texture2D<float>, g_PerlinNoise, joint::ProceduralGrassResources::PerlinNoise);
 
-#if defined(CALC_STATS)
-    BenzinDeclareRootResource(RWBuffer<uint>, g_Stats, joint::ProceduralGrassResources::Stats);
-#endif
-
 struct Rand01
 {
     uint Seed;
@@ -276,16 +272,18 @@ void MsMain(
     const float floatBladeCount = lerp(float(g_MaxBladeCount), 2.0, pow(saturate(distanceToCamera / (g_PassConsts0.GrassEndDistance * 1.05)), 0.75)); // TODO: Some magic math
     const uint bladeCount = ceil(floatBladeCount);
 
+    const uint vertexCount = bladeCount * g_VertexCountPerBlade;
+    const uint triangleCount = bladeCount * g_TriangleCountPerBlade;
+
 #if defined(CALC_STATS)
     if (gtid == 0)
     {
-        InterlockedAdd(g_Stats[(uint)joint::ProceduralGrassStat::PatchCount], 1);
-        InterlockedAdd(g_Stats[(uint)joint::ProceduralGrassStat::BladeCount], bladeCount);
+        InterlockedAddToStat(joint::ReadbackStat::ProceduralGrass_PatchCount, 1);
+        InterlockedAddToStat(joint::ReadbackStat::ProceduralGrass_BladeCount, bladeCount);
+        InterlockedAddToStat(joint::ReadbackStat::ProceduralGrass_VertexCount, vertexCount);
+        InterlockedAddToStat(joint::ReadbackStat::ProceduralGrass_TriangleCount, triangleCount);
     }
 #endif
-
-    const uint vertexCount = bladeCount * g_VertexCountPerBlade;
-    const uint triangleCount = bladeCount * g_TriangleCountPerBlade;
 
     // NOTE: In Nvidia GPU you must provide exact quantity of vertex and primitives (g_MaxVertexCount and g_MaxTriangleCount won't work)
     SetMeshOutputCounts(vertexCount, triangleCount);
@@ -339,10 +337,6 @@ void MsMain(
         vertex.PrevViewPos = mul(float4(prevWorldPos, 1.0), GetPrevCameraConsts().WorldToView).xyz;
 
         outVertices[vertexIndex] = vertex;
-
-#if defined(CALC_STATS)
-        InterlockedAdd(g_Stats[(uint)joint::ProceduralGrassStat::VertexCount], 1);
-#endif
     }
 
     for (uint i = 0; i < g_VertexPerThreadCount; ++i)
@@ -361,10 +355,6 @@ void MsMain(
 
         const uint3 triangleIndices = localTriangleIndex & 1 ? uint3(0, 1, 2) : uint3(3, 2, 1);
         outTriangles[triangleIndex] = indexOffset + triangleIndices;
-
-#if defined(CALC_STATS)
-        InterlockedAdd(g_Stats[(uint)joint::ProceduralGrassStat::TriangleCount], 1);
-#endif
     }
 }
 

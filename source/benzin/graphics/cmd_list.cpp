@@ -381,6 +381,11 @@ namespace benzin
         m_D3D12GraphicsCommandList1->SetComputeRootShaderResourceView(+rootParameter, gpuVirtualAddress);
     }
 
+    void ComputeCmdList::SetComputeUav(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
+    {
+        m_D3D12GraphicsCommandList1->SetComputeRootUnorderedAccessView(+rootParameter, gpuVirtualAddress);
+    }
+
     void ComputeCmdList::SetComputeRootConstant(uint32_t rootIndex, uint32_t value)
     {
         m_D3D12GraphicsCommandList1->SetComputeRoot32BitConstant(+UnifiedRootParameter::Root32Consts, value, rootIndex);
@@ -513,6 +518,11 @@ namespace benzin
     void GraphicsCmdList::SetGraphicsSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
     {
         m_D3D12GraphicsCommandList1->SetGraphicsRootShaderResourceView(+rootParameter, gpuVirtualAddress);
+    }
+
+    void GraphicsCmdList::SetGraphicsUav(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
+    {
+        m_D3D12GraphicsCommandList1->SetGraphicsRootUnorderedAccessView(+rootParameter, gpuVirtualAddress);
     }
 
     void GraphicsCmdList::SetGraphicsRootConstant(uint32_t rootIndex, uint32_t value)

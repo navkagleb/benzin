@@ -6,6 +6,9 @@
 // To prevent matrix transposition in CPU side
 #pragma pack_matrix(row_major)
 
+// NOTE: Always use mul() instead of operator * for matrix-matrix and matrix-vector multiplication in HLSL
+// It's the only way to ensure correct layout-aware behavior, especially when using #pragma pack_matrix
+
 struct DummyRenderPassConsts {};
 
 #if !defined(BenzinRenderPassConstsType0)
@@ -34,6 +37,8 @@ ConstantBuffer<BenzinRenderPassConstsType1> g_PassConsts1 : register(b0, space3)
 StructuredBuffer<joint::Light> g_Lights : register(t0, space0);
 RaytracingAccelerationStructure g_SceneTlas : register(t0, space1);
 
+RWByteAddressBuffer g_Stats : register(u0, space0);
+
 SamplerState g_PointWrapSampler : register(s0, space0);
 SamplerState g_PointClampSampler : register(s0, space1);
 SamplerState g_LinearWrapSampler : register(s0, space2);
@@ -53,6 +58,11 @@ const joint::CameraConsts GetCameraConsts()
 const joint::CameraConsts GetPrevCameraConsts()
 {
     return g_FrameConsts.PrevCamera;
+}
+
+void InterlockedAddToStat(joint::ReadbackStat stat, uint value)
+{
+    g_Stats.InterlockedAdd((uint)stat * 4, value);
 }
 
 #define BenzinGetRootConstant(rootIndex) g_RootConstants.GetConstant((uint)rootIndex)

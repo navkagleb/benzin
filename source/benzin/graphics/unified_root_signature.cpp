@@ -9,14 +9,15 @@
 namespace benzin
 {
 
-    static auto CreateUnifiedD3D12RootParamers()
+    static auto CreateUnifiedD3D12RootParameters()
     {
-        std::array<D3D12_ROOT_PARAMETER1, magic_enum::enum_count<UnifiedRootParameter>()> d3d12RootParamers;
+        std::array<D3D12_ROOT_PARAMETER1, magic_enum::enum_count<UnifiedRootParameter>()> d3d12RootParameters;
 
         uint32_t cbvSpaceIndex = 0;
         uint32_t srvSpaceIndex = 0;
+        uint32_t uavSpaceIndex = 0;
 
-        d3d12RootParamers[+UnifiedRootParameter::Root32Consts] = D3D12_ROOT_PARAMETER1
+        d3d12RootParameters[+UnifiedRootParameter::Root32Consts] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
             .Constants
@@ -28,7 +29,7 @@ namespace benzin
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        d3d12RootParamers[+UnifiedRootParameter::FrameConstBuffer] = D3D12_ROOT_PARAMETER1
+        d3d12RootParameters[+UnifiedRootParameter::FrameConstBuffer] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
             .Descriptor
@@ -39,7 +40,7 @@ namespace benzin
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        d3d12RootParamers[+UnifiedRootParameter::RenderPassConstBuffer0] = D3D12_ROOT_PARAMETER1
+        d3d12RootParameters[+UnifiedRootParameter::RenderPassConstBuffer0] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
             .Descriptor
@@ -50,7 +51,7 @@ namespace benzin
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        d3d12RootParamers[+UnifiedRootParameter::RenderPassConstBuffer1] = D3D12_ROOT_PARAMETER1
+        d3d12RootParameters[+UnifiedRootParameter::RenderPassConstBuffer1] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
             .Descriptor
@@ -61,7 +62,7 @@ namespace benzin
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        d3d12RootParamers[+UnifiedRootParameter::LightStructuredBuffer] = D3D12_ROOT_PARAMETER1
+        d3d12RootParameters[+UnifiedRootParameter::LightStructuredBuffer] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
             .Descriptor
@@ -72,7 +73,7 @@ namespace benzin
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        d3d12RootParamers[+UnifiedRootParameter::SceneTlas] = D3D12_ROOT_PARAMETER1
+        d3d12RootParameters[+UnifiedRootParameter::SceneTlas] = D3D12_ROOT_PARAMETER1
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
             .Descriptor
@@ -83,7 +84,18 @@ namespace benzin
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
 
-        return d3d12RootParamers;
+        d3d12RootParameters[+UnifiedRootParameter::ReadbackStatsBuffer] = D3D12_ROOT_PARAMETER1
+        {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV,
+            .Descriptor
+            {
+                .ShaderRegister = 0,
+                .RegisterSpace = uavSpaceIndex++,
+            },
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        };
+
+        return d3d12RootParameters;
     }
 
     static D3D12_FILTER ToD3D12TextureFilter(const TextureFilterFunction& function, const TextureFilterType& type)
@@ -152,7 +164,7 @@ namespace benzin
 
     UnifiedRootSignature::UnifiedRootSignature(Device& device)
     {
-        const auto d3d12RootParameters = CreateUnifiedD3D12RootParamers();
+        const auto d3d12RootParameters = CreateUnifiedD3D12RootParameters();
 
         uint32_t samplerSpaceIndex = 0;
         const auto d3d12StaticSamplerDescs = std::to_array(

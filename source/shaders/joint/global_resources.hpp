@@ -5,6 +5,14 @@
 namespace joint
 {
 
+    enum class ReadbackStat
+    {
+        ProceduralGrass_PatchCount,
+        ProceduralGrass_BladeCount,
+        ProceduralGrass_VertexCount,
+        ProceduralGrass_TriangleCount,
+    };
+
     enum class FrustumPlane
     {
         Near = 0,

@@ -230,6 +230,30 @@ namespace benzin
     {
         switch (buffer.GetType())
         {
+            case BufferType::Byte:
+            {
+                // Note: ByteAddressBuffers supports only 'DXGI_FORMAT_R32_TYPELESS' format 
+                // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
+
+                static const auto rawBufferFormat = GraphicsFormat::R32Typeless;
+                static const auto rawBufferFormatSizeInBytes = GetFormatSizeInBytes(rawBufferFormat);
+
+                BenzinAssert(buffer.GetSizeInBytes() % rawBufferFormatSizeInBytes == 0);
+
+                return D3D12_UNORDERED_ACCESS_VIEW_DESC
+                {
+                    .Format = (DXGI_FORMAT)rawBufferFormat,
+                    .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
+                    .Buffer
+                    {
+                        .FirstElement = 0,
+                        .NumElements = (uint32_t)(buffer.GetSizeInBytes() / rawBufferFormatSizeInBytes),
+                        .StructureByteStride = 0,
+                        .CounterOffsetInBytes = 0,
+                        .Flags = D3D12_BUFFER_UAV_FLAG_RAW,
+                    },
+                };
+            }
             case BufferType::Format:
             {
                 BenzinAssert(buffer.GetFormat() != GraphicsFormat::Unknown);
@@ -264,12 +288,9 @@ namespace benzin
                     },
                 };
             }
-            default:
-            {
-                BenzinAssert(false);
-            }
         }
 
+        BenzinEnsure(false, "Unknown or unhandled BufferType: {} ({})", magic_enum::enum_name(buffer.GetType()), magic_enum::enum_integer(buffer.GetType()));
         std::unreachable();
     }
 

@@ -28,6 +28,7 @@
 #include "sandbox/sandbox_render_settings.hpp"
 
 BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassConsts);
+BenzinEnableUnaryPlusForEnum(joint::ReadbackStat);
 
 namespace sandbox
 {
@@ -335,10 +336,21 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::InitRenderPasses");
 
+        auto readbackStatsCallback = [this](std::span<const uint32_t> readbackStats)
+        {
+            {
+                auto& stats = m_RenderSettings->GetSection<ProceduralGrassStats>();
+                stats.PatchCount = readbackStats[+joint::ReadbackStat::ProceduralGrass_PatchCount];
+                stats.BladeCount = readbackStats[+joint::ReadbackStat::ProceduralGrass_BladeCount];
+                stats.VertexCount = readbackStats[+joint::ReadbackStat::ProceduralGrass_VertexCount];
+                stats.TriangleCount = readbackStats[+joint::ReadbackStat::ProceduralGrass_TriangleCount];
+            }
+        };
+
         // The order in which render passes are added is important
         BenzinAssert(m_RenderPasses.empty());
         m_RenderPasses.push_back(std::make_unique<TlasBuildingPass>());
-        m_RenderPasses.push_back(std::make_unique<GlobalConstsPass>());
+        m_RenderPasses.push_back(std::make_unique<GlobalConstsPass>(std::move(readbackStatsCallback)));
         m_RenderPasses.push_back(std::make_unique<GeometryPass>());
         m_RenderPasses.push_back(std::make_unique<ProceduralGrassPass>());
         m_RenderPasses.push_back(std::make_unique<RayTracing_ShadowPass>());

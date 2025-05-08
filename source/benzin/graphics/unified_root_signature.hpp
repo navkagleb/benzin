@@ -13,6 +13,7 @@ namespace benzin
         RenderPassConstBuffer1,
         LightStructuredBuffer,
         SceneTlas,
+        ReadbackStatsBuffer,
     };
     BenzinEnableUnaryPlusForEnum(UnifiedRootParameter);
 

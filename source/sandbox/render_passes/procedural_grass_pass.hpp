@@ -25,9 +25,6 @@ namespace sandbox
         void OnUpdate() override;
         void OnRender() const override;
 
-        void RenderBlades(benzin::GraphicsCmdList& cmdList) const;
-        void CopyStats(benzin::GraphicsCmdList& cmdList) const;
-
     private:
         std::unique_ptr<benzin::Texture> m_PerlinNoiseTexture;
         joint::ProceduralGrassPassConsts m_Consts{};
