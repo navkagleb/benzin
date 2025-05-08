@@ -24,6 +24,7 @@
 #include <sandbox/sandbox_render_settings.hpp>
 
 BenzinEnableUnaryPlusForEnum(joint::GeometryResources);
+BenzinEnableUnaryPlusForEnum(joint::MeshletConsts);
 BenzinEnableFlagsForEnum(sandbox::GeometryPass::PsoFlag);
 
 namespace sandbox
@@ -31,28 +32,18 @@ namespace sandbox
 
     GeometryPass::GeometryPass()
     {
-        CreatePso(PsoId::GeometryPass_Depth_Clockwise, PsoFlag::DepthPrePass | PsoFlag::IndexOrderClockwise);
-        CreatePso(PsoId::GeometryPass_Depth_CounterClockwise, PsoFlag::DepthPrePass);
-        CreatePso(PsoId::GeometryPass_Clockwise, PsoFlag::IndexOrderClockwise);
-        CreatePso(PsoId::GeometryPass_CounterClockwise);
-
-        CreatePso(PsoId::GeometryPass_Meshlet_Depth_Clockwise, PsoFlag::Mesh | PsoFlag::DepthPrePass | PsoFlag::IndexOrderClockwise);
-        CreatePso(PsoId::GeometryPass_Meshlet_Depth_CounterClockwise, PsoFlag::Mesh | PsoFlag::DepthPrePass);
-        CreatePso(PsoId::GeometryPass_Meshlet_Clockwise, PsoFlag::Mesh | PsoFlag::IndexOrderClockwise);
-        CreatePso(PsoId::GeometryPass_Meshlet_CounterClockwise, PsoFlag::Mesh);
+        CreatePso(PsoId::GeometryPass_Depth, PsoFlag::DepthPrePass);
+        CreatePso(PsoId::GeometryPass_Color);
+        CreatePso(PsoId::GeometryPass_Mesh_Depth, PsoFlag::Mesh | PsoFlag::DepthPrePass);
+        CreatePso(PsoId::GeometryPass_Mesh_Color, PsoFlag::Mesh);
     }
 
     GeometryPass::~GeometryPass()
     {
-        ms_PsoManager->Destroy(PsoId::GeometryPass_Depth_Clockwise);
-        ms_PsoManager->Destroy(PsoId::GeometryPass_Depth_CounterClockwise);
-        ms_PsoManager->Destroy(PsoId::GeometryPass_Clockwise);
-        ms_PsoManager->Destroy(PsoId::GeometryPass_CounterClockwise);
-
-        ms_PsoManager->Destroy(PsoId::GeometryPass_Meshlet_Depth_Clockwise);
-        ms_PsoManager->Destroy(PsoId::GeometryPass_Meshlet_Depth_CounterClockwise);
-        ms_PsoManager->Destroy(PsoId::GeometryPass_Meshlet_Clockwise);
-        ms_PsoManager->Destroy(PsoId::GeometryPass_Meshlet_CounterClockwise);
+        ms_PsoManager->Destroy(PsoId::GeometryPass_Depth);
+        ms_PsoManager->Destroy(PsoId::GeometryPass_Color);
+        ms_PsoManager->Destroy(PsoId::GeometryPass_Mesh_Depth);
+        ms_PsoManager->Destroy(PsoId::GeometryPass_Mesh_Color);
 
         ms_Resources->Destroy(TextureId::AlbedoAndRoughness);
         ms_Resources->Destroy(TextureId::EmissiveAndMetallic);
@@ -85,7 +76,7 @@ namespace sandbox
             outProxy.Ps.FileName = "geometry_pass.hlsl";
 
             outProxy.RasterizerState.CullMode = benzin::CullMode::Back;
-            outProxy.RasterizerState.IsIndexOrderClockwise = flags.IsSet(PsoFlag::IndexOrderClockwise);
+            outProxy.RasterizerState.IsIndexOrderClockwise = true;
 
             outProxy.DepthStencilFormat = GBufferSettings::s_DepthStencilFormat;
 
@@ -199,28 +190,18 @@ namespace sandbox
         {
             m_IsDepthPrePassEnabled = settings.IsDepthPrePassEnabled;
 
-            ms_PsoManager->Destroy(PsoId::GeometryPass_Clockwise);
-            ms_PsoManager->Destroy(PsoId::GeometryPass_CounterClockwise);
+            ms_PsoManager->Destroy(PsoId::GeometryPass_Color);
+            ms_PsoManager->Destroy(PsoId::GeometryPass_Mesh_Color);
 
-            ms_PsoManager->Destroy(PsoId::GeometryPass_Meshlet_Clockwise);
-            ms_PsoManager->Destroy(PsoId::GeometryPass_Meshlet_CounterClockwise);
-
-            CreatePso(PsoId::GeometryPass_Clockwise, PsoFlag::IndexOrderClockwise);
-            CreatePso(PsoId::GeometryPass_CounterClockwise);
-
-            CreatePso(PsoId::GeometryPass_Meshlet_Clockwise, PsoFlag::Mesh | PsoFlag::IndexOrderClockwise);
-            CreatePso(PsoId::GeometryPass_Meshlet_CounterClockwise, PsoFlag::Mesh);
+            CreatePso(PsoId::GeometryPass_Color);
+            CreatePso(PsoId::GeometryPass_Mesh_Color, PsoFlag::Mesh);
         }
 
         m_IsCpuFrustumCullingEnabled = settings.IsFrustumCullingEnabled;
         m_IsMeshPipelineUsed = settings.IsMeshPipelineUsed;
     }
 
-    bool GeometryPass::IsSphereCulled(
-        const DirectX::BoundingSphere& localBoundingSphere,
-        const DirectX::XMMATRIX& localToWorldMatrix,
-        const DirectX::XMMATRIX& localInstanceMatrix
-    ) const
+    bool GeometryPass::IsSphereCulled(const DirectX::BoundingSphere& localBoundingSphere, const DirectX::XMMATRIX& localToWorldMatrix) const
     {
         if (!m_IsCpuFrustumCullingEnabled || localBoundingSphere.Radius == benzin::g_BadBoundingSphereRadius)
         {
@@ -228,7 +209,7 @@ namespace sandbox
         }
 
         DirectX::BoundingSphere worldBoundingSphere;
-        localBoundingSphere.Transform(worldBoundingSphere, localInstanceMatrix * localToWorldMatrix);
+        localBoundingSphere.Transform(worldBoundingSphere, localToWorldMatrix);
 
         return ms_Scene->GetCamera().GetWorldFrustum().Contains(worldBoundingSphere) == DirectX::DISJOINT;
     }
@@ -258,11 +239,8 @@ namespace sandbox
             gbuffer.SetDepthStencilOnly(cmdList);
             gbuffer.ClearDepthStencil(cmdList);
 
-            SetPso(cmdList, PsoId::GeometryPass_Meshlet_Depth_CounterClockwise, PsoId::GeometryPass_Depth_CounterClockwise);
-            RenderMeshes(cmdList, false);
-
-            SetPso(cmdList, PsoId::GeometryPass_Meshlet_Depth_Clockwise, PsoId::GeometryPass_Depth_Clockwise);
-            RenderMeshes(cmdList, true);
+            SetPso(cmdList, PsoId::GeometryPass_Mesh_Depth, PsoId::GeometryPass_Depth);
+            RenderMeshes(cmdList);
             RenderLights(cmdList);
         }
 
@@ -281,29 +259,20 @@ namespace sandbox
                 gbuffer.ClearDepthStencil(cmdList);
             }
 
-            SetPso(cmdList, PsoId::GeometryPass_Meshlet_CounterClockwise, PsoId::GeometryPass_CounterClockwise);
-            RenderMeshes(cmdList, false);
-
-            SetPso(cmdList, PsoId::GeometryPass_Meshlet_Clockwise, PsoId::GeometryPass_Clockwise);
-            RenderMeshes(cmdList, true);
+            SetPso(cmdList, PsoId::GeometryPass_Mesh_Color, PsoId::GeometryPass_Color);
+            RenderMeshes(cmdList);
             RenderLights(cmdList);
         }
     }
 
-    void GeometryPass::RenderMeshes(benzin::GraphicsCmdList& cmdList, bool isIndexOrderClockwise) const
+    void GeometryPass::RenderMeshes(benzin::GraphicsCmdList& cmdList) const
     {
         const auto view = ms_Scene->GetEntityRegistry().view<benzin::MeshInstanceComponent, benzin::Transform>();
         for (const entt::entity entityHandle : view)
         {
             const auto& meshInstanceComponent = view.get<benzin::MeshInstanceComponent>(entityHandle);
-            const auto& mesh = ms_Scene->GetMeshRegistry().get<benzin::Mesh>(meshInstanceComponent.GetMeshHandle());
-
-            if (mesh.IsIndexOrderClockwise != isIndexOrderClockwise)
-            {
-                continue;
-            }
-
             const auto& transform = view.get<benzin::Transform>(entityHandle);
+
             RenderMesh(cmdList, meshInstanceComponent, transform.GetLocalToWorldMatrix());
         }
     }
@@ -314,16 +283,12 @@ namespace sandbox
         for (const entt::entity entityHandle : view)
         {
             const auto& light = view.get<benzin::SphericalLight>(entityHandle);
+            const auto& meshInstanceComponent = view.get<benzin::MeshInstanceComponent>(entityHandle);
 
             if (!light.IsEnabled())
             {
                 continue;
             }
-
-            const auto& meshInstanceComponent = view.get<benzin::MeshInstanceComponent>(entityHandle);
-
-            const auto& mesh = ms_Scene->GetMeshRegistry().get<benzin::Mesh>(meshInstanceComponent.GetMeshHandle());
-            BenzinEnsure(mesh.IsIndexOrderClockwise);
 
             RenderMesh(cmdList, meshInstanceComponent, light.GetTransform().GetLocalToWorldMatrix());
         }
@@ -340,30 +305,24 @@ namespace sandbox
         const auto& mesh = ms_Scene->GetMeshRegistry().get<benzin::Mesh>(meshHandle);
         const auto& meshGpuStorage = ms_Scene->GetMeshRegistry().get<benzin::MeshGpuStorage>(meshHandle);
 
-        if (IsSphereCulled(mesh.BoundingSphere, localToWorldMatrix))
-        {
-            return;
-        }
-
         BenzinGpuEvent(cmdList, meshTag);
 
         cmdList.SetVertexBuffer(*meshGpuStorage.VertexBuffer);
         cmdList.SetIndexBuffer(*meshGpuStorage.IndexBuffer);
 
         cmdList.SetGraphicsRootConstant(+Resources::EntityTransformIndex, meshInstanceComponent.GetEntityTransformIndex());
-        cmdList.SetGraphicsRootResource(+Resources::InstanceTransforms, meshGpuStorage.InstanceTransformBuffer->GetSrv());
 
         for (const auto& [i, instance] : mesh.Instances | std::views::enumerate)
         {
             const benzin::MeshDrawRange& drawRange = mesh.DrawRanges[instance.DrawRangeIndex];
 
-            if (IsSphereCulled(drawRange.BoundingSphere, localToWorldMatrix, instance.LocalTransform))
+            if (IsSphereCulled(drawRange.BoundingSphere, instance.ObjectToLocalMatrix * localToWorldMatrix))
             {
                 continue;
             }
 
-            cmdList.SetGraphicsRootConstant(+Resources::InstanceTransformIndex, (uint32_t)i);
-            cmdList.SetGraphicsRootConstant(+Resources::InstanceMaterialIndex, instance.MaterialIndex);
+            cmdList.SetGraphicsRootConstant(+Resources::ObjectToLocalMatrixIndex, (uint32_t)i);
+            cmdList.SetGraphicsRootConstant(+Resources::MaterialIndex, instance.MaterialIndex);
 
             if (m_IsMeshPipelineUsed)
             {
@@ -372,7 +331,9 @@ namespace sandbox
                 cmdList.SetGraphicsRootResource(+Resources::MeshletIndirectVertices, meshGpuStorage.MeshletIndirectVertexBuffer->GetSrv(drawRange.MeshletIndirectVertexRange));
                 cmdList.SetGraphicsRootResource(+Resources::MeshletIndices, meshGpuStorage.MeshletIndexBuffer->GetSrv(drawRange.MeshletIndexRange));
 
-                cmdList.DispatchMesh({ drawRange.MeshletRange.Count, 1, 1 });
+                cmdList.SetGraphicsRootConstant(+Resources::MeshletCount, drawRange.MeshletRange.Count);
+
+                cmdList.DispatchMesh({ drawRange.MeshletRange.Count, 1, 1 }, { +joint::MeshletConsts::AsGroupSize, 1, 1 });
             }
             else
             {

@@ -113,7 +113,7 @@ namespace benzin
                 drawIndices.size(),
                 &drawVertices.front().Position.x,
                 drawVertices.size(),
-                sizeof(joint::MeshVertex),
+                sizeof(decltype(drawVertices)::value_type),
                 maxMeshletVertexCount,
                 maxMeshletTriangleCount,
                 meshletConeWeight
@@ -159,6 +159,21 @@ namespace benzin
             mesh.Meshlets.append_range(std::move(*decltype(&mesh.Meshlets)(&meshlets)));
             mesh.MeshletIndirectVertices.append_range(std::move(meshletIndirectVertices));
             mesh.MeshletIndices.append_range(std::move(meshletIndices));
+        }
+    }
+
+    void GenerateBoundingSpheres(Mesh& mesh)
+    {
+        for (MeshDrawRange& drawRange : mesh.DrawRanges)
+        {
+            const auto drawVertices = mesh.GetDrawRangeVertices(drawRange);
+
+            DirectX::BoundingSphere::CreateFromPoints(
+                drawRange.BoundingSphere,
+                drawVertices.size(),
+                (DirectX::XMFLOAT3*)drawVertices.data(),
+                sizeof(decltype(drawVertices)::value_type)
+            );
         }
     }
 

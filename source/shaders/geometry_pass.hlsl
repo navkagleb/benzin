@@ -8,7 +8,14 @@
 
 BenzinDeclareRootResource(StructuredBuffer<joint::EntityTransform>, g_EntityTransforms, joint::GeometryResources::EntityTransforms);
 BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_UnifiedMaterials, joint::GeometryResources::UnifiedMaterials);
-BenzinDeclareRootResource(StructuredBuffer<float4x4>, g_InstanceTransforms, joint::GeometryResources::InstanceTransforms);
+BenzinDeclareRootResource(StructuredBuffer<float4x4>, g_ObjectToLocalMatrices, joint::GeometryResources::ObjectToLocalMatrices);
+
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
+BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
+BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndirectVertices, joint::GeometryResources::MeshletIndirectVertices);
+BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
+
+static const uint g_AsGroupSize = (uint)joint::MeshletConsts::AsGroupSize;
 
 float3 ExpandNormal(float2 xyNormal)
 {
@@ -70,16 +77,31 @@ struct VsOutput
     float2 Uv : Uv;
 };
 
-VsOutput ProcessVertex(joint::MeshVertex vertex)
+struct MeshPayload
 {
-    const float4x4 instanceLocalTranform = g_InstanceTransforms[BenzinGetRootConstant(joint::GeometryResources::InstanceTransformIndex)];
-    const float4 objectPosition = mul(float4(vertex.Position, 1.0), instanceLocalTranform);
-    const float3 objectNormal = mul(vertex.Normal, (float3x3)instanceLocalTranform);
+    uint MeshletIndices[g_AsGroupSize];
+};
 
-    const joint::EntityTransform entityTransform = g_EntityTransforms[BenzinGetRootConstant(joint::GeometryResources::EntityTransformIndex)];
-    const float4 worldPosition = mul(objectPosition, entityTransform.LocalToWorld);
-    const float4 prevWorldPosition = mul(objectPosition, entityTransform.PrevLocalToWorld);
     const float3 worldNormal = mul(objectNormal, (float3x3)entityTransform.LocalToWorld); // TODO: Maybe I still need to use 'WorldMatrixForNormals'?
+float4x4 GetObjectToLocal()
+{
+    return g_ObjectToLocalMatrices[BenzinGetRootConstant(joint::GeometryResources::ObjectToLocalMatrixIndex)];
+}
+
+joint::EntityTransform GetEntityTransform()
+{
+    return g_EntityTransforms[BenzinGetRootConstant(joint::GeometryResources::EntityTransformIndex)];
+}
+
+VsOutput ProcessVertex(joint::MeshVertex vertex, uint meshletIndex)
+    const float4x4 objectToLocal = GetObjectToLocal();
+    const float4 localPosition = mul(float4(vertex.Position, 1.0), objectToLocal);
+    const float3 localNormal = mul(vertex.Normal, (float3x3)objectToLocal);
+
+    const joint::EntityTransform entityTransform = GetEntityTransform();
+    const float4 worldPosition = mul(localPosition, entityTransform.LocalToWorld);
+    const float4 prevWorldPosition = mul(localPosition, entityTransform.PrevLocalToWorld);
+    const float3 worldNormal = mul(localNormal, (float3x3)entityTransform.LocalToWorld); // TODO: Maybe I still need to use 'WorldMatrixForNormals'?
 
     const float4 viewPosition = mul(worldPosition, GetCameraConsts().WorldToView);
 
@@ -94,21 +116,48 @@ VsOutput ProcessVertex(joint::MeshVertex vertex)
     return output;
 }
 
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
-BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndirectVertices, joint::GeometryResources::MeshletIndirectVertices);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
+groupshared MeshPayload g_MeshPayload;
 
-[NumThreads((uint)joint::MeshletConsts::GroupSize, 1, 1)]
+[NumThreads(g_AsGroupSize, 1, 1)]
+void AsMain(uint dtid : SV_DispatchThreadID)
+{
+    bool isVisible = false;
+
+    const uint meshletCount = BenzinGetRootConstant(joint::GeometryResources::MeshletCount);
+    if (dtid < meshletCount)
+    {
+        isVisible = true;
+    }
+
+    if (isVisible)
+    {
+        const uint index = WavePrefixCountBits(isVisible);
+        g_MeshPayload.MeshletIndices[index] = dtid;
+    }
+
+    const uint visibleCount = WaveActiveCountBits(isVisible);
+    DispatchMesh(visibleCount, 1, 1, g_MeshPayload);
+}
+
+[NumThreads((uint)joint::MeshletConsts::MsGroupSize, 1, 1)]
 [OutputTopology("triangle")]
 void MsMain(
     uint gtid : SV_GroupThreadID,
     uint gid : SV_GroupID,
+    in payload MeshPayload payload,
     out vertices VsOutput outVertices[(uint)joint::MeshletConsts::MaxVertexCount],
     out indices uint3 outTriangles[(uint)joint::MeshletConsts::MaxTriangleCount]
 )
 {
-    const joint::Meshlet meshlet = g_Meshlets[gid];
+    const uint meshletCount = BenzinGetRootConstant(joint::GeometryResources::MeshletCount);
+    const uint meshletIndex = payload.MeshletIndices[gid];
+
+    if (meshletIndex >= meshletCount)
+    {
+        return;
+    }
+
+    const joint::Meshlet meshlet = g_Meshlets[meshletIndex];
 
     SetMeshOutputCounts(meshlet.VertexCount, meshlet.TriangleCount);
 
@@ -145,7 +194,7 @@ PackedGBuffer PsMain(VsOutput input)
 void PsMain(VsOutput input)
 #endif
 {
-    const joint::Material material = g_UnifiedMaterials[BenzinGetRootConstant(joint::GeometryResources::InstanceMaterialIndex)];
+    const joint::Material material = g_UnifiedMaterials[BenzinGetRootConstant(joint::GeometryResources::MaterialIndex)];
 
     float3 albedo = material.AlbedoFactor.rgb;
     if (material.AlbedoTextureHeapIndex != g_InvalidIndex)

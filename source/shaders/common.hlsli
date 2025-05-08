@@ -1,6 +1,7 @@
 #pragma once // TODO: Does it work?
 
 static const uint g_InvalidIndex = -1;
+static const uint g_BadUint = -1;
 
 static const float g_Pi = 3.1415926535897932384626433832795;
 static const float g_PiDiv2 = g_Pi / 2.0;

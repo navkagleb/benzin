@@ -13,7 +13,6 @@ namespace joint
         EntityTransformIndex,
 
         InstanceTransforms,
-        InstanceTransformIndex,
         InstanceMaterialIndex,
 
         Vertices,

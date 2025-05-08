@@ -40,9 +40,9 @@ namespace benzin
             .ElementCount = (uint32_t)Indices.size(),
         });
 
-        MakeUniquePtr(meshGpuStorage.InstanceTransformBuffer, device, BufferCreation
+        MakeUniquePtr(meshGpuStorage.ObjectToLocalMatrixBuffer, device, BufferCreation
         {
-            .DebugName = std::format("{}_InstanceTransformBuffer", debugName),
+            .DebugName = std::format("{}_ObjectToLocalMatrixBuffer", debugName),
             .Type = BufferType::Structured,
             .ElementSizeInBytes = sizeof(DirectX::XMMATRIX),
             .ElementCount = (uint32_t)Instances.size(),

@@ -44,7 +44,7 @@ namespace benzin
 
     struct MeshInstance
     {
-        DirectX::XMMATRIX LocalTransform = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX ObjectToLocalMatrix = DirectX::XMMatrixIdentity();
         uint32_t DrawRangeIndex = g_Bad32;
         uint32_t MaterialIndex = g_Bad32; // Optional
     };
@@ -53,7 +53,7 @@ namespace benzin
     {
         std::unique_ptr<Buffer> VertexBuffer;
         std::unique_ptr<Buffer> IndexBuffer;
-        std::unique_ptr<Buffer> InstanceTransformBuffer;
+        std::unique_ptr<Buffer> ObjectToLocalMatrixBuffer;
 
         std::unique_ptr<Buffer> MeshletBuffer;
         std::unique_ptr<Buffer> MeshletIndirectVertexBuffer;
@@ -70,10 +70,6 @@ namespace benzin
         std::vector<joint::Meshlet> Meshlets;
         std::vector<uint32_t> MeshletIndirectVertices;
         std::vector<uint8_t> MeshletIndices;
-
-        DirectX::BoundingSphere BoundingSphere = g_BadBoundingSphere;
-
-        bool IsIndexOrderClockwise = true;
 
         std::span<const joint::MeshVertex> GetDrawRangeVertices(const MeshDrawRange& drawRange) const;
         std::span<const uint32_t> GetDrawRangeIndices(const MeshDrawRange& drawRange) const;
@@ -135,8 +131,6 @@ namespace benzin
         std::vector<TextureImage> TextureImages;
 
         std::vector<MeshInstance> Instances;
-
-        bool IsIndexOrderClockwise = true;
     };
 
 }

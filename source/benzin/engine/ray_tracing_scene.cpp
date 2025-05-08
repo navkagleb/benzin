@@ -129,8 +129,8 @@ namespace benzin
                     .TransformGpuAddress = localTransformBuffer->GetGpuVirtualAddress((uint32_t)localTransforms.size())
                 });
 
-                const DirectX::XMMATRIX transposedMatrix = DirectX::XMMatrixTranspose(instance.LocalTransform);
-                localTransforms.push_back(*(DirectX::XMFLOAT3X4*)&transposedMatrix);
+                const DirectX::XMMATRIX objectToLocalMatrix = DirectX::XMMatrixTranspose(instance.ObjectToLocalMatrix);
+                localTransforms.push_back(*(DirectX::XMFLOAT3X4*)&objectToLocalMatrix);
             }
         }
 

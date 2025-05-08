@@ -28,7 +28,8 @@ namespace joint
         MaxVertexCount = 64,
         MaxTriangleCount = 124, // Must be multiple of 4 (for meshoptimizer library)
 
-        GroupSize = 128,
+        AsGroupSize = 32,
+        MsGroupSize = 128,
     };
 
     struct EntityTransform

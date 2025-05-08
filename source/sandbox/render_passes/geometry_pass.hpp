@@ -28,7 +28,7 @@ namespace sandbox
         {
             Mesh,
             DepthPrePass,
-            IndexOrderClockwise,
+        };
         };
 
         void CreatePso(benzin::PsoId id, benzin::EnumFlags<PsoFlag> flags = {});
@@ -40,13 +40,9 @@ namespace sandbox
         void OnUpdate() override;
         void OnRender() const override;
 
-        bool IsSphereCulled(
-            const DirectX::BoundingSphere& localBoundingSphere,
-            const DirectX::XMMATRIX& localToWorldMatrix,
-            const DirectX::XMMATRIX& localInstanceMatrix = DirectX::XMMatrixIdentity()
-        ) const;
+        bool IsSphereCulled(const DirectX::BoundingSphere& localBoundingSphere, const DirectX::XMMATRIX& localToWorldMatrix) const;
 
-        void RenderMeshes(benzin::GraphicsCmdList& cmdList, bool isIndexOrderClockwise) const;
+        void RenderMeshes(benzin::GraphicsCmdList& cmdList) const;
         void RenderLights(benzin::GraphicsCmdList& cmdList) const;
 
         void RenderMesh(benzin::GraphicsCmdList& cmdList, const benzin::MeshInstanceComponent& meshInstanceComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;

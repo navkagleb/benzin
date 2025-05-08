@@ -87,6 +87,7 @@ namespace benzin
 
         OptimizeMesh(mesh);
         GenerateMeshlets(mesh);
+        GenerateBoundingSpheres(mesh);
 
         for (MeshInstance& meshInstance : mesh.Instances)
         {
@@ -114,7 +115,7 @@ namespace benzin
 
             uploadSizeInBytes += meshGpuStorage.VertexBuffer->GetSizeInBytes();
             uploadSizeInBytes += meshGpuStorage.IndexBuffer->GetSizeInBytes();
-            uploadSizeInBytes += meshGpuStorage.InstanceTransformBuffer->GetSizeInBytes();
+            uploadSizeInBytes += meshGpuStorage.ObjectToLocalMatrixBuffer->GetSizeInBytes();
         };
 
         auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
@@ -128,7 +129,7 @@ namespace benzin
 
             for (const auto& [i, instance] : mesh.Instances | std::views::enumerate)
             {
-                cmdList.UploadToBuffer(*meshGpuStorage.InstanceTransformBuffer, ToSpan(&instance.LocalTransform), (uint32_t)i);
+                cmdList.UploadToBuffer(*meshGpuStorage.ObjectToLocalMatrixBuffer, ToSpan(&instance.ObjectToLocalMatrix), (uint32_t)i);
             }
         }
     }

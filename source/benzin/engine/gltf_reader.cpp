@@ -12,9 +12,16 @@
 namespace benzin
 {
 
-    static DirectX::XMMATRIX ParseNodeTransform(const tinygltf::Node& gltfNode, const DirectX::XMMATRIX& parentNodeTransform)
+    static DirectX::XMMATRIX FlipZHandedness(const DirectX::XMMATRIX& rightHandedMatrix)
     {
-        DirectX::XMMATRIX nodeTransform = DirectX::XMMatrixIdentity();
+        static const DirectX::XMMATRIX flipZ = DirectX::XMMatrixScaling(1.0f, 1.0f, -1.0f);
+
+        return flipZ * rightHandedMatrix * flipZ; // Apply from both sides to flip handedness without flipping position
+    }
+
+    static DirectX::XMMATRIX CalcObjectToLocalMatrix(const tinygltf::Node& gltfNode, const DirectX::XMMATRIX& parentObjectToLocal)
+    {
+        DirectX::XMMATRIX objectToLocal = DirectX::XMMatrixIdentity();
 
         if (!gltfNode.matrix.empty())
         {
@@ -26,7 +33,7 @@ namespace benzin
 
             for (uint32_t i = 0; i < 4; ++i)
             {
-                nodeTransform.r[i] = DirectX::XMVECTOR
+                objectToLocal.r[i] = DirectX::XMVECTOR
                 {
                     (float)gltfNode.matrix[0 + i * 4],
                     (float)gltfNode.matrix[1 + i * 4],
@@ -48,7 +55,7 @@ namespace benzin
                     (float)gltfNode.rotation[3],
                 };
 
-                nodeTransform *= DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&rotation));
+                objectToLocal *= DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&rotation));
             }
 
             if (!gltfNode.scale.empty())
@@ -61,7 +68,7 @@ namespace benzin
                     (float)gltfNode.scale[2],
                 };
 
-                nodeTransform *= DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&scale));
+                objectToLocal *= DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&scale));
             }
 
             if (!gltfNode.translation.empty())
@@ -74,11 +81,11 @@ namespace benzin
                     (float)gltfNode.translation[2],
                 };
 
-                nodeTransform *= DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&translation));
+                objectToLocal *= DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&translation));
             }
         }
 
-        return nodeTransform * parentNodeTransform;
+        return FlipZHandedness(objectToLocal) * parentObjectToLocal;
     }
 
     //
@@ -207,8 +214,6 @@ namespace benzin
                 }(),
             };
 
-            DirectX::BoundingSphere::CreateFromPoints(drawRange.BoundingSphere, positions.size(), positions.data(), sizeof(DirectX::XMFLOAT3));
-
             m_OutMesh->DrawRanges.push_back(drawRange);
         }
 
@@ -217,15 +222,32 @@ namespace benzin
 
         for (uint32_t i = 0; i < vertexCount; ++i)
         {
-            m_OutMesh->Vertices.push_back(joint::MeshVertex
+            joint::MeshVertex& vertex = m_OutMesh->Vertices.emplace_back();
+
+            vertex.Position = positions[i];
+            vertex.Position.z = -vertex.Position.z;
+            
+            if (!normals.empty())
             {
-                .Position = positions[i],
-                .Normal = !normals.empty() ? normals[i] : DirectX::XMFLOAT3{},
-                .Uv = !uvs.empty() ? uvs[i] : DirectX::XMFLOAT2{},
-            });
+                vertex.Normal = normals[i];
+                vertex.Normal.z = -vertex.Normal.z;
+            }
+
+            if (!uvs.empty())
+            {
+                vertex.Uv = uvs[i];
+            }
         }
 
-        m_OutMesh->Indices.append_range(indices);
+        m_OutMesh->Indices.reserve(m_OutMesh->Indices.size() + indices.size());
+
+        BenzinAssert(indices.size() % 3 == 0);
+        for (uint32_t i = 0; i < indices.size(); i += 3)
+        {
+            m_OutMesh->Indices.push_back(indices[i]);
+            m_OutMesh->Indices.push_back(indices[i + 2]);
+            m_OutMesh->Indices.push_back(indices[i + 1]);
+        }
     }
 
     void GltfReader::ParseGltfMesh(const tinygltf::Mesh& gltfMesh)
@@ -264,10 +286,10 @@ namespace benzin
         }
     }
 
-    void GltfReader::ParseGltfNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentNodeTransform)
+    void GltfReader::ParseGltfNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentObjectToLocal)
     {
         const tinygltf::Node& gltfNode = m_GltfModel->nodes[gltfNodeIndex];
-        const DirectX::XMMATRIX nodeTransform = ParseNodeTransform(gltfNode, parentNodeTransform);
+        const DirectX::XMMATRIX objectToLocal = CalcObjectToLocalMatrix(gltfNode, parentObjectToLocal);
 
         if (const int gltfMeshIndex = gltfNode.mesh; gltfMeshIndex != -1)
         {
@@ -277,7 +299,7 @@ namespace benzin
 
                 m_OutMesh->Instances.push_back(MeshInstance
                 {
-                    .LocalTransform = nodeTransform,
+                    .ObjectToLocalMatrix = objectToLocal,
                     .DrawRangeIndex = (uint32_t)(gltfMeshIndex + primitiveIndex),
                     .MaterialIndex = (uint32_t)gltfPrimitive.material,
                 });
@@ -286,23 +308,25 @@ namespace benzin
 
         for (const int gltfChildNodeIndex : gltfNode.children)
         {
-            ParseGltfNode(gltfChildNodeIndex, nodeTransform);
+            ParseGltfNode(gltfChildNodeIndex, objectToLocal);
         }
     }
 
     void GltfReader::ParseGltfNodes()
     {
-        // Convert from right-handed to left-handed
-        // Must be used with TriangleOrder::CounterClockwise in rasterizer state
-        m_OutMesh->IsIndexOrderClockwise = false;
+        // NOTE: GLTF meshes use right-handed (RH) system.
+        // So during parsing there are key steps which are mandatory to use GLTF meshes with LH matrices:
+        //   1. Flip positions and normals in z coordinate
+        //   2. Flip triangle order
+        //   3. Convert node transform from RH to LH
 
-        const DirectX::XMMATRIX parentNodeTransform = DirectX::XMMatrixScaling(1.0f, 1.0f, -1.0f);
+        const DirectX::XMMATRIX parentObjectToLocal = DirectX::XMMatrixIdentity();
 
         for (const tinygltf::Scene& gltfScene : m_GltfModel->scenes)
         {
             for (const int gltfNodeIndex : gltfScene.nodes)
             {
-                ParseGltfNode(gltfNodeIndex, parentNodeTransform);
+                ParseGltfNode(gltfNodeIndex, parentObjectToLocal);
             }
         }
     }
