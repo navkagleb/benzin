@@ -59,7 +59,7 @@ namespace sandbox
             {
                 .VertexRange{ 0, (uint32_t)meshData.Vertices.size() },
                 .IndexRange{ 0, (uint32_t)meshData.Indices.size() },
-                .PrimitiveTopology = meshData.PrimitiveTopology,
+                .Topology = meshData.PrimitiveTopology,
             };
 
             const benzin::MeshResource::Material material
@@ -95,7 +95,7 @@ namespace sandbox
             {
                 .VertexRange{ 0, (uint32_t)meshData.Vertices.size() },
                 .IndexRange{ 0, (uint32_t)meshData.Indices.size() },
-                .PrimitiveTopology = meshData.PrimitiveTopology,
+                .Topology = meshData.PrimitiveTopology,
             };
 
             const benzin::MeshResource::Material material

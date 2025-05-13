@@ -37,7 +37,7 @@ namespace benzin
         SubRange32 MeshletIndirectVertexRange;
         SubRange32 MeshletIndexRange;
 
-        PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
+        PrimitiveTopology Topology = PrimitiveTopology::Unknown;
 
         DirectX::BoundingSphere BoundingSphere = g_BadBoundingSphere;
     };

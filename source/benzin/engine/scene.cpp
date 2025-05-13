@@ -83,11 +83,15 @@ namespace benzin
         mesh.Indices = std::move(meshResource.Indices);
         mesh.DrawRanges = std::move(meshResource.DrawRanges);
         mesh.Instances = std::move(meshResource.Instances);
-        mesh.IsIndexOrderClockwise = meshResource.IsIndexOrderClockwise;
 
-        OptimizeMesh(mesh);
-        GenerateMeshlets(mesh);
-        GenerateBoundingSpheres(mesh);
+        {
+            BenzinLogTimeOnScopeExit("{} mesh optimization", meshTag);
+
+            RegroupMesh(mesh);
+            OptimizeMesh(mesh);
+            GenerateMeshlets(mesh);
+            GenerateBoundingSpheres(mesh);
+        }
 
         for (MeshInstance& meshInstance : mesh.Instances)
         {

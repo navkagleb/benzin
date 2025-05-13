@@ -201,7 +201,7 @@ namespace benzin
                 .VertexRange{ (uint32_t)m_OutMesh->Vertices.size(), vertexCount },
                 .IndexRange{ (uint32_t)m_OutMesh->Indices.size(), (uint32_t)indices.size() },
 
-                .PrimitiveTopology = [&gltfPrimitive]
+                .Topology = [&gltfPrimitive]
                 {
                     switch (gltfPrimitive.mode)
                     {

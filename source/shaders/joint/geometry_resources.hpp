@@ -12,8 +12,9 @@ namespace joint
 
         EntityTransformIndex,
 
-        InstanceTransforms,
-        InstanceMaterialIndex,
+        ObjectToLocalMatrices,
+        ObjectToLocalMatrixIndex,
+        MaterialIndex,
 
         Vertices,
         Meshlets,

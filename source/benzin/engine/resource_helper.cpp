@@ -9,12 +9,139 @@
 #include <benzin/core/math.hpp>
 #include <benzin/engine/mesh.hpp>
 
+#define BENZIN_IS_MESH_REGROUP_ENABLED 1
 #define BENZIN_IS_MESH_OPTIMIZATION_ENABLED 1
 
 BenzinEnableUnaryPlusForEnum(joint::MeshletConsts);
 
 namespace benzin
 {
+
+    void RegroupMesh(Mesh& mesh)
+    {
+        BenzinUnused(mesh);
+
+#if BENZIN_IS_MESH_REGROUP_ENABLED
+        struct GroupKey
+        {
+            DirectX::XMMATRIX ObjectToLocalMatrix;
+            uint32_t MaterialIndex = g_Bad32;
+            PrimitiveTopology Topology = PrimitiveTopology::Unknown;
+
+            bool operator==(const GroupKey& other) const
+            {
+                return
+                    IsMatrixEqual(ObjectToLocalMatrix, other.ObjectToLocalMatrix) &&
+                    MaterialIndex == other.MaterialIndex &&
+                    Topology == other.Topology;
+            }
+        };
+
+        struct GroupKeyHasher
+        {
+            size_t operator()(const GroupKey& key) const
+            {
+                size_t matrixHash = 0;
+                for (uint32_t i = 0; i < 4; ++i)
+                {
+                    DirectX::XMFLOAT4 row;
+                    DirectX::XMStoreFloat4(&row, key.ObjectToLocalMatrix.r[i]);
+
+                    matrixHash ^= GetStdHash(row.x) + 0x9e3779b9 + (matrixHash << 6) + (matrixHash >> 2);
+                    matrixHash ^= GetStdHash(row.y) + 0x9e3779b9 + (matrixHash << 6) + (matrixHash >> 2);
+                    matrixHash ^= GetStdHash(row.z) + 0x9e3779b9 + (matrixHash << 6) + (matrixHash >> 2);
+                    matrixHash ^= GetStdHash(row.w) + 0x9e3779b9 + (matrixHash << 6) + (matrixHash >> 2);
+                }
+
+                size_t hash = matrixHash;
+                hash = benzin::HashCombine(hash, key.MaterialIndex);
+                hash = benzin::HashCombine(hash, key.Topology);
+
+                return hash;
+            }
+        };
+
+        struct GroupData
+        {
+            std::vector<uint32_t> DrawRangeIndices;
+        };
+
+        std::unordered_map<GroupKey, GroupData, GroupKeyHasher> groups;
+
+        for (const MeshInstance& instance : mesh.Instances)
+        {
+            const MeshDrawRange& drawRange = mesh.DrawRanges[instance.DrawRangeIndex];
+
+            const GroupKey key
+            {
+                .ObjectToLocalMatrix = instance.ObjectToLocalMatrix,
+                .MaterialIndex = instance.MaterialIndex,
+                .Topology = drawRange.Topology
+            };
+
+            groups[key].DrawRangeIndices.push_back(instance.DrawRangeIndex);
+        }
+
+        std::vector<joint::MeshVertex> newVertices;
+        std::vector<uint32_t> newIndices;
+        std::vector<MeshDrawRange> newDrawRanges;
+        std::vector<MeshInstance> newInstances;
+
+        newVertices.reserve(mesh.Vertices.size());
+        newIndices.reserve(mesh.Indices.size());
+        newInstances.reserve(groups.size());
+
+        for (const auto& [key, group] : groups)
+        {
+            SubRange32 newVertexRange;
+            SubRange32 newIndexRange;
+
+            newVertexRange.Offset = (uint32_t)newVertices.size();
+            newIndexRange.Offset = (uint32_t)newIndices.size();
+
+            uint32_t drawRangeVertexOffset = 0;
+
+            for (const uint32_t drawRangeIndex : group.DrawRangeIndices)
+            {
+                const MeshDrawRange& range = mesh.DrawRanges[drawRangeIndex];
+
+                const auto vertices = mesh.GetDrawRangeVertices(range);
+                const auto indices = mesh.GetDrawRangeIndices(range);
+
+                newVertices.append_range(vertices);
+
+                for (const uint32_t index : indices)
+                    newIndices.push_back(index + drawRangeVertexOffset);
+
+                drawRangeVertexOffset += (uint32_t)vertices.size();
+            }
+
+            newVertexRange.Count = (uint32_t)newVertices.size() - newVertexRange.Offset;
+            newIndexRange.Count = (uint32_t)newIndices.size() - newIndexRange.Offset;
+
+            const auto newDrawRangeIndex = (uint32_t)newDrawRanges.size();
+
+            newDrawRanges.push_back(MeshDrawRange
+            {
+                .VertexRange = newVertexRange,
+                .IndexRange = newIndexRange,
+                .Topology = key.Topology,
+            });
+
+            newInstances.push_back(MeshInstance
+            {
+                .ObjectToLocalMatrix = key.ObjectToLocalMatrix,
+                .DrawRangeIndex = newDrawRangeIndex,
+                .MaterialIndex = key.MaterialIndex,
+            });
+        }
+
+        mesh.Vertices = std::move(newVertices);
+        mesh.Indices = std::move(newIndices);
+        mesh.DrawRanges = std::move(newDrawRanges);
+        mesh.Instances = std::move(newInstances);
+#endif
+    }
 
     void OptimizeMesh(Mesh& mesh)
     {

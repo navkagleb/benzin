@@ -51,4 +51,7 @@ namespace benzin
 
         return power;
     }
+
+    bool IsMatrixEqual(const DirectX::XMMATRIX lhs, const DirectX::XMMATRIX& rhs, float epsilon = 1e-6f);
+
 }
