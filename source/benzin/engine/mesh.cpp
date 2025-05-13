@@ -56,6 +56,14 @@ namespace benzin
             .ElementCount = (uint32_t)Meshlets.size(),
         });
 
+        MakeUniquePtr(meshGpuStorage.MeshletCullVolumeBuffer, device, BufferCreation
+        {
+            .DebugName = std::format("{}_MeshletCullVolumeBuffer", debugName),
+            .Type = BufferType::Structured,
+            .ElementSizeInBytes = sizeof(decltype(MeshletCullVolumes)::value_type),
+            .ElementCount = (uint32_t)MeshletCullVolumes.size(),
+        });
+
         MakeUniquePtr(meshGpuStorage.MeshletIndirectVertexBuffer, device, BufferCreation
         {
             .DebugName = std::format("{}_MeshletIndirectVertexBuffer", debugName),

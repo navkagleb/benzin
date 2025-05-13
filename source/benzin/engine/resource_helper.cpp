@@ -257,6 +257,8 @@ namespace benzin
                 meshletIndices.resize(lastMeshlet.triangle_offset + AlignUp(lastMeshlet.triangle_count * 3, 4u)); // Size must be multiple of 4
             }
 
+            std::vector<joint::MeshletCullVolume> meshletCullVolumes;
+            meshletCullVolumes.reserve(meshletCount);
 
             for (const meshopt_Meshlet& meshlet : meshlets)
             {
@@ -266,6 +268,22 @@ namespace benzin
                     meshlet.triangle_count,
                     meshlet.vertex_count
                 );
+
+                const meshopt_Bounds bounds = meshopt_computeMeshletBounds(
+                    &meshletIndirectVertices[meshlet.vertex_offset],
+                    &meshletIndices[meshlet.triangle_offset],
+                    meshlet.triangle_count,
+                    &drawVertices.front().Position.x,
+                    drawVertices.size(),
+                    sizeof(decltype(drawVertices)::value_type)
+                );
+
+                joint::MeshletCullVolume cullVolume
+                {
+                    .BoundingSphere = *(DirectX::XMFLOAT4*)&bounds, // Take first 4 floats
+                };
+
+                meshletCullVolumes.push_back(cullVolume);
             }
 
             static_assert(sizeof(joint::Meshlet) == sizeof(meshopt_Meshlet));
@@ -284,6 +302,7 @@ namespace benzin
             }
 
             mesh.Meshlets.append_range(std::move(*decltype(&mesh.Meshlets)(&meshlets)));
+            mesh.MeshletCullVolumes.append_range(std::move(meshletCullVolumes));
             mesh.MeshletIndirectVertices.append_range(std::move(meshletIndirectVertices));
             mesh.MeshletIndices.append_range(std::move(meshletIndices));
         }

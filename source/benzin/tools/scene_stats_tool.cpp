@@ -29,7 +29,7 @@ namespace benzin
 
     void SceneStatsTool::DrawSceneStats() const
     {
-        if (!ImGui_MainCollapsingHeader("Scene"))
+        if (!ImGui_MainCollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen))
         {
             return;
         }
@@ -38,6 +38,7 @@ namespace benzin
         uint32_t triangleCount = 0;
         uint32_t drawRangeCount = 0;
         uint32_t meshInstanceCount = 0;
+        uint32_t meshletCount = 0;
 
         const auto view = m_Scene.m_MeshRegistry.view<MeshTag, Mesh>();
         for (const entt::entity meshHandle : view)
@@ -48,11 +49,13 @@ namespace benzin
             triangleCount += (uint32_t)mesh.Indices.size() / 3;
             drawRangeCount += (uint32_t)mesh.DrawRanges.size();
             meshInstanceCount += (uint32_t)mesh.Instances.size();
+            meshletCount += (uint32_t)mesh.Meshlets.size();
         }
 
         ImGui::Text(BenzinFormatData("Vertices: {:L}", vertexCount));
         ImGui::Text(BenzinFormatData("Triangles: {:L}", triangleCount));
         ImGui::Text(BenzinFormatData("Draw ranges: {:L}", drawRangeCount));
+        ImGui::Text(BenzinFormatData("Meshlets: {:L}", meshletCount));
         ImGui::Separator();
 
         ImGui::Text(BenzinFormatData("Materials: {:L}", m_Scene.m_UnifiedMaterials.size()));
@@ -65,17 +68,18 @@ namespace benzin
             const auto& mesh = view.get<Mesh>(meshHandle);
 
             const auto meshHeaderName = std::format(
-                "{}: {} draw ranges - {:L} triangles",
+                "{}: {} draws - {:L} tris - {:L} meshlets",
                 meshTag,
                 mesh.DrawRanges.size(),
-                mesh.Indices.size()
+                mesh.Indices.size() / 3,
+                mesh.Meshlets.size()
             );
 
             ImGui_CollapsingHeaderWithIndent(meshHeaderName, [&mesh]
             {
                 for (const auto& [i, drawRange] : mesh.DrawRanges | std::views::enumerate)
                 {
-                    ImGui::Text(BenzinFormatData("{}: {:L}", i, drawRange.IndexRange.Count / 3));
+                    ImGui::Text(BenzinFormatData("{}: {:L} triangles, {:L} meshlets", i, drawRange.IndexRange.Count / 3, drawRange.MeshletRange.Count));
                 }
             });
         }

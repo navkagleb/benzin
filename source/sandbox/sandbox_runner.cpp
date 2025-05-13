@@ -164,6 +164,7 @@ namespace sandbox
         ImGui::Checkbox("Depth pre-pass", &settings.IsDepthPrePassEnabled);
         ImGui::Checkbox("CPU frustum culling", &settings.IsFrustumCullingEnabled);
         ImGui::Checkbox("Mesh pipeline", &settings.IsMeshPipelineUsed);
+        ImGui::Checkbox("Meshlet coloring", &settings.IsMeshletColoringEnabled);
     }
 
     static void DrawGBufferStats(GBufferStats& stats)
@@ -173,6 +174,12 @@ namespace sandbox
 
         ImGui::Text(BenzinFormatData("Mesh count: {:L} (Max: {:L})", stats.RenderedMeshCount, stats.MeshCount));
         ImGui::Text(BenzinFormatData("Triangle count: {:L}", stats.RenderedTriangleCount));
+
+        ImGui::Separator();
+        ImGui::Text(BenzinFormatData("DispatchMesh calls: {:L}", stats.DispatchMeshCallCount));
+        ImGui::Text(BenzinFormatData("Meshlets: {:L}", stats.MeshletCount));
+        ImGui::Text(BenzinFormatData("Meshlet vertices: {:L}", stats.MeshletVertexCount));
+        ImGui::Text(BenzinFormatData("Meshlet triangles: {:L}", stats.MeshletTriangleCount));
     }
 
     static void DrawProceduralGrassSettings(ProceduralGrassSettings& settings)
@@ -339,6 +346,13 @@ namespace sandbox
         auto readbackStatsCallback = [this](std::span<const uint32_t> readbackStats)
         {
             {
+                auto& stats = m_RenderSettings->GetSection<GBufferStats>();
+                stats.MeshletCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletCount];
+                stats.MeshletVertexCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletVertexCount];
+                stats.MeshletTriangleCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletTriangleCount];
+            }
+
+            {
                 auto& stats = m_RenderSettings->GetSection<ProceduralGrassStats>();
                 stats.PatchCount = readbackStats[+joint::ReadbackStat::ProceduralGrass_PatchCount];
                 stats.BladeCount = readbackStats[+joint::ReadbackStat::ProceduralGrass_BladeCount];
@@ -364,7 +378,7 @@ namespace sandbox
     {
         BenzinAssert(m_RenderSettingsTool != nullptr);
         m_RenderSettingsTool->RegisterSectionDrawCallback<GBufferSettings>(DrawGBufferSettings, ImGuiTreeNodeFlags_DefaultOpen);
-        m_RenderSettingsTool->RegisterSectionDrawCallback<GBufferStats>(DrawGBufferStats, ImGuiTreeNodeFlags_None);
+        m_RenderSettingsTool->RegisterSectionDrawCallback<GBufferStats>(DrawGBufferStats, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<ProceduralGrassSettings>(DrawProceduralGrassSettings, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<ProceduralGrassStats>(DrawProceduralGrassStats, ImGuiTreeNodeFlags_DefaultOpen);
         m_RenderSettingsTool->RegisterSectionDrawCallback<RayTracing_ShadowSettings>(DrawRayTracingShadowsSettings, ImGuiTreeNodeFlags_DefaultOpen);
@@ -381,7 +395,7 @@ namespace sandbox
     void SandboxRunner::InitCamera()
     {
         auto& perspectiveProjection = m_Scene->GetPerspectiveProjection();
-        perspectiveProjection.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.1f, 100.0f);
+        perspectiveProjection.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.01f, 100.0f); // NOTE: Near and Far planes affect to depth test
 
         auto& camera = m_Scene->GetCamera();
         camera.SetPosition({ -1.649f, 1.007f, -1.555f });

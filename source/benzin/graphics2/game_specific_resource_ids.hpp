@@ -51,10 +51,14 @@ namespace benzin
     enum class PsoId : uint32_t
     {
         GeometryPass_Depth,
+        GeometryPass_Depth_Alpha,
         GeometryPass_Color,
+        GeometryPass_Color_Alpha,
 
         GeometryPass_Mesh_Depth,
+        GeometryPass_Mesh_Depth_Alpha,
         GeometryPass_Mesh_Color,
+        GeometryPass_Mesh_Color_Alpha,
 
         ProceduralGrass,
 

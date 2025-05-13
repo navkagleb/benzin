@@ -63,6 +63,12 @@ namespace benzin
         return m_LightBuffer->GetGpuVirtualAddress(s_MaxLightCount * m_Device.GetActiveFrameIndex());
     }
 
+    const Material& Scene::GetMaterial(uint32_t index) const
+    {
+        BenzinAssert(index < m_UnifiedMaterials.size());
+        return m_UnifiedMaterials[index];
+    }
+
     entt::entity Scene::AddMesh(MeshResource&& meshResource)
     {
         BenzinAssert(!meshResource.DebugName.empty());
@@ -148,6 +154,7 @@ namespace benzin
             const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
 
             uploadSizeInBytes += meshGpuStorage.MeshletBuffer->GetSizeInBytes();
+            uploadSizeInBytes += meshGpuStorage.MeshletCullVolumeBuffer->GetSizeInBytes();
             uploadSizeInBytes += meshGpuStorage.MeshletIndirectVertexBuffer->GetSizeInBytes();
             uploadSizeInBytes += meshGpuStorage.MeshletIndexBuffer->GetSizeInBytes();
         };
@@ -159,6 +166,7 @@ namespace benzin
             const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
 
             cmdList.UploadToBuffer(*meshGpuStorage.MeshletBuffer, ToSpan(mesh.Meshlets));
+            cmdList.UploadToBuffer(*meshGpuStorage.MeshletCullVolumeBuffer, ToSpan(mesh.MeshletCullVolumes));
             cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndirectVertexBuffer, ToSpan(mesh.MeshletIndirectVertices));
             cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndexBuffer, ToSpan(mesh.MeshletIndices));
         }

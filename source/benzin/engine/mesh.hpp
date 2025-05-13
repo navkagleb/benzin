@@ -6,6 +6,7 @@ namespace joint
 {
     struct MeshInstance;
     struct Meshlet;
+    struct MeshletCullVolume;
     struct MeshVertex;
 }
 
@@ -56,6 +57,7 @@ namespace benzin
         std::unique_ptr<Buffer> ObjectToLocalMatrixBuffer;
 
         std::unique_ptr<Buffer> MeshletBuffer;
+        std::unique_ptr<Buffer> MeshletCullVolumeBuffer;
         std::unique_ptr<Buffer> MeshletIndirectVertexBuffer;
         std::unique_ptr<Buffer> MeshletIndexBuffer;
     };
@@ -68,6 +70,7 @@ namespace benzin
         std::vector<MeshInstance> Instances;
 
         std::vector<joint::Meshlet> Meshlets;
+        std::vector<joint::MeshletCullVolume> MeshletCullVolumes;
         std::vector<uint32_t> MeshletIndirectVertices;
         std::vector<uint8_t> MeshletIndices;
 

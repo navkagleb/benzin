@@ -3,8 +3,12 @@
 #include <benzin/core/enum_flags.hpp>
 #include <benzin/graphics2/render_pass.hpp>
 
+#include <shaders/joint/geometry_resources.hpp>
+
 namespace benzin
 {
+    struct Mesh;
+
     class GraphicsCmdList;
     class MeshInstanceComponent;
 
@@ -28,7 +32,13 @@ namespace sandbox
         {
             Mesh,
             DepthPrePass,
+            AlphaTest,
         };
+
+        struct DrawMeshInstance
+        {
+            entt::entity EntityHandle = benzin::g_BadEnum<entt::entity>;
+            std::vector<uint32_t> MeshInstanceIndices;
         };
 
         void CreatePso(benzin::PsoId id, benzin::EnumFlags<PsoFlag> flags = {});
@@ -42,15 +52,19 @@ namespace sandbox
 
         bool IsSphereCulled(const DirectX::BoundingSphere& localBoundingSphere, const DirectX::XMMATRIX& localToWorldMatrix) const;
 
-        void RenderMeshes(benzin::GraphicsCmdList& cmdList) const;
-        void RenderLights(benzin::GraphicsCmdList& cmdList) const;
-
-        void RenderMesh(benzin::GraphicsCmdList& cmdList, const benzin::MeshInstanceComponent& meshInstanceComponent, const DirectX::XMMATRIX& localToWorldMatrix) const;
+        void GroupMeshInstances() const;
+        void ProcessMesh(entt::entity entityHandle, const benzin::Mesh& mesh, const DirectX::XMMATRIX& localToWorldMatrix) const;
+        void RenderMeshInstances(benzin::GraphicsCmdList& cmdList, std::span<const DrawMeshInstance> drawMeshes) const;
 
     private:
         bool m_IsDepthPrePassEnabled = true;
         bool m_IsCpuFrustumCullingEnabled = true;
         bool m_IsMeshPipelineUsed = true;
+
+        joint::GeometryPassConsts m_Consts{};
+
+        mutable std::vector<DrawMeshInstance> m_MeshInstances;
+        mutable std::vector<DrawMeshInstance> m_AlphaMeshInstances;
     };
 
 }

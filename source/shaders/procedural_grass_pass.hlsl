@@ -3,6 +3,7 @@
 
 #include "color_convertions.hlsli"
 #include "common.hlsli"
+#include "culling.hlsli"
 #include "gbuffer.hlsli"
 #include "space_convertions.hlsli"
 
@@ -198,27 +199,6 @@ float3 CalcQuadraticBezierDerivative(float3 p0, float3 p1, float3 p2, float t)
     return 2.0 * (1.0 - t) * (p1 - p0) + 2.0 * t * (p2 - p1);
 }
 
-bool IsVisible(float3 center, float radius)
-{
-    if (!g_PassConsts0.IsFrustumCullingEnabled)
-    {
-        return true;
-    }
-
-    for (uint i = 0; i < (uint)joint::FrustumPlane::Count; ++i)
-    {
-        const float4 frustumPlane = GetCameraConsts().WorldFrustumPlanes[i];
-        const float distance = dot(frustumPlane.xyz, center) + frustumPlane.w;
-
-        if (distance > radius)
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 struct Payload
 {
     uint GrassPatchIndices[g_AsGroupSize];
@@ -233,7 +213,7 @@ void AsMain(uint dtid : SV_DispatchThreadID)
 
     if (dtid < g_PassConsts0.GrassPatchCount)
     {
-        isVisible = IsVisible(g_GrassPatches[dtid].Pos, g_PassConsts0.GrassPatchCullRadius);
+        isVisible = g_PassConsts0.IsFrustumCullingEnabled ? IsInFrustum(g_GrassPatches[dtid].Pos, g_PassConsts0.GrassPatchCullRadius) : true;
     }
 
     if (isVisible)

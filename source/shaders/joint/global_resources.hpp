@@ -7,6 +7,10 @@ namespace joint
 
     enum class ReadbackStat
     {
+        Geometry_MeshletCount,
+        Geometry_MeshletVertexCount,
+        Geometry_MeshletTriangleCount,
+
         ProceduralGrass_PatchCount,
         ProceduralGrass_BladeCount,
         ProceduralGrass_VertexCount,

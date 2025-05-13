@@ -10,16 +10,11 @@ namespace benzin
     class Descriptor;
     class Device;
     class Texture;
-    class TickTimer;
 
-    struct SceneStats
+    struct Material
     {
-        uint32_t VertexCount = 0;
-        uint32_t TriangleCount = 0;
-
-        uint32_t MeshCount = 0;
-        uint32_t MaterialCount = 0;
-        uint32_t MeshInstanceCount = 0;
+        MaterialTextureIndices TextureGpuHeapIndices;
+        MaterialConsts Consts;
     };
 
     using MeshTag = std::string;
@@ -50,6 +45,8 @@ namespace benzin
         uint64_t GetLightBufferGpuAddress() const;
         uint32_t GetActiveLightCount() const { return m_ActiveLightCount; }
 
+        const Material& GetMaterial(uint32_t index) const;
+
     public:
         entt::entity AddMesh(MeshResource&& meshResource);
 
@@ -69,12 +66,6 @@ namespace benzin
         void UploadPixelDataSetToGpu();
 
     private:
-        struct Material
-        {
-            MaterialTextureIndices TextureGpuHeapIndices;
-            MaterialConsts Consts;
-        };
-
         Device& m_Device;
 
         PerspectiveProjection m_PerspectiveProjection;

@@ -18,8 +18,20 @@ namespace joint
 
         Vertices,
         Meshlets,
+        MeshletCullVolumes,
         MeshletIndirectVertices,
         MeshletIndices,
+
+        MeshletCount,
+    };
+
+    struct GeometryPassConsts
+    {
+        uint IsMeshletColoringEnabled;
     };
 
 }
+
+#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0)
+    #define BenzinRenderPassConstsType0 joint::GeometryPassConsts
+#endif

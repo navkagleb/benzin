@@ -23,6 +23,11 @@ namespace joint
         uint TriangleCount;
     };
 
+    struct MeshletCullVolume
+    {
+        float4 BoundingSphere;
+    };
+
     enum class MeshletConsts
     {
         MaxVertexCount = 64,

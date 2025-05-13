@@ -9,6 +9,7 @@
 #include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/profiler.hpp"
+#include "benzin/core/tick_timer.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/cmd_queue.hpp"
 #include "benzin/graphics/device.hpp"
@@ -401,6 +402,11 @@ namespace benzin
 
     void ImGuiPass::OnUpdate()
     {
+        if (ms_FrameTimer->IsPaused())
+        {
+            return;
+        }
+
         const ImDrawData& imDrawData = m_ImGuiManager.GetImDrawData();
 
         UpdateConsts(imDrawData);

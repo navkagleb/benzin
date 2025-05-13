@@ -2,6 +2,7 @@
 #include "unified_root_parameters.hlsli"
 
 #include "common.hlsli"
+#include "culling.hlsli"
 #include "gbuffer.hlsli"
 #include "joint/mesh_types.hpp"
 #include "space_convertions.hlsli"
@@ -12,6 +13,7 @@ BenzinDeclareRootResource(StructuredBuffer<float4x4>, g_ObjectToLocalMatrices, j
 
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
 BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshletCullVolume>, g_MeshletCullVolumes, joint::GeometryResources::MeshletCullVolumes);
 BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndirectVertices, joint::GeometryResources::MeshletIndirectVertices);
 BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
 
@@ -75,6 +77,8 @@ struct VsOutput
     float3 PrevViewPosition : PrevViewPosition;
     float3 WorldNormal : WorldNormal;
     float2 Uv : Uv;
+
+    uint MeshletIndex : MeshletIndex;
 };
 
 struct MeshPayload
@@ -82,7 +86,6 @@ struct MeshPayload
     uint MeshletIndices[g_AsGroupSize];
 };
 
-    const float3 worldNormal = mul(objectNormal, (float3x3)entityTransform.LocalToWorld); // TODO: Maybe I still need to use 'WorldMatrixForNormals'?
 float4x4 GetObjectToLocal()
 {
     return g_ObjectToLocalMatrices[BenzinGetRootConstant(joint::GeometryResources::ObjectToLocalMatrixIndex)];
@@ -94,6 +97,7 @@ joint::EntityTransform GetEntityTransform()
 }
 
 VsOutput ProcessVertex(joint::MeshVertex vertex, uint meshletIndex)
+{
     const float4x4 objectToLocal = GetObjectToLocal();
     const float4 localPosition = mul(float4(vertex.Position, 1.0), objectToLocal);
     const float3 localNormal = mul(vertex.Normal, (float3x3)objectToLocal);
@@ -113,6 +117,8 @@ VsOutput ProcessVertex(joint::MeshVertex vertex, uint meshletIndex)
     output.WorldNormal = worldNormal;
     output.Uv = vertex.Uv;
 
+    output.MeshletIndex = meshletIndex;
+
     return output;
 }
 
@@ -126,7 +132,16 @@ void AsMain(uint dtid : SV_DispatchThreadID)
     const uint meshletCount = BenzinGetRootConstant(joint::GeometryResources::MeshletCount);
     if (dtid < meshletCount)
     {
-        isVisible = true;
+        const joint::MeshletCullVolume meshletCullVolume = g_MeshletCullVolumes[dtid];
+
+        isVisible = IsInFrustum(
+            meshletCullVolume.BoundingSphere.xyz, meshletCullVolume.BoundingSphere.w,
+            mul(GetObjectToLocal(), GetEntityTransform().LocalToWorld)
+        );
+
+#if !defined(IS_DEPTH_PREPASS)
+        InterlockedAddToStat(joint::ReadbackStat::Geometry_MeshletCount, isVisible);
+#endif
     }
 
     if (isVisible)
@@ -161,12 +176,20 @@ void MsMain(
 
     SetMeshOutputCounts(meshlet.VertexCount, meshlet.TriangleCount);
 
+#if !defined(IS_DEPTH_PREPASS)
+    if (gtid == 0)
+    {
+        InterlockedAddToStat(joint::ReadbackStat::Geometry_MeshletVertexCount, meshlet.VertexCount);
+        InterlockedAddToStat(joint::ReadbackStat::Geometry_MeshletTriangleCount, meshlet.TriangleCount);
+    }
+#endif
+
     if (gtid < meshlet.VertexCount)
     {
         const uint vertexIndex = g_MeshletIndirectVertices[meshlet.VertexOffset + gtid];
         const joint::MeshVertex vertex = g_Vertices[vertexIndex];
 
-        outVertices[gtid] = ProcessVertex(vertex);
+        outVertices[gtid] = ProcessVertex(vertex, meshletIndex + meshlet.VertexCount * meshlet.TriangleCount);
     }
 
     if (gtid < meshlet.TriangleCount)
@@ -185,7 +208,7 @@ void MsMain(
 
 VsOutput VsMain(VsInput vertex)
 {
-    return ProcessVertex((joint::MeshVertex)vertex);
+    return ProcessVertex((joint::MeshVertex)vertex, g_BadUint);
 }
 
 #if !defined(IS_DEPTH_PREPASS)
@@ -212,14 +235,25 @@ void PsMain(VsOutput input)
         albedo *= albedoSample.rgb;
     }
 
+    if (g_PassConsts0.IsMeshletColoringEnabled)
+    {
+        albedo.x = frac(sin(input.MeshletIndex * 12.9898) * 43758.5453);
+        albedo.y = frac(sin(input.MeshletIndex * 78.233) * 12345.6789);
+        albedo.z = frac(sin(input.MeshletIndex * 45.164) * 98765.4321);
+    }
+
 #if !defined(IS_DEPTH_PREPASS)
-    GBuffer gbuffer;
+    GBuffer gbuffer = (GBuffer)0;
     gbuffer.Albedo = albedo;
-    gbuffer.Roughness = material.RoughnessFactor;
-    gbuffer.Emissive = material.EmissiveFactor;
-    gbuffer.Metallic = material.MetalnessFactor;
-    gbuffer.WorldNormal = normalize(input.WorldNormal);
     gbuffer.ViewDepth = input.ViewDepth;
+
+    if (!g_PassConsts0.IsMeshletColoringEnabled)
+    {
+        gbuffer.Roughness = material.RoughnessFactor;
+        gbuffer.Emissive = material.EmissiveFactor;
+        gbuffer.Metallic = material.MetalnessFactor;
+        gbuffer.WorldNormal = normalize(input.WorldNormal);
+    }
 
     if (material.NormalTextureHeapIndex != g_InvalidIndex)
     {
@@ -259,5 +293,5 @@ void PsMain(VsOutput input)
     CalcGBufferMv(input.ClipPosition.xy, input.ViewDepth, input.PrevViewPosition, gbuffer);
 
     return PackGBuffer(gbuffer);
-#endif
+#endif // !defined(IS_DEPTH_PREPASS)
 }

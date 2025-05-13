@@ -10,6 +10,11 @@ namespace sandbox
         uint32_t MeshCount = 0;
         uint32_t RenderedMeshCount = 0;
         uint32_t RenderedTriangleCount = 0;
+
+        uint32_t DispatchMeshCallCount = 0;
+        uint32_t MeshletCount = 0;
+        uint32_t MeshletVertexCount = 0;
+        uint32_t MeshletTriangleCount = 0;
     };
 
     struct GBufferSettings
@@ -25,6 +30,7 @@ namespace sandbox
         bool IsDepthPrePassEnabled = true;
         bool IsFrustumCullingEnabled = true;
         bool IsMeshPipelineUsed = true;
+        bool IsMeshletColoringEnabled = false;
     };
 
     struct ProceduralGrassStats
