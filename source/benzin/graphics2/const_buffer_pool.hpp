@@ -13,6 +13,9 @@ namespace benzin
         ~ConstBufferPool();
 
         void BeginFrame();
+        void EndFrame() const;
+
+        void AllocatePools();
 
         void PreAllocate(uint32_t sizeInBytes, uint32_t count = 1);
         uint64_t Allocate(std::span<const std::byte> data);
@@ -29,7 +32,8 @@ namespace benzin
         struct Pool
         {
             uint32_t PreAllocatedElementCount = 0;
-            uint32_t AllocatedCount = 0;
+            uint32_t AllocatedElementCount = 0;
+            uint32_t MaxElementCount = 0;
 
             std::unique_ptr<Buffer> BufferPool;
         };

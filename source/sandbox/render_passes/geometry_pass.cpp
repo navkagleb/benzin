@@ -42,8 +42,6 @@ namespace sandbox
         CreatePso(PsoId::GeometryPass_Mesh_Depth_Alpha, PsoFlag::Mesh | PsoFlag::DepthPrePass | PsoFlag::AlphaTest);
         CreatePso(PsoId::GeometryPass_Mesh_Color, PsoFlag::Mesh);
         CreatePso(PsoId::GeometryPass_Mesh_Color_Alpha, PsoFlag::Mesh | PsoFlag::AlphaTest);
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     GeometryPass::~GeometryPass()
@@ -228,6 +226,8 @@ namespace sandbox
         m_IsMeshPipelineUsed = settings.IsMeshPipelineUsed;
 
         m_Consts.IsMeshletColoringEnabled = settings.IsMeshletColoringEnabled;
+
+        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     bool GeometryPass::IsSphereCulled(const DirectX::BoundingSphere& localBoundingSphere, const DirectX::XMMATRIX& localToWorldMatrix) const

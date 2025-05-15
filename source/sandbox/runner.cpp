@@ -285,6 +285,12 @@ namespace sandbox
     {
         BenzinProfile();
 
+        if (m_RenderViewportTool->IsValidForRendering())
+        {
+            // Check only if render viewport is valid for rendering. Because actual const buffer allocation apper in 'RenderPass::OnRender'
+            m_ConstBufferPool->EndFrame();
+        }
+
         m_Device->GetGraphicsCmdQueue().SubmitCmdList();
 
         const bool isResized = m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
@@ -351,6 +357,8 @@ namespace sandbox
         {
             renderPass->OnUpdate();
         }
+
+        m_ConstBufferPool->AllocatePools();
     }
 
     void Runner::OnRender()

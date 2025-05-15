@@ -24,8 +24,6 @@ namespace benzin
         {
             proxy.Cs.FileName = "texture_viewer_pass.hlsl";
         });
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     TextureViewerPass::~TextureViewerPass()
@@ -69,6 +67,8 @@ namespace benzin
 
         m_Consts.MinColor = m_TextureViewerTool.m_MinColor;
         m_Consts.MaxColor = m_TextureViewerTool.m_MaxColor;
+
+        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     void TextureViewerPass::OnRender() const

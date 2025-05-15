@@ -62,9 +62,6 @@ namespace sandbox
         createPso(PsoId::SigmaTemporalStabilization, "sigma_denoiser/temporal_stabilization.hlsl");
 
         m_PerLightConsts.resize(benzin::Scene::s_MaxLightCount);
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
-        ms_ConstBufferPool->PreAllocate(sizeof(joint::SigmaPerLightConsts), benzin::Scene::s_MaxLightCount);
     }
 
     SigmaDenoiserPass::~SigmaDenoiserPass()
@@ -164,6 +161,9 @@ namespace sandbox
                 m_PerLightConsts[lightOffset].WorldLightPosition = light.GetPosition();
                 lightOffset++;
             }
+
+            ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
+            ms_ConstBufferPool->PreAllocate(sizeof(joint::SigmaPerLightConsts), lightOffset);
         }
     }
 

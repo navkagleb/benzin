@@ -37,8 +37,6 @@ namespace sandbox
             proxy.ShaderConfig.PayloadSizeInBytes = sizeof(joint::RayTracing_ShadowPayload);
             proxy.ShaderConfig.AttributeSizeInBytes = sizeof(DirectX::XMFLOAT2); // Barycentrics
         });
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     RayTracing_ShadowPass::~RayTracing_ShadowPass()
@@ -97,6 +95,8 @@ namespace sandbox
             settings.BlueNoiseDepthIndex = (settings.BlueNoiseDepthIndex + 1) % settings.BlueNoiseDepth;
             m_BlueNoiseDepthIndex = settings.BlueNoiseDepthIndex;
         }
+
+        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     void RayTracing_ShadowPass::OnRender() const

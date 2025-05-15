@@ -67,8 +67,6 @@ namespace sandbox
             .MipCount = 1,
             .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
         });
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     ToneMappingPass::~ToneMappingPass()
@@ -116,6 +114,8 @@ namespace sandbox
         m_Consts.IsToneMappingEnabled = settings.IsToneMappingEnabled;
         m_Consts.IsAutoExposureUsed = settings.IsAutoExposureUsed;
         m_Consts.IsAccurateGammaCorrectionUsed = settings.IsAccurateGammaCorrectionUsed;
+
+        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     void ToneMappingPass::OnRender() const

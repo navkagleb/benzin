@@ -53,8 +53,6 @@ namespace sandbox
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         cmdList.AddResourceBarrier(benzin::TransitionBarrier{ ms_Resources->Get(BufferId::UavStats), benzin::ResourceState::UnorderedAccess });
         cmdList.AddResourceBarrier(benzin::TransitionBarrier{ ms_Resources->Get(BufferId::ReadbackStats), benzin::ResourceState::Common });
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_FrameConsts));
     }
 
     GlobalConstsPass::~GlobalConstsPass()
@@ -69,6 +67,8 @@ namespace sandbox
 
         UpdateCameraConsts();
         UpdateFrameConsts();
+
+        ms_ConstBufferPool->PreAllocate(sizeof(m_FrameConsts));
     }
 
     void GlobalConstsPass::OnRender() const

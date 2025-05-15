@@ -50,8 +50,6 @@ namespace sandbox
             outProxy.RenderTargetFormats.push_back(GBufferSettings::s_Color4Format);
             outProxy.DepthStencilFormat = GBufferSettings::s_DepthStencilFormat;
         });
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     ProceduralGrassPass::~ProceduralGrassPass()
@@ -128,6 +126,8 @@ namespace sandbox
         m_Consts.WindDirection = settings.WindDirection;
         m_Consts.BladeWidth = settings.BladeWidth;
         m_Consts.BaseColor = settings.BaseColor;
+
+        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     void ProceduralGrassPass::OnRender() const

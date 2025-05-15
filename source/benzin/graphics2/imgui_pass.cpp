@@ -386,8 +386,6 @@ namespace benzin
                 },
             });
         });
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     ImGuiPass::~ImGuiPass()
@@ -411,6 +409,8 @@ namespace benzin
 
         UpdateConsts(imDrawData);
         UpdateVertexAndIndexBuffers(imDrawData);
+
+        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     void ImGuiPass::OnRender() const

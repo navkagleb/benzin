@@ -4,6 +4,7 @@
 #include "benzin/core/buffer_writer.hpp"
 #include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/math.hpp"
+#include "benzin/core/profiler.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/device.hpp"
 
@@ -28,9 +29,47 @@ namespace benzin
 
     void ConstBufferPool::BeginFrame()
     {
+        BenzinProfile();
+
         for (auto& [_, pool] : m_Pools)
         {
-            pool.AllocatedCount = 0;
+            pool.PreAllocatedElementCount = 0;
+            pool.AllocatedElementCount = 0;
+        }
+    }
+
+    void ConstBufferPool::EndFrame() const
+    {
+        BenzinProfile();
+
+#if BENZIN_IS_ASSERTS_ENABLED
+        for (const auto& [_, pool] : m_Pools)
+        {
+            BenzinAssert(pool.AllocatedElementCount == pool.PreAllocatedElementCount, "Some const buffers aren't used in the frame!");
+        }
+#endif
+    }
+
+    void ConstBufferPool::AllocatePools()
+    {
+        BenzinProfile();
+
+        for (auto& [poolIndex, pool] : m_Pools)
+        {
+            if (pool.BufferPool.get() == nullptr || pool.MaxElementCount < pool.PreAllocatedElementCount)
+            {
+                pool.MaxElementCount = pool.PreAllocatedElementCount;
+
+                const uint32_t alignedSizeInBytes = (poolIndex + 1) * GraphicsConfig::GetConstBufferAlignmentInBytes();
+                MakeUniquePtr(pool.BufferPool, m_Device, BufferCreation
+                {
+                    .DebugName = std::format("ConstBuffer_{}", alignedSizeInBytes),
+                    .MemoryType = ResourceMemoryType::Upload,
+                    .Type = BufferType::Const,
+                    .ElementSizeInBytes = alignedSizeInBytes,
+                    .ElementCount = pool.MaxElementCount * CmdLineArgs::GetFrameInFlightCount(),
+                });
+            }
         }
     }
 
@@ -44,24 +83,10 @@ namespace benzin
     {
         const auto [alignedSizeInBytes, poolIndex] = ParseSize((uint32_t)data.size_bytes());
 
-        auto& pool = m_Pools[poolIndex];
-        BenzinAssert(pool.AllocatedCount < pool.PreAllocatedElementCount);
+        Pool& pool = m_Pools[poolIndex];
+        BenzinAssert(pool.AllocatedElementCount < pool.PreAllocatedElementCount, "Make sure you have allocated all the necessary const buffers in advance!");
 
-        const uint32_t poolElementCount = pool.PreAllocatedElementCount * CmdLineArgs::GetFrameInFlightCount();
-
-        if (pool.BufferPool.get() == nullptr || pool.BufferPool->GetElementCount() != poolElementCount)
-        {
-            MakeUniquePtr(pool.BufferPool, m_Device, BufferCreation
-            {
-                .DebugName = std::format("ConstBuffer_{}", alignedSizeInBytes),
-                .MemoryType = ResourceMemoryType::Upload,
-                .Type = BufferType::Const,
-                .ElementSizeInBytes = alignedSizeInBytes,
-                .ElementCount = poolElementCount,
-            });
-        }
-
-        const uint32_t elementIndexInBufferPool = m_Device.GetActiveFrameIndex() * pool.PreAllocatedElementCount + pool.AllocatedCount++;
+        const uint32_t elementIndexInBufferPool = m_Device.GetActiveFrameIndex() * pool.MaxElementCount + pool.AllocatedElementCount++;
 
         BufferWriter writer{ pool.BufferPool->GetCpuMappedData(), pool.BufferPool->GetSizeInBytes() };
         writer.SetElementPosition(elementIndexInBufferPool, alignedSizeInBytes);
