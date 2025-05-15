@@ -32,7 +32,7 @@ namespace benzin
         void DrawWindowContent() override;
 
         void DrawChannelCheckbox(const char* name, const ImVec4& textColor, const ImVec4& checkMarkColor, ColorChannel channel);
-        void DrawShaderConsts(uint32_t textureDepth);
+        void DrawShaderConsts(uint32_t textureDepth, uint32_t mipCount);
         void DrawDebugTexture() const;
 
         bool OnKeyPressedEvent(const KeyPressedEvent& event);
@@ -55,7 +55,8 @@ namespace benzin
         float m_MinColor = 0.0f;
         float m_MaxColor = 1.0f;
 
-        uint16_t m_ActiveDepthIndex = 0;
+        uint32_t m_ActiveDepthIndex = 0;
+        uint32_t m_ActiveMipIndex = 0;
     };
 
 }

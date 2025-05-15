@@ -41,9 +41,9 @@ namespace benzin
 
     static void DrawTextureConfig(const Texture& texture)
     {
-        ImGui::Text(BenzinFormatData("Texture Size: [{}, {}, {}]", texture.GetWidth(), texture.GetHeight(), texture.GetDepth()));
-        ImGui::Text(BenzinFormatData("Texture MipCount: {}", texture.GetMipCount()));
-        ImGui::Text(BenzinFormatData("Texture Format: {}", magic_enum::enum_name(texture.GetFormat())));
+        ImGui::Text(BenzinFormatData("Texture size: [{}, {}, {}]", texture.GetWidth(), texture.GetHeight(), texture.GetDepth()));
+        ImGui::Text(BenzinFormatData("Texture mips: {}", texture.GetMipCount()));
+        ImGui::Text(BenzinFormatData("Texture format: {}", magic_enum::enum_name(texture.GetFormat())));
     }
 
     //
@@ -81,7 +81,15 @@ namespace benzin
 
     void TextureViewerTool::DrawWindowContent()
     {
-        m_ReferenceTextureId = DrawTextureSelector();
+        const TextureId selectedReferenceTexture = DrawTextureSelector();
+
+        if (m_ReferenceTextureId != selectedReferenceTexture)
+        {
+            m_ReferenceTextureId = selectedReferenceTexture;
+            m_ActiveDepthIndex = 0;
+            m_ActiveMipIndex = 0;
+        }
+
         if (!IsReferenceTextureIdValid())
         {
             return;
@@ -102,7 +110,7 @@ namespace benzin
             DrawChannelCheckbox("G", ImVec4{ 0.0f, 1.0f, 0.0f, 1.0f }, ImVec4{ 0.0f, 1.0f, 0.0f, 0.8f }, ColorChannel::G);
             DrawChannelCheckbox("B", ImVec4{ 0.0f, 0.0f, 1.0f, 1.0f }, ImVec4{ 0.0f, 0.0f, 1.0f, 0.8f }, ColorChannel::B);
             DrawChannelCheckbox("A", ImVec4{ 1.0f, 1.0f, 1.0f, 1.0f }, ImVec4{ 1.0f, 1.0f, 1.0f, 0.8f }, ColorChannel::A);
-            DrawShaderConsts(texture.GetDepth());
+            DrawShaderConsts(texture.GetDepth(), texture.GetMipCount());
         }, ImGuiTreeNodeFlags_DefaultOpen);
 
         DrawDebugTexture();
@@ -124,7 +132,7 @@ namespace benzin
         ImGui::EndDisabled();
     }
 
-    void TextureViewerTool::DrawShaderConsts(uint32_t textureDepth)
+    void TextureViewerTool::DrawShaderConsts(uint32_t textureDepth, uint32_t mipCount)
     {
         ImGui::PushItemWidth(200.0f);
         BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
@@ -141,7 +149,7 @@ namespace benzin
             }
 
             ImGui::SameLine();
-            ImGui::DragFloat("MinColor", &m_MinColor, 0.001f, std::numeric_limits<float>::lowest(), m_MaxColor, "%.3f", ImGuiSliderFlags_ClampOnInput);
+            ImGui::DragFloat("Min color", &m_MinColor, 0.001f, std::numeric_limits<float>::lowest(), m_MaxColor, "%.3f", ImGuiSliderFlags_ClampOnInput);
         }
 
         {
@@ -154,7 +162,7 @@ namespace benzin
             }
 
             ImGui::SameLine();
-            ImGui::DragFloat("MaxColor", &m_MaxColor, 0.001f, m_MinColor, std::numeric_limits<float>::max(), "%.3f", ImGuiSliderFlags_ClampOnInput);
+            ImGui::DragFloat("Max color", &m_MaxColor, 0.001f, m_MinColor, std::numeric_limits<float>::max(), "%.3f", ImGuiSliderFlags_ClampOnInput);
         }
 
         {
@@ -167,7 +175,20 @@ namespace benzin
             }
 
             ImGui::SameLine();
-            ImGui::SliderInt("ActiveDepthIndex", (int*)&m_ActiveDepthIndex, 0, textureDepth - 1);
+            ImGui::SliderInt("Active depth index", (int*)&m_ActiveDepthIndex, 0, textureDepth - 1);
+        }
+
+        {
+            ImGui::PushID(3);
+            BenzinExecuteOnScopeExit([] { ImGui::PopID(); });
+
+            if (ImGui::Button("Reset to 0"))
+            {
+                m_ActiveMipIndex = 0;
+            }
+
+            ImGui::SameLine();
+            ImGui::SliderInt("Active mip index", (int*)&m_ActiveMipIndex, 0, mipCount - 1);
         }
     }
 
@@ -178,11 +199,13 @@ namespace benzin
             return;
         }
 
-        const Texture& texture = m_Resources.Get(TextureId::DebugTexture);
+        const Texture& debugTexture = m_Resources.Get(TextureId::DebugTexture);
+
+        ImGui::Text(BenzinFormatData("Debug texture size: [{}, {}]", debugTexture.GetWidth(), debugTexture.GetHeight()));
 
         const ImVec2 widgetSize = ImGui::GetContentRegionAvail();
         const float widgetAspectRatio = widgetSize.x / widgetSize.y;
-        const float textureAspectRatio = (float)texture.GetWidth() / texture.GetHeight();
+        const float textureAspectRatio = (float)debugTexture.GetWidth() / debugTexture.GetHeight();
 
         ImVec2 widgetTextureSize{ 0.0f, 0.0f };
         if (widgetAspectRatio > textureAspectRatio)
@@ -199,13 +222,7 @@ namespace benzin
         const ImVec2 imagePos = ImGui::GetCursorScreenPos();
 
         ImGui::Image(
-            ImGuiPass::PackImTextureId(
-                texture.GetSrv(
-                {
-                    .DepthRange{ m_ActiveDepthIndex },
-                }),
-                joint::ImGuiSamplerIndex::Point
-            ),
+            ImGuiPass::PackImTextureId(debugTexture.GetSrv(), joint::ImGuiSamplerIndex::Point),
             widgetTextureSize,
             m_UvMin,
             m_UvMax

@@ -36,7 +36,7 @@ namespace benzin
         if (texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowDepthStencil) && outTextureSrv.Format == GraphicsFormat::Unknown)
         {
             BenzinAssert(texture.GetFormat() == GraphicsFormat::D24Unorm_S8Uint);
-            outTextureSrv.Format = GraphicsFormat::D24Unorm_X8Typeless;
+            outTextureSrv.Format = GraphicsFormat::R24Unorm_X8Typeless;
         }
 
         outTextureSrv.IsCubeMap = outTextureSrv.IsCubeMap ? true : texture.IsCubeMap();
@@ -326,9 +326,13 @@ namespace benzin
         m_Width = creation.Width;
         m_Height = creation.Height;
         m_Depth = creation.Depth;
-        m_MipCount = creation.MipCount;
         m_AccessFlags = creation.AccessFlags;
         m_ClearValueVariant = creation.ClearValueVariant;
+
+        // NOTE: When zero MipCount is provided in TextureCreation than D3D12 creates full mip chain
+        // Using that actual mip count can be retrieved through D3D12_RESOURCE_DESC
+        const D3D12_RESOURCE_DESC d3d12ResourceDesc = m_D3D12Resource->GetDesc();
+        m_MipCount = d3d12ResourceDesc.MipLevels;
     }
 
     Texture::Texture(Device& device, ID3D12Resource* d3d12Resource)
@@ -337,28 +341,26 @@ namespace benzin
         BenzinAssert(d3d12Resource != nullptr);
         m_D3D12Resource = d3d12Resource;
 
+        const D3D12_RESOURCE_DESC d3d12ResourceDesc = d3d12Resource->GetDesc();
+        m_Format = (GraphicsFormat)d3d12ResourceDesc.Format;
+        m_Width = (uint32_t)d3d12ResourceDesc.Width;
+        m_Height = d3d12ResourceDesc.Height;
+        m_Depth = d3d12ResourceDesc.DepthOrArraySize;
+        m_MipCount = d3d12ResourceDesc.MipLevels;
+
+        if (d3d12ResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
         {
-            const D3D12_RESOURCE_DESC d3d12ResourceDesc = d3d12Resource->GetDesc();
-            m_Format = (GraphicsFormat)d3d12ResourceDesc.Format;
-            m_Width = (uint32_t)d3d12ResourceDesc.Width;
-            m_Height = d3d12ResourceDesc.Height;
-            m_Depth = d3d12ResourceDesc.DepthOrArraySize;
-            m_MipCount = d3d12ResourceDesc.MipLevels;
+            m_AccessFlags.Set(TextureAccessFlag::AllowRenderTarget);
+        }
 
-            if (d3d12ResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
-            {
-                m_AccessFlags.Set(TextureAccessFlag::AllowRenderTarget);
-            }
+        if (d3d12ResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+        {
+            m_AccessFlags.Set(TextureAccessFlag::AllowDepthStencil);
+        }
 
-            if (d3d12ResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
-            {
-                m_AccessFlags.Set(TextureAccessFlag::AllowDepthStencil);
-            }
-
-            if (d3d12ResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
-            {
-                m_AccessFlags.Set(TextureAccessFlag::AllowUnorderedAccess);
-            }
+        if (d3d12ResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
+        {
+            m_AccessFlags.Set(TextureAccessFlag::AllowUnorderedAccess);
         }
     }
 

@@ -24,7 +24,7 @@ namespace benzin
             case Rg8Unorm: return 2 * (8 / 8);
 
             case D24Unorm_S8Uint:
-            case D24Unorm_X8Typeless: return 1 * (32 / 8);
+            case R24Unorm_X8Typeless: return 1 * (32 / 8);
 
             case R8Uint:
             case R8Unorm: return 1 * (8 / 8);

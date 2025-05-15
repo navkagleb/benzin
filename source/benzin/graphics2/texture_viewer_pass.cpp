@@ -32,14 +32,6 @@ namespace benzin
         ms_Resources->Destroy(TextureId::DebugTexture);
     }
 
-    void TextureViewerPass::OnRenderViewportResize()
-    {
-        if (m_ReferenceTextureId != g_InvalidTextureId)
-        {
-            CreateDebugTexture();
-        }
-    }
-
     void TextureViewerPass::OnUpdate()
     {
         BenzinProfile();
@@ -47,17 +39,42 @@ namespace benzin
         RenderPass::m_IsRenderingEnabled = m_TextureViewerTool.IsReferenceTextureIdValid();
         RenderPass::m_IsRenderingEnabled &= m_TextureViewerTool.m_IsVisible;
         RenderPass::m_IsRenderingEnabled &= m_TextureViewerTool.m_IsCollapsed ? m_TextureViewerTool.m_IsFullViewportPreview : true;
-
         if (!RenderPass::m_IsRenderingEnabled)
         {
             return;
         }
 
-        if (m_ReferenceTextureId != m_TextureViewerTool.m_ReferenceTextureId)
+        const Texture& referenceTexture = ms_Resources->Get(m_TextureViewerTool.m_ReferenceTextureId);
+
+        const uint32_t debugWidth = referenceTexture.GetMipWidth((uint16_t)m_TextureViewerTool.m_ActiveMipIndex);
+        const uint32_t debugHeight = referenceTexture.GetMipHeight((uint16_t)m_TextureViewerTool.m_ActiveMipIndex);
+
+        const bool isTextureIdMatch = m_ReferenceTextureId == m_TextureViewerTool.m_ReferenceTextureId;
+        const bool isTextureResMatch = m_Consts.TextureResolution.x == debugWidth && m_Consts.TextureResolution.y == debugHeight;
+
+        if (!isTextureIdMatch || !isTextureResMatch)
         {
             m_ReferenceTextureId = m_TextureViewerTool.m_ReferenceTextureId;
 
-            CreateDebugTexture();
+            m_Consts.TextureResolution.x = debugWidth;
+            m_Consts.TextureResolution.y = debugHeight;
+
+            GraphicsFormat debugFormat = referenceTexture.GetFormat();
+            if (debugFormat == GraphicsFormat::D24Unorm_S8Uint)
+            {
+                debugFormat = GraphicsFormat::R32Float;
+            }
+
+            ms_Resources->Create(TextureId::DebugTexture, TextureCreation
+            {
+                .DebugName = magic_enum::enum_name(TextureId::DebugTexture),
+                .Format = debugFormat,
+                .Width = debugWidth,
+                .Height = debugHeight,
+                .Depth = 1,
+                .MipCount = 1,
+                .AccessFlags = TextureAccessFlag::AllowUnorderedAccess,
+            });
         }
 
         m_Consts.ChannelMask.x = m_TextureViewerTool.m_IsChannelActive[0];
@@ -73,12 +90,14 @@ namespace benzin
 
     void TextureViewerPass::OnRender() const
     {
+        using Resources = joint::TextureViewerResources;
+
         BenzinProfile();
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "TextureViewer");
 
-        const auto& debugTexture = ms_Resources->Get(TextureId::DebugTexture);
+        const Texture& debugTexture = ms_Resources->Get(TextureId::DebugTexture);
 
         BenzinScopedResourceBarriers(
             cmdList,
@@ -88,32 +107,15 @@ namespace benzin
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
         cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
 
+        cmdList.SetComputeRootResource(+Resources::ReferenceTexture, ms_Resources->Get(m_ReferenceTextureId).GetSrv(
         {
-            using enum joint::TextureViewerResources;
-
-            cmdList.SetComputeRootResource(+ReferenceTexture, ms_Resources->Get(m_ReferenceTextureId).GetSrv({ .DepthRange{ m_TextureViewerTool.m_ActiveDepthIndex } }));
-            cmdList.SetComputeRootResource(+OutDebugTexture, debugTexture.GetUav());
-        }
+            .DepthRange = (uint16_t)m_TextureViewerTool.m_ActiveDepthIndex,
+            .MipRange = (uint16_t)m_TextureViewerTool.m_ActiveMipIndex,
+        }));
+        
+        cmdList.SetComputeRootResource(+Resources::OutDebugTexture, debugTexture.GetUav());
 
         cmdList.Dispatch({ debugTexture.GetWidth(), debugTexture.GetHeight(), 1 }, { 16, 16, 1 });
-    }
-
-    void TextureViewerPass::CreateDebugTexture()
-    {
-        const Texture& referenceTexture = ms_Resources->Get(m_ReferenceTextureId);
-        ms_Resources->Create(TextureId::DebugTexture, TextureCreation
-        {
-            .DebugName = "DebugTexture",
-            .Format = referenceTexture.GetFormat(),
-            .Width = referenceTexture.GetWidth(),
-            .Height = referenceTexture.GetHeight(),
-            .Depth = 1,
-            .MipCount = 1, // TODO: Add support multiple mip levels
-            .AccessFlags = TextureAccessFlag::AllowUnorderedAccess,
-        });
-
-        m_Consts.TextureResolution.x = referenceTexture.GetWidth();
-        m_Consts.TextureResolution.y = referenceTexture.GetHeight();
     }
 
 }
