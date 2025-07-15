@@ -295,13 +295,13 @@ namespace benzin
         {
             for (const auto& [primitiveIndex, gltfPrimitive] : m_GltfModel->meshes[gltfMeshIndex].primitives | std::views::enumerate)
             {
-                BenzinAssert(gltfPrimitive.material != -1);
+                const uint32_t materialIndex = gltfPrimitive.material != -1 ? (uint32_t)gltfPrimitive.material : g_Bad32;
 
                 m_OutMesh->Instances.push_back(MeshInstance
                 {
                     .ObjectToLocalMatrix = objectToLocal,
                     .DrawRangeIndex = (uint32_t)(gltfMeshIndex + primitiveIndex),
-                    .MaterialIndex = (uint32_t)gltfPrimitive.material,
+                    .MaterialIndex = materialIndex,
                 });
             }
         }

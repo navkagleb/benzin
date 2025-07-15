@@ -30,6 +30,17 @@ namespace benzin
         m_SunEntity = m_EntityRegistry.create();
         m_EntityRegistry.emplace<SunLight>(m_SunEntity);
 
+        // Fallback material
+        {
+            m_UnifiedMaterials.push_back(Material
+            {
+                .Consts
+                {
+                    .AlbedoFactor{ 1.0f, 0.0f, 1.0f, 1.0f },
+                },
+            });
+        }
+
         MakeUniquePtr(m_LightBuffer, m_Device, BufferCreation
         {
             .DebugName = "LightBuffer",
@@ -101,7 +112,14 @@ namespace benzin
 
         for (MeshInstance& meshInstance : mesh.Instances)
         {
-            meshInstance.MaterialIndex += materialOffset;
+            if (IsGoodUint(meshInstance.MaterialIndex))
+            {
+                meshInstance.MaterialIndex += materialOffset;
+            }
+            else
+            {
+                meshInstance.MaterialIndex = 0; // Fallback material index
+            }
         }
 
         auto& meshGpuStorage = m_MeshRegistry.emplace<MeshGpuStorage>(meshHandle);
@@ -236,11 +254,15 @@ namespace benzin
 
     uint32_t Scene::AddMaterials(std::span<TextureImage> textureImages, std::span<const MeshResource::Material> materials)
     {
-        BenzinAssert(!materials.empty());
+        const auto materialOffset = (uint32_t)m_UnifiedMaterials.size();
+
+        if (materials.empty())
+        {
+            return materialOffset;
+        }
 
         const uint32_t textureOffset = AddTextures(textureImages);
 
-        const auto materialOffset = (uint32_t)m_UnifiedMaterials.size();
         m_UnifiedMaterials.reserve(materialOffset + materials.size());
 
         for (const MeshResource::Material& materialResource : materials)
