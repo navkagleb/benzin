@@ -19,6 +19,11 @@ namespace benzin
         , m_FlyCameraController{ camera }
     {}
 
+    bool RenderViewportTool::IsValidForRendering() const
+    {
+        return !m_IsViewportResized && m_ViewportSize != ImVec2{} && ImGuiTool::m_IsVisible;
+    }
+
     void RenderViewportTool::MoveCamera(std::chrono::microseconds dt)
     {
         m_FlyCameraController.MoveCamera(dt);
@@ -89,7 +94,7 @@ namespace benzin
 
     void RenderViewportTool::UpdateImGuiDimensions()
     {
-        m_IsViewportSizeValid = true;
+        m_IsViewportResized = false;
 
         const ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
@@ -101,7 +106,7 @@ namespace benzin
         }
 
         m_ViewportSize = viewportSize;
-        m_IsViewportSizeValid = false;
+        m_IsViewportResized = true;
 
         m_FlyCameraController.OnRenderViewportResized((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
     }

@@ -19,11 +19,11 @@ namespace benzin
 
         RenderViewportTool(RenderResources& resources, TextureViewerTool& textureViewerTool, Camera& camera);
 
-        uint32_t GetWidth() const { return (uint32_t)m_ViewportSize.x; }
-        uint32_t GetHeight() const { return (uint32_t)m_ViewportSize.y; }
+        auto GetWidth() const { return (uint32_t)m_ViewportSize.x; }
+        auto GetHeight() const { return (uint32_t)m_ViewportSize.y; }
 
-        bool IsViewportSizeValid() const { return m_IsViewportSizeValid; }
-        bool IsValidForRendering() const { return m_IsViewportSizeValid && ImGuiTool::m_IsVisible; }
+        bool IsViewportResized() const { return m_IsViewportResized; }
+        bool IsValidForRendering() const;
 
         void MoveCamera(std::chrono::microseconds dt);
 
@@ -44,7 +44,7 @@ namespace benzin
         FlyCameraController m_FlyCameraController;
 
         ImVec2 m_ViewportSize{};
-        bool m_IsViewportSizeValid = true;
+        bool m_IsViewportResized = false;
         bool m_IsViewportHovered = false;
     };
 

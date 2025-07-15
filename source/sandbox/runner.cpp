@@ -306,7 +306,7 @@ namespace sandbox
             BenzinTrace("Window is resized: {} x {}. CpuFrame: {}", windowWidth, windowHeight, m_Device->GetCpuFrameIndex());
         }
 
-        if (!m_RenderViewportTool->IsViewportSizeValid())
+        if (m_RenderViewportTool->IsViewportResized())
         {
             // Viewport size is controlled by UI. So first update UI and then resize render passes
 
