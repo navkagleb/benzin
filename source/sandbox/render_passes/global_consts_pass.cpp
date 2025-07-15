@@ -12,7 +12,7 @@
 #include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 
-#include <sandbox/sandbox_render_settings.hpp>
+#include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
 BenzinEnableUnaryPlusForEnum(joint::FrustumPlane);

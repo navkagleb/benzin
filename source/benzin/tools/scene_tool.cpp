@@ -8,7 +8,7 @@ namespace benzin
 {
 
     SceneTool::SceneTool(Scene& scene)
-        : ImGuiTool{ "SceneTool" }
+        : ImGuiTool{ "Engine/SceneTool" }
         , m_Scene{ scene }
     {}
 
@@ -20,7 +20,7 @@ namespace benzin
 
     void SceneTool::DrawSun()
     {
-        if (!ImGui_MainCollapsingHeader("Sun", ImGuiTreeNodeFlags_DefaultOpen))
+        if (!ImGui::MainCollapsingHeader("Sun", ImGuiTreeNodeFlags_DefaultOpen))
         {
             return;
         }
@@ -60,7 +60,7 @@ namespace benzin
 
     void SceneTool::DrawSphericalLights()
     {
-        if (!ImGui_MainCollapsingHeader("SphericalLights"))
+        if (!ImGui::MainCollapsingHeader("SphericalLights"))
         {
             return;
         }

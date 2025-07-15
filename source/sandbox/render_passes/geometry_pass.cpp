@@ -21,8 +21,8 @@
 #include <shaders/joint/mesh_types.hpp>
 
 #include <sandbox/render_passes/gbuffer.hpp>
+#include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
-#include <sandbox/sandbox_render_settings.hpp>
 
 BenzinEnableUnaryPlusForEnum(joint::GeometryResources);
 BenzinEnableUnaryPlusForEnum(joint::MeshletConsts);

@@ -8,6 +8,16 @@
 namespace benzin
 {
 
+    static void DrawRightAlignedText(const char* text)
+    {
+        const float availWidth = ImGui::GetContentRegionAvail().x;
+        const float textWidth = ImGui::CalcTextSize(text).x;
+        const float padding = ImGui::GetStyle().ItemSpacing.x;
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availWidth - textWidth - padding);
+        ImGui::TextUnformatted(text);
+    }
+
     static uint32_t DrawEventRow(std::span<const ProfileEvent> events, uint32_t eventIndex, bool isOpen)
     {
         if (!isOpen)
@@ -30,7 +40,7 @@ namespace benzin
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
 
-        const std::string eventTime = std::format("{:.4f} ms", benzin::ToFloatMs(event.Us));
+        const std::string eventTime = std::format("{:.3f} ms", benzin::ToFloatMs(event.Us));
 
         if (!event.IsParent)
         {
@@ -40,14 +50,14 @@ namespace benzin
             ImGui::TreeNodeEx((void*)(intptr_t)eventIndex, treeFlags, event.Name);
 
             ImGui::TableNextColumn();
-            ImGui::Text(eventTime.c_str());
+            DrawRightAlignedText(eventTime.c_str());
         }
         else
         {
             isOpen = ImGui::TreeNodeEx((void*)(intptr_t)eventIndex, treeFlags, event.Name);
 
             ImGui::TableNextColumn();
-            ImGui::Text(eventTime.c_str());
+            DrawRightAlignedText(eventTime.c_str());
 
             while (eventIndex < events.size() && event.Depth < events[eventIndex].Depth)
             {
@@ -135,7 +145,7 @@ namespace benzin
     // ProfilerTool
 
     ProfilerTool::ProfilerTool()
-        : ProfilerToolBase{ "Profiler" }
+        : ProfilerToolBase{ "Engine/Profiler" }
     {}
 
     std::span<const ProfileEvent> ProfilerTool::GetSortedEvents() const
@@ -146,7 +156,7 @@ namespace benzin
     // GpuProfilerTool
 
     GpuProfilerTool::GpuProfilerTool(const GpuProfiler& gpuProfiler)
-        : ProfilerToolBase{ "GpuProfiler" }
+        : ProfilerToolBase{ "Graphics/GpuProfiler" }
         , m_GpuProfiler{ gpuProfiler }
     {}
 

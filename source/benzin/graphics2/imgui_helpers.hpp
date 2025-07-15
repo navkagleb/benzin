@@ -1,22 +1,34 @@
 #pragma once
 
-using ImGui_DrawCallback = std::function<void()>;
-
-bool ImGui_MainCollapsingHeader(std::string_view name, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None);
-void ImGui_CollapsingHeaderWithIndent(std::string_view name, const ImGui_DrawCallback& callback, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None);
-
-void ImGui_WarningBox(std::string_view text, std::string_view id);
-
-template <typename T>
-static bool ImGui_SelectComboName(void* data, int index, const char** outName)
+namespace ImGui
 {
-    const auto& names = *(T*)data;
 
-    if (index < 0 || index >= names.size())
+    using DrawCallback = std::function<void()>;
+
+    template <typename... Args>
+    void FmtText(std::format_string<Args...> fmt, Args&&... args)
     {
-        return false;
+        const std::string text = std::format(fmt, std::forward<Args>(args)...);
+        ::ImGui::Text(text.c_str());
     }
 
-    *outName = names[index].data();
-    return true;
-};
+    template <typename T>
+    static bool SelectComboName(void* data, int index, const char** outName)
+    {
+        const auto& names = *(T*)data;
+
+        if (index < 0 || index >= names.size())
+        {
+            return false;
+        }
+
+        *outName = names[index].data();
+        return true;
+    };
+
+    void WarningBox(std::string_view text, std::string_view id);
+
+    bool MainCollapsingHeader(std::string_view name, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None);
+    void CollapsingHeaderWithIndent(std::string_view name, const DrawCallback& callback, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None);
+
+}

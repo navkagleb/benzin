@@ -31,7 +31,7 @@ namespace benzin
         ImGui::Combo(
             "Texture",
             &textureNameIndex,
-            ImGui_SelectComboName<decltype(textureNames)>,
+            ImGui::SelectComboName<decltype(textureNames)>,
             (void*)&textureNames,
             (int)textureNames.size() - 1
         );
@@ -49,7 +49,7 @@ namespace benzin
     //
 
     TextureViewerTool::TextureViewerTool(const RenderResources& resources)
-        : ImGuiTool{ "TextureViewer", magic_enum::enum_name(g_ToggleVisibilityKeyCode) }
+        : ImGuiTool{ "Debug/TextureViewer", magic_enum::enum_name(g_ToggleVisibilityKeyCode) }
         , m_Resources{ resources }
     {
         m_IsChannelActive[+ColorChannel::R] = true;
@@ -99,12 +99,12 @@ namespace benzin
 
         ImGui::Checkbox("Full Viewport Preview", &m_IsFullViewportPreview);
 
-        ImGui_CollapsingHeaderWithIndent("Texture Config", [this, &texture]
+        ImGui::CollapsingHeaderWithIndent("Texture Config", [this, &texture]
         {
             DrawTextureConfig(texture);
         }, ImGuiTreeNodeFlags_DefaultOpen);
 
-        ImGui_CollapsingHeaderWithIndent("Shader Consts", [this, &texture]
+        ImGui::CollapsingHeaderWithIndent("Shader Consts", [this, &texture]
         {
             DrawChannelCheckbox("R", ImVec4{ 1.0f, 0.0f, 0.0f, 1.0f }, ImVec4{ 1.0f, 0.0f, 0.0f, 0.8f }, ColorChannel::R);
             DrawChannelCheckbox("G", ImVec4{ 0.0f, 1.0f, 0.0f, 1.0f }, ImVec4{ 0.0f, 1.0f, 0.0f, 0.8f }, ColorChannel::G);

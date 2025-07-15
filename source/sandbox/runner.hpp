@@ -20,7 +20,6 @@ namespace benzin
     class RenderPass;
     class RenderResources;
     class RenderSettings;
-    class RenderSettingsTool;
     class RenderViewportTool;
     class Scene;
     class ShaderManager;
@@ -90,7 +89,6 @@ namespace sandbox
 
         std::unique_ptr<benzin::ImGuiManager> m_ImGuiManager;
         benzin::RenderViewportTool* m_RenderViewportTool = nullptr;
-        benzin::RenderSettingsTool* m_RenderSettingsTool = nullptr;
         benzin::TextureViewerTool* m_TextureViewerTool = nullptr;
 
         bool m_IsRunning = true;

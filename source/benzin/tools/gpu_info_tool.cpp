@@ -47,7 +47,7 @@ namespace benzin
     //
 
     GpuInfoTool::GpuInfoTool(const Backend& backend)
-        : ImGuiTool{ "GpuInfo" }
+        : ImGuiTool{ "Graphics/GpuInfo" }
         , m_Backend{ backend }
     {}
 
@@ -60,7 +60,7 @@ namespace benzin
             const AdapterInfo& info = m_Backend.GetAdapterInfo(i);
             const AdapterMemoryInfo memoryInfo = m_Backend.GetAdapterMemoryInfo(i);
 
-            ImGui_CollapsingHeaderWithIndent(
+            ImGui::CollapsingHeaderWithIndent(
                 info.Name,
                 [&info, &memoryInfo] { DrawGpuInfo(info, memoryInfo); },
                 m_Backend.GetMainAdapterIndex() == i ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None

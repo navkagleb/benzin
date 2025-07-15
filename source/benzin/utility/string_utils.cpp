@@ -82,4 +82,25 @@ namespace benzin
         });
     }
 
-} // namespace benzin
+    std::vector<std::string_view> SplitStringView(std::string_view str, char delimiter)
+    {
+        std::vector<std::string_view> result;
+        size_t offset = 0;
+
+        while (offset < str.size())
+        {
+            const size_t end = str.find(delimiter, offset);
+            if (end == std::string_view::npos)
+            {
+                result.emplace_back(str.substr(offset));
+                break;
+            }
+
+            result.emplace_back(str.substr(offset, end - offset));
+            offset = end + 1;
+        }
+
+        return result;
+    }
+
+}

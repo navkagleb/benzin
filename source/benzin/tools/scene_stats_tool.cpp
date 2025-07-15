@@ -13,7 +13,7 @@ namespace benzin
 {
 
     SceneStatsTool::SceneStatsTool(const Scene& scene, const RayTracing_Scene& rayTracingScene)
-        : ImGuiTool{ "SceneStatsTool" }
+        : ImGuiTool{ "Engine/SceneStatsTool" }
         , m_Scene{ scene }
         , m_RayTracingScene{ rayTracingScene }
     {}
@@ -29,7 +29,7 @@ namespace benzin
 
     void SceneStatsTool::DrawSceneStats() const
     {
-        if (!ImGui_MainCollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen))
+        if (!ImGui::MainCollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen))
         {
             return;
         }
@@ -75,7 +75,7 @@ namespace benzin
                 mesh.Meshlets.size()
             );
 
-            ImGui_CollapsingHeaderWithIndent(meshHeaderName, [&mesh]
+            ImGui::CollapsingHeaderWithIndent(meshHeaderName, [&mesh]
             {
                 for (const auto& [i, drawRange] : mesh.DrawRanges | std::views::enumerate)
                 {
@@ -87,7 +87,7 @@ namespace benzin
 
     void SceneStatsTool::DrawRayTracingAccelerationStructuresStats() const
     {
-        if (!ImGui_MainCollapsingHeader("RayTracing_AccelerationStructures"))
+        if (!ImGui::MainCollapsingHeader("RayTracing_AccelerationStructures"))
         {
             return;
         }

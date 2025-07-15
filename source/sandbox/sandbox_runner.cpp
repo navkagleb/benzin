@@ -1,5 +1,5 @@
-#include "sandbox/bootstrap.hpp"
-#include "sandbox/sandbox_runner.hpp"
+#include <sandbox/bootstrap.hpp>
+#include <sandbox/sandbox_runner.hpp>
 
 #include <benzin/core/logger.hpp>
 #include <benzin/engine/entity_components.hpp>
@@ -8,26 +8,24 @@
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
-#include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
 #include <benzin/utility/random.hpp>
 
 #include <shaders/joint/mesh_types.hpp>
 
-#include "sandbox/render_passes/deferred_lighting_pass.hpp"
-#include "sandbox/render_passes/environment_pass.hpp"
-#include "sandbox/render_passes/geometry_pass.hpp"
-#include "sandbox/render_passes/global_consts_pass.hpp"
-#include "sandbox/render_passes/procedural_grass_pass.hpp"
-#include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
-#include "sandbox/render_passes/sigma_denoiser_pass.hpp"
-#include "sandbox/render_passes/tlas_building_pass.hpp"
-#include "sandbox/render_passes/tone_mapping_pass.hpp"
-#include "sandbox/resources.hpp"
-#include "sandbox/sandbox_render_settings.hpp"
+#include <sandbox/render_passes/deferred_lighting_pass.hpp>
+#include <sandbox/render_passes/environment_pass.hpp>
+#include <sandbox/render_passes/geometry_pass.hpp>
+#include <sandbox/render_passes/global_consts_pass.hpp>
+#include <sandbox/render_passes/procedural_grass_pass.hpp>
+#include <sandbox/render_passes/ray_tracing_shadow_pass.hpp>
+#include <sandbox/render_passes/sigma_denoiser_pass.hpp>
+#include <sandbox/render_passes/tlas_building_pass.hpp>
+#include <sandbox/render_passes/tone_mapping_pass.hpp>
+#include <sandbox/render_settings.hpp>
+#include <sandbox/resources.hpp>
 
-BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassConsts);
 BenzinEnableUnaryPlusForEnum(joint::ReadbackStat);
 
 namespace sandbox
@@ -159,184 +157,6 @@ namespace sandbox
         }
     }
 
-    static void DrawGBufferSettings(GBufferSettings& settings)
-    {
-        ImGui::Checkbox("Depth pre-pass", &settings.IsDepthPrePassEnabled);
-        ImGui::Checkbox("CPU frustum culling", &settings.IsFrustumCullingEnabled);
-        ImGui::Checkbox("Mesh pipeline", &settings.IsMeshPipelineUsed);
-        ImGui::Checkbox("Meshlet coloring", &settings.IsMeshletColoringEnabled);
-    }
-
-    static void DrawGBufferStats(GBufferStats& stats)
-    {
-        std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
-        BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
-
-        ImGui::Text(BenzinFormatData("Mesh count: {:L} (Max: {:L})", stats.RenderedMeshCount, stats.MeshCount));
-        ImGui::Text(BenzinFormatData("Triangle count: {:L}", stats.RenderedTriangleCount));
-
-        ImGui::Separator();
-        ImGui::Text(BenzinFormatData("DispatchMesh calls: {:L}", stats.DispatchMeshCallCount));
-        ImGui::Text(BenzinFormatData("Meshlets: {:L}", stats.MeshletCount));
-        ImGui::Text(BenzinFormatData("Meshlet vertices: {:L}", stats.MeshletVertexCount));
-        ImGui::Text(BenzinFormatData("Meshlet triangles: {:L}", stats.MeshletTriangleCount));
-    }
-
-    static void DrawProceduralGrassSettings(ProceduralGrassSettings& settings)
-    {
-        ImGui::Checkbox("Enable ### ProceduralGrass", &settings.IsEnabled);
-
-        ImGui::PushItemWidth(150.0f);
-        BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
-
-        ImGui_CollapsingHeaderWithIndent("Amplification", [&settings]
-        {
-            ImGui::Checkbox("GPU frustum culling", &settings.IsFrustumCullingEnabled);
-            ImGui::DragFloat("Patch cull radius", &settings.GrassPatchCullRadius, 0.0001f);
-        });
-
-        ImGui_CollapsingHeaderWithIndent("Mesh", [&settings]
-        {
-            ImGui::DragFloat("Grass end distance", &settings.GrassEndDistance, 0.01f);
-
-            if (ImGui::DragFloat("Spacing in patch (between blades)", &settings.SpacingInGrassPatch, 0.0001f))
-            {
-                settings.SpacingInGrassPatch = std::max(settings.SpacingInGrassPatch, 0.001f);
-            }
-
-            ImGui::DragFloat("Wind direction", &settings.WindDirection, 0.01f, 0.0f, DirectX::XM_2PI);
-            ImGui::DragFloat("Blade width", &settings.BladeWidth, 0.0001f, std::numeric_limits<float>::min());
-        });
-
-        ImGui_CollapsingHeaderWithIndent("Pixel", [&settings]
-        {
-            ImGui::ColorEdit3("Base color", (float*)&settings.BaseColor);
-        });
-    }
-
-    static void DrawProceduralGrassStats(ProceduralGrassStats& stats)
-    {
-        using enum joint::ProceduralGrassConsts;
-
-        std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
-        BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
-
-        ImGui::Text(BenzinFormatData("Patch count: {:L} (Max: {:L})", stats.PatchCount, stats.MaxPatchCount));
-        ImGui::Text(BenzinFormatData("Blade count: {:L} (Max: {:L})", stats.BladeCount, stats.MaxPatchCount * +MaxBladeCountPerPatch));
-        ImGui::Text(BenzinFormatData("Vertex count: {:L}", stats.VertexCount));
-        ImGui::Text(BenzinFormatData("Triangle count: {:L}", stats.TriangleCount));
-    }
-
-    static void DrawRayTracingShadowsSettings(RayTracing_ShadowSettings& settings)
-    {
-        ImGui::PushItemWidth(150.0f);
-        BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
-
-        ImGui::Checkbox("Enable###RayTracingShadows", &settings.IsEnabled);
-
-        ImGui::Checkbox("Use blue noise", &settings.IsBlueNoiseUsed);
-        ImGui::Checkbox("Animate noise", &settings.IsNoiseAnimated);
-
-        ImGui::Checkbox("Freeze blue noise depth", &settings.IsBlueNoiseDepthFreezed);
-
-        ImGui::BeginDisabled();
-        auto tempBlueNoiseDepthIndex = (int)settings.BlueNoiseDepthIndex;
-        ImGui::SliderInt("Blue noise depth index", &tempBlueNoiseDepthIndex, 0, settings.BlueNoiseDepth - 1);
-        ImGui::EndDisabled();
-    }
-
-    static void DrawSigmaDenoiserSettings(SigmaDenoiserSettings& settings)
-    {
-        ImGui::PushItemWidth(150.0f);
-        BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
-
-        ImGui::Checkbox("Enable ### SigmaDenoiser", &settings.IsEnabled);
-        ImGui::Checkbox("Clear pass", &settings.IsClearEnabled);
-
-        ImGui_CollapsingHeaderWithIndent("Classification", [&settings]
-        {
-            ImGui::Checkbox("Tile smoothing", &settings.IsTileSmoothingEnabled);
-        });
-
-        ImGui_CollapsingHeaderWithIndent("Blur", [&settings]
-        {
-            ImGui::Checkbox("Post blur pass", &settings.IsPostBlurEnabled);
-
-            ImGui::DragFloat("Plane distance sensitivity %", &settings.PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
-        });
-
-        ImGui_CollapsingHeaderWithIndent("Temporal stabilization", [&settings]
-        {
-            ImGui::Checkbox("Temporal stabilization pass", &settings.IsTemporalStabilizationEnabled);
-
-            ImGui::BeginDisabled(true);
-            ImGui::SliderInt("History length", (int*)&settings.HistoryLength, 0, settings.MaxHistoryLength, "%d", ImGuiSliderFlags_NoInput);
-            ImGui::DragFloat("Stabilization strength", &settings.StabilizationStrength);
-            ImGui::EndDisabled();
-
-            ImGui::DragFloat("Disocclusion threshold %", &settings.DisocclusionThreshold, 0.0001f, 0.0f, 0.2f);
-        });
-    }
-
-    static void DrawToneMappingSettings(ToneMappingSettings& settings)
-    {
-        ImGui::PushItemWidth(120.0f);
-        BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
-
-        ImGui::Checkbox("Enable ### ToneMapping", &settings.IsToneMappingEnabled);
-
-        ImGui_CollapsingHeaderWithIndent("Luminance Histogram", [&settings]
-        {
-            auto& luminanceHistogram = settings.LuminanceHistogram;
-
-            if (ImGui::DragFloat("Min log luminance", &luminanceHistogram.MinLogLuminance))
-            {
-                luminanceHistogram.MinLogLuminance = std::clamp(
-                    luminanceHistogram.MinLogLuminance,
-                    luminanceHistogram.MinLogLuminance,
-                    luminanceHistogram.MaxLogLuminance
-                );
-            }
-
-            if (ImGui::DragFloat("Max log luminance", &luminanceHistogram.MaxLogLuminance))
-            {
-                luminanceHistogram.MaxLogLuminance = std::clamp(
-                    luminanceHistogram.MaxLogLuminance,
-                    luminanceHistogram.MinLogLuminance,
-                    luminanceHistogram.MaxLogLuminance
-                );
-            }
-
-            ImGui::InputFloat("Tau", &luminanceHistogram.Tau);
-        });
-
-        ImGui_CollapsingHeaderWithIndent("PBR Camera", [&settings]
-        {
-            auto& pbrCamera = settings.PbrCamera;
-
-            ImGui::Checkbox("Auto exposure", &settings.IsAutoExposureUsed);
-
-            ImGui::DragFloat("Aperture (in f-stops)", &pbrCamera.Aperture, 0.001f);
-            ImGui::DragFloat("Shutter speed (in sec)", &pbrCamera.ShutterSpeed, 0.001f);
-            ImGui::DragFloat("Sensor sensitivity (in ISO)", &pbrCamera.Iso, 0.01f);
-        });
-
-        ImGui_CollapsingHeaderWithIndent("Tone Mapping", [&settings]
-        {
-            ImGui::Checkbox("Accurate gamma correction", &settings.IsAccurateGammaCorrectionUsed);
-
-            static const auto toneReproductionTransformNames = magic_enum::enum_names<joint::ToneReproductionTransform>();
-
-            ImGui::Combo(
-                "Tone reproduction transform",
-                (int*)&settings.ToneReproductionTransform,
-                ImGui_SelectComboName<decltype(toneReproductionTransformNames)>,
-                (void*)&toneReproductionTransformNames,
-                (int)toneReproductionTransformNames.size()
-            );
-        });
-    }
-
     //
 
     void SandboxRunner::InitRenderPasses()
@@ -376,14 +196,13 @@ namespace sandbox
 
     void SandboxRunner::InitTools()
     {
-        BenzinAssert(m_RenderSettingsTool != nullptr);
-        m_RenderSettingsTool->RegisterSectionDrawCallback<GBufferSettings>(DrawGBufferSettings, ImGuiTreeNodeFlags_DefaultOpen);
-        m_RenderSettingsTool->RegisterSectionDrawCallback<GBufferStats>(DrawGBufferStats, ImGuiTreeNodeFlags_DefaultOpen);
-        m_RenderSettingsTool->RegisterSectionDrawCallback<ProceduralGrassSettings>(DrawProceduralGrassSettings, ImGuiTreeNodeFlags_DefaultOpen);
-        m_RenderSettingsTool->RegisterSectionDrawCallback<ProceduralGrassStats>(DrawProceduralGrassStats, ImGuiTreeNodeFlags_DefaultOpen);
-        m_RenderSettingsTool->RegisterSectionDrawCallback<RayTracing_ShadowSettings>(DrawRayTracingShadowsSettings, ImGuiTreeNodeFlags_DefaultOpen);
-        m_RenderSettingsTool->RegisterSectionDrawCallback<SigmaDenoiserSettings>(DrawSigmaDenoiserSettings, ImGuiTreeNodeFlags_DefaultOpen);
-        m_RenderSettingsTool->RegisterSectionDrawCallback<ToneMappingSettings>(DrawToneMappingSettings, ImGuiTreeNodeFlags_DefaultOpen);
+        m_ImGuiManager->PushTool<SettingsTool<GBufferSettings>>("Settings/GBuffer", m_RenderSettings->GetSection<GBufferSettings>());
+        m_ImGuiManager->PushTool<SettingsTool<GBufferStats>>("Settings/GBufferStats", m_RenderSettings->GetSection<GBufferStats>());
+        m_ImGuiManager->PushTool<SettingsTool<ProceduralGrassSettings>>("Settings/ProceduralGrass", m_RenderSettings->GetSection<ProceduralGrassSettings>());
+        m_ImGuiManager->PushTool<SettingsTool<ProceduralGrassStats>>("Settings/ProceduralGrassStats", m_RenderSettings->GetSection<ProceduralGrassStats>());
+        m_ImGuiManager->PushTool<SettingsTool<RayTracing_ShadowSettings>>("Settings/RayTracing_Shadow", m_RenderSettings->GetSection<RayTracing_ShadowSettings>());
+        m_ImGuiManager->PushTool<SettingsTool<SigmaDenoiserSettings>>("Settings/SigmaDenoiser", m_RenderSettings->GetSection<SigmaDenoiserSettings>());
+        m_ImGuiManager->PushTool<SettingsTool<ToneMappingSettings>>("Settings/ToneMapping", m_RenderSettings->GetSection<ToneMappingSettings>());
     }
 
     void SandboxRunner::InitScene()

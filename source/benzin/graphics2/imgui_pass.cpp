@@ -34,10 +34,22 @@ namespace benzin
 
     static const auto g_ToolsVisiblityPath = std::filesystem::absolute("bin/tools_visiblity.txt");
 
+    static std::string_view GetToolDisplayName(std::string_view fullPath)
+    {
+        const size_t lastSlash = fullPath.find_last_of('/');
+
+        if (lastSlash == std::string_view::npos)
+        {
+            return fullPath;
+        }
+
+        return fullPath.substr(lastSlash + 1);
+    }
+
     // ImGuiTool
 
-    ImGuiTool::ImGuiTool(std::string_view name, std::string_view shortcut)
-        : m_Name{ name }
+    ImGuiTool::ImGuiTool(std::string_view path, std::string_view shortcut)
+        : m_Path{ path }
         , m_Shortcut{ shortcut }
     {}
 
@@ -48,7 +60,8 @@ namespace benzin
 
     void ImGuiTool::DrawWindow(ImGuiWindowFlags flags)
     {
-        if (ImGui::Begin(m_Name.data(), &m_IsVisible, flags))
+        const std::string_view toolName = GetToolDisplayName(m_Path);
+        if (ImGui::Begin(toolName.data(), &m_IsVisible, flags))
         {
             DrawWindowContent();
         }
@@ -174,7 +187,7 @@ namespace benzin
         }
     }
 
-    void ImGuiManager::AddDrawMenuCallback(ImGui_DrawCallback&& callback)
+    void ImGuiManager::AddDrawMenuCallback(ImGui::DrawCallback&& callback)
     {
         m_DrawMenuCallbacks.push_back(std::move(callback));
     }
@@ -236,36 +249,67 @@ namespace benzin
 
     void ImGuiManager::DrawManuBar()
     {
-        ImGui::BeginMenuBar();
+        if (!ImGui::BeginMenuBar())
         {
-            if (ImGui::BeginMenu("Tools"))
-            {
-                for (auto& tool : m_Tools)
-                {
-                    ImGui::MenuItem(tool->m_Name.data(), tool->m_Shortcut.data(), &tool->m_IsVisible);
-                }
-
-                ImGui::Separator();
-
-                if (ImGui::MenuItem("ImGuiDemoWindow", "O", m_IsImGuiDemoWindowVisible))
-                {
-                    ToggleImGuiDemoWindow();
-                }
-
-                if (ImGui::MenuItem("UiDraw", "F1", m_IsUiDrawEnabled))
-                {
-                    ToggleUiDraw();
-                }
-
-                ImGui::EndMenu();
-            }
-
-            for (const auto& drawMenuCallback : m_DrawMenuCallbacks)
-            {
-                drawMenuCallback();
-            }
+            return;
         }
+
+        if (ImGui::BeginMenu("Benzin"))
+        {
+            if (ImGui::MenuItem("ImGuiDemoWindow", "O", m_IsImGuiDemoWindowVisible))
+            {
+                ToggleImGuiDemoWindow();
+            }
+
+            if (ImGui::MenuItem("UiDraw", "F1", m_IsUiDrawEnabled))
+            {
+                ToggleUiDraw();
+            }
+
+            ImGui::EndMenu();
+        }
+
+        for (const auto& drawMenuCallback : m_DrawMenuCallbacks)
+        {
+            drawMenuCallback();
+        }
+
+        for (ImGuiTool* tool : m_Tools)
+        {
+            const std::vector<std::string_view> pathParts = SplitStringView(tool->m_Path, '/');
+            DrawToolMenuPath(tool, pathParts);
+        }
+
         ImGui::EndMenuBar();
+    }
+
+    void ImGuiManager::DrawToolMenuPath(ImGuiTool* tool, std::span<const std::string_view> pathParts, uint32_t depth)
+    {
+        if (pathParts.empty())
+        {
+            return;
+        }
+
+        // TODO: Hack for non null-terminated std::string_view
+        constexpr size_t maxPartSize = 32;
+
+        char partBuffer[maxPartSize];
+        const size_t partSize = std::min(pathParts[depth].size(), maxPartSize - 1);
+
+        std::memcpy(partBuffer, pathParts[depth].data(), partSize);
+        partBuffer[partSize] = '\0';
+
+        if (depth + 1 == pathParts.size())
+        {
+            ImGui::MenuItem(partBuffer, tool->m_Shortcut.data(), &tool->m_IsVisible);
+            return;
+        }
+
+        if (ImGui::BeginMenu(partBuffer))
+        {
+            DrawToolMenuPath(tool, pathParts, depth + 1);
+            ImGui::EndMenu();
+        }
     }
 
     void ImGuiManager::ToggleImGuiDemoWindow()
@@ -287,7 +331,7 @@ namespace benzin
 
         for (const auto* tool : m_Tools)
         {
-            m_IsToolVisibleMap[tool->m_Name.data()] = tool->m_IsVisible;
+            m_IsToolVisibleMap[tool->m_Path.data()] = tool->m_IsVisible;
         }
 
         std::ofstream file{ g_ToolsVisiblityPath };
@@ -406,6 +450,12 @@ namespace benzin
         }
 
         const ImDrawData& imDrawData = m_ImGuiManager.GetImDrawData();
+
+        RenderPass::m_IsRenderingEnabled = imDrawData.DisplaySize[0] != 0.0f && imDrawData.DisplaySize[1] != 0.0f;
+        if (!m_IsRenderingEnabled)
+        {
+            return;
+        }
 
         UpdateConsts(imDrawData);
         UpdateVertexAndIndexBuffers(imDrawData);
@@ -532,7 +582,7 @@ namespace benzin
 
         int globalVertexOffset = 0;
         int globalIndexOffset = 0;
-        for (int cmdListIndex = 0; cmdListIndex < imDrawData.CmdListsCount; cmdListIndex++)
+        for (int cmdListIndex = 0; cmdListIndex < imDrawData.CmdListsCount; ++cmdListIndex)
         {
             const ImDrawList* imCmdList = imDrawData.CmdLists[cmdListIndex];
             BenzinAssert(imCmdList != nullptr);

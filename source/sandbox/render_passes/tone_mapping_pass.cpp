@@ -11,7 +11,7 @@
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
-#include <sandbox/sandbox_render_settings.hpp>
+#include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
 BenzinEnableUnaryPlusForEnum(joint::CalcLuminanceHistogramResources);

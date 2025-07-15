@@ -13,7 +13,7 @@ namespace benzin
 {
 
     RenderViewportTool::RenderViewportTool(RenderResources& resources, TextureViewerTool& textureViewerTool, Camera& camera)
-        : ImGuiTool{ "RenderViewport" }
+        : ImGuiTool{ "Graphics/RenderViewport" }
         , m_Resources{ resources }
         , m_TextureViewerTool{ textureViewerTool }
         , m_FlyCameraController{ camera }

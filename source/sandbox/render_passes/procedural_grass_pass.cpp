@@ -17,8 +17,8 @@
 #include <benzin/utility/random.hpp>
 
 #include <sandbox/render_passes/gbuffer.hpp>
+#include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
-#include <sandbox/sandbox_render_settings.hpp>
 
 BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassResources);
 BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassConsts);

@@ -1,5 +1,5 @@
-#include "sandbox/bootstrap.hpp"
-#include "sandbox/render_passes/environment_pass.hpp"
+#include <sandbox/bootstrap.hpp>
+#include <sandbox/render_passes/environment_pass.hpp>
 
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/mesh.hpp>
@@ -12,8 +12,8 @@
 
 #include <shaders/joint/environment_resources.hpp>
 
-#include "sandbox/resources.hpp"
-#include "sandbox/sandbox_render_settings.hpp"
+#include <sandbox/render_settings.hpp>
+#include <sandbox/resources.hpp>
 
 BenzinEnableUnaryPlusForEnum(joint::EnvironmentResources);
 BenzinEnableUnaryPlusForEnum(joint::EquirectangularToCubeResources);

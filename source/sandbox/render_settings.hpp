@@ -1,5 +1,7 @@
 #pragma once
 
+#include <benzin/graphics2/imgui_pass.hpp>
+
 #include <shaders/joint/tone_mapping_resources.hpp>
 
 namespace sandbox
@@ -7,11 +9,10 @@ namespace sandbox
 
     struct GBufferStats
     {
-        uint32_t MeshCount = 0;
-        uint32_t RenderedMeshCount = 0;
-        uint32_t RenderedTriangleCount = 0;
+        uint32_t TotalMeshletCount = 0;
+        uint32_t TotalMeshletVertexCount = 0;
+        uint32_t TotalMeshletTriangleCount = 0;
 
-        uint32_t DispatchMeshCallCount = 0;
         uint32_t MeshletCount = 0;
         uint32_t MeshletVertexCount = 0;
         uint32_t MeshletTriangleCount = 0;
@@ -27,10 +28,11 @@ namespace sandbox
 
         static constexpr auto s_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
 
-        bool IsDepthPrePassEnabled = true;
-        bool IsFrustumCullingEnabled = true;
+        bool IsDepthPrePassEnabled = false;
+        bool IsCpuFrustumCullingEnabled = true;
         bool IsMeshPipelineUsed = true;
-        bool IsMeshletColoringEnabled = false;
+        bool IsMeshletColoringEnabled = true;
+        bool IsGpuFrustumCullingEnabled = true;
     };
 
     struct ProceduralGrassStats
@@ -45,7 +47,7 @@ namespace sandbox
 
     struct ProceduralGrassSettings
     {
-        bool IsEnabled = true;
+        bool IsEnabled = false;
         bool IsFrustumCullingEnabled = true;
 
         float GrassPatchCullRadius = 0.1f;
@@ -58,7 +60,7 @@ namespace sandbox
 
     struct RayTracing_ShadowSettings
     {
-        bool IsEnabled = true;
+        bool IsEnabled = false;
 
         bool IsBlueNoiseUsed = true;
         bool IsNoiseAnimated = true;
@@ -114,5 +116,26 @@ namespace sandbox
 
         joint::ToneReproductionTransform ToneReproductionTransform = joint::ToneReproductionTransform::AcesFilm;
     };
+
+    template <typename SettingsT>
+    class SettingsTool : public benzin::ImGuiTool
+    {
+    public:
+        SettingsTool(std::string_view path, SettingsT& settings)
+            : benzin::ImGuiTool{ path }
+            , m_Settings{ settings }
+        {}
+
+        void DrawWindowContent() override
+        {
+            DrawSettings(m_Settings);
+        }
+
+    private:
+        SettingsT& m_Settings;
+    };
+
+    template <typename SettingsT>
+    void DrawSettings(SettingsT& settings);
 
 }

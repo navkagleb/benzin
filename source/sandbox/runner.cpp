@@ -26,7 +26,6 @@
 #include <benzin/tools/gpu_info_tool.hpp>
 #include <benzin/tools/performance_overlay_tool.hpp>
 #include <benzin/tools/profiler_tools.hpp>
-#include <benzin/tools/render_settings_tool.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
 #include <benzin/tools/scene_stats_tool.hpp>
 #include <benzin/tools/scene_tool.hpp>
@@ -82,7 +81,6 @@ namespace sandbox
             benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device, m_FrameTimer);
 
             m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderResources);
-            m_RenderSettingsTool = m_ImGuiManager->PushTool<benzin::RenderSettingsTool>(*m_RenderSettings);
             m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderResources, *m_TextureViewerTool, m_Scene->GetCamera());
             m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Backend, *m_Device, *m_ShaderManager, *m_RenderViewportTool);
 

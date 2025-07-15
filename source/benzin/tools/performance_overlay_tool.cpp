@@ -23,7 +23,7 @@ namespace benzin
         const ShaderManager& shaderManager,
         const RenderViewportTool& renderViewportTool
     )
-        : ImGuiTool{ "PerformanceOverlay" }
+        : ImGuiTool{ "Debug/PerformanceOverlay" }
         , m_Window{ window }
         , m_Backend{ backend }
         , m_Device{ device }

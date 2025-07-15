@@ -13,8 +13,8 @@
 
 #include <shaders/joint/deferred_lighting_resources.hpp>
 
-#include "sandbox/resources.hpp"
-#include "sandbox/sandbox_render_settings.hpp"
+#include <sandbox/render_settings.hpp>
+#include <sandbox/resources.hpp>
 
 BenzinEnableUnaryPlusForEnum(joint::DeferredLightingResources);
 

@@ -53,7 +53,7 @@ namespace benzin
         ImGui::Spacing();
         ImGui::Text(tableName);
 
-        ImGui_WarningBox("NOTE: The frustum planes are directed outside the frustum", tableName);
+        ImGui::WarningBox("NOTE: The frustum planes are directed outside the frustum", tableName);
 
         const auto flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
         if (ImGui::BeginTable("FrustumTable", 5, flags))
@@ -84,7 +84,7 @@ namespace benzin
     //
 
     FlyCameraTool::FlyCameraTool(RenderViewportTool& renderViewportTool)
-        : ImGuiTool{ "FlyCameraTool" }
+        : ImGuiTool{ "Engine/FlyCameraTool" }
         , m_Controller{ renderViewportTool.m_FlyCameraController }
     {}
 
@@ -97,7 +97,7 @@ namespace benzin
 
     void FlyCameraTool::DrawControllerProperties()
     {
-        if (!ImGui_MainCollapsingHeader("Controller Props"))
+        if (!ImGui::MainCollapsingHeader("Controller Props"))
         {
             return;
         }
@@ -108,7 +108,7 @@ namespace benzin
 
     void FlyCameraTool::DrawViewProperties()
     {
-        if (!ImGui_MainCollapsingHeader("View Props", ImGuiTreeNodeFlags_DefaultOpen))
+        if (!ImGui::MainCollapsingHeader("View Props", ImGuiTreeNodeFlags_DefaultOpen))
         {
             return;
         }
@@ -147,7 +147,7 @@ namespace benzin
 
     void FlyCameraTool::DrawProjectionProperties()
     {
-        if (!ImGui_MainCollapsingHeader("Projection Props", ImGuiTreeNodeFlags_DefaultOpen))
+        if (!ImGui::MainCollapsingHeader("Projection Props", ImGuiTreeNodeFlags_DefaultOpen))
         {
             return;
         }

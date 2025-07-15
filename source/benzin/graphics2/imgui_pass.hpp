@@ -19,10 +19,9 @@ namespace benzin
     public:
         friend class ImGuiManager;
 
-        ImGuiTool(std::string_view name, std::string_view shortcut = {});
+        ImGuiTool(std::string_view path, std::string_view shortcut = {});
         virtual ~ImGuiTool() = default;
 
-    public:
         virtual void OnEvent(Event& event) { BenzinUnused(event); };
         virtual void DrawWindow();
 
@@ -35,7 +34,7 @@ namespace benzin
         static inline const Window* ms_Window = nullptr;
         static inline const TickTimer* ms_FrameTimer = nullptr; // TODO: Ugly solution
 
-        std::string_view m_Name;
+        std::string_view m_Path;
         std::string_view m_Shortcut;
         bool m_IsVisible = false;
 
@@ -62,15 +61,15 @@ namespace benzin
         T* PushTool(Args&&... args)
         {
             auto* tool = new T{ std::forward<Args>(args)... };
-            tool->m_IsVisible = m_IsToolVisibleMap[tool->m_Name.data()];
+            tool->m_IsVisible = m_IsToolVisibleMap[tool->m_Path.data()];
 
             m_Tools.push_back(tool);
-            std::ranges::sort(m_Tools, {}, &ImGuiTool::m_Name);
+            std::ranges::sort(m_Tools, {}, &ImGuiTool::m_Path);
 
             return tool;
         }
 
-        void AddDrawMenuCallback(ImGui_DrawCallback&& callback);
+        void AddDrawMenuCallback(ImGui::DrawCallback&& callback);
 
     private:
         const ImDrawData& GetImDrawData() const { BenzinAssert(m_CurrentImGuiDrawData != nullptr); return *m_CurrentImGuiDrawData; }
@@ -78,6 +77,7 @@ namespace benzin
         void DrawDockSpace();
         void DrawDockSpaceContent();
         void DrawManuBar();
+        void DrawToolMenuPath(ImGuiTool* tool, std::span<const std::string_view> pathParts, uint32_t depth = 0);
 
         void ToggleImGuiDemoWindow();
         void ToggleUiDraw();
@@ -91,7 +91,7 @@ namespace benzin
         std::unordered_map<std::string, bool> m_IsToolVisibleMap; // TODO: can std::string_view be used instead of std::string
 
         std::vector<ImGuiTool*> m_Tools;
-        std::vector<ImGui_DrawCallback> m_DrawMenuCallbacks;
+        std::vector<ImGui::DrawCallback> m_DrawMenuCallbacks;
 
         bool m_IsImGuiDemoWindowVisible = false;
         bool m_IsUiDrawEnabled = true;
