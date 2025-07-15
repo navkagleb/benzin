@@ -12,7 +12,7 @@ namespace joint
 
     enum class ImGuiSamplerIndex : uint
     {
-        Point,
+        Point = 1, // NOTE: To reserve 0 as an invalid value for ImDrawCmd::TextureId, so that ImGuiPass::PackImTextureId always returns at least 1.
         Linear,
     };
 
