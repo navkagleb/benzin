@@ -92,14 +92,13 @@ namespace benzin
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0.0f, 0.0f });
 
-        ImGui::Text(BenzinFormatData("Window: {} x {}", m_Window.GetWidth(), m_Window.GetHeight()));
-        ImGui::Text(BenzinFormatData("Viewport: {} x {} {}", m_RenderViewportTool.GetWidth(), m_RenderViewportTool.GetHeight(), m_RenderViewportTool.IsValidForRendering() ? '+' : '-'));
-        ImGui::Text(BenzinFormatData("{}", m_Backend.GetMainAdapterInfo().Name));
-        ImGui::Text(BenzinFormatData("Cpu: {}, Gpu: {}, Frame: {}", m_Device.GetCpuFrameIndex(), m_Device.GetCompletedGpuFrameIndex(), m_Device.GetActiveFrameIndex()));
-        ImGui::Text(BenzinFormatData("FrameDelay: {}", m_Device.GetCpuFrameIndex() - m_Device.GetCompletedGpuFrameIndex()));
-        ImGui::Text(BenzinFormatData("Local VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.ProcessUsedVramInBytes), ToMb(adapterMemoryInfo.VramOsBudgetInBytes)));
-        ImGui::Text(BenzinFormatData("Host RAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.ProcessUsedSharedRamInBytes), ToMb(adapterMemoryInfo.SharedRamOsBudgetInBytes)));
+        ImGui::FmtText("Window: {} x {}", m_Window.GetWidth(), m_Window.GetHeight());
+        ImGui::FmtText("Viewport: {} x {} {}", m_RenderViewportTool.GetWidth(), m_RenderViewportTool.GetHeight(), m_RenderViewportTool.IsValidForRendering() ? '+' : '-');
+        ImGui::FmtText("{}", m_Backend.GetMainAdapterInfo().Name);
         ImGui::FmtText("FPS: {:.1f} ({:.3f} ms)", m_AvgFps, m_AvgDeltaTimeInMs);
+        ImGui::NewLine();
+        ImGui::FmtText("Local VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.UsedLocalVramInBytes), ToMb(adapterMemoryInfo.LocalVramBudgetInBytes));
+        ImGui::FmtText("Host VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.UsedHostVramInBytes), ToMb(adapterMemoryInfo.HostVramBudgetInBytes));
 
         if (CmdLineArgs::IsGpuValidationEnabled())
         {

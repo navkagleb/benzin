@@ -13,33 +13,33 @@ namespace benzin
         ImGui::BulletText(name);
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Text, orangeColor);
-        ImGui::Text(BenzinFormatData("{:.2f}", mb));
+        ImGui::FmtText("{:.2f}", mb);
         ImGui::PopStyleColor();
     }
 
     static void DrawGpuInfo(const AdapterInfo& info, const AdapterMemoryInfo& memoryInfo)
     {
         {
-            ImGui::SeparatorText("VRAM (in MB)");
+            ImGui::SeparatorText("Local VRAM (in MB)");
 
-            DrawColoredBulletText("Used by process:", ToMb(memoryInfo.ProcessUsedVramInBytes));
+            DrawColoredBulletText("Used by process:", ToMb(memoryInfo.UsedLocalVramInBytes));
             DrawColoredBulletText("Available in system (vendor specific):", ToMb(memoryInfo.AvailableVramInBytes));
 
             ImGui::BeginDisabled();
-            ImGui::BulletText(BenzinFormatData("Total: {:.2f}", ToMb(info.TotalVramInBytes)));
-            ImGui::BulletText(BenzinFormatData("OS Budget: {:.2f}", ToMb(memoryInfo.VramOsBudgetInBytes)));
-            ImGui::BulletText(BenzinFormatData("Available relative to OS Budget (vendor specific): {:.2f}", ToMb(memoryInfo.AvailableVramRelativeToOsBudgetInBytes)));
+            ImGui::FmtBulletText("Total: {:.2f}", ToMb(info.TotalVramInBytes));
+            ImGui::FmtBulletText("OS Budget: {:.2f}", ToMb(memoryInfo.LocalVramBudgetInBytes));
+            ImGui::FmtBulletText("Available relative to OS Budget (vendor specific): {:.2f}", ToMb(memoryInfo.AvailableVramRelativeToOsBudgetInBytes));
             ImGui::EndDisabled();
         }
 
         {
-            ImGui::SeparatorText("Shared RAM (in MB)");
+            ImGui::SeparatorText("Host VRAM (in MB)");
 
-            DrawColoredBulletText("Used by process:", ToMb(memoryInfo.ProcessUsedSharedRamInBytes));
+            DrawColoredBulletText("Used by process:", ToMb(memoryInfo.UsedHostVramInBytes));
 
             ImGui::BeginDisabled();
-            ImGui::BulletText(BenzinFormatData("Total: {:.2f}", ToMb(info.TotalSharedRamInBytes)));
-            ImGui::BulletText(BenzinFormatData("OS Budget: {:.2f}", ToMb(memoryInfo.SharedRamOsBudgetInBytes)));
+            ImGui::FmtBulletText("Total: {:.2f}", ToMb(info.TotalSharedRamInBytes));
+            ImGui::FmtBulletText("OS Budget: {:.2f}", ToMb(memoryInfo.HostVramBudgetInBytes));
             ImGui::EndDisabled();
         }
     }
@@ -67,6 +67,5 @@ namespace benzin
             );
         }
     }
-
 
 }

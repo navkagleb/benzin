@@ -29,11 +29,11 @@ namespace benzin
     struct AdapterMemoryInfo
     {
         // Query from DXGI
-        uint64_t VramOsBudgetInBytes = 0;
-        uint64_t ProcessUsedVramInBytes = 0;
+        uint64_t LocalVramBudgetInBytes = 0;
+        uint64_t UsedLocalVramInBytes = 0;
 
-        uint64_t SharedRamOsBudgetInBytes = 0;
-        uint64_t ProcessUsedSharedRamInBytes = 0;
+        uint64_t HostVramBudgetInBytes = 0;
+        uint64_t UsedHostVramInBytes = 0;
 
         // Query from ADL or NvAPI
         uint64_t TotalUsedVramInBytes = 0;

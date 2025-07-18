@@ -63,8 +63,8 @@ namespace benzin
         if (!CmdLineArgs::IsPixCapturerEnabled())
         {
             const auto adapterMemoryInfo = GetMainAdapterMemoryInfo();
-            BenzinAssert(adapterMemoryInfo.ProcessUsedVramInBytes == 0, "Process used VRAM: {} mb", ToMb(adapterMemoryInfo.ProcessUsedVramInBytes));
-            BenzinAssert(adapterMemoryInfo.ProcessUsedSharedRamInBytes == 0, "Process used Shared Ram: {} mb", ToMb(adapterMemoryInfo.ProcessUsedSharedRamInBytes));
+            BenzinAssert(adapterMemoryInfo.UsedLocalVramInBytes == 0, "Used Local VRAM: {} mb", ToMb(adapterMemoryInfo.UsedLocalVramInBytes));
+            BenzinAssert(adapterMemoryInfo.UsedHostVramInBytes == 0, "Used Host VRAM: {} mb", ToMb(adapterMemoryInfo.UsedHostVramInBytes));
         }
 #endif
 
@@ -120,20 +120,20 @@ namespace benzin
             vendorTotalUsedVramInBytes = NvApiWrapper::GetUsedDedicatedVramInBytes(adapterInfo.DeviceId);
         }
 
-        const uint64_t vramOsBudgetInBytes = d3d12LocalVideoMemoryInfo.Budget;
-        const bool isVendorDataValid = IsGoodUint(vramOsBudgetInBytes);
+        const uint64_t localVramBudgetInBytes = d3d12LocalVideoMemoryInfo.Budget;
+        const bool isVendorDataValid = IsGoodUint(localVramBudgetInBytes);
 
         return AdapterMemoryInfo
         {
-            .VramOsBudgetInBytes = vramOsBudgetInBytes,
-            .ProcessUsedVramInBytes = d3d12LocalVideoMemoryInfo.CurrentUsage,
-            .SharedRamOsBudgetInBytes = d3d12NonLocalVideoMemoryInfo.Budget,
-            .ProcessUsedSharedRamInBytes = d3d12NonLocalVideoMemoryInfo.CurrentUsage,
+            .LocalVramBudgetInBytes = localVramBudgetInBytes,
+            .UsedLocalVramInBytes = d3d12LocalVideoMemoryInfo.CurrentUsage,
+            .HostVramBudgetInBytes = d3d12NonLocalVideoMemoryInfo.Budget,
+            .UsedHostVramInBytes = d3d12NonLocalVideoMemoryInfo.CurrentUsage,
             .TotalUsedVramInBytes = isVendorDataValid ? vendorTotalUsedVramInBytes : 0,
             .AvailableVramInBytes = isVendorDataValid ? adapterInfo.TotalVramInBytes - vendorTotalUsedVramInBytes : 0,
             .AvailableVramRelativeToOsBudgetInBytes =
-                isVendorDataValid && vramOsBudgetInBytes > vendorTotalUsedVramInBytes ?
-                vramOsBudgetInBytes - vendorTotalUsedVramInBytes :
+                isVendorDataValid && localVramBudgetInBytes > vendorTotalUsedVramInBytes ?
+                localVramBudgetInBytes - vendorTotalUsedVramInBytes :
                 0,
         };
     }

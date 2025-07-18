@@ -12,6 +12,20 @@ namespace ImGui
         ::ImGui::Text(text.c_str());
     }
 
+    template <typename... Args>
+    void FmtBulletText(std::format_string<Args...> fmt, Args&&... args)
+    {
+        const std::string text = std::format(fmt, std::forward<Args>(args)...);
+        ::ImGui::BulletText(text.c_str());
+    }
+
+    template <typename... Args>
+    void FmtSeparatorText(std::format_string<Args...> fmt, Args&&... args)
+    {
+        const std::string text = std::format(fmt, std::forward<Args>(args)...);
+        ::ImGui::SeparatorText(text.c_str());
+    }
+
     template <typename T>
     static bool SelectComboName(void* data, int index, const char** outName)
     {
