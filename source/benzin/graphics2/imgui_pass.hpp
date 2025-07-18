@@ -1,9 +1,10 @@
 #pragma once
 
-#include <shaders/joint/imgui_resources.hpp>
-
-#include <benzin/graphics2/render_pass.hpp>
+#include <benzin/core/interval_timer.hpp>
 #include <benzin/graphics2/imgui_helpers.hpp>
+#include <benzin/graphics2/render_pass.hpp>
+
+#include <shaders/joint/imgui_resources.hpp>
 
 namespace benzin
 {
@@ -32,7 +33,7 @@ namespace benzin
 
     protected:
         static inline const Window* ms_Window = nullptr;
-        static inline const TickTimer* ms_FrameTimer = nullptr; // TODO: Ugly solution
+        static inline const IntervalTimer* ms_IntervalTimer = nullptr;
 
         std::string_view m_Path;
         std::string_view m_Shortcut;
@@ -51,6 +52,8 @@ namespace benzin
         ~ImGuiManager();
 
     public:
+        void BeginFrame();
+
         void BeginUiFrame() const;
         void EndUiFrame() const;
 
@@ -87,6 +90,8 @@ namespace benzin
 
     private:
         Device& m_Device;
+
+        IntervalTimer m_IntervalTimer;
 
         std::unordered_map<std::string, bool> m_IsToolVisibleMap; // TODO: can std::string_view be used instead of std::string
 

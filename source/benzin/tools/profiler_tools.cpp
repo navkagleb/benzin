@@ -85,9 +85,8 @@ namespace benzin
 
     ProfilerToolBase::ProfilerToolBase(std::string_view name)
         : ImGuiTool{ name }
-        , m_IntervalTimer{ std::chrono::milliseconds{ 1000 } }
     {
-        m_IntervalTimer.PushCallback([this](uint32_t frameCount)
+        ms_IntervalTimer->AddCallback([this](float, uint32_t frameCount)
         {
             for (auto& event : m_SmoothEvents)
             {
@@ -114,8 +113,6 @@ namespace benzin
                 m_SmoothEvents[i].Us += events[i].Us;
             }
         }
-
-        m_IntervalTimer.AccumulateInterval(*ms_FrameTimer);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
         ImGuiTool::DrawWindow(ImGuiWindowFlags_NoScrollbar);

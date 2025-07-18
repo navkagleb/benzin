@@ -4,22 +4,17 @@
 namespace benzin
 {
 
-    namespace
+    template <typename DurationToT, typename RatioFromT = std::ratio<1>>
+    static auto FloatDurationTo(float duration)
     {
+        return std::chrono::round<DurationToT>(std::chrono::duration<float, RatioFromT>{ duration });
+    }
 
-        template <typename DurationToT, typename RatioFromT = std::ratio<1>>
-        auto FloatDurationTo(float duration)
-        {
-            return std::chrono::round<DurationToT>(std::chrono::duration<float, RatioFromT>{ duration });
-        }
-
-        template <typename DurationToT, typename DurationFromT>
-        auto DurationTo(DurationFromT duration)
-        {
-            return std::chrono::duration_cast<DurationToT>(duration);
-        }
-
-    } // anonymous namespace
+    template <typename DurationToT, typename DurationFromT>
+    static auto DurationTo(DurationFromT duration)
+    {
+        return std::chrono::duration_cast<DurationToT>(duration);
+    }
 
     std::chrono::microseconds SecToUs(float sec) { return FloatDurationTo<std::chrono::microseconds>(sec); }
 
@@ -37,6 +32,8 @@ namespace benzin
 
     float ToFloatSec(std::chrono::milliseconds ms) { return ms.count() / 1000.0f; }
 
-    float MsToSec(float ms) { return ms / 1000.0f; }
+    float MsToFloatSec(float ms) { return ms / 1000.0f; }
 
-} // namespace benzin
+    float SecToFloatMs(float sec) { return sec * 1000.0f; }
+
+}

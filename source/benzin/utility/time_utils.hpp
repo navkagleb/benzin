@@ -14,6 +14,7 @@ namespace benzin
     float ToFloatSec(std::chrono::microseconds us);
     float ToFloatSec(std::chrono::milliseconds ms);
 
-    float MsToSec(float ms);
+    float MsToFloatSec(float ms);
+    float SecFloatToMs(float sec);
 
-} // namespace benzin
+}

@@ -18,7 +18,7 @@ namespace benzin
 
     float TickTimer::GetElapsedTimeInSec() const
     {
-        return benzin::MsToSec(m_ElapsedTimeInMs);
+        return benzin::MsToFloatSec(m_ElapsedTimeInMs);
     }
 
     void TickTimer::SetPaused(bool isPaused)

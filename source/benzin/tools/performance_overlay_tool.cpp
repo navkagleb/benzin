@@ -3,6 +3,7 @@
 
 #include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/math.hpp"
+#include "benzin/core/tick_timer.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/swap_chain.hpp"
@@ -29,12 +30,12 @@ namespace benzin
         , m_Device{ device }
         , m_ShaderManager{ shaderManager }
         , m_RenderViewportTool{ renderViewportTool }
-    {}
-
-    void PerformanceOverlayTool::SetFrameRateStats(float frameRate, float dt)
     {
-        m_FrameRate = frameRate;
-        m_FrameDeltaTimeMs = dt;
+        ms_IntervalTimer->AddCallback([this](float timeInMs, uint32_t frameCount)
+        {
+            m_AvgDeltaTimeInMs = timeInMs / frameCount;
+            m_AvgFps = 1.0f / MsToFloatSec(m_AvgDeltaTimeInMs);
+        });
     }
 
     void PerformanceOverlayTool::DrawWindow()
@@ -94,11 +95,11 @@ namespace benzin
         ImGui::Text(BenzinFormatData("Window: {} x {}", m_Window.GetWidth(), m_Window.GetHeight()));
         ImGui::Text(BenzinFormatData("Viewport: {} x {} {}", m_RenderViewportTool.GetWidth(), m_RenderViewportTool.GetHeight(), m_RenderViewportTool.IsValidForRendering() ? '+' : '-'));
         ImGui::Text(BenzinFormatData("{}", m_Backend.GetMainAdapterInfo().Name));
-        ImGui::Text(BenzinFormatData("Fps: {:.1f} ({:.3f} ms)", m_FrameRate, m_FrameDeltaTimeMs));
         ImGui::Text(BenzinFormatData("Cpu: {}, Gpu: {}, Frame: {}", m_Device.GetCpuFrameIndex(), m_Device.GetCompletedGpuFrameIndex(), m_Device.GetActiveFrameIndex()));
         ImGui::Text(BenzinFormatData("FrameDelay: {}", m_Device.GetCpuFrameIndex() - m_Device.GetCompletedGpuFrameIndex()));
         ImGui::Text(BenzinFormatData("Local VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.ProcessUsedVramInBytes), ToMb(adapterMemoryInfo.VramOsBudgetInBytes)));
         ImGui::Text(BenzinFormatData("Host RAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.ProcessUsedSharedRamInBytes), ToMb(adapterMemoryInfo.SharedRamOsBudgetInBytes)));
+        ImGui::FmtText("FPS: {:.1f} ({:.3f} ms)", m_AvgFps, m_AvgDeltaTimeInMs);
 
         if (CmdLineArgs::IsGpuValidationEnabled())
         {

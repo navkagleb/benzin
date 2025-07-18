@@ -1,9 +1,6 @@
 #pragma once
 
-#include <benzin/core/interval_timer.hpp>
 #include <benzin/core/tick_timer.hpp>
-
-#include <sandbox/fps_counter.hpp>
 
 namespace benzin
 {
@@ -58,7 +55,7 @@ namespace sandbox
         void RunImGuiFrame();
 
         void RequestShutdown();
-        void ToggleVerticalSync();
+        void ToggleVsync();
         void ToggleAnimation();
 
     protected:
@@ -74,11 +71,8 @@ namespace sandbox
 
         benzin::TickTimer m_FrameTimer;
         benzin::TickTimer m_AnimationTimer;
-        benzin::IntervalTimer m_1SecIntervalTimer;
 
         bool m_IsAnimationEnabled = false;
-
-        FpsCounter m_FpsCounter;
 
         std::unique_ptr<benzin::Scene> m_Scene;
         std::unique_ptr<benzin::RayTracing_Scene> m_RayTracingScene;
@@ -92,7 +86,7 @@ namespace sandbox
         benzin::TextureViewerTool* m_TextureViewerTool = nullptr;
 
         bool m_IsRunning = true;
-        bool m_IsVerticalSyncEnabled = true;
+        bool m_IsVsyncEnabled = true;
 
     private:
         benzin::PerformanceOverlayTool* m_PerformanceOverlayTool = nullptr;

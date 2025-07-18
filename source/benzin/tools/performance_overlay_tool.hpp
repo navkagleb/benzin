@@ -22,8 +22,6 @@ namespace benzin
             const RenderViewportTool& renderViewportTool
         );
 
-        void SetFrameRateStats(float frameRate, float dt);
-
     private:
         void DrawWindow() override;
         void DrawWindowContent() override;
@@ -44,10 +42,10 @@ namespace benzin
         const ShaderManager& m_ShaderManager;
         const RenderViewportTool& m_RenderViewportTool;
 
-        float m_FrameRate = 0.0f;
-        float m_FrameDeltaTimeMs = 0.0f;
-
         OverlayLocation m_Location = OverlayLocation::BottomLeft;
+
+        float m_AvgFps = 0.0;
+        float m_AvgDeltaTimeInMs = 0.0f;
     };
 
 }

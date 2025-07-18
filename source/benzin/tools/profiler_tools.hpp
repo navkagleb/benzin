@@ -1,6 +1,5 @@
 #pragma once
 
-#include <benzin/core/interval_timer.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
 
 namespace benzin
@@ -22,8 +21,6 @@ namespace benzin
         void DrawWindowContent() override;
 
     private:
-        IntervalTimer m_IntervalTimer;
-
         std::vector<ProfileEvent> m_SmoothEvents;
         std::vector<ProfileEvent> m_ReadySmoothEvents;
     };

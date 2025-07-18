@@ -82,6 +82,7 @@ namespace benzin
 
     ImGuiManager::ImGuiManager(Window& window, Device& device, const TickTimer& frameTimer)
         : m_Device{ device }
+        , m_IntervalTimer{ frameTimer, std::chrono::milliseconds{ 1000 } }
     {
         IMGUI_CHECKVERSION();
 
@@ -97,7 +98,7 @@ namespace benzin
         BenzinEnsure(ImGui_ImplWin32_Init(window.GetWin64Window()));
 
         ImGuiTool::ms_Window = &window;
-        ImGuiTool::ms_FrameTimer = &frameTimer;
+        ImGuiTool::ms_IntervalTimer = &m_IntervalTimer;
 
         window.SetPreMessageHandlerCallback(ImGui_ImplWin32_WndProcHandler);
 
@@ -116,6 +117,11 @@ namespace benzin
 
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
+    }
+
+    void ImGuiManager::BeginFrame()
+    {
+        m_IntervalTimer.AccumulateInterval();
     }
 
     void ImGuiManager::BeginUiFrame() const
@@ -444,11 +450,6 @@ namespace benzin
 
     void ImGuiPass::OnUpdate()
     {
-        if (ms_FrameTimer->IsPaused())
-        {
-            return;
-        }
-
         const ImDrawData& imDrawData = m_ImGuiManager.GetImDrawData();
 
         RenderPass::m_IsRenderingEnabled = imDrawData.DisplaySize[0] != 0.0f && imDrawData.DisplaySize[1] != 0.0f;

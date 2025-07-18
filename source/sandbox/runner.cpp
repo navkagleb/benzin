@@ -35,7 +35,6 @@ namespace sandbox
 {
 
     Runner::Runner()
-        : m_1SecIntervalTimer{ std::chrono::seconds{ 1 } }
     {
         BenzinLogTimeOnScopeExit("Runner::Runner");
 
@@ -95,9 +94,9 @@ namespace sandbox
             {
                 if (ImGui::BeginMenu("Runner"))
                 {
-                    if (ImGui::MenuItem("VerticalSync", "V", m_IsVerticalSyncEnabled))
+                    if (ImGui::MenuItem("VSync", "V", m_IsVsyncEnabled))
                     {
-                        ToggleVerticalSync();
+                        ToggleVsync();
                     }
 
                     if (ImGui::MenuItem("Animation", "F2", m_AnimationTimer.IsPaused()))
@@ -109,12 +108,6 @@ namespace sandbox
                 }
             });
         }
-
-        m_1SecIntervalTimer.PushCallback([this](uint32_t)
-        {
-            m_FpsCounter.UpdateFps(m_1SecIntervalTimer.GetInterval());
-            m_PerformanceOverlayTool->SetFrameRateStats(m_FpsCounter.GetFps(), benzin::ToFloatMs(m_FpsCounter.GetDeltaTime()));
-        });
     }
 
     Runner::~Runner()
@@ -144,7 +137,6 @@ namespace sandbox
 
             m_FrameTimer.Tick();
             m_AnimationTimer.Tick();
-            m_1SecIntervalTimer.AccumulateInterval(m_FrameTimer);
 
             m_MainWindow->ProcessEvents();
 
@@ -248,7 +240,7 @@ namespace sandbox
                     }
                     case benzin::KeyCode::V:
                     {
-                        ToggleVerticalSync();
+                        ToggleVsync();
                         return true;
                     }
                     case benzin::KeyCode::F2:
@@ -271,6 +263,8 @@ namespace sandbox
     {
         BenzinProfile();
     
+        m_ImGuiManager->BeginFrame();
+
         m_Device->GetGraphicsCmdQueue().ResetCmdList();
         m_GpuProfiler->BeginFrame(m_Device->GetCpuFrameIndex());
         m_ConstBufferPool->BeginFrame();
@@ -285,13 +279,13 @@ namespace sandbox
 
         if (m_RenderViewportTool->IsValidForRendering())
         {
-            // Check only if render viewport is valid for rendering. Because actual const buffer allocation apper in 'RenderPass::OnRender'
+            // Check only if render viewport is valid for rendering. Because actual const buffer allocation appear in 'RenderPass::OnRender'
             m_ConstBufferPool->EndFrame();
         }
 
         m_Device->GetGraphicsCmdQueue().SubmitCmdList();
 
-        const bool isResized = m_SwapChain->OnFlip(m_IsVerticalSyncEnabled);
+        const bool isResized = m_SwapChain->OnFlip(m_IsVsyncEnabled);
         if (isResized)
         {
             const auto windowWidth = m_SwapChain->GetWidth();
@@ -331,8 +325,6 @@ namespace sandbox
         {
             return;
         }
-
-        m_FpsCounter.TickFrame(m_FrameTimer);
 
         m_RenderViewportTool->MoveCamera(m_FrameTimer.GetDeltaTime());
 
@@ -394,9 +386,9 @@ namespace sandbox
         m_IsRunning = false;
     }
 
-    void Runner::ToggleVerticalSync()
+    void Runner::ToggleVsync()
     {
-        m_IsVerticalSyncEnabled = !m_IsVerticalSyncEnabled;
+        m_IsVsyncEnabled = !m_IsVsyncEnabled;
     }
 
     void Runner::ToggleAnimation()
