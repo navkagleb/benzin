@@ -17,9 +17,8 @@ namespace benzin
         AdapterVendorType VendorType = AdapterVendorType::Other;
         uint32_t DeviceId = g_Bad32;
 
-        uint64_t TotalVramInBytes = 0;
-        uint64_t TotalRamInBytes = 0;
-        uint64_t TotalSharedRamInBytes = 0;
+        uint64_t TotalLocalVramInBytes = 0;
+        uint64_t TotalHostVramInBytes = 0;
 
         bool IsAmd() const { return VendorType == AdapterVendorType::Amd ;}
         bool IsNvidia() const { return VendorType == AdapterVendorType::Nvidia; }

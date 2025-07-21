@@ -26,7 +26,7 @@ namespace benzin
             DrawColoredBulletText("Available in system (vendor specific):", ToMb(memoryInfo.AvailableVramInBytes));
 
             ImGui::BeginDisabled();
-            ImGui::FmtBulletText("Total: {:.2f}", ToMb(info.TotalVramInBytes));
+            ImGui::FmtBulletText("Total: {:.2f}", ToMb(info.TotalLocalVramInBytes));
             ImGui::FmtBulletText("OS Budget: {:.2f}", ToMb(memoryInfo.LocalVramBudgetInBytes));
             ImGui::FmtBulletText("Available relative to OS Budget (vendor specific): {:.2f}", ToMb(memoryInfo.AvailableVramRelativeToOsBudgetInBytes));
             ImGui::EndDisabled();
@@ -38,7 +38,7 @@ namespace benzin
             DrawColoredBulletText("Used by process:", ToMb(memoryInfo.UsedHostVramInBytes));
 
             ImGui::BeginDisabled();
-            ImGui::FmtBulletText("Total: {:.2f}", ToMb(info.TotalSharedRamInBytes));
+            ImGui::FmtBulletText("Total: {:.2f}", ToMb(info.TotalHostVramInBytes));
             ImGui::FmtBulletText("OS Budget: {:.2f}", ToMb(memoryInfo.HostVramBudgetInBytes));
             ImGui::EndDisabled();
         }
