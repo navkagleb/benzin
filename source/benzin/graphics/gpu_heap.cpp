@@ -1,0 +1,101 @@
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
+
+#include <benzin/core/math.hpp>
+#include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
+#include <benzin/graphics/device.hpp>
+
+namespace benzin
+{
+
+    GpuHeap::GpuHeap(Device& device, const GpuHeapCreation& creation)
+        : m_Device{ device }
+    {
+        BenzinAssert(IsGoodEnum(creation.Type));
+        BenzinAssert(creation.SizeInBytes != 0);
+
+        const D3D12_HEAP_DESC d3d12HeapDesc
+        {
+            .SizeInBytes = creation.SizeInBytes,
+            .Properties = GetD3D12HeapProperties(ToD3D12HeapType(m_Device, creation.Type)),
+            .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+            .Flags = D3D12_HEAP_FLAG_NONE,
+        };
+
+        BenzinD3D12Call(device.GetD3D12Device()->CreateHeap(&d3d12HeapDesc, IID_PPV_ARGS(&m_D3D12Heap)));
+        BenzinEnsure(m_D3D12Heap != nullptr);
+
+        SetD3DObjectDebugName(m_D3D12Heap, creation.DebugName);
+
+        m_Type = creation.Type;
+        m_SizeInBytes = creation.SizeInBytes;
+    }
+
+    GpuHeap::~GpuHeap()
+    {
+        m_Device.DeferredRelease(m_D3D12Heap);
+    }
+
+    // GpuHeapLinearBufferAllocator
+
+    GpuHeapLinearBufferAllocator::GpuHeapLinearBufferAllocator(GpuHeap& gpuHeap)
+        : m_GpuHeap{ gpuHeap }
+    {
+        BenzinAssert(gpuHeap.GetD3D12Heap() != nullptr);
+    }
+
+    std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateStructuredBuffer(std::string_view debugName, uint32_t elementCount, uint32_t elementSizeInBytes)
+    {
+        return AllocateBuffer(BufferCreation
+        {
+            .DebugName = debugName,
+            .Type = BufferType::Structured,
+            .ElementSizeInBytes = elementSizeInBytes,
+            .ElementCount = elementCount,
+        });
+    }
+
+    std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateFormatBuffer(std::string_view debugName, uint32_t elementCount, GraphicsFormat format)
+    {
+        BenzinAssert(format != GraphicsFormat::Unknown);
+
+        return AllocateBuffer(BufferCreation
+        {
+            .DebugName = debugName,
+            .Type = BufferType::Format,
+            .Format = format,
+            .ElementSizeInBytes = GetFormatSizeInBytes(format),
+            .ElementCount = elementCount,
+        });
+    }
+
+    void GpuHeapLinearBufferAllocator::Reset()
+    {
+        m_OffsetInBytes = 0;
+    }
+
+    std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateBuffer(const BufferCreation& bufferCreation)
+    {
+        const uint64_t alignedOffsetInBytes = AlignUp(m_OffsetInBytes, (uint64_t)D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+        const uint64_t bufferSizeInBytes = (uint64_t)bufferCreation.ElementCount * bufferCreation.ElementSizeInBytes;
+
+        const uint64_t neededSizeInBytes = alignedOffsetInBytes + bufferSizeInBytes;
+        BenzinEnsure(
+            neededSizeInBytes <= m_GpuHeap.GetSizeInBytes(),
+            "GpuHeap is full. Needed size: {:.2f}, Actual size: {:.2f}",
+            ToMb(neededSizeInBytes),
+            ToMb(m_GpuHeap.GetSizeInBytes())
+        );
+
+        m_OffsetInBytes = alignedOffsetInBytes + bufferSizeInBytes;
+
+        if (bufferCreation.DebugName.empty())
+        {
+            const_cast<BufferCreation&>(bufferCreation).DebugName = "GpuHeapLinearBufferAllocator";
+        }
+
+        return std::make_unique<Buffer>(m_GpuHeap, alignedOffsetInBytes, bufferCreation);
+    }
+
+}

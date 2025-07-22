@@ -5,6 +5,7 @@
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/gpu_heap.hpp"
 
 namespace benzin
 {
@@ -32,6 +33,7 @@ namespace benzin
         MakeUniquePtr(m_Buffer, device, BufferCreation
         {
             .DebugName = std::format("{}_AccelerationStructure_{}", typeName, debugName),
+            .HeapType = GpuHeapType::Default,
             .Type = BufferType::RayTracing_AccelerationStructure,
             .ElementCount = (uint32_t)d3d12PrebuildInfo.ResultDataMaxSizeInBytes,
             .IsUnorderedAccessAllowed = true,
@@ -40,6 +42,7 @@ namespace benzin
         MakeUniquePtr(m_ScratchResource, device, BufferCreation
         {
             .DebugName = std::format("{}_ScratchResource_{}", typeName, debugName),
+            .HeapType = GpuHeapType::Default,
             .ElementCount = (uint32_t)d3d12PrebuildInfo.ScratchDataSizeInBytes,
             .IsUnorderedAccessAllowed = true,
         });
@@ -168,7 +171,7 @@ namespace benzin
         MakeUniquePtr(m_InstanceBuffer, device, BufferCreation
         {
             .DebugName = std::format("TLAS_InstanceBuffer_{}", debugName),
-            .MemoryType = ResourceMemoryType::Upload,// TODO: Remove UploadBuffer
+            .HeapType = GpuHeapType::Upload,// TODO: Remove UploadBuffer
             .ElementSizeInBytes = sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
             .ElementCount = (uint32_t)m_D3D12InstanceDescs.size(),
         });

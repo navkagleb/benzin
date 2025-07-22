@@ -5,12 +5,13 @@
 #include "benzin/core/math.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/gpu_heap.hpp"
 
 namespace benzin
 {
 
-    constexpr uint32_t g_RecordAlignment = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
-    constexpr uint32_t g_TableAlignment = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+    constexpr uint32_t g_RecordAlignmentInBytes = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
+    constexpr uint32_t g_TableAlignmentInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 
     static void StoreRawShaderIdentifier(const void* rawId, RayTracing_ShaderTable::ShaderIdentifier& outId)
     {
@@ -43,7 +44,7 @@ namespace benzin
         MakeUniquePtr(m_ShaderTable, device, benzin::BufferCreation
         {
             .DebugName = "RayTracedShadows_ShaderTable",
-            .MemoryType = benzin::ResourceMemoryType::Upload, // TODO: Replace with default heap
+            .HeapType = GpuHeapType::Upload, // TODO: Replace with default heap
             .ElementSizeInBytes = sizeof(std::byte),
             .ElementCount = GetRequiredTableSizeInBytes(),
         });
@@ -55,7 +56,7 @@ namespace benzin
             outGpuAddress.GpuVirtualAddress = m_ShaderTable->GetGpuVirtualAddress() + tableWriter.GetPositionInBytes();
             outGpuAddress.SizeInBytes = id.size();
 
-            tableWriter.WriteData(std::span{ id.data(), g_TableAlignment });
+            tableWriter.WriteData(std::span{ id.data(), g_TableAlignmentInBytes });
         };
 
         processIdentifier(m_RayGenerationShader, m_GpuAddresses.RayGenerationShader);
@@ -65,18 +66,18 @@ namespace benzin
 
     uint32_t RayTracing_ShaderTable::GetRequiredTableSizeInBytes() const
     {
-        const auto getIdentifierSize = [](ShaderIdentifier id)
+        const auto getIdentifierSizeInBytes = [](ShaderIdentifier id)
         {
-            const auto recordSize = AlignUp((uint32_t)id.size(), g_RecordAlignment);
-            return AlignUp(recordSize, g_TableAlignment);
+            const auto recordSizeInBytes = AlignUp((uint32_t)id.size(), g_RecordAlignmentInBytes);
+            return AlignUp(recordSizeInBytes, g_TableAlignmentInBytes);
         };
 
-        uint32_t tableSize = 0;
-        tableSize += getIdentifierSize(m_RayGenerationShader);
-        tableSize += getIdentifierSize(m_MissShader);
-        tableSize += getIdentifierSize(m_HitGroupShaders);
+        uint32_t tableSizeInBytes = 0;
+        tableSizeInBytes += getIdentifierSizeInBytes(m_RayGenerationShader);
+        tableSizeInBytes += getIdentifierSizeInBytes(m_MissShader);
+        tableSizeInBytes += getIdentifierSizeInBytes(m_HitGroupShaders);
 
-        return (uint32_t)tableSize;
+        return (uint32_t)tableSizeInBytes;
     }
 
 }

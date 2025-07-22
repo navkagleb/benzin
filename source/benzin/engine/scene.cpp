@@ -19,6 +19,7 @@
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/cmd_queue.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/gpu_heap.hpp"
 #include "benzin/graphics/texture.hpp"
 
 namespace benzin
@@ -40,39 +41,9 @@ namespace benzin
                 },
             });
         }
-
-        MakeUniquePtr(m_LightBuffer, m_Device, BufferCreation
-        {
-            .DebugName = "LightBuffer",
-            .MemoryType = ResourceMemoryType::Upload,
-            .Type = BufferType::Structured,
-            .ElementSizeInBytes = sizeof(joint::Light),
-            .ElementCount = s_MaxLightCount * CmdLineArgs::GetFrameInFlightCount(),
-        });
     }
 
     Scene::~Scene() = default;
-
-    const Descriptor& Scene::GetEntityTransformBufferSrv() const
-    {
-        BenzinAssert(m_EntityTransformBuffer.get() != nullptr);
-
-        return m_EntityTransformBuffer->GetSrv(SubRange64
-        {
-            m_EntityTransformCount * m_Device.GetActiveFrameIndex(),
-            m_EntityTransformCount,
-        });
-    }
-
-    const Descriptor& Scene::GetUnifiedMaterialBufferSrv() const
-    {
-        return m_UnifiedMaterialBuffer->GetSrv();
-    }
-
-    uint64_t Scene::GetLightBufferGpuAddress() const
-    {
-        return m_LightBuffer->GetGpuVirtualAddress(s_MaxLightCount * m_Device.GetActiveFrameIndex());
-    }
 
     const Material& Scene::GetMaterial(uint32_t index) const
     {
@@ -196,20 +167,12 @@ namespace benzin
 
         UploadPixelDataSetToGpu();
 
-        MakeUniquePtr(m_UnifiedMaterialBuffer, m_Device, BufferCreation
-        {
-            .DebugName = "Scene_UnifiedMaterialBuffer",
-            .Type = BufferType::Structured,
-            .ElementSizeInBytes = sizeof(joint::Material),
-            .ElementCount = (uint32_t)m_UnifiedMaterials.size(),
-        });
+        std::vector<joint::Material> unifiedMaterials;
+        unifiedMaterials.reserve(m_UnifiedMaterials.size());
 
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(m_UnifiedMaterialBuffer->GetSizeInBytes());
-        for (uint32_t i = 0; i < m_UnifiedMaterials.size(); ++i)
+        for (const Material& material : m_UnifiedMaterials)
         {
-            const Material& material = m_UnifiedMaterials[i];
-
-            const joint::Material gpuMaterial
+            unifiedMaterials.push_back(joint::Material
             {
                 .AlbedoTextureHeapIndex = material.TextureGpuHeapIndices.Albedo,
                 .NormalTextureHeapIndex = material.TextureGpuHeapIndices.Normal,
@@ -222,10 +185,13 @@ namespace benzin
                 .RoughnessFactor = material.Consts.RoughnessFactor,
                 .OcclusionStrenght = material.Consts.OcclusionStrenght,
                 .EmissiveFactor = material.Consts.EmissiveFactor,
-            };
-
-            cmdList.UploadToBuffer(*m_UnifiedMaterialBuffer, ToSpan(&gpuMaterial), i);
+            });
         }
+
+        m_UnifiedMaterialBuffer = m_Device.GetPersistentLinearBufferAllocator().AllocateBuffer("Scene_UnifiedMaterialBuffer", ToSpan(m_UnifiedMaterials));
+        
+        CopyCmdList& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(m_UnifiedMaterialBuffer->GetSizeInBytes());
+        cmdList.UploadToBuffer(*m_UnifiedMaterialBuffer, ToSpan(unifiedMaterials));
     }
 
     uint32_t Scene::AddTextures(std::span<TextureImage> textureImages)
@@ -383,15 +349,12 @@ namespace benzin
 
     void Scene::UploadLightsToGpu()
     {
-        m_ActiveLightCount = 1;
-
-        BufferWriter lights{ m_LightBuffer->GetCpuMappedData(), m_LightBuffer->GetSizeInBytes() };
-        lights.SetElementPosition<joint::Light>(s_MaxLightCount * m_Device.GetActiveFrameIndex());
+        std::vector<joint::Light> activeLights;
 
         {
             const auto& sunLight = m_EntityRegistry.get<SunLight>(m_SunEntity);
 
-            lights.WriteRaw(joint::Light
+            activeLights.push_back(joint::Light
             {
                 .Color = sunLight.GetColor(),
                 .Intensity = sunLight.GetIntensity(),
@@ -403,14 +366,16 @@ namespace benzin
         }
 
         const auto view = m_EntityRegistry.view<SphericalLight>();
-        for (const auto [entityHandle, light] : view.each())
+        for (const entt::entity entityHandle : view)
         {
+            const auto& light = view.get<SphericalLight>(entityHandle);
+
             if (!light.IsEnabled())
             {
                 continue;
             }
 
-            lights.WriteRaw(joint::Light
+            activeLights.push_back(joint::Light
             {
                 .Color = light.GetColor(),
                 .Intensity = light.GetIntensity(),
@@ -419,9 +384,15 @@ namespace benzin
                 .Attenuation = light.GetAttenuation(),
                 .Type = joint::LightType::Spherical,
             });
-
-            m_ActiveLightCount++;
         }
+
+        m_LightBuffer = m_Device.GetTemporalLinearBufferAllocator().AllocateAndWriteBuffer("Scene_Lights", ToSpan(activeLights));
+        m_ActiveLightCount = (uint32_t)activeLights.size();
+    }
+
+    void Scene::EndFrame()
+    {
+        m_LightBuffer.reset();
     }
 
 }

@@ -4,11 +4,12 @@
 #include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/d3d12_assert.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/descriptor_manager.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/fence.hpp>
-#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 
 namespace benzin
@@ -67,7 +68,7 @@ namespace benzin
             MakeUniquePtr(uploadBuffer, m_Device, BufferCreation
             {
                 .DebugName = std::format("UploadBuffer{}", uploadBuffers.size() - 1),
-                .MemoryType = ResourceMemoryType::Upload,
+                .HeapType = GpuHeapType::Upload,
                 .Type = BufferType::Byte,
                 .ElementSizeInBytes = sizeof(std::byte),
                 .ElementCount = uploadBufferSizeInBytes,

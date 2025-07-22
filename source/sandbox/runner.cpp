@@ -10,6 +10,7 @@
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics2/const_buffer_pool.hpp>
@@ -30,6 +31,7 @@
 #include <benzin/tools/scene_stats_tool.hpp>
 #include <benzin/tools/scene_tool.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
+#include <benzin/tools/vram_tool.hpp>
 
 namespace sandbox
 {
@@ -89,6 +91,7 @@ namespace sandbox
             m_ImGuiManager->PushTool<benzin::ProfilerTool>();
             m_ImGuiManager->PushTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
             m_ImGuiManager->PushTool<benzin::SceneTool>(*m_Scene);
+            m_ImGuiManager->PushTool<benzin::VramTool>(*m_Device);
 
             m_ImGuiManager->AddDrawMenuCallback([this]
             {
@@ -262,20 +265,22 @@ namespace sandbox
     void Runner::BeginFrame()
     {
         BenzinProfile();
-    
+
+        m_Device->GetTemporalLinearBufferAllocator().Reset();
+        m_Device->GetGraphicsCmdQueue().ResetCmdList();
+
         m_ImGuiManager->BeginFrame();
 
-        m_Device->GetGraphicsCmdQueue().ResetCmdList();
         m_GpuProfiler->BeginFrame(m_Device->GetCpuFrameIndex());
         m_ConstBufferPool->BeginFrame();
-
         m_ShaderManager->CheckForNewShader();
-        m_Device->ProcessDeferredReleaseQueues();
     }
 
     void Runner::EndFrame()
     {
         BenzinProfile();
+
+        m_Scene->EndFrame();
 
         if (m_RenderViewportTool->IsValidForRendering())
         {
@@ -315,6 +320,8 @@ namespace sandbox
 
             BenzinTrace("Viewport is resized: {} x {}. CpuFrame: {}", viewportWidth, viewportHeight, m_Device->GetCpuFrameIndex());
         }
+
+        m_Device->ProcessDeferredReleaseQueues();
     }
 
     void Runner::OnUpdate()

@@ -34,16 +34,14 @@ namespace benzin
         auto& GetPerspectiveProjection(this auto&& self) { return self.m_PerspectiveProjection; }
         auto& GetCamera(this auto&& self) { return self.m_Camera; }
 
-        const Descriptor& GetEntityTransformBufferSrv() const;
-        const Descriptor& GetUnifiedMaterialBufferSrv() const;
-
         auto& GetEntityRegistry(this auto&& self) { return self.m_EntityRegistry; }
         const auto& GetMeshRegistry() const { return m_MeshRegistry; }
 
-        auto GetSunEntity() const { return m_SunEntity; }
+        const auto& GetUnifiedMaterialBuffer() const { return *m_UnifiedMaterialBuffer; }
+        const auto& GetLightBuffer() const { return *m_LightBuffer; }
 
-        uint64_t GetLightBufferGpuAddress() const;
-        uint32_t GetActiveLightCount() const { return m_ActiveLightCount; }
+        auto GetSunEntity() const { return m_SunEntity; }
+        auto GetActiveLightCount() const { return m_ActiveLightCount; }
 
         const Material& GetMaterial(uint32_t index) const;
 
@@ -58,6 +56,8 @@ namespace benzin
         void UploadEntityTransformsToGpu();
         void UploadLightsToGpu();
 
+        void EndFrame();
+
     private:
         uint32_t AddTextures(std::span<TextureImage> textureImages);
         uint32_t AddMaterials(std::span<TextureImage> textureImages, std::span<const MeshResource::Material> materials);
@@ -71,6 +71,9 @@ namespace benzin
         PerspectiveProjection m_PerspectiveProjection;
         Camera m_Camera{ m_PerspectiveProjection };
 
+        entt::registry m_EntityRegistry;
+        entt::registry m_MeshRegistry;
+
         std::vector<std::vector<std::byte>> m_PixelDataSet;
         std::vector<std::unique_ptr<Texture>> m_Textures;
 
@@ -83,10 +86,6 @@ namespace benzin
         uint32_t m_ActiveLightCount = 0;
 
         uint32_t m_EntityTransformCount = 0;
-        std::unique_ptr<Buffer> m_EntityTransformBuffer;
-
-        entt::registry m_EntityRegistry;
-        entt::registry m_MeshRegistry;
     };
 
 }

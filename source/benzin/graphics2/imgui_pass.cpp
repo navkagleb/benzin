@@ -13,6 +13,7 @@
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/cmd_queue.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/gpu_heap.hpp"
 #include "benzin/graphics/pso.hpp"
 #include "benzin/graphics/swap_chain.hpp"
 #include "benzin/graphics/texture.hpp"
@@ -541,8 +542,8 @@ namespace benzin
             MakeUniquePtr(vertexBuffer, *ms_Device, BufferCreation
             {
                 .DebugName = "ImGui_VertexBuffer",
-                .MemoryType = ResourceMemoryType::Upload,
-                .Type = BufferType::Vertex,
+                .HeapType = GpuHeapType::Upload,
+                .Type = BufferType::Structured,
                 .ElementSizeInBytes = sizeof(ImDrawVert),
                 .ElementCount = (uint32_t)imDrawData.TotalVtxCount + 5000, // TODO: 5000 magic number
             });
@@ -555,8 +556,8 @@ namespace benzin
             MakeUniquePtr(indexBuffer, *ms_Device, BufferCreation
             {
                 .DebugName = "ImGui_IndexBuffer",
-                .MemoryType = ResourceMemoryType::Upload,
-                .Type = BufferType::Index,
+                .HeapType = GpuHeapType::Upload,
+                .Type = BufferType::Format,
                 .Format = GraphicsFormat::R16Uint,
                 .ElementSizeInBytes = sizeof(ImDrawIdx),
                 .ElementCount = (uint32_t)imDrawData.TotalIdxCount + 10000, // TODO: 10000 magic number

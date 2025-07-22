@@ -8,6 +8,7 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
@@ -87,7 +88,7 @@ namespace sandbox
             cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
             cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
 
-            const uint64_t lightBufferGpuAddress = ms_Scene->GetLightBufferGpuAddress();
+            const uint64_t lightBufferGpuAddress = ms_Scene->GetLightBuffer().GetGpuVirtualAddress();
             cmdList.SetComputeSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, lightBufferGpuAddress);
             cmdList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, lightBufferGpuAddress);
 

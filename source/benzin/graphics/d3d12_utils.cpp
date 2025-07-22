@@ -3,6 +3,8 @@
 
 #include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/logger.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 
 namespace benzin
 {
@@ -100,6 +102,25 @@ namespace benzin
             .CreationNodeMask = 1,
             .VisibleNodeMask = 1,
         };
+    }
+
+    D3D12_HEAP_TYPE ToD3D12HeapType(const Device& device, GpuHeapType gpuHeapType)
+    {
+        BenzinUnused(device);
+
+        switch (gpuHeapType)
+        {
+            case GpuHeapType::Default: return D3D12_HEAP_TYPE_DEFAULT;
+            case GpuHeapType::Upload: return D3D12_HEAP_TYPE_UPLOAD;
+            case GpuHeapType::Readback: return D3D12_HEAP_TYPE_READBACK;
+            case GpuHeapType::GpuUpload:
+            {
+                BenzinEnsure(device.GetCaps().IsGpuUploadHeapsSupported);
+                return D3D12_HEAP_TYPE_GPU_UPLOAD;
+            }
+        }
+
+        std::unreachable();
     }
 
     void EnableD3D12DebugLayer()

@@ -2,9 +2,10 @@
 #include "benzin/graphics/buffer.hpp"
 
 #include "benzin/core/math.hpp"
+#include "benzin/graphics/d3d12_assert.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
-#include "benzin/graphics/d3d12_assert.hpp"
+#include "benzin/graphics/gpu_heap.hpp"
 
 namespace benzin
 {
@@ -34,51 +35,42 @@ namespace benzin
         outElementRange.Count = buffer.GetElementCount();
     }
 
-    static D3D12_HEAP_TYPE ToD3D12HeapType(const Device& device, const ResourceMemoryType& memoryType)
+    static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& creation)
     {
-        switch (memoryType)
+        BenzinAssert(creation.ElementSizeInBytes != 0);
+        BenzinAssert(creation.ElementCount != 0);
+
+        switch (creation.Type)
         {
-            case ResourceMemoryType::Default: return D3D12_HEAP_TYPE_DEFAULT;
-            case ResourceMemoryType::Readback: return D3D12_HEAP_TYPE_READBACK;
-            case ResourceMemoryType::Upload: return device.GetCaps().IsGpuUploadHeapsSupported ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD;
-        }
+            case BufferType::Format:
+            {
+                BenzinAssert(creation.ElementSizeInBytes == GetFormatSizeInBytes(creation.Format));
+                break;
+            }
+            case BufferType::Const:
+            {
+                BenzinEnsure(creation.ElementSizeInBytes % GraphicsConfig::GetConstBufferAlignmentInBytes() == 0);
+                break;
+            }
+            case BufferType::Structured:
+            {
+                // Performance tip: Align structures on sizeof(float4) boundary
+                // Ref: https://developer.nvidia.com/content/understanding-structured-buffer-performance
 
-        std::unreachable();
-    }
+                BenzinWarningIf(
+                    creation.ElementSizeInBytes % GraphicsConfig::GetStructuredBufferAlignmentInBytes() != 0,
+                    "Buffer '{}' is not properly aligned. BufferElementSize: {}, StructuredBufferAlignment: {}",
+                    creation.DebugName,
+                    creation.ElementSizeInBytes,
+                    GraphicsConfig::GetStructuredBufferAlignmentInBytes()
+                );
 
-    static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& bufferCreation)
-    {
-        BenzinAssert(bufferCreation.ElementSizeInBytes != 0);
-        BenzinAssert(bufferCreation.ElementCount != 0);
-
-        if (bufferCreation.Type == BufferType::Format)
-        {
-            BenzinAssert(bufferCreation.ElementSizeInBytes == GetFormatSizeInBytes(bufferCreation.Format));
-        }
-
-        uint32_t alignedElementSizeInBytes = bufferCreation.ElementSizeInBytes;
-        if (bufferCreation.Type == BufferType::Const)
-        {
-            // Align the 'BufferCreation::ElementSize', not the entire buffer size 'BufferType::Const'
-            // This is done so that each element can be used as a separate constant buffer using ConstantBufferView
-            alignedElementSizeInBytes = AlignUp(alignedElementSizeInBytes, GraphicsConfig::GetConstBufferAlignmentInBytes());
-        }
-        else if (bufferCreation.Type == BufferType::Structured)
-        {
-            // Performance tip: Align structures on sizeof(float4) boundary
-            // Ref: https://developer.nvidia.com/content/understanding-structured-buffer-performance
-
-            BenzinWarningIf(
-                alignedElementSizeInBytes % GraphicsConfig::GetStructuredBufferAlignmentInBytes() != 0,
-                "Buffer '{}' is not properly aligned. BufferElementSize: {}, StructuredBufferAlignment: {}",
-                bufferCreation.DebugName,
-                alignedElementSizeInBytes,
-                GraphicsConfig::GetStructuredBufferAlignmentInBytes()
-            );
+                break;
+            }
         }
 
         D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
-        if (bufferCreation.IsUnorderedAccessAllowed)
+        if (creation.IsUnorderedAccessAllowed)
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
@@ -87,7 +79,7 @@ namespace benzin
         {
             .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
             .Alignment = 0,
-            .Width = alignedElementSizeInBytes * bufferCreation.ElementCount,
+            .Width = creation.ElementSizeInBytes * creation.ElementCount,
             .Height = 1,
             .DepthOrArraySize = 1,
             .MipLevels = 1,
@@ -98,48 +90,71 @@ namespace benzin
         };
     }
 
-    static void CreateD3D12Resource(
-        const BufferCreation& bufferCreation,
-        const Device& device,
-        ID3D12Resource*& outD3D12Resource,
-        ResourceState& outInitialState
-    )
+    static ResourceState GetInitialBufferState(const Device& device, BufferType bufferType, GpuHeapType heapType)
     {
-        static const auto getInitialResourceState = [](const Device& device, const BufferCreation& creation)
+        if (bufferType == BufferType::RayTracing_AccelerationStructure)
         {
-            if (creation.Type == BufferType::RayTracing_AccelerationStructure)
-            {
-                return ResourceState::RayTracing_AccelerationStructure;
-            }
-            else if (creation.MemoryType == ResourceMemoryType::Upload && !device.GetCaps().IsGpuUploadHeapsSupported)
-            {
-                // Case only for D3D12_HEAP_TYPE_UPLOAD
-                // D3D12_HEAP_TYPE_GPU_UPLOAD requires D3D12_RESOURCE_STATE_COMMON
-                return ResourceState::GenericRead;
-            }
-            else if (creation.MemoryType == ResourceMemoryType::Readback)
-            {
-                return ResourceState::CopyDestination;
-            }
+            return ResourceState::RayTracing_AccelerationStructure;
+        }
+        else if (heapType == GpuHeapType::Upload && !device.GetCaps().IsGpuUploadHeapsSupported)
+        {
+            // Case only for D3D12_HEAP_TYPE_UPLOAD
+            // D3D12_HEAP_TYPE_GPU_UPLOAD requires D3D12_RESOURCE_STATE_COMMON
+            return ResourceState::GenericRead;
+        }
+        else if (heapType == GpuHeapType::Readback)
+        {
+            return ResourceState::CopyDestination;
+        }
 
-            return ResourceState::Common;
-        };
+        return ResourceState::Common;
+    }
 
-        const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(ToD3D12HeapType(device, bufferCreation.MemoryType));
-        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(bufferCreation);
+    static ID3D12Resource* CreateCommittedD3D12Resource(const Device& device, const BufferCreation& creation, ResourceState initialState)
+    {
+        BenzinAssert(IsGoodEnum(creation.HeapType));
 
-        outInitialState = getInitialResourceState(device, bufferCreation);
+        const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(ToD3D12HeapType(device, creation.HeapType));
+        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(creation);
 
+        ID3D12Resource* d3d12Resource = nullptr;
         BenzinD3D12Call(device.GetD3D12Device()->CreateCommittedResource(
             &d3d12HeapProperties,
             D3D12_HEAP_FLAG_NONE,
             &d3d12ResourceDesc,
-            (D3D12_RESOURCE_STATES)outInitialState,
+            (D3D12_RESOURCE_STATES)initialState,
             nullptr,
-            IID_PPV_ARGS(&outD3D12Resource)
+            IID_PPV_ARGS(&d3d12Resource)
         ));
 
-        BenzinEnsure(outD3D12Resource != nullptr);
+        BenzinEnsure(d3d12Resource != nullptr);
+        return d3d12Resource;
+    }
+
+    static ID3D12Resource* CreatePlacedD3D12Resource(
+        const Device& device,
+        const GpuHeap& gpuHeap,
+        uint64_t gpuHeapOffsetInBytes,
+        const BufferCreation& creation,
+        ResourceState initialState
+    )
+    {
+        BenzinAssert(!IsGoodEnum(creation.HeapType));
+
+        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(creation);
+
+        ID3D12Resource* d3d12Resource = nullptr;
+        BenzinD3D12Call(device.GetD3D12Device()->CreatePlacedResource(
+            gpuHeap.GetD3D12Heap(),
+            gpuHeapOffsetInBytes,
+            &d3d12ResourceDesc,
+            (D3D12_RESOURCE_STATES)initialState,
+            nullptr,
+            IID_PPV_ARGS(&d3d12Resource)
+        ));
+
+        BenzinEnsure(d3d12Resource != nullptr);
+        return d3d12Resource;
     }
 
     static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResoureViewDesc(const Buffer& buffer, const SubRange64& elementRange)
@@ -188,7 +203,6 @@ namespace benzin
                     },
                 };
             }
-            case BufferType::Vertex:
             case BufferType::Structured:
             {
                 // Ref: https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_buffer_srv#remarks
@@ -202,7 +216,7 @@ namespace benzin
                     {
                         .FirstElement = elementRange.Offset,
                         .NumElements = (uint32_t)elementRange.Count,
-                        .StructureByteStride = buffer.GetAlignedElementSizeInBytes(), // #TODO: 'm_AlignedElementSize' when using 'StructuredBuffer'?
+                        .StructureByteStride = buffer.GetElementSizeInBytes(),
                         .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
                     },
                 };
@@ -299,7 +313,7 @@ namespace benzin
         return D3D12_CONSTANT_BUFFER_VIEW_DESC
         {
             .BufferLocation = buffer.GetGpuVirtualAddress(elementIndex),
-            .SizeInBytes = buffer.GetAlignedElementSizeInBytes(),
+            .SizeInBytes = buffer.GetElementSizeInBytes(),
         };
     }
 
@@ -308,26 +322,19 @@ namespace benzin
     Buffer::Buffer(Device& device, const BufferCreation& creation)
         : Resource{ device }
     {
-        BenzinAssert(m_D3D12Resource == nullptr);
+        m_CurrentState = GetInitialBufferState(m_Device, creation.Type, creation.HeapType);
+        m_D3D12Resource = CreateCommittedD3D12Resource(m_Device, creation, m_CurrentState);
 
-        CreateD3D12Resource(creation, m_Device, m_D3D12Resource, m_CurrentState);
-        SetD3DObjectDebugName(m_D3D12Resource, creation.DebugName);
+        SetupCreation(creation);
+    }
 
-        m_MemoryType = creation.MemoryType;
-        m_Type = creation.Type;
-        m_Format = creation.Format;
+    Buffer::Buffer(GpuHeap& gpuHeap, uint64_t gpuHeapOffsetInBytes, const BufferCreation& creation)
+        : Resource{ gpuHeap.m_Device }
+    {
+        m_CurrentState = GetInitialBufferState(m_Device, creation.Type, gpuHeap.GetType());
+        m_D3D12Resource = CreatePlacedD3D12Resource(m_Device, gpuHeap, gpuHeapOffsetInBytes, creation, m_CurrentState);
 
-        m_ElementSizeInBytes = creation.ElementSizeInBytes;
-        m_ElementCount = creation.ElementCount;
-        m_AlignedElementSizeInBytes = (uint32_t)(m_D3D12Resource->GetDesc().Width / creation.ElementCount); // HACK
-
-        m_IsUnorderedAccessAllowed = creation.IsUnorderedAccessAllowed;
-
-        if (creation.MemoryType == ResourceMemoryType::Upload)
-        {
-            const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // Writing only range
-            BenzinD3D12Call(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_CpuMappedData)));
-        }
+        SetupCreation(creation, &gpuHeap);
     }
 
     Buffer::~Buffer()
@@ -343,7 +350,7 @@ namespace benzin
         BenzinAssert(m_D3D12Resource != nullptr);
         BenzinAssert(elementIndex < m_ElementCount);
 
-        return m_D3D12Resource->GetGPUVirtualAddress() + elementIndex * m_AlignedElementSizeInBytes;
+        return m_D3D12Resource->GetGPUVirtualAddress() + elementIndex * m_ElementSizeInBytes;
     }
 
     const Descriptor& Buffer::GetSrv(const SubRange64& elementRange) const
@@ -435,7 +442,7 @@ namespace benzin
 
     void Buffer::MapReadbackData(uint64_t offsetInBytes, uint32_t dataSizeInBytes, const MapReadbackCallback& callback) const
     {
-        BenzinAssert(m_MemoryType == ResourceMemoryType::Readback);
+        BenzinAssert(m_HeapType == GpuHeapType::Readback);
         BenzinAssert(offsetInBytes + dataSizeInBytes <= GetSizeInBytes());
         BenzinAssert(callback);
 
@@ -451,6 +458,26 @@ namespace benzin
         callback(mappedData);
 
         m_D3D12Resource->Unmap(0, nullptr);
+    }
+
+    void Buffer::SetupCreation(const BufferCreation& creation, const GpuHeap* gpuHeap)
+    {
+        BenzinAssert(m_D3D12Resource != nullptr);
+
+        SetD3DObjectDebugName(m_D3D12Resource, creation.DebugName);
+
+        m_HeapType = gpuHeap != nullptr ? gpuHeap->GetType() : creation.HeapType;
+        m_Type = creation.Type;
+        m_Format = creation.Format;
+        m_ElementSizeInBytes = creation.ElementSizeInBytes;
+        m_ElementCount = creation.ElementCount;
+        m_IsUnorderedAccessAllowed = creation.IsUnorderedAccessAllowed;
+
+        if (m_HeapType == GpuHeapType::Upload || m_HeapType == GpuHeapType::GpuUpload)
+        {
+            const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // Writing only range
+            BenzinD3D12Call(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_CpuMappedData)));
+        }
     }
 
 }

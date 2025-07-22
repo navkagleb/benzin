@@ -6,8 +6,9 @@
 #include "benzin/core/profiler.hpp"
 #include "benzin/graphics/backend.hpp"
 #include "benzin/graphics/cmd_queue.hpp"
-#include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/d3d12_assert.hpp"
+#include "benzin/graphics/d3d12_utils.hpp"
+#include "benzin/graphics/gpu_heap.hpp"
 #include "benzin/graphics/pso.hpp"
 #include "benzin/graphics/query_heap.hpp"
 #include "benzin/graphics/ray_tracing_pso.hpp"
@@ -49,15 +50,42 @@ namespace benzin
         MakeUniquePtr(m_UnifiedRootSignature, *this);
         MakeUniquePtr(m_DescriptorManager, *this);
         MakeUniquePtr(m_GraphicsCmdQueue, *this);
+
+        m_TemporalGpuHeaps.resize(CmdLineArgs::GetFrameInFlightCount());
+        m_TemporalLinearBufferAllocators.resize(CmdLineArgs::GetFrameInFlightCount());
+        
+        for (uint32_t i = 0; i < CmdLineArgs::GetFrameInFlightCount(); ++i)
+        {
+            MakeUniquePtr(m_TemporalGpuHeaps[i], *this, GpuHeapCreation
+            {
+                .DebugName = std::format("TemporalGpuHeap_{}", i),
+                .Type = GpuHeapType::GpuUpload,
+                .SizeInBytes = 1_mb,
+            });
+        
+            MakeUniquePtr(m_TemporalLinearBufferAllocators[i], *m_TemporalGpuHeaps[i]);
+        }
+
+        MakeUniquePtr(m_PersistentGpuHeap, *this, GpuHeapCreation{ .DebugName = "PersistentGpuHeap", .Type = GpuHeapType::Default, .SizeInBytes = 20_mb });
+        MakeUniquePtr(m_PersistentLinearBufferAllocator, *m_PersistentGpuHeap);
     }
 
     Device::~Device()
     {
         BenzinLogTimeOnScopeExit("Device::~Device");
 
-        m_UnifiedRootSignature.reset();
-        m_DescriptorManager.reset();
+        m_PersistentLinearBufferAllocator.reset();
+        m_PersistentGpuHeap.reset();
+
+        for (uint32_t i = 0; i < CmdLineArgs::GetFrameInFlightCount(); ++i)
+        {
+            m_TemporalLinearBufferAllocators[i].reset();
+            m_TemporalGpuHeaps[i].reset();
+        }
+
         m_GraphicsCmdQueue.reset();
+        m_DescriptorManager.reset();
+        m_UnifiedRootSignature.reset();
 
         ProcessDeferredReleaseQueues(true);
 
@@ -66,6 +94,11 @@ namespace benzin
 
         // TODO: There is reference count due to implicit heaps of resources
         SafeReleaseD3DObject(m_D3D12Device);
+    }
+
+    const GpuHeapLinearBufferAllocator& Device::GetPrevTemporalLinearBufferAllocator() const
+    {
+        return *m_TemporalLinearBufferAllocators[(m_ActiveFrameIndex + 1) % CmdLineArgs::GetFrameInFlightCount()];
     }
 
     uint8_t Device::GetPlaneCountFromFormat(GraphicsFormat format) const
@@ -78,6 +111,11 @@ namespace benzin
         return d3d12FormatInfo.PlaneCount;
     }
 
+    void Device::DeferredRelease(ID3D12Heap*& d3d12Heap)
+    {
+        DeferredRelease((ID3D12Object*)d3d12Heap);
+        d3d12Heap = nullptr;
+    }
 
     void Device::DeferredRelease(ID3D12PipelineState*& d3d12PipelineState)
     {

@@ -5,6 +5,7 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/const_buffer_pool.hpp>
@@ -41,6 +42,7 @@ namespace sandbox
         ms_Resources->Create(BufferId::ToneMapping_LuminanceHistogram, benzin::BufferCreation
         {
             .DebugName = "ToneMapping_LuminanceHistogram",
+            .HeapType = benzin::GpuHeapType::Default,
             .Type = benzin::BufferType::Format,
             .Format = benzin::GraphicsFormat::R32Uint,
             .ElementSizeInBytes = sizeof(uint32_t),

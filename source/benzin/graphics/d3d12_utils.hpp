@@ -6,9 +6,14 @@
 namespace benzin
 {
 
+    enum class GpuHeapType : uint8_t;
+
+    class Device;
+
     static constexpr uint32_t g_MaxDebugNameSize = 128;
 
     D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType);
+    D3D12_HEAP_TYPE ToD3D12HeapType(const Device& device, GpuHeapType gpuHeapType);
 
     enum class D3D12BreakReasonFlag
     {

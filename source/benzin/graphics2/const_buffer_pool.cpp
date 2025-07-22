@@ -7,6 +7,7 @@
 #include "benzin/core/profiler.hpp"
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/gpu_heap.hpp"
 
 namespace benzin
 {
@@ -64,7 +65,7 @@ namespace benzin
                 MakeUniquePtr(pool.BufferPool, m_Device, BufferCreation
                 {
                     .DebugName = std::format("ConstBuffer_{}", alignedSizeInBytes),
-                    .MemoryType = ResourceMemoryType::Upload,
+                    .HeapType = GpuHeapType::Upload,
                     .Type = BufferType::Const,
                     .ElementSizeInBytes = alignedSizeInBytes,
                     .ElementCount = pool.MaxElementCount * CmdLineArgs::GetFrameInFlightCount(),

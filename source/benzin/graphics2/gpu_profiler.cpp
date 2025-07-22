@@ -6,6 +6,7 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/query_heap.hpp>
 #include <benzin/utility/time_utils.hpp>
 
@@ -37,7 +38,7 @@ namespace benzin
         MakeUniquePtr(m_ReadbackBuffer, device, BufferCreation
         {
             .DebugName = "GpuProfiler_ReadbackBuffer",
-            .MemoryType = ResourceMemoryType::Readback,
+            .HeapType = GpuHeapType::Readback,
             .ElementSizeInBytes = sizeof(uint64_t) * ms_MaxTimestampCount,
             .ElementCount = CmdLineArgs::GetReadbackLatency(),
         });

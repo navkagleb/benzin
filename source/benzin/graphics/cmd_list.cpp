@@ -5,13 +5,14 @@
 #define USE_PIX
 #include <pix3.h>
 
-#include <benzin/core/math.hpp>
 #include <benzin/core/buffer_writer.hpp>
+#include <benzin/core/math.hpp>
 #include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/d3d12_assert.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/descriptor_manager.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/pso.hpp>
 #include <benzin/graphics/query_heap.hpp>
 #include <benzin/graphics/ray_tracing_acceleration_structures.hpp>
@@ -359,7 +360,7 @@ namespace benzin
     void ComputeCmdList::ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackOffsetInBytes)
     {
         BenzinAssert(timestampQueryHeap.GetD3D12QueryHeap() != nullptr);
-        BenzinAssert(readbackBuffer.GetD3D12Resource() != nullptr && readbackBuffer.GetMemoryType() == ResourceMemoryType::Readback);
+        BenzinAssert(readbackBuffer.GetD3D12Resource() != nullptr && readbackBuffer.GetHeapType() == GpuHeapType::Readback);
 
         m_D3D12GraphicsCommandList1->ResolveQueryData(
             timestampQueryHeap.GetD3D12QueryHeap(),
@@ -544,7 +545,7 @@ namespace benzin
 
     void GraphicsCmdList::SetVertexBuffer(const Buffer& vertexBuffer)
     {
-        BenzinAssert(vertexBuffer.GetType() == BufferType::Vertex);
+        BenzinAssert(vertexBuffer.GetType() == BufferType::Structured);
 
         const D3D12_VERTEX_BUFFER_VIEW d3d12VertexBufferView
         {
@@ -558,7 +559,7 @@ namespace benzin
 
     void GraphicsCmdList::SetIndexBuffer(const Buffer& indexBuffer)
     {
-        BenzinAssert(indexBuffer.GetType() == BufferType::Index);
+        BenzinAssert(indexBuffer.GetType() == BufferType::Format);
         BenzinAssert(indexBuffer.GetFormat() == GraphicsFormat::R16Uint || indexBuffer.GetFormat() == GraphicsFormat::R32Uint);
 
         const D3D12_INDEX_BUFFER_VIEW d3d12VertexBufferView

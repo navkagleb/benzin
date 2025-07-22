@@ -7,7 +7,7 @@ namespace benzin
     class ScopedResourceBarriers;
     class Texture;
 
-    enum class ResourceState : int; // TODO
+    enum class ResourceState : int32_t;
 }
 
 namespace sandbox

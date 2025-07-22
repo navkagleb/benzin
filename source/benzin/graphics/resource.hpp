@@ -13,14 +13,7 @@ namespace benzin
         uint64_t SlicePitchInBytes = 0;
     };
 
-    enum class ResourceMemoryType : uint8_t
-    {
-        Default, // Gpu
-        Upload, // Shared CpuGpu memory
-        Readback, // Cpu can read ???
-    };
-
-    enum class ResourceState : std::underlying_type_t<D3D12_RESOURCE_STATES>
+    enum class ResourceState : int32_t
     {
         Common = D3D12_RESOURCE_STATE_COMMON,
         VertexBuffer = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,

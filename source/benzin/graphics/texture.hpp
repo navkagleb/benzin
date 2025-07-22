@@ -8,7 +8,7 @@ namespace benzin
 
     struct DepthStencilValue
     {
-        float Depth = 1.0f;
+        float Depth = 0.0f;
         uint8_t Stencil = 0;
     };
 
@@ -50,7 +50,7 @@ namespace benzin
     struct TextureUav
     {
         GraphicsFormat Format = GraphicsFormat::Unknown;
-        uint32_t MipIndex = 0;
+        uint16_t MipIndex = 0;
         SubRange16 DepthRange;
     };
 
@@ -94,6 +94,9 @@ namespace benzin
         Descriptor CreateDetachedUav(const TextureUav& textureUav = {}, bool isValidationEnabled = true) const;
         Descriptor CreateDetachedRtv(const TextureRtv& textureRtv = {}, bool isValidationEnabled = true) const;
         Descriptor CreateDetachedDsv(bool isValidationEnabled = true) const;
+
+    private:
+        void SetupCreation(const TextureCreation* creation = nullptr);
 
     private:
         bool m_IsCubeMap = false;

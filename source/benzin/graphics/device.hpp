@@ -7,6 +7,8 @@ namespace benzin
 
     class Backend;
     class ComputePso;
+    class GpuHeap;
+    class GpuHeapLinearBufferAllocator;
     class GraphicsCmdQueue;
     class MeshPso;
     class QueryHeap;
@@ -51,8 +53,14 @@ namespace benzin
 
         const auto& GetCaps() const { return m_Caps; }
 
+        auto& GetTemporalLinearBufferAllocator() { return *m_TemporalLinearBufferAllocators[m_ActiveFrameIndex]; }
+        auto& GetPersistentLinearBufferAllocator() { return *m_PersistentLinearBufferAllocator; }
+
+        const GpuHeapLinearBufferAllocator& GetPrevTemporalLinearBufferAllocator() const;
+
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
+        void DeferredRelease(ID3D12Heap*& d3d12Heap);
         void DeferredRelease(ID3D12PipelineState*& d3d12PipelineState);
         void DeferredRelease(ID3D12QueryHeap*& d3d12QueryHeap);
         void DeferredRelease(ID3D12Resource*& d3d12Resource);
@@ -74,6 +82,12 @@ namespace benzin
         std::unique_ptr<UnifiedRootSignature> m_UnifiedRootSignature;
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
         std::unique_ptr<GraphicsCmdQueue> m_GraphicsCmdQueue;
+
+        std::vector<std::unique_ptr<GpuHeap>> m_TemporalGpuHeaps;
+        std::vector<std::unique_ptr<GpuHeapLinearBufferAllocator>> m_TemporalLinearBufferAllocators;
+
+        std::unique_ptr<GpuHeap> m_PersistentGpuHeap;
+        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentLinearBufferAllocator;
 
         uint64_t m_CpuFrameIndex = 0;
         uint64_t m_CompletedGpuFrameIndex = 0;
