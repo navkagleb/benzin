@@ -15,9 +15,16 @@ namespace benzin
     void VramTool::DrawWindowContent()
     {
         {
-            const GpuHeapLinearBufferAllocator& allocator = m_Device.GetPersistentLinearBufferAllocator();
+            const GpuHeapLinearBufferAllocator& allocator = m_Device.GetPersistentDefaultLinearAllocator();
 
             ImGui::SeparatorText("PERSISTENT ALLOCATOR");
+            ImGui::FmtText("Allocated: {:.0f}/{:.0f} mb", ToMb(allocator.GetOffsetInBytes()), ToMb(allocator.GetSizeInBytes()));
+        }
+
+        {
+            const GpuHeapLinearBufferAllocator& allocator = m_Device.GetPersistentReadbackLinearAllocator();
+
+            ImGui::SeparatorText("READBACK ALLOCATOR");
             ImGui::FmtText("Allocated: {:.0f}/{:.0f} mb", ToMb(allocator.GetOffsetInBytes()), ToMb(allocator.GetSizeInBytes()));
         }
         

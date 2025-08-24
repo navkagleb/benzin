@@ -188,9 +188,9 @@ namespace benzin
             });
         }
 
-        m_UnifiedMaterialBuffer = m_Device.GetPersistentLinearBufferAllocator().AllocateBuffer("Scene_UnifiedMaterialBuffer", ToSpan(m_UnifiedMaterials));
+        m_UnifiedMaterialBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene_UnifiedMaterialBuffer", ToSpan(unifiedMaterials));
         
-        CopyCmdList& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(m_UnifiedMaterialBuffer->GetSizeInBytes());
+        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(m_UnifiedMaterialBuffer->GetSizeInBytes());
         cmdList.UploadToBuffer(*m_UnifiedMaterialBuffer, ToSpan(unifiedMaterials));
     }
 
@@ -386,12 +386,18 @@ namespace benzin
             });
         }
 
-        m_LightBuffer = m_Device.GetTemporalLinearBufferAllocator().AllocateAndWriteBuffer("Scene_Lights", ToSpan(activeLights));
+        m_LightBuffer = m_Device.GetTemporalLinearAllocator().AllocateAndWriteBuffer("Scene_Lights", ToSpan(activeLights));
         m_ActiveLightCount = (uint32_t)activeLights.size();
     }
 
     void Scene::EndFrame()
     {
+        // D3D12 WARNING : ID3D12CommandList::SetComputeRootShaderResourceView : 1 resources contain
+        // the GPU Virtual Address range[0x0000000300440000, 0x0000000300440000] on a Heap(0x00000176BAD3D340:'TemporalHeap_2').
+        // This may be OK as long as only one of these resources is actively being used.However, there is no definitive way
+        // for the debug layer to identify which resource is intended.Consider using AssertResourceState to help with state validation.
+        // [STATE_CREATION WARNING #926: HEAP_ADDRESS_RANGE_INTERSECTS_MULTIPLE_BUFFERS]
+        // D3D12 : **BREAK** enabled for the previous message, which was : [WARNING STATE_CREATION #926: HEAP_ADDRESS_RANGE_INTERSECTS_MULTIPLE_BUFFERS]
         m_LightBuffer.reset();
     }
 

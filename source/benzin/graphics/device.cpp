@@ -5,6 +5,7 @@
 #include "benzin/core/logger.hpp"
 #include "benzin/core/profiler.hpp"
 #include "benzin/graphics/backend.hpp"
+#include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/cmd_queue.hpp"
 #include "benzin/graphics/d3d12_assert.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
@@ -51,36 +52,42 @@ namespace benzin
         MakeUniquePtr(m_DescriptorManager, *this);
         MakeUniquePtr(m_GraphicsCmdQueue, *this);
 
-        m_TemporalGpuHeaps.resize(CmdLineArgs::GetFrameInFlightCount());
-        m_TemporalLinearBufferAllocators.resize(CmdLineArgs::GetFrameInFlightCount());
+        m_TemporalHeaps.resize(CmdLineArgs::GetFrameInFlightCount());
+        m_TemporalLinearAllocators.resize(CmdLineArgs::GetFrameInFlightCount());
         
         for (uint32_t i = 0; i < CmdLineArgs::GetFrameInFlightCount(); ++i)
         {
-            MakeUniquePtr(m_TemporalGpuHeaps[i], *this, GpuHeapCreation
+            MakeUniquePtr(m_TemporalHeaps[i], *this, GpuHeapCreation
             {
-                .DebugName = std::format("TemporalGpuHeap_{}", i),
+                .DebugName = std::format("TemporalHeap_{}", i),
                 .Type = GpuHeapType::GpuUpload,
                 .SizeInBytes = 1_mb,
             });
         
-            MakeUniquePtr(m_TemporalLinearBufferAllocators[i], *m_TemporalGpuHeaps[i]);
+            MakeUniquePtr(m_TemporalLinearAllocators[i], *m_TemporalHeaps[i]);
         }
 
-        MakeUniquePtr(m_PersistentGpuHeap, *this, GpuHeapCreation{ .DebugName = "PersistentGpuHeap", .Type = GpuHeapType::Default, .SizeInBytes = 20_mb });
-        MakeUniquePtr(m_PersistentLinearBufferAllocator, *m_PersistentGpuHeap);
+        MakeUniquePtr(m_PersistentDefaultHeap, *this, GpuHeapCreation{ .DebugName = "PersistentDefaultHeap", .Type = GpuHeapType::Default, .SizeInBytes = 20_mb });
+        MakeUniquePtr(m_PersistentReadbackHeap, *this, GpuHeapCreation{ .DebugName = "PersistentReadbackHeap", .Type = GpuHeapType::Readback, .SizeInBytes = 4_mb });
+
+        MakeUniquePtr(m_PersistentDefaultLinearAllocator, *m_PersistentDefaultHeap);
+        MakeUniquePtr(m_PersistentReadbackLinearAllocator, *m_PersistentReadbackHeap);
     }
 
     Device::~Device()
     {
         BenzinLogTimeOnScopeExit("Device::~Device");
 
-        m_PersistentLinearBufferAllocator.reset();
-        m_PersistentGpuHeap.reset();
+        m_PersistentReadbackLinearAllocator.reset();
+        m_PersistentDefaultLinearAllocator.reset();
+        
+        m_PersistentReadbackHeap.reset();
+        m_PersistentDefaultHeap.reset();
 
         for (uint32_t i = 0; i < CmdLineArgs::GetFrameInFlightCount(); ++i)
         {
-            m_TemporalLinearBufferAllocators[i].reset();
-            m_TemporalGpuHeaps[i].reset();
+            m_TemporalLinearAllocators[i].reset();
+            m_TemporalHeaps[i].reset();
         }
 
         m_GraphicsCmdQueue.reset();
@@ -98,7 +105,7 @@ namespace benzin
 
     const GpuHeapLinearBufferAllocator& Device::GetPrevTemporalLinearBufferAllocator() const
     {
-        return *m_TemporalLinearBufferAllocators[(m_ActiveFrameIndex + 1) % CmdLineArgs::GetFrameInFlightCount()];
+        return *m_TemporalLinearAllocators[(m_ActiveFrameIndex + 1) % CmdLineArgs::GetFrameInFlightCount()];
     }
 
     uint8_t Device::GetPlaneCountFromFormat(GraphicsFormat format) const

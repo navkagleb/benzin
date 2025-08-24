@@ -53,6 +53,8 @@ namespace benzin
     class GpuHeapLinearBufferAllocator
     {
     public:
+        using BufferConfigurator = std::function<void(BufferCreation& creation)>;
+
         GpuHeapLinearBufferAllocator(GpuHeap& gpuHeap);
 
         auto GetSizeInBytes() const { return m_GpuHeap.GetSizeInBytes(); }
@@ -83,6 +85,7 @@ namespace benzin
             return buffer;
         }
 
+        std::unique_ptr<Buffer> AllocateBuffer(const BufferConfigurator& configurator);
         std::unique_ptr<Buffer> AllocateStructuredBuffer(std::string_view debugName, uint32_t elementCount, uint32_t elementSizeInBytes);
         std::unique_ptr<Buffer> AllocateFormatBuffer(std::string_view debugName, uint32_t elementCount, GraphicsFormat format);
 

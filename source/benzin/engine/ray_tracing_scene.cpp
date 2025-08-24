@@ -12,6 +12,7 @@
 #include "benzin/graphics/buffer.hpp"
 #include "benzin/graphics/cmd_queue.hpp"
 #include "benzin/graphics/device.hpp"
+#include "benzin/graphics/gpu_heap.hpp"
 #include "benzin/graphics/ray_tracing_acceleration_structures.hpp"
 
 namespace benzin
@@ -95,14 +96,11 @@ namespace benzin
         std::vector<DirectX::XMFLOAT3X4> localTransforms;
         localTransforms.reserve(meshInstanceCount);
 
-        MakeUniquePtr(localTransformBuffer, m_Device, BufferCreation
-        {
-            .DebugName = "RayTracingScene_TempLocalTransforms",
-            .MemoryType = ResourceMemoryType::Upload,
-            .Type = BufferType::Structured,
-            .ElementSizeInBytes = sizeof(DirectX::XMFLOAT3X4),
-            .ElementCount = meshInstanceCount,
-        });
+        localTransformBuffer = m_Device.GetTemporalLinearAllocator().AllocateStructuredBuffer(
+            "RayTracingScene_LocalTransforms",
+            meshInstanceCount,
+            sizeof(DirectX::XMFLOAT3X4)
+        );
 
         for (const entt::entity meshHandle : view)
         {

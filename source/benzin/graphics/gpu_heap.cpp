@@ -9,6 +9,8 @@
 namespace benzin
 {
 
+    // GpuHeap
+
     GpuHeap::GpuHeap(Device& device, const GpuHeapCreation& creation)
         : m_Device{ device }
     {
@@ -43,6 +45,18 @@ namespace benzin
         : m_GpuHeap{ gpuHeap }
     {
         BenzinAssert(gpuHeap.GetD3D12Heap() != nullptr);
+    }
+
+    std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateBuffer(const BufferConfigurator& configurator)
+    {
+        BenzinAssert(configurator);
+
+        BufferCreation bufferCreation;
+        configurator(bufferCreation);
+
+        BenzinAssert(!IsGoodEnum(bufferCreation.HeapType));
+
+        return AllocateBuffer(bufferCreation);
     }
 
     std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateStructuredBuffer(std::string_view debugName, uint32_t elementCount, uint32_t elementSizeInBytes)

@@ -5,9 +5,6 @@ namespace benzin
 
     enum class BufferId : uint32_t
     {
-        UavStats,
-        ReadbackStats,
-
         ProceduralGrass_GrassPatches,
 
         ToneMapping_LuminanceHistogram,

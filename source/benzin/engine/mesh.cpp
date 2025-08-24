@@ -5,6 +5,7 @@
 
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 
 namespace benzin
 {
@@ -21,66 +22,15 @@ namespace benzin
 
     MeshGpuStorage Mesh::CreateGpuStorage(Device& device, std::string_view debugName) const
     {
+        GpuHeapLinearBufferAllocator& allocator = device.GetPersistentDefaultLinearAllocator();
+
         MeshGpuStorage meshGpuStorage;
-
-        MakeUniquePtr(meshGpuStorage.VertexBuffer, device, BufferCreation
-        {
-            .DebugName = std::format("{}_VertexBuffer", debugName),
-            .Type = BufferType::Vertex,
-            .ElementSizeInBytes = sizeof(decltype(Vertices)::value_type),
-            .ElementCount = (uint32_t)Vertices.size(),
-        });
-
-        MakeUniquePtr(meshGpuStorage.IndexBuffer, device, BufferCreation
-        {
-            .DebugName = std::format("{}_IndexBuffer", debugName),
-            .Type = BufferType::Index,
-            .Format = GraphicsFormat::R32Uint,
-            .ElementSizeInBytes = sizeof(uint32_t),
-            .ElementCount = (uint32_t)Indices.size(),
-        });
-
-        MakeUniquePtr(meshGpuStorage.ObjectToLocalMatrixBuffer, device, BufferCreation
-        {
-            .DebugName = std::format("{}_ObjectToLocalMatrixBuffer", debugName),
-            .Type = BufferType::Structured,
-            .ElementSizeInBytes = sizeof(DirectX::XMMATRIX),
-            .ElementCount = (uint32_t)Instances.size(),
-        });
-
-        MakeUniquePtr(meshGpuStorage.MeshletBuffer, device, BufferCreation
-        {
-            .DebugName = std::format("{}_MeshletBuffer", debugName),
-            .Type = BufferType::Structured,
-            .ElementSizeInBytes = sizeof(decltype(Meshlets)::value_type),
-            .ElementCount = (uint32_t)Meshlets.size(),
-        });
-
-        MakeUniquePtr(meshGpuStorage.MeshletCullVolumeBuffer, device, BufferCreation
-        {
-            .DebugName = std::format("{}_MeshletCullVolumeBuffer", debugName),
-            .Type = BufferType::Structured,
-            .ElementSizeInBytes = sizeof(decltype(MeshletCullVolumes)::value_type),
-            .ElementCount = (uint32_t)MeshletCullVolumes.size(),
-        });
-
-        MakeUniquePtr(meshGpuStorage.MeshletIndirectVertexBuffer, device, BufferCreation
-        {
-            .DebugName = std::format("{}_MeshletIndirectVertexBuffer", debugName),
-            .Type = BufferType::Format,
-            .Format = GraphicsFormat::R32Uint,
-            .ElementSizeInBytes = sizeof(decltype(MeshletIndirectVertices)::value_type),
-            .ElementCount = (uint32_t)MeshletIndirectVertices.size(),
-        });
-
-        MakeUniquePtr(meshGpuStorage.MeshletIndexBuffer, device, BufferCreation
-        {
-            .DebugName = std::format("{}_MeshletIndexBuffer", debugName),
-            .Type = BufferType::Format,
-            .Format = GraphicsFormat::R8Uint,
-            .ElementSizeInBytes = sizeof(decltype(MeshletIndices)::value_type),
-            .ElementCount = (uint32_t)MeshletIndices.size(),
-        });
+        meshGpuStorage.VertexBuffer = allocator.AllocateBuffer(std::format("{}_VertexBuffer", debugName), ToSpan(Vertices));
+        meshGpuStorage.IndexBuffer = allocator.AllocateBuffer(std::format("{}_IndexBuffer", debugName), ToSpan(Indices), GraphicsFormat::R32Uint);
+        meshGpuStorage.MeshletBuffer = allocator.AllocateBuffer(std::format("{}_MeshletBuffer", debugName), ToSpan(Meshlets));
+        meshGpuStorage.MeshletCullVolumeBuffer = allocator.AllocateBuffer(std::format("{}_MeshletCullVolumeBuffer", debugName), ToSpan(MeshletCullVolumes));
+        meshGpuStorage.MeshletIndirectVertexBuffer = allocator.AllocateBuffer(std::format("{}_MeshletIndirectVertexBuffer", debugName), ToSpan(MeshletIndirectVertices), GraphicsFormat::R32Uint);
+        meshGpuStorage.MeshletIndexBuffer = allocator.AllocateBuffer(std::format("{}_MeshletIndexBuffer", debugName), ToSpan(MeshletIndices), GraphicsFormat::R8Uint);
 
         return meshGpuStorage;
     }

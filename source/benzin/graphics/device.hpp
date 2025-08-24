@@ -53,8 +53,9 @@ namespace benzin
 
         const auto& GetCaps() const { return m_Caps; }
 
-        auto& GetTemporalLinearBufferAllocator() { return *m_TemporalLinearBufferAllocators[m_ActiveFrameIndex]; }
-        auto& GetPersistentLinearBufferAllocator() { return *m_PersistentLinearBufferAllocator; }
+        auto& GetTemporalLinearAllocator() { return *m_TemporalLinearAllocators[m_ActiveFrameIndex]; }
+        auto& GetPersistentDefaultLinearAllocator() { return *m_PersistentDefaultLinearAllocator; }
+        auto& GetPersistentReadbackLinearAllocator() { return *m_PersistentReadbackLinearAllocator; }
 
         const GpuHeapLinearBufferAllocator& GetPrevTemporalLinearBufferAllocator() const;
 
@@ -83,11 +84,15 @@ namespace benzin
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
         std::unique_ptr<GraphicsCmdQueue> m_GraphicsCmdQueue;
 
-        std::vector<std::unique_ptr<GpuHeap>> m_TemporalGpuHeaps;
-        std::vector<std::unique_ptr<GpuHeapLinearBufferAllocator>> m_TemporalLinearBufferAllocators;
+        std::vector<std::unique_ptr<GpuHeap>> m_TemporalHeaps;
+        std::vector<std::unique_ptr<GpuHeapLinearBufferAllocator>> m_TemporalLinearAllocators;
 
-        std::unique_ptr<GpuHeap> m_PersistentGpuHeap;
-        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentLinearBufferAllocator;
+        std::unique_ptr<GpuHeap> m_PersistentDefaultHeap;
+        std::unique_ptr<GpuHeap> m_PersistentReadbackHeap;
+
+        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentDefaultLinearAllocator;
+        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentReadbackLinearAllocator;
+
 
         uint64_t m_CpuFrameIndex = 0;
         uint64_t m_CompletedGpuFrameIndex = 0;

@@ -24,36 +24,10 @@ namespace sandbox
     GlobalConstsPass::GlobalConstsPass(ReadbackStatsCallback&& callback)
         : m_ReadbackStatsCallback{ std::move(callback) }
     {
-        BenzinAssert(m_ReadbackStatsCallback);
+        CreateReadbackStatBuffers();
 
-        const auto statFormat = benzin::GraphicsFormat::R32Uint;
-        const uint32_t statElementSizeInBytes = benzin::GetFormatSizeInBytes(statFormat);
-        const uint32_t statElementCount = (uint32_t)magic_enum::enum_count<joint::ReadbackStat>();
-
-        // Usage as ByteAddressBuffer
-        ms_Resources->Create(BufferId::UavStats, benzin::BufferCreation
         {
-            .DebugName = magic_enum::enum_name(BufferId::UavStats),
-            .Type = benzin::BufferType::Format,
-            .Format = benzin::GraphicsFormat::R32Uint,
-            .ElementSizeInBytes = statElementSizeInBytes,
-            .ElementCount = statElementCount,
-            .IsUnorderedAccessAllowed = true,
         });
-
-        ms_Resources->Create(BufferId::ReadbackStats, benzin::BufferCreation
-        {
-            .DebugName = magic_enum::enum_name(BufferId::ReadbackStats),
-            .MemoryType = benzin::ResourceMemoryType::Readback,
-            .Type = benzin::BufferType::Format,
-            .Format = statFormat,
-            .ElementSizeInBytes = statElementSizeInBytes,
-            .ElementCount = statElementCount * benzin::CmdLineArgs::GetReadbackLatency(),
-        });
-
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ ms_Resources->Get(BufferId::UavStats), benzin::ResourceState::UnorderedAccess });
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ ms_Resources->Get(BufferId::ReadbackStats), benzin::ResourceState::Common });
     }
 
     GlobalConstsPass::~GlobalConstsPass()
@@ -92,11 +66,44 @@ namespace sandbox
             cmdList.SetComputeSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, lightBufferGpuAddress);
             cmdList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, lightBufferGpuAddress);
 
-            const benzin::Buffer& statsBuffer = ms_Resources->Get(BufferId::UavStats);
-            cmdList.ClearUnorderedAccess(statsBuffer, statsBuffer.GetUav(), {});
-            cmdList.SetComputeUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statsBuffer.GetGpuVirtualAddress());
-            cmdList.SetGraphicsUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statsBuffer.GetGpuVirtualAddress());
+            const uint64_t statBufferGpuAddress = m_StatBuffer->GetGpuVirtualAddress();
+            cmdList.ClearUnorderedAccess(*m_StatBuffer, m_StatBuffer->GetUav(), {});
+            cmdList.SetComputeUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statBufferGpuAddress);
+            cmdList.SetGraphicsUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statBufferGpuAddress);
         }
+    }
+
+    void GlobalConstsPass::CreateReadbackStatBuffers()
+    {
+        BenzinAssert(m_ReadbackStatsCallback);
+
+        const auto statFormat = benzin::GraphicsFormat::R32Uint;
+        const uint32_t statElementSizeInBytes = benzin::GetFormatSizeInBytes(statFormat);
+        const uint64_t statElementCount = magic_enum::enum_count<joint::ReadbackStat>();
+
+        // Usage as ByteAddressBuffer
+        m_StatBuffer = ms_Device->GetPersistentDefaultLinearAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
+        {
+            creation.DebugName = "GlobalConsts_StatBuffer";
+            creation.Type = benzin::BufferType::Format;
+            creation.Format = statFormat;
+            creation.ElementSizeInBytes = statElementSizeInBytes;
+            creation.ElementCount = statElementCount;
+            creation.IsUnorderedAccessAllowed = true;
+        });
+
+        m_ReadbackStatBuffer = ms_Device->GetPersistentReadbackLinearAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
+        {
+            creation.DebugName = "GlobalConsts_ReadbackStatBuffer";
+            creation.Type = benzin::BufferType::Format;
+            creation.Format = statFormat;
+            creation.ElementSizeInBytes = statElementSizeInBytes;
+            creation.ElementCount = statElementCount * benzin::CmdLineArgs::GetReadbackLatency();
+        });
+
+        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_StatBuffer, benzin::ResourceState::UnorderedAccess });
+        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_ReadbackStatBuffer, benzin::ResourceState::Common });
     }
 
     void GlobalConstsPass::UpdateCameraConsts()
@@ -172,19 +179,16 @@ namespace sandbox
         BenzinProfile();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "CopyStats");
 
-        const benzin::Buffer& destBuffer = ms_Resources->Get(BufferId::ReadbackStats);
-        const benzin::Buffer& sourceBuffer = ms_Resources->Get(BufferId::UavStats);
-
-        const uint32_t dataSizeInBytes = (uint32_t)sourceBuffer.GetSizeInBytes();
+        const uint64_t dataSizeInBytes = m_StatBuffer->GetSizeInBytes();
         const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % benzin::CmdLineArgs::GetReadbackLatency()) * dataSizeInBytes;
         const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % benzin::CmdLineArgs::GetReadbackLatency()) * dataSizeInBytes;
 
-        cmdList.CopyBufferRegion(destBuffer, destOffsetInBytes, sourceBuffer, 0, dataSizeInBytes);
+        cmdList.CopyBufferRegion(*m_ReadbackStatBuffer, destOffsetInBytes, *m_StatBuffer, 0, dataSizeInBytes);
 
         destBuffer.MapReadbackData(readbackOffsetInBytes, dataSizeInBytes, [this](const std::byte* mappedData)
+        m_ReadbackStatBuffer->MapReadbackData(readbackOffsetInBytes, dataSizeInBytes, [this](const std::byte* mappedData)
         {
             const auto readbackStats = benzin::ToSpan((const uint32_t*)mappedData, magic_enum::enum_count<joint::ReadbackStat>());
-
             m_ReadbackStatsCallback(readbackStats);
         });
     }

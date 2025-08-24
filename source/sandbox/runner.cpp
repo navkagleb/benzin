@@ -266,7 +266,7 @@ namespace sandbox
     {
         BenzinProfile();
 
-        m_Device->GetTemporalLinearBufferAllocator().Reset();
+        m_Device->GetTemporalLinearAllocator().Reset();
         m_Device->GetGraphicsCmdQueue().ResetCmdList();
 
         m_ImGuiManager->BeginFrame();

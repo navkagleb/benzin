@@ -26,6 +26,8 @@ namespace sandbox
         void OnUpdate() override;
         void OnRender() const override;
 
+        void CreateReadbackStatBuffers();
+
         void UpdateCameraConsts();
         void UpdateFrameConsts();
 
@@ -37,6 +39,8 @@ namespace sandbox
         DirectX::XMUINT2 m_PrevRenderResolution{ 0, 0 };
         float m_PrevAnimationElapsedTimeInSec = 0.0f;
 
+        std::unique_ptr<benzin::Buffer> m_StatBuffer;
+        std::unique_ptr<benzin::Buffer> m_ReadbackStatBuffer;
         ReadbackStatsCallback m_ReadbackStatsCallback;
     };
 
