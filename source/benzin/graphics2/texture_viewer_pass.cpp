@@ -2,11 +2,12 @@
 #include <benzin/graphics2/texture_viewer_pass.hpp>
 
 #include <benzin/core/profiler.hpp>
+#include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
-#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/game_specific_resource_ids.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
@@ -84,8 +85,6 @@ namespace benzin
 
         m_Consts.MinColor = m_TextureViewerTool.m_MinColor;
         m_Consts.MaxColor = m_TextureViewerTool.m_MaxColor;
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     void TextureViewerPass::OnRender() const
@@ -105,7 +104,7 @@ namespace benzin
         );
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
         cmdList.SetComputeRootResource(+Resources::ReferenceTexture, ms_Resources->Get(m_ReferenceTextureId).GetSrv(
         {

@@ -262,7 +262,6 @@ namespace benzin
         SwapChain& swapChain,
         GpuProfiler& gpuProfiler,
         PsoManager& psoManager,
-        ConstBufferPool& constBufferPool,
         RenderResources& resources,
         RenderSettings& settings,
         const TickTimer& frameTimer,
@@ -275,7 +274,6 @@ namespace benzin
         ms_SwapChain = &swapChain;
         ms_GpuProfiler = &gpuProfiler;
         ms_PsoManager = &psoManager;
-        ms_ConstBufferPool = &constBufferPool;
         ms_Resources = &resources;
         ms_Settings = &settings;
 

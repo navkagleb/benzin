@@ -13,7 +13,7 @@ namespace benzin
     struct BufferSrv
     {
         BufferType BufferType = BufferType::Byte;
-        SubRange64 ElementRange{};
+        SubRange64 ElementRange;
     };
 
     struct BufferUav {};
@@ -96,13 +96,15 @@ namespace benzin
         {
             return ResourceState::RayTracing_AccelerationStructure;
         }
-        else if (heapType == GpuHeapType::Upload && !device.GetCaps().IsGpuUploadHeapsSupported)
+        
+        if (heapType == GpuHeapType::Upload && !device.GetCaps().IsGpuUploadHeapsSupported)
         {
             // Case only for D3D12_HEAP_TYPE_UPLOAD
             // D3D12_HEAP_TYPE_GPU_UPLOAD requires D3D12_RESOURCE_STATE_COMMON
             return ResourceState::GenericRead;
         }
-        else if (heapType == GpuHeapType::Readback)
+            
+        if (heapType == GpuHeapType::Readback)
         {
             return ResourceState::CopyDestination;
         }
@@ -440,7 +442,7 @@ namespace benzin
         });
     }
 
-    void Buffer::MapReadbackData(uint64_t offsetInBytes, uint32_t dataSizeInBytes, const MapReadbackCallback& callback) const
+    void Buffer::MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, const MapReadbackCallback& callback) const
     {
         BenzinAssert(m_HeapType == GpuHeapType::Readback);
         BenzinAssert(offsetInBytes + dataSizeInBytes <= GetSizeInBytes());

@@ -6,7 +6,6 @@ namespace benzin
 {
 
     class Buffer;
-    class ConstBufferPool;
     class Device;
     class GpuProfiler;
     class PsoManager;
@@ -138,7 +137,6 @@ namespace benzin
             SwapChain& swapChain,
             GpuProfiler& gpuProfiler,
             PsoManager& psoManager,
-            ConstBufferPool& constBufferPool,
             RenderResources& resources,
             RenderSettings& settings,
             const TickTimer& frameTimer,
@@ -166,7 +164,6 @@ namespace benzin
         static inline SwapChain* ms_SwapChain = nullptr;
         static inline GpuProfiler* ms_GpuProfiler = nullptr;
         static inline PsoManager* ms_PsoManager = nullptr;
-        static inline ConstBufferPool* ms_ConstBufferPool = nullptr;
         static inline RenderResources* ms_Resources = nullptr;
         static inline RenderSettings* ms_Settings = nullptr;
 

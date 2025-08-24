@@ -9,12 +9,14 @@ namespace benzin
     class BufferWriter
     {
     public:
+        BufferWriter() = default;
         explicit BufferWriter(ByteBuffer targetBuffer, uint64_t positionInBytes = 0);
         BufferWriter(std::byte* targetBuffer, uint64_t bufferSizeInBytes, uint64_t positionInBytes = 0);
-        BufferWriter(const BufferWriter&) = delete;
 
         auto GetPositionInBytes() { return m_BufferPositionInBytes; }
-        void SetPositionInBytes(uint64_t positionInBytes) { m_BufferPositionInBytes = positionInBytes; }
+
+        void ResetTargetBuffer(ByteBuffer targetBuffer);
+        void SetPositionInBytes(uint64_t positionInBytes);
 
         void WriteData(ConstByteBuffer data);
 

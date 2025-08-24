@@ -72,11 +72,15 @@ namespace benzin
 
         MakeUniquePtr(m_PersistentDefaultLinearAllocator, *m_PersistentDefaultHeap);
         MakeUniquePtr(m_PersistentReadbackLinearAllocator, *m_PersistentReadbackHeap);
+
+        MakeUniquePtr(m_ConstBufferAllocator, *this);
     }
 
     Device::~Device()
     {
         BenzinLogTimeOnScopeExit("Device::~Device");
+
+        m_ConstBufferAllocator.reset();
 
         m_PersistentReadbackLinearAllocator.reset();
         m_PersistentDefaultLinearAllocator.reset();

@@ -8,11 +8,11 @@
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/ray_tracing_pso.hpp>
 #include <benzin/graphics/ray_tracing_shader_table.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
-#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
@@ -95,8 +95,6 @@ namespace sandbox
             settings.BlueNoiseDepthIndex = (settings.BlueNoiseDepthIndex + 1) % settings.BlueNoiseDepth;
             m_BlueNoiseDepthIndex = settings.BlueNoiseDepthIndex;
         }
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     void RayTracing_ShadowPass::OnRender() const
@@ -110,7 +108,7 @@ namespace sandbox
         const auto& noisyPenumbra = ms_Resources->Get(TextureId::NoisyPenumbra);
 
         cmdList.SetRayTracingPso(pso);
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
         {
             using enum joint::RayTracing_ShadowResources;

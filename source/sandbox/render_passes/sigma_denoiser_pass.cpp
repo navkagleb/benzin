@@ -11,9 +11,9 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
-#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
@@ -161,9 +161,6 @@ namespace sandbox
                 m_PerLightConsts[lightOffset].WorldLightPosition = light.GetPosition();
                 lightOffset++;
             }
-
-            ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
-            ms_ConstBufferPool->PreAllocate(sizeof(joint::SigmaPerLightConsts), lightOffset);
         }
     }
 
@@ -180,7 +177,7 @@ namespace sandbox
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "SigmaDenoiser");
 
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
         const uint32_t lightCount = ms_Scene->GetActiveLightCount();
         for (uint16_t sliceIndex = 0; sliceIndex < lightCount; ++sliceIndex)
@@ -192,7 +189,7 @@ namespace sandbox
                 BenzinGpuEvent(cmdList, "Step");
             }
 
-            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer1, ms_ConstBufferPool->Allocate(m_PerLightConsts[sliceIndex]));
+            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer1, ms_Device->GetConstBufferAllocator().Allocate(m_PerLightConsts[sliceIndex]));
 
             RunClearPass(settings.IsClearEnabled);
             RunClassifyTilesPass(sliceIndex);

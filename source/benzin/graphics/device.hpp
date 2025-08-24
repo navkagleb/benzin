@@ -7,6 +7,7 @@ namespace benzin
 
     class Backend;
     class ComputePso;
+    class ConstBufferLinearAllocator;
     class GpuHeap;
     class GpuHeapLinearBufferAllocator;
     class GraphicsCmdQueue;
@@ -57,6 +58,8 @@ namespace benzin
         auto& GetPersistentDefaultLinearAllocator() { return *m_PersistentDefaultLinearAllocator; }
         auto& GetPersistentReadbackLinearAllocator() { return *m_PersistentReadbackLinearAllocator; }
 
+        auto& GetConstBufferAllocator() { return *m_ConstBufferAllocator; }
+
         const GpuHeapLinearBufferAllocator& GetPrevTemporalLinearBufferAllocator() const;
 
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
@@ -93,6 +96,7 @@ namespace benzin
         std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentDefaultLinearAllocator;
         std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentReadbackLinearAllocator;
 
+        std::unique_ptr<ConstBufferLinearAllocator> m_ConstBufferAllocator;
 
         uint64_t m_CpuFrameIndex = 0;
         uint64_t m_CompletedGpuFrameIndex = 0;

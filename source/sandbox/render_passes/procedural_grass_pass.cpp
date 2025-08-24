@@ -9,9 +9,9 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
-#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 #include <benzin/utility/random.hpp>
@@ -88,6 +88,7 @@ namespace sandbox
             ms_Resources->Create(BufferId::ProceduralGrass_GrassPatches, benzin::BufferCreation
             {
                 .DebugName = magic_enum::enum_name(BufferId::ProceduralGrass_GrassPatches),
+                .HeapType = benzin::GpuHeapType::Default,
                 .Type = benzin::BufferType::Structured,
                 .ElementSizeInBytes = sizeof(joint::GrassPatch),
                 .ElementCount = (uint32_t)grassPatchView.size(),
@@ -126,8 +127,6 @@ namespace sandbox
         m_Consts.WindDirection = settings.WindDirection;
         m_Consts.BladeWidth = settings.BladeWidth;
         m_Consts.BaseColor = settings.BaseColor;
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     void ProceduralGrassPass::OnRender() const
@@ -142,7 +141,7 @@ namespace sandbox
         cmdList.SetViewport(ms_RenderViewport);
         cmdList.SetScissorRect(ms_RenderScissorRect);
 
-        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
         cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::ProceduralGrass));
 
         const GBuffer gbuffer{ *ms_Resources };

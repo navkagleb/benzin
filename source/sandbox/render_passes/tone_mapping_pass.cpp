@@ -8,7 +8,6 @@
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
-#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
@@ -116,8 +115,6 @@ namespace sandbox
         m_Consts.IsToneMappingEnabled = settings.IsToneMappingEnabled;
         m_Consts.IsAutoExposureUsed = settings.IsAutoExposureUsed;
         m_Consts.IsAccurateGammaCorrectionUsed = settings.IsAccurateGammaCorrectionUsed;
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     void ToneMappingPass::OnRender() const
@@ -127,7 +124,7 @@ namespace sandbox
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ToneMapping");
 
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
         RunClearPass(cmdList);
         RunCalcLuminanceHistogramPass(cmdList);

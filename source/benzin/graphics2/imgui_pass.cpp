@@ -18,7 +18,6 @@
 #include "benzin/graphics/swap_chain.hpp"
 #include "benzin/graphics/texture.hpp"
 #include "benzin/graphics/unified_root_signature.hpp"
-#include "benzin/graphics2/const_buffer_pool.hpp"
 #include "benzin/graphics2/game_specific_resource_ids.hpp"
 #include "benzin/graphics2/gpu_profiler.hpp"
 #include "benzin/graphics2/pso_manager.hpp"
@@ -483,8 +482,6 @@ namespace benzin
 
         UpdateConsts(imDrawData);
         UpdateVertexAndIndexBuffers(imDrawData);
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_Consts));
     }
 
     void ImGuiPass::OnRender() const
@@ -497,7 +494,7 @@ namespace benzin
         cmdList.SetViewport(ms_WindowViewport);
         cmdList.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::ImGui));
-        cmdList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstBuffer0, ms_ConstBufferPool->Allocate(m_Consts));
+        cmdList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
         cmdList.SetBlendFactor({});
 
         auto& [vertexBuffer, indexBuffer] = m_FrameContexts[ms_Device->GetActiveFrameIndex()];

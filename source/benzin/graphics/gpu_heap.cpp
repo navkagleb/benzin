@@ -1,6 +1,7 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 
+#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
@@ -110,6 +111,51 @@ namespace benzin
         }
 
         return std::make_unique<Buffer>(m_GpuHeap, alignedOffsetInBytes, bufferCreation);
+    }
+
+    // ConstBufferLinearAllocator
+
+    ConstBufferLinearAllocator::ConstBufferLinearAllocator(Device& device)
+        : m_Device{ device }
+    {
+        constexpr uint64_t bufferSizeInBytesPerFrame = 2_mb;
+
+        MakeUniquePtr(m_GpuHeap, m_Device, GpuHeapCreation
+        {
+            .DebugName = "ConstBufferHeap",
+            .Type = GpuHeapType::GpuUpload,
+            .SizeInBytes = bufferSizeInBytesPerFrame * CmdLineArgs::GetFrameInFlightCount()
+        });
+
+        m_FrameBuffers.resize(CmdLineArgs::GetFrameInFlightCount());
+        for (uint32_t i = 0; i < CmdLineArgs::GetFrameInFlightCount(); ++i)
+        {
+            const uint64_t gpuHeapOffsetInBytes = bufferSizeInBytesPerFrame * i;
+            MakeUniquePtr(m_FrameBuffers[i], *m_GpuHeap, gpuHeapOffsetInBytes, BufferCreation
+            {
+                .DebugName = std::format("FrameConstBuffer_{}", i),
+                .Type = BufferType::Byte,
+                .ElementSizeInBytes = sizeof(std::byte),
+                .ElementCount = bufferSizeInBytesPerFrame,
+            });
+        }
+    }
+
+    void ConstBufferLinearAllocator::ResetFrameBuffer()
+    {
+        m_FrameBuffer = m_FrameBuffers[m_Device.GetActiveFrameIndex()].get();
+        m_FrameBufferWriter.ResetTargetBuffer(ByteBuffer{ m_FrameBuffer->GetCpuMappedData(), m_FrameBuffer->GetSizeInBytes() });
+    }
+
+    uint64_t ConstBufferLinearAllocator::Allocate(std::span<const std::byte> data)
+    {
+        const uint64_t offsetInBytes = m_FrameBufferWriter.GetPositionInBytes();
+        BenzinAssert((offsetInBytes % GraphicsConfig::GetConstBufferAlignmentInBytes()) == 0);
+
+        m_FrameBufferWriter.WriteData(data);
+        m_FrameBufferWriter.SetPositionInBytes(AlignUp(m_FrameBufferWriter.GetPositionInBytes(), GraphicsConfig::GetConstBufferAlignmentInBytes()));
+
+        return m_FrameBuffer->GetGpuVirtualAddress() + offsetInBytes;
     }
 
 }

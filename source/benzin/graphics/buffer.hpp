@@ -22,9 +22,9 @@ namespace benzin
     {
         std::string_view DebugName;
 
-        GpuHeapType HeapType = g_BadEnum<GpuHeapType>;
+        GpuHeapType HeapType = g_BadEnum<GpuHeapType>; // For committed resource
         BufferType Type = BufferType::Byte;
-        GraphicsFormat Format = GraphicsFormat::Unknown; // Optional. Uses for BufferType::Format
+        GraphicsFormat Format = GraphicsFormat::Unknown; // Uses for BufferType::Format
 
         uint32_t ElementSizeInBytes = sizeof(std::byte);
         uint64_t ElementCount = 0;
@@ -63,7 +63,7 @@ namespace benzin
         Descriptor CreateDetachedUav() const;
         Descriptor CreateDetachedCbv(uint32_t elementIndex) const;
 
-        void MapReadbackData(uint64_t offsetInBytes, uint32_t dataSizeInBytes, const MapReadbackCallback& callback) const;
+        void MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, const MapReadbackCallback& callback) const;
 
     private:
         void SetupCreation(const BufferCreation& creation, const GpuHeap* gpuHeap = nullptr);

@@ -8,12 +8,12 @@
 #include <benzin/engine/ray_tracing_scene.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/backend.hpp>
+#include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
-#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/gpu_profiler_pass.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
@@ -56,27 +56,12 @@ namespace sandbox
         benzin::MakeUniquePtr(m_ShaderManager);
         benzin::MakeUniquePtr(m_GpuProfiler, *m_Device);
         benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager);
-        benzin::MakeUniquePtr(m_ConstBufferPool, *m_Device);
 
         benzin::MakeUniquePtr(m_Scene, *m_Device);
         benzin::MakeUniquePtr(m_RayTracingScene, *m_Device, *m_Scene);
 
         benzin::MakeUniquePtr(m_RenderResources, *m_Device);
         benzin::MakeUniquePtr(m_RenderSettings);
-
-        benzin::RenderPass::SetContext(
-            *m_Device,
-            *m_SwapChain,
-            *m_GpuProfiler,
-            *m_PsoManager,
-            *m_ConstBufferPool,
-            *m_RenderResources,
-            *m_RenderSettings,
-            m_FrameTimer,
-            m_AnimationTimer,
-            *m_Scene,
-            *m_RayTracingScene
-        );
 
         {
             benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device, m_FrameTimer);
@@ -111,6 +96,19 @@ namespace sandbox
                 }
             });
         }
+
+        benzin::RenderPass::SetContext(
+            *m_Device,
+            *m_SwapChain,
+            *m_GpuProfiler,
+            *m_PsoManager,
+            *m_RenderResources,
+            *m_RenderSettings,
+            m_FrameTimer,
+            m_AnimationTimer,
+            *m_Scene,
+            *m_RayTracingScene,
+        );
     }
 
     Runner::~Runner()
@@ -267,12 +265,12 @@ namespace sandbox
         BenzinProfile();
 
         m_Device->GetTemporalLinearAllocator().Reset();
+        m_Device->GetConstBufferAllocator().ResetFrameBuffer();
         m_Device->GetGraphicsCmdQueue().ResetCmdList();
 
         m_ImGuiManager->BeginFrame();
 
         m_GpuProfiler->BeginFrame(m_Device->GetCpuFrameIndex());
-        m_ConstBufferPool->BeginFrame();
         m_ShaderManager->CheckForNewShader();
     }
 
@@ -281,13 +279,6 @@ namespace sandbox
         BenzinProfile();
 
         m_Scene->EndFrame();
-
-        if (m_RenderViewportTool->IsValidForRendering())
-        {
-            // Check only if render viewport is valid for rendering. Because actual const buffer allocation appear in 'RenderPass::OnRender'
-            m_ConstBufferPool->EndFrame();
-        }
-
         m_Device->GetGraphicsCmdQueue().SubmitCmdList();
 
         const bool isResized = m_SwapChain->OnFlip(m_IsVsyncEnabled);
@@ -354,8 +345,6 @@ namespace sandbox
         {
             renderPass->OnUpdate();
         }
-
-        m_ConstBufferPool->AllocatePools();
     }
 
     void Runner::OnRender()

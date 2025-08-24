@@ -100,4 +100,29 @@ namespace benzin
         uint64_t m_OffsetInBytes = 0;
     };
 
+    class ConstBufferLinearAllocator
+    {
+    public:
+        ConstBufferLinearAllocator(Device& device);
+
+        void ResetFrameBuffer();
+
+        uint64_t Allocate(std::span<const std::byte> data);
+
+        template <typename T>
+        uint64_t Allocate(const T& data)
+        {
+            return Allocate(ToSingleByteSpan(data));
+        }
+
+    private:
+        Device& m_Device;
+
+        std::unique_ptr<GpuHeap> m_GpuHeap;
+        std::vector<std::unique_ptr<Buffer>> m_FrameBuffers;
+
+        Buffer* m_FrameBuffer = nullptr;
+        BufferWriter m_FrameBufferWriter;
+    };
+
 }

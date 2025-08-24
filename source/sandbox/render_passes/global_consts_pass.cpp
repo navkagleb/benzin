@@ -10,7 +10,6 @@
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
-#include <benzin/graphics2/const_buffer_pool.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 
 #include <sandbox/render_settings.hpp>
@@ -42,8 +41,6 @@ namespace sandbox
 
         UpdateCameraConsts();
         UpdateFrameConsts();
-
-        ms_ConstBufferPool->PreAllocate(sizeof(m_FrameConsts));
     }
 
     void GlobalConstsPass::OnRender() const
@@ -58,7 +55,7 @@ namespace sandbox
         {
             BenzinGpuEvent(cmdList, "SetUnifiedRootParameters");
 
-            const uint64_t frameConstsGpuAddress = ms_ConstBufferPool->Allocate(m_FrameConsts);
+            const uint64_t frameConstsGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(m_FrameConsts);
             cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
             cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
 
@@ -185,7 +182,6 @@ namespace sandbox
 
         cmdList.CopyBufferRegion(*m_ReadbackStatBuffer, destOffsetInBytes, *m_StatBuffer, 0, dataSizeInBytes);
 
-        destBuffer.MapReadbackData(readbackOffsetInBytes, dataSizeInBytes, [this](const std::byte* mappedData)
         m_ReadbackStatBuffer->MapReadbackData(readbackOffsetInBytes, dataSizeInBytes, [this](const std::byte* mappedData)
         {
             const auto readbackStats = benzin::ToSpan((const uint32_t*)mappedData, magic_enum::enum_count<joint::ReadbackStat>());

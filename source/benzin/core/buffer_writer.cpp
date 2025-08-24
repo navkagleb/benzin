@@ -13,6 +13,19 @@ namespace benzin
         : BufferWriter{ std::span{ targetBuffer, bufferSize }, positionInBytes }
     {}
 
+    void BufferWriter::ResetTargetBuffer(ByteBuffer targetBuffer)
+    {
+        m_TargetBuffer = targetBuffer;
+        m_BufferPositionInBytes = 0;
+    }
+
+    void BufferWriter::SetPositionInBytes(uint64_t positionInBytes)
+    {
+        BenzinAssert(positionInBytes < m_TargetBuffer.size());
+        m_BufferPositionInBytes = positionInBytes;
+    }
+
+
     void BufferWriter::WriteData(ConstByteBuffer data)
     {
         BenzinAssert(m_BufferPositionInBytes + data.size() <= m_TargetBuffer.size());
