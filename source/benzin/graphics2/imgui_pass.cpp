@@ -49,10 +49,30 @@ namespace benzin
 
     // ImGuiTool
 
-    ImGuiTool::ImGuiTool(std::string_view path, std::string_view shortcut)
+    ImGuiTool::ImGuiTool(std::string_view path, KeyCode shortcutKeyCode)
         : m_Path{ path }
-        , m_Shortcut{ shortcut }
+        , m_ShortcutKeyCode{ shortcutKeyCode }
     {}
+
+    void ImGuiTool::OnEvent(Event& event)
+    {
+        if (m_ShortcutKeyCode == KeyCode::Unknown)
+        {
+            return;
+        }
+
+        EventDispatcher dispatcher{ event };
+
+        dispatcher.Dispatch<KeyPressedEvent>([this](const auto& event)
+        {
+            if (event.GetKeyCode() == m_ShortcutKeyCode)
+            {
+                m_IsVisible = !m_IsVisible; 
+            }
+
+            return false;
+        });
+    }
 
     void ImGuiTool::DrawWindow()
     {
@@ -308,7 +328,9 @@ namespace benzin
 
         if (depth + 1 == pathParts.size())
         {
-            ImGui::MenuItem(partBuffer, tool->m_Shortcut.data(), &tool->m_IsVisible);
+            const char* shortcutKeyName = tool->m_ShortcutKeyCode != KeyCode::Unknown ? magic_enum::enum_name(tool->m_ShortcutKeyCode).data() : nullptr;
+            ImGui::MenuItem(partBuffer, shortcutKeyName, &tool->m_IsVisible);
+
             return;
         }
 

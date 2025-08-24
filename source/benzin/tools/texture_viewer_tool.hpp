@@ -35,7 +35,6 @@ namespace benzin
         void DrawShaderConsts(uint32_t textureDepth, uint32_t mipCount);
         void DrawDebugTexture() const;
 
-        bool OnKeyPressedEvent(const KeyPressedEvent& event);
         bool OnMouseMovedEvent(const MouseMovedEvent& event);
         bool OnMouseScrolledEvent(const MouseScrolledEvent& event);
 

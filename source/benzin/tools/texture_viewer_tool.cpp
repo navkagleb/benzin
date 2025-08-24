@@ -49,7 +49,7 @@ namespace benzin
     //
 
     TextureViewerTool::TextureViewerTool(const RenderResources& resources)
-        : ImGuiTool{ "Debug/TextureViewer", magic_enum::enum_name(g_ToggleVisibilityKeyCode) }
+        : ImGuiTool{ "Debug/TextureViewer", KeyCode::F3 }
         , m_Resources{ resources }
     {
         m_IsChannelActive[+ColorChannel::R] = true;
@@ -60,14 +60,14 @@ namespace benzin
 
     void TextureViewerTool::OnEvent(Event& event)
     {
-        const EventDispatcher dispatcher{ event };
+        ImGuiTool::OnEvent(event);
 
-        dispatcher.ForceDispatch<KeyPressedEvent>(&TextureViewerTool::OnKeyPressedEvent, this);
 
         if (m_IsHovered)
         {
             // Handle mouse events only when mouse hovers tool
 
+            const EventDispatcher dispatcher{ event };
             dispatcher.ForceDispatch<MouseMovedEvent>(&TextureViewerTool::OnMouseMovedEvent, this);
             dispatcher.ForceDispatch<MouseScrolledEvent>(&TextureViewerTool::OnMouseScrolledEvent, this);
         }
@@ -238,16 +238,6 @@ namespace benzin
             ImDrawFlags_None,
             borderThickness
         );
-    }
-
-    bool TextureViewerTool::OnKeyPressedEvent(const KeyPressedEvent& event)
-    {
-        if (event.GetKeyCode() == g_ToggleVisibilityKeyCode)
-        {
-            m_IsVisible = !m_IsVisible;
-        }
-
-        return true;
     }
 
     bool TextureViewerTool::OnMouseMovedEvent(const MouseMovedEvent& event)

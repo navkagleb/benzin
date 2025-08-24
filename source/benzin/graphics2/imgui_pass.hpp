@@ -3,6 +3,7 @@
 #include <benzin/core/interval_timer.hpp>
 #include <benzin/graphics2/imgui_helpers.hpp>
 #include <benzin/graphics2/render_pass.hpp>
+#include <benzin/system/key_code.hpp>
 
 #include <shaders/joint/imgui_resources.hpp>
 
@@ -20,10 +21,10 @@ namespace benzin
     public:
         friend class ImGuiManager;
 
-        ImGuiTool(std::string_view path, std::string_view shortcut = {});
+        ImGuiTool(std::string_view path, KeyCode shortcutKeyCode = KeyCode::Unknown);
         virtual ~ImGuiTool() = default;
 
-        virtual void OnEvent(Event& event) { BenzinUnused(event); };
+        virtual void OnEvent(Event& event);
         virtual void DrawWindow();
 
     protected:
@@ -36,7 +37,7 @@ namespace benzin
         static inline const IntervalTimer* ms_IntervalTimer = nullptr;
 
         std::string_view m_Path;
-        std::string_view m_Shortcut;
+        KeyCode m_ShortcutKeyCode;
         bool m_IsVisible = false;
 
         bool m_IsHovered = false;
