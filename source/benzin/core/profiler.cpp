@@ -1,175 +1,194 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/core/profiler.hpp>
 
-#include <benzin/utility/time_utils.hpp>
-
 namespace benzin
 {
 
-    struct EventInfo
+    static std::string_view GetClassAndFunction(std::string_view fullSignature)
     {
-        std::string Name;
+        size_t lastNamespaceSeparator = fullSignature.rfind("::");
+        if (lastNamespaceSeparator != std::string_view::npos)
+        {
+            size_t prevSeparator = fullSignature.rfind("::", lastNamespaceSeparator - 1);
+            if (prevSeparator != std::string_view::npos)
+            {
+                fullSignature.remove_prefix(prevSeparator + 2);
+            }
+        }
 
-        uint8_t Depth : 6 = 0;
-        uint8_t IsParent : 1 = false;
-        uint8_t IsProcessed : 1 = false;
-        uint8_t SortIndex = 0;
+        size_t openParenthesis = fullSignature.find('(');
+        if (openParenthesis != std::string_view::npos)
+        {
+            fullSignature.remove_suffix(fullSignature.size() - openParenthesis);
+        }
 
-        std::chrono::microseconds Us = std::chrono::microseconds::zero();
-    };
-
-    struct EventStackInfo
-    {
-        uint64_t Hash = 0;
-        std::chrono::high_resolution_clock::time_point BeginTimePoint{};
-    };
+        return fullSignature;
+    }
 
     struct ProfilerData
     {
-        static constexpr auto s_MaxEventCount = std::numeric_limits<uint8_t>::max();
+        struct StackEntry
+        {
+            ProfileNode* m_Node = nullptr;
+            ProfileNode::TimePoint m_BeginTimePoint = {};
+        };
 
-        std::unordered_map<uint64_t, EventInfo> HashToEventInfo;
-        std::unordered_map<uint8_t, uint64_t> SortIndexToHash; // TODO: Try to replace with std::vector
-        std::stack<EventStackInfo, std::vector<EventStackInfo>> EventStack;
+        ProfileNode m_Root;
+        std::stack<StackEntry> m_NodeStack;
 
-        std::vector<ProfileEvent> SortedEvents;
+        ProfilerData()
+        {
+            m_Root.m_Name = "Root";
+        }
 
-        uint8_t CurrentSortIndex = 0;
+        void PushCurrentNode(ProfileNode* node)
+        {
+            StackEntry& stackEntry = m_NodeStack.emplace();
+            stackEntry.m_Node = node;
+            stackEntry.m_BeginTimePoint = ProfileNode::Clock::now();
+        }
+
+        void PopCurrentNode()
+        {
+            BenzinAssert(!m_NodeStack.empty());
+            
+            const ProfileNode::TimePoint endTimePoint = ProfileNode::Clock::now();
+
+            const StackEntry& stackEntry = m_NodeStack.top();
+            m_NodeStack.pop();
+
+            stackEntry.m_Node->m_Duration += endTimePoint - stackEntry.m_BeginTimePoint;
+        }
     };
 
     static ProfilerData g_Data;
 
-    static uint64_t CalcEventHash(std::string_view name)
+    static ProfileNode* GetOrCreateEvent(std::string_view name)
     {
-        if (g_Data.EventStack.empty())
+        if (g_Data.m_NodeStack.empty())
+            return nullptr;
+
+        ProfileNode* parent = g_Data.m_NodeStack.top().m_Node;
+        ProfileNode* node = nullptr;
+
+        auto it = parent->m_ChildrenMap.find(name);
+        if (it != parent->m_ChildrenMap.end())
         {
-            return std::hash<std::string_view>{}(name);
+            node = it->second;
+        }
+        else
+        {
+            auto newNode = std::make_unique<ProfileNode>();
+            newNode->m_Name = name;
+            newNode->m_Parent = parent;
+
+            node = newNode.get();
+            parent->m_Children.push_back(std::move(newNode));
+            parent->m_ChildrenMap[name] = node;
         }
 
-        const uint64_t parentHash = g_Data.EventStack.top().Hash;
+        BenzinAssert(node != nullptr);
 
-        g_Data.HashToEventInfo[parentHash].IsParent = true;
+        node->m_HitCount++;
 
-        return HashCombine(parentHash, name);
+        if (node->m_SortIndex < parent->m_CurrentChildOffset)
+        {
+            parent->m_IsSortingNeeded = true;
+            node->m_SortIndex = parent->m_CurrentChildOffset;
+        }
+        parent->m_CurrentChildOffset++;
+
+        return node;
     }
 
-    static uint64_t CreateOrUpdateEventInfo(std::string&& name)
+    static void ResetFrameDataRecursive(ProfileNode& node)
     {
-        BenzinEnsure(!name.empty());
-        BenzinEnsure(g_Data.HashToEventInfo.size() < ProfilerData::s_MaxEventCount);
+        node.m_CurrentChildOffset = 0;
 
-        const uint64_t hash = CalcEventHash(name);
+        node.m_ImGuiHitCount = node.m_HitCount;
+        node.m_AccumulatedDuration += node.m_Duration;
 
-        auto&& [it, _] = g_Data.HashToEventInfo.try_emplace(hash, std::move(name), (uint8_t)g_Data.EventStack.size());
-        auto& eventInfo = it->second;
+        node.m_HitCount = 0;
+        node.m_Duration = {};
 
-        if (!eventInfo.IsProcessed)
+        for (auto& child : node.m_Children)
         {
-            g_Data.CurrentSortIndex = std::max(eventInfo.SortIndex, g_Data.CurrentSortIndex);
-
-            eventInfo.IsProcessed = true;
-            eventInfo.SortIndex = g_Data.CurrentSortIndex++;
-
-            const uint64_t prevHash = std::exchange(g_Data.SortIndexToHash[eventInfo.SortIndex], hash);
-            if (prevHash != 0 && prevHash != hash)
-            {
-                g_Data.HashToEventInfo.erase(prevHash);
-            }
-
-            BenzinAssert(g_Data.HashToEventInfo.size() == g_Data.SortIndexToHash.size());
+            ResetFrameDataRecursive(*child);
         }
+    }
 
-        return hash;
+    static void ResetAccumulatedDurationRecursive(ProfileNode& node, uint32_t frameCount)
+    {
+        node.m_ImGuiDuration = std::exchange(node.m_AccumulatedDuration, {}) / frameCount;
+
+        for (auto& child : node.m_Children)
+        {
+            ResetAccumulatedDurationRecursive(*child, frameCount);
+        }
+    }
+
+    // ProfileNode
+
+    void ProfileNode::SortChildren() const
+    {
+        BenzinAssert(m_IsSortingNeeded);
+
+        std::ranges::sort(m_Children, [](const std::unique_ptr<ProfileNode>& lhs, const std::unique_ptr<ProfileNode>& rhs)
+        {
+            return lhs->m_SortIndex < rhs->m_SortIndex;
+        });
+
+        m_IsSortingNeeded = false;
     }
 
     // Profiler
 
-    void Profiler::Initialize()
-    {
-        g_Data.SortedEvents.reserve(ProfilerData::s_MaxEventCount);
-    }
-
     void Profiler::BeginFrame()
     {
-        BenzinAssert(g_Data.EventStack.empty());
+        if (g_Data.m_NodeStack.empty())
+        {
+            g_Data.m_NodeStack.emplace(&g_Data.m_Root);
+        }
 
-        g_Data.CurrentSortIndex = 0;
+        BenzinAssert(g_Data.m_NodeStack.top().m_Node == &g_Data.m_Root);
     }
 
     void Profiler::EndFrame()
     {
-        BenzinAssert(g_Data.EventStack.empty());
+        BenzinAssert(g_Data.m_NodeStack.top().m_Node == &g_Data.m_Root);
 
-        SortEvents();
+        ResetFrameDataRecursive(g_Data.m_Root);
     }
 
-    std::span<const ProfileEvent> Profiler::GetSortedEvents()
+    void Profiler::ResetAccumulatedData(uint32_t frameCount)
     {
-        return g_Data.SortedEvents;
+        ResetAccumulatedDurationRecursive(g_Data.m_Root, frameCount);
     }
 
-    void Profiler::BeginScope(std::string&& name)
+    const ProfileNode& Profiler::GetRootNode()
     {
-        const uint64_t hash = CreateOrUpdateEventInfo(std::move(name));
-
-        g_Data.EventStack.push(EventStackInfo
-        {
-            .Hash = hash,
-            .BeginTimePoint = std::chrono::high_resolution_clock::now(),
-        });
-    }
-
-    void Profiler::EndScope()
-    {
-        BenzinAssert(!g_Data.EventStack.empty());
-
-        const auto endTimePoint = std::chrono::high_resolution_clock::now();
-        const auto& stackEventInfo = g_Data.EventStack.top();
-
-        auto& eventInfo = g_Data.HashToEventInfo[stackEventInfo.Hash];
-        eventInfo.Us += std::chrono::duration_cast<std::chrono::microseconds>(endTimePoint - stackEventInfo.BeginTimePoint);
-
-        g_Data.EventStack.pop();
-    }
-
-    void Profiler::SortEvents()
-    {
-        const auto eventCount = g_Data.HashToEventInfo.size();
-
-        const bool isNeedResize = g_Data.SortedEvents.size() != eventCount;
-        if (isNeedResize)
-        {
-            g_Data.SortedEvents.resize(eventCount);
-        }
-
-        for (auto& [_, eventInfo] : g_Data.HashToEventInfo)
-        {
-            BenzinAssert(!eventInfo.Name.empty());
-
-            auto& sortedEvent = g_Data.SortedEvents[eventInfo.SortIndex];
-            sortedEvent.Us = std::exchange(eventInfo.Us, std::chrono::microseconds::zero());
-
-            if (isNeedResize)
-            {
-                sortedEvent.Name = eventInfo.Name.c_str();
-                sortedEvent.Depth = eventInfo.Depth;
-                sortedEvent.IsParent = eventInfo.IsParent;
-            }
-
-            eventInfo.IsProcessed = false;
-        }
+        return g_Data.m_Root;
     }
 
     // ScopedProfileEvent
 
-    ScopedProfileEvent::ScopedProfileEvent(std::string&& name)
+    ScopedProfileEvent::ScopedProfileEvent(std::string_view name)
     {
-        Profiler::BeginScope(std::move(name));
+        name = GetClassAndFunction(name);
+        m_Node = GetOrCreateEvent(name);
+
+        if (m_Node != nullptr)
+        {
+            g_Data.PushCurrentNode(m_Node);
+        }
     }
 
     ScopedProfileEvent::~ScopedProfileEvent()
     {
-        Profiler::EndScope();
+        if (m_Node != nullptr)
+        {
+            g_Data.PopCurrentNode();
+        }
     }
 
 }

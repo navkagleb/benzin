@@ -3,44 +3,54 @@
 namespace benzin
 {
 
-    struct ProfileEvent
+    struct ProfileNode
     {
-        const char* Name = nullptr;
-        std::chrono::microseconds Us = std::chrono::microseconds::zero();
-        uint8_t Depth : 7 = 0;
-        uint8_t IsParent : 1 = false;
+        using Clock = std::chrono::high_resolution_clock; // TODO: Replace with QueryPerformanceCounter
+        using TimePoint = Clock::time_point;
+        using Duration = Clock::duration;
+
+        std::string_view m_Name;
+        mutable std::vector<std::unique_ptr<ProfileNode>> m_Children;
+        std::unordered_map<std::string_view, ProfileNode*> m_ChildrenMap;
+        ProfileNode* m_Parent = nullptr;
+
+        uint32_t m_HitCount = 0;
+        uint32_t m_ImGuiHitCount = 0;
+
+        Duration m_Duration = {};
+        Duration m_AccumulatedDuration = {};
+        Duration m_ImGuiDuration = {};
+
+        uint32_t m_CurrentChildOffset = 0;
+        uint32_t m_SortIndex = 0;
+
+        mutable bool m_IsSortingNeeded = false;
+
+        void SortChildren() const;
     };
 
     class Profiler
     {
     public:
-        friend class ScopedProfileEvent;
-
-        static void Initialize();
-
         static void BeginFrame();
         static void EndFrame();
 
-        static std::span<const ProfileEvent> GetSortedEvents();
+        static void ResetAccumulatedData(uint32_t frameCount);
 
-    private:
-        static void BeginScope(std::string&& name);
-        static void EndScope();
-
-        static void SortEvents();
+        static const ProfileNode& GetRootNode();
     };
 
     class ScopedProfileEvent
     {
     public:
-        explicit ScopedProfileEvent(std::string&& name);
+        explicit ScopedProfileEvent(std::string_view name);
         ~ScopedProfileEvent();
+
+    private:
+        ProfileNode* m_Node;
     };
 
 }
 
 #define BenzinScopeProfile(name) const benzin::ScopedProfileEvent BenzinUniqueVariableName(_scopedProfilerEvent){ name }
 #define BenzinProfile() BenzinScopeProfile(__FUNCTION__)
-
-// NOTE: Do not use Profiler macros in OnEvent method/functions.
-//       Window::MessageHandler can be called several times per frame which breaks the structure of events

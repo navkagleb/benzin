@@ -81,10 +81,102 @@ namespace benzin
         }
     }
 
+    static void DrawNodeRecursive(const ProfileNode& node, ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_None)
+    {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+
+        treeFlags |= ImGuiTreeNodeFlags_SpanFullWidth;
+        treeFlags |= ImGuiTreeNodeFlags_SpanAllColumns;
+        treeFlags |= ImGuiTreeNodeFlags_FramePadding;
+
+        if (node.m_Children.empty())
+        {
+            treeFlags |= ImGuiTreeNodeFlags_Leaf;
+        }
+
+        const bool isOpen = ImGui::TreeNodeEx(&node, treeFlags, node.m_Name.data());
+
+        ImGui::TableNextColumn();
+        ImGui::FmtText("{}", node.m_ImGuiHitCount);
+
+        const float durationInMs = std::chrono::duration<float, std::milli>{ node.m_ImGuiDuration }.count();
+        const std::string durationStr = std::format("{:.3f} ms", durationInMs);
+
+        ImGui::TableNextColumn();
+        DrawRightAlignedText(durationStr.c_str());
+
+        if (isOpen)
+        {
+            if (node.m_IsSortingNeeded)
+            {
+                node.SortChildren();
+            }
+
+            for (const std::unique_ptr<ProfileNode>& child : node.m_Children)
+            {
+                DrawNodeRecursive(*child);
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
     // ProfilerToolBase
 
-    ProfilerToolBase::ProfilerToolBase(std::string_view name)
-        : ImGuiTool{ name }
+    void ProfilerToolBase::DrawWindow()
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
+        ImGuiTool::DrawWindow(ImGuiWindowFlags_NoScrollbar);
+        ImGui::PopStyleVar();
+    }
+
+    // ProfilerTool
+
+    ProfilerTool::ProfilerTool()
+        : ProfilerToolBase{ "Engine/Profiler" }
+    {
+        ms_IntervalTimer->AddCallback([this](float, uint32_t frameCount)
+        {
+            Profiler::ResetAccumulatedData(frameCount);
+        });
+    }
+
+    void ProfilerTool::DrawWindowContent()
+    {
+        BenzinProfile();
+
+        constexpr ImGuiTableFlags tableFlags =
+            ImGuiTableFlags_Resizable |
+            ImGuiTableFlags_RowBg |
+            ImGuiTableFlags_NoBordersInBody |
+            ImGuiTableFlags_SizingStretchProp |
+            ImGuiTableFlags_NoSavedSettings;
+        
+        if (ImGui::BeginTable("ProfilerData", 3, tableFlags, ImGui::GetContentRegionAvail()))
+        {
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_NoResize);
+            ImGui::TableSetupColumn("Hits", ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("A").x * 4.0f);
+            ImGui::TableSetupColumn("Ms", ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("A").x * 10.0f);
+            ImGui::TableHeadersRow();
+        
+            const ProfileNode* rootNode = &Profiler::GetRootNode();
+            if (!rootNode->m_Children.empty())
+            {
+                rootNode = rootNode->m_Children.front().get();
+            }
+
+            DrawNodeRecursive(*rootNode, ImGuiTreeNodeFlags_DefaultOpen);
+        
+            ImGui::EndTable();
+        }
+    }
+
+    // GpuProfilerTool
+
+    GpuProfilerTool::GpuProfilerTool(const GpuProfiler& gpuProfiler)
+        : ProfilerToolBase{ "Graphics/GpuProfiler" }
+        , m_GpuProfiler{ gpuProfiler }
     {
         ms_IntervalTimer->AddCallback([this](float, uint32_t frameCount)
         {
@@ -97,9 +189,9 @@ namespace benzin
         });
     }
 
-    void ProfilerToolBase::DrawWindow()
+    void GpuProfilerTool::DrawWindowContent()
     {
-        const auto events = GetSortedEvents();
+        const auto events = m_GpuProfiler.GetSortedEvents();
 
         if (m_SmoothEvents.size() != events.size())
         {
@@ -114,13 +206,6 @@ namespace benzin
             }
         }
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
-        ImGuiTool::DrawWindow(ImGuiWindowFlags_NoScrollbar);
-        ImGui::PopStyleVar();
-    }
-
-    void ProfilerToolBase::DrawWindowContent()
-    {
         const ImGuiTableFlags tableFlags =
             ImGuiTableFlags_Resizable |
             ImGuiTableFlags_RowBg |
@@ -137,29 +222,6 @@ namespace benzin
 
             ImGui::EndTable();
         }
-    }
-
-    // ProfilerTool
-
-    ProfilerTool::ProfilerTool()
-        : ProfilerToolBase{ "Engine/Profiler" }
-    {}
-
-    std::span<const ProfileEvent> ProfilerTool::GetSortedEvents() const
-    {
-        return Profiler::GetSortedEvents();
-    }
-
-    // GpuProfilerTool
-
-    GpuProfilerTool::GpuProfilerTool(const GpuProfiler& gpuProfiler)
-        : ProfilerToolBase{ "Graphics/GpuProfiler" }
-        , m_GpuProfiler{ gpuProfiler }
-    {}
-
-    std::span<const ProfileEvent> GpuProfilerTool::GetSortedEvents() const
-    {
-        return m_GpuProfiler.GetSortedEvents();
     }
 
 }

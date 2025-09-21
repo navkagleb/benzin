@@ -42,7 +42,7 @@ namespace sandbox
 
         benzin::MakeUniquePtr(m_MainWindow, benzin::WindowCreation
         {
-            .Title = "benzin::SandboxRunner",
+            .Title = "Benzin Renderer",
             .Width = benzin::CmdLineArgs::GetWindowWidth(),
             .Height = benzin::CmdLineArgs::GetWindowHeight(),
             .IsResizable = benzin::CmdLineArgs::IsWindowResizable(),
@@ -77,24 +77,6 @@ namespace sandbox
             m_ImGuiManager->PushTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
             m_ImGuiManager->PushTool<benzin::SceneTool>(*m_Scene);
             m_ImGuiManager->PushTool<benzin::VramTool>(*m_Device);
-
-            m_ImGuiManager->AddDrawMenuCallback([this]
-            {
-                if (ImGui::BeginMenu("Runner"))
-                {
-                    if (ImGui::MenuItem("VSync", "V", m_IsVsyncEnabled))
-                    {
-                        ToggleVsync();
-                    }
-
-                    if (ImGui::MenuItem("Animation", "F2", m_AnimationTimer.IsPaused()))
-                    {
-                        ToggleAnimation();
-                    }
-
-                    ImGui::EndMenu();
-                }
-            });
         }
 
         benzin::RenderPass::SetContext(
@@ -121,13 +103,11 @@ namespace sandbox
 
     void Runner::RunMainLoop()
     {
-        BenzinEnsure(m_IsRunning);
-
         RunZeroFrame();
 
         m_FrameTimer.Reset();
         m_AnimationTimer.Reset();
-        m_AnimationTimer.SetPaused(true);
+        m_AnimationTimer.SetPaused(!m_IsAnimationEnabled);
 
         while (m_IsRunning)
         {
@@ -136,16 +116,9 @@ namespace sandbox
 
             BenzinScopeProfile("Frame");
 
-            m_FrameTimer.Tick();
-            m_AnimationTimer.Tick();
-
-            m_MainWindow->ProcessEvents();
-
             BeginFrame();
-            {
-                OnUpdate();
-                OnRender();
-            }
+            OnUpdate();
+            OnRender();
             EndFrame();
         }
     }
@@ -196,7 +169,7 @@ namespace sandbox
         {
             dispatcher.Dispatch<benzin::WindowCloseEvent>([this]
             {
-                RequestShutdown();
+                m_IsRunning = false;
                 return true;
             });
 
@@ -236,17 +209,18 @@ namespace sandbox
                 {
                     case benzin::KeyCode::Escape:
                     {
-                        RequestShutdown();
+                        m_IsRunning = false;
                         return true;
                     }
                     case benzin::KeyCode::V:
                     {
-                        ToggleVsync();
+                        m_IsVsyncEnabled = !m_IsVsyncEnabled;
                         return true;
                     }
                     case benzin::KeyCode::F2:
                     {
-                        ToggleAnimation();
+                        m_IsAnimationEnabled = !m_IsAnimationEnabled;
+                        m_AnimationTimer.SetPaused(!m_IsAnimationEnabled);
                         return true;
                     }
                 }
@@ -263,6 +237,11 @@ namespace sandbox
     void Runner::BeginFrame()
     {
         BenzinProfile();
+
+        m_FrameTimer.Tick();
+        m_AnimationTimer.Tick();
+
+        m_MainWindow->ProcessEvents();
 
         m_Device->GetTemporalLinearAllocator().Reset();
         m_Device->GetConstBufferAllocator().ResetFrameBuffer();
@@ -298,7 +277,7 @@ namespace sandbox
 
         if (m_RenderViewportTool->IsViewportResized())
         {
-            // Viewport size is controlled by UI. So first update UI and then resize render passes
+            // NOTE: Viewport size is controlled by UI. So first update UI and then resize render passes
 
             const auto viewportWidth = m_RenderViewportTool->GetWidth();
             const auto viewportHeight = m_RenderViewportTool->GetHeight();
@@ -320,14 +299,13 @@ namespace sandbox
         BenzinProfile();
 
         if (m_FrameTimer.IsPaused())
-        {
             return;
-        }
 
         m_RenderViewportTool->MoveCamera(m_FrameTimer.GetDeltaTime());
 
         {
             BenzinScopeProfile("Update scene");
+            BenzinScopeProfile("Runner::<update scene>");
 
             if (!m_AnimationTimer.IsPaused())
             {
@@ -351,16 +329,12 @@ namespace sandbox
     {
         BenzinProfile();
 
-#if BENZIN_IS_GPU_PROFILER_ENABLED
-        auto& cmdList = m_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*m_GpuProfiler, cmdList, "Frame");
-#endif
+        BenzinGpuProfile(*m_GpuProfiler, m_Device->GetGraphicsCmdQueue().GetCmdList(), "Frame");
 
         for (auto& renderPass : m_RenderPasses)
         {
             const bool isViewportTestFailed = !m_RenderViewportTool->IsValidForRendering() && renderPass->IsDependentOnViewport();
             if (isViewportTestFailed || !renderPass->IsRenderingEnabled())
-            {
                 continue;
             }
 
@@ -383,14 +357,4 @@ namespace sandbox
     }
 
     void Runner::ToggleVsync()
-    {
-        m_IsVsyncEnabled = !m_IsVsyncEnabled;
-    }
-
-    void Runner::ToggleAnimation()
-    {
-        m_AnimationTimer.SetPaused(!m_AnimationTimer.IsPaused());
-        m_IsAnimationEnabled = !m_IsAnimationEnabled;
-    }
-
 }

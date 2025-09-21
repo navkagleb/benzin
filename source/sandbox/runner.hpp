@@ -9,7 +9,6 @@ namespace benzin
     class Event;
     class GpuProfiler;
     class ImGuiManager;
-    class ImGuiPass;
     class PerformanceOverlayTool;
     class PsoManager;
     class RayTracing_Scene;
@@ -53,10 +52,6 @@ namespace sandbox
 
         void RunImGuiFrame();
 
-        void RequestShutdown();
-        void ToggleVsync();
-        void ToggleAnimation();
-
     protected:
         std::unique_ptr<benzin::Window> m_MainWindow;
         std::unique_ptr<benzin::Backend> m_Backend;
@@ -70,8 +65,6 @@ namespace sandbox
         benzin::TickTimer m_FrameTimer;
         benzin::TickTimer m_AnimationTimer;
 
-        bool m_IsAnimationEnabled = false;
-
         std::unique_ptr<benzin::Scene> m_Scene;
         std::unique_ptr<benzin::RayTracing_Scene> m_RayTracingScene;
 
@@ -84,7 +77,8 @@ namespace sandbox
         benzin::TextureViewerTool* m_TextureViewerTool = nullptr;
 
         bool m_IsRunning = true;
-        bool m_IsVsyncEnabled = true;
+        bool m_IsVsyncEnabled = false;
+        bool m_IsAnimationEnabled = false;
 
     private:
         benzin::PerformanceOverlayTool* m_PerformanceOverlayTool = nullptr;

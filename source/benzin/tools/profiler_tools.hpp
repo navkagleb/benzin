@@ -12,17 +12,10 @@ namespace benzin
     class ProfilerToolBase : public ImGuiTool
     {
     public:
-        explicit ProfilerToolBase(std::string_view name);
-
-        virtual std::span<const ProfileEvent> GetSortedEvents() const = 0;
+        using ImGuiTool::ImGuiTool;
 
     private:
         void DrawWindow() override;
-        void DrawWindowContent() override;
-
-    private:
-        std::vector<ProfileEvent> m_SmoothEvents;
-        std::vector<ProfileEvent> m_ReadySmoothEvents;
     };
 
     class ProfilerTool : public ProfilerToolBase
@@ -31,7 +24,7 @@ namespace benzin
         ProfilerTool();
 
     private:
-        std::span<const ProfileEvent> GetSortedEvents() const override;
+        void DrawWindowContent() override;
     };
 
     class GpuProfilerTool : public ProfilerToolBase
@@ -40,10 +33,12 @@ namespace benzin
         explicit GpuProfilerTool(const GpuProfiler& gpuProfiler);
 
     private:
-        std::span<const ProfileEvent> GetSortedEvents() const override;
+        void DrawWindowContent() override;
 
-    private:
         const GpuProfiler& m_GpuProfiler;
+
+        std::vector<ProfileEvent> m_SmoothEvents;
+        std::vector<ProfileEvent> m_ReadySmoothEvents;
     };
 
 }
