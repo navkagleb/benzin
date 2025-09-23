@@ -33,7 +33,7 @@ namespace benzin
             ProfileNode::TimePoint m_BeginTimePoint = {};
         };
 
-        ProfileNode m_Root;
+        ProfileNode m_Root; // Fake root node
         std::stack<StackEntry> m_NodeStack;
 
         ProfilerData()
@@ -69,34 +69,9 @@ namespace benzin
             return nullptr;
 
         ProfileNode* parent = g_Data.m_NodeStack.top().m_Node;
-        ProfileNode* node = nullptr;
-
-        auto it = parent->m_ChildrenMap.find(name);
-        if (it != parent->m_ChildrenMap.end())
-        {
-            node = it->second;
-        }
-        else
-        {
-            auto newNode = std::make_unique<ProfileNode>();
-            newNode->m_Name = name;
-            newNode->m_Parent = parent;
-
-            node = newNode.get();
-            parent->m_Children.push_back(std::move(newNode));
-            parent->m_ChildrenMap[name] = node;
-        }
-
-        BenzinAssert(node != nullptr);
+        ProfileNode* node = parent->GetAndUpdateChild(name);
 
         node->m_HitCount++;
-
-        if (node->m_SortIndex < parent->m_CurrentChildOffset)
-        {
-            parent->m_IsSortingNeeded = true;
-            node->m_SortIndex = parent->m_CurrentChildOffset;
-        }
-        parent->m_CurrentChildOffset++;
 
         return node;
     }
@@ -127,20 +102,6 @@ namespace benzin
         }
     }
 
-    // ProfileNode
-
-    void ProfileNode::SortChildren() const
-    {
-        BenzinAssert(m_IsSortingNeeded);
-
-        std::ranges::sort(m_Children, [](const std::unique_ptr<ProfileNode>& lhs, const std::unique_ptr<ProfileNode>& rhs)
-        {
-            return lhs->m_SortIndex < rhs->m_SortIndex;
-        });
-
-        m_IsSortingNeeded = false;
-    }
-
     // Profiler
 
     void Profiler::BeginFrame()
@@ -165,9 +126,15 @@ namespace benzin
         ResetAccumulatedDurationRecursive(g_Data.m_Root, frameCount);
     }
 
-    const ProfileNode& Profiler::GetRootNode()
+    const ProfileNode* Profiler::GetRootNode()
     {
-        return g_Data.m_Root;
+        const auto& children = g_Data.m_Root.m_Children;
+
+        if (children.empty())
+            return nullptr;
+
+        BenzinAssert(children.size() == 1);
+        return children.front().get();
     }
 
     // ScopedProfileEvent

@@ -73,8 +73,6 @@ namespace benzin
             return tool;
         }
 
-        void AddDrawMenuCallback(ImGui::DrawCallback&& callback);
-
     private:
         const ImDrawData& GetImDrawData() const { BenzinAssert(m_CurrentImGuiDrawData != nullptr); return *m_CurrentImGuiDrawData; }
 
@@ -97,7 +95,6 @@ namespace benzin
         std::unordered_map<std::string, bool> m_IsToolVisibleMap; // TODO: can std::string_view be used instead of std::string
 
         std::vector<ImGuiTool*> m_Tools;
-        std::vector<ImGui::DrawCallback> m_DrawMenuCallbacks;
 
         bool m_IsImGuiDemoWindowVisible = false;
         bool m_IsUiDrawEnabled = true;

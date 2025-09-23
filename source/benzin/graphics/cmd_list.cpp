@@ -8,6 +8,7 @@
 #include <benzin/core/buffer_writer.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/d3d12_assert.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/descriptor_manager.hpp>
@@ -733,15 +734,21 @@ namespace benzin
 
     // ScopedGpuEvent
 
-    ScopedGpuEvent::ScopedGpuEvent(CmdList& cmdList, std::string_view name)
-        : m_D3D12GraphicsCommandList{ cmdList.GetD3D12GraphicsCommandList() }
+    ScopedGpuEvent::ScopedGpuEvent(std::string_view name)
     {
-        PIXBeginEvent(m_D3D12GraphicsCommandList, PIX_COLOR_DEFAULT, "%s", name.data());
+        auto* d3d12CommandList = ms_Device->GetGraphicsCmdQueue().GetCmdList().GetD3D12GraphicsCommandList();
+        PIXBeginEvent(d3d12CommandList, PIX_COLOR_DEFAULT, "%s", name.data());
     }
 
     ScopedGpuEvent::~ScopedGpuEvent()
     {
-        PIXEndEvent(m_D3D12GraphicsCommandList);
+        auto* d3d12CommandList = ms_Device->GetGraphicsCmdQueue().GetCmdList().GetD3D12GraphicsCommandList();
+        PIXEndEvent(d3d12CommandList);
+    }
+
+    void ScopedGpuEvent::SetContext(Device& device)
+    {
+        ms_Device = &device;
     }
 
 }

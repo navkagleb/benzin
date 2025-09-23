@@ -79,4 +79,11 @@ namespace benzin
         --m_AllocatedIndexCount;
     }
 
+    void IndexAllocator::Reset()
+    {
+        m_ChunkBits.clear();
+        m_FreeIndex = 0;
+        m_AllocatedIndexCount = 0;
+    }
+
 }

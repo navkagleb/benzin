@@ -91,6 +91,9 @@ namespace sandbox
             *m_Scene,
             *m_RayTracingScene,
         );
+
+        benzin::ScopedGpuEvent::SetContext(*m_Device);
+        benzin::ScopedGpuProfileEvent::SetContext(*m_Device, *m_GpuProfiler);
     }
 
     Runner::~Runner()
@@ -127,15 +130,20 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("Runner::RunZeroFrame");
 
-        InitRenderPasses();
-        InitTools();
-        InitScene();
-
         {
+            m_RenderPasses.push_back(std::make_unique<benzin::GpuPrintPass>(*m_MainWindow, [this](std::vector<std::string>&& gpuPrintRecords)
+            {
+                m_GpuPrintTool->SetGpuPrintRecords(std::move(gpuPrintRecords));
+            }));
+
+            InitRenderPasses();
+
             m_RenderPasses.push_back(std::make_unique<benzin::TextureViewerPass>(*m_TextureViewerTool));
             m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager));
-            m_RenderPasses.push_back(std::make_unique<benzin::GpuProfilerPass>());
         }
+
+        InitTools();
+        InitScene();
 
         // Force call window resize on render passes
         benzin::RenderPass::SetWindowViewport(m_SwapChain->GetWidth(), m_SwapChain->GetHeight());
@@ -151,6 +159,9 @@ namespace sandbox
                 renderPass->OnZeroFrameInit();
             }
 
+            // TODO: Allocate GpuHeap with estimated size of meshes and provide it to the
+            // scene (or create in the scene inself) and upload meshes to GPU using
+            // linear allocator
             m_Scene->UploadMeshesToGpu();
             m_Scene->UploadMeshletsToGpu();
             m_Scene->UploadMaterialsToGpu();
@@ -258,6 +269,7 @@ namespace sandbox
         BenzinProfile();
 
         m_Scene->EndFrame();
+        m_GpuProfiler->EndFrame();
         m_Device->GetGraphicsCmdQueue().SubmitCmdList();
 
         const bool isResized = m_SwapChain->OnFlip(m_IsVsyncEnabled);
@@ -304,7 +316,6 @@ namespace sandbox
         m_RenderViewportTool->MoveCamera(m_FrameTimer.GetDeltaTime());
 
         {
-            BenzinScopeProfile("Update scene");
             BenzinScopeProfile("Runner::<update scene>");
 
             if (!m_AnimationTimer.IsPaused())
@@ -328,18 +339,18 @@ namespace sandbox
     void Runner::OnRender()
     {
         BenzinProfile();
-
-        BenzinGpuProfile(*m_GpuProfiler, m_Device->GetGraphicsCmdQueue().GetCmdList(), "Frame");
+        BenzinGpuProfile("Frame");
 
         for (auto& renderPass : m_RenderPasses)
         {
             const bool isViewportTestFailed = !m_RenderViewportTool->IsValidForRendering() && renderPass->IsDependentOnViewport();
             if (isViewportTestFailed || !renderPass->IsRenderingEnabled())
                 continue;
-            }
 
             renderPass->OnRender();
         }
+
+        m_GpuProfiler->ResolveTimestamps(m_Device->GetGraphicsCmdQueue().GetCmdList());
     }
 
     void Runner::RunImGuiFrame()
@@ -351,10 +362,4 @@ namespace sandbox
         m_ImGuiManager->EndUiFrame();
     }
 
-    void Runner::RequestShutdown()
-    {
-        m_IsRunning = false;
-    }
-
-    void Runner::ToggleVsync()
 }

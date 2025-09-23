@@ -12,7 +12,7 @@ namespace benzin
     class RayTracing_Pso;
     class ShaderManager;
     class VertexPso;
-    
+
     struct VertexInputElement;
 
     struct ShaderProxy

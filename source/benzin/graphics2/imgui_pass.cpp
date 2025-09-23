@@ -213,11 +213,6 @@ namespace benzin
         }
     }
 
-    void ImGuiManager::AddDrawMenuCallback(ImGui::DrawCallback&& callback)
-    {
-        m_DrawMenuCallbacks.push_back(std::move(callback));
-    }
-
     void ImGuiManager::DrawDockSpace()
     {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -293,11 +288,6 @@ namespace benzin
             }
 
             ImGui::EndMenu();
-        }
-
-        for (const auto& drawMenuCallback : m_DrawMenuCallbacks)
-        {
-            drawMenuCallback();
         }
 
         for (ImGuiTool* tool : m_Tools)
@@ -487,9 +477,9 @@ namespace benzin
     void ImGuiPass::OnRender() const
     {
         BenzinProfile();
+        BenzinGpuProfile("ImGui");
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ImGui");
+        GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         cmdList.SetViewport(ms_WindowViewport);
         cmdList.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
@@ -501,7 +491,7 @@ namespace benzin
         cmdList.SetVertexBuffer(*vertexBuffer);
         cmdList.SetIndexBuffer(*indexBuffer);
 
-        const auto& backBuffer = ms_SwapChain->GetCurrentBackBuffer();
+        const Texture& backBuffer = ms_SwapChain->GetCurrentBackBuffer();
 
         BenzinScopedResourceBarriers(
             cmdList,

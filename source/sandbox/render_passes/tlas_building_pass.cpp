@@ -24,9 +24,9 @@ namespace sandbox
     void TlasBuildingPass::OnRender() const
     {
         BenzinProfile();
+        BenzinGpuProfile("TlasBuilding");
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "TlasBuilding");
+        benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         const benzin::RayTracing_Tlas& tlas = ms_RayTracingScene->GetActiveTlas();
 
@@ -36,7 +36,6 @@ namespace sandbox
         );
 
         cmdList.BuildRayTracingAccelerationStructure(tlas);
-
         cmdList.SetComputeSrv(benzin::UnifiedRootParameter::SceneTlas, tlas.GetGpuVirtualAddress());
     }
 

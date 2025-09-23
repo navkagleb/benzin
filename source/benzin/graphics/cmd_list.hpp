@@ -179,10 +179,13 @@ namespace benzin
     {
     public:
         explicit ScopedGpuEvent(CmdList& cmdList, std::string_view name);
+        explicit ScopedGpuEvent(std::string_view name);
         ~ScopedGpuEvent();
 
+        static void SetContext(Device& device);
+
     private:
-        ID3D12GraphicsCommandList* m_D3D12GraphicsCommandList = nullptr;
+        static inline Device* ms_Device = nullptr;
     };
 
 }
@@ -194,5 +197,4 @@ namespace benzin
         std::to_array<benzin::ResourceBarrierVariant>({ __VA_ARGS__ }), \
     }
 
-#define BenzinGpuEvent(cmdList, name) \
-    const benzin::ScopedGpuEvent BenzinUniqueVariableName(_scopedGpuEvent){ cmdList, name }
+#define BenzinGpuEvent(name) const benzin::ScopedGpuEvent BenzinUniqueVariableName(_scopedGpuEvent){ name }

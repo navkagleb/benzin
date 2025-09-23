@@ -46,14 +46,14 @@ namespace sandbox
     void GlobalConstsPass::OnRender() const
     {
         BenzinProfile();
+        BenzinGpuProfile("GlobalConstsPass");
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "GlobalConstsPass");
+        benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         CopyStats(cmdList);
 
         {
-            BenzinGpuEvent(cmdList, "SetUnifiedRootParameters");
+            BenzinGpuEvent("SetUnifiedRootParameters");
 
             const uint64_t frameConstsGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(m_FrameConsts);
             cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
@@ -174,7 +174,7 @@ namespace sandbox
     void GlobalConstsPass::CopyStats(benzin::GraphicsCmdList& cmdList) const
     {
         BenzinProfile();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "CopyStats");
+        BenzinGpuProfile("CopyStats");
 
         const uint64_t dataSizeInBytes = m_StatBuffer->GetSizeInBytes();
         const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % benzin::CmdLineArgs::GetReadbackLatency()) * dataSizeInBytes;

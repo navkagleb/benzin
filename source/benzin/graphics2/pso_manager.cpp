@@ -1,6 +1,7 @@
 #include "benzin/config/bootstrap.hpp"
 #include "benzin/graphics2/pso_manager.hpp"
 
+#include "benzin/core/profiler.hpp"
 #include "benzin/graphics/d3d12_utils.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/pso.hpp"
@@ -250,6 +251,8 @@ namespace benzin
 
     void PsoManager::RecompilePsoCallback()
     {
+        BenzinProfile();
+
         for (uint32_t rawId = 0; rawId < m_Psos.size(); ++rawId)
         {
             std::unique_ptr<PsoBase>& pso = m_Psos[rawId];

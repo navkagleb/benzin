@@ -89,12 +89,12 @@ namespace benzin
 
     void TextureViewerPass::OnRender() const
     {
+        BenzinProfile();
+        BenzinGpuProfile("TextureViewer");
+
         using Resources = joint::TextureViewerResources;
 
-        BenzinProfile();
-
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "TextureViewer");
+        ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         const Texture& debugTexture = ms_Resources->Get(TextureId::DebugTexture);
 

@@ -53,9 +53,9 @@ namespace sandbox
     void EnvironmentPass::OnRender() const
     {
         BenzinProfile();
+        BenzinGpuProfile("Environment");
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "Environment");
 
         const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
         const auto& depthStencil = ms_Resources->Get(TextureId::DepthStencil);

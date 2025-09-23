@@ -120,9 +120,9 @@ namespace sandbox
     void ToneMappingPass::OnRender() const
     {
         BenzinProfile();
+        BenzinGpuProfile("ToneMapping");
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ToneMapping");
 
         cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
@@ -137,11 +137,9 @@ namespace sandbox
         static bool isFirstTime = true;
 
         if (!isFirstTime)
-        {
             return;
-        }
 
-        BenzinGpuEvent(cmdList, "ClearPass");
+        BenzinGpuEvent("ClearPass");
 
         const auto& luminanceHistogram = ms_Resources->Get(BufferId::ToneMapping_LuminanceHistogram);
         const auto& avgLuminance = ms_Resources->Get(TextureId::ToneMapping_AvgLuminance);
@@ -161,7 +159,7 @@ namespace sandbox
     void ToneMappingPass::RunCalcLuminanceHistogramPass(benzin::ComputeCmdList& cmdList) const
     {
         BenzinProfile();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "CalcLuminanceHistogram");
+        BenzinGpuProfile("CalcLuminanceHistogram");
 
         const auto& luminanceHistogram = ms_Resources->Get(BufferId::ToneMapping_LuminanceHistogram);
         const auto& debugLuminanceHistogram = ms_Resources->Get(TextureId::ToneMapping_DebugLuminanceHistogram);
@@ -187,7 +185,7 @@ namespace sandbox
     void ToneMappingPass::RunCalcAvgLuminancePass(benzin::ComputeCmdList& cmdList) const
     {
         BenzinProfile();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "CalcAvgLuminance");
+        BenzinGpuProfile("CalcAvgLuminance");
 
         const auto& luminanceHistogram = ms_Resources->Get(BufferId::ToneMapping_LuminanceHistogram);
         const auto& avgLuminance = ms_Resources->Get(TextureId::ToneMapping_AvgLuminance);
@@ -212,7 +210,7 @@ namespace sandbox
     void ToneMappingPass::RunApplyToneMapOperatorPass(benzin::ComputeCmdList& cmdList) const
     {
         BenzinProfile();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ApplyToneMapOperator");
+        BenzinGpuProfile("ApplyToneMapOperator");
 
         const auto& finalTexture = ms_Resources->Get(TextureId::Final);
 

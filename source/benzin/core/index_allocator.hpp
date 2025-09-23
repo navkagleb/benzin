@@ -25,6 +25,8 @@ namespace benzin
             }
         }
 
+        void Reset();
+
     private:
         struct SplittedIndex
         {

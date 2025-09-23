@@ -3,7 +3,6 @@
 
 #include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/logger.hpp"
-#include "benzin/core/profiler.hpp"
 
 namespace benzin
 {
@@ -28,7 +27,6 @@ namespace benzin
 
         CmdLineArgs::Initialize(argc, argv);
         Logger::Initialize(CmdLineArgs::GetRawLogOptionFlags());
-        Profiler::Initialize();
 
         return ClientMain();
     }

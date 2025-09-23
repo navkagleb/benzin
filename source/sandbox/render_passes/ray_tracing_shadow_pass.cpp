@@ -100,9 +100,9 @@ namespace sandbox
     void RayTracing_ShadowPass::OnRender() const
     {
         BenzinProfile();
+        BenzinGpuProfile("RayTracing_Shadow");
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "RayTracing_Shadow");
 
         const auto& pso = ms_PsoManager->GetRayTracing(PsoId::ShadowPass);
         const auto& noisyPenumbra = ms_Resources->Get(TextureId::NoisyPenumbra);

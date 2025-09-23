@@ -118,12 +118,16 @@ namespace sandbox
 
     void SigmaDenoiserPass::OnUpdate()
     {
+        auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
+
+        benzin::RenderPass::m_IsRenderingEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled;
+        if (!benzin::RenderPass::m_IsRenderingEnabled)
+            return;
+
         // TODO: Do I need cast to u32?
         const float rotatorAngleInRadians = benzin::GetWeylSequence(0.0f, (uint32_t)ms_Device->GetCpuFrameIndex()) * DirectX::XMConvertToRadians(90.0f);
         const DirectX::XMFLOAT4 blurRotator = benzin::GetRotator(rotatorAngleInRadians);
         const DirectX::XMFLOAT4 postBlurRotator = benzin::GetRotator(rotatorAngleInRadians + DirectX::XMConvertToRadians(45.0f));
-
-        auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 
         const float fps = 1.0f / ms_FrameTimer->GetDeltaTimeInSec();
         settings.HistoryLength = GetMaxHistoryLength(settings.MaxHistoryLength, fps);
@@ -162,32 +166,24 @@ namespace sandbox
                 lightOffset++;
             }
         }
+
     }
 
     void SigmaDenoiserPass::OnRender() const
     {
         BenzinProfile();
+        BenzinGpuProfile("SigmaDenoiser");
 
-        const auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
-        if (!settings.IsEnabled)
-        {
-            return;
-        }
-
+        auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "SigmaDenoiser");
 
         cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
         const uint32_t lightCount = ms_Scene->GetActiveLightCount();
         for (uint16_t sliceIndex = 0; sliceIndex < lightCount; ++sliceIndex)
         {
-            BenzinScopeProfile(std::format("Step: {}", sliceIndex));
-
-            if (lightCount != 1)
-            {
-                BenzinGpuEvent(cmdList, "Step");
-            }
+            BenzinScopeProfile("Step");
+            BenzinGpuEvent("Step");
 
             cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer1, ms_Device->GetConstBufferAllocator().Allocate(m_PerLightConsts[sliceIndex]));
 
@@ -203,14 +199,12 @@ namespace sandbox
     void SigmaDenoiserPass::RunClearPass(bool isEnabled) const
     {
         BenzinProfile();
+        BenzinGpuProfile("Clear");
 
         if (!isEnabled)
-        {
             return;
-        }
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "Clear");
 
         BenzinScopedResourceBarriers(
             cmdList,
@@ -234,9 +228,9 @@ namespace sandbox
     void SigmaDenoiserPass::RunClassifyTilesPass(uint16_t sliceIndex) const
     {
         BenzinProfile();
+        BenzinGpuProfile("ClassifyTiles");
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ClassifyTiles");
 
         const auto& tiles = ms_Resources->Get(TextureId::Sigma_Tiles);
 
@@ -261,9 +255,9 @@ namespace sandbox
     void SigmaDenoiserPass::RunSmoothTilesPass() const
     {
         BenzinProfile();
+        BenzinGpuProfile("SmoothTiles");
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "SmoothTiles");
 
         const auto& smoothTiles = ms_Resources->Get(TextureId::Sigma_SmoothTiles);
 
@@ -286,9 +280,9 @@ namespace sandbox
     void SigmaDenoiserPass::RunBlurPass(uint16_t sliceIndex) const
     {
         BenzinProfile();
+        BenzinGpuProfile("Blur");
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "Blur");
 
         const auto& penumbra1 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1);
         const auto& shadowTemp1 = ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1);
@@ -318,9 +312,9 @@ namespace sandbox
     void SigmaDenoiserPass::RunPostBlurPass(bool isEnabled) const
     {
         BenzinProfile();
+        BenzinGpuProfile("PostBlur");
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "PostBlur");
 
         const auto& penumbra1 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1);
         const auto& penumbra2 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2);
@@ -369,9 +363,9 @@ namespace sandbox
     void SigmaDenoiserPass::RunTemporalStabilizationPass(bool isEnabled, uint16_t sliceIndex) const
     {
         BenzinProfile();
+        BenzinGpuProfile("TemporalStabilization");
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "TemporalStabilization");
 
         const auto& shadowTemp2 = ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2);
         const auto& shadow = ms_Resources->Get(TextureId::Shadow);

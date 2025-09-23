@@ -59,9 +59,9 @@ namespace sandbox
     void DeferredLightingPass::OnRender() const
     {
         BenzinProfile();
+        BenzinGpuProfile("DeferredLighting");
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "DeferredLighting");
 
         const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 

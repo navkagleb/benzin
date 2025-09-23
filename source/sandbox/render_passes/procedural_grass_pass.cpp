@@ -118,6 +118,8 @@ namespace sandbox
         const auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
 
         RenderPass::m_IsRenderingEnabled = settings.IsEnabled;
+        if (!RenderPass::m_IsRenderingEnabled)
+            return;
 
         m_Consts.GrassPatchCount = stats.MaxPatchCount;
         m_Consts.IsFrustumCullingEnabled = settings.IsFrustumCullingEnabled;
@@ -131,12 +133,12 @@ namespace sandbox
 
     void ProceduralGrassPass::OnRender() const
     {
+        BenzinProfile();
+        BenzinGpuProfile("ProceduralGrass");
+
         using Resources = joint::ProceduralGrassResources;
 
-        BenzinProfile();
-
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        BenzinGpuProfile(*ms_GpuProfiler, cmdList, "ProceduralGrass");
 
         cmdList.SetViewport(ms_RenderViewport);
         cmdList.SetScissorRect(ms_RenderScissorRect);
