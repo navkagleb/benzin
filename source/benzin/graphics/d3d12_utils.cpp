@@ -136,12 +136,9 @@ namespace benzin
         d3d12Debug->SetEnableSynchronizedCommandQueueValidation(CmdLineArgs::IsSynchronizedCommandQueueValidationEnabled());
         d3d12Debug->SetEnableAutoName(true);
 
-        BenzinTrace(Logger::GetLineSeparator());
         BenzinTrace("D3D12DebugLayer enabled");
         BenzinTrace("GPUBasedValidation enabled: {}", CmdLineArgs::IsGpuValidationEnabled());
         BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", CmdLineArgs::IsSynchronizedCommandQueueValidationEnabled());
-        BenzinTrace("AutoName enabled: true");
-        BenzinTrace(Logger::GetLineSeparator());
     }
 
     void EnableD3D12DebugBreakOn(ID3D12Device* d3d12Device, bool isEnabled, EnumFlags<D3D12BreakReasonFlag> flags)

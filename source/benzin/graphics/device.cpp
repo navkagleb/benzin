@@ -250,8 +250,6 @@ namespace benzin
                 BenzinTrace("Device supports 'GPU_UPLOAD_HEAPS' (IsEnabled: {})", m_Caps.IsGpuUploadHeapsSupported);
             }
         }
-
-        BenzinTrace(Logger::GetLineSeparator());
     }
 
     void Device::DeferredRelease(ID3D12Object* d3d12Object)

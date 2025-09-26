@@ -18,11 +18,6 @@ namespace benzin
     {
         void Initialize(EnumFlags<LogOptionFlag> flags = LogOptionFlag::All);
 
-        constexpr std::string_view GetLineSeparator()
-        {
-            return "-----------------------------------------------------------------------------------";
-        }
-
         const std::locale& GetThoudandSeperatorApostrophe3();
     };
 

@@ -115,16 +115,13 @@ namespace benzin
         for (const int i : std::views::iota(0, argc))
         {
             const std::string_view currentArg = argv[i];
-            BenzinTrace("CommandLineArg {}: {}", i, currentArg);
 
-            if (!currentArg.starts_with('-'))
+            if (currentArg.starts_with('-'))
             {
-                continue;
-            }
-
-            for (const auto& supportedArg : supportedArgs)
-            {
-                supportedArg.ParseIfMathes(currentArg);
+                for (const auto& supportedArg : supportedArgs)
+                {
+                    supportedArg.ParseIfMathes(currentArg);
+                }
             }
         }
     }

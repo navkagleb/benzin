@@ -96,7 +96,6 @@ namespace sandbox
 
     Runner::~Runner()
     {
-        BenzinTrace(benzin::Logger::GetLineSeparator());
         BenzinLogTimeOnScopeExit("Runner::~Runner");
 
         m_Device->GetGraphicsCmdQueue().Flush();
