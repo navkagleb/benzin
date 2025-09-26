@@ -5,22 +5,20 @@
 namespace benzin
 {
 
-    class RenderViewportTool;
     class FlyCameraController;
 
     class FlyCameraTool : public ImGuiTool
     {
     public:
-        explicit FlyCameraTool(RenderViewportTool& renderViewportTool);
+        FlyCameraTool(FlyCameraController& controller);
 
-    private:
         void DrawWindowContent() override;
 
+    private:
         void DrawControllerProperties();
         void DrawViewProperties();
         void DrawProjectionProperties();
 
-    private:
         FlyCameraController& m_Controller;
     };
 

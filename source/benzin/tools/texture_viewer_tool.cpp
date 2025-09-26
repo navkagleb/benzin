@@ -8,8 +8,6 @@
 #include "benzin/system/key_event.hpp"
 #include "benzin/system/mouse_event.hpp"
 
-BenzinEnableUnaryPlusForEnum(benzin::TextureViewerTool::ColorChannel);
-
 namespace benzin
 {
 
@@ -41,27 +39,28 @@ namespace benzin
 
     static void DrawTextureConfig(const Texture& texture)
     {
-        ImGui::Text(BenzinFormatData("Texture size: [{}, {}, {}]", texture.GetWidth(), texture.GetHeight(), texture.GetDepth()));
-        ImGui::Text(BenzinFormatData("Texture mips: {}", texture.GetMipCount()));
-        ImGui::Text(BenzinFormatData("Texture format: {}", magic_enum::enum_name(texture.GetFormat())));
+        ImGui::FmtText("Texture size: [{}, {}, {}]", texture.GetWidth(), texture.GetHeight(), texture.GetDepth());
+        ImGui::FmtText("Texture mips: {}", texture.GetMipCount());
+        ImGui::FmtText("Texture format: {}", magic_enum::enum_name(texture.GetFormat()));
     }
 
     //
 
-    TextureViewerTool::TextureViewerTool(const RenderResources& resources)
+    TextureViewerTool::TextureViewerTool(TextureViewerData& viewerData, RenderViewport& viewport, const RenderResources& resources)
         : ImGuiTool{ "Debug/TextureViewer", KeyCode::F3 }
+        , m_ViewerData{ viewerData }
+        , m_Viewport{ viewport }
         , m_Resources{ resources }
     {
-        m_IsChannelActive[+ColorChannel::R] = true;
-        m_IsChannelActive[+ColorChannel::G] = true;
-        m_IsChannelActive[+ColorChannel::B] = true;
-        m_IsChannelActive[+ColorChannel::A] = false;
+        m_ViewerData.m_IsChannelActive[0] = true;
+        m_ViewerData.m_IsChannelActive[1] = true;
+        m_ViewerData.m_IsChannelActive[2] = true;
+        m_ViewerData.m_IsChannelActive[3] = false;
     }
 
     void TextureViewerTool::OnEvent(Event& event)
     {
         ImGuiTool::OnEvent(event);
-
 
         if (m_IsHovered)
         {
@@ -77,27 +76,34 @@ namespace benzin
     {
         ImGui::SetNextWindowBgAlpha(1.0);
         ImGuiTool::DrawWindow(ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+        m_ViewerData.m_IsRenderingNeeded = m_ViewerData.m_IsReferenceTextureValid;
+        m_ViewerData.m_IsRenderingNeeded &= ImGuiTool::m_IsVisible;
+        m_ViewerData.m_IsRenderingNeeded &= ImGuiTool::m_IsCollapsed ? m_IsFullViewportPreview : true;
     }
 
     void TextureViewerTool::DrawWindowContent()
     {
         const TextureId selectedReferenceTexture = DrawTextureSelector();
 
-        if (m_ReferenceTextureId != selectedReferenceTexture)
+        if (m_ViewerData.m_ReferenceTextureId != selectedReferenceTexture)
         {
-            m_ReferenceTextureId = selectedReferenceTexture;
-            m_ActiveDepthIndex = 0;
-            m_ActiveMipIndex = 0;
+            m_ViewerData.m_ReferenceTextureId = selectedReferenceTexture;
+            m_ViewerData.m_ActiveDepthIndex = 0;
+            m_ViewerData.m_ActiveMipIndex = 0;
         }
 
-        if (!IsReferenceTextureIdValid())
-        {
+        m_ViewerData.m_IsReferenceTextureValid =
+            m_ViewerData.m_ReferenceTextureId != g_InvalidTextureId &&
+            m_Resources.IsCreated(m_ViewerData.m_ReferenceTextureId);
+
+        if (!m_ViewerData.m_IsReferenceTextureValid)
             return;
-        }
 
-        const auto& texture = m_Resources.Get(m_ReferenceTextureId);
+        const Texture& texture = m_Resources.Get(m_ViewerData.m_ReferenceTextureId);
 
         ImGui::Checkbox("Full Viewport Preview", &m_IsFullViewportPreview);
+        m_Viewport.m_DisplayTextureId = m_IsFullViewportPreview ? TextureId::DebugTexture : TextureId::Final;
 
         ImGui::CollapsingHeaderWithIndent("Texture Config", [this, &texture]
         {
@@ -106,27 +112,27 @@ namespace benzin
 
         ImGui::CollapsingHeaderWithIndent("Shader Consts", [this, &texture]
         {
-            DrawChannelCheckbox("R", ImVec4{ 1.0f, 0.0f, 0.0f, 1.0f }, ImVec4{ 1.0f, 0.0f, 0.0f, 0.8f }, ColorChannel::R);
-            DrawChannelCheckbox("G", ImVec4{ 0.0f, 1.0f, 0.0f, 1.0f }, ImVec4{ 0.0f, 1.0f, 0.0f, 0.8f }, ColorChannel::G);
-            DrawChannelCheckbox("B", ImVec4{ 0.0f, 0.0f, 1.0f, 1.0f }, ImVec4{ 0.0f, 0.0f, 1.0f, 0.8f }, ColorChannel::B);
-            DrawChannelCheckbox("A", ImVec4{ 1.0f, 1.0f, 1.0f, 1.0f }, ImVec4{ 1.0f, 1.0f, 1.0f, 0.8f }, ColorChannel::A);
+            DrawChannelCheckbox("R", ImVec4{ 1.0f, 0.0f, 0.0f, 1.0f }, ImVec4{ 1.0f, 0.0f, 0.0f, 0.8f }, 0);
+            DrawChannelCheckbox("G", ImVec4{ 0.0f, 1.0f, 0.0f, 1.0f }, ImVec4{ 0.0f, 1.0f, 0.0f, 0.8f }, 1);
+            DrawChannelCheckbox("B", ImVec4{ 0.0f, 0.0f, 1.0f, 1.0f }, ImVec4{ 0.0f, 0.0f, 1.0f, 0.8f }, 2);
+            DrawChannelCheckbox("A", ImVec4{ 1.0f, 1.0f, 1.0f, 1.0f }, ImVec4{ 1.0f, 1.0f, 1.0f, 0.8f }, 3);
             DrawShaderConsts(texture.GetDepth(), texture.GetMipCount());
         }, ImGuiTreeNodeFlags_DefaultOpen);
 
         DrawDebugTexture();
     }
 
-    void TextureViewerTool::DrawChannelCheckbox(const char* name, const ImVec4& textColor, const ImVec4& checkMarkColor, ColorChannel channel)
+    void TextureViewerTool::DrawChannelCheckbox(const char* name, const ImVec4& textColor, const ImVec4& checkMarkColor, uint32_t channelIndex)
     {
-        const bool isRgb = channel != ColorChannel::A;
-        const bool isAnyRgbActive = m_IsChannelActive[+ColorChannel::R] || m_IsChannelActive[+ColorChannel::G] || m_IsChannelActive[+ColorChannel::B];
-        const bool isAlphaActive = m_IsChannelActive[+ColorChannel::A];
+        const bool isRgb = channelIndex != 3;
+        const bool isAnyRgbActive = m_ViewerData.m_IsChannelActive[0] || m_ViewerData.m_IsChannelActive[1] || m_ViewerData.m_IsChannelActive[2];
+        const bool isAlphaActive = m_ViewerData.m_IsChannelActive[3];
         const bool isActive = (isRgb && !isAlphaActive) || (!isRgb && !isAnyRgbActive);
 
         ImGui::BeginDisabled(!isActive);
         ImGui::PushStyleColor(ImGuiCol_Text, textColor);
         ImGui::PushStyleColor(ImGuiCol_CheckMark, checkMarkColor);
-        ImGui::Checkbox(name, &m_IsChannelActive[+channel]);
+        ImGui::Checkbox(name, &m_ViewerData.m_IsChannelActive[channelIndex]);
         ImGui::PopStyleColor(2);
         ImGui::SameLine();
         ImGui::EndDisabled();
@@ -145,11 +151,17 @@ namespace benzin
 
             if (ImGui::Button("Reset to 0"))
             {
-                m_MinColor = 0.0f;
+                m_ViewerData.m_MinColor = 0.0f;
             }
 
             ImGui::SameLine();
-            ImGui::DragFloat("Min color", &m_MinColor, 0.001f, std::numeric_limits<float>::lowest(), m_MaxColor, "%.3f", ImGuiSliderFlags_ClampOnInput);
+            ImGui::DragFloat(
+                "Min color",
+                &m_ViewerData.m_MinColor,
+                0.001f,
+                std::numeric_limits<float>::lowest(),
+                m_ViewerData.m_MaxColor,
+                "%.3f", ImGuiSliderFlags_ClampOnInput);
         }
 
         {
@@ -158,11 +170,18 @@ namespace benzin
 
             if (ImGui::Button("Reset to 1"))
             {
-                m_MaxColor = 1.0f;
+                m_ViewerData.m_MaxColor = 1.0f;
             }
 
             ImGui::SameLine();
-            ImGui::DragFloat("Max color", &m_MaxColor, 0.001f, m_MinColor, std::numeric_limits<float>::max(), "%.3f", ImGuiSliderFlags_ClampOnInput);
+            ImGui::DragFloat(
+                "Max color",
+                &m_ViewerData.m_MaxColor,
+                0.001f,
+                m_ViewerData.m_MinColor,
+                std::numeric_limits<float>::max(),
+                "%.3f",
+                ImGuiSliderFlags_ClampOnInput);
         }
 
         {
@@ -171,11 +190,11 @@ namespace benzin
 
             if (ImGui::Button("Reset to 0"))
             {
-                m_ActiveDepthIndex = 0;
+                m_ViewerData.m_ActiveDepthIndex = 0;
             }
 
             ImGui::SameLine();
-            ImGui::SliderInt("Active depth index", (int*)&m_ActiveDepthIndex, 0, textureDepth - 1);
+            ImGui::SliderInt("Active depth index", (int*)&m_ViewerData.m_ActiveDepthIndex, 0, textureDepth - 1);
         }
 
         {
@@ -184,24 +203,22 @@ namespace benzin
 
             if (ImGui::Button("Reset to 0"))
             {
-                m_ActiveMipIndex = 0;
+                m_ViewerData.m_ActiveMipIndex = 0;
             }
 
             ImGui::SameLine();
-            ImGui::SliderInt("Active mip index", (int*)&m_ActiveMipIndex, 0, mipCount - 1);
+            ImGui::SliderInt("Active mip index", (int*)&m_ViewerData.m_ActiveMipIndex, 0, mipCount - 1);
         }
     }
 
     void TextureViewerTool::DrawDebugTexture() const
     {
         if (!m_Resources.IsCreated(TextureId::DebugTexture))
-        {
             return;
-        }
 
         const Texture& debugTexture = m_Resources.Get(TextureId::DebugTexture);
 
-        ImGui::Text(BenzinFormatData("Debug texture size: [{}, {}]", debugTexture.GetWidth(), debugTexture.GetHeight()));
+        ImGui::FmtText("Debug texture size: [{}, {}]", debugTexture.GetWidth(), debugTexture.GetHeight());
 
         const ImVec2 widgetSize = ImGui::GetContentRegionAvail();
         const float widgetAspectRatio = widgetSize.x / widgetSize.y;
@@ -225,8 +242,7 @@ namespace benzin
             ImGuiPass::PackImTextureId(debugTexture.GetSrv(), joint::ImGuiSamplerIndex::Point),
             widgetTextureSize,
             m_UvMin,
-            m_UvMax
-        );
+            m_UvMax);
 
         const float rounding = 0.0f;
         const float borderThickness = 3.0f;
@@ -236,8 +252,7 @@ namespace benzin
             IM_COL32(255, 165, 0, 255),
             rounding,
             ImDrawFlags_None,
-            borderThickness
-        );
+            borderThickness);
     }
 
     bool TextureViewerTool::OnMouseMovedEvent(const MouseMovedEvent& event)
@@ -285,11 +300,6 @@ namespace benzin
         m_UvMax.y = m_UvMin.y + height;
 
         return true;
-    }
-
-    bool TextureViewerTool::IsReferenceTextureIdValid() const
-    {
-        return m_ReferenceTextureId != g_InvalidTextureId && m_Resources.IsCreated(m_ReferenceTextureId);
     }
 
 }

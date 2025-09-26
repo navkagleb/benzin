@@ -22,14 +22,13 @@ namespace benzin
         const Backend& backend,
         const Device& device,
         const ShaderManager& shaderManager,
-        const RenderViewportTool& renderViewportTool
-    )
+        const RenderViewport& viewport)
         : ImGuiTool{ "Debug/PerformanceOverlay" }
         , m_Window{ window }
         , m_Backend{ backend }
         , m_Device{ device }
         , m_ShaderManager{ shaderManager }
-        , m_RenderViewportTool{ renderViewportTool }
+        , m_Viewport{ viewport }
     {
         ms_IntervalTimer->AddCallback([this](float timeInMs, uint32_t frameCount)
         {
@@ -93,7 +92,7 @@ namespace benzin
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0.0f, 0.0f });
 
         ImGui::FmtText("Window: {} x {}", m_Window.GetWidth(), m_Window.GetHeight());
-        ImGui::FmtText("Viewport: {} x {} {}", m_RenderViewportTool.GetWidth(), m_RenderViewportTool.GetHeight(), m_RenderViewportTool.IsValidForRendering() ? '+' : '-');
+        ImGui::FmtText("Viewport: {} x {} {}", m_Viewport.GetWidth(), m_Viewport.GetHeight(), m_Viewport.IsValidForRendering() ? '+' : '-');
         ImGui::FmtText("{}", m_Backend.GetMainAdapterInfo().Name);
         ImGui::FmtText("FPS: {:.1f} ({:.3f} ms)", m_AvgFps, m_AvgDeltaTimeInMs);
         ImGui::NewLine();

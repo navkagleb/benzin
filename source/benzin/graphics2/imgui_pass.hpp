@@ -1,7 +1,7 @@
 #pragma once
 
 #include <benzin/core/interval_timer.hpp>
-#include <benzin/graphics2/imgui_helpers.hpp>
+#include <benzin/graphics2/imgui_helpers.hpp> // TODO: Remove
 #include <benzin/graphics2/render_pass.hpp>
 #include <benzin/system/key_code.hpp>
 
@@ -11,7 +11,6 @@ namespace benzin
 {
 
     class Descriptor;
-    class Device;
     class Event;
     class GraphicsCmdList;
     class Window;
@@ -36,6 +35,7 @@ namespace benzin
         static inline const Window* ms_Window = nullptr;
         static inline const IntervalTimer* ms_IntervalTimer = nullptr;
 
+        uint64_t m_UniqueId = 0;
         std::string_view m_Path;
         KeyCode m_ShortcutKeyCode;
         bool m_IsVisible = false;
@@ -44,12 +44,25 @@ namespace benzin
         bool m_IsCollapsed = false;
     };
 
+    // TODO: Move to math.hpp file or something like that
+    constexpr uint64_t FNV1A(const char* str)
+    {
+        uint64_t hash = 14695981039346656037ull;
+        for (uint32_t i = 0; str[i]; ++i)
+        {
+            hash ^= (uint8_t)str[i];
+            hash *= 1099511628211ull;
+        }
+
+        return hash;
+    }
+
     class ImGuiManager
     {
     public:
         friend class ImGuiPass;
 
-        ImGuiManager(Window& window, Device& device, const TickTimer& frameTimer);
+        ImGuiManager(Window& window, const TickTimer& frameTimer);
         ~ImGuiManager();
 
     public:
@@ -61,40 +74,52 @@ namespace benzin
         void OnEvent(Event& event);
         void DrawUi();
 
-        template <std::derived_from<ImGuiTool> T, typename... Args>
-        T* PushTool(Args&&... args)
+        template <std::derived_from<ImGuiTool> ImGuiToolT, typename... Args>
+        void RegisterTool(Args&&... args)
         {
-            auto* tool = new T{ std::forward<Args>(args)... };
-            tool->m_IsVisible = m_IsToolVisibleMap[tool->m_Path.data()];
+            const uint64_t id = GetToolId<ImGuiToolT>();
+            BenzinAssert(std::ranges::find_if(m_Tools, [id](const auto& existing) { return existing->m_UniqueId == id; }) == m_Tools.end());
 
-            m_Tools.push_back(tool);
+            auto tool = std::make_unique<ImGuiToolT>(std::forward<Args>(args)...);
+            tool->m_UniqueId = id;
+            tool->m_IsVisible = m_ToolVisibilityCache[tool->m_UniqueId];
+
+            m_Tools.push_back(std::move(tool));
             std::ranges::sort(m_Tools, {}, &ImGuiTool::m_Path);
+        }
 
-            return tool;
+        template <std::derived_from<ImGuiTool> ImGuiToolT>
+        void UnregisterTool()
+        {
+            const uint64_t id = GetToolId<ImGuiToolT>();
+            BenzinAssert(std::ranges::find_if(m_Tools, [id](const auto& existing) { return existing->m_UniqueId == id; }) != m_Tools.end());
+
+            std::erase_if(m_Tools, [id](const auto& tool) { return tool->m_UniqueId == id; });
         }
 
     private:
-        const ImDrawData& GetImDrawData() const { BenzinAssert(m_CurrentImGuiDrawData != nullptr); return *m_CurrentImGuiDrawData; }
+        template <std::derived_from<ImGuiTool> ImGuiToolT>
+        uint64_t GetToolId()
+        {
+            return FNV1A(std::source_location::current().function_name());
+        }
 
         void DrawDockSpace();
         void DrawDockSpaceContent();
         void DrawManuBar();
-        void DrawToolMenuPath(ImGuiTool* tool, std::span<const std::string_view> pathParts, uint32_t depth = 0);
+        void DrawToolMenuPath(ImGuiTool& tool, std::span<const std::string_view> pathParts, uint32_t depth);
 
         void ToggleImGuiDemoWindow();
         void ToggleUiDraw();
 
-        void SaveToolsVisiblity();
-        void LoadToolsVisiblity();
+        void LoadToolVisiblityCache();
+        void SaveToolVisiblityCache();
 
     private:
-        Device& m_Device;
-
         IntervalTimer m_IntervalTimer;
 
-        std::unordered_map<std::string, bool> m_IsToolVisibleMap; // TODO: can std::string_view be used instead of std::string
-
-        std::vector<ImGuiTool*> m_Tools;
+        std::vector<std::unique_ptr<ImGuiTool>> m_Tools;
+        std::unordered_map<uint64_t, bool> m_ToolVisibilityCache;
 
         bool m_IsImGuiDemoWindowVisible = false;
         bool m_IsUiDrawEnabled = true;

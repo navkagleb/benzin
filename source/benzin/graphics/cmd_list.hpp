@@ -178,7 +178,6 @@ namespace benzin
     class ScopedGpuEvent
     {
     public:
-        explicit ScopedGpuEvent(CmdList& cmdList, std::string_view name);
         explicit ScopedGpuEvent(std::string_view name);
         ~ScopedGpuEvent();
 

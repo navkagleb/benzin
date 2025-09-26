@@ -30,7 +30,6 @@
 #include <benzin/tools/render_viewport_tool.hpp>
 #include <benzin/tools/scene_stats_tool.hpp>
 #include <benzin/tools/scene_tool.hpp>
-#include <benzin/tools/texture_viewer_tool.hpp>
 #include <benzin/tools/vram_tool.hpp>
 
 namespace sandbox
@@ -63,21 +62,18 @@ namespace sandbox
         benzin::MakeUniquePtr(m_RenderResources, *m_Device);
         benzin::MakeUniquePtr(m_RenderSettings);
 
-        {
-            benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, *m_Device, m_FrameTimer);
-
-            m_TextureViewerTool = m_ImGuiManager->PushTool<benzin::TextureViewerTool>(*m_RenderResources);
-            m_RenderViewportTool = m_ImGuiManager->PushTool<benzin::RenderViewportTool>(*m_RenderResources, *m_TextureViewerTool, m_Scene->GetCamera());
-            m_PerformanceOverlayTool = m_ImGuiManager->PushTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Backend, *m_Device, *m_ShaderManager, *m_RenderViewportTool);
-
-            m_ImGuiManager->PushTool<benzin::FlyCameraTool>(*m_RenderViewportTool);
-            m_ImGuiManager->PushTool<benzin::GpuInfoTool>(*m_Backend);
-            m_ImGuiManager->PushTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
-            m_ImGuiManager->PushTool<benzin::ProfilerTool>();
-            m_ImGuiManager->PushTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
-            m_ImGuiManager->PushTool<benzin::SceneTool>(*m_Scene);
-            m_ImGuiManager->PushTool<benzin::VramTool>(*m_Device);
-        }
+        benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, m_FrameTimer);
+        m_ImGuiManager->RegisterTool<benzin::FlyCameraTool>(m_CameraController);
+        m_ImGuiManager->RegisterTool<benzin::GpuInfoTool>(*m_Backend);
+        m_ImGuiManager->RegisterTool<benzin::GpuPrintTool>();
+        m_ImGuiManager->RegisterTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
+        m_ImGuiManager->RegisterTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Backend, *m_Device, *m_ShaderManager, m_Viewport);
+        m_ImGuiManager->RegisterTool<benzin::ProfilerTool>();
+        m_ImGuiManager->RegisterTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
+        m_ImGuiManager->RegisterTool<benzin::SceneTool>(*m_Scene);
+        m_ImGuiManager->RegisterTool<benzin::VramTool>(*m_Device);
+        m_ImGuiManager->RegisterTool<benzin::TextureViewerTool>(m_TextureViewerData, m_Viewport, *m_RenderResources);
+        m_ImGuiManager->RegisterTool<benzin::RenderViewportTool>(m_Viewport, *m_RenderResources);
 
         benzin::RenderPass::SetContext(
             *m_Device,
@@ -89,11 +85,13 @@ namespace sandbox
             m_FrameTimer,
             m_AnimationTimer,
             *m_Scene,
-            *m_RayTracingScene,
+            *m_RayTracingScene
         );
 
         benzin::ScopedGpuEvent::SetContext(*m_Device);
         benzin::ScopedGpuProfileEvent::SetContext(*m_Device, *m_GpuProfiler);
+
+        m_CameraController.SetCamera(m_Scene->GetCamera());
     }
 
     Runner::~Runner()
@@ -102,6 +100,18 @@ namespace sandbox
         BenzinLogTimeOnScopeExit("Runner::~Runner");
 
         m_Device->GetGraphicsCmdQueue().Flush();
+
+        m_ImGuiManager->UnregisterTool<benzin::FlyCameraTool>();
+        m_ImGuiManager->UnregisterTool<benzin::GpuInfoTool>();
+        m_ImGuiManager->UnregisterTool<benzin::GpuPrintTool>();
+        m_ImGuiManager->UnregisterTool<benzin::GpuProfilerTool>();
+        m_ImGuiManager->UnregisterTool<benzin::PerformanceOverlayTool>();
+        m_ImGuiManager->UnregisterTool<benzin::ProfilerTool>();
+        m_ImGuiManager->UnregisterTool<benzin::SceneStatsTool>();
+        m_ImGuiManager->UnregisterTool<benzin::SceneTool>();
+        m_ImGuiManager->UnregisterTool<benzin::VramTool>();
+        m_ImGuiManager->UnregisterTool<benzin::TextureViewerTool>();
+        m_ImGuiManager->UnregisterTool<benzin::RenderViewportTool>();
     }
 
     void Runner::RunMainLoop()
@@ -130,17 +140,9 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("Runner::RunZeroFrame");
 
-        {
-            m_RenderPasses.push_back(std::make_unique<benzin::GpuPrintPass>(*m_MainWindow, [this](std::vector<std::string>&& gpuPrintRecords)
-            {
-                m_GpuPrintTool->SetGpuPrintRecords(std::move(gpuPrintRecords));
-            }));
-
-            InitRenderPasses();
-
-            m_RenderPasses.push_back(std::make_unique<benzin::TextureViewerPass>(*m_TextureViewerTool));
-            m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager));
-        }
+        InitRenderPasses();
+        m_RenderPasses.push_back(std::make_unique<benzin::TextureViewerPass>(m_TextureViewerData));
+        m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager));
 
         InitTools();
         InitScene();
@@ -238,6 +240,32 @@ namespace sandbox
 
                 return false;
             });
+
+            if (m_Viewport.IsHovered())
+            {
+                dispatcher.Dispatch<benzin::MouseMovedEvent>([&](const auto& event)
+                {
+                    if (!benzin::Input::IsMouseButtonPressed(benzin::MouseButton::Right))
+                    {
+                        benzin::Input::UnlockCursor();
+                        return true;
+                    }
+
+                    const DirectX::XMINT2 mousePosition = event.GetPosition();
+                    const DirectX::XMINT2 lockedCursorPosition = benzin::Input::LockCursor(*m_MainWindow);
+
+                    m_CameraController.RotateCamera(mousePosition, lockedCursorPosition);
+
+                    return true;
+                });
+
+                dispatcher.Dispatch<benzin::MouseScrolledEvent>([&](const auto& event)
+                {
+                    m_CameraController.IncrementFov((float)event.GetOffsetX());
+
+                    return true;
+                });
+            }
         }
 
         m_ImGuiManager->OnEvent(event);
@@ -275,32 +303,28 @@ namespace sandbox
         const bool isResized = m_SwapChain->OnFlip(m_IsVsyncEnabled);
         if (isResized)
         {
-            const auto windowWidth = m_SwapChain->GetWidth();
-            const auto windowHeight = m_SwapChain->GetHeight();
-
-            benzin::RenderPass::SetWindowViewport(windowWidth, windowHeight);
+            benzin::RenderPass::SetWindowViewport(m_SwapChain->GetWidth(), m_SwapChain->GetHeight());
             for (auto& renderPass : m_RenderPasses)
             {
                 renderPass->OnWindowResize();
             }
 
-            BenzinTrace("Window is resized: {} x {}. CpuFrame: {}", windowWidth, windowHeight, m_Device->GetCpuFrameIndex());
+            BenzinTrace("Window is resized: {} x {}. CpuFrame: {}", m_SwapChain->GetWidth(), m_SwapChain->GetHeight(), m_Device->GetCpuFrameIndex());
         }
 
-        if (m_RenderViewportTool->IsViewportResized())
+        if (m_Viewport.IsResized())
         {
             // NOTE: Viewport size is controlled by UI. So first update UI and then resize render passes
 
-            const auto viewportWidth = m_RenderViewportTool->GetWidth();
-            const auto viewportHeight = m_RenderViewportTool->GetHeight();
-
-            benzin::RenderPass::SetRenderViewport(viewportWidth, viewportHeight);
+            benzin::RenderPass::SetRenderViewport(m_Viewport.GetWidth(), m_Viewport.GetHeight());
             for (auto& renderPass : m_RenderPasses)
             {
                 renderPass->OnRenderViewportResize();
             }
 
-            BenzinTrace("Viewport is resized: {} x {}. CpuFrame: {}", viewportWidth, viewportHeight, m_Device->GetCpuFrameIndex());
+            BenzinTrace("Viewport is resized: {} x {}. CpuFrame: {}", m_Viewport.GetWidth(), m_Viewport.GetHeight(), m_Device->GetCpuFrameIndex());
+
+            m_CameraController.OnRenderViewportResized(m_Viewport.GetWidth(), m_Viewport.GetHeight());
         }
 
         m_Device->ProcessDeferredReleaseQueues();
@@ -313,7 +337,7 @@ namespace sandbox
         if (m_FrameTimer.IsPaused())
             return;
 
-        m_RenderViewportTool->MoveCamera(m_FrameTimer.GetDeltaTime());
+        m_CameraController.MoveCamera(m_FrameTimer.GetDeltaTime());
 
         {
             BenzinScopeProfile("Runner::<update scene>");
@@ -343,7 +367,7 @@ namespace sandbox
 
         for (auto& renderPass : m_RenderPasses)
         {
-            const bool isViewportTestFailed = !m_RenderViewportTool->IsValidForRendering() && renderPass->IsDependentOnViewport();
+            const bool isViewportTestFailed = !m_Viewport.IsValidForRendering() && renderPass->IsDependentOnViewport();
             if (isViewportTestFailed || !renderPass->IsRenderingEnabled())
                 continue;
 

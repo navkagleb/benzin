@@ -43,7 +43,6 @@ namespace benzin
     public:
         friend class EventDispatcher;
         friend class ImGuiManager;
-        friend class RenderViewportTool;
 
     public:
         virtual ~Event() = default;

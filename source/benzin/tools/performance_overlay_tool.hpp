@@ -7,7 +7,7 @@ namespace benzin
 
     class Backend;
     class Device;
-    class RenderViewportTool;
+    class RenderViewport;
     class ShaderManager;
     class Window;
 
@@ -19,7 +19,7 @@ namespace benzin
             const Backend& backend,
             const Device& device,
             const ShaderManager& shaderManager,
-            const RenderViewportTool& renderViewportTool
+            const RenderViewport& viewport
         );
 
     private:
@@ -40,7 +40,7 @@ namespace benzin
         const Backend& m_Backend;
         const Device& m_Device;
         const ShaderManager& m_ShaderManager;
-        const RenderViewportTool& m_RenderViewportTool;
+        const RenderViewport& m_Viewport;
 
         OverlayLocation m_Location = OverlayLocation::BottomLeft;
 

@@ -176,18 +176,10 @@ namespace benzin
 
     // CameraController
 
-    FlyCameraController::FlyCameraController(Camera& camera)
-        : m_Camera{ camera }
+    void FlyCameraController::SetCamera(Camera& camera)
     {
-        m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
-    }
-
-    void FlyCameraController::SetCameraPitchYaw(float pitch, float yaw)
-    {
-        m_Pitch = DirectX::XMConvertToRadians(pitch);
-        m_Yaw = DirectX::XMConvertToRadians(yaw);
-
-        m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
+        m_Camera = &camera;
+        m_Camera->SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
     }
 
     bool FlyCameraController::OnRenderViewportResized(uint32_t width, uint32_t height)
@@ -215,15 +207,14 @@ namespace benzin
             translationSpeedFactor = 0.3f;
         }
 
-
         const float delta = m_CameraTranslationSpeed * translationSpeedFactor * ToFloatMs(dt);
-        const auto& position = m_Camera.GetPosition();
+        const auto& position = m_Camera->GetPosition();
 
         DirectX::XMVECTOR updatedPosition = DirectX::XMVectorZero();
 
         // Front / Back
         {
-            const auto& frontDirection = m_Camera.GetFrontDirection();
+            const auto& frontDirection = m_Camera->GetFrontDirection();
 
             if (Input::IsKeyPressed(KeyCode::W))
             {
@@ -237,7 +228,7 @@ namespace benzin
 
         // Left / Right
         {
-            const auto& rightDirection = m_Camera.GetRightDirection();
+            const auto& rightDirection = m_Camera->GetRightDirection();
 
             if (Input::IsKeyPressed(KeyCode::A))
             {
@@ -251,7 +242,7 @@ namespace benzin
 
         // Up / Down
         {
-            const auto& upDirection = m_Camera.GetUpDirection();
+            const auto& upDirection = m_Camera->GetUpDirection();
 
             if (Input::IsKeyPressed(KeyCode::Space))
             {
@@ -265,7 +256,7 @@ namespace benzin
 
         if (!DirectX::XMVector4Equal(updatedPosition, DirectX::XMVectorZero()))
         {
-            m_Camera.SetPosition(updatedPosition);
+            m_Camera->SetPosition(updatedPosition);
         }
     }
 
@@ -291,7 +282,7 @@ namespace benzin
             m_Yaw = DirectX::XM_PI;
         }
 
-        m_Camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
+        m_Camera->SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
     }
 
     void FlyCameraController::IncrementFov(float direction)
@@ -299,31 +290,32 @@ namespace benzin
         static const float minVerticalFovInRadians = DirectX::XMConvertToRadians(45.0f);
         static const float maxVerticalFovInRadians = DirectX::XMConvertToRadians(120.0f);
 
-        if (auto* perspectiveProjection = GetPerspectiveProjection())
+        PerspectiveProjection* projection = GetPerspectiveProjection();
+        if (projection != nullptr)
         {
-            const float verticalFov = perspectiveProjection->GetVerticalFovInRadians() - m_MouseWheelSensitivity * direction;
-            perspectiveProjection->SetVerticalFov(std::clamp(verticalFov, minVerticalFovInRadians, maxVerticalFovInRadians));
+            const float verticalFov = projection->GetVerticalFovInRadians() - m_MouseWheelSensitivity * direction;
+            projection->SetVerticalFov(std::clamp(verticalFov, minVerticalFovInRadians, maxVerticalFovInRadians));
         }
     }
 
     PerspectiveProjection* FlyCameraController::GetPerspectiveProjection()
     {
-        const auto* perspectiveProjection = dynamic_cast<const PerspectiveProjection*>(&m_Camera.m_Projection);
+        auto* projection = dynamic_cast<PerspectiveProjection*>(&m_Camera->m_Projection);
 
-        if (!perspectiveProjection)
+        if (projection == nullptr)
         {
             BenzinWarning("Projection isn't Perspective! FlyCameraController supports only PerspectiveProjection");
             return nullptr;
         }
 
-        return const_cast<PerspectiveProjection*>(perspectiveProjection);
+        return projection;
     }
 
     void FlyCameraController::UpdatePitchAndYawIfNeeded()
     {
         static constexpr DirectX::XMVECTOR eplison3{ 0.0001f, 0.0001f, 0.0001f };
 
-        const auto& frontDirection = m_Camera.GetFrontDirection();
+        const auto& frontDirection = m_Camera->GetFrontDirection();
 
         if (!DirectX::XMVector3NearEqual(frontDirection, GetDirectionFromPitchYaw(m_Pitch, m_Yaw), eplison3))
         {

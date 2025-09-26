@@ -7,12 +7,12 @@
 namespace benzin
 {
 
-    class TextureViewerTool;
+    struct TextureViewerData;
 
     class TextureViewerPass : public RenderPass
     {
     public:
-        TextureViewerPass(const TextureViewerTool& textureViewerTool);
+        explicit TextureViewerPass(const TextureViewerData& viewerData);
         ~TextureViewerPass() override;
 
     private:
@@ -22,7 +22,7 @@ namespace benzin
         void OnRender() const override;
 
     private:
-        const TextureViewerTool& m_TextureViewerTool;
+        const TextureViewerData& m_ViewerData;
 
         TextureId m_ReferenceTextureId = g_InvalidTextureId;
 

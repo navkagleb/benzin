@@ -1,10 +1,6 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/tools/profiler_tools.hpp>
 
-#include <benzin/core/profiler.hpp>
-#include <benzin/graphics2/gpu_profiler.hpp>
-#include <benzin/utility/time_utils.hpp>
-
 namespace benzin
 {
 

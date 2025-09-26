@@ -1,47 +1,42 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics2/imgui_pass.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics2/imgui_pass.hpp>
+
+#include <benzin/core/buffer_writer.hpp>
+#include <benzin/core/cmd_line_args.hpp>
+#include <benzin/core/profiler.hpp>
+#include <benzin/core/tick_timer.hpp>
+#include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
+#include <benzin/graphics/pso.hpp>
+#include <benzin/graphics/swap_chain.hpp>
+#include <benzin/graphics/texture.hpp>  
+#include <benzin/graphics/unified_root_signature.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp>
+#include <benzin/graphics2/pso_manager.hpp>
+#include <benzin/system/key_event.hpp>
+#include <benzin/system/window.hpp>
 
 #include <backends/imgui_impl_dx12.h>
 #include <backends/imgui_impl_win32.h>
 
-#include <shaders/joint/imgui_resources.hpp>
-
-#include "benzin/core/buffer_writer.hpp"
-#include "benzin/core/cmd_line_args.hpp"
-#include "benzin/core/profiler.hpp"
-#include "benzin/core/tick_timer.hpp"
-#include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/cmd_queue.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/gpu_heap.hpp"
-#include "benzin/graphics/pso.hpp"
-#include "benzin/graphics/swap_chain.hpp"
-#include "benzin/graphics/texture.hpp"
-#include "benzin/graphics/unified_root_signature.hpp"
-#include "benzin/graphics2/game_specific_resource_ids.hpp"
-#include "benzin/graphics2/gpu_profiler.hpp"
-#include "benzin/graphics2/pso_manager.hpp"
-#include "benzin/system/key_event.hpp"
-#include "benzin/system/window.hpp"
-
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
-BenzinEnableUnaryPlusForEnum(joint::ImGuiResources);
-BenzinEnableUnaryPlusForEnum(joint::ImGuiSamplerIndex);
+BenzinAllowDereferenceOperatorForEnum(joint::ImGuiResources);
+BenzinAllowDereferenceOperatorForEnum(joint::ImGuiSamplerIndex);
 
 namespace benzin
 {
 
-    static const auto g_ToolsVisiblityPath = std::filesystem::absolute("bin/tools_visiblity.txt");
+    static const auto g_ToolVisiblityCacheFilePath = std::filesystem::absolute("bin/tools_visiblity.txt");
 
     static std::string_view GetToolDisplayName(std::string_view fullPath)
     {
         const size_t lastSlash = fullPath.find_last_of('/');
 
         if (lastSlash == std::string_view::npos)
-        {
             return fullPath;
-        }
 
         return fullPath.substr(lastSlash + 1);
     }
@@ -56,9 +51,7 @@ namespace benzin
     void ImGuiTool::OnEvent(Event& event)
     {
         if (m_ShortcutKeyCode == KeyCode::Unknown)
-        {
             return;
-        }
 
         EventDispatcher dispatcher{ event };
 
@@ -100,9 +93,8 @@ namespace benzin
 
     // ImGuiManager
 
-    ImGuiManager::ImGuiManager(Window& window, Device& device, const TickTimer& frameTimer)
-        : m_Device{ device }
-        , m_IntervalTimer{ frameTimer, std::chrono::milliseconds{ 1000 } }
+    ImGuiManager::ImGuiManager(Window& window, const TickTimer& frameTimer)
+        : m_IntervalTimer{ frameTimer, std::chrono::milliseconds{ 1000 } }
     {
         IMGUI_CHECKVERSION();
 
@@ -122,18 +114,14 @@ namespace benzin
 
         window.SetPreMessageHandlerCallback(ImGui_ImplWin32_WndProcHandler);
 
-        LoadToolsVisiblity();
+        LoadToolVisiblityCache();
     }
 
     ImGuiManager::~ImGuiManager()
     {
-        SaveToolsVisiblity();
+        BenzinAssert(m_Tools.empty(), "Not all tools are unregistered!");
 
-        for (auto* tool : m_Tools)
-        {
-            delete tool;
-        }
-        m_Tools.clear();
+        SaveToolVisiblityCache();
 
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
@@ -259,8 +247,10 @@ namespace benzin
             ImGui::ShowDemoWindow(&m_IsImGuiDemoWindowVisible);
         }
 
-        for (auto* tool : m_Tools)
+        for (auto& tool : m_Tools)
         {
+            m_ToolVisibilityCache[tool->m_UniqueId] = tool->m_IsVisible;
+
             if (tool->m_IsVisible)
             {
                 tool->DrawWindow();
@@ -271,9 +261,7 @@ namespace benzin
     void ImGuiManager::DrawManuBar()
     {
         if (!ImGui::BeginMenuBar())
-        {
             return;
-        }
 
         if (ImGui::BeginMenu("Benzin"))
         {
@@ -290,21 +278,19 @@ namespace benzin
             ImGui::EndMenu();
         }
 
-        for (ImGuiTool* tool : m_Tools)
+        for (auto& tool : m_Tools)
         {
             const std::vector<std::string_view> pathParts = SplitStringView(tool->m_Path, '/');
-            DrawToolMenuPath(tool, pathParts);
+            DrawToolMenuPath(*tool, pathParts, 0);
         }
 
         ImGui::EndMenuBar();
     }
 
-    void ImGuiManager::DrawToolMenuPath(ImGuiTool* tool, std::span<const std::string_view> pathParts, uint32_t depth)
+    void ImGuiManager::DrawToolMenuPath(ImGuiTool& tool, std::span<const std::string_view> pathParts, uint32_t depth)
     {
         if (pathParts.empty())
-        {
             return;
-        }
 
         // TODO: Hack for non null-terminated std::string_view
         constexpr size_t maxPartSize = 32;
@@ -317,8 +303,8 @@ namespace benzin
 
         if (depth + 1 == pathParts.size())
         {
-            const char* shortcutKeyName = tool->m_ShortcutKeyCode != KeyCode::Unknown ? magic_enum::enum_name(tool->m_ShortcutKeyCode).data() : nullptr;
-            ImGui::MenuItem(partBuffer, shortcutKeyName, &tool->m_IsVisible);
+            const char* shortcutKeyName = tool.m_ShortcutKeyCode != KeyCode::Unknown ? magic_enum::enum_name(tool.m_ShortcutKeyCode).data() : nullptr;
+            ImGui::MenuItem(partBuffer, shortcutKeyName, &tool.m_IsVisible);
 
             return;
         }
@@ -340,44 +326,32 @@ namespace benzin
         m_IsUiDrawEnabled = !m_IsUiDrawEnabled;
     }
 
-    void ImGuiManager::SaveToolsVisiblity()
+    void ImGuiManager::LoadToolVisiblityCache()
     {
-        if (m_Tools.empty())
-        {
+        if (!std::filesystem::exists(g_ToolVisiblityCacheFilePath))
             return;
-        }
 
-        for (const auto* tool : m_Tools)
-        {
-            m_IsToolVisibleMap[tool->m_Path.data()] = tool->m_IsVisible;
-        }
+        BenzinAssert(m_ToolVisibilityCache.empty());
 
-        std::ofstream file{ g_ToolsVisiblityPath };
-        for (const auto& [name, isVisible] : m_IsToolVisibleMap)
+        std::ifstream file{ g_ToolVisiblityCacheFilePath };
+        while (file.good())
         {
-            file << name << ' ' << isVisible << '\n';
+            uint64_t id;
+            bool isVisible;
+
+            file >> id;
+            file >> isVisible;
+
+            m_ToolVisibilityCache[id] = isVisible;
         }
     }
 
-    void ImGuiManager::LoadToolsVisiblity()
+    void ImGuiManager::SaveToolVisiblityCache()
     {
-        if (!std::filesystem::exists(g_ToolsVisiblityPath))
+        std::ofstream file{ g_ToolVisiblityCacheFilePath };
+        for (const auto [id, isVisible] : m_ToolVisibilityCache)
         {
-            return;
-        }
-
-        BenzinAssert(m_IsToolVisibleMap.empty());
-
-        std::ifstream file{ g_ToolsVisiblityPath };
-        while (file.good())
-        {
-            std::string name;
-            bool isVisible;
-
-            file >> name;
-            file >> isVisible;
-
-            m_IsToolVisibleMap[name] = isVisible;
+            file << id << ' ' << isVisible << '\n';
         }
     }
 
@@ -462,13 +436,11 @@ namespace benzin
 
     void ImGuiPass::OnUpdate()
     {
-        const ImDrawData& imDrawData = m_ImGuiManager.GetImDrawData();
+        const ImDrawData& imDrawData = *m_ImGuiManager.m_CurrentImGuiDrawData;
 
         RenderPass::m_IsRenderingEnabled = imDrawData.DisplaySize[0] != 0.0f && imDrawData.DisplaySize[1] != 0.0f;
         if (!m_IsRenderingEnabled)
-        {
             return;
-        }
 
         UpdateConsts(imDrawData);
         UpdateVertexAndIndexBuffers(imDrawData);
@@ -495,8 +467,7 @@ namespace benzin
 
         BenzinScopedResourceBarriers(
             cmdList,
-            TransitionBarrier{ backBuffer, ResourceState::RenderTarget }
-        );
+            TransitionBarrier{ backBuffer, ResourceState::RenderTarget });
 
         cmdList.SetRenderTargets({ backBuffer.GetRtv() });
         cmdList.ClearRenderTarget(backBuffer, DirectX::XMFLOAT4{});
@@ -550,7 +521,7 @@ namespace benzin
         {
             MakeUniquePtr(vertexBuffer, *ms_Device, BufferCreation
             {
-                .DebugName = "ImGui_VertexBuffer",
+                .DebugName = "ImGuiPass::VertexBuffer",
                 .HeapType = GpuHeapType::Upload,
                 .Type = BufferType::Structured,
                 .ElementSizeInBytes = sizeof(ImDrawVert),
@@ -564,7 +535,7 @@ namespace benzin
 
             MakeUniquePtr(indexBuffer, *ms_Device, BufferCreation
             {
-                .DebugName = "ImGui_IndexBuffer",
+                .DebugName = "ImGuiPass::IndexBuffer",
                 .HeapType = GpuHeapType::Upload,
                 .Type = BufferType::Format,
                 .Format = GraphicsFormat::R16Uint,
@@ -588,7 +559,7 @@ namespace benzin
     {
         BenzinProfile();
 
-        const ImDrawData& imDrawData = m_ImGuiManager.GetImDrawData();
+        const ImDrawData& imDrawData = *m_ImGuiManager.m_CurrentImGuiDrawData;
         const ImVec2 clipOff = imDrawData.DisplayPos;
 
         int globalVertexOffset = 0;
@@ -604,9 +575,7 @@ namespace benzin
                 const ImVec2 clipMax{ imDrawCmd.ClipRect.z - clipOff.x, imDrawCmd.ClipRect.w - clipOff.y };
 
                 if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
-                {
                     continue;
-                }
 
                 cmdList.SetScissorRect(ScissorRect
                 {
@@ -620,8 +589,8 @@ namespace benzin
                 joint::ImGuiSamplerIndex samplerIndex;
                 GetImGuiResources(imDrawCmd, srvGpuHeapIndex, samplerIndex);
 
-                cmdList.SetGraphicsRootConstant(+joint::ImGuiResources::Texture, srvGpuHeapIndex);
-                cmdList.SetGraphicsRootConstant(+joint::ImGuiResources::SamplerIndex, +samplerIndex);
+                cmdList.SetGraphicsRootConstant(*joint::ImGuiResources::Texture, srvGpuHeapIndex);
+                cmdList.SetGraphicsRootConstant(*joint::ImGuiResources::SamplerIndex, *samplerIndex);
 
                 cmdList.DrawIndexed(imDrawCmd.ElemCount, imDrawCmd.IdxOffset + globalIndexOffset, imDrawCmd.VtxOffset + globalVertexOffset);
             }

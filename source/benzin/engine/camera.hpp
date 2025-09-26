@@ -139,26 +139,22 @@ namespace benzin
     {
     public:
         friend class FlyCameraTool;
-        friend class RenderViewportTool;
 
-        explicit FlyCameraController(Camera& camera);
-
-    private:
-        void SetCameraTranslationSpeed(float speed) { m_CameraTranslationSpeed = speed; }
-        void SetCameraPitchYaw(float pitch, float yaw);
-
-        bool OnRenderViewportResized(uint32_t width, uint32_t height);
+        void SetCamera(Camera& camera);
 
         void MoveCamera(std::chrono::microseconds dt);
         void RotateCamera(DirectX::XMINT2 mousePosition, DirectX::XMINT2 prevMousePosition);
         void IncrementFov(float direction);
 
+        bool OnRenderViewportResized(uint32_t width, uint32_t height);
+
+    private:
         PerspectiveProjection* GetPerspectiveProjection();
 
         void UpdatePitchAndYawIfNeeded();
 
     private:
-        Camera& m_Camera;
+        Camera* m_Camera = nullptr;
 
         float m_CameraTranslationSpeed = 0.002f;
         float m_MouseSensitivity = 0.003f;

@@ -1,8 +1,9 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/tools/fly_camera_tool.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/tools/fly_camera_tool.hpp>
 
-#include "benzin/core/engine_math.hpp"
-#include "benzin/tools/render_viewport_tool.hpp"
+#include <benzin/core/engine_math.hpp>
+#include <benzin/engine/camera.hpp>
+#include <benzin/tools/render_viewport_tool.hpp>
 
 namespace benzin
 {
@@ -83,9 +84,9 @@ namespace benzin
 
     //
 
-    FlyCameraTool::FlyCameraTool(RenderViewportTool& renderViewportTool)
+    FlyCameraTool::FlyCameraTool(FlyCameraController& controller)
         : ImGuiTool{ "Engine/FlyCameraTool" }
-        , m_Controller{ renderViewportTool.m_FlyCameraController }
+        , m_Controller{ controller }
     {}
 
     void FlyCameraTool::DrawWindowContent()
@@ -98,9 +99,7 @@ namespace benzin
     void FlyCameraTool::DrawControllerProperties()
     {
         if (!ImGui::MainCollapsingHeader("Controller Props"))
-        {
             return;
-        }
 
         ImGui::SliderFloat("Camera translation speed", &m_Controller.m_CameraTranslationSpeed, 0.001f, 0.03f);
         ImGui::SliderFloat("Mouse sensitivity", &m_Controller.m_MouseSensitivity, 0.001f, 0.007f, "%.3f");
@@ -109,57 +108,56 @@ namespace benzin
     void FlyCameraTool::DrawViewProperties()
     {
         if (!ImGui::MainCollapsingHeader("View Props", ImGuiTreeNodeFlags_DefaultOpen))
-        {
             return;
+
+        Camera* camera = m_Controller.m_Camera;
+        if (camera == nullptr)
+            return;
+
+        if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&camera->m_Position)))
+        {
+            camera->UpdateWorldToViewMatrix();
         }
 
-        auto& camera = m_Controller.m_Camera;
-
-        if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&camera.m_Position)))
+        if (ImGui::DragFloat3("Front Direction", reinterpret_cast<float*>(&camera->m_FrontDirection)))
         {
-            camera.UpdateWorldToViewMatrix();
+            camera->SetFrontDirection(camera->m_FrontDirection);
+            camera->UpdateWorldToViewMatrix();
         }
 
-        if (ImGui::DragFloat3("Front Direction", reinterpret_cast<float*>(&camera.m_FrontDirection)))
+        if (ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&camera->m_UpDirection)))
         {
-            camera.SetFrontDirection(camera.m_FrontDirection);
-            camera.UpdateWorldToViewMatrix();
-        }
-
-        if (ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&camera.m_UpDirection)))
-        {
-            camera.UpdateWorldToViewMatrix();
+            camera->UpdateWorldToViewMatrix();
         }
 
         if (ImGui::SliderAngle("Pitch (X)", &m_Controller.m_Pitch, -89.0f, 89.0f))
         {
-            camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Controller.m_Pitch, m_Controller.m_Yaw));
+            const DirectX::XMVECTOR frontDirection = GetDirectionFromPitchYaw(m_Controller.m_Pitch, m_Controller.m_Yaw);
+            camera->SetFrontDirection(frontDirection);
         }
 
         if (ImGui::SliderAngle("Yaw (Y)", &m_Controller.m_Yaw, -180.0f, 180.0f))
         {
-            camera.SetFrontDirection(GetDirectionFromPitchYaw(m_Controller.m_Pitch, m_Controller.m_Yaw));
+            const DirectX::XMVECTOR frontDirection = GetDirectionFromPitchYaw(m_Controller.m_Pitch, m_Controller.m_Yaw);
+            camera->SetFrontDirection(frontDirection);
         }
 
-        DrawMatrix4x4("World To View", camera.GetWorldToViewMatrix());
-        DrawFrustumPlaneTable("World frustum", camera.GetWorldFrustum());
+        DrawMatrix4x4("World To View", camera->GetWorldToViewMatrix());
+        DrawFrustumPlaneTable("World frustum", camera->GetWorldFrustum());
     }
 
     void FlyCameraTool::DrawProjectionProperties()
     {
         if (!ImGui::MainCollapsingHeader("Projection Props", ImGuiTreeNodeFlags_DefaultOpen))
-        {
             return;
-        }
 
-        auto& camera = m_Controller.m_Camera;
-        auto* perspectiveProjection = m_Controller.GetPerspectiveProjection();
-
-        if (!perspectiveProjection)
-        {
-            ImGui::Text("Projection isn't Perspective! FlyCameraTool supports only PerspectiveProjection");
+        Camera* camera = m_Controller.m_Camera;
+        if (camera == nullptr)
             return;
-        }
+
+        PerspectiveProjection* perspectiveProjection = m_Controller.GetPerspectiveProjection();
+        if (perspectiveProjection == nullptr)
+            return;
 
         bool isNeedToUpdateViewToClipMatrix = false;
         isNeedToUpdateViewToClipMatrix |= ImGui::SliderAngle("Vertical FOV", &perspectiveProjection->m_VerticalFovInRadians, 45.0f, 120.0f);
@@ -175,7 +173,7 @@ namespace benzin
         ImGui::DragFloat("Aspect ratio", &perspectiveProjection->m_AspectRatio);
         ImGui::EndDisabled();
 
-        DrawMatrix4x4("View To Clip", camera.GetViewToClipMatrix());
+        DrawMatrix4x4("View To Clip", camera->GetViewToClipMatrix());
         DrawFrustumPlaneTable("View frustum", perspectiveProjection->GetViewFrustum());
     }
 

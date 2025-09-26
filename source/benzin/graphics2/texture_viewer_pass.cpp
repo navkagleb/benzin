@@ -13,13 +13,13 @@
 #include <benzin/graphics2/pso_manager.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
 
-BenzinEnableUnaryPlusForEnum(joint::TextureViewerResources)
+BenzinAllowDereferenceOperatorForEnum(joint::TextureViewerResources);
 
 namespace benzin
 {
 
-    TextureViewerPass::TextureViewerPass(const TextureViewerTool& textureViewerTool)
-        : m_TextureViewerTool{ textureViewerTool }
+    TextureViewerPass::TextureViewerPass(const TextureViewerData& viewerData)
+        : m_ViewerData{ viewerData }
     {
         ms_PsoManager->Create(PsoId::TextureViewer, [](ComputePsoProxy& proxy)
         {
@@ -37,25 +37,21 @@ namespace benzin
     {
         BenzinProfile();
 
-        RenderPass::m_IsRenderingEnabled = m_TextureViewerTool.IsReferenceTextureIdValid();
-        RenderPass::m_IsRenderingEnabled &= m_TextureViewerTool.m_IsVisible;
-        RenderPass::m_IsRenderingEnabled &= m_TextureViewerTool.m_IsCollapsed ? m_TextureViewerTool.m_IsFullViewportPreview : true;
+        RenderPass::m_IsRenderingEnabled = m_ViewerData.m_IsRenderingNeeded;
         if (!RenderPass::m_IsRenderingEnabled)
-        {
             return;
-        }
 
-        const Texture& referenceTexture = ms_Resources->Get(m_TextureViewerTool.m_ReferenceTextureId);
+        const Texture& referenceTexture = ms_Resources->Get(m_ViewerData.m_ReferenceTextureId);
 
-        const uint32_t debugWidth = referenceTexture.GetMipWidth((uint16_t)m_TextureViewerTool.m_ActiveMipIndex);
-        const uint32_t debugHeight = referenceTexture.GetMipHeight((uint16_t)m_TextureViewerTool.m_ActiveMipIndex);
+        const uint32_t debugWidth = referenceTexture.GetMipWidth((uint16_t)m_ViewerData.m_ActiveMipIndex);
+        const uint32_t debugHeight = referenceTexture.GetMipHeight((uint16_t)m_ViewerData.m_ActiveMipIndex);
 
-        const bool isTextureIdMatch = m_ReferenceTextureId == m_TextureViewerTool.m_ReferenceTextureId;
+        const bool isTextureIdMatch = m_ReferenceTextureId == m_ViewerData.m_ReferenceTextureId;
         const bool isTextureResMatch = m_Consts.TextureResolution.x == debugWidth && m_Consts.TextureResolution.y == debugHeight;
 
         if (!isTextureIdMatch || !isTextureResMatch)
         {
-            m_ReferenceTextureId = m_TextureViewerTool.m_ReferenceTextureId;
+            m_ReferenceTextureId = m_ViewerData.m_ReferenceTextureId;
 
             m_Consts.TextureResolution.x = debugWidth;
             m_Consts.TextureResolution.y = debugHeight;
@@ -78,13 +74,13 @@ namespace benzin
             });
         }
 
-        m_Consts.ChannelMask.x = m_TextureViewerTool.m_IsChannelActive[0];
-        m_Consts.ChannelMask.y = m_TextureViewerTool.m_IsChannelActive[1];
-        m_Consts.ChannelMask.z = m_TextureViewerTool.m_IsChannelActive[2];
-        m_Consts.ChannelMask.w = m_TextureViewerTool.m_IsChannelActive[3];
+        m_Consts.ChannelMask.x = m_ViewerData.m_IsChannelActive[0];
+        m_Consts.ChannelMask.y = m_ViewerData.m_IsChannelActive[1];
+        m_Consts.ChannelMask.z = m_ViewerData.m_IsChannelActive[2];
+        m_Consts.ChannelMask.w = m_ViewerData.m_IsChannelActive[3];
 
-        m_Consts.MinColor = m_TextureViewerTool.m_MinColor;
-        m_Consts.MaxColor = m_TextureViewerTool.m_MaxColor;
+        m_Consts.MinColor = m_ViewerData.m_MinColor;
+        m_Consts.MaxColor = m_ViewerData.m_MaxColor;
     }
 
     void TextureViewerPass::OnRender() const
@@ -92,27 +88,28 @@ namespace benzin
         BenzinProfile();
         BenzinGpuProfile("TextureViewer");
 
-        using Resources = joint::TextureViewerResources;
-
         ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         const Texture& debugTexture = ms_Resources->Get(TextureId::DebugTexture);
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ debugTexture, benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ debugTexture, benzin::ResourceState::UnorderedAccess });
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
         cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
-        cmdList.SetComputeRootResource(+Resources::ReferenceTexture, ms_Resources->Get(m_ReferenceTextureId).GetSrv(
         {
-            .DepthRange = (uint16_t)m_TextureViewerTool.m_ActiveDepthIndex,
-            .MipRange = (uint16_t)m_TextureViewerTool.m_ActiveMipIndex,
-        }));
-        
-        cmdList.SetComputeRootResource(+Resources::OutDebugTexture, debugTexture.GetUav());
+            using Resources = joint::TextureViewerResources;
+
+            cmdList.SetComputeRootResource(*Resources::ReferenceTexture, ms_Resources->Get(m_ReferenceTextureId).GetSrv(
+            {
+                .DepthRange = (uint16_t)m_ViewerData.m_ActiveDepthIndex,
+                .MipRange = (uint16_t)m_ViewerData.m_ActiveMipIndex,
+            }));
+
+            cmdList.SetComputeRootResource(*Resources::OutDebugTexture, debugTexture.GetUav());
+        }
 
         cmdList.Dispatch({ debugTexture.GetWidth(), debugTexture.GetHeight(), 1 }, { 16, 16, 1 });
     }

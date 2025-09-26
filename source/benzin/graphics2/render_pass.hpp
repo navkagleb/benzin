@@ -1,6 +1,7 @@
 #pragma once
 
 #include <benzin/graphics/common.hpp>
+#include <benzin/graphics2/game_specific_resource_ids.hpp>
 
 namespace benzin
 {
@@ -21,31 +22,39 @@ namespace benzin
     class RenderSettings
     {
     public:
-        template <typename T>
-        T& GetSection()
+        template <typename SectionT>
+        SectionT& GetSection()
         {
-            const uint64_t hash = typeid(T).hash_code();
+            const void* key = GetSectionKey<SectionT>();
 
-            if (!m_Sections.contains(hash))
+            if (!m_Sections.contains(key))
             {
-                m_Sections[hash] = VoidUniquePtr
+                m_Sections[key] = VoidUniquePtr
                 {
-                    (void*)new T,
+                    (void*)new SectionT,
                     [](const void* data)
                     {
-                        auto ptr = (const T*)data;
+                        auto ptr = (const SectionT*)data;
                         delete ptr;
                     }
                 };
             }
 
-            return *(T*)m_Sections[hash].get();
+            return *(SectionT*)m_Sections[key].get();
         }
 
     private:
         using VoidUniquePtrDeleter = std::function<void(const void*)>;
         using VoidUniquePtr = std::unique_ptr<void, VoidUniquePtrDeleter>;
-        std::unordered_map<uint64_t, VoidUniquePtr> m_Sections;
+
+        template <typename SectionT>
+        const void* GetSectionKey()
+        {
+            static int s_UniqueKey;
+            return &s_UniqueKey;
+        }
+
+        std::unordered_map<const void*, VoidUniquePtr> m_Sections;
     };
 
     template <typename ResourceT>
@@ -123,6 +132,34 @@ namespace benzin
         RenderResourceStorage<Texture> m_Textures;
 
         uint8_t m_FlipIndex = 0;
+    };
+
+    class RenderViewport
+    {
+    public:
+        friend class RenderViewportTool;
+        friend class TextureViewerTool;
+
+        auto GetWidth() const { return m_Width; }
+        auto GetHeight() const { return m_Height; }
+
+        auto IsHovered() const { return m_IsHovered; }
+        auto IsResized() const { return m_IsResized; }
+        auto IsValidForRendering() const { return m_IsValidForRendering; }
+
+        auto GetCursorPosition() const { return m_CursorPosition; }
+
+    private:
+        TextureId m_DisplayTextureId = TextureId::Final;
+
+        uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
+
+        bool m_IsHovered = false;
+        bool m_IsResized = false;
+        bool m_IsValidForRendering = false;
+
+        DirectX::XMINT2 m_CursorPosition = {};
     };
 
     class RenderPass

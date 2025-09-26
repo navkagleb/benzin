@@ -1,6 +1,9 @@
 #pragma once
 
 #include <benzin/core/tick_timer.hpp>
+#include <benzin/engine/camera.hpp>
+#include <benzin/graphics2/render_pass.hpp>
+#include <benzin/tools/texture_viewer_tool.hpp>
 
 namespace benzin
 {
@@ -9,17 +12,14 @@ namespace benzin
     class Event;
     class GpuProfiler;
     class ImGuiManager;
-    class PerformanceOverlayTool;
     class PsoManager;
     class RayTracing_Scene;
     class RenderPass;
     class RenderResources;
     class RenderSettings;
-    class RenderViewportTool;
     class Scene;
     class ShaderManager;
     class SwapChain;
-    class TextureViewerTool;
     class Window;
 }
 
@@ -73,15 +73,14 @@ namespace sandbox
         std::vector<std::unique_ptr<benzin::RenderPass>> m_RenderPasses;
 
         std::unique_ptr<benzin::ImGuiManager> m_ImGuiManager;
-        benzin::RenderViewportTool* m_RenderViewportTool = nullptr;
-        benzin::TextureViewerTool* m_TextureViewerTool = nullptr;
+
+        benzin::TextureViewerData m_TextureViewerData;
+        benzin::RenderViewport m_Viewport;
+        benzin::FlyCameraController m_CameraController;
 
         bool m_IsRunning = true;
         bool m_IsVsyncEnabled = false;
         bool m_IsAnimationEnabled = false;
-
-    private:
-        benzin::PerformanceOverlayTool* m_PerformanceOverlayTool = nullptr;
     };
 
 }
