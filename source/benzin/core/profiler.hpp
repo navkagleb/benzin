@@ -78,15 +78,14 @@ namespace benzin
         uint32_t m_ImGuiHitCount = 0;
     };
 
-    class Profiler
+    namespace Profiler
     {
-    public:
-        static void BeginFrame();
-        static void EndFrame();
+        void BeginFrame();
+        void EndFrame();
 
-        static void ResetAccumulatedData(uint32_t frameCount);
+        void ResetAccumulatedData(uint32_t frameCount);
 
-        static const ProfileNode* GetRootNode();
+        const ProfileNode* GetRootNode();
     };
 
     class ScopedProfileEvent
