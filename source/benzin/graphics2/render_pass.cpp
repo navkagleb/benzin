@@ -255,6 +255,23 @@ namespace benzin
         return (index + 1) & 1;
     }
 
+    // RenderViewport
+
+    void RenderViewport::DeferResize(uint32_t width, uint32_t height)
+    {
+        BenzinAssert(m_Size.x != width || m_Size.y != height);
+
+        m_PendingSize.x = width;
+        m_PendingSize.y = height;
+    }
+
+    void RenderViewport::Resize()
+    {
+        BenzinAssert(m_PendingSize.x != 0 && m_PendingSize.y != 0);
+
+        m_Size = std::exchange(m_PendingSize, {});
+    }
+
     // RenderPass
 
     void RenderPass::SetContext(

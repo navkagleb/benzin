@@ -1,21 +1,17 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/device.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/device.hpp>
 
-#include "benzin/core/cmd_line_args.hpp"
-#include "benzin/core/logger.hpp"
-#include "benzin/core/profiler.hpp"
-#include "benzin/graphics/backend.hpp"
-#include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/cmd_queue.hpp"
-#include "benzin/graphics/d3d12_assert.hpp"
-#include "benzin/graphics/d3d12_utils.hpp"
-#include "benzin/graphics/gpu_heap.hpp"
-#include "benzin/graphics/pso.hpp"
-#include "benzin/graphics/query_heap.hpp"
-#include "benzin/graphics/ray_tracing_pso.hpp"
-#include "benzin/graphics/resource.hpp"
-#include "benzin/graphics/sampler.hpp"
-#include "benzin/graphics/unified_root_signature.hpp"
+#include <benzin/core/cmd_line_args.hpp>
+#include <benzin/core/profiler.hpp>
+#include <benzin/graphics/backend.hpp>
+#include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
+#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
+#include <benzin/graphics/fence.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
+#include <benzin/graphics/query_heap.hpp>
+#include <benzin/graphics/unified_root_signature.hpp>
 
 namespace benzin
 {
@@ -23,12 +19,18 @@ namespace benzin
     Device::Device(const DeviceCreation& creation)
     {
         ComPtr<ID3D12Device> d3d12Device;
-        BenzinD3D12Call(::D3D12CreateDevice(creation.Backend.GetDxgiMainAdapter(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d3d12Device)));
+        BenzinD3D12Call(::D3D12CreateDevice(
+            creation.m_Backend.GetDxgiMainAdapter(),
+            D3D_FEATURE_LEVEL_12_0,
+            IID_PPV_ARGS(&d3d12Device)));
 
         BenzinD3D12Call(d3d12Device->QueryInterface(&m_D3D12Device));
-        SetD3DObjectDebugName(m_D3D12Device, creation.DebugName);
+        SetD3DObjectDebugName(m_D3D12Device, creation.m_DebugName);
 
-        EnableD3D12DebugBreakOn(m_D3D12Device, true, D3D12BreakReasonFlag::Warning | D3D12BreakReasonFlag::Error | D3D12BreakReasonFlag::Corruption);
+        EnableD3D12DebugBreakOn(
+            m_D3D12Device,
+            true,
+            D3D12BreakReasonFlag::Warning | D3D12BreakReasonFlag::Error | D3D12BreakReasonFlag::Corruption);
 
         D3D12Asserter::SetDeviceRemovedCallback([this]
         {
@@ -51,6 +53,7 @@ namespace benzin
         MakeUniquePtr(m_UnifiedRootSignature, *this);
         MakeUniquePtr(m_DescriptorManager, *this);
         MakeUniquePtr(m_GraphicsCmdQueue, *this);
+        MakeUniquePtr(m_FrameFence, *this, FenceCreation{ "FrameFence", m_CompletedGpuFrameIndex });
 
         m_TemporalHeaps.resize(CmdLineArgs::GetFrameInFlightCount());
         m_TemporalLinearAllocators.resize(CmdLineArgs::GetFrameInFlightCount());
@@ -80,6 +83,8 @@ namespace benzin
     {
         BenzinLogTimeOnScopeExit("Device::~Device");
 
+        m_GraphicsCmdQueue->Flush();
+
         m_ConstBufferAllocator.reset();
 
         m_PersistentReadbackLinearAllocator.reset();
@@ -94,11 +99,11 @@ namespace benzin
             m_TemporalHeaps[i].reset();
         }
 
+        ProcessDeferredReleaseQueues(true);
+
         m_GraphicsCmdQueue.reset();
         m_DescriptorManager.reset();
         m_UnifiedRootSignature.reset();
-
-        ProcessDeferredReleaseQueues(true);
 
         EnableD3D12DebugBreakOn(m_D3D12Device, false, D3D12BreakReasonFlag::Warning);
         ReportLiveD3D12Objects(m_D3D12Device);
@@ -188,6 +193,40 @@ namespace benzin
             m_DescriptorManager->FreeDescriptor(descriptor);
             m_DeferredReleaseDescriptorQueue.pop();
         }
+    }
+
+    void Device::SignalFrameFence()
+    {
+        BenzinProfile();
+
+        m_CpuFrameIndex++;
+        m_GraphicsCmdQueue->SignalFence(*m_FrameFence, m_CpuFrameIndex);
+    }
+
+    void Device::WaitForGpuIfNeeded()
+    {
+        BenzinProfile();
+
+        m_CompletedGpuFrameIndex = m_FrameFence->GetCompletedValue();
+
+        if (m_CpuFrameIndex - m_CompletedGpuFrameIndex < CmdLineArgs::GetFrameInFlightCount())
+            return;
+
+        {
+            BenzinScopeProfile("Device::WaitForGpu");
+
+            const uint64_t gpuFrameIndexToWait = m_CpuFrameIndex - CmdLineArgs::GetFrameInFlightCount() + 1;
+            m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
+        }
+
+        // 'm_FrameFence' completed value may differ from 'gpuFrameIndexToWait'
+        // Therefore, save 'm_FrameFence' completed value because it's may be updated during the waiting time
+        m_CompletedGpuFrameIndex = m_FrameFence->GetCompletedValue();
+    }
+
+    void Device::AdvanceFrame(uint32_t activeFrameIndex)
+    {
+        m_ActiveFrameIndex = activeFrameIndex;
     }
 
     void Device::CheckFeaturesSupport()

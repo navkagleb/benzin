@@ -140,26 +140,24 @@ namespace benzin
         friend class RenderViewportTool;
         friend class TextureViewerTool;
 
-        auto GetWidth() const { return m_Width; }
-        auto GetHeight() const { return m_Height; }
+        auto GetWidth() const { return m_Size.x; }
+        auto GetHeight() const { return m_Size.y; }
 
+        auto IsPendingResize() const { return m_PendingSize.x != 0 && m_PendingSize.y != 0; }
         auto IsHovered() const { return m_IsHovered; }
-        auto IsResized() const { return m_IsResized; }
         auto IsValidForRendering() const { return m_IsValidForRendering; }
 
-        auto GetCursorPosition() const { return m_CursorPosition; }
+        void DeferResize(uint32_t width, uint32_t height);
+        void Resize();
 
     private:
         TextureId m_DisplayTextureId = TextureId::Final;
 
-        uint32_t m_Width = 0;
-        uint32_t m_Height = 0;
+        DirectX::XMUINT2 m_Size = {};
+        DirectX::XMUINT2 m_PendingSize = {};
 
         bool m_IsHovered = false;
-        bool m_IsResized = false;
         bool m_IsValidForRendering = false;
-
-        DirectX::XMINT2 m_CursorPosition = {};
     };
 
     class RenderPass

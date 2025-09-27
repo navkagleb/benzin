@@ -1,28 +1,24 @@
 #pragma once
 
-#include "benzin/graphics/descriptor_manager.hpp"
+#include <benzin/graphics/descriptor_manager.hpp>
 
 namespace benzin
 {
 
     class Backend;
-    class ComputePso;
     class ConstBufferLinearAllocator;
+    class Fence;
     class GpuHeap;
     class GpuHeapLinearBufferAllocator;
     class GraphicsCmdQueue;
-    class MeshPso;
     class QueryHeap;
-    class RayTracing_Pso;
     class Resource;
     class UnifiedRootSignature;
-    class VertexPso;
 
     struct DeviceCreation
     {
-        std::string_view DebugName;
-
-        Backend& Backend;
+        std::string_view m_DebugName;
+        Backend& m_Backend;
     };
 
     struct DeviceCaps
@@ -72,6 +68,10 @@ namespace benzin
         void DeferredRelease(const Descriptor& descriptor);
         void ProcessDeferredReleaseQueues(bool isForceRelease = false); // Must be called after 'SwapChain::OnFlip' because 'm_CompletedGpuFrameIndex' will be updated there
 
+        void SignalFrameFence();
+        void WaitForGpuIfNeeded();
+        void AdvanceFrame(uint32_t activeFrameIndex);
+
     private:
         void CheckFeaturesSupport();
 
@@ -86,6 +86,7 @@ namespace benzin
         std::unique_ptr<UnifiedRootSignature> m_UnifiedRootSignature;
         std::unique_ptr<DescriptorManager> m_DescriptorManager;
         std::unique_ptr<GraphicsCmdQueue> m_GraphicsCmdQueue;
+        std::unique_ptr<Fence> m_FrameFence;
 
         std::vector<std::unique_ptr<GpuHeap>> m_TemporalHeaps;
         std::vector<std::unique_ptr<GpuHeapLinearBufferAllocator>> m_TemporalLinearAllocators;
@@ -100,7 +101,7 @@ namespace benzin
 
         uint64_t m_CpuFrameIndex = 0;
         uint64_t m_CompletedGpuFrameIndex = 0;
-        uint8_t m_ActiveFrameIndex = 0; // In range [0, FrameInFlightCount)
+        uint32_t m_ActiveFrameIndex = 0; // In range [0, FrameInFlightCount)
 
         DeviceCaps m_Caps;
 
@@ -108,4 +109,4 @@ namespace benzin
         std::queue<std::pair<uint64_t, Descriptor>> m_DeferredReleaseDescriptorQueue;
     };
 
-} // namespace benzin
+}

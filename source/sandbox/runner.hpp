@@ -52,6 +52,9 @@ namespace sandbox
 
         void RunImGuiFrame();
 
+        void HandleSwapChainResizeIfNeeded();
+        void HandleViewportResizeIfNeeded();
+
     protected:
         std::unique_ptr<benzin::Window> m_MainWindow;
         std::unique_ptr<benzin::Backend> m_Backend;
@@ -80,6 +83,7 @@ namespace sandbox
 
         bool m_IsRunning = true;
         bool m_IsVsyncEnabled = false;
+        bool m_IsPendingResize = false;
         bool m_IsAnimationEnabled = false;
     };
 

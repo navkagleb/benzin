@@ -98,8 +98,6 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("Runner::~Runner");
 
-        m_Device->GetGraphicsCmdQueue().Flush();
-
         m_ImGuiManager->UnregisterTool<benzin::FlyCameraTool>();
         m_ImGuiManager->UnregisterTool<benzin::GpuInfoTool>();
         m_ImGuiManager->UnregisterTool<benzin::GpuPrintTool>();
@@ -147,7 +145,7 @@ namespace sandbox
         InitScene();
 
         // Force call window resize on render passes
-        benzin::RenderPass::SetWindowViewport(m_SwapChain->GetWidth(), m_SwapChain->GetHeight());
+        benzin::RenderPass::SetWindowViewport(m_MainWindow->GetWidth(), m_MainWindow->GetHeight());
         for (auto& renderPass : m_RenderPasses)
         {
             renderPass->OnWindowResize();
@@ -209,9 +207,9 @@ namespace sandbox
                 return false;
             });
 
-            dispatcher.Dispatch<benzin::WindowResizedEvent>([&](const auto& event)
+            dispatcher.Dispatch<benzin::WindowResizedEvent>([&]
             {
-                m_SwapChain->RequestResize(event.GetWidth(), event.GetHeight());
+                m_IsPendingResize = true;
                 return true;
             });
 
@@ -298,34 +296,15 @@ namespace sandbox
         m_Scene->EndFrame();
         m_GpuProfiler->EndFrame();
         m_Device->GetGraphicsCmdQueue().SubmitCmdList();
+        m_Device->SignalFrameFence();
 
-        const bool isResized = m_SwapChain->OnFlip(m_IsVsyncEnabled);
-        if (isResized)
-        {
-            benzin::RenderPass::SetWindowViewport(m_SwapChain->GetWidth(), m_SwapChain->GetHeight());
-            for (auto& renderPass : m_RenderPasses)
-            {
-                renderPass->OnWindowResize();
-            }
+        m_SwapChain->Flip(m_IsVsyncEnabled);
+        m_Device->WaitForGpuIfNeeded();
 
-            BenzinTrace("Window is resized: {} x {}. CpuFrame: {}", m_SwapChain->GetWidth(), m_SwapChain->GetHeight(), m_Device->GetCpuFrameIndex());
-        }
+        HandleSwapChainResizeIfNeeded();
+        HandleViewportResizeIfNeeded();
 
-        if (m_Viewport.IsResized())
-        {
-            // NOTE: Viewport size is controlled by UI. So first update UI and then resize render passes
-
-            benzin::RenderPass::SetRenderViewport(m_Viewport.GetWidth(), m_Viewport.GetHeight());
-            for (auto& renderPass : m_RenderPasses)
-            {
-                renderPass->OnRenderViewportResize();
-            }
-
-            BenzinTrace("Viewport is resized: {} x {}. CpuFrame: {}", m_Viewport.GetWidth(), m_Viewport.GetHeight(), m_Device->GetCpuFrameIndex());
-
-            m_CameraController.OnRenderViewportResized(m_Viewport.GetWidth(), m_Viewport.GetHeight());
-        }
-
+        m_Device->AdvanceFrame(m_SwapChain->GetCurrentBackBufferIndex());
         m_Device->ProcessDeferredReleaseQueues();
     }
 
@@ -383,6 +362,49 @@ namespace sandbox
         m_ImGuiManager->BeginUiFrame();
         m_ImGuiManager->DrawUi();
         m_ImGuiManager->EndUiFrame();
+    }
+
+    void Runner::HandleSwapChainResizeIfNeeded()
+    {
+        if (!m_IsPendingResize)
+            return;
+
+        m_IsPendingResize = false;
+
+        const uint32_t width = m_MainWindow->GetWidth();
+        const uint32_t height = m_MainWindow->GetHeight();
+
+        m_Device->GetGraphicsCmdQueue().Flush();
+        m_SwapChain->Resize(width, height);
+
+        benzin::RenderPass::SetWindowViewport(width, height);
+        for (auto& renderPass : m_RenderPasses)
+        {
+            renderPass->OnWindowResize();
+        }
+
+        BenzinTrace("Swap chain resized. CpuFrame: {}", m_Device->GetCpuFrameIndex());
+    }
+
+    void Runner::HandleViewportResizeIfNeeded()
+    {
+        if (!m_Viewport.IsPendingResize())
+            return;
+
+        m_Viewport.Resize();
+
+        const uint32_t width = m_Viewport.GetWidth();
+        const uint32_t height = m_Viewport.GetHeight();
+
+        m_CameraController.OnRenderViewportResized(width, height);
+
+        benzin::RenderPass::SetRenderViewport(width, height);
+        for (auto& renderPass : m_RenderPasses)
+        {
+            renderPass->OnRenderViewportResize();
+        }
+
+        BenzinTrace("Render viewport resized. CpuFrame: {}", m_Device->GetCpuFrameIndex());
     }
 
 }

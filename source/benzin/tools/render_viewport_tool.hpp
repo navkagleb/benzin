@@ -17,7 +17,7 @@ namespace benzin
         void DrawWindowContent() override;
 
     private:
-        void UpdateViewportSize();
+        bool UpdateViewportSize();
 
     private:
         RenderViewport& m_Viewport;

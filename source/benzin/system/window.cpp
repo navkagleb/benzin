@@ -239,11 +239,14 @@ namespace benzin
                         window.m_IsMaximized = false;
                     }
 
-                    window.m_Width = width;
-                    window.m_Height = height;
+                    if (window.m_Width != width || window.m_Height != height)
+                    {
+                        window.m_Width = width;
+                        window.m_Height = height;
 
-                    window.CreateAndPushEvent<WindowRestoredEvent>();
-                    window.CreateAndPushEvent<WindowResizedEvent>(window.m_Width, window.m_Height);
+                        window.CreateAndPushEvent<WindowRestoredEvent>();
+                        window.CreateAndPushEvent<WindowResizedEvent>(window.m_Width, window.m_Height);
+                    }
                 }
 
                 return true;

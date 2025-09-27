@@ -19,12 +19,13 @@ namespace benzin
         ImGuiTool::DrawWindow();
         ImGui::PopStyleVar();
 
-        m_Viewport.m_IsValidForRendering = !m_Viewport.m_IsResized && m_Viewport.m_Width != 0 && m_Viewport.m_Height != 0 && ImGuiTool::m_IsVisible; // TODO
+        m_Viewport.m_IsValidForRendering = m_Viewport.GetWidth() != 0 && m_Viewport.GetHeight() != 0 && ImGuiTool::m_IsVisible; // TODO
     }
 
     void RenderViewportTool::DrawWindowContent()
     {
-        UpdateViewportSize();
+        if (!UpdateViewportSize())
+            return;
 
         if (!m_Resources.IsCreated(m_Viewport.m_DisplayTextureId))
             return;
@@ -61,29 +62,28 @@ namespace benzin
             imageSize);
 
         m_Viewport.m_IsHovered = ImGui::IsItemHovered();
-        
-        const ImVec2 localCursorPosition = ImGui::GetMousePos() - ImGui::GetWindowPos();
-        m_Viewport.m_CursorPosition.x = (int32_t)localCursorPosition.x;
-        m_Viewport.m_CursorPosition.y = (int32_t)localCursorPosition.y;
     }
 
-    void RenderViewportTool::UpdateViewportSize()
+    bool RenderViewportTool::UpdateViewportSize()
     {
-        m_Viewport.m_IsResized = false;
-
         if (ImGui::IsAnyItemActive()) // In resizing state
-            return;
-
-        const ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-        if ((uint32_t)viewportSize.x == m_Viewport.GetWidth() && (uint32_t)viewportSize.y == m_Viewport.GetHeight())
-            return;
+            return true;
 
         if (ImGui::IsWindowAppearing() || ImGui::IsWindowCollapsed())
-            return;
+            return false;
 
-        m_Viewport.m_Width = (uint32_t)viewportSize.x;
-        m_Viewport.m_Height = (uint32_t)viewportSize.y;
-        m_Viewport.m_IsResized = true;
+        const ImVec2 size = ImGui::GetContentRegionAvail();
+        if (size.x != m_Viewport.GetWidth() || size.y != m_Viewport.GetHeight())
+        {
+            if (size.x != 0 && size.y != 0)
+            {
+                m_Viewport.DeferResize((uint32_t)size.x, (uint32_t)size.y);
+            }
+
+            return false;
+        }
+
+        return true;
     }
 
 }
