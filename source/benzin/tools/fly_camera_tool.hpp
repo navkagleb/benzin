@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benzin/graphics2/imgui_pass.hpp"
+#include <benzin/graphics2/imgui_pass.hpp>
 
 namespace benzin
 {

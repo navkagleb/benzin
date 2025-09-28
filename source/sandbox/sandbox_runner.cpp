@@ -224,10 +224,10 @@ namespace sandbox
 
     void SandboxRunner::InitCamera()
     {
-        auto& camera = m_Scene->GetCamera();
+        benzin::PerspectiveCamera& camera = m_Scene->GetCamera();
         camera.SetPosition({ -1.649f, 1.007f, -1.555f });
         camera.SetFrontDirection({ 0.769f, 0.129f, 0.627f });
-        camera.GetProjection().SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
+        camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
     }
 
     void SandboxRunner::InitSceneEntities()

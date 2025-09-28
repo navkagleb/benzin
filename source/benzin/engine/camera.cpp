@@ -8,14 +8,25 @@
 namespace benzin
 {
 
-    // PerspectiveProjection
+    // PerspectiveCamera
 
-    PerspectiveProjection::PerspectiveProjection()
+    PerspectiveCamera::PerspectiveCamera()
     {
+        UpdateRightDirection();
+        UpdateWorldToViewMatrix();
         UpdateViewToClipMatrix();
     }
 
-    DirectX::XMFLOAT2 PerspectiveProjection::GetUvToViewScale() const
+    DirectX::XMMATRIX PerspectiveCamera::GetClipToWorldNoTranslation() const
+    {
+        DirectX::XMMATRIX worldToViewMatrix = m_WorldToViewMatrix;
+        worldToViewMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
+
+        const DirectX::XMMATRIX worldToClipMatrix = worldToViewMatrix * GetViewToClipMatrix();
+        return DirectX::XMMatrixInverse(nullptr, worldToClipMatrix);
+    }
+
+    DirectX::XMFLOAT2 PerspectiveCamera::GetUvToViewScale() const
     {
         // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
 
@@ -26,7 +37,7 @@ namespace benzin
         return scale;
     }
 
-    DirectX::XMFLOAT2 PerspectiveProjection::GetUvToViewBias() const
+    DirectX::XMFLOAT2 PerspectiveCamera::GetUvToViewBias() const
     {
         // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
 
@@ -37,7 +48,7 @@ namespace benzin
         return bias;
     }
 
-    float PerspectiveProjection::GetPixelToWorldScale(uint32_t height) const
+    float PerspectiveCamera::GetPixelToWorldScale(uint32_t height) const
     {
         // viewToClip[1][1] = 1.0f / std::tan(0.5f * verticalFov)
 
@@ -47,7 +58,32 @@ namespace benzin
         return pixelToWorldScale;
     }
 
-    void PerspectiveProjection::SetLens(float verticalFovInRadians, float aspectRatio, float nearPlane)
+    void PerspectiveCamera::SetPosition(const DirectX::XMVECTOR& position)
+    {
+        m_Position = position;
+
+        UpdateWorldToViewMatrix();
+    }
+
+    void PerspectiveCamera::SetFrontDirection(const DirectX::XMVECTOR& frontDirection)
+    {
+        m_FrontDirection = frontDirection;
+        DirectX::XMVector3Normalize(m_FrontDirection);
+
+        UpdateRightDirection();
+        UpdateWorldToViewMatrix();
+    }
+
+    void PerspectiveCamera::SetUpDirection(const DirectX::XMVECTOR& upDirection)
+    {
+        m_UpDirection = upDirection;
+        DirectX::XMVector3Normalize(m_UpDirection);
+
+        UpdateRightDirection();
+        UpdateWorldToViewMatrix();
+    }
+
+    void PerspectiveCamera::SetLens(float verticalFovInRadians, float aspectRatio, float nearPlane)
     {
         m_VerticalFovInRadians = verticalFovInRadians;
         m_AspectRatio = aspectRatio;
@@ -56,7 +92,20 @@ namespace benzin
         UpdateViewToClipMatrix();
     }
 
-    void PerspectiveProjection::UpdateViewToClipMatrix()
+    void PerspectiveCamera::UpdateRightDirection()
+    {
+        m_RightDirection = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(m_FrontDirection, m_UpDirection));
+    }
+
+    void PerspectiveCamera::UpdateWorldToViewMatrix()
+    {
+        m_WorldToViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
+        m_ViewToWorldMatrix = DirectX::XMMatrixInverse(nullptr, m_WorldToViewMatrix);
+
+        m_ViewFrustum.Transform(m_WorldFrustum, m_ViewToWorldMatrix);
+    }
+
+    void PerspectiveCamera::UpdateViewToClipMatrix()
     {
         const float yScale = 1.0f / std::tan(m_VerticalFovInRadians * 0.5f);
         const float xScale = yScale / m_AspectRatio;
@@ -81,81 +130,29 @@ namespace benzin
         DirectX::BoundingFrustum::CreateFromMatrix(m_ViewFrustum, viewToClipMatrixForFrustum);
     }
 
-    // Camera
-
-    Camera::Camera()
-    {
-        UpdateRightDirection();
-        UpdateWorldToViewMatrix();
-    }
-
-    void Camera::SetPosition(const DirectX::XMVECTOR& position)
-    {
-        m_Position = position;
-
-        UpdateWorldToViewMatrix();
-    }
-
-    void Camera::SetFrontDirection(const DirectX::XMVECTOR& frontDirection)
-    {
-        m_FrontDirection = frontDirection;
-        DirectX::XMVector3Normalize(m_FrontDirection);
-
-        UpdateRightDirection();
-        UpdateWorldToViewMatrix();
-    }
-
-    void Camera::SetUpDirection(const DirectX::XMVECTOR& upDirection)
-    {
-        m_UpDirection = upDirection;
-        DirectX::XMVector3Normalize(m_UpDirection);
-
-        UpdateRightDirection();
-        UpdateWorldToViewMatrix();
-    }
-
-    DirectX::XMMATRIX Camera::GetClipToWorldNoTranslation() const
-    {
-        DirectX::XMMATRIX worldToViewMatrix = m_WorldToViewMatrix;
-        worldToViewMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
-
-        const DirectX::XMMATRIX worldToClipMatrix = worldToViewMatrix * GetViewToClipMatrix();
-        return DirectX::XMMatrixInverse(nullptr, worldToClipMatrix);
-    }
-
-    void Camera::UpdateRightDirection()
-    {
-        m_RightDirection = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(m_FrontDirection, m_UpDirection));
-    }
-
-    void Camera::UpdateWorldToViewMatrix()
-    {
-        m_WorldToViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
-        m_ViewToWorldMatrix = DirectX::XMMatrixInverse(nullptr, m_WorldToViewMatrix);
-
-        m_Projection.GetViewFrustum().Transform(m_WorldFrustum, m_ViewToWorldMatrix);
-    }
-
     // CameraController
 
-    void FlyCameraController::SetCamera(Camera& camera)
+    void FlyCameraController::SetCamera(PerspectiveCamera& camera)
     {
         m_Camera = &camera;
     }
 
     bool FlyCameraController::OnRenderViewportResized(uint32_t width, uint32_t height)
     {
-        PerspectiveProjection& projection = m_Camera->GetProjection();
-        projection.SetLens(
-            projection.GetVerticalFovInRadians(),
-            (float)width / height,
-            projection.GetNearPlane());
+        if (m_Camera == nullptr)
+            return false;
+
+        const float aspectRatio = (float)width / height;
+        m_Camera->SetLens(m_Camera->GetVerticalFovInRadians(), aspectRatio, m_Camera->GetNearPlane());
 
         return false;
     }
 
     void FlyCameraController::MoveCamera(std::chrono::microseconds dt)
     {
+        if (m_Camera == nullptr)
+            return;
+
         UpdatePitchAndYawIfNeeded();
 
         float translationSpeedFactor = 1.0f;
@@ -223,6 +220,9 @@ namespace benzin
 
     void FlyCameraController::RotateCamera(DirectX::XMINT2 mousePosition, DirectX::XMINT2 prevMousePosition)
     {
+        if (m_Camera == nullptr)
+            return;
+
         const auto deltaX = (float)(mousePosition.x - prevMousePosition.x);
         const auto deltaY = (float)(mousePosition.y - prevMousePosition.y);
 
@@ -248,15 +248,16 @@ namespace benzin
 
     void FlyCameraController::IncrementFov(float direction)
     {
-        PerspectiveProjection& projection = m_Camera->GetProjection();
+        if (m_Camera == nullptr)
+            return;
 
         constexpr float minVerticalFovInRadians = DirectX::XMConvertToRadians(45.0f);
         constexpr float maxVerticalFovInRadians = DirectX::XMConvertToRadians(120.0f);
 
-        float verticalFov = projection.GetVerticalFovInRadians() - m_MouseWheelSensitivity * direction;
+        float verticalFov = m_Camera->GetVerticalFovInRadians() - m_MouseWheelSensitivity * direction;
         verticalFov = std::clamp(verticalFov, minVerticalFovInRadians, maxVerticalFovInRadians);
 
-        projection.SetLens(verticalFov, projection.GetAspectRatio(), projection.GetNearPlane());
+        m_Camera->SetLens(verticalFov, m_Camera->GetAspectRatio(), m_Camera->GetNearPlane());
     }
 
     void FlyCameraController::UpdatePitchAndYawIfNeeded()

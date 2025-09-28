@@ -3,7 +3,6 @@
 
 #include <benzin/core/engine_math.hpp>
 #include <benzin/engine/camera.hpp>
-#include <benzin/tools/render_viewport_tool.hpp>
 
 namespace benzin
 {
@@ -110,7 +109,7 @@ namespace benzin
         if (!ImGui::MainCollapsingHeader("View Props", ImGuiTreeNodeFlags_DefaultOpen))
             return;
 
-        Camera* camera = m_Controller.m_Camera;
+        PerspectiveCamera* camera = m_Controller.m_Camera;
         if (camera == nullptr)
             return;
 
@@ -144,28 +143,26 @@ namespace benzin
         if (!ImGui::MainCollapsingHeader("Projection Props", ImGuiTreeNodeFlags_DefaultOpen))
             return;
 
-        Camera* camera = m_Controller.m_Camera;
+        PerspectiveCamera* camera = m_Controller.m_Camera;
         if (camera == nullptr)
             return;
 
-        PerspectiveProjection& projection = camera->m_Projection;
-
         bool isMatrixUpdateNeeded = false;
-        isMatrixUpdateNeeded |= ImGui::SliderAngle("Vertical FOV", &projection.m_VerticalFovInRadians, 45.0f, 120.0f);
-        isMatrixUpdateNeeded |= ImGui::DragFloat("Near plane", &projection.m_NearPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
-        isMatrixUpdateNeeded |= ImGui::DragFloat("Far plane", &projection.m_FarPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
+        isMatrixUpdateNeeded |= ImGui::SliderAngle("Vertical FOV", &camera->m_VerticalFovInRadians, 45.0f, 120.0f);
+        isMatrixUpdateNeeded |= ImGui::DragFloat("Near plane", &camera->m_NearPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
+        isMatrixUpdateNeeded |= ImGui::DragFloat("Far plane", &camera->m_FarPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
 
         if (isMatrixUpdateNeeded)
         {
-            projection.UpdateViewToClipMatrix();
+            camera->UpdateViewToClipMatrix();
         }
 
         ImGui::BeginDisabled();
-        ImGui::DragFloat("Aspect ratio", &projection.m_AspectRatio);
+        ImGui::DragFloat("Aspect ratio", &camera->m_AspectRatio);
         ImGui::EndDisabled();
 
         DrawMatrix4x4("View To Clip", camera->GetViewToClipMatrix());
-        DrawFrustumPlaneTable("View frustum", projection.GetViewFrustum());
+        DrawFrustumPlaneTable("View frustum", camera->GetViewFrustum());
     }
 
 }

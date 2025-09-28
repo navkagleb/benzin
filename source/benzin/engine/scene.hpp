@@ -67,7 +67,7 @@ namespace benzin
     private:
         Device& m_Device;
 
-        Camera m_Camera;
+        PerspectiveCamera m_Camera;
 
         entt::registry m_EntityRegistry;
         entt::registry m_MeshRegistry;

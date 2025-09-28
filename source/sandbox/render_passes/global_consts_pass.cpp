@@ -105,8 +105,7 @@ namespace sandbox
 
     void GlobalConstsPass::UpdateCameraConsts()
     {
-        const benzin::Camera& camera = ms_Scene->GetCamera();
-        const benzin::PerspectiveProjection& projection = camera.GetProjection();
+        const benzin::PerspectiveCamera& camera = ms_Scene->GetCamera();
 
         joint::CameraConsts cameraConsts
         {
@@ -121,10 +120,10 @@ namespace sandbox
             .ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation(),
 
             .WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()),
-            .PixelToWorldScale = projection.GetPixelToWorldScale(GetRenderViewportHeight()),
+            .PixelToWorldScale = camera.GetPixelToWorldScale(GetRenderViewportHeight()),
 
-            .UvToViewScale = projection.GetUvToViewScale(),
-            .UvToViewBias = projection.GetUvToViewBias(),
+            .UvToViewScale = camera.GetUvToViewScale(),
+            .UvToViewBias = camera.GetUvToViewBias(),
         };
 
         camera.GetWorldFrustum().GetPlanes(
