@@ -22,7 +22,9 @@
 #include <benzin/graphics2/texture_viewer_pass.hpp>
 #include <benzin/system/input.hpp>
 #include <benzin/system/key_event.hpp>
+#include <benzin/system/mouse_event.hpp>
 #include <benzin/system/window.hpp>
+#include <benzin/system/window_event.hpp>
 #include <benzin/tools/fly_camera_tool.hpp>
 #include <benzin/tools/gpu_info_tool.hpp>
 #include <benzin/tools/performance_overlay_tool.hpp>

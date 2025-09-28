@@ -1,42 +1,17 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/engine/camera.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/engine/camera.hpp>
 
-#include "benzin/utility/time_utils.hpp"
-#include "benzin/tools/render_viewport_tool.hpp"
-#include "benzin/system/input.hpp"
-#include "benzin/core/engine_math.hpp"
+#include <benzin/core/engine_math.hpp>
+#include <benzin/system/input.hpp>
+#include <benzin/utility/time_utils.hpp>
 
 namespace benzin
 {
 
-    // Projection
-
-    void Projection::UpdateViewToClipMatrix()
-    {
-        m_ViewToClipMatrix = CreateViewToClipMatrix();
-        m_ClipToViewMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewToClipMatrix);
-
-        DirectX::BoundingFrustum::CreateFromMatrix(m_ViewFrustum, m_ViewToClipMatrix);
-    };
-
     // PerspectiveProjection
 
-    PerspectiveProjection::PerspectiveProjection(float verticalFovInRadians, float aspectRatio, float nearPlane, float farPlane)
+    PerspectiveProjection::PerspectiveProjection()
     {
-        SetLens(verticalFovInRadians, aspectRatio, nearPlane, farPlane);
-    }
-    
-    void PerspectiveProjection::SetVerticalFov(float verticalFovInRadians)
-    {
-        m_VerticalFovInRadians = verticalFovInRadians;
-
-        UpdateViewToClipMatrix();
-    }
-
-    void PerspectiveProjection::SetAspectRatio(float aspectRatio)
-    {
-        m_AspectRatio = aspectRatio;
-
         UpdateViewToClipMatrix();
     }
 
@@ -44,9 +19,9 @@ namespace benzin
     {
         // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
 
-        DirectX::XMFLOAT2 scale{};
-        scale.x = Projection::GetViewFrustum().RightSlope - Projection::GetViewFrustum().LeftSlope;
-        scale.y = Projection::GetViewFrustum().BottomSlope - Projection::GetViewFrustum().TopSlope;
+        DirectX::XMFLOAT2 scale = {};
+        scale.x = m_ViewFrustum.RightSlope - m_ViewFrustum.LeftSlope;
+        scale.y = m_ViewFrustum.BottomSlope - m_ViewFrustum.TopSlope;
 
         return scale;
     }
@@ -55,9 +30,9 @@ namespace benzin
     {
         // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
 
-        DirectX::XMFLOAT2 bias{};
-        bias.x = Projection::GetViewFrustum().LeftSlope;
-        bias.y = Projection::GetViewFrustum().TopSlope;
+        DirectX::XMFLOAT2 bias = {};
+        bias.x = m_ViewFrustum.LeftSlope;
+        bias.y = m_ViewFrustum.TopSlope;
 
         return bias;
     }
@@ -72,46 +47,43 @@ namespace benzin
         return pixelToWorldScale;
     }
 
-    void PerspectiveProjection::SetLens(float verticalFovInRadians, float aspectRatio, float nearPlane, float farPlane)
+    void PerspectiveProjection::SetLens(float verticalFovInRadians, float aspectRatio, float nearPlane)
     {
         m_VerticalFovInRadians = verticalFovInRadians;
         m_AspectRatio = aspectRatio;
         m_NearPlane = nearPlane;
-        m_FarPlane = farPlane;
 
         UpdateViewToClipMatrix();
     }
 
-    DirectX::XMMATRIX PerspectiveProjection::CreateViewToClipMatrix() const
+    void PerspectiveProjection::UpdateViewToClipMatrix()
     {
-        return DirectX::XMMatrixPerspectiveFovLH(m_VerticalFovInRadians, m_AspectRatio, m_NearPlane, m_FarPlane);
-    }
+        const float yScale = 1.0f / std::tan(m_VerticalFovInRadians * 0.5f);
+        const float xScale = yScale / m_AspectRatio;
 
-    // OrthographicProjection
+        m_ViewToClipMatrix = DirectX::XMMATRIX
+        {
+            xScale, 0.0f,   0.0f,        0.0f,
+            0.0f,   yScale, 0.0f,        0.0f,
+            0.0f,   0.0f,   0.0f,        1.0f,
+            0.0f,   0.0f,   m_NearPlane, 0.0f
+        };
 
-    void OrthographicProjection::SetViewRect(const ViewRect& viewRect)
-    {
-        m_ViewRect = viewRect;
+        m_ClipToViewMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewToClipMatrix);
 
-        UpdateViewToClipMatrix();
-    };
+        // TODO: duplication
+        const DirectX::XMMATRIX viewToClipMatrixForFrustum = DirectX::XMMatrixPerspectiveFovLH(
+            m_VerticalFovInRadians,
+            m_AspectRatio,
+            m_NearPlane,
+            m_FarPlane);
 
-    DirectX::XMMATRIX OrthographicProjection::CreateViewToClipMatrix() const
-    {
-        return DirectX::XMMatrixOrthographicOffCenterLH(
-            m_ViewRect.LeftPlane,
-            m_ViewRect.RightPlane,
-            m_ViewRect.BottomPlane,
-            m_ViewRect.TopPlane,
-            m_ViewRect.NearPlane,
-            m_ViewRect.FarPlane
-        );
+        DirectX::BoundingFrustum::CreateFromMatrix(m_ViewFrustum, viewToClipMatrixForFrustum);
     }
 
     // Camera
 
-    Camera::Camera(Projection& projection)
-        : m_Projection{ projection }
+    Camera::Camera()
     {
         UpdateRightDirection();
         UpdateWorldToViewMatrix();
@@ -142,16 +114,6 @@ namespace benzin
         UpdateWorldToViewMatrix();
     }
 
-    DirectX::XMMATRIX Camera::GetWorldToClipMatrix() const
-    {
-        return m_WorldToViewMatrix * GetViewToClipMatrix();
-    }
-
-    DirectX::XMMATRIX Camera::GetClipToWorldMatrix() const
-    {
-        return DirectX::XMMatrixInverse(nullptr, GetWorldToClipMatrix());
-    }
-
     DirectX::XMMATRIX Camera::GetClipToWorldNoTranslation() const
     {
         DirectX::XMMATRIX worldToViewMatrix = m_WorldToViewMatrix;
@@ -179,16 +141,15 @@ namespace benzin
     void FlyCameraController::SetCamera(Camera& camera)
     {
         m_Camera = &camera;
-        m_Camera->SetFrontDirection(GetDirectionFromPitchYaw(m_Pitch, m_Yaw));
     }
 
     bool FlyCameraController::OnRenderViewportResized(uint32_t width, uint32_t height)
     {
-        if (auto* perspectiveProjection = GetPerspectiveProjection())
-        {
-            const float aspectRatio = (float)width / height;
-            perspectiveProjection->SetAspectRatio(aspectRatio);
-        }
+        PerspectiveProjection& projection = m_Camera->GetProjection();
+        projection.SetLens(
+            projection.GetVerticalFovInRadians(),
+            (float)width / height,
+            projection.GetNearPlane());
 
         return false;
     }
@@ -208,13 +169,13 @@ namespace benzin
         }
 
         const float delta = m_CameraTranslationSpeed * translationSpeedFactor * ToFloatMs(dt);
-        const auto& position = m_Camera->GetPosition();
+        const DirectX::XMVECTOR& position = m_Camera->GetPosition();
 
         DirectX::XMVECTOR updatedPosition = DirectX::XMVectorZero();
 
         // Front / Back
         {
-            const auto& frontDirection = m_Camera->GetFrontDirection();
+            const DirectX::XMVECTOR& frontDirection = m_Camera->GetFrontDirection();
 
             if (Input::IsKeyPressed(KeyCode::W))
             {
@@ -228,7 +189,7 @@ namespace benzin
 
         // Left / Right
         {
-            const auto& rightDirection = m_Camera->GetRightDirection();
+            const DirectX::XMVECTOR& rightDirection = m_Camera->GetRightDirection();
 
             if (Input::IsKeyPressed(KeyCode::A))
             {
@@ -242,7 +203,7 @@ namespace benzin
 
         // Up / Down
         {
-            const auto& upDirection = m_Camera->GetUpDirection();
+            const DirectX::XMVECTOR& upDirection = m_Camera->GetUpDirection();
 
             if (Input::IsKeyPressed(KeyCode::Space))
             {
@@ -287,43 +248,28 @@ namespace benzin
 
     void FlyCameraController::IncrementFov(float direction)
     {
-        static const float minVerticalFovInRadians = DirectX::XMConvertToRadians(45.0f);
-        static const float maxVerticalFovInRadians = DirectX::XMConvertToRadians(120.0f);
+        PerspectiveProjection& projection = m_Camera->GetProjection();
 
-        PerspectiveProjection* projection = GetPerspectiveProjection();
-        if (projection != nullptr)
-        {
-            const float verticalFov = projection->GetVerticalFovInRadians() - m_MouseWheelSensitivity * direction;
-            projection->SetVerticalFov(std::clamp(verticalFov, minVerticalFovInRadians, maxVerticalFovInRadians));
-        }
-    }
+        constexpr float minVerticalFovInRadians = DirectX::XMConvertToRadians(45.0f);
+        constexpr float maxVerticalFovInRadians = DirectX::XMConvertToRadians(120.0f);
 
-    PerspectiveProjection* FlyCameraController::GetPerspectiveProjection()
-    {
-        auto* projection = dynamic_cast<PerspectiveProjection*>(&m_Camera->m_Projection);
+        float verticalFov = projection.GetVerticalFovInRadians() - m_MouseWheelSensitivity * direction;
+        verticalFov = std::clamp(verticalFov, minVerticalFovInRadians, maxVerticalFovInRadians);
 
-        if (projection == nullptr)
-        {
-            BenzinWarning("Projection isn't Perspective! FlyCameraController supports only PerspectiveProjection");
-            return nullptr;
-        }
-
-        return projection;
+        projection.SetLens(verticalFov, projection.GetAspectRatio(), projection.GetNearPlane());
     }
 
     void FlyCameraController::UpdatePitchAndYawIfNeeded()
     {
-        static constexpr DirectX::XMVECTOR eplison3{ 0.0001f, 0.0001f, 0.0001f };
+        const DirectX::XMVECTOR eplison = DirectX::XMVectorReplicate(1e-4f);
+        const DirectX::XMVECTOR& frontDirection = m_Camera->GetFrontDirection();
 
-        const auto& frontDirection = m_Camera->GetFrontDirection();
+        if (DirectX::XMVector3NearEqual(frontDirection, GetDirectionFromPitchYaw(m_Pitch, m_Yaw), eplison))
+            return;
 
-        if (!DirectX::XMVector3NearEqual(frontDirection, GetDirectionFromPitchYaw(m_Pitch, m_Yaw), eplison3))
-        {
-            const auto [pitch, yaw] = GetPitchYawFromDirection(frontDirection);
-
-            m_Pitch = pitch;
-            m_Yaw = yaw;
-        }
+        const auto [pitch, yaw] = GetPitchYawFromDirection(frontDirection);
+        m_Pitch = pitch;
+        m_Yaw = yaw;
     }
 
 }

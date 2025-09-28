@@ -31,7 +31,6 @@ namespace benzin
         ~Scene();
 
     public:
-        auto& GetPerspectiveProjection(this auto&& self) { return self.m_PerspectiveProjection; }
         auto& GetCamera(this auto&& self) { return self.m_Camera; }
 
         auto& GetEntityRegistry(this auto&& self) { return self.m_EntityRegistry; }
@@ -68,8 +67,7 @@ namespace benzin
     private:
         Device& m_Device;
 
-        PerspectiveProjection m_PerspectiveProjection;
-        Camera m_Camera{ m_PerspectiveProjection };
+        Camera m_Camera;
 
         entt::registry m_EntityRegistry;
         entt::registry m_MeshRegistry;

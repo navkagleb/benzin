@@ -116,31 +116,24 @@ namespace benzin
 
         if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&camera->m_Position)))
         {
+            camera->UpdateRightDirection();
             camera->UpdateWorldToViewMatrix();
         }
 
-        if (ImGui::DragFloat3("Front Direction", reinterpret_cast<float*>(&camera->m_FrontDirection)))
-        {
-            camera->SetFrontDirection(camera->m_FrontDirection);
-            camera->UpdateWorldToViewMatrix();
-        }
+        bool isFrontDirectionUpdateRequired = false;
+        isFrontDirectionUpdateRequired |= ImGui::SliderAngle("Pitch (X)", &m_Controller.m_Pitch, -89.0f, 89.0f);
+        isFrontDirectionUpdateRequired |= ImGui::SliderAngle("Yaw (Y)", &m_Controller.m_Yaw, -180.0f, 180.0f);
 
-        if (ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&camera->m_UpDirection)))
-        {
-            camera->UpdateWorldToViewMatrix();
-        }
-
-        if (ImGui::SliderAngle("Pitch (X)", &m_Controller.m_Pitch, -89.0f, 89.0f))
+        if (isFrontDirectionUpdateRequired)
         {
             const DirectX::XMVECTOR frontDirection = GetDirectionFromPitchYaw(m_Controller.m_Pitch, m_Controller.m_Yaw);
             camera->SetFrontDirection(frontDirection);
         }
 
-        if (ImGui::SliderAngle("Yaw (Y)", &m_Controller.m_Yaw, -180.0f, 180.0f))
-        {
-            const DirectX::XMVECTOR frontDirection = GetDirectionFromPitchYaw(m_Controller.m_Pitch, m_Controller.m_Yaw);
-            camera->SetFrontDirection(frontDirection);
-        }
+        ImGui::BeginDisabled();
+        ImGui::DragFloat3("Front Direction", reinterpret_cast<float*>(&camera->m_FrontDirection));
+        ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&camera->m_UpDirection));
+        ImGui::EndDisabled();
 
         DrawMatrix4x4("World To View", camera->GetWorldToViewMatrix());
         DrawFrustumPlaneTable("World frustum", camera->GetWorldFrustum());
@@ -155,26 +148,24 @@ namespace benzin
         if (camera == nullptr)
             return;
 
-        PerspectiveProjection* perspectiveProjection = m_Controller.GetPerspectiveProjection();
-        if (perspectiveProjection == nullptr)
-            return;
+        PerspectiveProjection& projection = camera->m_Projection;
 
-        bool isNeedToUpdateViewToClipMatrix = false;
-        isNeedToUpdateViewToClipMatrix |= ImGui::SliderAngle("Vertical FOV", &perspectiveProjection->m_VerticalFovInRadians, 45.0f, 120.0f);
-        isNeedToUpdateViewToClipMatrix |= ImGui::DragFloat("Near plane", &perspectiveProjection->m_NearPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
-        isNeedToUpdateViewToClipMatrix |= ImGui::DragFloat("Far plane", &perspectiveProjection->m_FarPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
+        bool isMatrixUpdateNeeded = false;
+        isMatrixUpdateNeeded |= ImGui::SliderAngle("Vertical FOV", &projection.m_VerticalFovInRadians, 45.0f, 120.0f);
+        isMatrixUpdateNeeded |= ImGui::DragFloat("Near plane", &projection.m_NearPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
+        isMatrixUpdateNeeded |= ImGui::DragFloat("Far plane", &projection.m_FarPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
 
-        if (isNeedToUpdateViewToClipMatrix)
+        if (isMatrixUpdateNeeded)
         {
-            perspectiveProjection->UpdateViewToClipMatrix();
+            projection.UpdateViewToClipMatrix();
         }
 
         ImGui::BeginDisabled();
-        ImGui::DragFloat("Aspect ratio", &perspectiveProjection->m_AspectRatio);
+        ImGui::DragFloat("Aspect ratio", &projection.m_AspectRatio);
         ImGui::EndDisabled();
 
         DrawMatrix4x4("View To Clip", camera->GetViewToClipMatrix());
-        DrawFrustumPlaneTable("View frustum", perspectiveProjection->GetViewFrustum());
+        DrawFrustumPlaneTable("View frustum", projection.GetViewFrustum());
     }
 
 }

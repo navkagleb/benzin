@@ -1,106 +1,53 @@
 #pragma once
 
-#include "benzin/system/event.hpp"
-#include "benzin/system/window_event.hpp"
-#include "benzin/system/mouse_event.hpp"
-
 namespace benzin
 {
 
-    class RenderViewportTool;
-
-    class Projection
-    {
-    public:
-        const auto& GetViewToClipMatrix() const { return m_ViewToClipMatrix; }
-        const auto& GetClipToViewMatrix() const { return m_ClipToViewMatrix; }
-
-        const auto& GetViewFrustum() const { return m_ViewFrustum; }
-
-        void UpdateViewToClipMatrix();
-
-    protected:
-        virtual DirectX::XMMATRIX CreateViewToClipMatrix() const = 0;
-
-    private:
-        DirectX::XMMATRIX m_ViewToClipMatrix = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_ClipToViewMatrix = DirectX::XMMatrixIdentity();
-
-        DirectX::BoundingFrustum m_ViewFrustum;
-    };
-
-    class PerspectiveProjection : public Projection
+    class PerspectiveProjection
     {
     public:
         friend class FlyCameraTool;
 
-        PerspectiveProjection() = default;
-        PerspectiveProjection(float verticalFovInRadians, float aspectRatio, float nearPlane, float farPlane);
+        PerspectiveProjection();
 
-    public:
-        float GetVerticalFovInRadians() const { return m_VerticalFovInRadians; }
-        void SetVerticalFov(float verticalFovInRadians);
+        const auto& GetViewToClipMatrix() const { return m_ViewToClipMatrix; }
+        const auto& GetClipToViewMatrix() const { return m_ClipToViewMatrix; }
+        const auto& GetViewFrustum() const { return m_ViewFrustum; }
 
-        float GetAspectRatio() const { return m_AspectRatio; }
-        void SetAspectRatio(float aspectRatio);
+        auto GetVerticalFovInRadians() const { return m_VerticalFovInRadians; }
+        auto GetAspectRatio() const { return m_AspectRatio; }
+        auto GetNearPlane() const { return m_NearPlane; }
 
         DirectX::XMFLOAT2 GetUvToViewScale() const;
         DirectX::XMFLOAT2 GetUvToViewBias() const;
 
         float GetPixelToWorldScale(uint32_t height) const;
 
-        void SetLens(float verticalFov, float aspectRatio, float nearPlane, float farPlane);
+        void SetLens(float verticalFov, float aspectRatio, float nearPlane);
 
     private:
-        DirectX::XMMATRIX CreateViewToClipMatrix() const override;
+        void UpdateViewToClipMatrix();
 
-    private:
-        float m_VerticalFovInRadians = DirectX::XMConvertToRadians(60.0f);
-        float m_AspectRatio = 0.0f;
+        DirectX::XMMATRIX m_ViewToClipMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_ClipToViewMatrix = DirectX::XMMatrixIdentity();
+        DirectX::BoundingFrustum m_ViewFrustum;
+
+        float m_VerticalFovInRadians = DirectX::XMConvertToRadians(90.0f);
+        float m_AspectRatio = 16.0f / 9.0f;
         float m_NearPlane = 0.1f;
         float m_FarPlane = 1000.0f;
-    };
-
-    class OrthographicProjection : public Projection
-    {
-    public:
-        struct ViewRect
-        {
-            float LeftPlane = -1.0f;
-            float RightPlane = 1.0f;
-            float BottomPlane = -1.0f;
-            float TopPlane = 1.0f;
-            float NearPlane = -1.0f;
-            float FarPlane = 1.0f;
-        };
-
-        void SetViewRect(const ViewRect& viewRect);
-
-    private:
-        DirectX::XMMATRIX CreateViewToClipMatrix() const override;
-
-    private:
-        ViewRect m_ViewRect;
     };
 
     class Camera
     {
     public:
         friend class FlyCameraTool;
-        friend class FlyCameraController;
 
-        explicit Camera(Projection& projection);
+        Camera();
 
-    public:
         const auto& GetPosition() const { return m_Position; }
-        void SetPosition(const DirectX::XMVECTOR& position);
-
         const auto& GetFrontDirection() const { return m_FrontDirection; }
-        void SetFrontDirection(const DirectX::XMVECTOR& frontDirection);
-
         const auto& GetUpDirection() const { return m_UpDirection; }
-        void SetUpDirection(const DirectX::XMVECTOR& upDirection);
-
         const auto& GetRightDirection() const { return m_RightDirection; }
 
         const auto& GetWorldToViewMatrix() const { return m_WorldToViewMatrix; }
@@ -112,16 +59,21 @@ namespace benzin
         const auto& GetClipToViewMatrix() const { return m_Projection.GetClipToViewMatrix(); }
         const auto& GetViewFrustum() const { return m_Projection.GetViewFrustum(); }
 
-        DirectX::XMMATRIX GetWorldToClipMatrix() const;
-        DirectX::XMMATRIX GetClipToWorldMatrix() const;
+        auto& GetProjection(this auto&& self) { return self.m_Projection; }
+
+        DirectX::XMMATRIX GetWorldToClipMatrix() const { return m_WorldToViewMatrix * GetViewToClipMatrix(); }
+        DirectX::XMMATRIX GetClipToWorldMatrix() const { return DirectX::XMMatrixInverse(nullptr, GetWorldToClipMatrix()); }
 
         DirectX::XMMATRIX GetClipToWorldNoTranslation() const;
+
+        void SetPosition(const DirectX::XMVECTOR& position);
+        void SetFrontDirection(const DirectX::XMVECTOR& frontDirection);
+        void SetUpDirection(const DirectX::XMVECTOR& upDirection);
 
     private:
         void UpdateRightDirection();
         void UpdateWorldToViewMatrix();
 
-    private:
         DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, 0.0f, 1.0f };
         DirectX::XMVECTOR m_FrontDirection{ 0.0f, 0.0f, -1.0f, 1.0f };
         DirectX::XMVECTOR m_UpDirection{ 0.0f, 1.0f, 0.0f, 1.0f };
@@ -132,7 +84,7 @@ namespace benzin
 
         DirectX::BoundingFrustum m_WorldFrustum;
 
-        Projection& m_Projection;
+        PerspectiveProjection m_Projection;
     };
 
     class FlyCameraController
@@ -149,11 +101,8 @@ namespace benzin
         bool OnRenderViewportResized(uint32_t width, uint32_t height);
 
     private:
-        PerspectiveProjection* GetPerspectiveProjection();
-
         void UpdatePitchAndYawIfNeeded();
 
-    private:
         Camera* m_Camera = nullptr;
 
         float m_CameraTranslationSpeed = 0.002f;
@@ -162,8 +111,7 @@ namespace benzin
 
         // For camera front direction
         float m_Pitch = 0.0f; // X axis (top-down)
-        float m_Yaw = -DirectX::XM_PIDIV2; // Y axis (left-right)
-        DirectX::XMFLOAT2 m_LastMousePosition{ 0.0f, 0.0f };
+        float m_Yaw = 0.0f; // Y axis (left-right)
     };
 
 }

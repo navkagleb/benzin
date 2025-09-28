@@ -81,7 +81,7 @@ namespace sandbox
         // Usage as ByteAddressBuffer
         m_StatBuffer = ms_Device->GetPersistentDefaultLinearAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
         {
-            creation.DebugName = "GlobalConsts_StatBuffer";
+            creation.DebugName = "GlobalConsts::StatBuffer";
             creation.Type = benzin::BufferType::Format;
             creation.Format = statFormat;
             creation.ElementSizeInBytes = statElementSizeInBytes;
@@ -91,7 +91,7 @@ namespace sandbox
 
         m_ReadbackStatBuffer = ms_Device->GetPersistentReadbackLinearAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
         {
-            creation.DebugName = "GlobalConsts_ReadbackStatBuffer";
+            creation.DebugName = "GlobalConsts::ReadbackStatBuffer";
             creation.Type = benzin::BufferType::Format;
             creation.Format = statFormat;
             creation.ElementSizeInBytes = statElementSizeInBytes;
@@ -106,7 +106,7 @@ namespace sandbox
     void GlobalConstsPass::UpdateCameraConsts()
     {
         const benzin::Camera& camera = ms_Scene->GetCamera();
-        const benzin::PerspectiveProjection& projection = ms_Scene->GetPerspectiveProjection();
+        const benzin::PerspectiveProjection& projection = camera.GetProjection();
 
         joint::CameraConsts cameraConsts
         {
