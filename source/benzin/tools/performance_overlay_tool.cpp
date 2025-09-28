@@ -1,28 +1,18 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/tools/performance_overlay_tool.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/tools/performance_overlay_tool.hpp>
 
-#include "benzin/core/cmd_line_args.hpp"
-#include "benzin/core/math.hpp"
-#include "benzin/core/tick_timer.hpp"
-#include "benzin/graphics/backend.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/swap_chain.hpp"
-#include "benzin/graphics2/shader_manager.hpp"
-#include "benzin/system/window.hpp"
-#include "benzin/tools/render_viewport_tool.hpp"
-#include "benzin/utility/time_utils.hpp"
-
-BenzinEnableUnaryPlusForEnum(benzin::PerformanceOverlayTool::OverlayLocation);
+#include <benzin/core/cmd_line_args.hpp>
+#include <benzin/core/tick_timer.hpp>
+#include <benzin/graphics/backend.hpp>
+#include <benzin/graphics2/shader_manager.hpp>
+#include <benzin/system/window.hpp>
+#include <benzin/utility/time_utils.hpp>
 
 namespace benzin
 {
 
     PerformanceOverlayTool::PerformanceOverlayTool(
-        const Window& window,
-        const Backend& backend,
-        const Device& device,
-        const ShaderManager& shaderManager,
-        const RenderViewport& viewport)
+    PerformanceOverlayTool::PerformanceOverlayTool(const Backend& backend, const ShaderManager& shaderManager, const RenderViewport& viewport)
         : ImGuiTool{ "Debug/PerformanceOverlay" }
         , m_Window{ window }
         , m_Backend{ backend }
@@ -40,11 +30,6 @@ namespace benzin
     void PerformanceOverlayTool::DrawWindow()
     {
         static constexpr auto backgroundColors = std::to_array(
-        {
-            IM_COL32(200, 50, 0, 255),
-            IM_COL32(184, 100, 0, 255),
-        });
-        
         ImGuiWindowFlags windowFlags =
             ImGuiWindowFlags_NoDecoration |
             ImGuiWindowFlags_NoDocking |
@@ -62,22 +47,25 @@ namespace benzin
             const ImVec2 workSize = viewport->WorkSize;
 
             const ImVec2 windowPosition
-            {
-                IsEvenQuickly(+m_Location) ? workPosition.x + padding : workPosition.x + workSize.x - padding,
-                IsDividedBy2Quickly(+m_Location) ? workPosition.y + padding : workPosition.y + workSize.y - padding,
-            };
+            ImVec2 windowPosition;
+            windowPosition.x = ((uint8_t)m_Location & 1) == 0 ? workPosition.x + padding : workPosition.x + workSize.x - padding;
+            windowPosition.y = ((uint8_t)m_Location & 2) == 0 ? workPosition.y + padding : workPosition.y + workSize.y - padding;
 
             const ImVec2 windowPositionPivot
-            {
-                IsEvenQuickly(+m_Location) ? 0.0f : 1.0f,
-                IsDividedBy2Quickly(+m_Location) ? 0.0f : 1.0f,
-            };
+            ImVec2 windowPositionPivot;
+            windowPositionPivot.x = ((uint8_t)m_Location & 1) == 0 ? 0.0f : 1.0f;
+            windowPositionPivot.y = ((uint8_t)m_Location & 2) == 0 ? 0.0f : 1.0f;
 
             ImGui::SetNextWindowPos(windowPosition, ImGuiCond_Always, windowPositionPivot);
             ImGui::SetNextWindowViewport(viewport->ID);
 
             windowFlags |= ImGuiWindowFlags_NoMove;
         }
+
+        {
+            IM_COL32(200, 50, 0, 255),
+            IM_COL32(184, 100, 0, 255),
+        });
 
         ImGui::SetNextWindowBgAlpha(0.9f);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, backgroundColors[m_ShaderManager.IsEachShaderGood()]);
@@ -92,12 +80,12 @@ namespace benzin
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0.0f, 0.0f });
 
         ImGui::FmtText("Window: {} x {}", m_Window.GetWidth(), m_Window.GetHeight());
-        ImGui::FmtText("Viewport: {} x {} {}", m_Viewport.GetWidth(), m_Viewport.GetHeight(), m_Viewport.IsValidForRendering() ? '+' : '-');
         ImGui::FmtText("{}", m_Backend.GetMainAdapterInfo().Name);
         ImGui::FmtText("FPS: {:.1f} ({:.3f} ms)", m_AvgFps, m_AvgDeltaTimeInMs);
         ImGui::NewLine();
         ImGui::FmtText("Local VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.UsedLocalVramInBytes), ToMb(adapterMemoryInfo.LocalVramBudgetInBytes));
         ImGui::FmtText("Host VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.UsedHostVramInBytes), ToMb(adapterMemoryInfo.HostVramBudgetInBytes));
+        ImGui::FmtText("Viewport: {} x {}", m_Viewport.GetWidth(), m_Viewport.GetHeight());
 
         if (CmdLineArgs::IsGpuValidationEnabled())
         {

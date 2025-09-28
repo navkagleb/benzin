@@ -16,10 +16,8 @@ namespace benzin
     void RenderViewportTool::DrawWindow()
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f, 0.0f });
-        ImGuiTool::DrawWindow();
+        ImGuiTool::DrawWindow(ImGuiWindowFlags_None);
         ImGui::PopStyleVar();
-
-        m_Viewport.m_IsValidForRendering = m_Viewport.GetWidth() != 0 && m_Viewport.GetHeight() != 0 && ImGuiTool::m_IsVisible; // TODO
     }
 
     void RenderViewportTool::DrawWindowContent()
@@ -64,6 +62,11 @@ namespace benzin
         m_Viewport.m_IsHovered = ImGui::IsItemHovered();
     }
 
+    void RenderViewportTool::PostDrawWindow()
+    {
+        m_Viewport.m_IsValidForRendering = ImGuiTool::m_IsVisible && m_Viewport.GetWidth() != 0 && m_Viewport.GetHeight() != 0;
+    }
+
     bool RenderViewportTool::UpdateViewportSize()
     {
         if (ImGui::IsAnyItemActive()) // In resizing state
@@ -73,17 +76,15 @@ namespace benzin
             return false;
 
         const ImVec2 size = ImGui::GetContentRegionAvail();
-        if (size.x != m_Viewport.GetWidth() || size.y != m_Viewport.GetHeight())
-        {
-            if (size.x != 0 && size.y != 0)
-            {
-                m_Viewport.DeferResize((uint32_t)size.x, (uint32_t)size.y);
-            }
+        if (size.x == m_Viewport.GetWidth() && size.y == m_Viewport.GetHeight())
+            return true;
 
-            return false;
+        if (size.x != 0 && size.y != 0)
+        {
+            m_Viewport.DeferResize((uint32_t)size.x, (uint32_t)size.y);
         }
 
-        return true;
+        return false;
     }
 
 }

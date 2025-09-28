@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benzin/graphics2/imgui_pass.hpp"
+#include <benzin/graphics2/imgui_pass.hpp>
 
 namespace benzin
 {
@@ -14,15 +14,8 @@ namespace benzin
     class PerformanceOverlayTool : public ImGuiTool
     {
     public:
-        PerformanceOverlayTool(
-            const Window& window,
-            const Backend& backend,
-            const Device& device,
-            const ShaderManager& shaderManager,
-            const RenderViewport& viewport
-        );
+        PerformanceOverlayTool(const Backend& backend, const ShaderManager& shaderManager, const RenderViewport& viewport);
 
-    private:
         void DrawWindow() override;
         void DrawWindowContent() override;
 
@@ -36,9 +29,7 @@ namespace benzin
             BottomRight,
         };
 
-        const Window& m_Window;
         const Backend& m_Backend;
-        const Device& m_Device;
         const ShaderManager& m_ShaderManager;
         const RenderViewport& m_Viewport;
 

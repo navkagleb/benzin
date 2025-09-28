@@ -33,12 +33,11 @@ namespace benzin
             .Count = ms_MaxTimestampCount,
         });
 
-        MakeUniquePtr(m_ReadbackBuffer, device, BufferCreation
+        m_ReadbackBuffer = device.GetPersistentReadbackLinearAllocator().AllocateBuffer([](BufferCreation& creation)
         {
-            .DebugName = "GpuProfiler::ReadbackBuffer",
-            .HeapType = GpuHeapType::Readback,
-            .ElementSizeInBytes = sizeof(uint64_t) * ms_MaxTimestampCount,
-            .ElementCount = CmdLineArgs::GetReadbackLatency(),
+            creation.DebugName = "GpuProfiler::ReadbackBuffer";
+            creation.ElementSizeInBytes = sizeof(uint64_t) * ms_MaxTimestampCount;
+            creation.ElementCount = CmdLineArgs::GetReadbackLatency();
         });
 
         m_Root.m_Name = "Root";
@@ -70,7 +69,8 @@ namespace benzin
 
         m_ReadbackBuffer->MapReadbackData(
             m_ReadbackBuffer->GetElementSizeInBytes() * m_ReadIndex,
-            m_ReadbackBuffer->GetElementSizeInBytes(), [this](const std::byte* mappedData)
+            m_ReadbackBuffer->GetElementSizeInBytes(),
+            [this](const std::byte* mappedData)
             {
                 const std::span<const uint64_t> timestamps = ToSpan((const uint64_t*)mappedData, ms_MaxTimestampCount);
                 CopyNodeDurationRecursive(m_Root, timestamps);

@@ -15,7 +15,6 @@
 #include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
-#include <benzin/graphics2/gpu_profiler_pass.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 #include <benzin/graphics2/shader_manager.hpp>
@@ -67,9 +66,8 @@ namespace sandbox
         benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, m_FrameTimer);
         m_ImGuiManager->RegisterTool<benzin::FlyCameraTool>(m_CameraController);
         m_ImGuiManager->RegisterTool<benzin::GpuInfoTool>(*m_Backend);
-        m_ImGuiManager->RegisterTool<benzin::GpuPrintTool>();
         m_ImGuiManager->RegisterTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
-        m_ImGuiManager->RegisterTool<benzin::PerformanceOverlayTool>(*m_MainWindow, *m_Backend, *m_Device, *m_ShaderManager, m_Viewport);
+        m_ImGuiManager->RegisterTool<benzin::PerformanceOverlayTool>(*m_Backend, *m_ShaderManager, m_Viewport);
         m_ImGuiManager->RegisterTool<benzin::ProfilerTool>();
         m_ImGuiManager->RegisterTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
         m_ImGuiManager->RegisterTool<benzin::SceneTool>(*m_Scene);
@@ -102,7 +100,6 @@ namespace sandbox
 
         m_ImGuiManager->UnregisterTool<benzin::FlyCameraTool>();
         m_ImGuiManager->UnregisterTool<benzin::GpuInfoTool>();
-        m_ImGuiManager->UnregisterTool<benzin::GpuPrintTool>();
         m_ImGuiManager->UnregisterTool<benzin::GpuProfilerTool>();
         m_ImGuiManager->UnregisterTool<benzin::PerformanceOverlayTool>();
         m_ImGuiManager->UnregisterTool<benzin::ProfilerTool>();

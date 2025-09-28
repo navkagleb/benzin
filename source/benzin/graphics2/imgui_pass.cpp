@@ -73,6 +73,9 @@ namespace benzin
 
     void ImGuiTool::DrawWindow(ImGuiWindowFlags flags)
     {
+        if (!m_IsVisible)
+            return;
+
         const std::string_view toolName = GetToolDisplayName(m_Path);
         if (ImGui::Begin(toolName.data(), &m_IsVisible, flags))
         {
@@ -251,10 +254,8 @@ namespace benzin
         {
             m_ToolVisibilityCache[tool->m_UniqueId] = tool->m_IsVisible;
 
-            if (tool->m_IsVisible)
-            {
-                tool->DrawWindow();
-            }
+            tool->DrawWindow();
+            tool->PostDrawWindow();
         };
     }
 

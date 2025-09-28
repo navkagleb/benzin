@@ -28,6 +28,7 @@ namespace benzin
 
     protected:
         virtual void DrawWindowContent() = 0;
+        virtual void PostDrawWindow() {}
 
         void DrawWindow(ImGuiWindowFlags flags);
 
