@@ -380,8 +380,6 @@ namespace benzin
     ImGuiPass::ImGuiPass(ImGuiManager& imGuiManager)
         : m_ImGuiManager{ imGuiManager }
     {
-        m_FrameContexts.resize(CmdLineArgs::GetFrameInFlightCount());
-
         ms_PsoManager->Create(PsoId::ImGui, [](VertexPsoProxy& proxy)
         {
             proxy.InputLayout.emplace_back("Position", GraphicsFormat::Rg32Float);

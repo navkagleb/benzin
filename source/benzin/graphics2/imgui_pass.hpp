@@ -32,7 +32,6 @@ namespace benzin
 
         void DrawWindow(ImGuiWindowFlags flags);
 
-    protected:
         static inline const Window* ms_Window = nullptr;
         static inline const IntervalTimer* ms_IntervalTimer = nullptr;
 
@@ -66,7 +65,6 @@ namespace benzin
         ImGuiManager(Window& window, const TickTimer& frameTimer);
         ~ImGuiManager();
 
-    public:
         void BeginFrame();
 
         void BeginUiFrame() const;
@@ -151,7 +149,6 @@ namespace benzin
 
         void GetImGuiResources(const ImDrawCmd& imDrawCmd, uint32_t& outTextureSrvHeapIndex, joint::ImGuiSamplerIndex& outSamplerIndex) const;
 
-    private:
         struct FrameContext
         {
             std::unique_ptr<Buffer> m_VertexBuffer;
@@ -160,7 +157,7 @@ namespace benzin
 
         ImGuiManager& m_ImGuiManager;
 
-        std::vector<FrameContext> m_FrameContexts;
+        FrameContext m_FrameContexts[GraphicsConfig::g_FrameInFlightCount];
         std::unique_ptr<Texture> m_FontTexture;
 
         joint::ImGuiConsts m_Consts{};

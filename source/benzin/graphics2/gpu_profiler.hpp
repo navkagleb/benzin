@@ -1,6 +1,5 @@
 #pragma once
 
-#include <benzin/core/index_allocator.hpp>
 #include <benzin/core/profiler.hpp>
 
 namespace benzin
@@ -15,11 +14,11 @@ namespace benzin
     {
         static constexpr uint32_t ms_InvalidReadbackIndex = std::numeric_limits<uint32_t>::max();
 
-        std::array<uint32_t, 4> m_ReadbackIndices; // TODO: Move FrameInFlightCount to constexpr value
+        uint32_t m_ReadbackIndices[GraphicsConfig::g_ReadbackLatency];
 
         GpuProfileNode()
         {
-            m_ReadbackIndices.fill(ms_InvalidReadbackIndex);
+            std::ranges::fill(m_ReadbackIndices, ms_InvalidReadbackIndex);
         }
     };
 
@@ -31,7 +30,6 @@ namespace benzin
         explicit GpuProfiler(Device& device);
         ~GpuProfiler();
 
-    public:
         const GpuProfileNode* GetRootNode() const;
 
         void BeginFrame(uint64_t cpuFrameIndex);
@@ -59,8 +57,8 @@ namespace benzin
         uint32_t m_WriteIndex = 1;
         uint32_t m_ReadIndex = 0;
 
-        IndexAllocator m_ReadbackIndexAllocator{ ms_MaxEventCount };
-        std::bitset<ms_MaxTimestampCount> m_IsTimestampProfiled;
+        uint32_t m_ReadbackIndexOffset = 0;
+        std::bitset<ms_MaxTimestampCount> m_ProfiledTimestamps;
     };
 
     class ScopedGpuProfileEvent

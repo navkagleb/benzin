@@ -1,6 +1,7 @@
 #pragma once
 
 #include <benzin/core/buffer_writer.hpp>
+#include <benzin/graphics/format.hpp>
 
 namespace benzin
 {
@@ -119,7 +120,7 @@ namespace benzin
         Device& m_Device;
 
         std::unique_ptr<GpuHeap> m_GpuHeap;
-        std::vector<std::unique_ptr<Buffer>> m_FrameBuffers;
+        std::unique_ptr<Buffer> m_FrameBuffers[GraphicsConfig::g_FrameInFlightCount];
 
         Buffer* m_FrameBuffer = nullptr;
         BufferWriter m_FrameBufferWriter;

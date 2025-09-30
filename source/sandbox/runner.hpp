@@ -8,19 +8,8 @@
 namespace benzin
 {
     class Backend;
-    class Device;
-    class Event;
     class GpuProfiler;
-    class ImGuiManager;
-    class PsoManager;
-    class RayTracing_Scene;
-    class RenderPass;
-    class RenderResources;
-    class RenderSettings;
-    class Scene;
     class ShaderManager;
-    class SwapChain;
-    class Window;
 }
 
 namespace sandbox

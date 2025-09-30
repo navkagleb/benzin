@@ -1,6 +1,7 @@
 #pragma once
 
 #include "benzin/graphics/render_states.hpp"
+#include "benzin/graphics/format.hpp"
 
 namespace benzin
 {

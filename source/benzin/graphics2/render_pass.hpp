@@ -8,7 +8,6 @@ namespace benzin
 
     class Buffer;
     class Device;
-    class GpuProfiler;
     class PsoManager;
     class RayTracing_Scene;
     class Scene;
@@ -166,11 +165,9 @@ namespace benzin
         RenderPass() = default;
         virtual ~RenderPass() = default;
 
-    public:
         static void SetContext(
             Device& device,
             SwapChain& swapChain,
-            GpuProfiler& gpuProfiler,
             PsoManager& psoManager,
             RenderResources& resources,
             RenderSettings& settings,
@@ -197,7 +194,6 @@ namespace benzin
     protected:
         static inline Device* ms_Device = nullptr;
         static inline SwapChain* ms_SwapChain = nullptr;
-        static inline GpuProfiler* ms_GpuProfiler = nullptr;
         static inline PsoManager* ms_PsoManager = nullptr;
         static inline RenderResources* ms_Resources = nullptr;
         static inline RenderSettings* ms_Settings = nullptr;

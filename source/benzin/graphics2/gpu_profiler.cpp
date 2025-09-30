@@ -37,7 +37,7 @@ namespace benzin
         {
             creation.DebugName = "GpuProfiler::ReadbackBuffer";
             creation.ElementSizeInBytes = sizeof(uint64_t) * ms_MaxTimestampCount;
-            creation.ElementCount = CmdLineArgs::GetReadbackLatency();
+            creation.ElementCount = GraphicsConfig::g_ReadbackLatency;
         });
 
         m_Root.m_Name = "Root";
@@ -76,8 +76,8 @@ namespace benzin
                 CopyNodeDurationRecursive(m_Root, timestamps);
             });
 
-        m_WriteIndex = cpuFrameIndex % CmdLineArgs::GetReadbackLatency();
-        m_ReadIndex = (cpuFrameIndex + 1) % CmdLineArgs::GetReadbackLatency();
+        m_WriteIndex = cpuFrameIndex % GraphicsConfig::g_ReadbackLatency;
+        m_ReadIndex = (cpuFrameIndex + 1) % GraphicsConfig::g_ReadbackLatency;
     }
 
     void GpuProfiler::EndFrame()
@@ -86,8 +86,8 @@ namespace benzin
 
         BenzinAssert(m_NodeStack.top() == &m_Root);
 
-        m_ReadbackIndexAllocator.Reset();
-        m_IsTimestampProfiled.reset();
+        m_ReadbackIndexOffset = 0;
+        m_ProfiledTimestamps.reset();
     }
 
     void GpuProfiler::ResolveTimestamps(ComputeCmdList& cmdList)
@@ -96,7 +96,7 @@ namespace benzin
 
         for (uint32_t i = 0; i < ms_MaxTimestampCount; ++i)
         {
-            if (!m_IsTimestampProfiled[i])
+            if (!m_ProfiledTimestamps.test(i))
             {
                 cmdList.SetTimestamp(*m_TimestampQueryHeap, i);
             }
@@ -147,7 +147,8 @@ namespace benzin
         GpuProfileNode* node = parent->GetAndUpdateChild(name);
 
         BenzinAssert(node->m_ReadbackIndices[m_WriteIndex] == GpuProfileNode::ms_InvalidReadbackIndex);
-        node->m_ReadbackIndices[m_WriteIndex] = m_ReadbackIndexAllocator.AllocateIndex();
+        BenzinAssert(m_ReadbackIndexOffset < ms_MaxTimestampCount / 2);
+        node->m_ReadbackIndices[m_WriteIndex] = m_ReadbackIndexOffset++;
 
         return node;
     }
@@ -166,7 +167,7 @@ namespace benzin
         const uint32_t timestampIndex = m_Node->m_ReadbackIndices[ms_GpuProfiler->m_WriteIndex] * 2;
 
         ms_Device->GetGraphicsCmdQueue().GetCmdList().SetTimestamp(*ms_GpuProfiler->m_TimestampQueryHeap, timestampIndex);
-        ms_GpuProfiler->m_IsTimestampProfiled[timestampIndex] = true;
+        ms_GpuProfiler->m_ProfiledTimestamps.set(timestampIndex);
     }
 
     ScopedGpuProfileEvent::~ScopedGpuProfileEvent()
@@ -177,7 +178,7 @@ namespace benzin
         const uint32_t timestampIndex = m_Node->m_ReadbackIndices[ms_GpuProfiler->m_WriteIndex] * 2 + 1;
 
         ms_Device->GetGraphicsCmdQueue().GetCmdList().SetTimestamp(*ms_GpuProfiler->m_TimestampQueryHeap, timestampIndex);
-        ms_GpuProfiler->m_IsTimestampProfiled[timestampIndex] = true;
+        ms_GpuProfiler->m_ProfiledTimestamps.set(timestampIndex);
 
         BenzinAssert(ms_GpuProfiler->m_NodeStack.top() == m_Node);
         ms_GpuProfiler->m_NodeStack.pop();

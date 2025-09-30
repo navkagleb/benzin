@@ -13,7 +13,6 @@
 #include "benzin/graphics/cmd_queue.hpp"
 #include "benzin/graphics/device.hpp"
 #include "benzin/graphics/gpu_heap.hpp"
-#include "benzin/graphics/ray_tracing_acceleration_structures.hpp"
 
 namespace benzin
 {
@@ -21,9 +20,7 @@ namespace benzin
     RayTracing_Scene::RayTracing_Scene(Device& device, Scene& scene)
         : m_Device{ device }
         , m_Scene{ scene }
-    {
-        m_Tlases.resize(CmdLineArgs::GetFrameInFlightCount());
-    }
+    {}
 
     RayTracing_Scene::~RayTracing_Scene()
     {

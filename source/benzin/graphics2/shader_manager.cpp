@@ -2,6 +2,7 @@
 #include "benzin/graphics2/shader_manager.hpp"
 
 #include "benzin/core/cmd_line_args.hpp"
+#include "benzin/core/profiler.hpp"
 #include "benzin/utility/time_utils.hpp"
 
 namespace benzin
@@ -37,7 +38,7 @@ namespace benzin
     {
         WriteToFile(paths.DxilFilePath, compiledShader.DxilBlob);
 
-        if (GraphicsConfig::IsShaderSymbolsEnabled())
+        if constexpr (GraphicsConfig::g_IsShaderSymbolsEnabled)
         {
             BenzinAssert(!compiledShader.PdbBlob.empty());
             WriteToFile(paths.PdbFilePath, compiledShader.PdbBlob);
@@ -195,6 +196,8 @@ namespace benzin
 
     void ShaderManager::CheckForNewShader()
     {
+        BenzinProfile();
+
         std::lock_guard guard{ m_NewShaderMutex };
 
         if (IsNewShaderAvailable() && m_NewShaderAvailableCallback)
@@ -208,6 +211,8 @@ namespace benzin
 
     bool ShaderManager::CompareWithNewShader(const ShaderInfo& shader)
     {
+        BenzinProfile();
+
         BenzinAssert(IsNewShaderAvailable());
         BenzinAssert(shader.IsValid());
 
@@ -346,6 +351,8 @@ namespace benzin
 
     bool ShaderManager::IsNewShaderAvailable() const
     {
+        BenzinProfile();
+
         if (m_NewShader.empty())
         {
             return false;
@@ -375,6 +382,8 @@ namespace benzin
 
     void ShaderManager::FileWatcherCallback(std::filesystem::path&& filePath)
     {
+        BenzinProfile();
+
         const std::lock_guard lock{ m_NewShaderMutex };
 
         BenzinAssert(m_NewShader.empty() || m_NewShader == filePath); // TODO: equal?

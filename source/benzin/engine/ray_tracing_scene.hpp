@@ -1,5 +1,7 @@
 #pragma once
 
+#include <benzin/graphics/ray_tracing_acceleration_structures.hpp>
+
 namespace benzin
 {
 
@@ -27,7 +29,7 @@ namespace benzin
         Device& m_Device;
         Scene& m_Scene;
 
-        std::vector<RayTracing_Tlas> m_Tlases;
+        RayTracing_Tlas m_Tlases[GraphicsConfig::g_FrameInFlightCount] = {};
     };
 
 }

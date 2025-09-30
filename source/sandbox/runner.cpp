@@ -78,7 +78,6 @@ namespace sandbox
         benzin::RenderPass::SetContext(
             *m_Device,
             *m_SwapChain,
-            *m_GpuProfiler,
             *m_PsoManager,
             *m_RenderResources,
             *m_RenderSettings,

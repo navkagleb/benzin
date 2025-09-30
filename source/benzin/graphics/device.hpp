@@ -1,6 +1,7 @@
 #pragma once
 
 #include <benzin/graphics/descriptor_manager.hpp>
+#include <benzin/graphics/format.hpp>
 
 namespace benzin
 {
@@ -53,10 +54,9 @@ namespace benzin
         auto& GetTemporalLinearAllocator() { return *m_TemporalLinearAllocators[m_ActiveFrameIndex]; }
         auto& GetPersistentDefaultLinearAllocator() { return *m_PersistentDefaultLinearAllocator; }
         auto& GetPersistentReadbackLinearAllocator() { return *m_PersistentReadbackLinearAllocator; }
+        const auto& GetPrevTemporalLinearBufferAllocator() const { return *m_TemporalLinearAllocators[(m_ActiveFrameIndex + 1) % GraphicsConfig::g_FrameInFlightCount]; }
 
         auto& GetConstBufferAllocator() { return *m_ConstBufferAllocator; }
-
-        const GpuHeapLinearBufferAllocator& GetPrevTemporalLinearBufferAllocator() const;
 
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
@@ -88,8 +88,8 @@ namespace benzin
         std::unique_ptr<GraphicsCmdQueue> m_GraphicsCmdQueue;
         std::unique_ptr<Fence> m_FrameFence;
 
-        std::vector<std::unique_ptr<GpuHeap>> m_TemporalHeaps;
-        std::vector<std::unique_ptr<GpuHeapLinearBufferAllocator>> m_TemporalLinearAllocators;
+        std::unique_ptr<GpuHeap> m_TemporalHeaps[GraphicsConfig::g_FrameInFlightCount];
+        std::unique_ptr<GpuHeapLinearBufferAllocator> m_TemporalLinearAllocators[GraphicsConfig::g_FrameInFlightCount];
 
         std::unique_ptr<GpuHeap> m_PersistentDefaultHeap;
         std::unique_ptr<GpuHeap> m_PersistentReadbackHeap;

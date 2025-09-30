@@ -2,6 +2,7 @@
 
 #include "benzin/graphics/common.hpp"
 #include "benzin/graphics/shader.hpp"
+#include "benzin/graphics/format.hpp"
 
 namespace benzin
 {

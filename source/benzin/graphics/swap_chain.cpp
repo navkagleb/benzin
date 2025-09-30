@@ -53,7 +53,7 @@ namespace benzin
             .Stereo = false,
             .SampleDesc{ 1, 0 },
             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-            .BufferCount = CmdLineArgs::GetFrameInFlightCount(),
+            .BufferCount = GraphicsConfig::g_FrameInFlightCount,
             .Scaling = DXGI_SCALING_STRETCH,
             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
             .AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED,
@@ -77,7 +77,6 @@ namespace benzin
             creation.m_Window.GetWin64Window(),
             DXGI_MWA_NO_ALT_ENTER));
 
-        m_BackBuffers.resize(CmdLineArgs::GetFrameInFlightCount());
         RegisterBackBuffers();
     }
 

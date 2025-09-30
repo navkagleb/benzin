@@ -1,6 +1,7 @@
 #pragma once
 
-#include "benzin/graphics/common.hpp"
+#include <benzin/graphics/common.hpp>
+#include <benzin/graphics/format.hpp>
 
 namespace joint
 {

@@ -277,7 +277,6 @@ namespace benzin
     void RenderPass::SetContext(
         Device& device,
         SwapChain& swapChain,
-        GpuProfiler& gpuProfiler,
         PsoManager& psoManager,
         RenderResources& resources,
         RenderSettings& settings,
@@ -289,7 +288,6 @@ namespace benzin
     {
         ms_Device = &device;
         ms_SwapChain = &swapChain;
-        ms_GpuProfiler = &gpuProfiler;
         ms_PsoManager = &psoManager;
         ms_Resources = &resources;
         ms_Settings = &settings;

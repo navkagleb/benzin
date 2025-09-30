@@ -31,15 +31,15 @@ namespace benzin
     private:
         struct FrameContext
         {
-            ID3D12CommandAllocator* D3D12CommandAllocator;
-            std::vector<std::unique_ptr<Buffer>> UploadBuffers;
+            ID3D12CommandAllocator* m_D3D12CommandAllocator = nullptr;
+            std::vector<std::unique_ptr<Buffer>> m_UploadBuffers;
         };
 
         Device& m_Device;
 
         ID3D12CommandQueue* m_D3D12CommandQueue = nullptr;
 
-        std::vector<FrameContext> m_FrameContexts;
+        FrameContext m_FrameContexts[GraphicsConfig::g_FrameInFlightCount] = {};
         GraphicsCmdList m_CmdList;
 
         std::unique_ptr<Fence> m_FlushFence;

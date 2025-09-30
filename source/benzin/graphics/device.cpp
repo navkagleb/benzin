@@ -55,10 +55,7 @@ namespace benzin
         MakeUniquePtr(m_GraphicsCmdQueue, *this);
         MakeUniquePtr(m_FrameFence, *this, FenceCreation{ "FrameFence", m_CompletedGpuFrameIndex });
 
-        m_TemporalHeaps.resize(CmdLineArgs::GetFrameInFlightCount());
-        m_TemporalLinearAllocators.resize(CmdLineArgs::GetFrameInFlightCount());
-        
-        for (uint32_t i = 0; i < CmdLineArgs::GetFrameInFlightCount(); ++i)
+        for (uint32_t i = 0; i < GraphicsConfig::g_FrameInFlightCount; ++i)
         {
             MakeUniquePtr(m_TemporalHeaps[i], *this, GpuHeapCreation
             {
@@ -83,8 +80,6 @@ namespace benzin
     {
         BenzinLogTimeOnScopeExit("Device::~Device");
 
-        m_GraphicsCmdQueue->Flush();
-
         m_ConstBufferAllocator.reset();
 
         m_PersistentReadbackLinearAllocator.reset();
@@ -93,7 +88,7 @@ namespace benzin
         m_PersistentReadbackHeap.reset();
         m_PersistentDefaultHeap.reset();
 
-        for (uint32_t i = 0; i < CmdLineArgs::GetFrameInFlightCount(); ++i)
+        for (uint32_t i = 0; i < GraphicsConfig::g_FrameInFlightCount; ++i)
         {
             m_TemporalLinearAllocators[i].reset();
             m_TemporalHeaps[i].reset();
@@ -110,11 +105,6 @@ namespace benzin
 
         // TODO: There is reference count due to implicit heaps of resources
         SafeReleaseD3DObject(m_D3D12Device);
-    }
-
-    const GpuHeapLinearBufferAllocator& Device::GetPrevTemporalLinearBufferAllocator() const
-    {
-        return *m_TemporalLinearAllocators[(m_ActiveFrameIndex + 1) % CmdLineArgs::GetFrameInFlightCount()];
     }
 
     uint8_t Device::GetPlaneCountFromFormat(GraphicsFormat format) const
@@ -209,13 +199,13 @@ namespace benzin
 
         m_CompletedGpuFrameIndex = m_FrameFence->GetCompletedValue();
 
-        if (m_CpuFrameIndex - m_CompletedGpuFrameIndex < CmdLineArgs::GetFrameInFlightCount())
+        if (m_CpuFrameIndex - m_CompletedGpuFrameIndex < GraphicsConfig::g_FrameInFlightCount)
             return;
 
         {
             BenzinScopeProfile("Device::WaitForGpu");
 
-            const uint64_t gpuFrameIndexToWait = m_CpuFrameIndex - CmdLineArgs::GetFrameInFlightCount() + 1;
+            const uint64_t gpuFrameIndexToWait = m_CpuFrameIndex - GraphicsConfig::g_FrameInFlightCount + 1;
             m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
         }
 

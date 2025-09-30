@@ -131,33 +131,33 @@ namespace benzin
     {
         MakeUniquePtr(m_CpuRtvHeap, m_Device, DescriptorHeapCreation
         {
-            .DebugName = "DescriptorHeap_CpuRtv",
+            .DebugName = "DescriptorHeap::CpuRtv",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-            .MaxDescriptorCount = GraphicsConfig::GetMaxRtvDescriptorCount(),
+            .MaxDescriptorCount = GraphicsConfig::g_MaxRtvDescriptorCount,
             .IsShaderVisible = false,
         });
 
         MakeUniquePtr(m_CpuDsvHeap, m_Device, DescriptorHeapCreation
         {
-            .DebugName = "DescriptorHeap_CpuDsv",
+            .DebugName = "DescriptorHeap::CpuDsv",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-            .MaxDescriptorCount = GraphicsConfig::GetMaxDsvDescriptorCount(),
+            .MaxDescriptorCount = GraphicsConfig::g_MaxDsvDescriptorCount,
             .IsShaderVisible = false,
         });
 
         MakeUniquePtr(m_CpuResourceHeap, m_Device, DescriptorHeapCreation
         {
-            .DebugName = "DescriptorHeap_CpuResource",
+            .DebugName = "DescriptorHeap::CpuResource",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            .MaxDescriptorCount = GraphicsConfig::GetMaxResourceDescriptorCount(),
+            .MaxDescriptorCount = GraphicsConfig::g_MaxResourceDescriptorCount,
             .IsShaderVisible = false,
         });
 
         MakeUniquePtr(m_GpuResourceHeap, m_Device, DescriptorHeapCreation
         {
-            .DebugName = "DescriptorHeap_GpuResource",
+            .DebugName = "DescriptorHeap::GpuResource",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            .MaxDescriptorCount = GraphicsConfig::GetMaxResourceDescriptorCount(),
+            .MaxDescriptorCount = GraphicsConfig::g_MaxResourceDescriptorCount,
             .IsShaderVisible = true,
         });
     }

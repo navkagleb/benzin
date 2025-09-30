@@ -49,7 +49,6 @@ namespace benzin
 
     static uint32_t g_AdapterIndex = g_Bad32;
     static std::string_view g_AdapterName;
-    static uint32_t g_FrameInFlightCount = 3;
     static GraphicsFormat g_BackBufferFormat = GraphicsFormat::Rgba8Unorm;
     static bool g_IsGpuUploadHeapsEnabled = true;
 
@@ -101,7 +100,6 @@ namespace benzin
 
             { "-adapter_index:", &g_AdapterIndex, ParseU32 },
             { "-adapter_name:", &g_AdapterName, ParseStringView },
-            { "-frame_in_flight_count:", &g_FrameInFlightCount, ParseU32 },
             { "-no_gpu_upload_heaps", &g_IsGpuUploadHeapsEnabled, SetFalseIfExists },
 
             { "-no_gpu_based_validation", &g_IsGpuValidationEnabled, SetFalseIfExists },
@@ -138,8 +136,6 @@ namespace benzin
     BenzinImplCmdLineArg(IsNvApiWrapperEnabled, g_IsNvApiWrapperEnabled)
     BenzinImplCmdLineArg(GetAdapterIndex, g_AdapterIndex)
     BenzinImplCmdLineArg(GetAdapterName, g_AdapterName)
-    BenzinImplCmdLineArg(GetFrameInFlightCount, g_FrameInFlightCount)
-    BenzinImplCmdLineArg(GetReadbackLatency, g_FrameInFlightCount + 1)
     BenzinImplCmdLineArg(GetBackBufferFormat, g_BackBufferFormat)
     BenzinImplCmdLineArg(IsGpuUploadHeapsEnabled, g_IsGpuUploadHeapsEnabled)
     BenzinImplCmdLineArg(IsGpuValidationEnabled, g_IsGpuValidationEnabled)

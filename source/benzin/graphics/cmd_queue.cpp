@@ -30,10 +30,9 @@ namespace benzin
         BenzinD3D12Call(device.GetD3D12Device()->CreateCommandQueue(&d3d12CommandQueueDesc, IID_PPV_ARGS(&m_D3D12CommandQueue)));
         SetD3DObjectDebugName(m_D3D12CommandQueue, "GraphicsCmdQueue");
 
-        m_FrameContexts.resize(CmdLineArgs::GetFrameInFlightCount());
-        for (const auto [i, frameContext] : m_FrameContexts | std::views::enumerate)
+        for (uint32_t i = 0; i < GraphicsConfig::g_FrameInFlightCount; ++i)
         {
-            auto*& d3d12CommandAllocator = frameContext.D3D12CommandAllocator;
+            auto*& d3d12CommandAllocator = m_FrameContexts[i].m_D3D12CommandAllocator;
 
             BenzinD3D12Call(device.GetD3D12Device()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&d3d12CommandAllocator)));
             SetD3DObjectDebugName(d3d12CommandAllocator, std::format("GraphicsCommandAllocator{}", i));
@@ -50,10 +49,8 @@ namespace benzin
     {
         for (auto& frameContext : m_FrameContexts)
         {
-            SafeReleaseD3DObject(frameContext.D3D12CommandAllocator);
+            SafeReleaseD3DObject(frameContext.m_D3D12CommandAllocator);
         }
-
-        m_FrameContexts.clear();
 
         SafeReleaseD3DObject(m_D3D12CommandQueue);
     }
@@ -62,7 +59,7 @@ namespace benzin
     {
         if (uploadBufferSizeInBytes != 0)
         {
-            auto& uploadBuffers = m_FrameContexts[m_Device.GetActiveFrameIndex()].UploadBuffers;
+            auto& uploadBuffers = m_FrameContexts[m_Device.GetActiveFrameIndex()].m_UploadBuffers;
 
             auto& uploadBuffer = uploadBuffers.emplace_back();
             MakeUniquePtr(uploadBuffer, m_Device, BufferCreation
@@ -94,10 +91,10 @@ namespace benzin
 
         auto& frameContext = m_FrameContexts[m_Device.GetActiveFrameIndex()];
 
-        auto* d3d12CommandAllocator = frameContext.D3D12CommandAllocator;
+        auto* d3d12CommandAllocator = frameContext.m_D3D12CommandAllocator;
         BenzinD3D12Call(d3d12CommandAllocator->Reset());
 
-        frameContext.UploadBuffers.clear();
+        frameContext.m_UploadBuffers.clear();
 
         ID3D12GraphicsCommandList1* d3d12GraphicsCommandList = m_CmdList.GetD3D12GraphicsCommandList();
         BenzinD3D12Call(d3d12GraphicsCommandList->Reset(d3d12CommandAllocator, nullptr));

@@ -41,9 +41,9 @@ namespace benzin
             compileArgs.push_back(GraphicsConfig::GetShaderSourceDir().c_str());
 
             // Optimizations
-            compileArgs.push_back(GraphicsConfig::IsShaderDebugEnabled() ? DXC_ARG_SKIP_OPTIMIZATIONS : DXC_ARG_OPTIMIZATION_LEVEL3);
+            compileArgs.push_back(GraphicsConfig::g_IsShaderDebugEnabled ? DXC_ARG_SKIP_OPTIMIZATIONS : DXC_ARG_OPTIMIZATION_LEVEL3);
 
-            if (GraphicsConfig::IsShaderSymbolsEnabled())
+            if constexpr (GraphicsConfig::g_IsShaderSymbolsEnabled)
             {
                 compileArgs.push_back(DXC_ARG_DEBUG); // Generate symbols
 
@@ -285,7 +285,7 @@ namespace benzin
             outCompiledShader.DxilBlob.assign(data, data + size);
         }
 
-        if (GraphicsConfig::IsShaderSymbolsEnabled())
+        if constexpr (GraphicsConfig::g_IsShaderSymbolsEnabled)
         {
             ComPtr<IDxcBlob> dxcDebugBlob;
             BenzinD3D12Call(dxcResult->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&dxcDebugBlob), nullptr));

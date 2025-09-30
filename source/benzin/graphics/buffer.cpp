@@ -49,7 +49,7 @@ namespace benzin
             }
             case BufferType::Const:
             {
-                BenzinEnsure(creation.ElementSizeInBytes % GraphicsConfig::GetConstBufferAlignmentInBytes() == 0);
+                BenzinEnsure(creation.ElementSizeInBytes % GraphicsConfig::g_ConstBufferAlignmentInBytes == 0);
                 break;
             }
             case BufferType::Structured:
@@ -58,11 +58,11 @@ namespace benzin
                 // Ref: https://developer.nvidia.com/content/understanding-structured-buffer-performance
 
                 BenzinWarningIf(
-                    creation.ElementSizeInBytes % GraphicsConfig::GetStructuredBufferAlignmentInBytes() != 0,
+                    creation.ElementSizeInBytes % GraphicsConfig::g_StructuredBufferAlignmentInBytes != 0,
                     "Buffer '{}' is not properly aligned. BufferElementSize: {}, StructuredBufferAlignment: {}",
                     creation.DebugName,
                     creation.ElementSizeInBytes,
-                    GraphicsConfig::GetStructuredBufferAlignmentInBytes()
+                    GraphicsConfig::g_StructuredBufferAlignmentInBytes
                 );
 
                 break;
