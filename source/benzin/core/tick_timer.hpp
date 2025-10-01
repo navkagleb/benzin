@@ -20,13 +20,15 @@ namespace benzin
         void Tick();
 
     private:
-        std::chrono::high_resolution_clock::time_point m_CurrentTimePoint{};
-        std::chrono::high_resolution_clock::time_point m_PreviousTimePoint{};
+        using Clock = std::chrono::high_resolution_clock;
 
-        std::chrono::microseconds m_DeltaTime{};
+        Clock::time_point m_CurrentTimePoint = {};
+        Clock::time_point m_PreviousTimePoint = {};
+
+        std::chrono::microseconds m_DeltaTime = {};
         float m_ElapsedTimeInMs = 0.0f;
 
         bool m_IsPaused = false;
     };
 
-} // namespace benzin
+}

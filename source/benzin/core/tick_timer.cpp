@@ -27,7 +27,6 @@ namespace benzin
 
         if (!m_IsPaused)
         {
-            // Reset the previous time point
             m_PreviousTimePoint = std::chrono::high_resolution_clock::now();
         }
     }
@@ -40,10 +39,8 @@ namespace benzin
     void TickTimer::Tick()
     {
         if (m_IsPaused)
-        {
             return;
-        }
-
+    
         m_CurrentTimePoint = std::chrono::high_resolution_clock::now();
 
         m_DeltaTime = ToUs(m_CurrentTimePoint - std::exchange(m_PreviousTimePoint, m_CurrentTimePoint));;
@@ -55,4 +52,4 @@ namespace benzin
         m_ElapsedTimeInMs += benzin::ToFloatMs(m_DeltaTime);
     }
 
-} // namespace benzin
+}

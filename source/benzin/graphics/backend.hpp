@@ -3,41 +3,43 @@
 namespace benzin
 {
 
-    enum class AdapterVendorType
+    enum class AdapterVendorId : uint32_t
     {
-        Amd,
-        Nvidia,
-        Other,
+        Amd = 0x1002,
+        Nvidia = 0x10DE,
+        Other = g_Bad32,
     };
 
     struct AdapterInfo
     {
-        std::string Name;
+        std::string m_Name;
 
-        AdapterVendorType VendorType = AdapterVendorType::Other;
-        uint32_t DeviceId = g_Bad32;
+        uint32_t m_VendorId = g_Bad32;
+        uint32_t m_DeviceId = g_Bad32;
 
-        uint64_t TotalLocalVramInBytes = 0;
-        uint64_t TotalHostVramInBytes = 0;
+        uint64_t m_TotalLocalVramInBytes = 0;
+        uint64_t m_TotalHostVramInBytes = 0;
 
-        bool IsAmd() const { return VendorType == AdapterVendorType::Amd ;}
-        bool IsNvidia() const { return VendorType == AdapterVendorType::Nvidia; }
-        bool IsOther() const { return VendorType == AdapterVendorType::Other; }
+        uint32_t m_GpuCoreCount = g_Bad32;
+
+        bool IsAmd() const { return m_VendorId == (uint32_t)AdapterVendorId::Amd ;}
+        bool IsNvidia() const { return m_VendorId == (uint32_t)AdapterVendorId::Nvidia; }
+        bool IsOther() const { return m_VendorId == (uint32_t)AdapterVendorId::Other; }
     };
 
     struct AdapterMemoryInfo
     {
         // Query from DXGI
-        uint64_t LocalVramBudgetInBytes = 0;
-        uint64_t UsedLocalVramInBytes = 0;
+        uint64_t m_LocalVramBudgetInBytes = 0;
+        uint64_t m_UsedLocalVramInBytes = 0;
 
-        uint64_t HostVramBudgetInBytes = 0;
-        uint64_t UsedHostVramInBytes = 0;
+        uint64_t m_HostVramBudgetInBytes = 0;
+        uint64_t m_UsedHostVramInBytes = 0;
 
         // Query from ADL or NvAPI
-        uint64_t TotalUsedVramInBytes = 0;
-        uint64_t AvailableVramInBytes = 0;
-        uint64_t AvailableVramRelativeToOsBudgetInBytes = 0;
+        uint64_t m_TotalUsedVramInBytes = 0;
+        uint64_t m_AvailableVramInBytes = 0;
+        uint64_t m_AvailableVramRelativeToOsBudgetInBytes = 0;
     };
 
     class Backend

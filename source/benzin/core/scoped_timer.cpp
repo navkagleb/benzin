@@ -8,7 +8,7 @@ namespace benzin
 
     static void LogScopeTime(std::string_view scopeName, std::chrono::microseconds time)
     {
-        BenzinTrace("Scope '{}' takes {:.3f}ms, {:.3f}s", scopeName, ToFloatMs(time), ToFloatSec(time));
+        BenzinTrace("{} ({:.3f}ms)", scopeName, ToFloatMs(time), ToFloatSec(time));
     }
 
     static void GrabScopeTime(std::chrono::microseconds time, std::chrono::microseconds& outTime)

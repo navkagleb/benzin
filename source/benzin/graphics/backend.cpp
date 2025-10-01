@@ -1,14 +1,14 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/backend.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/backend.hpp>
 
-#include "benzin/core/cmd_line_args.hpp"
-#include "benzin/core/logger.hpp"
-#include "benzin/graphics/adl_wrapper.hpp"
-#include "benzin/graphics/d3d12_utils.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/d3d12_assert.hpp"
-#include "benzin/graphics/nvapi_wrapper.hpp"
-#include "benzin/graphics/pix_capturer.hpp"
+#include <benzin/core/cmd_line_args.hpp>
+#include <benzin/core/logger.hpp>
+#include <benzin/graphics/adl_wrapper.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/nvapi_wrapper.hpp>
+#include <benzin/graphics/pix_capturer.hpp>
 
 // DirectX Agile SDK
 // Ref: https://devblogs.microsoft.com/directx/gettingstarted-dx12agility/
@@ -20,18 +20,6 @@ extern "C"
 
 namespace benzin
 {
-
-    static AdapterVendorType AdapterVendorIdToType(uint32_t vendorId)
-    {
-        switch (vendorId)
-        {
-            case 0x1002:
-            case 0x1022: return AdapterVendorType::Amd;
-            case 0x10DE: return AdapterVendorType::Nvidia;
-        }
-
-        return AdapterVendorType::Other;
-    }
 
     Backend::Backend()
     {
@@ -47,9 +35,14 @@ namespace benzin
 
         const AdapterInfo& mainAdapterInfo = GetMainAdapterInfo();
         BenzinTrace("Selected Adapter:");
-        BenzinTrace("{}", m_AdaptersInfo[m_MainAdapterIndex].Name);
-        BenzinTrace("Local VRAM: {:.2f} mb, {:.2f} gb", ToMb(mainAdapterInfo.TotalLocalVramInBytes), ToGb(mainAdapterInfo.TotalLocalVramInBytes));
-        BenzinTrace("Host VRAM: {:.2f} mb, {:.2f} gb", ToMb(mainAdapterInfo.TotalHostVramInBytes), ToGb(mainAdapterInfo.TotalHostVramInBytes));
+        BenzinTrace("  {}", m_AdaptersInfo[m_MainAdapterIndex].m_Name);
+        BenzinTrace("  Local VRAM: {:.2f} mb, {:.2f} gb", ToMb(mainAdapterInfo.m_TotalLocalVramInBytes), ToGb(mainAdapterInfo.m_TotalLocalVramInBytes));
+        BenzinTrace("  Host VRAM: {:.2f} mb, {:.2f} gb", ToMb(mainAdapterInfo.m_TotalHostVramInBytes), ToGb(mainAdapterInfo.m_TotalHostVramInBytes));
+
+        if (mainAdapterInfo.m_GpuCoreCount != g_Bad32)
+        {
+            BenzinTrace("  GPU Core Count: {}", AdlWrapper::GetGpuCoreCount());
+        }
     }
 
     Backend::~Backend()
@@ -59,9 +52,9 @@ namespace benzin
 #if BENZIN_IS_ASSERTS_ENABLED
         if (!CmdLineArgs::IsPixCapturerEnabled())
         {
-            const auto adapterMemoryInfo = GetMainAdapterMemoryInfo();
-            BenzinAssert(adapterMemoryInfo.UsedLocalVramInBytes == 0, "Used Local VRAM: {} mb", ToMb(adapterMemoryInfo.UsedLocalVramInBytes));
-            BenzinAssert(adapterMemoryInfo.UsedHostVramInBytes == 0, "Used Host VRAM: {} mb", ToMb(adapterMemoryInfo.UsedHostVramInBytes));
+            const AdapterMemoryInfo adapterMemoryInfo = GetMainAdapterMemoryInfo();
+            BenzinAssert(adapterMemoryInfo.m_UsedLocalVramInBytes == 0, "Used Local VRAM: {} mb", ToMb(adapterMemoryInfo.m_UsedLocalVramInBytes));
+            BenzinAssert(adapterMemoryInfo.m_UsedHostVramInBytes == 0, "Used Host VRAM: {} mb", ToMb(adapterMemoryInfo.m_UsedHostVramInBytes));
         }
 #endif
 
@@ -100,21 +93,20 @@ namespace benzin
         uint64_t vendorTotalUsedVramInBytes = g_Bad64;
         if (AdlWrapper::IsAvailable() && adapterInfo.IsAmd())
         {
-            vendorTotalUsedVramInBytes = AdlWrapper::GetUsedDedicatedVramInBytes(adapterInfo.DeviceId);
+            vendorTotalUsedVramInBytes = AdlWrapper::GetUsedDedicatedVramInBytes();
         }
         else if (NvApiWrapper::IsAvailable() && adapterInfo.IsNvidia())
         {
 #if BENZIN_IS_ASSERTS_ENABLED
-            const uint64_t totalVramInBytes = NvApiWrapper::GetTotalDedicatedVramInBytes(adapterInfo.DeviceId);
+            const uint64_t totalVramInBytes = NvApiWrapper::GetTotalDedicatedVramInBytes();
             BenzinAssert(
-                totalVramInBytes == adapterInfo.TotalLocalVramInBytes,\
+                totalVramInBytes == adapterInfo.m_TotalLocalVramInBytes,\
                 "DXGI Total VRAM don't equal to NvAPI Total VRAM! DXGI VRAM: {}, NvAPI VRAM: {}",
-                ToMb(adapterInfo.TotalLocalVramInBytes),
-                ToMb(totalVramInBytes)
-            );
+                ToMb(adapterInfo.m_TotalLocalVramInBytes),
+                ToMb(totalVramInBytes));
 #endif
 
-            vendorTotalUsedVramInBytes = NvApiWrapper::GetUsedDedicatedVramInBytes(adapterInfo.DeviceId);
+            vendorTotalUsedVramInBytes = NvApiWrapper::GetUsedDedicatedVramInBytes();
         }
 
         const uint64_t localVramBudgetInBytes = d3d12LocalVideoMemoryInfo.Budget;
@@ -122,13 +114,13 @@ namespace benzin
 
         return AdapterMemoryInfo
         {
-            .LocalVramBudgetInBytes = localVramBudgetInBytes,
-            .UsedLocalVramInBytes = d3d12LocalVideoMemoryInfo.CurrentUsage,
-            .HostVramBudgetInBytes = d3d12NonLocalVideoMemoryInfo.Budget,
-            .UsedHostVramInBytes = d3d12NonLocalVideoMemoryInfo.CurrentUsage,
-            .TotalUsedVramInBytes = isVendorDataValid ? vendorTotalUsedVramInBytes : 0,
-            .AvailableVramInBytes = isVendorDataValid ? adapterInfo.TotalLocalVramInBytes - vendorTotalUsedVramInBytes : 0,
-            .AvailableVramRelativeToOsBudgetInBytes =
+            .m_LocalVramBudgetInBytes = localVramBudgetInBytes,
+            .m_UsedLocalVramInBytes = d3d12LocalVideoMemoryInfo.CurrentUsage,
+            .m_HostVramBudgetInBytes = d3d12NonLocalVideoMemoryInfo.Budget,
+            .m_UsedHostVramInBytes = d3d12NonLocalVideoMemoryInfo.CurrentUsage,
+            .m_TotalUsedVramInBytes = isVendorDataValid ? vendorTotalUsedVramInBytes : 0,
+            .m_AvailableVramInBytes = isVendorDataValid ? adapterInfo.m_TotalLocalVramInBytes - vendorTotalUsedVramInBytes : 0,
+            .m_AvailableVramRelativeToOsBudgetInBytes =
                 isVendorDataValid && localVramBudgetInBytes > vendorTotalUsedVramInBytes ?
                 localVramBudgetInBytes - vendorTotalUsedVramInBytes :
                 0,
@@ -153,45 +145,50 @@ namespace benzin
         {
             ComPtr<IDXGIAdapter1> dxgiAdapter;
             if (FAILED(m_DxgiFactory->EnumAdapterByGpuPreference(adapterIndex, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&dxgiAdapter))))
-            {
                 break;
-            }
 
             DXGI_ADAPTER_DESC1 dxgiAdapterDesc{};
             BenzinD3D12Call(dxgiAdapter->GetDesc1(&dxgiAdapterDesc));
 
             if ((dxgiAdapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0 || dxgiAdapterDesc.DedicatedVideoMemory == 0)
-            {
                 continue;
-            }
 
             AdapterInfo adapterInfo
             {
-                .Name = ToNarrowString(dxgiAdapterDesc.Description),
-                .VendorType = AdapterVendorIdToType(dxgiAdapterDesc.VendorId),
-                .DeviceId = dxgiAdapterDesc.DeviceId,
-                .TotalLocalVramInBytes = dxgiAdapterDesc.DedicatedVideoMemory,
-                .TotalHostVramInBytes = dxgiAdapterDesc.SharedSystemMemory,
+                .m_Name = ToNarrowString(dxgiAdapterDesc.Description),
+                .m_VendorId = dxgiAdapterDesc.VendorId,
+                .m_DeviceId = dxgiAdapterDesc.DeviceId,
+                .m_TotalLocalVramInBytes = dxgiAdapterDesc.DedicatedVideoMemory,
+                .m_TotalHostVramInBytes = dxgiAdapterDesc.SharedSystemMemory,
             };
+
+            if (AdlWrapper::IsAvailable() && adapterInfo.IsAmd())
+            {
+                adapterInfo.m_GpuCoreCount = AdlWrapper::GetGpuCoreCount();
+            }
+            else if (NvApiWrapper::IsAvailable() && adapterInfo.IsNvidia())
+            {
+                adapterInfo.m_GpuCoreCount = NvApiWrapper::GetGpuCoreCount();
+            }
 
             BenzinTrace(
                 "Adapter {}. {}, VendorId: {}, DeviceId: {}, SubSysId: {}, RevisionId: {}",
                 adapterIndex,
-                adapterInfo.Name,
+                adapterInfo.m_Name,
                 dxgiAdapterDesc.VendorId,
                 dxgiAdapterDesc.DeviceId,
                 dxgiAdapterDesc.SubSysId,
                 dxgiAdapterDesc.Revision
             );
 
-            if (IsStringContainsCaseInsensitive(adapterInfo.Name, CmdLineArgs::GetAdapterName()))
+            if (IsStringContainsCaseInsensitive(adapterInfo.m_Name, CmdLineArgs::GetAdapterName()))
             {
                 m_MainAdapterIndex = adapterIndex;
             }
 
             IDXGIAdapter3* dxgiAdapter3 = nullptr;
             BenzinD3D12Call(dxgiAdapter->QueryInterface(IID_PPV_ARGS(&dxgiAdapter3)));
-            SetD3DObjectDebugName(dxgiAdapter3, std::format("Adapter: {}", adapterInfo.Name));
+            SetD3DObjectDebugName(dxgiAdapter3, std::format("Adapter: {}", adapterInfo.m_Name));
 
             m_DxgiAdapters.push_back(dxgiAdapter3);
             m_AdaptersInfo.push_back(std::move(adapterInfo));
