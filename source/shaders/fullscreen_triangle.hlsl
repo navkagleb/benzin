@@ -15,10 +15,10 @@ VsFullScreenTriangleOutput VsMain(uint vertexIndex : SV_VertexID)
     return CreateOutput(vertexIndex, GetFullScreenTriangleClipPosition(vertexIndex));
 }
 
-VsFullScreenTriangleOutput VsMainDepth1(uint vertexIndex : SV_VertexID)
+VsFullScreenTriangleOutput VsMainDepth0(uint vertexIndex : SV_VertexID)
 {
-    float4 clipPositionDepth1 = GetFullScreenTriangleClipPosition(vertexIndex);
-    clipPositionDepth1.z = 1.0;
+    float4 clipPositionDepth0 = GetFullScreenTriangleClipPosition(vertexIndex);
+    clipPositionDepth0.z = 0.0;
 
-    return CreateOutput(vertexIndex, clipPositionDepth1);
+    return CreateOutput(vertexIndex, clipPositionDepth0);
 }

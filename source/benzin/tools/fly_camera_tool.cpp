@@ -135,7 +135,6 @@ namespace benzin
         ImGui::EndDisabled();
 
         DrawMatrix4x4("World To View", camera->GetWorldToViewMatrix());
-        DrawFrustumPlaneTable("World frustum", camera->GetWorldFrustum());
     }
 
     void FlyCameraTool::DrawProjectionProperties()
@@ -147,22 +146,28 @@ namespace benzin
         if (camera == nullptr)
             return;
 
-        bool isMatrixUpdateNeeded = false;
-        isMatrixUpdateNeeded |= ImGui::SliderAngle("Vertical FOV", &camera->m_VerticalFovInRadians, 45.0f, 120.0f);
-        isMatrixUpdateNeeded |= ImGui::DragFloat("Near plane", &camera->m_NearPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
-        isMatrixUpdateNeeded |= ImGui::DragFloat("Far plane", &camera->m_FarPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
-
-        if (isMatrixUpdateNeeded)
         {
-            camera->UpdateViewToClipMatrix();
+            ImGui::PushItemWidth(200.0f);
+            BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
+
+            bool isMatrixUpdateNeeded = false;
+            isMatrixUpdateNeeded |= ImGui::SliderAngle("Vertical FOV", &camera->m_VerticalFovInRadians, 45.0f, 120.0f);
+            isMatrixUpdateNeeded |= ImGui::DragFloat("Near plane", &camera->m_NearPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
+            isMatrixUpdateNeeded |= ImGui::DragFloat("Far plane", &camera->m_FarPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
+
+            if (isMatrixUpdateNeeded)
+            {
+                camera->UpdateViewToClipMatrix();
+            }
+
+            ImGui::BeginDisabled();
+            ImGui::DragFloat("Aspect ratio", &camera->m_AspectRatio);
+            ImGui::DragFloat("Tan half horizontal FOV", &camera->m_TanHalfFovX);
+            ImGui::DragFloat("Tan half vertical FOV", &camera->m_TanHalfFovY);
+            ImGui::EndDisabled();
         }
 
-        ImGui::BeginDisabled();
-        ImGui::DragFloat("Aspect ratio", &camera->m_AspectRatio);
-        ImGui::EndDisabled();
-
         DrawMatrix4x4("View To Clip", camera->GetViewToClipMatrix());
-        DrawFrustumPlaneTable("View frustum", camera->GetViewFrustum());
     }
 
 }

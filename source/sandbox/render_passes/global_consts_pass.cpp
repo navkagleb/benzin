@@ -1,5 +1,5 @@
-#include "sandbox/bootstrap.hpp"
-#include "sandbox/render_passes/global_consts_pass.hpp"
+#include <sandbox/bootstrap.hpp>
+#include <sandbox/render_passes/global_consts_pass.hpp>
 
 #include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
@@ -15,8 +15,6 @@
 #include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
-BenzinEnableUnaryPlusForEnum(joint::FrustumPlane);
-
 namespace sandbox
 {
 
@@ -31,8 +29,6 @@ namespace sandbox
 
     GlobalConstsPass::~GlobalConstsPass()
     {
-        ms_Resources->Destroy(BufferId::UavStats);
-        ms_Resources->Destroy(BufferId::ReadbackStats);
     }
 
     void GlobalConstsPass::OnUpdate()
@@ -107,35 +103,24 @@ namespace sandbox
     {
         const benzin::PerspectiveCamera& camera = ms_Scene->GetCamera();
 
-        joint::CameraConsts cameraConsts
-        {
-            .WorldToView = camera.GetWorldToViewMatrix(),
-            .ViewToWorld = camera.GetViewToWorldMatrix(),
+        joint::CameraConsts cameraConsts = {};
+        cameraConsts.WorldToView = camera.GetWorldToViewMatrix();
+        cameraConsts.ViewToWorld = camera.GetViewToWorldMatrix();
+        cameraConsts.ViewToClip = camera.GetViewToClipMatrix();
+        cameraConsts.ClipToView = camera.GetClipToViewMatrix();
+        cameraConsts.WorldToClip = camera.GetWorldToClipMatrix();
+        cameraConsts.ClipToWorld = camera.GetClipToWorldMatrix();
+        cameraConsts.ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation();
+        cameraConsts.WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition());
+        cameraConsts.TanHalfFovX = camera.GetTanHalfFovX();
+        cameraConsts.TanHalfFovY = camera.GetTanHalfFovY();
+        cameraConsts.NearPlane = camera.GetNearPlane();
+        cameraConsts.FarPlane = camera.GetFarPlane();
+        cameraConsts.UvToViewScale = camera.GetUvToViewScale();
+        cameraConsts.UvToViewBias = camera.GetUvToViewBias();
+        cameraConsts.PixelToWorldScale = camera.GetPixelToWorldScale(GetRenderViewportHeight());
 
-            .ViewToClip = camera.GetViewToClipMatrix(),
-            .ClipToView = camera.GetClipToViewMatrix(),
-
-            .WorldToClip = camera.GetWorldToClipMatrix(),
-            .ClipToWorld = camera.GetClipToWorldMatrix(),
-            .ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation(),
-
-            .WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition()),
-            .PixelToWorldScale = camera.GetPixelToWorldScale(GetRenderViewportHeight()),
-
-            .UvToViewScale = camera.GetUvToViewScale(),
-            .UvToViewBias = camera.GetUvToViewBias(),
-        };
-
-        camera.GetWorldFrustum().GetPlanes(
-            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Near],
-            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Far],
-            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Right],
-            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Left],
-            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Top],
-            (DirectX::XMVECTOR*)&cameraConsts.WorldFrustumPlanes[+joint::FrustumPlane::Bottom]
-        );
-
-        if (ms_Device->GetCpuFrameIndex() != 0) [[likely]]
+        if (ms_Device->GetCpuFrameIndex() != 0) // TODO: Remove if
         {
             m_FrameConsts.PrevCamera = std::exchange(m_FrameConsts.Camera, cameraConsts);
         }

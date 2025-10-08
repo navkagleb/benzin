@@ -22,38 +22,14 @@ namespace benzin
         DirectX::XMMATRIX worldToViewMatrix = m_WorldToViewMatrix;
         worldToViewMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
 
-        const DirectX::XMMATRIX worldToClipMatrix = worldToViewMatrix * GetViewToClipMatrix();
+        const DirectX::XMMATRIX worldToClipMatrix = worldToViewMatrix * m_ViewToClipMatrix;
         return DirectX::XMMatrixInverse(nullptr, worldToClipMatrix);
-    }
-
-    DirectX::XMFLOAT2 PerspectiveCamera::GetUvToViewScale() const
-    {
-        // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
-
-        DirectX::XMFLOAT2 scale = {};
-        scale.x = m_ViewFrustum.RightSlope - m_ViewFrustum.LeftSlope;
-        scale.y = m_ViewFrustum.BottomSlope - m_ViewFrustum.TopSlope;
-
-        return scale;
-    }
-
-    DirectX::XMFLOAT2 PerspectiveCamera::GetUvToViewBias() const
-    {
-        // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
-
-        DirectX::XMFLOAT2 bias = {};
-        bias.x = m_ViewFrustum.LeftSlope;
-        bias.y = m_ViewFrustum.TopSlope;
-
-        return bias;
     }
 
     float PerspectiveCamera::GetPixelToWorldScale(uint32_t height) const
     {
-        // viewToClip[1][1] = 1.0f / std::tan(0.5f * verticalFov)
-
-        const float verticalProjectionScale = DirectX::XMVectorGetByIndex(GetViewToClipMatrix().r[1], 1);
-        const float pixelToWorldScale = 1.0f / (0.5f * (float)height * verticalProjectionScale);
+        const float scaleY = DirectX::XMVectorGetByIndex(m_ViewToClipMatrix.r[1], 1);
+        const float pixelToWorldScale = 1.0f / (0.5f * (float)height * scaleY);
 
         return pixelToWorldScale;
     }
@@ -101,33 +77,41 @@ namespace benzin
     {
         m_WorldToViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
         m_ViewToWorldMatrix = DirectX::XMMatrixInverse(nullptr, m_WorldToViewMatrix);
-
-        m_ViewFrustum.Transform(m_WorldFrustum, m_ViewToWorldMatrix);
     }
 
     void PerspectiveCamera::UpdateViewToClipMatrix()
     {
-        const float yScale = 1.0f / std::tan(m_VerticalFovInRadians * 0.5f);
-        const float xScale = yScale / m_AspectRatio;
+        m_TanHalfFovY = std::tan(m_VerticalFovInRadians * 0.5f);
+        m_TanHalfFovX = m_TanHalfFovY * m_AspectRatio;
 
+        const float scaleY = 1.0f / m_TanHalfFovY;
+        const float scaleX = 1.0f / m_TanHalfFovX;
+
+        // Use reversed-Z projection
         m_ViewToClipMatrix = DirectX::XMMATRIX
         {
-            xScale, 0.0f,   0.0f,        0.0f,
-            0.0f,   yScale, 0.0f,        0.0f,
+            scaleX, 0.0f,   0.0f,        0.0f,
+            0.0f,   scaleY, 0.0f,        0.0f,
             0.0f,   0.0f,   0.0f,        1.0f,
             0.0f,   0.0f,   m_NearPlane, 0.0f
         };
 
         m_ClipToViewMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewToClipMatrix);
 
-        // TODO: duplication
-        const DirectX::XMMATRIX viewToClipMatrixForFrustum = DirectX::XMMatrixPerspectiveFovLH(
-            m_VerticalFovInRadians,
-            m_AspectRatio,
-            m_NearPlane,
-            m_FarPlane);
+        {
+            // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
 
-        DirectX::BoundingFrustum::CreateFromMatrix(m_ViewFrustum, viewToClipMatrixForFrustum);
+            const float leftSlope = m_TanHalfFovX;
+            const float rightSlope = -m_TanHalfFovX;
+            const float topSlope = m_TanHalfFovY;
+            const float bottomSlope = -m_TanHalfFovY;
+
+            m_UvToViewScale.x = rightSlope - leftSlope;
+            m_UvToViewScale.y = bottomSlope - topSlope;
+
+            m_UvToViewBias.x = leftSlope;
+            m_UvToViewBias.y = topSlope;
+        }
     }
 
     // CameraController

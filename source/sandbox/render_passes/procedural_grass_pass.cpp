@@ -41,7 +41,7 @@ namespace sandbox
 
             outProxy.DepthState.IsEnabled = true;
             outProxy.DepthState.IsWriteEnabled = true;
-            outProxy.DepthState.ComparisonFunction = benzin::ComparisonFunction::Less;
+            outProxy.DepthState.ComparisonFunction = benzin::ComparisonFunction::Greater;
 
             outProxy.RenderTargetFormats.push_back(GBufferSettings::s_Color0Format);
             outProxy.RenderTargetFormats.push_back(GBufferSettings::s_Color1Format);

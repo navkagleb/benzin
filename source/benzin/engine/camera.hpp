@@ -10,13 +10,16 @@ namespace benzin
 
         PerspectiveCamera();
 
-        const auto& GetWorldFrustum() const { return m_WorldFrustum; }
-        const auto& GetViewFrustum() const { return m_ViewFrustum; }
-
         const auto& GetWorldToViewMatrix() const { return m_WorldToViewMatrix; }
         const auto& GetViewToWorldMatrix() const { return m_ViewToWorldMatrix; }
         const auto& GetViewToClipMatrix() const { return m_ViewToClipMatrix; }
         const auto& GetClipToViewMatrix() const { return m_ClipToViewMatrix; }
+
+        auto GetTanHalfFovX() const { return m_TanHalfFovX; }
+        auto GetTanHalfFovY() const { return m_TanHalfFovY; }
+
+        auto GetUvToViewScale() const { return m_UvToViewScale; }
+        auto GetUvToViewBias() const { return m_UvToViewBias; }
 
         const auto& GetPosition() const { return m_Position; }
         const auto& GetFrontDirection() const { return m_FrontDirection; }
@@ -26,14 +29,13 @@ namespace benzin
         auto GetVerticalFovInRadians() const { return m_VerticalFovInRadians; }
         auto GetAspectRatio() const { return m_AspectRatio; }
         auto GetNearPlane() const { return m_NearPlane; }
+        auto GetFarPlane() const { return m_FarPlane; }
 
         DirectX::XMMATRIX GetWorldToClipMatrix() const { return m_WorldToViewMatrix * GetViewToClipMatrix(); }
         DirectX::XMMATRIX GetClipToWorldMatrix() const { return DirectX::XMMatrixInverse(nullptr, GetWorldToClipMatrix()); }
 
         DirectX::XMMATRIX GetClipToWorldNoTranslation() const;
 
-        DirectX::XMFLOAT2 GetUvToViewScale() const;
-        DirectX::XMFLOAT2 GetUvToViewBias() const;
         float GetPixelToWorldScale(uint32_t height) const;
 
         void SetPosition(const DirectX::XMVECTOR& position);
@@ -46,13 +48,17 @@ namespace benzin
         void UpdateWorldToViewMatrix();
         void UpdateViewToClipMatrix();
 
-        DirectX::BoundingFrustum m_WorldFrustum;
-        DirectX::BoundingFrustum m_ViewFrustum;
-
         DirectX::XMMATRIX m_WorldToViewMatrix = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX m_ViewToWorldMatrix = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX m_ViewToClipMatrix = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX m_ClipToViewMatrix = DirectX::XMMatrixIdentity();
+
+        float m_TanHalfFovX = 0.0f;
+        float m_TanHalfFovY = 0.0f;
+        DirectX::XMFLOAT2 m_Padding0; // TODO
+
+        DirectX::XMFLOAT2 m_UvToViewScale = {};
+        DirectX::XMFLOAT2 m_UvToViewBias = {};
 
         DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, 0.0f, 1.0f };
         DirectX::XMVECTOR m_FrontDirection{ 0.0f, 0.0f, -1.0f, 1.0f };

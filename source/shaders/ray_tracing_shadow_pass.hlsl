@@ -214,7 +214,7 @@ void RayGeneration()
     const uint2 pixelPosition = DispatchRaysIndex().xy;
 
     const float depth = g_Depth[pixelPosition];
-    if (!g_FrameConsts.IsShadowsEnabled || depth == 1.0)
+    if (!g_FrameConsts.IsShadowsEnabled || depth == 0.0)
     {
         [unroll(4)]
         for (uint i = 0; i < g_FrameConsts.LightCount; ++i)

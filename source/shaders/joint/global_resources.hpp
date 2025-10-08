@@ -17,18 +17,6 @@ namespace joint
         ProceduralGrass_TriangleCount,
     };
 
-    enum class FrustumPlane
-    {
-        Near = 0,
-        Far,
-        Right,
-        Left,
-        Top,
-        Bottom,
-
-        Count,
-    };
-
     struct CameraConsts
     {
         float4x4 WorldToView;
@@ -44,11 +32,13 @@ namespace joint
         float3 WorldPosition;
         float PixelToWorldScale;
 
+        float TanHalfFovX;
+        float TanHalfFovY;
+        float NearPlane;
+        float FarPlane;
+
         float2 UvToViewScale;
         float2 UvToViewBias;
-
-        // NOTE: The frustum planes are directed outside the frustum
-        float4 WorldFrustumPlanes[(uint)FrustumPlane::Count];
     };
 
     struct FrameConsts
@@ -58,7 +48,7 @@ namespace joint
         float MinRenderDimension;
 
         uint CpuFrameIndex;
-        uint LightCount;
+        uint LightCount; // TODO: Remove
 
         uint IsRenderResolutionChanged : 1;
         uint IsShadowsEnabled : 1;
@@ -67,8 +57,9 @@ namespace joint
         float DeltaTimeInSec;
         float AnimationElapsedTimeInSec;
         float PrevAnimationElapsedTimeInSec;
+        float m_Padding0;
 
-        BenzinAlign16 CameraConsts Camera;
+        CameraConsts Camera;
         CameraConsts PrevCamera;
     };
 

@@ -209,11 +209,11 @@ groupshared Payload g_Payload;
 [NumThreads(g_AsGroupSize, 1, 1)]
 void AsMain(uint dtid : SV_DispatchThreadID)
 {
-    bool isVisible = false;
+    bool isVisible = dtid < g_PassConsts0.GrassPatchCount;
 
-    if (dtid < g_PassConsts0.GrassPatchCount)
+    if (isVisible && g_PassConsts0.IsFrustumCullingEnabled)
     {
-        isVisible = g_PassConsts0.IsFrustumCullingEnabled ? IsInFrustum(g_GrassPatches[dtid].Pos, g_PassConsts0.GrassPatchCullRadius) : true;
+        // TODO: Redo frustum culling
     }
 
     if (isVisible)

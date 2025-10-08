@@ -85,10 +85,8 @@ GBuffer FetchGBuffer(float2 uv)
 float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 {
     const float depth = g_Depth.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
-    if (depth == 1.0)
-    {
+    if (depth == 0.0)
         discard;
-    }
 
     const GBuffer gbuffer = FetchGBuffer(input.Uv);
 
