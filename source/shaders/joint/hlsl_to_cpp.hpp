@@ -5,6 +5,10 @@
 namespace joint
 {
 
+    using int2 = DirectX::XMINT2;
+    using int3 = DirectX::XMINT3;
+    using int4 = DirectX::XMINT4;
+
     using uint = uint32_t;
     using uint2 = DirectX::XMUINT2;
     using uint3 = DirectX::XMUINT3;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "joint/global_resources.hpp"
+#include "joint/gpu_print_resources.hpp"
 #include "joint/light.hpp"
 
 // To prevent matrix transposition in CPU side
@@ -33,6 +34,7 @@ ConstantBuffer<RootConstants> g_RootConstants : register(b0, space0);
 ConstantBuffer<joint::FrameConsts> g_FrameConsts : register(b0, space1);
 ConstantBuffer<BenzinRenderPassConstsType0> g_PassConsts0 : register(b0, space2);
 ConstantBuffer<BenzinRenderPassConstsType1> g_PassConsts1 : register(b0, space3);
+ConstantBuffer<joint::GpuPrintConsts> g_GpuPrintConsts : register(b0, space4);
 
 StructuredBuffer<joint::Light> g_Lights : register(t0, space0);
 RaytracingAccelerationStructure g_SceneTlas : register(t0, space1);

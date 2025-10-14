@@ -142,6 +142,8 @@ namespace benzin
         auto GetWidth() const { return m_Size.x; }
         auto GetHeight() const { return m_Size.y; }
 
+        auto GetCursorPosition() const { return m_CursorPosition; }
+
         auto IsPendingResize() const { return m_PendingSize.x != 0 && m_PendingSize.y != 0; }
         auto IsHovered() const { return m_IsHovered; }
         auto IsValidForRendering() const { return m_IsValidForRendering; }
@@ -154,6 +156,7 @@ namespace benzin
 
         DirectX::XMUINT2 m_Size = {};
         DirectX::XMUINT2 m_PendingSize = {};
+        DirectX::XMINT2 m_CursorPosition = { -1, -1 };
 
         bool m_IsHovered = false;
         bool m_IsValidForRendering = false;

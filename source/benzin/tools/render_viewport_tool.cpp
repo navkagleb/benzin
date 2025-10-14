@@ -60,6 +60,10 @@ namespace benzin
             imageSize);
 
         m_Viewport.m_IsHovered = ImGui::IsItemHovered();
+
+        const ImVec2 relativeCursorPos = ImGui::GetMousePos() - ImGui::GetWindowPos();
+        m_Viewport.m_CursorPosition.x = relativeCursorPos.x >= 0.0f && relativeCursorPos.x <= m_Viewport.GetWidth() ? (int32_t)relativeCursorPos.x : -1;
+        m_Viewport.m_CursorPosition.y = relativeCursorPos.y >= 0.0f && relativeCursorPos.y <= m_Viewport.GetHeight() ? (int32_t)relativeCursorPos.y : -1;
     }
 
     void RenderViewportTool::PostDrawWindow()

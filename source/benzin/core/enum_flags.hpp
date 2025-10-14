@@ -83,3 +83,16 @@ auto operator|(T first, T second)
 #define BenzinEnableFlagsForBitEnum(enumTypeName) \
     template <> struct IsFlagsEnabledForBitEnum<enumTypeName> : std::true_type {}; \
     BenzinEnableFlagsForEnum(enumTypeName)
+
+template <benzin::EnumConcept T>
+struct IsDereferenceOperatorEnabledForEnum : std::false_type {};
+
+template <benzin::EnumConcept T> requires IsDereferenceOperatorEnabledForEnum<T>::value
+constexpr auto operator*(T value)
+{
+    return magic_enum::enum_integer(value);
+}
+
+#define BenzinAllowDereferenceOperatorForEnum(EnumT) \
+    template <> \
+    struct IsDereferenceOperatorEnabledForEnum<EnumT> : std::true_type {}

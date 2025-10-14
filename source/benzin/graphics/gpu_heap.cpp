@@ -143,7 +143,7 @@ namespace benzin
     void ConstBufferLinearAllocator::ResetFrameBuffer()
     {
         m_FrameBuffer = m_FrameBuffers[m_Device.GetActiveFrameIndex()].get();
-        m_FrameBufferWriter.ResetTargetBuffer(ByteBuffer{ m_FrameBuffer->GetCpuMappedData(), m_FrameBuffer->GetSizeInBytes() });
+        m_FrameBufferWriter.ResetTargetBuffer(m_FrameBuffer->GetCpuMappedData(), m_FrameBuffer->GetSizeInBytes());
     }
 
     uint64_t ConstBufferLinearAllocator::Allocate(std::span<const std::byte> data)

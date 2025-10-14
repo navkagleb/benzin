@@ -72,6 +72,7 @@ namespace sandbox
         m_ImGuiManager->RegisterTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
         m_ImGuiManager->RegisterTool<benzin::SceneTool>(*m_Scene);
         m_ImGuiManager->RegisterTool<benzin::VramTool>(*m_Device);
+        m_ImGuiManager->RegisterTool<benzin::GpuPrintTool>(m_GpuPrintData);
         m_ImGuiManager->RegisterTool<benzin::TextureViewerTool>(m_TextureViewerData, m_Viewport, *m_RenderResources);
         m_ImGuiManager->RegisterTool<benzin::RenderViewportTool>(m_Viewport, *m_RenderResources);
 
@@ -84,8 +85,7 @@ namespace sandbox
             m_FrameTimer,
             m_AnimationTimer,
             *m_Scene,
-            *m_RayTracingScene
-        );
+            *m_RayTracingScene);
 
         benzin::ScopedGpuEvent::SetContext(*m_Device);
         benzin::ScopedGpuProfileEvent::SetContext(*m_Device, *m_GpuProfiler);
@@ -105,6 +105,7 @@ namespace sandbox
         m_ImGuiManager->UnregisterTool<benzin::SceneStatsTool>();
         m_ImGuiManager->UnregisterTool<benzin::SceneTool>();
         m_ImGuiManager->UnregisterTool<benzin::VramTool>();
+        m_ImGuiManager->UnregisterTool<benzin::GpuPrintTool>();
         m_ImGuiManager->UnregisterTool<benzin::TextureViewerTool>();
         m_ImGuiManager->UnregisterTool<benzin::RenderViewportTool>();
     }
@@ -135,6 +136,7 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("Runner::RunZeroFrame");
 
+        m_RenderPasses.push_back(std::make_unique<benzin::GpuPrintPass>(m_GpuPrintData));
         InitRenderPasses();
         m_RenderPasses.push_back(std::make_unique<benzin::TextureViewerPass>(m_TextureViewerData));
         m_RenderPasses.push_back(std::make_unique<benzin::ImGuiPass>(*m_ImGuiManager));
@@ -329,7 +331,9 @@ namespace sandbox
 
         RunImGuiFrame();
 
-        m_RenderResources->FlipResources();
+        m_GpuPrintData.m_CursorPosition = m_Viewport.GetCursorPosition(); // Update it after ImGui frame is done
+
+        m_RenderResources->FlipResources(); // TODO: Better place in EndFrame method
         for (auto& renderPass : m_RenderPasses)
         {
             renderPass->OnUpdate();

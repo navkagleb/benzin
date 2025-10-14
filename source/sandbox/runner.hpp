@@ -2,6 +2,7 @@
 
 #include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/camera.hpp>
+#include <benzin/graphics2/gpu_print_pass.hpp>
 #include <benzin/graphics2/render_pass.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
 
@@ -66,6 +67,7 @@ namespace sandbox
 
         std::unique_ptr<benzin::ImGuiManager> m_ImGuiManager;
 
+        benzin::GpuPrintData m_GpuPrintData;
         benzin::TextureViewerData m_TextureViewerData;
         benzin::RenderViewport m_Viewport;
         benzin::FlyCameraController m_CameraController;

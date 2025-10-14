@@ -20,7 +20,6 @@ namespace benzin
     private:
         bool UpdateViewportSize();
 
-    private:
         RenderViewport& m_Viewport;
         RenderResources& m_Resources;
     };
