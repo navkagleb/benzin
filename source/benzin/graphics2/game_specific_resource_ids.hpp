@@ -18,7 +18,8 @@ namespace benzin
         WorldNormal,
         Mv,
         ViewDepth,
-        DepthStencil,
+        DepthStencil = ViewDepth + 2,
+        Hzb,
 
         // RayTraced Shadows
         NoisyPenumbra,
@@ -47,15 +48,12 @@ namespace benzin
 
     enum class PsoId : uint32_t
     {
-        GeometryPass_Depth,
-        GeometryPass_Depth_Alpha,
-        GeometryPass_Color,
-        GeometryPass_Color_Alpha,
-
-        GeometryPass_Mesh_Depth,
-        GeometryPass_Mesh_Depth_Alpha,
-        GeometryPass_Mesh_Color,
-        GeometryPass_Mesh_Color_Alpha,
+        GeometryPass_DepthReprojection,
+        GeometryPass_DepthReduction,
+        GeometryPass_Vertex,
+        GeometryPass_Vertex_Alpha,
+        GeometryPass_Mesh,
+        GeometryPass_Mesh_Alpha,
 
         ProceduralGrass,
 

@@ -243,7 +243,10 @@ namespace benzin
 
     static D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(const Texture& texture, const TextureUav& textureUav)
     {
-        D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc{ .Format = (DXGI_FORMAT)textureUav.Format };
+        D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc
+        {
+            .Format = (DXGI_FORMAT)textureUav.Format
+        };
 
         const bool isArrayTexture = texture.GetDepth() > 1;
         if (!isArrayTexture)
@@ -400,6 +403,8 @@ namespace benzin
 
     const Descriptor& Texture::GetUav(const TextureUav& textureUav) const
     {
+        BenzinAssert(m_CurrentState == ResourceState::UnorderedAccess);
+
         ValidateTextureUav(*this, const_cast<TextureUav&>(textureUav));
 
         return TryGetViewDescriptor(

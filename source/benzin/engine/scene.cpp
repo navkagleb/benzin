@@ -12,6 +12,7 @@
 #include "benzin/core/profiler.hpp"
 #include "benzin/core/tick_timer.hpp"
 #include "benzin/engine/entity_components.hpp"
+#include "benzin/engine/geometry_generator.hpp"
 #include "benzin/engine/light.hpp"
 #include "benzin/engine/mesh.hpp"
 #include "benzin/engine/resource_helper.hpp"
@@ -25,11 +26,41 @@
 namespace benzin
 {
 
+    static MeshResource CreateUnitSphereMesh()
+    {
+        benzin::MeshData meshData = benzin::GetUnitGeoSphereMesh();
+
+        const benzin::MeshDrawRange drawRange
+        {
+            .VertexRange = ToSpan(meshData.Vertices),
+            .IndexRange = ToSpan(meshData.Indices),
+            .Topology = meshData.PrimitiveTopology,
+        };
+
+        const benzin::MeshInstance instance
+        {
+            .DrawRangeIndex = 0,
+        };
+
+        return benzin::MeshResource
+        {
+            .DebugName = "UnitSphere",
+            .Vertices = std::move(meshData.Vertices),
+            .Indices = std::move(meshData.Indices),
+            .DrawRanges{ drawRange },
+            .Instances{ instance },
+        };
+    };
+
+    //
+
     Scene::Scene(Device& device)
         : m_Device{ device }
     {
         m_SunEntity = m_EntityRegistry.create();
         m_EntityRegistry.emplace<SunLight>(m_SunEntity);
+
+        m_UnitSphereMeshHandle = AddMesh(CreateUnitSphereMesh());
 
         // Fallback material
         {
@@ -114,7 +145,6 @@ namespace benzin
 
             uploadSizeInBytes += meshGpuStorage.VertexBuffer->GetSizeInBytes();
             uploadSizeInBytes += meshGpuStorage.IndexBuffer->GetSizeInBytes();
-            uploadSizeInBytes += meshGpuStorage.ObjectToLocalMatrixBuffer->GetSizeInBytes();
         };
 
         auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
@@ -125,11 +155,6 @@ namespace benzin
 
             cmdList.UploadToBuffer(*meshGpuStorage.VertexBuffer, ToSpan(mesh.Vertices));
             cmdList.UploadToBuffer(*meshGpuStorage.IndexBuffer, ToSpan(mesh.Indices));
-
-            for (const auto& [i, instance] : mesh.Instances | std::views::enumerate)
-            {
-                cmdList.UploadToBuffer(*meshGpuStorage.ObjectToLocalMatrixBuffer, ToSpan(&instance.ObjectToLocalMatrix), (uint32_t)i);
-            }
         }
     }
 
@@ -265,7 +290,7 @@ namespace benzin
         uint64_t uploadSizeInBytes = 0;
         for (const auto& texture : m_Textures)
         {
-            uploadSizeInBytes += AlignUp(texture->GetSizeInBytes(), GraphicsConfig::GetTextureAlignmentInBytes());
+            uploadSizeInBytes += AlignUp(texture->GetSizeInBytes(), GraphicsConfig::g_TextureAlignmentInBytes);
         }
 
         auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
@@ -279,6 +304,8 @@ namespace benzin
 
     void Scene::UpdateEntities()
     {
+        BenzinProfile();
+
         const auto view = m_EntityRegistry.view<EntityUpdateCallback>();
         for (const entt::entity entityHandle : view)
         {
@@ -289,66 +316,10 @@ namespace benzin
         }
     }
 
-    void Scene::UploadEntityTransformsToGpu()
-    {
-        const uint32_t frameInFlightCount = CmdLineArgs::GetFrameInFlightCount();
-
-        const auto meshView = m_EntityRegistry.view<MeshInstanceComponent, Transform>();
-        const auto lightView = m_EntityRegistry.view<MeshInstanceComponent, SphericalLight>();
-
-        m_EntityTransformCount = (uint32_t)(meshView.size_hint() + lightView.size_hint()); // TODO: Light::IsEnabled
-        if (m_EntityTransformBuffer.get() == nullptr || m_EntityTransformBuffer->GetElementCount() != m_EntityTransformCount * frameInFlightCount)
-        {
-            MakeUniquePtr(m_EntityTransformBuffer, m_Device, BufferCreation
-            {
-                .DebugName = "Scene_EntityTransformBuffer",
-                .MemoryType = ResourceMemoryType::Upload, // TODO
-                .Type = BufferType::Structured,
-                .ElementSizeInBytes = sizeof(joint::EntityTransform),
-                .ElementCount = m_EntityTransformCount * frameInFlightCount,
-            });
-        }
-
-        BufferWriter entityTransformWriter{ m_EntityTransformBuffer->GetCpuMappedData(), m_EntityTransformBuffer->GetSizeInBytes() };
-        entityTransformWriter.SetElementPosition<joint::EntityTransform>(m_EntityTransformCount * m_Device.GetActiveFrameIndex());
-
-        uint32_t entityTransformIndex = 0;
-
-        for (const auto entity : meshView)
-        {
-            auto& meshInstanceComponent = meshView.get<MeshInstanceComponent>(entity);
-            meshInstanceComponent.m_EntityTransformIndex = entityTransformIndex++;
-
-            const auto& transform = meshView.get<Transform>(entity);
-            entityTransformWriter.WriteRaw(joint::EntityTransform
-            {
-                .LocalToWorld = transform.GetLocalToWorldMatrix(),
-                .PrevLocalToWorld = transform.GetPrevLocalToWorldMatrix(),
-            });
-        }
-
-        for (const auto entity : lightView)
-        {
-            const auto& light = lightView.get<SphericalLight>(entity);
-
-            if (!light.IsEnabled())
-            {
-                continue;
-            }
-
-            auto& meshInstanceComponent = meshView.get<MeshInstanceComponent>(entity);
-            meshInstanceComponent.m_EntityTransformIndex = entityTransformIndex++;
-
-            entityTransformWriter.WriteRaw(joint::EntityTransform
-            {
-                .LocalToWorld = light.GetTransform().GetLocalToWorldMatrix(),
-                .PrevLocalToWorld = light.GetTransform().GetPrevLocalToWorldMatrix(),
-            });
-        }
-    }
-
     void Scene::UploadLightsToGpu()
     {
+        BenzinProfile();
+
         std::vector<joint::Light> activeLights;
 
         {

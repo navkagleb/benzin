@@ -13,17 +13,32 @@ namespace sandbox
     template <>
     void DrawSettings(GBufferSettings& settings)
     {
-        ImGui::Checkbox("Depth pre-pass", &settings.IsDepthPrePassEnabled);
+        const auto drawColoringType = [&settings]
+        {
+            static const auto names = magic_enum::enum_names<joint::DebugColoringType>();
+
+            ImGui::SameLine();
+            ImGui::Combo(
+                "Coloring type",
+                (int*)&settings.ColoringType,
+                ImGui::SelectComboName<decltype(names)>,
+                (void*)&names,
+                (int)names.size()
+            );
+        };
+
+        drawColoringType();
         ImGui::Checkbox("CPU frustum culling", &settings.IsCpuFrustumCullingEnabled);
         ImGui::Checkbox("Mesh pipeline", &settings.IsMeshPipelineUsed);
 
         ImGui::Indent();
         ImGui::BeginDisabled(!settings.IsMeshPipelineUsed);
         {
-            ImGui::Checkbox("Meshlet coloring", &settings.IsMeshletColoringEnabled);
+            ImGui::Checkbox("Amplification dispatch", &settings.IsAmplificationDispatchUsed);
             ImGui::Checkbox("GPU frustum culling", &settings.IsGpuFrustumCullingEnabled);
+            ImGui::Checkbox("Back-face cone culling", &settings.IsBackfaceCullingEnabled);
+            ImGui::Checkbox("Occlusion culling", &settings.IsOcclusionCullingEnabled);
         }
-
         ImGui::EndDisabled();
         ImGui::Unindent();
     }
@@ -34,36 +49,47 @@ namespace sandbox
         std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
         BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
-        const auto drawRow = [](const char* name, uint32_t renderedCount, uint32_t totalCount)
+        const auto drawRow = [](const char* name, uint32_t totalCount, uint32_t renderedCount)
         {
             ImGui::TableNextRow();
 
             ImGui::TableNextColumn();
             ImGui::Text(name);
             ImGui::TableNextColumn();
-            ImGui::FmtText("{:L}", renderedCount);
-            ImGui::TableNextColumn();
             ImGui::FmtText("{:L}", totalCount);
-
-            const float percent = totalCount != 0 ? (float)renderedCount / totalCount : 0.0f;
             ImGui::TableNextColumn();
-            ImGui::FmtText("{:.2f}", percent);
+            ImGui::FmtText("{:L}", renderedCount);
+
+            const float renderedPercent = totalCount != 0 ? (float)renderedCount / totalCount : 0.0f;
+            ImGui::TableNextColumn();
+            ImGui::FmtText("{:.2f}", renderedPercent);
         };
 
-        if (ImGui::BeginTable("GBufferStatsTable", 4))
+        constexpr ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg;
+        if (ImGui::BeginTable("GBufferStatsTable", 4, flags))
         {
             ImGui::TableSetupColumn("Name");
-            ImGui::TableSetupColumn("Rendered");
             ImGui::TableSetupColumn("Total");
-            ImGui::TableSetupColumn("%");
+            ImGui::TableSetupColumn("Rendered");
+            ImGui::TableSetupColumn("Rendered %");
             ImGui::TableHeadersRow();
 
-            drawRow("Meshlets", stats.MeshletCount, stats.TotalMeshletCount);
-            drawRow("Meshlet vertices", stats.MeshletVertexCount, stats.TotalMeshletVertexCount);
-            drawRow("Meshlet triangles", stats.MeshletTriangleCount, stats.TotalMeshletTriangleCount);
+            drawRow("Meshlets", stats.m_TotalMeshletCount, stats.m_MeshletCount);
+            drawRow("Meshlet vertices", stats.m_TotalMeshletVertexCount, stats.m_MeshletVertexCount);
+            drawRow("Meshlet triangles", stats.m_TotalMeshletTriangleCount, stats.m_MeshletTriangleCount);
 
             ImGui::EndTable();
         }
+
+        ImGui::NewLine();
+        ImGui::FmtText("VS invocations: {:L}", stats.m_VsInvocationCount);
+        ImGui::FmtText("AS invocations: {:L}", stats.m_AsInvocationCount);
+        ImGui::FmtText("MS invocations: {:L}", stats.m_MsInvocationCount);
+        ImGui::FmtText("PS invocations: {:L}", stats.m_PsInvocationCount);
+
+        ImGui::NewLine();
+        ImGui::FmtText("Viewport pixels: {:L}", stats.m_ViewportPixelCount);
+        ImGui::FmtText("Overdraw: {:.2f} %%", ((float)stats.m_PsInvocationCount / stats.m_ViewportPixelCount) * 100.0f);
     }
 
     template <>
@@ -142,6 +168,10 @@ namespace sandbox
     void DrawSettings(SigmaDenoiserSettings& settings)
     {
         ImGui::Checkbox("Enable ### SigmaDenoiser", &settings.IsEnabled);
+
+        ImGui::BeginDisabled(!settings.IsEnabled);
+        BenzinExecuteOnScopeExit([] { ImGui::EndDisabled(); });
+
         ImGui::Checkbox("Clear pass", &settings.IsClearEnabled);
 
         ImGui::NewLine();

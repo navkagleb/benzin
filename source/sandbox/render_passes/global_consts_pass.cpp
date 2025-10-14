@@ -1,6 +1,9 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/render_passes/global_consts_pass.hpp>
 
+#include <sandbox/render_settings.hpp>
+#include <sandbox/resources.hpp>
+
 #include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/core/tick_timer.hpp>
@@ -12,61 +15,11 @@
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 
-#include <sandbox/render_settings.hpp>
-#include <sandbox/resources.hpp>
-
 namespace sandbox
 {
 
     GlobalConstsPass::GlobalConstsPass(ReadbackStatsCallback&& callback)
         : m_ReadbackStatsCallback{ std::move(callback) }
-    {
-        CreateReadbackStatBuffers();
-
-        {
-        });
-    }
-
-    GlobalConstsPass::~GlobalConstsPass()
-    {
-    }
-
-    void GlobalConstsPass::OnUpdate()
-    {
-        BenzinProfile();
-
-        UpdateCameraConsts();
-        UpdateFrameConsts();
-    }
-
-    void GlobalConstsPass::OnRender() const
-    {
-        BenzinProfile();
-        BenzinGpuProfile("GlobalConstsPass");
-
-        benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-
-        CopyStats(cmdList);
-
-        {
-            BenzinGpuEvent("SetUnifiedRootParameters");
-
-            const uint64_t frameConstsGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(m_FrameConsts);
-            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
-            cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
-
-            const uint64_t lightBufferGpuAddress = ms_Scene->GetLightBuffer().GetGpuVirtualAddress();
-            cmdList.SetComputeSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, lightBufferGpuAddress);
-            cmdList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, lightBufferGpuAddress);
-
-            const uint64_t statBufferGpuAddress = m_StatBuffer->GetGpuVirtualAddress();
-            cmdList.ClearUnorderedAccess(*m_StatBuffer, m_StatBuffer->GetUav(), {});
-            cmdList.SetComputeUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statBufferGpuAddress);
-            cmdList.SetGraphicsUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statBufferGpuAddress);
-        }
-    }
-
-    void GlobalConstsPass::CreateReadbackStatBuffers()
     {
         BenzinAssert(m_ReadbackStatsCallback);
 
@@ -99,78 +52,107 @@ namespace sandbox
         cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_ReadbackStatBuffer, benzin::ResourceState::Common });
     }
 
-    void GlobalConstsPass::UpdateCameraConsts()
-    {
-        const benzin::PerspectiveCamera& camera = ms_Scene->GetCamera();
+    GlobalConstsPass::~GlobalConstsPass() = default;
 
-        joint::CameraConsts cameraConsts = {};
-        cameraConsts.WorldToView = camera.GetWorldToViewMatrix();
-        cameraConsts.ViewToWorld = camera.GetViewToWorldMatrix();
-        cameraConsts.ViewToClip = camera.GetViewToClipMatrix();
-        cameraConsts.ClipToView = camera.GetClipToViewMatrix();
-        cameraConsts.WorldToClip = camera.GetWorldToClipMatrix();
-        cameraConsts.ClipToWorld = camera.GetClipToWorldMatrix();
-        cameraConsts.ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation();
-        cameraConsts.WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition());
-        cameraConsts.TanHalfFovX = camera.GetTanHalfFovX();
-        cameraConsts.TanHalfFovY = camera.GetTanHalfFovY();
-        cameraConsts.NearPlane = camera.GetNearPlane();
-        cameraConsts.FarPlane = camera.GetFarPlane();
-        cameraConsts.UvToViewScale = camera.GetUvToViewScale();
-        cameraConsts.UvToViewBias = camera.GetUvToViewBias();
-        cameraConsts.PixelToWorldScale = camera.GetPixelToWorldScale(GetRenderViewportHeight());
-
-        if (ms_Device->GetCpuFrameIndex() != 0) // TODO: Remove if
-        {
-            m_FrameConsts.PrevCamera = std::exchange(m_FrameConsts.Camera, cameraConsts);
-        }
-        else
-        {
-            m_FrameConsts.Camera = cameraConsts;
-            m_FrameConsts.PrevCamera = cameraConsts;
-        }
-    }
-
-    void GlobalConstsPass::UpdateFrameConsts()
-    {
-        const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
-        const float animationTimeInSec = ms_AnimationTimer->GetElapsedTimeInSec();
-
-        m_FrameConsts.RenderResolution = { (float)renderResolution.x, (float)renderResolution.y };
-        m_FrameConsts.InvRenderResolution = { 1.0f / (float)renderResolution.x, 1.0f / (float)renderResolution.y };
-        m_FrameConsts.MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y);
-
-        m_FrameConsts.CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex();
-        m_FrameConsts.LightCount = ms_Scene->GetActiveLightCount();
-
-        m_FrameConsts.IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
-        m_FrameConsts.IsShadowsEnabled = ms_Settings->GetSection<RayTracing_ShadowSettings>().IsEnabled;
-        m_FrameConsts.IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled;
-
-        m_FrameConsts.DeltaTimeInSec = ms_FrameTimer->GetDeltaTimeInSec();
-        m_FrameConsts.AnimationElapsedTimeInSec = animationTimeInSec;
-        m_FrameConsts.PrevAnimationElapsedTimeInSec = m_PrevAnimationElapsedTimeInSec;
-
-        m_PrevRenderResolution = renderResolution;
-        m_PrevAnimationElapsedTimeInSec = animationTimeInSec;
-    }
-
-    void GlobalConstsPass::CopyStats(benzin::GraphicsCmdList& cmdList) const
+    void GlobalConstsPass::OnUpdate()
     {
         BenzinProfile();
-        BenzinGpuProfile("CopyStats");
 
-        const uint64_t dataSizeInBytes = m_StatBuffer->GetSizeInBytes();
-        const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % benzin::GraphicsConfig::g_ReadbackLatency) * dataSizeInBytes;
-        const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % benzin::GraphicsConfig::g_ReadbackLatency) * dataSizeInBytes;
-
-        cmdList.CopyBufferRegion(*m_ReadbackStatBuffer, destOffsetInBytes, *m_StatBuffer, 0, dataSizeInBytes);
-
-        m_ReadbackStatBuffer->MapReadbackData(readbackOffsetInBytes, dataSizeInBytes, [this](const std::byte* mappedData)
         {
-            const auto readbackStats = benzin::ToSpan((const uint32_t*)mappedData, magic_enum::enum_count<joint::ReadbackStat>());
-            m_ReadbackStatsCallback(readbackStats);
-        });
+            const benzin::PerspectiveCamera& camera = ms_Scene->GetCamera();
+
+            joint::CameraConsts cameraConsts = {};
+            cameraConsts.WorldToView = camera.GetWorldToViewMatrix();
+            cameraConsts.ViewToWorld = camera.GetViewToWorldMatrix();
+            cameraConsts.ViewToClip = camera.GetViewToClipMatrix();
+            cameraConsts.ClipToView = camera.GetClipToViewMatrix();
+            cameraConsts.WorldToClip = camera.GetWorldToClipMatrix();
+            cameraConsts.ClipToWorld = camera.GetClipToWorldMatrix();
+            cameraConsts.ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation();
+            cameraConsts.WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition());
+            cameraConsts.TanHalfFovX = camera.GetTanHalfFovX();
+            cameraConsts.TanHalfFovY = camera.GetTanHalfFovY();
+            cameraConsts.NearPlane = camera.GetNearPlane();
+            cameraConsts.FarPlane = camera.GetFarPlane();
+            cameraConsts.UvToViewScale = camera.GetUvToViewScale();
+            cameraConsts.UvToViewBias = camera.GetUvToViewBias();
+            cameraConsts.PixelToWorldScale = camera.GetPixelToWorldScale(GetRenderViewportHeight());
+
+            if (ms_Device->GetCpuFrameIndex() != 0) // TODO: Remove if
+            {
+                m_FrameConsts.PrevCamera = std::exchange(m_FrameConsts.Camera, cameraConsts);
+            }
+            else
+            {
+                m_FrameConsts.Camera = cameraConsts;
+                m_FrameConsts.PrevCamera = cameraConsts;
+            }
+        }
+
+        {
+            const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
+            const float animationTimeInSec = ms_AnimationTimer->GetElapsedTimeInSec();
+
+            m_FrameConsts.RenderResolution = { (float)renderResolution.x, (float)renderResolution.y };
+            m_FrameConsts.InvRenderResolution = { 1.0f / (float)renderResolution.x, 1.0f / (float)renderResolution.y };
+            m_FrameConsts.MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y);
+
+            m_FrameConsts.CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex();
+            m_FrameConsts.LightCount = ms_Scene->GetActiveLightCount();
+
+            m_FrameConsts.IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
+            m_FrameConsts.IsShadowsEnabled = ms_Settings->GetSection<RayTracing_ShadowSettings>().IsEnabled;
+            m_FrameConsts.IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled;
+
+            m_FrameConsts.DeltaTimeInSec = ms_FrameTimer->GetDeltaTimeInSec();
+            m_FrameConsts.AnimationElapsedTimeInSec = animationTimeInSec;
+            m_FrameConsts.PrevAnimationElapsedTimeInSec = m_PrevAnimationElapsedTimeInSec;
+
+            m_PrevRenderResolution = renderResolution;
+            m_PrevAnimationElapsedTimeInSec = animationTimeInSec;
+        }
+    }
+
+    void GlobalConstsPass::OnRender() const
+    {
+        BenzinProfile();
+        BenzinGpuProfile("GlobalConstsPass");
+
+        benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+
+        {
+            BenzinProfile();
+            BenzinGpuProfile("CopyStats");
+
+            const uint64_t dataSizeInBytes = m_StatBuffer->GetSizeInBytes();
+            const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % benzin::GraphicsConfig::g_ReadbackLatency) * dataSizeInBytes;
+            const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % benzin::GraphicsConfig::g_ReadbackLatency) * dataSizeInBytes;
+
+            cmdList.CopyBufferRegion(*m_ReadbackStatBuffer, destOffsetInBytes, *m_StatBuffer, 0, dataSizeInBytes);
+
+            m_ReadbackStatBuffer->MapReadbackData(readbackOffsetInBytes, dataSizeInBytes, [this](const std::byte* mappedData)
+            {
+                const auto readbackStats = benzin::ToSpan((const uint32_t*)mappedData, magic_enum::enum_count<joint::ReadbackStat>());
+                m_ReadbackStatsCallback(readbackStats);
+            });
+        }
+
+        {
+            BenzinGpuEvent("SetUnifiedRootParameters");
+
+            const uint64_t frameConstsGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(m_FrameConsts);
+            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
+            cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
+
+            const uint64_t lightBufferGpuAddress = ms_Scene->GetLightBuffer().GetGpuVirtualAddress();
+            cmdList.SetComputeSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, lightBufferGpuAddress);
+            cmdList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, lightBufferGpuAddress);
+
+            const uint64_t statBufferGpuAddress = m_StatBuffer->GetGpuVirtualAddress();
+            cmdList.ClearUnorderedAccess(*m_StatBuffer, m_StatBuffer->GetUav(), {});
+            cmdList.SetComputeUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statBufferGpuAddress);
+            cmdList.SetGraphicsUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statBufferGpuAddress);
+        }
     }
 
 }

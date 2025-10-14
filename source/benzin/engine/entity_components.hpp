@@ -27,21 +27,21 @@ namespace benzin
         mutable DirectX::XMMATRIX m_PrevLocalToWorldMatrix = DirectX::XMMatrixIdentity();
     };
 
-    class MeshInstanceComponent
+    class MeshComponent
     {
     public:
         friend class Scene;
 
-        explicit MeshInstanceComponent(entt::entity meshHandle)
+        explicit MeshComponent(entt::entity meshHandle)
             : m_MeshHandle{ meshHandle }
-        {}
+        {
+            BenzinAssert(IsGoodEnum(meshHandle));
+        }
 
         auto GetMeshHandle() const { return m_MeshHandle; }
-        auto GetEntityTransformIndex() const { return m_EntityTransformIndex; }
 
     private:
-        entt::entity m_MeshHandle = g_BadEnum<entt::entity>;
-        uint32_t m_EntityTransformIndex = g_Bad32;
+        entt::entity m_MeshHandle;
     };
 
     using EntityUpdateCallback = std::function<void()>;

@@ -40,7 +40,7 @@ namespace benzin
         uint32_t meshInstanceCount = 0;
         uint32_t meshletCount = 0;
 
-        const auto view = m_Scene.m_MeshRegistry.view<MeshTag, Mesh>();
+        const auto view = m_Scene.m_MeshRegistry.view<MeshTag, Mesh, MeshGpuStorage>();
         for (const entt::entity meshHandle : view)
         {
             const auto& mesh = view.get<Mesh>(meshHandle);
@@ -52,14 +52,14 @@ namespace benzin
             meshletCount += (uint32_t)mesh.Meshlets.size();
         }
 
-        ImGui::Text(BenzinFormatData("Vertices: {:L}", vertexCount));
-        ImGui::Text(BenzinFormatData("Triangles: {:L}", triangleCount));
-        ImGui::Text(BenzinFormatData("Draw ranges: {:L}", drawRangeCount));
-        ImGui::Text(BenzinFormatData("Meshlets: {:L}", meshletCount));
+        ImGui::FmtText("Vertices: {:L}", vertexCount);
+        ImGui::FmtText("Triangles: {:L}", triangleCount);
+        ImGui::FmtText("Draw ranges: {:L}", drawRangeCount);
+        ImGui::FmtText("Meshlets: {:L}", meshletCount);
         ImGui::Separator();
 
-        ImGui::Text(BenzinFormatData("Materials: {:L}", m_Scene.m_UnifiedMaterials.size()));
-        ImGui::Text(BenzinFormatData("Mesh instances: {:L}", meshInstanceCount));
+        ImGui::FmtText("Materials: {:L}", m_Scene.m_UnifiedMaterials.size());
+        ImGui::FmtText("Mesh instances: {:L}", meshInstanceCount);
         ImGui::Separator();
 
         for (const entt::entity meshHandle : view)
@@ -75,11 +75,25 @@ namespace benzin
                 mesh.Meshlets.size()
             );
 
-            ImGui::CollapsingHeaderWithIndent(meshHeaderName, [&mesh]
+            ImGui::CollapsingHeaderWithIndent(meshHeaderName, [&]
             {
+                const auto drawBufferSize = [](const char* name, const Buffer& buffer)
+                {
+                    ImGui::FmtBulletText("{}: {:.2f} mb ({:L} / {})", name, ToMb(buffer.GetAllocationSizeInBytes()), buffer.GetElementCount(), buffer.GetElementSizeInBytes());
+                };
+
+                const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
+                drawBufferSize("Vertex buffer", *meshGpuStorage.VertexBuffer);
+                drawBufferSize("Index buffer", *meshGpuStorage.IndexBuffer);
+                drawBufferSize("Meshlet buffer", *meshGpuStorage.MeshletBuffer);
+                drawBufferSize("Meshlet cull volume buffer", *meshGpuStorage.MeshletCullVolumeBuffer);
+                drawBufferSize("Meshlet indirect vertex buffer", *meshGpuStorage.MeshletIndirectVertexBuffer);
+                drawBufferSize("Meshlet index buffer", *meshGpuStorage.MeshletIndexBuffer);
+
+                ImGui::Text("Draw ranges:");
                 for (const auto& [i, drawRange] : mesh.DrawRanges | std::views::enumerate)
                 {
-                    ImGui::Text(BenzinFormatData("{}: {:L} triangles, {:L} meshlets", i, drawRange.IndexRange.Count / 3, drawRange.MeshletRange.Count));
+                    ImGui::FmtText("{}: {:L} triangles, {:L} meshlets", i, drawRange.IndexRange.Count / 3, drawRange.MeshletRange.Count);
                 }
             });
         }
@@ -112,9 +126,9 @@ namespace benzin
 
             const uint64_t totalSizeInBytes = buffersSizeInBytes + scratchResourcesSizeInBytes;
 
-            ImGui::SeparatorText(BenzinFormatData("BLASes ({:.2f} mb)", ToMb(totalSizeInBytes)));
-            ImGui::BulletText(BenzinFormatData("Buffer: {:.2f} mb", ToMb(buffersSizeInBytes)));
-            ImGui::BulletText(BenzinFormatData("ScratchResource: {:.2f} mb", ToMb(scratchResourcesSizeInBytes)));
+            ImGui::FmtSeparatorText("BLASes ({:.2f} mb)", ToMb(totalSizeInBytes));
+            ImGui::FmtBulletText("Buffer: {:.2f} mb", ToMb(buffersSizeInBytes));
+            ImGui::FmtBulletText("ScratchResource: {:.2f} mb", ToMb(scratchResourcesSizeInBytes));
         }
 
         {
@@ -126,10 +140,10 @@ namespace benzin
                 totalSizeInBytes += tlas.GetScratchResource()->GetAllocationSizeInBytes();
                 totalSizeInBytes += tlas.GetInstanceBuffer()->GetAllocationSizeInBytes();
 
-                ImGui::SeparatorText(BenzinFormatData("TLAS ({:.2f})", ToMb(totalSizeInBytes)));
-                ImGui::BulletText(BenzinFormatData("Buffer: {:.2f} mb", ToMb(tlas.GetBuffer()->GetAllocationSizeInBytes())));
-                ImGui::BulletText(BenzinFormatData("ScratchResource: {:.2f} mb", ToMb(tlas.GetScratchResource()->GetAllocationSizeInBytes())));
-                ImGui::BulletText(BenzinFormatData("InstanceBuffer: {:.2f} mb", ToMb(tlas.GetInstanceBuffer()->GetAllocationSizeInBytes())));
+                ImGui::FmtSeparatorText("TLAS ({:.2f})", ToMb(totalSizeInBytes));
+                ImGui::FmtBulletText("Buffer: {:.2f} mb", ToMb(tlas.GetBuffer()->GetAllocationSizeInBytes()));
+                ImGui::FmtBulletText("ScratchResource: {:.2f} mb", ToMb(tlas.GetScratchResource()->GetAllocationSizeInBytes()));
+                ImGui::FmtBulletText("InstanceBuffer: {:.2f} mb", ToMb(tlas.GetInstanceBuffer()->GetAllocationSizeInBytes()));
             }
         }
     }

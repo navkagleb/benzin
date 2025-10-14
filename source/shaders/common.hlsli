@@ -18,6 +18,11 @@ uint DivideUp(uint value, uint divisor)
     return (value + divisor - 1) / divisor;
 }
 
+uint RoundUp(uint value, uint divisor)
+{
+    return DivideUp(value, divisor) * divisor;
+}
+
 template <typename T>
 bool IsInRange(T value, T min, T max)
 {

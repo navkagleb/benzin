@@ -1,22 +1,13 @@
 #pragma once
 
+#include <benzin/graphics/format.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
 
+#include <shaders/joint/geometry_resources.hpp>
 #include <shaders/joint/tone_mapping_resources.hpp>
 
 namespace sandbox
 {
-
-    struct GBufferStats
-    {
-        uint32_t TotalMeshletCount = 0;
-        uint32_t TotalMeshletVertexCount = 0;
-        uint32_t TotalMeshletTriangleCount = 0;
-
-        uint32_t MeshletCount = 0;
-        uint32_t MeshletVertexCount = 0;
-        uint32_t MeshletTriangleCount = 0;
-    };
 
     struct GBufferSettings
     {
@@ -26,23 +17,34 @@ namespace sandbox
         static constexpr auto s_Color3Format = benzin::GraphicsFormat::Rgba16Float; // UvMv, UvMv, ViewDepthMv, None
         static constexpr auto s_Color4Format = benzin::GraphicsFormat::R32Float; // ViewDepth
 
-        static constexpr auto s_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint;
+        static constexpr auto s_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint; // TODO: Can be used D32 instead
 
-        bool IsDepthPrePassEnabled = false;
+        joint::DebugColoringType ColoringType = joint::DebugColoringType::Instance;
+
         bool IsCpuFrustumCullingEnabled = true;
         bool IsMeshPipelineUsed = true;
-        bool IsMeshletColoringEnabled = true;
+        bool IsAmplificationDispatchUsed = true;
         bool IsGpuFrustumCullingEnabled = true;
+        bool IsBackfaceCullingEnabled = true;
+        bool IsOcclusionCullingEnabled = true;
     };
 
-    struct ProceduralGrassStats
+    struct GBufferStats
     {
-        uint32_t MaxPatchCount = 0;
+        uint32_t m_TotalMeshletCount = 0;
+        uint32_t m_TotalMeshletVertexCount = 0;
+        uint32_t m_TotalMeshletTriangleCount = 0;
 
-        uint32_t PatchCount = 0;
-        uint32_t BladeCount = 0;
-        uint32_t VertexCount = 0;
-        uint32_t TriangleCount = 0;
+        uint32_t m_MeshletCount = 0;
+        uint32_t m_MeshletVertexCount = 0;
+        uint32_t m_MeshletTriangleCount = 0;
+
+        uint32_t m_VsInvocationCount = 0;
+        uint32_t m_AsInvocationCount = 0;
+        uint32_t m_MsInvocationCount = 0;
+        uint32_t m_PsInvocationCount = 0;
+
+        uint32_t m_ViewportPixelCount = 0;
     };
 
     struct ProceduralGrassSettings
@@ -56,6 +58,16 @@ namespace sandbox
         float WindDirection = DirectX::XM_PI;
         float BladeWidth = 0.01f;
         DirectX::XMFLOAT3 BaseColor{ 189.0f / 256.0f, 236.0f / 256.0f, 76.0f / 256.0f };
+    };
+
+    struct ProceduralGrassStats
+    {
+        uint32_t MaxPatchCount = 0;
+
+        uint32_t PatchCount = 0;
+        uint32_t BladeCount = 0;
+        uint32_t VertexCount = 0;
+        uint32_t TriangleCount = 0;
     };
 
     struct RayTracing_ShadowSettings
@@ -75,7 +87,7 @@ namespace sandbox
         const benzin::GraphicsFormat PenumbraFormat = benzin::GraphicsFormat::R16Float;
         const uint32_t MaxHistoryLength = 7;
 
-        bool IsEnabled = true;
+        bool IsEnabled = false;
         float PlaneDistanceSensitivity = 0.02f; // (normalized %) - represents maximum allowed deviation from the local tangent plane
         float DisocclusionThreshold = 0.02f; // (normalized %)
         bool IsClearEnabled = false;

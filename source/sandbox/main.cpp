@@ -1,12 +1,13 @@
-#include "sandbox/bootstrap.hpp"
+#include <sandbox/bootstrap.hpp>
+
+#include <sandbox/sandbox_runner.hpp>
 
 #include <benzin/core/entry_point.hpp>
 
-#include "sandbox/sandbox_runner.hpp"
-
 int benzin::ClientMain()
 {
-    sandbox::SandboxRunner runner;
+    sandbox::SponzaRunner runner;
+    // sandbox::StanfordDragonRunner runner;
     runner.RunMainLoop();
 
     return 0;

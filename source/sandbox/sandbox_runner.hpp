@@ -17,6 +17,11 @@ namespace sandbox
 
         void InitRenderPasses() override;
         void InitTools() override;
+    };
+
+    class SponzaRunner : public SandboxRunner
+    {
+    private:
         void InitScene() override;
 
         void InitSceneEntities();
@@ -28,6 +33,12 @@ namespace sandbox
         void AddDynamicMeshEntities(std::span<const entt::entity> meshHandles);
         void AddProceduralGrass();
         void AddLightEntities(std::span<const entt::entity> meshHandles);
+    };
+
+    class StanfordDragonRunner : public SandboxRunner
+    {
+    private:
+        void InitScene() override;
     };
 
 }

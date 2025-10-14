@@ -1,8 +1,8 @@
 #pragma once
 
-float3 ClipToNdc(float4 clipPosition)
+float3 ClipToNdc(float4 clip)
 {
-    return clipPosition.xyz / clipPosition.w;
+    return clip.xyz / clip.w;
 }
 
 float2 NdcToUv(float2 ndc)
@@ -13,21 +13,21 @@ float2 NdcToUv(float2 ndc)
     return uv;
 }
 
-float2 ClipToUv(float4 clipPosition)
+float2 ClipToUv(float4 clip)
 {
-    return NdcToUv(ClipToNdc(clipPosition).xy);
+    return NdcToUv(ClipToNdc(clip).xy);
 }
 
 float2 UvToNdc(float2 uv)
 {
-    uv.y = 1.0 - uv.y; // // Invert for DirectX
+    uv.y = 1.0 - uv.y; // Invert for DirectX
 
     return uv * 2.0 - 1.0;
 }
 
 float3 ReconstructViewPosition(float2 uv, float viewDepth, float2 uvToViewScale, float2 uvToViewBias)
 {
-    const float2 normalizedViewPosition = uv * uvToViewScale + uvToViewBias; // normalized by viewDepth
+    const float2 normalizedViewPosition = uv * uvToViewScale + uvToViewBias; // Normalized by viewDepth
     const float3 viewPosition = float3(normalizedViewPosition, 1.0) * viewDepth;
 
     return viewPosition;

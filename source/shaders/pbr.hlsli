@@ -102,8 +102,10 @@ float3 SpecularFunction(PbrLight light, PbrMaterial material, float3 viewDirecti
     return numerator / max(g_Epsilon, denominator);
 }
 
-float3 BidirectionalReflectanceDistributionFunction(PbrLight light, PbrMaterial material, float3 viewDirection, float3 normal)
+float3 Brdf(PbrLight light, PbrMaterial material, float3 viewDirection, float3 normal)
 {
+    // Bidirectional reflectance distribution function
+
     const float3 halfDirection = normalize(light.Direction + viewDirection);
 
     const float3 kS = FresnelFunction(material.F0, viewDirection, halfDirection); // Specular Factor
@@ -117,7 +119,7 @@ float3 BidirectionalReflectanceDistributionFunction(PbrLight light, PbrMaterial 
 
 float3 GetPbrLitColor(PbrLight light, PbrMaterial material, float3 viewDirection, float3 normal)
 {
-    const float3 brdf = BidirectionalReflectanceDistributionFunction(light, material, viewDirection, normal);
+    const float3 brdf = Brdf(light, material, viewDirection, normal);
     const float3 lDotN = max(0.0f, dot(light.Direction, normal));
 
     return brdf * light.Color * light.Intensity * lDotN;

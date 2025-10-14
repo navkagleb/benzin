@@ -9,8 +9,10 @@ namespace benzin
 {
     struct Mesh;
 
+    class ComputeCmdList;
     class GraphicsCmdList;
-    class MeshInstanceComponent;
+    class MeshComponent;
+    class Transform;
 
     enum class PsoId : uint32_t;
 }
@@ -18,8 +20,9 @@ namespace benzin
 namespace sandbox
 {
 
-    struct GBufferStats;
+    struct GBuffer;
     struct GBufferSettings;
+    struct GBufferStats;
 
     class GeometryPass : public benzin::RenderPass
     {
@@ -30,19 +33,34 @@ namespace sandbox
     private:
         enum class PsoFlag
         {
-            Mesh,
-            DepthPrePass,
             AlphaTest,
+            MeshPipeline,
         };
 
-        struct DrawMeshInstance
+        struct TempDrawRangeBatch
         {
-            entt::entity EntityHandle = benzin::g_BadEnum<entt::entity>;
-            std::vector<uint32_t> MeshInstanceIndices;
+            std::vector<DirectX::XMMATRIX> m_LocalToWorldMatrices;
+            std::vector<DirectX::XMMATRIX> m_PrevLocalToWorldMatrices;
+            std::vector<uint32_t> m_MaterialIndices;
         };
 
-        void CreatePso(benzin::PsoId id, benzin::EnumFlags<PsoFlag> flags = {});
-        void SetPso(benzin::GraphicsCmdList& cmdList, benzin::PsoId meshId, benzin::PsoId vertexId) const;
+        struct DrawRangeBatch
+        {
+            benzin::SubRange32 m_InstanceRange;
+        };
+
+        struct DrawRangeBatchGpuStorage
+        {
+            std::unique_ptr<benzin::Buffer> m_LocalToWorldMatrixBuffer;
+            std::unique_ptr<benzin::Buffer> m_PrevLocalToWorldMatrixBuffer;
+            std::unique_ptr<benzin::Buffer> m_MaterialIndexBuffer;
+        };
+
+        template <typename DrawRangeBatchT>
+        using MeshBatch = std::unordered_map<uint32_t, DrawRangeBatchT>;
+
+        using TempMeshBatches = std::unordered_map<entt::entity, MeshBatch<TempDrawRangeBatch>>;
+        using MeshBatches = std::unordered_map<entt::entity, MeshBatch<DrawRangeBatch>>;
 
         bool IsDependentOnViewport() const override { return true; }
 
@@ -50,21 +68,32 @@ namespace sandbox
         void OnUpdate() override;
         void OnRender() const override;
 
-        bool IsSphereCulled(const DirectX::BoundingSphere& localBoundingSphere, const DirectX::XMMATRIX& localToWorldMatrix) const;
+        void CreateGeometryPso(benzin::PsoId id, benzin::EnumFlags<PsoFlag> flags = {});
 
-        void GroupMeshInstances() const;
-        void ProcessMesh(entt::entity entityHandle, const benzin::Mesh& mesh, const DirectX::XMMATRIX& localToWorldMatrix) const;
-        void RenderMeshInstances(benzin::GraphicsCmdList& cmdList, std::span<const DrawMeshInstance> drawMeshes) const;
+        void CreateMeshBatches();
+        void AddToTempMeshBatches(const benzin::MeshComponent& meshComponent, const benzin::Transform& localToWorldMatrix);
+        void ProcessTempMeshBatches(TempMeshBatches& tempMeshBatches, MeshBatches& outMeshBatches);
+        void RenderMeshBatches(benzin::GraphicsCmdList& cmdList, const MeshBatches& meshBatches) const;
+
+        void ReprojectDepth(benzin::ComputeCmdList& cmdList) const;
+        void GenerateHzb(benzin::ComputeCmdList& cmdList) const;
+        void RunColorPass(benzin::GraphicsCmdList& cmdList) const;
 
     private:
-        bool m_IsDepthPrePassEnabled = true;
-        bool m_IsCpuFrustumCullingEnabled = true;
-        bool m_IsMeshPipelineUsed = true;
+        joint::GeometryPassConsts m_Consts = {};
 
-        joint::GeometryPassConsts m_Consts{};
+        TempMeshBatches m_TempOpaqueMeshBatches;
+        TempMeshBatches m_TempAlphaMeshBatches;
 
-        mutable std::vector<DrawMeshInstance> m_MeshInstances;
-        mutable std::vector<DrawMeshInstance> m_AlphaMeshInstances;
+        MeshBatches m_OpaqueMeshBatches;
+        MeshBatches m_AlphaMeshBatches;
+
+        uint32_t m_TotalInstanceCount = 0;
+        uint32_t m_InstanceOffset = 0;
+
+        DrawRangeBatchGpuStorage m_BatchStorage;
+
+        bool m_IsAmplificationDispatchUsed = true;
     };
 
 }

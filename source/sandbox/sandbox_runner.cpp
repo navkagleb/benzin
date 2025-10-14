@@ -178,9 +178,19 @@ namespace sandbox
         {
             {
                 auto& stats = m_RenderSettings->GetSection<GBufferStats>();
-                stats.MeshletCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletCount];
-                stats.MeshletVertexCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletVertexCount];
-                stats.MeshletTriangleCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletTriangleCount];
+
+                stats.m_TotalMeshletCount = readbackStats[+joint::ReadbackStat::Geometry_TotalMeshletCount];
+                stats.m_TotalMeshletVertexCount = readbackStats[+joint::ReadbackStat::Geometry_TotalMeshletVertexCount];
+                stats.m_TotalMeshletTriangleCount = readbackStats[+joint::ReadbackStat::Geometry_TotalMeshletTriangleCount];
+
+                stats.m_MeshletCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletCount];
+                stats.m_MeshletVertexCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletVertexCount];
+                stats.m_MeshletTriangleCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletTriangleCount];
+
+                stats.m_VsInvocationCount = readbackStats[+joint::ReadbackStat::Geometry_VsInvocationCount];
+                stats.m_AsInvocationCount = readbackStats[+joint::ReadbackStat::Geometry_AsInvocationCount];  
+                stats.m_MsInvocationCount = readbackStats[+joint::ReadbackStat::Geometry_MsInvocationCount];
+                stats.m_PsInvocationCount = readbackStats[+joint::ReadbackStat::Geometry_PsInvocationCount];
             }
 
             {
@@ -193,7 +203,6 @@ namespace sandbox
         };
 
         // The order in which render passes are added is important
-        BenzinAssert(m_RenderPasses.empty());
         m_RenderPasses.push_back(std::make_unique<TlasBuildingPass>());
         m_RenderPasses.push_back(std::make_unique<GlobalConstsPass>(std::move(readbackStatsCallback)));
         m_RenderPasses.push_back(std::make_unique<GeometryPass>());
@@ -216,13 +225,15 @@ namespace sandbox
         m_ImGuiManager->RegisterTool<SettingsTool<ToneMappingSettings>>("Settings/ToneMapping", m_RenderSettings->GetSection<ToneMappingSettings>());
     }
 
-    void SandboxRunner::InitScene()
+    // SponzaRunner
+
+    void SponzaRunner::InitScene()
     {
         InitCamera();
         InitSceneEntities();
     }
 
-    void SandboxRunner::InitCamera()
+    void SponzaRunner::InitCamera()
     {
         benzin::PerspectiveCamera& camera = m_Scene->GetCamera();
         camera.SetPosition({ -1.649f, 1.007f, -1.555f });
@@ -230,7 +241,7 @@ namespace sandbox
         camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
     }
 
-    void SandboxRunner::InitSceneEntities()
+    void SponzaRunner::InitSceneEntities()
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::InitSceneEntities");
 
@@ -247,7 +258,7 @@ namespace sandbox
         AddLightEntities(meshHandles);
     }
 
-    void SandboxRunner::AddMeshesToScene(std::span<benzin::MeshResource> meshResources, std::span<entt::entity> outMeshHandles)
+    void SponzaRunner::AddMeshesToScene(std::span<benzin::MeshResource> meshResources, std::span<entt::entity> outMeshHandles)
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::AddMeshesToScene");
 
@@ -257,7 +268,7 @@ namespace sandbox
         }
     }
 
-    void SandboxRunner::AddStaticMeshEntities(std::span<const entt::entity> meshHandles)
+    void SponzaRunner::AddStaticMeshEntities(std::span<const entt::entity> meshHandles)
     {
         auto& entityRegistry = m_Scene->GetEntityRegistry();
 
@@ -265,7 +276,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::Sponza]);
+            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles[+Mesh::Sponza]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetRotation({ 0.0f, DirectX::XM_PI, 0.0f });
@@ -276,7 +287,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::OrientationTest]);
+            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles[+Mesh::OrientationTest]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetScale({ 0.05f, 0.05f, 0.05f });
@@ -287,7 +298,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::MilkTruck]);
+            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles[+Mesh::MilkTruck]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetScale({ 0.1f, 0.1f, 0.1f });
@@ -298,7 +309,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::Cylinder]);
+            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles[+Mesh::Cylinder]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetScale({ 0.1f, 1.5f, 0.1f });
@@ -306,7 +317,7 @@ namespace sandbox
         }
     }
 
-    void SandboxRunner::AddDynamicMeshEntities(std::span<const entt::entity> meshHandles)
+    void SponzaRunner::AddDynamicMeshEntities(std::span<const entt::entity> meshHandles)
     {
         auto& entityRegistry = m_Scene->GetEntityRegistry();
 
@@ -314,7 +325,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::BoomBox]);
+            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles[+Mesh::BoomBox]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetRotation({ 0.0f, DirectX::XMConvertToRadians(45.0f), 0.0f });
@@ -337,11 +348,11 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::DamagedHelmet]);
+            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles[+Mesh::DamagedHelmet]);
 
             auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
             transform.SetRotation({ 0.0f, DirectX::XMConvertToRadians(45.0f), 0.0f });
-            transform.SetScale({ 0.4f, 0.4f, 0.4f });
+            // transform.SetScale({ 0.4f, 0.4f, 0.4f });
             transform.SetTranslation({ 1.0f, 0.5f, -0.5f });
 
             entityRegistry.emplace<benzin::EntityUpdateCallback>(entity, [this, &entityRegistry, entity]
@@ -357,7 +368,7 @@ namespace sandbox
         }
     }
 
-    void SandboxRunner::AddProceduralGrass()
+    void SponzaRunner::AddProceduralGrass()
     {
         const int32_t xRadius = 160;
         const int32_t zRadius = 70;
@@ -391,7 +402,7 @@ namespace sandbox
         }
     }
 
-    void SandboxRunner::AddLightEntities(std::span<const entt::entity> meshHandles)
+    void SponzaRunner::AddLightEntities(std::span<const entt::entity> meshHandles)
     {
         entt::registry& entityRegistry = m_Scene->GetEntityRegistry();
 
@@ -440,7 +451,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::UnitSphere]);
+            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles[+Mesh::UnitSphere]);
 
             auto& light = entityRegistry.emplace<benzin::SphericalLight>(entity);
             light.SetIntensity(5.0f);
@@ -471,7 +482,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::UnitSphere]);
+            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles[+Mesh::UnitSphere]);
 
             auto& light = entityRegistry.emplace<benzin::SphericalLight>(entity);
             light.SetColor({ 0.7f, 0.8f, 0.3f });
@@ -486,7 +497,7 @@ namespace sandbox
         {
             const auto entity = entityRegistry.create();
 
-            entityRegistry.emplace<benzin::MeshInstanceComponent>(entity, meshHandles[+Mesh::UnitSphere]);
+            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles[+Mesh::UnitSphere]);
 
             auto& light = entityRegistry.emplace<benzin::SphericalLight>(entity);
             light.SetColor({ 0.9f, 0.7f, 0.8f });
@@ -517,6 +528,64 @@ namespace sandbox
 
                 light.SetPosition(position);
             });
+        }
+    }
+
+    // StanfordDragonRunner
+
+    void StanfordDragonRunner::InitScene()
+    {
+        {
+            benzin::PerspectiveCamera& camera = m_Scene->GetCamera();
+            camera.SetPosition({ -2.286f, 3.911f, -18.385f });
+            camera.SetFrontDirection({ 0.149f, -0.185f, 0.972f });
+            camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
+        }
+
+        {
+            benzin::MeshResource dragon;
+            BenzinAssertExpr(benzin::LoadMeshFromGltfFile("StanfordDragon/StanfordDragon.glb", dragon));
+
+            const entt::entity dragonMeshHandle = m_Scene->AddMesh(std::move(dragon));
+            const int32_t radius = 3;
+
+            for (auto x = -radius; x <= radius; ++x)
+            {
+                for (auto y = -radius; y <= radius; ++y)
+                {
+                    for (auto z = -radius; z <= radius; ++z)
+                    {
+                        const auto entity = m_Scene->GetEntityRegistry().create();
+
+                        m_Scene->GetEntityRegistry().emplace<benzin::MeshComponent>(entity, dragonMeshHandle);
+
+                        DirectX::XMFLOAT3 translation{};
+                        translation.x = (float)x * 2.5f;
+                        translation.y = (float)y * 2.5f;
+                        translation.z = (float)z * 2.5f;
+
+                        DirectX::XMFLOAT3 rotation{};
+                        rotation.x = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
+                        rotation.y = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
+                        rotation.z = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
+
+                        const float scaleFactor = benzin::Random::Get<float>(0.05f, 0.1f);
+
+                        auto& transform = m_Scene->GetEntityRegistry().emplace<benzin::Transform>(entity);
+                        transform.SetTranslation(translation);
+                        transform.SetRotation(rotation);
+                        transform.SetScale({ scaleFactor, scaleFactor, scaleFactor });
+                    }
+                }
+            }
+        }
+
+        {
+            const auto entity = m_Scene->GetSunEntity();
+
+            auto& light = m_Scene->GetEntityRegistry().get_or_emplace<benzin::SunLight>(entity);
+            light.SetColor({ 1.0f, 1.0f, 0.7f });
+            light.SetIntensity(10.0f);
         }
     }
 

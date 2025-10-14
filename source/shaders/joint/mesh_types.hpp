@@ -25,7 +25,11 @@ namespace joint
 
     struct MeshletCullVolume
     {
-        float4 BoundingSphere;
+        float3 m_Center;
+        float m_Radius;
+
+        float3 m_ConeApex;
+        uint m_PackedAxisAndCutoff; // 3x int8_t axis + 1x int8_t cutoff
     };
 
     enum class MeshletConsts

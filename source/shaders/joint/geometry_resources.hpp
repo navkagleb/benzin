@@ -5,29 +5,41 @@
 namespace joint
 {
 
+    enum class DebugColoringType
+    {
+        None,
+        Primitive,
+        Instance,
+    };
+
     enum class GeometryResources : uint
     {
-        EntityTransforms,
         UnifiedMaterials,
+        ReprojectedHzb,
 
-        EntityTransformIndex,
+        Batch_LocalToWorldMatrices,
+        Batch_PrevLocalToWorldMatrices,
+        Batch_MaterialIndices,
 
-        ObjectToLocalMatrices,
-        ObjectToLocalMatrixIndex,
-        MaterialIndex,
+        Vertices, // Mesh pipeline
+        Meshlets, // Mesh pipeline
+        MeshletCullVolumes, // Mesh pipeline
+        MeshletIndirectVertices, // Mesh pipeline
+        MeshletIndices, // Mesh pipeline
+        MeshletCountPerInstance, // Mesh pipeline
+        TotalMeshletCount, // Mesh pipeline
 
-        Vertices,
-        Meshlets,
-        MeshletCullVolumes,
-        MeshletIndirectVertices,
-        MeshletIndices,
-
-        MeshletCount,
+        InstanceIndex, // Debug
+        MeshletIndex, // Debug
     };
 
     struct GeometryPassConsts
     {
-        uint IsMeshletColoringEnabled;
+        uint IsFrustumCullingEnabled : 1;
+        uint IsBackfaceCullingEnabled : 1;
+        uint IsOcclusionCullingEnabled : 1;
+
+        DebugColoringType ColoringType;
     };
 
 }

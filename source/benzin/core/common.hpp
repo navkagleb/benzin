@@ -52,6 +52,12 @@ namespace benzin
             , Count{ count }
         {}
 
+        template <typename ItemT>
+        SubRange(std::span<const ItemT> items)
+            : Offset{ 0 }
+            , Count{ (T)items.size() }
+        {}
+
         template <std::unsigned_integral U>
         SubRange(const SubRange<U>& other)
         {

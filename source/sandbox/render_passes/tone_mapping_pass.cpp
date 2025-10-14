@@ -147,8 +147,7 @@ namespace sandbox
         BenzinScopedResourceBarriers(
             cmdList,
             benzin::TransitionBarrier{ luminanceHistogram, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ avgLuminance, benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ avgLuminance, benzin::ResourceState::UnorderedAccess });
 
         cmdList.ClearUnorderedAccess(luminanceHistogram, luminanceHistogram.GetUav(), {});
         cmdList.ClearUnorderedAccess(avgLuminance, avgLuminance.GetUav(), {});
@@ -164,19 +163,18 @@ namespace sandbox
         const auto& luminanceHistogram = ms_Resources->Get(BufferId::ToneMapping_LuminanceHistogram);
         const auto& debugLuminanceHistogram = ms_Resources->Get(TextureId::ToneMapping_DebugLuminanceHistogram);
 
-        {
-            using enum joint::CalcLuminanceHistogramResources;
-
-            cmdList.SetComputeRootResource(+HdrColor, ms_Resources->Get(TextureId::HdrColor).GetSrv());
-            cmdList.SetComputeRootResource(+OutLuminanceHistogram, luminanceHistogram.GetUav());
-            cmdList.SetComputeRootResource(+OutDebugLuminanceHistogram, debugLuminanceHistogram.GetUav());
-        }
-
         BenzinScopedResourceBarriers(
             cmdList,
             benzin::TransitionBarrier{ luminanceHistogram, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ debugLuminanceHistogram, benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ debugLuminanceHistogram, benzin::ResourceState::UnorderedAccess });
+
+        {
+            using Resources = joint::CalcLuminanceHistogramResources;
+
+            cmdList.SetComputeRootResource(+Resources::HdrColor, ms_Resources->Get(TextureId::HdrColor).GetSrv());
+            cmdList.SetComputeRootResource(+Resources::OutLuminanceHistogram, luminanceHistogram.GetUav());
+            cmdList.SetComputeRootResource(+Resources::OutDebugLuminanceHistogram, debugLuminanceHistogram.GetUav());
+        }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcLuminanceHistogram));
         cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 16, 16, 1 });
@@ -190,18 +188,17 @@ namespace sandbox
         const auto& luminanceHistogram = ms_Resources->Get(BufferId::ToneMapping_LuminanceHistogram);
         const auto& avgLuminance = ms_Resources->Get(TextureId::ToneMapping_AvgLuminance);
 
-        {
-            using enum joint::CalcAvgLuminanceResources;
-
-            cmdList.SetComputeRootResource(+OutLuminanceHistogram, luminanceHistogram.GetUav());
-            cmdList.SetComputeRootResource(+OutAvgLuminance, avgLuminance.GetUav());
-        }
-
         BenzinScopedResourceBarriers(
             cmdList,
             benzin::TransitionBarrier{ luminanceHistogram, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ avgLuminance, benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ avgLuminance, benzin::ResourceState::UnorderedAccess });
+
+        {
+            using Resources = joint::CalcAvgLuminanceResources;
+
+            cmdList.SetComputeRootResource(+Resources::OutLuminanceHistogram, luminanceHistogram.GetUav());
+            cmdList.SetComputeRootResource(+Resources::OutAvgLuminance, avgLuminance.GetUav());
+        }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcAvgLuminance));
         cmdList.Dispatch({ 1, 1, 1 }, { 1, 1, 1 });
@@ -214,18 +211,17 @@ namespace sandbox
 
         const auto& finalTexture = ms_Resources->Get(TextureId::Final);
 
-        {
-            using enum joint::ApplyToneMapOperatorResources;
-
-            cmdList.SetComputeRootResource(+AvgLuminance, ms_Resources->Get(TextureId::ToneMapping_AvgLuminance).GetSrv());
-            cmdList.SetComputeRootResource(+HdrColor, ms_Resources->Get(TextureId::HdrColor).GetSrv());
-            cmdList.SetComputeRootResource(+OutFinal, finalTexture.GetUav());
-        }
-
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::UnorderedAccess });
+
+        {
+            using Resources = joint::ApplyToneMapOperatorResources;
+
+            cmdList.SetComputeRootResource(+Resources::AvgLuminance, ms_Resources->Get(TextureId::ToneMapping_AvgLuminance).GetSrv());
+            cmdList.SetComputeRootResource(+Resources::HdrColor, ms_Resources->Get(TextureId::HdrColor).GetSrv());
+            cmdList.SetComputeRootResource(+Resources::OutFinal, finalTexture.GetUav());
+        }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_ApplyToneMapOperator));
         cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 16, 16, 1 });

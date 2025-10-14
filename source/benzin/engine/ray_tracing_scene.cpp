@@ -48,7 +48,7 @@ namespace benzin
     {
         BenzinProfile();
 
-        const auto view = m_Scene.m_EntityRegistry.view<MeshInstanceComponent, Transform>();
+        const auto view = m_Scene.m_EntityRegistry.view<MeshComponent, Transform>();
         const auto blasView = m_Scene.m_MeshRegistry.view<RayTracing_Blas>();
 
         auto& tlas = m_Tlases[m_Device.GetActiveFrameIndex()];
@@ -56,21 +56,15 @@ namespace benzin
 
         for (const entt::entity entityHandle : view)
         {
-            const auto& meshInstanceComponent = view.get<MeshInstanceComponent>(entityHandle);
-            const auto& transformComponent = view.get<Transform>(entityHandle);
-
-            if (!IsGoodEnum(meshInstanceComponent.GetMeshHandle()))
-            {
-                continue;
-            }
-
-            const auto& blas = blasView.get<RayTracing_Blas>(meshInstanceComponent.GetMeshHandle());
+            const auto& meshComponent = view.get<MeshComponent>(entityHandle);
+            const auto& transform = view.get<Transform>(entityHandle);
+            const auto& blas = blasView.get<RayTracing_Blas>(meshComponent.GetMeshHandle());
 
             tlas.AddInstance(RayTracing_Tlas::Instance
             {
                 .Blas = blas,
                 .HitGroupIndex = 0, // TODO: For now all instances have default hit group
-                .Transform = transformComponent.GetLocalToWorldMatrix(),
+                .Transform = transform.GetLocalToWorldMatrix(),
             });
         }
 

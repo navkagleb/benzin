@@ -325,7 +325,6 @@ namespace sandbox
                 m_Scene->UpdateEntities();
             }
 
-            m_Scene->UploadEntityTransformsToGpu();
             m_Scene->UploadLightsToGpu();
         }
 

@@ -11,67 +11,65 @@ namespace sandbox
 {
 
     GBuffer::GBuffer(const benzin::RenderResources& resources)
-        : AlbedoAndRoughness{ resources.Get(TextureId::AlbedoAndRoughness) }
-        , EmissiveAndMetallic{ resources.Get(TextureId::EmissiveAndMetallic) }
-        , WorldNormal{ resources.Get(TextureId::WorldNormal) }
-        , Mv{ resources.Get(TextureId::Mv) }
-        , ViewDepth{ resources.Get(TextureId::ViewDepth) }
-        , DepthStencil{ resources.Get(TextureId::DepthStencil) }
+        : m_AlbedoAndRoughness{ resources.Get(TextureId::AlbedoAndRoughness) }
+        , m_EmissiveAndMetallic{ resources.Get(TextureId::EmissiveAndMetallic) }
+        , m_WorldNormal{ resources.Get(TextureId::WorldNormal) }
+        , m_Mv{ resources.Get(TextureId::Mv) }
+        , m_ViewDepth{ resources.Get(TextureId::ViewDepth) }
+        , m_DepthStencil{ resources.Get(TextureId::DepthStencil) }
     {}
 
     void GBuffer::SetRenderTargets(benzin::GraphicsCmdList& cmdList) const
     {
         cmdList.SetRenderTargets(
             {
-                AlbedoAndRoughness.GetRtv(),
-                EmissiveAndMetallic.GetRtv(),
-                WorldNormal.GetRtv(),
-                Mv.GetRtv(),
-                ViewDepth.GetRtv(),
+                m_AlbedoAndRoughness.GetRtv(),
+                m_EmissiveAndMetallic.GetRtv(),
+                m_WorldNormal.GetRtv(),
+                m_Mv.GetRtv(),
+                m_ViewDepth.GetRtv(),
             },
-            &DepthStencil.GetDsv()
-        );
+            &m_DepthStencil.GetDsv());
     }
 
     void GBuffer::SetDepthStencilOnly(benzin::GraphicsCmdList& cmdList) const
     {
-        cmdList.SetRenderTargets({}, &DepthStencil.GetDsv());
+        cmdList.SetRenderTargets({}, &m_DepthStencil.GetDsv());
     }
 
     void GBuffer::ClearRenderTargets(benzin::GraphicsCmdList& cmdList) const
     {
-        cmdList.ClearRenderTarget(AlbedoAndRoughness);
-        cmdList.ClearRenderTarget(EmissiveAndMetallic);
-        cmdList.ClearRenderTarget(WorldNormal);
-        cmdList.ClearRenderTarget(Mv);
-        cmdList.ClearRenderTarget(ViewDepth);
+        cmdList.ClearRenderTarget(m_AlbedoAndRoughness);
+        cmdList.ClearRenderTarget(m_EmissiveAndMetallic);
+        cmdList.ClearRenderTarget(m_WorldNormal);
+        cmdList.ClearRenderTarget(m_Mv);
+        cmdList.ClearRenderTarget(m_ViewDepth);
     }
 
     void GBuffer::ClearDepthStencil(benzin::GraphicsCmdList& cmdList) const
     {
-        cmdList.ClearDepthStencil(DepthStencil);
+        cmdList.ClearDepthStencil(m_DepthStencil);
     }
 
     benzin::ScopedResourceBarriers GBuffer::CreateResourceBarriers(
         benzin::GraphicsCmdList& cmdList,
         benzin::ResourceState depthStencilState,
-        bool isDepthStencilOnly
-    ) const
+        bool isDepthStencilOnly) const
     {
         std::vector<benzin::ResourceBarrierVariant> resourceBarriers;
         resourceBarriers.reserve(isDepthStencilOnly ? 1 : 6);
 
         if (!isDepthStencilOnly)
         {
-            resourceBarriers.push_back(benzin::TransitionBarrier{ AlbedoAndRoughness, benzin::ResourceState::RenderTarget });
-            resourceBarriers.push_back(benzin::TransitionBarrier{ EmissiveAndMetallic, benzin::ResourceState::RenderTarget });
-            resourceBarriers.push_back(benzin::TransitionBarrier{ WorldNormal, benzin::ResourceState::RenderTarget });
-            resourceBarriers.push_back(benzin::TransitionBarrier{ Mv, benzin::ResourceState::RenderTarget });
-            resourceBarriers.push_back(benzin::TransitionBarrier{ ViewDepth, benzin::ResourceState::RenderTarget });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ m_AlbedoAndRoughness, benzin::ResourceState::RenderTarget });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ m_EmissiveAndMetallic, benzin::ResourceState::RenderTarget });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ m_WorldNormal, benzin::ResourceState::RenderTarget });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ m_Mv, benzin::ResourceState::RenderTarget });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ m_ViewDepth, benzin::ResourceState::RenderTarget });
         }
 
         BenzinAssert(depthStencilState == benzin::ResourceState::DepthWrite || depthStencilState == benzin::ResourceState::DepthRead);
-        resourceBarriers.push_back(benzin::TransitionBarrier{ DepthStencil, depthStencilState });
+        resourceBarriers.push_back(benzin::TransitionBarrier{ m_DepthStencil, depthStencilState });
 
         return benzin::ScopedResourceBarriers
         {

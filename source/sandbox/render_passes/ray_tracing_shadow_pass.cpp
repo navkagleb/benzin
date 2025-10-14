@@ -110,6 +110,10 @@ namespace sandbox
         cmdList.SetRayTracingPso(pso);
         cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
+        BenzinScopedResourceBarriers(
+            cmdList,
+            benzin::TransitionBarrier{ noisyPenumbra, benzin::ResourceState::UnorderedAccess });
+
         {
             using enum joint::RayTracing_ShadowResources;
 
@@ -119,11 +123,6 @@ namespace sandbox
 
             cmdList.SetComputeRootResource(+OutNoisyPenumbra, noisyPenumbra.GetUav());
         }
-
-        BenzinScopedResourceBarriers(
-            cmdList,
-            benzin::TransitionBarrier{ noisyPenumbra, benzin::ResourceState::UnorderedAccess }
-        );
 
         cmdList.DispatchRays(pso.GetShaderTable(), { GetRenderViewportWidth(), GetRenderViewportHeight(), 1 });
     }

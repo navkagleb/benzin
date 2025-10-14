@@ -55,7 +55,6 @@ namespace benzin
     {
         std::unique_ptr<Buffer> VertexBuffer;
         std::unique_ptr<Buffer> IndexBuffer;
-        std::unique_ptr<Buffer> ObjectToLocalMatrixBuffer;
 
         std::unique_ptr<Buffer> MeshletBuffer;
         std::unique_ptr<Buffer> MeshletCullVolumeBuffer;
@@ -72,7 +71,7 @@ namespace benzin
 
         std::vector<joint::Meshlet> Meshlets;
         std::vector<joint::MeshletCullVolume> MeshletCullVolumes;
-        std::vector<uint32_t> MeshletIndirectVertices;
+        std::vector<uint32_t> MeshletIndirectVertices; // Can be used uint16_t if Vertices.size() <= std::numeric_limits<uint16_t>::max()
         std::vector<uint8_t> MeshletIndices;
 
         std::span<const joint::MeshVertex> GetDrawRangeVertices(const MeshDrawRange& drawRange) const;

@@ -13,8 +13,8 @@ namespace benzin
 
         if (m_IsDirty)
         {
-            const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(m_Rotation.x) * DirectX::XMMatrixRotationY(m_Rotation.y) * DirectX::XMMatrixRotationZ(m_Rotation.z);
             const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(m_Scale.x, m_Scale.y, m_Scale.z);
+            const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(m_Rotation.x) * DirectX::XMMatrixRotationY(m_Rotation.y) * DirectX::XMMatrixRotationZ(m_Rotation.z);
             const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(m_Translation.x, m_Translation.y, m_Translation.z);
 
             m_LocalToWorldMatrix = scaling * rotation * translation;

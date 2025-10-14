@@ -9,8 +9,8 @@
 #include <benzin/core/math.hpp>
 #include <benzin/engine/mesh.hpp>
 
-#define BENZIN_IS_MESH_REGROUP_ENABLED 1
-#define BENZIN_IS_MESH_OPTIMIZATION_ENABLED 1
+#define BENZIN_MESH_REGROUP_ENABLED 0
+#define BENZIN_MESH_OPTIMIZATION_ENABLED 1
 
 BenzinEnableUnaryPlusForEnum(joint::MeshletConsts);
 
@@ -21,7 +21,7 @@ namespace benzin
     {
         BenzinUnused(mesh);
 
-#if BENZIN_IS_MESH_REGROUP_ENABLED
+#if BENZIN_MESH_REGROUP_ENABLED
         struct GroupKey
         {
             DirectX::XMMATRIX ObjectToLocalMatrix;
@@ -140,14 +140,14 @@ namespace benzin
         mesh.Indices = std::move(newIndices);
         mesh.DrawRanges = std::move(newDrawRanges);
         mesh.Instances = std::move(newInstances);
-#endif
+#endif // BENZIN_MESH_REGROUP_ENABLED
     }
 
     void OptimizeMesh(Mesh& mesh)
     {
         BenzinUnused(mesh);
 
-#if BENZIN_IS_MESH_OPTIMIZATION_ENABLED
+#if BENZIN_MESH_OPTIMIZATION_ENABLED
         // Optimize each mesh separately
 
         std::vector<joint::MeshVertex> newVertices;
@@ -202,7 +202,7 @@ namespace benzin
 
         mesh.Vertices = std::move(newVertices);
         mesh.Indices = std::move(newIndices);
-#endif
+#endif // BENZIN_MESH_OPTIMIZATION_ENABLED
     }
 
     void GenerateMeshlets(Mesh& mesh)
@@ -243,8 +243,7 @@ namespace benzin
                 sizeof(decltype(drawVertices)::value_type),
                 maxMeshletVertexCount,
                 maxMeshletTriangleCount,
-                meshletConeWeight
-            );
+                meshletConeWeight);
 
             {
                 // Trim buffers
@@ -266,8 +265,7 @@ namespace benzin
                     &meshletIndirectVertices[meshlet.vertex_offset],
                     &meshletIndices[meshlet.triangle_offset],
                     meshlet.triangle_count,
-                    meshlet.vertex_count
-                );
+                    meshlet.vertex_count);
 
                 const meshopt_Bounds bounds = meshopt_computeMeshletBounds(
                     &meshletIndirectVertices[meshlet.vertex_offset],
@@ -275,13 +273,14 @@ namespace benzin
                     meshlet.triangle_count,
                     &drawVertices.front().Position.x,
                     drawVertices.size(),
-                    sizeof(decltype(drawVertices)::value_type)
-                );
+                    sizeof(decltype(drawVertices)::value_type));
 
-                joint::MeshletCullVolume cullVolume
-                {
-                    .BoundingSphere = *(DirectX::XMFLOAT4*)&bounds, // Take first 4 floats
-                };
+                joint::MeshletCullVolume cullVolume = {};
+                memcpy(&cullVolume.m_Center, &bounds.center, sizeof(DirectX::XMFLOAT3));
+                cullVolume.m_Radius = bounds.radius;
+                memcpy(&cullVolume.m_ConeApex, &bounds.cone_apex, sizeof(DirectX::XMFLOAT3));
+                memcpy(&cullVolume.m_PackedAxisAndCutoff, &bounds.cone_axis_s8, sizeof(uint8_t) * 3);
+                memcpy(((uint8_t*)&cullVolume.m_PackedAxisAndCutoff) + 3, &bounds.cone_cutoff_s8, sizeof(uint8_t));
 
                 meshletCullVolumes.push_back(cullVolume);
             }
@@ -318,8 +317,7 @@ namespace benzin
                 drawRange.BoundingSphere,
                 drawVertices.size(),
                 (DirectX::XMFLOAT3*)drawVertices.data(),
-                sizeof(decltype(drawVertices)::value_type)
-            );
+                sizeof(decltype(drawVertices)::value_type));
         }
     }
 

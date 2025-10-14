@@ -39,8 +39,10 @@ namespace benzin
         const auto& GetUnifiedMaterialBuffer() const { return *m_UnifiedMaterialBuffer; }
         const auto& GetLightBuffer() const { return *m_LightBuffer; }
 
-        auto GetSunEntity() const { return m_SunEntity; }
         auto GetActiveLightCount() const { return m_ActiveLightCount; }
+        
+        auto GetSunEntity() const { return m_SunEntity; }
+        auto GetUnitSphereMeshHandle() const { return m_UnitSphereMeshHandle; }
 
         const Material& GetMaterial(uint32_t index) const;
 
@@ -52,7 +54,6 @@ namespace benzin
         void UploadMaterialsToGpu();
 
         void UpdateEntities();
-        void UploadEntityTransformsToGpu();
         void UploadLightsToGpu();
 
         void EndFrame();
@@ -78,12 +79,11 @@ namespace benzin
         std::vector<Material> m_UnifiedMaterials;
         std::unique_ptr<Buffer> m_UnifiedMaterialBuffer;
 
-        entt::entity m_SunEntity;
-        std::vector<entt::entity> m_SphericalLightEntities;
         std::unique_ptr<Buffer> m_LightBuffer;
         uint32_t m_ActiveLightCount = 0;
 
-        uint32_t m_EntityTransformCount = 0;
+        entt::entity m_SunEntity;
+        entt::entity m_UnitSphereMeshHandle;
     };
 
 }

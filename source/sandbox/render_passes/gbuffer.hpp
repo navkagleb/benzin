@@ -15,12 +15,12 @@ namespace sandbox
 
     struct GBuffer
     {
-        const benzin::Texture& AlbedoAndRoughness;
-        const benzin::Texture& EmissiveAndMetallic;
-        const benzin::Texture& WorldNormal;
-        const benzin::Texture& Mv;
-        const benzin::Texture& ViewDepth;
-        const benzin::Texture& DepthStencil;
+        const benzin::Texture& m_AlbedoAndRoughness;
+        const benzin::Texture& m_EmissiveAndMetallic;
+        const benzin::Texture& m_WorldNormal;
+        const benzin::Texture& m_Mv;
+        const benzin::Texture& m_ViewDepth;
+        const benzin::Texture& m_DepthStencil;
 
         explicit GBuffer(const benzin::RenderResources& resources);
 
@@ -34,8 +34,7 @@ namespace sandbox
         benzin::ScopedResourceBarriers CreateResourceBarriers(
             benzin::GraphicsCmdList& cmdList,
             benzin::ResourceState depthStencilState,
-            bool isDepthStencilOnly = false
-        ) const;
+            bool isDepthStencilOnly = false) const;
     };
 
 }
