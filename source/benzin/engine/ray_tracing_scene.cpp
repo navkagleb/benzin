@@ -81,7 +81,7 @@ namespace benzin
         for (const entt::entity meshHandle : view)
         {
             const auto& mesh = view.get<Mesh>(meshHandle);
-            meshInstanceCount += (uint32_t)mesh.Instances.size();
+            meshInstanceCount += (uint32_t)mesh.m_Instances.size();
         }
 
         std::vector<DirectX::XMFLOAT3X4> localTransforms;
@@ -98,32 +98,32 @@ namespace benzin
             const auto& mesh = view.get<Mesh>(meshHandle);
             const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
 
-            const auto instanceCount = (uint32_t)mesh.Instances.size();
+            const auto instanceCount = (uint32_t)mesh.m_Instances.size();
 
             auto& blas = m_Scene.m_MeshRegistry.emplace<RayTracing_Blas>(meshHandle, instanceCount);
 
-            for (const MeshInstance& instance : mesh.Instances)
+            for (const MeshInstance& instance : mesh.m_Instances)
             {
                 // TODO: There is duplication of Mesh due to using transform from MeshInstance
                 // TODO: Can InstanceTransformBuffer be used here!
 
-                const MeshDrawRange& drawRange = mesh.DrawRanges[instance.DrawRangeIndex];
+                const MeshDrawRange& drawRange = mesh.m_DrawRanges[instance.m_DrawRangeIndex];
 
                 blas.AddGeometry(RayTracing_Blas::Geometry
                 {
                     .VertexBuffer = *meshGpuStorage.VertexBuffer,
                     .IndexBuffer = *meshGpuStorage.IndexBuffer,
-                    .VertexRange = drawRange.VertexRange,
-                    .IndexRange = drawRange.IndexRange,
+                    .VertexRange = drawRange.m_VertexRange,
+                    .IndexRange = drawRange.m_IndexRange,
                     .TransformGpuAddress = localTransformBuffer->GetGpuVirtualAddress((uint32_t)localTransforms.size())
                 });
 
-                const DirectX::XMMATRIX objectToLocalMatrix = DirectX::XMMatrixTranspose(instance.ObjectToLocalMatrix);
+                const DirectX::XMMATRIX objectToLocalMatrix = DirectX::XMMatrixTranspose(instance.m_ObjectToLocalMatrix);
                 localTransforms.push_back(*(DirectX::XMFLOAT3X4*)&objectToLocalMatrix);
             }
         }
 
-        BufferWriter writer{ localTransformBuffer->GetCpuMappedData(), localTransformBuffer->GetSizeInBytes() };
+        BufferWriter writer = MakeBufferWriter(*localTransformBuffer);
         writer.WriteData(std::as_bytes(std::span{ localTransforms }));
     }
 

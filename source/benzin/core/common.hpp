@@ -37,25 +37,25 @@ namespace benzin
     template <std::unsigned_integral T>
     struct SubRange
     {
-        T Offset = 0;
-        T Count = g_BadUint<T>;
+        T m_Offset = 0;
+        T m_Count = g_BadUint<T>;
 
         SubRange() = default;
 
         SubRange(T offset)
-            : Offset{ offset }
-            , Count{ 1 }
+            : m_Offset{ offset }
+            , m_Count{ 1 }
         {}
 
         SubRange(T offset, T count)
-            : Offset{ offset }
-            , Count{ count }
+            : m_Offset{ offset }
+            , m_Count{ count }
         {}
 
         template <typename ItemT>
         SubRange(std::span<const ItemT> items)
-            : Offset{ 0 }
-            , Count{ (T)items.size() }
+            : m_Offset{ 0 }
+            , m_Count{ (T)items.size() }
         {}
 
         template <std::unsigned_integral U>
@@ -63,18 +63,18 @@ namespace benzin
         {
             static_assert(sizeof(U) <= sizeof(T));
 
-            Offset = (T)other.Offset;
-            Count = (T)other.Count;
+            m_Offset = (T)other.m_Offset;
+            m_Count = (T)other.m_Count;
         }
 
         bool IsGoodRange() const
         {
-            return IsGoodUint(Count);
+            return IsGoodUint(m_Count);
         }
 
         T GetEndCount() const
         {
-            return Offset + Count;
+            return m_Offset + m_Count;
         }
     };
 

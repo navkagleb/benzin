@@ -12,12 +12,12 @@ namespace benzin
 
     std::span<const joint::MeshVertex> Mesh::GetDrawRangeVertices(const MeshDrawRange& drawRange) const
     {
-        return ToSpan(Vertices.data() + drawRange.VertexRange.Offset, drawRange.VertexRange.Count);
+        return ToSpan(m_Vertices.data() + drawRange.m_VertexRange.m_Offset, drawRange.m_VertexRange.m_Count);
     }
     
     std::span<const uint32_t> Mesh::GetDrawRangeIndices(const MeshDrawRange& drawRange) const
     {
-        return ToSpan(Indices.data() + drawRange.IndexRange.Offset, drawRange.IndexRange.Count);
+        return ToSpan(m_Indices.data() + drawRange.m_IndexRange.m_Offset, drawRange.m_IndexRange.m_Count);
     }
 
     MeshGpuStorage Mesh::CreateGpuStorage(Device& device, std::string_view debugName) const
@@ -25,12 +25,12 @@ namespace benzin
         GpuHeapLinearBufferAllocator& allocator = device.GetPersistentDefaultLinearAllocator();
 
         MeshGpuStorage meshGpuStorage;
-        meshGpuStorage.VertexBuffer = allocator.AllocateBuffer(std::format("{}_VertexBuffer", debugName), ToSpan(Vertices));
-        meshGpuStorage.IndexBuffer = allocator.AllocateBuffer(std::format("{}_IndexBuffer", debugName), ToSpan(Indices), GraphicsFormat::R32Uint);
-        meshGpuStorage.MeshletBuffer = allocator.AllocateBuffer(std::format("{}_MeshletBuffer", debugName), ToSpan(Meshlets));
-        meshGpuStorage.MeshletCullVolumeBuffer = allocator.AllocateBuffer(std::format("{}_MeshletCullVolumeBuffer", debugName), ToSpan(MeshletCullVolumes));
-        meshGpuStorage.MeshletIndirectVertexBuffer = allocator.AllocateBuffer(std::format("{}_MeshletIndirectVertexBuffer", debugName), ToSpan(MeshletIndirectVertices), GraphicsFormat::R32Uint);
-        meshGpuStorage.MeshletIndexBuffer = allocator.AllocateBuffer(std::format("{}_MeshletIndexBuffer", debugName), ToSpan(MeshletIndices), GraphicsFormat::R8Uint);
+        meshGpuStorage.VertexBuffer = allocator.AllocateBuffer(std::format("{}_VertexBuffer", debugName), ToSpan(m_Vertices));
+        meshGpuStorage.IndexBuffer = allocator.AllocateBuffer(std::format("{}_IndexBuffer", debugName), ToSpan(m_Indices), GraphicsFormat::R32Uint);
+        meshGpuStorage.MeshletBuffer = allocator.AllocateBuffer(std::format("{}_MeshletBuffer", debugName), ToSpan(m_Meshlets));
+        meshGpuStorage.MeshletCullVolumeBuffer = allocator.AllocateBuffer(std::format("{}_MeshletCullVolumeBuffer", debugName), ToSpan(m_MeshletCullVolumes));
+        meshGpuStorage.MeshletIndirectVertexBuffer = allocator.AllocateBuffer(std::format("{}_MeshletIndirectVertexBuffer", debugName), ToSpan(m_MeshletIndirectVertices), GraphicsFormat::R32Uint);
+        meshGpuStorage.MeshletIndexBuffer = allocator.AllocateBuffer(std::format("{}_MeshletIndexBuffer", debugName), ToSpan(m_MeshletIndices), GraphicsFormat::R8Uint);
 
         return meshGpuStorage;
     }

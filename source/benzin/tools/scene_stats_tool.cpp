@@ -30,9 +30,7 @@ namespace benzin
     void SceneStatsTool::DrawSceneStats() const
     {
         if (!ImGui::MainCollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen))
-        {
             return;
-        }
 
         uint32_t vertexCount = 0;
         uint32_t triangleCount = 0;
@@ -45,11 +43,11 @@ namespace benzin
         {
             const auto& mesh = view.get<Mesh>(meshHandle);
 
-            vertexCount += (uint32_t)mesh.Vertices.size();
-            triangleCount += (uint32_t)mesh.Indices.size() / 3;
-            drawRangeCount += (uint32_t)mesh.DrawRanges.size();
-            meshInstanceCount += (uint32_t)mesh.Instances.size();
-            meshletCount += (uint32_t)mesh.Meshlets.size();
+            vertexCount += (uint32_t)mesh.m_Vertices.size();
+            triangleCount += (uint32_t)mesh.m_Indices.size() / 3;
+            drawRangeCount += (uint32_t)mesh.m_DrawRanges.size();
+            meshInstanceCount += (uint32_t)mesh.m_Instances.size();
+            meshletCount += (uint32_t)mesh.m_Meshlets.size();
         }
 
         ImGui::FmtText("Vertices: {:L}", vertexCount);
@@ -70,16 +68,20 @@ namespace benzin
             const auto meshHeaderName = std::format(
                 "{}: {} draws - {:L} tris - {:L} meshlets",
                 meshTag,
-                mesh.DrawRanges.size(),
-                mesh.Indices.size() / 3,
-                mesh.Meshlets.size()
-            );
+                mesh.m_DrawRanges.size(),
+                mesh.m_Indices.size() / 3,
+                mesh.m_Meshlets.size());
 
             ImGui::CollapsingHeaderWithIndent(meshHeaderName, [&]
             {
                 const auto drawBufferSize = [](const char* name, const Buffer& buffer)
                 {
-                    ImGui::FmtBulletText("{}: {:.2f} mb ({:L} / {})", name, ToMb(buffer.GetAllocationSizeInBytes()), buffer.GetElementCount(), buffer.GetElementSizeInBytes());
+                    ImGui::FmtBulletText(
+                        "{}: {:.2f} mb ({:L} / {})",
+                        name,
+                        ToMb(buffer.GetAllocationSizeInBytes()),
+                        buffer.GetElementCount(),
+                        buffer.GetElementSizeInBytes());
                 };
 
                 const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
@@ -91,9 +93,13 @@ namespace benzin
                 drawBufferSize("Meshlet index buffer", *meshGpuStorage.MeshletIndexBuffer);
 
                 ImGui::Text("Draw ranges:");
-                for (const auto& [i, drawRange] : mesh.DrawRanges | std::views::enumerate)
+                for (const auto& [i, drawRange] : mesh.m_DrawRanges | std::views::enumerate)
                 {
-                    ImGui::FmtText("{}: {:L} triangles, {:L} meshlets", i, drawRange.IndexRange.Count / 3, drawRange.MeshletRange.Count);
+                    ImGui::FmtText(
+                        "{}: {:L} triangles, {:L} meshlets",
+                        i,
+                        drawRange.m_IndexRange.m_Count / 3,
+                        drawRange.m_MeshletRange.m_Count);
                 }
             });
         }
@@ -102,9 +108,7 @@ namespace benzin
     void SceneStatsTool::DrawRayTracingAccelerationStructuresStats() const
     {
         if (!ImGui::MainCollapsingHeader("RayTracing_AccelerationStructures"))
-        {
             return;
-        }
 
         {
             uint64_t buffersSizeInBytes = 0;
@@ -116,9 +120,7 @@ namespace benzin
                 const auto& blas = view.get<RayTracing_Blas>(meshHandle);
 
                 if (!blas.IsAllocated())
-                {
                     continue;
-                }
 
                 buffersSizeInBytes += blas.GetBuffer()->GetAllocationSizeInBytes();
                 scratchResourcesSizeInBytes += blas.GetScratchResource()->GetAllocationSizeInBytes();

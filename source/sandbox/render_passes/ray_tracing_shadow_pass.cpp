@@ -53,15 +53,15 @@ namespace sandbox
         benzin::MakeUniquePtr(m_BlueNoiseTexture, *ms_Device, benzin::TextureCreation
         {
             .DebugName = "BlueNoise",
-            .Format = blueNoiseImage.Format,
-            .Width = blueNoiseImage.Width,
-            .Height = blueNoiseImage.Height,
-            .Depth = blueNoiseImage.Depth,
+            .Format = blueNoiseImage.m_Format,
+            .Width = blueNoiseImage.m_Width,
+            .Height = blueNoiseImage.m_Height,
+            .Depth = blueNoiseImage.m_Depth,
             .MipCount = 1,
         });
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoiseTexture->GetSizeInBytes());
-        cmdList.UploadToTexture(*m_BlueNoiseTexture, benzin::ToSpan(blueNoiseImage.PixelData));
+        cmdList.UploadToTexture(*m_BlueNoiseTexture, benzin::ToSpan(blueNoiseImage.m_PixelData));
 
         auto& settings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
         settings.BlueNoiseDepth = m_BlueNoiseTexture->GetDepth();

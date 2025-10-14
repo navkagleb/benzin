@@ -17,9 +17,6 @@ namespace benzin
     class Buffer;
     class Device;
 
-    inline constexpr float g_BadBoundingSphereRadius = -1.0f;
-    inline constexpr DirectX::BoundingSphere g_BadBoundingSphere{ DirectX::XMFLOAT3{}, g_BadBoundingSphereRadius };
-
     struct MeshData
     {
         std::vector<joint::MeshVertex> Vertices;
@@ -32,23 +29,23 @@ namespace benzin
 
     struct MeshDrawRange
     {
-        SubRange32 VertexRange;
-        SubRange32 IndexRange;
+        SubRange32 m_VertexRange;
+        SubRange32 m_IndexRange;
 
-        SubRange32 MeshletRange;
-        SubRange32 MeshletIndirectVertexRange;
-        SubRange32 MeshletIndexRange;
+        SubRange32 m_MeshletRange;
+        SubRange32 m_MeshletIndirectVertexRange;
+        SubRange32 m_MeshletIndexRange;
 
-        PrimitiveTopology Topology = PrimitiveTopology::Unknown;
+        PrimitiveTopology m_Topology = PrimitiveTopology::Unknown;
 
-        DirectX::BoundingSphere BoundingSphere = g_BadBoundingSphere;
+        DirectX::BoundingSphere m_BoundingSphere = {};
     };
 
     struct MeshInstance
     {
-        DirectX::XMMATRIX ObjectToLocalMatrix = DirectX::XMMatrixIdentity();
-        uint32_t DrawRangeIndex = g_Bad32;
-        uint32_t MaterialIndex = g_Bad32; // Optional
+        DirectX::XMMATRIX m_ObjectToLocalMatrix = DirectX::XMMatrixIdentity();
+        uint32_t m_DrawRangeIndex = g_Bad32;
+        uint32_t m_MaterialIndex = g_Bad32; // Optional
     };
 
     struct MeshGpuStorage
@@ -64,15 +61,15 @@ namespace benzin
 
     struct Mesh
     {
-        std::vector<joint::MeshVertex> Vertices;
-        std::vector<uint32_t> Indices;
-        std::vector<MeshDrawRange> DrawRanges;
-        std::vector<MeshInstance> Instances;
+        std::vector<joint::MeshVertex> m_Vertices;
+        std::vector<uint32_t> m_Indices;
+        std::vector<MeshDrawRange> m_DrawRanges;
+        std::vector<MeshInstance> m_Instances;
 
-        std::vector<joint::Meshlet> Meshlets;
-        std::vector<joint::MeshletCullVolume> MeshletCullVolumes;
-        std::vector<uint32_t> MeshletIndirectVertices; // Can be used uint16_t if Vertices.size() <= std::numeric_limits<uint16_t>::max()
-        std::vector<uint8_t> MeshletIndices;
+        std::vector<joint::Meshlet> m_Meshlets;
+        std::vector<joint::MeshletCullVolume> m_MeshletCullVolumes;
+        std::vector<uint32_t> m_MeshletIndirectVertices; // Can be used uint16_t if Vertices.size() <= std::numeric_limits<uint16_t>::max()
+        std::vector<uint8_t> m_MeshletIndices;
 
         std::span<const joint::MeshVertex> GetDrawRangeVertices(const MeshDrawRange& drawRange) const;
         std::span<const uint32_t> GetDrawRangeIndices(const MeshDrawRange& drawRange) const;
@@ -82,58 +79,52 @@ namespace benzin
 
     struct MaterialTextureIndices
     {
-        uint32_t Albedo = g_Bad32;
-        uint32_t Normal = g_Bad32;
-        uint32_t MetallicRoughness = g_Bad32;
-        uint32_t Emissive = g_Bad32;
+        uint32_t m_Albedo = g_Bad32;
+        uint32_t m_Normal = g_Bad32;
+        uint32_t m_MetallicRoughness = g_Bad32;
+        uint32_t m_Emissive = g_Bad32;
     };
 
     struct MaterialConsts
     {
-        DirectX::XMFLOAT4 AlbedoFactor{ 1.0f, 1.0f, 1.0f, 1.0f };
-        float AlphaCutoff = 0.0f;
-        float NormalScale = 1.0f;
-        float MetalnessFactor = 1.0f;
-        float RoughnessFactor = 1.0f;
-        float OcclusionStrenght = 1.0f;
-        DirectX::XMFLOAT3 EmissiveFactor{ 0.0f, 0.0f, 0.0f };
+        DirectX::XMFLOAT4 m_AlbedoFactor{ 1.0f, 1.0f, 1.0f, 1.0f };
+        float m_AlphaCutoff = 0.0f;
+        float m_NormalScale = 1.0f;
+        float m_MetalnessFactor = 1.0f;
+        float m_RoughnessFactor = 1.0f;
+        float m_OcclusionStrenght = 1.0f;
+        DirectX::XMFLOAT3 m_EmissiveFactor{ 0.0f, 0.0f, 0.0f };
 
-        bool IsAlphaTestRequired = false;
+        bool m_IsAlphaTestRequired = false;
     };
 
     // Types for loading from disk
 
-    struct TextureImage
-    {
-        std::string DebugName;
-
-        GraphicsFormat Format = GraphicsFormat::Unknown;
-        bool IsCubeMap = false;
-        uint32_t Width = 0;
-        uint32_t Height = 0;
-        uint16_t Depth = 1;
-
-        std::vector<std::byte> PixelData;
-    };
-
     struct MeshResource
     {
-        struct Material
-        {
-            MaterialTextureIndices TextureIndices;
-            MaterialConsts Consts;
-        };
+        std::vector<joint::MeshVertex> m_Vertices;
+        std::vector<uint32_t> m_Indices;
+        std::vector<MeshDrawRange> m_DrawRanges;
+        std::vector<MeshInstance> m_Instances;
+    };
 
-        std::string DebugName;
+    struct MaterialResource
+    {
+        MaterialTextureIndices m_TextureIndices;
+        MaterialConsts m_Consts;
+    };
 
-        std::vector<joint::MeshVertex> Vertices;
-        std::vector<uint32_t> Indices;
-        std::vector<MeshDrawRange> DrawRanges;
+    struct TextureImage
+    {
+        std::string m_DebugName;
 
-        std::vector<Material> Materials;
-        std::vector<TextureImage> TextureImages;
+        GraphicsFormat m_Format = GraphicsFormat::Unknown;
+        bool m_IsCubeMap = false;
+        uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
+        uint16_t m_Depth = 1;
 
-        std::vector<MeshInstance> Instances;
+        std::vector<std::byte> m_PixelData;
     };
 
 }

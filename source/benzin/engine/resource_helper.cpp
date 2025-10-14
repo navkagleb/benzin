@@ -9,139 +9,12 @@
 #include <benzin/core/math.hpp>
 #include <benzin/engine/mesh.hpp>
 
-#define BENZIN_MESH_REGROUP_ENABLED 0
 #define BENZIN_MESH_OPTIMIZATION_ENABLED 1
 
-BenzinEnableUnaryPlusForEnum(joint::MeshletConsts);
+BenzinAllowDereferenceOperatorForEnum(joint::MeshletConsts);
 
 namespace benzin
 {
-
-    void RegroupMesh(Mesh& mesh)
-    {
-        BenzinUnused(mesh);
-
-#if BENZIN_MESH_REGROUP_ENABLED
-        struct GroupKey
-        {
-            DirectX::XMMATRIX ObjectToLocalMatrix;
-            uint32_t MaterialIndex = g_Bad32;
-            PrimitiveTopology Topology = PrimitiveTopology::Unknown;
-
-            bool operator==(const GroupKey& other) const
-            {
-                return
-                    IsMatrixEqual(ObjectToLocalMatrix, other.ObjectToLocalMatrix) &&
-                    MaterialIndex == other.MaterialIndex &&
-                    Topology == other.Topology;
-            }
-        };
-
-        struct GroupKeyHasher
-        {
-            size_t operator()(const GroupKey& key) const
-            {
-                size_t matrixHash = 0;
-                for (uint32_t i = 0; i < 4; ++i)
-                {
-                    DirectX::XMFLOAT4 row;
-                    DirectX::XMStoreFloat4(&row, key.ObjectToLocalMatrix.r[i]);
-
-                    matrixHash ^= GetStdHash(row.x) + 0x9e3779b9 + (matrixHash << 6) + (matrixHash >> 2);
-                    matrixHash ^= GetStdHash(row.y) + 0x9e3779b9 + (matrixHash << 6) + (matrixHash >> 2);
-                    matrixHash ^= GetStdHash(row.z) + 0x9e3779b9 + (matrixHash << 6) + (matrixHash >> 2);
-                    matrixHash ^= GetStdHash(row.w) + 0x9e3779b9 + (matrixHash << 6) + (matrixHash >> 2);
-                }
-
-                size_t hash = matrixHash;
-                hash = benzin::HashCombine(hash, key.MaterialIndex);
-                hash = benzin::HashCombine(hash, key.Topology);
-
-                return hash;
-            }
-        };
-
-        struct GroupData
-        {
-            std::vector<uint32_t> DrawRangeIndices;
-        };
-
-        std::unordered_map<GroupKey, GroupData, GroupKeyHasher> groups;
-
-        for (const MeshInstance& instance : mesh.Instances)
-        {
-            const MeshDrawRange& drawRange = mesh.DrawRanges[instance.DrawRangeIndex];
-
-            const GroupKey key
-            {
-                .ObjectToLocalMatrix = instance.ObjectToLocalMatrix,
-                .MaterialIndex = instance.MaterialIndex,
-                .Topology = drawRange.Topology
-            };
-
-            groups[key].DrawRangeIndices.push_back(instance.DrawRangeIndex);
-        }
-
-        std::vector<joint::MeshVertex> newVertices;
-        std::vector<uint32_t> newIndices;
-        std::vector<MeshDrawRange> newDrawRanges;
-        std::vector<MeshInstance> newInstances;
-
-        newVertices.reserve(mesh.Vertices.size());
-        newIndices.reserve(mesh.Indices.size());
-        newInstances.reserve(groups.size());
-
-        for (const auto& [key, group] : groups)
-        {
-            SubRange32 newVertexRange;
-            SubRange32 newIndexRange;
-
-            newVertexRange.Offset = (uint32_t)newVertices.size();
-            newIndexRange.Offset = (uint32_t)newIndices.size();
-
-            uint32_t drawRangeVertexOffset = 0;
-
-            for (const uint32_t drawRangeIndex : group.DrawRangeIndices)
-            {
-                const MeshDrawRange& range = mesh.DrawRanges[drawRangeIndex];
-
-                const auto vertices = mesh.GetDrawRangeVertices(range);
-                const auto indices = mesh.GetDrawRangeIndices(range);
-
-                newVertices.append_range(vertices);
-
-                for (const uint32_t index : indices)
-                    newIndices.push_back(index + drawRangeVertexOffset);
-
-                drawRangeVertexOffset += (uint32_t)vertices.size();
-            }
-
-            newVertexRange.Count = (uint32_t)newVertices.size() - newVertexRange.Offset;
-            newIndexRange.Count = (uint32_t)newIndices.size() - newIndexRange.Offset;
-
-            const auto newDrawRangeIndex = (uint32_t)newDrawRanges.size();
-
-            newDrawRanges.push_back(MeshDrawRange
-            {
-                .VertexRange = newVertexRange,
-                .IndexRange = newIndexRange,
-                .Topology = key.Topology,
-            });
-
-            newInstances.push_back(MeshInstance
-            {
-                .ObjectToLocalMatrix = key.ObjectToLocalMatrix,
-                .DrawRangeIndex = newDrawRangeIndex,
-                .MaterialIndex = key.MaterialIndex,
-            });
-        }
-
-        mesh.Vertices = std::move(newVertices);
-        mesh.Indices = std::move(newIndices);
-        mesh.DrawRanges = std::move(newDrawRanges);
-        mesh.Instances = std::move(newInstances);
-#endif // BENZIN_MESH_REGROUP_ENABLED
-    }
 
     void OptimizeMesh(Mesh& mesh)
     {
@@ -153,7 +26,7 @@ namespace benzin
         std::vector<joint::MeshVertex> newVertices;
         std::vector<uint32_t> newIndices;
 
-        for (MeshDrawRange& drawRange : mesh.DrawRanges)
+        for (MeshDrawRange& drawRange : mesh.m_DrawRanges)
         {
             static_assert(sizeof(uint32_t) == sizeof(unsigned int));
 
@@ -189,19 +62,19 @@ namespace benzin
             {
                 // Update draw range
 
-                drawRange.VertexRange.Offset = (uint32_t)newVertices.size();
-                drawRange.VertexRange.Count = (uint32_t)optVertices.size();
+                drawRange.m_VertexRange.m_Offset = (uint32_t)newVertices.size();
+                drawRange.m_VertexRange.m_Count = (uint32_t)optVertices.size();
 
-                drawRange.IndexRange.Offset = (uint32_t)newIndices.size();
-                drawRange.IndexRange.Count = (uint32_t)optIndices.size();
+                drawRange.m_IndexRange.m_Offset = (uint32_t)newIndices.size();
+                drawRange.m_IndexRange.m_Count = (uint32_t)optIndices.size();
             }
 
             newVertices.append_range(optVertices);
             newIndices.append_range(optIndices);
         }
 
-        mesh.Vertices = std::move(newVertices);
-        mesh.Indices = std::move(newIndices);
+        mesh.m_Vertices = std::move(newVertices);
+        mesh.m_Indices = std::move(newIndices);
 #endif // BENZIN_MESH_OPTIMIZATION_ENABLED
     }
 
@@ -209,15 +82,15 @@ namespace benzin
     {
         // NOTE: meshlet.triangle_offset is actually 'index offset' (not triangle) !!!
 
-        BenzinAssert(mesh.Meshlets.empty());
-        BenzinAssert(mesh.MeshletIndirectVertices.empty());
-        BenzinAssert(mesh.MeshletIndices.empty());
+        BenzinAssert(mesh.m_Meshlets.empty());
+        BenzinAssert(mesh.m_MeshletIndirectVertices.empty());
+        BenzinAssert(mesh.m_MeshletIndices.empty());
 
-        constexpr size_t maxMeshletVertexCount = +joint::MeshletConsts::MaxVertexCount;
-        constexpr size_t maxMeshletTriangleCount = +joint::MeshletConsts::MaxTriangleCount;
+        constexpr size_t maxMeshletVertexCount = *joint::MeshletConsts::MaxVertexCount;
+        constexpr size_t maxMeshletTriangleCount = *joint::MeshletConsts::MaxTriangleCount;
         constexpr float meshletConeWeight = 0.0f;
 
-        for (MeshDrawRange& drawRange : mesh.DrawRanges)
+        for (MeshDrawRange& drawRange : mesh.m_DrawRanges)
         {
             const auto drawVertices = mesh.GetDrawRangeVertices(drawRange);
             const auto drawIndices = mesh.GetDrawRangeIndices(drawRange);
@@ -290,31 +163,31 @@ namespace benzin
             {
                 // Update draw range
 
-                drawRange.MeshletRange.Offset = (uint32_t)mesh.Meshlets.size();
-                drawRange.MeshletRange.Count = (uint32_t)meshlets.size();
+                drawRange.m_MeshletRange.m_Offset = (uint32_t)mesh.m_Meshlets.size();
+                drawRange.m_MeshletRange.m_Count = (uint32_t)meshlets.size();
 
-                drawRange.MeshletIndirectVertexRange.Offset = (uint32_t)mesh.MeshletIndirectVertices.size();
-                drawRange.MeshletIndirectVertexRange.Count = (uint32_t)meshletIndirectVertices.size();
+                drawRange.m_MeshletIndirectVertexRange.m_Offset = (uint32_t)mesh.m_MeshletIndirectVertices.size();
+                drawRange.m_MeshletIndirectVertexRange.m_Count = (uint32_t)meshletIndirectVertices.size();
 
-                drawRange.MeshletIndexRange.Offset = (uint32_t)mesh.MeshletIndices.size();
-                drawRange.MeshletIndexRange.Count = (uint32_t)meshletIndices.size();
+                drawRange.m_MeshletIndexRange.m_Offset = (uint32_t)mesh.m_MeshletIndices.size();
+                drawRange.m_MeshletIndexRange.m_Count = (uint32_t)meshletIndices.size();
             }
 
-            mesh.Meshlets.append_range(std::move(*decltype(&mesh.Meshlets)(&meshlets)));
-            mesh.MeshletCullVolumes.append_range(std::move(meshletCullVolumes));
-            mesh.MeshletIndirectVertices.append_range(std::move(meshletIndirectVertices));
-            mesh.MeshletIndices.append_range(std::move(meshletIndices));
+            mesh.m_Meshlets.append_range(std::move(*decltype(&mesh.m_Meshlets)(&meshlets)));
+            mesh.m_MeshletCullVolumes.append_range(std::move(meshletCullVolumes));
+            mesh.m_MeshletIndirectVertices.append_range(std::move(meshletIndirectVertices));
+            mesh.m_MeshletIndices.append_range(std::move(meshletIndices));
         }
     }
 
     void GenerateBoundingSpheres(Mesh& mesh)
     {
-        for (MeshDrawRange& drawRange : mesh.DrawRanges)
+        for (MeshDrawRange& drawRange : mesh.m_DrawRanges)
         {
             const auto drawVertices = mesh.GetDrawRangeVertices(drawRange);
 
             DirectX::BoundingSphere::CreateFromPoints(
-                drawRange.BoundingSphere,
+                drawRange.m_BoundingSphere,
                 drawVertices.size(),
                 (DirectX::XMFLOAT3*)drawVertices.data(),
                 sizeof(decltype(drawVertices)::value_type));
@@ -330,15 +203,13 @@ namespace benzin
 
         for (const auto fileName : fileNames)
         {
-            const std::filesystem::path filePath = EngineConfig::s_TextureDir / fileName;
+            const std::filesystem::path filePath = EngineConfig::GetTextureDir() / fileName;
             BenzinAssert(std::filesystem::exists(filePath));
             BenzinAssert(filePath.extension() == ".dds");
 
             DirectX::ScratchImage image;
             if (FAILED(DirectX::LoadFromDDSFile(filePath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image)))
-            {
                 return false;
-            }
 
             BenzinAssert(image.GetImageCount() == 1);
             BenzinAssert(image.GetMetadata().depth == 1);
@@ -362,9 +233,7 @@ namespace benzin
 
         DirectX::ScratchImage textureArray;
         if (FAILED(textureArray.Initialize2D(format, width, height, arraySize, 1)))
-        {
             return false;
-        }
 
         for (uint32_t i = 0; i < arraySize; ++i)
         {
@@ -375,19 +244,11 @@ namespace benzin
             memcpy(destImage->pixels, sourceImage->pixels, sourceImage->slicePitch);
         }
 
-        const std::filesystem::path outputFilePath = EngineConfig::s_TextureDir / outputFileName;
+        const std::filesystem::path outputFilePath = EngineConfig::GetTextureDir() / outputFileName;
         BenzinAssert(outputFilePath.extension() == ".dds");
 
-        if (FAILED(DirectX::SaveToDDSFile(
-            textureArray.GetImages(),
-            textureArray.GetImageCount(),
-            textureArray.GetMetadata(),
-            DirectX::DDS_FLAGS_NONE,
-            outputFilePath.c_str()
-        )))
-        {
+        if (FAILED(DirectX::SaveToDDSFile(textureArray.GetImages(), textureArray.GetImageCount(), textureArray.GetMetadata(), DirectX::DDS_FLAGS_NONE, outputFilePath.c_str())))
             return false;
-        }
 
         BenzinTrace("Texture array saved to: {}", outputFilePath.string());
 

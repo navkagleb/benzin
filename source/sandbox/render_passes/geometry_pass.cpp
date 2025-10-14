@@ -40,10 +40,9 @@ namespace sandbox
         const DirectX::BoundingSphere& localBoundingSphere,
         const DirectX::XMMATRIX& localToWorldMatrix)
     {
-        if (localBoundingSphere.Radius == benzin::g_BadBoundingSphereRadius)
-        {
+        const DirectX::XMFLOAT3 center = localBoundingSphere.Center;
+        if (center.x == 0.0f && center.y == 0.0f && center.z == 0.0f && localBoundingSphere.Radius == 1.0f)
             return false;
-        }
 
         DirectX::BoundingSphere worldBoundingSphere;
         localBoundingSphere.Transform(worldBoundingSphere, localToWorldMatrix);
@@ -324,9 +323,9 @@ namespace sandbox
         const entt::entity meshHandle = meshComponent.GetMeshHandle();
         const benzin::Mesh& mesh = ms_Scene->GetMeshRegistry().view<benzin::Mesh>().get<benzin::Mesh>(meshHandle);
 
-        for (const benzin::MeshInstance& instance : mesh.Instances)
+        for (const benzin::MeshInstance& instance : mesh.m_Instances)
         {
-            const DirectX::XMMATRIX localToWorldMatrix = instance.ObjectToLocalMatrix * transform.GetLocalToWorldMatrix();
+            const DirectX::XMMATRIX localToWorldMatrix = instance.m_ObjectToLocalMatrix * transform.GetLocalToWorldMatrix();
 
 #if 0
             const DirectX::BoundingSphere& boundingSphere = mesh.DrawRanges[instance.DrawRangeIndex].BoundingSphere;
@@ -336,14 +335,14 @@ namespace sandbox
             }
 #endif
 
-            const benzin::Material& material = ms_Scene->GetMaterial(instance.MaterialIndex);
+            const benzin::Material& material = ms_Scene->GetMaterial(instance.m_MaterialIndex);
             
-            TempMeshBatches& meshBatches = material.Consts.IsAlphaTestRequired ? m_TempAlphaMeshBatches : m_TempOpaqueMeshBatches;
-            TempDrawRangeBatch& batch = meshBatches[meshHandle][instance.DrawRangeIndex];
+            TempMeshBatches& meshBatches = material.Consts.m_IsAlphaTestRequired ? m_TempAlphaMeshBatches : m_TempOpaqueMeshBatches;
+            TempDrawRangeBatch& batch = meshBatches[meshHandle][instance.m_DrawRangeIndex];
 
             batch.m_LocalToWorldMatrices.push_back(localToWorldMatrix);
-            batch.m_PrevLocalToWorldMatrices.push_back(instance.ObjectToLocalMatrix * transform.GetPrevLocalToWorldMatrix());
-            batch.m_MaterialIndices.push_back(instance.MaterialIndex);
+            batch.m_PrevLocalToWorldMatrices.push_back(instance.m_ObjectToLocalMatrix * transform.GetPrevLocalToWorldMatrix());
+            batch.m_MaterialIndices.push_back(instance.m_MaterialIndex);
 
             ++m_TotalInstanceCount;
         }
@@ -367,8 +366,8 @@ namespace sandbox
                 const uint32_t instanceCount = (uint32_t)tempDrawRangeBatch.m_LocalToWorldMatrices.size();
 
                 DrawRangeBatch& drawRangeBatch = outMeshBatches[meshHandle][drawRangeIndex];
-                drawRangeBatch.m_InstanceRange.Offset = m_InstanceOffset;
-                drawRangeBatch.m_InstanceRange.Count = instanceCount;
+                drawRangeBatch.m_InstanceRange.m_Offset = m_InstanceOffset;
+                drawRangeBatch.m_InstanceRange.m_Count = instanceCount;
 
                 localToWorldMatrixWriter.SetElementPosition<DirectX::XMMATRIX>(m_InstanceOffset);
                 prevLocalToWorldMatrixWriter.SetElementPosition<DirectX::XMMATRIX>(m_InstanceOffset);
@@ -410,7 +409,7 @@ namespace sandbox
 
             for (const auto& [drawRangeIndex, drawRangeBatch] : meshBatch)
             {
-                const benzin::MeshDrawRange& drawRange = mesh.DrawRanges[drawRangeIndex];
+                const benzin::MeshDrawRange& drawRange = mesh.m_DrawRanges[drawRangeIndex];
 
                 cmdList.SetGraphicsRootResource(*Resources::Batch_LocalToWorldMatrices, m_BatchStorage.m_LocalToWorldMatrixBuffer->GetSrv(drawRangeBatch.m_InstanceRange));
                 cmdList.SetGraphicsRootResource(*Resources::Batch_PrevLocalToWorldMatrices, m_BatchStorage.m_PrevLocalToWorldMatrixBuffer->GetSrv(drawRangeBatch.m_InstanceRange));
@@ -418,39 +417,39 @@ namespace sandbox
 
                 if (isMeshPipelineUsed)
                 {
-                    cmdList.SetGraphicsRootResource(*Resources::Vertices, meshGpuStorage.VertexBuffer->GetSrv(drawRange.VertexRange));
-                    cmdList.SetGraphicsRootResource(*Resources::Meshlets, meshGpuStorage.MeshletBuffer->GetSrv(drawRange.MeshletRange));
-                    cmdList.SetGraphicsRootResource(*Resources::MeshletCullVolumes, meshGpuStorage.MeshletCullVolumeBuffer->GetSrv(drawRange.MeshletRange));
-                    cmdList.SetGraphicsRootResource(*Resources::MeshletIndirectVertices, meshGpuStorage.MeshletIndirectVertexBuffer->GetSrv(drawRange.MeshletIndirectVertexRange));
-                    cmdList.SetGraphicsRootResource(*Resources::MeshletIndices, meshGpuStorage.MeshletIndexBuffer->GetSrv(drawRange.MeshletIndexRange));
-                    cmdList.SetGraphicsRootConstant(*Resources::MeshletCountPerInstance, drawRange.MeshletRange.Count);
+                    cmdList.SetGraphicsRootResource(*Resources::Vertices, meshGpuStorage.VertexBuffer->GetSrv(drawRange.m_VertexRange));
+                    cmdList.SetGraphicsRootResource(*Resources::Meshlets, meshGpuStorage.MeshletBuffer->GetSrv(drawRange.m_MeshletRange));
+                    cmdList.SetGraphicsRootResource(*Resources::MeshletCullVolumes, meshGpuStorage.MeshletCullVolumeBuffer->GetSrv(drawRange.m_MeshletRange));
+                    cmdList.SetGraphicsRootResource(*Resources::MeshletIndirectVertices, meshGpuStorage.MeshletIndirectVertexBuffer->GetSrv(drawRange.m_MeshletIndirectVertexRange));
+                    cmdList.SetGraphicsRootResource(*Resources::MeshletIndices, meshGpuStorage.MeshletIndexBuffer->GetSrv(drawRange.m_MeshletIndexRange));
+                    cmdList.SetGraphicsRootConstant(*Resources::MeshletCountPerInstance, drawRange.m_MeshletRange.m_Count);
 
                     if (isAmplificationDispatchUsed)
                     {
-                        const uint32_t totalMeshletCount = drawRange.MeshletRange.Count * drawRangeBatch.m_InstanceRange.Count;
+                        const uint32_t totalMeshletCount = drawRange.m_MeshletRange.m_Count * drawRangeBatch.m_InstanceRange.m_Count;
 
                         cmdList.SetGraphicsRootConstant(*Resources::TotalMeshletCount, totalMeshletCount);
                         cmdList.DispatchMesh({ totalMeshletCount, 1, 1 }, { *joint::MeshletConsts::AsGroupSize, 1, 1 });
                     }
                     else
                     {
-                        cmdList.SetGraphicsRootConstant(*Resources::TotalMeshletCount, drawRange.MeshletRange.Count);
+                        cmdList.SetGraphicsRootConstant(*Resources::TotalMeshletCount, drawRange.m_MeshletRange.m_Count);
 
-                        for (uint32_t instanceIndex = 0; instanceIndex < drawRangeBatch.m_InstanceRange.Count; ++instanceIndex)
+                        for (uint32_t instanceIndex = 0; instanceIndex < drawRangeBatch.m_InstanceRange.m_Count; ++instanceIndex)
                         {
                             cmdList.SetGraphicsRootConstant(*Resources::InstanceIndex, instanceIndex);
-                            cmdList.DispatchMesh({ drawRange.MeshletRange.Count, 1, 1 });
+                            cmdList.DispatchMesh({ drawRange.m_MeshletRange.m_Count, 1, 1 });
                         }
                     }
                 }
                 else
                 {
-                    for (uint32_t instanceIndex = 0; instanceIndex < drawRangeBatch.m_InstanceRange.Count; ++instanceIndex)
+                    for (uint32_t instanceIndex = 0; instanceIndex < drawRangeBatch.m_InstanceRange.m_Count; ++instanceIndex)
                     {
                         cmdList.SetGraphicsRootConstant(*Resources::InstanceIndex, instanceIndex);
 
-                        cmdList.SetPrimitiveTopology(drawRange.Topology);
-                        cmdList.DrawIndexed(drawRange.IndexRange.Count, drawRange.IndexRange.Offset, drawRange.VertexRange.Offset);
+                        cmdList.SetPrimitiveTopology(drawRange.m_Topology);
+                        cmdList.DrawIndexed(drawRange.m_IndexRange.m_Count, drawRange.m_IndexRange.m_Offset, drawRange.m_VertexRange.m_Offset);
                     }
                 }
             }

@@ -3,12 +3,10 @@
 namespace benzin
 {
 
-    struct EngineConfig
+    namespace EngineConfig
     {
-        BenzinDefineNonConstructable(EngineConfig);
-
-        static const std::filesystem::path s_TextureDir;
-        static const std::filesystem::path s_ModelDir;
-    };
+        const std::filesystem::path& GetTextureDir();
+        const std::filesystem::path& GetModelDir();
+    }
 
 }

@@ -23,16 +23,16 @@ namespace benzin
         uint32_t ElementIndex = 0;
     };
 
-    static void ValidateBufferElementRange(const Buffer& buffer, SubRange64& outElementRange)
+    static void ValidateBufferElementRange(const Buffer& buffer, SubRange64& elementRange)
     {
-        if (outElementRange.IsGoodRange())
+        if (elementRange.IsGoodRange())
         {
-            BenzinAssert(outElementRange.GetEndCount() <= buffer.GetElementCount());
+            BenzinAssert(elementRange.GetEndCount() <= buffer.GetElementCount());
             return;
         }
 
-        BenzinAssert(outElementRange.Offset == 0);
-        outElementRange.Count = buffer.GetElementCount();
+        BenzinAssert(elementRange.m_Offset == 0);
+        elementRange.m_Count = buffer.GetElementCount();
     }
 
     static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& creation)
@@ -198,8 +198,8 @@ namespace benzin
                     .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
                     .Buffer
                     {
-                        .FirstElement = elementRange.Offset,
-                        .NumElements = (uint32_t)elementRange.Count,
+                        .FirstElement = elementRange.m_Offset,
+                        .NumElements = (uint32_t)elementRange.m_Count,
                         .StructureByteStride = 0,
                         .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
                     },
@@ -216,8 +216,8 @@ namespace benzin
                     .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
                     .Buffer
                     {
-                        .FirstElement = elementRange.Offset,
-                        .NumElements = (uint32_t)elementRange.Count,
+                        .FirstElement = elementRange.m_Offset,
+                        .NumElements = (uint32_t)elementRange.m_Count,
                         .StructureByteStride = buffer.GetElementSizeInBytes(),
                         .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
                     },
@@ -493,8 +493,8 @@ BenzinDefineStdHashForType(benzin::BufferSrv, bufferSrv,
 {
     size_t hash = typeid(benzin::BufferSrv).hash_code();
     hash = benzin::HashCombine(hash, bufferSrv.BufferType);
-    hash = benzin::HashCombine(hash, bufferSrv.ElementRange.Offset);
-    hash = benzin::HashCombine(hash, bufferSrv.ElementRange.Count);
+    hash = benzin::HashCombine(hash, bufferSrv.ElementRange.m_Offset);
+    hash = benzin::HashCombine(hash, bufferSrv.ElementRange.m_Count);
 
     return hash;
 });

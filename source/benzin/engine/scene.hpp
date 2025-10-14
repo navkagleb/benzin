@@ -47,7 +47,11 @@ namespace benzin
         const Material& GetMaterial(uint32_t index) const;
 
     public:
-        entt::entity AddMesh(MeshResource&& meshResource);
+        entt::entity AddMesh(
+            std::string_view debugName,
+            MeshResource&& meshResource,
+            std::vector<MaterialResource>&& materials = {},
+            std::vector<TextureImage>&& textures = {});
 
         void UploadMeshesToGpu();
         void UploadMeshletsToGpu();
@@ -60,7 +64,7 @@ namespace benzin
 
     private:
         uint32_t AddTextures(std::span<TextureImage> textureImages);
-        uint32_t AddMaterials(std::span<TextureImage> textureImages, std::span<const MeshResource::Material> materials);
+        uint32_t AddMaterials(std::span<TextureImage> textureImages, std::span<const MaterialResource> materials);
         uint32_t GetTextureGpuHeapIndex(uint32_t textureOffset, uint32_t localTextureIndex) const;
 
         void UploadPixelDataSetToGpu();

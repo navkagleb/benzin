@@ -30,26 +30,21 @@ namespace benzin
     {
         benzin::MeshData meshData = benzin::GetUnitGeoSphereMesh();
 
-        const benzin::MeshDrawRange drawRange
-        {
-            .VertexRange = ToSpan(meshData.Vertices),
-            .IndexRange = ToSpan(meshData.Indices),
-            .Topology = meshData.PrimitiveTopology,
-        };
+        benzin::MeshDrawRange drawRange;
+        drawRange.m_VertexRange = ToSpan(meshData.Vertices);
+        drawRange.m_IndexRange = ToSpan(meshData.Indices);
+        drawRange.m_Topology = meshData.PrimitiveTopology;
 
-        const benzin::MeshInstance instance
-        {
-            .DrawRangeIndex = 0,
-        };
+        benzin::MeshInstance instance;
+        instance.m_DrawRangeIndex = 0;
 
-        return benzin::MeshResource
-        {
-            .DebugName = "UnitSphere",
-            .Vertices = std::move(meshData.Vertices),
-            .Indices = std::move(meshData.Indices),
-            .DrawRanges{ drawRange },
-            .Instances{ instance },
-        };
+        benzin::MeshResource meshResource;
+        meshResource.m_Vertices = std::move(meshData.Vertices);
+        meshResource.m_Indices = std::move(meshData.Indices);
+        meshResource.m_DrawRanges.push_back(drawRange);
+        meshResource.m_Instances.push_back(instance);
+
+        return meshResource;
     };
 
     //
@@ -60,18 +55,11 @@ namespace benzin
         m_SunEntity = m_EntityRegistry.create();
         m_EntityRegistry.emplace<SunLight>(m_SunEntity);
 
-        m_UnitSphereMeshHandle = AddMesh(CreateUnitSphereMesh());
+        m_UnitSphereMeshHandle = AddMesh("UnitSphere", CreateUnitSphereMesh());
 
-        // Fallback material
-        {
-            m_UnifiedMaterials.push_back(Material
-            {
-                .Consts
-                {
-                    .AlbedoFactor{ 1.0f, 0.0f, 1.0f, 1.0f },
-                },
-            });
-        }
+        Material fallbackMaterial;
+        fallbackMaterial.Consts.m_AlbedoFactor = { 1.0f, 0.0f, 1.0f, 1.0f };
+        m_UnifiedMaterials.push_back(fallbackMaterial);
     }
 
     Scene::~Scene() = default;
@@ -82,45 +70,42 @@ namespace benzin
         return m_UnifiedMaterials[index];
     }
 
-    entt::entity Scene::AddMesh(MeshResource&& meshResource)
+    entt::entity Scene::AddMesh(
+        std::string_view debugName,
+        MeshResource&& meshResource,
+        std::vector<MaterialResource>&& materials,
+        std::vector<TextureImage>&& textures)
     {
-        BenzinAssert(!meshResource.DebugName.empty());
-        BenzinAssert(!meshResource.Vertices.empty());
-        BenzinAssert(!meshResource.Indices.empty());
-        BenzinAssert(!meshResource.DrawRanges.empty());
-        BenzinAssert(!meshResource.Instances.empty());
-
-        const uint32_t materialOffset = AddMaterials(meshResource.TextureImages, meshResource.Materials);
+        const uint32_t materialOffset = AddMaterials(textures, materials);
 
         const entt::entity meshHandle = m_MeshRegistry.create();
 
         auto& meshTag = m_MeshRegistry.emplace<MeshTag>(meshHandle);
-        meshTag = std::move(meshResource.DebugName);
+        meshTag = debugName;
 
         auto& mesh = m_MeshRegistry.emplace<Mesh>(meshHandle);
-        mesh.Vertices = std::move(meshResource.Vertices);
-        mesh.Indices = std::move(meshResource.Indices);
-        mesh.DrawRanges = std::move(meshResource.DrawRanges);
-        mesh.Instances = std::move(meshResource.Instances);
+        mesh.m_Vertices = std::move(meshResource.m_Vertices);
+        mesh.m_Indices = std::move(meshResource.m_Indices);
+        mesh.m_DrawRanges = std::move(meshResource.m_DrawRanges);
+        mesh.m_Instances = std::move(meshResource.m_Instances);
 
         {
-            BenzinLogTimeOnScopeExit("{} mesh optimization", meshTag);
+            BenzinLogTimeOnScopeExit("{} mesh optimization + meshlet generation", meshTag);
 
-            RegroupMesh(mesh);
             OptimizeMesh(mesh);
             GenerateMeshlets(mesh);
             GenerateBoundingSpheres(mesh);
         }
 
-        for (MeshInstance& meshInstance : mesh.Instances)
+        for (MeshInstance& meshInstance : mesh.m_Instances)
         {
-            if (IsGoodUint(meshInstance.MaterialIndex))
+            if (IsGoodUint(meshInstance.m_MaterialIndex))
             {
-                meshInstance.MaterialIndex += materialOffset;
+                meshInstance.m_MaterialIndex += materialOffset;
             }
             else
             {
-                meshInstance.MaterialIndex = 0; // Fallback material index
+                meshInstance.m_MaterialIndex = 0; // Fallback material index
             }
         }
 
@@ -153,8 +138,8 @@ namespace benzin
             const auto& mesh = view.get<Mesh>(meshHandle);
             const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
 
-            cmdList.UploadToBuffer(*meshGpuStorage.VertexBuffer, ToSpan(mesh.Vertices));
-            cmdList.UploadToBuffer(*meshGpuStorage.IndexBuffer, ToSpan(mesh.Indices));
+            cmdList.UploadToBuffer(*meshGpuStorage.VertexBuffer, ToSpan(mesh.m_Vertices));
+            cmdList.UploadToBuffer(*meshGpuStorage.IndexBuffer, ToSpan(mesh.m_Indices));
         }
     }
 
@@ -179,10 +164,10 @@ namespace benzin
             const auto& mesh = view.get<Mesh>(meshHandle);
             const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
 
-            cmdList.UploadToBuffer(*meshGpuStorage.MeshletBuffer, ToSpan(mesh.Meshlets));
-            cmdList.UploadToBuffer(*meshGpuStorage.MeshletCullVolumeBuffer, ToSpan(mesh.MeshletCullVolumes));
-            cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndirectVertexBuffer, ToSpan(mesh.MeshletIndirectVertices));
-            cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndexBuffer, ToSpan(mesh.MeshletIndices));
+            cmdList.UploadToBuffer(*meshGpuStorage.MeshletBuffer, ToSpan(mesh.m_Meshlets));
+            cmdList.UploadToBuffer(*meshGpuStorage.MeshletCullVolumeBuffer, ToSpan(mesh.m_MeshletCullVolumes));
+            cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndirectVertexBuffer, ToSpan(mesh.m_MeshletIndirectVertices));
+            cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndexBuffer, ToSpan(mesh.m_MeshletIndices));
         }
     }
 
@@ -199,17 +184,17 @@ namespace benzin
         {
             unifiedMaterials.push_back(joint::Material
             {
-                .AlbedoTextureHeapIndex = material.TextureGpuHeapIndices.Albedo,
-                .NormalTextureHeapIndex = material.TextureGpuHeapIndices.Normal,
-                .MetallicRoughnessTextureHeapIndex = material.TextureGpuHeapIndices.MetallicRoughness,
-                .EmissiveTextureHeapIndex = material.TextureGpuHeapIndices.Emissive,
-                .AlbedoFactor = material.Consts.AlbedoFactor,
-                .AlphaCutoff = material.Consts.AlphaCutoff,
-                .NormalScale = material.Consts.NormalScale,
-                .MetalnessFactor = material.Consts.MetalnessFactor,
-                .RoughnessFactor = material.Consts.RoughnessFactor,
-                .OcclusionStrenght = material.Consts.OcclusionStrenght,
-                .EmissiveFactor = material.Consts.EmissiveFactor,
+                .AlbedoTextureHeapIndex = material.TextureGpuHeapIndices.m_Albedo,
+                .NormalTextureHeapIndex = material.TextureGpuHeapIndices.m_Normal,
+                .MetallicRoughnessTextureHeapIndex = material.TextureGpuHeapIndices.m_MetallicRoughness,
+                .EmissiveTextureHeapIndex = material.TextureGpuHeapIndices.m_Emissive,
+                .AlbedoFactor = material.Consts.m_AlbedoFactor,
+                .AlphaCutoff = material.Consts.m_AlphaCutoff,
+                .NormalScale = material.Consts.m_NormalScale,
+                .MetalnessFactor = material.Consts.m_MetalnessFactor,
+                .RoughnessFactor = material.Consts.m_RoughnessFactor,
+                .OcclusionStrenght = material.Consts.m_OcclusionStrenght,
+                .EmissiveFactor = material.Consts.m_EmissiveFactor,
             });
         }
 
@@ -228,42 +213,39 @@ namespace benzin
 
         for (TextureImage& textureImage : textureImages)
         {
-            m_PixelDataSet.push_back(std::move(textureImage.PixelData));
+            m_PixelDataSet.push_back(std::move(textureImage.m_PixelData));
 
-            m_Textures.push_back(std::make_unique<Texture>(m_Device, TextureCreation
-            {
-                .DebugName = textureImage.DebugName,
-                .Format = textureImage.Format,
-                .Width = textureImage.Width,
-                .Height = textureImage.Height,
-                .MipCount = 1, // TODO: Mip generation
-            }));
+            TextureCreation creation;
+            creation.DebugName = textureImage.m_DebugName;
+            creation.Format = textureImage.m_Format;
+            creation.Width = textureImage.m_Width;
+            creation.Height = textureImage.m_Height;
+            creation.MipCount = 1; // TODO: Mip generation
+            m_Textures.push_back(std::make_unique<Texture>(m_Device, creation));
         }
 
         return textureOffset;
     }
 
-    uint32_t Scene::AddMaterials(std::span<TextureImage> textureImages, std::span<const MeshResource::Material> materials)
+    uint32_t Scene::AddMaterials(std::span<TextureImage> textureImages, std::span<const MaterialResource> materials)
     {
         const auto materialOffset = (uint32_t)m_UnifiedMaterials.size();
 
         if (materials.empty())
-        {
             return materialOffset;
-        }
 
         const uint32_t textureOffset = AddTextures(textureImages);
 
         m_UnifiedMaterials.reserve(materialOffset + materials.size());
 
-        for (const MeshResource::Material& materialResource : materials)
+        for (const MaterialResource& materialResource : materials)
         {
             Material& material = m_UnifiedMaterials.emplace_back();
-            material.Consts = materialResource.Consts;
-            material.TextureGpuHeapIndices.Albedo = GetTextureGpuHeapIndex(textureOffset, materialResource.TextureIndices.Albedo);
-            material.TextureGpuHeapIndices.Normal = GetTextureGpuHeapIndex(textureOffset, materialResource.TextureIndices.Normal);
-            material.TextureGpuHeapIndices.MetallicRoughness = GetTextureGpuHeapIndex(textureOffset, materialResource.TextureIndices.MetallicRoughness);
-            material.TextureGpuHeapIndices.Emissive = GetTextureGpuHeapIndex(textureOffset, materialResource.TextureIndices.Emissive);
+            material.Consts = materialResource.m_Consts;
+            material.TextureGpuHeapIndices.m_Albedo = GetTextureGpuHeapIndex(textureOffset, materialResource.m_TextureIndices.m_Albedo);
+            material.TextureGpuHeapIndices.m_Normal = GetTextureGpuHeapIndex(textureOffset, materialResource.m_TextureIndices.m_Normal);
+            material.TextureGpuHeapIndices.m_MetallicRoughness = GetTextureGpuHeapIndex(textureOffset, materialResource.m_TextureIndices.m_MetallicRoughness);
+            material.TextureGpuHeapIndices.m_Emissive = GetTextureGpuHeapIndex(textureOffset, materialResource.m_TextureIndices.m_Emissive);
         }
 
         return materialOffset;
@@ -272,9 +254,7 @@ namespace benzin
     uint32_t Scene::GetTextureGpuHeapIndex(uint32_t textureOffset, uint32_t localTextureIndex) const
     {
         if (!IsGoodUint(localTextureIndex))
-        {
             return g_Bad32;
-        }
 
         BenzinAssert(textureOffset + localTextureIndex < m_Textures.size());
         return m_Textures[textureOffset + localTextureIndex]->GetSrv().GetGpuHeapIndex();

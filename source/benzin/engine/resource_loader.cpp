@@ -1,18 +1,18 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/engine/resource_loader.hpp>
 
-#include <DirectXTex.h>
-#include <stb_image.h>
-
 #include <benzin/engine/gltf_reader.hpp>
 #include <benzin/engine/mesh.hpp>
+
+#include <DirectXTex.h>
+#include <stb_image.h>
 
 namespace benzin
 {
 
-    bool LoadTextureImageFromHdrFile(std::string_view fileName, TextureImage& outTextureImage)
+    bool LoadTextureImageFromHdrFile(std::string_view fileName, TextureImage& textureImage)
     {
-        const std::filesystem::path filePath = EngineConfig::s_TextureDir / fileName;
+        const std::filesystem::path filePath = EngineConfig::GetTextureDir() / fileName;
         BenzinAssert(std::filesystem::exists(filePath));
         BenzinAssert(filePath.extension() == ".hdr");
 
@@ -25,59 +25,59 @@ namespace benzin
         const int componentCount = 4;
         float* imageData = stbi_loadf(narrowFilePath.c_str(), &width, &height, nullptr, componentCount);
 
-        if (!imageData)
-        {
+        if (imageData == nullptr)
             return false;
-        }
 
-        outTextureImage.DebugName = fileName;
-        outTextureImage.Format = GraphicsFormat::Rgba32Float;
-        outTextureImage.Width = (uint32_t)width;
-        outTextureImage.Height = (uint32_t)height;
+        textureImage.m_DebugName = fileName;
+        textureImage.m_Format = GraphicsFormat::Rgba32Float;
+        textureImage.m_Width = (uint32_t)width;
+        textureImage.m_Height = (uint32_t)height;
 
-        const uint32_t pixelDataSizeInBytes = width * height * GetFormatSizeInBytes(outTextureImage.Format);
-        outTextureImage.PixelData.resize(pixelDataSizeInBytes);
-        memcpy(outTextureImage.PixelData.data(), imageData, pixelDataSizeInBytes);
+        const uint32_t pixelDataSizeInBytes = width * height * GetFormatSizeInBytes(textureImage.m_Format);
+        textureImage.m_PixelData.resize(pixelDataSizeInBytes);
+        memcpy(textureImage.m_PixelData.data(), imageData, pixelDataSizeInBytes);
 
         stbi_image_free(imageData);
 
         return true;
     }
 
-    bool LoadTextureImageFromDdsFile(std::string_view fileName, TextureImage& outTextureImage)
+    bool LoadTextureImageFromDdsFile(std::string_view fileName, TextureImage& textureImage)
     {
-        const std::filesystem::path filePath = EngineConfig::s_TextureDir / fileName;
+        const std::filesystem::path filePath = EngineConfig::GetTextureDir() / fileName;
         BenzinAssert(std::filesystem::exists(filePath));
         BenzinAssert(filePath.extension() == ".dds");
 
         DirectX::ScratchImage image;
         if (FAILED(DirectX::LoadFromDDSFile(filePath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image)))
-        {
             return false;
-        }
 
         const DirectX::TexMetadata& metadata = image.GetMetadata();
         BenzinAssert(metadata.mipLevels == 1); // TODO: Add mip levels support
         BenzinAssert(magic_enum::enum_contains<GraphicsFormat>(metadata.format));
 
-        outTextureImage.DebugName = fileName;
-        outTextureImage.Format = (GraphicsFormat)metadata.format;
-        outTextureImage.Width = (uint32_t)metadata.width;
-        outTextureImage.Height = (uint32_t)metadata.height;
-        outTextureImage.Depth = (uint16_t)metadata.arraySize;
+        textureImage.m_DebugName = fileName;
+        textureImage.m_Format = (GraphicsFormat)metadata.format;
+        textureImage.m_Width = (uint32_t)metadata.width;
+        textureImage.m_Height = (uint32_t)metadata.height;
+        textureImage.m_Depth = (uint16_t)metadata.arraySize;
 
         const size_t pixelDataSizeInBytes = image.GetPixelsSize();
-        outTextureImage.PixelData.resize(pixelDataSizeInBytes);
-        memcpy(outTextureImage.PixelData.data(), image.GetPixels(), pixelDataSizeInBytes);
+        textureImage.m_PixelData.resize(pixelDataSizeInBytes);
+        memcpy(textureImage.m_PixelData.data(), image.GetPixels(), pixelDataSizeInBytes);
 
         return true;
     }
 
-    bool LoadMeshFromGltfFile(std::string_view fileName, MeshResource& outMesh)
+    bool LoadMeshFromGltfFile(
+        std::string_view fileName,
+        MeshResource& mesh,
+        std::vector<MaterialResource>& materials,
+        std::vector<TextureImage>& textures)
     {
-        static thread_local GltfReader gltfReader;
+        static thread_local GltfReader s_GltfReader;
 
-        return gltfReader.ReadFromFile(fileName, outMesh);
+        return s_GltfReader.ReadFromFile(fileName, mesh, materials, textures);
     }
 
 }

@@ -68,14 +68,14 @@ namespace sandbox
             benzin::MakeUniquePtr(m_PerlinNoiseTexture, *ms_Device, benzin::TextureCreation
             {
                 .DebugName = "PerlinNoise256",
-                .Format = perlinNoiseImage.Format,
-                .Width = perlinNoiseImage.Width,
-                .Height = perlinNoiseImage.Height,
+                .Format = perlinNoiseImage.m_Format,
+                .Width = perlinNoiseImage.m_Width,
+                .Height = perlinNoiseImage.m_Height,
                 .MipCount = 1,
             });
 
             auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_PerlinNoiseTexture->GetSizeInBytes());
-            cmdList.UploadToTexture(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.PixelData));
+            cmdList.UploadToTexture(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.m_PixelData));
         }
         
         {

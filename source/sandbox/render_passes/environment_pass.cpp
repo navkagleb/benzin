@@ -84,15 +84,15 @@ namespace sandbox
 
         auto equirectangularTexture = std::make_unique<benzin::Texture>(*ms_Device, benzin::TextureCreation
         {
-            .DebugName = equirectangularTextureImage.DebugName,
-            .Format = equirectangularTextureImage.Format,
-            .Width = equirectangularTextureImage.Width,
-            .Height = equirectangularTextureImage.Height,
+            .DebugName = equirectangularTextureImage.m_DebugName,
+            .Format = equirectangularTextureImage.m_Format,
+            .Width = equirectangularTextureImage.m_Width,
+            .Height = equirectangularTextureImage.m_Height,
             .MipCount = 1,
         });
 
         benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(equirectangularTexture->GetSizeInBytes());
-        cmdList.UploadToTexture(*equirectangularTexture, std::as_bytes(std::span{ equirectangularTextureImage.PixelData }));
+        cmdList.UploadToTexture(*equirectangularTexture, benzin::ToSpan(equirectangularTextureImage.m_PixelData));
         
         return equirectangularTexture;
     }
