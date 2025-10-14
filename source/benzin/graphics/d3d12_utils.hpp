@@ -49,7 +49,7 @@ namespace benzin
                 return alignedSize;
             }
 
-            BenzinAssert(false, "The debug name isn't set! Set debug name before get it!");
+            BenzinWarning("The debug name isn't set! Set debug name before get it!");
             return 0;
         });
 
@@ -61,9 +61,14 @@ namespace benzin
     {
         static_assert(std::derived_from<D3DObjectT, ID3D12Object> || std::derived_from<D3DObjectT, IDXGIObject>);
 
-        BenzinAssert(d3dObject != nullptr);
-        BenzinAssert(!debugName.empty() && debugName.size() <= g_MaxDebugNameSize);
+        BenzinAssert(debugName.size() <= g_MaxDebugNameSize);
+        if (debugName.empty())
+        {
+            BenzinWarning("Debug name for resource is empty!");
+            return;
+        }
 
+        BenzinAssert(d3dObject != nullptr);
         BenzinD3D12Call(d3dObject->SetPrivateData(WKPDID_D3DDebugObjectName, (uint32_t)debugName.size(), debugName.data()));
     }
 

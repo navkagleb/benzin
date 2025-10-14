@@ -118,6 +118,11 @@ namespace benzin
         window.SetPreMessageHandlerCallback(ImGui_ImplWin32_WndProcHandler);
 
         LoadToolVisiblityCache();
+
+        m_IntervalTimer.AddCallback([this](float, uint32_t)
+        {
+            SaveToolVisiblityCache();
+        });
     }
 
     ImGuiManager::~ImGuiManager()

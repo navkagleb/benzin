@@ -1,7 +1,7 @@
 #pragma once
 
-#include "benzin/graphics/resource.hpp"
-#include "benzin/graphics/format.hpp"
+#include <benzin/graphics/resource.hpp>
+#include <benzin/graphics/format.hpp>
 
 namespace benzin
 {
@@ -46,14 +46,12 @@ namespace benzin
         auto GetHeapType() const { return m_HeapType; }
         auto GetType() const { return m_Type; }
         auto GetFormat() const { return m_Format; }
-
         auto GetElementSizeInBytes() const { return m_ElementSizeInBytes; }
         auto GetElementCount() const { return m_ElementCount; }
 
-        uint64_t GetSizeInBytes() const override { return m_ElementSizeInBytes * m_ElementCount; }
-
         auto* GetCpuMappedData() const { return m_CpuMappedData; }
 
+        uint64_t GetSizeInBytes() const override;
         uint64_t GetGpuVirtualAddress(uint32_t elementIndex = 0) const;
 
         const Descriptor& GetSrv(const SubRange64& elementRange = {}) const;
@@ -73,10 +71,8 @@ namespace benzin
         GpuHeapType m_HeapType = g_BadEnum<GpuHeapType>;
         BufferType m_Type = BufferType::Byte;
         GraphicsFormat m_Format = GraphicsFormat::Unknown;
-
         uint32_t m_ElementSizeInBytes = 0;
         uint64_t m_ElementCount = 0;
-
         bool m_IsUnorderedAccessAllowed = false;
 
         std::byte* m_CpuMappedData = nullptr;

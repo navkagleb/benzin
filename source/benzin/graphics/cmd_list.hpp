@@ -23,20 +23,20 @@ namespace benzin
 
     struct TransitionBarrier
     {
-        const Resource& TransitionResource;
-        ResourceState StateBefore;
-        ResourceState StateAfter;
+        const Resource& m_Resource;
+        ResourceState m_StateBefore;
+        ResourceState m_StateAfter;
 
         TransitionBarrier(const Resource& resource, ResourceState stateAfter)
-            : TransitionResource{ resource }
-            , StateBefore{ resource.GetCurrentState() }
-            , StateAfter{ stateAfter }
+            : m_Resource{ resource }
+            , m_StateBefore{ resource.GetCurrentState() }
+            , m_StateAfter{ stateAfter }
         {}
     };
 
     struct UnorderedAccessBarrier
     {
-        const Resource& Resource;
+        const Resource& m_Resource;
     };
 
     using ResourceBarrierVariant = std::variant<TransitionBarrier, UnorderedAccessBarrier>;
@@ -49,7 +49,7 @@ namespace benzin
 
         auto* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList1; }
 
-        void AddResourceBarrier(const ResourceBarrierVariant& resourceBarrierVariant, bool isNeedToFlush = false);
+        void AddResourceBarrier(const ResourceBarrierVariant& resourceBarrierVariant, bool isFlushRequsted = false);
         void FlushResourceBarriers();
 
     protected:

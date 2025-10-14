@@ -22,6 +22,8 @@ namespace benzin
         };
 
         BenzinD3D12Call(m_Device.GetD3D12Device()->CreateQueryHeap(&d3d12QueryHeapDesc, IID_PPV_ARGS(&m_D3D12QueryHeap)));
+        BenzinEnsure(m_D3D12QueryHeap != nullptr);
+
         SetD3DObjectDebugName(m_D3D12QueryHeap, creation.DebugName);
 
         m_Count = creation.Count;

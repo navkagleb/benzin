@@ -2,32 +2,27 @@
 #include <benzin/graphics2/render_pass.hpp>
 
 #include <benzin/graphics/buffer.hpp>
-#include <benzin/graphics/device.hpp>
 #include <benzin/graphics/texture.hpp>
-#include <benzin/graphics2/game_specific_resource_ids.hpp>
 
 namespace benzin
 {
 
     template <typename ResourceIdT> requires std::is_enum_v<ResourceIdT>
-    static uint32_t GetMaxResourceCount()
+    static constexpr uint32_t GetMaxResourceCount()
     {
         const auto maxResourceId = +magic_enum::enum_values<ResourceIdT>().back();
-
         return maxResourceId + 1;
     }
 
     template <typename ResourceIdT> requires std::is_enum_v<ResourceIdT>
-    static bool IsFlippableResourceExists()
+    static constexpr bool IsFlippableResourceExists()
     {
         const auto ids = magic_enum::enum_values<ResourceIdT>();
 
         for (size_t i = 1; i < ids.size(); ++i)
         {
             if (+ids[i] - +ids[i - 1] == 2)
-            {
                 return true;
-            }
         }
 
         return false;
@@ -36,12 +31,10 @@ namespace benzin
     template <typename ResourceIdT> requires std::is_enum_v<ResourceIdT>
     static bool IsResourceFlippable(uint32_t id)
     {
-        static const bool isFlippableResourceExists = IsFlippableResourceExists<ResourceIdT>();
+        constexpr bool isFlippableResourceExists = IsFlippableResourceExists<ResourceIdT>();
 
         if (!isFlippableResourceExists)
-        {
             return false;
-        }
 
         const uint32_t maxId = +magic_enum::enum_values<ResourceIdT>().back();
         const uint32_t prevId = id - 1;
@@ -217,7 +210,7 @@ namespace benzin
 
     const Buffer& RenderResources::GetPrev(BufferId id) const
     {
-        return m_Buffers.GetPrev(+id, m_FlipIndex);
+        return m_Buffers.GetPrev(+id, GetNextFlipIndex(m_FlipIndex));
     }
 
     bool RenderResources::IsCreated(TextureId id) const

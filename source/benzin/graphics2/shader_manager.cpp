@@ -10,18 +10,16 @@ namespace benzin
 
     static const auto g_IncludeDependenciesFilePath = std::filesystem::absolute("bin/shader_include_dependencies.txt");
 
-    static void LogShaderInfo(std::string_view stage, std::chrono::microseconds stageTime, const ShaderInfo& shader)
+    static void LogShaderInfo(std::string_view stageName, std::chrono::microseconds stageTime, const ShaderInfo& shader)
     {
         BenzinTrace(
-            "{} ({:07.3f} ms): {:20}! Type: {:>7}, File: {}, EntryPoint: {}, Defines: {}",
-            stage,
-            ToFloatMs(stageTime),
-            shader.GetHash(),
+            "{}. {}, {} ({}), {} ({:.3f} ms)",
+            stageName,
             magic_enum::enum_name(shader.GetType()),
             shader.GetFileName(),
             !shader.GetEntryPoint().empty() ? shader.GetEntryPoint() : "\"-\"",
-            shader.GetDefines()
-        );
+            shader.GetDefines(),
+            ToFloatMs(stageTime));
     }
 
     static bool IsIncludeShader(std::wstring_view fileName)
@@ -344,7 +342,7 @@ namespace benzin
         auto [us, shaderDxil] = BenzinProfileFunction(ReadFromFile(paths.DxilFilePath));
         m_ShaderDxils[shader.GetHash()] = std::move(shaderDxil);
 
-        LogShaderInfo("Shader loaded  ", us, shader);
+        LogShaderInfo("Shader loaded", us, shader);
 
         return true;
     }

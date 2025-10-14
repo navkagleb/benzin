@@ -1,11 +1,11 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/buffer.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/buffer.hpp>
 
-#include "benzin/core/math.hpp"
-#include "benzin/graphics/d3d12_assert.hpp"
-#include "benzin/graphics/d3d12_utils.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/gpu_heap.hpp"
+#include <benzin/core/math.hpp>
+#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 
 namespace benzin
 {
@@ -345,6 +345,11 @@ namespace benzin
         {
             m_D3D12Resource->Unmap(0, nullptr);
         }
+    }
+
+    uint64_t Buffer::GetSizeInBytes() const
+    {
+        return m_ElementSizeInBytes * m_ElementCount;
     }
 
     uint64_t Buffer::GetGpuVirtualAddress(uint32_t elementIndex) const

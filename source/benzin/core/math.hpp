@@ -15,27 +15,9 @@ namespace benzin
     }   
 
     template <std::unsigned_integral T>
-    constexpr auto DivideUp(T value, T divisor)
+    constexpr T DivideUp(T value, T divisor)
     {
         return (value + divisor - 1) / divisor;
-    }
-
-    template <std::integral T>
-    constexpr bool IsEvenQuickly(T value)
-    {
-        return (value & 1) == 0;
-    }
-
-    template <std::integral T>
-    constexpr bool IsOddQuickly(T value)
-    {
-        return (value & 1) == 1;
-    }
-
-    template <std::integral T>
-    constexpr bool IsDividedBy2Quickly(T value)
-    {
-        return (value & 2) == 0;
     }
 
     template <std::unsigned_integral T>

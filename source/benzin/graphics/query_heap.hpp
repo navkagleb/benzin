@@ -29,12 +29,14 @@ namespace benzin
         BenzinDefineNonMoveable(QueryHeap);
 
         auto* GetD3D12QueryHeap() const { return m_D3D12QueryHeap; }
-        auto& GetCount() const { return m_Count; }
+
+        auto GetCount() const { return m_Count; }
 
     private:
         Device& m_Device;
 
         ID3D12QueryHeap* m_D3D12QueryHeap = nullptr;
+
         uint32_t m_Count = 0;
     };
 

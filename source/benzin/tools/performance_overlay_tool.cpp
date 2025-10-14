@@ -75,11 +75,11 @@ namespace benzin
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0.0f, 0.0f });
 
         ImGui::FmtText("FPS: {:.1f} ({:.3f} ms)", m_AvgFps, m_AvgDeltaTimeInMs);
-        ImGui::Text("");
+        ImGui::NewLine();
         ImGui::FmtText("{}", m_Backend.GetMainAdapterInfo().m_Name);
         ImGui::FmtText("Local VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.m_UsedLocalVramInBytes), ToMb(adapterMemoryInfo.m_LocalVramBudgetInBytes));
         ImGui::FmtText("Host VRAM: {:.0f} mb", ToMb(adapterMemoryInfo.m_UsedHostVramInBytes));
-        ImGui::Text("");
+        ImGui::NewLine();
         ImGui::FmtText("Window: {} x {}", ms_Window->GetWidth(), ms_Window->GetHeight());
         ImGui::FmtText("Viewport: {} x {}", m_Viewport.GetWidth(), m_Viewport.GetHeight());
 
