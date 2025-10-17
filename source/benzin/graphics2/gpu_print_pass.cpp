@@ -121,7 +121,7 @@ namespace benzin
         {
             creation.DebugName = "GpuPrint::ReadbackBuffer";
             creation.Type = benzin::BufferType::Byte;
-            creation.ElementCount = printBufferSizeInBytes * benzin::GraphicsConfig::g_ReadbackLatency;
+            creation.ElementCount = printBufferSizeInBytes * BENZIN_READBACK_LATENCY;
         });
 
         m_Consts.m_PrintBufferHeapIndex = m_UavBuffer->GetUav().GetGpuHeapIndex();
@@ -157,8 +157,8 @@ namespace benzin
     void GpuPrintPass::ReadbackFromGpu(benzin::CopyCmdList& cmdList) const
     {
         const uint32_t bufferSizeInBytes = m_Consts.m_PrintBufferSizeInBytes;
-        const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % benzin::GraphicsConfig::g_ReadbackLatency) * bufferSizeInBytes;
-        const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % benzin::GraphicsConfig::g_ReadbackLatency) * bufferSizeInBytes;
+        const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % BENZIN_READBACK_LATENCY) * bufferSizeInBytes;
+        const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % BENZIN_READBACK_LATENCY) * bufferSizeInBytes;
 
         cmdList.CopyBufferRegion(*m_ReadbackBuffer, destOffsetInBytes, *m_UavBuffer, 0, bufferSizeInBytes);
 

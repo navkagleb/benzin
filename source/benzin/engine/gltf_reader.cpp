@@ -106,7 +106,7 @@ namespace benzin
         MakeUniquePtr(m_GltfModel);
         m_TextureMappings.clear();
 
-        const std::filesystem::path filePath = EngineConfig::GetModelDir() / fileName;
+        const std::filesystem::path filePath = GetModelDir() / fileName;
         BenzinAssert(std::filesystem::exists(filePath));
         BenzinAssert(filePath.extension() == ".glb" || filePath.extension() == ".gltf");
 

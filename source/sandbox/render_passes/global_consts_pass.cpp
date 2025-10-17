@@ -44,7 +44,7 @@ namespace sandbox
             creation.Type = benzin::BufferType::Format;
             creation.Format = statFormat;
             creation.ElementSizeInBytes = statElementSizeInBytes;
-            creation.ElementCount = statElementCount * benzin::GraphicsConfig::g_ReadbackLatency;
+            creation.ElementCount = statElementCount * BENZIN_READBACK_LATENCY;
         });
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
@@ -125,8 +125,8 @@ namespace sandbox
             BenzinGpuProfile("CopyStats");
 
             const uint64_t dataSizeInBytes = m_StatBuffer->GetSizeInBytes();
-            const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % benzin::GraphicsConfig::g_ReadbackLatency) * dataSizeInBytes;
-            const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % benzin::GraphicsConfig::g_ReadbackLatency) * dataSizeInBytes;
+            const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % BENZIN_READBACK_LATENCY) * dataSizeInBytes;
+            const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % BENZIN_READBACK_LATENCY) * dataSizeInBytes;
 
             cmdList.CopyBufferRegion(*m_ReadbackStatBuffer, destOffsetInBytes, *m_StatBuffer, 0, dataSizeInBytes);
 

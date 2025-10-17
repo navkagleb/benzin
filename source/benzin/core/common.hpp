@@ -82,11 +82,6 @@ namespace benzin
     using SubRange32 = SubRange<uint32_t>;
     using SubRange64 = SubRange<uint64_t>;
 
-    constexpr auto ToBit(std::integral auto bitPosition)
-    {
-        return 1 << bitPosition;
-    }
-
     constexpr size_t HashCombine(size_t resultHash, const auto& value)
     {
         const auto hashedValue = std::hash<std::decay_t<decltype(value)>>{}(value);
@@ -146,6 +141,31 @@ namespace benzin
         std::array<T, _MaxElementCount> m_Elements{};
         uint32_t m_Count = 0;
     };
+
+    template <typename CreateCallbackT>
+    class LazyConverter
+    {
+    public:
+        using ResultType = std::invoke_result_t<const CreateCallbackT&>;
+
+        constexpr LazyConverter(CreateCallbackT&& callback)
+            : m_Callback{ std::move(callback) }
+        {}
+
+        constexpr operator ResultType() const noexcept(std::is_nothrow_invocable_v<const CreateCallbackT&>)
+        {
+            return m_Callback();
+        }
+
+    private:
+        CreateCallbackT m_Callback;
+    };
+
+    template <typename CreateCallbackT>
+    auto MakeLazyConverter(CreateCallbackT&& callback)
+    {
+        return LazyConverter{ std::move(callback) };
+    }
 
 }
 

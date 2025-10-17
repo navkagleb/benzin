@@ -37,7 +37,7 @@ namespace benzin
         {
             creation.DebugName = "GpuProfiler::ReadbackBuffer";
             creation.ElementSizeInBytes = sizeof(uint64_t) * ms_MaxTimestampCount;
-            creation.ElementCount = GraphicsConfig::g_ReadbackLatency;
+            creation.ElementCount = BENZIN_READBACK_LATENCY;
         });
 
         m_Root.m_Name = "Root";
@@ -76,8 +76,8 @@ namespace benzin
                 CopyNodeDurationRecursive(m_Root, timestamps);
             });
 
-        m_WriteIndex = cpuFrameIndex % GraphicsConfig::g_ReadbackLatency;
-        m_ReadIndex = (cpuFrameIndex + 1) % GraphicsConfig::g_ReadbackLatency;
+        m_WriteIndex = cpuFrameIndex % BENZIN_READBACK_LATENCY;
+        m_ReadIndex = (cpuFrameIndex + 1) % BENZIN_READBACK_LATENCY;
     }
 
     void GpuProfiler::EndFrame()

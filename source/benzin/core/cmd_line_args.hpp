@@ -9,8 +9,6 @@ namespace benzin
     {
         void Initialize(int argc, char** argv);
 
-        auto GetRawLogOptionFlags() -> uint32_t;
-
         auto GetWindowWidth() -> uint32_t;
         auto GetWindowHeight() -> uint32_t;
         auto IsWindowResizable() -> bool;

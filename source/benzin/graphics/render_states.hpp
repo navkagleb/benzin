@@ -1,7 +1,6 @@
 #pragma once
 
-#include "benzin/core/enum_flags.hpp"
-#include "benzin/graphics/common.hpp"
+#include <benzin/graphics/common.hpp>
 
 namespace benzin
 {
@@ -127,10 +126,10 @@ namespace benzin
 
     enum class ColorChannelFlag : uint8_t
     {
-        Red = ToBit(0),
-        Green = ToBit(1),
-        Blue = ToBit(2),
-        Alpha = ToBit(3),
+        Red = 1 << 0,
+        Green = 1 << 1,
+        Blue = 1 << 2,
+        Alpha = 1 << 3,
         All = Red | Green | Blue | Alpha,
     };
     BenzinEnableFlagsForBitEnum(ColorChannelFlag);
@@ -150,4 +149,4 @@ namespace benzin
         std::vector<RenderTargetState> RenderTargetStates;
     };
 
-} // namespace benzin
+}

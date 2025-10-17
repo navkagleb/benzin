@@ -9,7 +9,7 @@ namespace benzin
     {
     public:
         BufferWriter() = default;
-        BufferWriter(std::byte* targetBuffer, uint64_t bufferSizeInBytes, uint64_t positionInBytes = 0);
+        BufferWriter(std::byte* targetBuffer, uint64_t bufferSizeInBytes);
 
         auto GetPositionInBytes() { return m_BufferPositionInBytes; }
 

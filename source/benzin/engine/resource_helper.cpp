@@ -203,7 +203,7 @@ namespace benzin
 
         for (const auto fileName : fileNames)
         {
-            const std::filesystem::path filePath = EngineConfig::GetTextureDir() / fileName;
+            const std::filesystem::path filePath = GetTextureDir() / fileName;
             BenzinAssert(std::filesystem::exists(filePath));
             BenzinAssert(filePath.extension() == ".dds");
 
@@ -244,7 +244,7 @@ namespace benzin
             memcpy(destImage->pixels, sourceImage->pixels, sourceImage->slicePitch);
         }
 
-        const std::filesystem::path outputFilePath = EngineConfig::GetTextureDir() / outputFileName;
+        const std::filesystem::path outputFilePath = GetTextureDir() / outputFileName;
         BenzinAssert(outputFilePath.extension() == ".dds");
 
         if (FAILED(DirectX::SaveToDDSFile(textureArray.GetImages(), textureArray.GetImageCount(), textureArray.GetMetadata(), DirectX::DDS_FLAGS_NONE, outputFilePath.c_str())))

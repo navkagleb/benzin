@@ -1,8 +1,7 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/core/entry_point.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/core/entry_point.hpp>
 
-#include "benzin/core/cmd_line_args.hpp"
-#include "benzin/core/logger.hpp"
+#include <benzin/core/cmd_line_args.hpp>
 
 namespace benzin
 {
@@ -26,8 +25,6 @@ namespace benzin
         BenzinEnsure(::SetConsoleCtrlHandler(Win64_ConsoleHandler, true) != 0);
 
         CmdLineArgs::Initialize(argc, argv);
-        Logger::Initialize(CmdLineArgs::GetRawLogOptionFlags());
-
         return ClientMain();
     }
 

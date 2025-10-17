@@ -19,5 +19,3 @@ namespace benzin
     std::vector<std::string_view> SplitStringView(std::string_view str, char delimiter);
 
 }
-
-#define BenzinFormatData(formatString, ...) std::format(formatString, __VA_ARGS__).c_str()

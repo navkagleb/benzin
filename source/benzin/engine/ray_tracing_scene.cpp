@@ -124,7 +124,7 @@ namespace benzin
         }
 
         BufferWriter writer = MakeBufferWriter(*localTransformBuffer);
-        writer.WriteData(std::as_bytes(std::span{ localTransforms }));
+        writer.WriteArray(ToSpan(localTransforms));
     }
 
     void RayTracing_Scene::CreateBlases()

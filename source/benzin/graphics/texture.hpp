@@ -1,6 +1,5 @@
 #pragma once
 
-#include "benzin/core/enum_flags.hpp"
 #include "benzin/graphics/resource.hpp"
 #include "benzin/graphics/format.hpp"
 

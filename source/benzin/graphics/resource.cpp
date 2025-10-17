@@ -1,7 +1,7 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/resource.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/resource.hpp>
 
-#include "benzin/graphics/device.hpp"
+#include <benzin/graphics/device.hpp>
 
 namespace benzin
 {
@@ -35,8 +35,7 @@ namespace benzin
     {
         const auto [it, _] = m_ViewDescriptors.try_emplace(
             hash,
-            MakeLazyConverter(std::move(createDescriptorCallback))
-        );
+            MakeLazyConverter(std::move(createDescriptorCallback)));
 
         return (*it).second;
     }

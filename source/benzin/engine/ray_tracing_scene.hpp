@@ -29,7 +29,7 @@ namespace benzin
         Device& m_Device;
         Scene& m_Scene;
 
-        RayTracing_Tlas m_Tlases[GraphicsConfig::g_FrameInFlightCount] = {};
+        RayTracing_Tlas m_Tlases[BENZIN_FRAME_COUNT] = {};
     };
 
 }

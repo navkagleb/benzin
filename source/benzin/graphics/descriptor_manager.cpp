@@ -129,11 +129,13 @@ namespace benzin
     DescriptorManager::DescriptorManager(Device& device)
         : m_Device{ device }
     {
+        constexpr uint32_t maxDescriptorCount = 1'000'000;
+
         MakeUniquePtr(m_CpuRtvHeap, m_Device, DescriptorHeapCreation
         {
             .DebugName = "DescriptorHeap::CpuRtv",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-            .MaxDescriptorCount = GraphicsConfig::g_MaxRtvDescriptorCount,
+            .MaxDescriptorCount = maxDescriptorCount,
             .IsShaderVisible = false,
         });
 
@@ -141,7 +143,7 @@ namespace benzin
         {
             .DebugName = "DescriptorHeap::CpuDsv",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-            .MaxDescriptorCount = GraphicsConfig::g_MaxDsvDescriptorCount,
+            .MaxDescriptorCount = maxDescriptorCount,
             .IsShaderVisible = false,
         });
 
@@ -149,7 +151,7 @@ namespace benzin
         {
             .DebugName = "DescriptorHeap::CpuResource",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            .MaxDescriptorCount = GraphicsConfig::g_MaxResourceDescriptorCount,
+            .MaxDescriptorCount = maxDescriptorCount,
             .IsShaderVisible = false,
         });
 
@@ -157,7 +159,7 @@ namespace benzin
         {
             .DebugName = "DescriptorHeap::GpuResource",
             .D3D12Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            .MaxDescriptorCount = GraphicsConfig::g_MaxResourceDescriptorCount,
+            .MaxDescriptorCount = maxDescriptorCount,
             .IsShaderVisible = true,
         });
     }

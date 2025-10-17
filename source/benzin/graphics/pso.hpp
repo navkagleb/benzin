@@ -124,17 +124,17 @@ namespace benzin
     public:
         void Compile(std::string_view debugName) override;
         void Release() override;
-        std::span<const ShaderInfo> GetShaders() const override { return m_Shaders.Get(); }
+        std::span<const ShaderInfo> GetShaders() const override { return m_Shaders; }
 
     protected:
         void AddShader(ShaderInfo&& shader, ShaderType shaderType);
 
-    protected:
         PsoStreamT m_Stream;
 
     private:
         ID3D12PipelineState* m_D3D12PipelineState = nullptr;
-        StaticArray<ShaderInfo, _MaxShaderCount> m_Shaders;
+        std::array<ShaderInfo, _MaxShaderCount> m_Shaders;
+        uint32_t m_ShaderCount = 0;
     };
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>

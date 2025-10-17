@@ -12,7 +12,7 @@ namespace benzin
 
     bool LoadTextureImageFromHdrFile(std::string_view fileName, TextureImage& textureImage)
     {
-        const std::filesystem::path filePath = EngineConfig::GetTextureDir() / fileName;
+        const std::filesystem::path filePath = GetTextureDir() / fileName;
         BenzinAssert(std::filesystem::exists(filePath));
         BenzinAssert(filePath.extension() == ".hdr");
 
@@ -44,7 +44,7 @@ namespace benzin
 
     bool LoadTextureImageFromDdsFile(std::string_view fileName, TextureImage& textureImage)
     {
-        const std::filesystem::path filePath = EngineConfig::GetTextureDir() / fileName;
+        const std::filesystem::path filePath = GetTextureDir() / fileName;
         BenzinAssert(std::filesystem::exists(filePath));
         BenzinAssert(filePath.extension() == ".dds");
 

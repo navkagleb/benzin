@@ -10,9 +10,6 @@
 namespace benzin
 {
 
-    constexpr uint32_t g_RecordAlignmentInBytes = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
-    constexpr uint32_t g_TableAlignmentInBytes = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
-
     static void StoreRawShaderIdentifier(const void* rawId, RayTracing_ShaderTable::ShaderIdentifier& outId)
     {
         std::copy_n((const std::byte*)rawId, outId.size(), outId.begin());
@@ -49,14 +46,14 @@ namespace benzin
             .ElementCount = GetRequiredTableSizeInBytes(),
         });
 
-        BufferWriter tableWriter{ m_ShaderTable->GetCpuMappedData(), m_ShaderTable->GetSizeInBytes() };
+        BufferWriter tableWriter = MakeBufferWriter(*m_ShaderTable);
 
         const auto processIdentifier = [this, &tableWriter](ShaderIdentifier id, GpuAddress& outGpuAddress)
         {
             outGpuAddress.GpuVirtualAddress = m_ShaderTable->GetGpuVirtualAddress() + tableWriter.GetPositionInBytes();
             outGpuAddress.SizeInBytes = id.size();
 
-            tableWriter.WriteData(std::span{ id.data(), g_TableAlignmentInBytes });
+            tableWriter.WriteData(ToSpan(id.data(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT));
         };
 
         processIdentifier(m_RayGenerationShader, m_GpuAddresses.RayGenerationShader);
@@ -68,8 +65,8 @@ namespace benzin
     {
         const auto getIdentifierSizeInBytes = [](ShaderIdentifier id)
         {
-            const auto recordSizeInBytes = AlignUp((uint32_t)id.size(), g_RecordAlignmentInBytes);
-            return AlignUp(recordSizeInBytes, g_TableAlignmentInBytes);
+            const auto recordSizeInBytes = AlignUp((uint32_t)id.size(), D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+            return AlignUp(recordSizeInBytes, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
         };
 
         uint32_t tableSizeInBytes = 0;

@@ -40,7 +40,7 @@ namespace benzin
         Device& m_Device;
 
         IDXGISwapChain3* m_DxgiSwapChain = nullptr;
-        std::unique_ptr<Texture> m_BackBuffers[GraphicsConfig::g_FrameInFlightCount];
+        std::unique_ptr<Texture> m_BackBuffers[BENZIN_FRAME_COUNT];
     };
 
 }

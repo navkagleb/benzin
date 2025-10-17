@@ -38,19 +38,19 @@ namespace benzin
 
             // Include directory
             compileArgs.push_back(L"-I");
-            compileArgs.push_back(GraphicsConfig::GetShaderSourceDir().c_str());
+            compileArgs.push_back(GetShaderSourceDir().c_str());
 
-            // Optimizations
-            compileArgs.push_back(GraphicsConfig::g_IsShaderDebugEnabled ? DXC_ARG_SKIP_OPTIMIZATIONS : DXC_ARG_OPTIMIZATION_LEVEL3);
+#if BENZIN_IS_DEBUG_BUILD
+            compileArgs.push_back(DXC_ARG_SKIP_OPTIMIZATIONS);
+#else
+            compileArgs.push_back(DXC_ARG_OPTIMIZATION_LEVEL3);
+#endif
 
-            if constexpr (GraphicsConfig::g_IsShaderSymbolsEnabled)
-            {
-                compileArgs.push_back(DXC_ARG_DEBUG); // Generate symbols
-
-                // PDB file
-                compileArgs.push_back(L"-Fd");
-                compileArgs.push_back(paths.PdbFilePath.c_str());
-            }
+#if BENZIN_SHADER_SYMBOLS_ENABLED
+            compileArgs.push_back(DXC_ARG_DEBUG); // Generate symbols
+            compileArgs.push_back(L"-Fd");
+            compileArgs.push_back(paths.PdbFilePath.c_str());
+#endif
 
             // Binary file
             compileArgs.push_back(L"-Fo");
@@ -96,9 +96,9 @@ namespace benzin
     // ShaderPaths
 
     ShaderPaths::ShaderPaths(const ShaderInfo& shader)
-        : SourceFilePath{ GraphicsConfig::GetShaderSourceDir() / shader.GetFileName() }
-        , DxilFilePath{ GraphicsConfig::GetShaderDxilDir() / std::format("{}.bin", shader.GetHash()) }
-        , PdbFilePath{ GraphicsConfig::GetShaderPdbDir() / std::format("{}.pdb", shader.GetHash()) }
+        : SourceFilePath{ GetShaderSourceDir() / shader.GetFileName() }
+        , DxilFilePath{ GetShaderDxilDir() / std::format("{}.bin", shader.GetHash()) }
+        , PdbFilePath{ GetShaderPdbDir() / std::format("{}.pdb", shader.GetHash()) }
     {
         BenzinEnsure(std::filesystem::exists(SourceFilePath));
 
@@ -155,7 +155,7 @@ namespace benzin
 
                     includeFilePathToParse = includeFilePathToParse.substr(slashPos + 1);
 
-                    includeFilePath = GraphicsConfig::GetShaderSourceDir() / includeFilePathToParse;
+                    includeFilePath = GetShaderSourceDir() / includeFilePathToParse;
                     if (std::filesystem::exists(includeFilePath.make_preferred()))
                     {
                         break;
@@ -166,9 +166,7 @@ namespace benzin
             };
 
             if (rawAbsFilePath == nullptr || outDxcIncludeSource == nullptr)
-            {
                 return E_INVALIDARG;
-            }
 
             auto includeFilePath = getShaderIncludeFilePath(rawAbsFilePath);
 
@@ -285,7 +283,7 @@ namespace benzin
             outCompiledShader.DxilBlob.assign(data, data + size);
         }
 
-        if constexpr (GraphicsConfig::g_IsShaderSymbolsEnabled)
+#if BENZIN_SHADER_SYMBOLS_ENABLED
         {
             ComPtr<IDxcBlob> dxcDebugBlob;
             BenzinD3D12Call(dxcResult->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&dxcDebugBlob), nullptr));
@@ -296,6 +294,7 @@ namespace benzin
 
             outCompiledShader.PdbBlob.assign(data, data + size);
         }
+#endif
     }
 
 }

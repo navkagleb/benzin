@@ -3,16 +3,11 @@
 namespace benzin
 {
 
-    template <std::unsigned_integral T, std::unsigned_integral U>
+    template <std::unsigned_integral T, std::integral U>
     constexpr auto AlignUp(T value, U alignment)
     {
-        using CommonType = std::common_type_t<T, U>;
-
-        const CommonType commonValue = value;
-        const CommonType commonAlignment = alignment;
-
-        return (commonValue + (commonAlignment - 1)) & ~(commonAlignment - 1);
-    }   
+        return (value + ((T)alignment - 1)) & ~((T)alignment - 1);
+    }
 
     template <std::unsigned_integral T>
     constexpr T DivideUp(T value, T divisor)

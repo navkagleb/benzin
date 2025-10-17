@@ -1,7 +1,5 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/core/cmd_line_args.hpp"
-
-#include "benzin/core/logger.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/core/cmd_line_args.hpp>
 
 namespace benzin
 {
@@ -37,7 +35,6 @@ namespace benzin
     }
 
     static std::string_view g_ExeFilePath;
-    static EnumFlags<LogOptionFlag> g_LogOptionFlags;
 
     static uint32_t g_WindowWidth = 1280;
     static uint32_t g_WindowHeight = 720;
@@ -86,10 +83,6 @@ namespace benzin
 
         const auto supportedArgs = std::to_array<SupportedArg>(
         {
-            { "-log_time", nullptr, [] { g_LogOptionFlags.Set(LogOptionFlag::Time); }},
-            { "-log_thread_id", nullptr, [] { g_LogOptionFlags.Set(LogOptionFlag::ThreadId); } },
-            { "-log_file_name", nullptr, [] { g_LogOptionFlags.Set(LogOptionFlag::FileName); } },
-
             { "-window_width:", &g_WindowWidth, ParseU32 },
             { "-window_height:", &g_WindowHeight, ParseU32 },
             { "-disable_window_resizing", &g_IsWindowResizable, SetFalseIfExists },
@@ -127,7 +120,6 @@ namespace benzin
 #define BenzinImplCmdLineArg(functionName, value) \
     decltype(value) CmdLineArgs::functionName() { return value; }
 
-    BenzinImplCmdLineArg(GetRawLogOptionFlags, g_LogOptionFlags.GetRawBits())
     BenzinImplCmdLineArg(GetWindowWidth, g_WindowWidth)
     BenzinImplCmdLineArg(GetWindowHeight, g_WindowHeight)
     BenzinImplCmdLineArg(IsWindowResizable, g_IsWindowResizable)

@@ -270,7 +270,7 @@ namespace benzin
         uint64_t uploadSizeInBytes = 0;
         for (const auto& texture : m_Textures)
         {
-            uploadSizeInBytes += AlignUp(texture->GetSizeInBytes(), GraphicsConfig::g_TextureAlignmentInBytes);
+            uploadSizeInBytes += AlignUp(texture->GetSizeInBytes(), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
         }
 
         auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);

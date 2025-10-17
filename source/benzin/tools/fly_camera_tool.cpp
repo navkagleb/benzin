@@ -28,7 +28,7 @@ namespace benzin
                     ImGui::TableSetColumnIndex(columnIndex);
 
                     const float cellValue = *(reinterpret_cast<const float*>(&row) + columnIndex);
-                    ImGui::Text(BenzinFormatData("{:.4f}", cellValue));
+                    ImGui::FmtText("{:.4f}", cellValue);
                 }
             }
             ImGui::EndTable();
@@ -74,7 +74,7 @@ namespace benzin
                         continue;
                     }
 
-                    ImGui::Text(BenzinFormatData("{:.4f}", DirectX::XMVectorGetByIndex(plane, columnIndex - 1)));
+                    ImGui::FmtText("{:.4f}", DirectX::XMVectorGetByIndex(plane, columnIndex - 1));
                 }
             }
             ImGui::EndTable();

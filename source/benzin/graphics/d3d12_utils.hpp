@@ -1,6 +1,5 @@
 #pragma once
 
-#include <benzin/core/enum_flags.hpp>
 #include <benzin/graphics/d3d12_assert.hpp>
 
 namespace benzin

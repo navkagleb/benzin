@@ -39,7 +39,7 @@ namespace benzin
 
         ID3D12CommandQueue* m_D3D12CommandQueue = nullptr;
 
-        FrameContext m_FrameContexts[GraphicsConfig::g_FrameInFlightCount] = {};
+        FrameContext m_FrameContexts[BENZIN_FRAME_COUNT] = {};
         GraphicsCmdList m_CmdList;
 
         std::unique_ptr<Fence> m_FlushFence;

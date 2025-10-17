@@ -6,8 +6,6 @@ namespace benzin
 
     static const auto g_StartTimePoint = std::chrono::system_clock::now().time_since_epoch();
 
-    static EnumFlags<LogOptionFlag> g_LogOptionFlags;
-
     static std::string GetTimePointFormat()
     {
         using namespace std::chrono;
@@ -32,33 +30,17 @@ namespace benzin
 
     static std::string GetOutput(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
     {
-        std::string logOptions;
-        logOptions.reserve(256);
+        std::string logInfo;
+        logInfo.reserve(256);
 
-        if (g_LogOptionFlags.IsSet(LogOptionFlag::Time))
-        {
-            std::format_to(std::back_inserter(logOptions), "[{}]", GetTimePointFormat());
-        }
+        std::format_to(std::back_inserter(logInfo), "[{}]", GetTimePointFormat());
+        std::format_to(std::back_inserter(logInfo), "[{:5}]", std::this_thread::get_id());
+        std::format_to(std::back_inserter(logInfo), "[{}]", (GetFileNameFormat(sourceLocation)));
 
-        if (g_LogOptionFlags.IsSet(LogOptionFlag::ThreadId))
-        {
-            std::format_to(std::back_inserter(logOptions), "[{:5}]", std::this_thread::get_id());
-        }
-
-        if (g_LogOptionFlags.IsSet(LogOptionFlag::FileName))
-        {
-            std::format_to(std::back_inserter(logOptions), "[{}]", (GetFileNameFormat(sourceLocation)));
-        }
-
-        return std::format("{}[{:^7}]: {}\n", logOptions, magic_enum::enum_name(severity), message);
+        return std::format("{}[{:^7}]: {}\n", logInfo, magic_enum::enum_name(severity), message);
     }
 
     //
-
-    void Logger::Initialize(EnumFlags<LogOptionFlag> flags)
-    {
-        g_LogOptionFlags = flags;
-    }
 
     const std::locale& Logger::GetThoudandSeperatorApostrophe3()
     {

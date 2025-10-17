@@ -484,7 +484,8 @@ namespace benzin
         ImGuiIO& io = ImGui::GetIO();
 
         unsigned char* pixels;
-        int width, height;
+        int width;
+        int height;
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
         MakeUniquePtr(m_FontTexture, *ms_Device, TextureCreation
@@ -500,7 +501,7 @@ namespace benzin
         BenzinAssert(textureSizeInBytes == m_FontTexture->GetSizeInBytes());
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_FontTexture->GetSizeInBytes());
-        cmdList.UploadToTexture(*m_FontTexture, std::as_bytes(ToSpan(pixels, textureSizeInBytes)));
+        cmdList.UploadToTexture(*m_FontTexture, ToSpan((const std::byte*)pixels, textureSizeInBytes));
     }
 
     void ImGuiPass::UpdateConsts(const ImDrawData& imDrawData)

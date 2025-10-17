@@ -106,9 +106,7 @@ namespace benzin
     RayTracing_Tlas::RayTracing_Tlas(RayTracing_Tlas&& other) noexcept
     {
         if (this == &other)
-        {
             return;
-        }
 
         m_D3D12BuildInputs = other.m_D3D12BuildInputs;
         m_Buffer = std::exchange(other.m_Buffer, nullptr);
@@ -176,8 +174,8 @@ namespace benzin
             .ElementCount = (uint32_t)m_D3D12InstanceDescs.size(),
         });
 
-        BufferWriter writer{ m_InstanceBuffer->GetCpuMappedData(), m_InstanceBuffer->GetSizeInBytes() };
-        writer.WriteData(std::as_bytes(std::span{ m_D3D12InstanceDescs }));
+        BufferWriter writer = MakeBufferWriter(*m_InstanceBuffer);
+        writer.WriteArray(ToSpan(m_D3D12InstanceDescs));
     }
 
 }

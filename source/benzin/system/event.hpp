@@ -1,7 +1,5 @@
 #pragma once
 
-#include "benzin/core/enum_flags.hpp"
-
 namespace benzin
 {
 

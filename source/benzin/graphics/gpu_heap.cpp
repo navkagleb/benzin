@@ -124,10 +124,10 @@ namespace benzin
         {
             .DebugName = "ConstBufferHeap",
             .Type = GpuHeapType::GpuUpload,
-            .SizeInBytes = bufferSizeInBytesPerFrame * GraphicsConfig::g_FrameInFlightCount,
+            .SizeInBytes = bufferSizeInBytesPerFrame * BENZIN_FRAME_COUNT,
         });
 
-        for (uint32_t i = 0; i < GraphicsConfig::g_FrameInFlightCount; ++i)
+        for (uint32_t i = 0; i < BENZIN_FRAME_COUNT; ++i)
         {
             const uint64_t gpuHeapOffsetInBytes = bufferSizeInBytesPerFrame * i;
             MakeUniquePtr(m_FrameBuffers[i], *m_GpuHeap, gpuHeapOffsetInBytes, BufferCreation
@@ -149,10 +149,10 @@ namespace benzin
     uint64_t ConstBufferLinearAllocator::Allocate(std::span<const std::byte> data)
     {
         const uint64_t offsetInBytes = m_FrameBufferWriter.GetPositionInBytes();
-        BenzinAssert((offsetInBytes % GraphicsConfig::g_ConstBufferAlignmentInBytes) == 0);
+        BenzinAssert(offsetInBytes % D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT == 0);
 
         m_FrameBufferWriter.WriteData(data);
-        m_FrameBufferWriter.SetPositionInBytes(AlignUp(m_FrameBufferWriter.GetPositionInBytes(), GraphicsConfig::g_ConstBufferAlignmentInBytes));
+        m_FrameBufferWriter.SetPositionInBytes(AlignUp(m_FrameBufferWriter.GetPositionInBytes(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 
         return m_FrameBuffer->GetGpuVirtualAddress() + offsetInBytes;
     }

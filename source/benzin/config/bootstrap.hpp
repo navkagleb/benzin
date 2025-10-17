@@ -1,24 +1,51 @@
 #pragma once
 
-#include "benzin/config/win64_includes.hpp" // Include win64 first of all because other dependencies uses #include <Windows.h>
+#include <benzin/config/win64_includes.hpp> // Include win64 first of all because other dependencies uses #include <Windows.h>
 
-#include "benzin/config/build_config.hpp"
-#include "benzin/config/d3d12_includes.hpp"
-#include "benzin/config/std_includes.hpp"
-#include "benzin/config/third_party_includes.hpp"
+#if defined(BENZIN_DEBUG_BUILD)
+    #define BENZIN_IS_DEBUG_BUILD 1
+    #define BENZIN_IS_RELEASE_BUILD 0
+#elif defined(BENZIN_RELEASE_BUILD)
+    #define BENZIN_IS_DEBUG_BUILD 0
+    #define BENZIN_IS_RELEASE_BUILD 1
+#else
+    #error Unknown build type
+#endif
 
-#include "benzin/utility/benzin_defines.hpp"
-#include "benzin/utility/file_utils.hpp"
-#include "benzin/utility/string_utils.hpp"
+#include <benzin/config/d3d12_includes.hpp>
+#include <benzin/config/std_includes.hpp>
+#include <benzin/config/third_party_includes.hpp>
 
-#include "benzin/core/assert.hpp"
-#include "benzin/core/bytes.hpp"
-#include "benzin/core/common.hpp"
-#include "benzin/core/enum_flags.hpp"
-#include "benzin/core/lazy_converter.hpp"
-#include "benzin/core/log.hpp"
-#include "benzin/core/scoped_timer.hpp"
+#include <benzin/utility/benzin_defines.hpp>
+#include <benzin/utility/file_utils.hpp>
+#include <benzin/utility/string_utils.hpp>
 
-// Global configs
-#include "benzin/config/engine_config.hpp"
-#include "benzin/config/graphics_config.hpp"
+#include <benzin/core/assert.hpp>
+#include <benzin/core/bytes.hpp>
+#include <benzin/core/common.hpp>
+#include <benzin/core/enum_flags.hpp>
+#include <benzin/core/log.hpp>
+#include <benzin/core/scoped_timer.hpp>
+
+#if !defined(BENZIN_FRAME_COUNT)
+    #define BENZIN_FRAME_COUNT 3
+    #define BENZIN_READBACK_LATENCY (BENZIN_FRAME_COUNT + 1)
+#endif
+
+#if BENZIN_IS_DEBUG_BUILD
+    #define BENZIN_SHADER_SYMBOLS_ENABLED 1
+#else
+    #define BENZIN_SHADER_SYMBOLS_ENABLED 0
+#endif
+
+namespace benzin
+{
+
+    const std::filesystem::path& GetShaderSourceDir();
+    const std::filesystem::path& GetShaderPdbDir();
+    const std::filesystem::path& GetShaderDxilDir();
+
+    const std::filesystem::path& GetTextureDir();
+    const std::filesystem::path& GetModelDir();
+
+}

@@ -45,11 +45,10 @@ namespace benzin
         CompiledShader CompileShader(const ShaderPaths& paths, const ShaderArgs& args) const;
 
     private:
+        class IncludeHandler;
+
         ComPtr<IDxcResult> GetDxcCompileResult(const ShaderPaths& paths, const ShaderArgs& args, CompiledShader& outCompiledShader) const;
         void ParseDxcCompileResult(const ComPtr<IDxcResult>& dxcResult, CompiledShader& outCompiledShader) const;
-
-    private:
-        class IncludeHandler;
 
         ComPtr<IDxcUtils> m_DxcUtils;
         ComPtr<IDxcCompiler3> m_DxcCompiler;

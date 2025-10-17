@@ -80,7 +80,7 @@ namespace benzin
 
             BenzinAssert(buffer->GetCpuMappedData() != nullptr);
 
-            BufferWriter writer{ buffer->GetCpuMappedData(), buffer->GetSizeInBytes() };
+            BufferWriter writer = MakeBufferWriter(*buffer);
             writer.WriteArray(elements);
 
             return buffer;
@@ -120,7 +120,7 @@ namespace benzin
         Device& m_Device;
 
         std::unique_ptr<GpuHeap> m_GpuHeap;
-        std::unique_ptr<Buffer> m_FrameBuffers[GraphicsConfig::g_FrameInFlightCount];
+        std::unique_ptr<Buffer> m_FrameBuffers[BENZIN_FRAME_COUNT];
 
         Buffer* m_FrameBuffer = nullptr;
         BufferWriter m_FrameBufferWriter;

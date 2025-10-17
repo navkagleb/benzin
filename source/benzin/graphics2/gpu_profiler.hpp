@@ -14,7 +14,7 @@ namespace benzin
     {
         static constexpr uint32_t ms_InvalidReadbackIndex = std::numeric_limits<uint32_t>::max();
 
-        uint32_t m_ReadbackIndices[GraphicsConfig::g_ReadbackLatency];
+        uint32_t m_ReadbackIndices[BENZIN_READBACK_LATENCY];
 
         GpuProfileNode()
         {

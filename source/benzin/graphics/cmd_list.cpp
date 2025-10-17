@@ -127,27 +127,22 @@ namespace benzin
             destOffsetInBytes,
             sourceBuffer.GetD3D12Resource(),
             sourceOffsetInBytes,
-            dataSizeInBytes
-        );
+            dataSizeInBytes);
     }
 
     void CopyCmdList::CopyTextureRegion(const Texture& destTexture, uint32_t destSubResourceIndex, const Texture& sourceTexture, uint32_t sourceSubresourceIndex)
     {
         BenzinAssert(destTexture.GetFormat() == sourceTexture.GetFormat());
 
-        const D3D12_TEXTURE_COPY_LOCATION d3d12DestLocatiton
-        {
-            .pResource = destTexture.GetD3D12Resource(),
-            .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-            .SubresourceIndex = destSubResourceIndex,
-        };
+        D3D12_TEXTURE_COPY_LOCATION d3d12DestLocatiton = {};
+        d3d12DestLocatiton.pResource = destTexture.GetD3D12Resource();
+        d3d12DestLocatiton.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        d3d12DestLocatiton.SubresourceIndex = destSubResourceIndex;
 
-        const D3D12_TEXTURE_COPY_LOCATION d3d12SourceLocatiton
-        {
-            .pResource = sourceTexture.GetD3D12Resource(),
-            .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-            .SubresourceIndex = sourceSubresourceIndex,
-        };
+        D3D12_TEXTURE_COPY_LOCATION d3d12SourceLocatiton = {};
+        d3d12SourceLocatiton.pResource = sourceTexture.GetD3D12Resource();
+        d3d12SourceLocatiton.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        d3d12SourceLocatiton.SubresourceIndex = sourceSubresourceIndex;
 
         BenzinScopedResourceBarriers(
             *this,
@@ -164,13 +159,14 @@ namespace benzin
 
         const uint64_t uploadOffsetInBytes = AllocateInUploadBuffer(data.size_bytes());
 
-        BufferWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSizeInBytes(), uploadOffsetInBytes };
+        BufferWriter writer = MakeBufferWriter(*m_UploadBuffer);
+        writer.SetPositionInBytes(uploadOffsetInBytes);
         writer.WriteData(data);
 
         CopyBufferRegion(destBuffer, destOffsetInBytes, *m_UploadBuffer, uploadOffsetInBytes, data.size_bytes());
     }
 
-    void CopyCmdList::UploadToTexture(Texture& texture, const std::vector<SubResourceData>& subResources)
+    void CopyCmdList::UploadToTexture(Texture& texture, std::span<const SubResourceData> subResources)
     {
         struct CopyableFootprints
         {
@@ -199,7 +195,7 @@ namespace benzin
             BenzinD3D12Call(texture.GetD3D12Resource()->GetDevice(IID_PPV_ARGS(&d3d12Device)));
 
             const D3D12_RESOURCE_DESC d3d12TextureDesc = texture.GetD3D12Resource()->GetDesc();
-            const uint64_t offsetInBytes = AllocateInUploadBuffer(0, GraphicsConfig::g_TextureAlignmentInBytes);
+            const uint64_t offsetInBytes = AllocateInUploadBuffer(0, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
             d3d12Device->GetCopyableFootprints(
                 &d3d12TextureDesc,
@@ -212,13 +208,13 @@ namespace benzin
                 &resourceSizeInBytes
             );
 
-            AllocateInUploadBuffer(resourceSizeInBytes, GraphicsConfig::g_TextureAlignmentInBytes);
+            AllocateInUploadBuffer(resourceSizeInBytes, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
         }
 
         // Copying sub-resources to UploadBuffer
         // Go down to rows and copy it
         {
-            BufferWriter writer{ m_UploadBuffer->GetCpuMappedData(), m_UploadBuffer->GetSizeInBytes() };
+            BufferWriter writer = MakeBufferWriter(*m_UploadBuffer);
 
             for (uint32_t subResourceIndex = 0; subResourceIndex < (uint32_t)subResources.size(); ++subResourceIndex)
             {
@@ -256,24 +252,20 @@ namespace benzin
         }
 
         // Copy to texture
-        for (uint32_t i = 0; i < (uint32_t)subResources.size(); ++i)
+        for (uint32_t i = 0; i < subResources.size(); ++i)
         {
-            const D3D12_TEXTURE_COPY_LOCATION destination
-            {
-                .pResource = texture.GetD3D12Resource(),
-                .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-                .SubresourceIndex = i,
-            };
+            D3D12_TEXTURE_COPY_LOCATION d3d12DestLocation = {};
+            d3d12DestLocation.pResource = texture.GetD3D12Resource();
+            d3d12DestLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+            d3d12DestLocation.SubresourceIndex = i;
 
-            const D3D12_TEXTURE_COPY_LOCATION source
-            {
-                .pResource = m_UploadBuffer->GetD3D12Resource(),
-                .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
-                .PlacedFootprint = copyableFootprits.D3D12Layouts[i],
-            };
+            D3D12_TEXTURE_COPY_LOCATION d3d12SourceLocation = {};
+            d3d12SourceLocation.pResource = m_UploadBuffer->GetD3D12Resource();
+            d3d12SourceLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+            d3d12SourceLocation.PlacedFootprint = copyableFootprits.D3D12Layouts[i];
 
-            // BenzinScopedResourceBarriers(*this, TransitionBarrier{ texture, ResourceState::CopyDestination });
-            m_D3D12GraphicsCommandList1->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
+            // BenzinScopedResourceBarriers(*this, TransitionBarrier{ texture, ResourceState::CopyDestination }); // TODO
+            m_D3D12GraphicsCommandList1->CopyTextureRegion(&d3d12DestLocation, 0, 0, 0, &d3d12SourceLocation, nullptr);
         }
     }
 

@@ -55,7 +55,7 @@ namespace benzin
         MakeUniquePtr(m_GraphicsCmdQueue, *this);
         MakeUniquePtr(m_FrameFence, *this, FenceCreation{ "FrameFence", m_CompletedGpuFrameIndex });
 
-        for (uint32_t i = 0; i < GraphicsConfig::g_FrameInFlightCount; ++i)
+        for (uint32_t i = 0; i < BENZIN_FRAME_COUNT; ++i)
         {
             MakeUniquePtr(m_TemporalHeaps[i], *this, GpuHeapCreation
             {
@@ -88,7 +88,7 @@ namespace benzin
         m_PersistentReadbackHeap.reset();
         m_PersistentDefaultHeap.reset();
 
-        for (uint32_t i = 0; i < GraphicsConfig::g_FrameInFlightCount; ++i)
+        for (uint32_t i = 0; i < BENZIN_FRAME_COUNT; ++i)
         {
             m_TemporalLinearAllocators[i].reset();
             m_TemporalHeaps[i].reset();
@@ -199,13 +199,13 @@ namespace benzin
 
         m_CompletedGpuFrameIndex = m_FrameFence->GetCompletedValue();
 
-        if (m_CpuFrameIndex - m_CompletedGpuFrameIndex < GraphicsConfig::g_FrameInFlightCount)
+        if (m_CpuFrameIndex - m_CompletedGpuFrameIndex < BENZIN_FRAME_COUNT)
             return;
 
         {
             BenzinScopeProfile("Device::WaitForGpu");
 
-            const uint64_t gpuFrameIndexToWait = m_CpuFrameIndex - GraphicsConfig::g_FrameInFlightCount + 1;
+            const uint64_t gpuFrameIndexToWait = m_CpuFrameIndex - BENZIN_FRAME_COUNT + 1;
             m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
         }
 

@@ -234,7 +234,8 @@ namespace benzin
         BenzinUnused(shaderType);
         BenzinAssert(shader.IsValid() && shader.GetType() == shaderType);
 
-        m_Shaders.Add(std::move(shader));
+        BenzinAssert(m_ShaderCount < _MaxShaderCount);
+        m_Shaders[m_ShaderCount++] = std::move(shader);
     }
 
     // GraphicsPso

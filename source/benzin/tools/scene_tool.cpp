@@ -21,9 +21,7 @@ namespace benzin
     void SceneTool::DrawSun()
     {
         if (!ImGui::MainCollapsingHeader("Sun", ImGuiTreeNodeFlags_DefaultOpen))
-        {
             return;
-        }
 
         auto& sun = m_Scene.GetEntityRegistry().get<SunLight>(m_Scene.GetSunEntity());
 
@@ -61,9 +59,7 @@ namespace benzin
     void SceneTool::DrawSphericalLights()
     {
         if (!ImGui::MainCollapsingHeader("SphericalLights"))
-        {
             return;
-        }
 
         const auto view = m_Scene.GetEntityRegistry().view<SphericalLight>();
         for (const entt::entity entity : view)
@@ -107,7 +103,7 @@ namespace benzin
             }
 
             const auto& attenuation = light.GetAttenuation();
-            ImGui::Text(BenzinFormatData("Attenuation: {} {} {}", attenuation.x, attenuation.y, attenuation.z));
+            ImGui::FmtText("Attenuation: {} {} {}", attenuation.x, attenuation.y, attenuation.z);
 
             float radius = light.GetRadius();
             if (ImGui::InputFloat("Radius", &radius))

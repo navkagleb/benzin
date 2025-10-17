@@ -49,7 +49,7 @@ namespace benzin
             }
             case BufferType::Const:
             {
-                BenzinEnsure(creation.ElementSizeInBytes % GraphicsConfig::g_ConstBufferAlignmentInBytes == 0);
+                BenzinEnsure(creation.ElementSizeInBytes % D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT == 0);
                 break;
             }
             case BufferType::Structured:
@@ -57,13 +57,14 @@ namespace benzin
                 // Performance tip: Align structures on sizeof(float4) boundary
                 // Ref: https://developer.nvidia.com/content/understanding-structured-buffer-performance
 
+                constexpr uint32_t alignment = sizeof(DirectX::XMFLOAT4);
+
                 BenzinWarningIf(
-                    creation.ElementSizeInBytes % GraphicsConfig::g_StructuredBufferAlignmentInBytes != 0,
+                    creation.ElementSizeInBytes % alignment != 0,
                     "Buffer '{}' is not properly aligned. BufferElementSize: {}, StructuredBufferAlignment: {}",
                     creation.DebugName,
                     creation.ElementSizeInBytes,
-                    GraphicsConfig::g_StructuredBufferAlignmentInBytes
-                );
+                    alignment);
 
                 break;
             }
@@ -93,21 +94,17 @@ namespace benzin
     static ResourceState GetInitialBufferState(const Device& device, BufferType bufferType, GpuHeapType heapType)
     {
         if (bufferType == BufferType::RayTracing_AccelerationStructure)
-        {
             return ResourceState::RayTracing_AccelerationStructure;
-        }
-        
-        if (heapType == GpuHeapType::Upload && !device.GetCaps().IsGpuUploadHeapsSupported)
+
+        if (heapType == GpuHeapType::Upload && !device.GetCaps().IsGpuUploadHeapsSupported) // TODO: Don't check if GpuUpload heaps are supported here
         {
             // Case only for D3D12_HEAP_TYPE_UPLOAD
             // D3D12_HEAP_TYPE_GPU_UPLOAD requires D3D12_RESOURCE_STATE_COMMON
             return ResourceState::GenericRead;
         }
-            
+
         if (heapType == GpuHeapType::Readback)
-        {
             return ResourceState::CopyDestination;
-        }
 
         return ResourceState::Common;
     }
@@ -126,8 +123,7 @@ namespace benzin
             &d3d12ResourceDesc,
             (D3D12_RESOURCE_STATES)initialState,
             nullptr,
-            IID_PPV_ARGS(&d3d12Resource)
-        ));
+            IID_PPV_ARGS(&d3d12Resource)));
 
         BenzinEnsure(d3d12Resource != nullptr);
         return d3d12Resource;
@@ -138,8 +134,7 @@ namespace benzin
         const GpuHeap& gpuHeap,
         uint64_t gpuHeapOffsetInBytes,
         const BufferCreation& creation,
-        ResourceState initialState
-    )
+        ResourceState initialState)
     {
         BenzinAssert(!IsGoodEnum(creation.HeapType));
 
@@ -152,8 +147,7 @@ namespace benzin
             &d3d12ResourceDesc,
             (D3D12_RESOURCE_STATES)initialState,
             nullptr,
-            IID_PPV_ARGS(&d3d12Resource)
-        ));
+            IID_PPV_ARGS(&d3d12Resource)));
 
         BenzinEnsure(d3d12Resource != nullptr);
         return d3d12Resource;
@@ -168,8 +162,8 @@ namespace benzin
                 // Note: ByteAddressBuffers supports only 'DXGI_FORMAT_R32_TYPELESS' format 
                 // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
 
-                static const auto rawBufferFormat = GraphicsFormat::R32Typeless;
-                static const auto rawBufferFormatSizeInBytes = GetFormatSizeInBytes(rawBufferFormat);
+                constexpr auto rawBufferFormat = GraphicsFormat::R32Typeless;
+                const auto rawBufferFormatSizeInBytes = GetFormatSizeInBytes(rawBufferFormat);
 
                 BenzinAssert(buffer.GetSizeInBytes() % rawBufferFormatSizeInBytes == 0);
 
@@ -251,8 +245,8 @@ namespace benzin
                 // Note: ByteAddressBuffers supports only 'DXGI_FORMAT_R32_TYPELESS' format 
                 // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
 
-                static const auto rawBufferFormat = GraphicsFormat::R32Typeless;
-                static const auto rawBufferFormatSizeInBytes = GetFormatSizeInBytes(rawBufferFormat);
+                constexpr auto rawBufferFormat = GraphicsFormat::R32Typeless;
+                const auto rawBufferFormatSizeInBytes = GetFormatSizeInBytes(rawBufferFormat);
 
                 BenzinAssert(buffer.GetSizeInBytes() % rawBufferFormatSizeInBytes == 0);
 

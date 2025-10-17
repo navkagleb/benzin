@@ -53,7 +53,7 @@ namespace benzin
             .Stereo = false,
             .SampleDesc{ 1, 0 },
             .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-            .BufferCount = GraphicsConfig::g_FrameInFlightCount,
+            .BufferCount = BENZIN_FRAME_COUNT,
             .Scaling = DXGI_SCALING_STRETCH,
             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
             .AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED,
@@ -114,12 +114,12 @@ namespace benzin
 
     void SwapChain::RegisterBackBuffers()
     {
-        for (const auto& [i, backBuffer] : m_BackBuffers | std::views::enumerate)
+        for (uint32_t i = 0; i < BENZIN_FRAME_COUNT; ++i)
         {
             ID3D12Resource* d3d12BackBuffer;
             BenzinD3D12Call(m_DxgiSwapChain->GetBuffer((uint32_t)i, IID_PPV_ARGS(&d3d12BackBuffer))); // Increases reference count
 
-            MakeUniquePtr(backBuffer, m_Device, d3d12BackBuffer);
+            MakeUniquePtr(m_BackBuffers[i], m_Device, d3d12BackBuffer);
             SetD3DObjectDebugName(d3d12BackBuffer, std::format("SwapChainBackBuffer{}", i));
         }
     }

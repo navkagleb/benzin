@@ -77,7 +77,7 @@ namespace benzin
             UploadToBuffer(destBuffer, std::as_bytes(elements), offsetElement * sizeof(T));
         }
 
-        void UploadToTexture(Texture& texture, const std::vector<SubResourceData>& subResources);
+        void UploadToTexture(Texture& texture, std::span<const SubResourceData> subResources);
         void UploadToTexture(Texture& texture, std::span<const std::byte> data);
 
     private:
@@ -86,7 +86,7 @@ namespace benzin
 
     private:
         Buffer* m_UploadBuffer = nullptr;
-        uint64_t m_UploadBufferOffsetInBytes = 0;
+        uint64_t m_UploadBufferOffsetInBytes = 0; // TODO: Replace with BufferWriter
     };
 
     class ComputeCmdList : public CopyCmdList

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benzin/graphics/descriptor_manager.hpp"
+#include <benzin/graphics/descriptor_manager.hpp>
 
 namespace benzin
 {
@@ -62,7 +62,6 @@ namespace benzin
 
         const Descriptor& TryGetViewDescriptor(size_t hash, std::function<Descriptor()>&& createDescriptorCallback) const;
 
-    protected:
         Device& m_Device;
 
         ID3D12Resource* m_D3D12Resource = nullptr;

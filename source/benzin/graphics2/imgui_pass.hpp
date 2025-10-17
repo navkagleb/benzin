@@ -157,7 +157,7 @@ namespace benzin
 
         ImGuiManager& m_ImGuiManager;
 
-        FrameContext m_FrameContexts[GraphicsConfig::g_FrameInFlightCount];
+        FrameContext m_FrameContexts[BENZIN_FRAME_COUNT];
         std::unique_ptr<Texture> m_FontTexture;
 
         joint::ImGuiConsts m_Consts{};

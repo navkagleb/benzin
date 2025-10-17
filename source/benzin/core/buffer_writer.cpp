@@ -9,9 +9,8 @@ namespace benzin
 
     // BufferWriter
 
-    BufferWriter::BufferWriter(std::byte* targetBuffer, uint64_t bufferSize, uint64_t positionInBytes)
+    BufferWriter::BufferWriter(std::byte* targetBuffer, uint64_t bufferSize)
         : m_TargetBuffer{ targetBuffer, bufferSize }
-        , m_BufferPositionInBytes{ positionInBytes }
     {}
 
     void BufferWriter::ResetTargetBuffer(std::byte* data, uint64_t sizeInBytes)
