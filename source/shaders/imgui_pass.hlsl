@@ -5,24 +5,24 @@ BenzinDeclareRootResource(Texture2D<float4>, g_Texture, joint::ImGuiResources::T
 
 struct VsInput
 {
-    float2 Position : Position;
-    float2 Uv : Uv;
-    float4 Color : Color;
+    float2 m_Position : Position;
+    float2 m_Uv : Uv;
+    float4 m_Color : Color;
 };
 
 struct VsOutput
 {
-    float4 Position : SV_Position;
-    float4 Color : Color;
-    float2 Uv : Uv;
+    float4 m_Position : SV_Position;
+    float4 m_Color : Color;
+    float2 m_Uv : Uv;
 };
 
 VsOutput VsMain(VsInput input)
 {
-    VsOutput output;
-    output.Position = mul(float4(input.Position, 0.0, 1.0), g_PassConsts0.ViewToClipOrtho);
-    output.Color = input.Color;
-    output.Uv  = input.Uv;
+    VsOutput output = (VsOutput)0;
+    output.m_Position = mul(float4(input.m_Position, 0.0, 1.0), g_PassConsts0.m_ViewToClipOrtho);
+    output.m_Color = input.m_Color;
+    output.m_Uv = input.m_Uv;
 
     return output;
 }
@@ -31,10 +31,9 @@ float4 PsMain(VsOutput input) : SV_Target
 {
     const joint::ImGuiSamplerIndex samplerIndex = (joint::ImGuiSamplerIndex)BenzinGetRootConstant(joint::ImGuiResources::SamplerIndex);
 
-    if (samplerIndex == joint::ImGuiSamplerIndex::Linear)
-    {
-        return input.Color * g_Texture.SampleLevel(g_LinearClampSampler, input.Uv, 0.0);
-    }
+    const float4 textureSample = samplerIndex == joint::ImGuiSamplerIndex::Linear
+        ? g_Texture.Sample(g_LinearClampSampler, input.m_Uv)
+        : g_Texture.Sample(g_PointClampSampler, input.m_Uv);
 
-    return input.Color * g_Texture.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+    return input.m_Color * textureSample;
 }

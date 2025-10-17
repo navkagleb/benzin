@@ -512,7 +512,7 @@ namespace benzin
         const float nearZ = 1.0f;
         const float farZ = -1.0f;
 
-        m_Consts.ViewToClipOrtho = DirectX::XMMatrixOrthographicOffCenterRH(left, right, bottom, top, nearZ, farZ);
+        m_Consts.m_ViewToClipOrtho = DirectX::XMMatrixOrthographicOffCenterRH(left, right, bottom, top, nearZ, farZ);
     }
 
     void ImGuiPass::UpdateVertexAndIndexBuffers(const ImDrawData& imDrawData)
@@ -526,7 +526,7 @@ namespace benzin
             MakeUniquePtr(vertexBuffer, *ms_Device, BufferCreation
             {
                 .DebugName = "ImGuiPass::VertexBuffer",
-                .HeapType = GpuHeapType::Upload,
+                .HeapType = GpuHeapType::GpuUpload,
                 .Type = BufferType::Structured,
                 .ElementSizeInBytes = sizeof(ImDrawVert),
                 .ElementCount = (uint32_t)imDrawData.TotalVtxCount + 5000, // TODO: 5000 magic number
@@ -540,7 +540,7 @@ namespace benzin
             MakeUniquePtr(indexBuffer, *ms_Device, BufferCreation
             {
                 .DebugName = "ImGuiPass::IndexBuffer",
-                .HeapType = GpuHeapType::Upload,
+                .HeapType = GpuHeapType::GpuUpload,
                 .Type = BufferType::Format,
                 .Format = GraphicsFormat::R16Uint,
                 .ElementSizeInBytes = sizeof(ImDrawIdx),
@@ -548,14 +548,14 @@ namespace benzin
             });
         }
 
-        BufferWriter vertexWriter{ vertexBuffer->GetCpuMappedData(), vertexBuffer->GetSizeInBytes() };
-        BufferWriter indexWriter{ indexBuffer->GetCpuMappedData(), indexBuffer->GetSizeInBytes() };
-        for (int cmdListIndex = 0; cmdListIndex < imDrawData.CmdListsCount; cmdListIndex++)
-        {
-            const ImDrawList* cmdList = imDrawData.CmdLists[cmdListIndex];
+        BufferWriter vertexWriter = MakeBufferWriter(*vertexBuffer);
+        BufferWriter indexWriter = MakeBufferWriter(*indexBuffer);
 
-            vertexWriter.WriteArray(ToSpan(cmdList->VtxBuffer.Data, cmdList->VtxBuffer.Size));
-            indexWriter.WriteArray(ToSpan(cmdList->IdxBuffer.Data, cmdList->IdxBuffer.Size));
+        const auto imDrawLists = ToSpan(imDrawData.CmdLists.begin(), imDrawData.CmdListsCount);
+        for (const ImDrawList* imDrawList : imDrawLists)
+        {
+            vertexWriter.WriteArray(ToSpan(imDrawList->VtxBuffer.Data, imDrawList->VtxBuffer.Size));
+            indexWriter.WriteArray(ToSpan(imDrawList->IdxBuffer.Data, imDrawList->IdxBuffer.Size));
         }
     }
 

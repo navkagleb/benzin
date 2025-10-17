@@ -7,7 +7,7 @@ namespace joint
 
     struct ImGuiConsts
     {
-        float4x4 ViewToClipOrtho;
+        float4x4 m_ViewToClipOrtho;
     };
 
     enum class ImGuiSamplerIndex : uint
