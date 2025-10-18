@@ -84,10 +84,10 @@ namespace sandbox
 
     void SigmaDenoiserPass::OnRenderViewportResize()
     {
-        m_Consts.TileCount.x = benzin::DivideUp(GetRenderViewportWidth(), joint::g_SigmaTileSize);
-        m_Consts.TileCount.y = benzin::DivideUp(GetRenderViewportHeight(), joint::g_SigmaTileSize);
+        m_Consts.TileCount.x = benzin::DivideUp(ms_RenderViewportWidth, joint::g_SigmaTileSize);
+        m_Consts.TileCount.y = benzin::DivideUp(ms_RenderViewportHeight, joint::g_SigmaTileSize);
 
-        const DirectX::XMUINT2 renderResolution = GetRenderResolution();
+        const DirectX::XMUINT2 renderResolution{ ms_RenderViewportWidth, ms_RenderViewportHeight };
         const auto shadowFormat = benzin::GraphicsFormat::R8Unorm;
 
         const auto createTexture = [](TextureId id, benzin::GraphicsFormat format, DirectX::XMUINT2 resolution, uint16_t depth = 1)
@@ -213,8 +213,7 @@ namespace sandbox
             benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1), benzin::ResourceState::UnorderedAccess },
             benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2), benzin::ResourceState::UnorderedAccess },
             benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2), benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2), benzin::ResourceState::UnorderedAccess });
 
         const DirectX::XMFLOAT4 clearColor{};
         cmdList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_Tiles), ms_Resources->Get(TextureId::Sigma_Tiles).GetUav(), clearColor);
@@ -245,11 +244,10 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ tiles, benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ tiles, benzin::ResourceState::UnorderedAccess });
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaClassifyTiles));
-        cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 16, 16, 1 });
+        cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
     }
 
     void SigmaDenoiserPass::RunSmoothTilesPass() const
@@ -270,8 +268,7 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ smoothTiles, benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ smoothTiles, benzin::ResourceState::UnorderedAccess });
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaSmoothTiles));
         cmdList.Dispatch({ m_Consts.TileCount.x, m_Consts.TileCount.y, 1 }, { 16, 16, 1 });
@@ -302,11 +299,10 @@ namespace sandbox
         BenzinScopedResourceBarriers(
             cmdList,
             benzin::TransitionBarrier{ penumbra1, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::UnorderedAccess });
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaBlur));
-        cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
+        cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
     }
 
     void SigmaDenoiserPass::RunPostBlurPass(bool isEnabled) const
@@ -328,8 +324,7 @@ namespace sandbox
                 benzin::TransitionBarrier{ penumbra2, benzin::ResourceState::CopyDestination },
                 benzin::TransitionBarrier{ penumbra1, benzin::ResourceState::CopySource },
                 benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::CopyDestination },
-                benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::CopySource }
-            );
+                benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::CopySource });
 
             cmdList.CopyResource(penumbra2, penumbra1);
             cmdList.CopyResource(shadowTemp2, shadowTemp1);
@@ -353,11 +348,10 @@ namespace sandbox
         BenzinScopedResourceBarriers(
             cmdList,
             benzin::TransitionBarrier{ penumbra2, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::UnorderedAccess });
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaPostBlur));
-        cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
+        cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
     }
 
     void SigmaDenoiserPass::RunTemporalStabilizationPass(bool isEnabled, uint16_t sliceIndex) const
@@ -396,11 +390,10 @@ namespace sandbox
         BenzinScopedResourceBarriers(
             cmdList,
             benzin::TransitionBarrier{ shadow, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ historyLength, benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ historyLength, benzin::ResourceState::UnorderedAccess });
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaTemporalStabilization));
-        cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 8, 16, 1 });
+        cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
     }
 
 }

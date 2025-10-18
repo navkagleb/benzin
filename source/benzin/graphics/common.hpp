@@ -67,22 +67,4 @@ namespace benzin
         Always = D3D12_COMPARISON_FUNC_ALWAYS,
     };
 
-    struct Viewport
-    {
-        float X = 0.0f;
-        float Y = 0.0f;
-        float Width = 0.0f;
-        float Height = 0.0f;
-        float MinDepth = 0.0f;
-        float MaxDepth = 1.0f;
-    };
-
-    struct ScissorRect
-    {
-        float X = 0.0f;
-        float Y = 0.0f;
-        float Width = 0.0f;
-        float Height = 0.0f;
-    };
-
 }

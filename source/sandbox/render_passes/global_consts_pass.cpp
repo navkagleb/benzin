@@ -76,7 +76,7 @@ namespace sandbox
             cameraConsts.FarPlane = camera.GetFarPlane();
             cameraConsts.UvToViewScale = camera.GetUvToViewScale();
             cameraConsts.UvToViewBias = camera.GetUvToViewBias();
-            cameraConsts.PixelToWorldScale = camera.GetPixelToWorldScale(GetRenderViewportHeight());
+            cameraConsts.PixelToWorldScale = camera.GetPixelToWorldScale(ms_RenderViewportHeight);
 
             if (ms_Device->GetCpuFrameIndex() != 0) // TODO: Remove if
             {
@@ -90,7 +90,7 @@ namespace sandbox
         }
 
         {
-            const DirectX::XMUINT2 renderResolution{ GetRenderViewportWidth(), GetRenderViewportHeight() };
+            const DirectX::XMUINT2 renderResolution{ ms_RenderViewportWidth, ms_RenderViewportHeight };
             const float animationTimeInSec = ms_AnimationTimer->GetElapsedTimeInSec();
 
             m_FrameConsts.RenderResolution = { (float)renderResolution.x, (float)renderResolution.y };

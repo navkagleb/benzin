@@ -292,22 +292,24 @@ namespace benzin
         ms_RayTracingScene = &rayTracingScene;
     }
 
-    void RenderPass::SetWindowViewport(uint32_t width, uint32_t height)
+    void RenderPass::SetWindowSize(uint32_t width, uint32_t height)
     {
-        ms_WindowViewport.Width = (float)width;
-        ms_WindowViewport.Height = (float)height;
-
-        ms_WindowScissorRect.Width = (float)width;
-        ms_WindowScissorRect.Height = (float)height;
+        ms_WindowWidth = width;
+        ms_WindowHeight = height;
     }
 
     void RenderPass::SetRenderViewport(uint32_t width, uint32_t height)
     {
-        ms_RenderViewport.Width = (float)width;
-        ms_RenderViewport.Height = (float)height;
+        ms_RenderViewportWidth = width;
+        ms_RenderViewportHeight = height;
 
-        ms_RenderScissorRect.Width = (float)width;
-        ms_RenderScissorRect.Height = (float)height;
+        ms_D3D12RenderViewport.Width = (float)width;
+        ms_D3D12RenderViewport.Height = (float)height;
+        ms_D3D12RenderViewport.MinDepth = 0.0f;
+        ms_D3D12RenderViewport.MaxDepth = 1.0f;
+
+        ms_D3D12RenderScissorRect.right = width;
+        ms_D3D12RenderScissorRect.bottom = height;
     }
 
 }

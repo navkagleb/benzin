@@ -88,8 +88,8 @@ namespace sandbox
         {
             .DebugName = "Final",
             .Format = benzin::GraphicsFormat::Rgba8Unorm,
-            .Width = GetRenderViewportWidth(),
-            .Height = GetRenderViewportHeight(),
+            .Width = ms_RenderViewportWidth,
+            .Height = ms_RenderViewportHeight,
             .MipCount = 1,
             .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess | benzin::TextureAccessFlag::AllowRenderTarget,
         });
@@ -177,7 +177,7 @@ namespace sandbox
         }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcLuminanceHistogram));
-        cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 16, 16, 1 });
+        cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
     }
 
     void ToneMappingPass::RunCalcAvgLuminancePass(benzin::ComputeCmdList& cmdList) const
@@ -224,7 +224,7 @@ namespace sandbox
         }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_ApplyToneMapOperator));
-        cmdList.Dispatch({ GetRenderViewportWidth(), GetRenderViewportHeight(), 1 }, { 16, 16, 1 });
+        cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
     }
 
 }

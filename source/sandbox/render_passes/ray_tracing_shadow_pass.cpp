@@ -75,8 +75,8 @@ namespace sandbox
         {
             .DebugName = magic_enum::enum_name(TextureId::NoisyPenumbra),
             .Format = penumbraFormat,
-            .Width = GetRenderViewportWidth(),
-            .Height = GetRenderViewportHeight(),
+            .Width = ms_RenderViewportWidth,
+            .Height = ms_RenderViewportHeight,
             .Depth = benzin::Scene::s_MaxLightCount,
             .MipCount = 1,
             .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
@@ -124,7 +124,7 @@ namespace sandbox
             cmdList.SetComputeRootResource(+OutNoisyPenumbra, noisyPenumbra.GetUav());
         }
 
-        cmdList.DispatchRays(pso.GetShaderTable(), { GetRenderViewportWidth(), GetRenderViewportHeight(), 1 });
+        cmdList.DispatchRays(pso.GetShaderTable(), { ms_RenderViewportWidth, ms_RenderViewportHeight, 1 });
     }
 
 }

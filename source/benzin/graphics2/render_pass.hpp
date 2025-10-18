@@ -180,7 +180,7 @@ namespace benzin
             RayTracing_Scene& rayTracingScene
         );
 
-        static void SetWindowViewport(uint32_t width, uint32_t height);
+        static void SetWindowSize(uint32_t width, uint32_t height);
         static void SetRenderViewport(uint32_t width, uint32_t height);
 
         auto IsRenderingEnabled() const { return m_IsRenderingEnabled; }
@@ -207,19 +207,13 @@ namespace benzin
         static inline const Scene* ms_Scene = nullptr;
         static inline RayTracing_Scene* ms_RayTracingScene = nullptr;
 
-        static inline Viewport ms_WindowViewport;
-        static inline ScissorRect ms_WindowScissorRect;
+        static inline uint32_t ms_WindowWidth = 0;
+        static inline uint32_t ms_WindowHeight = 0;
+        static inline uint32_t ms_RenderViewportWidth = 0;
+        static inline uint32_t ms_RenderViewportHeight = 0;
 
-        static inline Viewport ms_RenderViewport;
-        static inline ScissorRect ms_RenderScissorRect;
-
-        static uint32_t GetWindowViewportWidth() { return (uint32_t)ms_WindowViewport.Width; }
-        static uint32_t GetWindowViewportHeight() { return (uint32_t)ms_WindowViewport.Height; }
-        static DirectX::XMUINT2 GetWindowResolution() { return { GetWindowViewportWidth(), GetWindowViewportHeight() }; };
-
-        static uint32_t GetRenderViewportWidth() { return (uint32_t)ms_RenderViewport.Width; }
-        static uint32_t GetRenderViewportHeight() { return (uint32_t)ms_RenderViewport.Height; }
-        static DirectX::XMUINT2 GetRenderResolution() { return { GetRenderViewportWidth(), GetRenderViewportHeight() }; };
+        static inline D3D12_VIEWPORT ms_D3D12RenderViewport = {};
+        static inline D3D12_RECT ms_D3D12RenderScissorRect = {};
 
         bool m_IsRenderingEnabled = true;
     };

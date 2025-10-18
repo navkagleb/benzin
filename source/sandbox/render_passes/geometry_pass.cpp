@@ -98,8 +98,8 @@ namespace sandbox
             {
                 .DebugName = magic_enum::enum_name(id),
                 .Format = format,
-                .Width = GetRenderViewportWidth(),
-                .Height = GetRenderViewportHeight(),
+                .Width = ms_RenderViewportWidth,
+                .Height = ms_RenderViewportHeight,
                 .MipCount = 1,
                 .AccessFlags = accessFlag,
             });
@@ -115,8 +115,8 @@ namespace sandbox
         {
             .DebugName = magic_enum::enum_name(TextureId::ViewDepth),
             .Format = GBufferSettings::s_Color4Format,
-            .Width = GetRenderViewportWidth(),
-            .Height = GetRenderViewportHeight(),
+            .Width = ms_RenderViewportWidth,
+            .Height = ms_RenderViewportHeight,
             .MipCount = 1,
             .AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget | benzin::TextureAccessFlag::AllowUnorderedAccess,
             .ClearValueVariant = DirectX::XMFLOAT4{ std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f }, // R32 max value
@@ -126,14 +126,14 @@ namespace sandbox
         {
             .DebugName = magic_enum::enum_name(TextureId::Hzb),
             .Format = benzin::GraphicsFormat::R32Float,
-            .Width = GetRenderViewportWidth(),
-            .Height = GetRenderViewportHeight(),
+            .Width = ms_RenderViewportWidth,
+            .Height = ms_RenderViewportHeight,
             .MipCount = 0, // All mip levels
             .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
         });
 
         auto& stats = ms_Settings->GetSection<GBufferStats>();
-        stats.m_ViewportPixelCount = GetRenderViewportWidth() * GetRenderViewportHeight();
+        stats.m_ViewportPixelCount = ms_RenderViewportWidth * ms_RenderViewportHeight;
     }
 
     void GeometryPass::OnUpdate()
@@ -534,8 +534,8 @@ namespace sandbox
 
         const benzin::Texture& reprojectedHzb = ms_Resources->Get(TextureId::Hzb);
 
-        cmdList.SetViewport(ms_RenderViewport);
-        cmdList.SetScissorRect(ms_RenderScissorRect);
+        cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
+        cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
 
         cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 

@@ -551,24 +551,6 @@ namespace benzin
         m_D3D12GraphicsCommandList1->IASetPrimitiveTopology((D3D12_PRIMITIVE_TOPOLOGY)primitiveTopology);
     }
 
-    void GraphicsCmdList::SetViewport(const Viewport& viewport)
-    {
-        m_D3D12GraphicsCommandList1->RSSetViewports(1, reinterpret_cast<const D3D12_VIEWPORT*>(&viewport));
-    }
-
-    void GraphicsCmdList::SetScissorRect(const ScissorRect& scissorRect)
-    {
-        const D3D12_RECT d3d12Rect
-        {
-            .left = (LONG)scissorRect.X,
-            .top = (LONG)scissorRect.Y,
-            .right = (LONG)(scissorRect.X + scissorRect.Width),
-            .bottom = (LONG)(scissorRect.Y + scissorRect.Height),
-        };
-
-        m_D3D12GraphicsCommandList1->RSSetScissorRects(1, &d3d12Rect);
-    }
-
     void GraphicsCmdList::SetBlendFactor(const DirectX::XMFLOAT4& color)
     {
         m_D3D12GraphicsCommandList1->OMSetBlendFactor((const float*)&color);

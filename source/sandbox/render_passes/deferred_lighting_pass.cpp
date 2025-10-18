@@ -47,10 +47,10 @@ namespace sandbox
     {
         ms_Resources->Create(TextureId::HdrColor, benzin::TextureCreation
         {
-            .DebugName = "DeferredLighting_HdrColor",
+            .DebugName = "DeferredLighting::HdrColor",
             .Format = DeferredLightingSettings::s_HdrColorFormat,
-            .Width = GetRenderViewportWidth(),
-            .Height = GetRenderViewportHeight(),
+            .Width = ms_RenderViewportWidth,
+            .Height = ms_RenderViewportHeight,
             .MipCount = 1,
             .AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget,
         });
@@ -68,13 +68,12 @@ namespace sandbox
         const auto& shadow = ms_Resources->Get(sigmaSettings.IsEnabled ? TextureId::Shadow : TextureId::NoisyPenumbra);
         const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
 
-        cmdList.SetViewport(ms_RenderViewport);
-        cmdList.SetScissorRect(ms_RenderScissorRect);
+        cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
+        cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ hdrColor, benzin::ResourceState::RenderTarget }
-        );
+            benzin::TransitionBarrier{ hdrColor, benzin::ResourceState::RenderTarget });
 
         cmdList.SetRenderTargets({ hdrColor.GetRtv() });
         cmdList.ClearRenderTarget(hdrColor);

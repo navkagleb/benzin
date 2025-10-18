@@ -457,7 +457,19 @@ namespace benzin
 
         GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-        cmdList.SetViewport(ms_WindowViewport);
+        D3D12_VIEWPORT d3d12Viewport = {};
+        d3d12Viewport.Width = (float)ms_WindowWidth;
+        d3d12Viewport.Height = (float)ms_WindowHeight;
+        d3d12Viewport.MinDepth = 0.0f;
+        d3d12Viewport.MaxDepth = 1.0f;
+
+        D3D12_RECT d3d12ScissorRect = {};
+        d3d12ScissorRect.right = ms_WindowWidth;
+        d3d12ScissorRect.bottom = ms_WindowHeight;
+
+        cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &d3d12Viewport);
+        cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &d3d12ScissorRect);
+
         cmdList.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::ImGui));
         cmdList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
@@ -576,19 +588,18 @@ namespace benzin
 
             for (const ImDrawCmd& imDrawCmd : imCmdList->CmdBuffer)
             {
-                const ImVec2 clipMin{ imDrawCmd.ClipRect.x - clipOff.x, imDrawCmd.ClipRect.y - clipOff.y };
-                const ImVec2 clipMax{ imDrawCmd.ClipRect.z - clipOff.x, imDrawCmd.ClipRect.w - clipOff.y };
+                const DirectX::XMINT2 clipMin{ (int32_t)(imDrawCmd.ClipRect.x - clipOff.x), (int32_t)(imDrawCmd.ClipRect.y - clipOff.y) };
+                const DirectX::XMINT2 clipMax{ (int32_t)(imDrawCmd.ClipRect.z - clipOff.x), (int32_t)(imDrawCmd.ClipRect.w - clipOff.y) };
 
                 if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
                     continue;
 
-                cmdList.SetScissorRect(ScissorRect
-                {
-                    .X = clipMin.x,
-                    .Y = clipMin.y,
-                    .Width = clipMax.x - clipMin.x,
-                    .Height = clipMax.y - clipMin.y,
-                });
+                D3D12_RECT d3d12ScissorRect = {};
+                d3d12ScissorRect.left = clipMin.x;
+                d3d12ScissorRect.top = clipMin.y;
+                d3d12ScissorRect.right = clipMax.x;
+                d3d12ScissorRect.bottom = clipMax.y;
+                cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &d3d12ScissorRect);
 
                 uint32_t srvGpuHeapIndex;
                 joint::ImGuiSamplerIndex samplerIndex;

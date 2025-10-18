@@ -145,7 +145,7 @@ namespace sandbox
         InitScene();
 
         // Force call window resize on render passes
-        benzin::RenderPass::SetWindowViewport(m_MainWindow->GetWidth(), m_MainWindow->GetHeight());
+        benzin::RenderPass::SetWindowSize(m_MainWindow->GetWidth(), m_MainWindow->GetHeight());
         for (auto& renderPass : m_RenderPasses)
         {
             renderPass->OnWindowResize();
@@ -378,7 +378,7 @@ namespace sandbox
         m_Device->GetGraphicsCmdQueue().Flush();
         m_SwapChain->Resize(width, height);
 
-        benzin::RenderPass::SetWindowViewport(width, height);
+        benzin::RenderPass::SetWindowSize(width, height);
         for (auto& renderPass : m_RenderPasses)
         {
             renderPass->OnWindowResize();

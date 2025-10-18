@@ -142,8 +142,6 @@ namespace benzin
         void SetIndexBuffer(const Buffer& indexBuffer);
 
         void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
-        void SetViewport(const Viewport& viewport);
-        void SetScissorRect(const ScissorRect& scissorRect);
 
         void SetBlendFactor(const DirectX::XMFLOAT4& color);
 

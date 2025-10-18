@@ -136,12 +136,10 @@ namespace sandbox
         BenzinProfile();
         BenzinGpuProfile("ProceduralGrass");
 
-        using Resources = joint::ProceduralGrassResources;
+        benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-
-        cmdList.SetViewport(ms_RenderViewport);
-        cmdList.SetScissorRect(ms_RenderScissorRect);
+        cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
+        cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
 
         cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
         cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::ProceduralGrass));
@@ -151,8 +149,12 @@ namespace sandbox
 
         const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, benzin::ResourceState::DepthWrite);
 
-        cmdList.SetGraphicsRootResource(+Resources::GrassPatches, ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches).GetSrv());
-        cmdList.SetGraphicsRootResource(+Resources::PerlinNoise, m_PerlinNoiseTexture->GetSrv());
+        {
+            using Resources = joint::ProceduralGrassResources;
+
+            cmdList.SetGraphicsRootResource(+Resources::GrassPatches, ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches).GetSrv());
+            cmdList.SetGraphicsRootResource(+Resources::PerlinNoise, m_PerlinNoiseTexture->GetSrv());
+        }
 
         cmdList.DispatchMesh({ m_Consts.GrassPatchCount, 1, 1 }, { +joint::ProceduralGrassConsts::AsGroupSize, 1, 1 });
     }

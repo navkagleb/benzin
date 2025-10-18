@@ -60,8 +60,8 @@ namespace sandbox
         const benzin::Texture& hdrColor = ms_Resources->Get(TextureId::HdrColor);
         const benzin::Texture& depthStencil = ms_Resources->Get(TextureId::DepthStencil);
 
-        cmdList.SetViewport(ms_RenderViewport);
-        cmdList.SetScissorRect(ms_RenderScissorRect);
+        cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
+        cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
 
         BenzinScopedResourceBarriers(
             cmdList,
