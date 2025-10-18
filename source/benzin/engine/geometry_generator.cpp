@@ -189,10 +189,8 @@ namespace benzin
 
     MeshData GenerateBox(const BoxGeometryCreation& creation)
     {
-        MeshData meshData
-        {
-            .PrimitiveTopology = PrimitiveTopology::TriangleList,
-        };
+        MeshData meshData;
+        meshData.D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
         const float w2 = 0.5f * creation.Width;
         const float h2 = 0.5f * creation.Height;
@@ -277,10 +275,8 @@ namespace benzin
 
     MeshData GenerateGrid(const GridGeometryCreation& creation)
     {
-        MeshData meshData
-        {
-            .PrimitiveTopology = PrimitiveTopology::TriangleList,
-        };
+        MeshData meshData;
+        meshData.D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
         const uint32_t vertexCount = creation.WidthPointCount * creation.DepthPointCount;
         const uint32_t faceCount = (creation.WidthPointCount - 1) * (creation.DepthPointCount - 1) * 2;
@@ -344,10 +340,8 @@ namespace benzin
 
     MeshData GenerateCylinder(const CylinderGeometryCreation& creation)
     {
-        MeshData meshData
-        {
-            .PrimitiveTopology = PrimitiveTopology::TriangleList,
-        };
+        MeshData meshData;
+        meshData.D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
         // Vertices
         {
@@ -417,10 +411,8 @@ namespace benzin
 
     MeshData GenerateSphere(const SphereGeometryCreation& creation)
     {
-        MeshData meshData
-        {
-            .PrimitiveTopology = PrimitiveTopology::TriangleList,
-        };
+        MeshData meshData;
+        meshData.D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
         // Vertices
         {
@@ -533,12 +525,10 @@ namespace benzin
             10, 1,  6,      11, 0, 9,       2, 11, 9,       5, 2, 9,        11, 2, 7
         });
 
-        MeshData meshData
-        {
-            .Vertices{ positions.begin(), positions.end() }, // Implicit cast from 'DirectX::XMFLOAT3' to 'MeshVertex'
-            .Indices{ std::from_range, indices },
-            .PrimitiveTopology = PrimitiveTopology::TriangleList,
-        };
+        MeshData meshData;
+        meshData.Vertices = { positions.begin(), positions.end() }; // Implicit cast from 'DirectX::XMFLOAT3' to 'MeshVertex'
+        meshData.Indices = { std::from_range, indices };
+        meshData.D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         
         const uint32_t subdivisionCount = std::min<uint32_t>(creation.SubdivisionCount, 6);
         for (uint32_t i = 0; i < subdivisionCount; ++i)

@@ -27,7 +27,6 @@ namespace sandbox
         {
             proxy.Vs.FileName = "fullscreen_triangle.hlsl";
             proxy.Ps.FileName = "deferred_lighting_pass.hlsl";
-            proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
             proxy.DepthState = benzin::DepthState
             {
                 .IsEnabled = false,
@@ -90,7 +89,7 @@ namespace sandbox
             cmdList.SetGraphicsRootResource(+Shadow, shadow.GetSrv());
         }
 
-        cmdList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+        cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         cmdList.DrawVertexed(3);
     }
 

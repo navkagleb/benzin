@@ -28,7 +28,6 @@ namespace sandbox
             proxy.Vs.FileName = "fullscreen_triangle.hlsl";
             proxy.Vs.EntryPoint = "VsMainDepth0";
             proxy.Ps.FileName = "environment_pass.hlsl";
-            proxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
             proxy.DepthState = benzin::DepthState
             {
                 .IsWriteEnabled = false,
@@ -73,7 +72,7 @@ namespace sandbox
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::Environment));
         cmdList.SetGraphicsRootResource(+joint::EnvironmentResources::CubeMap, m_CubeTexture->GetSrv());
 
-        cmdList.SetPrimitiveTopology(benzin::PrimitiveTopology::TriangleList);
+        cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         cmdList.DrawVertexed(3);
     }
 

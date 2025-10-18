@@ -141,8 +141,6 @@ namespace benzin
         void SetVertexBuffer(const Buffer& vertexBuffer);
         void SetIndexBuffer(const Buffer& indexBuffer);
 
-        void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
-
         void SetBlendFactor(const DirectX::XMFLOAT4& color);
 
         void SetRenderTargets(const std::vector<Descriptor>& rtvs, const Descriptor* dsv = nullptr);

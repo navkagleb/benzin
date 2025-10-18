@@ -398,8 +398,6 @@ namespace benzin
             proxy.Vs.FileName = "imgui_pass.hlsl";
             proxy.Ps.FileName = "imgui_pass.hlsl";
 
-            proxy.PrimitiveTopologyType = PrimitiveTopologyType::Triangle;
-
             proxy.RasterizerState.CullMode = CullMode::None;
 
             proxy.DepthState.IsEnabled = false;
@@ -470,7 +468,7 @@ namespace benzin
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &d3d12Viewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &d3d12ScissorRect);
 
-        cmdList.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
+        cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::ImGui));
         cmdList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
         cmdList.SetBlendFactor({});

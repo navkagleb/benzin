@@ -544,13 +544,6 @@ namespace benzin
         m_D3D12GraphicsCommandList1->IASetIndexBuffer(&d3d12VertexBufferView);
     }
 
-    void GraphicsCmdList::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
-    {
-        BenzinAssert(primitiveTopology != PrimitiveTopology::Unknown);
-
-        m_D3D12GraphicsCommandList1->IASetPrimitiveTopology((D3D12_PRIMITIVE_TOPOLOGY)primitiveTopology);
-    }
-
     void GraphicsCmdList::SetBlendFactor(const DirectX::XMFLOAT4& color)
     {
         m_D3D12GraphicsCommandList1->OMSetBlendFactor((const float*)&color);

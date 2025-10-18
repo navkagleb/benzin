@@ -17,12 +17,13 @@ namespace benzin
     class Buffer;
     class Device;
 
+    // TODO: Remove MeshData
     struct MeshData
     {
         std::vector<joint::MeshVertex> Vertices;
         std::vector<uint32_t> Indices;
 
-        PrimitiveTopology PrimitiveTopology = PrimitiveTopology::Unknown;
+        D3D_PRIMITIVE_TOPOLOGY D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 
         std::optional<DirectX::BoundingBox> BoundingBox;
     };
@@ -36,7 +37,7 @@ namespace benzin
         SubRange32 m_MeshletIndirectVertexRange;
         SubRange32 m_MeshletIndexRange;
 
-        PrimitiveTopology m_Topology = PrimitiveTopology::Unknown;
+        D3D_PRIMITIVE_TOPOLOGY m_D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 
         DirectX::BoundingSphere m_BoundingSphere = {};
     };

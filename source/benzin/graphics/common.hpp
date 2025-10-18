@@ -31,30 +31,6 @@ namespace benzin
         uint32_t Space = 0;
     };
 
-    enum class PrimitiveTopologyType : std::underlying_type_t<D3D12_PRIMITIVE_TOPOLOGY_TYPE>
-    {
-        Unknown = D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED,
-
-        Point = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT,
-        Line = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,
-        Triangle = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
-        Patch = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH,
-    };
-
-    enum class PrimitiveTopology : std::underlying_type_t<D3D12_PRIMITIVE_TOPOLOGY>
-    {
-        Unknown = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED,
-
-        PointList = D3D_PRIMITIVE_TOPOLOGY_POINTLIST,
-        LineList = D3D_PRIMITIVE_TOPOLOGY_LINELIST,
-        LineStrip = D3D_PRIMITIVE_TOPOLOGY_LINESTRIP,
-        TriangleList = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-        TriangleStrip = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP,
-
-        ControlPointPatchlist4 = D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST,
-        ControlPointPatchlist16 = D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST,
-    };
-
     enum class ComparisonFunction : std::underlying_type_t<D3D12_COMPARISON_FUNC>
     {
         Never = D3D12_COMPARISON_FUNC_NEVER,

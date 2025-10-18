@@ -240,8 +240,6 @@ namespace sandbox
 
                 outProxy.Vs.FileName = "geometry_pass.hlsl";
 
-                outProxy.PrimitiveTopologyType = benzin::PrimitiveTopologyType::Triangle;
-
                 configureGraphicsPsoProxy(outProxy);
             });
         }
@@ -448,7 +446,7 @@ namespace sandbox
                     {
                         cmdList.SetGraphicsRootConstant(*Resources::InstanceIndex, instanceIndex);
 
-                        cmdList.SetPrimitiveTopology(drawRange.m_Topology);
+                        cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(drawRange.m_D3D12PrimitiveTopology);
                         cmdList.DrawIndexed(drawRange.m_IndexRange.m_Count, drawRange.m_IndexRange.m_Offset, drawRange.m_VertexRange.m_Offset);
                     }
                 }

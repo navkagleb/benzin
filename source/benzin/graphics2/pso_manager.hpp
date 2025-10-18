@@ -46,7 +46,6 @@ namespace benzin
     {
         ShaderProxy Vs{ "VsMain" };
         std::vector<VertexInputElement> InputLayout;
-        PrimitiveTopologyType PrimitiveTopologyType = PrimitiveTopologyType::Unknown;
     };
 
     struct MeshPsoProxy : GraphicsPsoProxy

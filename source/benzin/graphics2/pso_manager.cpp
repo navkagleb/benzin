@@ -127,8 +127,6 @@ namespace benzin
             {
                 pso.SetInputLayout(proxy.InputLayout);
             }
-
-            pso.SetPrimitiveTopologyType(proxy.PrimitiveTopologyType);
         });
     }
 

@@ -195,18 +195,18 @@ namespace benzin
         drawRange.m_VertexRange.m_Count = (uint32_t)positions.size();
         drawRange.m_IndexRange.m_Offset = (uint32_t)mesh.m_Indices.size();
         drawRange.m_IndexRange.m_Count = (uint32_t)indices.size();
-        drawRange.m_Topology = [&gltfPrimitive]
+        drawRange.m_D3D12PrimitiveTopology = [&gltfPrimitive]
         {
             switch (gltfPrimitive.mode)
             {
-            case TINYGLTF_MODE_TRIANGLES:
-                return PrimitiveTopology::TriangleList;
-            case TINYGLTF_MODE_TRIANGLE_STRIP:
-                return PrimitiveTopology::TriangleStrip;
+                case TINYGLTF_MODE_TRIANGLES:
+                    return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+                case TINYGLTF_MODE_TRIANGLE_STRIP:
+                    return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
             }
 
-            BenzinEnsure(false, "Unsupported primitive topology type: {}", gltfPrimitive.mode);
-            return PrimitiveTopology::Unknown;
+            BenzinEnsure(false, "Unsupported primitive topology: {}", gltfPrimitive.mode);
+            return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED ;
         }();
 
         mesh.m_DrawRanges.push_back(drawRange);

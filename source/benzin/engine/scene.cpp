@@ -33,7 +33,7 @@ namespace benzin
         benzin::MeshDrawRange drawRange;
         drawRange.m_VertexRange = ToSpan(meshData.Vertices);
         drawRange.m_IndexRange = ToSpan(meshData.Indices);
-        drawRange.m_Topology = meshData.PrimitiveTopology;
+        drawRange.m_D3D12PrimitiveTopology = meshData.D3D12PrimitiveTopology;
 
         benzin::MeshInstance instance;
         instance.m_DrawRangeIndex = 0;

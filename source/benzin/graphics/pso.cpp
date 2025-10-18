@@ -137,7 +137,6 @@ namespace benzin
         ValidatePsoStream((const GraphicsPsoStream&)stream);
 
         ValidateShaderBytecode(*stream.Vs);
-        BenzinAssert(*stream.PrimitiveTopologyType != D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED);
     }
 
     static void ValidatePsoStream(const MeshPsoStream& stream)
@@ -187,7 +186,7 @@ namespace benzin
     VertexPsoStream::VertexPsoStream(Device& device)
         : GraphicsPsoStream{ device }
     {
-        PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
+        PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     }
 
     // Pso
@@ -337,11 +336,6 @@ namespace benzin
     {
         Pso::AddShader(std::move(shader), ShaderType::Vertex);
         ChangeVs(bytecode);
-    }
-
-    void VertexPso::SetPrimitiveTopologyType(PrimitiveTopologyType type)
-    {
-        Pso::m_Stream.PrimitiveTopologyType = (D3D12_PRIMITIVE_TOPOLOGY_TYPE)type;
     }
 
     void VertexPso::ChangeVs(ShaderBytecode bytecode)

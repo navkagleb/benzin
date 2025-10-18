@@ -172,7 +172,6 @@ namespace benzin
 
         void SetInputLayout(std::span<const VertexInputElement> inputLayout);
         void SetVs(ShaderInfo&& shader, ShaderBytecode bytecode);
-        void SetPrimitiveTopologyType(PrimitiveTopologyType type);
 
         void ChangeVs(ShaderBytecode bytecode);
     };
