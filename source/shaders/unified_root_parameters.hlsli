@@ -41,16 +41,12 @@ RaytracingAccelerationStructure g_SceneTlas : register(t0, space1);
 
 RWByteAddressBuffer g_Stats : register(u0, space0);
 
+// TODO: Remove wrap samplers
 SamplerState g_PointWrapSampler : register(s0, space0);
 SamplerState g_PointClampSampler : register(s0, space1);
 SamplerState g_LinearWrapSampler : register(s0, space2);
 SamplerState g_LinearClampSampler : register(s0, space3);
-SamplerState g_Anisotropic16WrapSampler : register(s0, space4);
-SamplerState g_Anisotropic16ClampSampler : register(s0, space5);
-
-SamplerState g_MinLinearClampSampler : register(s0, space6);
-SamplerState g_MaxLinearClampSampler : register(s0, space7);
-SamplerState g_PointWithTransparentBlackBorderSampler : register(s0, space8);
+SamplerState g_MinLinearClampSampler : register(s0, space4);
 
 const joint::CameraConsts GetCameraConsts()
 {

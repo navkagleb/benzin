@@ -13,24 +13,6 @@ namespace benzin
     inline constexpr auto g_InvalidTextureId = TextureId{ g_Bad32 };
     inline constexpr auto g_InvalidPsoId = PsoId{ g_Bad32 };
 
-    //
-
-    enum class ShaderVisibility : std::underlying_type_t<D3D12_SHADER_VISIBILITY>
-    {
-        All = D3D12_SHADER_VISIBILITY_ALL,
-        Vertex = D3D12_SHADER_VISIBILITY_VERTEX,
-        Hull = D3D12_SHADER_VISIBILITY_HULL,
-        Domain = D3D12_SHADER_VISIBILITY_DOMAIN,
-        Geometry = D3D12_SHADER_VISIBILITY_GEOMETRY,
-        Pixel = D3D12_SHADER_VISIBILITY_PIXEL,
-    };
-
-    struct ShaderRegister
-    {
-        uint32_t Index = 0;
-        uint32_t Space = 0;
-    };
-
     enum class ComparisonFunction : std::underlying_type_t<D3D12_COMPARISON_FUNC>
     {
         Never = D3D12_COMPARISON_FUNC_NEVER,

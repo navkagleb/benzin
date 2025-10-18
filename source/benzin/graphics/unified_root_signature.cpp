@@ -4,7 +4,6 @@
 #include <benzin/graphics/d3d12_assert.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/sampler.hpp>
 
 BenzinAllowDereferenceOperatorForEnum(benzin::UnifiedRootParameter);
 
@@ -13,164 +12,81 @@ namespace benzin
 
     static auto CreateUnifiedD3D12RootParameters()
     {
-        std::array<D3D12_ROOT_PARAMETER1, magic_enum::enum_count<UnifiedRootParameter>()> d3d12RootParameters;
+        std::array<D3D12_ROOT_PARAMETER1, magic_enum::enum_count<UnifiedRootParameter>()> d3d12RootParameters = {};
 
-        uint32_t cbvSpaceIndex = 0;
-        uint32_t srvSpaceIndex = 0;
-        uint32_t uavSpaceIndex = 0;
+        D3D12_ROOT_PARAMETER1& d3d12RootConsts = d3d12RootParameters[*UnifiedRootParameter::Root32Consts];
+        d3d12RootConsts.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        d3d12RootConsts.Constants.ShaderRegister = 0;
+        d3d12RootConsts.Constants.RegisterSpace = 0;
+        d3d12RootConsts.Constants.Num32BitValues = 32;
+        d3d12RootConsts.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        d3d12RootParameters[*UnifiedRootParameter::Root32Consts] = D3D12_ROOT_PARAMETER1
-        {
-            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
-            .Constants
-            {
-                .ShaderRegister = 0,
-                .RegisterSpace = cbvSpaceIndex++,
-                .Num32BitValues = 32,
-            },
-            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
+        D3D12_ROOT_PARAMETER1& d3d12FrameConstBuffer = d3d12RootParameters[*UnifiedRootParameter::FrameConstBuffer];
+        d3d12FrameConstBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        d3d12FrameConstBuffer.Descriptor.ShaderRegister = 0;
+        d3d12FrameConstBuffer.Descriptor.RegisterSpace = 1;
+        d3d12FrameConstBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        d3d12RootParameters[*UnifiedRootParameter::FrameConstBuffer] = D3D12_ROOT_PARAMETER1
-        {
-            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
-            .Descriptor
-            {
-                .ShaderRegister = 0,
-                .RegisterSpace = cbvSpaceIndex++,
-            },
-            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
+        D3D12_ROOT_PARAMETER1& d3d12RenderPassConstBuffer0 = d3d12RootParameters[*UnifiedRootParameter::RenderPassConstBuffer0];
+        d3d12RenderPassConstBuffer0.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        d3d12RenderPassConstBuffer0.Descriptor.ShaderRegister = 0;
+        d3d12RenderPassConstBuffer0.Descriptor.RegisterSpace = 2;
+        d3d12RenderPassConstBuffer0.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        d3d12RootParameters[*UnifiedRootParameter::RenderPassConstBuffer0] = D3D12_ROOT_PARAMETER1
-        {
-            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
-            .Descriptor
-            {
-                .ShaderRegister = 0,
-                .RegisterSpace = cbvSpaceIndex++,
-            },
-            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
+        D3D12_ROOT_PARAMETER1& d3d12RenderPassConstBuffer1 = d3d12RootParameters[*UnifiedRootParameter::RenderPassConstBuffer1];
+        d3d12RenderPassConstBuffer1.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        d3d12RenderPassConstBuffer1.Descriptor.ShaderRegister = 0;
+        d3d12RenderPassConstBuffer1.Descriptor.RegisterSpace = 3;
+        d3d12RenderPassConstBuffer1.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        d3d12RootParameters[*UnifiedRootParameter::RenderPassConstBuffer1] = D3D12_ROOT_PARAMETER1
-        {
-            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
-            .Descriptor
-            {
-                .ShaderRegister = 0,
-                .RegisterSpace = cbvSpaceIndex++,
-            },
-            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
+        D3D12_ROOT_PARAMETER1& d3d12GpuPrintConstBuffer = d3d12RootParameters[*UnifiedRootParameter::GpuPrintConstBuffer];
+        d3d12GpuPrintConstBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        d3d12GpuPrintConstBuffer.Descriptor.ShaderRegister = 0;
+        d3d12GpuPrintConstBuffer.Descriptor.RegisterSpace = 4;
+        d3d12GpuPrintConstBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        d3d12RootParameters[*UnifiedRootParameter::GpuPrintConstBuffer] = D3D12_ROOT_PARAMETER1
-        {
-            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
-            .Descriptor
-            {
-                .ShaderRegister = 0,
-                .RegisterSpace = cbvSpaceIndex++,
-            },
-            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
+        D3D12_ROOT_PARAMETER1& d3d12LightBuffer = d3d12RootParameters[*UnifiedRootParameter::LightStructuredBuffer];
+        d3d12LightBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+        d3d12LightBuffer.Descriptor.ShaderRegister = 0;
+        d3d12LightBuffer.Descriptor.RegisterSpace = 0;
+        d3d12LightBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        d3d12RootParameters[*UnifiedRootParameter::LightStructuredBuffer] = D3D12_ROOT_PARAMETER1
-        {
-            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
-            .Descriptor
-            {
-                .ShaderRegister = 0,
-                .RegisterSpace = srvSpaceIndex++,
-            },
-            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
+        D3D12_ROOT_PARAMETER1& d3d12Tlas = d3d12RootParameters[*UnifiedRootParameter::SceneTlas];
+        d3d12Tlas.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+        d3d12Tlas.Descriptor.ShaderRegister = 0;
+        d3d12Tlas.Descriptor.RegisterSpace = 1;
+        d3d12Tlas.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        d3d12RootParameters[*UnifiedRootParameter::SceneTlas] = D3D12_ROOT_PARAMETER1
-        {
-            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
-            .Descriptor
-            {
-                .ShaderRegister = 0,
-                .RegisterSpace = srvSpaceIndex++,
-            },
-            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
-
-        d3d12RootParameters[*UnifiedRootParameter::ReadbackStatsBuffer] = D3D12_ROOT_PARAMETER1
-        {
-            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV,
-            .Descriptor
-            {
-                .ShaderRegister = 0,
-                .RegisterSpace = uavSpaceIndex++,
-            },
-            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
-        };
+        D3D12_ROOT_PARAMETER1& d3d12ReadbackStats = d3d12RootParameters[*UnifiedRootParameter::ReadbackStatsBuffer];
+        d3d12ReadbackStats.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+        d3d12ReadbackStats.Descriptor.ShaderRegister = 0;
+        d3d12ReadbackStats.Descriptor.RegisterSpace = 0;
+        d3d12ReadbackStats.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
         return d3d12RootParameters;
     }
 
-    static D3D12_FILTER ToD3D12TextureFilter(const TextureFilterFunction& filter, const TextureFilterType& type)
+    static D3D12_STATIC_SAMPLER_DESC CreateD3D12StaticSamplerDesc(
+        D3D12_FILTER d3d12Filter,
+        D3D12_TEXTURE_ADDRESS_MODE d3d12AddressMode,
+        uint32_t spaceIndex)
     {
-        switch (filter)
-        {
-            case TextureFilterFunction::Average:
-            {
-                switch (type)
-                {
-                    case TextureFilterType::Point: return D3D12_FILTER_MIN_MAG_MIP_POINT;
-                    case TextureFilterType::Linear: return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                    case TextureFilterType::Anisotropic: return D3D12_FILTER_ANISOTROPIC;
-                }
+        D3D12_STATIC_SAMPLER_DESC d3d12Sampler = {};
+        d3d12Sampler.Filter = d3d12Filter;
+        d3d12Sampler.AddressU = d3d12AddressMode;
+        d3d12Sampler.AddressV = d3d12AddressMode;
+        d3d12Sampler.AddressW = d3d12AddressMode;
+        d3d12Sampler.MipLODBias = 0.0f;
+        d3d12Sampler.MaxAnisotropy = 1;
+        d3d12Sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+        d3d12Sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+        d3d12Sampler.MinLOD = 0.0f;
+        d3d12Sampler.MaxLOD = D3D12_FLOAT32_MAX;
+        d3d12Sampler.ShaderRegister = 0;
+        d3d12Sampler.RegisterSpace = spaceIndex;
+        d3d12Sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-                std::unreachable();
-            }
-            case TextureFilterFunction::Min:
-            {
-                switch (type)
-                {
-                    case TextureFilterType::Point: return D3D12_FILTER_MINIMUM_MIN_MAG_MIP_POINT;
-                    case TextureFilterType::Linear: return D3D12_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR;
-                    case TextureFilterType::Anisotropic: return D3D12_FILTER_MINIMUM_ANISOTROPIC;
-                }
-
-                std::unreachable();
-            }
-            case TextureFilterFunction::Max:
-            {
-                switch (type)
-                {
-                    case TextureFilterType::Point: return D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_POINT;
-                    case TextureFilterType::Linear: return D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR;
-                    case TextureFilterType::Anisotropic: return D3D12_FILTER_MAXIMUM_ANISOTROPIC;
-                }
-
-                std::unreachable();
-            }
-        }
-
-        std::unreachable();
-    }
-
-    static D3D12_STATIC_SAMPLER_DESC ToD3D12StaticSamplerDesc(const StaticSampler& staticSampler)
-    {
-        return D3D12_STATIC_SAMPLER_DESC
-        {
-            .Filter = ToD3D12TextureFilter(staticSampler.Sampler.FilterFunction, staticSampler.Sampler.FilterType),
-            .AddressU = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressMode,
-            .AddressV = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressMode,
-            .AddressW = (D3D12_TEXTURE_ADDRESS_MODE)staticSampler.Sampler.AddressMode,
-            .MipLODBias = staticSampler.MipLodBias,
-            .MaxAnisotropy = staticSampler.MaxAnisotropy,
-            .ComparisonFunc = (D3D12_COMPARISON_FUNC)staticSampler.ComparisonFunction,
-            .BorderColor = (D3D12_STATIC_BORDER_COLOR)staticSampler.BorderColor,
-            .MinLOD = 0.0f,
-            .MaxLOD = D3D12_FLOAT32_MAX,
-            .ShaderRegister = staticSampler.ShaderRegister.Index,
-            .RegisterSpace = staticSampler.ShaderRegister.Space,
-            .ShaderVisibility = (D3D12_SHADER_VISIBILITY)staticSampler.ShaderVisibility,
-        };
+        return d3d12Sampler;
     }
 
     //
@@ -179,50 +95,28 @@ namespace benzin
     {
         const auto d3d12RootParameters = CreateUnifiedD3D12RootParameters();
 
-        uint32_t samplerSpaceIndex = 0;
         const auto d3d12StaticSamplerDescs = std::to_array(
         {
-            ToD3D12StaticSamplerDesc(StaticSampler::GetPointWrap({ 0, samplerSpaceIndex++ })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetPointClamp({ 0, samplerSpaceIndex++ })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetLinearWrap({ 0, samplerSpaceIndex++ })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetLinearClamp({ 0, samplerSpaceIndex++ })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetAnisotropicWrap({ 0, samplerSpaceIndex++ })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetAnisotropicClamp({ 0, samplerSpaceIndex++ })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetMinLinearClamp({ 0, samplerSpaceIndex++ })),
-            ToD3D12StaticSamplerDesc(StaticSampler::GetMaxLinearClamp({ 0, samplerSpaceIndex++ })),
-            ToD3D12StaticSamplerDesc(StaticSampler
-            {
-                .Sampler
-                {
-                    .FilterType = TextureFilterType::Point,
-                    .AddressMode = TextureAddressMode::Border,
-                },
-                .BorderColor = TextureBorderColor::TransparentBlack,
-                .ShaderRegister{ 0, samplerSpaceIndex++ },
-            }),
+            CreateD3D12StaticSamplerDesc(D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_WRAP, 0),
+            CreateD3D12StaticSamplerDesc(D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, 1),
+            CreateD3D12StaticSamplerDesc(D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP, 2),
+            CreateD3D12StaticSamplerDesc(D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, 3),
+            CreateD3D12StaticSamplerDesc(D3D12_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, 4),
         });
 
-        const D3D12_VERSIONED_ROOT_SIGNATURE_DESC d3d12RootSignatureDesc
-        {
-            .Version = D3D_ROOT_SIGNATURE_VERSION_1_1,
-            .Desc_1_1
-            {
-                .NumParameters = (uint32_t)d3d12RootParameters.size(),
-                .pParameters = d3d12RootParameters.data(),
-                .NumStaticSamplers = (uint32_t)d3d12StaticSamplerDescs.size(),
-                .pStaticSamplers = d3d12StaticSamplerDescs.data(),
-                .Flags
-                {
-                    D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-                    D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED
-                    // D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED For future use
-                },
-            }
-        };
+        D3D12_VERSIONED_ROOT_SIGNATURE_DESC d3d12RootSignatureDesc = {};
+        d3d12RootSignatureDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+        d3d12RootSignatureDesc.Desc_1_1.NumParameters = (uint32_t)d3d12RootParameters.size();
+        d3d12RootSignatureDesc.Desc_1_1.pParameters = d3d12RootParameters.data(),
+        d3d12RootSignatureDesc.Desc_1_1.NumStaticSamplers = (uint32_t)d3d12StaticSamplerDescs.size(),
+        d3d12RootSignatureDesc.Desc_1_1.pStaticSamplers = d3d12StaticSamplerDescs.data(),
+        d3d12RootSignatureDesc.Desc_1_1.Flags =
+            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+            D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
 
         ComPtr<ID3DBlob> d3d12Blob;
         ComPtr<ID3DBlob> d3d12Error;
-        const HRESULT hr = ::D3D12SerializeVersionedRootSignature(&d3d12RootSignatureDesc, &d3d12Blob, &d3d12Error);
+        const HRESULT hr = D3D12SerializeVersionedRootSignature(&d3d12RootSignatureDesc, &d3d12Blob, &d3d12Error);
         if (FAILED(hr))
         {
             BenzinD3D12Call(hr, "Failed to Serialize RootSignature. Error: {}", (const char*)d3d12Error->GetBufferPointer());

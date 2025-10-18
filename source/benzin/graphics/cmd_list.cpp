@@ -544,11 +544,6 @@ namespace benzin
         m_D3D12GraphicsCommandList1->IASetIndexBuffer(&d3d12VertexBufferView);
     }
 
-    void GraphicsCmdList::SetBlendFactor(const DirectX::XMFLOAT4& color)
-    {
-        m_D3D12GraphicsCommandList1->OMSetBlendFactor((const float*)&color);
-    }
-
     void GraphicsCmdList::SetRenderTargets(const std::vector<Descriptor>& rtvs, const Descriptor* dsv)
     {
         constexpr bool isRenderTargetContiguous = false;

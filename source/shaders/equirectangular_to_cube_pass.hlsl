@@ -55,5 +55,5 @@ void CsMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float2 spherical = ConvertUnitCartesianToSpherical(direction);
     const float2 equirectangularUv = ConvertSphericalToUv(spherical.x, spherical.y);
 
-    g_OutCubeMap[dispatchThreadId] = g_EquirectangularTexture.SampleLevel(g_Anisotropic16WrapSampler, equirectangularUv, 0.0);
+    g_OutCubeMap[dispatchThreadId] = g_EquirectangularTexture.SampleLevel(g_LinearClampSampler, equirectangularUv, 0.0);
 }

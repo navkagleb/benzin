@@ -465,13 +465,15 @@ namespace benzin
         d3d12ScissorRect.right = ms_WindowWidth;
         d3d12ScissorRect.bottom = ms_WindowHeight;
 
+        const DirectX::XMFLOAT4 blendFactor = {};
+
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &d3d12Viewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &d3d12ScissorRect);
+        cmdList.GetD3D12GraphicsCommandList()->OMSetBlendFactor((const float*)&blendFactor);
 
         cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::ImGui));
         cmdList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
-        cmdList.SetBlendFactor({});
 
         auto& [vertexBuffer, indexBuffer] = m_FrameContexts[ms_Device->GetActiveFrameIndex()];
         cmdList.SetVertexBuffer(*vertexBuffer);
