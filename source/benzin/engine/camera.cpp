@@ -101,16 +101,17 @@ namespace benzin
         {
             // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
 
-            const float leftSlope = m_TanHalfFovX;
-            const float rightSlope = -m_TanHalfFovX;
-            const float topSlope = m_TanHalfFovY;
-            const float bottomSlope = -m_TanHalfFovY;
+            // TODO: Retrieve slopes from m_ViewToClipMatrix
+            const DirectX::XMMATRIX viewToClipMatrixForFrustum = DirectX::XMMatrixPerspectiveFovLH(m_VerticalFovInRadians, m_AspectRatio, m_NearPlane, m_FarPlane);
 
-            m_UvToViewScale.x = rightSlope - leftSlope;
-            m_UvToViewScale.y = bottomSlope - topSlope;
+            DirectX::BoundingFrustum viewFrustum;
+            DirectX::BoundingFrustum::CreateFromMatrix(viewFrustum, viewToClipMatrixForFrustum);
 
-            m_UvToViewBias.x = leftSlope;
-            m_UvToViewBias.y = topSlope;
+            m_UvToViewScale.x = viewFrustum.RightSlope - viewFrustum.LeftSlope;
+            m_UvToViewScale.y = viewFrustum.BottomSlope - viewFrustum.TopSlope;
+
+            m_UvToViewBias.x = viewFrustum.LeftSlope;
+            m_UvToViewBias.y = viewFrustum.TopSlope;
         }
     }
 
