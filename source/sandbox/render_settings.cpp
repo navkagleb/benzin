@@ -13,21 +13,6 @@ namespace sandbox
     template <>
     void DrawSettings(GBufferSettings& settings)
     {
-        const auto drawColoringType = [&settings]
-        {
-            static const auto names = magic_enum::enum_names<joint::DebugColoringType>();
-
-            ImGui::SameLine();
-            ImGui::Combo(
-                "Coloring type",
-                (int*)&settings.ColoringType,
-                ImGui::SelectComboName<decltype(names)>,
-                (void*)&names,
-                (int)names.size()
-            );
-        };
-
-        drawColoringType();
         ImGui::Checkbox("CPU frustum culling", &settings.IsCpuFrustumCullingEnabled);
         ImGui::Checkbox("Mesh pipeline", &settings.IsMeshPipelineUsed);
 

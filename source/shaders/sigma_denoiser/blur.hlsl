@@ -123,24 +123,7 @@ SparseBlurKernel CalcSparseBlurKernel(BlurParams params, float blurredPenumbra, 
     kernel.Rotator = g_PassConsts0.PostBlurRotator;
 #endif
 
-    float3 worldToLightDirection;
-    switch (g_PassConsts1.LightType)
-    {
-        case joint::LightType::Sun:
-        {
-            worldToLightDirection = g_PassConsts1.WorldLightPosition;
-            break;
-        }
-        case joint::LightType::Spherical:
-        {
-            const float3 worldPosition = mul(float4(params.BaseViewPosition, 1.0), GetCameraConsts().ViewToWorld).xyz;
-            worldToLightDirection = normalize(worldPosition - g_PassConsts1.WorldLightPosition);
-
-            break;
-        }
-    }
-
-    const float3 viewToLightDirection = mul(worldToLightDirection, (float3x3)GetCameraConsts().WorldToView); // TODO: Move to cpp side
+    const float3 viewToLightDirection = mul(g_PassConsts0.ToSunDirection, (float3x3)GetCameraConsts().WorldToView);
     const float3 tangentDirection = cross(viewToLightDirection, params.BaseViewNormal); // NRD TODO: add support for other light types to bring proper anisotropic filtering
     if (length(tangentDirection) > 0.001)
     {

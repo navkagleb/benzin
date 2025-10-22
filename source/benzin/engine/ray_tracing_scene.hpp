@@ -7,7 +7,6 @@ namespace benzin
 
     class Buffer;
     class Device;
-    class RayTracing_Tlas;
     class Scene;
 
     class RayTracing_Scene
@@ -19,17 +18,14 @@ namespace benzin
         const RayTracing_Tlas& GetActiveTlas() const;
 
         void BuildBlases();
-        void UpdateTlasBuffers();
-
-    private:
-        void ProcessMeshes(std::unique_ptr<benzin::Buffer>& localTransformBuffer);
-        void CreateBlases();
+        void UpdateTlas();
 
     private:
         Device& m_Device;
         Scene& m_Scene;
 
         RayTracing_Tlas m_Tlases[BENZIN_FRAME_COUNT] = {};
+        std::vector<RayTracing_Blas> m_Blases;
     };
 
 }

@@ -12,8 +12,9 @@ namespace tinygltf
 namespace benzin
 {
 
-    struct MaterialResource;
-    struct MeshResource;
+    struct Material;
+    struct Mesh;
+    struct MeshDrawPart;
     struct TextureImage;
 
     class GltfReader
@@ -24,8 +25,9 @@ namespace benzin
 
         bool ReadFromFile(
             std::string_view fileName,
-            MeshResource& mesh,
-            std::vector<MaterialResource>& materials,
+            Mesh& mesh,
+            std::vector<MeshDrawPart>& meshDrawParts,
+            std::vector<Material>& materials,
             std::vector<TextureImage>& textures);
 
     private:
@@ -33,11 +35,11 @@ namespace benzin
         std::span<const T> ParseGltfAccessor(int gltfAccessorIndex);
 
         template <std::integral IndexType>
-        void ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive, MeshResource& mesh);
-        void ParseGltfMeshes(MeshResource& meshResource);
-        void ParseGltfNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentObjectToLocal, MeshResource& mesh);
-        void ParseGltfNodes(MeshResource& mesh);
-        void ParseGltfMaterials(std::vector<MaterialResource>& materials);
+        void ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive, Mesh& mesh);
+        void ParseGltfMeshes(Mesh& mesh);
+        void ParseGltfNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentObjectToLocal, std::vector<MeshDrawPart>& meshDrawParts);
+        void ParseGltfNodes(std::vector<MeshDrawPart>& meshDrawParts);
+        void ParseGltfMaterials(std::vector<Material>& materials);
         void ParseGltfTextures(std::vector<TextureImage>& textures);
 
         uint32_t AddTextureMapping(int gltfTextureIndex, bool isSrgb);

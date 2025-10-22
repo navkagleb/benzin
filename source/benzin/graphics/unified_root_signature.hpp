@@ -12,7 +12,7 @@ namespace benzin
         RenderPassConstBuffer0,
         RenderPassConstBuffer1,
         GpuPrintConstBuffer,
-        LightStructuredBuffer,
+        SunLightConstBuffer,
         SceneTlas,
         ReadbackStatsBuffer,
     };

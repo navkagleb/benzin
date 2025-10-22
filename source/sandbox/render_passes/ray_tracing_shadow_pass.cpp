@@ -77,7 +77,6 @@ namespace sandbox
             .Format = penumbraFormat,
             .Width = ms_RenderViewportWidth,
             .Height = ms_RenderViewportHeight,
-            .Depth = benzin::Scene::s_MaxLightCount,
             .MipCount = 1,
             .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
         });

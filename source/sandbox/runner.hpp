@@ -75,7 +75,7 @@ namespace sandbox
         bool m_IsRunning = true;
         bool m_IsVsyncEnabled = false;
         bool m_IsPendingResize = false;
-        bool m_IsAnimationEnabled = false;
+        bool m_IsAnimationEnabled = true;
     };
 
 }

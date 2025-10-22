@@ -8,18 +8,17 @@
 #include "joint/mesh_types.hpp"
 #include "space_convertions.hlsli"
 
-BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_UnifiedMaterials, joint::GeometryResources::UnifiedMaterials);
-BenzinDeclareRootResource(Texture2D<float>, g_ReprojectedHzb, joint::GeometryResources::ReprojectedHzb);
+BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::GeometryResources::Materials);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshDrawPart>, g_MeshDrawParts, joint::GeometryResources::MeshDrawParts);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_MeshDraws, joint::GeometryResources::MeshDraws);
 
-BenzinDeclareRootResource(StructuredBuffer<float4x4>, g_LocalToWorldMatrices, joint::GeometryResources::Batch_LocalToWorldMatrices);
-BenzinDeclareRootResource(StructuredBuffer<float4x4>, g_PrevLocalToWorldMatrices, joint::GeometryResources::Batch_PrevLocalToWorldMatrices);
-BenzinDeclareRootResource(Buffer<uint>, g_MaterialIndices, joint::GeometryResources::Batch_MaterialIndices);
-
+#if 0
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
 BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshletCullVolume>, g_MeshletCullVolumes, joint::GeometryResources::MeshletCullVolumes);
 BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndirectVertices, joint::GeometryResources::MeshletIndirectVertices);
 BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
+#endif
 
 struct VsOutput
 {
@@ -29,36 +28,32 @@ struct VsOutput
     float3 m_PrevViewPosition : PrevViewPosition;
     float3 m_WorldNormal : WorldNormal;
     float2 m_Uv : Uv;
-
-    uint m_InstanceIndex : instanceIndex;
-    uint m_PrimitiveIndex : PrimitiveIndex;
 };
 
-VsOutput ProcessVertex(joint::MeshVertex vertex, uint primitiveIndex, uint instanceIndex)
+VsOutput ProcessVertex(joint::MeshVertex vertex)
 {
-    const float4 localPosition = float4(vertex.Position, 1.0);
-    const float4x4 localToWorld = g_LocalToWorldMatrices[instanceIndex];
+    const uint drawIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawIndex);
+    const uint drawPartIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawPartIndex);
 
-    const float4 worldPosition = mul(localPosition, localToWorld);
-    const float4 prevWorldPosition = mul(localPosition, g_PrevLocalToWorldMatrices[instanceIndex]);
-    const float3 worldNormal = mul(vertex.Normal, (float3x3)localToWorld); // TODO: Maybe I still need to use 'WorldMatrixForNormals'?
+    const joint::MeshDraw draw = g_MeshDraws[drawIndex];
+    const joint::MeshDrawPart drawPart = g_MeshDrawParts[drawPartIndex];
 
-    const float4 viewPosition = mul(worldPosition, GetCameraConsts().WorldToView);
+    const float4x4 localToWorld = mul(drawPart.m_ObjectToLocal, draw.m_LocalToWorld);
+    const float4 worldPosition = mul(float4(vertex.Position, 1.0), localToWorld);
+    const float4 prevWorldPosition = mul(float4(vertex.Position, 1.0), mul(drawPart.m_ObjectToLocal, draw.m_PrevLocalToWorld));
 
     VsOutput output = (VsOutput)0;
     output.m_ClipPosition = mul(worldPosition, GetCameraConsts().WorldToClip);
     output.m_WorldPosition = worldPosition.xyz;
-    output.m_ViewDepth = viewPosition.z;
+    output.m_ViewDepth = mul(worldPosition, GetCameraConsts().WorldToView).z;
     output.m_PrevViewPosition = mul(prevWorldPosition, GetPrevCameraConsts().WorldToView).xyz;
-    output.m_WorldNormal = worldNormal;
+    output.m_WorldNormal = normalize(mul(vertex.Normal, (float3x3)localToWorld)); // NOTE: Assumes uniform scale
     output.m_Uv = vertex.Uv;
-
-    output.m_PrimitiveIndex = primitiveIndex;
-    output.m_InstanceIndex = instanceIndex;
 
     return output;
 }
 
+#if 0
 int SignExtend8(uint x)
 {
     return (int)(x << 24) >> 24; // shifts into sign bit, then back
@@ -215,6 +210,7 @@ void MsMain(
         outTriangles[gtid] = indices;
     }
 }
+#endif
 
 // Must match with joint::MeshVertex
 struct VsInput
@@ -228,8 +224,7 @@ VsOutput VsMain(VsInput vertex, uint vertexIndex : SV_VertexID)
 {
     // InterlockedAddToStat(joint::ReadbackStat::Geometry_VsInvocationCount, 1);
 
-    const uint instanceIndex = BenzinGetRootConstant(joint::GeometryResources::InstanceIndex);
-    return ProcessVertex((joint::MeshVertex)vertex, vertexIndex, instanceIndex);
+    return ProcessVertex((joint::MeshVertex)vertex);
 }
 
 float3x3 CotangentFrame(float3 worldNormal, float3 p, float2 uv)
@@ -253,6 +248,7 @@ float3x3 CotangentFrame(float3 worldNormal, float3 p, float2 uv)
     return float3x3(T * invmax, B * invmax, worldNormal);
 }
 
+#if 0
 struct ScreenBounds2
 {
     float2 m_UvMin;
@@ -381,30 +377,29 @@ float3 MeshletDebugColor(uint meshletIndex)
         float3(0.5, 1.0, 0.0),   // lime
         float3(0.0, 0.5, 1.0),   // sky blue
         float3(1.0, 0.0, 0.5),   // pink
-        float3(0.0, 1.0, 0.5)    // aqua green
+        float3(0.0, 1.0, 0.5),   // aqua green
     };
 
     return palette[meshletIndex % 12];
 }
+#endif
 
 PackedGBuffer PsMain(VsOutput input)
 {
-    BenzinGpuPrintSetFilter(input.m_ClipPosition.xy);
-    BenzinGpuPrint(input.m_PrimitiveIndex);
-
     InterlockedAddToStat(joint::ReadbackStat::Geometry_PsInvocationCount, 1);
+    
+    const uint drawPartIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawPartIndex);
+    const uint materialIndex = g_MeshDrawParts[drawPartIndex].m_MaterialIndex;
+    const joint::Material material = g_Materials[materialIndex];
 
-    const uint materialIndex = g_MaterialIndices[input.m_InstanceIndex];
-    const joint::Material material = g_UnifiedMaterials[materialIndex];
-
-    float3 albedo = material.AlbedoFactor.rgb;
-    if (material.AlbedoTextureHeapIndex != g_InvalidIndex)
+    float3 albedo = material.m_AlbedoFactor.rgb;
+    if (material.m_AlbedoTextureHeapIndex != g_MaxU32)
     {
-        Texture2D<float4> albedoTexture = ResourceDescriptorHeap[material.AlbedoTextureHeapIndex];
+        Texture2D<float4> albedoTexture = ResourceDescriptorHeap[material.m_AlbedoTextureHeapIndex];
         const float4 albedoSample = albedoTexture.Sample(g_LinearWrapSampler, input.m_Uv);
 
 #if defined(ALPHA_TEST)
-        if (albedoSample.a < material.AlphaCutoff)
+        if (albedoSample.a < material.m_AlphaCutoff)
             discard;
 #endif
 
@@ -416,22 +411,22 @@ PackedGBuffer PsMain(VsOutput input)
     gbuffer.ViewDepth = input.m_ViewDepth;
     gbuffer.WorldNormal = normalize(input.m_WorldNormal);
 
-#if 1
+#if 0
     gbuffer.Albedo = float3(input.m_Uv, 0.0);
     gbuffer.Albedo = MeshletDebugColor(input.m_PrimitiveIndex);
 #else
-    gbuffer.Roughness = material.RoughnessFactor;
-    gbuffer.Emissive = material.EmissiveFactor;
-    gbuffer.Metallic = material.MetalnessFactor;
+    gbuffer.Roughness = material.m_RoughnessFactor;
+    gbuffer.Emissive = material.m_EmissiveFactor;
+    gbuffer.Metallic = material.m_MetalnessFactor;
 #endif
 
-    if (material.NormalTextureHeapIndex != g_InvalidIndex)
+    if (material.m_NormalTextureHeapIndex != g_MaxU32)
     {
-        Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.NormalTextureHeapIndex];
+        Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.m_NormalTextureHeapIndex];
 
         float3 normalSample = normalTexture.Sample(g_LinearWrapSampler, input.m_Uv).xyz;
         normalSample = 2.0 * normalSample - 1.0;
-        normalSample.xy *= material.NormalScale;
+        normalSample.xy *= material.m_NormalScale;
         normalSample = normalize(normalSample);
 
         const float3 worldViewVector = normalize(GetCameraConsts().WorldPosition - input.m_WorldPosition);
@@ -440,17 +435,17 @@ PackedGBuffer PsMain(VsOutput input)
         gbuffer.WorldNormal = normalize(mul(normalSample, tbn));
     }
 
-    if (material.EmissiveTextureHeapIndex != g_InvalidIndex)
+    if (material.m_EmissiveTextureHeapIndex != g_MaxU32)
     {
-        Texture2D<float4> emissiveTexture = ResourceDescriptorHeap[material.EmissiveTextureHeapIndex];
+        Texture2D<float4> emissiveTexture = ResourceDescriptorHeap[material.m_EmissiveTextureHeapIndex];
         const float3 emissiveSample = emissiveTexture.Sample(g_LinearWrapSampler, input.m_Uv).rgb;
 
         gbuffer.Emissive *= emissiveSample;
     }
 
-    if (material.MetallicRoughnessTextureHeapIndex != g_InvalidIndex)
+    if (material.m_MetallicRoughnessTextureHeapIndex != g_MaxU32)
     {
-        Texture2D<float4> metallicRoughnessTexture = ResourceDescriptorHeap[material.MetallicRoughnessTextureHeapIndex];
+        Texture2D<float4> metallicRoughnessTexture = ResourceDescriptorHeap[material.m_MetallicRoughnessTextureHeapIndex];
         const float metallicSample = metallicRoughnessTexture.Sample(g_LinearWrapSampler, input.m_Uv).b;
         const float roughnessSample = metallicRoughnessTexture.Sample(g_LinearWrapSampler, input.m_Uv).g;
 

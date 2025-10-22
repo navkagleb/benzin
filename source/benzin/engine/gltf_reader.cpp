@@ -14,7 +14,7 @@ namespace benzin
 
     static DirectX::XMMATRIX FlipZHandedness(const DirectX::XMMATRIX& rightHandedMatrix)
     {
-        static const DirectX::XMMATRIX flipZ = DirectX::XMMatrixScaling(1.0f, 1.0f, -1.0f);
+        const DirectX::XMMATRIX flipZ = DirectX::XMMatrixScaling(1.0f, 1.0f, -1.0f);
 
         return flipZ * rightHandedMatrix * flipZ; // Apply from both sides to flip handedness without flipping position
     }
@@ -47,13 +47,12 @@ namespace benzin
             if (!gltfNode.rotation.empty())
             {
                 BenzinAssert(gltfNode.rotation.size() == 4);
-                const DirectX::XMFLOAT4 rotation
-                {
-                    (float)gltfNode.rotation[0],
-                    (float)gltfNode.rotation[1],
-                    (float)gltfNode.rotation[2],
-                    (float)gltfNode.rotation[3],
-                };
+
+                DirectX::XMFLOAT4 rotation;
+                rotation.x = (float)gltfNode.rotation[0];
+                rotation.y = (float)gltfNode.rotation[1];
+                rotation.z = (float)gltfNode.rotation[2];
+                rotation.w = (float)gltfNode.rotation[3];
 
                 objectToLocal *= DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&rotation));
             }
@@ -61,12 +60,11 @@ namespace benzin
             if (!gltfNode.scale.empty())
             {
                 BenzinAssert(gltfNode.scale.size() == 3);
-                const DirectX::XMFLOAT3 scale
-                {
-                    (float)gltfNode.scale[0],
-                    (float)gltfNode.scale[1],
-                    (float)gltfNode.scale[2],
-                };
+
+                DirectX::XMFLOAT3 scale;
+                scale.x = (float)gltfNode.scale[0];
+                scale.y = (float)gltfNode.scale[1];
+                scale.z = (float)gltfNode.scale[2];
 
                 objectToLocal *= DirectX::XMMatrixScalingFromVector(DirectX::XMLoadFloat3(&scale));
             }
@@ -74,12 +72,11 @@ namespace benzin
             if (!gltfNode.translation.empty())
             {
                 BenzinAssert(gltfNode.translation.size() == 3);
-                const DirectX::XMFLOAT3 translation
-                {
-                    (float)gltfNode.translation[0],
-                    (float)gltfNode.translation[1],
-                    (float)gltfNode.translation[2],
-                };
+
+                DirectX::XMFLOAT3 translation;
+                translation.x = (float)gltfNode.translation[0];
+                translation.y = (float)gltfNode.translation[1];
+                translation.z = (float)gltfNode.translation[2];
 
                 objectToLocal *= DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(&translation));
             }
@@ -99,8 +96,9 @@ namespace benzin
 
     bool GltfReader::ReadFromFile(
         std::string_view fileName,
-        MeshResource& mesh,
-        std::vector<MaterialResource>& materials,
+        Mesh& mesh,
+        std::vector<MeshDrawPart>& meshDrawParts,
+        std::vector<Material>& materials,
         std::vector<TextureImage>& textures)
     {
         MakeUniquePtr(m_GltfModel);
@@ -146,7 +144,7 @@ namespace benzin
         }
 
         ParseGltfMeshes(mesh);
-        ParseGltfNodes(mesh);
+        ParseGltfNodes(meshDrawParts);
         ParseGltfMaterials(materials);
         ParseGltfTextures(textures);
 
@@ -173,7 +171,7 @@ namespace benzin
     }
 
     template <std::integral IndexType>
-    void GltfReader::ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive, MeshResource& mesh)
+    void GltfReader::ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive, Mesh& mesh)
     {
         const int positionAccessorIndex = gltfPrimitive.attributes.contains("POSITION") ? gltfPrimitive.attributes.at("POSITION") : -1;
         const int normalAccessorIndex = gltfPrimitive.attributes.contains("NORMAL") ? gltfPrimitive.attributes.at("NORMAL") : -1;
@@ -190,12 +188,12 @@ namespace benzin
         BenzinEnsure(normals.empty() || normals.size() == positions.size());
         BenzinEnsure(uvs.empty() || uvs.size() == uvs.size());
 
-        MeshDrawRange drawRange;
-        drawRange.m_VertexRange.m_Offset = (uint32_t)mesh.m_Vertices.size();
-        drawRange.m_VertexRange.m_Count = (uint32_t)positions.size();
-        drawRange.m_IndexRange.m_Offset = (uint32_t)mesh.m_Indices.size();
-        drawRange.m_IndexRange.m_Count = (uint32_t)indices.size();
-        drawRange.m_D3D12PrimitiveTopology = [&gltfPrimitive]
+        MeshPart part;
+        part.m_VertexOffset = (uint32_t)mesh.m_Vertices.size();
+        part.m_VertexCount = (uint32_t)positions.size();
+        part.m_IndexOffset = (uint32_t)mesh.m_Indices.size();
+        part.m_IndexCount = (uint32_t)indices.size();
+        part.m_D3D12PrimitiveTopology = [&gltfPrimitive]
         {
             switch (gltfPrimitive.mode)
             {
@@ -209,7 +207,7 @@ namespace benzin
             return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED ;
         }();
 
-        mesh.m_DrawRanges.push_back(drawRange);
+        mesh.m_Parts.push_back(part);
         mesh.m_Vertices.reserve(mesh.m_Vertices.size() + positions.size());
         mesh.m_Indices.reserve(mesh.m_Indices.size() + indices.size());
 
@@ -241,17 +239,16 @@ namespace benzin
         }
     }
 
-    void GltfReader::ParseGltfMeshes(MeshResource& mesh)
+    void GltfReader::ParseGltfMeshes(Mesh& mesh)
     {
-        BenzinAssert(mesh.m_DrawRanges.empty());
-
-        uint32_t drawRangeCount = 0;
+        size_t partCount = 0;
         for (const tinygltf::Mesh& gltfMesh : m_GltfModel->meshes)
         {
-            drawRangeCount += (uint32_t)gltfMesh.primitives.size();
+            partCount += gltfMesh.primitives.size();
         }
 
-        mesh.m_DrawRanges.reserve(drawRangeCount);
+        BenzinAssert(mesh.m_Parts.empty());
+        mesh.m_Parts.reserve(partCount);
 
         for (const tinygltf::Mesh& gltfMesh : m_GltfModel->meshes)
         {
@@ -262,23 +259,23 @@ namespace benzin
 
                 switch (indexBufferAccessor.componentType)
                 {
-                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-                    ParseGltfPrimitive<uint8_t>(gltfPrimitive, mesh);
-                    break;
-                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-                    ParseGltfPrimitive<uint16_t>(gltfPrimitive, mesh);
-                    break;
-                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-                    ParseGltfPrimitive<uint32_t>(gltfPrimitive, mesh);
-                    break;
-                default:
-                    BenzinAssert(false, "Unsupported index buffer component type: {}", indexBufferAccessor.componentType);
+                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+                        ParseGltfPrimitive<uint8_t>(gltfPrimitive, mesh);
+                        break;
+                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+                        ParseGltfPrimitive<uint16_t>(gltfPrimitive, mesh);
+                        break;
+                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+                        ParseGltfPrimitive<uint32_t>(gltfPrimitive, mesh);
+                        break;
+                    default:
+                        BenzinAssert(false, "Unsupported index buffer component type: {}", indexBufferAccessor.componentType);
                 }
             }
         }
     }
 
-    void GltfReader::ParseGltfNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentObjectToLocal, MeshResource& mesh)
+    void GltfReader::ParseGltfNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentObjectToLocal, std::vector<MeshDrawPart>& meshDrawParts)
     {
         const tinygltf::Node& gltfNode = m_GltfModel->nodes[gltfNodeIndex];
         const DirectX::XMMATRIX objectToLocal = CalcObjectToLocalMatrix(gltfNode, parentObjectToLocal);
@@ -288,28 +285,27 @@ namespace benzin
         {
             for (uint32_t primitiveIndex = 0; primitiveIndex < m_GltfModel->meshes[gltfMeshIndex].primitives.size(); ++primitiveIndex)
             {
-
-                MeshInstance instance;
-                instance.m_ObjectToLocalMatrix = objectToLocal;
-                instance.m_DrawRangeIndex = (uint32_t)(gltfMeshIndex + primitiveIndex);
+                MeshDrawPart drawPart;
+                drawPart.m_ObjectToLocal = objectToLocal;
+                drawPart.m_PartIndex = (uint32_t)(gltfMeshIndex + primitiveIndex);
 
                 const int gltfMatrialIndex = m_GltfModel->meshes[gltfMeshIndex].primitives[primitiveIndex].material;
                 if (gltfMatrialIndex != -1)
                 {
-                    instance.m_MaterialIndex = (uint32_t)gltfMatrialIndex;
+                    drawPart.m_MaterialIndex = (uint32_t)gltfMatrialIndex;
                 }
 
-                mesh.m_Instances.push_back(instance);
+                meshDrawParts.push_back(drawPart);
             }
         }
 
         for (const int gltfChildNodeIndex : gltfNode.children)
         {
-            ParseGltfNode(gltfChildNodeIndex, objectToLocal, mesh);
+            ParseGltfNode(gltfChildNodeIndex, objectToLocal, meshDrawParts);
         }
     }
 
-    void GltfReader::ParseGltfNodes(MeshResource& mesh)
+    void GltfReader::ParseGltfNodes(std::vector<MeshDrawPart>& meshDrawParts)
     {
         // NOTE: GLTF meshes use right-handed (RH) system.
         // So during parsing there are key steps which are mandatory to use GLTF meshes with LH matrices:
@@ -323,12 +319,12 @@ namespace benzin
         {
             for (const int gltfNodeIndex : gltfScene.nodes)
             {
-                ParseGltfNode(gltfNodeIndex, parentObjectToLocal, mesh);
+                ParseGltfNode(gltfNodeIndex, parentObjectToLocal, meshDrawParts);
             }
         }
     }
 
-    void GltfReader::ParseGltfMaterials(std::vector<MaterialResource>& materials)
+    void GltfReader::ParseGltfMaterials(std::vector<Material>& materials)
     {
         BenzinAssert(materials.empty());
         materials.reserve(m_GltfModel->materials.size());
@@ -337,52 +333,51 @@ namespace benzin
         {
             const tinygltf::PbrMetallicRoughness& gltfPbrMetallicRoughness = gltfMaterial.pbrMetallicRoughness;
 
-            MaterialResource& material = materials.emplace_back();
+            Material& material = materials.emplace_back();
 
             // Albedo
             {
-                material.m_TextureIndices.m_Albedo = AddTextureMapping(gltfPbrMetallicRoughness.baseColorTexture.index, true);
-
                 BenzinAssert(gltfPbrMetallicRoughness.baseColorFactor.size() == 4);
-                material.m_Consts.m_AlbedoFactor.x = (float)gltfPbrMetallicRoughness.baseColorFactor[0];
-                material.m_Consts.m_AlbedoFactor.y = (float)gltfPbrMetallicRoughness.baseColorFactor[1];
-                material.m_Consts.m_AlbedoFactor.z = (float)gltfPbrMetallicRoughness.baseColorFactor[2];
-                material.m_Consts.m_AlbedoFactor.w = (float)gltfPbrMetallicRoughness.baseColorFactor[3];
 
-                material.m_Consts.m_AlphaCutoff = (float)gltfMaterial.alphaCutoff;
+                material.m_AlbedoTextureIndex = AddTextureMapping(gltfPbrMetallicRoughness.baseColorTexture.index, true);
+                material.m_AlbedoFactor.x = (float)gltfPbrMetallicRoughness.baseColorFactor[0];
+                material.m_AlbedoFactor.y = (float)gltfPbrMetallicRoughness.baseColorFactor[1];
+                material.m_AlbedoFactor.z = (float)gltfPbrMetallicRoughness.baseColorFactor[2];
+                material.m_AlbedoFactor.w = (float)gltfPbrMetallicRoughness.baseColorFactor[3];
+                material.m_AlphaCutoff = (float)gltfMaterial.alphaCutoff;
             }
 
             // Normal
             {
-                material.m_TextureIndices.m_Normal = AddTextureMapping(gltfMaterial.normalTexture.index, false);
-                material.m_Consts.m_NormalScale = (float)gltfMaterial.normalTexture.scale;
+                material.m_NormalTextureIndex = AddTextureMapping(gltfMaterial.normalTexture.index, false);
+                material.m_NormalScale = (float)gltfMaterial.normalTexture.scale;
             }
 
             // MetalRoughness
             {
-                material.m_TextureIndices.m_MetallicRoughness = AddTextureMapping(gltfPbrMetallicRoughness.metallicRoughnessTexture.index, false);
-                material.m_Consts.m_MetalnessFactor = (float)gltfPbrMetallicRoughness.metallicFactor;
-                material.m_Consts.m_RoughnessFactor = (float)gltfPbrMetallicRoughness.roughnessFactor;
+                material.m_MetallicRoughnessTextureIndex = AddTextureMapping(gltfPbrMetallicRoughness.metallicRoughnessTexture.index, false);
+                material.m_MetalnessFactor = (float)gltfPbrMetallicRoughness.metallicFactor;
+                material.m_RoughnessFactor = (float)gltfPbrMetallicRoughness.roughnessFactor;
             }
 
             // Emissive
             {
-                material.m_TextureIndices.m_Emissive = AddTextureMapping(gltfMaterial.emissiveTexture.index, true);
-
                 BenzinAssert(gltfMaterial.emissiveFactor.size() == 3);
-                material.m_Consts.m_EmissiveFactor.x = (float)gltfMaterial.emissiveFactor[0];
-                material.m_Consts.m_EmissiveFactor.y = (float)gltfMaterial.emissiveFactor[1];
-                material.m_Consts.m_EmissiveFactor.z = (float)gltfMaterial.emissiveFactor[2];
+
+                material.m_EmissiveTextureIndex = AddTextureMapping(gltfMaterial.emissiveTexture.index, true);
+                material.m_EmissiveFactor.x = (float)gltfMaterial.emissiveFactor[0];
+                material.m_EmissiveFactor.y = (float)gltfMaterial.emissiveFactor[1];
+                material.m_EmissiveFactor.z = (float)gltfMaterial.emissiveFactor[2];
             }
 
             if (gltfMaterial.alphaMode == "MASK")
             {
-                material.m_Consts.m_IsAlphaTestRequired = true;
+                material.m_IsAlphaTestRequired = true;
             }
             else
             {
                 BenzinAssert(gltfMaterial.alphaMode == "OPAQUE");
-                material.m_Consts.m_IsAlphaTestRequired = false;
+                material.m_IsAlphaTestRequired = false;
             }
         }
     }

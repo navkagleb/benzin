@@ -138,27 +138,11 @@ namespace sandbox
 
     void GeometryPass::OnUpdate()
     {
-        BenzinProfile();
-
         const auto& settings = ms_Settings->GetSection<GBufferSettings>();
 
-        if (m_IsAmplificationDispatchUsed != settings.IsAmplificationDispatchUsed)
-        {
-            m_IsAmplificationDispatchUsed = settings.IsAmplificationDispatchUsed;
-
-            ms_PsoManager->Destroy(PsoId::GeometryPass_Mesh);
-            ms_PsoManager->Destroy(PsoId::GeometryPass_Mesh_Alpha);
-
-            CreateGeometryPso(PsoId::GeometryPass_Mesh, PsoFlag::MeshPipeline);
-            CreateGeometryPso(PsoId::GeometryPass_Mesh_Alpha, PsoFlag::MeshPipeline | PsoFlag::AlphaTest);
-        }
-
-        m_Consts.ColoringType = settings.ColoringType;
         m_Consts.IsFrustumCullingEnabled = settings.IsGpuFrustumCullingEnabled;
         m_Consts.IsBackfaceCullingEnabled = settings.IsBackfaceCullingEnabled;
         m_Consts.IsOcclusionCullingEnabled = settings.IsOcclusionCullingEnabled;
-
-        CreateMeshBatches();
     }
 
     void GeometryPass::OnRender() const
@@ -213,6 +197,7 @@ namespace sandbox
 
         if (flags.IsSet(PsoFlag::MeshPipeline))
         {
+        #if 0
             ms_PsoManager->Create(id, [this, &configureGraphicsPsoProxy, flags](benzin::MeshPsoProxy& outProxy)
             {
                 outProxy.Ms.FileName = "geometry_pass.hlsl";
@@ -225,6 +210,7 @@ namespace sandbox
 
                 configureGraphicsPsoProxy(outProxy);
             });
+        #endif
         }
         else
         {
@@ -242,215 +228,6 @@ namespace sandbox
 
                 configureGraphicsPsoProxy(outProxy);
             });
-        }
-    }
-
-    void GeometryPass::CreateMeshBatches()
-    {
-        BenzinProfile();
-
-        m_OpaqueMeshBatches.clear();
-        m_AlphaMeshBatches.clear();
-
-        m_TotalInstanceCount = 0;
-        m_InstanceOffset = 0;
-
-        m_BatchStorage.m_LocalToWorldMatrixBuffer.reset();
-        m_BatchStorage.m_PrevLocalToWorldMatrixBuffer.reset();
-        m_BatchStorage.m_MaterialIndexBuffer.reset();
-
-        const auto entityView = ms_Scene->GetEntityRegistry().view<benzin::MeshComponent, benzin::Transform>();
-        for (const entt::entity entityHandle : entityView)
-        {
-            const auto& meshComponent = entityView.get<benzin::MeshComponent>(entityHandle);
-            const auto& transform = entityView.get<benzin::Transform>(entityHandle);
-
-            AddToTempMeshBatches(meshComponent, transform);
-        }
-
-        const auto lightView = ms_Scene->GetEntityRegistry().view<benzin::MeshComponent, benzin::SphericalLight>();
-        for (const entt::entity lightHandle : lightView)
-        {
-            const auto& meshComponent = lightView.get<benzin::MeshComponent>(lightHandle);
-            const auto& sphericalLight = lightView.get<benzin::SphericalLight>(lightHandle);
-        
-            if (!sphericalLight.IsEnabled())
-            {
-                continue;
-            }
-        
-            AddToTempMeshBatches(meshComponent, sphericalLight.GetTransform());
-        }
-
-        if (m_TotalInstanceCount != 0)
-        {
-            benzin::GpuHeapLinearBufferAllocator& allocator = ms_Device->GetTemporalLinearAllocator();
-
-            m_BatchStorage.m_LocalToWorldMatrixBuffer = allocator.AllocateStructuredBuffer(
-                "Batch_LocalToWorldMatrices",
-                m_TotalInstanceCount,
-                sizeof(DirectX::XMMATRIX));
-
-            m_BatchStorage.m_PrevLocalToWorldMatrixBuffer = allocator.AllocateStructuredBuffer(
-                "Batch_PrevLocalToWorldMatrices",
-                m_TotalInstanceCount,
-                sizeof(DirectX::XMMATRIX));
-
-            m_BatchStorage.m_MaterialIndexBuffer = allocator.AllocateFormatBuffer(
-                "Batch_MaterialIndices",
-                m_TotalInstanceCount,
-                benzin::GraphicsFormat::R32Uint);
-
-            ProcessTempMeshBatches(m_TempOpaqueMeshBatches, m_OpaqueMeshBatches);
-            ProcessTempMeshBatches(m_TempAlphaMeshBatches, m_AlphaMeshBatches);
-        }
-
-        m_TempOpaqueMeshBatches.clear();
-        m_TempAlphaMeshBatches.clear();
-    }
-
-    void GeometryPass::AddToTempMeshBatches(const benzin::MeshComponent& meshComponent, const benzin::Transform& transform)
-    {
-        BenzinProfile();
-
-#if 0
-        const bool isCpuFrustumCullingEnabled = ms_Settings->GetSection<GBufferSettings>().IsCpuFrustumCullingEnabled;
-        const DirectX::BoundingFrustum& worldFrustum = ms_Scene->GetCamera().GetWorldFrustum();
-#endif
-
-        const entt::entity meshHandle = meshComponent.GetMeshHandle();
-        const benzin::Mesh& mesh = ms_Scene->GetMeshRegistry().view<benzin::Mesh>().get<benzin::Mesh>(meshHandle);
-
-        for (const benzin::MeshInstance& instance : mesh.m_Instances)
-        {
-            const DirectX::XMMATRIX localToWorldMatrix = instance.m_ObjectToLocalMatrix * transform.GetLocalToWorldMatrix();
-
-#if 0
-            const DirectX::BoundingSphere& boundingSphere = mesh.DrawRanges[instance.DrawRangeIndex].BoundingSphere;
-            if (isCpuFrustumCullingEnabled && IsFrustumCulled(worldFrustum, boundingSphere, localToWorldMatrix))
-            {
-                continue;
-            }
-#endif
-
-            const benzin::Material& material = ms_Scene->GetMaterial(instance.m_MaterialIndex);
-            
-            TempMeshBatches& meshBatches = material.Consts.m_IsAlphaTestRequired ? m_TempAlphaMeshBatches : m_TempOpaqueMeshBatches;
-            TempDrawRangeBatch& batch = meshBatches[meshHandle][instance.m_DrawRangeIndex];
-
-            batch.m_LocalToWorldMatrices.push_back(localToWorldMatrix);
-            batch.m_PrevLocalToWorldMatrices.push_back(instance.m_ObjectToLocalMatrix * transform.GetPrevLocalToWorldMatrix());
-            batch.m_MaterialIndices.push_back(instance.m_MaterialIndex);
-
-            ++m_TotalInstanceCount;
-        }
-    }
-
-    void GeometryPass::ProcessTempMeshBatches(TempMeshBatches& tempMeshBatches, MeshBatches& outMeshBatches)
-    {
-        BenzinProfile();
-
-        benzin::BufferWriter localToWorldMatrixWriter = benzin::MakeBufferWriter(*m_BatchStorage.m_LocalToWorldMatrixBuffer);
-        benzin::BufferWriter prevLocalToWorldMatrixWriter = benzin::MakeBufferWriter(*m_BatchStorage.m_PrevLocalToWorldMatrixBuffer);
-        benzin::BufferWriter materialIndexWriter = benzin::MakeBufferWriter(*m_BatchStorage.m_MaterialIndexBuffer);
-
-        for (const auto& [meshHandle, tempMeshBatch] : tempMeshBatches)
-        {
-            for (const auto& [drawRangeIndex, tempDrawRangeBatch] : tempMeshBatch)
-            {
-                BenzinAssert(tempDrawRangeBatch.m_LocalToWorldMatrices.size() == tempDrawRangeBatch.m_PrevLocalToWorldMatrices.size());
-                BenzinAssert(tempDrawRangeBatch.m_LocalToWorldMatrices.size() == tempDrawRangeBatch.m_MaterialIndices.size());
-                
-                const uint32_t instanceCount = (uint32_t)tempDrawRangeBatch.m_LocalToWorldMatrices.size();
-
-                DrawRangeBatch& drawRangeBatch = outMeshBatches[meshHandle][drawRangeIndex];
-                drawRangeBatch.m_InstanceRange.m_Offset = m_InstanceOffset;
-                drawRangeBatch.m_InstanceRange.m_Count = instanceCount;
-
-                localToWorldMatrixWriter.SetElementPosition<DirectX::XMMATRIX>(m_InstanceOffset);
-                prevLocalToWorldMatrixWriter.SetElementPosition<DirectX::XMMATRIX>(m_InstanceOffset);
-                materialIndexWriter.SetElementPosition<uint32_t>(m_InstanceOffset);
-
-                localToWorldMatrixWriter.WriteArray(benzin::ToSpan(tempDrawRangeBatch.m_LocalToWorldMatrices));
-                prevLocalToWorldMatrixWriter.WriteArray(benzin::ToSpan(tempDrawRangeBatch.m_PrevLocalToWorldMatrices));
-                materialIndexWriter.WriteArray(benzin::ToSpan(tempDrawRangeBatch.m_MaterialIndices));
-
-                m_InstanceOffset += instanceCount;
-            }
-        }
-
-        tempMeshBatches.clear();
-    }
-
-    void GeometryPass::RenderMeshBatches(benzin::GraphicsCmdList& cmdList, const MeshBatches& meshBatches) const
-    {
-        using Resources = joint::GeometryResources;
-
-        const bool isMeshPipelineUsed = ms_Settings->GetSection<GBufferSettings>().IsMeshPipelineUsed;
-        const bool isAmplificationDispatchUsed = ms_Settings->GetSection<GBufferSettings>().IsAmplificationDispatchUsed;
-
-        const auto meshView = ms_Scene->GetMeshRegistry().view<benzin::MeshTag, benzin::Mesh, benzin::MeshGpuStorage>();
-
-        for (const auto& [meshHandle, meshBatch] : meshBatches)
-        {
-            const auto& meshTag = meshView.get<benzin::MeshTag>(meshHandle);
-            const auto& mesh = meshView.get<benzin::Mesh>(meshHandle);
-            const auto& meshGpuStorage = meshView.get<benzin::MeshGpuStorage>(meshHandle);
-
-            BenzinGpuEvent(meshTag);
-
-            if (!isMeshPipelineUsed)
-            {
-                cmdList.SetVertexBuffer(*meshGpuStorage.VertexBuffer);
-                cmdList.SetIndexBuffer(*meshGpuStorage.IndexBuffer);
-            }
-
-            for (const auto& [drawRangeIndex, drawRangeBatch] : meshBatch)
-            {
-                const benzin::MeshDrawRange& drawRange = mesh.m_DrawRanges[drawRangeIndex];
-
-                cmdList.SetGraphicsRootResource(*Resources::Batch_LocalToWorldMatrices, m_BatchStorage.m_LocalToWorldMatrixBuffer->GetSrv(drawRangeBatch.m_InstanceRange));
-                cmdList.SetGraphicsRootResource(*Resources::Batch_PrevLocalToWorldMatrices, m_BatchStorage.m_PrevLocalToWorldMatrixBuffer->GetSrv(drawRangeBatch.m_InstanceRange));
-                cmdList.SetGraphicsRootResource(*Resources::Batch_MaterialIndices, m_BatchStorage.m_MaterialIndexBuffer->GetSrv(drawRangeBatch.m_InstanceRange));
-
-                if (isMeshPipelineUsed)
-                {
-                    cmdList.SetGraphicsRootResource(*Resources::Vertices, meshGpuStorage.VertexBuffer->GetSrv(drawRange.m_VertexRange));
-                    cmdList.SetGraphicsRootResource(*Resources::Meshlets, meshGpuStorage.MeshletBuffer->GetSrv(drawRange.m_MeshletRange));
-                    cmdList.SetGraphicsRootResource(*Resources::MeshletCullVolumes, meshGpuStorage.MeshletCullVolumeBuffer->GetSrv(drawRange.m_MeshletRange));
-                    cmdList.SetGraphicsRootResource(*Resources::MeshletIndirectVertices, meshGpuStorage.MeshletIndirectVertexBuffer->GetSrv(drawRange.m_MeshletIndirectVertexRange));
-                    cmdList.SetGraphicsRootResource(*Resources::MeshletIndices, meshGpuStorage.MeshletIndexBuffer->GetSrv(drawRange.m_MeshletIndexRange));
-                    cmdList.SetGraphicsRootConstant(*Resources::MeshletCountPerInstance, drawRange.m_MeshletRange.m_Count);
-
-                    if (isAmplificationDispatchUsed)
-                    {
-                        const uint32_t totalMeshletCount = drawRange.m_MeshletRange.m_Count * drawRangeBatch.m_InstanceRange.m_Count;
-
-                        cmdList.SetGraphicsRootConstant(*Resources::TotalMeshletCount, totalMeshletCount);
-                        cmdList.DispatchMesh({ totalMeshletCount, 1, 1 }, { *joint::MeshletConsts::AsGroupSize, 1, 1 });
-                    }
-                    else
-                    {
-                        cmdList.SetGraphicsRootConstant(*Resources::TotalMeshletCount, drawRange.m_MeshletRange.m_Count);
-
-                        for (uint32_t instanceIndex = 0; instanceIndex < drawRangeBatch.m_InstanceRange.m_Count; ++instanceIndex)
-                        {
-                            cmdList.SetGraphicsRootConstant(*Resources::InstanceIndex, instanceIndex);
-                            cmdList.DispatchMesh({ drawRange.m_MeshletRange.m_Count, 1, 1 });
-                        }
-                    }
-                }
-                else
-                {
-                    for (uint32_t instanceIndex = 0; instanceIndex < drawRangeBatch.m_InstanceRange.m_Count; ++instanceIndex)
-                    {
-                        cmdList.SetGraphicsRootConstant(*Resources::InstanceIndex, instanceIndex);
-
-                        cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(drawRange.m_D3D12PrimitiveTopology);
-                        cmdList.DrawIndexed(drawRange.m_IndexRange.m_Count, drawRange.m_IndexRange.m_Offset, drawRange.m_VertexRange.m_Offset);
-                    }
-                }
-            }
         }
     }
 
@@ -513,6 +290,8 @@ namespace sandbox
 
     void GeometryPass::RunColorPass(benzin::GraphicsCmdList& cmdList) const
     {
+        using Resources = joint::GeometryResources;
+
         BenzinProfile();
         BenzinGpuProfile("ColorPass");
 
@@ -523,42 +302,40 @@ namespace sandbox
         gbuffer.ClearRenderTargets(cmdList);
         gbuffer.ClearDepthStencil(cmdList);
 
-#if 0 // TODO !!!
-        for (uint16_t mipIndex = 0; mipIndex < hzb.GetMipCount(); ++mipIndex)
-        {
-            cmdList.ClearUnorderedAccess(hzb, hzb.GetUav({ .MipIndex = mipIndex }), {});
-        }
-#endif
-
-        const benzin::Texture& reprojectedHzb = ms_Resources->Get(TextureId::Hzb);
+        cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Vertex));
 
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
 
         cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
-        using Resources = joint::GeometryResources;
-        cmdList.SetGraphicsRootResource(*Resources::UnifiedMaterials, ms_Scene->GetUnifiedMaterialBuffer().GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::ReprojectedHzb, reprojectedHzb.GetSrv());
+        cmdList.SetVertexBuffer(*ms_Scene->m_VertexBuffer);
+        cmdList.SetIndexBuffer(*ms_Scene->m_IndexBuffer);
 
-        const auto setPso = [&cmdList](PsoId meshId, PsoId vertexId)
+        cmdList.SetGraphicsRootResource(*Resources::MeshDrawParts, ms_Scene->m_MeshDrawPartBuffer->GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::MeshDraws, ms_Scene->m_MeshDrawBuffer->GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::Materials, ms_Scene->m_MaterialBuffer->GetSrv());
+
+        for (uint32_t drawIndex = 0; drawIndex < ms_Scene->m_MeshDraws.size(); ++drawIndex)
         {
-            const bool isMeshPipelineUsed = ms_Settings->GetSection<GBufferSettings>().IsMeshPipelineUsed;
-            if (isMeshPipelineUsed)
-            {
-                cmdList.SetMeshPso(ms_PsoManager->GetMesh(meshId));
-            }
-            else
-            {
-                cmdList.SetVertexPso(ms_PsoManager->GetVertex(vertexId));
-            }
-        };
+            const benzin::MeshDraw& draw = ms_Scene->m_MeshDraws[drawIndex];
 
-        setPso(PsoId::GeometryPass_Mesh_Alpha, PsoId::GeometryPass_Vertex_Alpha);
-        RenderMeshBatches(cmdList, m_AlphaMeshBatches);
+            cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, drawIndex);
 
-        setPso(PsoId::GeometryPass_Mesh, PsoId::GeometryPass_Vertex);
-        RenderMeshBatches(cmdList, m_OpaqueMeshBatches);
+            const uint32_t drawPartOffset = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartOffset;
+            const uint32_t drawPartCount = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartCount;
+
+            for (uint32_t drawPartIndex = drawPartOffset; drawPartIndex < drawPartOffset + drawPartCount; ++drawPartIndex)
+            {
+                const benzin::MeshDrawPart& drawPart = ms_Scene->m_MeshDrawParts[drawPartIndex];
+                const benzin::MeshPart& part = ms_Scene->m_MeshParts[drawPart.m_PartIndex];
+
+                cmdList.SetGraphicsRootConstant(*Resources::MeshDrawPartIndex, drawPartIndex);
+
+                cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(part.m_D3D12PrimitiveTopology);
+                cmdList.DrawIndexed(part.m_IndexCount, part.m_IndexOffset, part.m_VertexOffset);
+            }
+        }
     }
 
 }

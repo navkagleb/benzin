@@ -29,9 +29,10 @@
 #include <benzin/tools/performance_overlay_tool.hpp>
 #include <benzin/tools/profiler_tools.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
-#include <benzin/tools/scene_stats_tool.hpp>
-#include <benzin/tools/scene_tool.hpp>
 #include <benzin/tools/vram_tool.hpp>
+
+#include <benzin/engine/entity_components.hpp> // TODO: Remove
+#include <shaders/joint/mesh_types.hpp>
 
 namespace sandbox
 {
@@ -69,8 +70,6 @@ namespace sandbox
         m_ImGuiManager->RegisterTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
         m_ImGuiManager->RegisterTool<benzin::PerformanceOverlayTool>(*m_Backend, *m_ShaderManager, m_Viewport);
         m_ImGuiManager->RegisterTool<benzin::ProfilerTool>();
-        m_ImGuiManager->RegisterTool<benzin::SceneStatsTool>(*m_Scene, *m_RayTracingScene);
-        m_ImGuiManager->RegisterTool<benzin::SceneTool>(*m_Scene);
         m_ImGuiManager->RegisterTool<benzin::VramTool>(*m_Device);
         m_ImGuiManager->RegisterTool<benzin::GpuPrintTool>(m_GpuPrintData);
         m_ImGuiManager->RegisterTool<benzin::TextureViewerTool>(m_TextureViewerData, m_Viewport, *m_RenderResources);
@@ -90,7 +89,7 @@ namespace sandbox
         benzin::ScopedGpuEvent::SetContext(*m_Device);
         benzin::ScopedGpuProfileEvent::SetContext(*m_Device, *m_GpuProfiler);
 
-        m_CameraController.SetCamera(m_Scene->GetCamera());
+        m_CameraController.SetCamera(m_Scene->m_Camera);
     }
 
     Runner::~Runner()
@@ -102,8 +101,6 @@ namespace sandbox
         m_ImGuiManager->UnregisterTool<benzin::GpuProfilerTool>();
         m_ImGuiManager->UnregisterTool<benzin::PerformanceOverlayTool>();
         m_ImGuiManager->UnregisterTool<benzin::ProfilerTool>();
-        m_ImGuiManager->UnregisterTool<benzin::SceneStatsTool>();
-        m_ImGuiManager->UnregisterTool<benzin::SceneTool>();
         m_ImGuiManager->UnregisterTool<benzin::VramTool>();
         m_ImGuiManager->UnregisterTool<benzin::GpuPrintTool>();
         m_ImGuiManager->UnregisterTool<benzin::TextureViewerTool>();
@@ -161,9 +158,8 @@ namespace sandbox
             // TODO: Allocate GpuHeap with estimated size of meshes and provide it to the
             // scene (or create in the scene inself) and upload meshes to GPU using
             // linear allocator
-            m_Scene->UploadMeshesToGpu();
+            m_Scene->UploadToGpu();
             m_Scene->UploadMeshletsToGpu();
-            m_Scene->UploadMaterialsToGpu();
             m_RayTracingScene->BuildBlases();
 
             RunImGuiFrame(); // Force call ImGui frame to call RenderPass::OnRenderViewportResize on EndFrame
@@ -293,7 +289,6 @@ namespace sandbox
     {
         BenzinProfile();
 
-        m_Scene->EndFrame();
         m_GpuProfiler->EndFrame();
         m_Device->GetGraphicsCmdQueue().SubmitCmdList();
         m_Device->SignalFrameFence();
@@ -322,10 +317,10 @@ namespace sandbox
 
             if (!m_AnimationTimer.IsPaused())
             {
-                m_Scene->UpdateEntities();
+                m_Scene->ExecuteUpdateCallbacks();
             }
 
-            m_Scene->UploadLightsToGpu();
+            m_Scene->UploadMeshDrawsToGpu();
         }
 
         RunImGuiFrame();

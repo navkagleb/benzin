@@ -14,7 +14,7 @@
 BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::RayTracing_ShadowResources::WorldNormal);
 BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::RayTracing_ShadowResources::Depth);
 BenzinDeclareRootResource(Texture2D<float2>, g_BlueNoise, joint::RayTracing_ShadowResources::BlueNoise);
-BenzinDeclareRootResource(RWTexture2DArray<float>, g_OutNoisyPenumbra, joint::RayTracing_ShadowResources::OutNoisyPenumbra);
+BenzinDeclareRootResource(RWTexture2D<float>, g_OutNoisyPenumbra, joint::RayTracing_ShadowResources::OutNoisyPenumbra);
 
 float3 OffsetRayPosition(float3 position, float3 normal)
 {
@@ -216,21 +216,12 @@ void RayGeneration()
     const float depth = g_Depth[pixelPosition];
     if (!g_FrameConsts.IsShadowsEnabled || depth == 0.0)
     {
-        [unroll(4)]
-        for (uint i = 0; i < g_FrameConsts.LightCount; ++i)
-        {
-            g_OutNoisyPenumbra[uint3(pixelPosition, i)] = sigma::g_Fp16Max;
-        }
-
+        g_OutNoisyPenumbra[pixelPosition] = sigma::g_Fp16Max;
         return;
     }
 
-    [unroll(4)]
-    for (uint i = 0; i < g_FrameConsts.LightCount; ++i)
-    {
-        const float penumbra = TraceShadowRay(g_Lights[i], depth);
-        g_OutNoisyPenumbra[uint3(pixelPosition, i)] = penumbra;
-    }
+    const float penumbra = TraceShadowRay(g_SunLightConsts, depth);
+    g_OutNoisyPenumbra[pixelPosition] = penumbra;
 }
 
 [shader("closesthit")]

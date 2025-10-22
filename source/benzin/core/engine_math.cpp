@@ -38,19 +38,6 @@ namespace benzin
         return boundingBox;
     }
 
-    DirectX::BoundingBox TransformBoundingBox(const DirectX::BoundingBox& boundingBox, const DirectX::XMMATRIX& transformMatrix)
-    {
-        DirectX::BoundingBox transformedBoundingBox;
-        boundingBox.Transform(transformedBoundingBox, transformMatrix);
-
-        return transformedBoundingBox;
-    }
-
-    DirectX::XMMATRIX GetMatrixForNormals(const DirectX::XMMATRIX& transform)
-    {
-        return DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, transform));
-    }
-
     float GetWeylSequence(float seed, uint32_t n)
     {
         // Ref: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/

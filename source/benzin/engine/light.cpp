@@ -41,9 +41,8 @@ namespace benzin
         const float yaw = m_AzimuthInRadians;
 
         auto sunDirection = benzin::GetDirectionFromPitchYaw(pitch, yaw); // sunDirection vector directed towards the sun
-        sunDirection = DirectX::XMVector3Normalize(sunDirection);
 
-        DirectX::XMFLOAT3 sunDirection3{};
+        DirectX::XMFLOAT3 sunDirection3 = {};
         DirectX::XMStoreFloat3(&sunDirection3, sunDirection);
 
         return sunDirection3;

@@ -109,7 +109,7 @@ namespace benzin
 
         void SetComputePso(const ComputePso& pso);
 
-        void ClearUnorderedAccess(const Resource& resource, const Descriptor& uav, const DirectX::XMFLOAT4& color);
+        void ClearUnorderedAccess(const Resource& resource, const Descriptor& uav, const DirectX::XMFLOAT4& color = {});
 
         void Dispatch(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize);
 

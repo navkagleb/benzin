@@ -35,9 +35,9 @@ ConstantBuffer<joint::FrameConsts> g_FrameConsts : register(b0, space1);
 ConstantBuffer<BenzinRenderPassConstsType0> g_PassConsts0 : register(b0, space2);
 ConstantBuffer<BenzinRenderPassConstsType1> g_PassConsts1 : register(b0, space3);
 ConstantBuffer<joint::GpuPrintConsts> g_GpuPrintConsts : register(b0, space4);
+ConstantBuffer<joint::Light> g_SunLightConsts : register(b0, space5);
 
-StructuredBuffer<joint::Light> g_Lights : register(t0, space0);
-RaytracingAccelerationStructure g_SceneTlas : register(t0, space1);
+RaytracingAccelerationStructure g_SceneTlas : register(t0, space0);
 
 RWByteAddressBuffer g_Stats : register(u0, space0);
 

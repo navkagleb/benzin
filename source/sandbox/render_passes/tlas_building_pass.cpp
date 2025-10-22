@@ -1,5 +1,5 @@
-#include "sandbox/bootstrap.hpp"
-#include "sandbox/render_passes/tlas_building_pass.hpp"
+#include <sandbox/bootstrap.hpp>
+#include <sandbox/render_passes/tlas_building_pass.hpp>
 
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/ray_tracing_scene.hpp>
@@ -17,8 +17,7 @@ namespace sandbox
     {
         BenzinProfile();
 
-        // Note: Before updating TopLevel AccelerationStructure the TransformComponents must be updated
-        ms_RayTracingScene->UpdateTlasBuffers();
+        ms_RayTracingScene->UpdateTlas();
     }
 
     void TlasBuildingPass::OnRender() const
@@ -26,17 +25,17 @@ namespace sandbox
         BenzinProfile();
         BenzinGpuProfile("TlasBuilding");
 
-        benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         const benzin::RayTracing_Tlas& tlas = ms_RayTracingScene->GetActiveTlas();
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ *tlas.GetScratchResource(), benzin::ResourceState::UnorderedAccess }
-        );
+            benzin::TransitionBarrier{ *tlas.GetScratchResource(), benzin::ResourceState::UnorderedAccess });
 
         cmdList.BuildRayTracingAccelerationStructure(tlas);
         cmdList.SetComputeSrv(benzin::UnifiedRootParameter::SceneTlas, tlas.GetGpuVirtualAddress());
+        cmdList.SetGraphicsSrv(benzin::UnifiedRootParameter::SceneTlas, tlas.GetGpuVirtualAddress());
     }
 
 }

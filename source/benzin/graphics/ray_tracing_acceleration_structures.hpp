@@ -9,23 +9,22 @@ namespace benzin
     class RayTracing_AcclerationStructure
     {
     public:
+        RayTracing_AcclerationStructure() = default;
+        RayTracing_AcclerationStructure(RayTracing_AcclerationStructure&&) = default;
         virtual ~RayTracing_AcclerationStructure();
 
-    public:
         const auto& GetD3D12BuildInputs() const { return m_D3D12BuildInputs; }
         const auto* GetBuffer() const { return m_Buffer.get(); }
         const auto* GetScratchResource() const { return m_ScratchResource.get(); }
 
-        bool IsAllocated() const { return m_Buffer.get() != nullptr && m_ScratchResource.get() != nullptr; }
-
         uint64_t GetGpuVirtualAddress() const;
 
-    protected:
-        void AllocateBuffers(Device& device, std::string_view debugName, const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& d3d12BuildInputs);
         virtual void AllocateBuffers(Device& device, std::string_view debugName) = 0;
 
     protected:
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS m_D3D12BuildInputs{};
+        void AllocateBuffers(Device& device, std::string_view debugName, const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& d3d12BuildInputs);
+
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS m_D3D12BuildInputs = {};
 
         std::unique_ptr<Buffer> m_Buffer;
         std::unique_ptr<Buffer> m_ScratchResource;
@@ -36,13 +35,16 @@ namespace benzin
     public:
         struct Geometry
         {
-            const Buffer& VertexBuffer;
-            const Buffer& IndexBuffer;
+            const Buffer& m_VertexBuffer;
+            const Buffer& m_IndexBuffer;
 
-            SubRange32 VertexRange;
-            SubRange32 IndexRange;
+            uint32_t m_VertexOffset = 0;
+            uint32_t m_VertexCount = 0;
 
-            uint64_t TransformGpuAddress = 0;
+            uint32_t m_IndexOffset = 0;
+            uint32_t m_IndexCount = 0;
+
+            uint64_t m_TransformGpuAddress = 0;
         };
 
         explicit RayTracing_Blas(uint32_t reservedGeometryCount = 0);
@@ -59,14 +61,11 @@ namespace benzin
     public:
         struct Instance
         {
-            const RayTracing_Blas& Blas;
-
-            uint32_t HitGroupIndex = 0;
-            DirectX::XMMATRIX Transform = DirectX::XMMatrixIdentity();
+            uint64_t m_BlasGpuVirtualAddress = 0;
+            DirectX::XMMATRIX m_LocalToWorld = DirectX::XMMatrixIdentity();
         };
 
         RayTracing_Tlas() = default;
-        RayTracing_Tlas(RayTracing_Tlas&& other) noexcept;
 
         auto* GetInstanceBuffer() const { return m_InstanceBuffer.get(); }
 
@@ -78,7 +77,6 @@ namespace benzin
     private:
         void AllocateInstanceBuffer(Device& device, std::string_view debugView);
 
-    private:
         std::vector<D3D12_RAYTRACING_INSTANCE_DESC> m_D3D12InstanceDescs;
         std::unique_ptr<Buffer> m_InstanceBuffer;
     };

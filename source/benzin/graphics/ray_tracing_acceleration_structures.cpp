@@ -57,64 +57,39 @@ namespace benzin
 
     void RayTracing_Blas::AddGeometry(const Geometry& geometry)
     {
-        const uint32_t validatedVertexCount = geometry.VertexRange.IsGoodRange() ? geometry.VertexRange.m_Count : (uint32_t)geometry.VertexBuffer.GetElementCount();
-        const uint32_t validatedIndexCount = geometry.IndexRange.IsGoodRange() ? geometry.IndexRange.m_Count : (uint32_t)geometry.IndexBuffer.GetElementCount();
+        BenzinAssert(geometry.m_IndexBuffer.GetElementSizeInBytes() == sizeof(uint32_t));
+        BenzinAssert(geometry.m_TransformGpuAddress % D3D12_RAYTRACING_TRANSFORM3X4_BYTE_ALIGNMENT == 0);
 
-        BenzinAssert(validatedVertexCount + geometry.VertexRange.m_Offset <= geometry.VertexBuffer.GetElementCount());
-        BenzinAssert(validatedIndexCount + geometry.IndexRange.m_Offset <= geometry.IndexBuffer.GetElementCount());
-        BenzinAssert(geometry.TransformGpuAddress % D3D12_RAYTRACING_TRANSFORM3X4_BYTE_ALIGNMENT == 0);
+        D3D12_RAYTRACING_GEOMETRY_DESC d3d12GometryDesc = {};
+        d3d12GometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+        d3d12GometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+        d3d12GometryDesc.Triangles.Transform3x4 = geometry.m_TransformGpuAddress;
+        d3d12GometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
+        d3d12GometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+        d3d12GometryDesc.Triangles.IndexCount = geometry.m_IndexCount;
+        d3d12GometryDesc.Triangles.VertexCount = geometry.m_VertexCount;
+        d3d12GometryDesc.Triangles.IndexBuffer = geometry.m_IndexBuffer.GetGpuVirtualAddress(geometry.m_IndexOffset);
+        d3d12GometryDesc.Triangles.VertexBuffer.StartAddress = geometry.m_VertexBuffer.GetGpuVirtualAddress(geometry.m_VertexOffset);
+        d3d12GometryDesc.Triangles.VertexBuffer.StrideInBytes = geometry.m_VertexBuffer.GetElementSizeInBytes();
 
-        m_D3D12GeometryDescs.push_back(D3D12_RAYTRACING_GEOMETRY_DESC
-        {
-            .Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES,
-            .Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE,
-            .Triangles
-            {
-                .Transform3x4 = geometry.TransformGpuAddress,
-                .IndexFormat = DXGI_FORMAT_R32_UINT,
-                .VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT,
-                .IndexCount = validatedIndexCount,
-                .VertexCount = validatedVertexCount,
-                .IndexBuffer = geometry.IndexBuffer.GetGpuVirtualAddress(geometry.IndexRange.m_Offset),
-                .VertexBuffer
-                {
-                    .StartAddress = geometry.VertexBuffer.GetGpuVirtualAddress(geometry.VertexRange.m_Offset),
-                    .StrideInBytes = geometry.VertexBuffer.GetElementSizeInBytes(),
-                },
-            },
-        });
+        m_D3D12GeometryDescs.push_back(d3d12GometryDesc);
     }
 
     void RayTracing_Blas::AllocateBuffers(Device& device, std::string_view debugName)
     {
         BenzinAssert(!m_D3D12GeometryDescs.empty());
 
-        const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS d3d12BuildInputs
-        {
-            .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-            .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
-            .NumDescs = (uint32_t)m_D3D12GeometryDescs.size(),
-            .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
-            .pGeometryDescs = m_D3D12GeometryDescs.data(),
-        };
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS d3d12BuildInputs = {};
+        d3d12BuildInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+        d3d12BuildInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+        d3d12BuildInputs.NumDescs = (uint32_t)m_D3D12GeometryDescs.size();
+        d3d12BuildInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+        d3d12BuildInputs.pGeometryDescs = m_D3D12GeometryDescs.data();
 
         RayTracing_AcclerationStructure::AllocateBuffers(device, debugName, d3d12BuildInputs);
     }
 
     // RayTracing_Tlas
-
-    RayTracing_Tlas::RayTracing_Tlas(RayTracing_Tlas&& other) noexcept
-    {
-        if (this == &other)
-            return;
-
-        m_D3D12BuildInputs = other.m_D3D12BuildInputs;
-        m_Buffer = std::exchange(other.m_Buffer, nullptr);
-        m_ScratchResource = std::exchange(other.m_ScratchResource, nullptr);
-
-        m_D3D12InstanceDescs = std::exchange(other.m_D3D12InstanceDescs, {});
-        m_InstanceBuffer = std::exchange(other.m_InstanceBuffer, nullptr);
-    }
 
     void RayTracing_Tlas::AddInstance(const Instance& instance)
     {
@@ -125,17 +100,15 @@ namespace benzin
 
         // TODO: Do I need D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE?
 
-        D3D12_RAYTRACING_INSTANCE_DESC d3d12InstanceDesc
-        {
-            .InstanceID = 0,
-            .InstanceMask = 1,
-            .InstanceContributionToHitGroupIndex = instance.HitGroupIndex,
-            .Flags = D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE,
-            .AccelerationStructure = instance.Blas.GetBuffer()->GetGpuVirtualAddress(),
-        };
+        D3D12_RAYTRACING_INSTANCE_DESC d3d12InstanceDesc = {};
+        d3d12InstanceDesc.InstanceID = 0;
+        d3d12InstanceDesc.InstanceMask = 1;
+        d3d12InstanceDesc.InstanceContributionToHitGroupIndex = 0; // TODO: For now all instances have default hit group
+        d3d12InstanceDesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE;
+        d3d12InstanceDesc.AccelerationStructure = instance.m_BlasGpuVirtualAddress;
 
-        const DirectX::XMMATRIX transposedMatrix = DirectX::XMMatrixTranspose(instance.Transform);
-        memcpy(&d3d12InstanceDesc.Transform, &transposedMatrix, sizeof(DirectX::XMFLOAT3X4));
+        const DirectX::XMMATRIX localToWorld = DirectX::XMMatrixTranspose(instance.m_LocalToWorld);
+        memcpy(&d3d12InstanceDesc.Transform, &localToWorld, sizeof(DirectX::XMFLOAT3X4));
 
         m_D3D12InstanceDescs.push_back(d3d12InstanceDesc);
     }
@@ -150,14 +123,12 @@ namespace benzin
     {
         AllocateInstanceBuffer(device, debugName);
 
-        const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS d3d12BuildInputs
-        {
-            .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-            .Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD,
-            .NumDescs = (uint32_t)m_D3D12InstanceDescs.size(),
-            .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
-            .InstanceDescs = m_InstanceBuffer->GetGpuVirtualAddress(),
-        };
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS d3d12BuildInputs = {};
+        d3d12BuildInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+        d3d12BuildInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
+        d3d12BuildInputs.NumDescs = (uint32_t)m_D3D12InstanceDescs.size();
+        d3d12BuildInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+        d3d12BuildInputs.InstanceDescs = m_InstanceBuffer->GetGpuVirtualAddress();
 
         RayTracing_AcclerationStructure::AllocateBuffers(device, debugName, d3d12BuildInputs);
     }

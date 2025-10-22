@@ -2,9 +2,7 @@
 
 namespace joint
 {
-
     struct MeshVertex;
-
 }
 
 namespace benzin
@@ -14,9 +12,6 @@ namespace benzin
     DirectX::XMFLOAT2 GetPitchYawFromDirection(const DirectX::XMVECTOR& direction);
 
     DirectX::BoundingBox ComputeBoundingBox(std::span<const joint::MeshVertex> vertices);
-    DirectX::BoundingBox TransformBoundingBox(const DirectX::BoundingBox& boundingBox, const DirectX::XMMATRIX& transformMatrix);
-
-    DirectX::XMMATRIX GetMatrixForNormals(const DirectX::XMMATRIX& transform);
 
     float GetWeylSequence(float seed, uint32_t n);
 

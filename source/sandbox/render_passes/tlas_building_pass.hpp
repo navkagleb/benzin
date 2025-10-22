@@ -7,7 +7,7 @@ namespace sandbox
 
     class TlasBuildingPass : public benzin::RenderPass
     {
-    private:
+    public:
         bool IsDependentOnViewport() const override { return false; }
 
         void OnUpdate() override;

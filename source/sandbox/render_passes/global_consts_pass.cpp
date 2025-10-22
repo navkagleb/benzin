@@ -15,6 +15,8 @@
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 
+#include <shaders/joint/light.hpp>
+
 namespace sandbox
 {
 
@@ -59,7 +61,7 @@ namespace sandbox
         BenzinProfile();
 
         {
-            const benzin::PerspectiveCamera& camera = ms_Scene->GetCamera();
+            const benzin::PerspectiveCamera& camera = ms_Scene->m_Camera;
 
             joint::CameraConsts cameraConsts = {};
             cameraConsts.WorldToView = camera.GetWorldToViewMatrix();
@@ -98,7 +100,6 @@ namespace sandbox
             m_FrameConsts.MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y);
 
             m_FrameConsts.CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex();
-            m_FrameConsts.LightCount = ms_Scene->GetActiveLightCount();
 
             m_FrameConsts.IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
             m_FrameConsts.IsShadowsEnabled = ms_Settings->GetSection<RayTracing_ShadowSettings>().IsEnabled;
@@ -144,9 +145,18 @@ namespace sandbox
             cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
             cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
 
-            const uint64_t lightBufferGpuAddress = ms_Scene->GetLightBuffer().GetGpuVirtualAddress();
-            cmdList.SetComputeSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, lightBufferGpuAddress);
-            cmdList.SetGraphicsSrv(benzin::UnifiedRootParameter::LightStructuredBuffer, lightBufferGpuAddress);
+            // TODO: replace with joint::SunLight struct
+            joint::Light sunLight = {};
+            sunLight.Color = ms_Scene->m_SunLight.GetColor();
+            sunLight.Intensity = ms_Scene->m_SunLight.GetIntensity();
+            sunLight.WorldPosition = ms_Scene->m_SunLight.CalcToSunDirection();
+            sunLight.WorldRadius = std::tan(ms_Scene->m_SunLight.GetAngularDiameterInRadians() * 0.5f);
+            sunLight.Attenuation = {};
+            sunLight.Type = joint::LightType::Sun;
+
+            const uint64_t sunLightConstsGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(sunLight);
+            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::SunLightConstBuffer, sunLightConstsGpuAddress);
+            cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::SunLightConstBuffer, sunLightConstsGpuAddress);
 
             const uint64_t statBufferGpuAddress = m_StatBuffer->GetGpuVirtualAddress();
             cmdList.ClearUnorderedAccess(*m_StatBuffer, m_StatBuffer->GetUav(), {});

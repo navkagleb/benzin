@@ -415,15 +415,13 @@ namespace benzin
     {
         BenzinAssert(accelerationStructure.GetScratchResource()->GetCurrentState() == ResourceState::UnorderedAccess);
 
-        const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12BuildAccelerationStructureDesc
-        {
-            .DestAccelerationStructureData = accelerationStructure.GetBuffer()->GetGpuVirtualAddress(),
-            .Inputs = accelerationStructure.GetD3D12BuildInputs(),
-            .SourceAccelerationStructureData = 0,
-            .ScratchAccelerationStructureData = accelerationStructure.GetScratchResource()->GetGpuVirtualAddress(),
-        };
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12BuildDesc = {};
+        d3d12BuildDesc.DestAccelerationStructureData = accelerationStructure.GetBuffer()->GetGpuVirtualAddress();
+        d3d12BuildDesc.Inputs = accelerationStructure.GetD3D12BuildInputs();
+        d3d12BuildDesc.SourceAccelerationStructureData = 0;
+        d3d12BuildDesc.ScratchAccelerationStructureData = accelerationStructure.GetScratchResource()->GetGpuVirtualAddress();
 
-        m_D3D12GraphicsCommandList4->BuildRaytracingAccelerationStructure(&d3d12BuildAccelerationStructureDesc, 0, nullptr);
+        m_D3D12GraphicsCommandList4->BuildRaytracingAccelerationStructure(&d3d12BuildDesc, 0, nullptr);
     }
 
     void ComputeCmdList::SetRayTracingPso(const RayTracing_Pso& pso)
@@ -519,14 +517,12 @@ namespace benzin
     {
         BenzinAssert(vertexBuffer.GetType() == BufferType::Structured);
 
-        const D3D12_VERTEX_BUFFER_VIEW d3d12VertexBufferView
-        {
-            .BufferLocation = vertexBuffer.GetGpuVirtualAddress(),
-            .SizeInBytes = (uint32_t)vertexBuffer.GetSizeInBytes(),
-            .StrideInBytes = vertexBuffer.GetElementSizeInBytes(),
-        };
+        D3D12_VERTEX_BUFFER_VIEW d3d12View = {};
+        d3d12View.BufferLocation = vertexBuffer.GetGpuVirtualAddress();
+        d3d12View.SizeInBytes = (uint32_t)vertexBuffer.GetSizeInBytes();
+        d3d12View.StrideInBytes = vertexBuffer.GetElementSizeInBytes();
 
-        m_D3D12GraphicsCommandList1->IASetVertexBuffers(0, 1, &d3d12VertexBufferView);
+        m_D3D12GraphicsCommandList1->IASetVertexBuffers(0, 1, &d3d12View);
     }
 
     void GraphicsCmdList::SetIndexBuffer(const Buffer& indexBuffer)
@@ -534,14 +530,12 @@ namespace benzin
         BenzinAssert(indexBuffer.GetType() == BufferType::Format);
         BenzinAssert(indexBuffer.GetFormat() == GraphicsFormat::R16Uint || indexBuffer.GetFormat() == GraphicsFormat::R32Uint);
 
-        const D3D12_INDEX_BUFFER_VIEW d3d12VertexBufferView
-        {
-            .BufferLocation = indexBuffer.GetGpuVirtualAddress(),
-            .SizeInBytes = (uint32_t)indexBuffer.GetSizeInBytes(),
-            .Format = (DXGI_FORMAT)indexBuffer.GetFormat(),
-        };
+        D3D12_INDEX_BUFFER_VIEW d3d12View = {};
+        d3d12View.BufferLocation = indexBuffer.GetGpuVirtualAddress();
+        d3d12View.SizeInBytes = (uint32_t)indexBuffer.GetSizeInBytes();
+        d3d12View.Format = (DXGI_FORMAT)indexBuffer.GetFormat();
 
-        m_D3D12GraphicsCommandList1->IASetIndexBuffer(&d3d12VertexBufferView);
+        m_D3D12GraphicsCommandList1->IASetIndexBuffer(&d3d12View);
     }
 
     void GraphicsCmdList::SetRenderTargets(const std::vector<Descriptor>& rtvs, const Descriptor* dsv)

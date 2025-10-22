@@ -1,50 +1,45 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/engine/scene.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/engine/scene.hpp>
 
 #include <shaders/joint/mesh_types.hpp>
 #include <shaders/joint/light.hpp>
 
-#include "benzin/core/buffer_writer.hpp"
-#include "benzin/core/cmd_line_args.hpp"
-#include "benzin/core/engine_math.hpp"
-#include "benzin/core/math.hpp"
-#include "benzin/core/profiler.hpp"
-#include "benzin/core/profiler.hpp"
-#include "benzin/core/tick_timer.hpp"
-#include "benzin/engine/entity_components.hpp"
-#include "benzin/engine/geometry_generator.hpp"
-#include "benzin/engine/light.hpp"
-#include "benzin/engine/mesh.hpp"
-#include "benzin/engine/resource_helper.hpp"
-#include "benzin/engine/resource_loader.hpp"
-#include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/cmd_queue.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/gpu_heap.hpp"
-#include "benzin/graphics/texture.hpp"
+#include <benzin/core/cmd_line_args.hpp>
+#include <benzin/core/engine_math.hpp>
+#include <benzin/core/math.hpp>
+#include <benzin/core/profiler.hpp>
+#include <benzin/core/tick_timer.hpp>
+#include <benzin/engine/entity_components.hpp>
+#include <benzin/engine/geometry_generator.hpp>
+#include <benzin/engine/light.hpp>
+#include <benzin/engine/mesh.hpp>
+#include <benzin/engine/resource_helper.hpp>
+#include <benzin/engine/resource_loader.hpp>
+#include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/cmd_queue.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
+#include <benzin/graphics/texture.hpp>
 
 namespace benzin
 {
 
-    static MeshResource CreateUnitSphereMesh()
+    static void CreateUnitSphereMesh(Mesh& mesh, std::vector<MeshDrawPart>& meshDrawParts)
     {
-        benzin::MeshData meshData = benzin::GetUnitGeoSphereMesh();
+        MeshData meshData = GetUnitGeoSphereMesh();
 
-        benzin::MeshDrawRange drawRange;
-        drawRange.m_VertexRange = ToSpan(meshData.Vertices);
-        drawRange.m_IndexRange = ToSpan(meshData.Indices);
-        drawRange.m_D3D12PrimitiveTopology = meshData.D3D12PrimitiveTopology;
+        MeshPart part;
+        part.m_VertexCount = (uint32_t)meshData.Vertices.size();
+        part.m_IndexCount = (uint32_t)meshData.Indices.size();
+        part.m_D3D12PrimitiveTopology = meshData.D3D12PrimitiveTopology;
 
-        benzin::MeshInstance instance;
-        instance.m_DrawRangeIndex = 0;
+        mesh.m_Vertices = std::move(meshData.Vertices);
+        mesh.m_Indices = std::move(meshData.Indices);
+        mesh.m_Parts.push_back(part);
 
-        benzin::MeshResource meshResource;
-        meshResource.m_Vertices = std::move(meshData.Vertices);
-        meshResource.m_Indices = std::move(meshData.Indices);
-        meshResource.m_DrawRanges.push_back(drawRange);
-        meshResource.m_Instances.push_back(instance);
-
-        return meshResource;
+        MeshDrawPart drawPart;
+        drawPart.m_PartIndex = 0;
+        meshDrawParts.push_back(drawPart);
     };
 
     //
@@ -52,99 +47,173 @@ namespace benzin
     Scene::Scene(Device& device)
         : m_Device{ device }
     {
-        m_SunEntity = m_EntityRegistry.create();
-        m_EntityRegistry.emplace<SunLight>(m_SunEntity);
+        Mesh sphereMesh;
+        std::vector<MeshDrawPart> sphereDrawParts;
+        CreateUnitSphereMesh(sphereMesh, sphereDrawParts);
+        AddMesh("UnitSphere", std::move(sphereMesh), std::move(sphereDrawParts));
 
-        m_UnitSphereMeshHandle = AddMesh("UnitSphere", CreateUnitSphereMesh());
-
-        Material fallbackMaterial;
-        fallbackMaterial.Consts.m_AlbedoFactor = { 1.0f, 0.0f, 1.0f, 1.0f };
-        m_UnifiedMaterials.push_back(fallbackMaterial);
+        m_Materials.push_back(Material
+        {
+            .m_AlbedoFactor = { 1.0f, 0.0f, 1.0f, 1.0f },
+        });
     }
 
     Scene::~Scene() = default;
 
-    const Material& Scene::GetMaterial(uint32_t index) const
-    {
-        BenzinAssert(index < m_UnifiedMaterials.size());
-        return m_UnifiedMaterials[index];
-    }
-
-    entt::entity Scene::AddMesh(
-        std::string_view debugName,
-        MeshResource&& meshResource,
-        std::vector<MaterialResource>&& materials,
+    void Scene::AddMesh(
+        const std::string& debugName,
+        Mesh&& mesh,
+        std::vector<MeshDrawPart>&& meshDrawParts,
+        std::vector<Material>&& materials,
         std::vector<TextureImage>&& textures)
     {
-        const uint32_t materialOffset = AddMaterials(textures, materials);
-
-        const entt::entity meshHandle = m_MeshRegistry.create();
-
-        auto& meshTag = m_MeshRegistry.emplace<MeshTag>(meshHandle);
-        meshTag = debugName;
-
-        auto& mesh = m_MeshRegistry.emplace<Mesh>(meshHandle);
-        mesh.m_Vertices = std::move(meshResource.m_Vertices);
-        mesh.m_Indices = std::move(meshResource.m_Indices);
-        mesh.m_DrawRanges = std::move(meshResource.m_DrawRanges);
-        mesh.m_Instances = std::move(meshResource.m_Instances);
-
         {
-            BenzinLogTimeOnScopeExit("{} mesh optimization + meshlet generation", meshTag);
+            BenzinLogTimeOnScopeExit("{} mesh optimization + meshlet generation", debugName);
 
             OptimizeMesh(mesh);
             GenerateMeshlets(mesh);
             GenerateBoundingSpheres(mesh);
         }
 
-        for (MeshInstance& meshInstance : mesh.m_Instances)
+        const auto textureOffset = (uint32_t)m_Textures.size();
+
+        m_Textures.reserve(textureOffset + textures.size());
+        m_TexturesData.reserve(textureOffset + textures.size());
+
+        for (TextureImage& textureImage : textures)
         {
-            if (IsGoodUint(meshInstance.m_MaterialIndex))
+            TextureCreation creation;
+            creation.DebugName = textureImage.m_DebugName;
+            creation.Format = textureImage.m_Format;
+            creation.Width = textureImage.m_Width;
+            creation.Height = textureImage.m_Height;
+            creation.MipCount = 1; // TODO: Mip generation
+
+            m_Textures.push_back(std::make_unique<Texture>(m_Device, creation));
+            m_TexturesData.push_back(std::move(textureImage.m_PixelData));
+        }
+
+        const auto updateTextureIndex = [this, textureOffset](uint32_t& textureIndex)
+        {
+            if (textureIndex == g_MaxU32)
+                return;
+
+            textureIndex = m_Textures[textureIndex + textureOffset]->GetSrv().GetGpuHeapIndex();
+        };
+
+        for (Material& material : materials)
+        {
+            updateTextureIndex(material.m_AlbedoTextureIndex);
+            updateTextureIndex(material.m_NormalTextureIndex);
+            updateTextureIndex(material.m_MetallicRoughnessTextureIndex);
+            updateTextureIndex(material.m_EmissiveTextureIndex);
+        }
+
+        for (MeshPart& part : mesh.m_Parts)
+        {
+            part.m_VertexOffset += (uint32_t)m_Vertices.size();
+            part.m_IndexOffset += (uint32_t)m_Indices.size();
+        }
+
+        for (MeshDrawPart& meshDrawPart : meshDrawParts)
+        {
+            meshDrawPart.m_PartIndex += (uint32_t)m_MeshParts.size();
+            
+            if (meshDrawPart.m_MaterialIndex == g_MaxU32)
             {
-                meshInstance.m_MaterialIndex += materialOffset;
+                meshDrawPart.m_MaterialIndex = 0; // Fallback material index
             }
             else
             {
-                meshInstance.m_MaterialIndex = 0; // Fallback material index
+                meshDrawPart.m_MaterialIndex += (uint32_t)m_Materials.size();
             }
         }
 
-        auto& meshGpuStorage = m_MeshRegistry.emplace<MeshGpuStorage>(meshHandle);
-        meshGpuStorage = mesh.CreateGpuStorage(m_Device, meshTag);
+        m_MeshRangeMap[debugName] = (uint32_t)m_MeshRanges.size();
+        m_MeshRanges.push_back(MeshRange
+        {
+            .m_DrawPartOffset = (uint32_t)m_MeshDrawParts.size(),
+            .m_DrawPartCount = (uint32_t)meshDrawParts.size(),
+        });
 
-        return meshHandle;
+        m_Vertices.append_range(std::move(mesh.m_Vertices));
+        m_Indices.append_range(std::move(mesh.m_Indices));
+        m_MeshParts.append_range(std::move(mesh.m_Parts));
+        m_MeshDrawParts.append_range(std::move(meshDrawParts));
+        m_Materials.append_range(std::move(materials));
     }
 
-    void Scene::UploadMeshesToGpu()
+    void Scene::UploadToGpu()
     {
         // TODO: CalcUploadBufferSize + UploadToGpu methods to remove reference to GraphicsCmdList in Scene class
 
-        BenzinLogTimeOnScopeExit("Scene::UploadMeshesToGpu");
+        BenzinLogTimeOnScopeExit("Scene::UploadToGpu");
 
-        const auto view = m_MeshRegistry.view<Mesh, MeshGpuStorage>();
-
-        uint64_t uploadSizeInBytes = 0;
-        for (const entt::entity meshHandle : view)
         {
-            const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
+            uint64_t uploadSizeInBytes = 0;
+            for (const auto& texture : m_Textures)
+            {
+                uploadSizeInBytes += AlignUp(texture->GetSizeInBytes(), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+            }
 
-            uploadSizeInBytes += meshGpuStorage.VertexBuffer->GetSizeInBytes();
-            uploadSizeInBytes += meshGpuStorage.IndexBuffer->GetSizeInBytes();
-        };
-
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
-        for (const entt::entity meshHandle : view)
-        {
-            const auto& mesh = view.get<Mesh>(meshHandle);
-            const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
-
-            cmdList.UploadToBuffer(*meshGpuStorage.VertexBuffer, ToSpan(mesh.m_Vertices));
-            cmdList.UploadToBuffer(*meshGpuStorage.IndexBuffer, ToSpan(mesh.m_Indices));
+            CopyCmdList& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
+            for (uint32_t i = 0; i < m_Textures.size(); ++i)
+            {
+                cmdList.UploadToTexture(*m_Textures[i], m_TexturesData[i]);
+            }
         }
+
+        std::vector<joint::Material> jointMaterials;
+        jointMaterials.reserve(m_Materials.size());
+
+        for (const Material& material : m_Materials)
+        {
+            joint::Material& jointMaterial = jointMaterials.emplace_back();
+            jointMaterial.m_AlbedoTextureHeapIndex = material.m_AlbedoTextureIndex;
+            jointMaterial.m_NormalTextureHeapIndex = material.m_NormalTextureIndex;
+            jointMaterial.m_MetallicRoughnessTextureHeapIndex = material.m_MetallicRoughnessTextureIndex;
+            jointMaterial.m_EmissiveTextureHeapIndex = material.m_EmissiveTextureIndex;
+            jointMaterial.m_AlbedoFactor = material.m_AlbedoFactor;
+            jointMaterial.m_AlphaCutoff = material.m_AlphaCutoff;
+            jointMaterial.m_NormalScale = material.m_NormalScale;
+            jointMaterial.m_MetalnessFactor = material.m_MetalnessFactor;
+            jointMaterial.m_RoughnessFactor = material.m_RoughnessFactor;
+            jointMaterial.m_EmissiveFactor = material.m_EmissiveFactor;
+        }
+
+        // TODO: Duplication
+        std::vector<joint::MeshDrawPart> jointMeshDrawParts;
+        jointMeshDrawParts.reserve(m_MeshDrawParts.size());
+
+        for (const MeshDrawPart& meshDrawPart : m_MeshDrawParts)
+        {
+            joint::MeshDrawPart& jointMeshDrawPart = jointMeshDrawParts.emplace_back();
+            jointMeshDrawPart.m_ObjectToLocal = meshDrawPart.m_ObjectToLocal;
+            jointMeshDrawPart.m_PartIndex = meshDrawPart.m_PartIndex;
+            jointMeshDrawPart.m_MaterialIndex = meshDrawPart.m_MaterialIndex;
+        }
+
+        m_VertexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::VertexBuffer", ToSpan(m_Vertices));
+        m_IndexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::IndexBuffer", ToSpan(m_Indices), GraphicsFormat::R32Uint);
+        m_MeshDrawPartBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshDrawPartBuffer", ToSpan(jointMeshDrawParts));
+        m_MaterialBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MaterialBuffer", ToSpan(jointMaterials));
+
+        const uint64_t uploadSizeInBytes =
+            m_VertexBuffer->GetSizeInBytes() +
+            m_IndexBuffer->GetSizeInBytes() +
+            m_MeshDrawPartBuffer->GetSizeInBytes() +
+            m_MaterialBuffer->GetSizeInBytes();
+
+        CopyCmdList& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
+        cmdList.UploadToBuffer(*m_VertexBuffer, ToSpan(m_Vertices));
+        cmdList.UploadToBuffer(*m_IndexBuffer, ToSpan(m_Indices));
+        cmdList.UploadToBuffer(*m_MeshDrawPartBuffer, ToSpan(jointMeshDrawParts));
+        cmdList.UploadToBuffer(*m_MaterialBuffer, ToSpan(jointMaterials));
     }
 
     void Scene::UploadMeshletsToGpu()
     {
+#if 0
         const auto view = m_MeshRegistry.view<Mesh, MeshGpuStorage>();
 
         uint64_t uploadSizeInBytes = 0;
@@ -169,187 +238,41 @@ namespace benzin
             cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndirectVertexBuffer, ToSpan(mesh.m_MeshletIndirectVertices));
             cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndexBuffer, ToSpan(mesh.m_MeshletIndices));
         }
+#endif
     }
 
-    void Scene::UploadMaterialsToGpu()
-    {
-        BenzinLogTimeOnScopeExit("Scene::UploadMaterialsToGpu");
-
-        UploadPixelDataSetToGpu();
-
-        std::vector<joint::Material> unifiedMaterials;
-        unifiedMaterials.reserve(m_UnifiedMaterials.size());
-
-        for (const Material& material : m_UnifiedMaterials)
-        {
-            unifiedMaterials.push_back(joint::Material
-            {
-                .AlbedoTextureHeapIndex = material.TextureGpuHeapIndices.m_Albedo,
-                .NormalTextureHeapIndex = material.TextureGpuHeapIndices.m_Normal,
-                .MetallicRoughnessTextureHeapIndex = material.TextureGpuHeapIndices.m_MetallicRoughness,
-                .EmissiveTextureHeapIndex = material.TextureGpuHeapIndices.m_Emissive,
-                .AlbedoFactor = material.Consts.m_AlbedoFactor,
-                .AlphaCutoff = material.Consts.m_AlphaCutoff,
-                .NormalScale = material.Consts.m_NormalScale,
-                .MetalnessFactor = material.Consts.m_MetalnessFactor,
-                .RoughnessFactor = material.Consts.m_RoughnessFactor,
-                .OcclusionStrenght = material.Consts.m_OcclusionStrenght,
-                .EmissiveFactor = material.Consts.m_EmissiveFactor,
-            });
-        }
-
-        m_UnifiedMaterialBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene_UnifiedMaterialBuffer", ToSpan(unifiedMaterials));
-        
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(m_UnifiedMaterialBuffer->GetSizeInBytes());
-        cmdList.UploadToBuffer(*m_UnifiedMaterialBuffer, ToSpan(unifiedMaterials));
-    }
-
-    uint32_t Scene::AddTextures(std::span<TextureImage> textureImages)
-    {
-        const auto textureOffset = (uint32_t)m_Textures.size();
-
-        m_PixelDataSet.reserve(textureOffset + textureImages.size());
-        m_Textures.reserve(textureOffset + textureImages.size());
-
-        for (TextureImage& textureImage : textureImages)
-        {
-            m_PixelDataSet.push_back(std::move(textureImage.m_PixelData));
-
-            TextureCreation creation;
-            creation.DebugName = textureImage.m_DebugName;
-            creation.Format = textureImage.m_Format;
-            creation.Width = textureImage.m_Width;
-            creation.Height = textureImage.m_Height;
-            creation.MipCount = 1; // TODO: Mip generation
-            m_Textures.push_back(std::make_unique<Texture>(m_Device, creation));
-        }
-
-        return textureOffset;
-    }
-
-    uint32_t Scene::AddMaterials(std::span<TextureImage> textureImages, std::span<const MaterialResource> materials)
-    {
-        const auto materialOffset = (uint32_t)m_UnifiedMaterials.size();
-
-        if (materials.empty())
-            return materialOffset;
-
-        const uint32_t textureOffset = AddTextures(textureImages);
-
-        m_UnifiedMaterials.reserve(materialOffset + materials.size());
-
-        for (const MaterialResource& materialResource : materials)
-        {
-            Material& material = m_UnifiedMaterials.emplace_back();
-            material.Consts = materialResource.m_Consts;
-            material.TextureGpuHeapIndices.m_Albedo = GetTextureGpuHeapIndex(textureOffset, materialResource.m_TextureIndices.m_Albedo);
-            material.TextureGpuHeapIndices.m_Normal = GetTextureGpuHeapIndex(textureOffset, materialResource.m_TextureIndices.m_Normal);
-            material.TextureGpuHeapIndices.m_MetallicRoughness = GetTextureGpuHeapIndex(textureOffset, materialResource.m_TextureIndices.m_MetallicRoughness);
-            material.TextureGpuHeapIndices.m_Emissive = GetTextureGpuHeapIndex(textureOffset, materialResource.m_TextureIndices.m_Emissive);
-        }
-
-        return materialOffset;
-    }
-
-    uint32_t Scene::GetTextureGpuHeapIndex(uint32_t textureOffset, uint32_t localTextureIndex) const
-    {
-        if (!IsGoodUint(localTextureIndex))
-            return g_Bad32;
-
-        BenzinAssert(textureOffset + localTextureIndex < m_Textures.size());
-        return m_Textures[textureOffset + localTextureIndex]->GetSrv().GetGpuHeapIndex();
-    }
-
-    void Scene::UploadPixelDataSetToGpu()
-    {
-        if (m_Textures.empty())
-        {
-            return;
-        }
-
-        uint64_t uploadSizeInBytes = 0;
-        for (const auto& texture : m_Textures)
-        {
-            uploadSizeInBytes += AlignUp(texture->GetSizeInBytes(), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-        }
-
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
-        for (const auto& [pixelData, texture] : std::views::zip(m_PixelDataSet, m_Textures))
-        {
-            cmdList.UploadToTexture(*texture, pixelData);
-        }
-
-        m_PixelDataSet.clear();
-    }
-
-    void Scene::UpdateEntities()
+    void Scene::ExecuteUpdateCallbacks()
     {
         BenzinProfile();
 
-        const auto view = m_EntityRegistry.view<EntityUpdateCallback>();
-        for (const entt::entity entityHandle : view)
+        for (const UpdateCallback& callback : m_UpdateCallbacks)
         {
-            const auto& callback = view.get<EntityUpdateCallback>(entityHandle);
-
-            BenzinAssert((bool)callback);
             callback();
         }
     }
 
-    void Scene::UploadLightsToGpu()
+    void Scene::UploadMeshDrawsToGpu()
     {
-        BenzinProfile();
-
-        std::vector<joint::Light> activeLights;
-
+        if (m_JointMeshDraws.empty())
         {
-            const auto& sunLight = m_EntityRegistry.get<SunLight>(m_SunEntity);
-
-            activeLights.push_back(joint::Light
-            {
-                .Color = sunLight.GetColor(),
-                .Intensity = sunLight.GetIntensity(),
-                .WorldPosition = sunLight.CalcToSunDirection(),
-                .WorldRadius = std::tan(sunLight.GetAngularDiameterInRadians() * 0.5f),
-                .Attenuation = {},
-                .Type = joint::LightType::Sun,
-            });
+            m_JointMeshDraws.resize(m_MeshDraws.size());
         }
 
-        const auto view = m_EntityRegistry.view<SphericalLight>();
-        for (const entt::entity entityHandle : view)
+        for (uint32_t i = 0; i < m_MeshDraws.size(); ++i)
         {
-            const auto& light = view.get<SphericalLight>(entityHandle);
+            const MeshDraw& draw = m_MeshDraws[i];
+            BenzinAssert(draw.m_MeshRangeIndex != g_MaxU32);
 
-            if (!light.IsEnabled())
-            {
-                continue;
-            }
+            const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(draw.m_Scale, draw.m_Scale, draw.m_Scale);
+            const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(draw.m_Rotation.x) * DirectX::XMMatrixRotationY(draw.m_Rotation.y) * DirectX::XMMatrixRotationZ(draw.m_Rotation.z);
+            const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(draw.m_Translation.x, draw.m_Translation.y, draw.m_Translation.z);
 
-            activeLights.push_back(joint::Light
-            {
-                .Color = light.GetColor(),
-                .Intensity = light.GetIntensity(),
-                .WorldPosition = light.GetPosition(),
-                .WorldRadius = light.GetRadius(),
-                .Attenuation = light.GetAttenuation(),
-                .Type = joint::LightType::Spherical,
-            });
+            joint::MeshDraw& jointDraw = m_JointMeshDraws[i];
+            jointDraw.m_PrevLocalToWorld = jointDraw.m_LocalToWorld;
+            jointDraw.m_LocalToWorld = scaling * rotation * translation;
         }
 
-        m_LightBuffer = m_Device.GetTemporalLinearAllocator().AllocateAndWriteBuffer("Scene_Lights", ToSpan(activeLights));
-        m_ActiveLightCount = (uint32_t)activeLights.size();
-    }
-
-    void Scene::EndFrame()
-    {
-        // D3D12 WARNING : ID3D12CommandList::SetComputeRootShaderResourceView : 1 resources contain
-        // the GPU Virtual Address range[0x0000000300440000, 0x0000000300440000] on a Heap(0x00000176BAD3D340:'TemporalHeap_2').
-        // This may be OK as long as only one of these resources is actively being used.However, there is no definitive way
-        // for the debug layer to identify which resource is intended.Consider using AssertResourceState to help with state validation.
-        // [STATE_CREATION WARNING #926: HEAP_ADDRESS_RANGE_INTERSECTS_MULTIPLE_BUFFERS]
-        // D3D12 : **BREAK** enabled for the previous message, which was : [WARNING STATE_CREATION #926: HEAP_ADDRESS_RANGE_INTERSECTS_MULTIPLE_BUFFERS]
-        m_LightBuffer.reset();
+        m_MeshDrawBuffer = m_Device.GetTemporalLinearAllocator().AllocateAndWriteBuffer("Scene::MeshDraws", ToSpan(m_JointMeshDraws));
     }
 
 }

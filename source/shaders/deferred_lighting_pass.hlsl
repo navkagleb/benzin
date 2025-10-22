@@ -70,7 +70,7 @@ BenzinDeclareRootResource(Texture2D<float4>, g_AlbedoAndRoughness, joint::Deferr
 BenzinDeclareRootResource(Texture2D<float4>, g_EmissiveAndMetallic, joint::DeferredLightingResources::EmissiveAndMetallic);
 BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::DeferredLightingResources::WorldNormal);
 BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::DeferredLightingResources::DepthStencil);
-BenzinDeclareRootResource(Texture2DArray<float>, g_Shadow, joint::DeferredLightingResources::Shadow);
+BenzinDeclareRootResource(Texture2D<float>, g_Shadow, joint::DeferredLightingResources::Shadow);
 
 GBuffer FetchGBuffer(float2 uv)
 {
@@ -103,18 +103,14 @@ float4 PsMain(VsFullScreenTriangleOutput input) : SV_Target
 
     float3 directColor = 0.0;
 
-    [unroll(4)]
-    for (uint i = 0; i < g_FrameConsts.LightCount; ++i)
-    {
-        // float shadowFactor = g_Shadow.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
-        float shadowFactor = g_Shadow[uint3(input.SvPosition.xy, i)];
-        shadowFactor = g_FrameConsts.IsDenoiserEnabled ? sigma::UnpackShadow(shadowFactor) : sigma::IsLit(shadowFactor);
+     // float shadowFactor = g_Shadow.SampleLevel(g_PointClampSampler, input.Uv, 0.0);
+     float shadowFactor = g_Shadow[input.SvPosition.xy];
+     shadowFactor = g_FrameConsts.IsDenoiserEnabled ? sigma::UnpackShadow(shadowFactor) : sigma::IsLit(shadowFactor);
 
-        float3 litColorFromLight = GetLitColor(g_Lights[i], material, worldPosition, worldViewDirection, gbuffer.WorldNormal);
-        litColorFromLight *= shadowFactor;
+     float3 litColorFromLight = GetLitColor(g_SunLightConsts, material, worldPosition, worldViewDirection, gbuffer.WorldNormal);
+     litColorFromLight *= shadowFactor;
 
-        directColor += litColorFromLight;
-    }
+     directColor += litColorFromLight;
 
     const float3 finalLitColor = ambientColor + gbuffer.Emissive + directColor;
     return float4(finalLitColor, 1.0);

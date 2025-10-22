@@ -5,21 +5,14 @@
 namespace joint
 {
 
-    enum class DebugColoringType
-    {
-        None,
-        Primitive,
-        Instance,
-    };
-
     enum class GeometryResources : uint
     {
-        UnifiedMaterials,
-        ReprojectedHzb,
+        MeshDrawParts,
+        MeshDraws,
+        Materials,
 
-        Batch_LocalToWorldMatrices,
-        Batch_PrevLocalToWorldMatrices,
-        Batch_MaterialIndices,
+        MeshDrawPartIndex,
+        MeshDrawIndex,
 
         Vertices, // Mesh pipeline
         Meshlets, // Mesh pipeline
@@ -38,8 +31,6 @@ namespace joint
         uint IsFrustumCullingEnabled : 1;
         uint IsBackfaceCullingEnabled : 1;
         uint IsOcclusionCullingEnabled : 1;
-
-        DebugColoringType ColoringType;
     };
 
 }

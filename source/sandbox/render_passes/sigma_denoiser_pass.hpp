@@ -13,23 +13,21 @@ namespace sandbox
         SigmaDenoiserPass();
         ~SigmaDenoiserPass() override;
 
-    private:
         bool IsDependentOnViewport() const override { return true; }
 
         void OnRenderViewportResize() override;
         void OnUpdate() override;
         void OnRender() const override;
 
-        void RunClearPass(bool isEnabled) const;
-        void RunClassifyTilesPass(uint16_t sliceIndex) const;
-        void RunSmoothTilesPass() const;
-        void RunBlurPass(uint16_t sliceIndex) const;
-        void RunPostBlurPass(bool isEnabled) const;
-        void RunTemporalStabilizationPass(bool isEnabled, uint16_t sliceIndex) const;
-
     private:
-        joint::SigmaConsts m_Consts{};
-        std::vector<joint::SigmaPerLightConsts> m_PerLightConsts;
+        void RunClearPass(bool isEnabled) const;
+        void RunClassifyTilesPass() const;
+        void RunSmoothTilesPass() const;
+        void RunBlurPass() const;
+        void RunPostBlurPass(bool isEnabled) const;
+        void RunTemporalStabilizationPass(bool isEnabled) const;
+
+        joint::SigmaConsts m_Consts = {};
     };
 
 }

@@ -57,8 +57,6 @@ namespace joint
         float MinRenderDimension;
 
         uint CpuFrameIndex;
-        uint LightCount; // TODO: Remove
-
         uint IsRenderResolutionChanged : 1;
         uint IsShadowsEnabled : 1;
         uint IsDenoiserEnabled : 1;
@@ -66,7 +64,7 @@ namespace joint
         float DeltaTimeInSec;
         float AnimationElapsedTimeInSec;
         float PrevAnimationElapsedTimeInSec;
-        float m_Padding0;
+        float2 m_Padding0;
 
         CameraConsts Camera;
         CameraConsts PrevCamera;

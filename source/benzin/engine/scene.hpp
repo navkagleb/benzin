@@ -1,93 +1,91 @@
 #pragma once
 
 #include <benzin/engine/camera.hpp>
+#include <benzin/engine/light.hpp>
 #include <benzin/engine/mesh.hpp>
+
+#include <shaders/joint/procedural_grass_resources.hpp>
+
+namespace joint
+{
+    struct MeshDraw;
+}
 
 namespace benzin
 {
 
     class Buffer;
-    class Descriptor;
     class Device;
     class Texture;
 
-    struct Material
+    struct MeshRange
     {
-        MaterialTextureIndices TextureGpuHeapIndices;
-        MaterialConsts Consts;
+        uint32_t m_DrawPartOffset = 0;
+        uint32_t m_DrawPartCount = 0;
     };
 
-    using MeshTag = std::string;
+    struct MeshDraw
+    {
+        DirectX::XMFLOAT3 m_Translation = {};
+        DirectX::XMFLOAT3 m_Rotation = {};
+        float m_Scale = 1.0f;
+
+        uint32_t m_MeshRangeIndex = g_MaxU32;
+    };
 
     class Scene
     {
     public:
-        friend class RayTracing_Scene;
-        friend class SceneStatsTool;
-
-        static inline const uint32_t s_MaxLightCount = 4; // TODO: Sun + 3 Spherical Lights
+        using UpdateCallback = std::function<void()>;
 
         explicit Scene(Device& device);
         ~Scene();
 
-    public:
-        auto& GetCamera(this auto&& self) { return self.m_Camera; }
-
-        auto& GetEntityRegistry(this auto&& self) { return self.m_EntityRegistry; }
-        const auto& GetMeshRegistry() const { return m_MeshRegistry; }
-
-        const auto& GetUnifiedMaterialBuffer() const { return *m_UnifiedMaterialBuffer; }
-        const auto& GetLightBuffer() const { return *m_LightBuffer; }
-
-        auto GetActiveLightCount() const { return m_ActiveLightCount; }
-        
-        auto GetSunEntity() const { return m_SunEntity; }
-        auto GetUnitSphereMeshHandle() const { return m_UnitSphereMeshHandle; }
-
-        const Material& GetMaterial(uint32_t index) const;
-
-    public:
-        entt::entity AddMesh(
-            std::string_view debugName,
-            MeshResource&& meshResource,
-            std::vector<MaterialResource>&& materials = {},
+        void AddMesh(
+            const std::string& debugName,
+            Mesh&& mesh,
+            std::vector<MeshDrawPart>&& meshDrawParts,
+            std::vector<Material>&& materials = {},
             std::vector<TextureImage>&& textures = {});
 
-        void UploadMeshesToGpu();
+        void UploadToGpu();
         void UploadMeshletsToGpu();
-        void UploadMaterialsToGpu();
 
-        void UpdateEntities();
-        void UploadLightsToGpu();
+        void ExecuteUpdateCallbacks();
+        void UploadMeshDrawsToGpu();
 
-        void EndFrame();
-
-    private:
-        uint32_t AddTextures(std::span<TextureImage> textureImages);
-        uint32_t AddMaterials(std::span<TextureImage> textureImages, std::span<const MaterialResource> materials);
-        uint32_t GetTextureGpuHeapIndex(uint32_t textureOffset, uint32_t localTextureIndex) const;
-
-        void UploadPixelDataSetToGpu();
-
-    private:
         Device& m_Device;
 
         PerspectiveCamera m_Camera;
 
-        entt::registry m_EntityRegistry;
-        entt::registry m_MeshRegistry;
+        std::vector<joint::MeshVertex> m_Vertices;
+        std::vector<uint32_t> m_Indices;
+        std::vector<MeshPart> m_MeshParts;
+        std::vector<MeshDrawPart> m_MeshDrawParts;
+        std::vector<Material> m_Materials;
+        std::vector<std::vector<std::byte>> m_TexturesData;
 
-        std::vector<std::vector<std::byte>> m_PixelDataSet;
+        std::unordered_map<std::string, uint32_t> m_MeshRangeMap;
+        std::vector<MeshRange> m_MeshRanges;
+
+        std::vector<MeshDraw> m_MeshDraws;
+        std::vector<joint::MeshDraw> m_JointMeshDraws;
+
+        std::unique_ptr<Buffer> m_VertexBuffer;
+        std::unique_ptr<Buffer> m_IndexBuffer;
+        std::unique_ptr<Buffer> m_MeshDrawPartBuffer;
+        std::unique_ptr<Buffer> m_MeshDrawBuffer;
+        std::unique_ptr<Buffer> m_MaterialBuffer;
         std::vector<std::unique_ptr<Texture>> m_Textures;
 
-        std::vector<Material> m_UnifiedMaterials;
-        std::unique_ptr<Buffer> m_UnifiedMaterialBuffer;
 
-        std::unique_ptr<Buffer> m_LightBuffer;
-        uint32_t m_ActiveLightCount = 0;
 
-        entt::entity m_SunEntity;
-        entt::entity m_UnitSphereMeshHandle;
+
+
+        std::vector<joint::GrassPatch> m_GrassPatches;
+        SunLight m_SunLight;
+
+        std::vector<UpdateCallback> m_UpdateCallbacks;
     };
 
 }

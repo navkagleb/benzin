@@ -1,7 +1,6 @@
 #pragma once
 
 #include "hlsl_to_cpp.hpp"
-#include "light.hpp"
 
 namespace joint
 {
@@ -17,12 +16,8 @@ namespace joint
         float PlaneDistanceSensitivity;
         float DisocclusionThreshold;
         uint IsTileSmoothingEnabled;
-    };
-
-    struct SigmaPerLightConsts
-    {
-        LightType LightType;
-        float3 WorldLightPosition; // For sun - to sun direction
+        float2 m_Padding0;
+        float3 ToSunDirection;
     };
 
     enum class SigmaClassifyTilesResources : uint
@@ -70,8 +65,4 @@ namespace joint
 
 #if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0)
     #define BenzinRenderPassConstsType0 joint::SigmaConsts
-#endif
-
-#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType1)
-    #define BenzinRenderPassConstsType1 joint::SigmaPerLightConsts
 #endif

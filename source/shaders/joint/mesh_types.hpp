@@ -14,13 +14,26 @@ namespace joint
         float2 Uv;
     };
 
+    struct MeshDrawPart
+    {
+        float4x4 m_ObjectToLocal;
+        uint32_t m_PartIndex;
+        uint32_t m_MaterialIndex;
+        float2 m_Padding0;
+    };
+
+    struct MeshDraw
+    {
+        float4x4 m_LocalToWorld;
+        float4x4 m_PrevLocalToWorld;
+    };
+
     struct Meshlet
     {
-        uint VertexOffset;
-        uint IndexOffset;
-
-        uint VertexCount;
-        uint TriangleCount;
+        uint m_VertexOffset;
+        uint m_VertexCount;
+        uint m_IndexOffset;
+        uint m_TriangleCount;
     };
 
     struct MeshletCullVolume
@@ -41,26 +54,20 @@ namespace joint
         MsGroupSize = 128,
     };
 
-    struct EntityTransform
-    {
-        float4x4 LocalToWorld;
-        float4x4 PrevLocalToWorld;
-    };
-
     struct Material
     {
-        uint AlbedoTextureHeapIndex;
-        uint NormalTextureHeapIndex;
-        uint MetallicRoughnessTextureHeapIndex;
-        uint EmissiveTextureHeapIndex;
+        uint m_AlbedoTextureHeapIndex;
+        uint m_NormalTextureHeapIndex;
+        uint m_MetallicRoughnessTextureHeapIndex;
+        uint m_EmissiveTextureHeapIndex;
 
-        float4 AlbedoFactor;
-        float AlphaCutoff;
-        float NormalScale;
-        float MetalnessFactor;
-        float RoughnessFactor;
-        float OcclusionStrenght;
-        float3 EmissiveFactor;
+        float4 m_AlbedoFactor;
+        float m_AlphaCutoff;
+        float m_NormalScale;
+        float m_MetalnessFactor;
+        float m_RoughnessFactor;
+        float3 m_EmissiveFactor;
+        float m_Padding0;
     };
 
 }

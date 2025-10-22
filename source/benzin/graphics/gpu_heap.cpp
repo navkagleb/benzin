@@ -100,8 +100,7 @@ namespace benzin
             neededSizeInBytes <= m_GpuHeap.GetSizeInBytes(),
             "GpuHeap is full. Needed size: {:.2f}, Actual size: {:.2f}",
             ToMb(neededSizeInBytes),
-            ToMb(m_GpuHeap.GetSizeInBytes())
-        );
+            ToMb(m_GpuHeap.GetSizeInBytes()));
 
         m_OffsetInBytes = alignedOffsetInBytes + bufferSizeInBytes;
 

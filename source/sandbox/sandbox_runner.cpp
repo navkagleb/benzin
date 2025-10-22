@@ -86,6 +86,9 @@ namespace sandbox
         m_RenderPasses.push_back(std::make_unique<DeferredLightingPass>());
         m_RenderPasses.push_back(std::make_unique<EnvironmentPass>());
         m_RenderPasses.push_back(std::make_unique<ToneMappingPass>());
+
+        m_RenderSettings->GetSection<RayTracing_ShadowSettings>().IsEnabled = true;
+        m_RenderSettings->GetSection<SigmaDenoiserSettings>().IsEnabled = true;
     }
 
     void SandboxRunner::InitTools()
@@ -105,8 +108,6 @@ namespace sandbox
     {
         BenzinLogTimeOnScopeExit("SandboxRunner::InitScene");
 
-        std::unordered_map<std::string, entt::entity> meshHandles;
-
         constexpr auto meshFileNames = std::to_array<std::string_view>(
         {
             "Sponza/glTF/Sponza.gltf",
@@ -118,106 +119,115 @@ namespace sandbox
 
         for (const std::string_view fileName : meshFileNames)
         {
-            benzin::MeshResource mesh;
-            std::vector<benzin::MaterialResource> materials;
+            benzin::Mesh mesh;
+            std::vector<benzin::MeshDrawPart> meshDrawParts;
+            std::vector<benzin::Material> materials;
             std::vector<benzin::TextureImage> textures;
-            BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, mesh, materials, textures));
+            BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, mesh, meshDrawParts, materials, textures));
 
-            std::string debugName = benzin::CutExtension(fileName);
-
-            const entt::entity meshHandle = m_Scene->AddMesh(debugName, std::move(mesh), std::move(materials), std::move(textures));
-            meshHandles[debugName] = meshHandle;
+            const std::string debugName = benzin::CutExtension(fileName);
+            m_Scene->AddMesh(debugName, std::move(mesh), std::move(meshDrawParts), std::move(materials), std::move(textures));
         }
 
-        auto& entityRegistry = m_Scene->GetEntityRegistry();
+        benzin::PerspectiveCamera& camera = m_Scene->m_Camera;
+        camera.SetPosition({ -1.649f, 1.007f, -1.555f });
+        camera.SetFrontDirection({ 0.769f, 0.129f, 0.627f });
+        camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
 
-        if (meshHandles.contains("Sponza"))
+        benzin::SunLight& sunLight = m_Scene->m_SunLight;
+        sunLight.SetColor({ 1.0f, 1.0f, 0.7f });
+        sunLight.SetIntensity(10.0f);
+
+        m_Scene->m_UpdateCallbacks.push_back([this]
         {
-            const auto entity = entityRegistry.create();
-
-            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles.at("Sponza"));
-
-            auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
-            transform.SetRotation({ 0.0f, DirectX::XM_PI, 0.0f });
-            transform.SetTranslation({ 5.0f, 0.0f, 0.0f });
-        }
-
-        if (meshHandles.contains("OrientationTest"))
-        {
-            const auto entity = entityRegistry.create();
-
-            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles.at("OrientationTest"));
-
-            auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
-            transform.SetScale({ 0.05f, 0.05f, 0.05f });
-            transform.SetTranslation({ 2.5f, 0.2f, -0.25f });
-        }
-
-        if (meshHandles.contains("MilkTruck"))
-        {
-            const auto entity = entityRegistry.create();
-
-            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles.at("MilkTruck"));
-
-            auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
-            transform.SetScale({ 0.1f, 0.1f, 0.1f });
-            transform.SetTranslation({ -1.5f, 0.2f, 0.5f });
-        }
-
-        if (meshHandles.contains("Cylinder"))
-        {
-            const auto entity = entityRegistry.create();
-
-            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles.at("Cylinder"));
-
-            auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
-            transform.SetScale({ 0.1f, 1.5f, 0.1f });
-            transform.SetTranslation({ -1.5f, 0.4f, -0.25f });
-        }
-
-        if (meshHandles.contains("BoomBox"))
-        {
-            const auto entity = entityRegistry.create();
-
-            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles.at("BoomBox"));
-
-            auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
-            transform.SetRotation({ 0.0f, DirectX::XMConvertToRadians(45.0f), 0.0f });
-            transform.SetScale({ 30.0f, 30.0f, 30.0f });
-            transform.SetTranslation({ 0.0f, 0.6f, 0.0f });
-
-            entityRegistry.emplace<benzin::EntityUpdateCallback>(entity, [this, &entityRegistry, entity]
+            const auto animateSunAngle = [this](float minAngle, float maxAngle, float& angle, float& direction)
             {
-                auto& transform = entityRegistry.get<benzin::Transform>(entity);
+                angle += direction * m_AnimationTimer.GetDeltaTimeInSec() * 0.01f;
 
-                auto rotation = transform.GetRotation();
-                rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
-                rotation.z += 0.0002f * m_AnimationTimer.GetDeltaTimeInMs();
+                if (!(minAngle <= angle && angle <= maxAngle))
+                {
+                    direction *= -1.0f;
+                }
+            };
 
-                transform.SetRotation(rotation);
+            static float elevationDirection = 1.0f;
+            static float azimithDirection = 1.0f;
+
+            float elevation = m_Scene->m_SunLight.GetElevationInRadians();
+            float azimuth = m_Scene->m_SunLight.GetAzimuthInRadians();
+
+            animateSunAngle(DirectX::XMConvertToRadians(41.0f), DirectX::XMConvertToRadians(52.0f), elevation, elevationDirection);
+            animateSunAngle(DirectX::XMConvertToRadians(-2.0f), DirectX::XMConvertToRadians(3.0f), azimuth, azimithDirection);
+
+            m_Scene->m_SunLight.SetElevationInRadians(elevation);
+            m_Scene->m_SunLight.SetAzimuthInRadians(azimuth);
+        });
+
+        if (m_Scene->m_MeshRangeMap.contains("Sponza"))
+        {
+            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("Sponza");
+            draw.m_Translation.x = 5.0f;
+            draw.m_Rotation.y = DirectX::XM_PI;
+        }
+
+        if (m_Scene->m_MeshRangeMap.contains("OrientationTest"))
+        {
+            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("OrientationTest");
+            draw.m_Translation = { 2.5f, 0.2f, -0.25f };
+            draw.m_Scale = 0.05f;
+        }
+
+        if (m_Scene->m_MeshRangeMap.contains("MilkTruck"))
+        {
+            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("MilkTruck");
+            draw.m_Translation = { -1.5f, 0.2f, 0.5f };
+            draw.m_Scale = 0.1f;
+        }
+
+        if (m_Scene->m_MeshRangeMap.contains("Cylinder"))
+        {
+            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("Cylinder");
+            draw.m_Translation = { -1.5f, 0.4f, -0.25f };
+            draw.m_Scale = 0.1f; // actually { 0.1f, 1.5f, 0.1f }
+        }
+
+        if (m_Scene->m_MeshRangeMap.contains("BoomBox"))
+        {
+            const size_t drawIndex = m_Scene->m_MeshDraws.size();
+
+            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("BoomBox");
+            draw.m_Translation.y = 0.6f;
+            draw.m_Rotation.y = DirectX::XMConvertToRadians(45.0f);
+            draw.m_Scale = 30.0f;
+
+            m_Scene->m_UpdateCallbacks.emplace_back([this, drawIndex]
+            {
+                benzin::MeshDraw& draw = m_Scene->m_MeshDraws[drawIndex];
+                draw.m_Rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
+                draw.m_Rotation.z += 0.0002f * m_AnimationTimer.GetDeltaTimeInMs();
             });
         }
 
-        if (meshHandles.contains("DamagedHelmet"))
+        if (m_Scene->m_MeshRangeMap.contains("DamagedHelmet"))
         {
-            const auto entity = entityRegistry.create();
+            const size_t drawIndex = m_Scene->m_MeshDraws.size();
 
-            entityRegistry.emplace<benzin::MeshComponent>(entity, meshHandles.at("DamagedHelmet"));
+            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("DamagedHelmet");
+            draw.m_Translation = { 1.0f, 0.5f, -0.5f };
+            draw.m_Rotation.y = DirectX::XMConvertToRadians(45.0f);
+            draw.m_Scale = 0.4f;
 
-            auto& transform = entityRegistry.emplace<benzin::Transform>(entity);
-            transform.SetRotation({ 0.0f, DirectX::XMConvertToRadians(45.0f), 0.0f });
-            // transform.SetScale({ 0.4f, 0.4f, 0.4f });
-            transform.SetTranslation({ 1.0f, 0.5f, -0.5f });
-
-            entityRegistry.emplace<benzin::EntityUpdateCallback>(entity, [this, &entityRegistry, entity]
+            m_Scene->m_UpdateCallbacks.emplace_back([this, drawIndex]
             {
-                auto& transform = entityRegistry.get<benzin::Transform>(entity);
-
-                auto rotation = transform.GetRotation();
-                rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
-                rotation.y -= 0.00015f * m_AnimationTimer.GetDeltaTimeInMs();
-
-                transform.SetRotation(rotation);
+                benzin::MeshDraw& draw = m_Scene->m_MeshDraws[drawIndex];
+                draw.m_Rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
+                draw.m_Rotation.y -= 0.00015f * m_AnimationTimer.GetDeltaTimeInMs();
             });
         }
 
@@ -227,175 +237,57 @@ namespace sandbox
             const int32_t zRadius = 70;
             const int32_t totalCount = (xRadius * 2 + 1) * (zRadius * 2 + 1);
 
-            std::vector<joint::GrassPatch> grassPatches;
-            grassPatches.reserve(totalCount);
+            m_Scene->m_GrassPatches.reserve(totalCount);
 
             for (auto x = -xRadius; x <= xRadius; ++x)
             {
                 for (auto z = -zRadius; z <= zRadius; ++z)
                 {
-                    auto& grassPatch = entityRegistry.emplace<joint::GrassPatch>(entityRegistry.create());
-
-                    grassPatch.Pos.x = (float)x * 0.07f + 6.0f;
-                    grassPatch.Pos.z = (float)z * 0.07f - 0.3f;
-
                     const DirectX::XMVECTOR normal = DirectX::XMVector3Normalize(DirectX::XMVECTOR
                     {
                         benzin::Random::Get<float>(-0.1f, 0.1f),
                         1.0f,
                         benzin::Random::Get<float>(-0.1f, 0.1f),
-                        0.0f
+                        0.0f,
                     });
-                    DirectX::XMStoreFloat3(&grassPatch.Normal, normal);
 
+                    joint::GrassPatch& grassPatch = m_Scene->m_GrassPatches.emplace_back();
+                    grassPatch.Pos.x = (float)x * 0.07f + 6.0f;
+                    grassPatch.Pos.z = (float)z * 0.07f - 0.3f;
                     grassPatch.Height = benzin::Random::Get<float>(0.07f, 0.13f);
+                    DirectX::XMStoreFloat3(&grassPatch.Normal, normal);
                 }
             }
         }
-
-        // Sun
-        {
-            const auto entity = m_Scene->GetSunEntity();
-
-            auto& light = entityRegistry.get_or_emplace<benzin::SunLight>(entity);
-            light.SetColor({ 1.0f, 1.0f, 0.7f });
-            light.SetIntensity(10.0f);
-
-            entityRegistry.emplace<benzin::EntityUpdateCallback>(entity, [this, &entityRegistry, entity]
-            {
-                const auto animateSunAngle = [this](
-                    float minAngleInRadians,
-                    float maxAngleInRadians,
-                    float& outAngleInRadians,
-                    float& outDirection
-                )
-                {
-                    constexpr float speed = 0.01f;
-
-                    outAngleInRadians += outDirection * m_AnimationTimer.GetDeltaTimeInSec() * speed;
-
-                    if (!(minAngleInRadians <= outAngleInRadians && outAngleInRadians <= maxAngleInRadians))
-                    {
-                        outDirection *= -1.0f;
-                    }
-                };
-
-                static float elevationDirection = 1.0f;
-                static float azimithDirection = 1.0f;
-
-                auto& light = entityRegistry.get<benzin::SunLight>(entity);
-
-                float elevation = light.GetElevationInRadians();;
-                animateSunAngle(DirectX::XMConvertToRadians(41.0f), DirectX::XMConvertToRadians(52.0f), elevation, elevationDirection);
-                light.SetElevationInRadians(elevation);
-
-                float azimuth = light.GetAzimuthInRadians();
-                animateSunAngle(DirectX::XMConvertToRadians(-2.0f), DirectX::XMConvertToRadians(3.0f), azimuth, azimithDirection);
-                light.SetAzimuthInRadians(azimuth);
-            });
-        }
-
-        {
-            const auto entity = entityRegistry.create();
-
-            entityRegistry.emplace<benzin::MeshComponent>(entity, m_Scene->GetUnitSphereMeshHandle());
-
-            auto& light = entityRegistry.emplace<benzin::SphericalLight>(entity);
-            light.SetIntensity(5.0f);
-            light.SetPosition({ 0.5f, 2.0f, -0.25f });
-            light.SetRadius(0.03f);
-            light.SetRange(10.0f);
-            light.SetEnabled(false);
-
-            entityRegistry.emplace<benzin::EntityUpdateCallback>(entity, [this, &entityRegistry, entity]
-            {
-                constexpr float travelRadius = 1.0f;
-                constexpr float travelSpeed = 0.5f;
-
-                auto& light = entityRegistry.get<benzin::SphericalLight>(entity);
-
-                static const float startX = light.GetPosition().x;
-                static const float startZ = light.GetPosition().z;
-
-                auto position = light.GetPosition();
-                position.x = startX + travelRadius * std::cos(travelSpeed * m_AnimationTimer.GetElapsedTimeInSec());
-                position.z = startZ + travelRadius * std::sin(travelSpeed * m_AnimationTimer.GetElapsedTimeInSec());
-
-                light.SetPosition(position);
-            });
-        }
-
-        {
-            const auto entity = entityRegistry.create();
-
-            entityRegistry.emplace<benzin::MeshComponent>(entity, m_Scene->GetUnitSphereMeshHandle());
-
-            auto& light = entityRegistry.emplace<benzin::SphericalLight>(entity);
-            light.SetColor({ 0.7f, 0.8f, 0.3f });
-            light.SetIntensity(10.0f);
-            light.SetPosition({ 0.0f, 3.0f, 1.25f });
-            light.SetRadius(0.01f);
-            light.SetRange(30.0f);
-            light.SetEnabled(false);
-        }
-
-        {
-            const auto entity = entityRegistry.create();
-
-            entityRegistry.emplace<benzin::MeshComponent>(entity, m_Scene->GetUnitSphereMeshHandle());
-
-            auto& light = entityRegistry.emplace<benzin::SphericalLight>(entity);
-            light.SetColor({ 0.9f, 0.7f, 0.8f });
-            light.SetIntensity(15.0f);
-            light.SetPosition({ 1.5f, 4.0f, -1.0f });
-            light.SetRadius(0.02f);
-            light.SetRange(20.0f);
-            light.SetEnabled(false);
-
-            entityRegistry.emplace<benzin::EntityUpdateCallback>(entity, [this, &entityRegistry, entity]
-            {
-                constexpr float speed = 1.5f;
-                constexpr float min = -1.0f;
-                constexpr float max = 12.0f;
-
-                static float direction = 1.0f;
-
-                auto& light = entityRegistry.get<benzin::SphericalLight>(entity);
-
-                auto position = light.GetPosition();
-                position.x += direction * speed * m_AnimationTimer.GetDeltaTimeInSec();
-
-                if (position.x < min || position.x > max)
-                {
-                    position.x = std::clamp(position.x, min, max);
-                    direction *= -1.0f;
-                }
-
-                light.SetPosition(position);
-            });
-        }
-
-        benzin::PerspectiveCamera& camera = m_Scene->GetCamera();
-        camera.SetPosition({ -1.649f, 1.007f, -1.555f });
-        camera.SetFrontDirection({ 0.769f, 0.129f, 0.627f });
-        camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
     }
 
     // StanfordDragonRunner
 
     void StanfordDragonRunner::InitScene()
     {
-        benzin::PerspectiveCamera& camera = m_Scene->GetCamera();
+        benzin::PerspectiveCamera& camera = m_Scene->m_Camera;
         camera.SetPosition({ -2.286f, 3.911f, -18.385f });
         camera.SetFrontDirection({ 0.149f, -0.185f, 0.972f });
         camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
 
-        benzin::MeshResource dragon;
-        std::vector<benzin::MaterialResource> materials;
-        std::vector<benzin::TextureImage> textures;
-        BenzinAssertExpr(benzin::LoadMeshFromGltfFile("StanfordDragon/StanfordDragon.glb", dragon, materials, textures));
+        benzin::Mesh dragon;
+        std::vector<benzin::MeshDrawPart> dragonDrawParts;
+        std::vector<benzin::Material> dragonMaterials;
+        std::vector<benzin::TextureImage> dragonTextures;
+        BenzinAssertExpr(benzin::LoadMeshFromGltfFile(
+            "StanfordDragon/StanfordDragon.glb",
+            dragon,
+            dragonDrawParts,
+            dragonMaterials,
+            dragonTextures));
 
-        const entt::entity dragonMeshHandle = m_Scene->AddMesh("StanfordDragon", std::move(dragon), std::move(materials), std::move(textures));
+        m_Scene->AddMesh(
+            "StanfordDragon",
+            std::move(dragon),
+            std::move(dragonDrawParts),
+            std::move(dragonMaterials),
+            std::move(dragonTextures));
+
         const int32_t radius = 3;
 
         for (auto x = -radius; x <= radius; ++x)
@@ -404,35 +296,18 @@ namespace sandbox
             {
                 for (auto z = -radius; z <= radius; ++z)
                 {
-                    const auto entity = m_Scene->GetEntityRegistry().create();
-
-                    m_Scene->GetEntityRegistry().emplace<benzin::MeshComponent>(entity, dragonMeshHandle);
-
-                    DirectX::XMFLOAT3 translation{};
-                    translation.x = (float)x * 2.5f;
-                    translation.y = (float)y * 2.5f;
-                    translation.z = (float)z * 2.5f;
-
-                    DirectX::XMFLOAT3 rotation{};
-                    rotation.x = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
-                    rotation.y = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
-                    rotation.z = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
-
-                    const float scaleFactor = benzin::Random::Get<float>(0.05f, 0.1f);
-
-                    auto& transform = m_Scene->GetEntityRegistry().emplace<benzin::Transform>(entity);
-                    transform.SetTranslation(translation);
-                    transform.SetRotation(rotation);
-                    transform.SetScale({ scaleFactor, scaleFactor, scaleFactor });
+                    benzin::MeshDraw& meshDraw = m_Scene->m_MeshDraws.emplace_back();
+                    meshDraw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("StanfordDragon");
+                    meshDraw.m_Translation.x = (float)x * 2.5f;
+                    meshDraw.m_Translation.y = (float)y * 2.5f;
+                    meshDraw.m_Translation.z = (float)z * 2.5f;
+                    meshDraw.m_Rotation.x = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
+                    meshDraw.m_Rotation.y = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
+                    meshDraw.m_Rotation.z = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
+                    meshDraw.m_Scale = 1.0f;
                 }
             }
         }
-
-        const auto entity = m_Scene->GetSunEntity();
-
-        auto& light = m_Scene->GetEntityRegistry().get_or_emplace<benzin::SunLight>(entity);
-        light.SetColor({ 1.0f, 1.0f, 0.7f });
-        light.SetIntensity(10.0f);
     }
 
 }

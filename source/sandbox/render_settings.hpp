@@ -19,8 +19,6 @@ namespace sandbox
 
         static constexpr auto s_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint; // TODO: Can be used D32 instead
 
-        joint::DebugColoringType ColoringType = joint::DebugColoringType::Instance;
-
         bool IsCpuFrustumCullingEnabled = true;
         bool IsMeshPipelineUsed = true;
         bool IsAmplificationDispatchUsed = true;

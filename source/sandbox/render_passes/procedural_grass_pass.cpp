@@ -74,16 +74,13 @@ namespace sandbox
                 .MipCount = 1,
             });
 
-            auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_PerlinNoiseTexture->GetSizeInBytes());
+            benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_PerlinNoiseTexture->GetSizeInBytes());
             cmdList.UploadToTexture(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.m_PixelData));
         }
         
         {
-            const auto grassPatchView = ms_Scene->GetEntityRegistry().view<joint::GrassPatch>();
-            if (grassPatchView.empty())
-            {
+            if (ms_Scene->m_GrassPatches.empty())
                 return;
-            }
 
             ms_Resources->Create(BufferId::ProceduralGrass_GrassPatches, benzin::BufferCreation
             {
@@ -91,24 +88,15 @@ namespace sandbox
                 .HeapType = benzin::GpuHeapType::Default,
                 .Type = benzin::BufferType::Structured,
                 .ElementSizeInBytes = sizeof(joint::GrassPatch),
-                .ElementCount = (uint32_t)grassPatchView.size(),
+                .ElementCount = (uint32_t)ms_Scene->m_GrassPatches.size(),
             });
 
-            auto& grassPatchBuffer = const_cast<benzin::Buffer&>(ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches));
-
-            auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(grassPatchBuffer.GetSizeInBytes());
-            for (const auto [i, entityHandle] : grassPatchView | std::views::enumerate)
-            {
-                // TODO: Maybe there is opportunity to use raw pointer as array to upload to GPU?
-
-                const auto patchData = benzin::ToSingleByteSpan(grassPatchView.get<joint::GrassPatch>(entityHandle));
-                const auto patchOffsetInBytes = (uint32_t)patchData.size_bytes() * i;
-            
-                cmdList.UploadToBuffer(grassPatchBuffer, patchData, patchOffsetInBytes);
-            }
+            benzin::Buffer& buffer = const_cast<benzin::Buffer&>(ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches));
+            benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(buffer.GetSizeInBytes());
+            cmdList.UploadToBuffer(buffer, benzin::ToSpan(ms_Scene->m_GrassPatches));
 
             auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
-            stats.MaxPatchCount = (uint32_t)grassPatchBuffer.GetElementCount();
+            stats.MaxPatchCount = (uint32_t)buffer.GetElementCount();
         }
     }
 
