@@ -124,7 +124,7 @@ namespace benzin
     {
         m_FlushCount++;
 
-        BenzinLogTimeOnScopeExit("Flush Command queue {}. FlushCount: {}", GetD3DObjectDebugName(m_D3D12CommandQueue), m_FlushCount);
+        BenzinTraceScopeTime("Flush Command queue {}. FlushCount: {}", GetD3DObjectDebugName(m_D3D12CommandQueue), m_FlushCount);
 
         SignalFence(*m_FlushFence, m_FlushCount);
         m_FlushFence->StopCurrentThreadBeforeGpuFinish(m_FlushCount);

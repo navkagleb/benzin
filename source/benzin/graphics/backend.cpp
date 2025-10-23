@@ -2,7 +2,6 @@
 #include <benzin/graphics/backend.hpp>
 
 #include <benzin/core/cmd_line_args.hpp>
-#include <benzin/core/logger.hpp>
 #include <benzin/graphics/adl_wrapper.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/device.hpp>
@@ -47,7 +46,7 @@ namespace benzin
 
     Backend::~Backend()
     {
-        BenzinLogTimeOnScopeExit("Backend::~Backend");
+        BenzinTraceScopeTime("Backend::~Backend");
 
 #if BENZIN_IS_ASSERTS_ENABLED
         if (!CmdLineArgs::IsPixCapturerEnabled())

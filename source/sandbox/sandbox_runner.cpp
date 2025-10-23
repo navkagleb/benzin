@@ -1,19 +1,6 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/sandbox_runner.hpp>
 
-#include <benzin/core/logger.hpp>
-#include <benzin/engine/entity_components.hpp>
-#include <benzin/engine/geometry_generator.hpp>
-#include <benzin/engine/light.hpp>
-#include <benzin/engine/mesh.hpp>
-#include <benzin/engine/resource_loader.hpp>
-#include <benzin/engine/scene.hpp>
-#include <benzin/tools/render_viewport_tool.hpp>
-#include <benzin/tools/texture_viewer_tool.hpp>
-#include <benzin/utility/random.hpp>
-
-#include <shaders/joint/mesh_types.hpp>
-
 #include <sandbox/render_passes/deferred_lighting_pass.hpp>
 #include <sandbox/render_passes/environment_pass.hpp>
 #include <sandbox/render_passes/geometry_pass.hpp>
@@ -25,6 +12,18 @@
 #include <sandbox/render_passes/tone_mapping_pass.hpp>
 #include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
+
+#include <benzin/engine/entity_components.hpp>
+#include <benzin/engine/geometry_generator.hpp>
+#include <benzin/engine/light.hpp>
+#include <benzin/engine/mesh.hpp>
+#include <benzin/engine/resource_loader.hpp>
+#include <benzin/engine/scene.hpp>
+#include <benzin/tools/render_viewport_tool.hpp>
+#include <benzin/tools/texture_viewer_tool.hpp>
+#include <benzin/utility/random.hpp>
+
+#include <shaders/joint/mesh_types.hpp>
 
 BenzinEnableUnaryPlusForEnum(joint::ReadbackStat);
 
@@ -46,7 +45,7 @@ namespace sandbox
 
     void SandboxRunner::InitRenderPasses()
     {
-        BenzinLogTimeOnScopeExit("SandboxRunner::InitRenderPasses");
+        BenzinTraceScopeTime("SandboxRunner::InitRenderPasses");
 
         auto readbackStatsCallback = [this](std::span<const uint32_t> readbackStats)
         {
@@ -106,7 +105,7 @@ namespace sandbox
 
     void SponzaRunner::InitScene()
     {
-        BenzinLogTimeOnScopeExit("SandboxRunner::InitScene");
+        BenzinTraceScopeTime("SandboxRunner::InitScene");
 
         constexpr auto meshFileNames = std::to_array<std::string_view>(
         {

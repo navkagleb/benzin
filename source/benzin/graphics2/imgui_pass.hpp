@@ -1,6 +1,5 @@
 #pragma once
 
-#include <benzin/core/interval_timer.hpp>
 #include <benzin/graphics2/imgui_helpers.hpp> // TODO: Remove
 #include <benzin/graphics2/render_pass.hpp>
 #include <benzin/system/key_code.hpp>

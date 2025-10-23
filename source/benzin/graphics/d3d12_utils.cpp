@@ -2,7 +2,6 @@
 #include <benzin/graphics/d3d12_utils.hpp>
 
 #include <benzin/core/cmd_line_args.hpp>
-#include <benzin/core/logger.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 

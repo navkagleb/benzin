@@ -3,7 +3,6 @@
 
 #include <benzin/core/engine_math.hpp>
 #include <benzin/system/input.hpp>
-#include <benzin/utility/time_utils.hpp>
 
 namespace benzin
 {
@@ -150,7 +149,7 @@ namespace benzin
             translationSpeedFactor = 0.3f;
         }
 
-        const float delta = m_CameraTranslationSpeed * translationSpeedFactor * ToFloatMs(dt);
+        const float delta = m_CameraTranslationSpeed * translationSpeedFactor * dt.count() / 1000.0f;
         const DirectX::XMVECTOR& position = m_Camera->GetPosition();
 
         DirectX::XMVECTOR updatedPosition = DirectX::XMVectorZero();

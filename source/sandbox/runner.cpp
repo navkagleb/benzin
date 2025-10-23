@@ -2,9 +2,7 @@
 #include <sandbox/runner.hpp>
 
 #include <benzin/core/cmd_line_args.hpp>
-#include <benzin/core/logger.hpp>
 #include <benzin/core/profiler.hpp>
-#include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/ray_tracing_scene.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/backend.hpp>
@@ -13,7 +11,6 @@
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/swap_chain.hpp>
-#include <benzin/graphics/texture.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
@@ -31,15 +28,12 @@
 #include <benzin/tools/render_viewport_tool.hpp>
 #include <benzin/tools/vram_tool.hpp>
 
-#include <benzin/engine/entity_components.hpp> // TODO: Remove
-#include <shaders/joint/mesh_types.hpp>
-
 namespace sandbox
 {
 
     Runner::Runner()
     {
-        BenzinLogTimeOnScopeExit("Runner::Runner");
+        BenzinTraceScopeTime("Runner::Runner");
 
         benzin::MakeUniquePtr(m_MainWindow, benzin::WindowCreation
         {
@@ -94,7 +88,7 @@ namespace sandbox
 
     Runner::~Runner()
     {
-        BenzinLogTimeOnScopeExit("Runner::~Runner");
+        BenzinTraceScopeTime("Runner::~Runner");
 
         m_ImGuiManager->UnregisterTool<benzin::FlyCameraTool>();
         m_ImGuiManager->UnregisterTool<benzin::GpuInfoTool>();
@@ -131,7 +125,7 @@ namespace sandbox
 
     void Runner::RunZeroFrame()
     {
-        BenzinLogTimeOnScopeExit("Runner::RunZeroFrame");
+        BenzinTraceScopeTime("Runner::RunZeroFrame");
 
         m_RenderPasses.push_back(std::make_unique<benzin::GpuPrintPass>(m_GpuPrintData));
         InitRenderPasses();

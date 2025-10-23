@@ -2,11 +2,9 @@
 #include <benzin/tools/performance_overlay_tool.hpp>
 
 #include <benzin/core/cmd_line_args.hpp>
-#include <benzin/core/tick_timer.hpp>
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics2/shader_manager.hpp>
 #include <benzin/system/window.hpp>
-#include <benzin/utility/time_utils.hpp>
 
 namespace benzin
 {
@@ -20,7 +18,7 @@ namespace benzin
         ms_IntervalTimer->AddCallback([this](float timeInMs, uint32_t frameCount)
         {
             m_AvgDeltaTimeInMs = timeInMs / frameCount;
-            m_AvgFps = 1.0f / MsToFloatSec(m_AvgDeltaTimeInMs);
+            m_AvgFps = 1.0f / (m_AvgDeltaTimeInMs / 1000.0f);
         });
     }
 

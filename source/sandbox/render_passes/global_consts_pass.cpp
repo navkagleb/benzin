@@ -6,7 +6,6 @@
 
 #include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
-#include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>

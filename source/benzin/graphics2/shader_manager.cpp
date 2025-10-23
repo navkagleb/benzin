@@ -3,7 +3,6 @@
 
 #include "benzin/core/cmd_line_args.hpp"
 #include "benzin/core/profiler.hpp"
-#include "benzin/utility/time_utils.hpp"
 
 namespace benzin
 {
@@ -13,13 +12,12 @@ namespace benzin
     static void LogShaderInfo(std::string_view stageName, std::chrono::microseconds stageTime, const ShaderInfo& shader)
     {
         BenzinTrace(
-            "{}. {}, {} ({}), {} ({:.3f} ms)",
+            "{}. {} ({}) {} ({:.3f} ms)",
             stageName,
-            magic_enum::enum_name(shader.GetType()),
             shader.GetFileName(),
             !shader.GetEntryPoint().empty() ? shader.GetEntryPoint() : "\"-\"",
             shader.GetDefines(),
-            ToFloatMs(stageTime));
+            stageTime.count() / 1000.0f);
     }
 
     static bool IsIncludeShader(std::wstring_view fileName)

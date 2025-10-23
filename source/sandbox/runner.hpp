@@ -1,6 +1,5 @@
 #pragma once
 
-#include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/camera.hpp>
 #include <benzin/graphics2/gpu_print_pass.hpp>
 #include <benzin/graphics2/render_pass.hpp>
@@ -75,7 +74,7 @@ namespace sandbox
         bool m_IsRunning = true;
         bool m_IsVsyncEnabled = false;
         bool m_IsPendingResize = false;
-        bool m_IsAnimationEnabled = true;
+        bool m_IsAnimationEnabled = false;
     };
 
 }

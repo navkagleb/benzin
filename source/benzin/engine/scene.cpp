@@ -8,7 +8,6 @@
 #include <benzin/core/engine_math.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
-#include <benzin/core/tick_timer.hpp>
 #include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/geometry_generator.hpp>
 #include <benzin/engine/light.hpp>
@@ -68,7 +67,7 @@ namespace benzin
         std::vector<TextureImage>&& textures)
     {
         {
-            BenzinLogTimeOnScopeExit("{} mesh optimization + meshlet generation", debugName);
+            BenzinTraceScopeTime("{} mesh optimization + meshlet generation", debugName);
 
             OptimizeMesh(mesh);
             GenerateMeshlets(mesh);
@@ -147,7 +146,7 @@ namespace benzin
     {
         // TODO: CalcUploadBufferSize + UploadToGpu methods to remove reference to GraphicsCmdList in Scene class
 
-        BenzinLogTimeOnScopeExit("Scene::UploadToGpu");
+        BenzinTraceScopeTime("Scene::UploadToGpu");
 
         {
             uint64_t uploadSizeInBytes = 0;

@@ -25,7 +25,7 @@
 #include <benzin/core/common.hpp>
 #include <benzin/core/enum_flags.hpp>
 #include <benzin/core/log.hpp>
-#include <benzin/core/scoped_timer.hpp>
+#include <benzin/core/timers.hpp>
 
 #if !defined(BENZIN_FRAME_COUNT)
     #define BENZIN_FRAME_COUNT 3

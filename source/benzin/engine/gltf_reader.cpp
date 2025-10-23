@@ -115,7 +115,7 @@ namespace benzin
         const std::string filePathStr = filePath.string();
 
         {
-            BenzinLogTimeOnScopeExit("GLTF Reader: LoadFromFile {}", filePathStr);
+            BenzinTraceScopeTime("GLTF Reader: LoadFromFile {}", filePathStr);
 
             if (filePath.extension() == ".glb")
             {

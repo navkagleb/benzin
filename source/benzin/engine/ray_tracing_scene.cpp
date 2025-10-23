@@ -32,7 +32,7 @@ namespace benzin
 
     void RayTracing_Scene::BuildBlases()
     {
-        BenzinLogTimeOnScopeExit("RayTracing_Scene::BuildBlases");
+        BenzinTraceScopeTime("RayTracing_Scene::BuildBlases");
 
         uint32_t drawPartCount = 0;
         for (const MeshRange& meshRange : m_Scene.m_MeshRanges)

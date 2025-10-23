@@ -78,7 +78,7 @@ namespace benzin
 
     Device::~Device()
     {
-        BenzinLogTimeOnScopeExit("Device::~Device");
+        BenzinTraceScopeTime("Device::~Device");
 
         m_ConstBufferAllocator.reset();
 
