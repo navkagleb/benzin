@@ -29,6 +29,7 @@ namespace benzin
         return power;
     }
 
-    bool IsMatrixEqual(const DirectX::XMMATRIX lhs, const DirectX::XMMATRIX& rhs, float epsilon = 1e-6f);
+    DirectX::XMVECTOR GetDirectionFromPitchYaw(float pitch, float yaw);
+    DirectX::XMFLOAT2 GetPitchYawFromDirection(const DirectX::XMVECTOR& direction);
 
 }

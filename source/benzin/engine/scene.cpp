@@ -1,11 +1,8 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/engine/scene.hpp>
 
-#include <shaders/joint/mesh_types.hpp>
-#include <shaders/joint/light.hpp>
-
 #include <benzin/core/cmd_line_args.hpp>
-#include <benzin/core/engine_math.hpp>
+#include <benzin/core/math.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/geometry_generator.hpp>
@@ -17,6 +14,8 @@
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/texture.hpp>
+
+#include <shaders/joint/mesh_types.hpp>
 
 namespace benzin
 {

@@ -4,20 +4,27 @@
 namespace benzin
 {
 
-    bool IsMatrixEqual(const DirectX::XMMATRIX lhs, const DirectX::XMMATRIX& rhs, float epsilon)
+    DirectX::XMVECTOR GetDirectionFromPitchYaw(float pitch, float yaw)
     {
-        using namespace DirectX;
+        // Pitch - vertical angle (in radians)
+        // Yaw - horizontal angle (in radians)
 
-        for (uint32_t i = 0; i < 4; ++i)
-        {
-            const XMVECTOR diff = XMVectorAbs(XMVectorSubtract(lhs.r[i], rhs.r[i]));
-            if (!XMVector4LessOrEqual(diff, XMVectorReplicate(epsilon)))
-            {
-                return false;
-            }
-        }
+        return DirectX::XMVector3Normalize(DirectX::XMVectorSet(
+            DirectX::XMScalarCos(yaw) * DirectX::XMScalarCos(pitch),
+            DirectX::XMScalarSin(pitch),
+            DirectX::XMScalarSin(yaw) * DirectX::XMScalarCos(pitch),
+            0.0f));
+    }
 
-        return true;
+    DirectX::XMFLOAT2 GetPitchYawFromDirection(const DirectX::XMVECTOR& direction)
+    {
+        DirectX::XMFLOAT3 direction3;
+        DirectX::XMStoreFloat3(&direction3, direction);
+
+        float pitch = std::asin(direction3.y);
+        float yaw = std::atan2(direction3.z, direction3.x);
+
+        return DirectX::XMFLOAT2{ pitch, yaw };
     }
 
 }

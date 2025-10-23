@@ -4,7 +4,6 @@
 #include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
-#include <benzin/core/engine_math.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/scene.hpp>
@@ -24,6 +23,27 @@ BenzinEnableUnaryPlusForEnum(joint::SigmaTemporalStabilizationResources)
 
 namespace sandbox
 {
+
+    static float GetWeylSequence(float seed, uint32_t n)
+    {
+        // Ref: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
+        // [0, 1)
+
+        float integerPart;
+        return std::modf(seed + (float)(n * 10368889) / std::exp2(24.0f), &integerPart);
+    }
+
+    static DirectX::XMFLOAT4 GetRotator(float angleInRadians)
+    {
+        // Ref: https://en.wikipedia.org/wiki/Rotation_matrix
+        // This is 2x2 rotation matrix
+
+        const float cosAngle = DirectX::XMScalarCos(angleInRadians);
+        const float sinAngle = DirectX::XMScalarSin(angleInRadians);
+
+        // TODO: Do I need to transpose it?
+        return DirectX::XMFLOAT4{ cosAngle, sinAngle, -sinAngle, cosAngle };
+    }
 
     static uint32_t GetMaxHistoryLength(uint32_t maxHistoryLength, float fps)
     {
@@ -119,9 +139,9 @@ namespace sandbox
             return;
 
         // TODO: Do I need cast to u32?
-        const float rotatorAngleInRadians = benzin::GetWeylSequence(0.0f, (uint32_t)ms_Device->GetCpuFrameIndex()) * DirectX::XMConvertToRadians(90.0f);
-        const DirectX::XMFLOAT4 blurRotator = benzin::GetRotator(rotatorAngleInRadians);
-        const DirectX::XMFLOAT4 postBlurRotator = benzin::GetRotator(rotatorAngleInRadians + DirectX::XMConvertToRadians(45.0f));
+        const float rotatorAngleInRadians = GetWeylSequence(0.0f, (uint32_t)ms_Device->GetCpuFrameIndex()) * DirectX::XMConvertToRadians(90.0f);
+        const DirectX::XMFLOAT4 blurRotator = GetRotator(rotatorAngleInRadians);
+        const DirectX::XMFLOAT4 postBlurRotator = GetRotator(rotatorAngleInRadians + DirectX::XMConvertToRadians(45.0f));
 
         const float fps = 1.0f / ms_FrameTimer->GetDeltaTimeInSec();
         settings.HistoryLength = GetMaxHistoryLength(settings.MaxHistoryLength, fps);

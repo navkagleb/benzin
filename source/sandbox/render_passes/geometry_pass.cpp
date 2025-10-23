@@ -5,8 +5,6 @@
 #include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
-#include <benzin/core/buffer_writer.hpp>
-#include <benzin/core/engine_math.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/mesh.hpp>
@@ -20,6 +18,7 @@
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
+
 #include <shaders/joint/depth_reprojection_resources.hpp>
 #include <shaders/joint/geometry_resources.hpp>
 #include <shaders/joint/mesh_types.hpp>

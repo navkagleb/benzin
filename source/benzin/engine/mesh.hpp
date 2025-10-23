@@ -19,8 +19,6 @@ namespace benzin
         std::vector<uint32_t> Indices;
 
         D3D_PRIMITIVE_TOPOLOGY D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
-
-        std::optional<DirectX::BoundingBox> BoundingBox;
     };
 
     inline constexpr uint32_t g_MaxU32 = std::numeric_limits<uint32_t>::max();

@@ -3,9 +3,7 @@
 
 #include <shaders/joint/mesh_types.hpp>
 
-#include "benzin/core/engine_math.hpp"
 #include "benzin/engine/mesh.hpp"
-#include "benzin/engine/scene.hpp"
 
 namespace benzin
 {
@@ -556,8 +554,6 @@ namespace benzin
             meshData.Vertices[i].Uv.x = theta / DirectX::XM_2PI;
             meshData.Vertices[i].Uv.y = phi / DirectX::XM_PI;
         }
-
-        meshData.BoundingBox = ComputeBoundingBox(meshData.Vertices);
 
         return meshData;
     }

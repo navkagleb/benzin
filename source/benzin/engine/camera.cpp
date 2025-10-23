@@ -1,7 +1,7 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/engine/camera.hpp>
 
-#include <benzin/core/engine_math.hpp>
+#include <benzin/core/math.hpp>
 #include <benzin/system/input.hpp>
 
 namespace benzin

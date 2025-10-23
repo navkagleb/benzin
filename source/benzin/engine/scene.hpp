@@ -1,6 +1,6 @@
 #pragma once
 
-#include <benzin/core/engine_math.hpp> // TODO: Remove with SunLight::CalcToSunDirection
+#include <benzin/core/math.hpp> // TODO: Remove with SunLight::CalcToSunDirection
 #include <benzin/engine/camera.hpp>
 #include <benzin/engine/mesh.hpp>
 
