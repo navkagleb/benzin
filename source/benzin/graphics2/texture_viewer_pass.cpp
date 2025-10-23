@@ -104,8 +104,10 @@ namespace benzin
 
             cmdList.SetComputeRootResource(*Resources::ReferenceTexture, ms_Resources->Get(m_ReferenceTextureId).GetSrv(
             {
-                .DepthRange = (uint16_t)m_ViewerData.m_ActiveDepthIndex,
-                .MipRange = (uint16_t)m_ViewerData.m_ActiveMipIndex,
+                .m_DepthOffset = m_ViewerData.m_ActiveDepthIndex,
+                .m_DepthCount = 1,
+                .m_MipOffset = m_ViewerData.m_ActiveMipIndex,
+                .m_MipCount = 1,
             }));
 
             cmdList.SetComputeRootResource(*Resources::OutDebugTexture, debugTexture.GetUav());

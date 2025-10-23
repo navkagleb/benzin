@@ -39,7 +39,7 @@ namespace benzin
         bool IsGpuValid() const { return IsCpuValid() && m_GpuHandle != 0; }
 
     private:
-        DescriptorType m_Type = g_BadEnum<DescriptorType>;
+        DescriptorType m_Type = g_MaxEnum<DescriptorType>;
         uint32_t m_GpuHeapIndex = 0;
         uint64_t m_CpuHandle = 0;
         uint64_t m_GpuHandle = 0;

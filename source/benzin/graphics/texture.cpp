@@ -1,79 +1,16 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/texture.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/texture.hpp>
 
-#include "benzin/graphics/common.hpp"
-#include "benzin/graphics/d3d12_utils.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/d3d12_assert.hpp"
+#include <benzin/graphics/common.hpp>
+#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
+#include <benzin/graphics/device.hpp>
 
 namespace benzin
 {
 
+    struct TextureRtv {};
     struct TextureDsv {};
-
-    static void ValidateFormat(GraphicsFormat referenceFormat, GraphicsFormat& outFormat)
-    {
-        outFormat = outFormat != GraphicsFormat::Unknown ? outFormat : referenceFormat;
-    }
-
-    static void ValidateRange(uint16_t maxCount, SubRange16& range)
-    {
-        if (range.IsGoodRange())
-        {
-            BenzinAssert(range.GetEndCount() <= maxCount);
-            return;
-        }
-
-        BenzinAssert(range.m_Offset == 0);
-        range.m_Count = GetGoodUintOr(range.m_Count, maxCount);
-    }
-
-    static void ValidateTextureSrv(const Texture& texture, TextureSrv& outTextureSrv)
-    {
-        BenzinAssert(texture.GetD3D12Resource() != nullptr);
-
-        // Set default format for depth stencil if format is not set
-        if (texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowDepthStencil) && outTextureSrv.Format == GraphicsFormat::Unknown)
-        {
-            BenzinAssert(texture.GetFormat() == GraphicsFormat::D24Unorm_S8Uint);
-            outTextureSrv.Format = GraphicsFormat::R24Unorm_X8Typeless;
-        }
-
-        outTextureSrv.IsCubeMap = outTextureSrv.IsCubeMap ? true : texture.IsCubeMap();
-
-        ValidateFormat(texture.GetFormat(), outTextureSrv.Format);
-        ValidateRange(texture.GetDepth(), outTextureSrv.DepthRange);
-        ValidateRange(texture.GetMipCount(), outTextureSrv.MipRange);
-    }
-
-    static void ValidateTextureUav(const Texture& texture, TextureUav& outTextureUav)
-    {
-        BenzinAssert(texture.GetD3D12Resource() != nullptr);
-        BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowUnorderedAccess));
-        BenzinAssert(outTextureUav.MipIndex < texture.GetMipCount());
-
-        ValidateFormat(texture.GetFormat(), outTextureUav.Format);
-        ValidateRange(texture.GetDepth(), outTextureUav.DepthRange);
-    }
-
-    static void ValidateTextureRtv(const Texture& texture, TextureRtv& outTextureRtv)
-    {
-        BenzinAssert(texture.GetD3D12Resource() != nullptr);
-        BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowRenderTarget));
-
-        ValidateFormat(texture.GetFormat(), outTextureRtv.Format);
-        ValidateRange(texture.GetDepth(), outTextureRtv.DepthRange);
-    }
-
-    static void ValidateTextureDsv(const Texture& texture)
-    {
-        BenzinUnused(texture);
-
-        // A stopgap for future implementation
-
-        BenzinAssert(texture.GetD3D12Resource() != nullptr);
-        BenzinAssert(texture.GetAccessFlags().IsSet(TextureAccessFlag::AllowDepthStencil));
-    }
 
     static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const TextureCreation& textureCreation)
     {
@@ -194,48 +131,35 @@ namespace benzin
 
     static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResourceViewDesc(const Texture& texture, const TextureSrv& textureSrv)
     {
-        D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc
-        {
-            .Format = (DXGI_FORMAT)textureSrv.Format,
-            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-        };
-
-        const auto mipCount = GetGoodUintOr(textureSrv.MipRange.m_Count, g_Bad32);
+        D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = {};
+        d3d12SrvDesc.Format = (DXGI_FORMAT)textureSrv.m_Format;
+        d3d12SrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
         const bool isArrayTexture = texture.GetDepth() > 1;;
         if (!isArrayTexture)
         {
             d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            d3d12SrvDesc.Texture2D = D3D12_TEX2D_SRV
-            {
-                .MostDetailedMip = textureSrv.MipRange.m_Offset,
-                .MipLevels = mipCount,
-                .PlaneSlice = 0,
-                .ResourceMinLODClamp = 0.0f,
-            };
+            d3d12SrvDesc.Texture2D.MostDetailedMip = textureSrv.m_MipOffset;
+            d3d12SrvDesc.Texture2D.MipLevels = textureSrv.m_MipCount;
+            d3d12SrvDesc.Texture2D.PlaneSlice = 0;
+            d3d12SrvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
         }
-        else if (textureSrv.IsCubeMap)
+        else if (textureSrv.m_IsCubeMap)
         {
             d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-            d3d12SrvDesc.TextureCube = D3D12_TEXCUBE_SRV
-            {
-                .MostDetailedMip = textureSrv.MipRange.m_Offset,
-                .MipLevels = mipCount,
-                .ResourceMinLODClamp = 0.0f,
-            };
+            d3d12SrvDesc.TextureCube.MostDetailedMip = textureSrv.m_MipOffset;
+            d3d12SrvDesc.TextureCube.MipLevels = textureSrv.m_MipCount;
+            d3d12SrvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
         }
         else
         {
             d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-            d3d12SrvDesc.Texture2DArray = D3D12_TEX2D_ARRAY_SRV
-            {
-                .MostDetailedMip = textureSrv.MipRange.m_Offset,
-                .MipLevels = mipCount,
-                .FirstArraySlice = textureSrv.DepthRange.m_Offset,
-                .ArraySize = textureSrv.DepthRange.m_Count,
-                .PlaneSlice = 0,
-                .ResourceMinLODClamp = 0.0f,
-            };
+            d3d12SrvDesc.Texture2DArray.MostDetailedMip = textureSrv.m_MipOffset;
+            d3d12SrvDesc.Texture2DArray.MipLevels = textureSrv.m_MipCount;
+            d3d12SrvDesc.Texture2DArray.FirstArraySlice = textureSrv.m_DepthOffset;
+            d3d12SrvDesc.Texture2DArray.ArraySize = textureSrv.m_DepthCount;
+            d3d12SrvDesc.Texture2DArray.PlaneSlice = 0;
+            d3d12SrvDesc.Texture2DArray.ResourceMinLODClamp = 0.0f;
         }
 
         return d3d12SrvDesc;
@@ -243,61 +167,37 @@ namespace benzin
 
     static D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(const Texture& texture, const TextureUav& textureUav)
     {
-        D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc
-        {
-            .Format = (DXGI_FORMAT)textureUav.Format
-        };
+        D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = {};
+        d3d12UavDesc.Format = (DXGI_FORMAT)texture.GetFormat();
 
         const bool isArrayTexture = texture.GetDepth() > 1;
         if (!isArrayTexture)
         {
             d3d12UavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            d3d12UavDesc.Texture2D = D3D12_TEX2D_UAV
-            {
-                .MipSlice = textureUav.MipIndex,
-                .PlaneSlice = 0,
-            };
+            d3d12UavDesc.Texture2D.MipSlice = textureUav.m_MipIndex;
+            d3d12UavDesc.Texture2D.PlaneSlice = 0;
         }
         else
         {
             d3d12UavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-            d3d12UavDesc.Texture2DArray = D3D12_TEX2D_ARRAY_UAV
-            {
-                .MipSlice = textureUav.MipIndex,
-                .FirstArraySlice = textureUav.DepthRange.m_Offset,
-                .ArraySize = textureUav.DepthRange.m_Count,
-                .PlaneSlice = 0,
-            };
+            d3d12UavDesc.Texture2DArray.MipSlice = textureUav.m_MipIndex;
+            d3d12UavDesc.Texture2DArray.FirstArraySlice = 0;
+            d3d12UavDesc.Texture2DArray.ArraySize = texture.GetDepth();
+            d3d12UavDesc.Texture2DArray.PlaneSlice = 0;
         }
 
         return d3d12UavDesc;
     }
 
-    static D3D12_RENDER_TARGET_VIEW_DESC ToD3D12RenderTargetViewDesc(const TextureRtv& textureRtv)
+    static D3D12_RENDER_TARGET_VIEW_DESC ToD3D12RenderTargetViewDesc(const Texture& texture)
     {
-        D3D12_RENDER_TARGET_VIEW_DESC d3d12RtvDesc{ .Format = (DXGI_FORMAT)textureRtv.Format };
+        BenzinAssert(texture.GetDepth() == 1);
 
-        const bool isArrayTexture = textureRtv.DepthRange.m_Count > 1;
-        if (!isArrayTexture)
-        {
-            d3d12RtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-            d3d12RtvDesc.Texture2D = D3D12_TEX2D_RTV
-            {
-                .MipSlice = 0,
-                .PlaneSlice = 0,
-            };
-        }
-        else
-        {
-            d3d12RtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-            d3d12RtvDesc.Texture2DArray = D3D12_TEX2D_ARRAY_RTV
-            {
-                .MipSlice = 0,
-                .FirstArraySlice = textureRtv.DepthRange.m_Offset,
-                .ArraySize = textureRtv.DepthRange.m_Count,
-                .PlaneSlice = 0,
-            };
-        }
+        D3D12_RENDER_TARGET_VIEW_DESC d3d12RtvDesc = {};
+        d3d12RtvDesc.Format = (DXGI_FORMAT)texture.GetFormat();
+        d3d12RtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+        d3d12RtvDesc.Texture2D.MipSlice = 0;
+        d3d12RtvDesc.Texture2D.PlaneSlice = 0;
 
         return d3d12RtvDesc;
     }
@@ -393,52 +293,56 @@ namespace benzin
 
     const Descriptor& Texture::GetSrv(const TextureSrv& textureSrv) const
     {
-        ValidateTextureSrv(*this, const_cast<TextureSrv&>(textureSrv));
-
         return TryGetViewDescriptor(
             GetStdHash(textureSrv),
-            [&] { return CreateDetachedSrv(textureSrv, false); }
-        );
+            [&] { return CreateDetachedSrv(const_cast<TextureSrv&>(textureSrv)); });
     }
 
     const Descriptor& Texture::GetUav(const TextureUav& textureUav) const
     {
-        BenzinAssert(m_CurrentState == ResourceState::UnorderedAccess);
-
-        ValidateTextureUav(*this, const_cast<TextureUav&>(textureUav));
-
         return TryGetViewDescriptor(
             GetStdHash(textureUav),
-            [&] { return CreateDetachedUav(textureUav, false); }
-        );
+            [&] { return CreateDetachedUav(textureUav); });
     }
 
-    const Descriptor& Texture::GetRtv(const TextureRtv& textureRtv) const
+    const Descriptor& Texture::GetRtv() const
     {
-        ValidateTextureRtv(*this, const_cast<TextureRtv&>(textureRtv));
-
         return TryGetViewDescriptor(
-            GetStdHash(textureRtv),
-            [&] { return CreateDetachedRtv(textureRtv, false); }
-        );
+            GetStdHash(TextureRtv{}),
+            [&] { return CreateDetachedRtv(); });
     }
 
     const Descriptor& Texture::GetDsv() const
     {
-        ValidateTextureDsv(*this);
-
         return TryGetViewDescriptor(
             GetStdHash(TextureDsv{}),
-            [&] { return CreateDetachedDsv(false); }
-        );
+            [&] { return CreateDetachedDsv(); });
     }
 
-    Descriptor Texture::CreateDetachedSrv(const TextureSrv& textureSrv, bool isValidationEnabled) const
+    Descriptor Texture::CreateDetachedSrv(TextureSrv& textureSrv) const
     {
-        if (isValidationEnabled)
+        // Set default format for depth stencil if format is not set
+        if (m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil) && textureSrv.m_Format == GraphicsFormat::Unknown)
         {
-            ValidateTextureSrv(*this, const_cast<TextureSrv&>(textureSrv));
+            BenzinAssert(m_Format == GraphicsFormat::D24Unorm_S8Uint);
+            textureSrv.m_Format = GraphicsFormat::R24Unorm_X8Typeless;
         }
+
+        textureSrv.m_IsCubeMap = textureSrv.m_IsCubeMap ? true : m_IsCubeMap;
+        textureSrv.m_Format = textureSrv.m_Format != GraphicsFormat::Unknown ? textureSrv.m_Format : m_Format;
+
+        if (textureSrv.m_DepthOffset == 0 && IsMaxUint(textureSrv.m_DepthCount))
+        {
+            textureSrv.m_DepthCount = m_Depth;
+        }
+
+        if (textureSrv.m_MipOffset == 0 && IsMaxUint(textureSrv.m_MipCount))
+        {
+            textureSrv.m_MipCount = m_MipCount;
+        }
+
+        BenzinAssert(textureSrv.m_DepthOffset + textureSrv.m_DepthCount <= m_Depth);
+        BenzinAssert(textureSrv.m_MipOffset + textureSrv.m_MipCount <= m_MipCount);
 
         return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Srv, [this, &textureSrv](uint64_t cpuHandle)
         {
@@ -447,17 +351,14 @@ namespace benzin
             m_Device.GetD3D12Device()->CreateShaderResourceView(
                 m_D3D12Resource,
                 &d3d12SrvDesc,
-                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
-            );
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle });
         });
     }
 
-    Descriptor Texture::CreateDetachedUav(const TextureUav& textureUav, bool isValidationEnabled) const
+    Descriptor Texture::CreateDetachedUav(const TextureUav& textureUav) const
     {
-        if (isValidationEnabled)
-        {
-            ValidateTextureUav(*this, const_cast<TextureUav&>(textureUav));
-        }
+        BenzinAssert(m_CurrentState == ResourceState::UnorderedAccess);
+        BenzinAssert(textureUav.m_MipIndex < m_MipCount);
 
         return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav, [this, &textureUav](uint64_t cpuHandle)
         {
@@ -467,44 +368,33 @@ namespace benzin
                 m_D3D12Resource,
                 nullptr,
                 &d3d12UavDesc,
-                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
-            );
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle });
         });
     }
 
-    Descriptor Texture::CreateDetachedRtv(const TextureRtv& textureRtv, bool isValidationEnabled) const
+    Descriptor Texture::CreateDetachedRtv() const
     {
-        if (isValidationEnabled)
-        {
-            ValidateTextureRtv(*this, const_cast<TextureRtv&>(textureRtv));
-        }
-
         return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Rtv, [&](uint64_t cpuHandle)
         {
-            const D3D12_RENDER_TARGET_VIEW_DESC d3d12RtvDesc = ToD3D12RenderTargetViewDesc(textureRtv);
+            const D3D12_RENDER_TARGET_VIEW_DESC d3d12RtvDesc = ToD3D12RenderTargetViewDesc(*this);
 
             m_Device.GetD3D12Device()->CreateRenderTargetView(
                 m_D3D12Resource,
                 &d3d12RtvDesc,
-                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
-            );
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle });
         });
     }
 
-    Descriptor Texture::CreateDetachedDsv(bool isValidationEnabled) const
+    Descriptor Texture::CreateDetachedDsv() const
     {
-        if (isValidationEnabled)
-        {
-            ValidateTextureDsv(*this);
-        }
+        BenzinAssert(m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil));
 
         return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Dsv, [&](uint64_t cpuHandle)
         {
             m_Device.GetD3D12Device()->CreateDepthStencilView(
                 m_D3D12Resource,
                 nullptr, // Default D3D12_DEPTH_STENCIL_VIEW_DESC
-                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle }
-            );
+                D3D12_CPU_DESCRIPTOR_HANDLE{ cpuHandle });
         });
     }
 
@@ -560,12 +450,12 @@ namespace benzin
 BenzinDefineStdHashForType(benzin::TextureSrv, textureSrv,
 {
     size_t hash = typeid(benzin::TextureSrv).hash_code();
-    hash = benzin::HashCombine(hash, textureSrv.Format);
-    hash = benzin::HashCombine(hash, textureSrv.IsCubeMap);
-    hash = benzin::HashCombine(hash, textureSrv.DepthRange.m_Offset);
-    hash = benzin::HashCombine(hash, textureSrv.DepthRange.m_Count);
-    hash = benzin::HashCombine(hash, textureSrv.MipRange.m_Offset);
-    hash = benzin::HashCombine(hash, textureSrv.MipRange.m_Count);
+    hash = benzin::HashCombine(hash, textureSrv.m_Format);
+    hash = benzin::HashCombine(hash, textureSrv.m_IsCubeMap);
+    hash = benzin::HashCombine(hash, textureSrv.m_DepthOffset);
+    hash = benzin::HashCombine(hash, textureSrv.m_DepthCount);
+    hash = benzin::HashCombine(hash, textureSrv.m_MipOffset);
+    hash = benzin::HashCombine(hash, textureSrv.m_MipCount);
 
     return hash;
 });
@@ -573,22 +463,14 @@ BenzinDefineStdHashForType(benzin::TextureSrv, textureSrv,
 BenzinDefineStdHashForType(benzin::TextureUav, textureUav,
 {
     size_t hash = typeid(benzin::TextureUav).hash_code();
-    hash = benzin::HashCombine(hash, textureUav.Format);
-    hash = benzin::HashCombine(hash, textureUav.MipIndex);
-    hash = benzin::HashCombine(hash, textureUav.DepthRange.m_Offset);
-    hash = benzin::HashCombine(hash, textureUav.DepthRange.m_Count);
+    hash = benzin::HashCombine(hash, textureUav.m_MipIndex);
 
     return hash;
 });
 
 BenzinDefineStdHashForType(benzin::TextureRtv, textureRtv,
 {
-    size_t hash = typeid(benzin::TextureRtv).hash_code();
-    hash = benzin::HashCombine(hash, textureRtv.Format);
-    hash = benzin::HashCombine(hash, textureRtv.DepthRange.m_Offset);
-    hash = benzin::HashCombine(hash, textureRtv.DepthRange.m_Count);
-
-    return hash;
+    return typeid(benzin::TextureRtv).hash_code();
 });
 
 BenzinDefineStdHashForType(benzin::TextureDsv, textureDsv,

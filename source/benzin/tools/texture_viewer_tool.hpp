@@ -15,7 +15,7 @@ namespace benzin
     {
         bool m_IsRenderingNeeded = false;
 
-        TextureId m_ReferenceTextureId = g_InvalidTextureId;
+        TextureId m_ReferenceTextureId = g_MaxEnum<TextureId>;
         bool m_IsReferenceTextureValid = false;
 
         uint32_t m_ActiveDepthIndex = 0;

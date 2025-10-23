@@ -425,7 +425,7 @@ namespace benzin
     uint32_t GltfReader::AddTextureMapping(int gltfTextureIndex, bool isSrgb)
     {
         if (gltfTextureIndex == -1)
-            return g_Bad32;
+            return g_MaxU32;
 
         if (!m_TextureMappings.contains(gltfTextureIndex))
         {

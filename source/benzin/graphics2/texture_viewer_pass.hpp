@@ -24,9 +24,8 @@ namespace benzin
     private:
         const TextureViewerData& m_ViewerData;
 
-        TextureId m_ReferenceTextureId = g_InvalidTextureId;
-
-        joint::TextureViewerConsts m_Consts{};
+        TextureId m_ReferenceTextureId = g_MaxEnum<TextureId>;
+        joint::TextureViewerConsts m_Consts = {};
     };
 
 }

@@ -6,10 +6,10 @@ namespace benzin
 
     static void ParseU32(std::string_view cmdLineToParse, void* member)
     {
-        auto memberValue = g_Bad32;
+        auto memberValue = g_MaxU32;
         const auto result = std::from_chars(cmdLineToParse.data(), cmdLineToParse.data() + cmdLineToParse.size(), memberValue);
 
-        BenzinAssert(result.ec == std::errc{} && IsGoodUint(memberValue));
+        BenzinAssert(result.ec == std::errc{} && !IsMaxUint(memberValue));
 
         auto& reinterpreMember = *((uint32_t*)member);
         reinterpreMember = memberValue;
@@ -44,7 +44,7 @@ namespace benzin
     static bool g_IsAdlWrapperEnabled = true;
     static bool g_IsNvApiWrapperEnabled = true;
 
-    static uint32_t g_AdapterIndex = g_Bad32;
+    static uint32_t g_AdapterIndex = g_MaxU32;
     static std::string_view g_AdapterName;
     static GraphicsFormat g_BackBufferFormat = GraphicsFormat::Rgba8Unorm;
     static bool g_IsGpuUploadHeapsEnabled = true;

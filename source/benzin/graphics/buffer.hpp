@@ -23,7 +23,7 @@ namespace benzin
     {
         std::string_view DebugName;
 
-        GpuHeapType HeapType = g_BadEnum<GpuHeapType>; // For committed resource
+        GpuHeapType HeapType = g_MaxEnum<GpuHeapType>; // For committed resource
         BufferType Type = BufferType::Byte;
         GraphicsFormat Format = GraphicsFormat::Unknown; // Uses for BufferType::Format
 
@@ -54,13 +54,11 @@ namespace benzin
         uint64_t GetSizeInBytes() const override;
         uint64_t GetGpuVirtualAddress(uint32_t elementIndex = 0) const;
 
-        const Descriptor& GetSrv(const SubRange64& elementRange = {}) const;
+        const Descriptor& GetSrv() const;
         const Descriptor& GetUav() const;
-        const Descriptor& GetCbv(uint32_t elementIndex = 0) const;
 
-        Descriptor CreateDetachedSrv(const SubRange64& elementRange = {}, bool isValidationEnabled = true) const;
+        Descriptor CreateDetachedSrv() const;
         Descriptor CreateDetachedUav() const;
-        Descriptor CreateDetachedCbv(uint32_t elementIndex) const;
 
         void MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, const MapReadbackCallback& callback) const;
 
@@ -68,7 +66,7 @@ namespace benzin
         void SetupCreation(const BufferCreation& creation, const GpuHeap* gpuHeap = nullptr);
 
     private:
-        GpuHeapType m_HeapType = g_BadEnum<GpuHeapType>;
+        GpuHeapType m_HeapType = g_MaxEnum<GpuHeapType>;
         BufferType m_Type = BufferType::Byte;
         GraphicsFormat m_Format = GraphicsFormat::Unknown;
         uint32_t m_ElementSizeInBytes = 0;

@@ -91,7 +91,7 @@ namespace benzin
 
         const auto updateTextureIndex = [this, textureOffset](uint32_t& textureIndex)
         {
-            if (textureIndex == g_MaxU32)
+            if (IsMaxUint(textureIndex))
                 return;
 
             textureIndex = m_Textures[textureIndex + textureOffset]->GetSrv().GetGpuHeapIndex();
@@ -115,7 +115,7 @@ namespace benzin
         {
             meshDrawPart.m_PartIndex += (uint32_t)m_MeshParts.size();
             
-            if (meshDrawPart.m_MaterialIndex == g_MaxU32)
+            if (IsMaxUint(meshDrawPart.m_MaterialIndex))
             {
                 meshDrawPart.m_MaterialIndex = 0; // Fallback material index
             }
@@ -257,7 +257,7 @@ namespace benzin
         for (uint32_t i = 0; i < m_MeshDraws.size(); ++i)
         {
             const MeshDraw& draw = m_MeshDraws[i];
-            BenzinAssert(draw.m_MeshRangeIndex != g_MaxU32);
+            BenzinAssert(!IsMaxUint(draw.m_MeshRangeIndex));
 
             const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(draw.m_Scale, draw.m_Scale, draw.m_Scale);
             const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(draw.m_Rotation.x) * DirectX::XMMatrixRotationY(draw.m_Rotation.y) * DirectX::XMMatrixRotationZ(draw.m_Rotation.z);

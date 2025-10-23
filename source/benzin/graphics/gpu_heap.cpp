@@ -15,7 +15,7 @@ namespace benzin
     GpuHeap::GpuHeap(Device& device, const GpuHeapCreation& creation)
         : m_Device{ device }
     {
-        BenzinAssert(IsGoodEnum(creation.Type));
+        BenzinAssert(!IsMaxEnum(creation.Type));
         BenzinAssert(creation.SizeInBytes != 0);
 
         const D3D12_HEAP_DESC d3d12HeapDesc
@@ -55,7 +55,7 @@ namespace benzin
         BufferCreation bufferCreation;
         configurator(bufferCreation);
 
-        BenzinAssert(!IsGoodEnum(bufferCreation.HeapType));
+        BenzinAssert(IsMaxEnum(bufferCreation.HeapType));
 
         return AllocateBuffer(bufferCreation);
     }

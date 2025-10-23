@@ -22,7 +22,7 @@ namespace benzin
     {
         std::string_view DebugName;
 
-        GpuHeapType Type = g_BadEnum<GpuHeapType>;
+        GpuHeapType Type = g_MaxEnum<GpuHeapType>;
         uint64_t SizeInBytes = 0;
     };
 
@@ -47,7 +47,7 @@ namespace benzin
 
         ID3D12Heap* m_D3D12Heap = nullptr;
 
-        GpuHeapType m_Type = g_BadEnum<GpuHeapType>;
+        GpuHeapType m_Type = g_MaxEnum<GpuHeapType>;
         uint64_t m_SizeInBytes = 0;
     };
 

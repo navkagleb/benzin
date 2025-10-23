@@ -7,20 +7,20 @@ namespace benzin
     {
         Amd = 0x1002,
         Nvidia = 0x10DE,
-        Other = g_Bad32,
+        Other = g_MaxU32,
     };
 
     struct AdapterInfo
     {
         std::string m_Name;
 
-        uint32_t m_VendorId = g_Bad32;
-        uint32_t m_DeviceId = g_Bad32;
+        uint32_t m_VendorId = g_MaxU32;
+        uint32_t m_DeviceId = g_MaxU32;
 
         uint64_t m_TotalLocalVramInBytes = 0;
         uint64_t m_TotalHostVramInBytes = 0;
 
-        uint32_t m_GpuCoreCount = g_Bad32;
+        uint32_t m_GpuCoreCount = g_MaxU32;
 
         bool IsAmd() const { return m_VendorId == (uint32_t)AdapterVendorId::Amd ;}
         bool IsNvidia() const { return m_VendorId == (uint32_t)AdapterVendorId::Nvidia; }
@@ -71,7 +71,7 @@ namespace benzin
         std::vector<IDXGIAdapter3*> m_DxgiAdapters;
         std::vector<AdapterInfo> m_AdaptersInfo;
 
-        uint32_t m_MainAdapterIndex = g_Bad32;
+        uint32_t m_MainAdapterIndex = g_MaxU32;
     };
 
 }

@@ -117,7 +117,7 @@ namespace sandbox
 
             cmdList.SetComputeRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
             cmdList.SetComputeRootResource(+Depth, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
-            cmdList.SetComputeRootResource(+BlueNoise, m_BlueNoiseTexture->GetSrv({ .DepthRange = m_BlueNoiseDepthIndex }));
+            cmdList.SetComputeRootResource(+BlueNoise, m_BlueNoiseTexture->GetSrv({ .m_DepthOffset = m_BlueNoiseDepthIndex, .m_DepthCount = 1 }));
 
             cmdList.SetComputeRootResource(+OutNoisyPenumbra, noisyPenumbra.GetUav());
         }

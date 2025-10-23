@@ -242,7 +242,7 @@ namespace sandbox
 
         using Resources = joint::DepthResprojectionResources;
         cmdList.SetComputeRootResource(*Resources::PrevDepth, prevDepth.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::ReprojectedDepth, hzb.GetUav({ .MipIndex = 0 }));
+        cmdList.SetComputeRootResource(*Resources::ReprojectedDepth, hzb.GetUav({ .m_MipIndex = 0 }));
 
         cmdList.Dispatch({ prevDepth.GetWidth(), prevDepth.GetHeight(), 1}, { 8, 8, 1 });
 
@@ -273,8 +273,8 @@ namespace sandbox
 
             {
                 using Resources = joint::DepthReductionResources;
-                cmdList.SetComputeRootResource(*Resources::SourceMip, hzb.GetSrv({ .MipRange = sourceMipIndex }));
-                cmdList.SetComputeRootResource(*Resources::DestMip, hzb.GetUav({ .MipIndex = destMipIndex }));
+                cmdList.SetComputeRootResource(*Resources::SourceMip, hzb.GetSrv({ .m_MipOffset = sourceMipIndex, .m_MipCount = 1 }));
+                cmdList.SetComputeRootResource(*Resources::DestMip, hzb.GetUav({ .m_MipIndex = destMipIndex }));
             }
 
             cmdList.Dispatch({ destMipWidth, destMipHeight, 1 }, { 8, 8, 1 });

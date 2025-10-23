@@ -14,9 +14,9 @@ namespace benzin
 
     struct QueryHeapCreation
     {
-        std::string_view DebugName;
-        QueryHeapType Type = g_BadEnum<QueryHeapType>;
-        uint32_t Count = 0;
+        std::string_view m_DebugName;
+        QueryHeapType m_Type = g_MaxEnum<QueryHeapType>;
+        uint32_t m_Count = 0;
     };
 
     class QueryHeap
@@ -34,9 +34,7 @@ namespace benzin
 
     private:
         Device& m_Device;
-
         ID3D12QueryHeap* m_D3D12QueryHeap = nullptr;
-
         uint32_t m_Count = 0;
     };
 

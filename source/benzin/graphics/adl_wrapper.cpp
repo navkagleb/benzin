@@ -110,9 +110,9 @@ namespace benzin
 
         const auto ConvertFrom16to10Base = [](std::string_view valueString)
         {
-            uint32_t value = g_Bad32;
+            uint32_t value = g_MaxU32;
             const auto result = std::from_chars(valueString.data(), valueString.data() + valueString.size(), value, 16);
-            BenzinAssert(result.ec == std::errc{} && IsGoodUint(value));
+            BenzinAssert(result.ec == std::errc{} && !IsMaxUint(value));
 
             return value;
         };

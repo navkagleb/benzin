@@ -28,9 +28,9 @@ namespace benzin
     {
         MakeUniquePtr(m_TimestampQueryHeap, device, QueryHeapCreation
         {
-            .DebugName = "GpuProfiler::Timestamp",
-            .Type = QueryHeapType::Timestamp,
-            .Count = ms_MaxTimestampCount,
+            .m_DebugName = "GpuProfiler::Timestamp",
+            .m_Type = QueryHeapType::Timestamp,
+            .m_Count = ms_MaxTimestampCount,
         });
 
         m_ReadbackBuffer = device.GetPersistentReadbackLinearAllocator().AllocateBuffer([](BufferCreation& creation)

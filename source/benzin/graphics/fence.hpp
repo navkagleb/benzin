@@ -8,7 +8,7 @@ namespace benzin
     struct FenceCreation
     {
         std::string_view DebugName;
-        uint64_t InitialValue = g_Bad64;
+        uint64_t InitialValue = g_MaxU64;
     };
 
     class Fence
@@ -31,4 +31,4 @@ namespace benzin
         HANDLE m_WaitEvent = nullptr;
     };
 
-} // namespace benzin
+}

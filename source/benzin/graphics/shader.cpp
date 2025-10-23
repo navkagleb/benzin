@@ -24,9 +24,7 @@ namespace benzin
     bool ShaderInfo::IsValid() const
     {
         if (m_Type == ShaderType::Library)
-        {
             return !m_FileName.empty();
-        }
 
         return !m_FileName.empty() && !m_EntryPoint.empty();
     }

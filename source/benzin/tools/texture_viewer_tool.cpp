@@ -34,7 +34,7 @@ namespace benzin
             (int)textureNames.size() - 1
         );
 
-        return textureNameIndex != -1 ? textureIndices[textureNameIndex] : g_InvalidTextureId;
+        return textureNameIndex != -1 ? textureIndices[textureNameIndex] : g_MaxEnum<TextureId>;
     }
 
     static void DrawTextureConfig(const Texture& texture)
@@ -94,7 +94,7 @@ namespace benzin
         }
 
         m_ViewerData.m_IsReferenceTextureValid =
-            m_ViewerData.m_ReferenceTextureId != g_InvalidTextureId &&
+            m_ViewerData.m_ReferenceTextureId != g_MaxEnum<TextureId> &&
             m_Resources.IsCreated(m_ViewerData.m_ReferenceTextureId);
 
         if (!m_ViewerData.m_IsReferenceTextureValid)

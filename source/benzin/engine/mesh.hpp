@@ -21,8 +21,6 @@ namespace benzin
         D3D_PRIMITIVE_TOPOLOGY D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     };
 
-    inline constexpr uint32_t g_MaxU32 = std::numeric_limits<uint32_t>::max();
-
     struct MeshPart
     {
         uint32_t m_VertexOffset = 0;

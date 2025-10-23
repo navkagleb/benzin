@@ -9,10 +9,6 @@ namespace benzin
     enum class PsoId : uint32_t;
     enum class TextureId : uint32_t;
 
-    inline constexpr auto g_InvalidBufferId = BufferId{ g_Bad32 };
-    inline constexpr auto g_InvalidTextureId = TextureId{ g_Bad32 };
-    inline constexpr auto g_InvalidPsoId = PsoId{ g_Bad32 };
-
     enum class ComparisonFunction : std::underlying_type_t<D3D12_COMPARISON_FUNC>
     {
         Never = D3D12_COMPARISON_FUNC_NEVER,

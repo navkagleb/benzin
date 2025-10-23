@@ -38,7 +38,7 @@ namespace benzin
         BenzinTrace("  Local VRAM: {:.2f} mb, {:.2f} gb", ToMb(mainAdapterInfo.m_TotalLocalVramInBytes), ToGb(mainAdapterInfo.m_TotalLocalVramInBytes));
         BenzinTrace("  Host VRAM: {:.2f} mb, {:.2f} gb", ToMb(mainAdapterInfo.m_TotalHostVramInBytes), ToGb(mainAdapterInfo.m_TotalHostVramInBytes));
 
-        if (mainAdapterInfo.m_GpuCoreCount != g_Bad32)
+        if (!IsMaxUint(mainAdapterInfo.m_GpuCoreCount))
         {
             BenzinTrace("  GPU Core Count: {}", AdlWrapper::GetGpuCoreCount());
         }
@@ -89,7 +89,7 @@ namespace benzin
         DXGI_QUERY_VIDEO_MEMORY_INFO d3d12NonLocalVideoMemoryInfo;
         BenzinD3D12Call(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &d3d12NonLocalVideoMemoryInfo));
 
-        uint64_t vendorTotalUsedVramInBytes = g_Bad64;
+        uint64_t vendorTotalUsedVramInBytes = g_MaxU64;
         if (AdlWrapper::IsAvailable() && adapterInfo.IsAmd())
         {
             vendorTotalUsedVramInBytes = AdlWrapper::GetUsedDedicatedVramInBytes();
@@ -109,7 +109,7 @@ namespace benzin
         }
 
         const uint64_t localVramBudgetInBytes = d3d12LocalVideoMemoryInfo.Budget;
-        const bool isVendorDataValid = IsGoodUint(localVramBudgetInBytes);
+        const bool isVendorDataValid = !IsMaxUint(localVramBudgetInBytes);
 
         return AdapterMemoryInfo
         {
@@ -193,9 +193,9 @@ namespace benzin
             m_AdaptersInfo.push_back(std::move(adapterInfo));
         }
 
-        if (!IsGoodUint(m_MainAdapterIndex))
+        if (IsMaxUint(m_MainAdapterIndex))
         {
-            m_MainAdapterIndex = GetGoodUintOr(CmdLineArgs::GetAdapterIndex(), 0u);
+            m_MainAdapterIndex = !IsMaxUint(CmdLineArgs::GetAdapterIndex()) ? CmdLineArgs::GetAdapterIndex() : 0;
             BenzinEnsure(m_MainAdapterIndex < m_DxgiAdapters.size());
         }
     }

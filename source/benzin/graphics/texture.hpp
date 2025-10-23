@@ -1,7 +1,7 @@
 #pragma once
 
-#include "benzin/graphics/resource.hpp"
-#include "benzin/graphics/format.hpp"
+#include <benzin/graphics/resource.hpp>
+#include <benzin/graphics/format.hpp>
 
 namespace benzin
 {
@@ -41,23 +41,17 @@ namespace benzin
 
     struct TextureSrv
     {
-        bool IsCubeMap = false;
-        GraphicsFormat Format = GraphicsFormat::Unknown;
-        SubRange16 DepthRange; // By default select all slices
-        SubRange16 MipRange; // By default select all mips
+        bool m_IsCubeMap = false;
+        GraphicsFormat m_Format = GraphicsFormat::Unknown;
+        uint32_t m_DepthOffset = 0;
+        uint32_t m_DepthCount = g_MaxU32; // By default select all slices
+        uint32_t m_MipOffset = 0;
+        uint32_t m_MipCount = g_MaxU32; // By default select all mips
     };
 
     struct TextureUav
     {
-        GraphicsFormat Format = GraphicsFormat::Unknown;
-        uint16_t MipIndex = 0;
-        SubRange16 DepthRange;
-    };
-
-    struct TextureRtv
-    {
-        GraphicsFormat Format = GraphicsFormat::Unknown;
-        SubRange16 DepthRange;
+        uint32_t m_MipIndex = 0;
     };
 
     class Texture : public Resource
@@ -87,15 +81,15 @@ namespace benzin
 
         const Descriptor& GetSrv(const TextureSrv& textureSrv = {}) const;
         const Descriptor& GetUav(const TextureUav& textureUav = {}) const;
-        const Descriptor& GetRtv(const TextureRtv& textureRtv = {}) const;
+        const Descriptor& GetRtv() const;
         const Descriptor& GetDsv() const;
 
-        Descriptor CreateDetachedSrv(const TextureSrv& textureSrv = {}, bool isValidationEnabled = true) const;
-        Descriptor CreateDetachedUav(const TextureUav& textureUav = {}, bool isValidationEnabled = true) const;
-        Descriptor CreateDetachedRtv(const TextureRtv& textureRtv = {}, bool isValidationEnabled = true) const;
-        Descriptor CreateDetachedDsv(bool isValidationEnabled = true) const;
-
     private:
+        Descriptor CreateDetachedSrv(TextureSrv& textureSrv) const;
+        Descriptor CreateDetachedUav(const TextureUav& textureUav) const;
+        Descriptor CreateDetachedRtv() const;
+        Descriptor CreateDetachedDsv() const;
+
         void SetupCreation(const TextureCreation* creation = nullptr);
 
     private:

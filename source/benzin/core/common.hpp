@@ -6,81 +6,26 @@ namespace benzin
     template <typename T>
     concept EnumConcept = std::is_enum_v<T>;
 
-    template <std::unsigned_integral T>
-    inline constexpr auto g_BadUint = std::numeric_limits<T>::max();
+    template <typename T>
+    inline constexpr T g_MaxUint = std::numeric_limits<T>::max();
 
-    inline constexpr auto g_Bad16 = g_BadUint<uint16_t>;
-    inline constexpr auto g_Bad32 = g_BadUint<uint32_t>;
-    inline constexpr auto g_Bad64 = g_BadUint<uint64_t>;
+    template <typename T>
+    inline constexpr T g_MaxEnum = (T)g_MaxUint<std::underlying_type_t<T>>;
 
-    template <std::unsigned_integral T>
-    constexpr bool IsGoodUint(T value)
+    template <typename T>
+    constexpr bool IsMaxUint(T value)
     {
-        return value != g_BadUint<T>;
+        return value == g_MaxUint<T>;
     }
 
-    template <std::unsigned_integral T, std::unsigned_integral U>
-    constexpr auto GetGoodUintOr(T value, U orValue)
+    template <typename T>
+    constexpr bool IsMaxEnum(T value)
     {
-        return (std::common_type_t<T, U>)(IsGoodUint(value) ? value : orValue);
+        return value == g_MaxEnum<T>;
     }
 
-    template <EnumConcept T>
-    inline constexpr auto g_BadEnum = (T)g_BadUint<std::underlying_type_t<T>>;
-
-    template <EnumConcept T>
-    constexpr bool IsGoodEnum(T value)
-    {
-        return value != g_BadEnum<T>;
-    }
-
-    template <std::unsigned_integral T>
-    struct SubRange
-    {
-        T m_Offset = 0;
-        T m_Count = g_BadUint<T>;
-
-        SubRange() = default;
-
-        SubRange(T offset)
-            : m_Offset{ offset }
-            , m_Count{ 1 }
-        {}
-
-        SubRange(T offset, T count)
-            : m_Offset{ offset }
-            , m_Count{ count }
-        {}
-
-        template <typename ItemT>
-        SubRange(std::span<const ItemT> items)
-            : m_Offset{ 0 }
-            , m_Count{ (T)items.size() }
-        {}
-
-        template <std::unsigned_integral U>
-        SubRange(const SubRange<U>& other)
-        {
-            static_assert(sizeof(U) <= sizeof(T));
-
-            m_Offset = (T)other.m_Offset;
-            m_Count = (T)other.m_Count;
-        }
-
-        bool IsGoodRange() const
-        {
-            return IsGoodUint(m_Count);
-        }
-
-        T GetEndCount() const
-        {
-            return m_Offset + m_Count;
-        }
-    };
-
-    using SubRange16 = SubRange<uint16_t>;
-    using SubRange32 = SubRange<uint32_t>;
-    using SubRange64 = SubRange<uint64_t>;
+    inline constexpr uint32_t g_MaxU32 = g_MaxUint<uint32_t>;
+    inline constexpr uint64_t g_MaxU64 = g_MaxUint<uint64_t>;
 
     constexpr size_t HashCombine(size_t resultHash, const auto& value)
     {
@@ -121,26 +66,6 @@ namespace benzin
 
         return name;
     }
-
-    template <typename T, uint32_t _MaxElementCount>
-    class StaticArray
-    {
-    public:
-        void Add(T&& element)
-        {
-            BenzinAssert(m_Count < _MaxElementCount);
-            m_Elements[m_Count++] = std::forward<T>(element);
-        }
-
-        auto Get() const
-        {
-            return ToSpan(m_Elements.data(), m_Count);
-        }
-
-    private:
-        std::array<T, _MaxElementCount> m_Elements{};
-        uint32_t m_Count = 0;
-    };
 
     template <typename CreateCallbackT>
     class LazyConverter
