@@ -31,7 +31,6 @@ project "BenzinFramework"
     import {
         ["ADL"] = "Anything",
         ["DirectXTex"] = "Anything",
-        ["EnTT"] = "Anything",
         ["ImGui"] = "Anything",
         ["magic_enum"] = "Anything",
         ["meshoptimizer"] = "Anything",

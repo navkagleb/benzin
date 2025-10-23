@@ -13,9 +13,7 @@
 #include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
-#include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/geometry_generator.hpp>
-#include <benzin/engine/light.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
@@ -134,8 +132,8 @@ namespace sandbox
         camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
 
         benzin::SunLight& sunLight = m_Scene->m_SunLight;
-        sunLight.SetColor({ 1.0f, 1.0f, 0.7f });
-        sunLight.SetIntensity(10.0f);
+        sunLight.m_Color = { 1.0f, 1.0f, 0.7f };
+        sunLight.m_Intensity = 10.0f;
 
         m_Scene->m_UpdateCallbacks.push_back([this]
         {
@@ -152,14 +150,11 @@ namespace sandbox
             static float elevationDirection = 1.0f;
             static float azimithDirection = 1.0f;
 
-            float elevation = m_Scene->m_SunLight.GetElevationInRadians();
-            float azimuth = m_Scene->m_SunLight.GetAzimuthInRadians();
+            float& elevation = m_Scene->m_SunLight.m_ElevationInRadians;
+            float& azimuth = m_Scene->m_SunLight.m_AzimuthInRadians;
 
             animateSunAngle(DirectX::XMConvertToRadians(41.0f), DirectX::XMConvertToRadians(52.0f), elevation, elevationDirection);
             animateSunAngle(DirectX::XMConvertToRadians(-2.0f), DirectX::XMConvertToRadians(3.0f), azimuth, azimithDirection);
-
-            m_Scene->m_SunLight.SetElevationInRadians(elevation);
-            m_Scene->m_SunLight.SetAzimuthInRadians(azimuth);
         });
 
         if (m_Scene->m_MeshRangeMap.contains("Sponza"))

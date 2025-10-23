@@ -33,22 +33,6 @@ project "DirectXTex"
     export {}
 
 
-project "EnTT"
-    kind "None"
-
-    files {
-        "entt/**.h",
-        "entt/**.hpp",
-    }
-
-    export "*"
-        includedirs {
-            "entt/single_include",
-        }
-
-    export {}
-
-
 project "ImGui"
     function apply_config()
         includedirs {

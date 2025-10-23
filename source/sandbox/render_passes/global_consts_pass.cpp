@@ -146,10 +146,10 @@ namespace sandbox
 
             // TODO: replace with joint::SunLight struct
             joint::Light sunLight = {};
-            sunLight.Color = ms_Scene->m_SunLight.GetColor();
-            sunLight.Intensity = ms_Scene->m_SunLight.GetIntensity();
+            sunLight.Color = ms_Scene->m_SunLight.m_Color;
+            sunLight.Intensity = ms_Scene->m_SunLight.m_Intensity;
             sunLight.WorldPosition = ms_Scene->m_SunLight.CalcToSunDirection();
-            sunLight.WorldRadius = std::tan(ms_Scene->m_SunLight.GetAngularDiameterInRadians() * 0.5f);
+            sunLight.WorldRadius = std::tan(ms_Scene->m_SunLight.m_AngularDiameterInRadians * 0.5f);
             sunLight.Attenuation = {};
             sunLight.Type = joint::LightType::Sun;
 

@@ -9,8 +9,6 @@
 #include <benzin/core/engine_math.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
-#include <benzin/engine/entity_components.hpp>
-#include <benzin/engine/light.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>

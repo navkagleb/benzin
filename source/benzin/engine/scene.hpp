@@ -1,7 +1,7 @@
 #pragma once
 
+#include <benzin/core/engine_math.hpp> // TODO: Remove with SunLight::CalcToSunDirection
 #include <benzin/engine/camera.hpp>
-#include <benzin/engine/light.hpp>
 #include <benzin/engine/mesh.hpp>
 
 #include <shaders/joint/procedural_grass_resources.hpp>
@@ -31,6 +31,30 @@ namespace benzin
         float m_Scale = 1.0f;
 
         uint32_t m_MeshRangeIndex = g_MaxU32;
+    };
+
+    struct SunLight
+    {
+        DirectX::XMFLOAT3 m_Color = { 1.0f, 1.0f, 1.0f };
+        float m_Intensity = 1.0f;
+
+        float m_AngularDiameterInRadians = DirectX::XMConvertToRadians(0.5f); // [0.01f, 5.0f]
+        float m_AzimuthInRadians = DirectX::XMConvertToRadians(0.0f); // [-180.0f, 180.0f]
+        float m_ElevationInRadians = DirectX::XMConvertToRadians(45.0f); // [0.0f, 180.0]
+
+        // TODO: Move to another place
+        DirectX::XMFLOAT3 CalcToSunDirection() const
+        {
+            const float pitch = m_ElevationInRadians;
+            const float yaw = m_AzimuthInRadians;
+
+            auto sunDirection = GetDirectionFromPitchYaw(pitch, yaw); // sunDirection vector directed towards the sun
+
+            DirectX::XMFLOAT3 sunDirection3 = {};
+            DirectX::XMStoreFloat3(&sunDirection3, sunDirection);
+
+            return sunDirection3;
+        }
     };
 
     class Scene
@@ -77,10 +101,6 @@ namespace benzin
         std::unique_ptr<Buffer> m_MeshDrawBuffer;
         std::unique_ptr<Buffer> m_MaterialBuffer;
         std::vector<std::unique_ptr<Texture>> m_Textures;
-
-
-
-
 
         std::vector<joint::GrassPatch> m_GrassPatches;
         SunLight m_SunLight;

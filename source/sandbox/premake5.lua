@@ -8,7 +8,6 @@ project "Sandbox"
     fatalwarnings { "All" }
 
     import {
-        ["EnTT"] = "Anything",
         ["ImGui"] = "Anything",
         ["magic_enum"] = "Anything",
 

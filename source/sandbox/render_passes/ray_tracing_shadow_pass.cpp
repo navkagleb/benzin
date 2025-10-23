@@ -2,7 +2,6 @@
 #include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
 
 #include <benzin/core/profiler.hpp>
-#include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>

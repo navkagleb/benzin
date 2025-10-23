@@ -6,12 +6,8 @@
 
 namespace benzin
 {
-    struct Mesh;
-
     class ComputeCmdList;
     class GraphicsCmdList;
-    class MeshComponent;
-    class Transform;
 
     enum class PsoId : uint32_t;
 }

@@ -8,9 +8,7 @@
 #include <benzin/core/engine_math.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
-#include <benzin/engine/entity_components.hpp>
 #include <benzin/engine/geometry_generator.hpp>
-#include <benzin/engine/light.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_helper.hpp>
 #include <benzin/engine/resource_loader.hpp>
