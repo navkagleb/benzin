@@ -1,6 +1,9 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/render_passes/environment_pass.hpp>
 
+#include <sandbox/render_settings.hpp>
+#include <sandbox/resources.hpp>
+
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
@@ -9,14 +12,10 @@
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
-
 #include <shaders/joint/environment_resources.hpp>
 
-#include <sandbox/render_settings.hpp>
-#include <sandbox/resources.hpp>
-
-BenzinEnableUnaryPlusForEnum(joint::EnvironmentResources);
-BenzinEnableUnaryPlusForEnum(joint::EquirectangularToCubeResources);
+BenzinAllowDereferenceOperatorForEnum(joint::EnvironmentResources);
+BenzinAllowDereferenceOperatorForEnum(joint::EquirectangularToCubeResources);
 
 namespace sandbox
 {
@@ -45,8 +44,63 @@ namespace sandbox
 
     void EnvironmentPass::OnZeroFrameInit()
     {
-        std::unique_ptr equirectangularTexture = LoadEquirectangularTexture();
-        ComputeCubeMapTexture(*equirectangularTexture);
+        std::unique_ptr<benzin::Texture> equirectangularTexture;
+
+        {
+            benzin::TextureImage equirectangularTextureImage;
+            BenzinAssertExpr(benzin::LoadTextureImageFromHdrFile("spaichingen_hill_4k.hdr", equirectangularTextureImage));
+
+            equirectangularTexture = std::make_unique<benzin::Texture>(*ms_Device, benzin::TextureCreation
+            {
+                .DebugName = equirectangularTextureImage.m_DebugName,
+                .Format = equirectangularTextureImage.m_Format,
+                .Width = equirectangularTextureImage.m_Width,
+                .Height = equirectangularTextureImage.m_Height,
+                .MipCount = 1,
+            });
+
+            benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(equirectangularTexture->GetSizeInBytes());
+            cmdList.UploadToTexture(*equirectangularTexture, benzin::ToSpan(equirectangularTextureImage.m_PixelData));
+        }
+
+        {
+            ms_PsoManager->Create(PsoId::Environment_EquirectangularToCube, [](benzin::ComputePsoProxy& proxy)
+            {
+                proxy.Cs.FileName = "equirectangular_to_cube_pass.hlsl";
+            });
+
+            BenzinExecuteOnScopeExit([]
+            {
+                ms_PsoManager->Destroy(PsoId::Environment_EquirectangularToCube);
+            });
+
+            constexpr uint32_t cubeMapSize = 1024;
+            benzin::MakeUniquePtr(m_CubeTexture, *ms_Device, benzin::TextureCreation
+            {
+                .DebugName = "EnvironmentPass::CubeMap",
+                .IsCubeMap = true,
+                .Format = benzin::GraphicsFormat::Rgba16Float,
+                .Width = cubeMapSize,
+                .Height = cubeMapSize,
+                .Depth = 6,
+                .MipCount = 1,
+                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
+            });
+
+            benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+
+            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::UnorderedAccess }, true);
+
+            using Resources = joint::EquirectangularToCubeResources;
+            cmdList.SetComputeRootResource(*Resources::EquirectangularTexture, equirectangularTexture->GetSrv());
+            cmdList.SetComputeRootResource(*Resources::OutCubeMap, m_CubeTexture->GetUav());
+
+            cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Environment_EquirectangularToCube));
+            cmdList.Dispatch({ cubeMapSize, cubeMapSize, m_CubeTexture->GetDepth() }, { 8, 8, 1 });
+
+            cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ *m_CubeTexture });
+            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::GenericRead }, true);
+        }
     }
 
     void EnvironmentPass::OnRender() const
@@ -70,70 +124,10 @@ namespace sandbox
         cmdList.SetRenderTargets({ hdrColor.GetRtv() }, &depthStencil.GetDsv());
 
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::Environment));
-        cmdList.SetGraphicsRootResource(+joint::EnvironmentResources::CubeMap, m_CubeTexture->GetSrv());
+        cmdList.SetGraphicsRootResource(*joint::EnvironmentResources::CubeMap, m_CubeTexture->GetSrv());
 
         cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         cmdList.DrawVertexed(3);
-    }
-
-    std::unique_ptr<benzin::Texture> EnvironmentPass::LoadEquirectangularTexture()
-    {
-        benzin::TextureImage equirectangularTextureImage;
-        BenzinAssertExpr(benzin::LoadTextureImageFromHdrFile("spaichingen_hill_4k.hdr", equirectangularTextureImage));
-
-        auto equirectangularTexture = std::make_unique<benzin::Texture>(*ms_Device, benzin::TextureCreation
-        {
-            .DebugName = equirectangularTextureImage.m_DebugName,
-            .Format = equirectangularTextureImage.m_Format,
-            .Width = equirectangularTextureImage.m_Width,
-            .Height = equirectangularTextureImage.m_Height,
-            .MipCount = 1,
-        });
-
-        benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(equirectangularTexture->GetSizeInBytes());
-        cmdList.UploadToTexture(*equirectangularTexture, benzin::ToSpan(equirectangularTextureImage.m_PixelData));
-        
-        return equirectangularTexture;
-    }
-
-    void EnvironmentPass::ComputeCubeMapTexture(benzin::Texture& equirectangularTexture)
-    {
-        ms_PsoManager->Create(PsoId::Environment_EquirectangularToCube, [](benzin::ComputePsoProxy& proxy)
-        {
-            proxy.Cs.FileName = "equirectangular_to_cube_pass.hlsl";
-        });
-
-        BenzinExecuteOnScopeExit([]
-        {
-            ms_PsoManager->Destroy(PsoId::Environment_EquirectangularToCube);
-        });
-
-        constexpr uint32_t cubeMapSize = 1024;
-        benzin::MakeUniquePtr(m_CubeTexture, *ms_Device, benzin::TextureCreation
-        {
-            .DebugName = "EnvironmentPass::CubeMap",
-            .IsCubeMap = true,
-            .Format = benzin::GraphicsFormat::Rgba16Float,
-            .Width = cubeMapSize,
-            .Height = cubeMapSize,
-            .Depth = 6,
-            .MipCount = 1,
-            .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
-        });
-
-        benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::UnorderedAccess }, true);
-
-        using Resources = joint::EquirectangularToCubeResources;
-        cmdList.SetComputeRootResource(+Resources::EquirectangularTexture, equirectangularTexture.GetSrv());
-        cmdList.SetComputeRootResource(+Resources::OutCubeMap, m_CubeTexture->GetUav());
-
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Environment_EquirectangularToCube));
-        cmdList.Dispatch({ cubeMapSize, cubeMapSize, m_CubeTexture->GetDepth() }, { 8, 8, 1 });
-
-        cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ *m_CubeTexture });
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::GenericRead }, true);
     }
 
 }

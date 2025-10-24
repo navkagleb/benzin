@@ -1,6 +1,9 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/render_passes/tone_mapping_pass.hpp>
 
+#include <sandbox/render_settings.hpp>
+#include <sandbox/resources.hpp>
+
 #include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
@@ -11,12 +14,9 @@
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
-#include <sandbox/render_settings.hpp>
-#include <sandbox/resources.hpp>
-
-BenzinEnableUnaryPlusForEnum(joint::CalcLuminanceHistogramResources);
-BenzinEnableUnaryPlusForEnum(joint::CalcAvgLuminanceResources);
-BenzinEnableUnaryPlusForEnum(joint::ApplyToneMapOperatorResources);
+BenzinAllowDereferenceOperatorForEnum(joint::CalcLuminanceHistogramResources);
+BenzinAllowDereferenceOperatorForEnum(joint::CalcAvgLuminanceResources);
+BenzinAllowDereferenceOperatorForEnum(joint::ApplyToneMapOperatorResources);
 
 namespace sandbox
 {
@@ -171,9 +171,9 @@ namespace sandbox
         {
             using Resources = joint::CalcLuminanceHistogramResources;
 
-            cmdList.SetComputeRootResource(+Resources::HdrColor, ms_Resources->Get(TextureId::HdrColor).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::OutLuminanceHistogram, luminanceHistogram.GetUav());
-            cmdList.SetComputeRootResource(+Resources::OutDebugLuminanceHistogram, debugLuminanceHistogram.GetUav());
+            cmdList.SetComputeRootResource(*Resources::HdrColor, ms_Resources->Get(TextureId::HdrColor).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::OutLuminanceHistogram, luminanceHistogram.GetUav());
+            cmdList.SetComputeRootResource(*Resources::OutDebugLuminanceHistogram, debugLuminanceHistogram.GetUav());
         }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcLuminanceHistogram));
@@ -196,8 +196,8 @@ namespace sandbox
         {
             using Resources = joint::CalcAvgLuminanceResources;
 
-            cmdList.SetComputeRootResource(+Resources::OutLuminanceHistogram, luminanceHistogram.GetUav());
-            cmdList.SetComputeRootResource(+Resources::OutAvgLuminance, avgLuminance.GetUav());
+            cmdList.SetComputeRootResource(*Resources::OutLuminanceHistogram, luminanceHistogram.GetUav());
+            cmdList.SetComputeRootResource(*Resources::OutAvgLuminance, avgLuminance.GetUav());
         }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcAvgLuminance));
@@ -218,9 +218,9 @@ namespace sandbox
         {
             using Resources = joint::ApplyToneMapOperatorResources;
 
-            cmdList.SetComputeRootResource(+Resources::AvgLuminance, ms_Resources->Get(TextureId::ToneMapping_AvgLuminance).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::HdrColor, ms_Resources->Get(TextureId::HdrColor).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::OutFinal, finalTexture.GetUav());
+            cmdList.SetComputeRootResource(*Resources::AvgLuminance, ms_Resources->Get(TextureId::ToneMapping_AvgLuminance).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::HdrColor, ms_Resources->Get(TextureId::HdrColor).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::OutFinal, finalTexture.GetUav());
         }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_ApplyToneMapOperator));

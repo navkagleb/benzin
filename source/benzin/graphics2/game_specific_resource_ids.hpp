@@ -78,6 +78,6 @@ namespace benzin
 
 }
 
-BenzinEnableUnaryPlusForEnum(benzin::BufferId);
-BenzinEnableUnaryPlusForEnum(benzin::TextureId);
-BenzinEnableUnaryPlusForEnum(benzin::PsoId);
+BenzinAllowDereferenceOperatorForEnum(benzin::BufferId);
+BenzinAllowDereferenceOperatorForEnum(benzin::TextureId);
+BenzinAllowDereferenceOperatorForEnum(benzin::PsoId);

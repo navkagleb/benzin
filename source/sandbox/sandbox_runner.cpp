@@ -23,7 +23,7 @@
 
 #include <shaders/joint/mesh_types.hpp>
 
-BenzinEnableUnaryPlusForEnum(joint::ReadbackStat);
+BenzinAllowDereferenceOperatorForEnum(joint::ReadbackStat);
 
 namespace sandbox
 {
@@ -50,26 +50,26 @@ namespace sandbox
             {
                 auto& stats = m_RenderSettings->GetSection<GBufferStats>();
 
-                stats.m_TotalMeshletCount = readbackStats[+joint::ReadbackStat::Geometry_TotalMeshletCount];
-                stats.m_TotalMeshletVertexCount = readbackStats[+joint::ReadbackStat::Geometry_TotalMeshletVertexCount];
-                stats.m_TotalMeshletTriangleCount = readbackStats[+joint::ReadbackStat::Geometry_TotalMeshletTriangleCount];
+                stats.m_TotalMeshletCount = readbackStats[*joint::ReadbackStat::Geometry_TotalMeshletCount];
+                stats.m_TotalMeshletVertexCount = readbackStats[*joint::ReadbackStat::Geometry_TotalMeshletVertexCount];
+                stats.m_TotalMeshletTriangleCount = readbackStats[*joint::ReadbackStat::Geometry_TotalMeshletTriangleCount];
 
-                stats.m_MeshletCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletCount];
-                stats.m_MeshletVertexCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletVertexCount];
-                stats.m_MeshletTriangleCount = readbackStats[+joint::ReadbackStat::Geometry_MeshletTriangleCount];
+                stats.m_MeshletCount = readbackStats[*joint::ReadbackStat::Geometry_MeshletCount];
+                stats.m_MeshletVertexCount = readbackStats[*joint::ReadbackStat::Geometry_MeshletVertexCount];
+                stats.m_MeshletTriangleCount = readbackStats[*joint::ReadbackStat::Geometry_MeshletTriangleCount];
 
-                stats.m_VsInvocationCount = readbackStats[+joint::ReadbackStat::Geometry_VsInvocationCount];
-                stats.m_AsInvocationCount = readbackStats[+joint::ReadbackStat::Geometry_AsInvocationCount];  
-                stats.m_MsInvocationCount = readbackStats[+joint::ReadbackStat::Geometry_MsInvocationCount];
-                stats.m_PsInvocationCount = readbackStats[+joint::ReadbackStat::Geometry_PsInvocationCount];
+                stats.m_VsInvocationCount = readbackStats[*joint::ReadbackStat::Geometry_VsInvocationCount];
+                stats.m_AsInvocationCount = readbackStats[*joint::ReadbackStat::Geometry_AsInvocationCount];  
+                stats.m_MsInvocationCount = readbackStats[*joint::ReadbackStat::Geometry_MsInvocationCount];
+                stats.m_PsInvocationCount = readbackStats[*joint::ReadbackStat::Geometry_PsInvocationCount];
             }
 
             {
                 auto& stats = m_RenderSettings->GetSection<ProceduralGrassStats>();
-                stats.PatchCount = readbackStats[+joint::ReadbackStat::ProceduralGrass_PatchCount];
-                stats.BladeCount = readbackStats[+joint::ReadbackStat::ProceduralGrass_BladeCount];
-                stats.VertexCount = readbackStats[+joint::ReadbackStat::ProceduralGrass_VertexCount];
-                stats.TriangleCount = readbackStats[+joint::ReadbackStat::ProceduralGrass_TriangleCount];
+                stats.PatchCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_PatchCount];
+                stats.BladeCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_BladeCount];
+                stats.VertexCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_VertexCount];
+                stats.TriangleCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_TriangleCount];
             }
         };
 

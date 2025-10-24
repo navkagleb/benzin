@@ -1,5 +1,5 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/shader.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/shader.hpp>
 
 namespace benzin
 {
@@ -11,7 +11,7 @@ namespace benzin
         , m_Defines{ std::move(defines) }
         , m_Hash{ 0 }
     {
-        m_Hash = HashCombine(m_Hash, +m_Type);
+        m_Hash = HashCombine(m_Hash, std::to_underlying(m_Type));
         m_Hash = HashCombine(m_Hash, m_FileName);
         m_Hash = HashCombine(m_Hash, m_EntryPoint);
 

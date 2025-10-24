@@ -196,7 +196,7 @@ namespace benzin
     {
         BenzinAssert(magic_enum::enum_contains(id));
 
-        m_Psos[+id].reset();
+        m_Psos[*id].reset();
     }
 
     const VertexPso& PsoManager::GetVertex(PsoId id) const
@@ -224,7 +224,7 @@ namespace benzin
     {
         BenzinAssert(magic_enum::enum_contains(id));
 
-        auto& pso = m_Psos[+id];
+        auto& pso = m_Psos[*id];
         BenzinAssert(pso.get() == nullptr);
 
         auto psoT = std::make_unique<PsoT>(m_Device);
@@ -240,7 +240,7 @@ namespace benzin
     {
         BenzinAssert(magic_enum::enum_contains(id));
 
-        auto* pso = m_Psos[+id].get();
+        auto* pso = m_Psos[*id].get();
         BenzinAssert(pso != nullptr);
         BenzinAssert(dynamic_cast<PsoT*>(pso) != nullptr);
 
@@ -256,9 +256,7 @@ namespace benzin
             std::unique_ptr<PsoBase>& pso = m_Psos[rawId];
 
             if (pso.get() == nullptr)
-            {
                 continue;
-            }
 
             PsoBaseWrapper psoWrapper = pso;
 
@@ -267,15 +265,11 @@ namespace benzin
             {
                 isPsoNeedsRecompilation |= m_ShaderManager.CompareWithNewShader(shader);
                 if (!isPsoNeedsRecompilation)
-                {
                     continue;
-                }
 
                 const auto bytecode = m_ShaderManager.GetShaderBytecode(shader);
                 if (bytecode.empty())
-                {
                     return;
-                }
 
                 switch (shader.GetType())
                 {

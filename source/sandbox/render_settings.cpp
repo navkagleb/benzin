@@ -5,8 +5,6 @@
 
 #include <shaders/joint/procedural_grass_resources.hpp>
 
-BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassConsts);
-
 namespace sandbox
 {
 
@@ -119,13 +117,11 @@ namespace sandbox
     template <>
     void DrawSettings(ProceduralGrassStats& stats)
     {
-        using enum joint::ProceduralGrassConsts;
-
         std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
         BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
         ImGui::FmtText("Patch count: {:L} (Max: {:L})", stats.PatchCount, stats.MaxPatchCount);
-        ImGui::FmtText("Blade count: {:L} (Max: {:L})", stats.BladeCount, stats.MaxPatchCount * +MaxBladeCountPerPatch);
+        ImGui::FmtText("Blade count: {:L} (Max: {:L})", stats.BladeCount, stats.MaxPatchCount * std::to_underlying(joint::ProceduralGrassConsts::MaxBladeCountPerPatch));
         ImGui::FmtText("Vertex count: {:L}", stats.VertexCount);
         ImGui::FmtText("Triangle count: {:L}", stats.TriangleCount);
     }

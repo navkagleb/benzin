@@ -10,7 +10,7 @@ namespace benzin
     template <typename ResourceIdT> requires std::is_enum_v<ResourceIdT>
     static constexpr uint32_t GetMaxResourceCount()
     {
-        const auto maxResourceId = +magic_enum::enum_values<ResourceIdT>().back();
+        const auto maxResourceId = *magic_enum::enum_values<ResourceIdT>().back();
         return maxResourceId + 1;
     }
 
@@ -21,7 +21,7 @@ namespace benzin
 
         for (size_t i = 1; i < ids.size(); ++i)
         {
-            if (+ids[i] - +ids[i - 1] == 2)
+            if (*ids[i] - *ids[i - 1] == 2)
                 return true;
         }
 
@@ -36,7 +36,7 @@ namespace benzin
         if (!isFlippableResourceExists)
             return false;
 
-        const uint32_t maxId = +magic_enum::enum_values<ResourceIdT>().back();
+        const uint32_t maxId = *magic_enum::enum_values<ResourceIdT>().back();
         const uint32_t prevId = id - 1;
 
         const bool isInBounds = prevId <= maxId;
@@ -74,7 +74,7 @@ namespace benzin
     {
         BenzinAssert(m_IsResourceIdValidCallback(id));
 
-        return m_Resources[+id].get() != nullptr;
+        return m_Resources[id].get() != nullptr;
     }
 
     template <typename ResourceT>
@@ -190,52 +190,52 @@ namespace benzin
 
     bool RenderResources::IsCreated(BufferId id) const
     {
-        return m_Buffers.IsCreated(+id);
+        return m_Buffers.IsCreated(*id);
     }
 
     void RenderResources::Create(BufferId id, const BufferCreation& creation)
     {
-        m_Buffers.Create(+id, m_Device, creation);
+        m_Buffers.Create(*id, m_Device, creation);
     }
 
     void RenderResources::Destroy(BufferId id)
     {
-        m_Buffers.Destroy(+id);
+        m_Buffers.Destroy(*id);
     }
 
     const Buffer& RenderResources::Get(BufferId id) const
     {
-        return m_Buffers.Get(+id, m_FlipIndex);
+        return m_Buffers.Get(*id, m_FlipIndex);
     }
 
     const Buffer& RenderResources::GetPrev(BufferId id) const
     {
-        return m_Buffers.GetPrev(+id, GetNextFlipIndex(m_FlipIndex));
+        return m_Buffers.GetPrev(*id, GetNextFlipIndex(m_FlipIndex));
     }
 
     bool RenderResources::IsCreated(TextureId id) const
     {
-        return m_Textures.IsCreated(+id);
+        return m_Textures.IsCreated(*id);
     }
 
     void RenderResources::Create(TextureId id, const TextureCreation& creation)
     {
-        m_Textures.Create(+id, m_Device, creation);
+        m_Textures.Create(*id, m_Device, creation);
     }
     
     void RenderResources::Destroy(TextureId id)
     {
-        m_Textures.Destroy(+id);
+        m_Textures.Destroy(*id);
     }
 
     const Texture& RenderResources::Get(TextureId id) const
     {
-        return m_Textures.Get(+id, m_FlipIndex);
+        return m_Textures.Get(*id, m_FlipIndex);
     }
 
     const Texture& RenderResources::GetPrev(TextureId id) const
     {
-        return m_Textures.GetPrev(+id, GetNextFlipIndex(m_FlipIndex));
+        return m_Textures.GetPrev(*id, GetNextFlipIndex(m_FlipIndex));
     }
 
     void RenderResources::FlipResources()

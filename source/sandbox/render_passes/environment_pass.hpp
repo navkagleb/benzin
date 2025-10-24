@@ -4,9 +4,7 @@
 
 namespace benzin
 {
-
     class Texture;
-
 }
 
 namespace sandbox
@@ -22,10 +20,6 @@ namespace sandbox
 
         void OnZeroFrameInit() override;
         void OnRender() const override;
-
-    private:
-        std::unique_ptr<benzin::Texture> LoadEquirectangularTexture();
-        void ComputeCubeMapTexture(benzin::Texture& equirectangularTexture);
 
     private:
         std::unique_ptr<benzin::Texture> m_CubeTexture;

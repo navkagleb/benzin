@@ -16,7 +16,6 @@ namespace benzin
         Amplification,
         Mesh,
     };
-    BenzinEnableUnaryPlusForEnum(ShaderType);
 
     class ShaderInfo
     {

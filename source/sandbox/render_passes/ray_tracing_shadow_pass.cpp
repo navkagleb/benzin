@@ -1,8 +1,11 @@
-#include "sandbox/bootstrap.hpp"
-#include "sandbox/render_passes/ray_tracing_shadow_pass.hpp"
+#include <sandbox/bootstrap.hpp>
+#include <sandbox/render_passes/ray_tracing_shadow_pass.hpp>
+
+#include <sandbox/render_passes/sigma_denoiser_pass.hpp>
+#include <sandbox/render_settings.hpp>
+#include <sandbox/resources.hpp>
 
 #include <benzin/core/profiler.hpp>
-#include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
@@ -15,11 +18,7 @@
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
-#include <sandbox/render_passes/sigma_denoiser_pass.hpp>
-#include <sandbox/render_settings.hpp>
-#include <sandbox/resources.hpp>
-
-BenzinEnableUnaryPlusForEnum(joint::RayTracing_ShadowResources);
+BenzinAllowDereferenceOperatorForEnum(joint::RayTracing_ShadowResources);
 
 namespace sandbox
 {
@@ -113,13 +112,12 @@ namespace sandbox
             benzin::TransitionBarrier{ noisyPenumbra, benzin::ResourceState::UnorderedAccess });
 
         {
-            using enum joint::RayTracing_ShadowResources;
+            using Resources = joint::RayTracing_ShadowResources;
 
-            cmdList.SetComputeRootResource(+WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
-            cmdList.SetComputeRootResource(+Depth, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
-            cmdList.SetComputeRootResource(+BlueNoise, m_BlueNoiseTexture->GetSrv({ .m_DepthOffset = m_BlueNoiseDepthIndex, .m_DepthCount = 1 }));
-
-            cmdList.SetComputeRootResource(+OutNoisyPenumbra, noisyPenumbra.GetUav());
+            cmdList.SetComputeRootResource(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::Depth, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::BlueNoise, m_BlueNoiseTexture->GetSrv({ .m_DepthOffset = m_BlueNoiseDepthIndex, .m_DepthCount = 1 }));
+            cmdList.SetComputeRootResource(*Resources::OutNoisyPenumbra, noisyPenumbra.GetUav());
         }
 
         cmdList.DispatchRays(pso.GetShaderTable(), { ms_RenderViewportWidth, ms_RenderViewportHeight, 1 });

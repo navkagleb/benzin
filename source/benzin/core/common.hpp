@@ -95,16 +95,3 @@ namespace benzin
 }
 
 #define BenzinExecuteOnScopeExit(lambda) const benzin::ExecuteOnScopeExit BenzinUniqueVariableName(_executeOnScopeExit){ lambda }
-
-template <benzin::EnumConcept T>
-struct IsUnaryPlusEnabledForEnum : std::false_type {};
-
-template <benzin::EnumConcept T> requires IsUnaryPlusEnabledForEnum<T>::value
-constexpr auto operator+(T enumValue)
-{
-    return magic_enum::enum_integer(enumValue);
-}
-
-#define BenzinEnableUnaryPlusForEnum(EnumT) \
-    template <> \
-    struct IsUnaryPlusEnabledForEnum<EnumT> : std::true_type {};

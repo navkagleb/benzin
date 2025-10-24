@@ -1,9 +1,11 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/render_passes/procedural_grass_pass.hpp>
 
-#include <benzin/core/cmd_line_args.hpp>
+#include <sandbox/render_passes/gbuffer.hpp>
+#include <sandbox/render_settings.hpp>
+#include <sandbox/resources.hpp>
+
 #include <benzin/core/profiler.hpp>
-#include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
@@ -14,14 +16,9 @@
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
-#include <benzin/utility/random.hpp>
 
-#include <sandbox/render_passes/gbuffer.hpp>
-#include <sandbox/render_settings.hpp>
-#include <sandbox/resources.hpp>
-
-BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassResources);
-BenzinEnableUnaryPlusForEnum(joint::ProceduralGrassConsts);
+BenzinAllowDereferenceOperatorForEnum(joint::ProceduralGrassResources);
+BenzinAllowDereferenceOperatorForEnum(joint::ProceduralGrassConsts);
 
 namespace sandbox
 {
@@ -94,10 +91,10 @@ namespace sandbox
             benzin::Buffer& buffer = const_cast<benzin::Buffer&>(ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches));
             benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(buffer.GetSizeInBytes());
             cmdList.UploadToBuffer(buffer, benzin::ToSpan(ms_Scene->m_GrassPatches));
-
-            auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
-            stats.MaxPatchCount = (uint32_t)buffer.GetElementCount();
         }
+
+        auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
+        stats.MaxPatchCount = (uint32_t)ms_Scene->m_GrassPatches.size();
     }
 
     void ProceduralGrassPass::OnUpdate()
@@ -140,11 +137,11 @@ namespace sandbox
         {
             using Resources = joint::ProceduralGrassResources;
 
-            cmdList.SetGraphicsRootResource(+Resources::GrassPatches, ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches).GetSrv());
-            cmdList.SetGraphicsRootResource(+Resources::PerlinNoise, m_PerlinNoiseTexture->GetSrv());
+            cmdList.SetGraphicsRootResource(*Resources::GrassPatches, ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches).GetSrv());
+            cmdList.SetGraphicsRootResource(*Resources::PerlinNoise, m_PerlinNoiseTexture->GetSrv());
         }
 
-        cmdList.DispatchMesh({ m_Consts.GrassPatchCount, 1, 1 }, { +joint::ProceduralGrassConsts::AsGroupSize, 1, 1 });
+        cmdList.DispatchMesh({ m_Consts.GrassPatchCount, 1, 1 }, { *joint::ProceduralGrassConsts::AsGroupSize, 1, 1 });
     }
 
 }

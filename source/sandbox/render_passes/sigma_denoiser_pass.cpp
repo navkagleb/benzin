@@ -16,10 +16,10 @@
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
-BenzinEnableUnaryPlusForEnum(joint::SigmaClassifyTilesResources);
-BenzinEnableUnaryPlusForEnum(joint::SigmaSmoothTilesResources);
-BenzinEnableUnaryPlusForEnum(joint::SigmaBlurResources);
-BenzinEnableUnaryPlusForEnum(joint::SigmaTemporalStabilizationResources)
+BenzinAllowDereferenceOperatorForEnum(joint::SigmaClassifyTilesResources);
+BenzinAllowDereferenceOperatorForEnum(joint::SigmaSmoothTilesResources);
+BenzinAllowDereferenceOperatorForEnum(joint::SigmaBlurResources);
+BenzinAllowDereferenceOperatorForEnum(joint::SigmaTemporalStabilizationResources);
 
 namespace sandbox
 {
@@ -217,9 +217,9 @@ namespace sandbox
         {
             using Resources = joint::SigmaClassifyTilesResources;
 
-            cmdList.SetComputeRootResource(+Resources::ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::Penumbra, ms_Resources->Get(TextureId::NoisyPenumbra).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::OutTiles, tiles.GetUav());
+            cmdList.SetComputeRootResource(*Resources::ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::Penumbra, ms_Resources->Get(TextureId::NoisyPenumbra).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::OutTiles, tiles.GetUav());
         }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaClassifyTiles));
@@ -242,8 +242,8 @@ namespace sandbox
         {
             using Resources = joint::SigmaSmoothTilesResources;
 
-            cmdList.SetComputeRootResource(+Resources::Tiles, ms_Resources->Get(TextureId::Sigma_Tiles).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::OutSmoothTiles, smoothTiles.GetUav());
+            cmdList.SetComputeRootResource(*Resources::Tiles, ms_Resources->Get(TextureId::Sigma_Tiles).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::OutSmoothTiles, smoothTiles.GetUav());
         }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaSmoothTiles));
@@ -268,12 +268,12 @@ namespace sandbox
         {
             using Resources = joint::SigmaBlurResources;
 
-            cmdList.SetComputeRootResource(+Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::Penumbra, ms_Resources->Get(TextureId::NoisyPenumbra).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::OutPenumbra, penumbra1.GetUav());
-            cmdList.SetComputeRootResource(+Resources::OutShadow, shadowTemp1.GetUav());
+            cmdList.SetComputeRootResource(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::Penumbra, ms_Resources->Get(TextureId::NoisyPenumbra).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::OutPenumbra, penumbra1.GetUav());
+            cmdList.SetComputeRootResource(*Resources::OutShadow, shadowTemp1.GetUav());
         }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaBlur));
@@ -315,13 +315,13 @@ namespace sandbox
         {
             using Resources = joint::SigmaBlurResources;
 
-            cmdList.SetComputeRootResource(+Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::Penumbra, penumbra1.GetSrv());
-            cmdList.SetComputeRootResource(+Resources::Shadow, shadowTemp1.GetSrv());
-            cmdList.SetComputeRootResource(+Resources::OutPenumbra, penumbra2.GetUav());
-            cmdList.SetComputeRootResource(+Resources::OutShadow, shadowTemp2.GetUav());
+            cmdList.SetComputeRootResource(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::Penumbra, penumbra1.GetSrv());
+            cmdList.SetComputeRootResource(*Resources::Shadow, shadowTemp1.GetSrv());
+            cmdList.SetComputeRootResource(*Resources::OutPenumbra, penumbra2.GetUav());
+            cmdList.SetComputeRootResource(*Resources::OutShadow, shadowTemp2.GetUav());
         }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaPostBlur));
@@ -354,15 +354,15 @@ namespace sandbox
         {
             using Resources = joint::SigmaTemporalStabilizationResources;
 
-            cmdList.SetComputeRootResource(+Resources::Mv, ms_Resources->Get(TextureId::Mv).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::Penumbra, ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::Shadow, shadowTemp2.GetSrv());
-            cmdList.SetComputeRootResource(+Resources::ShadowHistory, ms_Resources->GetPrev(TextureId::Shadow).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::HistoryLength, ms_Resources->GetPrev(TextureId::ShadowHistoryLength).GetSrv());
-            cmdList.SetComputeRootResource(+Resources::OutShadow, shadow.GetUav());
-            cmdList.SetComputeRootResource(+Resources::OutHistoryLength, historyLength.GetUav());
+            cmdList.SetComputeRootResource(*Resources::Mv, ms_Resources->Get(TextureId::Mv).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::ViewDepth, ms_Resources->Get(TextureId::ViewDepth).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::SmoothTiles, ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::Penumbra, ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::Shadow, shadowTemp2.GetSrv());
+            cmdList.SetComputeRootResource(*Resources::ShadowHistory, ms_Resources->GetPrev(TextureId::Shadow).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::HistoryLength, ms_Resources->GetPrev(TextureId::ShadowHistoryLength).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::OutShadow, shadow.GetUav());
+            cmdList.SetComputeRootResource(*Resources::OutHistoryLength, historyLength.GetUav());
         }
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaTemporalStabilization));

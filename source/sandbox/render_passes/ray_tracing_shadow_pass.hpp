@@ -1,7 +1,6 @@
 #pragma once
 
 #include <benzin/graphics2/render_pass.hpp>
-
 #include <shaders/joint/ray_tracing_shadow_resources.hpp>
 
 namespace sandbox
@@ -21,7 +20,7 @@ namespace sandbox
         void OnRender() const override;
 
     private:
-        joint::RayTracing_ShadowConsts m_Consts{};
+        joint::RayTracing_ShadowConsts m_Consts = {};
 
         std::unique_ptr<benzin::Texture> m_BlueNoiseTexture;
         uint16_t m_BlueNoiseDepthIndex = 0;
