@@ -13,7 +13,6 @@ namespace benzin
         Cbv,
         Srv,
         Uav,
-        Sampler, // For future use
     };
 
     class Descriptor

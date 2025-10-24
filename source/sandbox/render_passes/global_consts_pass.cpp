@@ -4,7 +4,6 @@
 #include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
-#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
@@ -49,8 +48,8 @@ namespace sandbox
         });
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_StatBuffer, benzin::ResourceState::UnorderedAccess });
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_ReadbackStatBuffer, benzin::ResourceState::Common });
+        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_StatBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
+        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_ReadbackStatBuffer, D3D12_RESOURCE_STATE_COMMON });
     }
 
     GlobalConstsPass::~GlobalConstsPass() = default;

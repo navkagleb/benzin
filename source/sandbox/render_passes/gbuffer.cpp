@@ -53,7 +53,7 @@ namespace sandbox
 
     benzin::ScopedResourceBarriers GBuffer::CreateResourceBarriers(
         benzin::GraphicsCmdList& cmdList,
-        benzin::ResourceState depthStencilState,
+        D3D12_RESOURCE_STATES d3d12DepthStencilState,
         bool isDepthStencilOnly) const
     {
         std::vector<benzin::ResourceBarrierVariant> resourceBarriers;
@@ -61,15 +61,15 @@ namespace sandbox
 
         if (!isDepthStencilOnly)
         {
-            resourceBarriers.push_back(benzin::TransitionBarrier{ m_AlbedoAndRoughness, benzin::ResourceState::RenderTarget });
-            resourceBarriers.push_back(benzin::TransitionBarrier{ m_EmissiveAndMetallic, benzin::ResourceState::RenderTarget });
-            resourceBarriers.push_back(benzin::TransitionBarrier{ m_WorldNormal, benzin::ResourceState::RenderTarget });
-            resourceBarriers.push_back(benzin::TransitionBarrier{ m_Mv, benzin::ResourceState::RenderTarget });
-            resourceBarriers.push_back(benzin::TransitionBarrier{ m_ViewDepth, benzin::ResourceState::RenderTarget });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ m_AlbedoAndRoughness, D3D12_RESOURCE_STATE_RENDER_TARGET });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ m_EmissiveAndMetallic, D3D12_RESOURCE_STATE_RENDER_TARGET });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ m_WorldNormal, D3D12_RESOURCE_STATE_RENDER_TARGET });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ m_Mv, D3D12_RESOURCE_STATE_RENDER_TARGET });
+            resourceBarriers.push_back(benzin::TransitionBarrier{ m_ViewDepth, D3D12_RESOURCE_STATE_RENDER_TARGET });
         }
 
-        BenzinAssert(depthStencilState == benzin::ResourceState::DepthWrite || depthStencilState == benzin::ResourceState::DepthRead);
-        resourceBarriers.push_back(benzin::TransitionBarrier{ m_DepthStencil, depthStencilState });
+        BenzinAssert(d3d12DepthStencilState == D3D12_RESOURCE_STATE_DEPTH_WRITE || d3d12DepthStencilState == D3D12_RESOURCE_STATE_DEPTH_READ);
+        resourceBarriers.push_back(benzin::TransitionBarrier{ m_DepthStencil, d3d12DepthStencilState });
 
         return benzin::ScopedResourceBarriers
         {

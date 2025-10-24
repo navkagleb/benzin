@@ -11,7 +11,6 @@ namespace benzin
 {
 
     struct BufferSrv {};
-
     struct BufferUav {};
 
     static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& creation)
@@ -55,40 +54,40 @@ namespace benzin
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
 
-        return D3D12_RESOURCE_DESC
-        {
-            .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-            .Alignment = 0,
-            .Width = creation.ElementSizeInBytes * creation.ElementCount,
-            .Height = 1,
-            .DepthOrArraySize = 1,
-            .MipLevels = 1,
-            .Format = DXGI_FORMAT_UNKNOWN,
-            .SampleDesc{ 1, 0 },
-            .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            .Flags = d3d12ResourceFlags,
-        };
+        D3D12_RESOURCE_DESC d3d12ResourceDesc = {};
+        d3d12ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        d3d12ResourceDesc.Alignment = 0;
+        d3d12ResourceDesc.Width = creation.ElementSizeInBytes * creation.ElementCount;
+        d3d12ResourceDesc.Height = 1;
+        d3d12ResourceDesc.DepthOrArraySize = 1;
+        d3d12ResourceDesc.MipLevels = 1;
+        d3d12ResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+        d3d12ResourceDesc.SampleDesc = { 1, 0 };
+        d3d12ResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        d3d12ResourceDesc.Flags = d3d12ResourceFlags;
+
+        return d3d12ResourceDesc;
     }
 
-    static ResourceState GetInitialBufferState(const Device& device, BufferType bufferType, GpuHeapType heapType)
+    static D3D12_RESOURCE_STATES GetInitialBufferState(const Device& device, BufferType bufferType, GpuHeapType heapType)
     {
         if (bufferType == BufferType::RayTracing_AccelerationStructure)
-            return ResourceState::RayTracing_AccelerationStructure;
+            return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 
         if (heapType == GpuHeapType::Upload && !device.GetCaps().IsGpuUploadHeapsSupported) // TODO: Don't check if GpuUpload heaps are supported here
         {
             // Case only for D3D12_HEAP_TYPE_UPLOAD
             // D3D12_HEAP_TYPE_GPU_UPLOAD requires D3D12_RESOURCE_STATE_COMMON
-            return ResourceState::GenericRead;
+            return D3D12_RESOURCE_STATE_GENERIC_READ;
         }
 
         if (heapType == GpuHeapType::Readback)
-            return ResourceState::CopyDestination;
+            return D3D12_RESOURCE_STATE_COPY_DEST;
 
-        return ResourceState::Common;
+        return D3D12_RESOURCE_STATE_COMMON;
     }
 
-    static ID3D12Resource* CreateCommittedD3D12Resource(const Device& device, const BufferCreation& creation, ResourceState initialState)
+    static ID3D12Resource* CreateCommittedD3D12Resource(const Device& device, const BufferCreation& creation, D3D12_RESOURCE_STATES d3d12InitialState)
     {
         BenzinAssert(!IsMaxEnum(creation.HeapType));
 
@@ -100,7 +99,7 @@ namespace benzin
             &d3d12HeapProperties,
             D3D12_HEAP_FLAG_NONE,
             &d3d12ResourceDesc,
-            (D3D12_RESOURCE_STATES)initialState,
+            d3d12InitialState,
             nullptr,
             IID_PPV_ARGS(&d3d12Resource)));
 
@@ -113,7 +112,7 @@ namespace benzin
         const GpuHeap& gpuHeap,
         uint64_t gpuHeapOffsetInBytes,
         const BufferCreation& creation,
-        ResourceState initialState)
+        D3D12_RESOURCE_STATES d3d12InitialState)
     {
         BenzinAssert(IsMaxEnum(creation.HeapType));
 
@@ -124,7 +123,7 @@ namespace benzin
             gpuHeap.GetD3D12Heap(),
             gpuHeapOffsetInBytes,
             &d3d12ResourceDesc,
-            (D3D12_RESOURCE_STATES)initialState,
+            d3d12InitialState,
             nullptr,
             IID_PPV_ARGS(&d3d12Resource)));
 
@@ -269,8 +268,8 @@ namespace benzin
     Buffer::Buffer(Device& device, const BufferCreation& creation)
         : Resource{ device }
     {
-        m_CurrentState = GetInitialBufferState(m_Device, creation.Type, creation.HeapType);
-        m_D3D12Resource = CreateCommittedD3D12Resource(m_Device, creation, m_CurrentState);
+        m_D3D12CurrentState = GetInitialBufferState(m_Device, creation.Type, creation.HeapType);
+        m_D3D12Resource = CreateCommittedD3D12Resource(m_Device, creation, m_D3D12CurrentState);
 
         SetupCreation(creation);
     }
@@ -278,8 +277,8 @@ namespace benzin
     Buffer::Buffer(GpuHeap& gpuHeap, uint64_t gpuHeapOffsetInBytes, const BufferCreation& creation)
         : Resource{ gpuHeap.m_Device }
     {
-        m_CurrentState = GetInitialBufferState(m_Device, creation.Type, gpuHeap.GetType());
-        m_D3D12Resource = CreatePlacedD3D12Resource(m_Device, gpuHeap, gpuHeapOffsetInBytes, creation, m_CurrentState);
+        m_D3D12CurrentState = GetInitialBufferState(m_Device, creation.Type, gpuHeap.GetType());
+        m_D3D12Resource = CreatePlacedD3D12Resource(m_Device, gpuHeap, gpuHeapOffsetInBytes, creation, m_D3D12CurrentState);
 
         SetupCreation(creation, &gpuHeap);
     }

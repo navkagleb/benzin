@@ -146,8 +146,8 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ luminanceHistogram, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ avgLuminance, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ luminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ avgLuminance, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         cmdList.ClearUnorderedAccess(luminanceHistogram, luminanceHistogram.GetUav(), {});
         cmdList.ClearUnorderedAccess(avgLuminance, avgLuminance.GetUav(), {});
@@ -165,8 +165,8 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ luminanceHistogram, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ debugLuminanceHistogram, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ luminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ debugLuminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         {
             using Resources = joint::CalcLuminanceHistogramResources;
@@ -190,8 +190,8 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ luminanceHistogram, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ avgLuminance, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ luminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ avgLuminance, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         {
             using Resources = joint::CalcAvgLuminanceResources;
@@ -213,7 +213,7 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ finalTexture, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ finalTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         {
             using Resources = joint::ApplyToneMapOperatorResources;

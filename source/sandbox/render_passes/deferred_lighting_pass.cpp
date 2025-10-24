@@ -71,7 +71,7 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ hdrColor, benzin::ResourceState::RenderTarget });
+            benzin::TransitionBarrier{ hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET });
 
         cmdList.SetRenderTargets({ hdrColor.GetRtv() });
         cmdList.ClearRenderTarget(hdrColor);

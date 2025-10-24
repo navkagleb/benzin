@@ -24,13 +24,13 @@ namespace benzin
     struct TransitionBarrier
     {
         const Resource& m_Resource;
-        ResourceState m_StateBefore;
-        ResourceState m_StateAfter;
+        D3D12_RESOURCE_STATES m_D3D12StateBefore;
+        D3D12_RESOURCE_STATES m_D3D12StateAfter;
 
-        TransitionBarrier(const Resource& resource, ResourceState stateAfter)
+        TransitionBarrier(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter)
             : m_Resource{ resource }
-            , m_StateBefore{ resource.GetCurrentState() }
-            , m_StateAfter{ stateAfter }
+            , m_D3D12StateBefore{ resource.GetD3D12State() }
+            , m_D3D12StateAfter{ d3d12StateAfter }
         {}
     };
 

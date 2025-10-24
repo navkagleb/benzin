@@ -89,7 +89,7 @@ namespace sandbox
 
             benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::UnorderedAccess }, true);
+            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS }, true);
 
             using Resources = joint::EquirectangularToCubeResources;
             cmdList.SetComputeRootResource(*Resources::EquirectangularTexture, equirectangularTexture->GetSrv());
@@ -99,7 +99,7 @@ namespace sandbox
             cmdList.Dispatch({ cubeMapSize, cubeMapSize, m_CubeTexture->GetDepth() }, { 8, 8, 1 });
 
             cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ *m_CubeTexture });
-            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, benzin::ResourceState::GenericRead }, true);
+            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, D3D12_RESOURCE_STATE_GENERIC_READ }, true);
         }
     }
 
@@ -118,8 +118,8 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ hdrColor, benzin::ResourceState::RenderTarget },
-            benzin::TransitionBarrier{ depthStencil, benzin::ResourceState::DepthRead });
+            benzin::TransitionBarrier{ hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET },
+            benzin::TransitionBarrier{ depthStencil, D3D12_RESOURCE_STATE_DEPTH_READ });
 
         cmdList.SetRenderTargets({ hdrColor.GetRtv() }, &depthStencil.GetDsv());
 

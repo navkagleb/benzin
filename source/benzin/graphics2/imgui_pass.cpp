@@ -2,7 +2,6 @@
 #include <benzin/graphics2/imgui_pass.hpp>
 
 #include <benzin/core/buffer_writer.hpp>
-#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
@@ -482,7 +481,7 @@ namespace benzin
 
         BenzinScopedResourceBarriers(
             cmdList,
-            TransitionBarrier{ backBuffer, ResourceState::RenderTarget });
+            TransitionBarrier{ backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET });
 
         cmdList.SetRenderTargets({ backBuffer.GetRtv() });
         cmdList.ClearRenderTarget(backBuffer, DirectX::XMFLOAT4{});

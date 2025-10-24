@@ -29,31 +29,25 @@ namespace benzin
 
     static D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrier(const TransitionBarrier& transitionBarrier)
     {
-        return D3D12_RESOURCE_BARRIER
-        {
-            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            .Transition
-            {
-                .pResource = transitionBarrier.m_Resource.GetD3D12Resource(),
-                .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                .StateBefore = (D3D12_RESOURCE_STATES)transitionBarrier.m_StateBefore,
-                .StateAfter = (D3D12_RESOURCE_STATES)transitionBarrier.m_StateAfter,
-            },
-        };
+        D3D12_RESOURCE_BARRIER d3d12Barrier = {};
+        d3d12Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        d3d12Barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        d3d12Barrier.Transition.pResource = transitionBarrier.m_Resource.GetD3D12Resource();
+        d3d12Barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        d3d12Barrier.Transition.StateBefore = transitionBarrier.m_D3D12StateBefore;
+        d3d12Barrier.Transition.StateAfter = transitionBarrier.m_D3D12StateAfter;
+
+        return d3d12Barrier;
     }
 
     static D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrier(const UnorderedAccessBarrier& unorderedAccessBarrier)
     {
-        return D3D12_RESOURCE_BARRIER
-        {
-            .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
-            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            .UAV
-            {
-                .pResource = unorderedAccessBarrier.m_Resource.GetD3D12Resource(),
-            },
-        };
+        D3D12_RESOURCE_BARRIER d3d12Barrier = {};
+        d3d12Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        d3d12Barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        d3d12Barrier.UAV.pResource = unorderedAccessBarrier.m_Resource.GetD3D12Resource();
+
+        return d3d12Barrier;
     }
 
     // CmdList
@@ -80,7 +74,7 @@ namespace benzin
         const auto* transitionBarrier = std::get_if<TransitionBarrier>(&resourceBarrierVariant);
         if (transitionBarrier != nullptr)
         {
-            transitionBarrier->m_Resource.SetCurrentState(transitionBarrier->m_StateAfter);
+            transitionBarrier->m_Resource.SetD3D12State(transitionBarrier->m_D3D12StateAfter);
         }
 
         const D3D12_RESOURCE_BARRIER d3d12ResourceBarrier = std::visit(
@@ -119,8 +113,8 @@ namespace benzin
 
         BenzinScopedResourceBarriers(
             *this,
-            TransitionBarrier{ destBuffer, ResourceState::CopyDestination },
-            TransitionBarrier{ sourceBuffer, ResourceState::CopySource });
+            TransitionBarrier{ destBuffer, D3D12_RESOURCE_STATE_COPY_DEST },
+            TransitionBarrier{ sourceBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE });
 
         m_D3D12GraphicsCommandList1->CopyBufferRegion(
             destBuffer.GetD3D12Resource(),
@@ -146,8 +140,8 @@ namespace benzin
 
         BenzinScopedResourceBarriers(
             *this,
-            TransitionBarrier{ destTexture, ResourceState::CopyDestination },
-            TransitionBarrier{ sourceTexture, ResourceState::CopySource });
+            TransitionBarrier{ destTexture, D3D12_RESOURCE_STATE_COPY_DEST },
+            TransitionBarrier{ sourceTexture, D3D12_RESOURCE_STATE_COPY_SOURCE });
 
         m_D3D12GraphicsCommandList1->CopyTextureRegion(&d3d12DestLocatiton, 0, 0, 0, &d3d12SourceLocatiton, nullptr);
     }
@@ -223,7 +217,7 @@ namespace benzin
 
                 // SubResource data
                 const uint64_t destOffsetInBytes = d3d12Layout.Offset;
-                const std::byte* sourceData = subResource.Data;
+                const std::byte* sourceData = subResource.m_Data;
 
                 for (uint32_t sliceIndex = 0; sliceIndex < d3d12Layout.Footprint.Depth; ++sliceIndex)
                 {
@@ -232,7 +226,7 @@ namespace benzin
 
                     // Slice data
                     const uint64_t destSliceOffsetInBytes = destOffsetInBytes + destSlicePitchInBytes * sliceIndex;
-                    const std::byte* sourceSliceData = sourceData + subResource.SlicePitchInBytes * sliceIndex;
+                    const std::byte* sourceSliceData = sourceData + subResource.m_SlicePitchInBytes * sliceIndex;
 
                     for (uint32_t rowIndex = 0; rowIndex < rowCount; ++rowIndex)
                     {
@@ -240,7 +234,7 @@ namespace benzin
 
                         // Row data
                         const uint64_t destRowOffsetInBytes = destSliceOffsetInBytes + destRowPitchInBytes * rowIndex;
-                        const std::byte* sourceRowData = sourceSliceData + subResource.RowPitchInBytes * rowIndex;
+                        const std::byte* sourceRowData = sourceSliceData + subResource.m_RowPitchInBytes * rowIndex;
 
                         const uint64_t rowSizeInBytes = copyableFootprits.RowSizesInBytes[subResourceIndex];
 
@@ -284,12 +278,12 @@ namespace benzin
 
         for (uint16_t depthIndex = 0; depthIndex < texture.GetDepth(); ++depthIndex)
         {
-            subResources.push_back(SubResourceData
-            {
-                .Data = data.data() + slicePitchInBytes * depthIndex,
-                .RowPitchInBytes = rowPitchInBytes,
-                .SlicePitchInBytes = slicePitchInBytes,
-            });
+            SubResourceData subResourceData;
+            subResourceData.m_Data = data.data() + slicePitchInBytes * depthIndex;
+            subResourceData.m_RowPitchInBytes = rowPitchInBytes;
+            subResourceData.m_SlicePitchInBytes = slicePitchInBytes;
+
+            subResources.push_back(subResourceData);
         }
 
         UploadToTexture(texture, subResources);
@@ -413,7 +407,7 @@ namespace benzin
 
     void ComputeCmdList::BuildRayTracingAccelerationStructure(const RayTracing_AcclerationStructure& accelerationStructure)
     {
-        BenzinAssert(accelerationStructure.GetScratchResource()->GetCurrentState() == ResourceState::UnorderedAccess);
+        BenzinAssert(accelerationStructure.GetScratchResource()->GetD3D12State() == D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC d3d12BuildDesc = {};
         d3d12BuildDesc.DestAccelerationStructureData = accelerationStructure.GetBuffer()->GetGpuVirtualAddress();
@@ -656,7 +650,7 @@ namespace benzin
             if (transitionBarrier != nullptr)
             {
                 auto& swappedBarrier = m_SwappedTransitionBarriers.emplace_back(*transitionBarrier);
-                std::swap(swappedBarrier.m_StateAfter, swappedBarrier.m_StateBefore);
+                std::swap(swappedBarrier.m_D3D12StateAfter, swappedBarrier.m_D3D12StateBefore);
             }
 
             m_CmdList.AddResourceBarrier(resourceBarrier);

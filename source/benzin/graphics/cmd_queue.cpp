@@ -1,7 +1,6 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 
-#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/d3d12_assert.hpp>

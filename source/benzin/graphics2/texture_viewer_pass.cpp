@@ -94,7 +94,7 @@ namespace benzin
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ debugTexture, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ debugTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
         cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));

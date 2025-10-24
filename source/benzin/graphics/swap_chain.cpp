@@ -1,7 +1,6 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics/swap_chain.hpp>
 
-#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/cmd_queue.hpp>

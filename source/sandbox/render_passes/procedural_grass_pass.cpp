@@ -132,7 +132,7 @@ namespace sandbox
         const GBuffer gbuffer{ *ms_Resources };
         gbuffer.SetRenderTargets(cmdList);
 
-        const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, benzin::ResourceState::DepthWrite);
+        const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
         {
             using Resources = joint::ProceduralGrassResources;

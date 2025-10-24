@@ -1,7 +1,6 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics2/gpu_print_pass.hpp>
 
-#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
@@ -131,8 +130,8 @@ namespace benzin
     void GpuPrintPass::OnZeroFrameInit()
     {
         GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_UavBuffer, benzin::ResourceState::UnorderedAccess });
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_ReadbackBuffer, benzin::ResourceState::Common }, true);
+        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
+        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_ReadbackBuffer, D3D12_RESOURCE_STATE_COMMON }, true);
         cmdList.ClearUnorderedAccess(*m_UavBuffer, m_UavBuffer->GetUav(), {});
     }
 

@@ -186,12 +186,12 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_Tiles), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_SmoothTiles), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1), benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2), benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_Tiles), D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_SmoothTiles), D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1), D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2), D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1), D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2), D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         cmdList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_Tiles), ms_Resources->Get(TextureId::Sigma_Tiles).GetUav());
         cmdList.ClearUnorderedAccess(ms_Resources->Get(TextureId::Sigma_SmoothTiles), ms_Resources->Get(TextureId::Sigma_SmoothTiles).GetUav());
@@ -212,7 +212,7 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ tiles, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ tiles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         {
             using Resources = joint::SigmaClassifyTilesResources;
@@ -237,7 +237,7 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ smoothTiles, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ smoothTiles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         {
             using Resources = joint::SigmaSmoothTilesResources;
@@ -262,8 +262,8 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ penumbra1, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ penumbra1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ shadowTemp1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         {
             using Resources = joint::SigmaBlurResources;
@@ -296,10 +296,10 @@ namespace sandbox
         {
             BenzinScopedResourceBarriers(
                 cmdList,
-                benzin::TransitionBarrier{ penumbra2, benzin::ResourceState::CopyDestination },
-                benzin::TransitionBarrier{ penumbra1, benzin::ResourceState::CopySource },
-                benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::CopyDestination },
-                benzin::TransitionBarrier{ shadowTemp1, benzin::ResourceState::CopySource });
+                benzin::TransitionBarrier{ penumbra2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+                benzin::TransitionBarrier{ penumbra1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+                benzin::TransitionBarrier{ shadowTemp2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+                benzin::TransitionBarrier{ shadowTemp1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
             cmdList.CopyResource(penumbra2, penumbra1);
             cmdList.CopyResource(shadowTemp2, shadowTemp1);
@@ -309,8 +309,8 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ penumbra2, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ shadowTemp2, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ penumbra2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ shadowTemp2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         {
             using Resources = joint::SigmaBlurResources;
@@ -348,8 +348,8 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ shadow, benzin::ResourceState::UnorderedAccess },
-            benzin::TransitionBarrier{ historyLength, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ shadow, D3D12_RESOURCE_STATE_UNORDERED_ACCESS },
+            benzin::TransitionBarrier{ historyLength, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         {
             using Resources = joint::SigmaTemporalStabilizationResources;

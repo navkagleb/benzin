@@ -1,7 +1,6 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 
-#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>

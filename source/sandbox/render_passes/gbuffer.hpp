@@ -6,8 +6,6 @@ namespace benzin
     class RenderResources;
     class ScopedResourceBarriers;
     class Texture;
-
-    enum class ResourceState : int32_t;
 }
 
 namespace sandbox
@@ -33,7 +31,7 @@ namespace sandbox
         [[nodiscard]]
         benzin::ScopedResourceBarriers CreateResourceBarriers(
             benzin::GraphicsCmdList& cmdList,
-            benzin::ResourceState depthStencilState,
+            D3D12_RESOURCE_STATES d3d12DepthStencilState,
             bool isDepthStencilOnly = false) const;
     };
 

@@ -91,7 +91,7 @@ namespace benzin
         return d3d12ClearValue;
     }
 
-    static ID3D12Resource* CreateD3D12CommittedResource(const Device& device, const TextureCreation& textureCreation, ResourceState initialState)
+    static ID3D12Resource* CreateD3D12CommittedResource(const Device& device, const TextureCreation& textureCreation, D3D12_RESOURCE_STATES d3d12InitialState)
     {
         BenzinAssert(textureCreation.Format != GraphicsFormat::Unknown);
 
@@ -108,10 +108,9 @@ namespace benzin
                 &d3d12HeapProperties,
                 D3D12_HEAP_FLAG_NONE,
                 &d3d12ResourceDesc,
-                (D3D12_RESOURCE_STATES)initialState,
+                d3d12InitialState,
                 &d3d12ClearValue,
-                IID_PPV_ARGS(&d3d12Resource)
-            ));
+                IID_PPV_ARGS(&d3d12Resource)));
         }
         else
         {
@@ -119,10 +118,9 @@ namespace benzin
                 &d3d12HeapProperties,
                 D3D12_HEAP_FLAG_NONE,
                 &d3d12ResourceDesc,
-                (D3D12_RESOURCE_STATES)initialState,
+                d3d12InitialState,
                 nullptr,
-                IID_PPV_ARGS(&d3d12Resource)
-            ));
+                IID_PPV_ARGS(&d3d12Resource)));
         }
 
         BenzinEnsure(d3d12Resource != nullptr);
@@ -217,8 +215,8 @@ namespace benzin
     Texture::Texture(Device& device, const TextureCreation& creation)
         : Resource{ device }
     {
-        m_CurrentState = ResourceState::Common;
-        m_D3D12Resource = CreateD3D12CommittedResource(m_Device, creation, m_CurrentState);
+        m_D3D12CurrentState = D3D12_RESOURCE_STATE_COMMON;
+        m_D3D12Resource = CreateD3D12CommittedResource(m_Device, creation, m_D3D12CurrentState);
 
         SetupCreation(&creation);
     }
@@ -228,7 +226,7 @@ namespace benzin
     {
         BenzinAssert(d3d12Resource != nullptr);
 
-        m_CurrentState = ResourceState::Common;
+        m_D3D12CurrentState = D3D12_RESOURCE_STATE_COMMON;
         m_D3D12Resource = d3d12Resource;
 
         SetupCreation();
@@ -357,7 +355,7 @@ namespace benzin
 
     Descriptor Texture::CreateDetachedUav(const TextureUav& textureUav) const
     {
-        BenzinAssert(m_CurrentState == ResourceState::UnorderedAccess);
+        BenzinAssert(m_D3D12CurrentState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         BenzinAssert(textureUav.m_MipIndex < m_MipCount);
 
         return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav, [this, &textureUav](uint64_t cpuHandle)

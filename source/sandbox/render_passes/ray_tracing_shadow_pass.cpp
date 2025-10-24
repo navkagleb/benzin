@@ -109,7 +109,7 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ noisyPenumbra, benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ noisyPenumbra, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         {
             using Resources = joint::RayTracing_ShadowResources;

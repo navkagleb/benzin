@@ -238,7 +238,7 @@ namespace sandbox
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::GeometryPass_DepthReprojection));
 
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ hzb, benzin::ResourceState::UnorderedAccess }, true);
+        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ hzb, D3D12_RESOURCE_STATE_UNORDERED_ACCESS }, true);
 
         using Resources = joint::DepthResprojectionResources;
         cmdList.SetComputeRootResource(*Resources::PrevDepth, prevDepth.GetSrv());
@@ -282,7 +282,7 @@ namespace sandbox
             cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ hzb }, true);
         }
 
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ hzb, benzin::ResourceState::GenericRead }, true);
+        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ hzb, D3D12_RESOURCE_STATE_GENERIC_READ }, true);
     }
 
     void GeometryPass::RunColorPass(benzin::GraphicsCmdList& cmdList) const
@@ -293,7 +293,7 @@ namespace sandbox
         BenzinGpuProfile("ColorPass");
 
         const GBuffer gbuffer{ *ms_Resources };
-        const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, benzin::ResourceState::DepthWrite);
+        const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
         gbuffer.SetRenderTargets(cmdList);
         gbuffer.ClearRenderTargets(cmdList);

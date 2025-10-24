@@ -31,7 +31,7 @@ namespace sandbox
 
         BenzinScopedResourceBarriers(
             cmdList,
-            benzin::TransitionBarrier{ *tlas.GetScratchResource(), benzin::ResourceState::UnorderedAccess });
+            benzin::TransitionBarrier{ *tlas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         cmdList.BuildRayTracingAccelerationStructure(tlas);
         cmdList.SetComputeSrv(benzin::UnifiedRootParameter::SceneTlas, tlas.GetGpuVirtualAddress());

@@ -1,8 +1,6 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/engine/scene.hpp>
 
-#include <benzin/core/cmd_line_args.hpp>
-#include <benzin/core/math.hpp>
 #include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/geometry_generator.hpp>
