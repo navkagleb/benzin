@@ -1,15 +1,85 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/ray_tracing_pso.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/ray_tracing_pso.hpp>
 
-#include "benzin/graphics/backend.hpp"
-#include "benzin/graphics/buffer.hpp"
-#include "benzin/graphics/d3d12_assert.hpp"
-#include "benzin/graphics/d3d12_utils.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/unified_root_signature.hpp"
+#include <benzin/core/math.hpp>
+#include <benzin/graphics/buffer.hpp>
+#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
+#include <benzin/graphics/unified_root_signature.hpp>
 
 namespace benzin
 {
+
+    static void StoreRawShaderIdentifier(const void* rawId, RayTracing_ShaderTable::ShaderIdentifier& outId)
+    {
+        std::copy_n((const std::byte*)rawId, outId.size(), outId.begin());
+    }
+
+    // RayTracing_ShaderTable
+
+    RayTracing_ShaderTable::~RayTracing_ShaderTable() = default;
+
+    void RayTracing_ShaderTable::SetRayGenerationShader(const void* rawId)
+    {
+        StoreRawShaderIdentifier(rawId, m_RayGenerationShader);
+    }
+
+    void RayTracing_ShaderTable::SetMissShader(const void* rawId)
+    {
+        StoreRawShaderIdentifier(rawId, m_MissShader);
+    }
+
+    void RayTracing_ShaderTable::SetHitGroupShaders(const void* rawId)
+    {
+        StoreRawShaderIdentifier(rawId, m_HitGroupShaders);
+    }
+
+    void RayTracing_ShaderTable::AllocateBuffer(Device& device, std::string_view debugName)
+    {
+        // TODO: Replace 'shaderTable' with buffer in default heap
+
+        MakeUniquePtr(m_ShaderTable, device, BufferCreation
+        {
+            .DebugName = std::format("RayTracingShaderTable::{}", debugName),
+            .HeapType = GpuHeapType::Upload, // TODO: Replace with default heap
+            .ElementSizeInBytes = sizeof(std::byte),
+            .ElementCount = GetRequiredTableSizeInBytes(),
+        });
+
+        BufferWriter tableWriter = MakeBufferWriter(*m_ShaderTable);
+
+        const auto processIdentifier = [this, &tableWriter](ShaderIdentifier id, GpuAddress& outGpuAddress)
+        {
+            outGpuAddress.m_GpuVirtualAddress = m_ShaderTable->GetGpuVirtualAddress() + tableWriter.GetPositionInBytes();
+            outGpuAddress.m_SizeInBytes = id.size();
+
+            tableWriter.WriteData(ToSpan(id.data(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT));
+        };
+
+        processIdentifier(m_RayGenerationShader, m_GpuAddresses.m_RayGenerationShader);
+        processIdentifier(m_MissShader, m_GpuAddresses.m_MissTable);
+        processIdentifier(m_HitGroupShaders, m_GpuAddresses.m_HitGroupTable);
+    }
+
+    uint32_t RayTracing_ShaderTable::GetRequiredTableSizeInBytes() const
+    {
+        const auto getIdentifierSizeInBytes = [](ShaderIdentifier id)
+        {
+            const auto recordSizeInBytes = AlignUp((uint32_t)id.size(), D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+            return AlignUp(recordSizeInBytes, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+        };
+
+        uint32_t tableSizeInBytes = 0;
+        tableSizeInBytes += getIdentifierSizeInBytes(m_RayGenerationShader);
+        tableSizeInBytes += getIdentifierSizeInBytes(m_MissShader);
+        tableSizeInBytes += getIdentifierSizeInBytes(m_HitGroupShaders);
+
+        return (uint32_t)tableSizeInBytes;
+    }
+
+    // RayTracing_Pso
 
     RayTracing_Pso::RayTracing_Pso(Device& device)
         : PsoBase(device)
@@ -45,17 +115,21 @@ namespace benzin
             D3D12_STATE_SUBOBJECT{ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG, &m_D3D12PipelineConfig },
         });
 
-        const D3D12_STATE_OBJECT_DESC d3d12StateObjectDesc
-        {
-            .Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE,
-            .NumSubobjects = (uint32_t)d3d12StateSubObjects.size(),
-            .pSubobjects = d3d12StateSubObjects.data(),
-        };
+        D3D12_STATE_OBJECT_DESC d3d12StateObjectDesc = {};
+        d3d12StateObjectDesc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
+        d3d12StateObjectDesc.NumSubobjects = (uint32_t)d3d12StateSubObjects.size();
+        d3d12StateObjectDesc.pSubobjects = d3d12StateSubObjects.data();
 
         BenzinD3D12Call(m_Device.GetD3D12Device()->CreateStateObject(&d3d12StateObjectDesc, IID_PPV_ARGS(&m_D3D12StateObject)));
         SetD3DObjectDebugName(m_D3D12StateObject, debugName);
 
-        BuildShaderTable();
+        ComPtr<ID3D12StateObjectProperties> d3d12StateObjectProperties;
+        BenzinD3D12Call(m_D3D12StateObject->QueryInterface(IID_PPV_ARGS(&d3d12StateObjectProperties)));
+
+        m_ShaderTable.SetRayGenerationShader(d3d12StateObjectProperties->GetShaderIdentifier(m_RayGenerationEntryPoint.c_str()));
+        m_ShaderTable.SetMissShader(d3d12StateObjectProperties->GetShaderIdentifier(m_MissShaderEntryPoint.c_str()));
+        m_ShaderTable.SetHitGroupShaders(d3d12StateObjectProperties->GetShaderIdentifier(m_HitGroupName.c_str()));
+        m_ShaderTable.AllocateBuffer(m_Device, debugName);
     }
 
     void RayTracing_Pso::Release()
@@ -107,19 +181,6 @@ namespace benzin
 
         m_D3D12DxilLibrary.DXILLibrary.pShaderBytecode = bytecode.data();
         m_D3D12DxilLibrary.DXILLibrary.BytecodeLength = bytecode.size();
-    }
-
-    void RayTracing_Pso::BuildShaderTable()
-    {
-        BenzinEnsure(m_D3D12StateObject != nullptr);
-
-        ComPtr<ID3D12StateObjectProperties> d3d12StateObjectProperties;
-        BenzinD3D12Call(m_D3D12StateObject->QueryInterface(IID_PPV_ARGS(&d3d12StateObjectProperties)));
-
-        m_ShaderTable.SetRayGenerationShader(d3d12StateObjectProperties->GetShaderIdentifier(m_RayGenerationEntryPoint.c_str()));
-        m_ShaderTable.SetMissShader(d3d12StateObjectProperties->GetShaderIdentifier(m_MissShaderEntryPoint.c_str()));
-        m_ShaderTable.SetHitGroupShaders(d3d12StateObjectProperties->GetShaderIdentifier(m_HitGroupName.c_str()));
-        m_ShaderTable.AllocateBuffer(m_Device);
     }
 
 }

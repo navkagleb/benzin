@@ -12,7 +12,6 @@
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/ray_tracing_pso.hpp>
-#include <benzin/graphics/ray_tracing_shader_table.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>

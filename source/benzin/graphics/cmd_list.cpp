@@ -14,7 +14,6 @@
 #include <benzin/graphics/query_heap.hpp>
 #include <benzin/graphics/ray_tracing_acceleration_structures.hpp>
 #include <benzin/graphics/ray_tracing_pso.hpp>
-#include <benzin/graphics/ray_tracing_shader_table.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 
@@ -429,35 +428,21 @@ namespace benzin
 
         const RayTracing_ShaderTable::GpuAddresses& gpuAddresses = shaderTable.GetGpuAddresses();
 
-        const D3D12_DISPATCH_RAYS_DESC d3d12DispatchRayDesc
-        {
-            .RayGenerationShaderRecord
-            {
-                .StartAddress = gpuAddresses.RayGenerationShader.GpuVirtualAddress,
-                .SizeInBytes = gpuAddresses.RayGenerationShader.SizeInBytes,
-            },
-            .MissShaderTable
-            {
-                .StartAddress = gpuAddresses.MissTable.GpuVirtualAddress,
-                .SizeInBytes = gpuAddresses.MissTable.SizeInBytes,
-                .StrideInBytes = 0, // TODO: For now supported only one record per table
-            },
-            .HitGroupTable
-            {
-                .StartAddress = gpuAddresses.HitGroupTable.GpuVirtualAddress,
-                .SizeInBytes = gpuAddresses.MissTable.SizeInBytes,
-                .StrideInBytes = 0, // TODO: For now supported only one record per table
-            },
-            .CallableShaderTable
-            {
-                .StartAddress = 0,
-                .SizeInBytes = 0,
-                .StrideInBytes = 0,
-            },
-            .Width = dimenions.x,
-            .Height = dimenions.y,
-            .Depth = dimenions.z,
-        };
+        D3D12_DISPATCH_RAYS_DESC d3d12DispatchRayDesc = {};
+        d3d12DispatchRayDesc.RayGenerationShaderRecord.StartAddress = gpuAddresses.m_RayGenerationShader.m_GpuVirtualAddress;
+        d3d12DispatchRayDesc.RayGenerationShaderRecord.SizeInBytes = gpuAddresses.m_RayGenerationShader.m_SizeInBytes;
+        d3d12DispatchRayDesc.MissShaderTable.StartAddress = gpuAddresses.m_MissTable.m_GpuVirtualAddress;
+        d3d12DispatchRayDesc.MissShaderTable.SizeInBytes = gpuAddresses.m_MissTable.m_SizeInBytes;
+        d3d12DispatchRayDesc.MissShaderTable.StrideInBytes = 0; // TODO: For now supported only one record per table
+        d3d12DispatchRayDesc.HitGroupTable.StartAddress = gpuAddresses.m_HitGroupTable.m_GpuVirtualAddress,
+        d3d12DispatchRayDesc.HitGroupTable.SizeInBytes = gpuAddresses.m_MissTable.m_SizeInBytes,
+        d3d12DispatchRayDesc.HitGroupTable.StrideInBytes = 0; // TODO: For now supported only one record per table
+        d3d12DispatchRayDesc.CallableShaderTable.StartAddress = 0;
+        d3d12DispatchRayDesc.CallableShaderTable.SizeInBytes = 0;
+        d3d12DispatchRayDesc.CallableShaderTable.StrideInBytes = 0;
+        d3d12DispatchRayDesc.Width = dimenions.x;
+        d3d12DispatchRayDesc.Height = dimenions.y;
+        d3d12DispatchRayDesc.Depth = dimenions.z;
 
         m_D3D12GraphicsCommandList4->DispatchRays(&d3d12DispatchRayDesc);
     }
