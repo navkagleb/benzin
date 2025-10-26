@@ -5,8 +5,6 @@
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/device.hpp>
 
-BenzinAllowDereferenceOperatorForEnum(benzin::UnifiedRootParameter);
-
 namespace benzin
 {
 

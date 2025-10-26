@@ -7,12 +7,12 @@ namespace joint
 
     enum class GeometryResources : uint
     {
-        MeshDrawParts,
-        MeshDraws,
-        Materials,
-
-        MeshDrawPartIndex,
         MeshDrawIndex,
+        MeshDrawPartIndex,
+
+        MeshDraws,
+        MeshDrawParts,
+        Materials,
 
         Vertices, // Mesh pipeline
         Meshlets, // Mesh pipeline
@@ -26,15 +26,4 @@ namespace joint
         MeshletIndex, // Debug
     };
 
-    struct GeometryPassConsts
-    {
-        uint IsFrustumCullingEnabled : 1;
-        uint IsBackfaceCullingEnabled : 1;
-        uint IsOcclusionCullingEnabled : 1;
-    };
-
 }
-
-#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0)
-    #define BenzinRenderPassConstsType0 joint::GeometryPassConsts
-#endif

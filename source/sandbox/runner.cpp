@@ -153,7 +153,6 @@ namespace sandbox
             // scene (or create in the scene inself) and upload meshes to GPU using
             // linear allocator
             m_Scene->UploadToGpu();
-            m_Scene->UploadMeshletsToGpu();
             m_RayTracingScene->BuildBlases();
 
             RunImGuiFrame(); // Force call ImGui frame to call RenderPass::OnRenderViewportResize on EndFrame

@@ -10,12 +10,11 @@ namespace benzin
     class Device;
     class PsoManager;
     class RayTracing_Scene;
-    class Scene;
     class SwapChain;
     class Texture;
     class TickTimer;
-
     struct BufferCreation;
+    struct Scene;
     struct TextureCreation;
 
     class RenderSettings

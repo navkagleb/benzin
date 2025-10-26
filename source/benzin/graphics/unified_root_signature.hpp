@@ -33,3 +33,5 @@ namespace benzin
     };
 
 }
+
+BenzinAllowDereferenceOperatorForEnum(benzin::UnifiedRootParameter);

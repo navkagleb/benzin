@@ -2,7 +2,6 @@
 #include <sandbox/render_settings.hpp>
 
 #include <benzin/core/logger.hpp>
-
 #include <shaders/joint/procedural_grass_resources.hpp>
 
 namespace sandbox
@@ -11,19 +10,7 @@ namespace sandbox
     template <>
     void DrawSettings(GBufferSettings& settings)
     {
-        ImGui::Checkbox("CPU frustum culling", &settings.IsCpuFrustumCullingEnabled);
-        ImGui::Checkbox("Mesh pipeline", &settings.IsMeshPipelineUsed);
-
-        ImGui::Indent();
-        ImGui::BeginDisabled(!settings.IsMeshPipelineUsed);
-        {
-            ImGui::Checkbox("Amplification dispatch", &settings.IsAmplificationDispatchUsed);
-            ImGui::Checkbox("GPU frustum culling", &settings.IsGpuFrustumCullingEnabled);
-            ImGui::Checkbox("Back-face cone culling", &settings.IsBackfaceCullingEnabled);
-            ImGui::Checkbox("Occlusion culling", &settings.IsOcclusionCullingEnabled);
-        }
-        ImGui::EndDisabled();
-        ImGui::Unindent();
+        ImGui::Checkbox("Indirect draw", &settings.m_IsIndirectDrawEnabled);
     }
 
     template <>
@@ -198,8 +185,7 @@ namespace sandbox
                 luminanceHistogram.MinLogLuminance = std::clamp(
                     luminanceHistogram.MinLogLuminance,
                     luminanceHistogram.MinLogLuminance,
-                    luminanceHistogram.MaxLogLuminance
-                );
+                    luminanceHistogram.MaxLogLuminance);
             }
 
             if (ImGui::DragFloat("Max log luminance", &luminanceHistogram.MaxLogLuminance))
@@ -207,8 +193,7 @@ namespace sandbox
                 luminanceHistogram.MaxLogLuminance = std::clamp(
                     luminanceHistogram.MaxLogLuminance,
                     luminanceHistogram.MinLogLuminance,
-                    luminanceHistogram.MaxLogLuminance
-                );
+                    luminanceHistogram.MaxLogLuminance);
             }
 
             ImGui::InputFloat("Tau", &luminanceHistogram.Tau);
@@ -236,8 +221,7 @@ namespace sandbox
                 (int*)&settings.ToneReproductionTransform,
                 ImGui::SelectComboName<decltype(toneReproductionTransformNames)>,
                 (void*)&toneReproductionTransformNames,
-                (int)toneReproductionTransformNames.size()
-            );
+                (int)toneReproductionTransformNames.size());
         });
     }
 

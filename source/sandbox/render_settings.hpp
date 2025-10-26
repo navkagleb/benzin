@@ -19,12 +19,7 @@ namespace sandbox
 
         static constexpr auto s_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint; // TODO: Can be used D32 instead
 
-        bool IsCpuFrustumCullingEnabled = true;
-        bool IsMeshPipelineUsed = true;
-        bool IsAmplificationDispatchUsed = true;
-        bool IsGpuFrustumCullingEnabled = true;
-        bool IsBackfaceCullingEnabled = true;
-        bool IsOcclusionCullingEnabled = true;
+        bool m_IsIndirectDrawEnabled = false;
     };
 
     struct GBufferStats

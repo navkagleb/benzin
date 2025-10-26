@@ -11,6 +11,8 @@
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
+#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/pso.hpp>
@@ -32,45 +34,37 @@ BenzinEnableFlagsForEnum(sandbox::GeometryPass::PsoFlag);
 namespace sandbox
 {
 
-    static bool IsFrustumCulled(
-        const DirectX::BoundingFrustum& worldFrustum,
-        const DirectX::BoundingSphere& localBoundingSphere,
-        const DirectX::XMMATRIX& localToWorldMatrix)
-    {
-        const DirectX::XMFLOAT3 center = localBoundingSphere.Center;
-        if (center.x == 0.0f && center.y == 0.0f && center.z == 0.0f && localBoundingSphere.Radius == 1.0f)
-            return false;
-
-        DirectX::BoundingSphere worldBoundingSphere;
-        localBoundingSphere.Transform(worldBoundingSphere, localToWorldMatrix);
-
-        return worldFrustum.Contains(worldBoundingSphere) == DirectX::DISJOINT;
-    }
-
-    //
-
     GeometryPass::GeometryPass()
     {
-        ms_PsoManager->Create(PsoId::GeometryPass_DepthReprojection, [](benzin::ComputePsoProxy& proxy)
-        {
-            proxy.Cs.FileName = "depth_reprojection.hlsl";
-            proxy.Cs.Defines.push_back("DEPTH_REPROJECTION");
-        });
-
-        ms_PsoManager->Create(PsoId::GeometryPass_DepthReduction, [](benzin::ComputePsoProxy& proxy)
-        {
-            proxy.Cs.FileName = "depth_reprojection.hlsl";
-            proxy.Cs.Defines.push_back("DEPTH_REDUCTION");
-        });
-
         CreateGeometryPso(PsoId::GeometryPass_Vertex);
         CreateGeometryPso(PsoId::GeometryPass_Vertex_Alpha, PsoFlag::AlphaTest);
         CreateGeometryPso(PsoId::GeometryPass_Mesh, PsoFlag::MeshPipeline);
         CreateGeometryPso(PsoId::GeometryPass_Mesh_Alpha, PsoFlag::MeshPipeline | PsoFlag::AlphaTest);
+
+        std::array<D3D12_INDIRECT_ARGUMENT_DESC, 2> d3d12IndirectArgumentDescs = {};
+        d3d12IndirectArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+        d3d12IndirectArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
+        d3d12IndirectArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
+        d3d12IndirectArgumentDescs[0].Constant.Num32BitValuesToSet = 2;
+        d3d12IndirectArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+
+        D3D12_COMMAND_SIGNATURE_DESC d3d12CommandSignatureDesc = {};
+        d3d12CommandSignatureDesc.ByteStride = sizeof(benzin::MeshDrawIndirectCmd);
+        d3d12CommandSignatureDesc.NumArgumentDescs = (uint32_t)d3d12IndirectArgumentDescs.size();
+        d3d12CommandSignatureDesc.pArgumentDescs = d3d12IndirectArgumentDescs.data();
+        d3d12CommandSignatureDesc.NodeMask = 0;
+
+        BenzinD3D12Call(ms_Device->GetD3D12Device()->CreateCommandSignature(
+            &d3d12CommandSignatureDesc,
+            ms_Device->GetUnifiedRootSignature().GetD3D12RootSignature(),
+            IID_PPV_ARGS(&m_D3D12DrawIndexedIndirectCmdSignature)));
     }
 
     GeometryPass::~GeometryPass()
     {
+        ms_Device->DeferredRelease(m_D3D12DrawIndexedIndirectCmdSignature);
+        m_D3D12DrawIndexedIndirectCmdSignature = nullptr;
+
         ms_PsoManager->Destroy(PsoId::GeometryPass_DepthReprojection);
         ms_PsoManager->Destroy(PsoId::GeometryPass_DepthReduction);
         ms_PsoManager->Destroy(PsoId::GeometryPass_Vertex);
@@ -133,24 +127,68 @@ namespace sandbox
         stats.m_ViewportPixelCount = ms_RenderViewportWidth * ms_RenderViewportHeight;
     }
 
-    void GeometryPass::OnUpdate()
-    {
-        const auto& settings = ms_Settings->GetSection<GBufferSettings>();
-
-        m_Consts.IsFrustumCullingEnabled = settings.IsGpuFrustumCullingEnabled;
-        m_Consts.IsBackfaceCullingEnabled = settings.IsBackfaceCullingEnabled;
-        m_Consts.IsOcclusionCullingEnabled = settings.IsOcclusionCullingEnabled;
-    }
-
     void GeometryPass::OnRender() const
     {
         BenzinProfile();
         BenzinGpuProfile("Geometry");
 
         benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        ReprojectDepth(cmdList);
-        GenerateHzb(cmdList);
-        RunColorPass(cmdList);
+
+        const GBuffer gbuffer{ *ms_Resources };
+        const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+        gbuffer.SetRenderTargets(cmdList);
+        gbuffer.ClearRenderTargets(cmdList);
+        gbuffer.ClearDepthStencil(cmdList);
+
+        cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Vertex));
+
+        cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
+        cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
+        cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        cmdList.SetVertexBuffer(*ms_Scene->m_VertexBuffer);
+        cmdList.SetIndexBuffer(*ms_Scene->m_IndexBuffer);
+
+        using Resources = joint::GeometryResources;
+
+        cmdList.SetGraphicsRootResource(*Resources::MeshDrawParts, ms_Scene->m_MeshDrawPartBuffer->GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::MeshDraws, ms_Scene->m_MeshDrawBuffer->GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::Materials, ms_Scene->m_MaterialBuffer->GetSrv());
+
+        if (ms_Settings->GetSection<GBufferSettings>().m_IsIndirectDrawEnabled)
+        {
+            cmdList.GetD3D12GraphicsCommandList()->ExecuteIndirect(
+                m_D3D12DrawIndexedIndirectCmdSignature,
+                (uint32_t)ms_Scene->m_MeshDrawIndirectCmdBuffer->GetElementCount(),
+                ms_Scene->m_MeshDrawIndirectCmdBuffer->GetD3D12Resource(),
+                0,
+                nullptr,
+                0);
+        }
+        else
+        {
+            for (uint32_t drawIndex = 0; drawIndex < ms_Scene->m_MeshDraws.size(); ++drawIndex)
+            {
+                const benzin::MeshDraw& draw = ms_Scene->m_MeshDraws[drawIndex];
+
+                cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, drawIndex);
+
+                const uint32_t drawPartOffset = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartOffset;
+                const uint32_t drawPartCount = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartCount;
+
+                for (uint32_t drawPartIndex = drawPartOffset; drawPartIndex < drawPartOffset + drawPartCount; ++drawPartIndex)
+                {
+                    const benzin::MeshDrawPart& drawPart = ms_Scene->m_MeshDrawParts[drawPartIndex];
+                    const benzin::MeshPart& part = ms_Scene->m_MeshParts[drawPart.m_PartIndex];
+
+                    cmdList.SetGraphicsRootConstant(*Resources::MeshDrawPartIndex, drawPartIndex);
+
+                    cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(part.m_D3D12PrimitiveTopology);
+                    cmdList.DrawIndexed(part.m_IndexCount, part.m_IndexOffset, part.m_VertexOffset);
+                }
+            }
+        }
     }
 
     void GeometryPass::CreateGeometryPso(PsoId id, benzin::EnumFlags<PsoFlag> flags)
@@ -225,113 +263,6 @@ namespace sandbox
 
                 configureGraphicsPsoProxy(outProxy);
             });
-        }
-    }
-
-    void GeometryPass::ReprojectDepth(benzin::ComputeCmdList& cmdList) const
-    {
-        BenzinProfile();
-        BenzinGpuProfile("ReprojectDepth");
-
-        const benzin::Texture& prevDepth = ms_Resources->GetPrev(TextureId::DepthStencil);
-        const benzin::Texture& hzb = ms_Resources->Get(TextureId::Hzb);
-
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::GeometryPass_DepthReprojection));
-
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ hzb, D3D12_RESOURCE_STATE_UNORDERED_ACCESS }, true);
-
-        using Resources = joint::DepthResprojectionResources;
-        cmdList.SetComputeRootResource(*Resources::PrevDepth, prevDepth.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::ReprojectedDepth, hzb.GetUav({ .m_MipIndex = 0 }));
-
-        cmdList.Dispatch({ prevDepth.GetWidth(), prevDepth.GetHeight(), 1}, { 8, 8, 1 });
-
-        cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ hzb }, true);
-    }
-
-    void GeometryPass::GenerateHzb(benzin::ComputeCmdList& cmdList) const
-    {
-        BenzinProfile();
-        BenzinGpuProfile("GenerateHzb");
-
-        const benzin::Texture& hzb = ms_Resources->Get(TextureId::Hzb);
-
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::GeometryPass_DepthReduction));
-
-        for (uint16_t sourceMipIndex = 0; sourceMipIndex < hzb.GetMipCount() - 1; ++sourceMipIndex)
-        {
-            const uint16_t destMipIndex = sourceMipIndex + 1;
-            const uint32_t destMipWidth = hzb.GetMipWidth(destMipIndex);
-            const uint32_t destMipHeight = hzb.GetMipHeight(destMipIndex);
-
-            joint::DepthReductionPassConsts consts = {};
-            consts.m_DestMipTexelSize = { 1.0f / destMipWidth, 1.0f / destMipHeight };
-            consts.m_IsSourceWidthOdd = (hzb.GetMipWidth(sourceMipIndex) & 1) == 1;
-            consts.m_IsSourceHeightOdd = (hzb.GetMipHeight(sourceMipIndex) & 1) == 1;
-
-            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(consts));
-
-            {
-                using Resources = joint::DepthReductionResources;
-                cmdList.SetComputeRootResource(*Resources::SourceMip, hzb.GetSrv({ .m_MipOffset = sourceMipIndex, .m_MipCount = 1 }));
-                cmdList.SetComputeRootResource(*Resources::DestMip, hzb.GetUav({ .m_MipIndex = destMipIndex }));
-            }
-
-            cmdList.Dispatch({ destMipWidth, destMipHeight, 1 }, { 8, 8, 1 });
-
-            cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ hzb }, true);
-        }
-
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ hzb, D3D12_RESOURCE_STATE_GENERIC_READ }, true);
-    }
-
-    void GeometryPass::RunColorPass(benzin::GraphicsCmdList& cmdList) const
-    {
-        using Resources = joint::GeometryResources;
-
-        BenzinProfile();
-        BenzinGpuProfile("ColorPass");
-
-        const GBuffer gbuffer{ *ms_Resources };
-        const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-        gbuffer.SetRenderTargets(cmdList);
-        gbuffer.ClearRenderTargets(cmdList);
-        gbuffer.ClearDepthStencil(cmdList);
-
-        cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Vertex));
-
-        cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
-        cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
-
-        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
-
-        cmdList.SetVertexBuffer(*ms_Scene->m_VertexBuffer);
-        cmdList.SetIndexBuffer(*ms_Scene->m_IndexBuffer);
-
-        cmdList.SetGraphicsRootResource(*Resources::MeshDrawParts, ms_Scene->m_MeshDrawPartBuffer->GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::MeshDraws, ms_Scene->m_MeshDrawBuffer->GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::Materials, ms_Scene->m_MaterialBuffer->GetSrv());
-
-        for (uint32_t drawIndex = 0; drawIndex < ms_Scene->m_MeshDraws.size(); ++drawIndex)
-        {
-            const benzin::MeshDraw& draw = ms_Scene->m_MeshDraws[drawIndex];
-
-            cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, drawIndex);
-
-            const uint32_t drawPartOffset = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartOffset;
-            const uint32_t drawPartCount = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartCount;
-
-            for (uint32_t drawPartIndex = drawPartOffset; drawPartIndex < drawPartOffset + drawPartCount; ++drawPartIndex)
-            {
-                const benzin::MeshDrawPart& drawPart = ms_Scene->m_MeshDrawParts[drawPartIndex];
-                const benzin::MeshPart& part = ms_Scene->m_MeshParts[drawPart.m_PartIndex];
-
-                cmdList.SetGraphicsRootConstant(*Resources::MeshDrawPartIndex, drawPartIndex);
-
-                cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(part.m_D3D12PrimitiveTopology);
-                cmdList.DrawIndexed(part.m_IndexCount, part.m_IndexOffset, part.m_VertexOffset);
-            }
         }
     }
 

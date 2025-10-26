@@ -21,8 +21,6 @@
 #define USE_PIX
 #include <pix3.h>
 
-BenzinAllowDereferenceOperatorForEnum(benzin::UnifiedRootParameter);
-
 namespace benzin
 {
 

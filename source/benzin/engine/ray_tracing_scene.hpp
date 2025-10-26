@@ -7,7 +7,7 @@ namespace benzin
 
     class Buffer;
     class Device;
-    class Scene;
+    struct Scene;
 
     class RayTracing_Scene
     {

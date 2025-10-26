@@ -33,6 +33,15 @@ namespace benzin
         uint32_t m_MeshRangeIndex = g_MaxU32;
     };
 
+    struct MeshDrawIndirectCmd
+    {
+        // TODO: Can be merged to uint32_t
+        uint32_t m_DrawIndex = 0;
+        uint32_t m_DrawPartIndex = 0;
+
+        D3D12_DRAW_INDEXED_ARGUMENTS m_D3D12Cmd = {};
+    };
+
     struct SunLight
     {
         DirectX::XMFLOAT3 m_Color = { 1.0f, 1.0f, 1.0f };
@@ -57,26 +66,9 @@ namespace benzin
         }
     };
 
-    class Scene
+    struct Scene
     {
-    public:
         using UpdateCallback = std::function<void()>;
-
-        explicit Scene(Device& device);
-        ~Scene();
-
-        void AddMesh(
-            const std::string& debugName,
-            Mesh&& mesh,
-            std::vector<MeshDrawPart>&& meshDrawParts,
-            std::vector<Material>&& materials = {},
-            std::vector<TextureImage>&& textures = {});
-
-        void UploadToGpu();
-        void UploadMeshletsToGpu();
-
-        void ExecuteUpdateCallbacks();
-        void UploadMeshDrawsToGpu();
 
         Device& m_Device;
 
@@ -99,6 +91,7 @@ namespace benzin
         std::unique_ptr<Buffer> m_IndexBuffer;
         std::unique_ptr<Buffer> m_MeshDrawPartBuffer;
         std::unique_ptr<Buffer> m_MeshDrawBuffer;
+        std::unique_ptr<Buffer> m_MeshDrawIndirectCmdBuffer;
         std::unique_ptr<Buffer> m_MaterialBuffer;
         std::vector<std::unique_ptr<Texture>> m_Textures;
 
@@ -106,6 +99,21 @@ namespace benzin
         SunLight m_SunLight;
 
         std::vector<UpdateCallback> m_UpdateCallbacks;
+
+        explicit Scene(Device& device);
+        ~Scene();
+
+        void AddMesh(
+            const std::string& debugName,
+            Mesh&& mesh,
+            std::vector<MeshDrawPart>&& meshDrawParts,
+            std::vector<Material>&& materials = {},
+            std::vector<TextureImage>&& textures = {});
+
+        void UploadToGpu();
+
+        void ExecuteUpdateCallbacks();
+        void UploadMeshDrawsToGpu();
     };
 
 }
