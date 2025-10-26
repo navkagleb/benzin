@@ -37,6 +37,7 @@ namespace benzin
     GpuHeap::~GpuHeap()
     {
         m_Device.DeferredRelease(m_D3D12Heap);
+        m_D3D12Heap = nullptr;
     }
 
     // GpuHeapLinearBufferAllocator

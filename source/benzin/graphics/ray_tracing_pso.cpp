@@ -135,6 +135,7 @@ namespace benzin
     void RayTracing_Pso::Release()
     {
         m_Device.DeferredRelease(m_D3D12StateObject);
+        m_D3D12StateObject = nullptr;
     }
 
     std::span<const ShaderInfo> RayTracing_Pso::GetShaders() const

@@ -60,11 +60,7 @@ namespace benzin
 
         uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
 
-        void DeferredRelease(ID3D12Heap*& d3d12Heap);
-        void DeferredRelease(ID3D12PipelineState*& d3d12PipelineState);
-        void DeferredRelease(ID3D12QueryHeap*& d3d12QueryHeap);
-        void DeferredRelease(ID3D12Resource*& d3d12Resource);
-        void DeferredRelease(ID3D12StateObject*& d3d12StateObject);
+        void DeferredRelease(ID3D12Object* d3d12Object);
         void DeferredRelease(const Descriptor& descriptor);
         void ProcessDeferredReleaseQueues(bool isForceRelease = false); // Must be called after 'SwapChain::OnFlip' because 'm_CompletedGpuFrameIndex' will be updated there
 
@@ -75,9 +71,6 @@ namespace benzin
     private:
         void CheckFeaturesSupport();
 
-        void DeferredRelease(ID3D12Object* d3d12Object);
-
-    private:
         // ID3D12Device5 supports RT
         ID3D12Device5* m_D3D12Device = nullptr;
 

@@ -5,17 +5,10 @@ namespace benzin
 
     class Device;
 
-    enum class QueryHeapType : uint8_t
-    {
-        // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d12/timing
-        // D3D12_COMMAND_LIST_TYPE_DIRECT and D3D12_COMMAND_LIST_TYPE_COMPUTE always support timestamps
-        Timestamp = D3D12_QUERY_HEAP_TYPE_TIMESTAMP,
-    };
-
     struct QueryHeapCreation
     {
         std::string_view m_DebugName;
-        QueryHeapType m_Type = g_MaxEnum<QueryHeapType>;
+        D3D12_QUERY_HEAP_TYPE m_D3D12Type = g_MaxEnum<D3D12_QUERY_HEAP_TYPE>;
         uint32_t m_Count = 0;
     };
 

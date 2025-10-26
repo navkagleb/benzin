@@ -11,11 +11,11 @@ namespace benzin
     QueryHeap::QueryHeap(Device& device, const QueryHeapCreation& creation)
         : m_Device{ device }
     {
-        BenzinAssert(!IsMaxEnum(creation.m_Type));
+        BenzinAssert(!IsMaxEnum(creation.m_D3D12Type));
         BenzinAssert(creation.m_Count != 0);
 
         D3D12_QUERY_HEAP_DESC d3d12QueryHeapDesc = {};
-        d3d12QueryHeapDesc.Type = (D3D12_QUERY_HEAP_TYPE)creation.m_Type;
+        d3d12QueryHeapDesc.Type = creation.m_D3D12Type;
         d3d12QueryHeapDesc.Count = creation.m_Count;
         d3d12QueryHeapDesc.NodeMask = 0;
 
@@ -30,6 +30,7 @@ namespace benzin
     QueryHeap::~QueryHeap()
     {
         m_Device.DeferredRelease(m_D3D12QueryHeap);
+        m_D3D12QueryHeap = nullptr;
     }
 
 }

@@ -205,20 +205,19 @@ namespace benzin
         ValidatePsoStream(m_Stream);
 #endif
 
-        const D3D12_PIPELINE_STATE_STREAM_DESC d3d12PsoStreamDesc
-        {
-            .SizeInBytes = sizeof(m_Stream),
-            .pPipelineStateSubobjectStream = (void*)&m_Stream,
-        };
+        D3D12_PIPELINE_STATE_STREAM_DESC d3d12PsoStreamDesc = {};
+        d3d12PsoStreamDesc.SizeInBytes = sizeof(m_Stream);
+        d3d12PsoStreamDesc.pPipelineStateSubobjectStream = (void*)&m_Stream;
 
-        BenzinD3D12Call(PsoBase::m_Device.GetD3D12Device()->CreatePipelineState(&d3d12PsoStreamDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
+        BenzinD3D12Call(m_Device.GetD3D12Device()->CreatePipelineState(&d3d12PsoStreamDesc, IID_PPV_ARGS(&m_D3D12PipelineState)));
         SetD3DObjectDebugName(m_D3D12PipelineState, debugName);
     }
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>
     void Pso<PsoStreamT, _MaxShaderCount>::Release()
     {
-        PsoBase::m_Device.DeferredRelease(m_D3D12PipelineState);
+        m_Device.DeferredRelease(m_D3D12PipelineState);
+        m_D3D12PipelineState = nullptr;
     }
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>

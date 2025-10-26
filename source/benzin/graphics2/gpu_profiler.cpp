@@ -28,7 +28,7 @@ namespace benzin
         MakeUniquePtr(m_TimestampQueryHeap, device, QueryHeapCreation
         {
             .m_DebugName = "GpuProfiler::Timestamp",
-            .m_Type = QueryHeapType::Timestamp,
+            .m_D3D12Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP,
             .m_Count = ms_MaxTimestampCount,
         });
 

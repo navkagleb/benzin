@@ -117,40 +117,15 @@ namespace benzin
         return d3d12FormatInfo.PlaneCount;
     }
 
-    void Device::DeferredRelease(ID3D12Heap*& d3d12Heap)
+    void Device::DeferredRelease(ID3D12Object* d3d12Object)
     {
-        DeferredRelease((ID3D12Object*)d3d12Heap);
-        d3d12Heap = nullptr;
-    }
-
-    void Device::DeferredRelease(ID3D12PipelineState*& d3d12PipelineState)
-    {
-        DeferredRelease((ID3D12Object*)d3d12PipelineState);
-        d3d12PipelineState = nullptr;
-    }
-
-    void Device::DeferredRelease(ID3D12QueryHeap*& d3d12QueryHeap)
-    {
-        DeferredRelease((ID3D12Object*)d3d12QueryHeap);
-        d3d12QueryHeap = nullptr;
-    }
-
-    void Device::DeferredRelease(ID3D12Resource*& d3d12Resource)
-    {
-        DeferredRelease((ID3D12Object*)d3d12Resource);
-        d3d12Resource = nullptr;
-    }
-
-    void Device::DeferredRelease(ID3D12StateObject*& d3d12StateObject)
-    {
-        DeferredRelease((ID3D12Object*)d3d12StateObject);
-        d3d12StateObject = nullptr;
+        BenzinAssert(d3d12Object != nullptr);
+        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12Object);
     }
 
     void Device::DeferredRelease(const Descriptor& descriptor)
     {
         BenzinAssert(descriptor.IsCpuValid());
-
         m_DeferredReleaseDescriptorQueue.emplace(m_CpuFrameIndex, descriptor);
     }
 
@@ -279,12 +254,6 @@ namespace benzin
                 BenzinTrace("Device supports 'GPU_UPLOAD_HEAPS' (IsEnabled: {})", m_Caps.IsGpuUploadHeapsSupported);
             }
         }
-    }
-
-    void Device::DeferredRelease(ID3D12Object* d3d12Object)
-    {
-        BenzinAssert(d3d12Object != nullptr);
-        m_DeferredReleaseResourceQueue.emplace(m_CpuFrameIndex, d3d12Object);
     }
 
 }
