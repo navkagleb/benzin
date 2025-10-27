@@ -160,7 +160,7 @@ namespace sandbox
             cmdList.SetGraphicsRootResource(*Resources::Vertices, ms_Scene->m_VertexBuffer->GetSrv());
             cmdList.SetGraphicsRootResource(*Resources::Meshlets, ms_Scene->m_MeshletBuffer->GetSrv());
             cmdList.SetGraphicsRootResource(*Resources::MeshletCullVolumes, ms_Scene->m_MeshletCullVolumeBuffer->GetSrv());
-            cmdList.SetGraphicsRootResource(*Resources::MeshletIndirectVertices, ms_Scene->m_MeshletIndirectVertexBuffer->GetSrv());
+            cmdList.SetGraphicsRootResource(*Resources::MeshletVertexIndices, ms_Scene->m_MeshletVertexIndexBuffer->GetSrv());
             cmdList.SetGraphicsRootResource(*Resources::MeshletIndices, ms_Scene->m_MeshletIndexBuffer->GetSrv());
 
             if (settings.m_IsIndirectDrawEnabled)

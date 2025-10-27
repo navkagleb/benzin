@@ -189,7 +189,6 @@ namespace benzin
         BenzinEnsure(normals.empty() || normals.size() == positions.size());
         BenzinEnsure(uvs.empty() || uvs.size() == uvs.size());
 
-
         MeshPart part;
         part.m_VertexOffset = (uint32_t)mesh.m_Vertices.size();
         part.m_VertexCount = (uint32_t)positions.size();

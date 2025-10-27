@@ -71,7 +71,7 @@ namespace benzin
         // NOTE: meshlet.triangle_offset is actually 'index offset' (not triangle) !!!
 
         BenzinAssert(mesh.m_Meshlets.empty());
-        BenzinAssert(mesh.m_MeshletIndirectVertices.empty());
+        BenzinAssert(mesh.m_MeshletVertexIndices.empty());
         BenzinAssert(mesh.m_MeshletIndices.empty());
 
         constexpr size_t maxMeshletVertexCount = *joint::MeshletConsts::MaxVertexCount;
@@ -86,16 +86,16 @@ namespace benzin
             const size_t maxMeshletCount = meshopt_buildMeshletsBound(indices.size(), maxMeshletVertexCount, maxMeshletTriangleCount);
 
             std::vector<meshopt_Meshlet> meshoptMeshlets;
-            std::vector<uint32_t> meshletIndirectVertices;
+            std::vector<uint32_t> meshletVertexIndices;
             std::vector<uint8_t> meshletIndices;
 
             meshoptMeshlets.resize(maxMeshletCount);
-            meshletIndirectVertices.resize(maxMeshletCount * maxMeshletVertexCount);
+            meshletVertexIndices.resize(maxMeshletCount * maxMeshletVertexCount);
             meshletIndices.resize(maxMeshletCount * maxMeshletTriangleCount * 3);
 
             const size_t meshletCount = meshopt_buildMeshlets(
                 meshoptMeshlets.data(),
-                meshletIndirectVertices.data(),
+                meshletVertexIndices.data(),
                 meshletIndices.data(),
                 indices.data(),
                 indices.size(),
@@ -109,7 +109,7 @@ namespace benzin
             meshoptMeshlets.resize(meshletCount);
 
             const meshopt_Meshlet& lastMeshlet = meshoptMeshlets.back();
-            meshletIndirectVertices.resize(lastMeshlet.vertex_offset + lastMeshlet.vertex_count);
+            meshletVertexIndices.resize(lastMeshlet.vertex_offset + lastMeshlet.vertex_count);
             meshletIndices.resize(lastMeshlet.triangle_offset + AlignUp(lastMeshlet.triangle_count * 3, 4u)); // Size must be multiple of 4
 
             std::vector<joint::Meshlet> meshlets;
@@ -121,13 +121,13 @@ namespace benzin
             for (const meshopt_Meshlet& meshoptMeshlet : meshoptMeshlets)
             {
                 meshopt_optimizeMeshlet(
-                    &meshletIndirectVertices[meshoptMeshlet.vertex_offset],
+                    &meshletVertexIndices[meshoptMeshlet.vertex_offset],
                     &meshletIndices[meshoptMeshlet.triangle_offset],
                     meshoptMeshlet.triangle_count,
                     meshoptMeshlet.vertex_count);
 
                 const meshopt_Bounds bounds = meshopt_computeMeshletBounds(
-                    &meshletIndirectVertices[meshoptMeshlet.vertex_offset],
+                    &meshletVertexIndices[meshoptMeshlet.vertex_offset],
                     &meshletIndices[meshoptMeshlet.triangle_offset],
                     meshoptMeshlet.triangle_count,
                     &vertices.front().Position.x,
@@ -153,14 +153,14 @@ namespace benzin
 
             part.m_MeshletOffset = (uint32_t)mesh.m_Meshlets.size();
             part.m_MeshletCount = (uint32_t)meshlets.size();
-            part.m_MeshletIndirectVertexOffset = (uint32_t)mesh.m_MeshletIndirectVertices.size();
-            part.m_MeshletIndirectVertexCount = (uint32_t)meshletIndirectVertices.size();
+            part.m_MeshletVertexIndexOffset = (uint32_t)mesh.m_MeshletVertexIndices.size();
+            part.m_MeshletVertexIndexCount = (uint32_t)meshletVertexIndices.size();
             part.m_MeshletIndexOffset = (uint32_t)mesh.m_MeshletIndices.size();
             part.m_MeshletIndexCount = (uint32_t)meshletIndices.size();
 
             mesh.m_Meshlets.append_range(std::move(meshlets));
             mesh.m_MeshletCullVolumes.append_range(std::move(meshletCullVolumes));
-            mesh.m_MeshletIndirectVertices.append_range(std::move(meshletIndirectVertices));
+            mesh.m_MeshletVertexIndices.append_range(std::move(meshletVertexIndices));
             mesh.m_MeshletIndices.append_range(std::move(meshletIndices));
         }
     }

@@ -20,7 +20,7 @@ namespace joint
         Vertices, // Mesh pipeline
         Meshlets, // Mesh pipeline
         MeshletCullVolumes, // Mesh pipeline
-        MeshletIndirectVertices, // Mesh pipeline
+        MeshletVertexIndices, // Mesh pipeline
         MeshletIndices, // Mesh pipeline
     };
 

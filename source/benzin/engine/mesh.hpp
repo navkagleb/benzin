@@ -28,8 +28,8 @@ namespace benzin
 
         uint32_t m_MeshletOffset = 0;
         uint32_t m_MeshletCount = 0;
-        uint32_t m_MeshletIndirectVertexOffset = 0;
-        uint32_t m_MeshletIndirectVertexCount = 0;
+        uint32_t m_MeshletVertexIndexOffset = 0;
+        uint32_t m_MeshletVertexIndexCount = 0;
         uint32_t m_MeshletIndexOffset = 0;
         uint32_t m_MeshletIndexCount = 0;
     };
@@ -49,7 +49,7 @@ namespace benzin
 
         std::vector<joint::Meshlet> m_Meshlets;
         std::vector<joint::MeshletCullVolume> m_MeshletCullVolumes;
-        std::vector<uint32_t> m_MeshletIndirectVertices; // Can be used uint16_t if Vertices.size() <= std::numeric_limits<uint16_t>::max()
+        std::vector<uint32_t> m_MeshletVertexIndices;
         std::vector<uint8_t> m_MeshletIndices;
     };
 

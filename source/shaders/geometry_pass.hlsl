@@ -16,7 +16,7 @@ BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_MeshDraws, joint:
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
 BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshletCullVolume>, g_MeshletCullVolumes, joint::GeometryResources::MeshletCullVolumes);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndirectVertices, joint::GeometryResources::MeshletIndirectVertices);
+BenzinDeclareRootResource(Buffer<uint>, g_MeshletVertexIndices, joint::GeometryResources::MeshletVertexIndices);
 BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
 #endif
 
@@ -94,7 +94,7 @@ void MsMain(
 
     if (gtid < meshlet.m_VertexCount)
     {
-        const uint vertexIndex = g_MeshletIndirectVertices[meshlet.m_VertexOffset + gtid];
+        const uint vertexIndex = g_MeshletVertexIndices[meshlet.m_VertexOffset + gtid];
         const joint::MeshVertex vertex = g_Vertices[vertexIndex];
 
         vertices[gtid] = ProcessVertex(vertex);

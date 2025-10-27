@@ -82,19 +82,19 @@ namespace benzin
             part.m_VertexOffset += (uint32_t)m_Vertices.size();
             part.m_IndexOffset += (uint32_t)m_Indices.size();
 
-            for (uint32_t i = part.m_MeshletIndirectVertexOffset; i < part.m_MeshletIndirectVertexOffset + part.m_MeshletIndirectVertexCount; ++i)
+            for (uint32_t i = part.m_MeshletVertexIndexOffset; i < part.m_MeshletVertexIndexOffset + part.m_MeshletVertexIndexCount; ++i)
             {
-                uint32_t& vertexIndex = mesh.m_MeshletIndirectVertices[i];
+                uint32_t& vertexIndex = mesh.m_MeshletVertexIndices[i];
                 vertexIndex += part.m_VertexOffset;
             }
 
-            part.m_MeshletIndirectVertexOffset += (uint32_t)m_MeshletIndirectVertices.size();
+            part.m_MeshletVertexIndexOffset += (uint32_t)m_MeshletVertexIndices.size();
             part.m_MeshletIndexOffset += (uint32_t)m_MeshletIndices.size();
 
             for (uint32_t i = part.m_MeshletOffset; i < part.m_MeshletOffset + part.m_MeshletCount; ++i)
             {
                 joint::Meshlet& meshlet = mesh.m_Meshlets[i];
-                meshlet.m_VertexOffset += part.m_MeshletIndirectVertexOffset;
+                meshlet.m_VertexOffset += part.m_MeshletVertexIndexOffset;
                 meshlet.m_IndexOffset += part.m_MeshletIndexOffset;
             }
 
@@ -128,7 +128,7 @@ namespace benzin
         m_MeshDrawParts.append_range(std::move(meshDrawParts));
         m_Meshlets.append_range(std::move(mesh.m_Meshlets));
         m_MeshletCullVolumes.append_range(std::move(mesh.m_MeshletCullVolumes));
-        m_MeshletIndirectVertices.append_range(std::move(mesh.m_MeshletIndirectVertices));
+        m_MeshletVertexIndices.append_range(std::move(mesh.m_MeshletVertexIndices));
         m_MeshletIndices.append_range(std::move(mesh.m_MeshletIndices));
         m_Materials.append_range(std::move(materials));
     }
@@ -233,7 +233,7 @@ namespace benzin
         m_MeshDrawPartBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshDrawPartBuffer", ToSpan(jointMeshDrawParts));
         m_MeshletBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletsBuffer", ToSpan(m_Meshlets));
         m_MeshletCullVolumeBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletCullVolumeBuffer", ToSpan(m_MeshletCullVolumes));
-        m_MeshletIndirectVertexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletIndirectVertexBuffer", ToSpan(m_MeshletIndirectVertices), GraphicsFormat::R32Uint);
+        m_MeshletVertexIndexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletVertexIndexBuffer", ToSpan(m_MeshletVertexIndices), GraphicsFormat::R32Uint);
         m_MeshletIndexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletIndexBuffer", ToSpan(m_MeshletIndices), GraphicsFormat::R8Uint);
         m_MaterialBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MaterialBuffer", ToSpan(jointMaterials));
         m_DrawIndirectCmdBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::DrawIndirectCmdBuffer", ToSpan(drawIndirectCmds));
@@ -245,7 +245,7 @@ namespace benzin
             m_MeshDrawPartBuffer->GetSizeInBytes() +
             m_MeshletBuffer->GetSizeInBytes() +
             m_MeshletCullVolumeBuffer->GetSizeInBytes() +
-            m_MeshletIndirectVertexBuffer->GetSizeInBytes() +
+            m_MeshletVertexIndexBuffer->GetSizeInBytes() +
             m_MeshletIndexBuffer->GetSizeInBytes() +
             m_MaterialBuffer->GetSizeInBytes() +
             m_DrawIndirectCmdBuffer->GetSizeInBytes() +
@@ -257,7 +257,7 @@ namespace benzin
         cmdList.UploadToBuffer(*m_MeshDrawPartBuffer, ToSpan(jointMeshDrawParts));
         cmdList.UploadToBuffer(*m_MeshletBuffer, ToSpan(m_Meshlets));
         cmdList.UploadToBuffer(*m_MeshletCullVolumeBuffer, ToSpan(m_MeshletCullVolumes));
-        cmdList.UploadToBuffer(*m_MeshletIndirectVertexBuffer, ToSpan(m_MeshletIndirectVertices));
+        cmdList.UploadToBuffer(*m_MeshletVertexIndexBuffer, ToSpan(m_MeshletVertexIndices));
         cmdList.UploadToBuffer(*m_MeshletIndexBuffer, ToSpan(m_MeshletIndices));
         cmdList.UploadToBuffer(*m_MaterialBuffer, ToSpan(jointMaterials));
         cmdList.UploadToBuffer(*m_DrawIndirectCmdBuffer, ToSpan(drawIndirectCmds));
