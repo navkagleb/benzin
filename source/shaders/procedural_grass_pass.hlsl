@@ -102,7 +102,7 @@ BladeArgs GenBladeArgs(float3 patchNormal)
     const float dirAngle = 2.0 * g_Pi * g_Rand.Next(53);
 
     const float offsetAngle = 2.0 * g_Pi * g_Rand.Next(71);
-    const float offsetRadius = g_PassConsts0.SpacingInGrassPatch * sqrt(g_Rand.Next(48));
+    const float offsetRadius = g_PassConsts.SpacingInGrassPatch * sqrt(g_Rand.Next(48));
 
     const float3 tangent = normalize(cross(g_UpDir, patchNormal));
     const float3 bitangent = normalize(cross(patchNormal, tangent));
@@ -119,7 +119,7 @@ float2 CalcWindOffset(float2 pos, float elapsedTimeInSec)
 {
     // Ref: https://www.youtube.com/watch?v=wavnKZNSYqU&t=1063s&ab_channel=GameDevelopersConference
 
-    float posOnSineWave = cos(g_PassConsts0.WindDirection) * pos.x - sin(g_PassConsts0.WindDirection) * pos.y;
+    float posOnSineWave = cos(g_PassConsts.WindDirection) * pos.x - sin(g_PassConsts.WindDirection) * pos.y;
 
     const float noise = g_PerlinNoise.SampleLevel(g_PointWrapSampler, 0.25 * pos, 0.0);
     const float t = elapsedTimeInSec * 2.0 + posOnSineWave + 4.0 * noise;
@@ -209,9 +209,9 @@ groupshared Payload g_Payload;
 [NumThreads(g_AsGroupSize, 1, 1)]
 void AsMain(uint dtid : SV_DispatchThreadID)
 {
-    bool isVisible = dtid < g_PassConsts0.GrassPatchCount;
+    bool isVisible = dtid < g_PassConsts.GrassPatchCount;
 
-    if (isVisible && g_PassConsts0.IsFrustumCullingEnabled)
+    if (isVisible && g_PassConsts.IsFrustumCullingEnabled)
     {
         // TODO: Redo frustum culling
     }
@@ -240,7 +240,7 @@ void MsMain(
 
     const uint patchIndex = payload.GrassPatchIndices[gid];
 
-    if (patchIndex >= g_PassConsts0.GrassPatchCount)
+    if (patchIndex >= g_PassConsts.GrassPatchCount)
     {
         return;
     }
@@ -249,7 +249,7 @@ void MsMain(
 
     const float distanceToCamera = length(patch.Pos - GetCameraConsts().WorldPosition);
 
-    const float floatBladeCount = lerp(float(g_MaxBladeCount), 2.0, pow(saturate(distanceToCamera / (g_PassConsts0.GrassEndDistance * 1.05)), 0.75)); // TODO: Some magic math
+    const float floatBladeCount = lerp(float(g_MaxBladeCount), 2.0, pow(saturate(distanceToCamera / (g_PassConsts.GrassEndDistance * 1.05)), 0.75)); // TODO: Some magic math
     const uint bladeCount = ceil(floatBladeCount);
 
     const uint vertexCount = bladeCount * g_VertexCountPerBlade;
@@ -268,8 +268,8 @@ void MsMain(
     // NOTE: In Nvidia GPU you must provide exact quantity of vertex and primitives (g_MaxVertexCount and g_MaxTriangleCount won't work)
     SetMeshOutputCounts(vertexCount, triangleCount);
 
-    g_Rand.CombineSeed((uint)(patch.Pos.x / g_PassConsts0.SpacingInGrassPatch));
-    g_Rand.CombineSeed((uint)(patch.Pos.y / g_PassConsts0.SpacingInGrassPatch));
+    g_Rand.CombineSeed((uint)(patch.Pos.x / g_PassConsts.SpacingInGrassPatch));
+    g_Rand.CombineSeed((uint)(patch.Pos.y / g_PassConsts.SpacingInGrassPatch));
 
     for (uint i = 0; i < g_VertexPerThreadCount; ++i)
     {
@@ -290,7 +290,7 @@ void MsMain(
         BezierControlPoints bladePoints = CalcBladeBezierPoints(patch, bladeArgs);
         BezierControlPoints prevBladePoints = bladePoints;
 
-        float bladeWidth = g_PassConsts0.BladeWidth;
+        float bladeWidth = g_PassConsts.BladeWidth;
         bladeWidth *= g_MaxBladeCount / floatBladeCount;
         bladeWidth *= (bladeIndex == bladeCount - 1) ? frac(floatBladeCount) : 1.0;
 
@@ -350,7 +350,7 @@ PackedGBuffer PsMain(const Vertex input, bool isFrontFace : SV_IsFrontFace)
 
     const float selfshadowFactor = saturate(pow((input.WorldPos.y - input.BladeRootHeight) / input.PatchHeight, 1.5)) + 0.1;
     const float brightnessFactor = lerp(0.85, 1.5, perlinNoiseFactor);
-    gbuffer.Albedo = g_PassConsts0.BaseColor;
+    gbuffer.Albedo = g_PassConsts.BaseColor;
     gbuffer.Albedo *= selfshadowFactor;
     gbuffer.Albedo *= brightnessFactor;
     gbuffer.Albedo = SrgbToLinearAccurate(gbuffer.Albedo);

@@ -22,17 +22,17 @@ BenzinDeclareRootResource(RWTexture2D<float4>, g_OutFinal, joint::ApplyToneMapOp
 
 float3 ApplyExposureCorrection(float3 rgb)
 {
-    const float manualEv100 = CalcEv100(g_PassConsts0.PbrCamera.Aperture, g_PassConsts0.PbrCamera.ShutterSpeed, g_PassConsts0.PbrCamera.Iso);
+    const float manualEv100 = CalcEv100(g_PassConsts.PbrCamera.Aperture, g_PassConsts.PbrCamera.ShutterSpeed, g_PassConsts.PbrCamera.Iso);
     const float autoEv100 = CalcEv100FromAvgLuminance(g_AvgLuminance[uint2(0, 0)]);
 
-    const float exposure = Ev100ToExposure(g_PassConsts0.IsAutoExposureUsed ? autoEv100 : manualEv100);
+    const float exposure = Ev100ToExposure(g_PassConsts.IsAutoExposureUsed ? autoEv100 : manualEv100);
 
     return rgb * exposure;
 }
 
 float3 ApplyToneReproductionTransform(float3 rgb)
 {
-    switch (g_PassConsts0.ToneReproductionTransform)
+    switch (g_PassConsts.ToneReproductionTransform)
     {
         case joint::ToneReproductionTransform::Linear:
         {
@@ -67,9 +67,9 @@ float3 ApplyToneReproductionTransform(float3 rgb)
 
 float3 ApplyGammaCorrection(float3 rgb)
 {
-    if (g_PassConsts0.ToneReproductionTransform != joint::ToneReproductionTransform::Unreal)
+    if (g_PassConsts.ToneReproductionTransform != joint::ToneReproductionTransform::Unreal)
     {
-        rgb = g_PassConsts0.IsAccurateGammaCorrectionUsed ? LinearToSrgbAccurate(rgb) : LinearToSrgb(rgb);
+        rgb = g_PassConsts.IsAccurateGammaCorrectionUsed ? LinearToSrgbAccurate(rgb) : LinearToSrgb(rgb);
     }
 
     return rgb;
@@ -80,7 +80,7 @@ void CsMain(uint2 pixelPos : SV_DispatchThreadID)
 {
     float3 rgb = g_HdrColor[pixelPos].xyz;
 
-    if (g_PassConsts0.IsToneMappingEnabled)
+    if (g_PassConsts.IsToneMappingEnabled)
     {
         rgb = ApplyExposureCorrection(rgb);
         rgb = ApplyToneReproductionTransform(rgb);

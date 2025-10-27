@@ -12,15 +12,13 @@ BenzinDeclareRootResource(RWTexture2D<float4>, g_OutDebugTexture, joint::Texture
 [numthreads(16, 16, 1)]
 void CsMain(uint2 pixelPosition : SV_DispatchThreadID)
 {
-    if (any(pixelPosition >= g_PassConsts0.TextureResolution))
-    {
+    if (any(pixelPosition >= g_PassConsts.TextureResolution))
         return;
-    }
 
     float4 referenceColor = g_ReferenceTexture[pixelPosition];
-    referenceColor = (referenceColor - g_PassConsts0.MinColor) / (g_PassConsts0.MaxColor - g_PassConsts0.MinColor);
+    referenceColor = (referenceColor - g_PassConsts.MinColor) / (g_PassConsts.MaxColor - g_PassConsts.MinColor);
     referenceColor = saturate(referenceColor);
 
-    const float3 debugColor = g_PassConsts0.ChannelMask.a == 1 ? referenceColor.a : referenceColor.rgb * g_PassConsts0.ChannelMask.rgb;
+    const float3 debugColor = g_PassConsts.ChannelMask.a == 1 ? referenceColor.a : referenceColor.rgb * g_PassConsts.ChannelMask.rgb;
     g_OutDebugTexture[pixelPosition] = float4(debugColor, 1.0);
 }

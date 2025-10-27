@@ -134,7 +134,7 @@ namespace sandbox
             const benzin::Texture& noisyPenumbra = ms_Resources->Get(TextureId::NoisyPenumbra);
 
             cmdList.SetRayTracingPso(pso);
-            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
+            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
             cmdList.AddResourceBarrier(benzin::TransitionBarrier{ noisyPenumbra, D3D12_RESOURCE_STATE_UNORDERED_ACCESS }, true);
 

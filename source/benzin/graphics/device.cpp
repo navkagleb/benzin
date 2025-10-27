@@ -80,6 +80,8 @@ namespace benzin
     {
         BenzinTraceScopeTime("Device::~Device");
 
+        m_GraphicsCmdQueue->Flush();
+
         m_ConstBufferAllocator.reset();
 
         m_PersistentReadbackLinearAllocator.reset();

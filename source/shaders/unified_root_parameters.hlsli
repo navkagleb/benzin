@@ -32,10 +32,9 @@ struct RootConstants
 
 ConstantBuffer<RootConstants> g_RootConstants : register(b0, space0);
 ConstantBuffer<joint::FrameConsts> g_FrameConsts : register(b0, space1);
-ConstantBuffer<BenzinRenderPassConstsType0> g_PassConsts0 : register(b0, space2);
-ConstantBuffer<BenzinRenderPassConstsType1> g_PassConsts1 : register(b0, space3);
-ConstantBuffer<joint::GpuPrintConsts> g_GpuPrintConsts : register(b0, space4);
-ConstantBuffer<joint::Light> g_SunLightConsts : register(b0, space5);
+ConstantBuffer<BenzinRenderPassConstsType0> g_PassConsts : register(b0, space2);
+ConstantBuffer<joint::GpuPrintConsts> g_GpuPrintConsts : register(b0, space3);
+ConstantBuffer<joint::Light> g_SunLightConsts : register(b0, space4);
 
 RaytracingAccelerationStructure g_SceneTlas : register(t0, space0);
 

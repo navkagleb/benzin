@@ -50,13 +50,13 @@ float2 Hash23(float3 p3)
 
 float2 GetWhiteNoise()
 {
-    const uint frameIndex = g_PassConsts0.m_IsNoiseAnimated * g_FrameConsts.CpuFrameIndex;
+    const uint frameIndex = g_PassConsts.m_IsNoiseAnimated * g_FrameConsts.CpuFrameIndex;
     return Hash23(float3(DispatchRaysIndex().xy, frameIndex));
 }
 
 float2 GetBlueNoise()
 {
-    if (!g_PassConsts0.m_IsBlueNoiseUsed)
+    if (!g_PassConsts.m_IsBlueNoiseUsed)
         return GetWhiteNoise();
 
     float width;
@@ -66,7 +66,7 @@ float2 GetBlueNoise()
     const float2 uv = DispatchRaysIndex().xy / width;
     float2 blueNoise = g_BlueNoise.SampleLevel(g_PointWrapSampler, uv, 0.0).rg;
 
-    if (g_PassConsts0.m_IsNoiseAnimated)
+    if (g_PassConsts.m_IsNoiseAnimated)
     {
         const float goldenRatioConjugate = 0.61803398875; // frac(GoldenRatio)
         const float maxFrameCount = 4;
@@ -171,7 +171,7 @@ void RayGeneration()
     const uint2 pixelPosition = DispatchRaysIndex().xy;
 
     const float depth = g_Depth[pixelPosition];
-    const float isNeeded = g_PassConsts0.m_IsShadowsEnabled && depth != 0.0;
+    const float isNeeded = g_PassConsts.m_IsShadowsEnabled && depth != 0.0;
     const float penumbra = isNeeded ? TraceShadowRay(depth) : sigma::g_Fp16Max;
 
     g_NoisyPenumbra[pixelPosition] = penumbra;

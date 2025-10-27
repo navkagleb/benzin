@@ -20,7 +20,7 @@ struct VsOutput
 VsOutput VsMain(VsInput input)
 {
     VsOutput output = (VsOutput)0;
-    output.m_Position = mul(float4(input.m_Position, 0.0, 1.0), g_PassConsts0.m_ViewToClipOrtho);
+    output.m_Position = mul(float4(input.m_Position, 0.0, 1.0), g_PassConsts.m_ViewToClipOrtho);
     output.m_Color = input.m_Color;
     output.m_Uv = input.m_Uv;
 

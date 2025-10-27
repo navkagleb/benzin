@@ -123,7 +123,7 @@ float GetDisocclusionThreshold(float viewDepth)
 
     const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConsts.MinRenderDimension, GetCameraConsts().PixelToWorldScale, viewDepth);
 
-    return worldFrustumSize * g_PassConsts0.DisocclusionThreshold;
+    return worldFrustumSize * g_PassConsts.DisocclusionThreshold;
 }
 
 void SampleHistoryData(float2 prevPixelUv, float viewDepth, float prevViewDepth, out float outHistoryLength, out float outShadowHistory)
@@ -184,7 +184,7 @@ float CalcAntilagFactor(float history, float clampedHistory)
 #if 0
 float SampleShadowHistory(float2 prevPixelUv, bool isBicubicSamplingUsed)
 {
-    float history = isBicubicSamplingUsed && g_PassConsts0.IsBicubicSamplingUsedForHistory
+    float history = isBicubicSamplingUsed && g_PassConsts.IsBicubicSamplingUsedForHistory
         ? BicubicFilterNoCorners(g_ShadowHistory, saturate(prevPixelUv) * g_FrameConsts.RenderResolution, g_FrameConsts.InvRenderResolution).x
         : g_ShadowHistory.SampleLevel(g_LinearClampSampler, prevPixelUv, 0.0).x;
 
@@ -257,7 +257,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     float streetMagic = 0.6 * historyWeight;
     clampedHistory = lerp(clampedHistory, history, streetMagic);
 
-    const float shadowResult = lerp(centerPixel.Shadow, clampedHistory, min(g_PassConsts0.StabilizationStrength, historyWeight));
+    const float shadowResult = lerp(centerPixel.Shadow, clampedHistory, min(g_PassConsts.StabilizationStrength, historyWeight));
     const float historyLengthResult = min(historyLength + 1.0, SIGMA_TS_MAX_HISTORY_LENGTH);
 
     g_OutShadow[input.PixelPos] = sigma::PackShadow(shadowResult);

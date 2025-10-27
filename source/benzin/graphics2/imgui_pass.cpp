@@ -471,7 +471,7 @@ namespace benzin
 
         cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::ImGui));
-        cmdList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
+        cmdList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
         auto& [vertexBuffer, indexBuffer] = m_FrameContexts[ms_Device->GetActiveFrameIndex()];
         cmdList.SetVertexBuffer(*vertexBuffer);

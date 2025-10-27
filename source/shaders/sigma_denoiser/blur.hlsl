@@ -85,7 +85,7 @@ BlurParams GetBlurParams(float2 baseUv, PixelData centerPixel)
     params.BaseViewPosition = ReconstructViewPosition(baseUv, centerPixel.ViewDepth, params.UvToViewScale, params.UvToViewBias);
     params.BaseViewNormal = mul(worldNormal, (float3x3)GetCameraConsts().WorldToView);
     params.WorldPixelSize = sigma::GetWorldPixelSize(pixelToWorldScale, centerPixel.ViewDepth);
-    params.GeometryWeightParams = sigma::GetGeometryWeightParams(g_PassConsts0.PlaneDistanceSensitivity, params.BaseViewPosition, params.BaseViewNormal, worldFrustumSize);
+    params.GeometryWeightParams = sigma::GetGeometryWeightParams(g_PassConsts.PlaneDistanceSensitivity, params.BaseViewPosition, params.BaseViewNormal, worldFrustumSize);
 
     return params;
 }
@@ -118,12 +118,12 @@ SparseBlurKernel CalcSparseBlurKernel(BlurParams params, float blurredPenumbra, 
     kernel.Tangent = worldToLocal[0];
     kernel.Bitangent = worldToLocal[1];
 #if !defined(POST_BLUR_PASS)
-    kernel.Rotator = g_PassConsts0.BlurRotator;
+    kernel.Rotator = g_PassConsts.BlurRotator;
 #else
-    kernel.Rotator = g_PassConsts0.PostBlurRotator;
+    kernel.Rotator = g_PassConsts.PostBlurRotator;
 #endif
 
-    const float3 viewToLightDirection = mul(g_PassConsts0.ToSunDirection, (float3x3)GetCameraConsts().WorldToView);
+    const float3 viewToLightDirection = mul(g_PassConsts.ToSunDirection, (float3x3)GetCameraConsts().WorldToView);
     const float3 tangentDirection = cross(viewToLightDirection, params.BaseViewNormal); // NRD TODO: add support for other light types to bring proper anisotropic filtering
     if (length(tangentDirection) > 0.001)
     {
@@ -312,7 +312,7 @@ void CsMain(sigma::GroupSharedCsInput input)
 #endif
 
 #if defined(POST_BLUR_PASS)
-    if (g_PassConsts0.StabilizationStrength != 0)
+    if (g_PassConsts.StabilizationStrength != 0)
 #endif
     {
         g_OutPenumbra[input.PixelPos] = blurredPenumbra.x;

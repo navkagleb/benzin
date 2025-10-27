@@ -126,7 +126,7 @@ namespace sandbox
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
 
-        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
+        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
         cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::ProceduralGrass));
 
         const GBuffer gbuffer{ *ms_Resources };

@@ -19,34 +19,28 @@ namespace benzin
         d3d12RootConsts.Constants.Num32BitValues = 32;
         d3d12RootConsts.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        D3D12_ROOT_PARAMETER1& d3d12FrameConstBuffer = d3d12RootParameters[*UnifiedRootParameter::FrameConstBuffer];
+        D3D12_ROOT_PARAMETER1& d3d12FrameConstBuffer = d3d12RootParameters[*UnifiedRootParameter::FrameConsts];
         d3d12FrameConstBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         d3d12FrameConstBuffer.Descriptor.ShaderRegister = 0;
         d3d12FrameConstBuffer.Descriptor.RegisterSpace = 1;
         d3d12FrameConstBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        D3D12_ROOT_PARAMETER1& d3d12RenderPassConstBuffer0 = d3d12RootParameters[*UnifiedRootParameter::RenderPassConstBuffer0];
+        D3D12_ROOT_PARAMETER1& d3d12RenderPassConstBuffer0 = d3d12RootParameters[*UnifiedRootParameter::RenderPassConsts];
         d3d12RenderPassConstBuffer0.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         d3d12RenderPassConstBuffer0.Descriptor.ShaderRegister = 0;
         d3d12RenderPassConstBuffer0.Descriptor.RegisterSpace = 2;
         d3d12RenderPassConstBuffer0.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        D3D12_ROOT_PARAMETER1& d3d12RenderPassConstBuffer1 = d3d12RootParameters[*UnifiedRootParameter::RenderPassConstBuffer1];
-        d3d12RenderPassConstBuffer1.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        d3d12RenderPassConstBuffer1.Descriptor.ShaderRegister = 0;
-        d3d12RenderPassConstBuffer1.Descriptor.RegisterSpace = 3;
-        d3d12RenderPassConstBuffer1.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-        D3D12_ROOT_PARAMETER1& d3d12GpuPrintConstBuffer = d3d12RootParameters[*UnifiedRootParameter::GpuPrintConstBuffer];
+        D3D12_ROOT_PARAMETER1& d3d12GpuPrintConstBuffer = d3d12RootParameters[*UnifiedRootParameter::GpuPrintConsts];
         d3d12GpuPrintConstBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         d3d12GpuPrintConstBuffer.Descriptor.ShaderRegister = 0;
-        d3d12GpuPrintConstBuffer.Descriptor.RegisterSpace = 4;
+        d3d12GpuPrintConstBuffer.Descriptor.RegisterSpace = 3;
         d3d12GpuPrintConstBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        D3D12_ROOT_PARAMETER1& d3d12LightBuffer = d3d12RootParameters[*UnifiedRootParameter::SunLightConstBuffer];
+        D3D12_ROOT_PARAMETER1& d3d12LightBuffer = d3d12RootParameters[*UnifiedRootParameter::SunLightConsts];
         d3d12LightBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         d3d12LightBuffer.Descriptor.ShaderRegister = 0;
-        d3d12LightBuffer.Descriptor.RegisterSpace = 5;
+        d3d12LightBuffer.Descriptor.RegisterSpace = 4;
         d3d12LightBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
         D3D12_ROOT_PARAMETER1& d3d12Tlas = d3d12RootParameters[*UnifiedRootParameter::SceneTlas];

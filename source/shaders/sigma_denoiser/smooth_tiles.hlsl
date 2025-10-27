@@ -19,7 +19,7 @@ void Preload(uint2 localPos, uint2 globalPos)
 [numthreads(g_ThreadCountX, g_ThreadCountY, 1)]
 void CsMain(sigma::GroupSharedCsInput input)
 {
-    SigmaPreloadToGroupSharedMem(input, g_PassConsts0.TileCount, Preload);
+    SigmaPreloadToGroupSharedMem(input, g_PassConsts.TileCount, Preload);
     GroupMemoryBarrierWithGroupSync();
 
     const float3 centerTile = g_Tiles[input.PixelPos].xyz;
@@ -44,7 +44,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     smoothPenumbra.x /= smoothPenumbra.y;
 
     // TODO: Add SIGMA_DEBUG define
-    if (!g_PassConsts0.IsTileSmoothingEnabled)
+    if (!g_PassConsts.IsTileSmoothingEnabled)
     {
         smoothPenumbra.x = centerTile.x;
     }

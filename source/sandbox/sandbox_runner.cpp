@@ -229,6 +229,9 @@ namespace sandbox
 
     void StanfordDragonRunner::InitScene()
     {
+        m_RenderSettings->GetSection<RayTracing_ShadowSettings>().m_IsEnabled = false;
+        m_RenderSettings->GetSection<SigmaDenoiserSettings>().IsEnabled = false;
+
         benzin::PerspectiveCamera& camera = m_Scene->m_Camera;
         camera.SetPosition({ -2.286f, 3.911f, -18.385f });
         camera.SetFrontDirection({ 0.149f, -0.185f, 0.972f });
@@ -268,7 +271,7 @@ namespace sandbox
                     meshDraw.m_Rotation.x = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
                     meshDraw.m_Rotation.y = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
                     meshDraw.m_Rotation.z = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
-                    meshDraw.m_Scale = 1.0f;
+                    meshDraw.m_Scale = benzin::Random::Get<float>(0.03f, 0.15f);
                 }
             }
         }

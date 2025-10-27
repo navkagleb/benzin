@@ -2,13 +2,13 @@
 
 float LinearToLogLuminance(float linearLuminance)
 {
-    const float logLuminance = (log2(linearLuminance) - g_PassConsts0.LuminanceHistogram.MinLogLuminance) * g_PassConsts0.LuminanceHistogram.InvLogLuminanceRange;
+    const float logLuminance = (log2(linearLuminance) - g_PassConsts.LuminanceHistogram.MinLogLuminance) * g_PassConsts.LuminanceHistogram.InvLogLuminanceRange;
     return saturate(logLuminance);
 }
 
 float LogToLinearLuminance(float logLuminance)
 {
-    float linearLuminance = (logLuminance * g_PassConsts0.LuminanceHistogram.LogLuminanceRange) + g_PassConsts0.LuminanceHistogram.MinLogLuminance;
+    float linearLuminance = (logLuminance * g_PassConsts.LuminanceHistogram.LogLuminanceRange) + g_PassConsts.LuminanceHistogram.MinLogLuminance;
     linearLuminance = exp2(linearLuminance);
 
     return linearLuminance;

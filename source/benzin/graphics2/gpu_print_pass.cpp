@@ -149,8 +149,8 @@ namespace benzin
         cmdList.ClearUnorderedAccess(*m_UavBuffer, m_UavBuffer->GetUav(), {});
 
         const uint64_t constBufferGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(m_Consts);
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::GpuPrintConstBuffer, constBufferGpuAddress);
-        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::GpuPrintConstBuffer, constBufferGpuAddress);
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::GpuPrintConsts, constBufferGpuAddress);
+        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::GpuPrintConsts, constBufferGpuAddress);
     }
 
     void GpuPrintPass::ReadbackFromGpu(benzin::CopyCmdList& cmdList) const

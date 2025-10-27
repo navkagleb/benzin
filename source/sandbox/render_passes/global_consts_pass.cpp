@@ -139,8 +139,8 @@ namespace sandbox
             BenzinGpuEvent("SetUnifiedRootParameters");
 
             const uint64_t frameConstsGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(m_FrameConsts);
-            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
-            cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConstBuffer, frameConstsGpuAddress);
+            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::FrameConsts, frameConstsGpuAddress);
+            cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::FrameConsts, frameConstsGpuAddress);
 
             // TODO: replace with joint::SunLight struct
             joint::Light sunLight = {};
@@ -152,8 +152,8 @@ namespace sandbox
             sunLight.Type = joint::LightType::Sun;
 
             const uint64_t sunLightConstsGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(sunLight);
-            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::SunLightConstBuffer, sunLightConstsGpuAddress);
-            cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::SunLightConstBuffer, sunLightConstsGpuAddress);
+            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::SunLightConsts, sunLightConstsGpuAddress);
+            cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::SunLightConsts, sunLightConstsGpuAddress);
 
             const uint64_t statBufferGpuAddress = m_StatBuffer->GetGpuVirtualAddress();
             cmdList.ClearUnorderedAccess(*m_StatBuffer, m_StatBuffer->GetUav(), {});

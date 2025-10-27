@@ -43,15 +43,15 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint2 dtid : SV_DispatchThreadID)
 
     // NOTE: Should dispatch for 1/2 resolution of source mip
 
-    const float2 destMipTexelSize = g_PassConsts0.m_DestMipTexelSize;
+    const float2 destMipTexelSize = g_PassConsts.m_DestMipTexelSize;
     float minDepth = 0.0;
 
-    if (!g_PassConsts0.m_IsSourceWidthOdd && !g_PassConsts0.m_IsSourceHeightOdd)
+    if (!g_PassConsts.m_IsSourceWidthOdd && !g_PassConsts.m_IsSourceHeightOdd)
     {
         const float2 uv = (dtid + 0.5) * destMipTexelSize;
         minDepth = g_SourceMip.SampleLevel(g_MinLinearClampSampler, uv, 0.0);
     }
-    else if (g_PassConsts0.m_IsSourceWidthOdd && !g_PassConsts0.m_IsSourceHeightOdd)
+    else if (g_PassConsts.m_IsSourceWidthOdd && !g_PassConsts.m_IsSourceHeightOdd)
     {
         const float2 uv0 = (dtid + float2(0.25, 0.5)) * destMipTexelSize;
         const float2 uv1 = uv0 + float2(0.5, 0.0) * destMipTexelSize;
@@ -60,7 +60,7 @@ void CsMain(uint groupIndex : SV_GroupIndex, uint2 dtid : SV_DispatchThreadID)
             g_SourceMip.SampleLevel(g_MinLinearClampSampler, uv0, 0.0),
             g_SourceMip.SampleLevel(g_MinLinearClampSampler, uv1, 0.0));
     }
-    else if (!g_PassConsts0.m_IsSourceWidthOdd && g_PassConsts0.m_IsSourceHeightOdd)
+    else if (!g_PassConsts.m_IsSourceWidthOdd && g_PassConsts.m_IsSourceHeightOdd)
     {
         const float2 uv0 = (dtid + float2(0.5, 0.25)) * destMipTexelSize;
         const float2 uv1 = uv0 + float2(0.0, 0.5) * destMipTexelSize;

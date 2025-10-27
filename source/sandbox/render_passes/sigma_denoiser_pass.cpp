@@ -164,7 +164,7 @@ namespace sandbox
         auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
         RunClearPass(settings.IsClearEnabled);
         RunClassifyTilesPass();

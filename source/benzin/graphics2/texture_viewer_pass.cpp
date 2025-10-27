@@ -97,7 +97,7 @@ namespace benzin
             benzin::TransitionBarrier{ debugTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
         {
             using Resources = joint::TextureViewerResources;
