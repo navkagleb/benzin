@@ -24,7 +24,6 @@
 #include <shaders/joint/geometry_resources.hpp>
 #include <shaders/joint/mesh_types.hpp>
 
-BenzinAllowDereferenceOperatorForEnum(joint::GeometryMeshResources);
 BenzinAllowDereferenceOperatorForEnum(joint::GeometryResources);
 BenzinAllowDereferenceOperatorForEnum(joint::MeshletConsts);
 
@@ -36,29 +35,54 @@ namespace sandbox
         CreateGeometryPso(PsoId::GeometryPass_Vertex, false);
         CreateGeometryPso(PsoId::GeometryPass_Mesh, true);
 
-        std::array<D3D12_INDIRECT_ARGUMENT_DESC, 2> d3d12IndirectArgumentDescs = {};
-        d3d12IndirectArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-        d3d12IndirectArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
-        d3d12IndirectArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
-        d3d12IndirectArgumentDescs[0].Constant.Num32BitValuesToSet = 2;
-        d3d12IndirectArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+        {
+            std::array<D3D12_INDIRECT_ARGUMENT_DESC, 2> d3d12ArgumentDescs = {};
+            d3d12ArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+            d3d12ArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
+            d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
+            d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 2;
+            d3d12ArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
 
-        D3D12_COMMAND_SIGNATURE_DESC d3d12CommandSignatureDesc = {};
-        d3d12CommandSignatureDesc.ByteStride = sizeof(benzin::MeshDrawIndirectCmd);
-        d3d12CommandSignatureDesc.NumArgumentDescs = (uint32_t)d3d12IndirectArgumentDescs.size();
-        d3d12CommandSignatureDesc.pArgumentDescs = d3d12IndirectArgumentDescs.data();
-        d3d12CommandSignatureDesc.NodeMask = 0;
+            D3D12_COMMAND_SIGNATURE_DESC d3d12CmdSignatureDesc = {};
+            d3d12CmdSignatureDesc.ByteStride = sizeof(benzin::DrawIndirectCmd);
+            d3d12CmdSignatureDesc.NumArgumentDescs = (uint32_t)d3d12ArgumentDescs.size();
+            d3d12CmdSignatureDesc.pArgumentDescs = d3d12ArgumentDescs.data();
+            d3d12CmdSignatureDesc.NodeMask = 0;
 
-        BenzinD3D12Call(ms_Device->GetD3D12Device()->CreateCommandSignature(
-            &d3d12CommandSignatureDesc,
-            ms_Device->GetUnifiedRootSignature().GetD3D12RootSignature(),
-            IID_PPV_ARGS(&m_D3D12DrawIndexedIndirectCmdSignature)));
+            BenzinD3D12Call(ms_Device->GetD3D12Device()->CreateCommandSignature(
+                &d3d12CmdSignatureDesc,
+                ms_Device->GetUnifiedRootSignature().GetD3D12RootSignature(),
+                IID_PPV_ARGS(&m_D3D12DrawIndirectCmdSignature)));
+        }
+
+        {
+            std::array<D3D12_INDIRECT_ARGUMENT_DESC, 2> d3d12ArgumentDescs = {};
+            d3d12ArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+            d3d12ArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
+            d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
+            d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 4;
+            d3d12ArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
+
+            D3D12_COMMAND_SIGNATURE_DESC d3d12CmdSignatureDesc = {};
+            d3d12CmdSignatureDesc.ByteStride = sizeof(benzin::DispatchMeshIndirectCmd);
+            d3d12CmdSignatureDesc.NumArgumentDescs = (uint32_t)d3d12ArgumentDescs.size();
+            d3d12CmdSignatureDesc.pArgumentDescs = d3d12ArgumentDescs.data();
+            d3d12CmdSignatureDesc.NodeMask = 0;
+
+            BenzinD3D12Call(ms_Device->GetD3D12Device()->CreateCommandSignature(
+                &d3d12CmdSignatureDesc,
+                ms_Device->GetUnifiedRootSignature().GetD3D12RootSignature(),
+                IID_PPV_ARGS(&m_D3D12DispatchMeshIndirectCmdSignature)));
+        }
     }
 
     GeometryPass::~GeometryPass()
     {
-        ms_Device->DeferredRelease(m_D3D12DrawIndexedIndirectCmdSignature);
-        m_D3D12DrawIndexedIndirectCmdSignature = nullptr;
+        ms_Device->DeferredRelease(m_D3D12DrawIndirectCmdSignature);
+        m_D3D12DrawIndirectCmdSignature = nullptr;
+
+        ms_Device->DeferredRelease(m_D3D12DispatchMeshIndirectCmdSignature);
+        m_D3D12DispatchMeshIndirectCmdSignature = nullptr;
 
         ms_PsoManager->Destroy(PsoId::GeometryPass_Vertex);
         ms_PsoManager->Destroy(PsoId::GeometryPass_Mesh);
@@ -131,34 +155,45 @@ namespace sandbox
 
         if (settings.m_IsMeshPipelineUsed)
         {
-            using MeshResources = joint::GeometryMeshResources;
-
             cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Mesh));
 
-            cmdList.SetGraphicsRootResource(*MeshResources::Vertices, ms_Scene->m_VertexBuffer->GetSrv());
-            cmdList.SetGraphicsRootResource(*MeshResources::Meshlets, ms_Scene->m_MeshletBuffer->GetSrv());
-            cmdList.SetGraphicsRootResource(*MeshResources::MeshletCullVolumes, ms_Scene->m_MeshletCullVolumeBuffer->GetSrv());
-            cmdList.SetGraphicsRootResource(*MeshResources::MeshletIndirectVertices, ms_Scene->m_MeshletIndirectVertexBuffer->GetSrv());
-            cmdList.SetGraphicsRootResource(*MeshResources::MeshletIndices, ms_Scene->m_MeshletIndexBuffer->GetSrv());
+            cmdList.SetGraphicsRootResource(*Resources::Vertices, ms_Scene->m_VertexBuffer->GetSrv());
+            cmdList.SetGraphicsRootResource(*Resources::Meshlets, ms_Scene->m_MeshletBuffer->GetSrv());
+            cmdList.SetGraphicsRootResource(*Resources::MeshletCullVolumes, ms_Scene->m_MeshletCullVolumeBuffer->GetSrv());
+            cmdList.SetGraphicsRootResource(*Resources::MeshletIndirectVertices, ms_Scene->m_MeshletIndirectVertexBuffer->GetSrv());
+            cmdList.SetGraphicsRootResource(*Resources::MeshletIndices, ms_Scene->m_MeshletIndexBuffer->GetSrv());
 
-            for (uint32_t drawIndex = 0; drawIndex < ms_Scene->m_MeshDraws.size(); ++drawIndex)
+            if (settings.m_IsIndirectDrawEnabled)
             {
-                cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, drawIndex);
-
-                const benzin::MeshDraw& draw = ms_Scene->m_MeshDraws[drawIndex];
-                const uint32_t drawPartOffset = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartOffset;
-                const uint32_t drawPartCount = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartCount;
-
-                for (uint32_t drawPartIndex = drawPartOffset; drawPartIndex < drawPartOffset + drawPartCount; ++drawPartIndex)
+                cmdList.GetD3D12GraphicsCommandList()->ExecuteIndirect(
+                    m_D3D12DispatchMeshIndirectCmdSignature,
+                    (uint32_t)ms_Scene->m_DispatchMeshIndirectCmdBuffer->GetElementCount(),
+                    ms_Scene->m_DispatchMeshIndirectCmdBuffer->GetD3D12Resource(),
+                    0,
+                    nullptr,
+                    0);
+            }
+            else
+            {
+                for (uint32_t drawIndex = 0; drawIndex < ms_Scene->m_MeshDraws.size(); ++drawIndex)
                 {
-                    const benzin::MeshDrawPart& drawPart = ms_Scene->m_MeshDrawParts[drawPartIndex];
-                    const benzin::MeshPart& part = ms_Scene->m_MeshParts[drawPart.m_PartIndex];
+                    cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, drawIndex);
 
-                    cmdList.SetGraphicsRootConstant(*Resources::MeshDrawPartIndex, drawPartIndex);
-                    cmdList.SetGraphicsRootConstant(*MeshResources::PartMeshletCount, part.m_MeshletCount);
-                    cmdList.SetGraphicsRootConstant(*MeshResources::PartMeshletOffset, part.m_MeshletOffset);
+                    const benzin::MeshDraw& draw = ms_Scene->m_MeshDraws[drawIndex];
+                    const uint32_t drawPartOffset = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartOffset;
+                    const uint32_t drawPartCount = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartCount;
 
-                    cmdList.DispatchMesh({ part.m_MeshletCount, 1, 1, }, { *joint::MeshletConsts::AsGroupSize, 1, 1 });
+                    for (uint32_t drawPartIndex = drawPartOffset; drawPartIndex < drawPartOffset + drawPartCount; ++drawPartIndex)
+                    {
+                        const benzin::MeshDrawPart& drawPart = ms_Scene->m_MeshDrawParts[drawPartIndex];
+                        const benzin::MeshPart& part = ms_Scene->m_MeshParts[drawPart.m_PartIndex];
+
+                        cmdList.SetGraphicsRootConstant(*Resources::MeshDrawPartIndex, drawPartIndex);
+                        cmdList.SetGraphicsRootConstant(*Resources::PartMeshletOffset, part.m_MeshletOffset);
+                        cmdList.SetGraphicsRootConstant(*Resources::PartMeshletCount, part.m_MeshletCount);
+
+                        cmdList.DispatchMesh({ part.m_MeshletCount, 1, 1, }, { *joint::MeshletConsts::AsGroupSize, 1, 1 });
+                    }
                 }
             }
         }
@@ -173,9 +208,9 @@ namespace sandbox
             if (settings.m_IsIndirectDrawEnabled)
             {
                 cmdList.GetD3D12GraphicsCommandList()->ExecuteIndirect(
-                    m_D3D12DrawIndexedIndirectCmdSignature,
-                    (uint32_t)ms_Scene->m_MeshDrawIndirectCmdBuffer->GetElementCount(),
-                    ms_Scene->m_MeshDrawIndirectCmdBuffer->GetD3D12Resource(),
+                    m_D3D12DrawIndirectCmdSignature,
+                    (uint32_t)ms_Scene->m_DrawIndirectCmdBuffer->GetElementCount(),
+                    ms_Scene->m_DrawIndirectCmdBuffer->GetD3D12Resource(),
                     0,
                     nullptr,
                     0);
@@ -205,7 +240,7 @@ namespace sandbox
 
     void GeometryPass::CreateGeometryPso(PsoId id, bool isMeshPipeline)
     {
-        const auto configureGraphicsPsoProxy = [this](auto& proxy)
+        const auto configureGraphicsPsoProxy = [](auto& proxy)
         {
             proxy.Ps.FileName = "geometry_pass.hlsl";
             proxy.RasterizerState.CullMode = benzin::CullMode::Back;
@@ -225,7 +260,7 @@ namespace sandbox
 
         if (isMeshPipeline)
         {
-            ms_PsoManager->Create(id, [this, &configureGraphicsPsoProxy](benzin::MeshPsoProxy& proxy)
+            ms_PsoManager->Create(id, [&configureGraphicsPsoProxy](benzin::MeshPsoProxy& proxy)
             {
                 proxy.As.FileName = "geometry_pass.hlsl";
                 proxy.Ms.FileName = "geometry_pass.hlsl";
@@ -238,7 +273,7 @@ namespace sandbox
         }
         else
         {
-            ms_PsoManager->Create(id, [this, &configureGraphicsPsoProxy](benzin::VertexPsoProxy& proxy)
+            ms_PsoManager->Create(id, [&configureGraphicsPsoProxy](benzin::VertexPsoProxy& proxy)
             {
                 proxy.InputLayout.emplace_back("Position", benzin::GraphicsFormat::Rgb32Float);
                 proxy.InputLayout.emplace_back("Normal", benzin::GraphicsFormat::Rgb32Float);

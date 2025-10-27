@@ -24,9 +24,10 @@ namespace sandbox
         void OnRender() const override;
 
     private:
-        void CreateGeometryPso(benzin::PsoId id, bool isMeshPipeline);
+        static void CreateGeometryPso(benzin::PsoId id, bool isMeshPipeline);
 
-        ID3D12CommandSignature* m_D3D12DrawIndexedIndirectCmdSignature = nullptr;
+        ID3D12CommandSignature* m_D3D12DrawIndirectCmdSignature = nullptr;
+        ID3D12CommandSignature* m_D3D12DispatchMeshIndirectCmdSignature = nullptr;
     };
 
 }

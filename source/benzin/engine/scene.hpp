@@ -32,13 +32,22 @@ namespace benzin
         uint32_t m_MeshRangeIndex = g_MaxU32;
     };
 
-    struct MeshDrawIndirectCmd
+    struct DrawIndirectCmd
     {
-        // TODO: Can be merged to uint32_t
         uint32_t m_DrawIndex = 0;
         uint32_t m_DrawPartIndex = 0;
 
         D3D12_DRAW_INDEXED_ARGUMENTS m_D3D12Cmd = {};
+    };
+
+    struct DispatchMeshIndirectCmd
+    {
+        uint32_t m_DrawIndex = 0;
+        uint32_t m_DrawPartIndex = 0;
+        uint32_t m_MeshletOffset = 0;
+        uint32_t m_MeshletCount = 0;
+
+        D3D12_DISPATCH_MESH_ARGUMENTS m_D3D12Cmd = {};
     };
 
     struct SunLight
@@ -98,9 +107,11 @@ namespace benzin
         std::unique_ptr<Buffer> m_MeshletIndirectVertexBuffer;
         std::unique_ptr<Buffer> m_MeshletIndexBuffer;
         std::unique_ptr<Buffer> m_MeshDrawBuffer;
-        std::unique_ptr<Buffer> m_MeshDrawIndirectCmdBuffer;
         std::unique_ptr<Buffer> m_MaterialBuffer;
         std::vector<std::unique_ptr<Texture>> m_Textures;
+
+        std::unique_ptr<Buffer> m_DrawIndirectCmdBuffer;
+        std::unique_ptr<Buffer> m_DispatchMeshIndirectCmdBuffer;
 
         std::vector<joint::GrassPatch> m_GrassPatches;
         SunLight m_SunLight;

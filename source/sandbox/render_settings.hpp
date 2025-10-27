@@ -3,7 +3,6 @@
 #include <benzin/graphics/format.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
 
-#include <shaders/joint/geometry_resources.hpp>
 #include <shaders/joint/tone_mapping_resources.hpp>
 
 namespace sandbox
@@ -19,7 +18,7 @@ namespace sandbox
 
         static constexpr auto s_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint; // TODO: Can be used D32 instead
 
-        bool m_IsIndirectDrawEnabled = false;
+        bool m_IsIndirectDrawEnabled = true;
         bool m_IsMeshPipelineUsed = true;
     };
 
@@ -48,7 +47,7 @@ namespace sandbox
 
     struct RayTracing_ShadowSettings
     {
-        bool m_IsEnabled = false;
+        bool m_IsEnabled = true;
 
         bool m_IsBlueNoiseUsed = true;
         bool m_IsNoiseAnimated = true;
@@ -63,7 +62,7 @@ namespace sandbox
         const benzin::GraphicsFormat PenumbraFormat = benzin::GraphicsFormat::R16Float;
         const uint32_t MaxHistoryLength = 7;
 
-        bool IsEnabled = false;
+        bool IsEnabled = true;
         float PlaneDistanceSensitivity = 0.02f; // (normalized %) - represents maximum allowed deviation from the local tangent plane
         float DisocclusionThreshold = 0.02f; // (normalized %)
         bool IsClearEnabled = false;

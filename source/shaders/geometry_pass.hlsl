@@ -13,11 +13,11 @@ BenzinDeclareRootResource(StructuredBuffer<joint::MeshDrawPart>, g_MeshDrawParts
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_MeshDraws, joint::GeometryResources::MeshDraws);
 
 #if defined(MESH_PIPELINE)
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryMeshResources::Vertices);
-BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryMeshResources::Meshlets);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshletCullVolume>, g_MeshletCullVolumes, joint::GeometryMeshResources::MeshletCullVolumes);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndirectVertices, joint::GeometryMeshResources::MeshletIndirectVertices);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryMeshResources::MeshletIndices); // uint8_t
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
+BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshletCullVolume>, g_MeshletCullVolumes, joint::GeometryResources::MeshletCullVolumes);
+BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndirectVertices, joint::GeometryResources::MeshletIndirectVertices);
+BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
 #endif
 
 struct VsOutput
@@ -64,8 +64,8 @@ groupshared MeshPayload g_MeshPayload;
 [NumThreads((uint)joint::MeshletConsts::AsGroupSize, 1, 1)]
 void AsMain(uint localMeshletIndex : SV_DispatchThreadID)
 {
-    bool isVisible = localMeshletIndex < BenzinGetRootConstant(joint::GeometryMeshResources::PartMeshletCount);
-    const uint meshletIndex = localMeshletIndex + BenzinGetRootConstant(joint::GeometryMeshResources::PartMeshletOffset);
+    bool isVisible = localMeshletIndex < BenzinGetRootConstant(joint::GeometryResources::PartMeshletCount);
+    const uint meshletIndex = localMeshletIndex + BenzinGetRootConstant(joint::GeometryResources::PartMeshletOffset);
 
     if (isVisible)
     {
@@ -77,7 +77,7 @@ void AsMain(uint localMeshletIndex : SV_DispatchThreadID)
     DispatchMesh(visibleCount, 1, 1, g_MeshPayload);
 }
 
-[NumThreads((uint)joint::MeshletConsts::MsGroupSize, 1, 1)]
+[NumThreads(128, 1, 1)]
 [OutputTopology("triangle")]
 void MsMain(
     uint gtid : SV_GroupThreadID,

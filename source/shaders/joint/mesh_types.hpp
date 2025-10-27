@@ -50,7 +50,6 @@ namespace joint
         MaxTriangleCount = 124, // Must be multiple of 4 (for meshoptimizer library)
 
         AsGroupSize = 32,
-        MsGroupSize = 128,
     };
 
     struct Material
