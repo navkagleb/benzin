@@ -20,24 +20,7 @@ namespace sandbox
         static constexpr auto s_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint; // TODO: Can be used D32 instead
 
         bool m_IsIndirectDrawEnabled = false;
-    };
-
-    struct GBufferStats
-    {
-        uint32_t m_TotalMeshletCount = 0;
-        uint32_t m_TotalMeshletVertexCount = 0;
-        uint32_t m_TotalMeshletTriangleCount = 0;
-
-        uint32_t m_MeshletCount = 0;
-        uint32_t m_MeshletVertexCount = 0;
-        uint32_t m_MeshletTriangleCount = 0;
-
-        uint32_t m_VsInvocationCount = 0;
-        uint32_t m_AsInvocationCount = 0;
-        uint32_t m_MsInvocationCount = 0;
-        uint32_t m_PsInvocationCount = 0;
-
-        uint32_t m_ViewportPixelCount = 0;
+        bool m_IsMeshPipelineUsed = true;
     };
 
     struct ProceduralGrassSettings

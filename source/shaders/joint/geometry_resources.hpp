@@ -13,17 +13,18 @@ namespace joint
         MeshDraws,
         MeshDrawParts,
         Materials,
+    };
 
-        Vertices, // Mesh pipeline
-        Meshlets, // Mesh pipeline
-        MeshletCullVolumes, // Mesh pipeline
-        MeshletIndirectVertices, // Mesh pipeline
-        MeshletIndices, // Mesh pipeline
-        MeshletCountPerInstance, // Mesh pipeline
-        TotalMeshletCount, // Mesh pipeline
+    enum class GeometryMeshResources : uint
+    {
+        PartMeshletCount = (uint)GeometryResources::Materials + 1,
+        PartMeshletOffset,
 
-        InstanceIndex, // Debug
-        MeshletIndex, // Debug
+        Vertices,
+        Meshlets,
+        MeshletCullVolumes,
+        MeshletIndirectVertices,
+        MeshletIndices,
     };
 
 }

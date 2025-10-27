@@ -17,8 +17,6 @@ namespace benzin
     {
         std::vector<joint::MeshVertex> Vertices;
         std::vector<uint32_t> Indices;
-
-        D3D_PRIMITIVE_TOPOLOGY D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     };
 
     struct MeshPart
@@ -34,10 +32,6 @@ namespace benzin
         uint32_t m_MeshletIndirectVertexCount = 0;
         uint32_t m_MeshletIndexOffset = 0;
         uint32_t m_MeshletIndexCount = 0;
-
-        D3D_PRIMITIVE_TOPOLOGY m_D3D12PrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
-
-        DirectX::BoundingSphere m_BoundingSphere = {};
     };
 
     struct MeshDrawPart

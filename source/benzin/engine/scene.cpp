@@ -3,7 +3,6 @@
 
 #include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
-#include <benzin/engine/geometry_generator.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_helper.hpp>
 #include <benzin/engine/resource_loader.hpp>
@@ -14,38 +13,14 @@
 #include <benzin/graphics/texture.hpp>
 
 #include <shaders/joint/mesh_types.hpp>
+#include <shaders/joint/procedural_grass_resources.hpp>
 
 namespace benzin
 {
 
-    static void CreateUnitSphereMesh(Mesh& mesh, std::vector<MeshDrawPart>& meshDrawParts)
-    {
-        MeshData meshData = GetUnitGeoSphereMesh();
-
-        MeshPart part;
-        part.m_VertexCount = (uint32_t)meshData.Vertices.size();
-        part.m_IndexCount = (uint32_t)meshData.Indices.size();
-        part.m_D3D12PrimitiveTopology = meshData.D3D12PrimitiveTopology;
-
-        mesh.m_Vertices = std::move(meshData.Vertices);
-        mesh.m_Indices = std::move(meshData.Indices);
-        mesh.m_Parts.push_back(part);
-
-        MeshDrawPart drawPart;
-        drawPart.m_PartIndex = 0;
-        meshDrawParts.push_back(drawPart);
-    };
-
-    //
-
     Scene::Scene(Device& device)
         : m_Device{ device }
     {
-        Mesh sphereMesh;
-        std::vector<MeshDrawPart> sphereDrawParts;
-        CreateUnitSphereMesh(sphereMesh, sphereDrawParts);
-        AddMesh("UnitSphere", std::move(sphereMesh), std::move(sphereDrawParts));
-
         m_Materials.push_back(Material
         {
             .m_AlbedoFactor = { 1.0f, 0.0f, 1.0f, 1.0f },
@@ -66,7 +41,6 @@ namespace benzin
 
             OptimizeMesh(mesh);
             GenerateMeshlets(mesh);
-            GenerateBoundingSpheres(mesh);
         }
 
         const auto textureOffset = (uint32_t)m_Textures.size();
@@ -89,10 +63,10 @@ namespace benzin
 
         const auto updateTextureIndex = [this, textureOffset](uint32_t& textureIndex)
         {
-            if (IsMaxUint(textureIndex))
-                return;
-
-            textureIndex = m_Textures[textureIndex + textureOffset]->GetSrv().GetGpuHeapIndex();
+            if (!IsMaxUint(textureIndex))
+            {
+                textureIndex = m_Textures[textureIndex + textureOffset]->GetSrv().GetGpuHeapIndex();
+            }
         };
 
         for (Material& material : materials)
@@ -107,6 +81,24 @@ namespace benzin
         {
             part.m_VertexOffset += (uint32_t)m_Vertices.size();
             part.m_IndexOffset += (uint32_t)m_Indices.size();
+
+            for (uint32_t i = part.m_MeshletIndirectVertexOffset; i < part.m_MeshletIndirectVertexOffset + part.m_MeshletIndirectVertexCount; ++i)
+            {
+                uint32_t& vertexIndex = mesh.m_MeshletIndirectVertices[i];
+                vertexIndex += part.m_VertexOffset;
+            }
+
+            part.m_MeshletIndirectVertexOffset += (uint32_t)m_MeshletIndirectVertices.size();
+            part.m_MeshletIndexOffset += (uint32_t)m_MeshletIndices.size();
+
+            for (uint32_t i = part.m_MeshletOffset; i < part.m_MeshletOffset + part.m_MeshletCount; ++i)
+            {
+                joint::Meshlet& meshlet = mesh.m_Meshlets[i];
+                meshlet.m_VertexOffset += part.m_MeshletIndirectVertexOffset;
+                meshlet.m_IndexOffset += part.m_MeshletIndexOffset;
+            }
+
+            part.m_MeshletOffset += (uint32_t)m_Meshlets.size();
         }
 
         for (MeshDrawPart& meshDrawPart : meshDrawParts)
@@ -134,6 +126,10 @@ namespace benzin
         m_Indices.append_range(std::move(mesh.m_Indices));
         m_MeshParts.append_range(std::move(mesh.m_Parts));
         m_MeshDrawParts.append_range(std::move(meshDrawParts));
+        m_Meshlets.append_range(std::move(mesh.m_Meshlets));
+        m_MeshletCullVolumes.append_range(std::move(mesh.m_MeshletCullVolumes));
+        m_MeshletIndirectVertices.append_range(std::move(mesh.m_MeshletIndirectVertices));
+        m_MeshletIndices.append_range(std::move(mesh.m_MeshletIndices));
         m_Materials.append_range(std::move(materials));
     }
 
@@ -183,7 +179,6 @@ namespace benzin
         {
             joint::MeshDrawPart& jointMeshDrawPart = jointMeshDrawParts.emplace_back();
             jointMeshDrawPart.m_ObjectToLocal = meshDrawPart.m_ObjectToLocal;
-            jointMeshDrawPart.m_PartIndex = meshDrawPart.m_PartIndex;
             jointMeshDrawPart.m_MaterialIndex = meshDrawPart.m_MaterialIndex;
         }
 
@@ -214,6 +209,10 @@ namespace benzin
         m_VertexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::VertexBuffer", ToSpan(m_Vertices));
         m_IndexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::IndexBuffer", ToSpan(m_Indices), GraphicsFormat::R32Uint);
         m_MeshDrawPartBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshDrawPartBuffer", ToSpan(jointMeshDrawParts));
+        m_MeshletBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletsBuffer", ToSpan(m_Meshlets));
+        m_MeshletCullVolumeBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletCullVolumeBuffer", ToSpan(m_MeshletCullVolumes));
+        m_MeshletIndirectVertexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletIndirectVertexBuffer", ToSpan(m_MeshletIndirectVertices), GraphicsFormat::R32Uint);
+        m_MeshletIndexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletIndexBuffer", ToSpan(m_MeshletIndices), GraphicsFormat::R8Uint);
         m_MaterialBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MaterialBuffer", ToSpan(jointMaterials));
         m_MeshDrawIndirectCmdBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshDrawIndirectCmdBuffer", ToSpan(meshDrawIndirectCmds));
 
@@ -221,6 +220,10 @@ namespace benzin
             m_VertexBuffer->GetSizeInBytes() +
             m_IndexBuffer->GetSizeInBytes() +
             m_MeshDrawPartBuffer->GetSizeInBytes() +
+            m_MeshletBuffer->GetSizeInBytes() +
+            m_MeshletCullVolumeBuffer->GetSizeInBytes() +
+            m_MeshletIndirectVertexBuffer->GetSizeInBytes() +
+            m_MeshletIndexBuffer->GetSizeInBytes() +
             m_MaterialBuffer->GetSizeInBytes() +
             m_MeshDrawIndirectCmdBuffer->GetSizeInBytes();
 
@@ -228,39 +231,13 @@ namespace benzin
         cmdList.UploadToBuffer(*m_VertexBuffer, ToSpan(m_Vertices));
         cmdList.UploadToBuffer(*m_IndexBuffer, ToSpan(m_Indices));
         cmdList.UploadToBuffer(*m_MeshDrawPartBuffer, ToSpan(jointMeshDrawParts));
+        cmdList.UploadToBuffer(*m_MeshletBuffer, ToSpan(m_Meshlets));
+        cmdList.UploadToBuffer(*m_MeshletCullVolumeBuffer, ToSpan(m_MeshletCullVolumes));
+        cmdList.UploadToBuffer(*m_MeshletIndirectVertexBuffer, ToSpan(m_MeshletIndirectVertices));
+        cmdList.UploadToBuffer(*m_MeshletIndexBuffer, ToSpan(m_MeshletIndices));
         cmdList.UploadToBuffer(*m_MaterialBuffer, ToSpan(jointMaterials));
         cmdList.UploadToBuffer(*m_MeshDrawIndirectCmdBuffer, ToSpan(meshDrawIndirectCmds));
     }
-
-#if 0
-    void Scene::UploadMeshletsToGpu()
-    {
-        const auto view = m_MeshRegistry.view<Mesh, MeshGpuStorage>();
-
-        uint64_t uploadSizeInBytes = 0;
-        for (const entt::entity meshHandle : view)
-        {
-            const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
-
-            uploadSizeInBytes += meshGpuStorage.MeshletBuffer->GetSizeInBytes();
-            uploadSizeInBytes += meshGpuStorage.MeshletCullVolumeBuffer->GetSizeInBytes();
-            uploadSizeInBytes += meshGpuStorage.MeshletIndirectVertexBuffer->GetSizeInBytes();
-            uploadSizeInBytes += meshGpuStorage.MeshletIndexBuffer->GetSizeInBytes();
-        };
-
-        auto& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
-        for (const entt::entity meshHandle : view)
-        {
-            const auto& mesh = view.get<Mesh>(meshHandle);
-            const auto& meshGpuStorage = view.get<MeshGpuStorage>(meshHandle);
-
-            cmdList.UploadToBuffer(*meshGpuStorage.MeshletBuffer, ToSpan(mesh.m_Meshlets));
-            cmdList.UploadToBuffer(*meshGpuStorage.MeshletCullVolumeBuffer, ToSpan(mesh.m_MeshletCullVolumes));
-            cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndirectVertexBuffer, ToSpan(mesh.m_MeshletIndirectVertices));
-            cmdList.UploadToBuffer(*meshGpuStorage.MeshletIndexBuffer, ToSpan(mesh.m_MeshletIndices));
-        }
-    }
-#endif
 
     void Scene::ExecuteUpdateCallbacks()
     {

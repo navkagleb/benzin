@@ -3,12 +3,11 @@
 #include <benzin/core/math.hpp> // TODO: Remove with SunLight::CalcToSunDirection
 #include <benzin/engine/camera.hpp>
 #include <benzin/engine/mesh.hpp>
-
-#include <shaders/joint/procedural_grass_resources.hpp>
-
 namespace joint
 {
+    struct GrassPatch;
     struct MeshDraw;
+    struct MeshletCullVolume;
 }
 
 namespace benzin
@@ -78,6 +77,10 @@ namespace benzin
         std::vector<uint32_t> m_Indices;
         std::vector<MeshPart> m_MeshParts;
         std::vector<MeshDrawPart> m_MeshDrawParts;
+        std::vector<joint::Meshlet> m_Meshlets;
+        std::vector<joint::MeshletCullVolume> m_MeshletCullVolumes;
+        std::vector<uint32_t> m_MeshletIndirectVertices;
+        std::vector<uint8_t> m_MeshletIndices;
         std::vector<Material> m_Materials;
         std::vector<std::vector<std::byte>> m_TexturesData;
 
@@ -90,6 +93,10 @@ namespace benzin
         std::unique_ptr<Buffer> m_VertexBuffer;
         std::unique_ptr<Buffer> m_IndexBuffer;
         std::unique_ptr<Buffer> m_MeshDrawPartBuffer;
+        std::unique_ptr<Buffer> m_MeshletBuffer;
+        std::unique_ptr<Buffer> m_MeshletCullVolumeBuffer;
+        std::unique_ptr<Buffer> m_MeshletIndirectVertexBuffer;
+        std::unique_ptr<Buffer> m_MeshletIndexBuffer;
         std::unique_ptr<Buffer> m_MeshDrawBuffer;
         std::unique_ptr<Buffer> m_MeshDrawIndirectCmdBuffer;
         std::unique_ptr<Buffer> m_MaterialBuffer;

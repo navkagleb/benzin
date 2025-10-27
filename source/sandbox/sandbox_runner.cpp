@@ -17,8 +17,6 @@
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
-#include <benzin/tools/render_viewport_tool.hpp>
-#include <benzin/tools/texture_viewer_tool.hpp>
 #include <benzin/utility/random.hpp>
 
 #include <shaders/joint/mesh_types.hpp>
@@ -33,7 +31,6 @@ namespace sandbox
     SandboxRunner::~SandboxRunner()
     {
         m_ImGuiManager->UnregisterTool<SettingsTool<GBufferSettings>>();
-        m_ImGuiManager->UnregisterTool<SettingsTool<GBufferStats>>();
         m_ImGuiManager->UnregisterTool<SettingsTool<ProceduralGrassSettings>>();
         m_ImGuiManager->UnregisterTool<SettingsTool<ProceduralGrassStats>>();
         m_ImGuiManager->UnregisterTool<SettingsTool<RayTracing_ShadowSettings>>();
@@ -47,30 +44,11 @@ namespace sandbox
 
         auto readbackStatsCallback = [this](std::span<const uint32_t> readbackStats)
         {
-            {
-                auto& stats = m_RenderSettings->GetSection<GBufferStats>();
-
-                stats.m_TotalMeshletCount = readbackStats[*joint::ReadbackStat::Geometry_TotalMeshletCount];
-                stats.m_TotalMeshletVertexCount = readbackStats[*joint::ReadbackStat::Geometry_TotalMeshletVertexCount];
-                stats.m_TotalMeshletTriangleCount = readbackStats[*joint::ReadbackStat::Geometry_TotalMeshletTriangleCount];
-
-                stats.m_MeshletCount = readbackStats[*joint::ReadbackStat::Geometry_MeshletCount];
-                stats.m_MeshletVertexCount = readbackStats[*joint::ReadbackStat::Geometry_MeshletVertexCount];
-                stats.m_MeshletTriangleCount = readbackStats[*joint::ReadbackStat::Geometry_MeshletTriangleCount];
-
-                stats.m_VsInvocationCount = readbackStats[*joint::ReadbackStat::Geometry_VsInvocationCount];
-                stats.m_AsInvocationCount = readbackStats[*joint::ReadbackStat::Geometry_AsInvocationCount];  
-                stats.m_MsInvocationCount = readbackStats[*joint::ReadbackStat::Geometry_MsInvocationCount];
-                stats.m_PsInvocationCount = readbackStats[*joint::ReadbackStat::Geometry_PsInvocationCount];
-            }
-
-            {
-                auto& stats = m_RenderSettings->GetSection<ProceduralGrassStats>();
-                stats.PatchCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_PatchCount];
-                stats.BladeCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_BladeCount];
-                stats.VertexCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_VertexCount];
-                stats.TriangleCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_TriangleCount];
-            }
+            auto& stats = m_RenderSettings->GetSection<ProceduralGrassStats>();
+            stats.PatchCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_PatchCount];
+            stats.BladeCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_BladeCount];
+            stats.VertexCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_VertexCount];
+            stats.TriangleCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_TriangleCount];
         };
 
         // The order in which render passes are added is important
@@ -91,7 +69,6 @@ namespace sandbox
     void SandboxRunner::InitTools()
     {
         m_ImGuiManager->RegisterTool<SettingsTool<GBufferSettings>>("Settings/GBuffer", m_RenderSettings->GetSection<GBufferSettings>());
-        m_ImGuiManager->RegisterTool<SettingsTool<GBufferStats>>("Settings/GBufferStats", m_RenderSettings->GetSection<GBufferStats>());
         m_ImGuiManager->RegisterTool<SettingsTool<ProceduralGrassSettings>>("Settings/ProceduralGrass", m_RenderSettings->GetSection<ProceduralGrassSettings>());
         m_ImGuiManager->RegisterTool<SettingsTool<ProceduralGrassStats>>("Settings/ProceduralGrassStats", m_RenderSettings->GetSection<ProceduralGrassStats>());
         m_ImGuiManager->RegisterTool<SettingsTool<RayTracing_ShadowSettings>>("Settings/RayTracing_Shadow", m_RenderSettings->GetSection<RayTracing_ShadowSettings>());

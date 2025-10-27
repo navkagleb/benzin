@@ -165,20 +165,6 @@ namespace benzin
         }
     }
 
-    void GenerateBoundingSpheres(Mesh& mesh)
-    {
-        for (MeshPart& part : mesh.m_Parts)
-        {
-            const auto vertices = ToSpan(mesh.m_Vertices.data() + part.m_VertexOffset, part.m_VertexCount);
-
-            DirectX::BoundingSphere::CreateFromPoints(
-                part.m_BoundingSphere,
-                vertices.size(),
-                (DirectX::XMFLOAT3*)vertices.data(),
-                sizeof(joint::MeshVertex));
-        }
-    }
-
     bool SaveTextureArrayToDds(std::span<const std::string_view> fileNames, std::string_view outputFileName)
     {
         const uint32_t arraySize = (uint32_t)fileNames.size();

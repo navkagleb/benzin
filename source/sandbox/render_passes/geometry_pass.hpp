@@ -24,13 +24,7 @@ namespace sandbox
         void OnRender() const override;
 
     private:
-        enum class PsoFlag
-        {
-            AlphaTest,
-            MeshPipeline,
-        };
-
-        void CreateGeometryPso(benzin::PsoId id, benzin::EnumFlags<PsoFlag> flags = {});
+        void CreateGeometryPso(benzin::PsoId id, bool isMeshPipeline);
 
         ID3D12CommandSignature* m_D3D12DrawIndexedIndirectCmdSignature = nullptr;
     };

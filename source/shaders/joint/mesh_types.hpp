@@ -17,9 +17,8 @@ namespace joint
     struct MeshDrawPart
     {
         float4x4 m_ObjectToLocal;
-        uint32_t m_PartIndex;
         uint32_t m_MaterialIndex;
-        float2 m_Padding0;
+        float3 m_Padding0;
     };
 
     struct MeshDraw

@@ -172,6 +172,8 @@ namespace benzin
     template <std::integral IndexType>
     void GltfReader::ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive, Mesh& mesh)
     {
+        BenzinEnsure(gltfPrimitive.mode == TINYGLTF_MODE_TRIANGLES);
+
         const int positionAccessorIndex = gltfPrimitive.attributes.contains("POSITION") ? gltfPrimitive.attributes.at("POSITION") : -1;
         const int normalAccessorIndex = gltfPrimitive.attributes.contains("NORMAL") ? gltfPrimitive.attributes.at("NORMAL") : -1;
         const int uvAccessorIndex = gltfPrimitive.attributes.contains("TEXCOORD_0") ? gltfPrimitive.attributes.at("TEXCOORD_0") : -1;
@@ -187,24 +189,12 @@ namespace benzin
         BenzinEnsure(normals.empty() || normals.size() == positions.size());
         BenzinEnsure(uvs.empty() || uvs.size() == uvs.size());
 
+
         MeshPart part;
         part.m_VertexOffset = (uint32_t)mesh.m_Vertices.size();
         part.m_VertexCount = (uint32_t)positions.size();
         part.m_IndexOffset = (uint32_t)mesh.m_Indices.size();
         part.m_IndexCount = (uint32_t)indices.size();
-        part.m_D3D12PrimitiveTopology = [&gltfPrimitive]
-        {
-            switch (gltfPrimitive.mode)
-            {
-                case TINYGLTF_MODE_TRIANGLES:
-                    return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-                case TINYGLTF_MODE_TRIANGLE_STRIP:
-                    return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
-            }
-
-            BenzinEnsure(false, "Unsupported primitive topology: {}", gltfPrimitive.mode);
-            return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED ;
-        }();
 
         mesh.m_Parts.push_back(part);
         mesh.m_Vertices.reserve(mesh.m_Vertices.size() + positions.size());
