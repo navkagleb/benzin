@@ -12,13 +12,6 @@ namespace joint
 namespace benzin
 {
 
-    // TODO: Remove MeshData
-    struct MeshData
-    {
-        std::vector<joint::MeshVertex> Vertices;
-        std::vector<uint32_t> Indices;
-    };
-
     struct MeshPart
     {
         uint32_t m_VertexOffset = 0;
