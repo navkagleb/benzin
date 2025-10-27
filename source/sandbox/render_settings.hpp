@@ -48,14 +48,14 @@ namespace sandbox
 
     struct RayTracing_ShadowSettings
     {
-        bool IsEnabled = false;
+        bool m_IsEnabled = false;
 
-        bool IsBlueNoiseUsed = true;
-        bool IsNoiseAnimated = true;
-        bool IsBlueNoiseDepthFreezed = false;
+        bool m_IsBlueNoiseUsed = true;
+        bool m_IsNoiseAnimated = true;
+        bool m_IsBlueNoiseDepthFreezed = false;
 
-        uint16_t BlueNoiseDepth = 0;
-        uint16_t BlueNoiseDepthIndex = 0;
+        uint16_t m_BlueNoiseDepth = 0;
+        uint16_t m_BlueNoiseDepthIndex = 0;
     };
 
     struct SigmaDenoiserSettings

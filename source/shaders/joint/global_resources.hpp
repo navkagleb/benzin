@@ -45,7 +45,6 @@ namespace joint
 
         uint CpuFrameIndex;
         uint IsRenderResolutionChanged : 1;
-        uint IsShadowsEnabled : 1;
         uint IsDenoiserEnabled : 1;
 
         float DeltaTimeInSec;

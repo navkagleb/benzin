@@ -71,16 +71,16 @@ namespace sandbox
         ImGui::PushItemWidth(150.0f);
         BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
 
-        ImGui::Checkbox("Enable###RayTracingShadows", &settings.IsEnabled);
+        ImGui::Checkbox("Enable###RayTracingShadows", &settings.m_IsEnabled);
 
-        ImGui::Checkbox("Use blue noise", &settings.IsBlueNoiseUsed);
-        ImGui::Checkbox("Animate noise", &settings.IsNoiseAnimated);
+        ImGui::Checkbox("Use blue noise", &settings.m_IsBlueNoiseUsed);
+        ImGui::Checkbox("Animate noise", &settings.m_IsNoiseAnimated);
 
-        ImGui::Checkbox("Freeze blue noise depth", &settings.IsBlueNoiseDepthFreezed);
+        ImGui::Checkbox("Freeze blue noise depth", &settings.m_IsBlueNoiseDepthFreezed);
 
         ImGui::BeginDisabled();
-        auto tempBlueNoiseDepthIndex = (int)settings.BlueNoiseDepthIndex;
-        ImGui::SliderInt("Blue noise depth index", &tempBlueNoiseDepthIndex, 0, settings.BlueNoiseDepth - 1);
+        auto tempBlueNoiseDepthIndex = (int)settings.m_BlueNoiseDepthIndex;
+        ImGui::SliderInt("Blue noise depth index", &tempBlueNoiseDepthIndex, 0, settings.m_BlueNoiseDepth - 1);
         ImGui::EndDisabled();
     }
 

@@ -1,13 +1,14 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/render_passes/ray_tracing_shadow_pass.hpp>
 
-#include <sandbox/render_passes/sigma_denoiser_pass.hpp>
 #include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
 #include <benzin/core/profiler.hpp>
+#include <benzin/engine/ray_tracing_scene.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
+#include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
@@ -57,11 +58,11 @@ namespace sandbox
             .MipCount = 1,
         });
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoiseTexture->GetSizeInBytes());
+        benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoiseTexture->GetSizeInBytes());
         cmdList.UploadToTexture(*m_BlueNoiseTexture, benzin::ToSpan(blueNoiseImage.m_PixelData));
 
         auto& settings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
-        settings.BlueNoiseDepth = m_BlueNoiseTexture->GetDepth();
+        settings.m_BlueNoiseDepth = m_BlueNoiseTexture->GetDepth();
     }
 
     void RayTracing_ShadowPass::OnRenderViewportResize()
@@ -81,45 +82,73 @@ namespace sandbox
 
     void RayTracing_ShadowPass::OnUpdate()
     {
+        BenzinProfile();
+
         auto& settings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
 
-        m_Consts.IsBlueNoiseUsed = settings.IsBlueNoiseUsed;
-        m_Consts.IsNoiseAnimated = settings.IsNoiseAnimated;
+        m_Consts.m_IsShadowsEnabled = settings.m_IsEnabled;
+        m_Consts.m_IsBlueNoiseUsed = settings.m_IsBlueNoiseUsed;
+        m_Consts.m_IsNoiseAnimated = settings.m_IsNoiseAnimated;
 
-        if (!settings.IsBlueNoiseDepthFreezed)
+        if (!settings.m_IsBlueNoiseDepthFreezed)
         {
-            settings.BlueNoiseDepthIndex = (settings.BlueNoiseDepthIndex + 1) % settings.BlueNoiseDepth;
-            m_BlueNoiseDepthIndex = settings.BlueNoiseDepthIndex;
+            settings.m_BlueNoiseDepthIndex = (settings.m_BlueNoiseDepthIndex + 1) % settings.m_BlueNoiseDepth;
+            m_BlueNoiseDepthIndex = settings.m_BlueNoiseDepthIndex;
+        }
+
+        if (settings.m_IsEnabled)
+        {
+            BenzinScopeProfile("UpdateTlas");
+            ms_RayTracingScene->UpdateTlas();
         }
     }
 
     void RayTracing_ShadowPass::OnRender() const
     {
         BenzinProfile();
-        BenzinGpuProfile("RayTracing_Shadow");
+        BenzinGpuProfile("Shadows");
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-        const auto& pso = ms_PsoManager->GetRayTracing(PsoId::ShadowPass);
-        const auto& noisyPenumbra = ms_Resources->Get(TextureId::NoisyPenumbra);
+        if (m_Consts.m_IsShadowsEnabled)
+        {
+            BenzinScopeProfile("TlasBuilding");
+            BenzinGpuProfile("TlasBuilding");
 
-        cmdList.SetRayTracingPso(pso);
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
+            const benzin::RayTracing_Tlas& tlas = ms_RayTracingScene->GetActiveTlas();
 
-        BenzinScopedResourceBarriers(
-            cmdList,
-            benzin::TransitionBarrier{ noisyPenumbra, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
+            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *tlas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS }, true);
+
+            cmdList.BuildRayTracingAccelerationStructure(tlas);
+            cmdList.SetComputeSrv(benzin::UnifiedRootParameter::SceneTlas, tlas.GetGpuVirtualAddress());
+
+            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *tlas.GetScratchResource(), D3D12_RESOURCE_STATE_COMMON });
+            cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ *tlas.GetScratchResource() }, true);
+        }
 
         {
-            using Resources = joint::RayTracing_ShadowResources;
+            BenzinScopeProfile("RayTracing");
+            BenzinGpuProfile("RayTracing");
 
+            const benzin::RayTracing_Pso& pso = ms_PsoManager->GetRayTracing(PsoId::ShadowPass);
+            const benzin::Texture& noisyPenumbra = ms_Resources->Get(TextureId::NoisyPenumbra);
+
+            cmdList.SetRayTracingPso(pso);
+            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConstBuffer0, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
+
+            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ noisyPenumbra, D3D12_RESOURCE_STATE_UNORDERED_ACCESS }, true);
+
+            using Resources = joint::RayTracing_ShadowResources;
             cmdList.SetComputeRootResource(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
             cmdList.SetComputeRootResource(*Resources::Depth, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
             cmdList.SetComputeRootResource(*Resources::BlueNoise, m_BlueNoiseTexture->GetSrv({ .m_DepthOffset = m_BlueNoiseDepthIndex, .m_DepthCount = 1 }));
-            cmdList.SetComputeRootResource(*Resources::OutNoisyPenumbra, noisyPenumbra.GetUav());
-        }
+            cmdList.SetComputeRootResource(*Resources::NoisyPenumbra, noisyPenumbra.GetUav());
 
-        cmdList.DispatchRays(pso.GetShaderTable(), { ms_RenderViewportWidth, ms_RenderViewportHeight, 1 });
+            cmdList.DispatchRays(pso.GetShaderTable(), { ms_RenderViewportWidth, ms_RenderViewportHeight, 1 });
+
+            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ noisyPenumbra, D3D12_RESOURCE_STATE_COMMON });
+            cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ noisyPenumbra }, true);
+        }
     }
 
 }

@@ -8,12 +8,9 @@
 #include <sandbox/render_passes/procedural_grass_pass.hpp>
 #include <sandbox/render_passes/ray_tracing_shadow_pass.hpp>
 #include <sandbox/render_passes/sigma_denoiser_pass.hpp>
-#include <sandbox/render_passes/tlas_building_pass.hpp>
 #include <sandbox/render_passes/tone_mapping_pass.hpp>
 #include <sandbox/render_settings.hpp>
-#include <sandbox/resources.hpp>
 
-#include <benzin/engine/geometry_generator.hpp>
 #include <benzin/engine/mesh.hpp>
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/engine/scene.hpp>
@@ -52,7 +49,6 @@ namespace sandbox
         };
 
         // The order in which render passes are added is important
-        m_RenderPasses.push_back(std::make_unique<TlasBuildingPass>());
         m_RenderPasses.push_back(std::make_unique<GlobalConstsPass>(std::move(readbackStatsCallback)));
         m_RenderPasses.push_back(std::make_unique<GeometryPass>());
         m_RenderPasses.push_back(std::make_unique<ProceduralGrassPass>());
@@ -61,9 +57,6 @@ namespace sandbox
         m_RenderPasses.push_back(std::make_unique<DeferredLightingPass>());
         m_RenderPasses.push_back(std::make_unique<EnvironmentPass>());
         m_RenderPasses.push_back(std::make_unique<ToneMappingPass>());
-
-        m_RenderSettings->GetSection<RayTracing_ShadowSettings>().IsEnabled = true;
-        m_RenderSettings->GetSection<SigmaDenoiserSettings>().IsEnabled = true;
     }
 
     void SandboxRunner::InitTools()

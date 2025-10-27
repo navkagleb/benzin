@@ -7,13 +7,14 @@ namespace joint
 
     struct RayTracing_ShadowConsts
     {
-        uint IsBlueNoiseUsed : 1;
-        uint IsNoiseAnimated : 1;
+        uint m_IsShadowsEnabled : 1;
+        uint m_IsBlueNoiseUsed : 1;
+        uint m_IsNoiseAnimated : 1;
     };
 
     struct RayTracing_ShadowPayload
     {
-        float DistanceToOccluder;
+        float m_DistanceToOccluder;
     };
 
     enum class RayTracing_ShadowResources : uint
@@ -21,8 +22,7 @@ namespace joint
         WorldNormal,
         Depth,
         BlueNoise,
-
-        OutNoisyPenumbra,
+        NoisyPenumbra,
     };
 
 }

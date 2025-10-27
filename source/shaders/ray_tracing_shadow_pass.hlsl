@@ -14,7 +14,7 @@
 BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::RayTracing_ShadowResources::WorldNormal);
 BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::RayTracing_ShadowResources::Depth);
 BenzinDeclareRootResource(Texture2D<float2>, g_BlueNoise, joint::RayTracing_ShadowResources::BlueNoise);
-BenzinDeclareRootResource(RWTexture2D<float>, g_OutNoisyPenumbra, joint::RayTracing_ShadowResources::OutNoisyPenumbra);
+BenzinDeclareRootResource(RWTexture2D<float>, g_NoisyPenumbra, joint::RayTracing_ShadowResources::NoisyPenumbra);
 
 float3 OffsetRayPosition(float3 position, float3 normal)
 {
@@ -29,14 +29,12 @@ float3 OffsetRayPosition(float3 position, float3 normal)
     const float3 intPosition = float3(
         asfloat(asint(position.x) + ((position.x < 0.0) ? -intOffset.x : intOffset.x)),
         asfloat(asint(position.y) + ((position.y < 0.0) ? -intOffset.y : intOffset.y)),
-        asfloat(asint(position.z) + ((position.z < 0.0) ? -intOffset.z : intOffset.z))
-    );
-    
+        asfloat(asint(position.z) + ((position.z < 0.0) ? -intOffset.z : intOffset.z)));
+
     return float3(
         abs(position.x) < rayOrigin ? position.x + floatScale * normal.x : intPosition.x,
         abs(position.y) < rayOrigin ? position.y + floatScale * normal.y : intPosition.y,
-        abs(position.z) < rayOrigin ? position.z + floatScale * normal.z : intPosition.z
-    );
+        abs(position.z) < rayOrigin ? position.z + floatScale * normal.z : intPosition.z);
 }
 
 float2 Hash23(float3 p3)
@@ -52,16 +50,14 @@ float2 Hash23(float3 p3)
 
 float2 GetWhiteNoise()
 {
-    const uint frameIndex = g_PassConsts0.IsNoiseAnimated * g_FrameConsts.CpuFrameIndex;
+    const uint frameIndex = g_PassConsts0.m_IsNoiseAnimated * g_FrameConsts.CpuFrameIndex;
     return Hash23(float3(DispatchRaysIndex().xy, frameIndex));
 }
 
 float2 GetBlueNoise()
 {
-    if (!g_PassConsts0.IsBlueNoiseUsed)
-    {
+    if (!g_PassConsts0.m_IsBlueNoiseUsed)
         return GetWhiteNoise();
-    }
 
     float width;
     float height;
@@ -70,7 +66,7 @@ float2 GetBlueNoise()
     const float2 uv = DispatchRaysIndex().xy / width;
     float2 blueNoise = g_BlueNoise.SampleLevel(g_PointWrapSampler, uv, 0.0).rg;
 
-    if (g_PassConsts0.IsNoiseAnimated)
+    if (g_PassConsts0.m_IsNoiseAnimated)
     {
         const float goldenRatioConjugate = 0.61803398875; // frac(GoldenRatio)
         const float maxFrameCount = 4;
@@ -125,7 +121,7 @@ float3 CalcShadowRayDirection(float3 toLightDirection, float tanLightAngularRadi
     return rayDirection;
 }
 
-float TraceShadowRay(joint::Light light, float depth)
+float TraceShadowRay(float depth)
 {
     const uint2 pixelPosition = DispatchRaysIndex().xy;
     const float3 worldNormal = g_WorldNormal[pixelPosition].xyz;
@@ -133,31 +129,9 @@ float TraceShadowRay(joint::Light light, float depth)
     const float2 pixelUv = (pixelPosition + 0.5) / DispatchRaysDimensions().xy;
     const float3 worldPosition = ReconstructWorldPosition(pixelUv, depth, GetCameraConsts().ClipToView, GetCameraConsts().ViewToWorld);
 
-    float3 toLightDirection;
-    float distanceToLight;
-    float tanLightAngularRadius;
-    switch (light.Type)
-    {
-        case joint::LightType::Sun:
-        {
-            toLightDirection = light.WorldPosition;
-            distanceToLight = sigma::g_Fp16Max;
-            tanLightAngularRadius = light.WorldRadius;
-
-            break;
-        }
-        case joint::LightType::Spherical:
-        {
-            toLightDirection = light.WorldPosition - worldPosition;
-            distanceToLight = length(toLightDirection);
-
-            toLightDirection = toLightDirection / distanceToLight;
-
-            tanLightAngularRadius = light.WorldRadius / distanceToLight;
-
-            break;
-        }
-    }
+    const float3 toLightDirection = g_SunLightConsts.WorldPosition;
+    const float distanceToLight = sigma::g_Fp16Max;
+    const float tanLightAngularRadius = g_SunLightConsts.WorldRadius;
 
     RayDesc rayDesc;
     rayDesc.Origin = OffsetRayPosition(worldPosition, worldNormal);
@@ -171,7 +145,7 @@ float TraceShadowRay(joint::Light light, float depth)
     rayFlags |= RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES;
 
     joint::RayTracing_ShadowPayload payload;
-    payload.DistanceToOccluder = 0.0;
+    payload.m_DistanceToOccluder = 0.0;
 
     const uint g_InstanceMask = ~0;
     const uint g_HitGroupIndex = 0;
@@ -185,26 +159,9 @@ float TraceShadowRay(joint::Light light, float depth)
         g_HitGroupStride,
         g_MissShaderIndex,
         rayDesc,
-        payload
-    );
+        payload);
 
-    float penumbra;
-    switch (light.Type)
-    {
-        case joint::LightType::Sun:
-        {
-            penumbra = sigma::PackPenumbra(payload.DistanceToOccluder, tanLightAngularRadius); // TanSunAngularRadius
-            break;
-        }
-        case joint::LightType::Spherical:
-        {
-            const float lightRadius = light.WorldRadius / payload.DistanceToOccluder;
-            penumbra = sigma::PackPenumbra(payload.DistanceToOccluder, distanceToLight, lightRadius);
-
-            break;
-        }
-    }
-
+    const float penumbra = sigma::PackPenumbra(payload.m_DistanceToOccluder, tanLightAngularRadius);
     return penumbra;
 }
 
@@ -214,24 +171,20 @@ void RayGeneration()
     const uint2 pixelPosition = DispatchRaysIndex().xy;
 
     const float depth = g_Depth[pixelPosition];
-    if (!g_FrameConsts.IsShadowsEnabled || depth == 0.0)
-    {
-        g_OutNoisyPenumbra[pixelPosition] = sigma::g_Fp16Max;
-        return;
-    }
+    const float isNeeded = g_PassConsts0.m_IsShadowsEnabled && depth != 0.0;
+    const float penumbra = isNeeded ? TraceShadowRay(depth) : sigma::g_Fp16Max;
 
-    const float penumbra = TraceShadowRay(g_SunLightConsts, depth);
-    g_OutNoisyPenumbra[pixelPosition] = penumbra;
+    g_NoisyPenumbra[pixelPosition] = penumbra;
 }
 
 [shader("closesthit")]
 void ClosestHit(inout joint::RayTracing_ShadowPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
-    payload.DistanceToOccluder = RayTCurrent();
+    payload.m_DistanceToOccluder = RayTCurrent();
 }
 
 [shader("miss")]
 void Miss(inout joint::RayTracing_ShadowPayload payload)
 {
-    payload.DistanceToOccluder = sigma::g_Fp16Max;
+    payload.m_DistanceToOccluder = sigma::g_Fp16Max;
 }
