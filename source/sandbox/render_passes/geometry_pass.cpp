@@ -40,7 +40,7 @@ namespace sandbox
             d3d12ArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
             d3d12ArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
             d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
-            d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 2;
+            d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 1;
             d3d12ArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
 
             D3D12_COMMAND_SIGNATURE_DESC d3d12CmdSignatureDesc = {};
@@ -60,7 +60,7 @@ namespace sandbox
             d3d12ArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
             d3d12ArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
             d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
-            d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 4;
+            d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 3;
             d3d12ArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
 
             D3D12_COMMAND_SIGNATURE_DESC d3d12CmdSignatureDesc = {};
@@ -147,7 +147,6 @@ namespace sandbox
 
         using Resources = joint::GeometryResources;
 
-        cmdList.SetGraphicsRootResource(*Resources::MeshDrawParts, ms_Scene->m_MeshDrawPartBuffer->GetSrv());
         cmdList.SetGraphicsRootResource(*Resources::MeshDraws, ms_Scene->m_MeshDrawBuffer->GetSrv());
         cmdList.SetGraphicsRootResource(*Resources::Materials, ms_Scene->m_MaterialBuffer->GetSrv());
 
@@ -175,25 +174,16 @@ namespace sandbox
             }
             else
             {
-                for (uint32_t drawIndex = 0; drawIndex < ms_Scene->m_MeshDraws.size(); ++drawIndex)
+                for (uint32_t i = 0; i < ms_Scene->m_JointMeshDraws.size(); ++i)
                 {
-                    cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, drawIndex);
+                    cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, i);
 
-                    const benzin::MeshDraw& draw = ms_Scene->m_MeshDraws[drawIndex];
-                    const uint32_t drawPartOffset = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartOffset;
-                    const uint32_t drawPartCount = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartCount;
+                    const joint::MeshDraw& jointDraw = ms_Scene->m_JointMeshDraws[i];
+                    const benzin::MeshPart& part = ms_Scene->m_MeshParts[jointDraw.m_PartIndex];
 
-                    for (uint32_t drawPartIndex = drawPartOffset; drawPartIndex < drawPartOffset + drawPartCount; ++drawPartIndex)
-                    {
-                        const benzin::MeshDrawPart& drawPart = ms_Scene->m_MeshDrawParts[drawPartIndex];
-                        const benzin::MeshPart& part = ms_Scene->m_MeshParts[drawPart.m_PartIndex];
-
-                        cmdList.SetGraphicsRootConstant(*Resources::MeshDrawPartIndex, drawPartIndex);
-                        cmdList.SetGraphicsRootConstant(*Resources::PartMeshletOffset, part.m_MeshletOffset);
-                        cmdList.SetGraphicsRootConstant(*Resources::PartMeshletCount, part.m_MeshletCount);
-
-                        cmdList.DispatchMesh({ part.m_MeshletCount, 1, 1, }, { *joint::MeshletConsts::AsGroupSize, 1, 1 });
-                    }
+                    cmdList.SetGraphicsRootConstant(*Resources::PartMeshletOffset, part.m_MeshletOffset);
+                    cmdList.SetGraphicsRootConstant(*Resources::PartMeshletCount, part.m_MeshletCount);
+                    cmdList.DispatchMesh({ part.m_MeshletCount, 1, 1, }, { *joint::MeshletConsts::AsGroupSize, 1, 1 });
                 }
             }
         }
@@ -217,22 +207,14 @@ namespace sandbox
             }
             else
             {
-                for (uint32_t drawIndex = 0; drawIndex < ms_Scene->m_MeshDraws.size(); ++drawIndex)
+                for (uint32_t i = 0; i < ms_Scene->m_JointMeshDraws.size(); ++i)
                 {
-                    cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, drawIndex);
+                    cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, i);
 
-                    const benzin::MeshDraw& draw = ms_Scene->m_MeshDraws[drawIndex];
-                    const uint32_t drawPartOffset = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartOffset;
-                    const uint32_t drawPartCount = ms_Scene->m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartCount;
+                    const joint::MeshDraw& jointDraw = ms_Scene->m_JointMeshDraws[i];
+                    const benzin::MeshPart& part = ms_Scene->m_MeshParts[jointDraw.m_PartIndex];
 
-                    for (uint32_t drawPartIndex = drawPartOffset; drawPartIndex < drawPartOffset + drawPartCount; ++drawPartIndex)
-                    {
-                        const benzin::MeshDrawPart& drawPart = ms_Scene->m_MeshDrawParts[drawPartIndex];
-                        const benzin::MeshPart& part = ms_Scene->m_MeshParts[drawPart.m_PartIndex];
-
-                        cmdList.SetGraphicsRootConstant(*Resources::MeshDrawPartIndex, drawPartIndex);
-                        cmdList.DrawIndexed(part.m_IndexCount, part.m_IndexOffset, part.m_VertexOffset);
-                    }
+                    cmdList.DrawIndexed(part.m_IndexCount, part.m_IndexOffset, part.m_VertexOffset);
                 }
             }
         }

@@ -149,9 +149,7 @@ namespace sandbox
                 renderPass->OnZeroFrameInit();
             }
 
-            // TODO: Allocate GpuHeap with estimated size of meshes and provide it to the
-            // scene (or create in the scene inself) and upload meshes to GPU using
-            // linear allocator
+            m_Scene->UploadMeshDrawsToGpu();
             m_Scene->UploadToGpu();
             m_RayTracingScene->BuildBlases();
 

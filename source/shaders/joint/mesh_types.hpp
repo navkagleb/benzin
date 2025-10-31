@@ -14,17 +14,13 @@ namespace joint
         float2 Uv;
     };
 
-    struct MeshDrawPart
-    {
-        float4x4 m_ObjectToLocal;
-        uint32_t m_MaterialIndex;
-        float3 m_Padding0;
-    };
-
     struct MeshDraw
     {
         float4x4 m_LocalToWorld;
         float4x4 m_PrevLocalToWorld;
+        uint32_t m_MaterialIndex;
+        uint32_t m_PartIndex; // Only for CPU part
+        float2 m_Padding0;
     };
 
     struct Meshlet

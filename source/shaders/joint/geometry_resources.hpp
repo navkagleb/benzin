@@ -8,13 +8,11 @@ namespace joint
     enum class GeometryResources : uint
     {
         MeshDrawIndex,
-        MeshDrawPartIndex,
 
         PartMeshletOffset, // Mesh pipeline
         PartMeshletCount, // Mesh pipeline
 
         MeshDraws,
-        MeshDrawParts,
         Materials,
 
         Vertices, // Mesh pipeline

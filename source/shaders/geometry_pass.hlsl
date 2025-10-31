@@ -9,7 +9,6 @@
 #include "space_convertions.hlsli"
 
 BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::GeometryResources::Materials);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshDrawPart>, g_MeshDrawParts, joint::GeometryResources::MeshDrawParts);
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_MeshDraws, joint::GeometryResources::MeshDraws);
 
 #if defined(MESH_PIPELINE)
@@ -33,21 +32,17 @@ struct VsOutput
 VsOutput ProcessVertex(joint::MeshVertex vertex)
 {
     const uint drawIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawIndex);
-    const uint drawPartIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawPartIndex);
-
     const joint::MeshDraw draw = g_MeshDraws[drawIndex];
-    const joint::MeshDrawPart drawPart = g_MeshDrawParts[drawPartIndex];
 
-    const float4x4 localToWorld = mul(drawPart.m_ObjectToLocal, draw.m_LocalToWorld);
-    const float4 worldPosition = mul(float4(vertex.Position, 1.0), localToWorld);
-    const float4 prevWorldPosition = mul(float4(vertex.Position, 1.0), mul(drawPart.m_ObjectToLocal, draw.m_PrevLocalToWorld));
+    const float4 worldPosition = mul(float4(vertex.Position, 1.0), draw.m_LocalToWorld);
+    const float4 prevWorldPosition = mul(float4(vertex.Position, 1.0), draw.m_PrevLocalToWorld);
 
     VsOutput output = (VsOutput)0;
     output.m_ClipPosition = mul(worldPosition, GetCameraConsts().WorldToClip);
     output.m_WorldPosition = worldPosition.xyz;
     output.m_ViewDepth = mul(worldPosition, GetCameraConsts().WorldToView).z;
     output.m_PrevViewPosition = mul(prevWorldPosition, GetPrevCameraConsts().WorldToView).xyz;
-    output.m_WorldNormal = normalize(mul(vertex.Normal, (float3x3)localToWorld)); // NOTE: Assumes uniform scale
+    output.m_WorldNormal = normalize(mul(vertex.Normal, (float3x3)draw.m_LocalToWorld)); // NOTE: Assumes uniform scale
     output.m_Uv = vertex.Uv;
 
     return output;
@@ -146,9 +141,9 @@ float3x3 CotangentFrame(float3 worldNormal, float3 p, float2 uv)
 
 PackedGBuffer PsMain(VsOutput input)
 {
-    const uint drawPartIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawPartIndex);
-    const uint materialIndex = g_MeshDrawParts[drawPartIndex].m_MaterialIndex;
-    const joint::Material material = g_Materials[materialIndex];
+    const uint drawIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawIndex);
+    const joint::MeshDraw draw = g_MeshDraws[drawIndex];
+    const joint::Material material = g_Materials[draw.m_MaterialIndex];
 
     float3 albedo = material.m_AlbedoFactor.rgb;
     if (material.m_AlbedoTextureHeapIndex != g_MaxU32)
