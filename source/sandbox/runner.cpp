@@ -26,7 +26,6 @@
 #include <benzin/tools/performance_overlay_tool.hpp>
 #include <benzin/tools/profiler_tools.hpp>
 #include <benzin/tools/render_viewport_tool.hpp>
-#include <benzin/tools/vram_tool.hpp>
 
 namespace sandbox
 {
@@ -64,7 +63,6 @@ namespace sandbox
         m_ImGuiManager->RegisterTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
         m_ImGuiManager->RegisterTool<benzin::PerformanceOverlayTool>(*m_Backend, *m_ShaderManager, m_Viewport);
         m_ImGuiManager->RegisterTool<benzin::ProfilerTool>();
-        m_ImGuiManager->RegisterTool<benzin::VramTool>(*m_Device);
         m_ImGuiManager->RegisterTool<benzin::GpuPrintTool>(m_GpuPrintData);
         m_ImGuiManager->RegisterTool<benzin::TextureViewerTool>(m_TextureViewerData, m_Viewport, *m_RenderResources);
         m_ImGuiManager->RegisterTool<benzin::RenderViewportTool>(m_Viewport, *m_RenderResources);
@@ -95,7 +93,6 @@ namespace sandbox
         m_ImGuiManager->UnregisterTool<benzin::GpuProfilerTool>();
         m_ImGuiManager->UnregisterTool<benzin::PerformanceOverlayTool>();
         m_ImGuiManager->UnregisterTool<benzin::ProfilerTool>();
-        m_ImGuiManager->UnregisterTool<benzin::VramTool>();
         m_ImGuiManager->UnregisterTool<benzin::GpuPrintTool>();
         m_ImGuiManager->UnregisterTool<benzin::TextureViewerTool>();
         m_ImGuiManager->UnregisterTool<benzin::RenderViewportTool>();
@@ -266,7 +263,6 @@ namespace sandbox
 
         m_MainWindow->ProcessEvents();
 
-        m_Device->GetTemporalLinearAllocator().Reset();
         m_Device->GetConstBufferAllocator().ResetFrameBuffer();
         m_Device->GetGraphicsCmdQueue().ResetCmdList();
 

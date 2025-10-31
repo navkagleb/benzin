@@ -72,11 +72,10 @@ namespace benzin
         void AddInstance(const Instance& instance);
         void ResetInstances(uint32_t reservedInstanceCount = 0);
 
+        void AllocateInstanceBuffer(Device& device, std::string_view debugView);
         void AllocateBuffers(Device& device, std::string_view debugName) override;
 
     private:
-        void AllocateInstanceBuffer(Device& device, std::string_view debugView);
-
         std::vector<D3D12_RAYTRACING_INSTANCE_DESC> m_D3D12InstanceDescs;
         std::unique_ptr<Buffer> m_InstanceBuffer;
     };

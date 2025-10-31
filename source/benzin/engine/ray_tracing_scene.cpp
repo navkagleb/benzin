@@ -10,8 +10,6 @@
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 
-#include <shaders/joint/mesh_types.hpp>
-
 namespace benzin
 {
 
@@ -23,11 +21,6 @@ namespace benzin
     RayTracing_Scene::~RayTracing_Scene()
     {
         m_Blases.clear();
-    }
-
-    const RayTracing_Tlas& RayTracing_Scene::GetActiveTlas() const
-    {
-        return m_Tlases[m_Device.GetActiveFrameIndex()];
     }
 
     void RayTracing_Scene::BuildBlases()
@@ -43,10 +36,14 @@ namespace benzin
         std::vector<DirectX::XMFLOAT3X4> localTransforms;
         localTransforms.reserve(drawPartCount);
 
-        std::unique_ptr<Buffer> localTransformBuffer = m_Device.GetTemporalLinearAllocator().AllocateStructuredBuffer(
-            "RayTracing_Scene::LocalTransforms",
-            drawPartCount,
-            sizeof(DirectX::XMFLOAT3X4));
+        auto localTransformBuffer = std::make_unique<Buffer>(m_Device, BufferCreation
+        {
+            .m_DebugName = "RayTracing_Scene::LocalTransforms",
+            .m_HeapType = GpuHeapType::GpuUpload,
+            .m_Type = BufferType::Structured,
+            .m_ElementSizeInBytes = sizeof(DirectX::XMFLOAT3X4),
+            .m_ElementCount = drawPartCount,
+        });
 
         for (const MeshRange& meshRange : m_Scene.m_MeshRanges)
         {
@@ -93,12 +90,11 @@ namespace benzin
         cmdList.FlushResourceBarriers();
     }
 
-    void RayTracing_Scene::UpdateTlas()
+    void RayTracing_Scene::UpdateTlasInstances()
     {
         BenzinProfile();
 
-        RayTracing_Tlas& tlas = m_Tlases[m_Device.GetActiveFrameIndex()];
-        tlas.ResetInstances((uint32_t)m_Scene.m_MeshDraws.size());
+        m_Tlas.ResetInstances((uint32_t)m_Scene.m_MeshDraws.size());
 
         for (const MeshDraw& draw : m_Scene.m_MeshDraws)
         {
@@ -110,10 +106,15 @@ namespace benzin
             instance.m_BlasGpuVirtualAddress = m_Blases[draw.m_MeshRangeIndex].GetGpuVirtualAddress();
             instance.m_LocalToWorld = scaling * rotation * translation;
 
-            tlas.AddInstance(instance);
+            m_Tlas.AddInstance(instance);
         }
 
-        tlas.AllocateBuffers(m_Device, "RayTracing_Scene::Tlas");
+        m_Tlas.AllocateInstanceBuffer(m_Device, "RayTracing_Scene::Tlas");
+
+        if (m_Tlas.GetBuffer() == nullptr || m_Tlas.GetScratchResource() == nullptr)
+        {
+            m_Tlas.AllocateBuffers(m_Device, "RayTracing_Scene::Tlas");
+        }
     }
 
 }

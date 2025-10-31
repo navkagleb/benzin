@@ -32,7 +32,7 @@ namespace benzin
             .m_Count = ms_MaxTimestampCount,
         });
 
-        m_ReadbackBuffer = device.GetPersistentReadbackLinearAllocator().AllocateBuffer([](BufferCreation& creation)
+        m_ReadbackBuffer = device.GetPersistentReadbackAllocator().AllocateBuffer([](BufferCreation& creation)
         {
             creation.m_DebugName = "GpuProfiler::ReadbackBuffer";
             creation.m_ElementSizeInBytes = sizeof(uint64_t) * ms_MaxTimestampCount;

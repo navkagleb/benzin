@@ -20,10 +20,10 @@ namespace benzin
 
     struct GpuHeapCreation
     {
-        std::string_view DebugName;
+        std::string m_DebugName;
 
-        GpuHeapType Type = g_MaxEnum<GpuHeapType>;
-        uint64_t SizeInBytes = 0;
+        GpuHeapType m_Type = g_MaxEnum<GpuHeapType>;
+        uint64_t m_SizeInBytes = 0;
     };
 
     class GpuHeap

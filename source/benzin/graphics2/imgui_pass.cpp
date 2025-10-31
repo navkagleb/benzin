@@ -519,6 +519,7 @@ namespace benzin
 
         if (vertexBuffer.get() == nullptr || (int)vertexBuffer->GetElementCount() < imDrawData.TotalVtxCount)
         {
+            // TODO: Cover by allocator
             MakeUniquePtr(vertexBuffer, *ms_Device, BufferCreation
             {
                 .m_DebugName = "ImGuiPass::VertexBuffer",

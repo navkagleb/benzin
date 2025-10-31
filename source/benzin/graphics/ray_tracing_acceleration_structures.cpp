@@ -28,23 +28,21 @@ namespace benzin
         BenzinEnsure(d3d12PrebuildInfo.ResultDataMaxSizeInBytes > 0);
 
         const bool isTlas = m_D3D12BuildInputs.Type == D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-        const std::string_view typeName = isTlas ? "TLAS" : "BLAS";
+        const std::string_view typeName = isTlas ? "Tlas" : "Blas";
 
-        MakeUniquePtr(m_Buffer, device, BufferCreation
+        m_Buffer = device.GetPersistentDefaultAllocator().AllocateBuffer([&](BufferCreation& creation)
         {
-            .m_DebugName = std::format("{}_AccelerationStructure_{}", typeName, debugName),
-            .m_HeapType = GpuHeapType::Default,
-            .m_Type = BufferType::RayTracing_AccelerationStructure,
-            .m_ElementCount = (uint32_t)d3d12PrebuildInfo.ResultDataMaxSizeInBytes,
-            .m_IsUnorderedAccessAllowed = true,
+            creation.m_DebugName = std::format("{}AccelerationStructure_{}", typeName, debugName);
+            creation.m_Type = BufferType::RayTracing_AccelerationStructure;
+            creation.m_ElementCount = (uint32_t)d3d12PrebuildInfo.ResultDataMaxSizeInBytes;
+            creation.m_IsUnorderedAccessAllowed = true;
         });
 
-        MakeUniquePtr(m_ScratchResource, device, BufferCreation
+        m_ScratchResource = device.GetPersistentDefaultAllocator().AllocateBuffer([&](BufferCreation& creation)
         {
-            .m_DebugName = std::format("{}_ScratchResource_{}", typeName, debugName),
-            .m_HeapType = GpuHeapType::Default,
-            .m_ElementCount = (uint32_t)d3d12PrebuildInfo.ScratchDataSizeInBytes,
-            .m_IsUnorderedAccessAllowed = true,
+            creation.m_DebugName = std::format("{}ScratchResource_{}", typeName, debugName);
+            creation.m_ElementCount = (uint32_t)d3d12PrebuildInfo.ScratchDataSizeInBytes;
+            creation.m_IsUnorderedAccessAllowed = true;
         });
     }
 
@@ -119,9 +117,22 @@ namespace benzin
         m_D3D12InstanceDescs.reserve(reservedInstanceCount);
     }
 
+    void RayTracing_Tlas::AllocateInstanceBuffer(Device& device, std::string_view debugName)
+    {
+        if (m_InstanceBuffer.get() == nullptr)
+        {
+            m_InstanceBuffer = device.GetPersistentGpuUploadAllocator().AllocateBuffer(debugName, ToSpan(m_D3D12InstanceDescs));
+        }
+
+        BenzinAssert(m_D3D12InstanceDescs.size() == m_InstanceBuffer->GetElementCount());
+
+        BufferWriter writer = MakeBufferWriter(*m_InstanceBuffer);
+        writer.WriteArray(ToSpan(m_D3D12InstanceDescs));
+    }
+
     void RayTracing_Tlas::AllocateBuffers(Device& device, std::string_view debugName)
     {
-        AllocateInstanceBuffer(device, debugName);
+        BenzinAssert(!m_D3D12InstanceDescs.empty());
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS d3d12BuildInputs = {};
         d3d12BuildInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
@@ -131,22 +142,6 @@ namespace benzin
         d3d12BuildInputs.InstanceDescs = m_InstanceBuffer->GetGpuVirtualAddress();
 
         RayTracing_AcclerationStructure::AllocateBuffers(device, debugName, d3d12BuildInputs);
-    }
-
-    void RayTracing_Tlas::AllocateInstanceBuffer(Device& device, std::string_view debugName)
-    {
-        BenzinAssert(!m_D3D12InstanceDescs.empty());
-
-        MakeUniquePtr(m_InstanceBuffer, device, BufferCreation
-        {
-            .m_DebugName = std::format("TLAS_InstanceBuffer_{}", debugName),
-            .m_HeapType = GpuHeapType::Upload,// TODO: Remove UploadBuffer
-            .m_ElementSizeInBytes = sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
-            .m_ElementCount = (uint32_t)m_D3D12InstanceDescs.size(),
-        });
-
-        BufferWriter writer = MakeBufferWriter(*m_InstanceBuffer);
-        writer.WriteArray(ToSpan(m_D3D12InstanceDescs));
     }
 
 }

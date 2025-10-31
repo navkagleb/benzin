@@ -28,7 +28,7 @@ namespace sandbox
         const uint64_t statElementCount = magic_enum::enum_count<joint::ReadbackStat>();
 
         // Usage as ByteAddressBuffer
-        m_StatBuffer = ms_Device->GetPersistentDefaultLinearAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
+        m_StatBuffer = ms_Device->GetPersistentDefaultAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
         {
             creation.m_DebugName = "GlobalConsts::StatBuffer";
             creation.m_Type = benzin::BufferType::Format;
@@ -38,7 +38,7 @@ namespace sandbox
             creation.m_IsUnorderedAccessAllowed = true;
         });
 
-        m_ReadbackStatBuffer = ms_Device->GetPersistentReadbackLinearAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
+        m_ReadbackStatBuffer = ms_Device->GetPersistentReadbackAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
         {
             creation.m_DebugName = "GlobalConsts::ReadbackStatBuffer";
             creation.m_Type = benzin::BufferType::Format;

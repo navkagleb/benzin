@@ -96,8 +96,8 @@ namespace sandbox
 
         if (settings.m_IsEnabled)
         {
-            BenzinScopeProfile("UpdateTlas");
-            ms_RayTracingScene->UpdateTlas();
+            BenzinScopeProfile("UpdateTlasInstances");
+            ms_RayTracingScene->UpdateTlasInstances();
         }
     }
 
@@ -113,7 +113,7 @@ namespace sandbox
             BenzinScopeProfile("TlasBuilding");
             BenzinGpuProfile("TlasBuilding");
 
-            const benzin::RayTracing_Tlas& tlas = ms_RayTracingScene->GetActiveTlas();
+            const benzin::RayTracing_Tlas& tlas = ms_RayTracingScene->GetTlas();
 
             cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *tlas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS }, true);
 

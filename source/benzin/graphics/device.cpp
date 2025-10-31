@@ -55,23 +55,13 @@ namespace benzin
         MakeUniquePtr(m_GraphicsCmdQueue, *this);
         MakeUniquePtr(m_FrameFence, *this, FenceCreation{ "FrameFence", m_CompletedGpuFrameIndex });
 
-        for (uint32_t i = 0; i < BENZIN_FRAME_COUNT; ++i)
-        {
-            MakeUniquePtr(m_TemporalHeaps[i], *this, GpuHeapCreation
-            {
-                .DebugName = std::format("TemporalHeap_{}", i),
-                .Type = GpuHeapType::GpuUpload,
-                .SizeInBytes = 1_mb,
-            });
-        
-            MakeUniquePtr(m_TemporalLinearAllocators[i], *m_TemporalHeaps[i]);
-        }
+        MakeUniquePtr(m_PersistentDefaultHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentDefaultHeap", .m_Type = GpuHeapType::Default, .m_SizeInBytes = 50_mb });
+        MakeUniquePtr(m_PersistentGpuUploadHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentUploadHeap", .m_Type = GpuHeapType::GpuUpload, .m_SizeInBytes = 4_mb });
+        MakeUniquePtr(m_PersistentReadbackHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentReadbackHeap", .m_Type = GpuHeapType::Readback, .m_SizeInBytes = 4_mb });
 
-        MakeUniquePtr(m_PersistentDefaultHeap, *this, GpuHeapCreation{ .DebugName = "PersistentDefaultHeap", .Type = GpuHeapType::Default, .SizeInBytes = 20_mb });
-        MakeUniquePtr(m_PersistentReadbackHeap, *this, GpuHeapCreation{ .DebugName = "PersistentReadbackHeap", .Type = GpuHeapType::Readback, .SizeInBytes = 4_mb });
-
-        MakeUniquePtr(m_PersistentDefaultLinearAllocator, *m_PersistentDefaultHeap);
-        MakeUniquePtr(m_PersistentReadbackLinearAllocator, *m_PersistentReadbackHeap);
+        MakeUniquePtr(m_PersistentDefaultAllocator, *m_PersistentDefaultHeap);
+        MakeUniquePtr(m_PersistentGpuUploadAllocator, *m_PersistentGpuUploadHeap);
+        MakeUniquePtr(m_PersistentReadbackAllocator, *m_PersistentReadbackHeap);
 
         MakeUniquePtr(m_ConstBufferAllocator, *this);
     }
@@ -84,17 +74,13 @@ namespace benzin
 
         m_ConstBufferAllocator.reset();
 
-        m_PersistentReadbackLinearAllocator.reset();
-        m_PersistentDefaultLinearAllocator.reset();
+        m_PersistentReadbackAllocator.reset();
+        m_PersistentGpuUploadAllocator.reset();
+        m_PersistentDefaultAllocator.reset();
         
         m_PersistentReadbackHeap.reset();
+        m_PersistentGpuUploadHeap.reset();
         m_PersistentDefaultHeap.reset();
-
-        for (uint32_t i = 0; i < BENZIN_FRAME_COUNT; ++i)
-        {
-            m_TemporalLinearAllocators[i].reset();
-            m_TemporalHeaps[i].reset();
-        }
 
         ProcessDeferredReleaseQueues(true);
 
@@ -142,9 +128,7 @@ namespace benzin
             auto&& [cpuFrameIndex, d3d12Object] = m_DeferredReleaseResourceQueue.front();
 
             if (!isForceRelease && cpuFrameIndex >= m_CompletedGpuFrameIndex)
-            {
                 break;
-            }
 
             SafeReleaseD3DObject(d3d12Object);
             m_DeferredReleaseResourceQueue.pop();
@@ -155,9 +139,7 @@ namespace benzin
             auto&& [cpuFrameIndex, descriptor] = m_DeferredReleaseDescriptorQueue.front();
 
             if (!isForceRelease && cpuFrameIndex >= m_CompletedGpuFrameIndex)
-            {
                 break;
-            }
 
             m_DescriptorManager->FreeDescriptor(descriptor);
             m_DeferredReleaseDescriptorQueue.pop();
@@ -251,11 +233,11 @@ namespace benzin
             D3D12_FEATURE_DATA_D3D12_OPTIONS16 d3d12Options{};
             BenzinD3D12Call(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS16, &d3d12Options, sizeof(d3d12Options)));
 
-            m_Caps.IsGpuUploadHeapsSupported = d3d12Options.GPUUploadHeapSupported == 1;
-            if (m_Caps.IsGpuUploadHeapsSupported)
+            m_Caps.m_IsGpuUploadHeapsSupported = d3d12Options.GPUUploadHeapSupported == 1;
+            if (m_Caps.m_IsGpuUploadHeapsSupported)
             {
-                m_Caps.IsGpuUploadHeapsSupported &= CmdLineArgs::IsGpuUploadHeapsEnabled();
-                BenzinTrace("Device supports 'GPU_UPLOAD_HEAPS' (IsEnabled: {})", m_Caps.IsGpuUploadHeapsSupported);
+                m_Caps.m_IsGpuUploadHeapsSupported &= CmdLineArgs::IsGpuUploadHeapsEnabled();
+                BenzinTrace("Device supports 'GPU_UPLOAD_HEAPS' (IsEnabled: {})", m_Caps.m_IsGpuUploadHeapsSupported);
             }
         }
     }

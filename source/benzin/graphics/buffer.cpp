@@ -74,7 +74,7 @@ namespace benzin
         if (bufferType == BufferType::RayTracing_AccelerationStructure)
             return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 
-        if (heapType == GpuHeapType::Upload && !device.GetCaps().IsGpuUploadHeapsSupported) // TODO: Don't check if GpuUpload heaps are supported here
+        if (heapType == GpuHeapType::Upload && !device.GetCaps().m_IsGpuUploadHeapsSupported) // TODO: Don't check if GpuUpload heaps are supported here
         {
             // Case only for D3D12_HEAP_TYPE_UPLOAD
             // D3D12_HEAP_TYPE_GPU_UPLOAD requires D3D12_RESOURCE_STATE_COMMON

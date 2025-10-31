@@ -203,15 +203,16 @@ namespace benzin
             cmd.m_D3D12Cmd.ThreadGroupCountZ = 1;
         }
 
-        m_VertexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::VertexBuffer", ToSpan(m_Vertices));
-        m_IndexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::IndexBuffer", ToSpan(m_Indices), DXGI_FORMAT_R32_UINT);
-        m_MeshletBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletsBuffer", ToSpan(m_Meshlets));
-        m_MeshletCullVolumeBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletCullVolumeBuffer", ToSpan(m_MeshletCullVolumes));
-        m_MeshletVertexIndexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletVertexIndexBuffer", ToSpan(m_MeshletVertexIndices), DXGI_FORMAT_R32_UINT);
-        m_MeshletIndexBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MeshletIndexBuffer", ToSpan(m_MeshletIndices), DXGI_FORMAT_R8_UINT);
-        m_MaterialBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::MaterialBuffer", ToSpan(jointMaterials));
-        m_DrawIndirectCmdBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::DrawIndirectCmdBuffer", ToSpan(drawIndirectCmds));
-        m_DispatchMeshIndirectCmdBuffer = m_Device.GetPersistentDefaultLinearAllocator().AllocateBuffer("Scene::DispatchMeshIndirectCmdBuffer", ToSpan(dispatchMeshIndirectCmds));
+        GpuHeapLinearBufferAllocator& allocator = m_Device.GetPersistentDefaultAllocator();
+        m_VertexBuffer = allocator.AllocateBuffer("Scene::VertexBuffer", ToSpan(m_Vertices));
+        m_IndexBuffer = allocator.AllocateBuffer("Scene::IndexBuffer", ToSpan(m_Indices), DXGI_FORMAT_R32_UINT);
+        m_MeshletBuffer = allocator.AllocateBuffer("Scene::MeshletsBuffer", ToSpan(m_Meshlets));
+        m_MeshletCullVolumeBuffer = allocator.AllocateBuffer("Scene::MeshletCullVolumeBuffer", ToSpan(m_MeshletCullVolumes));
+        m_MeshletVertexIndexBuffer = allocator.AllocateBuffer("Scene::MeshletVertexIndexBuffer", ToSpan(m_MeshletVertexIndices), DXGI_FORMAT_R32_UINT);
+        m_MeshletIndexBuffer = allocator.AllocateBuffer("Scene::MeshletIndexBuffer", ToSpan(m_MeshletIndices), DXGI_FORMAT_R8_UINT);
+        m_MaterialBuffer = allocator.AllocateBuffer("Scene::MaterialBuffer", ToSpan(jointMaterials));
+        m_DrawIndirectCmdBuffer = allocator.AllocateBuffer("Scene::DrawIndirectCmdBuffer", ToSpan(drawIndirectCmds));
+        m_DispatchMeshIndirectCmdBuffer = allocator.AllocateBuffer("Scene::DispatchMeshIndirectCmdBuffer", ToSpan(dispatchMeshIndirectCmds));
 
         const uint64_t uploadSizeInBytes =
             m_VertexBuffer->GetSizeInBytes() +
@@ -248,13 +249,24 @@ namespace benzin
 
     void Scene::UploadMeshDrawsToGpu()
     {
+        BenzinProfile();
+
         if (m_JointMeshDraws.empty())
         {
-            m_JointMeshDraws.resize(m_MeshParts.size());
+            uint32_t drawCount = 0;
+            for (const MeshDraw& draw : m_MeshDraws)
+            {
+                drawCount += m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartCount;
+            }
+
+            m_JointMeshDraws.resize(drawCount);
+
+            m_MeshDrawBuffer = m_Device.GetPersistentGpuUploadAllocator().AllocateBuffer(
+                "Scene::MeshDraws",
+                ToSpan(m_JointMeshDraws));
         }
 
         uint32_t jointDrawIndex = 0;
-
         for (const MeshDraw& draw : m_MeshDraws)
         {
             const uint32_t drawPartOffset = m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartOffset;
@@ -275,7 +287,8 @@ namespace benzin
             }
         }
 
-        m_MeshDrawBuffer = m_Device.GetTemporalLinearAllocator().AllocateAndWriteBuffer("Scene::MeshDraws", ToSpan(m_JointMeshDraws));
+        BufferWriter writer = MakeBufferWriter(*m_MeshDrawBuffer);
+        writer.WriteArray(ToSpan(m_JointMeshDraws));
     }
 
 }

@@ -105,21 +105,16 @@ namespace benzin
 
     D3D12_HEAP_TYPE ToD3D12HeapType(const Device& device, GpuHeapType gpuHeapType)
     {
-        BenzinUnused(device);
+        if (gpuHeapType == GpuHeapType::Upload)
+            return D3D12_HEAP_TYPE_UPLOAD;
 
-        switch (gpuHeapType)
-        {
-            case GpuHeapType::Default: return D3D12_HEAP_TYPE_DEFAULT;
-            case GpuHeapType::Upload: return D3D12_HEAP_TYPE_UPLOAD;
-            case GpuHeapType::Readback: return D3D12_HEAP_TYPE_READBACK;
-            case GpuHeapType::GpuUpload:
-            {
-                BenzinEnsure(device.GetCaps().IsGpuUploadHeapsSupported);
-                return D3D12_HEAP_TYPE_GPU_UPLOAD;
-            }
-        }
+        if (gpuHeapType == GpuHeapType::Readback)
+            return D3D12_HEAP_TYPE_READBACK;
 
-        std::unreachable();
+        if (gpuHeapType == GpuHeapType::GpuUpload)
+            return device.GetCaps().m_IsGpuUploadHeapsSupported ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD;
+
+        return D3D12_HEAP_TYPE_DEFAULT;
     }
 
     void EnableD3D12DebugLayer()

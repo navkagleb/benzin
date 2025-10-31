@@ -108,7 +108,7 @@ namespace benzin
     {
         constexpr auto printBufferSizeInBytes = (uint32_t)256_kb;
 
-        m_UavBuffer = ms_Device->GetPersistentDefaultLinearAllocator().AllocateBuffer([this](BufferCreation& creation)
+        m_UavBuffer = ms_Device->GetPersistentDefaultAllocator().AllocateBuffer([this](BufferCreation& creation)
         {
             creation.m_DebugName = "GpuPrint::UavBuffer";
             creation.m_Type = BufferType::Byte;
@@ -116,7 +116,7 @@ namespace benzin
             creation.m_IsUnorderedAccessAllowed = true;
         });
 
-        m_ReadbackBuffer = ms_Device->GetPersistentReadbackLinearAllocator().AllocateBuffer([this](BufferCreation& creation)
+        m_ReadbackBuffer = ms_Device->GetPersistentReadbackAllocator().AllocateBuffer([this](BufferCreation& creation)
         {
             creation.m_DebugName = "GpuPrint::ReadbackBuffer";
             creation.m_Type = BufferType::Byte;

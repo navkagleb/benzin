@@ -14,22 +14,22 @@ namespace benzin
     GpuHeap::GpuHeap(Device& device, const GpuHeapCreation& creation)
         : m_Device{ device }
     {
-        BenzinAssert(!IsMaxEnum(creation.Type));
-        BenzinAssert(creation.SizeInBytes != 0);
+        BenzinAssert(!IsMaxEnum(creation.m_Type));
+        BenzinAssert(creation.m_SizeInBytes != 0);
 
         D3D12_HEAP_DESC d3d12HeapDesc = {};
-        d3d12HeapDesc.SizeInBytes = creation.SizeInBytes;
-        d3d12HeapDesc.Properties = GetD3D12HeapProperties(ToD3D12HeapType(m_Device, creation.Type));
+        d3d12HeapDesc.SizeInBytes = creation.m_SizeInBytes;
+        d3d12HeapDesc.Properties = GetD3D12HeapProperties(ToD3D12HeapType(m_Device, creation.m_Type));
         d3d12HeapDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
         d3d12HeapDesc.Flags = D3D12_HEAP_FLAG_NONE;
 
         BenzinD3D12Call(device.GetD3D12Device()->CreateHeap(&d3d12HeapDesc, IID_PPV_ARGS(&m_D3D12Heap)));
         BenzinEnsure(m_D3D12Heap != nullptr);
 
-        SetD3DObjectDebugName(m_D3D12Heap, creation.DebugName);
+        SetD3DObjectDebugName(m_D3D12Heap, creation.m_DebugName);
 
-        m_Type = creation.Type;
-        m_SizeInBytes = creation.SizeInBytes;
+        m_Type = creation.m_Type;
+        m_SizeInBytes = creation.m_SizeInBytes;
     }
 
     GpuHeap::~GpuHeap()
@@ -119,9 +119,9 @@ namespace benzin
 
         MakeUniquePtr(m_GpuHeap, m_Device, GpuHeapCreation
         {
-            .DebugName = "ConstBufferHeap",
-            .Type = GpuHeapType::GpuUpload,
-            .SizeInBytes = bufferSizeInBytesPerFrame * BENZIN_FRAME_COUNT,
+            .m_DebugName = "ConstBufferHeap",
+            .m_Type = GpuHeapType::GpuUpload,
+            .m_SizeInBytes = bufferSizeInBytesPerFrame * BENZIN_FRAME_COUNT,
         });
 
         for (uint32_t i = 0; i < BENZIN_FRAME_COUNT; ++i)

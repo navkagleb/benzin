@@ -11,19 +11,17 @@ namespace benzin
     class GpuHeap;
     class GpuHeapLinearBufferAllocator;
     class GraphicsCmdQueue;
-    class QueryHeap;
-    class Resource;
     class UnifiedRootSignature;
 
     struct DeviceCreation
     {
-        std::string_view m_DebugName;
+        std::string m_DebugName;
         Backend& m_Backend;
     };
 
     struct DeviceCaps
     {
-        bool IsGpuUploadHeapsSupported = false;
+        bool m_IsGpuUploadHeapsSupported = false;
     };
 
     class Device
@@ -37,7 +35,6 @@ namespace benzin
         BenzinDefineNonCopyable(Device);
         BenzinDefineNonMoveable(Device);
 
-    public:
         auto* GetD3D12Device() const { return m_D3D12Device; }
 
         auto& GetUnifiedRootSignature() { return *m_UnifiedRootSignature; }
@@ -50,10 +47,9 @@ namespace benzin
 
         const auto& GetCaps() const { return m_Caps; }
 
-        auto& GetTemporalLinearAllocator() { return *m_TemporalLinearAllocators[m_ActiveFrameIndex]; }
-        auto& GetPersistentDefaultLinearAllocator() { return *m_PersistentDefaultLinearAllocator; }
-        auto& GetPersistentReadbackLinearAllocator() { return *m_PersistentReadbackLinearAllocator; }
-        const auto& GetPrevTemporalLinearBufferAllocator() const { return *m_TemporalLinearAllocators[(m_ActiveFrameIndex + 1) % BENZIN_FRAME_COUNT]; }
+        auto& GetPersistentDefaultAllocator() { return *m_PersistentDefaultAllocator; }
+        auto& GetPersistentGpuUploadAllocator() { return *m_PersistentGpuUploadAllocator; }
+        auto& GetPersistentReadbackAllocator() { return *m_PersistentReadbackAllocator; }
 
         auto& GetConstBufferAllocator() { return *m_ConstBufferAllocator; }
 
@@ -80,14 +76,13 @@ namespace benzin
         std::unique_ptr<GraphicsCmdQueue> m_GraphicsCmdQueue;
         std::unique_ptr<Fence> m_FrameFence;
 
-        std::unique_ptr<GpuHeap> m_TemporalHeaps[BENZIN_FRAME_COUNT];
-        std::unique_ptr<GpuHeapLinearBufferAllocator> m_TemporalLinearAllocators[BENZIN_FRAME_COUNT];
-
         std::unique_ptr<GpuHeap> m_PersistentDefaultHeap;
+        std::unique_ptr<GpuHeap> m_PersistentGpuUploadHeap;
         std::unique_ptr<GpuHeap> m_PersistentReadbackHeap;
 
-        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentDefaultLinearAllocator;
-        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentReadbackLinearAllocator;
+        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentDefaultAllocator;
+        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentGpuUploadAllocator;
+        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentReadbackAllocator;
 
         std::unique_ptr<ConstBufferLinearAllocator> m_ConstBufferAllocator;
 
