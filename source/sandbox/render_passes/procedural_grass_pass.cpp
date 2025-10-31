@@ -27,25 +27,24 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::ProceduralGrass, [](benzin::MeshPsoProxy& outProxy)
         {
-            outProxy.As.FileName = "procedural_grass_pass.hlsl";
-            outProxy.Ms.FileName = "procedural_grass_pass.hlsl";
-            outProxy.Ps.FileName = "procedural_grass_pass.hlsl";
+            outProxy.m_As.m_FileName = "procedural_grass_pass.hlsl";
+            outProxy.m_Ms.m_FileName = "procedural_grass_pass.hlsl";
+            outProxy.m_Ps.m_FileName = "procedural_grass_pass.hlsl";
 
-            outProxy.Ms.Defines.push_back("CALC_STATS");
+            outProxy.m_Ms.m_Defines.push_back("CALC_STATS");
             
-            outProxy.RasterizerState.CullMode = benzin::CullMode::None;
-            outProxy.RasterizerState.IsIndexOrderClockwise = true;
+            outProxy.m_RasterizerState.m_D3D12CullMode = D3D12_CULL_MODE_NONE;
 
-            outProxy.DepthState.IsEnabled = true;
-            outProxy.DepthState.IsWriteEnabled = true;
-            outProxy.DepthState.ComparisonFunction = benzin::ComparisonFunction::Greater;
+            outProxy.m_DepthState.m_IsEnabled = true;
+            outProxy.m_DepthState.m_IsWriteEnabled = true;
+            outProxy.m_DepthState.m_D3D12ComparisonFunction = D3D12_COMPARISON_FUNC_GREATER;
 
-            outProxy.RenderTargetFormats.push_back(GBufferSettings::s_Color0Format);
-            outProxy.RenderTargetFormats.push_back(GBufferSettings::s_Color1Format);
-            outProxy.RenderTargetFormats.push_back(GBufferSettings::s_Color2Format);
-            outProxy.RenderTargetFormats.push_back(GBufferSettings::s_Color3Format);
-            outProxy.RenderTargetFormats.push_back(GBufferSettings::s_Color4Format);
-            outProxy.DepthStencilFormat = GBufferSettings::s_DepthStencilFormat;
+            outProxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color0DxgiFormat);
+            outProxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color1DxgiFormat);
+            outProxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color2DxgiFormat);
+            outProxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color3DxgiFormat);
+            outProxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color4DxgiFormat);
+            outProxy.m_DepthStencilDxgiFormat = GBufferSettings::ms_DepthStencilDxgiFormat;
         });
     }
 
@@ -64,11 +63,11 @@ namespace sandbox
 
             benzin::MakeUniquePtr(m_PerlinNoiseTexture, *ms_Device, benzin::TextureCreation
             {
-                .DebugName = "PerlinNoise256",
-                .Format = perlinNoiseImage.m_Format,
-                .Width = perlinNoiseImage.m_Width,
-                .Height = perlinNoiseImage.m_Height,
-                .MipCount = 1,
+                .m_DebugName = "PerlinNoise256",
+                .m_DxgiFormat = perlinNoiseImage.m_DxgiFormat,
+                .m_Width = perlinNoiseImage.m_Width,
+                .m_Height = perlinNoiseImage.m_Height,
+                .m_MipCount = 1,
             });
 
             benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_PerlinNoiseTexture->GetSizeInBytes());
@@ -81,11 +80,11 @@ namespace sandbox
 
             ms_Resources->Create(BufferId::ProceduralGrass_GrassPatches, benzin::BufferCreation
             {
-                .DebugName = magic_enum::enum_name(BufferId::ProceduralGrass_GrassPatches),
-                .HeapType = benzin::GpuHeapType::Default,
-                .Type = benzin::BufferType::Structured,
-                .ElementSizeInBytes = sizeof(joint::GrassPatch),
-                .ElementCount = (uint32_t)ms_Scene->m_GrassPatches.size(),
+                .m_DebugName = magic_enum::enum_name(BufferId::ProceduralGrass_GrassPatches),
+                .m_HeapType = benzin::GpuHeapType::Default,
+                .m_Type = benzin::BufferType::Structured,
+                .m_ElementSizeInBytes = sizeof(joint::GrassPatch),
+                .m_ElementCount = ms_Scene->m_GrassPatches.size(),
             });
 
             benzin::Buffer& buffer = const_cast<benzin::Buffer&>(ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches));

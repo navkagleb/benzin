@@ -1,13 +1,13 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics2/pso_manager.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics2/pso_manager.hpp>
 
-#include "benzin/core/profiler.hpp"
-#include "benzin/graphics/d3d12_utils.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/pso.hpp"
-#include "benzin/graphics/ray_tracing_pso.hpp"
-#include "benzin/graphics2/game_specific_resource_ids.hpp"
-#include "benzin/graphics2/shader_manager.hpp"
+#include <benzin/core/profiler.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/pso.hpp>
+#include <benzin/graphics/ray_tracing_pso.hpp>
+#include <benzin/graphics2/game_specific_resource_ids.hpp>
+#include <benzin/graphics2/shader_manager.hpp>
 
 namespace benzin
 {
@@ -42,9 +42,9 @@ namespace benzin
         return ShaderInfo
         {
             type,
-            proxy.FileName,
-            proxy.EntryPoint,
-            std::move(proxy.Defines),
+            proxy.m_FileName,
+            proxy.m_EntryPoint,
+            std::move(proxy.m_Defines),
         };
     }
 
@@ -55,20 +55,20 @@ namespace benzin
         GraphicsPso<PsoStreamT, _MaxShaderCount>& pso
     )
     {
-        ShaderInfo ps = ShaderProxyToShaderInfo(ShaderType::Pixel, std::move(proxy.Ps));
+        ShaderInfo ps = ShaderProxyToShaderInfo(ShaderType::Pixel, std::move(proxy.m_Ps));
 
-        if (!proxy.RenderTargetFormats.empty())
+        if (!proxy.m_RenderTargetDxgiFormats.empty())
         {
             BenzinAssert(ps.IsValid());
         }
 
-        if (proxy.DepthStencilFormat == GraphicsFormat::Unknown)
+        if (proxy.m_DepthStencilDxgiFormat == DXGI_FORMAT_UNKNOWN)
         {
-            BenzinAssert(!proxy.DepthState.IsEnabled && !proxy.DepthState.IsWriteEnabled);
+            BenzinAssert(!proxy.m_DepthState.m_IsEnabled && !proxy.m_DepthState.m_IsWriteEnabled);
         }
         else
         {
-            BenzinAssert(proxy.DepthState.IsEnabled);
+            BenzinAssert(proxy.m_DepthState.m_IsEnabled);
         }
 
         if (ps.IsValid())
@@ -76,11 +76,11 @@ namespace benzin
             pso.SetPs(std::move(ps), shaderManager.GetShaderBytecode(ps));
         }
 
-        pso.SetRasterizerState(proxy.RasterizerState);
-        pso.SetDepthStencilState(proxy.DepthState, proxy.StencilState);
-        pso.SetBlendState(proxy.BlendState);
-        pso.SetRenderTargetFormats(proxy.RenderTargetFormats);
-        pso.SetDepthStencilFormat(proxy.DepthStencilFormat);
+        pso.SetRasterizerState(proxy.m_RasterizerState);
+        pso.SetDepthStencilState(proxy.m_DepthState);
+        pso.SetBlendState(proxy.m_BlendState);
+        pso.SetRenderTargetDxgiFormats(proxy.m_RenderTargetDxgiFormats);
+        pso.SetDepthStencilDxgiFormat(proxy.m_DepthStencilDxgiFormat);
     }
 
     //
@@ -118,14 +118,14 @@ namespace benzin
         {
             CreateGraphicsPso(proxy, m_ShaderManager, pso);
 
-            ShaderInfo vs = ShaderProxyToShaderInfo(ShaderType::Vertex, std::move(proxy.Vs));
+            ShaderInfo vs = ShaderProxyToShaderInfo(ShaderType::Vertex, std::move(proxy.m_Vs));
 
             BenzinAssert(vs.IsValid());
             pso.SetVs(std::move(vs), m_ShaderManager.GetShaderBytecode(vs));
 
-            if (!proxy.InputLayout.empty())
+            if (!proxy.m_InputLayout.empty())
             {
-                pso.SetInputLayout(proxy.InputLayout);
+                pso.SetInputLayout(proxy.m_InputLayout);
             }
         });
     }
@@ -141,8 +141,8 @@ namespace benzin
         {
             CreateGraphicsPso(proxy, m_ShaderManager, pso);
 
-            ShaderInfo as = ShaderProxyToShaderInfo(ShaderType::Amplification, std::move(proxy.As));
-            ShaderInfo ms = ShaderProxyToShaderInfo(ShaderType::Mesh, std::move(proxy.Ms));
+            ShaderInfo as = ShaderProxyToShaderInfo(ShaderType::Amplification, std::move(proxy.m_As));
+            ShaderInfo ms = ShaderProxyToShaderInfo(ShaderType::Mesh, std::move(proxy.m_Ms));
 
             if (as.IsValid())
             {
@@ -163,7 +163,7 @@ namespace benzin
 
         Create<ComputePso>(id, [this, &proxy](ComputePso& pso)
         {
-            ShaderInfo cs = ShaderProxyToShaderInfo(ShaderType::Compute, std::move(proxy.Cs));
+            ShaderInfo cs = ShaderProxyToShaderInfo(ShaderType::Compute, std::move(proxy.m_Cs));
             BenzinAssert(cs.IsValid());
 
             pso.SetCs(std::move(cs), m_ShaderManager.GetShaderBytecode(cs));
@@ -181,14 +181,14 @@ namespace benzin
         {
             // TODO: Add more checks for mandatory entry points
 
-            ShaderInfo library{ ShaderType::Library, proxy.ShaderLibrary.FileName, {}, std::move(proxy.ShaderLibrary.Defines) };
+            ShaderInfo library{ ShaderType::Library, proxy.m_ShaderLibrary.m_FileName, {}, std::move(proxy.m_ShaderLibrary.m_Defines) };
             BenzinAssert(library.IsValid());
 
             pso.SetShaderLibrary(std::move(library), m_ShaderManager.GetShaderBytecode(library));
-            pso.SetRayGenerationShader(proxy.RayGenerationEntryPoint);
-            pso.SetMissShader(proxy.MissEntryPoint);
-            pso.SetHitGroup(proxy.HitGroup.Name, proxy.HitGroup.ClosestHitEntryPoint);
-            pso.SetShaderConfig(proxy.ShaderConfig.PayloadSizeInBytes, proxy.ShaderConfig.AttributeSizeInBytes);
+            pso.SetRayGenerationShader(proxy.m_RayGenerationEntryPoint);
+            pso.SetMissShader(proxy.m_MissEntryPoint);
+            pso.SetHitGroup(proxy.m_HitGroup.m_Name, proxy.m_HitGroup.m_ClosestHitEntryPoint);
+            pso.SetShaderConfig(proxy.m_ShaderConfig.m_PayloadSizeInBytes, proxy.m_ShaderConfig.m_AttributeSizeInBytes);
         });
     }
 

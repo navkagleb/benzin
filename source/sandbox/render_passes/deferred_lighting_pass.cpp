@@ -24,14 +24,9 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::DeferredLighting, [this](benzin::VertexPsoProxy& proxy)
         {
-            proxy.Vs.FileName = "fullscreen_triangle.hlsl";
-            proxy.Ps.FileName = "deferred_lighting_pass.hlsl";
-            proxy.DepthState = benzin::DepthState
-            {
-                .IsEnabled = false,
-                .IsWriteEnabled = false,
-            };
-            proxy.RenderTargetFormats.push_back(DeferredLightingSettings::s_HdrColorFormat);
+            proxy.m_Vs.m_FileName = "fullscreen_triangle.hlsl";
+            proxy.m_Ps.m_FileName = "deferred_lighting_pass.hlsl";
+            proxy.m_RenderTargetDxgiFormats.push_back(DeferredLightingSettings::ms_HdrColorDxgiFormat);
         });
     }
 
@@ -45,12 +40,12 @@ namespace sandbox
     {
         ms_Resources->Create(TextureId::HdrColor, benzin::TextureCreation
         {
-            .DebugName = "DeferredLighting::HdrColor",
-            .Format = DeferredLightingSettings::s_HdrColorFormat,
-            .Width = ms_RenderViewportWidth,
-            .Height = ms_RenderViewportHeight,
-            .MipCount = 1,
-            .AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget,
+            .m_DebugName = "DeferredLighting::HdrColor",
+            .m_DxgiFormat = DeferredLightingSettings::ms_HdrColorDxgiFormat,
+            .m_Width = ms_RenderViewportWidth,
+            .m_Height = ms_RenderViewportHeight,
+            .m_MipCount = 1,
+            .m_AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget,
         });
     }
 
@@ -63,7 +58,7 @@ namespace sandbox
 
         const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 
-        const auto& shadow = ms_Resources->Get(sigmaSettings.IsEnabled ? TextureId::Shadow : TextureId::NoisyPenumbra);
+        const auto& shadow = ms_Resources->Get(sigmaSettings.m_IsEnabled ? TextureId::Shadow : TextureId::NoisyPenumbra);
         const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
 
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);

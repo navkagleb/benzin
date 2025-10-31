@@ -110,17 +110,17 @@ namespace benzin
 
         m_UavBuffer = ms_Device->GetPersistentDefaultLinearAllocator().AllocateBuffer([this](BufferCreation& creation)
         {
-            creation.DebugName = "GpuPrint::UavBuffer";
-            creation.Type = BufferType::Byte;
-            creation.ElementCount = printBufferSizeInBytes;
-            creation.IsUnorderedAccessAllowed = true;
+            creation.m_DebugName = "GpuPrint::UavBuffer";
+            creation.m_Type = BufferType::Byte;
+            creation.m_ElementCount = printBufferSizeInBytes;
+            creation.m_IsUnorderedAccessAllowed = true;
         });
 
         m_ReadbackBuffer = ms_Device->GetPersistentReadbackLinearAllocator().AllocateBuffer([this](BufferCreation& creation)
         {
-            creation.DebugName = "GpuPrint::ReadbackBuffer";
-            creation.Type = benzin::BufferType::Byte;
-            creation.ElementCount = printBufferSizeInBytes * BENZIN_READBACK_LATENCY;
+            creation.m_DebugName = "GpuPrint::ReadbackBuffer";
+            creation.m_Type = BufferType::Byte;
+            creation.m_ElementCount = printBufferSizeInBytes * BENZIN_READBACK_LATENCY;
         });
 
         m_Consts.m_PrintBufferHeapIndex = m_UavBuffer->GetUav().GetGpuHeapIndex();
@@ -130,8 +130,8 @@ namespace benzin
     void GpuPrintPass::OnZeroFrameInit()
     {
         GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_ReadbackBuffer, D3D12_RESOURCE_STATE_COMMON }, true);
+        cmdList.AddResourceBarrier(TransitionBarrier{ *m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
+        cmdList.AddResourceBarrier(TransitionBarrier{ *m_ReadbackBuffer, D3D12_RESOURCE_STATE_COMMON }, true);
         cmdList.ClearUnorderedAccess(*m_UavBuffer, m_UavBuffer->GetUav(), {});
     }
 

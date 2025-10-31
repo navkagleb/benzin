@@ -24,16 +24,13 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::Environment, [](benzin::VertexPsoProxy& proxy)
         {
-            proxy.Vs.FileName = "fullscreen_triangle.hlsl";
-            proxy.Vs.EntryPoint = "VsMainDepth0";
-            proxy.Ps.FileName = "environment_pass.hlsl";
-            proxy.DepthState = benzin::DepthState
-            {
-                .IsWriteEnabled = false,
-                .ComparisonFunction = benzin::ComparisonFunction::Equal,
-            };
-            proxy.RenderTargetFormats.push_back(DeferredLightingSettings::s_HdrColorFormat),
-            proxy.DepthStencilFormat = GBufferSettings::s_DepthStencilFormat;
+            proxy.m_Vs.m_FileName = "fullscreen_triangle.hlsl";
+            proxy.m_Vs.m_EntryPoint = "VsMainDepth0";
+            proxy.m_Ps.m_FileName = "environment_pass.hlsl";
+            proxy.m_DepthState.m_IsEnabled = true;
+            proxy.m_DepthState.m_D3D12ComparisonFunction = D3D12_COMPARISON_FUNC_EQUAL;
+            proxy.m_RenderTargetDxgiFormats.push_back(DeferredLightingSettings::ms_HdrColorDxgiFormat),
+            proxy.m_DepthStencilDxgiFormat = GBufferSettings::ms_DepthStencilDxgiFormat;
         });
     }
 
@@ -50,14 +47,13 @@ namespace sandbox
             benzin::TextureImage equirectangularTextureImage;
             BenzinAssertExpr(benzin::LoadTextureImageFromHdrFile("spaichingen_hill_4k.hdr", equirectangularTextureImage));
 
-            equirectangularTexture = std::make_unique<benzin::Texture>(*ms_Device, benzin::TextureCreation
-            {
-                .DebugName = equirectangularTextureImage.m_DebugName,
-                .Format = equirectangularTextureImage.m_Format,
-                .Width = equirectangularTextureImage.m_Width,
-                .Height = equirectangularTextureImage.m_Height,
-                .MipCount = 1,
-            });
+            benzin::TextureCreation textureCreation;
+            textureCreation.m_DebugName = equirectangularTextureImage.m_DebugName;
+            textureCreation.m_DxgiFormat = equirectangularTextureImage.m_DxgiFormat;
+            textureCreation.m_Width = equirectangularTextureImage.m_Width;
+            textureCreation.m_Height = equirectangularTextureImage.m_Height;
+            textureCreation.m_MipCount = 1;
+            benzin::MakeUniquePtr(equirectangularTexture, *ms_Device, textureCreation);
 
             benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(equirectangularTexture->GetSizeInBytes());
             cmdList.UploadToTexture(*equirectangularTexture, benzin::ToSpan(equirectangularTextureImage.m_PixelData));
@@ -66,7 +62,7 @@ namespace sandbox
         {
             ms_PsoManager->Create(PsoId::Environment_EquirectangularToCube, [](benzin::ComputePsoProxy& proxy)
             {
-                proxy.Cs.FileName = "equirectangular_to_cube_pass.hlsl";
+                proxy.m_Cs.m_FileName = "equirectangular_to_cube_pass.hlsl";
             });
 
             BenzinExecuteOnScopeExit([]
@@ -75,17 +71,17 @@ namespace sandbox
             });
 
             constexpr uint32_t cubeMapSize = 1024;
-            benzin::MakeUniquePtr(m_CubeTexture, *ms_Device, benzin::TextureCreation
-            {
-                .DebugName = "EnvironmentPass::CubeMap",
-                .IsCubeMap = true,
-                .Format = benzin::GraphicsFormat::Rgba16Float,
-                .Width = cubeMapSize,
-                .Height = cubeMapSize,
-                .Depth = 6,
-                .MipCount = 1,
-                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
-            });
+
+            benzin::TextureCreation textureCreation;
+            textureCreation.m_DebugName = "EnvironmentPass::CubeMap";
+            textureCreation.m_IsCubeMap = true;
+            textureCreation.m_DxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+            textureCreation.m_Width = cubeMapSize;
+            textureCreation.m_Height = cubeMapSize;
+            textureCreation.m_Depth = 6;
+            textureCreation.m_MipCount = 1;
+            textureCreation.m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess;
+            benzin::MakeUniquePtr(m_CubeTexture, *ms_Device, textureCreation);
 
             benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 

@@ -34,9 +34,9 @@ namespace benzin
 
         m_ReadbackBuffer = device.GetPersistentReadbackLinearAllocator().AllocateBuffer([](BufferCreation& creation)
         {
-            creation.DebugName = "GpuProfiler::ReadbackBuffer";
-            creation.ElementSizeInBytes = sizeof(uint64_t) * ms_MaxTimestampCount;
-            creation.ElementCount = BENZIN_READBACK_LATENCY;
+            creation.m_DebugName = "GpuProfiler::ReadbackBuffer";
+            creation.m_ElementSizeInBytes = sizeof(uint64_t) * ms_MaxTimestampCount;
+            creation.m_ElementCount = BENZIN_READBACK_LATENCY;
         });
 
         m_Root.m_Name = "Root";

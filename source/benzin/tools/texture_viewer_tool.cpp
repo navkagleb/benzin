@@ -41,7 +41,7 @@ namespace benzin
     {
         ImGui::FmtText("Texture size: [{}, {}, {}]", texture.GetWidth(), texture.GetHeight(), texture.GetDepth());
         ImGui::FmtText("Texture mips: {}", texture.GetMipCount());
-        ImGui::FmtText("Texture format: {}", magic_enum::enum_name(texture.GetFormat()));
+        ImGui::FmtText("Texture format: {}", magic_enum::enum_name(texture.GetDxgiFormat()));
     }
 
     //

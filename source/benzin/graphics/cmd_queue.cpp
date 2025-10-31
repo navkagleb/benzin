@@ -63,11 +63,11 @@ namespace benzin
             auto& uploadBuffer = uploadBuffers.emplace_back();
             MakeUniquePtr(uploadBuffer, m_Device, BufferCreation
             {
-                .DebugName = std::format("UploadBuffer{}", uploadBuffers.size() - 1),
-                .HeapType = GpuHeapType::Upload,
-                .Type = BufferType::Byte,
-                .ElementSizeInBytes = sizeof(std::byte),
-                .ElementCount = uploadBufferSizeInBytes,
+                .m_DebugName = std::format("UploadBuffer{}", uploadBuffers.size() - 1),
+                .m_HeapType = GpuHeapType::Upload,
+                .m_Type = BufferType::Byte,
+                .m_ElementSizeInBytes = sizeof(std::byte),
+                .m_ElementCount = uploadBufferSizeInBytes,
             });
 
             m_CmdList.SetUploadBuffer(*uploadBuffer);

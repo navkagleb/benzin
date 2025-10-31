@@ -27,13 +27,13 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::ShadowPass, [](benzin::RayTracing_PsoProxy& proxy)
         {
-            proxy.ShaderLibrary.FileName = "ray_tracing_shadow_pass.hlsl";
-            proxy.RayGenerationEntryPoint = "RayGeneration";
-            proxy.MissEntryPoint = "Miss";
-            proxy.HitGroup.Name = "HitGroup";
-            proxy.HitGroup.ClosestHitEntryPoint = "ClosestHit";
-            proxy.ShaderConfig.PayloadSizeInBytes = sizeof(joint::RayTracing_ShadowPayload);
-            proxy.ShaderConfig.AttributeSizeInBytes = sizeof(DirectX::XMFLOAT2); // Barycentrics
+            proxy.m_ShaderLibrary.m_FileName = "ray_tracing_shadow_pass.hlsl";
+            proxy.m_RayGenerationEntryPoint = "RayGeneration";
+            proxy.m_MissEntryPoint = "Miss";
+            proxy.m_HitGroup.m_Name = "HitGroup";
+            proxy.m_HitGroup.m_ClosestHitEntryPoint = "ClosestHit";
+            proxy.m_ShaderConfig.m_PayloadSizeInBytes = sizeof(joint::RayTracing_ShadowPayload);
+            proxy.m_ShaderConfig.m_AttributeSizeInBytes = sizeof(DirectX::XMFLOAT2); // Barycentrics
         });
     }
 
@@ -50,12 +50,12 @@ namespace sandbox
 
         benzin::MakeUniquePtr(m_BlueNoiseTexture, *ms_Device, benzin::TextureCreation
         {
-            .DebugName = "BlueNoise",
-            .Format = blueNoiseImage.m_Format,
-            .Width = blueNoiseImage.m_Width,
-            .Height = blueNoiseImage.m_Height,
-            .Depth = blueNoiseImage.m_Depth,
-            .MipCount = 1,
+            .m_DebugName = "BlueNoise",
+            .m_DxgiFormat = blueNoiseImage.m_DxgiFormat,
+            .m_Width = blueNoiseImage.m_Width,
+            .m_Height = blueNoiseImage.m_Height,
+            .m_Depth = blueNoiseImage.m_Depth,
+            .m_MipCount = 1,
         });
 
         benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoiseTexture->GetSizeInBytes());
@@ -67,16 +67,14 @@ namespace sandbox
 
     void RayTracing_ShadowPass::OnRenderViewportResize()
     {
-        const auto penumbraFormat = ms_Settings->GetSection<SigmaDenoiserSettings>().PenumbraFormat;
-
         ms_Resources->Create(TextureId::NoisyPenumbra, benzin::TextureCreation
         {
-            .DebugName = magic_enum::enum_name(TextureId::NoisyPenumbra),
-            .Format = penumbraFormat,
-            .Width = ms_RenderViewportWidth,
-            .Height = ms_RenderViewportHeight,
-            .MipCount = 1,
-            .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
+            .m_DebugName = magic_enum::enum_name(TextureId::NoisyPenumbra),
+            .m_DxgiFormat = SigmaDenoiserSettings::ms_PenumbraDxgiFormat,
+            .m_Width = ms_RenderViewportWidth,
+            .m_Height = ms_RenderViewportHeight,
+            .m_MipCount = 1,
+            .m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
         });
     }
 

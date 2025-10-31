@@ -32,19 +32,19 @@ namespace benzin
 
         MakeUniquePtr(m_Buffer, device, BufferCreation
         {
-            .DebugName = std::format("{}_AccelerationStructure_{}", typeName, debugName),
-            .HeapType = GpuHeapType::Default,
-            .Type = BufferType::RayTracing_AccelerationStructure,
-            .ElementCount = (uint32_t)d3d12PrebuildInfo.ResultDataMaxSizeInBytes,
-            .IsUnorderedAccessAllowed = true,
+            .m_DebugName = std::format("{}_AccelerationStructure_{}", typeName, debugName),
+            .m_HeapType = GpuHeapType::Default,
+            .m_Type = BufferType::RayTracing_AccelerationStructure,
+            .m_ElementCount = (uint32_t)d3d12PrebuildInfo.ResultDataMaxSizeInBytes,
+            .m_IsUnorderedAccessAllowed = true,
         });
 
         MakeUniquePtr(m_ScratchResource, device, BufferCreation
         {
-            .DebugName = std::format("{}_ScratchResource_{}", typeName, debugName),
-            .HeapType = GpuHeapType::Default,
-            .ElementCount = (uint32_t)d3d12PrebuildInfo.ScratchDataSizeInBytes,
-            .IsUnorderedAccessAllowed = true,
+            .m_DebugName = std::format("{}_ScratchResource_{}", typeName, debugName),
+            .m_HeapType = GpuHeapType::Default,
+            .m_ElementCount = (uint32_t)d3d12PrebuildInfo.ScratchDataSizeInBytes,
+            .m_IsUnorderedAccessAllowed = true,
         });
     }
 
@@ -139,10 +139,10 @@ namespace benzin
 
         MakeUniquePtr(m_InstanceBuffer, device, BufferCreation
         {
-            .DebugName = std::format("TLAS_InstanceBuffer_{}", debugName),
-            .HeapType = GpuHeapType::Upload,// TODO: Remove UploadBuffer
-            .ElementSizeInBytes = sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
-            .ElementCount = (uint32_t)m_D3D12InstanceDescs.size(),
+            .m_DebugName = std::format("TLAS_InstanceBuffer_{}", debugName),
+            .m_HeapType = GpuHeapType::Upload,// TODO: Remove UploadBuffer
+            .m_ElementSizeInBytes = sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
+            .m_ElementCount = (uint32_t)m_D3D12InstanceDescs.size(),
         });
 
         BufferWriter writer = MakeBufferWriter(*m_InstanceBuffer);

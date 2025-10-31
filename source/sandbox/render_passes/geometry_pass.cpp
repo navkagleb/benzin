@@ -97,34 +97,34 @@ namespace sandbox
 
     void GeometryPass::OnRenderViewportResize()
     {
-        const auto createGBufferTexture = [](TextureId id, benzin::GraphicsFormat format, benzin::TextureAccessFlag accessFlag)
+        const auto createGBufferTexture = [](TextureId id, DXGI_FORMAT dxgiFormat, benzin::TextureAccessFlag accessFlag)
         {
             ms_Resources->Create(id, benzin::TextureCreation
             {
-                .DebugName = magic_enum::enum_name(id),
-                .Format = format,
-                .Width = ms_RenderViewportWidth,
-                .Height = ms_RenderViewportHeight,
-                .MipCount = 1,
-                .AccessFlags = accessFlag,
+                .m_DebugName = magic_enum::enum_name(id),
+                .m_DxgiFormat = dxgiFormat,
+                .m_Width = ms_RenderViewportWidth,
+                .m_Height = ms_RenderViewportHeight,
+                .m_MipCount = 1,
+                .m_AccessFlags = accessFlag,
             });
         };
 
-        createGBufferTexture(TextureId::AlbedoAndRoughness, GBufferSettings::s_Color0Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::EmissiveAndMetallic, GBufferSettings::s_Color1Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::WorldNormal, GBufferSettings::s_Color2Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::Mv, GBufferSettings::s_Color3Format, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::DepthStencil, GBufferSettings::s_DepthStencilFormat, benzin::TextureAccessFlag::AllowDepthStencil);
+        createGBufferTexture(TextureId::AlbedoAndRoughness, GBufferSettings::ms_Color0DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::EmissiveAndMetallic, GBufferSettings::ms_Color1DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::WorldNormal, GBufferSettings::ms_Color2DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::Mv, GBufferSettings::ms_Color3DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
+        createGBufferTexture(TextureId::DepthStencil, GBufferSettings::ms_DepthStencilDxgiFormat, benzin::TextureAccessFlag::AllowDepthStencil);
 
         ms_Resources->Create(TextureId::ViewDepth, benzin::TextureCreation
         {
-            .DebugName = magic_enum::enum_name(TextureId::ViewDepth),
-            .Format = GBufferSettings::s_Color4Format,
-            .Width = ms_RenderViewportWidth,
-            .Height = ms_RenderViewportHeight,
-            .MipCount = 1,
-            .AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget | benzin::TextureAccessFlag::AllowUnorderedAccess,
-            .ClearValueVariant = DirectX::XMFLOAT4{ std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f }, // R32 max value
+            .m_DebugName = magic_enum::enum_name(TextureId::ViewDepth),
+            .m_DxgiFormat = GBufferSettings::ms_Color4DxgiFormat,
+            .m_Width = ms_RenderViewportWidth,
+            .m_Height = ms_RenderViewportHeight,
+            .m_MipCount = 1,
+            .m_AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget | benzin::TextureAccessFlag::AllowUnorderedAccess,
+            .m_ClearValueVariant = DirectX::XMFLOAT4{ std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f }, // R32 max value
         });
     }
 
@@ -242,31 +242,29 @@ namespace sandbox
     {
         const auto configureGraphicsPsoProxy = [](auto& proxy)
         {
-            proxy.Ps.FileName = "geometry_pass.hlsl";
-            proxy.RasterizerState.CullMode = benzin::CullMode::Back;
-            proxy.RasterizerState.IsIndexOrderClockwise = true;
-            proxy.DepthStencilFormat = GBufferSettings::s_DepthStencilFormat;
-            proxy.RenderTargetFormats.reserve(5);
-            proxy.RenderTargetFormats.push_back(GBufferSettings::s_Color0Format);
-            proxy.RenderTargetFormats.push_back(GBufferSettings::s_Color1Format);
-            proxy.RenderTargetFormats.push_back(GBufferSettings::s_Color2Format);
-            proxy.RenderTargetFormats.push_back(GBufferSettings::s_Color3Format);
-            proxy.RenderTargetFormats.push_back(GBufferSettings::s_Color4Format);
+            proxy.m_Ps.m_FileName = "geometry_pass.hlsl";
+            proxy.m_DepthStencilDxgiFormat = GBufferSettings::ms_DepthStencilDxgiFormat;
+            proxy.m_RenderTargetDxgiFormats.reserve(5);
+            proxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color0DxgiFormat);
+            proxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color1DxgiFormat);
+            proxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color2DxgiFormat);
+            proxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color3DxgiFormat);
+            proxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color4DxgiFormat);
 
-            proxy.DepthState.IsEnabled = true;
-            proxy.DepthState.IsWriteEnabled = true;
-            proxy.DepthState.ComparisonFunction = benzin::ComparisonFunction::Greater;
+            proxy.m_DepthState.m_IsEnabled = true;
+            proxy.m_DepthState.m_IsWriteEnabled = true;
+            proxy.m_DepthState.m_D3D12ComparisonFunction = D3D12_COMPARISON_FUNC_GREATER;
         };
 
         if (isMeshPipeline)
         {
             ms_PsoManager->Create(id, [&configureGraphicsPsoProxy](benzin::MeshPsoProxy& proxy)
             {
-                proxy.As.FileName = "geometry_pass.hlsl";
-                proxy.Ms.FileName = "geometry_pass.hlsl";
+                proxy.m_As.m_FileName = "geometry_pass.hlsl";
+                proxy.m_Ms.m_FileName = "geometry_pass.hlsl";
 
-                proxy.As.Defines.push_back("MESH_PIPELINE");
-                proxy.Ms.Defines.push_back("MESH_PIPELINE");
+                proxy.m_As.m_Defines.push_back("MESH_PIPELINE");
+                proxy.m_Ms.m_Defines.push_back("MESH_PIPELINE");
 
                 configureGraphicsPsoProxy(proxy);
             });
@@ -275,15 +273,15 @@ namespace sandbox
         {
             ms_PsoManager->Create(id, [&configureGraphicsPsoProxy](benzin::VertexPsoProxy& proxy)
             {
-                proxy.InputLayout.emplace_back("Position", benzin::GraphicsFormat::Rgb32Float);
-                proxy.InputLayout.emplace_back("Normal", benzin::GraphicsFormat::Rgb32Float);
-                proxy.InputLayout.emplace_back("Uv", benzin::GraphicsFormat::Rg32Float);
+                proxy.m_InputLayout.emplace_back("Position", DXGI_FORMAT_R32G32B32_FLOAT);
+                proxy.m_InputLayout.emplace_back("Normal", DXGI_FORMAT_R32G32B32_FLOAT);
+                proxy.m_InputLayout.emplace_back("Uv", DXGI_FORMAT_R32G32_FLOAT);
 
-                BenzinAssert(benzin::GetFormatSizeInBytes(proxy.InputLayout[0].Format) == sizeof(joint::MeshVertex::Position));
-                BenzinAssert(benzin::GetFormatSizeInBytes(proxy.InputLayout[1].Format) == sizeof(joint::MeshVertex::Normal));
-                BenzinAssert(benzin::GetFormatSizeInBytes(proxy.InputLayout[2].Format) == sizeof(joint::MeshVertex::Uv));
+                BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[0].m_DxgiFormat) == sizeof(joint::MeshVertex::Position));
+                BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[1].m_DxgiFormat) == sizeof(joint::MeshVertex::Normal));
+                BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[2].m_DxgiFormat) == sizeof(joint::MeshVertex::Uv));
 
-                proxy.Vs.FileName = "geometry_pass.hlsl";
+                proxy.m_Vs.m_FileName = "geometry_pass.hlsl";
 
                 configureGraphicsPsoProxy(proxy);
             });

@@ -109,11 +109,13 @@ namespace benzin
         SafeReleaseD3DObject(m_D3D12Device);
     }
 
-    uint8_t Device::GetPlaneCountFromFormat(GraphicsFormat format) const
+    uint8_t Device::GetPlaneCountFromFormat(DXGI_FORMAT dxgiFormat) const
     {
-        BenzinAssert(format != GraphicsFormat::Unknown);
+        BenzinAssert(dxgiFormat != DXGI_FORMAT_UNKNOWN);
 
-        D3D12_FEATURE_DATA_FORMAT_INFO d3d12FormatInfo{ .Format = (DXGI_FORMAT)format };
+        D3D12_FEATURE_DATA_FORMAT_INFO d3d12FormatInfo = {};
+        d3d12FormatInfo.Format = dxgiFormat;
+
         BenzinD3D12Call(m_D3D12Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_INFO, &d3d12FormatInfo, sizeof(d3d12FormatInfo)));
 
         return d3d12FormatInfo.PlaneCount;

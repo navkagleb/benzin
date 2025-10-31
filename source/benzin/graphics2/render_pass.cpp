@@ -87,17 +87,17 @@ namespace benzin
         );
 
         BenzinAssert(m_IsResourceIdValidCallback(id));
-        BenzinAssert(!creation.DebugName.empty());
+        BenzinAssert(!creation.m_DebugName.empty());
 
         if (m_IsResourceFlippableCallback(id))
         {
-            const std::string_view referenceDebugName = creation.DebugName;
+            const std::string_view referenceDebugName = creation.m_DebugName;
             auto& nonConstCreation = const_cast<CreationT&>(creation);
 
             for (uint32_t i = 0; i < 2; ++i)
             {
                 const std::string debugName = std::format("{}{}", referenceDebugName, i);
-                nonConstCreation.DebugName = debugName;
+                nonConstCreation.m_DebugName = debugName;
 
                 MakeUniquePtr(m_Resources[id - i], device, nonConstCreation);
             }

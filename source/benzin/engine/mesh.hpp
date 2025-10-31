@@ -1,7 +1,5 @@
 #pragma once
 
-#include <benzin/graphics/format.hpp>
-
 namespace joint
 {
     struct Meshlet;
@@ -67,7 +65,7 @@ namespace benzin
     {
         std::string m_DebugName;
 
-        GraphicsFormat m_Format = GraphicsFormat::Unknown;
+        DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;
         bool m_IsCubeMap = false;
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;

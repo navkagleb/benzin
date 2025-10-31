@@ -3,6 +3,7 @@
 
 #include <benzin/engine/gltf_reader.hpp>
 #include <benzin/engine/mesh.hpp>
+#include <benzin/graphics/common.hpp>
 
 #include <DirectXTex.h>
 #include <stb_image.h>
@@ -29,11 +30,11 @@ namespace benzin
             return false;
 
         textureImage.m_DebugName = fileName;
-        textureImage.m_Format = GraphicsFormat::Rgba32Float;
+        textureImage.m_DxgiFormat = DXGI_FORMAT_R32G32B32A32_FLOAT;
         textureImage.m_Width = (uint32_t)width;
         textureImage.m_Height = (uint32_t)height;
 
-        const uint32_t pixelDataSizeInBytes = width * height * GetFormatSizeInBytes(textureImage.m_Format);
+        const uint32_t pixelDataSizeInBytes = width * height * GetDxgiFormatSizeInBytes(textureImage.m_DxgiFormat);
         textureImage.m_PixelData.resize(pixelDataSizeInBytes);
         memcpy(textureImage.m_PixelData.data(), imageData, pixelDataSizeInBytes);
 
@@ -54,10 +55,9 @@ namespace benzin
 
         const DirectX::TexMetadata& metadata = image.GetMetadata();
         BenzinAssert(metadata.mipLevels == 1); // TODO: Add mip levels support
-        BenzinAssert(magic_enum::enum_contains<GraphicsFormat>(metadata.format));
 
         textureImage.m_DebugName = fileName;
-        textureImage.m_Format = (GraphicsFormat)metadata.format;
+        textureImage.m_DxgiFormat = metadata.format;
         textureImage.m_Width = (uint32_t)metadata.width;
         textureImage.m_Height = (uint32_t)metadata.height;
         textureImage.m_Depth = (uint16_t)metadata.arraySize;

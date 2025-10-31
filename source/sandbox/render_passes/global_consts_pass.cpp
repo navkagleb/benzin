@@ -23,28 +23,28 @@ namespace sandbox
     {
         BenzinAssert(m_ReadbackStatsCallback);
 
-        const auto statFormat = benzin::GraphicsFormat::R32Uint;
-        const uint32_t statElementSizeInBytes = benzin::GetFormatSizeInBytes(statFormat);
+        constexpr DXGI_FORMAT statFormat = DXGI_FORMAT_R32_UINT;
+        const uint32_t statElementSizeInBytes = benzin::GetDxgiFormatSizeInBytes(statFormat);
         const uint64_t statElementCount = magic_enum::enum_count<joint::ReadbackStat>();
 
         // Usage as ByteAddressBuffer
         m_StatBuffer = ms_Device->GetPersistentDefaultLinearAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
         {
-            creation.DebugName = "GlobalConsts::StatBuffer";
-            creation.Type = benzin::BufferType::Format;
-            creation.Format = statFormat;
-            creation.ElementSizeInBytes = statElementSizeInBytes;
-            creation.ElementCount = statElementCount;
-            creation.IsUnorderedAccessAllowed = true;
+            creation.m_DebugName = "GlobalConsts::StatBuffer";
+            creation.m_Type = benzin::BufferType::Format;
+            creation.m_DxgiFormat = statFormat;
+            creation.m_ElementSizeInBytes = statElementSizeInBytes;
+            creation.m_ElementCount = statElementCount;
+            creation.m_IsUnorderedAccessAllowed = true;
         });
 
         m_ReadbackStatBuffer = ms_Device->GetPersistentReadbackLinearAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
         {
-            creation.DebugName = "GlobalConsts::ReadbackStatBuffer";
-            creation.Type = benzin::BufferType::Format;
-            creation.Format = statFormat;
-            creation.ElementSizeInBytes = statElementSizeInBytes;
-            creation.ElementCount = statElementCount * BENZIN_READBACK_LATENCY;
+            creation.m_DebugName = "GlobalConsts::ReadbackStatBuffer";
+            creation.m_Type = benzin::BufferType::Format;
+            creation.m_DxgiFormat = statFormat;
+            creation.m_ElementSizeInBytes = statElementSizeInBytes;
+            creation.m_ElementCount = statElementCount * BENZIN_READBACK_LATENCY;
         });
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
@@ -100,7 +100,7 @@ namespace sandbox
             m_FrameConsts.CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex();
 
             m_FrameConsts.IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
-            m_FrameConsts.IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().IsEnabled;
+            m_FrameConsts.IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().m_IsEnabled;
 
             m_FrameConsts.DeltaTimeInSec = ms_FrameTimer->GetDeltaTimeInSec();
             m_FrameConsts.AnimationElapsedTimeInSec = animationTimeInSec;

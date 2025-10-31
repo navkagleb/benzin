@@ -42,10 +42,10 @@ namespace benzin
 
         MakeUniquePtr(m_ShaderTable, device, BufferCreation
         {
-            .DebugName = std::format("RayTracingShaderTable::{}", debugName),
-            .HeapType = GpuHeapType::Upload, // TODO: Replace with default heap
-            .ElementSizeInBytes = sizeof(std::byte),
-            .ElementCount = GetRequiredTableSizeInBytes(),
+            .m_DebugName = std::format("RayTracingShaderTable::{}", debugName),
+            .m_HeapType = GpuHeapType::Upload, // TODO: Replace with default heap
+            .m_ElementSizeInBytes = sizeof(std::byte),
+            .m_ElementCount = GetRequiredTableSizeInBytes(),
         });
 
         BufferWriter tableWriter = MakeBufferWriter(*m_ShaderTable);

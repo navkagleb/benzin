@@ -15,19 +15,19 @@ namespace benzin
 
     static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& creation)
     {
-        BenzinAssert(creation.ElementSizeInBytes != 0);
-        BenzinAssert(creation.ElementCount != 0);
+        BenzinAssert(creation.m_ElementSizeInBytes != 0);
+        BenzinAssert(creation.m_ElementCount != 0);
 
-        switch (creation.Type)
+        switch (creation.m_Type)
         {
             case BufferType::Format:
             {
-                BenzinAssert(creation.ElementSizeInBytes == GetFormatSizeInBytes(creation.Format));
+                BenzinAssert(creation.m_ElementSizeInBytes == GetDxgiFormatSizeInBytes(creation.m_DxgiFormat));
                 break;
             }
             case BufferType::Const:
             {
-                BenzinEnsure(creation.ElementSizeInBytes % D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT == 0);
+                BenzinEnsure(creation.m_ElementSizeInBytes % D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT == 0);
                 break;
             }
             case BufferType::Structured:
@@ -38,10 +38,10 @@ namespace benzin
                 constexpr uint32_t alignment = sizeof(DirectX::XMFLOAT4);
 
                 BenzinWarningIf(
-                    creation.ElementSizeInBytes % alignment != 0,
+                    creation.m_ElementSizeInBytes % alignment != 0,
                     "Buffer '{}' is not properly aligned. BufferElementSize: {}, StructuredBufferAlignment: {}",
-                    creation.DebugName,
-                    creation.ElementSizeInBytes,
+                    creation.m_DebugName,
+                    creation.m_ElementSizeInBytes,
                     alignment);
 
                 break;
@@ -49,7 +49,7 @@ namespace benzin
         }
 
         D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
-        if (creation.IsUnorderedAccessAllowed)
+        if (creation.m_IsUnorderedAccessAllowed)
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
@@ -57,7 +57,7 @@ namespace benzin
         D3D12_RESOURCE_DESC d3d12ResourceDesc = {};
         d3d12ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
         d3d12ResourceDesc.Alignment = 0;
-        d3d12ResourceDesc.Width = creation.ElementSizeInBytes * creation.ElementCount;
+        d3d12ResourceDesc.Width = creation.m_ElementSizeInBytes * creation.m_ElementCount;
         d3d12ResourceDesc.Height = 1;
         d3d12ResourceDesc.DepthOrArraySize = 1;
         d3d12ResourceDesc.MipLevels = 1;
@@ -89,9 +89,9 @@ namespace benzin
 
     static ID3D12Resource* CreateCommittedD3D12Resource(const Device& device, const BufferCreation& creation, D3D12_RESOURCE_STATES d3d12InitialState)
     {
-        BenzinAssert(!IsMaxEnum(creation.HeapType));
+        BenzinAssert(!IsMaxEnum(creation.m_HeapType));
 
-        const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(ToD3D12HeapType(device, creation.HeapType));
+        const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(ToD3D12HeapType(device, creation.m_HeapType));
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(creation);
 
         ID3D12Resource* d3d12Resource = nullptr;
@@ -114,7 +114,7 @@ namespace benzin
         const BufferCreation& creation,
         D3D12_RESOURCE_STATES d3d12InitialState)
     {
-        BenzinAssert(IsMaxEnum(creation.HeapType));
+        BenzinAssert(IsMaxEnum(creation.m_HeapType));
 
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(creation);
 
@@ -156,9 +156,9 @@ namespace benzin
             }
             case BufferType::Format:
             {
-                BenzinAssert(buffer.GetFormat() != GraphicsFormat::Unknown);
+                BenzinAssert(buffer.GetDxgiFormat() != DXGI_FORMAT_UNKNOWN);
 
-                d3d12SrvDesc.Format = (DXGI_FORMAT)buffer.GetFormat();
+                d3d12SrvDesc.Format = buffer.GetDxgiFormat();
                 d3d12SrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
                 d3d12SrvDesc.Buffer.FirstElement = 0;
                 d3d12SrvDesc.Buffer.NumElements = (uint32_t)buffer.GetElementCount();
@@ -227,9 +227,9 @@ namespace benzin
             }
             case BufferType::Format:
             {
-                BenzinAssert(buffer.GetFormat() != GraphicsFormat::Unknown);
+                BenzinAssert(buffer.GetDxgiFormat() != DXGI_FORMAT_UNKNOWN);
 
-                d3d12UavDesc.Format = (DXGI_FORMAT)buffer.GetFormat();
+                d3d12UavDesc.Format = buffer.GetDxgiFormat();
                 d3d12UavDesc.Buffer.FirstElement = 0;
                 d3d12UavDesc.Buffer.NumElements = (uint32_t)buffer.GetElementCount();
                 d3d12UavDesc.Buffer.StructureByteStride = 0;
@@ -268,7 +268,7 @@ namespace benzin
     Buffer::Buffer(Device& device, const BufferCreation& creation)
         : Resource{ device }
     {
-        m_D3D12CurrentState = GetInitialBufferState(m_Device, creation.Type, creation.HeapType);
+        m_D3D12CurrentState = GetInitialBufferState(m_Device, creation.m_Type, creation.m_HeapType);
         m_D3D12Resource = CreateCommittedD3D12Resource(m_Device, creation, m_D3D12CurrentState);
 
         SetupCreation(creation);
@@ -277,7 +277,7 @@ namespace benzin
     Buffer::Buffer(GpuHeap& gpuHeap, uint64_t gpuHeapOffsetInBytes, const BufferCreation& creation)
         : Resource{ gpuHeap.m_Device }
     {
-        m_D3D12CurrentState = GetInitialBufferState(m_Device, creation.Type, gpuHeap.GetType());
+        m_D3D12CurrentState = GetInitialBufferState(m_Device, creation.m_Type, gpuHeap.GetType());
         m_D3D12Resource = CreatePlacedD3D12Resource(m_Device, gpuHeap, gpuHeapOffsetInBytes, creation, m_D3D12CurrentState);
 
         SetupCreation(creation, &gpuHeap);
@@ -375,19 +375,21 @@ namespace benzin
     {
         BenzinAssert(m_D3D12Resource != nullptr);
 
-        SetD3DObjectDebugName(m_D3D12Resource, creation.DebugName);
+        SetD3DObjectDebugName(m_D3D12Resource, creation.m_DebugName);
 
-        m_HeapType = gpuHeap != nullptr ? gpuHeap->GetType() : creation.HeapType;
-        m_Type = creation.Type;
-        m_Format = creation.Format;
-        m_ElementSizeInBytes = creation.ElementSizeInBytes;
-        m_ElementCount = creation.ElementCount;
-        m_IsUnorderedAccessAllowed = creation.IsUnorderedAccessAllowed;
+        m_HeapType = gpuHeap != nullptr ? gpuHeap->GetType() : creation.m_HeapType;
+        m_Type = creation.m_Type;
+        m_DxgiFormat = creation.m_DxgiFormat;
+        m_ElementSizeInBytes = creation.m_ElementSizeInBytes;
+        m_ElementCount = creation.m_ElementCount;
+        m_IsUnorderedAccessAllowed = creation.m_IsUnorderedAccessAllowed;
 
         if (m_HeapType == GpuHeapType::Upload || m_HeapType == GpuHeapType::GpuUpload)
         {
-            const D3D12_RANGE d3d12Range{ .Begin = 0, .End = 0 }; // Writing only range
-            BenzinD3D12Call(m_D3D12Resource->Map(0, &d3d12Range, reinterpret_cast<void**>(&m_CpuMappedData)));
+            D3D12_RANGE d3d12WritingOnlyRange = {};
+            d3d12WritingOnlyRange.Begin = 0;
+            d3d12WritingOnlyRange.End = 0;
+            BenzinD3D12Call(m_D3D12Resource->Map(0, &d3d12WritingOnlyRange, reinterpret_cast<void**>(&m_CpuMappedData)));
         }
     }
 

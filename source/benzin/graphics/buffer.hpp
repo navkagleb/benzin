@@ -1,7 +1,6 @@
 #pragma once
 
 #include <benzin/graphics/resource.hpp>
-#include <benzin/graphics/format.hpp>
 
 namespace benzin
 {
@@ -21,16 +20,16 @@ namespace benzin
 
     struct BufferCreation
     {
-        std::string_view DebugName;
+        std::string_view m_DebugName;
 
-        GpuHeapType HeapType = g_MaxEnum<GpuHeapType>; // For committed resource
-        BufferType Type = BufferType::Byte;
-        GraphicsFormat Format = GraphicsFormat::Unknown; // Uses for BufferType::Format
+        GpuHeapType m_HeapType = g_MaxEnum<GpuHeapType>; // For committed resource
+        BufferType m_Type = BufferType::Byte;
+        DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN; // Uses for BufferType::Format
 
-        uint32_t ElementSizeInBytes = sizeof(std::byte);
-        uint64_t ElementCount = 0;
+        uint32_t m_ElementSizeInBytes = sizeof(std::byte);
+        uint64_t m_ElementCount = 0;
 
-        bool IsUnorderedAccessAllowed = false;
+        bool m_IsUnorderedAccessAllowed = false;
     };
 
     class Buffer : public Resource
@@ -45,7 +44,7 @@ namespace benzin
     public:
         auto GetHeapType() const { return m_HeapType; }
         auto GetType() const { return m_Type; }
-        auto GetFormat() const { return m_Format; }
+        auto GetDxgiFormat() const { return m_DxgiFormat; }
         auto GetElementSizeInBytes() const { return m_ElementSizeInBytes; }
         auto GetElementCount() const { return m_ElementCount; }
 
@@ -68,7 +67,7 @@ namespace benzin
     private:
         GpuHeapType m_HeapType = g_MaxEnum<GpuHeapType>;
         BufferType m_Type = BufferType::Byte;
-        GraphicsFormat m_Format = GraphicsFormat::Unknown;
+        DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;
         uint32_t m_ElementSizeInBytes = 0;
         uint64_t m_ElementCount = 0;
         bool m_IsUnorderedAccessAllowed = false;

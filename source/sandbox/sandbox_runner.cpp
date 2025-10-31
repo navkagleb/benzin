@@ -230,7 +230,7 @@ namespace sandbox
     void StanfordDragonRunner::InitScene()
     {
         m_RenderSettings->GetSection<RayTracing_ShadowSettings>().m_IsEnabled = false;
-        m_RenderSettings->GetSection<SigmaDenoiserSettings>().IsEnabled = false;
+        m_RenderSettings->GetSection<SigmaDenoiserSettings>().m_IsEnabled = false;
 
         benzin::PerspectiveCamera& camera = m_Scene->m_Camera;
         camera.SetPosition({ -2.286f, 3.911f, -18.385f });

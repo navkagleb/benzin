@@ -63,11 +63,11 @@ namespace sandbox
         {
             ms_PsoManager->Create(id, [id, fileName, define](benzin::ComputePsoProxy& proxy)
             {
-                proxy.Cs.FileName = fileName;
+                proxy.m_Cs.m_FileName = fileName;
 
                 if (!define.empty())
                 {
-                    proxy.Cs.Defines.push_back(define);
+                    proxy.m_Cs.m_Defines.push_back(define);
                 }
             });
         };
@@ -102,39 +102,38 @@ namespace sandbox
         m_Consts.TileCount.x = benzin::DivideUp(ms_RenderViewportWidth, joint::g_SigmaTileSize);
         m_Consts.TileCount.y = benzin::DivideUp(ms_RenderViewportHeight, joint::g_SigmaTileSize);
 
-        const DirectX::XMUINT2 renderResolution{ ms_RenderViewportWidth, ms_RenderViewportHeight };
-        const auto shadowFormat = benzin::GraphicsFormat::R8Unorm;
-
-        const auto createTexture = [](TextureId id, benzin::GraphicsFormat format, DirectX::XMUINT2 resolution)
+        const auto createTexture = [](TextureId id, DXGI_FORMAT dxgiFormat, DirectX::XMUINT2 resolution)
         {
             ms_Resources->Create(id, benzin::TextureCreation
             {
-                .DebugName = magic_enum::enum_name(id),
-                .Format = format,
-                .Width = resolution.x,
-                .Height = resolution.y,
-                .MipCount = 1,
-                .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
+                .m_DebugName = magic_enum::enum_name(id),
+                .m_DxgiFormat = dxgiFormat,
+                .m_Width = resolution.x,
+                .m_Height = resolution.y,
+                .m_MipCount = 1,
+                .m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
             });
         };
 
-        const auto penumbraFormat = ms_Settings->GetSection<SigmaDenoiserSettings>().PenumbraFormat;
+        const DirectX::XMUINT2 renderResolution{ ms_RenderViewportWidth, ms_RenderViewportHeight };
+        const DXGI_FORMAT shadowFormat = DXGI_FORMAT_R8_UNORM;
+        const DXGI_FORMAT penumbraFormat = SigmaDenoiserSettings::ms_PenumbraDxgiFormat;
 
-        createTexture(TextureId::Sigma_Tiles, benzin::GraphicsFormat::Rgba8Unorm, m_Consts.TileCount);
-        createTexture(TextureId::Sigma_SmoothTiles, benzin::GraphicsFormat::Rg8Unorm, m_Consts.TileCount);
+        createTexture(TextureId::Sigma_Tiles, DXGI_FORMAT_R8G8B8A8_UNORM, m_Consts.TileCount);
+        createTexture(TextureId::Sigma_SmoothTiles, DXGI_FORMAT_R8G8_UNORM, m_Consts.TileCount);
         createTexture(TextureId::Sigma_BlurredPenumbra1, penumbraFormat, renderResolution);
         createTexture(TextureId::Sigma_BlurredPenumbra2, penumbraFormat, renderResolution);
         createTexture(TextureId::Sigma_BlurredShadowTemp1, shadowFormat, renderResolution);
         createTexture(TextureId::Sigma_BlurredShadowTemp2, shadowFormat, renderResolution);
         createTexture(TextureId::Shadow, shadowFormat, renderResolution);
-        createTexture(TextureId::ShadowHistoryLength, benzin::GraphicsFormat::R32Uint, renderResolution);
+        createTexture(TextureId::ShadowHistoryLength, DXGI_FORMAT_R32_UINT, renderResolution);
     }
 
     void SigmaDenoiserPass::OnUpdate()
     {
         auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 
-        m_IsRenderingEnabled = settings.IsEnabled;
+        m_IsRenderingEnabled = settings.m_IsEnabled;
         if (!m_IsRenderingEnabled)
             return;
 
@@ -144,15 +143,15 @@ namespace sandbox
         const DirectX::XMFLOAT4 postBlurRotator = GetRotator(rotatorAngleInRadians + DirectX::XMConvertToRadians(45.0f));
 
         const float fps = 1.0f / ms_FrameTimer->GetDeltaTimeInSec();
-        settings.HistoryLength = GetMaxHistoryLength(settings.MaxHistoryLength, fps);
-        settings.StabilizationStrength = settings.HistoryLength / (1.0f + settings.HistoryLength);
+        settings.m_HistoryLength = GetMaxHistoryLength(SigmaDenoiserSettings::ms_MaxHistoryLength, fps);
+        settings.m_StabilizationStrength = settings.m_HistoryLength / (1.0f + settings.m_HistoryLength);
 
         m_Consts.BlurRotator = blurRotator;
         m_Consts.PostBlurRotator = postBlurRotator;
-        m_Consts.StabilizationStrength = settings.StabilizationStrength;
-        m_Consts.PlaneDistanceSensitivity = settings.PlaneDistanceSensitivity;
-        m_Consts.DisocclusionThreshold = settings.DisocclusionThreshold;
-        m_Consts.IsTileSmoothingEnabled = settings.IsTileSmoothingEnabled;
+        m_Consts.StabilizationStrength = settings.m_StabilizationStrength;
+        m_Consts.PlaneDistanceSensitivity = settings.m_PlaneDistanceSensitivity;
+        m_Consts.DisocclusionThreshold = settings.m_DisocclusionThreshold;
+        m_Consts.IsTileSmoothingEnabled = settings.m_IsTileSmoothingEnabled;
         m_Consts.ToSunDirection = ms_Scene->m_SunLight.CalcToSunDirection();
     }
 
@@ -161,17 +160,17 @@ namespace sandbox
         BenzinProfile();
         BenzinGpuProfile("SigmaDenoiser");
 
-        auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-
+        benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
-        RunClearPass(settings.IsClearEnabled);
+        const auto& settings = ms_Settings->GetSection<SigmaDenoiserSettings>();
+
+        RunClearPass(settings.m_IsClearEnabled);
         RunClassifyTilesPass();
         RunSmoothTilesPass();
         RunBlurPass();
-        RunPostBlurPass(settings.IsPostBlurEnabled);
-        RunTemporalStabilizationPass(settings.IsTemporalStabilizationEnabled);
+        RunPostBlurPass(settings.m_IsPostBlurEnabled);
+        RunTemporalStabilizationPass(settings.m_IsTemporalStabilizationEnabled);
     }
 
     void SigmaDenoiserPass::RunClearPass(bool isEnabled) const

@@ -1,15 +1,14 @@
 #pragma once
 
 #include <benzin/graphics/resource.hpp>
-#include <benzin/graphics/format.hpp>
 
 namespace benzin
 {
 
     struct DepthStencilValue
     {
-        float Depth = 0.0f;
-        uint8_t Stencil = 0;
+        float m_Depth = 0.0f;
+        uint8_t m_Stencil = 0;
     };
 
     using ClearValueVariant = std::variant<std::monostate, DirectX::XMFLOAT4, DepthStencilValue>;
@@ -26,23 +25,23 @@ namespace benzin
     {
         // For now only 2D textures supported
 
-        std::string_view DebugName;
+        std::string_view m_DebugName;
 
-        bool IsCubeMap = false;
-        GraphicsFormat Format = GraphicsFormat::Unknown;
-        uint32_t Width = 0;
-        uint32_t Height = 0;
-        uint16_t Depth = 1; // ArraySize
-        uint16_t MipCount = 0; // By default select all mip levels
+        bool m_IsCubeMap = false;
+        DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;
+        uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
+        uint16_t m_Depth = 1; // ArraySize
+        uint16_t m_MipCount = 0; // By default select all mip levels
 
-        EnumFlags<TextureAccessFlag> AccessFlags;
-        ClearValueVariant ClearValueVariant;
+        EnumFlags<TextureAccessFlag> m_AccessFlags;
+        ClearValueVariant m_ClearValueVariant;
     };
 
     struct TextureSrv
     {
         bool m_IsCubeMap = false;
-        GraphicsFormat m_Format = GraphicsFormat::Unknown;
+        DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;
         uint32_t m_DepthOffset = 0;
         uint32_t m_DepthCount = g_MaxU32; // By default select all slices
         uint32_t m_MipOffset = 0;
@@ -62,7 +61,7 @@ namespace benzin
 
     public:
         auto IsCubeMap() const { return m_IsCubeMap; }
-        auto GetFormat() const { return m_Format; }
+        auto GetDxgiFormat() const { return m_DxgiFormat; }
         auto GetWidth() const { return m_Width; }
         auto GetHeight() const { return m_Height; }
         auto GetDepth() const { return m_Depth; }
@@ -94,7 +93,7 @@ namespace benzin
 
     private:
         bool m_IsCubeMap = false;
-        GraphicsFormat m_Format = GraphicsFormat::Unknown;
+        DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
         uint16_t m_Depth = 0;

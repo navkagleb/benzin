@@ -17,13 +17,11 @@ namespace benzin
         BenzinAssert(!IsMaxEnum(creation.Type));
         BenzinAssert(creation.SizeInBytes != 0);
 
-        const D3D12_HEAP_DESC d3d12HeapDesc
-        {
-            .SizeInBytes = creation.SizeInBytes,
-            .Properties = GetD3D12HeapProperties(ToD3D12HeapType(m_Device, creation.Type)),
-            .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-            .Flags = D3D12_HEAP_FLAG_NONE,
-        };
+        D3D12_HEAP_DESC d3d12HeapDesc = {};
+        d3d12HeapDesc.SizeInBytes = creation.SizeInBytes;
+        d3d12HeapDesc.Properties = GetD3D12HeapProperties(ToD3D12HeapType(m_Device, creation.Type));
+        d3d12HeapDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+        d3d12HeapDesc.Flags = D3D12_HEAP_FLAG_NONE;
 
         BenzinD3D12Call(device.GetD3D12Device()->CreateHeap(&d3d12HeapDesc, IID_PPV_ARGS(&m_D3D12Heap)));
         BenzinEnsure(m_D3D12Heap != nullptr);
@@ -55,7 +53,7 @@ namespace benzin
         BufferCreation bufferCreation;
         configurator(bufferCreation);
 
-        BenzinAssert(IsMaxEnum(bufferCreation.HeapType));
+        BenzinAssert(IsMaxEnum(bufferCreation.m_HeapType));
 
         return AllocateBuffer(bufferCreation);
     }
@@ -64,24 +62,24 @@ namespace benzin
     {
         return AllocateBuffer(BufferCreation
         {
-            .DebugName = debugName,
-            .Type = BufferType::Structured,
-            .ElementSizeInBytes = elementSizeInBytes,
-            .ElementCount = elementCount,
+            .m_DebugName = debugName,
+            .m_Type = BufferType::Structured,
+            .m_ElementSizeInBytes = elementSizeInBytes,
+            .m_ElementCount = elementCount,
         });
     }
 
-    std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateFormatBuffer(std::string_view debugName, uint32_t elementCount, GraphicsFormat format)
+    std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateFormatBuffer(std::string_view debugName, uint32_t elementCount, DXGI_FORMAT dxgiFormat)
     {
-        BenzinAssert(format != GraphicsFormat::Unknown);
+        BenzinAssert(dxgiFormat != DXGI_FORMAT_UNKNOWN);
 
         return AllocateBuffer(BufferCreation
         {
-            .DebugName = debugName,
-            .Type = BufferType::Format,
-            .Format = format,
-            .ElementSizeInBytes = GetFormatSizeInBytes(format),
-            .ElementCount = elementCount,
+            .m_DebugName = debugName,
+            .m_Type = BufferType::Format,
+            .m_DxgiFormat = dxgiFormat,
+            .m_ElementSizeInBytes = GetDxgiFormatSizeInBytes(dxgiFormat),
+            .m_ElementCount = elementCount,
         });
     }
 
@@ -93,7 +91,7 @@ namespace benzin
     std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateBuffer(const BufferCreation& bufferCreation)
     {
         const uint64_t alignedOffsetInBytes = AlignUp(m_OffsetInBytes, (uint64_t)D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
-        const uint64_t bufferSizeInBytes = (uint64_t)bufferCreation.ElementCount * bufferCreation.ElementSizeInBytes;
+        const uint64_t bufferSizeInBytes = (uint64_t)bufferCreation.m_ElementCount * bufferCreation.m_ElementSizeInBytes;
 
         const uint64_t neededSizeInBytes = alignedOffsetInBytes + bufferSizeInBytes;
         BenzinEnsure(
@@ -104,9 +102,9 @@ namespace benzin
 
         m_OffsetInBytes = alignedOffsetInBytes + bufferSizeInBytes;
 
-        if (bufferCreation.DebugName.empty())
+        if (bufferCreation.m_DebugName.empty())
         {
-            const_cast<BufferCreation&>(bufferCreation).DebugName = "GpuHeapLinearBufferAllocator";
+            const_cast<BufferCreation&>(bufferCreation).m_DebugName = "GpuHeapLinearBufferAllocator";
         }
 
         return std::make_unique<Buffer>(m_GpuHeap, alignedOffsetInBytes, bufferCreation);
@@ -131,10 +129,10 @@ namespace benzin
             const uint64_t gpuHeapOffsetInBytes = bufferSizeInBytesPerFrame * i;
             MakeUniquePtr(m_FrameBuffers[i], *m_GpuHeap, gpuHeapOffsetInBytes, BufferCreation
             {
-                .DebugName = std::format("FrameConstBuffer_{}", i),
-                .Type = BufferType::Byte,
-                .ElementSizeInBytes = sizeof(std::byte),
-                .ElementCount = bufferSizeInBytesPerFrame,
+                .m_DebugName = std::format("FrameConstBuffer_{}", i),
+                .m_Type = BufferType::Byte,
+                .m_ElementSizeInBytes = sizeof(std::byte),
+                .m_ElementCount = bufferSizeInBytesPerFrame,
             });
         }
     }

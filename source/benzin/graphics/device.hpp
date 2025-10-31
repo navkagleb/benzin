@@ -1,7 +1,6 @@
 #pragma once
 
 #include <benzin/graphics/descriptor_manager.hpp>
-#include <benzin/graphics/format.hpp>
 
 namespace benzin
 {
@@ -58,7 +57,7 @@ namespace benzin
 
         auto& GetConstBufferAllocator() { return *m_ConstBufferAllocator; }
 
-        uint8_t GetPlaneCountFromFormat(GraphicsFormat format) const;
+        uint8_t GetPlaneCountFromFormat(DXGI_FORMAT dxgiFormat) const;
 
         void DeferredRelease(ID3D12Object* d3d12Object);
         void DeferredRelease(const Descriptor& descriptor);

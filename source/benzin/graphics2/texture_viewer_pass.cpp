@@ -23,7 +23,7 @@ namespace benzin
     {
         ms_PsoManager->Create(PsoId::TextureViewer, [](ComputePsoProxy& proxy)
         {
-            proxy.Cs.FileName = "texture_viewer_pass.hlsl";
+            proxy.m_Cs.m_FileName = "texture_viewer_pass.hlsl";
         });
     }
 
@@ -56,21 +56,21 @@ namespace benzin
             m_Consts.TextureResolution.x = debugWidth;
             m_Consts.TextureResolution.y = debugHeight;
 
-            GraphicsFormat debugFormat = referenceTexture.GetFormat();
-            if (debugFormat == GraphicsFormat::D24Unorm_S8Uint)
+            DXGI_FORMAT dxgiDebugFormat = referenceTexture.GetDxgiFormat();
+            if (dxgiDebugFormat == DXGI_FORMAT_D24_UNORM_S8_UINT)
             {
-                debugFormat = GraphicsFormat::R32Float;
+                dxgiDebugFormat = DXGI_FORMAT_R32_FLOAT;
             }
 
             ms_Resources->Create(TextureId::DebugTexture, TextureCreation
             {
-                .DebugName = magic_enum::enum_name(TextureId::DebugTexture),
-                .Format = debugFormat,
-                .Width = debugWidth,
-                .Height = debugHeight,
-                .Depth = 1,
-                .MipCount = 1,
-                .AccessFlags = TextureAccessFlag::AllowUnorderedAccess,
+                .m_DebugName = magic_enum::enum_name(TextureId::DebugTexture),
+                .m_DxgiFormat = dxgiDebugFormat,
+                .m_Width = debugWidth,
+                .m_Height = debugHeight,
+                .m_Depth = 1,
+                .m_MipCount = 1,
+                .m_AccessFlags = TextureAccessFlag::AllowUnorderedAccess,
             });
         }
 

@@ -385,42 +385,28 @@ namespace benzin
     {
         ms_PsoManager->Create(PsoId::ImGui, [](VertexPsoProxy& proxy)
         {
-            proxy.InputLayout.emplace_back("Position", GraphicsFormat::Rg32Float);
-            proxy.InputLayout.emplace_back("Uv", GraphicsFormat::Rg32Float);
-            proxy.InputLayout.emplace_back("Color", GraphicsFormat::Rgba8Unorm);
+            proxy.m_InputLayout.emplace_back("Position", DXGI_FORMAT_R32G32_FLOAT);
+            proxy.m_InputLayout.emplace_back("Uv", DXGI_FORMAT_R32G32_FLOAT);
+            proxy.m_InputLayout.emplace_back("Color", DXGI_FORMAT_R8G8B8A8_UNORM);
 
-            BenzinAssert(GetFormatSizeInBytes(proxy.InputLayout[0].Format) == sizeof(ImDrawVert::pos));
-            BenzinAssert(GetFormatSizeInBytes(proxy.InputLayout[1].Format) == sizeof(ImDrawVert::uv));
-            BenzinAssert(GetFormatSizeInBytes(proxy.InputLayout[2].Format) == sizeof(ImDrawVert::col));
+            BenzinAssert(GetDxgiFormatSizeInBytes(proxy.m_InputLayout[0].m_DxgiFormat) == sizeof(ImDrawVert::pos));
+            BenzinAssert(GetDxgiFormatSizeInBytes(proxy.m_InputLayout[1].m_DxgiFormat) == sizeof(ImDrawVert::uv));
+            BenzinAssert(GetDxgiFormatSizeInBytes(proxy.m_InputLayout[2].m_DxgiFormat) == sizeof(ImDrawVert::col));
 
-            proxy.Vs.FileName = "imgui_pass.hlsl";
-            proxy.Ps.FileName = "imgui_pass.hlsl";
+            proxy.m_Vs.m_FileName = "imgui_pass.hlsl";
+            proxy.m_Ps.m_FileName = "imgui_pass.hlsl";
 
-            proxy.RasterizerState.CullMode = CullMode::None;
+            proxy.m_RasterizerState.m_D3D12CullMode = D3D12_CULL_MODE_NONE;
+            proxy.m_RenderTargetDxgiFormats.emplace_back(DXGI_FORMAT_R8G8B8A8_UNORM);
 
-            proxy.DepthState.IsEnabled = false;
-            proxy.DepthState.IsWriteEnabled = false;
-            proxy.StencilState.IsEnabled = false;
+            BlendState::RenderTargetState blendRenderTarget;
+            blendRenderTarget.m_IsEnabled = true;
+            blendRenderTarget.m_ColorEquation.m_D3D12SourceFactor = D3D12_BLEND_SRC_ALPHA;
+            blendRenderTarget.m_ColorEquation.m_D3D12DestinationFactor = D3D12_BLEND_INV_SRC_ALPHA;
+            blendRenderTarget.m_ColorEquation.m_D3D12Operation = D3D12_BLEND_OP_ADD;
+            blendRenderTarget.m_AlphaEquation = blendRenderTarget.m_ColorEquation;
 
-            proxy.RenderTargetFormats.emplace_back(GraphicsFormat::Rgba8Unorm);
-
-            proxy.BlendState.IsAlphaToCoverageStateEnabled = false;
-            proxy.BlendState.RenderTargetStates.push_back(BlendState::RenderTargetState
-            {
-                .IsEnabled = true,
-                .ColorEquation
-                {
-                    .SourceFactor = BlendColorFactor::SourceAlpha,
-                    .DestinationFactor = BlendColorFactor::InverseSourceAlpha,
-                    .Operation = BlendOperation::Add,
-                },
-                .AlphaEquation
-                {
-                    .SourceFactor = BlendAlphaFactor::SourceAlpha,
-                    .DestinationFactor = BlendAlphaFactor::InverseSourceAlpha,
-                    .Operation = BlendOperation::Add,
-                },
-            });
+            proxy.m_BlendState.m_RenderTargetStates.push_back(blendRenderTarget);
         });
     }
 
@@ -498,16 +484,15 @@ namespace benzin
         int height;
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-        MakeUniquePtr(m_FontTexture, *ms_Device, TextureCreation
-        {
-            .DebugName = "ImGui_Font",
-            .Format = GraphicsFormat::Rgba8Unorm,
-            .Width = (uint32_t)width,
-            .Height = (uint32_t)height,
-            .MipCount = 1,
-        });
+        TextureCreation textureCreation;
+        textureCreation.m_DebugName = "ImGui_Font";
+        textureCreation.m_DxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        textureCreation.m_Width = (uint32_t)width;
+        textureCreation.m_Height = (uint32_t)height;
+        textureCreation.m_MipCount = 1;
+        MakeUniquePtr(m_FontTexture, *ms_Device, textureCreation);
 
-        const uint32_t textureSizeInBytes = width * height * GetFormatSizeInBytes(m_FontTexture->GetFormat());
+        const uint32_t textureSizeInBytes = width * height * GetDxgiFormatSizeInBytes(m_FontTexture->GetDxgiFormat());
         BenzinAssert(textureSizeInBytes == m_FontTexture->GetSizeInBytes());
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_FontTexture->GetSizeInBytes());
@@ -536,26 +521,26 @@ namespace benzin
         {
             MakeUniquePtr(vertexBuffer, *ms_Device, BufferCreation
             {
-                .DebugName = "ImGuiPass::VertexBuffer",
-                .HeapType = GpuHeapType::GpuUpload,
-                .Type = BufferType::Structured,
-                .ElementSizeInBytes = sizeof(ImDrawVert),
-                .ElementCount = (uint32_t)imDrawData.TotalVtxCount + 5000, // TODO: 5000 magic number
+                .m_DebugName = "ImGuiPass::VertexBuffer",
+                .m_HeapType = GpuHeapType::GpuUpload,
+                .m_Type = BufferType::Structured,
+                .m_ElementSizeInBytes = sizeof(ImDrawVert),
+                .m_ElementCount = (uint32_t)imDrawData.TotalVtxCount + 5000, // TODO: 5000 magic number
             });
         }
 
         if (indexBuffer.get() == nullptr || (int)indexBuffer->GetElementCount() < imDrawData.TotalIdxCount)
         {
-            BenzinAssert(GetFormatSizeInBytes(GraphicsFormat::R16Uint) == sizeof(ImDrawIdx));
+            BenzinAssert(GetDxgiFormatSizeInBytes(DXGI_FORMAT_R16_UINT) == sizeof(ImDrawIdx));
 
             MakeUniquePtr(indexBuffer, *ms_Device, BufferCreation
             {
-                .DebugName = "ImGuiPass::IndexBuffer",
-                .HeapType = GpuHeapType::GpuUpload,
-                .Type = BufferType::Format,
-                .Format = GraphicsFormat::R16Uint,
-                .ElementSizeInBytes = sizeof(ImDrawIdx),
-                .ElementCount = (uint32_t)imDrawData.TotalIdxCount + 10000, // TODO: 10000 magic number
+                .m_DebugName = "ImGuiPass::IndexBuffer",
+                .m_HeapType = GpuHeapType::GpuUpload,
+                .m_Type = BufferType::Format,
+                .m_DxgiFormat = DXGI_FORMAT_R16_UINT,
+                .m_ElementSizeInBytes = sizeof(ImDrawIdx),
+                .m_ElementCount = (uint32_t)imDrawData.TotalIdxCount + 10000, // TODO: 10000 magic number
             });
         }
 

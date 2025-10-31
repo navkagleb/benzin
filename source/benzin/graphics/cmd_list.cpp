@@ -123,7 +123,7 @@ namespace benzin
 
     void CopyCmdList::CopyTextureRegion(const Texture& destTexture, uint32_t destSubResourceIndex, const Texture& sourceTexture, uint32_t sourceSubresourceIndex)
     {
-        BenzinAssert(destTexture.GetFormat() == sourceTexture.GetFormat());
+        BenzinAssert(destTexture.GetDxgiFormat() == sourceTexture.GetDxgiFormat());
 
         D3D12_TEXTURE_COPY_LOCATION d3d12DestLocatiton = {};
         d3d12DestLocatiton.pResource = destTexture.GetD3D12Resource();
@@ -264,7 +264,7 @@ namespace benzin
     {
         BenzinAssert(texture.GetMipCount() == 1);
 
-        const uint32_t pixelSizeInBytes = GetFormatSizeInBytes(texture.GetFormat());
+        const uint32_t pixelSizeInBytes = GetDxgiFormatSizeInBytes(texture.GetDxgiFormat());
         const uint64_t rowPitchInBytes = pixelSizeInBytes * texture.GetWidth();
         const uint64_t slicePitchInBytes = rowPitchInBytes * texture.GetHeight();
 
@@ -505,12 +505,12 @@ namespace benzin
     void GraphicsCmdList::SetIndexBuffer(const Buffer& indexBuffer)
     {
         BenzinAssert(indexBuffer.GetType() == BufferType::Format);
-        BenzinAssert(indexBuffer.GetFormat() == GraphicsFormat::R16Uint || indexBuffer.GetFormat() == GraphicsFormat::R32Uint);
+        BenzinAssert(indexBuffer.GetDxgiFormat() == DXGI_FORMAT_R16_UINT || indexBuffer.GetDxgiFormat() == DXGI_FORMAT_R32_UINT);
 
         D3D12_INDEX_BUFFER_VIEW d3d12View = {};
         d3d12View.BufferLocation = indexBuffer.GetGpuVirtualAddress();
         d3d12View.SizeInBytes = (uint32_t)indexBuffer.GetSizeInBytes();
-        d3d12View.Format = (DXGI_FORMAT)indexBuffer.GetFormat();
+        d3d12View.Format = indexBuffer.GetDxgiFormat();
 
         m_D3D12GraphicsCommandList1->IASetIndexBuffer(&d3d12View);
     }
@@ -564,13 +564,13 @@ namespace benzin
     void GraphicsCmdList::ClearDepthStencil(const Texture& depthStencil)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DsvDescriptorHandle{ depthStencil.GetDsv().GetCpuHandle() };
-        const auto clearDepthStencil = depthStencil.GetClearDepthStencil();
+        const DepthStencilValue clearDepthStencil = depthStencil.GetClearDepthStencil();
 
         m_D3D12GraphicsCommandList1->ClearDepthStencilView(
             d3d12DsvDescriptorHandle,
             D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-            clearDepthStencil.Depth,
-            clearDepthStencil.Stencil,
+            clearDepthStencil.m_Depth,
+            clearDepthStencil.m_Stencil,
             0,
             nullptr);
     }

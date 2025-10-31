@@ -16,93 +16,90 @@ namespace benzin
     {
         D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
 
-        if (textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget))
+        if (textureCreation.m_AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         }
 
-        if (textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil))
+        if (textureCreation.m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
         }
 
-        if (textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowUnorderedAccess))
+        if (textureCreation.m_AccessFlags.IsSet(TextureAccessFlag::AllowUnorderedAccess))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
 
-        return D3D12_RESOURCE_DESC
-        {
-            .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D, // For now only 2D textures supported
-            .Alignment = 0,
-            .Width = (uint64_t)textureCreation.Width,
-            .Height = textureCreation.Height,
-            .DepthOrArraySize = textureCreation.Depth,
-            .MipLevels = textureCreation.MipCount,
-            .Format = (DXGI_FORMAT)textureCreation.Format,
-            .SampleDesc{ 1, 0 },
-            .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
-            .Flags = d3d12ResourceFlags,
-        };
+        D3D12_RESOURCE_DESC d3d12ResourceDesc = {};
+        d3d12ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D; // For now only 2D textures supported
+        d3d12ResourceDesc.Alignment = 0;
+        d3d12ResourceDesc.Width = (uint64_t)textureCreation.m_Width;
+        d3d12ResourceDesc.Height = textureCreation.m_Height;
+        d3d12ResourceDesc.DepthOrArraySize = textureCreation.m_Depth;
+        d3d12ResourceDesc.MipLevels = textureCreation.m_MipCount;
+        d3d12ResourceDesc.Format = textureCreation.m_DxgiFormat;
+        d3d12ResourceDesc.SampleDesc = { 1, 0 };
+        d3d12ResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        d3d12ResourceDesc.Flags = d3d12ResourceFlags;
+
+        return d3d12ResourceDesc;
     }
 
-    static D3D12_CLEAR_VALUE ToD3D12ClearValue(const TextureCreation& textureCreation)
+    static D3D12_CLEAR_VALUE ToD3D12ClearValue(const TextureCreation& creation)
     {
-        D3D12_CLEAR_VALUE d3d12ClearValue
-        {
-            .Format = (DXGI_FORMAT)textureCreation.Format
-        };
+        D3D12_CLEAR_VALUE d3d12ClearValue = {};
+        d3d12ClearValue.Format = creation.m_DxgiFormat;
 
-        if (std::holds_alternative<std::monostate>(textureCreation.ClearValueVariant))
+        if (std::holds_alternative<std::monostate>(creation.m_ClearValueVariant))
         {
-            if (textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget))
+            if (creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget))
             {
-                const_cast<ClearValueVariant&>(textureCreation.ClearValueVariant) = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 0.0f };
+                const_cast<ClearValueVariant&>(creation.m_ClearValueVariant) = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 0.0f };
             }
-            else if (textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil))
+            else if (creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil))
             {
-                const_cast<ClearValueVariant&>(textureCreation.ClearValueVariant) = DepthStencilValue{};
+                const_cast<ClearValueVariant&>(creation.m_ClearValueVariant) = DepthStencilValue{};
             }
         }
 
-        textureCreation.ClearValueVariant | MakeVisitorMatch(
-            [&textureCreation, &d3d12ClearValue](const DirectX::XMFLOAT4& clearColor)
+        creation.m_ClearValueVariant | MakeVisitorMatch(
+            [&creation, &d3d12ClearValue](const DirectX::XMFLOAT4& clearColor)
             {
-                BenzinAssert(textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget));
+                BenzinAssert(creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget));
 
                 d3d12ClearValue.Color[0] = clearColor.x;
                 d3d12ClearValue.Color[1] = clearColor.y;
                 d3d12ClearValue.Color[2] = clearColor.z;
                 d3d12ClearValue.Color[3] = clearColor.w;
             },
-            [&textureCreation, &d3d12ClearValue](const DepthStencilValue& depthStencil)
+            [&creation, &d3d12ClearValue](const DepthStencilValue& depthStencil)
             {
-                BenzinAssert(textureCreation.AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil));
+                BenzinAssert(creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil));
 
-                d3d12ClearValue.DepthStencil.Depth = depthStencil.Depth;
-                d3d12ClearValue.DepthStencil.Stencil = depthStencil.Stencil;
+                d3d12ClearValue.DepthStencil.Depth = depthStencil.m_Depth;
+                d3d12ClearValue.DepthStencil.Stencil = depthStencil.m_Stencil;
             },
             [](std::monostate)
             {
                 BenzinEnsure(false);
-            }
-        );
+            });
 
         return d3d12ClearValue;
     }
 
-    static ID3D12Resource* CreateD3D12CommittedResource(const Device& device, const TextureCreation& textureCreation, D3D12_RESOURCE_STATES d3d12InitialState)
+    static ID3D12Resource* CreateD3D12CommittedResource(const Device& device, const TextureCreation& creation, D3D12_RESOURCE_STATES d3d12InitialState)
     {
-        BenzinAssert(textureCreation.Format != GraphicsFormat::Unknown);
+        BenzinAssert(creation.m_DxgiFormat != DXGI_FORMAT_UNKNOWN);
 
         const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
-        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(textureCreation);
+        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(creation);
 
         ID3D12Resource* d3d12Resource = nullptr;
 
-        if (textureCreation.AccessFlags.IsAnySet(TextureAccessFlag::AllowRenderTarget | TextureAccessFlag::AllowDepthStencil))
+        if (creation.m_AccessFlags.IsAnySet(TextureAccessFlag::AllowRenderTarget | TextureAccessFlag::AllowDepthStencil))
         {
-            const D3D12_CLEAR_VALUE d3d12ClearValue = ToD3D12ClearValue(textureCreation);
+            const D3D12_CLEAR_VALUE d3d12ClearValue = ToD3D12ClearValue(creation);
 
             BenzinD3D12Call(device.GetD3D12Device()->CreateCommittedResource(
                 &d3d12HeapProperties,
@@ -130,7 +127,7 @@ namespace benzin
     static D3D12_SHADER_RESOURCE_VIEW_DESC ToD3D12ShaderResourceViewDesc(const Texture& texture, const TextureSrv& textureSrv)
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC d3d12SrvDesc = {};
-        d3d12SrvDesc.Format = (DXGI_FORMAT)textureSrv.m_Format;
+        d3d12SrvDesc.Format = textureSrv.m_DxgiFormat;
         d3d12SrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
         const bool isArrayTexture = texture.GetDepth() > 1;;
@@ -166,7 +163,7 @@ namespace benzin
     static D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(const Texture& texture, const TextureUav& textureUav)
     {
         D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = {};
-        d3d12UavDesc.Format = (DXGI_FORMAT)texture.GetFormat();
+        d3d12UavDesc.Format = texture.GetDxgiFormat();
 
         const bool isArrayTexture = texture.GetDepth() > 1;
         if (!isArrayTexture)
@@ -192,7 +189,7 @@ namespace benzin
         BenzinAssert(texture.GetDepth() == 1);
 
         D3D12_RENDER_TARGET_VIEW_DESC d3d12RtvDesc = {};
-        d3d12RtvDesc.Format = (DXGI_FORMAT)texture.GetFormat();
+        d3d12RtvDesc.Format = texture.GetDxgiFormat();
         d3d12RtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
         d3d12RtvDesc.Texture2D.MipSlice = 0;
         d3d12RtvDesc.Texture2D.PlaneSlice = 0;
@@ -268,7 +265,7 @@ namespace benzin
 
     uint32_t Texture::GetSubResourceCount() const
     {
-        return m_MipCount * m_Depth * m_Device.GetPlaneCountFromFormat(m_Format);
+        return m_MipCount * m_Depth * m_Device.GetPlaneCountFromFormat(m_DxgiFormat);
     }
 
     uint32_t Texture::GetMipWidth(uint16_t mipIndex) const
@@ -320,14 +317,14 @@ namespace benzin
     Descriptor Texture::CreateDetachedSrv(TextureSrv& textureSrv) const
     {
         // Set default format for depth stencil if format is not set
-        if (m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil) && textureSrv.m_Format == GraphicsFormat::Unknown)
+        if (m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil) && textureSrv.m_DxgiFormat == DXGI_FORMAT_UNKNOWN)
         {
-            BenzinAssert(m_Format == GraphicsFormat::D24Unorm_S8Uint);
-            textureSrv.m_Format = GraphicsFormat::R24Unorm_X8Typeless;
+            BenzinAssert(m_DxgiFormat == DXGI_FORMAT_D24_UNORM_S8_UINT);
+            textureSrv.m_DxgiFormat = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
         }
 
         textureSrv.m_IsCubeMap = textureSrv.m_IsCubeMap ? true : m_IsCubeMap;
-        textureSrv.m_Format = textureSrv.m_Format != GraphicsFormat::Unknown ? textureSrv.m_Format : m_Format;
+        textureSrv.m_DxgiFormat = textureSrv.m_DxgiFormat != DXGI_FORMAT_UNKNOWN ? textureSrv.m_DxgiFormat : m_DxgiFormat;
 
         if (textureSrv.m_DepthOffset == 0 && IsMaxUint(textureSrv.m_DepthCount))
         {
@@ -404,15 +401,15 @@ namespace benzin
 
         if (creation != nullptr)
         {
-            SetD3DObjectDebugName(m_D3D12Resource, creation->DebugName);
+            SetD3DObjectDebugName(m_D3D12Resource, creation->m_DebugName);
 
-            m_IsCubeMap = creation->IsCubeMap;
-            m_Format = creation->Format;
-            m_Width = creation->Width;
-            m_Height = creation->Height;
-            m_Depth = creation->Depth;
-            m_AccessFlags = creation->AccessFlags;
-            m_ClearValueVariant = creation->ClearValueVariant;
+            m_IsCubeMap = creation->m_IsCubeMap;
+            m_DxgiFormat = creation->m_DxgiFormat;
+            m_Width = creation->m_Width;
+            m_Height = creation->m_Height;
+            m_Depth = creation->m_Depth;
+            m_AccessFlags = creation->m_AccessFlags;
+            m_ClearValueVariant = creation->m_ClearValueVariant;
 
             // NOTE: When zero MipCount is provided in TextureCreation than D3D12 creates full mip chain
             // Using that actual mip count can be retrieved through D3D12_RESOURCE_DESC
@@ -420,7 +417,7 @@ namespace benzin
         }
         else
         {
-            m_Format = (GraphicsFormat)d3d12ResourceDesc.Format;
+            m_DxgiFormat = d3d12ResourceDesc.Format;
             m_Width = (uint32_t)d3d12ResourceDesc.Width;
             m_Height = d3d12ResourceDesc.Height;
             m_Depth = d3d12ResourceDesc.DepthOrArraySize;
@@ -448,7 +445,7 @@ namespace benzin
 BenzinDefineStdHashForType(benzin::TextureSrv, textureSrv,
 {
     size_t hash = typeid(benzin::TextureSrv).hash_code();
-    hash = benzin::HashCombine(hash, textureSrv.m_Format);
+    hash = benzin::HashCombine(hash, textureSrv.m_DxgiFormat);
     hash = benzin::HashCombine(hash, textureSrv.m_IsCubeMap);
     hash = benzin::HashCombine(hash, textureSrv.m_DepthOffset);
     hash = benzin::HashCombine(hash, textureSrv.m_DepthCount);

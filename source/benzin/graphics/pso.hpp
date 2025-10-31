@@ -1,14 +1,11 @@
 #pragma once
 
-#include "benzin/graphics/common.hpp"
-#include "benzin/graphics/shader.hpp"
-#include "benzin/graphics/format.hpp"
+#include <benzin/graphics/shader.hpp>
 
 namespace benzin
 {
 
     class Device;
-
     struct BlendState;
     struct DepthState;
     struct RasterizerState;
@@ -25,14 +22,14 @@ namespace benzin
         PsoStreamElement() = default;
 
 
-        auto& operator* (this auto&& self) { return self.m_D3D12StreamElement; }
-        auto* operator-> (this auto&& self) { return &self.m_D3D12StreamElement; }
+        auto& operator*(this auto&& self) { return self.m_D3D12StreamElement; }
+        auto* operator->(this auto&& self) { return &self.m_D3D12StreamElement; }
 
-        void operator= (const D3D12StreamElementT& other) { m_D3D12StreamElement = other; }
+        void operator=(const D3D12StreamElementT& other) { m_D3D12StreamElement = other; }
 
     private:
         D3D12_PIPELINE_STATE_SUBOBJECT_TYPE m_D3D12StreamElementType = _D3D12StreamElementType;
-        D3D12StreamElementT m_D3D12StreamElement{};
+        D3D12StreamElementT m_D3D12StreamElement = {};
     };
 #if defined(_MSC_VER)
     #pragma warning(pop)
@@ -54,43 +51,43 @@ namespace benzin
 
     struct PsoStreamBase
     {
-        PsoStreamElement_RootSignature RootSignature;
+        PsoStreamElement_RootSignature m_D3D12RootSignature;
 
         explicit PsoStreamBase(Device& device);
     };
 
     struct GraphicsPsoStream : PsoStreamBase
     {
-        PsoStreamElement_PixelShader Ps;
-        PsoStreamElement_RasterizerState RasterizerState;
-        PsoStreamElement_DepthStencilState DepthStencilState;
-        PsoStreamElement_BlendState BlendState;
-        PsoStreamElement_RenderTargetFormats RenderTargetFormats;
-        PsoStreamElement_DepthStencilFormat DepthStencilFormat;
+        PsoStreamElement_PixelShader m_D3D12Ps;
+        PsoStreamElement_RasterizerState m_D3D12RasterizerState;
+        PsoStreamElement_DepthStencilState m_D3D12DepthStencilState;
+        PsoStreamElement_BlendState m_D3D12BlendState;
+        PsoStreamElement_RenderTargetFormats m_D3D12RenderTargetFormats;
+        PsoStreamElement_DepthStencilFormat m_D3D12DepthStencilFormat;
 
         explicit GraphicsPsoStream(Device& device);
     };
 
     struct VertexPsoStream : GraphicsPsoStream
     {
-        PsoStreamElement_InputLayout InputLayout;
-        PsoStreamElement_VertexShader Vs;
-        PsoStreamElement_PrimitiveTopologyType PrimitiveTopologyType;
+        PsoStreamElement_InputLayout m_D3D12InputLayout;
+        PsoStreamElement_VertexShader m_D3D12Vs;
+        PsoStreamElement_PrimitiveTopologyType m_D3D12PrimitiveTopologyType;
 
         explicit VertexPsoStream(Device& device);
     };
 
     struct MeshPsoStream : GraphicsPsoStream
     {
-        PsoStreamElement_AmplificationShader As;
-        PsoStreamElement_MeshShader Ms;
+        PsoStreamElement_AmplificationShader m_D3D12As;
+        PsoStreamElement_MeshShader m_D3D12Ms;
 
         using GraphicsPsoStream::GraphicsPsoStream;
     };
 
     struct ComputePsoStream : PsoStreamBase
     {
-        PsoStreamElement_ComputeShader Cs;
+        PsoStreamElement_ComputeShader m_D3D12Cs;
 
         using PsoStreamBase::PsoStreamBase;
     };
@@ -147,19 +144,19 @@ namespace benzin
 
     public:
         void SetPs(ShaderInfo&& shader, ShaderBytecode bytecode);
-        void SetRasterizerState(RasterizerState state);
-        void SetDepthStencilState(DepthState depthState, StencilState stencilState);
-        void SetBlendState(BlendState state);
-        void SetRenderTargetFormats(std::span<const GraphicsFormat> formats);
-        void SetDepthStencilFormat(GraphicsFormat format);
+        void SetRasterizerState(const RasterizerState& state);
+        void SetDepthStencilState(const DepthState& depthState);
+        void SetBlendState(const BlendState& state);
+        void SetRenderTargetDxgiFormats(std::span<const DXGI_FORMAT> dxgiFormats);
+        void SetDepthStencilDxgiFormat(DXGI_FORMAT dxgiFormat);
 
         void ChangePs(ShaderBytecode bytecode);
     };
 
     struct VertexInputElement
     {
-        std::string_view Name;
-        GraphicsFormat Format;
+        std::string_view m_Name;
+        DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;
     };
 
     class VertexPso : public GraphicsPso<VertexPsoStream, 2>

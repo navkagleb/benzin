@@ -1,69 +1,51 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/pso.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/pso.hpp>
 
-#include "benzin/graphics/backend.hpp"
-#include "benzin/graphics/d3d12_assert.hpp"
-#include "benzin/graphics/d3d12_utils.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/render_states.hpp"
-#include "benzin/graphics/unified_root_signature.hpp"
+#include <benzin/graphics/backend.hpp>
+#include <benzin/graphics/common.hpp>
+#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/unified_root_signature.hpp>
 
 namespace benzin
 {
 
     static D3D12_RASTERIZER_DESC ToD3D12RasterizerState(const RasterizerState& rasterizerState)
     {
-        return D3D12_RASTERIZER_DESC
-        {
-            .FillMode = (D3D12_FILL_MODE)rasterizerState.FillMode,
-            .CullMode = (D3D12_CULL_MODE)rasterizerState.CullMode,
-            .FrontCounterClockwise = !rasterizerState.IsIndexOrderClockwise,
-            .DepthBias = rasterizerState.DepthBias,
-            .DepthBiasClamp = rasterizerState.DepthBiasClamp,
-            .SlopeScaledDepthBias = rasterizerState.SlopeScaledDepthBias,
-            .DepthClipEnable = true,
-            .MultisampleEnable = false,
-            .AntialiasedLineEnable = false,
-            .ForcedSampleCount = 0,
-            .ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
-        };
+        D3D12_RASTERIZER_DESC d3d12RasterizerDesc = {};
+        d3d12RasterizerDesc.FillMode = rasterizerState.m_D3D12FillMode;
+        d3d12RasterizerDesc.CullMode = rasterizerState.m_D3D12CullMode;
+        d3d12RasterizerDesc.FrontCounterClockwise = !rasterizerState.m_IsIndexOrderClockwise;
+        d3d12RasterizerDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS; // In Shader = DepthBias / 2 ^ 24
+        d3d12RasterizerDesc.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+        d3d12RasterizerDesc.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+        d3d12RasterizerDesc.DepthClipEnable = true;
+        d3d12RasterizerDesc.MultisampleEnable = false;
+        d3d12RasterizerDesc.AntialiasedLineEnable = false;
+        d3d12RasterizerDesc.ForcedSampleCount = 0;
+        d3d12RasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+        return d3d12RasterizerDesc;
     }
 
-    static D3D12_DEPTH_STENCIL_DESC ToD3D12DepthStencilState(const DepthState& depthState, const StencilState& stencilState)
+    static D3D12_DEPTH_STENCIL_DESC ToD3D12DepthStencilState(const DepthState& depthState)
     {
-        return D3D12_DEPTH_STENCIL_DESC
-        {
-            .DepthEnable = depthState.IsEnabled,
-            .DepthWriteMask = (D3D12_DEPTH_WRITE_MASK)depthState.IsWriteEnabled,
-            .DepthFunc = (D3D12_COMPARISON_FUNC)depthState.ComparisonFunction,
-            .StencilEnable = stencilState.IsEnabled,
-            .StencilReadMask = stencilState.ReadMask,
-            .StencilWriteMask = stencilState.WriteMask,
-            .FrontFace
-            {
-                .StencilFailOp = (D3D12_STENCIL_OP)stencilState.FrontFaceBehaviour.StencilFailOperation,
-                .StencilDepthFailOp = (D3D12_STENCIL_OP)stencilState.FrontFaceBehaviour.DepthFailOperation,
-                .StencilPassOp = (D3D12_STENCIL_OP)stencilState.FrontFaceBehaviour.PassOperation,
-                .StencilFunc = (D3D12_COMPARISON_FUNC)stencilState.FrontFaceBehaviour.StencilFunction,
-            },
-            .BackFace
-            {
-                .StencilFailOp = (D3D12_STENCIL_OP)stencilState.BackFaceBehaviour.StencilFailOperation,
-                .StencilDepthFailOp = (D3D12_STENCIL_OP)stencilState.BackFaceBehaviour.DepthFailOperation,
-                .StencilPassOp = (D3D12_STENCIL_OP)stencilState.BackFaceBehaviour.PassOperation,
-                .StencilFunc = (D3D12_COMPARISON_FUNC)stencilState.BackFaceBehaviour.StencilFunction,
-            },
-        };
+        D3D12_DEPTH_STENCIL_DESC d3d12DepthStencilDesc = {};
+        d3d12DepthStencilDesc.DepthEnable = depthState.m_IsEnabled;
+        d3d12DepthStencilDesc.DepthWriteMask = (D3D12_DEPTH_WRITE_MASK)depthState.m_IsWriteEnabled;
+        d3d12DepthStencilDesc.DepthFunc = depthState.m_D3D12ComparisonFunction;
+        d3d12DepthStencilDesc.StencilEnable = false;
+
+        return d3d12DepthStencilDesc;
     }
 
-    static D3D12_RENDER_TARGET_BLEND_DESC ToRenderTargetBlendDesc(const BlendState::RenderTargetState& blendRenderTargetState)
+    static D3D12_RENDER_TARGET_BLEND_DESC ToRenderTargetBlendDesc(const BlendState::RenderTargetState& renderTargetBlend)
     {
-        D3D12_RENDER_TARGET_BLEND_DESC d3d12RenderTargetBlendDesc
-        {
-            .RenderTargetWriteMask = blendRenderTargetState.ColorChannelFlags.GetRawBits(),
-        };
+        D3D12_RENDER_TARGET_BLEND_DESC d3d12RenderTargetBlendDesc = {};
+        d3d12RenderTargetBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
-        if (!blendRenderTargetState.IsEnabled)
+        if (!renderTargetBlend.m_IsEnabled)
         {
             d3d12RenderTargetBlendDesc.BlendEnable = false;
             d3d12RenderTargetBlendDesc.LogicOpEnable = false;
@@ -72,12 +54,12 @@ namespace benzin
         {
             d3d12RenderTargetBlendDesc.BlendEnable = true;
             d3d12RenderTargetBlendDesc.LogicOpEnable = false;
-            d3d12RenderTargetBlendDesc.SrcBlend = (D3D12_BLEND)blendRenderTargetState.ColorEquation.SourceFactor;
-            d3d12RenderTargetBlendDesc.DestBlend = (D3D12_BLEND)blendRenderTargetState.ColorEquation.DestinationFactor;
-            d3d12RenderTargetBlendDesc.BlendOp = (D3D12_BLEND_OP)blendRenderTargetState.ColorEquation.Operation;
-            d3d12RenderTargetBlendDesc.SrcBlendAlpha = (D3D12_BLEND)blendRenderTargetState.AlphaEquation.SourceFactor;
-            d3d12RenderTargetBlendDesc.DestBlendAlpha = (D3D12_BLEND)blendRenderTargetState.AlphaEquation.DestinationFactor;
-            d3d12RenderTargetBlendDesc.BlendOpAlpha = (D3D12_BLEND_OP)blendRenderTargetState.AlphaEquation.Operation;
+            d3d12RenderTargetBlendDesc.SrcBlend = renderTargetBlend.m_ColorEquation.m_D3D12SourceFactor;
+            d3d12RenderTargetBlendDesc.DestBlend = renderTargetBlend.m_ColorEquation.m_D3D12DestinationFactor;
+            d3d12RenderTargetBlendDesc.BlendOp = renderTargetBlend.m_ColorEquation.m_D3D12Operation;
+            d3d12RenderTargetBlendDesc.SrcBlendAlpha = renderTargetBlend.m_AlphaEquation.m_D3D12SourceFactor;
+            d3d12RenderTargetBlendDesc.DestBlendAlpha = renderTargetBlend.m_AlphaEquation.m_D3D12DestinationFactor;
+            d3d12RenderTargetBlendDesc.BlendOpAlpha = renderTargetBlend.m_AlphaEquation.m_D3D12Operation;
         }
 
         return d3d12RenderTargetBlendDesc;
@@ -85,21 +67,19 @@ namespace benzin
 
     static D3D12_BLEND_DESC ToD3D12BlendState(const BlendState& blendState)
     {
-        D3D12_BLEND_DESC d3d12BlendDesc
-        {
-            .AlphaToCoverageEnable = blendState.IsAlphaToCoverageStateEnabled,
-            .IndependentBlendEnable = blendState.IsIndependentBlendStateEnabled,
-        };
+        D3D12_BLEND_DESC d3d12BlendDesc = {};
+        d3d12BlendDesc.AlphaToCoverageEnable = false;
+        d3d12BlendDesc.IndependentBlendEnable = false;
 
-        if (blendState.RenderTargetStates.empty())
+        if (blendState.m_RenderTargetStates.empty())
         {
             d3d12BlendDesc.RenderTarget[0] = ToRenderTargetBlendDesc(BlendState::RenderTargetState{});
         }
         else
         {
-            for (const auto [i, renderTargetState] : blendState.RenderTargetStates | std::views::enumerate)
+            for (uint32_t i = 0; i < blendState.m_RenderTargetStates.size(); ++i)
             {
-                d3d12BlendDesc.RenderTarget[i] = ToRenderTargetBlendDesc(renderTargetState);
+                d3d12BlendDesc.RenderTarget[i] = ToRenderTargetBlendDesc(blendState.m_RenderTargetStates[i]);
             }
         }
 
@@ -114,43 +94,40 @@ namespace benzin
 
     static void ValidatePsoStream(const PsoStreamBase& stream)
     {
-        BenzinAssert(*stream.RootSignature != nullptr);
+        BenzinAssert(*stream.m_D3D12RootSignature != nullptr);
     }
 
     static void ValidatePsoStream(const GraphicsPsoStream& stream)
     {
         ValidatePsoStream((const PsoStreamBase&)stream);
 
-        if (stream.RenderTargetFormats->NumRenderTargets != 0)
+        if (stream.m_D3D12RenderTargetFormats->NumRenderTargets != 0)
         {
-            ValidateShaderBytecode(*stream.Ps);
+            ValidateShaderBytecode(*stream.m_D3D12Ps);
         }
 
-        for (uint32_t i = 0; i < stream.RenderTargetFormats->NumRenderTargets; ++i)
+        for (uint32_t i = 0; i < stream.m_D3D12RenderTargetFormats->NumRenderTargets; ++i)
         {
-            BenzinAssert(stream.RenderTargetFormats->RTFormats[i] != DXGI_FORMAT_UNKNOWN);
+            BenzinAssert(stream.m_D3D12RenderTargetFormats->RTFormats[i] != DXGI_FORMAT_UNKNOWN);
         }
     }
 
     static void ValidatePsoStream(const VertexPsoStream& stream)
     {
         ValidatePsoStream((const GraphicsPsoStream&)stream);
-
-        ValidateShaderBytecode(*stream.Vs);
+        ValidateShaderBytecode(*stream.m_D3D12Vs);
     }
 
     static void ValidatePsoStream(const MeshPsoStream& stream)
     {
         ValidatePsoStream((const GraphicsPsoStream&)stream);
-
-        ValidateShaderBytecode(*stream.Ms);
+        ValidateShaderBytecode(*stream.m_D3D12Ms);
     }
 
     static void ValidatePsoStream(const ComputePsoStream& stream)
     {
         ValidatePsoStream((const PsoStreamBase&)stream);
-
-        ValidateShaderBytecode(*stream.Cs);
+        ValidateShaderBytecode(*stream.m_D3D12Cs);
     }
 #endif
 
@@ -165,7 +142,7 @@ namespace benzin
 
     PsoStreamBase::PsoStreamBase(Device& device)
     {
-        RootSignature = device.GetUnifiedRootSignature().GetD3D12RootSignature();
+        m_D3D12RootSignature = device.GetUnifiedRootSignature().GetD3D12RootSignature();
     }
 
     // GraphicsPsoStream
@@ -173,12 +150,12 @@ namespace benzin
     GraphicsPsoStream::GraphicsPsoStream(Device& device)
         : PsoStreamBase{ device }
     {
-        RasterizerState = ToD3D12RasterizerState(benzin::RasterizerState{});
-        DepthStencilState = ToD3D12DepthStencilState(DepthState{}, StencilState{});
-        BlendState = ToD3D12BlendState(benzin::BlendState{});
-        DepthStencilFormat = DXGI_FORMAT_UNKNOWN;
+        m_D3D12RasterizerState = ToD3D12RasterizerState(RasterizerState{});
+        m_D3D12DepthStencilState = ToD3D12DepthStencilState(DepthState{});
+        m_D3D12BlendState = ToD3D12BlendState(BlendState{});
+        m_D3D12DepthStencilFormat = DXGI_FORMAT_UNKNOWN;
 
-        std::fill_n(RenderTargetFormats->RTFormats, std::size(RenderTargetFormats->RTFormats), DXGI_FORMAT_UNKNOWN);
+        std::fill_n(m_D3D12RenderTargetFormats->RTFormats, std::size(m_D3D12RenderTargetFormats->RTFormats), DXGI_FORMAT_UNKNOWN);
     }
 
     // VertexPsoStream
@@ -186,7 +163,7 @@ namespace benzin
     VertexPsoStream::VertexPsoStream(Device& device)
         : GraphicsPsoStream{ device }
     {
-        PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        m_D3D12PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     }
 
     // Pso
@@ -246,36 +223,36 @@ namespace benzin
     }
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetRasterizerState(RasterizerState state)
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetRasterizerState(const RasterizerState& state)
     {
-        m_Stream.RasterizerState = ToD3D12RasterizerState(state);
+        m_Stream.m_D3D12RasterizerState = ToD3D12RasterizerState(state);
     }
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetDepthStencilState(DepthState depthState, StencilState stencilState)
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetDepthStencilState(const DepthState& depthState)
     {
-        this->m_Stream.DepthStencilState = ToD3D12DepthStencilState(depthState, stencilState);
+        this->m_Stream.m_D3D12DepthStencilState = ToD3D12DepthStencilState(depthState);
     }
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetBlendState(BlendState state)
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetBlendState(const BlendState& state)
     {
-        m_Stream.BlendState = ToD3D12BlendState(state);
+        m_Stream.m_D3D12BlendState = ToD3D12BlendState(state);
     }
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetRenderTargetFormats(std::span<const GraphicsFormat> formats)
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetRenderTargetDxgiFormats(std::span<const DXGI_FORMAT> dxgiFormats)
     {
-        BenzinAssert(formats.size() <= 8);
+        BenzinAssert(dxgiFormats.size() <= 8);
 
-        m_Stream.RenderTargetFormats->NumRenderTargets = (uint8_t)formats.size();
-        memcpy(m_Stream.RenderTargetFormats->RTFormats, formats.data(), formats.size() * sizeof(GraphicsFormat));
+        m_Stream.m_D3D12RenderTargetFormats->NumRenderTargets = (uint8_t)dxgiFormats.size();
+        memcpy(m_Stream.m_D3D12RenderTargetFormats->RTFormats, dxgiFormats.data(), dxgiFormats.size() * sizeof(DXGI_FORMAT));
     }
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>
-    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetDepthStencilFormat(GraphicsFormat format)
+    void GraphicsPso<PsoStreamT, _MaxShaderCount>::SetDepthStencilDxgiFormat(DXGI_FORMAT dxgiFormat)
     {
-        m_Stream.DepthStencilFormat = (DXGI_FORMAT)format;
+        m_Stream.m_D3D12DepthStencilFormat = dxgiFormat;
     }
 
     template <typename PsoStreamT, uint32_t _MaxShaderCount>
@@ -283,35 +260,35 @@ namespace benzin
     {
         BenzinAssert(!bytecode.empty());
 
-        m_Stream.Ps->pShaderBytecode = bytecode.data();
-        m_Stream.Ps->BytecodeLength = bytecode.size();
+        m_Stream.m_D3D12Ps->pShaderBytecode = bytecode.data();
+        m_Stream.m_D3D12Ps->BytecodeLength = bytecode.size();
     }
 
     // VertexPso
 
     VertexPso::~VertexPso()
     {
-        auto* d3d12InputElements = const_cast<D3D12_INPUT_ELEMENT_DESC*>(Pso::m_Stream.InputLayout->pInputElementDescs);
+        auto* d3d12InputElements = const_cast<D3D12_INPUT_ELEMENT_DESC*>(Pso::m_Stream.m_D3D12InputLayout->pInputElementDescs);
         if (d3d12InputElements != nullptr)
         {
             delete[] d3d12InputElements;
 
-            Pso::m_Stream.InputLayout->pInputElementDescs = nullptr;
-            Pso::m_Stream.InputLayout->NumElements = 0;
+            Pso::m_Stream.m_D3D12InputLayout->pInputElementDescs = nullptr;
+            Pso::m_Stream.m_D3D12InputLayout->NumElements = 0;
         }
     }
 
     void VertexPso::SetInputLayout(std::span<const VertexInputElement> inputLayout)
     {
         BenzinAssert(!inputLayout.empty());
-        BenzinAssert(Pso::m_Stream.InputLayout->pInputElementDescs == nullptr);
+        BenzinAssert(Pso::m_Stream.m_D3D12InputLayout->pInputElementDescs == nullptr);
 
         uint32_t fieldByteOffsetInBytes = 0;
 
-        auto& inputElementCount = Pso::m_Stream.InputLayout->NumElements;
+        auto& inputElementCount = Pso::m_Stream.m_D3D12InputLayout->NumElements;
         inputElementCount = (uint32_t)inputLayout.size();
 
-        auto*& d3d12InputElements = const_cast<D3D12_INPUT_ELEMENT_DESC*&>(Pso::m_Stream.InputLayout->pInputElementDescs);
+        auto*& d3d12InputElements = const_cast<D3D12_INPUT_ELEMENT_DESC*&>(Pso::m_Stream.m_D3D12InputLayout->pInputElementDescs);
         d3d12InputElements = new D3D12_INPUT_ELEMENT_DESC[inputElementCount];
 
         for (uint32_t i = 0; i < inputElementCount; ++i)
@@ -319,15 +296,15 @@ namespace benzin
             const VertexInputElement& inputElement = inputLayout[i];
 
             D3D12_INPUT_ELEMENT_DESC& d3d12InputElement = d3d12InputElements[i];
-            d3d12InputElement.SemanticName = inputElement.Name.data();
+            d3d12InputElement.SemanticName = inputElement.m_Name.data();
             d3d12InputElement.SemanticIndex = 0;
-            d3d12InputElement.Format = (DXGI_FORMAT)inputElement.Format;
+            d3d12InputElement.Format = inputElement.m_DxgiFormat;
             d3d12InputElement.InputSlot = 0;
             d3d12InputElement.AlignedByteOffset = fieldByteOffsetInBytes;
             d3d12InputElement.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
             d3d12InputElement.InstanceDataStepRate = 0;
 
-            fieldByteOffsetInBytes += GetFormatSizeInBytes(inputElement.Format);
+            fieldByteOffsetInBytes += GetDxgiFormatSizeInBytes(inputElement.m_DxgiFormat);
         }
     }
 
@@ -341,8 +318,8 @@ namespace benzin
     {
         BenzinAssert(!bytecode.empty());
 
-        Pso::m_Stream.Vs->pShaderBytecode = bytecode.data();
-        Pso::m_Stream.Vs->BytecodeLength = bytecode.size();
+        Pso::m_Stream.m_D3D12Vs->pShaderBytecode = bytecode.data();
+        Pso::m_Stream.m_D3D12Vs->BytecodeLength = bytecode.size();
     }
 
     // MeshPso
@@ -363,16 +340,16 @@ namespace benzin
     {
         BenzinAssert(!bytecode.empty());
 
-        Pso::m_Stream.As->pShaderBytecode = bytecode.data();
-        Pso::m_Stream.As->BytecodeLength = bytecode.size();
+        Pso::m_Stream.m_D3D12As->pShaderBytecode = bytecode.data();
+        Pso::m_Stream.m_D3D12As->BytecodeLength = bytecode.size();
     }
 
     void MeshPso::ChangeMs(ShaderBytecode bytecode)
     {
         BenzinAssert(!bytecode.empty());
 
-        Pso::m_Stream.Ms->pShaderBytecode = bytecode.data();
-        Pso::m_Stream.Ms->BytecodeLength = bytecode.size();
+        Pso::m_Stream.m_D3D12Ms->pShaderBytecode = bytecode.data();
+        Pso::m_Stream.m_D3D12Ms->BytecodeLength = bytecode.size();
     }
 
     // ComputePso
@@ -387,8 +364,8 @@ namespace benzin
     {
         BenzinAssert(!bytecode.empty());
 
-        Pso::m_Stream.Cs->pShaderBytecode = bytecode.data();
-        Pso::m_Stream.Cs->BytecodeLength = bytecode.size();
+        Pso::m_Stream.m_D3D12Cs->pShaderBytecode = bytecode.data();
+        Pso::m_Stream.m_D3D12Cs->BytecodeLength = bytecode.size();
     }
 
 }

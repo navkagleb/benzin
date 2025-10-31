@@ -1,7 +1,6 @@
 #pragma once
 
-#include "benzin/graphics/render_states.hpp"
-#include "benzin/graphics/format.hpp"
+#include <benzin/graphics/common.hpp>
 
 namespace benzin
 {
@@ -13,74 +12,68 @@ namespace benzin
     class RayTracing_Pso;
     class ShaderManager;
     class VertexPso;
-
     struct VertexInputElement;
 
     struct ShaderProxy
     {
-        std::string_view FileName;
-        std::string_view EntryPoint;
-        std::vector<std::string_view> Defines;
+        std::string_view m_FileName;
+        std::string_view m_EntryPoint;
+        std::vector<std::string_view> m_Defines;
 
         explicit ShaderProxy(std::string_view entryPoint)
-            : EntryPoint{ entryPoint }
+            : m_EntryPoint{ entryPoint }
         {}
     };
 
     struct GraphicsPsoProxy
     {
-        ShaderProxy Ps{ "PsMain" };
-        RasterizerState RasterizerState;
-        DepthState DepthState
-        {
-            .IsEnabled = false,
-            .IsWriteEnabled = false,
-        };
-        StencilState StencilState;
-        std::vector<GraphicsFormat> RenderTargetFormats;
-        GraphicsFormat DepthStencilFormat = GraphicsFormat::Unknown;
-        BlendState BlendState;
+        ShaderProxy m_Ps{ "PsMain" };
+        RasterizerState m_RasterizerState;
+        DepthState m_DepthState;
+        std::vector<DXGI_FORMAT> m_RenderTargetDxgiFormats;
+        DXGI_FORMAT m_DepthStencilDxgiFormat = DXGI_FORMAT_UNKNOWN;
+        BlendState m_BlendState;
     };
 
     struct VertexPsoProxy : GraphicsPsoProxy
     {
-        ShaderProxy Vs{ "VsMain" };
-        std::vector<VertexInputElement> InputLayout;
+        ShaderProxy m_Vs{ "VsMain" };
+        std::vector<VertexInputElement> m_InputLayout;
     };
 
     struct MeshPsoProxy : GraphicsPsoProxy
     {
-        ShaderProxy As{ "AsMain" };
-        ShaderProxy Ms{ "MsMain" };
+        ShaderProxy m_As{ "AsMain" };
+        ShaderProxy m_Ms{ "MsMain" };
     };
 
     struct ComputePsoProxy
     {
-        ShaderProxy Cs{ "CsMain" };
+        ShaderProxy m_Cs{ "CsMain" };
     };
 
     struct RayTracing_PsoProxy
     {
         struct
         {
-            std::string_view FileName;
-            std::vector<std::string_view> Defines;
-        } ShaderLibrary;
+            std::string_view m_FileName;
+            std::vector<std::string_view> m_Defines;
+        } m_ShaderLibrary;
 
-        std::string_view RayGenerationEntryPoint;
-        std::string_view MissEntryPoint;
-
-        struct
-        {
-            std::string_view Name;
-            std::string_view ClosestHitEntryPoint;
-        } HitGroup;
+        std::string_view m_RayGenerationEntryPoint;
+        std::string_view m_MissEntryPoint;
 
         struct
         {
-            uint32_t PayloadSizeInBytes;
-            uint32_t AttributeSizeInBytes;
-        } ShaderConfig;
+            std::string_view m_Name;
+            std::string_view m_ClosestHitEntryPoint;
+        } m_HitGroup;
+
+        struct
+        {
+            uint32_t m_PayloadSizeInBytes;
+            uint32_t m_AttributeSizeInBytes;
+        } m_ShaderConfig;
     };
 
     class PsoManager
@@ -117,7 +110,6 @@ namespace benzin
 
         void RecompilePsoCallback();
 
-    private:
         Device& m_Device;
         ShaderManager& m_ShaderManager;
 

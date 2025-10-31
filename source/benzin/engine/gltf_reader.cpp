@@ -386,7 +386,7 @@ namespace benzin
             BenzinAssert(gltfImage.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE);
 
             TextureImage textureImage;
-            textureImage.m_Format = textureMapping.m_IsSrgb ? GraphicsFormat::Rgba8Unorm_Srgb : GraphicsFormat::Rgba8Unorm;
+            textureImage.m_DxgiFormat = textureMapping.m_IsSrgb ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
             textureImage.m_Width = (uint32_t)gltfImage.width;
             textureImage.m_Height = (uint32_t)gltfImage.height;
 

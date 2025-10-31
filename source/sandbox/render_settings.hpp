@@ -1,8 +1,6 @@
 #pragma once
 
-#include <benzin/graphics/format.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
-
 #include <shaders/joint/tone_mapping_resources.hpp>
 
 namespace sandbox
@@ -10,13 +8,12 @@ namespace sandbox
 
     struct GBufferSettings
     {
-        static constexpr auto s_Color0Format = benzin::GraphicsFormat::Rgba8Unorm; // Albedo, Albedo, Albedo, Roughness
-        static constexpr auto s_Color1Format = benzin::GraphicsFormat::Rgba8Unorm; // Emissive, Emissive, Emissive, Metallic
-        static constexpr auto s_Color2Format = benzin::GraphicsFormat::Rgba16Float; // WorldNormal, WorldNormal, WorldNormal, None
-        static constexpr auto s_Color3Format = benzin::GraphicsFormat::Rgba16Float; // UvMv, UvMv, ViewDepthMv, None
-        static constexpr auto s_Color4Format = benzin::GraphicsFormat::R32Float; // ViewDepth
-
-        static constexpr auto s_DepthStencilFormat = benzin::GraphicsFormat::D24Unorm_S8Uint; // TODO: Can be used D32 instead
+        static const DXGI_FORMAT ms_Color0DxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM; // Albedo, Albedo, Albedo, Roughness
+        static const DXGI_FORMAT ms_Color1DxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM; // Emissive, Emissive, Emissive, Metallic
+        static const DXGI_FORMAT ms_Color2DxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT; // WorldNormal, WorldNormal, WorldNormal, None
+        static const DXGI_FORMAT ms_Color3DxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT; // UvMv, UvMv, ViewDepthMv, None
+        static const DXGI_FORMAT ms_Color4DxgiFormat = DXGI_FORMAT_R32_FLOAT; // ViewDepth
+        static const DXGI_FORMAT ms_DepthStencilDxgiFormat = DXGI_FORMAT_D24_UNORM_S8_UINT; // TODO: Can be used D32 instead
 
         bool m_IsIndirectDrawEnabled = true;
         bool m_IsMeshPipelineUsed = true;
@@ -59,24 +56,24 @@ namespace sandbox
 
     struct SigmaDenoiserSettings
     {
-        const benzin::GraphicsFormat PenumbraFormat = benzin::GraphicsFormat::R16Float;
-        const uint32_t MaxHistoryLength = 7;
+        static const DXGI_FORMAT ms_PenumbraDxgiFormat = DXGI_FORMAT_R16_FLOAT;
+        static const uint32_t ms_MaxHistoryLength = 7;
 
-        bool IsEnabled = true;
-        float PlaneDistanceSensitivity = 0.02f; // (normalized %) - represents maximum allowed deviation from the local tangent plane
-        float DisocclusionThreshold = 0.02f; // (normalized %)
-        bool IsClearEnabled = false;
-        bool IsTileSmoothingEnabled = true;
-        bool IsPostBlurEnabled = true;
-        bool IsTemporalStabilizationEnabled = true;
+        bool m_IsEnabled = true;
+        float m_PlaneDistanceSensitivity = 0.02f; // (normalized %) - represents maximum allowed deviation from the local tangent plane
+        float m_DisocclusionThreshold = 0.02f; // (normalized %)
+        bool m_IsClearEnabled = false;
+        bool m_IsTileSmoothingEnabled = true;
+        bool m_IsPostBlurEnabled = true;
+        bool m_IsTemporalStabilizationEnabled = true;
 
-        uint32_t HistoryLength = 5;
-        float StabilizationStrength = 0.0;
+        uint32_t m_HistoryLength = 5;
+        float m_StabilizationStrength = 0.0;
     };
 
     struct DeferredLightingSettings
     {
-        static constexpr auto s_HdrColorFormat = benzin::GraphicsFormat::Rgba16Float;
+        static const DXGI_FORMAT ms_HdrColorDxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
     };
 
     struct ToneMappingSettings

@@ -46,7 +46,6 @@ namespace benzin
 
     static uint32_t g_AdapterIndex = g_MaxU32;
     static std::string_view g_AdapterName;
-    static GraphicsFormat g_BackBufferFormat = GraphicsFormat::Rgba8Unorm;
     static bool g_IsGpuUploadHeapsEnabled = true;
 
     static bool g_IsGpuValidationEnabled = true;
@@ -128,7 +127,6 @@ namespace benzin
     BenzinImplCmdLineArg(IsNvApiWrapperEnabled, g_IsNvApiWrapperEnabled)
     BenzinImplCmdLineArg(GetAdapterIndex, g_AdapterIndex)
     BenzinImplCmdLineArg(GetAdapterName, g_AdapterName)
-    BenzinImplCmdLineArg(GetBackBufferFormat, g_BackBufferFormat)
     BenzinImplCmdLineArg(IsGpuUploadHeapsEnabled, g_IsGpuUploadHeapsEnabled)
     BenzinImplCmdLineArg(IsGpuValidationEnabled, g_IsGpuValidationEnabled)
     BenzinImplCmdLineArg(IsSynchronizedCommandQueueValidationEnabled, g_IsSynchronizedCommandQueueValidationEnabled)

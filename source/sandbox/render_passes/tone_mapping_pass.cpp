@@ -23,11 +23,11 @@ namespace sandbox
 
     ToneMappingPass::ToneMappingPass()
     {
-        const auto createPso = [](PsoId id, std::string_view csFileName)
+        const auto createPso = [](PsoId id, std::string_view fileName)
         {
-            ms_PsoManager->Create(id, [id, csFileName](benzin::ComputePsoProxy& proxy)
+            ms_PsoManager->Create(id, [id, fileName](benzin::ComputePsoProxy& proxy)
             {
-                proxy.Cs.FileName = csFileName;
+                proxy.m_Cs.m_FileName = fileName;
             });
         };
 
@@ -40,33 +40,33 @@ namespace sandbox
 
         ms_Resources->Create(BufferId::ToneMapping_LuminanceHistogram, benzin::BufferCreation
         {
-            .DebugName = "ToneMapping_LuminanceHistogram",
-            .HeapType = benzin::GpuHeapType::Default,
-            .Type = benzin::BufferType::Format,
-            .Format = benzin::GraphicsFormat::R32Uint,
-            .ElementSizeInBytes = sizeof(uint32_t),
-            .ElementCount = luminanceHistogramWidth * luminanceHistogramHeight,
-            .IsUnorderedAccessAllowed = true,
+            .m_DebugName = "ToneMapping_LuminanceHistogram",
+            .m_HeapType = benzin::GpuHeapType::Default,
+            .m_Type = benzin::BufferType::Format,
+            .m_DxgiFormat = DXGI_FORMAT_R32_UINT,
+            .m_ElementSizeInBytes = sizeof(uint32_t),
+            .m_ElementCount = luminanceHistogramWidth * luminanceHistogramHeight,
+            .m_IsUnorderedAccessAllowed = true,
         });
 
         ms_Resources->Create(TextureId::ToneMapping_AvgLuminance, benzin::TextureCreation
         {
-            .DebugName = "ToneMapping_AvgLuminance",
-            .Format = benzin::GraphicsFormat::R16Float,
-            .Width = 1,
-            .Height = 1,
-            .MipCount = 1,
-            .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
+            .m_DebugName = "ToneMapping_AvgLuminance",
+            .m_DxgiFormat = DXGI_FORMAT_R16_FLOAT,
+            .m_Width = 1,
+            .m_Height = 1,
+            .m_MipCount = 1,
+            .m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
         });
 
         ms_Resources->Create(TextureId::ToneMapping_DebugLuminanceHistogram, benzin::TextureCreation
         {
-            .DebugName = "ToneMapping_DebugLuminanceHistogram",
-            .Format = benzin::GraphicsFormat::R8Unorm,
-            .Width = luminanceHistogramWidth,
-            .Height = luminanceHistogramHeight,
-            .MipCount = 1,
-            .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
+            .m_DebugName = "ToneMapping_DebugLuminanceHistogram",
+            .m_DxgiFormat = DXGI_FORMAT_R8_UNORM,
+            .m_Width = luminanceHistogramWidth,
+            .m_Height = luminanceHistogramHeight,
+            .m_MipCount = 1,
+            .m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
         });
     }
 
@@ -86,12 +86,12 @@ namespace sandbox
     {
         ms_Resources->Create(TextureId::Final, benzin::TextureCreation
         {
-            .DebugName = "Final",
-            .Format = benzin::GraphicsFormat::Rgba8Unorm,
-            .Width = ms_RenderViewportWidth,
-            .Height = ms_RenderViewportHeight,
-            .MipCount = 1,
-            .AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess | benzin::TextureAccessFlag::AllowRenderTarget,
+            .m_DebugName = "Final",
+            .m_DxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM,
+            .m_Width = ms_RenderViewportWidth,
+            .m_Height = ms_RenderViewportHeight,
+            .m_MipCount = 1,
+            .m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess | benzin::TextureAccessFlag::AllowRenderTarget,
         });
     }
 

@@ -87,35 +87,35 @@ namespace sandbox
     template <>
     void DrawSettings(SigmaDenoiserSettings& settings)
     {
-        ImGui::Checkbox("Enable ### SigmaDenoiser", &settings.IsEnabled);
+        ImGui::Checkbox("Enable ### SigmaDenoiser", &settings.m_IsEnabled);
 
-        ImGui::BeginDisabled(!settings.IsEnabled);
+        ImGui::BeginDisabled(!settings.m_IsEnabled);
         BenzinExecuteOnScopeExit([] { ImGui::EndDisabled(); });
 
-        ImGui::Checkbox("Clear pass", &settings.IsClearEnabled);
+        ImGui::Checkbox("Clear pass", &settings.m_IsClearEnabled);
 
         ImGui::NewLine();
         ImGui::SeparatorText("CLASSIFICATION");
         {
-            ImGui::Checkbox("Tile smoothing", &settings.IsTileSmoothingEnabled);
+            ImGui::Checkbox("Tile smoothing", &settings.m_IsTileSmoothingEnabled);
         }
 
         ImGui::NewLine();
         ImGui::SeparatorText("BLUR");
         {
-            ImGui::Checkbox("Post blur pass", &settings.IsPostBlurEnabled);
-            ImGui::DragFloat("Plane distance sensitivity %", &settings.PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
+            ImGui::Checkbox("Post blur pass", &settings.m_IsPostBlurEnabled);
+            ImGui::DragFloat("Plane distance sensitivity %", &settings.m_PlaneDistanceSensitivity, 0.0001f, 0.0f, 0.1f);
         }
 
         ImGui::NewLine();
         ImGui::SeparatorText("TEMPORAL STABILIZATION");
         {
-            ImGui::Checkbox("Temporal stabilization pass", &settings.IsTemporalStabilizationEnabled);
-            ImGui::DragFloat("Disocclusion threshold %", &settings.DisocclusionThreshold, 0.0001f, 0.0f, 0.2f);
+            ImGui::Checkbox("Temporal stabilization pass", &settings.m_IsTemporalStabilizationEnabled);
+            ImGui::DragFloat("Disocclusion threshold %", &settings.m_DisocclusionThreshold, 0.0001f, 0.0f, 0.2f);
 
             ImGui::BeginDisabled(true);
-            ImGui::SliderInt("History length", (int*)&settings.HistoryLength, 0, settings.MaxHistoryLength, "%d", ImGuiSliderFlags_NoInput);
-            ImGui::DragFloat("Stabilization strength", &settings.StabilizationStrength);
+            ImGui::SliderInt("History length", (int*)&settings.m_HistoryLength, 0, settings.ms_MaxHistoryLength, "%d", ImGuiSliderFlags_NoInput);
+            ImGui::DragFloat("Stabilization strength", &settings.m_StabilizationStrength);
             ImGui::EndDisabled();
         }
     }

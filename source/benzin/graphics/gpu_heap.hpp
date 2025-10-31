@@ -1,7 +1,7 @@
 #pragma once
 
 #include <benzin/core/buffer_writer.hpp>
-#include <benzin/graphics/format.hpp>
+#include <benzin/graphics/common.hpp>
 
 namespace benzin
 {
@@ -62,21 +62,21 @@ namespace benzin
         auto GetOffsetInBytes() const { return m_OffsetInBytes; }
 
         template <typename T>
-        std::unique_ptr<Buffer> AllocateBuffer(std::string_view debugName, std::span<const T> elements, GraphicsFormat format = GraphicsFormat::Unknown)
+        std::unique_ptr<Buffer> AllocateBuffer(std::string_view debugName, std::span<const T> elements, DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN)
         {
-            if (format != benzin::GraphicsFormat::Unknown)
+            if (dxgiFormat != DXGI_FORMAT_UNKNOWN)
             {
-                BenzinAssert(GetFormatSizeInBytes(format) == sizeof(T));
-                return AllocateFormatBuffer(debugName, (uint32_t)elements.size(), format);
+                BenzinAssert(GetDxgiFormatSizeInBytes(dxgiFormat) == sizeof(T));
+                return AllocateFormatBuffer(debugName, (uint32_t)elements.size(), dxgiFormat);
             }
 
             return AllocateStructuredBuffer(debugName, (uint32_t)elements.size(), sizeof(T));
         }
 
         template <typename T>
-        std::unique_ptr<Buffer> AllocateAndWriteBuffer(std::string_view debugName, std::span<const T> elements, GraphicsFormat format = GraphicsFormat::Unknown)
+        std::unique_ptr<Buffer> AllocateAndWriteBuffer(std::string_view debugName, std::span<const T> elements, DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN)
         {
-            auto buffer = AllocateBuffer(debugName, elements, format);
+            auto buffer = AllocateBuffer(debugName, elements, dxgiFormat);
 
             BenzinAssert(buffer->GetCpuMappedData() != nullptr);
 
@@ -88,7 +88,7 @@ namespace benzin
 
         std::unique_ptr<Buffer> AllocateBuffer(const BufferConfigurator& configurator);
         std::unique_ptr<Buffer> AllocateStructuredBuffer(std::string_view debugName, uint32_t elementCount, uint32_t elementSizeInBytes);
-        std::unique_ptr<Buffer> AllocateFormatBuffer(std::string_view debugName, uint32_t elementCount, GraphicsFormat format);
+        std::unique_ptr<Buffer> AllocateFormatBuffer(std::string_view debugName, uint32_t elementCount, DXGI_FORMAT dxgiFormat);
 
         void Reset();
 

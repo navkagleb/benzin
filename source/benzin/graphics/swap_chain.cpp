@@ -13,57 +13,39 @@
 namespace benzin
 {
 
-    static bool IsTearingSupported(const Backend& backend)
+    SwapChain::SwapChain(const SwapChainCreation& creation)
+        : m_Device{ creation.m_Device }
     {
         uint32_t isTearingSupported = 0;
-        BenzinD3D12Call(backend.GetDxgiFactory()->CheckFeatureSupport(
+        BenzinD3D12Call(creation.m_Backend.GetDxgiFactory()->CheckFeatureSupport(
             DXGI_FEATURE_PRESENT_ALLOW_TEARING,
             &isTearingSupported,
             sizeof(isTearingSupported)));
 
-        return isTearingSupported;
-    }
-
-    static uint32_t GetDxgiSwapChainFlags(const Backend& backend)
-    {
-        uint32_t flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-
-        if (IsTearingSupported(backend))
+        uint32_t dxgiSwapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+        if (isTearingSupported)
         {
-            flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+            dxgiSwapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
         }
 
-        return flags;
-    }
-
-    //
-
-    SwapChain::SwapChain(const SwapChainCreation& creation)
-        : m_Device{ creation.m_Device }
-    {
-        const uint32_t width = creation.m_Window.GetWidth();
-        const uint32_t height = creation.m_Window.GetHeight();
-
-        const DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc1
-        {
-            .Width = width,
-            .Height = height,
-            .Format = (DXGI_FORMAT)GraphicsFormat::Rgba8Unorm,
-            .Stereo = false,
-            .SampleDesc{ 1, 0 },
-            .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-            .BufferCount = BENZIN_FRAME_COUNT,
-            .Scaling = DXGI_SCALING_STRETCH,
-            .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
-            .AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED,
-            .Flags = GetDxgiSwapChainFlags(creation.m_Backend),
-        };
+        DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc = {};
+        dxgiSwapChainDesc.Width = creation.m_Window.GetWidth();
+        dxgiSwapChainDesc.Height = creation.m_Window.GetHeight();
+        dxgiSwapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        dxgiSwapChainDesc.Stereo = false;
+        dxgiSwapChainDesc.SampleDesc = { 1, 0 };
+        dxgiSwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        dxgiSwapChainDesc.BufferCount = BENZIN_FRAME_COUNT;
+        dxgiSwapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+        dxgiSwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+        dxgiSwapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+        dxgiSwapChainDesc.Flags = dxgiSwapChainFlags;
 
         ComPtr<IDXGISwapChain1> dxgiSwapChain1;
         BenzinD3D12Call(creation.m_Backend.GetDxgiFactory()->CreateSwapChainForHwnd(
             creation.m_Device.GetGraphicsCmdQueue().GetD3D12CommandQueue(),
             creation.m_Window.GetWin64Window(),
-            &dxgiSwapChainDesc1,
+            &dxgiSwapChainDesc,
             nullptr,
             nullptr,
             &dxgiSwapChain1));
@@ -81,8 +63,7 @@ namespace benzin
 
     SwapChain::~SwapChain()
     {
-        constexpr bool isForceRelease = false;
-        ReleaseBackBuffers(isForceRelease);
+        ReleaseBackBuffers(false);
         SafeReleaseD3DObject(m_DxgiSwapChain);
     }
 
@@ -98,8 +79,7 @@ namespace benzin
         DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc = {};
         BenzinD3D12Call(m_DxgiSwapChain->GetDesc1(&dxgiSwapChainDesc));
 
-        constexpr bool isForceRelease = true;
-        ReleaseBackBuffers(isForceRelease);
+        ReleaseBackBuffers(true);
 
         BenzinD3D12Call(m_DxgiSwapChain->ResizeBuffers(
             dxgiSwapChainDesc.BufferCount,
