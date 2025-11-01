@@ -62,6 +62,6 @@ namespace joint
 
 }
 
-#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0)
-    #define BenzinRenderPassConstsType0 joint::ToneMappingConsts
+#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType)
+    #define BenzinRenderPassConstsType joint::ToneMappingConsts
 #endif

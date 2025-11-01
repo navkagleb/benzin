@@ -63,6 +63,6 @@ namespace joint
 
 }
 
-#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0)
-    #define BenzinRenderPassConstsType0 joint::SigmaConsts
+#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType)
+    #define BenzinRenderPassConstsType joint::SigmaConsts
 #endif

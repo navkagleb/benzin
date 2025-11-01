@@ -21,6 +21,6 @@ namespace joint
 
 }
 
-#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0)
-    #define BenzinRenderPassConstsType0 joint::TextureViewerConsts
+#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType)
+    #define BenzinRenderPassConstsType joint::TextureViewerConsts
 #endif

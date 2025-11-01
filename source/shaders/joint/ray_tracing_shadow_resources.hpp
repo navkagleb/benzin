@@ -27,6 +27,6 @@ namespace joint
 
 }
 
-#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0)
-    #define BenzinRenderPassConstsType0 joint::RayTracing_ShadowConsts
+#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType)
+    #define BenzinRenderPassConstsType joint::RayTracing_ShadowConsts
 #endif

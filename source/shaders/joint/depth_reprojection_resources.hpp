@@ -24,6 +24,6 @@ namespace joint
 
 }
 
-#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType0) && defined(DEPTH_REDUCTION)
-    #define BenzinRenderPassConstsType0 joint::DepthReductionPassConsts
+#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType) && defined(DEPTH_REDUCTION)
+    #define BenzinRenderPassConstsType joint::DepthReductionPassConsts
 #endif
