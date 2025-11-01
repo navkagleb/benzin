@@ -26,8 +26,13 @@ namespace benzin
         AdlWrapper::Initialize();
         NvApiWrapper::Initialize();
 
-        EnableD3D12DebugLayer();
-        EnableDred(); // TODO: Check if temp device is supported
+        {
+            ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
+            BenzinD3D12Call(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));
+            BenzinD3D12Call(dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true));
+            BenzinD3D12Call(dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true));
+            BenzinD3D12Call(dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_WARNING, true));
+        }
 
         CreateDxgiFactory();
         GatherDxgiAdapters();
@@ -68,6 +73,27 @@ namespace benzin
         m_DxgiAdapters.clear();
 
         SafeReleaseD3DObject(m_DxgiFactory);
+
+        {
+            ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
+            BenzinD3D12Call(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)));
+            BenzinD3D12Call(dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_WARNING, false));
+        }
+
+        {
+            const HMODULE dxgiDebugDll = LoadLibraryEx("dxgidebug.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+            if (dxgiDebugDll != nullptr)
+            {
+                auto DXGIGetDebugInterface = (HRESULT(WINAPI*)(REFIID, void**))(::GetProcAddress(dxgiDebugDll, "DXGIGetDebugInterface"));
+
+                if (DXGIGetDebugInterface != nullptr)
+                {
+                    ComPtr<IDXGIDebug> dxgiDebug;
+                    BenzinD3D12Call(DXGIGetDebugInterface(IID_PPV_ARGS(&dxgiDebug)));
+                    BenzinD3D12Call(dxgiDebug->ReportLiveObjects(DXGI_DEBUG_DXGI, DXGI_DEBUG_RLO_ALL));
+                }
+            }
+        }
     }
 
     const AdapterInfo& Backend::GetAdapterInfo(uint32_t adapterIndex) const

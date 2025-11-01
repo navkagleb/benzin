@@ -6,6 +6,8 @@
 namespace benzin
 {
 
+    extern std::string_view DxgiErrorToString(HRESULT hr);
+
     static D3D12Asserter::DeviceRemovedCallback g_DeviceRemovedCallback;
 
     void D3D12Asserter::SetDeviceRemovedCallback(DeviceRemovedCallback&& callback)

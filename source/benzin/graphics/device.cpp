@@ -16,8 +16,144 @@
 namespace benzin
 {
 
+    static void FormatToBuffer(D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 d3d12DredAutoBreadcrumbsOutput, std::string& buffer)
+    {
+        std::format_to(std::back_inserter(buffer), "D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1\n");
+
+        const D3D12_AUTO_BREADCRUMB_NODE1* d3d12AutoBreadcrumbNode = d3d12DredAutoBreadcrumbsOutput.pHeadAutoBreadcrumbNode;
+        while (d3d12AutoBreadcrumbNode)
+        {
+            std::format_to(std::back_inserter(buffer), "  D3D12_AUTO_BREADCRUMB_NODE1: {}\n", (const void*)d3d12AutoBreadcrumbNode);
+
+            if (d3d12AutoBreadcrumbNode->pCommandListDebugNameA)
+            {
+                std::format_to(std::back_inserter(buffer), "    D3D12 CommandList name: {}\n", d3d12AutoBreadcrumbNode->pCommandListDebugNameA);
+            }
+
+            if (d3d12AutoBreadcrumbNode->pCommandQueueDebugNameA)
+            {
+                std::format_to(std::back_inserter(buffer), "    D3D12 CommandQueue name: {}\n", d3d12AutoBreadcrumbNode->pCommandQueueDebugNameA);
+            }
+
+            if (d3d12AutoBreadcrumbNode->pLastBreadcrumbValue)
+            {
+                std::format_to(std::back_inserter(buffer), "    GPU-completed render operations: {}\n", *d3d12AutoBreadcrumbNode->pLastBreadcrumbValue);
+            }
+
+            if (d3d12AutoBreadcrumbNode->BreadcrumbCount != 0)
+            {
+                std::format_to(std::back_inserter(buffer), "    Number of render operations used in the command list recording: {}:\n", d3d12AutoBreadcrumbNode->BreadcrumbCount);
+
+                const std::span<const D3D12_AUTO_BREADCRUMB_OP> d3d12AutoBreadcrumbOps{ d3d12AutoBreadcrumbNode->pCommandHistory, d3d12AutoBreadcrumbNode->BreadcrumbCount };
+                for (const auto [i, d3d12AutoBreadcrumbOp] : d3d12AutoBreadcrumbOps | std::views::enumerate)
+                {
+                    std::format_to(std::back_inserter(buffer), "    {}: {}\n", i, magic_enum::enum_name(d3d12AutoBreadcrumbOp));
+                }
+            }
+
+            if (d3d12AutoBreadcrumbNode->BreadcrumbContextsCount != 0)
+            {
+                std::format_to(std::back_inserter(buffer), "    Breadcrumb Contexts:\n");
+
+                const std::span<const D3D12_DRED_BREADCRUMB_CONTEXT> d3d12BreadcrumbContexts{ d3d12AutoBreadcrumbNode->pBreadcrumbContexts, d3d12AutoBreadcrumbNode->BreadcrumbContextsCount };
+                for (const auto& d3d12BreadcrumbContext : d3d12BreadcrumbContexts)
+                {
+                    std::format_to(std::back_inserter(buffer), "      BreadcrumbIndex: {}, Context: {}\n", d3d12BreadcrumbContext.BreadcrumbIndex, ToNarrowString(d3d12BreadcrumbContext.pContextString));
+                }
+            }
+
+            d3d12AutoBreadcrumbNode = d3d12AutoBreadcrumbNode->pNext;
+        }
+    }
+
+    static void FormatToBuffer(const D3D12_DRED_PAGE_FAULT_OUTPUT2& d3d12DredPageFaultOutput, std::string& buffer)
+    {
+        static const auto FormatToBuffer = [](const D3D12_DRED_ALLOCATION_NODE1* d3d12DREDAllocationNode, std::string_view title, std::string& buffer)
+        {
+            if (d3d12DREDAllocationNode)
+            {
+                std::format_to(std::back_inserter(buffer), "{}\n", title);
+            }
+
+            while (d3d12DREDAllocationNode)
+            {
+                std::format_to(std::back_inserter(buffer), "  D3D12_DRED_ALLOCATION_NODE1: {}\n", (const void*)d3d12DREDAllocationNode);
+
+                if (d3d12DREDAllocationNode->ObjectNameA)
+                {
+                    std::format_to(std::back_inserter(buffer), "    D3D12 ObjectName: {}\n", d3d12DREDAllocationNode->ObjectNameA);
+                }
+
+                std::format_to(std::back_inserter(buffer), "    AllocationType: {}\n", magic_enum::enum_name(d3d12DREDAllocationNode->AllocationType));
+
+                d3d12DREDAllocationNode = d3d12DREDAllocationNode->pNext;
+            }
+        };
+
+        std::format_to(std::back_inserter(buffer), "D3D12_DRED_PAGE_FAULT_OUTPUT2\n");
+        std::format_to(std::back_inserter(buffer), "PageFaultVA: {:#x}\n", d3d12DredPageFaultOutput.PageFaultVA);
+
+        FormatToBuffer(d3d12DredPageFaultOutput.pHeadExistingAllocationNode, "HeadExistingAllocationNode", buffer);
+        FormatToBuffer(d3d12DredPageFaultOutput.pHeadRecentFreedAllocationNode, "HeadRecentFreedAllocationNode", buffer);
+    }
+
+    static std::string GetDredMessages(ID3D12Device* d3d12Device)
+    {
+        std::string buffer;
+        buffer.reserve(1_mb);
+
+        ComPtr<ID3D12DeviceRemovedExtendedData2> d3d12Dred;
+        BenzinD3D12Call(d3d12Device->QueryInterface(IID_PPV_ARGS(&d3d12Dred)));
+
+        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 d3d12DredAutoBreadcrumbsOutput;
+        BenzinD3D12Call(d3d12Dred->GetAutoBreadcrumbsOutput1(&d3d12DredAutoBreadcrumbsOutput));
+
+        D3D12_DRED_PAGE_FAULT_OUTPUT2 d3d12DredPageFaultOutput;
+        BenzinD3D12Call(d3d12Dred->GetPageFaultAllocationOutput2(&d3d12DredPageFaultOutput));
+
+        const D3D12_DRED_DEVICE_STATE d3d12DredDeviceState = d3d12Dred->GetDeviceState();
+        std::format_to(std::back_inserter(buffer), "D3D12_DRED_DEVICE_STATE: {}\n", magic_enum::enum_name(d3d12DredDeviceState));
+
+        FormatToBuffer(d3d12DredAutoBreadcrumbsOutput, buffer);
+        FormatToBuffer(d3d12DredPageFaultOutput, buffer);
+
+        return buffer;
+    }
+
+    std::string_view DxgiErrorToString(HRESULT hr)
+    {
+        switch (hr)
+        {
+            case DXGI_ERROR_DEVICE_HUNG: return BenzinStringify(DXGI_ERROR_DEVICE_HUNG);
+            case DXGI_ERROR_DEVICE_REMOVED: return BenzinStringify(DXGI_ERROR_DEVICE_REMOVED);
+            case DXGI_ERROR_DEVICE_RESET: return BenzinStringify(DXGI_ERROR_DEVICE_RESET);
+            case DXGI_ERROR_DRIVER_INTERNAL_ERROR: return BenzinStringify(DXGI_ERROR_DRIVER_INTERNAL_ERROR);
+            case DXGI_ERROR_INVALID_CALL: return BenzinStringify(DXGI_ERROR_INVALID_CALL);
+
+            case DXGI_ERROR_ACCESS_DENIED: return BenzinStringify(DXGI_ERROR_ACCESS_DENIED);
+        }
+
+        return std::string_view{};
+    }
+
+    //
+
     Device::Device(const DeviceCreation& creation)
     {
+        {
+            ComPtr<ID3D12Debug5> d3d12Debug;
+            BenzinD3D12Call(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12Debug)));
+
+            d3d12Debug->EnableDebugLayer();
+            d3d12Debug->SetEnableGPUBasedValidation(CmdLineArgs::IsGpuValidationEnabled());
+            d3d12Debug->SetEnableSynchronizedCommandQueueValidation(CmdLineArgs::IsSynchronizedCommandQueueValidationEnabled());
+            d3d12Debug->SetEnableAutoName(true);
+
+            BenzinTrace("D3D12DebugLayer enabled");
+            BenzinTrace("GPUBasedValidation enabled: {}", CmdLineArgs::IsGpuValidationEnabled());
+            BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", CmdLineArgs::IsSynchronizedCommandQueueValidationEnabled());
+        }
+
         ComPtr<ID3D12Device> d3d12Device;
         BenzinD3D12Call(::D3D12CreateDevice(
             creation.m_Backend.GetDxgiMainAdapter(),
@@ -27,10 +163,22 @@ namespace benzin
         BenzinD3D12Call(d3d12Device->QueryInterface(&m_D3D12Device));
         SetD3DObjectDebugName(m_D3D12Device, creation.m_DebugName);
 
-        EnableD3D12DebugBreakOn(
-            m_D3D12Device,
-            true,
-            D3D12BreakReasonFlag::Warning | D3D12BreakReasonFlag::Error | D3D12BreakReasonFlag::Corruption);
+        {
+            ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
+            BenzinD3D12Call(m_D3D12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
+            BenzinD3D12Call(d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true));
+            BenzinD3D12Call(d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true));
+            BenzinD3D12Call(d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true));
+        }
+
+        {
+            ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> d3d12DredSettings;
+            BenzinD3D12Call(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12DredSettings)));
+
+            d3d12DredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+            d3d12DredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+            d3d12DredSettings->SetBreadcrumbContextEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+        }
 
         D3D12Asserter::SetDeviceRemovedCallback([this]
         {
@@ -42,8 +190,7 @@ namespace benzin
                 "RemoveDevice was trigerred. DeviceRemovedReason: ({:#0x}) {}\n",
                 GetDredMessages(m_D3D12Device),
                 m_CpuFrameIndex, m_CompletedGpuFrameIndex, m_ActiveFrameIndex,
-                (uint32_t)removedReason, DxgiErrorToString(removedReason)
-            );
+                (uint32_t)removedReason, DxgiErrorToString(removedReason));
 
             return removedReason;
         });
@@ -84,14 +231,23 @@ namespace benzin
 
         ProcessDeferredReleaseQueues(true);
 
+        m_FrameFence.reset();
         m_GraphicsCmdQueue.reset();
         m_DescriptorManager.reset();
         m_UnifiedRootSignature.reset();
 
-        EnableD3D12DebugBreakOn(m_D3D12Device, false, D3D12BreakReasonFlag::Warning);
-        ReportLiveD3D12Objects(m_D3D12Device);
+        {
+            ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
+            BenzinD3D12Call(m_D3D12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
+            BenzinD3D12Call(d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, false));
+        }
 
-        // TODO: There is reference count due to implicit heaps of resources
+        {
+            ComPtr<ID3D12DebugDevice2> d3d12DebugDevice;
+            BenzinD3D12Call(m_D3D12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
+            BenzinD3D12Call(d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL));
+        }
+
         SafeReleaseD3DObject(m_D3D12Device);
     }
 
