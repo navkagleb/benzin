@@ -9,8 +9,8 @@ namespace benzin
         auto GetDeltaTime() const { return m_DeltaTime; }
         auto GetElapsedTimeInSec() const { return m_ElapsedTimeInSec; }
 
-        auto GetDeltaTimeInMs() const { return m_DeltaTime.count() / 1000.0f; }
-        auto GetDeltaTimeInSec() const { return m_DeltaTime.count() / 1000.0f / 1000.0f; }
+        auto GetDeltaTimeInMs() const { return m_DeltaTime.count() / 1000.0f / 1000.0f; }
+        auto GetDeltaTimeInSec() const { return m_DeltaTime.count() / 1000.0f / 1000.0f / 1000.0f; }
 
         auto IsPaused() const { return m_IsPaused; }
         void SetPaused(bool isPaused);
@@ -22,7 +22,7 @@ namespace benzin
         std::chrono::high_resolution_clock::time_point m_CurrentTimePoint = {};
         std::chrono::high_resolution_clock::time_point m_PreviousTimePoint = {};
 
-        std::chrono::microseconds m_DeltaTime = {};
+        std::chrono::high_resolution_clock::duration m_DeltaTime = {};
         float m_ElapsedTimeInSec = 0.0f;
 
         bool m_IsPaused = false;
@@ -55,13 +55,12 @@ namespace benzin
         ScopedLogTimer(std::format_string<Args...> fmt, Args&&... args)
             : m_ScopeName{ std::format(fmt, std::forward<Args>(args)...) }
             , m_BeginTimePoint{ std::chrono::high_resolution_clock::now() }
-        {
-        }
+        {}
 
         ~ScopedLogTimer()
         {
-            const auto time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - m_BeginTimePoint);
-            BenzinTrace("{} ({:.3f}ms)", m_ScopeName, time.count() / 1000.0f);
+            const auto takenTime = std::chrono::high_resolution_clock::now() - m_BeginTimePoint;
+            BenzinTrace("{} ({:.3f} ms)", m_ScopeName, takenTime.count() / 1000.0f / 1000.0f);
         }
 
     private:
@@ -79,15 +78,15 @@ namespace benzin
         {
             const auto beginTimePoint = high_resolution_clock::now();
             function();
-            return duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - beginTimePoint);
+            return high_resolution_clock::now() - beginTimePoint;
         }
         else
         {
             const auto beginTimePoint = high_resolution_clock::now();
             decltype(auto) functionResult = function();
-            const auto takedTime = duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - beginTimePoint);
+            const auto takenTime = high_resolution_clock::now() - beginTimePoint;
 
-            return std::make_pair(takedTime, std::move(functionResult));
+            return std::make_pair(takenTime, std::move(functionResult));
         }
     }
 

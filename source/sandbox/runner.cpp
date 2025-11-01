@@ -61,7 +61,7 @@ namespace sandbox
         m_ImGuiManager->RegisterTool<benzin::FlyCameraTool>(m_CameraController);
         m_ImGuiManager->RegisterTool<benzin::GpuInfoTool>(*m_Backend);
         m_ImGuiManager->RegisterTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
-        m_ImGuiManager->RegisterTool<benzin::PerformanceOverlayTool>(*m_Backend, *m_ShaderManager, m_Viewport);
+        m_ImGuiManager->RegisterTool<benzin::PerformanceOverlayTool>(*m_Backend, *m_Device, *m_ShaderManager, *m_GpuProfiler, m_Viewport, m_FrameTimer);
         m_ImGuiManager->RegisterTool<benzin::ProfilerTool>();
         m_ImGuiManager->RegisterTool<benzin::GpuPrintTool>(m_GpuPrintData);
         m_ImGuiManager->RegisterTool<benzin::TextureViewerTool>(m_TextureViewerData, m_Viewport, *m_RenderResources);
@@ -277,16 +277,17 @@ namespace sandbox
         BenzinProfile();
 
         m_GpuProfiler->EndFrame();
-        m_Device->GetGraphicsCmdQueue().SubmitCmdList();
-        m_Device->SignalFrameFence();
 
+        m_Device->GetGraphicsCmdQueue().SubmitCmdList();
         m_SwapChain->Flip(m_IsVsyncEnabled);
+
+        m_Device->SignalFrameFence();
         m_Device->WaitForGpuIfNeeded();
+        m_Device->AdvanceFrame(m_SwapChain->GetCurrentBackBufferIndex());
 
         HandleSwapChainResizeIfNeeded();
         HandleViewportResizeIfNeeded();
 
-        m_Device->AdvanceFrame(m_SwapChain->GetCurrentBackBufferIndex());
         m_Device->ProcessDeferredReleaseQueues();
     }
 
@@ -297,7 +298,7 @@ namespace sandbox
         if (m_FrameTimer.IsPaused())
             return;
 
-        m_CameraController.MoveCamera(m_FrameTimer.GetDeltaTime());
+        m_CameraController.MoveCamera(m_FrameTimer.GetDeltaTimeInMs());
 
         {
             BenzinScopeProfile("Runner::<update scene>");

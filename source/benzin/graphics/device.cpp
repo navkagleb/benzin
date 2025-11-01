@@ -55,7 +55,7 @@ namespace benzin
         MakeUniquePtr(m_GraphicsCmdQueue, *this);
         MakeUniquePtr(m_FrameFence, *this, FenceCreation{ "FrameFence", m_CompletedGpuFrameIndex });
 
-        MakeUniquePtr(m_PersistentDefaultHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentDefaultHeap", .m_Type = GpuHeapType::Default, .m_SizeInBytes = 50_mb });
+        MakeUniquePtr(m_PersistentDefaultHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentDefaultHeap", .m_Type = GpuHeapType::Default, .m_SizeInBytes = 150_mb });
         MakeUniquePtr(m_PersistentGpuUploadHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentUploadHeap", .m_Type = GpuHeapType::GpuUpload, .m_SizeInBytes = 4_mb });
         MakeUniquePtr(m_PersistentReadbackHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentReadbackHeap", .m_Type = GpuHeapType::Readback, .m_SizeInBytes = 4_mb });
 
@@ -163,12 +163,15 @@ namespace benzin
         if (m_CpuFrameIndex - m_CompletedGpuFrameIndex < BENZIN_FRAME_COUNT)
             return;
 
+        const auto waitForGpu = [this]
         {
             BenzinScopeProfile("Device::WaitForGpu");
 
             const uint64_t gpuFrameIndexToWait = m_CpuFrameIndex - BENZIN_FRAME_COUNT + 1;
             m_FrameFence->StopCurrentThreadBeforeGpuFinish(gpuFrameIndexToWait);
-        }
+        };
+
+        m_GpuWaitTime = BenzinProfileFunction(waitForGpu());
 
         // 'm_FrameFence' completed value may differ from 'gpuFrameIndexToWait'
         // Therefore, save 'm_FrameFence' completed value because it's may be updated during the waiting time

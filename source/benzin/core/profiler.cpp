@@ -33,12 +33,13 @@ namespace benzin
             ProfileNode::TimePoint m_BeginTimePoint = {};
         };
 
-        ProfileNode m_Root; // Fake root node
+        ProfileNode m_FakeRoot;
         std::stack<StackEntry> m_NodeStack;
+        ProfileNode::Duration m_FrameTime = {};
 
         ProfilerData()
         {
-            m_Root.m_Name = "Root";
+            m_FakeRoot.m_Name = "FakeRoot";
         }
 
         void PushCurrentNode(ProfileNode* node)
@@ -108,27 +109,27 @@ namespace benzin
     {
         if (g_Data.m_NodeStack.empty())
         {
-            g_Data.m_NodeStack.emplace(&g_Data.m_Root);
+            g_Data.m_NodeStack.emplace(&g_Data.m_FakeRoot);
         }
 
-        BenzinAssert(g_Data.m_NodeStack.top().m_Node == &g_Data.m_Root);
+        BenzinAssert(g_Data.m_NodeStack.top().m_Node == &g_Data.m_FakeRoot);
     }
 
     void Profiler::EndFrame()
     {
-        BenzinAssert(g_Data.m_NodeStack.top().m_Node == &g_Data.m_Root);
+        BenzinAssert(g_Data.m_NodeStack.top().m_Node == &g_Data.m_FakeRoot);
 
-        ResetFrameDataRecursive(g_Data.m_Root);
+        ResetFrameDataRecursive(g_Data.m_FakeRoot);
     }
 
     void Profiler::ResetAccumulatedData(uint32_t frameCount)
     {
-        ResetAccumulatedDurationRecursive(g_Data.m_Root, frameCount);
+        ResetAccumulatedDurationRecursive(g_Data.m_FakeRoot, frameCount);
     }
 
     const ProfileNode* Profiler::GetRootNode()
     {
-        const auto& children = g_Data.m_Root.m_Children;
+        const auto& children = g_Data.m_FakeRoot.m_Children;
 
         if (children.empty())
             return nullptr;

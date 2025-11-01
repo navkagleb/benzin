@@ -10,7 +10,7 @@ namespace benzin
     class ComputeCmdList;
     class QueryHeap;
 
-    struct GpuProfileNode : ProfileNodeBase<GpuProfileNode, std::chrono::duration<uint64_t, std::nano>>
+    struct GpuProfileNode : ProfileNodeBase<GpuProfileNode, std::chrono::nanoseconds>
     {
         static constexpr uint32_t ms_InvalidReadbackIndex = std::numeric_limits<uint32_t>::max();
 
@@ -30,6 +30,8 @@ namespace benzin
         explicit GpuProfiler(Device& device);
         ~GpuProfiler();
 
+        auto GetGpuFrameTime() const { return m_GpuFrameTime; }
+
         const GpuProfileNode* GetRootNode() const;
 
         void BeginFrame(uint64_t cpuFrameIndex);
@@ -46,10 +48,11 @@ namespace benzin
         static constexpr uint32_t ms_MaxTimestampCount = 255;
         static constexpr uint32_t ms_MaxEventCount = ms_MaxTimestampCount / 2;
 
-        GpuProfileNode m_Root; // Fake root node
+        GpuProfileNode m_FakeRoot;
         std::stack<GpuProfileNode*> m_NodeStack;
 
-        double m_InvTimestampFrequency = 0.0;
+        const double m_InvTimestampFrequency = 0.0;
+        std::chrono::nanoseconds m_GpuFrameTime = {};
 
         std::unique_ptr<QueryHeap> m_TimestampQueryHeap;
         std::unique_ptr<Buffer> m_ReadbackBuffer;

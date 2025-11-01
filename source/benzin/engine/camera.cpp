@@ -132,7 +132,7 @@ namespace benzin
         return false;
     }
 
-    void FlyCameraController::MoveCamera(std::chrono::microseconds dt)
+    void FlyCameraController::MoveCamera(float dtInMs)
     {
         if (m_Camera == nullptr)
             return;
@@ -149,7 +149,7 @@ namespace benzin
             translationSpeedFactor = 0.3f;
         }
 
-        const float delta = m_CameraTranslationSpeed * translationSpeedFactor * dt.count() / 1000.0f;
+        const float delta = m_CameraTranslationSpeed * translationSpeedFactor * dtInMs;
         const DirectX::XMVECTOR& position = m_Camera->GetPosition();
 
         DirectX::XMVECTOR updatedPosition = DirectX::XMVectorZero();

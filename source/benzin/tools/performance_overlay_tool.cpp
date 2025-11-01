@@ -3,22 +3,32 @@
 
 #include <benzin/core/cmd_line_args.hpp>
 #include <benzin/graphics/backend.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp> 
 #include <benzin/graphics2/shader_manager.hpp>
 #include <benzin/system/window.hpp>
 
 namespace benzin
 {
 
-    PerformanceOverlayTool::PerformanceOverlayTool(const Backend& backend, const ShaderManager& shaderManager, const RenderViewport& viewport)
+    PerformanceOverlayTool::PerformanceOverlayTool(
+        const Backend& backend,
+        const Device& device,
+        const ShaderManager& shaderManager,
+        const GpuProfiler& gpuProfiler,
+        const RenderViewport& viewport,
+        const TickTimer& frameTimer)
         : ImGuiTool{ "Debug/PerformanceOverlay" }
         , m_Backend{ backend }
+        , m_Device{ device }
         , m_ShaderManager{ shaderManager }
+        , m_GpuProfiler{ gpuProfiler }
         , m_Viewport{ viewport }
+        , m_FrameTimer{ frameTimer }
     {
         ms_IntervalTimer->AddCallback([this](float timeInMs, uint32_t frameCount)
         {
-            m_AvgDeltaTimeInMs = timeInMs / frameCount;
-            m_AvgFps = 1.0f / (m_AvgDeltaTimeInMs / 1000.0f);
+            m_AvgFps = 1.0f / (timeInMs / frameCount / 1000.0f);
         });
     }
 
@@ -72,7 +82,21 @@ namespace benzin
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0.0f, 0.0f });
 
-        ImGui::FmtText("FPS: {:.1f} ({:.3f} ms)", m_AvgFps, m_AvgDeltaTimeInMs);
+        const float fullCpuTimeInMs = m_FrameTimer.GetDeltaTime().count() / 1000.0f / 1000.0f;
+        const float gpuWaitTimeInMs = m_Device.GetGpuWaitTime().count() / 1000.0f / 1000.0f;
+        const float gpuTimeInMs = m_GpuProfiler.GetGpuFrameTime().count() / 1000.0f / 1000.0f;
+
+        constexpr float smoothingFactor = 1.0f / 50.0f;
+        m_SmoothedCpuTimeInMs = std::lerp(m_SmoothedCpuTimeInMs, fullCpuTimeInMs - gpuWaitTimeInMs, smoothingFactor);
+        m_SmoothedFullCpuTimeInMs = std::lerp(m_SmoothedFullCpuTimeInMs, fullCpuTimeInMs, smoothingFactor);
+        m_SmoothedGpuWaitTimeInMs = std::lerp(m_SmoothedGpuWaitTimeInMs, gpuWaitTimeInMs, smoothingFactor);
+        m_SmoothedGpuTimeInMs = std::lerp(m_SmoothedGpuTimeInMs, gpuTimeInMs, smoothingFactor);
+
+        ImGui::FmtText("FPS:      {:.1f}", m_AvgFps);
+        ImGui::FmtText("CPU:      {:.3f} ms", m_SmoothedCpuTimeInMs);
+        ImGui::FmtText("GPU:      {:.3f} ms", m_SmoothedGpuTimeInMs);
+        ImGui::FmtText("CPU full: {:.3f} ms", m_SmoothedFullCpuTimeInMs);
+        ImGui::FmtText("GPU wait: {:.3f} ms", m_SmoothedGpuWaitTimeInMs);
         ImGui::NewLine();
         ImGui::FmtText("{}", m_Backend.GetMainAdapterInfo().m_Name);
         ImGui::FmtText("Local VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.m_UsedLocalVramInBytes), ToMb(adapterMemoryInfo.m_LocalVramBudgetInBytes));

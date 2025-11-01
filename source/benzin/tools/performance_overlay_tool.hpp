@@ -7,14 +7,20 @@ namespace benzin
 
     class Backend;
     class Device;
+    class GpuProfiler;
     class RenderViewport;
     class ShaderManager;
-    class Window;
 
     class PerformanceOverlayTool : public ImGuiTool
     {
     public:
-        PerformanceOverlayTool(const Backend& backend, const ShaderManager& shaderManager, const RenderViewport& viewport);
+        PerformanceOverlayTool(
+            const Backend& backend,
+            const Device& device,
+            const ShaderManager& shaderManager,
+            const GpuProfiler& gpuProfiler,
+            const RenderViewport& viewport,
+            const TickTimer& frameTimer);
 
         void DrawWindow() override;
         void DrawWindowContent() override;
@@ -30,13 +36,19 @@ namespace benzin
         };
 
         const Backend& m_Backend;
+        const Device& m_Device;
         const ShaderManager& m_ShaderManager;
+        const GpuProfiler& m_GpuProfiler;
         const RenderViewport& m_Viewport;
+        const TickTimer& m_FrameTimer;
 
         OverlayLocation m_Location = OverlayLocation::BottomLeft;
 
         float m_AvgFps = 0.0;
-        float m_AvgDeltaTimeInMs = 0.0f;
+        float m_SmoothedCpuTimeInMs = 0.0f;
+        float m_SmoothedFullCpuTimeInMs = 0.0f;
+        float m_SmoothedGpuWaitTimeInMs = 0.0f;
+        float m_SmoothedGpuTimeInMs = 0.0f;
     };
 
 }

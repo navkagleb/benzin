@@ -28,9 +28,9 @@ namespace benzin
             return;
     
         m_CurrentTimePoint = std::chrono::high_resolution_clock::now();
-        m_DeltaTime = std::chrono::duration_cast<std::chrono::microseconds>(m_CurrentTimePoint - m_PreviousTimePoint);
+        m_DeltaTime = m_CurrentTimePoint - m_PreviousTimePoint;
         m_PreviousTimePoint = m_CurrentTimePoint;
-        m_ElapsedTimeInSec += m_DeltaTime.count() / 1000.0f / 1000.0f;
+        m_ElapsedTimeInSec += m_DeltaTime.count() / 1000.0f / 1000.0f / 1000.0f;
     }
 
     // IntervalTimer
@@ -42,7 +42,7 @@ namespace benzin
 
     void IntervalTimer::AccumulateInterval()
     {
-        m_AccumulatedInterval += m_BaseTimer.GetDeltaTime();
+        m_AccumulatedInterval += std::chrono::duration_cast<std::chrono::microseconds>(m_BaseTimer.GetDeltaTime());
         m_AccumulatedFrameCount++;
 
         if (m_AccumulatedInterval >= m_Interval)
@@ -53,7 +53,7 @@ namespace benzin
                 callback(timeInMs, m_AccumulatedFrameCount);
             }
 
-            m_AccumulatedInterval = std::chrono::microseconds::zero();
+            m_AccumulatedInterval = {};
             m_AccumulatedFrameCount = 0;
         }
     }

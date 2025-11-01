@@ -39,14 +39,14 @@ namespace benzin
             creation.m_ElementCount = BENZIN_READBACK_LATENCY;
         });
 
-        m_Root.m_Name = "Root";
+        m_FakeRoot.m_Name = "FakeRoot";
     }
 
     GpuProfiler::~GpuProfiler() = default;
 
     const GpuProfileNode* GpuProfiler::GetRootNode() const
     {
-        const auto& children = m_Root.m_Children;
+        const auto& children = m_FakeRoot.m_Children;
 
         if (children.empty())
             return nullptr;
@@ -61,10 +61,10 @@ namespace benzin
 
         if (m_NodeStack.empty())
         {
-            m_NodeStack.emplace(&m_Root);
+            m_NodeStack.emplace(&m_FakeRoot);
         }
 
-        BenzinAssert(m_NodeStack.top() == &m_Root);
+        BenzinAssert(m_NodeStack.top() == &m_FakeRoot);
 
         m_ReadbackBuffer->MapReadbackData(
             m_ReadbackBuffer->GetElementSizeInBytes() * m_ReadIndex,
@@ -72,7 +72,12 @@ namespace benzin
             [this](const std::byte* mappedData)
             {
                 const std::span<const uint64_t> timestamps = ToSpan((const uint64_t*)mappedData, ms_MaxTimestampCount);
-                CopyNodeDurationRecursive(m_Root, timestamps);
+                CopyNodeDurationRecursive(m_FakeRoot, timestamps);
+
+                if (GetRootNode() != nullptr)
+                {
+                    m_GpuFrameTime = GetRootNode()->m_Duration;
+                }
             });
 
         m_WriteIndex = cpuFrameIndex % BENZIN_READBACK_LATENCY;
@@ -83,7 +88,7 @@ namespace benzin
     {
         BenzinProfile();
 
-        BenzinAssert(m_NodeStack.top() == &m_Root);
+        BenzinAssert(m_NodeStack.top() == &m_FakeRoot);
 
         m_ReadbackIndexOffset = 0;
         m_ProfiledTimestamps.reset();
@@ -106,7 +111,7 @@ namespace benzin
 
     void GpuProfiler::ResetAccumulatedData(uint32_t frameCount)
     {
-        benzin::ResetAccumulatedData(m_Root, frameCount);
+        benzin::ResetAccumulatedData(m_FakeRoot, frameCount);
     }
 
     void GpuProfiler::CopyNodeDurationRecursive(GpuProfileNode& node, std::span<const uint64_t> timestamps)
@@ -128,7 +133,7 @@ namespace benzin
             readbackIndex = GpuProfileNode::ms_InvalidReadbackIndex;
         }
 
-        node.m_AccumulatedDuration += std::exchange(node.m_Duration, {});
+        node.m_AccumulatedDuration += node.m_Duration;
         node.m_CurrentChildOffset = 0;
 
         for (const auto& child : node.m_Children)

@@ -44,6 +44,7 @@ namespace benzin
         auto GetCpuFrameIndex() const { return m_CpuFrameIndex; }
         auto GetCompletedGpuFrameIndex() const { return m_CompletedGpuFrameIndex; }
         auto GetActiveFrameIndex() const { return m_ActiveFrameIndex; }
+        auto GetGpuWaitTime() const { return m_GpuWaitTime; }
 
         const auto& GetCaps() const { return m_Caps; }
 
@@ -89,6 +90,7 @@ namespace benzin
         uint64_t m_CpuFrameIndex = 0;
         uint64_t m_CompletedGpuFrameIndex = 0;
         uint32_t m_ActiveFrameIndex = 0; // In range [0, FrameInFlightCount)
+        std::chrono::nanoseconds m_GpuWaitTime = {};
 
         DeviceCaps m_Caps;
 

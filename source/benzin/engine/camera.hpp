@@ -78,7 +78,7 @@ namespace benzin
 
         void SetCamera(PerspectiveCamera& camera);
 
-        void MoveCamera(std::chrono::microseconds dt);
+        void MoveCamera(float dtInMs);
         void RotateCamera(DirectX::XMINT2 mousePosition, DirectX::XMINT2 prevMousePosition);
         void IncrementFov(float direction);
 
