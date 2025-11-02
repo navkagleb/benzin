@@ -34,16 +34,16 @@ VsOutput ProcessVertex(joint::MeshVertex vertex)
     const uint drawIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawIndex);
     const joint::MeshDraw draw = g_MeshDraws[drawIndex];
 
-    const float4 worldPosition = mul(float4(vertex.Position, 1.0), draw.m_LocalToWorld);
-    const float4 prevWorldPosition = mul(float4(vertex.Position, 1.0), draw.m_PrevLocalToWorld);
+    const float4 worldPosition = mul(float4(vertex.m_Position, 1.0), draw.m_LocalToWorld);
+    const float4 prevWorldPosition = mul(float4(vertex.m_Position, 1.0), draw.m_PrevLocalToWorld);
 
     VsOutput output = (VsOutput)0;
     output.m_ClipPosition = mul(worldPosition, GetCameraConsts().WorldToClip);
     output.m_WorldPosition = worldPosition.xyz;
     output.m_ViewDepth = mul(worldPosition, GetCameraConsts().WorldToView).z;
     output.m_PrevViewPosition = mul(prevWorldPosition, GetPrevCameraConsts().WorldToView).xyz;
-    output.m_WorldNormal = normalize(mul(vertex.Normal, (float3x3)draw.m_LocalToWorld)); // NOTE: Assumes uniform scale
-    output.m_Uv = vertex.Uv;
+    output.m_WorldNormal = normalize(mul(vertex.m_Normal, (float3x3)draw.m_LocalToWorld)); // NOTE: Assumes uniform scale
+    output.m_Uv = vertex.m_Uv;
 
     return output;
 }
@@ -171,15 +171,15 @@ PackedGBuffer PsMain(VsOutput input)
     {
         Texture2D<float4> normalTexture = ResourceDescriptorHeap[material.m_NormalTextureHeapIndex];
 
-        float3 normalSample = normalTexture.Sample(g_LinearWrapSampler, input.m_Uv).xyz;
-        normalSample = 2.0 * normalSample - 1.0;
-        normalSample.xy *= material.m_NormalScale;
-        normalSample = normalize(normalSample);
+        float3 tangentSpaceNormal = normalTexture.Sample(g_LinearWrapSampler, input.m_Uv).xyz;
+        tangentSpaceNormal = 2.0 * tangentSpaceNormal - 1.0;
+        tangentSpaceNormal.xy *= material.m_NormalScale;
+        tangentSpaceNormal = normalize(tangentSpaceNormal);
 
         const float3 worldViewVector = normalize(GetCameraConsts().WorldPosition - input.m_WorldPosition);
         const float3x3 tbn = CotangentFrame(gbuffer.WorldNormal, -worldViewVector, input.m_Uv);
 
-        gbuffer.WorldNormal = normalize(mul(normalSample, tbn));
+        gbuffer.WorldNormal = normalize(mul(tangentSpaceNormal, tbn));
     }
 
     if (material.m_EmissiveTextureHeapIndex != g_MaxU32)

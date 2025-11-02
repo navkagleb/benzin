@@ -203,18 +203,18 @@ namespace benzin
         {
             joint::MeshVertex& vertex = mesh.m_Vertices.emplace_back();
 
-            vertex.Position = positions[i];
-            vertex.Position.z = -vertex.Position.z;
+            vertex.m_Position = positions[i];
+            vertex.m_Position.z = -vertex.m_Position.z;
             
             if (!normals.empty())
             {
-                vertex.Normal = normals[i];
-                vertex.Normal.z = -vertex.Normal.z;
+                vertex.m_Normal = normals[i];
+                vertex.m_Normal.z = -vertex.m_Normal.z;
             }
 
             if (!uvs.empty())
             {
-                vertex.Uv = uvs[i];
+                vertex.m_Uv = uvs[i];
             }
         }
 

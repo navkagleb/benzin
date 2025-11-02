@@ -259,9 +259,9 @@ namespace sandbox
                 proxy.m_InputLayout.emplace_back("Normal", DXGI_FORMAT_R32G32B32_FLOAT);
                 proxy.m_InputLayout.emplace_back("Uv", DXGI_FORMAT_R32G32_FLOAT);
 
-                BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[0].m_DxgiFormat) == sizeof(joint::MeshVertex::Position));
-                BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[1].m_DxgiFormat) == sizeof(joint::MeshVertex::Normal));
-                BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[2].m_DxgiFormat) == sizeof(joint::MeshVertex::Uv));
+                BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[0].m_DxgiFormat) == sizeof(joint::MeshVertex::m_Position));
+                BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[1].m_DxgiFormat) == sizeof(joint::MeshVertex::m_Normal));
+                BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[2].m_DxgiFormat) == sizeof(joint::MeshVertex::m_Uv));
 
                 proxy.m_Vs.m_FileName = "geometry_pass.hlsl";
 

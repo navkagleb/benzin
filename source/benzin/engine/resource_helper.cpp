@@ -50,7 +50,7 @@ namespace benzin
             meshopt_remapVertexBuffer(optVertices.data(), vertices.data(), vertices.size(), vertexSizeInBytes, remapIndices.data());
             meshopt_remapIndexBuffer(optIndices.data(), indices.data(), indices.size(), remapIndices.data());
             meshopt_optimizeVertexCache(optIndices.data(), optIndices.data(), optIndices.size(), optVertices.size());
-            meshopt_optimizeOverdraw(optIndices.data(), optIndices.data(), optIndices.size(), &optVertices.front().Position.x, optVertices.size(), vertexSizeInBytes, 1.05f);
+            meshopt_optimizeOverdraw(optIndices.data(), optIndices.data(), optIndices.size(), &optVertices.front().m_Position.x, optVertices.size(), vertexSizeInBytes, 1.05f);
             meshopt_optimizeVertexFetch(optVertices.data(), optIndices.data(), optIndices.size(), optVertices.data(), optVertices.size(), vertexSizeInBytes);
 
             part.m_VertexOffset = (uint32_t)newVertices.size();
@@ -99,7 +99,7 @@ namespace benzin
                 meshletIndices.data(),
                 indices.data(),
                 indices.size(),
-                &vertices.front().Position.x,
+                &vertices.front().m_Position.x,
                 vertices.size(),
                 sizeof(joint::MeshVertex),
                 maxMeshletVertexCount,
@@ -130,7 +130,7 @@ namespace benzin
                     &meshletVertexIndices[meshoptMeshlet.vertex_offset],
                     &meshletIndices[meshoptMeshlet.triangle_offset],
                     meshoptMeshlet.triangle_count,
-                    &vertices.front().Position.x,
+                    &vertices.front().m_Position.x,
                     vertices.size(),
                     sizeof(joint::MeshVertex));
 

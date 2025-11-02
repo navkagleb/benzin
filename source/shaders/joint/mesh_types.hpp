@@ -9,9 +9,9 @@ namespace joint
 
     struct MeshVertex
     {
-        float3 Position;
-        float3 Normal;
-        float2 Uv;
+        float3 m_Position;
+        float3 m_Normal;
+        float2 m_Uv;
     };
 
     struct MeshDraw
