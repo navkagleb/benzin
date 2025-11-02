@@ -4,7 +4,6 @@ namespace benzin
 {
     class GraphicsCmdList;
     class RenderResources;
-    class ScopedResourceBarriers;
     class Texture;
 }
 
@@ -27,12 +26,6 @@ namespace sandbox
 
         void ClearRenderTargets(benzin::GraphicsCmdList& cmdList) const;
         void ClearDepthStencil(benzin::GraphicsCmdList& cmdList) const;
-
-        [[nodiscard]]
-        benzin::ScopedResourceBarriers CreateResourceBarriers(
-            benzin::GraphicsCmdList& cmdList,
-            D3D12_RESOURCE_STATES d3d12DepthStencilState,
-            bool isDepthStencilOnly = false) const;
     };
 
 }

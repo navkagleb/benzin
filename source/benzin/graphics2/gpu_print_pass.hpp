@@ -27,7 +27,7 @@ namespace benzin
         void OnUpdate() override;
         void OnRender() const override;
 
-        void ReadbackFromGpu(benzin::CopyCmdList& cmdList) const;
+        void ReadbackFromGpu(CopyCmdList& cmdList) const;
 
     private:
         GpuPrintData& m_PrintData;

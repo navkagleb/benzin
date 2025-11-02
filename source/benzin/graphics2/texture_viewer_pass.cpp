@@ -85,35 +85,35 @@ namespace benzin
 
     void TextureViewerPass::OnRender() const
     {
+        using Resources = joint::TextureViewerResources;
+
         BenzinProfile();
         BenzinGpuProfile("TextureViewer");
 
         ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
+        const Texture& referenceTexture = ms_Resources->Get(m_ReferenceTextureId);
         const Texture& debugTexture = ms_Resources->Get(TextureId::DebugTexture);
 
-        BenzinScopedResourceBarriers(
-            cmdList,
-            benzin::TransitionBarrier{ debugTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
+        cmdList.AddTransition(referenceTexture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        cmdList.AddTransition(debugTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
         cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
+        cmdList.SetComputeRootResource(*Resources::ReferenceTexture, ms_Resources->Get(m_ReferenceTextureId).GetSrv(
         {
-            using Resources = joint::TextureViewerResources;
+            .m_DepthOffset = m_ViewerData.m_ActiveDepthIndex,
+            .m_DepthCount = 1,
+            .m_MipOffset = m_ViewerData.m_ActiveMipIndex,
+            .m_MipCount = 1,
+        }));
 
-            cmdList.SetComputeRootResource(*Resources::ReferenceTexture, ms_Resources->Get(m_ReferenceTextureId).GetSrv(
-            {
-                .m_DepthOffset = m_ViewerData.m_ActiveDepthIndex,
-                .m_DepthCount = 1,
-                .m_MipOffset = m_ViewerData.m_ActiveMipIndex,
-                .m_MipCount = 1,
-            }));
+        cmdList.SetComputeRootResource(*Resources::OutDebugTexture, debugTexture.GetUav());
 
-            cmdList.SetComputeRootResource(*Resources::OutDebugTexture, debugTexture.GetUav());
-        }
-
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
         cmdList.Dispatch({ debugTexture.GetWidth(), debugTexture.GetHeight(), 1 }, { 16, 16, 1 });
+
+        cmdList.AddUnorderedAccess(debugTexture, true);
     }
 
 }

@@ -16,30 +16,9 @@ namespace benzin
     class RayTracing_ShaderTable;
     class Texture;
     class VertexPso;
-
     struct SubResourceData;
 
     enum class UnifiedRootParameter;
-
-    struct TransitionBarrier
-    {
-        const Resource& m_Resource;
-        D3D12_RESOURCE_STATES m_D3D12StateBefore;
-        D3D12_RESOURCE_STATES m_D3D12StateAfter;
-
-        TransitionBarrier(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter)
-            : m_Resource{ resource }
-            , m_D3D12StateBefore{ resource.GetD3D12State() }
-            , m_D3D12StateAfter{ d3d12StateAfter }
-        {}
-    };
-
-    struct UnorderedAccessBarrier
-    {
-        const Resource& m_Resource;
-    };
-
-    using ResourceBarrierVariant = std::variant<TransitionBarrier, UnorderedAccessBarrier>;
 
     class CmdList
     {
@@ -49,13 +28,21 @@ namespace benzin
 
         auto* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList1; }
 
-        void AddResourceBarrier(const ResourceBarrierVariant& resourceBarrierVariant, bool isFlushRequsted = false);
-        void FlushResourceBarriers();
+        void AddTransition(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter, bool isFlushRequested = false);
+        void AddUnorderedAccess(const Resource& resource, bool isFlushRequested = false);
+        void FlushBarriers();
 
     protected:
         ID3D12GraphicsCommandList1* m_D3D12GraphicsCommandList1 = nullptr;
 
-        std::vector<D3D12_RESOURCE_BARRIER> m_D3D12Barriers;
+        struct TransitionBarrier
+        {
+            const Resource* m_Resource = nullptr;
+            D3D12_RESOURCE_STATES m_D3D12StateAfter;
+        };
+
+        std::vector<TransitionBarrier> m_DeferredTransitionBarriers;
+        std::vector<const Resource*> m_DeferredUnorderedAccessBarriers;
     };
 
     class CopyCmdList : public CmdList
@@ -157,18 +144,6 @@ namespace benzin
         ID3D12GraphicsCommandList6* m_D3D12GraphicsCommandList6 = nullptr;
     };
 
-    class ScopedResourceBarriers
-    {
-    public:
-        ScopedResourceBarriers(CmdList& cmdList, std::span<const ResourceBarrierVariant> resourceBarriers);
-        ~ScopedResourceBarriers();
-
-    private:
-        CmdList& m_CmdList;
-
-        std::vector<TransitionBarrier> m_SwappedTransitionBarriers;
-    };
-
     class ScopedGpuEvent
     {
     public:
@@ -182,12 +157,5 @@ namespace benzin
     };
 
 }
-
-#define BenzinScopedResourceBarriers(cmdList, ...) \
-    const benzin::ScopedResourceBarriers BenzinUniqueVariableName(scopedResourceBarriers) \
-    { \
-        cmdList, \
-        std::to_array<benzin::ResourceBarrierVariant>({ __VA_ARGS__ }), \
-    }
 
 #define BenzinGpuEvent(name) const benzin::ScopedGpuEvent BenzinUniqueVariableName(_scopedGpuEvent){ name }

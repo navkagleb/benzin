@@ -25,34 +25,32 @@ namespace sandbox
 
     ProceduralGrassPass::ProceduralGrassPass()
     {
-        ms_PsoManager->Create(PsoId::ProceduralGrass, [](benzin::MeshPsoProxy& outProxy)
+        ms_PsoManager->Create(PsoId::ProceduralGrass, [](benzin::MeshPsoProxy& proxy)
         {
-            outProxy.m_As.m_FileName = "procedural_grass_pass.hlsl";
-            outProxy.m_Ms.m_FileName = "procedural_grass_pass.hlsl";
-            outProxy.m_Ps.m_FileName = "procedural_grass_pass.hlsl";
+            proxy.m_As.m_FileName = "procedural_grass_pass.hlsl";
+            proxy.m_Ms.m_FileName = "procedural_grass_pass.hlsl";
+            proxy.m_Ps.m_FileName = "procedural_grass_pass.hlsl";
 
-            outProxy.m_Ms.m_Defines.push_back("CALC_STATS");
+            proxy.m_Ms.m_Defines.push_back("CALC_STATS");
             
-            outProxy.m_RasterizerState.m_D3D12CullMode = D3D12_CULL_MODE_NONE;
+            proxy.m_RasterizerState.m_D3D12CullMode = D3D12_CULL_MODE_NONE;
 
-            outProxy.m_DepthState.m_IsEnabled = true;
-            outProxy.m_DepthState.m_IsWriteEnabled = true;
-            outProxy.m_DepthState.m_D3D12ComparisonFunction = D3D12_COMPARISON_FUNC_GREATER;
+            proxy.m_DepthState.m_IsEnabled = true;
+            proxy.m_DepthState.m_IsWriteEnabled = true;
+            proxy.m_DepthState.m_D3D12ComparisonFunction = D3D12_COMPARISON_FUNC_GREATER;
 
-            outProxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color0DxgiFormat);
-            outProxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color1DxgiFormat);
-            outProxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color2DxgiFormat);
-            outProxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color3DxgiFormat);
-            outProxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color4DxgiFormat);
-            outProxy.m_DepthStencilDxgiFormat = GBufferSettings::ms_DepthStencilDxgiFormat;
+            proxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color0DxgiFormat);
+            proxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color1DxgiFormat);
+            proxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color2DxgiFormat);
+            proxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color3DxgiFormat);
+            proxy.m_RenderTargetDxgiFormats.push_back(GBufferSettings::ms_Color4DxgiFormat);
+            proxy.m_DepthStencilDxgiFormat = GBufferSettings::ms_DepthStencilDxgiFormat;
         });
     }
 
     ProceduralGrassPass::~ProceduralGrassPass()
     {
         ms_PsoManager->Destroy(PsoId::ProceduralGrass);
-
-        ms_Resources->Destroy(BufferId::ProceduralGrass_GrassPatches);
     }
 
     void ProceduralGrassPass::OnZeroFrameInit()
@@ -78,18 +76,12 @@ namespace sandbox
             if (ms_Scene->m_GrassPatches.empty())
                 return;
 
-            ms_Resources->Create(BufferId::ProceduralGrass_GrassPatches, benzin::BufferCreation
-            {
-                .m_DebugName = magic_enum::enum_name(BufferId::ProceduralGrass_GrassPatches),
-                .m_HeapType = benzin::GpuHeapType::Default,
-                .m_Type = benzin::BufferType::Structured,
-                .m_ElementSizeInBytes = sizeof(joint::GrassPatch),
-                .m_ElementCount = ms_Scene->m_GrassPatches.size(),
-            });
+            m_GrassPatchBuffer = ms_Device->GetPersistentDefaultAllocator().AllocateBuffer(
+                "ProceduralGrass::GrassPatches",
+                benzin::ToSpan(ms_Scene->m_GrassPatches));
 
-            benzin::Buffer& buffer = const_cast<benzin::Buffer&>(ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches));
-            benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(buffer.GetSizeInBytes());
-            cmdList.UploadToBuffer(buffer, benzin::ToSpan(ms_Scene->m_GrassPatches));
+            benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_GrassPatchBuffer->GetSizeInBytes());
+            cmdList.UploadToBuffer(*m_GrassPatchBuffer, benzin::ToSpan(ms_Scene->m_GrassPatches));
         }
 
         auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
@@ -101,8 +93,8 @@ namespace sandbox
         const auto& settings = ms_Settings->GetSection<ProceduralGrassSettings>();
         const auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
 
-        RenderPass::m_IsRenderingEnabled = settings.IsEnabled;
-        if (!RenderPass::m_IsRenderingEnabled)
+        m_IsRenderingEnabled = settings.IsEnabled;
+        if (!m_IsRenderingEnabled)
             return;
 
         m_Consts.GrassPatchCount = stats.MaxPatchCount;
@@ -117,6 +109,8 @@ namespace sandbox
 
     void ProceduralGrassPass::OnRender() const
     {
+        using Resources = joint::ProceduralGrassResources;
+
         BenzinProfile();
         BenzinGpuProfile("ProceduralGrass");
 
@@ -129,16 +123,20 @@ namespace sandbox
         cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::ProceduralGrass));
 
         const GBuffer gbuffer{ *ms_Resources };
+
+        cmdList.AddTransition(*m_GrassPatchBuffer, D3D12_RESOURCE_STATE_GENERIC_READ);
+        cmdList.AddTransition(*m_PerlinNoiseTexture, D3D12_RESOURCE_STATE_GENERIC_READ);
+        cmdList.AddTransition(gbuffer.m_AlbedoAndRoughness, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(gbuffer.m_EmissiveAndMetallic, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(gbuffer.m_WorldNormal, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(gbuffer.m_Mv, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(gbuffer.m_ViewDepth, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(gbuffer.m_DepthStencil, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+
         gbuffer.SetRenderTargets(cmdList);
 
-        const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-        {
-            using Resources = joint::ProceduralGrassResources;
-
-            cmdList.SetGraphicsRootResource(*Resources::GrassPatches, ms_Resources->Get(BufferId::ProceduralGrass_GrassPatches).GetSrv());
-            cmdList.SetGraphicsRootResource(*Resources::PerlinNoise, m_PerlinNoiseTexture->GetSrv());
-        }
+        cmdList.SetGraphicsRootResource(*Resources::GrassPatches, m_GrassPatchBuffer->GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::PerlinNoise, m_PerlinNoiseTexture->GetSrv());
 
         cmdList.DispatchMesh({ m_Consts.GrassPatchCount, 1, 1 }, { *joint::ProceduralGrassConsts::AsGroupSize, 1, 1 });
     }

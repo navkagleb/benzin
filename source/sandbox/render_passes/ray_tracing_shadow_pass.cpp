@@ -115,37 +115,42 @@ namespace sandbox
 
             const benzin::RayTracing_Tlas& tlas = ms_RayTracingScene->GetTlas();
 
-            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *tlas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS }, true);
-
+            cmdList.AddTransition(*tlas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
             cmdList.BuildRayTracingAccelerationStructure(tlas);
-            cmdList.SetComputeSrv(benzin::UnifiedRootParameter::SceneTlas, tlas.GetGpuVirtualAddress());
+            cmdList.AddUnorderedAccess(*tlas.GetScratchResource());
+            cmdList.AddTransition(*tlas.GetScratchResource(), D3D12_RESOURCE_STATE_GENERIC_READ, true);
 
-            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *tlas.GetScratchResource(), D3D12_RESOURCE_STATE_COMMON });
-            cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ *tlas.GetScratchResource() }, true);
+            cmdList.SetComputeSrv(benzin::UnifiedRootParameter::SceneTlas, tlas.GetGpuVirtualAddress());
         }
 
         {
+            using Resources = joint::RayTracing_ShadowResources;
+
             BenzinScopeProfile("RayTracing");
             BenzinGpuProfile("RayTracing");
 
             const benzin::RayTracing_Pso& pso = ms_PsoManager->GetRayTracing(PsoId::ShadowPass);
+            const benzin::Texture& worldNormal = ms_Resources->Get(TextureId::WorldNormal);
+            const benzin::Texture& depth = ms_Resources->Get(TextureId::DepthStencil);
             const benzin::Texture& noisyPenumbra = ms_Resources->Get(TextureId::NoisyPenumbra);
 
             cmdList.SetRayTracingPso(pso);
             cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
-            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ noisyPenumbra, D3D12_RESOURCE_STATE_UNORDERED_ACCESS }, true);
+            cmdList.AddTransition(worldNormal, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.AddTransition(depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.AddTransition(*m_BlueNoiseTexture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.AddTransition(noisyPenumbra, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-            using Resources = joint::RayTracing_ShadowResources;
-            cmdList.SetComputeRootResource(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
-            cmdList.SetComputeRootResource(*Resources::Depth, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
+            cmdList.SetComputeRootResource(*Resources::WorldNormal, worldNormal.GetSrv());
+            cmdList.SetComputeRootResource(*Resources::Depth, depth.GetSrv());
             cmdList.SetComputeRootResource(*Resources::BlueNoise, m_BlueNoiseTexture->GetSrv({ .m_DepthOffset = m_BlueNoiseDepthIndex, .m_DepthCount = 1 }));
             cmdList.SetComputeRootResource(*Resources::NoisyPenumbra, noisyPenumbra.GetUav());
 
             cmdList.DispatchRays(pso.GetShaderTable(), { ms_RenderViewportWidth, ms_RenderViewportHeight, 1 });
 
-            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ noisyPenumbra, D3D12_RESOURCE_STATE_COMMON });
-            cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ noisyPenumbra }, true);
+            cmdList.AddUnorderedAccess(noisyPenumbra);
+            cmdList.AddTransition(noisyPenumbra, D3D12_RESOURCE_STATE_GENERIC_READ, true);
         }
     }
 

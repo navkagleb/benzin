@@ -51,6 +51,8 @@ namespace sandbox
 
     void DeferredLightingPass::OnRender() const
     {
+        using Resources = joint::DeferredLightingResources;
+
         BenzinProfile();
         BenzinGpuProfile("DeferredLighting");
 
@@ -58,32 +60,34 @@ namespace sandbox
 
         const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
 
+        const auto& albedoAndRoughness = ms_Resources->Get(TextureId::AlbedoAndRoughness);
+        const auto& emissiveAndMetallic = ms_Resources->Get(TextureId::EmissiveAndMetallic);
+        const auto& worldNormal = ms_Resources->Get(TextureId::WorldNormal);
+        const auto& depth = ms_Resources->Get(TextureId::DepthStencil);
         const auto& shadow = ms_Resources->Get(sigmaSettings.m_IsEnabled ? TextureId::Shadow : TextureId::NoisyPenumbra);
         const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
 
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
+        cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        BenzinScopedResourceBarriers(
-            cmdList,
-            benzin::TransitionBarrier{ hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET });
+        cmdList.AddTransition(albedoAndRoughness, D3D12_RESOURCE_STATE_GENERIC_READ);
+        cmdList.AddTransition(emissiveAndMetallic, D3D12_RESOURCE_STATE_GENERIC_READ);
+        cmdList.AddTransition(worldNormal, D3D12_RESOURCE_STATE_GENERIC_READ);
+        cmdList.AddTransition(depth, D3D12_RESOURCE_STATE_GENERIC_READ);
+        cmdList.AddTransition(shadow, D3D12_RESOURCE_STATE_GENERIC_READ);
+        cmdList.AddTransition(hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 
         cmdList.SetRenderTargets({ hdrColor.GetRtv() });
         cmdList.ClearRenderTarget(hdrColor);
 
+        cmdList.SetGraphicsRootResource(*Resources::AlbedoAndRoughness, ms_Resources->Get(TextureId::AlbedoAndRoughness).GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::EmissiveAndMetallic, ms_Resources->Get(TextureId::EmissiveAndMetallic).GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::DepthStencil, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::Shadow, shadow.GetSrv());
+
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::DeferredLighting));
-
-        {
-            using Resources = joint::DeferredLightingResources;
-
-            cmdList.SetGraphicsRootResource(*Resources::AlbedoAndRoughness, ms_Resources->Get(TextureId::AlbedoAndRoughness).GetSrv());
-            cmdList.SetGraphicsRootResource(*Resources::EmissiveAndMetallic, ms_Resources->Get(TextureId::EmissiveAndMetallic).GetSrv());
-            cmdList.SetGraphicsRootResource(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
-            cmdList.SetGraphicsRootResource(*Resources::DepthStencil, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
-            cmdList.SetGraphicsRootResource(*Resources::Shadow, shadow.GetSrv());
-        }
-
-        cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         cmdList.DrawVertexed(3);
     }
 

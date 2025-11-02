@@ -5,8 +5,6 @@ namespace benzin
 
     enum class BufferId : uint32_t
     {
-        ProceduralGrass_GrassPatches,
-
         ToneMapping_LuminanceHistogram,
     };
 

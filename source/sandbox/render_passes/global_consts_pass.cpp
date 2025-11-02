@@ -46,10 +46,6 @@ namespace sandbox
             creation.m_ElementSizeInBytes = statElementSizeInBytes;
             creation.m_ElementCount = statElementCount * BENZIN_READBACK_LATENCY;
         });
-
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_StatBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
-        cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_ReadbackStatBuffer, D3D12_RESOURCE_STATE_COMMON });
     }
 
     GlobalConstsPass::~GlobalConstsPass() = default;
@@ -156,7 +152,8 @@ namespace sandbox
             cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::SunLightConsts, sunLightConstsGpuAddress);
 
             const uint64_t statBufferGpuAddress = m_StatBuffer->GetGpuVirtualAddress();
-            cmdList.ClearUnorderedAccess(*m_StatBuffer, m_StatBuffer->GetUav(), {});
+            cmdList.AddTransition(*m_StatBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+            cmdList.ClearUnorderedAccess(*m_StatBuffer, m_StatBuffer->GetUav());
             cmdList.SetComputeUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statBufferGpuAddress);
             cmdList.SetGraphicsUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statBufferGpuAddress);
         }

@@ -129,9 +129,8 @@ namespace benzin
 
     void GpuPrintPass::OnZeroFrameInit()
     {
-        GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        cmdList.AddResourceBarrier(TransitionBarrier{ *m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS });
-        cmdList.AddResourceBarrier(TransitionBarrier{ *m_ReadbackBuffer, D3D12_RESOURCE_STATE_COMMON }, true);
+        ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        cmdList.AddTransition(*m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
         cmdList.ClearUnorderedAccess(*m_UavBuffer, m_UavBuffer->GetUav(), {});
     }
 
@@ -146,14 +145,15 @@ namespace benzin
 
         ReadbackFromGpu(cmdList);
 
-        cmdList.ClearUnorderedAccess(*m_UavBuffer, m_UavBuffer->GetUav(), {});
+        cmdList.AddTransition(*m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+        cmdList.ClearUnorderedAccess(*m_UavBuffer, m_UavBuffer->GetUav());
 
         const uint64_t constBufferGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(m_Consts);
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::GpuPrintConsts, constBufferGpuAddress);
-        cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::GpuPrintConsts, constBufferGpuAddress);
+        cmdList.SetComputeCbv(UnifiedRootParameter::GpuPrintConsts, constBufferGpuAddress);
+        cmdList.SetGraphicsCbv(UnifiedRootParameter::GpuPrintConsts, constBufferGpuAddress);
     }
 
-    void GpuPrintPass::ReadbackFromGpu(benzin::CopyCmdList& cmdList) const
+    void GpuPrintPass::ReadbackFromGpu(CopyCmdList& cmdList) const
     {
         const uint32_t bufferSizeInBytes = m_Consts.m_PrintBufferSizeInBytes;
         const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % BENZIN_READBACK_LATENCY) * bufferSizeInBytes;

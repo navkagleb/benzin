@@ -136,7 +136,13 @@ namespace sandbox
         benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         const GBuffer gbuffer{ *ms_Resources };
-        const benzin::ScopedResourceBarriers scopeGBufferBarriers = gbuffer.CreateResourceBarriers(cmdList, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+        cmdList.AddTransition(gbuffer.m_AlbedoAndRoughness, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(gbuffer.m_EmissiveAndMetallic, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(gbuffer.m_WorldNormal, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(gbuffer.m_Mv, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(gbuffer.m_ViewDepth, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(gbuffer.m_DepthStencil, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 
         gbuffer.SetRenderTargets(cmdList);
         gbuffer.ClearRenderTargets(cmdList);
@@ -155,6 +161,8 @@ namespace sandbox
         if (settings.m_IsMeshPipelineUsed)
         {
             cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Mesh));
+
+            cmdList.AddTransition(*ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
 
             cmdList.SetGraphicsRootResource(*Resources::Vertices, ms_Scene->m_VertexBuffer->GetSrv());
             cmdList.SetGraphicsRootResource(*Resources::Meshlets, ms_Scene->m_MeshletBuffer->GetSrv());
@@ -190,6 +198,10 @@ namespace sandbox
         else
         {
             cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Vertex));
+
+            cmdList.AddTransition(*ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+            cmdList.AddTransition(*ms_Scene->m_IndexBuffer, D3D12_RESOURCE_STATE_INDEX_BUFFER, true);
+
             cmdList.SetVertexBuffer(*ms_Scene->m_VertexBuffer);
             cmdList.SetIndexBuffer(*ms_Scene->m_IndexBuffer);
 

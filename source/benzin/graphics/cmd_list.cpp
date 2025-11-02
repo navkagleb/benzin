@@ -24,29 +24,6 @@
 namespace benzin
 {
 
-    static D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrier(const TransitionBarrier& transitionBarrier)
-    {
-        D3D12_RESOURCE_BARRIER d3d12Barrier = {};
-        d3d12Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        d3d12Barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        d3d12Barrier.Transition.pResource = transitionBarrier.m_Resource.GetD3D12Resource();
-        d3d12Barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        d3d12Barrier.Transition.StateBefore = transitionBarrier.m_D3D12StateBefore;
-        d3d12Barrier.Transition.StateAfter = transitionBarrier.m_D3D12StateAfter;
-
-        return d3d12Barrier;
-    }
-
-    static D3D12_RESOURCE_BARRIER ToD3D12ResourceBarrier(const UnorderedAccessBarrier& unorderedAccessBarrier)
-    {
-        D3D12_RESOURCE_BARRIER d3d12Barrier = {};
-        d3d12Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        d3d12Barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        d3d12Barrier.UAV.pResource = unorderedAccessBarrier.m_Resource.GetD3D12Resource();
-
-        return d3d12Barrier;
-    }
-
     // CmdList
 
     CmdList::CmdList(Device& device)
@@ -66,32 +43,65 @@ namespace benzin
         SafeReleaseD3DObject(m_D3D12GraphicsCommandList1);
     }
 
-    void CmdList::AddResourceBarrier(const ResourceBarrierVariant& resourceBarrierVariant, bool isFlushRequsted)
+    void CmdList::AddTransition(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter, bool isFlushRequested)
     {
-        const auto* transitionBarrier = std::get_if<TransitionBarrier>(&resourceBarrierVariant);
-        if (transitionBarrier != nullptr)
-        {
-            transitionBarrier->m_Resource.SetD3D12State(transitionBarrier->m_D3D12StateAfter);
-        }
+        m_DeferredTransitionBarriers.emplace_back(&resource, d3d12StateAfter);
 
-        const D3D12_RESOURCE_BARRIER d3d12ResourceBarrier = std::visit(
-            [](const auto& resourceBarrier) { return ToD3D12ResourceBarrier(resourceBarrier); },
-            resourceBarrierVariant);
-        m_D3D12Barriers.push_back(d3d12ResourceBarrier);
-
-        if (isFlushRequsted)
+        if (isFlushRequested)
         {
-            FlushResourceBarriers();
+            FlushBarriers();
         }
     }
 
-    void CmdList::FlushResourceBarriers()
+    void CmdList::AddUnorderedAccess(const Resource& resource, bool isFlushRequested)
     {
-        if (m_D3D12Barriers.empty())
-            return;
+        m_DeferredUnorderedAccessBarriers.emplace_back(&resource);
 
-        m_D3D12GraphicsCommandList1->ResourceBarrier((uint32_t)m_D3D12Barriers.size(), m_D3D12Barriers.data());
-        m_D3D12Barriers.clear();
+        if (isFlushRequested)
+        {
+            FlushBarriers();
+        }
+    }
+
+    void CmdList::FlushBarriers()
+    {
+        std::vector<D3D12_RESOURCE_BARRIER> d3d12Barriers;
+        d3d12Barriers.reserve(m_DeferredTransitionBarriers.size() + m_DeferredUnorderedAccessBarriers.size());
+
+        for (const TransitionBarrier& barrier : m_DeferredTransitionBarriers)
+        {
+            if (barrier.m_Resource->GetD3D12State() == barrier.m_D3D12StateAfter)
+                continue;
+
+            D3D12_RESOURCE_BARRIER d3d12Barrier = {};
+            d3d12Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            d3d12Barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            d3d12Barrier.Transition.pResource = barrier.m_Resource->GetD3D12Resource();
+            d3d12Barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            d3d12Barrier.Transition.StateBefore = barrier.m_Resource->GetD3D12State();
+            d3d12Barrier.Transition.StateAfter = barrier.m_D3D12StateAfter;
+
+            d3d12Barriers.push_back(d3d12Barrier);
+            barrier.m_Resource->SetD3D12State(barrier.m_D3D12StateAfter);
+        }
+
+        for (const Resource* resource : m_DeferredUnorderedAccessBarriers)
+        {
+            D3D12_RESOURCE_BARRIER d3d12Barrier = {};
+            d3d12Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+            d3d12Barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            d3d12Barrier.UAV.pResource = resource->GetD3D12Resource();
+
+            d3d12Barriers.push_back(d3d12Barrier);
+        }
+
+        if (!d3d12Barriers.empty())
+        {
+            m_D3D12GraphicsCommandList1->ResourceBarrier((uint32_t)d3d12Barriers.size(), d3d12Barriers.data());
+        }
+
+        m_DeferredTransitionBarriers.clear();
+        m_DeferredUnorderedAccessBarriers.clear();
     }
 
     // CopyCmdList
@@ -108,10 +118,9 @@ namespace benzin
         BenzinAssert(destOffsetInBytes + dataSizeInBytes <= destBuffer.GetSizeInBytes());
         BenzinAssert(sourceOffsetInBytes + dataSizeInBytes <= sourceBuffer.GetSizeInBytes());
 
-        BenzinScopedResourceBarriers(
-            *this,
-            TransitionBarrier{ destBuffer, D3D12_RESOURCE_STATE_COPY_DEST },
-            TransitionBarrier{ sourceBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE });
+        // TODO: Move outside
+        AddTransition(destBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
+        AddTransition(sourceBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE, true);
 
         m_D3D12GraphicsCommandList1->CopyBufferRegion(
             destBuffer.GetD3D12Resource(),
@@ -135,10 +144,9 @@ namespace benzin
         d3d12SourceLocatiton.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         d3d12SourceLocatiton.SubresourceIndex = sourceSubresourceIndex;
 
-        BenzinScopedResourceBarriers(
-            *this,
-            TransitionBarrier{ destTexture, D3D12_RESOURCE_STATE_COPY_DEST },
-            TransitionBarrier{ sourceTexture, D3D12_RESOURCE_STATE_COPY_SOURCE });
+        // TODO: Move outside
+        AddTransition(destTexture, D3D12_RESOURCE_STATE_COPY_DEST);
+        AddTransition(sourceTexture, D3D12_RESOURCE_STATE_COPY_SOURCE, true);
 
         m_D3D12GraphicsCommandList1->CopyTextureRegion(&d3d12DestLocatiton, 0, 0, 0, &d3d12SourceLocatiton, nullptr);
     }
@@ -375,6 +383,7 @@ namespace benzin
 
     void ComputeCmdList::ClearUnorderedAccess(const Resource& resource, const Descriptor& uav, const DirectX::XMFLOAT4& color)
     {
+        BenzinAssert(resource.GetD3D12State() == D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         BenzinAssert(uav.IsCpuValid());
         BenzinAssert(uav.IsGpuValid());
 
@@ -493,6 +502,7 @@ namespace benzin
     void GraphicsCmdList::SetVertexBuffer(const Buffer& vertexBuffer)
     {
         BenzinAssert(vertexBuffer.GetType() == BufferType::Structured);
+        BenzinAssert(vertexBuffer.GetD3D12State() == D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
         D3D12_VERTEX_BUFFER_VIEW d3d12View = {};
         d3d12View.BufferLocation = vertexBuffer.GetGpuVirtualAddress();
@@ -506,6 +516,7 @@ namespace benzin
     {
         BenzinAssert(indexBuffer.GetType() == BufferType::Format);
         BenzinAssert(indexBuffer.GetDxgiFormat() == DXGI_FORMAT_R16_UINT || indexBuffer.GetDxgiFormat() == DXGI_FORMAT_R32_UINT);
+        BenzinAssert(indexBuffer.GetD3D12State() == D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
         D3D12_INDEX_BUFFER_VIEW d3d12View = {};
         d3d12View.BufferLocation = indexBuffer.GetGpuVirtualAddress();
@@ -620,38 +631,6 @@ namespace benzin
             threadGroupCount.z <= std::numeric_limits<uint16_t>::max());
 
         m_D3D12GraphicsCommandList6->DispatchMesh(threadGroupCount.x, threadGroupCount.y, threadGroupCount.z);
-    }
-
-    // ScopedResourceBarriers
-
-    ScopedResourceBarriers::ScopedResourceBarriers(CmdList& cmdList, std::span<const ResourceBarrierVariant> resourceBarriers)
-        : m_CmdList{ cmdList }
-    {
-        for (const ResourceBarrierVariant& resourceBarrier : resourceBarriers)
-        {
-            const auto* transitionBarrier = std::get_if<TransitionBarrier>(&resourceBarrier);
-            if (transitionBarrier != nullptr)
-            {
-                auto& swappedBarrier = m_SwappedTransitionBarriers.emplace_back(*transitionBarrier);
-                std::swap(swappedBarrier.m_D3D12StateAfter, swappedBarrier.m_D3D12StateBefore);
-            }
-
-            m_CmdList.AddResourceBarrier(resourceBarrier);
-        }
-
-        m_CmdList.FlushResourceBarriers();
-    }
-
-    ScopedResourceBarriers::~ScopedResourceBarriers()
-    {
-        BenzinAssert(!m_SwappedTransitionBarriers.empty());
-
-        for (auto& transitionBarrier : m_SwappedTransitionBarriers)
-        {
-            m_CmdList.AddResourceBarrier(transitionBarrier);
-        }
-
-        m_CmdList.FlushResourceBarriers();
     }
 
     // ScopedGpuEvent

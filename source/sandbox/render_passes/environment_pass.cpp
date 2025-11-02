@@ -85,7 +85,7 @@ namespace sandbox
 
             benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS }, true);
+            cmdList.AddTransition(*m_CubeTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
             using Resources = joint::EquirectangularToCubeResources;
             cmdList.SetComputeRootResource(*Resources::EquirectangularTexture, equirectangularTexture->GetSrv());
@@ -94,8 +94,8 @@ namespace sandbox
             cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Environment_EquirectangularToCube));
             cmdList.Dispatch({ cubeMapSize, cubeMapSize, m_CubeTexture->GetDepth() }, { 8, 8, 1 });
 
-            cmdList.AddResourceBarrier(benzin::UnorderedAccessBarrier{ *m_CubeTexture });
-            cmdList.AddResourceBarrier(benzin::TransitionBarrier{ *m_CubeTexture, D3D12_RESOURCE_STATE_GENERIC_READ }, true);
+            cmdList.AddUnorderedAccess(*m_CubeTexture);
+            cmdList.AddTransition(*m_CubeTexture, D3D12_RESOURCE_STATE_GENERIC_READ, true);
         }
     }
 
@@ -106,16 +106,14 @@ namespace sandbox
 
         benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-        const benzin::Texture& hdrColor = ms_Resources->Get(TextureId::HdrColor);
-        const benzin::Texture& depthStencil = ms_Resources->Get(TextureId::DepthStencil);
+        const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
+        const auto& depthStencil = ms_Resources->Get(TextureId::DepthStencil);
 
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
 
-        BenzinScopedResourceBarriers(
-            cmdList,
-            benzin::TransitionBarrier{ hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET },
-            benzin::TransitionBarrier{ depthStencil, D3D12_RESOURCE_STATE_DEPTH_READ });
+        cmdList.AddTransition(hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddTransition(depthStencil, D3D12_RESOURCE_STATE_DEPTH_READ, true);
 
         cmdList.SetRenderTargets({ hdrColor.GetRtv() }, &depthStencil.GetDsv());
 

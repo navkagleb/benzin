@@ -1,13 +1,7 @@
 #pragma once
 
 #include <benzin/graphics2/render_pass.hpp>
-
 #include <shaders/joint/procedural_grass_resources.hpp>
-
-namespace benzin
-{
-    class GraphicsCmdList;
-}
 
 namespace sandbox
 {
@@ -18,7 +12,6 @@ namespace sandbox
         ProceduralGrassPass();
         ~ProceduralGrassPass() override;
 
-    private:
         bool IsDependentOnViewport() const override { return true; }
 
         void OnZeroFrameInit() override;
@@ -26,8 +19,9 @@ namespace sandbox
         void OnRender() const override;
 
     private:
+        joint::ProceduralGrassPassConsts m_Consts = {};
         std::unique_ptr<benzin::Texture> m_PerlinNoiseTexture;
-        joint::ProceduralGrassPassConsts m_Consts{};
+        std::unique_ptr<benzin::Buffer> m_GrassPatchBuffer;
     };
 
 }
