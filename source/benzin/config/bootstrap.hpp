@@ -28,7 +28,7 @@
 #include <benzin/core/timers.hpp>
 
 #if !defined(BENZIN_FRAME_COUNT)
-    #define BENZIN_FRAME_COUNT 2
+    #define BENZIN_FRAME_COUNT 3
     #define BENZIN_READBACK_LATENCY (BENZIN_FRAME_COUNT + 1)
 #endif
 

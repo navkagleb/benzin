@@ -26,9 +26,6 @@ namespace benzin
             return 2 * (16 / 8);
         case DXGI_FORMAT_R8G8_UNORM:
             return 2 * (8 / 8);
-        case DXGI_FORMAT_D24_UNORM_S8_UINT:
-        case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
-            return 1 * (32 / 8);
         case DXGI_FORMAT_R8_UINT:
         case DXGI_FORMAT_R8_UNORM:
             return 1 * (8 / 8);

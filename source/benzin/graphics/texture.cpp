@@ -319,8 +319,8 @@ namespace benzin
         // Set default format for depth stencil if format is not set
         if (m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil) && textureSrv.m_DxgiFormat == DXGI_FORMAT_UNKNOWN)
         {
-            BenzinAssert(m_DxgiFormat == DXGI_FORMAT_D24_UNORM_S8_UINT);
-            textureSrv.m_DxgiFormat = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+            BenzinAssert(m_DxgiFormat == DXGI_FORMAT_D32_FLOAT);
+            textureSrv.m_DxgiFormat = DXGI_FORMAT_R32_FLOAT;
         }
 
         textureSrv.m_IsCubeMap = textureSrv.m_IsCubeMap ? true : m_IsCubeMap;

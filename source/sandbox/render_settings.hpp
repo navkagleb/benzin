@@ -13,7 +13,7 @@ namespace sandbox
         static const DXGI_FORMAT ms_Color2DxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT; // WorldNormal, WorldNormal, WorldNormal, None
         static const DXGI_FORMAT ms_Color3DxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT; // UvMv, UvMv, ViewDepthMv, None
         static const DXGI_FORMAT ms_Color4DxgiFormat = DXGI_FORMAT_R32_FLOAT; // ViewDepth
-        static const DXGI_FORMAT ms_DepthStencilDxgiFormat = DXGI_FORMAT_D24_UNORM_S8_UINT; // TODO: Can be used D32 instead
+        static const DXGI_FORMAT ms_DepthStencilDxgiFormat = DXGI_FORMAT_D32_FLOAT;
 
         bool m_IsIndirectDrawEnabled = true;
         bool m_IsMeshPipelineUsed = true;

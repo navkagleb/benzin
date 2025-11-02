@@ -26,6 +26,7 @@ namespace benzin
         if (isTearingSupported)
         {
             dxgiSwapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+            m_DxgiPresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
         }
 
         DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc = {};
@@ -53,6 +54,8 @@ namespace benzin
         BenzinD3D12Call(dxgiSwapChain1->QueryInterface(IID_PPV_ARGS(&m_DxgiSwapChain)));
         SetD3DObjectDebugName(m_DxgiSwapChain, creation.m_DebugName);
 
+        m_DxgiSwapChain->SetMaximumFrameLatency(BENZIN_FRAME_COUNT - 1);
+
         // Disable fullscreen using Alt + Enter
         BenzinD3D12Call(creation.m_Backend.GetDxgiFactory()->MakeWindowAssociation(
             creation.m_Window.GetWin64Window(),
@@ -67,11 +70,11 @@ namespace benzin
         SafeReleaseD3DObject(m_DxgiSwapChain);
     }
 
-    void SwapChain::Flip(bool isVerticalSyncEnabled)
+    void SwapChain::Flip(bool isVsyncEnabled)
     {
         BenzinProfile();
 
-        BenzinD3D12Call(m_DxgiSwapChain->Present(isVerticalSyncEnabled, 0));
+        BenzinD3D12Call(m_DxgiSwapChain->Present(isVsyncEnabled, isVsyncEnabled ? 0 : m_DxgiPresentFlags));
     }
 
     void SwapChain::Resize(uint32_t width, uint32_t height)

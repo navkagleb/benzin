@@ -57,7 +57,7 @@ namespace benzin
             m_Consts.TextureResolution.y = debugHeight;
 
             DXGI_FORMAT dxgiDebugFormat = referenceTexture.GetDxgiFormat();
-            if (dxgiDebugFormat == DXGI_FORMAT_D24_UNORM_S8_UINT)
+            if (dxgiDebugFormat == DXGI_FORMAT_D32_FLOAT)
             {
                 dxgiDebugFormat = DXGI_FORMAT_R32_FLOAT;
             }

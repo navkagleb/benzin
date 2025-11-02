@@ -30,7 +30,7 @@ namespace benzin
         uint32_t GetCurrentBackBufferIndex() const { return m_DxgiSwapChain->GetCurrentBackBufferIndex(); }
         const auto& GetCurrentBackBuffer() const { return *m_BackBuffers[GetCurrentBackBufferIndex()]; }
 
-        void Flip(bool isVerticalSyncEnabled);
+        void Flip(bool isVsyncEnabled);
         void Resize(uint32_t width, uint32_t height);
 
     private:
@@ -41,6 +41,8 @@ namespace benzin
 
         IDXGISwapChain3* m_DxgiSwapChain = nullptr;
         std::unique_ptr<Texture> m_BackBuffers[BENZIN_FRAME_COUNT];
+
+        uint32_t m_DxgiPresentFlags = 0;
     };
 
 }
