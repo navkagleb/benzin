@@ -26,7 +26,13 @@ namespace sandbox
         {
             proxy.m_Vs.m_FileName = "fullscreen_triangle.hlsl";
             proxy.m_Ps.m_FileName = "deferred_lighting_pass.hlsl";
+
+            proxy.m_DepthState.m_IsEnabled = true;
+            proxy.m_DepthState.m_IsWriteEnabled = false;
+            proxy.m_DepthState.m_D3D12ComparisonFunction = D3D12_COMPARISON_FUNC_NOT_EQUAL;
+
             proxy.m_RenderTargetDxgiFormats.push_back(DeferredLightingSettings::ms_HdrColorDxgiFormat);
+            proxy.m_DepthStencilDxgiFormat = GBufferSettings::ms_DepthStencilDxgiFormat;
         });
     }
 
@@ -74,18 +80,20 @@ namespace sandbox
         cmdList.AddTransition(albedoAndRoughness, D3D12_RESOURCE_STATE_GENERIC_READ);
         cmdList.AddTransition(emissiveAndMetallic, D3D12_RESOURCE_STATE_GENERIC_READ);
         cmdList.AddTransition(worldNormal, D3D12_RESOURCE_STATE_GENERIC_READ);
-        cmdList.AddTransition(depth, D3D12_RESOURCE_STATE_GENERIC_READ);
+        cmdList.AddTransition(depth, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_DEPTH_READ);
         cmdList.AddTransition(shadow, D3D12_RESOURCE_STATE_GENERIC_READ);
         cmdList.AddTransition(hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 
-        cmdList.SetRenderTargets({ hdrColor.GetRtv() });
-        cmdList.ClearRenderTarget(hdrColor);
-
-        cmdList.SetGraphicsRootResource(*Resources::AlbedoAndRoughness, ms_Resources->Get(TextureId::AlbedoAndRoughness).GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::EmissiveAndMetallic, ms_Resources->Get(TextureId::EmissiveAndMetallic).GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal).GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::DepthStencil, ms_Resources->Get(TextureId::DepthStencil).GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::AlbedoAndRoughness, albedoAndRoughness.GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::EmissiveAndMetallic, emissiveAndMetallic.GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::WorldNormal, worldNormal.GetSrv());
+        cmdList.SetGraphicsRootResource(*Resources::DepthStencil, depth.GetSrv());
         cmdList.SetGraphicsRootResource(*Resources::Shadow, shadow.GetSrv());
+
+        cmdList.ClearRenderTarget(hdrColor);
+        cmdList.AddRenderTarget(hdrColor);
+        cmdList.AddDepthStencil(depth);
+        cmdList.SetRenderTargets();
 
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::DeferredLighting));
         cmdList.DrawVertexed(3);

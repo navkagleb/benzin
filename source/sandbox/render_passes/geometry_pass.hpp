@@ -1,7 +1,6 @@
 #pragma once
 
 #include <benzin/graphics2/render_pass.hpp>
-
 #include <shaders/joint/geometry_resources.hpp>
 
 namespace benzin
@@ -28,6 +27,18 @@ namespace sandbox
 
         ID3D12CommandSignature* m_D3D12DrawIndirectCmdSignature = nullptr;
         ID3D12CommandSignature* m_D3D12DispatchMeshIndirectCmdSignature = nullptr;
+    };
+
+    struct GBuffer
+    {
+        const benzin::Texture& m_AlbedoAndRoughness;
+        const benzin::Texture& m_EmissiveAndMetallic;
+        const benzin::Texture& m_WorldNormal;
+        const benzin::Texture& m_Mv;
+        const benzin::Texture& m_ViewDepth;
+        const benzin::Texture& m_DepthStencil;
+
+        explicit GBuffer(const benzin::RenderResources& resources);
     };
 
 }

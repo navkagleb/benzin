@@ -1,7 +1,6 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/render_passes/geometry_pass.hpp>
 
-#include <sandbox/render_passes/gbuffer.hpp>
 #include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
@@ -29,6 +28,8 @@ BenzinAllowDereferenceOperatorForEnum(joint::MeshletConsts);
 
 namespace sandbox
 {
+
+    // GeometryPass
 
     GeometryPass::GeometryPass()
     {
@@ -130,12 +131,17 @@ namespace sandbox
 
     void GeometryPass::OnRender() const
     {
+        using Resources = joint::GeometryResources;
+
         BenzinProfile();
         BenzinGpuProfile("Geometry");
 
         benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         const GBuffer gbuffer{ *ms_Resources };
+
+        cmdList.AddTransition(*ms_Scene->m_MeshDrawBuffer, D3D12_RESOURCE_STATE_GENERIC_READ);
+        cmdList.AddTransition(*ms_Scene->m_MaterialBuffer, D3D12_RESOURCE_STATE_GENERIC_READ);
 
         cmdList.AddTransition(gbuffer.m_AlbedoAndRoughness, D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmdList.AddTransition(gbuffer.m_EmissiveAndMetallic, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -144,14 +150,23 @@ namespace sandbox
         cmdList.AddTransition(gbuffer.m_ViewDepth, D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmdList.AddTransition(gbuffer.m_DepthStencil, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 
-        gbuffer.SetRenderTargets(cmdList);
-        gbuffer.ClearRenderTargets(cmdList);
-        gbuffer.ClearDepthStencil(cmdList);
+        cmdList.AddRenderTarget(gbuffer.m_AlbedoAndRoughness);
+        cmdList.AddRenderTarget(gbuffer.m_EmissiveAndMetallic);
+        cmdList.AddRenderTarget(gbuffer.m_WorldNormal);
+        cmdList.AddRenderTarget(gbuffer.m_Mv);
+        cmdList.AddRenderTarget(gbuffer.m_ViewDepth);
+        cmdList.AddDepthStencil(gbuffer.m_DepthStencil);
+        cmdList.SetRenderTargets();
+
+        cmdList.ClearRenderTarget(gbuffer.m_AlbedoAndRoughness);
+        cmdList.ClearRenderTarget(gbuffer.m_EmissiveAndMetallic);
+        cmdList.ClearRenderTarget(gbuffer.m_WorldNormal);
+        cmdList.ClearRenderTarget(gbuffer.m_Mv);
+        cmdList.ClearRenderTarget(gbuffer.m_ViewDepth);
+        cmdList.ClearDepthStencil(gbuffer.m_DepthStencil);
 
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
-
-        using Resources = joint::GeometryResources;
 
         cmdList.SetGraphicsRootResource(*Resources::MeshDraws, ms_Scene->m_MeshDrawBuffer->GetSrv());
         cmdList.SetGraphicsRootResource(*Resources::Materials, ms_Scene->m_MaterialBuffer->GetSrv());
@@ -162,7 +177,12 @@ namespace sandbox
         {
             cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Mesh));
 
-            cmdList.AddTransition(*ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+            cmdList.AddTransition(*ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.AddTransition(*ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.AddTransition(*ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.AddTransition(*ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.AddTransition(*ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.AddTransition(*ms_Scene->m_DispatchMeshIndirectCmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, true);
 
             cmdList.SetGraphicsRootResource(*Resources::Vertices, ms_Scene->m_VertexBuffer->GetSrv());
             cmdList.SetGraphicsRootResource(*Resources::Meshlets, ms_Scene->m_MeshletBuffer->GetSrv());
@@ -281,5 +301,16 @@ namespace sandbox
             });
         }
     }
+
+    // GBuffer
+
+    GBuffer::GBuffer(const benzin::RenderResources& resources)
+        : m_AlbedoAndRoughness{ resources.Get(TextureId::AlbedoAndRoughness) }
+        , m_EmissiveAndMetallic{ resources.Get(TextureId::EmissiveAndMetallic) }
+        , m_WorldNormal{ resources.Get(TextureId::WorldNormal) }
+        , m_Mv{ resources.Get(TextureId::Mv) }
+        , m_ViewDepth{ resources.Get(TextureId::ViewDepth) }
+        , m_DepthStencil{ resources.Get(TextureId::DepthStencil) }
+    {}
 
 }

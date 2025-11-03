@@ -1,7 +1,7 @@
 #include <sandbox/bootstrap.hpp>
 #include <sandbox/render_passes/procedural_grass_pass.hpp>
 
-#include <sandbox/render_passes/gbuffer.hpp>
+#include <sandbox/render_passes/geometry_pass.hpp>
 #include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
@@ -133,7 +133,13 @@ namespace sandbox
         cmdList.AddTransition(gbuffer.m_ViewDepth, D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmdList.AddTransition(gbuffer.m_DepthStencil, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 
-        gbuffer.SetRenderTargets(cmdList);
+        cmdList.AddRenderTarget(gbuffer.m_AlbedoAndRoughness);
+        cmdList.AddRenderTarget(gbuffer.m_EmissiveAndMetallic);
+        cmdList.AddRenderTarget(gbuffer.m_WorldNormal);
+        cmdList.AddRenderTarget(gbuffer.m_Mv);
+        cmdList.AddRenderTarget(gbuffer.m_ViewDepth);
+        cmdList.AddDepthStencil(gbuffer.m_DepthStencil);
+        cmdList.SetRenderTargets();
 
         cmdList.SetGraphicsRootResource(*Resources::GrassPatches, m_GrassPatchBuffer->GetSrv());
         cmdList.SetGraphicsRootResource(*Resources::PerlinNoise, m_PerlinNoiseTexture->GetSrv());

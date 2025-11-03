@@ -107,15 +107,17 @@ namespace sandbox
         benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
-        const auto& depthStencil = ms_Resources->Get(TextureId::DepthStencil);
+        const auto& depth = ms_Resources->Get(TextureId::DepthStencil);
 
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
 
         cmdList.AddTransition(hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(depthStencil, D3D12_RESOURCE_STATE_DEPTH_READ, true);
+        cmdList.AddTransition(depth, D3D12_RESOURCE_STATE_DEPTH_READ, true);
 
-        cmdList.SetRenderTargets({ hdrColor.GetRtv() }, &depthStencil.GetDsv());
+        cmdList.AddRenderTarget(hdrColor);
+        cmdList.AddDepthStencil(depth);
+        cmdList.SetRenderTargets();
 
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::Environment));
         cmdList.SetGraphicsRootResource(*joint::EnvironmentResources::CubeMap, m_CubeTexture->GetSrv());

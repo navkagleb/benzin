@@ -128,17 +128,23 @@ namespace benzin
         void SetVertexBuffer(const Buffer& vertexBuffer);
         void SetIndexBuffer(const Buffer& indexBuffer);
 
-        void SetRenderTargets(const std::vector<Descriptor>& rtvs, const Descriptor* dsv = nullptr);
+        void AddRenderTarget(const Texture& texture);
+        void AddDepthStencil(const Texture& texture);
+        void SetRenderTargets();
 
-        void ClearRenderTarget(const Texture& renderTarget, std::optional<DirectX::XMFLOAT4> overrideClearColor = std::nullopt);
+        void ClearRenderTarget(const Texture& renderTarget, std::optional<DirectX::XMFLOAT4> clearColor = std::nullopt);
         void ClearDepthStencil(const Texture& depthStencil);
 
         void DrawVertexed(uint32_t vertexCount, uint32_t instanceCount = 1);
-        void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount = 1);
+        void DrawIndexed(uint32_t indexCount, uint32_t indexOffset, uint32_t vertexOffset, uint32_t instanceCount = 1);
 
         // Mesh shaders
         void SetMeshPso(const MeshPso& pso);
         void DispatchMesh(const DirectX::XMUINT3& dimension, const DirectX::XMUINT3& threadGroupSize = DirectX::XMUINT3{ 1, 1, 1 });
+
+    private:
+        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_DeferredD3D12Rtvs;
+        D3D12_CPU_DESCRIPTOR_HANDLE m_DeferredD3D12Dsv = {};
 
     protected:
         ID3D12GraphicsCommandList6* m_D3D12GraphicsCommandList6 = nullptr;

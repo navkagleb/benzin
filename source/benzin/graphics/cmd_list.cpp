@@ -70,7 +70,7 @@ namespace benzin
 
         for (const TransitionBarrier& barrier : m_DeferredTransitionBarriers)
         {
-            if (barrier.m_Resource->GetD3D12State() == barrier.m_D3D12StateAfter)
+            if ((barrier.m_Resource->GetD3D12State() & barrier.m_D3D12StateAfter) != 0)
                 continue;
 
             D3D12_RESOURCE_BARRIER d3d12Barrier = {};
@@ -526,86 +526,67 @@ namespace benzin
         m_D3D12GraphicsCommandList1->IASetIndexBuffer(&d3d12View);
     }
 
-    void GraphicsCmdList::SetRenderTargets(const std::vector<Descriptor>& rtvs, const Descriptor* dsv)
+    void GraphicsCmdList::AddRenderTarget(const Texture& texture)
     {
-        constexpr bool isRenderTargetContiguous = false;
+        BenzinAssert(m_DeferredD3D12Rtvs.size() < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
+        BenzinAssert(texture.GetD3D12State() == D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-        BenzinAssert(rtvs.size() <= D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
-
-        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> d3d12RtvDescriptorHandles;
-        d3d12RtvDescriptorHandles.reserve(rtvs.size());
-
-        for (const auto& rtv : rtvs)
-        {
-            BenzinAssert(rtv.GetType() == DescriptorType::Rtv);
-            d3d12RtvDescriptorHandles.emplace_back(rtv.GetCpuHandle());
-        }
-
-        if (dsv)
-        {
-            BenzinAssert(dsv->GetType() == DescriptorType::Dsv);
-            const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DsvDescriptorHandle{ dsv->GetCpuHandle() };
-
-            m_D3D12GraphicsCommandList1->OMSetRenderTargets(
-                (uint32_t)d3d12RtvDescriptorHandles.size(),
-                d3d12RtvDescriptorHandles.data(),
-                isRenderTargetContiguous,
-                &d3d12DsvDescriptorHandle
-            );
-        }
-        else
-        {
-            m_D3D12GraphicsCommandList1->OMSetRenderTargets(
-                (uint32_t)d3d12RtvDescriptorHandles.size(),
-                d3d12RtvDescriptorHandles.data(),
-                isRenderTargetContiguous,
-                nullptr
-            );
-        }
+        m_DeferredD3D12Rtvs.emplace_back(texture.GetRtv().GetCpuHandle());
     }
 
-    void GraphicsCmdList::ClearRenderTarget(const Texture& renderTarget, std::optional<DirectX::XMFLOAT4> overrideClearColor)
+    void GraphicsCmdList::AddDepthStencil(const Texture& texture)
     {
-        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12RtvDescriptorHandle{ renderTarget.GetRtv().GetCpuHandle() };
-        const DirectX::XMFLOAT4& clearValue = overrideClearColor.value_or(MakeLazyConverter([&renderTarget] { return renderTarget.GetClearColor(); }));
+        BenzinAssert((texture.GetD3D12State() & D3D12_RESOURCE_STATE_DEPTH_READ) != 0 || texture.GetD3D12State() == D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-        m_D3D12GraphicsCommandList1->ClearRenderTargetView(d3d12RtvDescriptorHandle, reinterpret_cast<const float*>(&clearValue), 0, nullptr);
+        m_DeferredD3D12Dsv.ptr = texture.GetDsv().GetCpuHandle();
+    }
+
+    void GraphicsCmdList::SetRenderTargets()
+    {
+        BenzinAssert(!m_DeferredD3D12Rtvs.empty());
+
+        m_D3D12GraphicsCommandList1->OMSetRenderTargets(
+            (uint32_t)m_DeferredD3D12Rtvs.size(),
+            m_DeferredD3D12Rtvs.data(),
+            false,
+            m_DeferredD3D12Dsv.ptr != 0 ? &m_DeferredD3D12Dsv : nullptr);
+
+        m_DeferredD3D12Rtvs.clear();
+        m_DeferredD3D12Dsv = {};
+    }
+
+    void GraphicsCmdList::ClearRenderTarget(const Texture& renderTarget, std::optional<DirectX::XMFLOAT4> clearColor)
+    {
+        D3D12_CPU_DESCRIPTOR_HANDLE d3d12Rtv = {};
+        d3d12Rtv.ptr = renderTarget.GetRtv().GetCpuHandle();
+
+        const DirectX::XMFLOAT4& clearValue = clearColor.value_or(MakeLazyConverter([&renderTarget] { return renderTarget.GetClearColor(); }));
+
+        m_D3D12GraphicsCommandList1->ClearRenderTargetView(d3d12Rtv, (const float*)&clearValue, 0, nullptr);
     }
 
     void GraphicsCmdList::ClearDepthStencil(const Texture& depthStencil)
     {
-        const D3D12_CPU_DESCRIPTOR_HANDLE d3d12DsvDescriptorHandle{ depthStencil.GetDsv().GetCpuHandle() };
-        const DepthStencilValue clearDepthStencil = depthStencil.GetClearDepthStencil();
+        D3D12_CPU_DESCRIPTOR_HANDLE d3d12Dsv = {};
+        d3d12Dsv.ptr = depthStencil.GetDsv().GetCpuHandle();
 
         m_D3D12GraphicsCommandList1->ClearDepthStencilView(
-            d3d12DsvDescriptorHandle,
+            d3d12Dsv,
             D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-            clearDepthStencil.m_Depth,
-            clearDepthStencil.m_Stencil,
+            depthStencil.GetClearDepthStencil().m_Depth,
+            depthStencil.GetClearDepthStencil().m_Stencil,
             0,
             nullptr);
     }
 
     void GraphicsCmdList::DrawVertexed(uint32_t vertexCount, uint32_t instanceCount)
     {
-        constexpr uint32_t startVertexLocation = 0;
-        constexpr uint32_t startInstanceLocation = 0;
-        m_D3D12GraphicsCommandList1->DrawInstanced(
-            vertexCount,
-            instanceCount,
-            startVertexLocation,
-            startInstanceLocation);
+        m_D3D12GraphicsCommandList1->DrawInstanced(vertexCount, instanceCount, 0, 0);
     }
 
-    void GraphicsCmdList::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t instanceCount)
+    void GraphicsCmdList::DrawIndexed(uint32_t indexCount, uint32_t indexOffset, uint32_t vertexOffset, uint32_t instanceCount)
     {
-        constexpr uint32_t startInstanceLocation = 0;
-        m_D3D12GraphicsCommandList1->DrawIndexedInstanced(
-            indexCount,
-            instanceCount,
-            startIndexLocation,
-            baseVertexLocation,
-            startInstanceLocation);
+        m_D3D12GraphicsCommandList1->DrawIndexedInstanced(indexCount, instanceCount, indexOffset, vertexOffset, 0);
     }
 
     void GraphicsCmdList::SetMeshPso(const MeshPso& pso)
