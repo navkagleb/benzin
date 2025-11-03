@@ -141,8 +141,8 @@ namespace sandbox
         cmdList.AddDepthStencil(gbuffer.m_DepthStencil);
         cmdList.SetRenderTargets();
 
-        cmdList.SetGraphicsRootResource(*Resources::GrassPatches, m_GrassPatchBuffer->GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::PerlinNoise, m_PerlinNoiseTexture->GetSrv());
+        cmdList.SetGraphicsRootSrv(*Resources::GrassPatches, *m_GrassPatchBuffer);
+        cmdList.SetGraphicsRootSrv(*Resources::PerlinNoise, *m_PerlinNoiseTexture);
 
         cmdList.DispatchMesh({ m_Consts.GrassPatchCount, 1, 1 }, { *joint::ProceduralGrassConsts::AsGroupSize, 1, 1 });
     }

@@ -2,6 +2,7 @@
 
 #include <benzin/graphics/common.hpp>
 #include <benzin/graphics/resource.hpp>
+#include <benzin/graphics/texture.hpp>
 
 namespace benzin
 {
@@ -14,7 +15,6 @@ namespace benzin
     class RayTracing_AcclerationStructure;
     class RayTracing_Pso;
     class RayTracing_ShaderTable;
-    class Texture;
     class VertexPso;
     struct SubResourceData;
 
@@ -92,7 +92,10 @@ namespace benzin
         void SetComputeUav(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
         void SetComputeRootConstant(uint32_t rootIndex, uint32_t value);
-        void SetComputeRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
+        void SetComputeRootSrv(uint32_t rootIndex, const Buffer& buffer);
+        void SetComputeRootSrv(uint32_t rootIndex, const Texture& texture, const TextureSrv& srv = {});
+        void SetComputeRootUav(uint32_t rootIndex, const Buffer& buffer);
+        void SetComputeRootUav(uint32_t rootIndex, const Texture& texture);
 
         void SetComputePso(const ComputePso& pso);
 
@@ -121,7 +124,8 @@ namespace benzin
         void SetGraphicsUav(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
         void SetGraphicsRootConstant(uint32_t rootIndex, uint32_t value);
-        void SetGraphicsRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor);
+        void SetGraphicsRootSrv(uint32_t rootIndex, const Buffer& buffer);
+        void SetGraphicsRootSrv(uint32_t rootIndex, const Texture& texture);
 
         void SetVertexPso(const VertexPso& pso);
 

@@ -84,16 +84,16 @@ namespace sandbox
         cmdList.AddTransition(shadow, D3D12_RESOURCE_STATE_GENERIC_READ);
         cmdList.AddTransition(hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 
-        cmdList.SetGraphicsRootResource(*Resources::AlbedoAndRoughness, albedoAndRoughness.GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::EmissiveAndMetallic, emissiveAndMetallic.GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::WorldNormal, worldNormal.GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::DepthStencil, depth.GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::Shadow, shadow.GetSrv());
-
         cmdList.ClearRenderTarget(hdrColor);
         cmdList.AddRenderTarget(hdrColor);
         cmdList.AddDepthStencil(depth);
         cmdList.SetRenderTargets();
+
+        cmdList.SetGraphicsRootSrv(*Resources::AlbedoAndRoughness, albedoAndRoughness);
+        cmdList.SetGraphicsRootSrv(*Resources::EmissiveAndMetallic, emissiveAndMetallic);
+        cmdList.SetGraphicsRootSrv(*Resources::WorldNormal, worldNormal);
+        cmdList.SetGraphicsRootSrv(*Resources::DepthStencil, depth);
+        cmdList.SetGraphicsRootSrv(*Resources::Shadow, shadow);
 
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::DeferredLighting));
         cmdList.DrawVertexed(3);

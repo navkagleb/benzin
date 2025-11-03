@@ -469,7 +469,7 @@ namespace benzin
         cmdList.SetVertexBuffer(*vertexBuffer);
         cmdList.SetIndexBuffer(*indexBuffer);
 
-        cmdList.ClearRenderTarget(backBuffer);
+        cmdList.ClearRenderTarget(backBuffer, DirectX::XMFLOAT4{});
         cmdList.AddRenderTarget(backBuffer);
         cmdList.SetRenderTargets();
 

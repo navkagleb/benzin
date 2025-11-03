@@ -168,8 +168,8 @@ namespace sandbox
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
 
-        cmdList.SetGraphicsRootResource(*Resources::MeshDraws, ms_Scene->m_MeshDrawBuffer->GetSrv());
-        cmdList.SetGraphicsRootResource(*Resources::Materials, ms_Scene->m_MaterialBuffer->GetSrv());
+        cmdList.SetGraphicsRootSrv(*Resources::MeshDraws, *ms_Scene->m_MeshDrawBuffer);
+        cmdList.SetGraphicsRootSrv(*Resources::Materials, *ms_Scene->m_MaterialBuffer);
 
         const auto& settings = ms_Settings->GetSection<GBufferSettings>();
 
@@ -184,11 +184,11 @@ namespace sandbox
             cmdList.AddTransition(*ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             cmdList.AddTransition(*ms_Scene->m_DispatchMeshIndirectCmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, true);
 
-            cmdList.SetGraphicsRootResource(*Resources::Vertices, ms_Scene->m_VertexBuffer->GetSrv());
-            cmdList.SetGraphicsRootResource(*Resources::Meshlets, ms_Scene->m_MeshletBuffer->GetSrv());
-            cmdList.SetGraphicsRootResource(*Resources::MeshletCullVolumes, ms_Scene->m_MeshletCullVolumeBuffer->GetSrv());
-            cmdList.SetGraphicsRootResource(*Resources::MeshletVertexIndices, ms_Scene->m_MeshletVertexIndexBuffer->GetSrv());
-            cmdList.SetGraphicsRootResource(*Resources::MeshletIndices, ms_Scene->m_MeshletIndexBuffer->GetSrv());
+            cmdList.SetGraphicsRootSrv(*Resources::Vertices, *ms_Scene->m_VertexBuffer);
+            cmdList.SetGraphicsRootSrv(*Resources::Meshlets, *ms_Scene->m_MeshletBuffer);
+            cmdList.SetGraphicsRootSrv(*Resources::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer);
+            cmdList.SetGraphicsRootSrv(*Resources::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer);
+            cmdList.SetGraphicsRootSrv(*Resources::MeshletIndices, *ms_Scene->m_MeshletIndexBuffer);
 
             if (settings.m_IsIndirectDrawEnabled)
             {

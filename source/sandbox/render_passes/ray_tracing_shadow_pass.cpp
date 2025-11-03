@@ -142,15 +142,14 @@ namespace sandbox
             cmdList.AddTransition(*m_BlueNoiseTexture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             cmdList.AddTransition(noisyPenumbra, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-            cmdList.SetComputeRootResource(*Resources::WorldNormal, worldNormal.GetSrv());
-            cmdList.SetComputeRootResource(*Resources::Depth, depth.GetSrv());
-            cmdList.SetComputeRootResource(*Resources::BlueNoise, m_BlueNoiseTexture->GetSrv({ .m_DepthOffset = m_BlueNoiseDepthIndex, .m_DepthCount = 1 }));
-            cmdList.SetComputeRootResource(*Resources::NoisyPenumbra, noisyPenumbra.GetUav());
+            cmdList.SetComputeRootSrv(*Resources::WorldNormal, worldNormal);
+            cmdList.SetComputeRootSrv(*Resources::Depth, depth);
+            cmdList.SetComputeRootSrv(*Resources::BlueNoise, *m_BlueNoiseTexture, { .m_DepthOffset = m_BlueNoiseDepthIndex, .m_DepthCount = 1 });
+            cmdList.SetComputeRootUav(*Resources::NoisyPenumbra, noisyPenumbra);
 
             cmdList.DispatchRays(pso.GetShaderTable(), { ms_RenderViewportWidth, ms_RenderViewportHeight, 1 });
 
             cmdList.AddUnorderedAccess(noisyPenumbra);
-            cmdList.AddTransition(noisyPenumbra, D3D12_RESOURCE_STATE_GENERIC_READ, true);
         }
     }
 

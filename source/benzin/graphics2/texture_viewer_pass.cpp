@@ -100,20 +100,20 @@ namespace benzin
 
         cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
-        cmdList.SetComputeRootResource(*Resources::ReferenceTexture, ms_Resources->Get(m_ReferenceTextureId).GetSrv(
+        cmdList.SetComputeRootSrv(*Resources::ReferenceTexture, referenceTexture, TextureSrv
         {
             .m_DepthOffset = m_ViewerData.m_ActiveDepthIndex,
             .m_DepthCount = 1,
             .m_MipOffset = m_ViewerData.m_ActiveMipIndex,
             .m_MipCount = 1,
-        }));
+        });
 
-        cmdList.SetComputeRootResource(*Resources::OutDebugTexture, debugTexture.GetUav());
+        cmdList.SetComputeRootUav(*Resources::OutDebugTexture, debugTexture);
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
         cmdList.Dispatch({ debugTexture.GetWidth(), debugTexture.GetHeight(), 1 }, { 16, 16, 1 });
 
-        cmdList.AddUnorderedAccess(debugTexture, true);
+        cmdList.AddUnorderedAccess(debugTexture);
     }
 
 }

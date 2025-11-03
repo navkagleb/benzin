@@ -229,9 +229,9 @@ namespace sandbox
         cmdList.AddTransition(noisyPenumbra, D3D12_RESOURCE_STATE_GENERIC_READ);
         cmdList.AddTransition(tiles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-        cmdList.SetComputeRootResource(*Resources::ViewDepth, viewDepth.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::Penumbra, noisyPenumbra.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::OutTiles, tiles.GetUav());
+        cmdList.SetComputeRootSrv(*Resources::ViewDepth, viewDepth);
+        cmdList.SetComputeRootSrv(*Resources::Penumbra, noisyPenumbra);
+        cmdList.SetComputeRootUav(*Resources::OutTiles, tiles);
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaClassifyTiles));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
@@ -254,8 +254,8 @@ namespace sandbox
         cmdList.AddTransition(tiles, D3D12_RESOURCE_STATE_GENERIC_READ);
         cmdList.AddTransition(smoothTiles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-        cmdList.SetComputeRootResource(*Resources::Tiles, tiles.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::OutSmoothTiles, smoothTiles.GetUav());
+        cmdList.SetComputeRootSrv(*Resources::Tiles, tiles);
+        cmdList.SetComputeRootUav(*Resources::OutSmoothTiles, smoothTiles);
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaSmoothTiles));
         cmdList.Dispatch({ m_Consts.TileCount.x, m_Consts.TileCount.y, 1 }, { 16, 16, 1 });
@@ -286,12 +286,12 @@ namespace sandbox
         cmdList.AddTransition(penumbra1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.AddTransition(shadowTemp1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-        cmdList.SetComputeRootResource(*Resources::WorldNormal, worldNormal.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::ViewDepth, viewDepth.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::SmoothTiles, smoothTiles.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::Penumbra, noisyPenumbra.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::OutPenumbra, penumbra1.GetUav());
-        cmdList.SetComputeRootResource(*Resources::OutShadow, shadowTemp1.GetUav());
+        cmdList.SetComputeRootSrv(*Resources::WorldNormal, worldNormal);
+        cmdList.SetComputeRootSrv(*Resources::ViewDepth, viewDepth);
+        cmdList.SetComputeRootSrv(*Resources::SmoothTiles, smoothTiles);
+        cmdList.SetComputeRootSrv(*Resources::Penumbra, noisyPenumbra);
+        cmdList.SetComputeRootUav(*Resources::OutPenumbra, penumbra1);
+        cmdList.SetComputeRootUav(*Resources::OutShadow, shadowTemp1);
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaBlur));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
@@ -332,13 +332,13 @@ namespace sandbox
         cmdList.AddTransition(penumbra2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.AddTransition(shadowTemp2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-        cmdList.SetComputeRootResource(*Resources::WorldNormal, worldNormal.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::ViewDepth, viewDepth.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::SmoothTiles, smoothTiles.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::Penumbra, penumbra1.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::Shadow, shadowTemp1.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::OutPenumbra, penumbra2.GetUav());
-        cmdList.SetComputeRootResource(*Resources::OutShadow, shadowTemp2.GetUav());
+        cmdList.SetComputeRootSrv(*Resources::WorldNormal, worldNormal);
+        cmdList.SetComputeRootSrv(*Resources::ViewDepth, viewDepth);
+        cmdList.SetComputeRootSrv(*Resources::SmoothTiles, smoothTiles);
+        cmdList.SetComputeRootSrv(*Resources::Penumbra, penumbra1);
+        cmdList.SetComputeRootSrv(*Resources::Shadow, shadowTemp1);
+        cmdList.SetComputeRootUav(*Resources::OutPenumbra, penumbra2);
+        cmdList.SetComputeRootUav(*Resources::OutShadow, shadowTemp2);
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaPostBlur));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
@@ -382,15 +382,15 @@ namespace sandbox
         cmdList.AddTransition(shadow, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.AddTransition(historyLength, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-        cmdList.SetComputeRootResource(*Resources::Mv, mv.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::ViewDepth, viewDepth.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::SmoothTiles, smoothTiles.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::Penumbra, penumbra2.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::Shadow, shadowTemp2.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::ShadowHistory, prevShadow.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::HistoryLength, prevHistoryLength.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::OutShadow, shadow.GetUav());
-        cmdList.SetComputeRootResource(*Resources::OutHistoryLength, historyLength.GetUav());
+        cmdList.SetComputeRootSrv(*Resources::Mv, mv);
+        cmdList.SetComputeRootSrv(*Resources::ViewDepth, viewDepth);
+        cmdList.SetComputeRootSrv(*Resources::SmoothTiles, smoothTiles);
+        cmdList.SetComputeRootSrv(*Resources::Penumbra, penumbra2);
+        cmdList.SetComputeRootSrv(*Resources::Shadow, shadowTemp2);
+        cmdList.SetComputeRootSrv(*Resources::ShadowHistory, prevShadow);
+        cmdList.SetComputeRootSrv(*Resources::HistoryLength, prevHistoryLength);
+        cmdList.SetComputeRootUav(*Resources::OutShadow, shadow);
+        cmdList.SetComputeRootUav(*Resources::OutHistoryLength, historyLength);
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaTemporalStabilization));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });

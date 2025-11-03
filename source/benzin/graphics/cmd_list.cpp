@@ -250,6 +250,9 @@ namespace benzin
             }
         }
 
+        AddTransition(texture, D3D12_RESOURCE_STATE_COPY_DEST);
+        AddTransition(*m_UploadBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE, true);
+
         // Copy to texture
         for (uint32_t i = 0; i < subResources.size(); ++i)
         {
@@ -263,7 +266,6 @@ namespace benzin
             d3d12SourceLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
             d3d12SourceLocation.PlacedFootprint = copyableFootprits.D3D12Layouts[i];
 
-            // BenzinScopedResourceBarriers(*this, TransitionBarrier{ texture, ResourceState::CopyDestination }); // TODO
             m_D3D12GraphicsCommandList1->CopyTextureRegion(&d3d12DestLocation, 0, 0, 0, &d3d12SourceLocation, nullptr);
         }
     }
@@ -370,10 +372,24 @@ namespace benzin
         m_D3D12GraphicsCommandList1->SetComputeRoot32BitConstant(*UnifiedRootParameter::Root32Consts, value, rootIndex);
     }
 
-    void ComputeCmdList::SetComputeRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
+    void ComputeCmdList::SetComputeRootSrv(uint32_t rootIndex, const Buffer& buffer)
     {
-        BenzinAssert(viewDescriptor.IsGpuValid());
-        SetComputeRootConstant(rootIndex, viewDescriptor.GetGpuHeapIndex());
+        SetComputeRootConstant(rootIndex, buffer.GetSrv().GetGpuHeapIndex());
+    }
+
+    void ComputeCmdList::SetComputeRootSrv(uint32_t rootIndex, const Texture& texture, const TextureSrv& srv)
+    {
+        SetComputeRootConstant(rootIndex, texture.GetSrv(srv).GetGpuHeapIndex());
+    }
+
+    void ComputeCmdList::SetComputeRootUav(uint32_t rootIndex, const Buffer& buffer)
+    {
+        SetComputeRootConstant(rootIndex, buffer.GetUav().GetGpuHeapIndex());
+    }
+
+    void ComputeCmdList::SetComputeRootUav(uint32_t rootIndex, const Texture& texture)
+    {
+        SetComputeRootConstant(rootIndex, texture.GetUav().GetGpuHeapIndex());
     }
 
     void ComputeCmdList::SetComputePso(const ComputePso& pso)
@@ -488,10 +504,14 @@ namespace benzin
         m_D3D12GraphicsCommandList1->SetGraphicsRoot32BitConstant(*UnifiedRootParameter::Root32Consts, value, rootIndex);
     }
 
-    void GraphicsCmdList::SetGraphicsRootResource(uint32_t rootIndex, const Descriptor& viewDescriptor)
+    void GraphicsCmdList::SetGraphicsRootSrv(uint32_t rootIndex, const Buffer& buffer)
     {
-        BenzinAssert(viewDescriptor.IsGpuValid());
-        SetGraphicsRootConstant(rootIndex, viewDescriptor.GetGpuHeapIndex());
+        SetGraphicsRootConstant(rootIndex, buffer.GetSrv().GetGpuHeapIndex());
+    }
+
+    void GraphicsCmdList::SetGraphicsRootSrv(uint32_t rootIndex, const Texture& texture)
+    {
+        SetGraphicsRootConstant(rootIndex, texture.GetSrv().GetGpuHeapIndex());
     }
 
     void GraphicsCmdList::SetVertexPso(const VertexPso& pso)

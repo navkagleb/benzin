@@ -168,12 +168,15 @@ namespace sandbox
         cmdList.AddTransition(luminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.AddTransition(debugLuminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-        cmdList.SetComputeRootResource(*Resources::HdrColor, hdrColor.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::OutLuminanceHistogram, luminanceHistogram.GetUav());
-        cmdList.SetComputeRootResource(*Resources::OutDebugLuminanceHistogram, debugLuminanceHistogram.GetUav());
+        cmdList.SetComputeRootSrv(*Resources::HdrColor, hdrColor);
+        cmdList.SetComputeRootUav(*Resources::OutLuminanceHistogram, luminanceHistogram);
+        cmdList.SetComputeRootUav(*Resources::OutDebugLuminanceHistogram, debugLuminanceHistogram);
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcLuminanceHistogram));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
+
+        cmdList.AddUnorderedAccess(luminanceHistogram);
+        cmdList.AddUnorderedAccess(debugLuminanceHistogram);
     }
 
     void ToneMappingPass::RunCalcAvgLuminancePass(benzin::ComputeCmdList& cmdList) const
@@ -186,14 +189,17 @@ namespace sandbox
         const auto& luminanceHistogram = ms_Resources->Get(BufferId::ToneMapping_LuminanceHistogram);
         const auto& avgLuminance = ms_Resources->Get(TextureId::ToneMapping_AvgLuminance);
 
-        cmdList.AddUnorderedAccess(luminanceHistogram);
-        cmdList.AddUnorderedAccess(avgLuminance, true);
+        cmdList.AddTransition(luminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransition(avgLuminance, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-        cmdList.SetComputeRootResource(*Resources::OutLuminanceHistogram, luminanceHistogram.GetUav());
-        cmdList.SetComputeRootResource(*Resources::OutAvgLuminance, avgLuminance.GetUav());
+        cmdList.SetComputeRootUav(*Resources::OutLuminanceHistogram, luminanceHistogram);
+        cmdList.SetComputeRootUav(*Resources::OutAvgLuminance, avgLuminance);
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcAvgLuminance));
         cmdList.Dispatch({ 1, 1, 1 }, { 1, 1, 1 });
+
+        cmdList.AddUnorderedAccess(luminanceHistogram);
+        cmdList.AddUnorderedAccess(avgLuminance);
     }
 
     void ToneMappingPass::RunApplyToneMapOperatorPass(benzin::ComputeCmdList& cmdList) const
@@ -208,18 +214,17 @@ namespace sandbox
         const auto& finalTexture = ms_Resources->Get(TextureId::Final);
 
         cmdList.AddTransition(hdrColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        cmdList.AddUnorderedAccess(avgLuminance);
         cmdList.AddTransition(avgLuminance, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         cmdList.AddTransition(finalTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
-        cmdList.SetComputeRootResource(*Resources::HdrColor, hdrColor.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::AvgLuminance, avgLuminance.GetSrv());
-        cmdList.SetComputeRootResource(*Resources::OutFinal, finalTexture.GetUav());
+        cmdList.SetComputeRootSrv(*Resources::HdrColor, hdrColor);
+        cmdList.SetComputeRootSrv(*Resources::AvgLuminance, avgLuminance);
+        cmdList.SetComputeRootUav(*Resources::OutFinal, finalTexture);
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_ApplyToneMapOperator));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
 
-        cmdList.AddUnorderedAccess(finalTexture, true);
+        cmdList.AddUnorderedAccess(finalTexture);
     }
 
 }
