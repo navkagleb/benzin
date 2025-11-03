@@ -27,3 +27,19 @@ bool IsInRange(T value, T min, T max)
 {
     return all(value >= min) && all(value <= max);
 }
+
+float4 GetFullScreenTriangleClipPosition(uint vertexIndex)
+{
+    const float x = (float)(vertexIndex >> 1) * -4.0 + 1.0;
+    const float y = (float)(vertexIndex & 1) * -4.0 + 1.0;
+
+    return float4(x, y, 0.0, 1.0);
+}
+
+float2 GetFullScreenTriangleUv(uint vertexIndex)
+{
+    const float u = 1.0 - (float)(vertexIndex >> 1) * 2.0;
+    const float v = (float)(vertexIndex & 1) * 2.0;
+
+    return float2(u, v);
+}

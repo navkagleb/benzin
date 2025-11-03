@@ -24,7 +24,7 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::DeferredLighting, [this](benzin::VertexPsoProxy& proxy)
         {
-            proxy.m_Vs.m_FileName = "fullscreen_triangle.hlsl";
+            proxy.m_Vs.m_FileName = "deferred_lighting_pass.hlsl";
             proxy.m_Ps.m_FileName = "deferred_lighting_pass.hlsl";
 
             proxy.m_DepthState.m_IsEnabled = true;

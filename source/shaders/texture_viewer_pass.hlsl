@@ -2,7 +2,6 @@
 #include "unified_root_parameters.hlsli"
 
 #include "common.hlsli"
-#include "fullscreen_helper.hlsli"
 #include "gbuffer.hlsli"
 #include "space_convertions.hlsli"
 

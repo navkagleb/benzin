@@ -24,8 +24,7 @@ namespace sandbox
     {
         ms_PsoManager->Create(PsoId::Environment, [](benzin::VertexPsoProxy& proxy)
         {
-            proxy.m_Vs.m_FileName = "fullscreen_triangle.hlsl";
-            proxy.m_Vs.m_EntryPoint = "VsMainDepth0";
+            proxy.m_Vs.m_FileName = "environment_pass.hlsl";
             proxy.m_Ps.m_FileName = "environment_pass.hlsl";
             proxy.m_DepthState.m_IsEnabled = true;
             proxy.m_DepthState.m_D3D12ComparisonFunction = D3D12_COMPARISON_FUNC_EQUAL;
