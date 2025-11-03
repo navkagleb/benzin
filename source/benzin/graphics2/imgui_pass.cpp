@@ -454,24 +454,21 @@ namespace benzin
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &d3d12Viewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &d3d12ScissorRect);
         cmdList.GetD3D12GraphicsCommandList()->OMSetBlendFactor((const float*)&blendFactor);
-
         cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::ImGui));
         cmdList.SetGraphicsCbv(UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
         const Texture& backBuffer = ms_SwapChain->GetCurrentBackBuffer();
         auto& [vertexBuffer, indexBuffer] = m_FrameContexts[ms_Device->GetActiveFrameIndex()];
 
-        cmdList.AddTransition(*vertexBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-        cmdList.AddTransition(*indexBuffer, D3D12_RESOURCE_STATE_INDEX_BUFFER);
-        cmdList.AddTransition(backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-
-        cmdList.SetVertexBuffer(*vertexBuffer);
-        cmdList.SetIndexBuffer(*indexBuffer);
-
-        cmdList.ClearRenderTarget(backBuffer, DirectX::XMFLOAT4{});
         cmdList.AddRenderTarget(backBuffer);
         cmdList.SetRenderTargets();
+        cmdList.SetVertexBuffer(*vertexBuffer);
+        cmdList.SetIndexBuffer(*indexBuffer);
+        cmdList.FlushBarriers();
+
+        cmdList.ClearRenderTarget(backBuffer, DirectX::XMFLOAT4{});
 
         RenderImDrawData(cmdList);
     }

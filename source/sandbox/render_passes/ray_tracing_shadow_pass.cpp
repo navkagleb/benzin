@@ -115,10 +115,12 @@ namespace sandbox
 
             const benzin::RayTracing_Tlas& tlas = ms_RayTracingScene->GetTlas();
 
-            cmdList.AddTransition(*tlas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+            cmdList.AddTransition(*tlas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            cmdList.FlushBarriers();
             cmdList.BuildRayTracingAccelerationStructure(tlas);
-            cmdList.AddUnorderedAccess(*tlas.GetScratchResource());
-            cmdList.AddTransition(*tlas.GetScratchResource(), D3D12_RESOURCE_STATE_GENERIC_READ, true);
+
+            cmdList.AddUnorderedAccess(*tlas.GetBuffer());
+            cmdList.FlushBarriers();
 
             cmdList.SetComputeSrv(benzin::UnifiedRootParameter::SceneTlas, tlas.GetGpuVirtualAddress());
         }
@@ -130,22 +132,16 @@ namespace sandbox
             BenzinGpuProfile("RayTracing");
 
             const benzin::RayTracing_Pso& pso = ms_PsoManager->GetRayTracing(PsoId::ShadowPass);
-            const benzin::Texture& worldNormal = ms_Resources->Get(TextureId::WorldNormal);
-            const benzin::Texture& depth = ms_Resources->Get(TextureId::DepthStencil);
             const benzin::Texture& noisyPenumbra = ms_Resources->Get(TextureId::NoisyPenumbra);
 
             cmdList.SetRayTracingPso(pso);
             cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
-            cmdList.AddTransition(worldNormal, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.AddTransition(depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.AddTransition(*m_BlueNoiseTexture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.AddTransition(noisyPenumbra, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-
-            cmdList.SetComputeRootSrv(*Resources::WorldNormal, worldNormal);
-            cmdList.SetComputeRootSrv(*Resources::Depth, depth);
+            cmdList.SetComputeRootSrv(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal));
+            cmdList.SetComputeRootSrv(*Resources::Depth, ms_Resources->Get(TextureId::DepthStencil));
             cmdList.SetComputeRootSrv(*Resources::BlueNoise, *m_BlueNoiseTexture, { .m_DepthOffset = m_BlueNoiseDepthIndex, .m_DepthCount = 1 });
             cmdList.SetComputeRootUav(*Resources::NoisyPenumbra, noisyPenumbra);
+            cmdList.FlushBarriers();
 
             cmdList.DispatchRays(pso.GetShaderTable(), { ms_RenderViewportWidth, ms_RenderViewportHeight, 1 });
 

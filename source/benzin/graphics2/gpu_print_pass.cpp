@@ -127,13 +127,6 @@ namespace benzin
         m_Consts.m_PrintBufferSizeInBytes = printBufferSizeInBytes;
     }
 
-    void GpuPrintPass::OnZeroFrameInit()
-    {
-        ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        cmdList.AddTransition(*m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-        cmdList.ClearUnorderedAccess(*m_UavBuffer, m_UavBuffer->GetUav(), {});
-    }
-
     void GpuPrintPass::OnUpdate()
     {
         m_Consts.m_CursorPosition = m_PrintData.m_CursorPosition;
@@ -145,7 +138,8 @@ namespace benzin
 
         ReadbackFromGpu(cmdList);
 
-        cmdList.AddTransition(*m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+        cmdList.AddTransition(*m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.FlushBarriers();
         cmdList.ClearUnorderedAccess(*m_UavBuffer, m_UavBuffer->GetUav());
 
         const uint64_t constBufferGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(m_Consts);

@@ -92,13 +92,11 @@ namespace benzin
 
         ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
+        cmdList.SetComputeCbv(UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
+
         const Texture& referenceTexture = ms_Resources->Get(m_ReferenceTextureId);
         const Texture& debugTexture = ms_Resources->Get(TextureId::DebugTexture);
-
-        cmdList.AddTransition(referenceTexture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        cmdList.AddTransition(debugTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
         cmdList.SetComputeRootSrv(*Resources::ReferenceTexture, referenceTexture, TextureSrv
         {
@@ -109,8 +107,8 @@ namespace benzin
         });
 
         cmdList.SetComputeRootUav(*Resources::OutDebugTexture, debugTexture);
+        cmdList.FlushBarriers();
 
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::TextureViewer));
         cmdList.Dispatch({ debugTexture.GetWidth(), debugTexture.GetHeight(), 1 }, { 16, 16, 1 });
 
         cmdList.AddUnorderedAccess(debugTexture);

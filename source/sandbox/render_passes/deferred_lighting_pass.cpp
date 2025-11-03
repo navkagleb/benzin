@@ -62,40 +62,31 @@ namespace sandbox
         BenzinProfile();
         BenzinGpuProfile("DeferredLighting");
 
-        auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-
-        const auto& sigmaSettings = ms_Settings->GetSection<SigmaDenoiserSettings>();
-
-        const auto& albedoAndRoughness = ms_Resources->Get(TextureId::AlbedoAndRoughness);
-        const auto& emissiveAndMetallic = ms_Resources->Get(TextureId::EmissiveAndMetallic);
-        const auto& worldNormal = ms_Resources->Get(TextureId::WorldNormal);
-        const auto& depth = ms_Resources->Get(TextureId::DepthStencil);
-        const auto& shadow = ms_Resources->Get(sigmaSettings.m_IsEnabled ? TextureId::Shadow : TextureId::NoisyPenumbra);
-        const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
+        benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
         cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        cmdList.AddTransition(albedoAndRoughness, D3D12_RESOURCE_STATE_GENERIC_READ);
-        cmdList.AddTransition(emissiveAndMetallic, D3D12_RESOURCE_STATE_GENERIC_READ);
-        cmdList.AddTransition(worldNormal, D3D12_RESOURCE_STATE_GENERIC_READ);
-        cmdList.AddTransition(depth, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_DEPTH_READ);
-        cmdList.AddTransition(shadow, D3D12_RESOURCE_STATE_GENERIC_READ);
-        cmdList.AddTransition(hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+        cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::DeferredLighting));
 
-        cmdList.ClearRenderTarget(hdrColor);
+        const auto& depth = ms_Resources->Get(TextureId::DepthStencil);
+        const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
+
         cmdList.AddRenderTarget(hdrColor);
-        cmdList.AddDepthStencil(depth);
+        cmdList.AddDepthStencil(depth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         cmdList.SetRenderTargets();
 
-        cmdList.SetGraphicsRootSrv(*Resources::AlbedoAndRoughness, albedoAndRoughness);
-        cmdList.SetGraphicsRootSrv(*Resources::EmissiveAndMetallic, emissiveAndMetallic);
-        cmdList.SetGraphicsRootSrv(*Resources::WorldNormal, worldNormal);
+        cmdList.SetGraphicsRootSrv(*Resources::AlbedoAndRoughness, ms_Resources->Get(TextureId::AlbedoAndRoughness));
+        cmdList.SetGraphicsRootSrv(*Resources::EmissiveAndMetallic, ms_Resources->Get(TextureId::EmissiveAndMetallic));
+        cmdList.SetGraphicsRootSrv(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal));
         cmdList.SetGraphicsRootSrv(*Resources::DepthStencil, depth);
-        cmdList.SetGraphicsRootSrv(*Resources::Shadow, shadow);
 
-        cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::DeferredLighting));
+        const TextureId shadowId = ms_Settings->GetSection<SigmaDenoiserSettings>().m_IsEnabled ? TextureId::Shadow : TextureId::NoisyPenumbra;
+        cmdList.SetGraphicsRootSrv(*Resources::Shadow, ms_Resources->Get(shadowId));
+
+        cmdList.FlushBarriers();
+        cmdList.ClearRenderTarget(hdrColor);
         cmdList.DrawVertexed(3);
     }
 

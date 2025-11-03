@@ -28,8 +28,8 @@ namespace benzin
 
         auto* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList1; }
 
-        void AddTransition(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter, bool isFlushRequested = false);
-        void AddUnorderedAccess(const Resource& resource, bool isFlushRequested = false);
+        void AddTransition(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter);
+        void AddUnorderedAccess(const Resource& resource);
         void FlushBarriers();
 
     protected:
@@ -124,8 +124,8 @@ namespace benzin
         void SetGraphicsUav(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
         void SetGraphicsRootConstant(uint32_t rootIndex, uint32_t value);
-        void SetGraphicsRootSrv(uint32_t rootIndex, const Buffer& buffer);
-        void SetGraphicsRootSrv(uint32_t rootIndex, const Texture& texture);
+        void SetGraphicsRootSrv(uint32_t rootIndex, const Buffer& buffer, D3D12_RESOURCE_STATES d3d12State = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        void SetGraphicsRootSrv(uint32_t rootIndex, const Texture& texture, D3D12_RESOURCE_STATES d3d12State = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         void SetVertexPso(const VertexPso& pso);
 
@@ -133,11 +133,11 @@ namespace benzin
         void SetIndexBuffer(const Buffer& indexBuffer);
 
         void AddRenderTarget(const Texture& texture);
-        void AddDepthStencil(const Texture& texture);
+        void AddDepthStencil(const Texture& texture, D3D12_RESOURCE_STATES d3d12State = D3D12_RESOURCE_STATE_DEPTH_WRITE);
         void SetRenderTargets();
 
-        void ClearRenderTarget(const Texture& renderTarget, std::optional<DirectX::XMFLOAT4> clearColor = std::nullopt);
-        void ClearDepthStencil(const Texture& depthStencil);
+        void ClearRenderTarget(const Texture& texture, std::optional<DirectX::XMFLOAT4> clearColor = std::nullopt);
+        void ClearDepthStencil(const Texture& texture);
 
         void DrawVertexed(uint32_t vertexCount, uint32_t instanceCount = 1);
         void DrawIndexed(uint32_t indexCount, uint32_t indexOffset, uint32_t vertexOffset, uint32_t instanceCount = 1);

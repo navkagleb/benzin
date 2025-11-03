@@ -85,14 +85,13 @@ namespace sandbox
 
             benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-            cmdList.AddTransition(*equirectangularTexture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.AddTransition(*m_CubeTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+            cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Environment_EquirectangularToCube));
 
             using Resources = joint::EquirectangularToCubeResources;
             cmdList.SetComputeRootSrv(*Resources::EquirectangularTexture, *equirectangularTexture);
             cmdList.SetComputeRootUav(*Resources::OutCubeMap, *m_CubeTexture);
+            cmdList.FlushBarriers();
 
-            cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Environment_EquirectangularToCube));
             cmdList.Dispatch({ cubeMapSize, cubeMapSize, m_CubeTexture->GetDepth() }, { 8, 8, 1 });
 
             cmdList.AddUnorderedAccess(*m_CubeTexture);
@@ -106,24 +105,18 @@ namespace sandbox
 
         benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-        const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
-        const auto& depth = ms_Resources->Get(TextureId::DepthStencil);
-
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
         cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::Environment));
 
-        cmdList.AddTransition(*m_CubeTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        cmdList.AddTransition(hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(depth, D3D12_RESOURCE_STATE_DEPTH_READ, true);
-
-        cmdList.AddRenderTarget(hdrColor);
-        cmdList.AddDepthStencil(depth);
+        cmdList.AddRenderTarget(ms_Resources->Get(TextureId::HdrColor));
+        cmdList.AddDepthStencil(ms_Resources->Get(TextureId::DepthStencil), D3D12_RESOURCE_STATE_DEPTH_READ);
         cmdList.SetRenderTargets();
 
         cmdList.SetGraphicsRootSrv(*joint::EnvironmentResources::CubeMap, *m_CubeTexture);
+        cmdList.FlushBarriers();
 
         cmdList.DrawVertexed(3);
     }

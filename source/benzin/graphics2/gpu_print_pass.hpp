@@ -23,7 +23,6 @@ namespace benzin
 
         bool IsDependentOnViewport() const override { return true; }
 
-        void OnZeroFrameInit() override;
         void OnUpdate() override;
         void OnRender() const override;
 

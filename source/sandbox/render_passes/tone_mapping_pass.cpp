@@ -145,10 +145,14 @@ namespace sandbox
         const auto& avgLuminance = ms_Resources->Get(TextureId::ToneMapping_AvgLuminance);
 
         cmdList.AddTransition(luminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList.AddTransition(avgLuminance, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+        cmdList.AddTransition(avgLuminance, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.FlushBarriers();
 
         cmdList.ClearUnorderedAccess(luminanceHistogram, luminanceHistogram.GetUav());
         cmdList.ClearUnorderedAccess(avgLuminance, avgLuminance.GetUav());
+
+        cmdList.AddUnorderedAccess(luminanceHistogram);
+        cmdList.AddUnorderedAccess(avgLuminance);
 
         isFirstTime = false;
     }
@@ -160,17 +164,13 @@ namespace sandbox
         BenzinProfile();
         BenzinGpuProfile("CalcLuminanceHistogram");
 
-        const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
         const auto& luminanceHistogram = ms_Resources->Get(BufferId::ToneMapping_LuminanceHistogram);
         const auto& debugLuminanceHistogram = ms_Resources->Get(TextureId::ToneMapping_DebugLuminanceHistogram);
 
-        cmdList.AddTransition(hdrColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        cmdList.AddTransition(luminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList.AddTransition(debugLuminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-
-        cmdList.SetComputeRootSrv(*Resources::HdrColor, hdrColor);
+        cmdList.SetComputeRootSrv(*Resources::HdrColor, ms_Resources->Get(TextureId::HdrColor));
         cmdList.SetComputeRootUav(*Resources::OutLuminanceHistogram, luminanceHistogram);
         cmdList.SetComputeRootUav(*Resources::OutDebugLuminanceHistogram, debugLuminanceHistogram);
+        cmdList.FlushBarriers();
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcLuminanceHistogram));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
@@ -189,11 +189,9 @@ namespace sandbox
         const auto& luminanceHistogram = ms_Resources->Get(BufferId::ToneMapping_LuminanceHistogram);
         const auto& avgLuminance = ms_Resources->Get(TextureId::ToneMapping_AvgLuminance);
 
-        cmdList.AddTransition(luminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList.AddTransition(avgLuminance, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-
         cmdList.SetComputeRootUav(*Resources::OutLuminanceHistogram, luminanceHistogram);
         cmdList.SetComputeRootUav(*Resources::OutAvgLuminance, avgLuminance);
+        cmdList.FlushBarriers();
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcAvgLuminance));
         cmdList.Dispatch({ 1, 1, 1 }, { 1, 1, 1 });
@@ -209,17 +207,12 @@ namespace sandbox
         BenzinProfile();
         BenzinGpuProfile("ApplyToneMapOperator");
 
-        const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
-        const auto& avgLuminance = ms_Resources->Get(TextureId::ToneMapping_AvgLuminance);
         const auto& finalTexture = ms_Resources->Get(TextureId::Final);
 
-        cmdList.AddTransition(hdrColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        cmdList.AddTransition(avgLuminance, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        cmdList.AddTransition(finalTexture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-
-        cmdList.SetComputeRootSrv(*Resources::HdrColor, hdrColor);
-        cmdList.SetComputeRootSrv(*Resources::AvgLuminance, avgLuminance);
+        cmdList.SetComputeRootSrv(*Resources::HdrColor, ms_Resources->Get(TextureId::HdrColor));
+        cmdList.SetComputeRootSrv(*Resources::AvgLuminance, ms_Resources->Get(TextureId::ToneMapping_AvgLuminance));
         cmdList.SetComputeRootUav(*Resources::OutFinal, finalTexture);
+        cmdList.FlushBarriers();
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_ApplyToneMapOperator));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });

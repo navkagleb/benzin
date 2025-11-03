@@ -124,15 +124,6 @@ namespace sandbox
 
         const GBuffer gbuffer{ *ms_Resources };
 
-        cmdList.AddTransition(*m_GrassPatchBuffer, D3D12_RESOURCE_STATE_GENERIC_READ);
-        cmdList.AddTransition(*m_PerlinNoiseTexture, D3D12_RESOURCE_STATE_GENERIC_READ);
-        cmdList.AddTransition(gbuffer.m_AlbedoAndRoughness, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(gbuffer.m_EmissiveAndMetallic, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(gbuffer.m_WorldNormal, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(gbuffer.m_Mv, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(gbuffer.m_ViewDepth, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(gbuffer.m_DepthStencil, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
-
         cmdList.AddRenderTarget(gbuffer.m_AlbedoAndRoughness);
         cmdList.AddRenderTarget(gbuffer.m_EmissiveAndMetallic);
         cmdList.AddRenderTarget(gbuffer.m_WorldNormal);
@@ -143,6 +134,7 @@ namespace sandbox
 
         cmdList.SetGraphicsRootSrv(*Resources::GrassPatches, *m_GrassPatchBuffer);
         cmdList.SetGraphicsRootSrv(*Resources::PerlinNoise, *m_PerlinNoiseTexture);
+        cmdList.FlushBarriers();
 
         cmdList.DispatchMesh({ m_Consts.GrassPatchCount, 1, 1 }, { *joint::ProceduralGrassConsts::AsGroupSize, 1, 1 });
     }

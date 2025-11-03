@@ -140,16 +140,6 @@ namespace sandbox
 
         const GBuffer gbuffer{ *ms_Resources };
 
-        cmdList.AddTransition(*ms_Scene->m_MeshDrawBuffer, D3D12_RESOURCE_STATE_GENERIC_READ);
-        cmdList.AddTransition(*ms_Scene->m_MaterialBuffer, D3D12_RESOURCE_STATE_GENERIC_READ);
-
-        cmdList.AddTransition(gbuffer.m_AlbedoAndRoughness, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(gbuffer.m_EmissiveAndMetallic, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(gbuffer.m_WorldNormal, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(gbuffer.m_Mv, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(gbuffer.m_ViewDepth, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmdList.AddTransition(gbuffer.m_DepthStencil, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
-
         cmdList.AddRenderTarget(gbuffer.m_AlbedoAndRoughness);
         cmdList.AddRenderTarget(gbuffer.m_EmissiveAndMetallic);
         cmdList.AddRenderTarget(gbuffer.m_WorldNormal);
@@ -157,6 +147,7 @@ namespace sandbox
         cmdList.AddRenderTarget(gbuffer.m_ViewDepth);
         cmdList.AddDepthStencil(gbuffer.m_DepthStencil);
         cmdList.SetRenderTargets();
+        cmdList.FlushBarriers();
 
         cmdList.ClearRenderTarget(gbuffer.m_AlbedoAndRoughness);
         cmdList.ClearRenderTarget(gbuffer.m_EmissiveAndMetallic);
@@ -177,18 +168,13 @@ namespace sandbox
         {
             cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Mesh));
 
-            cmdList.AddTransition(*ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.AddTransition(*ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.AddTransition(*ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.AddTransition(*ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.AddTransition(*ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.AddTransition(*ms_Scene->m_DispatchMeshIndirectCmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, true);
-
-            cmdList.SetGraphicsRootSrv(*Resources::Vertices, *ms_Scene->m_VertexBuffer);
-            cmdList.SetGraphicsRootSrv(*Resources::Meshlets, *ms_Scene->m_MeshletBuffer);
-            cmdList.SetGraphicsRootSrv(*Resources::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer);
-            cmdList.SetGraphicsRootSrv(*Resources::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer);
-            cmdList.SetGraphicsRootSrv(*Resources::MeshletIndices, *ms_Scene->m_MeshletIndexBuffer);
+            cmdList.SetGraphicsRootSrv(*Resources::Vertices, *ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*Resources::Meshlets, *ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*Resources::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*Resources::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*Resources::MeshletIndices, *ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.AddTransition(*ms_Scene->m_DispatchMeshIndirectCmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+            cmdList.FlushBarriers();
 
             if (settings.m_IsIndirectDrawEnabled)
             {
@@ -219,11 +205,9 @@ namespace sandbox
         {
             cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Vertex));
 
-            cmdList.AddTransition(*ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-            cmdList.AddTransition(*ms_Scene->m_IndexBuffer, D3D12_RESOURCE_STATE_INDEX_BUFFER, true);
-
             cmdList.SetVertexBuffer(*ms_Scene->m_VertexBuffer);
             cmdList.SetIndexBuffer(*ms_Scene->m_IndexBuffer);
+            cmdList.FlushBarriers();
 
             cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 

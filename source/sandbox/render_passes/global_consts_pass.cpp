@@ -152,7 +152,8 @@ namespace sandbox
             cmdList.SetGraphicsCbv(benzin::UnifiedRootParameter::SunLightConsts, sunLightConstsGpuAddress);
 
             const uint64_t statBufferGpuAddress = m_StatBuffer->GetGpuVirtualAddress();
-            cmdList.AddTransition(*m_StatBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+            cmdList.AddTransition(*m_StatBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            cmdList.FlushBarriers();
             cmdList.ClearUnorderedAccess(*m_StatBuffer, m_StatBuffer->GetUav());
             cmdList.SetComputeUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statBufferGpuAddress);
             cmdList.SetGraphicsUav(benzin::UnifiedRootParameter::ReadbackStatsBuffer, statBufferGpuAddress);

@@ -352,7 +352,6 @@ namespace benzin
 
     Descriptor Texture::CreateDetachedUav(const TextureUav& textureUav) const
     {
-        BenzinAssert(m_D3D12CurrentState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         BenzinAssert(textureUav.m_MipIndex < m_MipCount);
 
         return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav, [this, &textureUav](uint64_t cpuHandle)
