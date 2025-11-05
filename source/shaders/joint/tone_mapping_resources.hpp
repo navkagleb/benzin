@@ -15,29 +15,29 @@ namespace joint
 
     struct LuminanceHistogramConsts
     {
-        float MinLogLuminance;
-        float LogLuminanceRange;
-        float InvLogLuminanceRange;
-        float TimeFactor; // Tau
+        float m_MinLogLuminance;
+        float m_LogLuminanceRange;
+        float m_InvLogLuminanceRange;
+        float m_TimeFactor; // Tau
     };
 
     struct PbrCameraConsts
     {
-        float Aperture;
-        float ShutterSpeed;
-        float Iso;
+        float m_Aperture;
+        float m_ShutterSpeed;
+        float m_Iso;
     };
 
     struct ToneMappingConsts
     {
-        LuminanceHistogramConsts LuminanceHistogram;
-        PbrCameraConsts PbrCamera;
+        LuminanceHistogramConsts m_LuminanceHistogram;
+        PbrCameraConsts m_PbrCamera;
 
-        ToneReproductionTransform ToneReproductionTransform;
+        ToneReproductionTransform m_ToneReproductionTransform;
 
-        uint IsToneMappingEnabled : 1;
-        uint IsAutoExposureUsed : 1;
-        uint IsAccurateGammaCorrectionUsed : 1;
+        uint m_IsToneMappingEnabled : 1;
+        uint m_IsAutoExposureUsed : 1;
+        uint m_IsAccurateGammaCorrectionUsed : 1;
     };
 
     enum class CalcLuminanceHistogramResources : uint

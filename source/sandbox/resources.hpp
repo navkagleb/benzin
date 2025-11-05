@@ -5,7 +5,6 @@
 namespace sandbox
 {
 
-    using benzin::BufferId;
     using benzin::TextureId;
     using benzin::PsoId;
 

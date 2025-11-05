@@ -5,7 +5,6 @@ namespace benzin
 
     // Forward declaration of resource ids
 
-    enum class BufferId : uint32_t;
     enum class PsoId : uint32_t;
     enum class TextureId : uint32_t;
 

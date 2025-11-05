@@ -173,44 +173,15 @@ namespace benzin
 
     RenderResources::RenderResources(Device& device)
         : m_Device{ device }
-        , m_Buffers{ GetMaxResourceCount<BufferId>(), IsResourceFlippable<BufferId>, IsResourceIdValid<BufferId> }
         , m_Textures{ GetMaxResourceCount<TextureId>(), IsResourceFlippable<TextureId>, IsResourceIdValid<TextureId> }
     {}
 
     RenderResources::~RenderResources()
     {
 #if BENZIN_IS_ASSERTS_ENABLED
-        const uint32_t aliveBufferCount = m_Buffers.GetAliveResourceCount();
-        const uint32_t aliveTextureCount = m_Buffers.GetAliveResourceCount();
-
-        BenzinAssert(aliveBufferCount == 0, "Not all buffers are released! Alive buffer count: {}", aliveBufferCount);
+        const uint32_t aliveTextureCount = m_Textures.GetAliveResourceCount();
         BenzinAssert(aliveTextureCount == 0, "Not all textures are released! Alive texture count: {}", aliveTextureCount);
 #endif
-    }
-
-    bool RenderResources::IsCreated(BufferId id) const
-    {
-        return m_Buffers.IsCreated(*id);
-    }
-
-    void RenderResources::Create(BufferId id, const BufferCreation& creation)
-    {
-        m_Buffers.Create(*id, m_Device, creation);
-    }
-
-    void RenderResources::Destroy(BufferId id)
-    {
-        m_Buffers.Destroy(*id);
-    }
-
-    const Buffer& RenderResources::Get(BufferId id) const
-    {
-        return m_Buffers.Get(*id, m_FlipIndex);
-    }
-
-    const Buffer& RenderResources::GetPrev(BufferId id) const
-    {
-        return m_Buffers.GetPrev(*id, GetNextFlipIndex(m_FlipIndex));
     }
 
     bool RenderResources::IsCreated(TextureId id) const

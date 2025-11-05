@@ -93,7 +93,6 @@ namespace benzin
         std::vector<std::unique_ptr<ResourceT>> m_Resources;
     };
 
-    extern template class RenderResourceStorage<Buffer>;
     extern template class RenderResourceStorage<Texture>;
 
     class RenderResources
@@ -102,15 +101,6 @@ namespace benzin
         explicit RenderResources(Device& device);
         ~RenderResources();
 
-        // Buffers
-        bool IsCreated(BufferId id) const;
-        void Create(BufferId id, const BufferCreation& creation);
-        void Destroy(BufferId id);
-
-        const Buffer& Get(BufferId id) const;
-        const Buffer& GetPrev(BufferId id) const;
-
-        // Textures
         bool IsCreated(TextureId id) const;
         void Create(TextureId id, const TextureCreation& creation);
         void Destroy(TextureId id);
@@ -123,12 +113,9 @@ namespace benzin
     private:
         static uint8_t GetNextFlipIndex(uint8_t index);
 
-    private:
         Device& m_Device;
 
-        RenderResourceStorage<Buffer> m_Buffers;
         RenderResourceStorage<Texture> m_Textures;
-
         uint8_t m_FlipIndex = 0;
     };
 

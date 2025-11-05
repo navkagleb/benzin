@@ -126,51 +126,51 @@ namespace sandbox
         ImGui::PushItemWidth(120.0f);
         BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
 
-        ImGui::Checkbox("Enable ### ToneMapping", &settings.IsToneMappingEnabled);
+        ImGui::Checkbox("Enable ### ToneMapping", &settings.m_IsToneMappingEnabled);
 
         ImGui::CollapsingHeaderWithIndent("Luminance Histogram", [&settings]
         {
-            auto& luminanceHistogram = settings.LuminanceHistogram;
+            ToneMappingSettings::LuminanceHistogram& luminanceHistogram = settings.m_LuminanceHistogram;
 
-            if (ImGui::DragFloat("Min log luminance", &luminanceHistogram.MinLogLuminance))
+            if (ImGui::DragFloat("Min log luminance", &luminanceHistogram.m_MinLogLuminance))
             {
-                luminanceHistogram.MinLogLuminance = std::clamp(
-                    luminanceHistogram.MinLogLuminance,
-                    luminanceHistogram.MinLogLuminance,
-                    luminanceHistogram.MaxLogLuminance);
+                luminanceHistogram.m_MinLogLuminance = std::clamp(
+                    luminanceHistogram.m_MinLogLuminance,
+                    luminanceHistogram.m_MinLogLuminance,
+                    luminanceHistogram.m_MaxLogLuminance);
             }
 
-            if (ImGui::DragFloat("Max log luminance", &luminanceHistogram.MaxLogLuminance))
+            if (ImGui::DragFloat("Max log luminance", &luminanceHistogram.m_MaxLogLuminance))
             {
-                luminanceHistogram.MaxLogLuminance = std::clamp(
-                    luminanceHistogram.MaxLogLuminance,
-                    luminanceHistogram.MinLogLuminance,
-                    luminanceHistogram.MaxLogLuminance);
+                luminanceHistogram.m_MaxLogLuminance = std::clamp(
+                    luminanceHistogram.m_MaxLogLuminance,
+                    luminanceHistogram.m_MinLogLuminance,
+                    luminanceHistogram.m_MaxLogLuminance);
             }
 
-            ImGui::InputFloat("Tau", &luminanceHistogram.Tau);
+            ImGui::InputFloat("Tau", &luminanceHistogram.m_Tau);
         });
 
         ImGui::CollapsingHeaderWithIndent("PBR Camera", [&settings]
         {
-            auto& pbrCamera = settings.PbrCamera;
+            auto& pbrCamera = settings.m_PbrCamera;
 
-            ImGui::Checkbox("Auto exposure", &settings.IsAutoExposureUsed);
+            ImGui::Checkbox("Auto exposure", &settings.m_IsAutoExposureUsed);
 
-            ImGui::DragFloat("Aperture (in f-stops)", &pbrCamera.Aperture, 0.001f);
-            ImGui::DragFloat("Shutter speed (in sec)", &pbrCamera.ShutterSpeed, 0.001f);
-            ImGui::DragFloat("Sensor sensitivity (in ISO)", &pbrCamera.Iso, 0.01f);
+            ImGui::DragFloat("Aperture (in f-stops)", &pbrCamera.m_Aperture, 0.001f);
+            ImGui::DragFloat("Shutter speed (in sec)", &pbrCamera.m_ShutterSpeed, 0.001f);
+            ImGui::DragFloat("Sensor sensitivity (in ISO)", &pbrCamera.m_Iso, 0.01f);
         });
 
         ImGui::CollapsingHeaderWithIndent("Tone Mapping", [&settings]
         {
-            ImGui::Checkbox("Accurate gamma correction", &settings.IsAccurateGammaCorrectionUsed);
+            ImGui::Checkbox("Accurate gamma correction", &settings.m_IsAccurateGammaCorrectionUsed);
 
             static const auto toneReproductionTransformNames = magic_enum::enum_names<joint::ToneReproductionTransform>();
 
             ImGui::Combo(
                 "Tone reproduction transform",
-                (int*)&settings.ToneReproductionTransform,
+                (int*)&settings.m_ToneReproductionTransform,
                 ImGui::SelectComboName<decltype(toneReproductionTransformNames)>,
                 (void*)&toneReproductionTransformNames,
                 (int)toneReproductionTransformNames.size());

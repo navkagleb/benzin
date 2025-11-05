@@ -80,25 +80,25 @@ namespace sandbox
     {
         struct LuminanceHistogram
         {
-            float MinLogLuminance = -12.0f;
-            float MaxLogLuminance = 2.0;
-            float Tau = 1.1f;
+            float m_MinLogLuminance = -12.0f;
+            float m_MaxLogLuminance = 2.0;
+            float m_Tau = 1.1f;
         };
 
-        bool IsToneMappingEnabled = true;
-        bool IsAutoExposureUsed = true;
-        bool IsAccurateGammaCorrectionUsed = true;
+        bool m_IsToneMappingEnabled = true;
+        bool m_IsAutoExposureUsed = true;
+        bool m_IsAccurateGammaCorrectionUsed = true;
 
-        LuminanceHistogram LuminanceHistogram;
+        LuminanceHistogram m_LuminanceHistogram;
 
-        joint::PbrCameraConsts PbrCamera
+        joint::PbrCameraConsts m_PbrCamera
         {
-            .Aperture = 8.0,
-            .ShutterSpeed = 1.0f / 125.0f,
-            .Iso = 100.0f,
+            .m_Aperture = 8.0,
+            .m_ShutterSpeed = 1.0f / 125.0f,
+            .m_Iso = 100.0f,
         };
 
-        joint::ToneReproductionTransform ToneReproductionTransform = joint::ToneReproductionTransform::AcesFilm;
+        joint::ToneReproductionTransform m_ToneReproductionTransform = joint::ToneReproductionTransform::AcesFilm;
     };
 
     template <typename SettingsT>

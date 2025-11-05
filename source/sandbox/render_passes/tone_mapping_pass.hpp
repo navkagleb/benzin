@@ -31,7 +31,9 @@ namespace sandbox
         void RunApplyToneMapOperatorPass(benzin::ComputeCmdList& cmdList) const;
 
     private:
-        joint::ToneMappingConsts m_Consts{};
+        joint::ToneMappingConsts m_Consts = {};
+
+        std::unique_ptr<benzin::Buffer> m_LuminanceHistogram;
     };
 
 }

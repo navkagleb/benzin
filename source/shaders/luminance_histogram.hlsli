@@ -2,13 +2,13 @@
 
 float LinearToLogLuminance(float linearLuminance)
 {
-    const float logLuminance = (log2(linearLuminance) - g_PassConsts.LuminanceHistogram.MinLogLuminance) * g_PassConsts.LuminanceHistogram.InvLogLuminanceRange;
+    const float logLuminance = (log2(linearLuminance) - g_PassConsts.m_LuminanceHistogram.m_MinLogLuminance) * g_PassConsts.m_LuminanceHistogram.m_InvLogLuminanceRange;
     return saturate(logLuminance);
 }
 
 float LogToLinearLuminance(float logLuminance)
 {
-    float linearLuminance = (logLuminance * g_PassConsts.LuminanceHistogram.LogLuminanceRange) + g_PassConsts.LuminanceHistogram.MinLogLuminance;
+    float linearLuminance = (logLuminance * g_PassConsts.m_LuminanceHistogram.m_LogLuminanceRange) + g_PassConsts.m_LuminanceHistogram.m_MinLogLuminance;
     linearLuminance = exp2(linearLuminance);
 
     return linearLuminance;
@@ -27,9 +27,7 @@ float BinIndexToLogLuminance(float binIndex)
 uint LuminanceToBinIndex(float luminance)
 {
     if (luminance < 0.005)
-    {
         return 0;
-    }
 
     const float logLuminance = LinearToLogLuminance(luminance);
     return LogLuminanceToBinIndex(logLuminance);

@@ -7,7 +7,7 @@
 
 float AdaptLuminance(float luminance, float prevLuminance)
 {
-    return prevLuminance + (luminance - prevLuminance) * (1.0 - exp(-g_FrameConsts.DeltaTimeInSec * g_PassConsts.LuminanceHistogram.TimeFactor));
+    return prevLuminance + (luminance - prevLuminance) * (1.0 - exp(-g_FrameConsts.DeltaTimeInSec * g_PassConsts.m_LuminanceHistogram.m_TimeFactor));
 }
 
 BenzinDeclareRootResource(RWBuffer<uint>, g_OutLuminanceHistogram, joint::CalcAvgLuminanceResources::OutLuminanceHistogram);

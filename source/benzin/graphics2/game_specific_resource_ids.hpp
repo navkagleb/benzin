@@ -3,11 +3,6 @@
 namespace benzin
 {
 
-    enum class BufferId : uint32_t
-    {
-        ToneMapping_LuminanceHistogram,
-    };
-
     enum class TextureId : uint32_t
     {
         // GBuffer
@@ -71,6 +66,5 @@ namespace benzin
 
 }
 
-BenzinAllowDereferenceOperatorForEnum(benzin::BufferId);
 BenzinAllowDereferenceOperatorForEnum(benzin::TextureId);
 BenzinAllowDereferenceOperatorForEnum(benzin::PsoId);

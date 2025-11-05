@@ -22,26 +22,24 @@ BenzinDeclareRootResource(RWTexture2D<float4>, g_OutFinal, joint::ApplyToneMapOp
 
 float3 ApplyExposureCorrection(float3 rgb)
 {
-    const float manualEv100 = CalcEv100(g_PassConsts.PbrCamera.Aperture, g_PassConsts.PbrCamera.ShutterSpeed, g_PassConsts.PbrCamera.Iso);
+    const float manualEv100 = CalcEv100(g_PassConsts.m_PbrCamera.m_Aperture, g_PassConsts.m_PbrCamera.m_ShutterSpeed, g_PassConsts.m_PbrCamera.m_Iso);
     const float autoEv100 = CalcEv100FromAvgLuminance(g_AvgLuminance[uint2(0, 0)]);
 
-    const float exposure = Ev100ToExposure(g_PassConsts.IsAutoExposureUsed ? autoEv100 : manualEv100);
+    const float exposure = Ev100ToExposure(g_PassConsts.m_IsAutoExposureUsed ? autoEv100 : manualEv100);
 
     return rgb * exposure;
 }
 
 float3 ApplyToneReproductionTransform(float3 rgb)
 {
-    switch (g_PassConsts.ToneReproductionTransform)
+    switch (g_PassConsts.m_ToneReproductionTransform)
     {
         case joint::ToneReproductionTransform::Linear:
-        {
             return saturate(rgb);
-        };
+
         case joint::ToneReproductionTransform::Reinhard:
-        {
             return rgb / (rgb + 1.0);
-        }
+
         case joint::ToneReproductionTransform::AcesFilm:
         {
             const float a = 2.51;
@@ -52,6 +50,7 @@ float3 ApplyToneReproductionTransform(float3 rgb)
 
             return saturate((rgb * (a * rgb + b)) / (rgb * (c * rgb + d) + e));
         }
+
         case joint::ToneReproductionTransform::Unreal:
         {
             // Unreal 3, Documentation: "Color Grading"
@@ -67,9 +66,9 @@ float3 ApplyToneReproductionTransform(float3 rgb)
 
 float3 ApplyGammaCorrection(float3 rgb)
 {
-    if (g_PassConsts.ToneReproductionTransform != joint::ToneReproductionTransform::Unreal)
+    if (g_PassConsts.m_ToneReproductionTransform != joint::ToneReproductionTransform::Unreal)
     {
-        rgb = g_PassConsts.IsAccurateGammaCorrectionUsed ? LinearToSrgbAccurate(rgb) : LinearToSrgb(rgb);
+        rgb = g_PassConsts.m_IsAccurateGammaCorrectionUsed ? LinearToSrgbAccurate(rgb) : LinearToSrgb(rgb);
     }
 
     return rgb;
@@ -80,7 +79,7 @@ void CsMain(uint2 pixelPos : SV_DispatchThreadID)
 {
     float3 rgb = g_HdrColor[pixelPos].xyz;
 
-    if (g_PassConsts.IsToneMappingEnabled)
+    if (g_PassConsts.m_IsToneMappingEnabled)
     {
         rgb = ApplyExposureCorrection(rgb);
         rgb = ApplyToneReproductionTransform(rgb);
