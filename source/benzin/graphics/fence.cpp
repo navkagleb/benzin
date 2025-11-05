@@ -1,9 +1,9 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/graphics/fence.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/graphics/fence.hpp>
 
-#include "benzin/graphics/d3d12_utils.hpp"
-#include "benzin/graphics/device.hpp"
-#include "benzin/graphics/d3d12_assert.hpp"
+#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_utils.hpp>
+#include <benzin/graphics/device.hpp>
 
 namespace benzin
 {
@@ -11,11 +11,10 @@ namespace benzin
     Fence::Fence(Device& device, const FenceCreation& creation)
     {
         BenzinD3D12Call(device.GetD3D12Device()->CreateFence(
-            creation.InitialValue,
+            creation.m_InitialValue,
             D3D12_FENCE_FLAG_NONE,
-            IID_PPV_ARGS(&m_D3D12Fence)
-        ));
-        SetD3DObjectDebugName(m_D3D12Fence, creation.DebugName);
+            IID_PPV_ARGS(&m_D3D12Fence)));
+        SetD3DObjectDebugName(m_D3D12Fence, creation.m_DebugName);
 
         m_WaitEvent = ::CreateEvent(nullptr, false, false, nullptr);
         BenzinEnsure(m_WaitEvent != INVALID_HANDLE_VALUE);

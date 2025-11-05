@@ -62,7 +62,10 @@ namespace benzin
 
         for (const TransitionBarrier& barrier : m_DeferredTransitionBarriers)
         {
-            if ((barrier.m_Resource->GetD3D12State() & barrier.m_D3D12StateAfter) != 0)
+            const D3D12_RESOURCE_STATES d3d12StateBefore = barrier.m_Resource->GetD3D12State();
+            const D3D12_RESOURCE_STATES d3d12StateAfter = barrier.m_D3D12StateAfter;
+
+            if (d3d12StateBefore == d3d12StateAfter || (d3d12StateBefore & d3d12StateAfter) != 0)
                 continue;
 
             D3D12_RESOURCE_BARRIER d3d12Barrier = {};
@@ -70,11 +73,11 @@ namespace benzin
             d3d12Barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
             d3d12Barrier.Transition.pResource = barrier.m_Resource->GetD3D12Resource();
             d3d12Barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            d3d12Barrier.Transition.StateBefore = barrier.m_Resource->GetD3D12State();
-            d3d12Barrier.Transition.StateAfter = barrier.m_D3D12StateAfter;
+            d3d12Barrier.Transition.StateBefore = d3d12StateBefore;
+            d3d12Barrier.Transition.StateAfter = d3d12StateAfter;
 
             d3d12Barriers.push_back(d3d12Barrier);
-            barrier.m_Resource->SetD3D12State(barrier.m_D3D12StateAfter);
+            barrier.m_Resource->SetD3D12State(d3d12StateAfter);
         }
 
         for (const Resource* resource : m_DeferredUnorderedAccessBarriers)

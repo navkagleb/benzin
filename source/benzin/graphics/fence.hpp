@@ -7,8 +7,8 @@ namespace benzin
 
     struct FenceCreation
     {
-        std::string_view DebugName;
-        uint64_t InitialValue = g_MaxU64;
+        std::string m_DebugName;
+        uint64_t m_InitialValue = g_MaxU64;
     };
 
     class Fence
@@ -20,7 +20,6 @@ namespace benzin
         BenzinDefineNonCopyable(Fence);
         BenzinDefineNonMoveable(Fence);
 
-    public:
         auto* GetD3D12Fence() const { return m_D3D12Fence; }
 
         uint64_t GetCompletedValue() const;

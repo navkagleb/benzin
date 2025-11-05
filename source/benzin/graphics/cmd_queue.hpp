@@ -23,7 +23,7 @@ namespace benzin
         uint64_t GetTimestampFrequency() const;
 
         void ResetCmdList();
-        void SubmitCmdList();
+        void SubmitCmdList(const Texture& backBuffer);
 
         void Flush();
         void SignalFence(Fence& fence, uint64_t value);

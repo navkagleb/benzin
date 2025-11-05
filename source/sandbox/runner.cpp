@@ -278,7 +278,7 @@ namespace sandbox
 
         m_GpuProfiler->EndFrame();
 
-        m_Device->GetGraphicsCmdQueue().SubmitCmdList();
+        m_Device->GetGraphicsCmdQueue().SubmitCmdList(m_SwapChain->GetCurrentBackBuffer());
         m_Device->SignalFrameFence();
 
         m_SwapChain->Flip(m_IsVsyncEnabled);
