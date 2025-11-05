@@ -9,7 +9,7 @@ namespace benzin
     class ConstBufferLinearAllocator;
     class Fence;
     class GpuHeap;
-    class GpuHeapLinearBufferAllocator;
+    class GpuHeapLinearAllocator;
     class GraphicsCmdQueue;
     class UnifiedRootSignature;
 
@@ -81,9 +81,9 @@ namespace benzin
         std::unique_ptr<GpuHeap> m_PersistentGpuUploadHeap;
         std::unique_ptr<GpuHeap> m_PersistentReadbackHeap;
 
-        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentDefaultAllocator;
-        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentGpuUploadAllocator;
-        std::unique_ptr<GpuHeapLinearBufferAllocator> m_PersistentReadbackAllocator;
+        std::unique_ptr<GpuHeapLinearAllocator> m_PersistentDefaultAllocator;
+        std::unique_ptr<GpuHeapLinearAllocator> m_PersistentGpuUploadAllocator;
+        std::unique_ptr<GpuHeapLinearAllocator> m_PersistentReadbackAllocator;
 
         std::unique_ptr<ConstBufferLinearAllocator> m_ConstBufferAllocator;
 

@@ -5,6 +5,8 @@
 namespace benzin
 {
 
+    class GpuHeap;
+
     struct DepthStencilValue
     {
         float m_Depth = 0.0f;
@@ -57,9 +59,9 @@ namespace benzin
     {
     public:
         Texture(Device& device, const TextureCreation& creation);
+        Texture(GpuHeap& gpuHeap, uint64_t gpuHeapOffsetInBytes, const TextureCreation& creation);
         Texture(Device& device, ID3D12Resource* d3d12Resource);
 
-    public:
         auto IsCubeMap() const { return m_IsCubeMap; }
         auto GetDxgiFormat() const { return m_DxgiFormat; }
         auto GetWidth() const { return m_Width; }
@@ -91,7 +93,6 @@ namespace benzin
 
         void SetupCreation(const TextureCreation* creation = nullptr);
 
-    private:
         bool m_IsCubeMap = false;
         DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;
         uint32_t m_Width = 0;
@@ -102,5 +103,7 @@ namespace benzin
         EnumFlags<TextureAccessFlag> m_AccessFlags;
         ClearValueVariant m_ClearValueVariant;
     };
+
+    uint64_t CalcTextureSizeInBytes(uint32_t width, uint32_t height, uint32_t depth, DXGI_FORMAT dxgiFormat);
 
 }

@@ -7,8 +7,9 @@ namespace benzin
 {
 
     class Device;
-
+    class Texture;
     struct BufferCreation;
+    struct TextureCreation;
 
     enum class GpuHeapType : uint8_t
     {
@@ -30,6 +31,7 @@ namespace benzin
     {
     public:
         friend class Buffer;
+        friend class Texture;
 
         GpuHeap(Device& device, const GpuHeapCreation& creation);
         ~GpuHeap();
@@ -51,15 +53,13 @@ namespace benzin
         uint64_t m_SizeInBytes = 0;
     };
 
-    class GpuHeapLinearBufferAllocator
+    class GpuHeapLinearAllocator
     {
     public:
-        using BufferConfigurator = std::function<void(BufferCreation& creation)>;
+        using BufferConfigurator = std::move_only_function<void(BufferCreation& creation)>;
+        using TextureConfigurator = std::move_only_function<void(TextureCreation& creation)>;
 
-        GpuHeapLinearBufferAllocator(GpuHeap& gpuHeap);
-
-        auto GetSizeInBytes() const { return m_GpuHeap.GetSizeInBytes(); }
-        auto GetOffsetInBytes() const { return m_OffsetInBytes; }
+        GpuHeapLinearAllocator(GpuHeap& gpuHeap);
 
         template <typename T>
         std::unique_ptr<Buffer> AllocateBuffer(std::string_view debugName, std::span<const T> elements, DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN)
@@ -86,25 +86,23 @@ namespace benzin
             return buffer;
         }
 
-        std::unique_ptr<Buffer> AllocateBuffer(const BufferConfigurator& configurator);
+        std::unique_ptr<Buffer> AllocateBuffer(BufferConfigurator configurator);
         std::unique_ptr<Buffer> AllocateStructuredBuffer(std::string_view debugName, uint32_t elementCount, uint32_t elementSizeInBytes);
         std::unique_ptr<Buffer> AllocateFormatBuffer(std::string_view debugName, uint32_t elementCount, DXGI_FORMAT dxgiFormat);
 
-        void Reset();
+        std::unique_ptr<Texture> AllocateTexture(TextureConfigurator configurator);
 
     private:
         std::unique_ptr<Buffer> AllocateBuffer(const BufferCreation& bufferCreation);
 
-    private:
         GpuHeap& m_GpuHeap;
-
         uint64_t m_OffsetInBytes = 0;
     };
 
     class ConstBufferLinearAllocator
     {
     public:
-        ConstBufferLinearAllocator(Device& device);
+        ConstBufferLinearAllocator(Device& device, uint32_t sizeInBytesPerFrame);
 
         void ResetFrameBuffer();
 

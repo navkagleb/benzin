@@ -5,6 +5,7 @@
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/texture.hpp>
 
 namespace benzin
 {
@@ -38,27 +39,27 @@ namespace benzin
         m_D3D12Heap = nullptr;
     }
 
-    // GpuHeapLinearBufferAllocator
+    // GpuHeapLinearAllocator
 
-    GpuHeapLinearBufferAllocator::GpuHeapLinearBufferAllocator(GpuHeap& gpuHeap)
+    GpuHeapLinearAllocator::GpuHeapLinearAllocator(GpuHeap& gpuHeap)
         : m_GpuHeap{ gpuHeap }
     {
         BenzinAssert(gpuHeap.GetD3D12Heap() != nullptr);
     }
 
-    std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateBuffer(const BufferConfigurator& configurator)
+    std::unique_ptr<Buffer> GpuHeapLinearAllocator::AllocateBuffer(BufferConfigurator configurator)
     {
         BenzinAssert(configurator);
 
-        BufferCreation bufferCreation;
-        configurator(bufferCreation);
+        BufferCreation creation;
+        configurator(creation);
 
-        BenzinAssert(IsMaxEnum(bufferCreation.m_HeapType));
+        BenzinAssert(IsMaxEnum(creation.m_HeapType));
 
-        return AllocateBuffer(bufferCreation);
+        return AllocateBuffer(creation);
     }
 
-    std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateStructuredBuffer(std::string_view debugName, uint32_t elementCount, uint32_t elementSizeInBytes)
+    std::unique_ptr<Buffer> GpuHeapLinearAllocator::AllocateStructuredBuffer(std::string_view debugName, uint32_t elementCount, uint32_t elementSizeInBytes)
     {
         return AllocateBuffer(BufferCreation
         {
@@ -69,7 +70,7 @@ namespace benzin
         });
     }
 
-    std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateFormatBuffer(std::string_view debugName, uint32_t elementCount, DXGI_FORMAT dxgiFormat)
+    std::unique_ptr<Buffer> GpuHeapLinearAllocator::AllocateFormatBuffer(std::string_view debugName, uint32_t elementCount, DXGI_FORMAT dxgiFormat)
     {
         BenzinAssert(dxgiFormat != DXGI_FORMAT_UNKNOWN);
 
@@ -83,56 +84,76 @@ namespace benzin
         });
     }
 
-    void GpuHeapLinearBufferAllocator::Reset()
+    std::unique_ptr<Texture> GpuHeapLinearAllocator::AllocateTexture(TextureConfigurator configurator)
     {
-        m_OffsetInBytes = 0;
+        BenzinAssert(m_GpuHeap.GetType() == GpuHeapType::Default);
+        
+        TextureCreation creation;
+        configurator(creation);
+
+        const uint64_t alignedOffsetInBytes = AlignUp(m_OffsetInBytes, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+        const uint64_t sizeInBytes = CalcTextureSizeInBytes(creation.m_Width, creation.m_Height, creation.m_Depth, creation.m_DxgiFormat);
+
+        const uint64_t neededSizeInBytes = alignedOffsetInBytes + sizeInBytes;
+        BenzinEnsure(
+            neededSizeInBytes <= m_GpuHeap.GetSizeInBytes(),
+            "GpuHeap is full. Needed size: {:.2f} mb, Actual size: {:.2f} mb",
+            ToMb(neededSizeInBytes),
+            ToMb(m_GpuHeap.GetSizeInBytes()));
+
+        m_OffsetInBytes = alignedOffsetInBytes + sizeInBytes;
+
+        if (creation.m_DebugName.empty())
+        {
+            creation.m_DebugName = "GpuHeapLinearAllocator::Texture";
+        }
+
+        return std::make_unique<Texture>(m_GpuHeap, alignedOffsetInBytes, creation);
     }
 
-    std::unique_ptr<Buffer> GpuHeapLinearBufferAllocator::AllocateBuffer(const BufferCreation& bufferCreation)
+    std::unique_ptr<Buffer> GpuHeapLinearAllocator::AllocateBuffer(const BufferCreation& creation)
     {
-        const uint64_t alignedOffsetInBytes = AlignUp(m_OffsetInBytes, (uint64_t)D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
-        const uint64_t bufferSizeInBytes = (uint64_t)bufferCreation.m_ElementCount * bufferCreation.m_ElementSizeInBytes;
+        const uint64_t alignedOffsetInBytes = AlignUp(m_OffsetInBytes, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+        const uint64_t sizeInBytes = (uint64_t)creation.m_ElementCount * creation.m_ElementSizeInBytes;
 
-        const uint64_t neededSizeInBytes = alignedOffsetInBytes + bufferSizeInBytes;
+        const uint64_t neededSizeInBytes = alignedOffsetInBytes + sizeInBytes;
         BenzinEnsure(
             neededSizeInBytes <= m_GpuHeap.GetSizeInBytes(),
             "GpuHeap is full. Needed size: {:.2f}, Actual size: {:.2f}",
             ToMb(neededSizeInBytes),
             ToMb(m_GpuHeap.GetSizeInBytes()));
 
-        m_OffsetInBytes = alignedOffsetInBytes + bufferSizeInBytes;
+        m_OffsetInBytes = alignedOffsetInBytes + sizeInBytes;
 
-        if (bufferCreation.m_DebugName.empty())
+        if (creation.m_DebugName.empty())
         {
-            const_cast<BufferCreation&>(bufferCreation).m_DebugName = "GpuHeapLinearBufferAllocator";
+            const_cast<BufferCreation&>(creation).m_DebugName = "GpuHeapLinearAllocator::Buffer";
         }
 
-        return std::make_unique<Buffer>(m_GpuHeap, alignedOffsetInBytes, bufferCreation);
+        return std::make_unique<Buffer>(m_GpuHeap, alignedOffsetInBytes, creation);
     }
 
     // ConstBufferLinearAllocator
 
-    ConstBufferLinearAllocator::ConstBufferLinearAllocator(Device& device)
+    ConstBufferLinearAllocator::ConstBufferLinearAllocator(Device& device, uint32_t sizeInBytesPerFrame)
         : m_Device{ device }
     {
-        constexpr uint64_t bufferSizeInBytesPerFrame = 2_mb;
-
         MakeUniquePtr(m_GpuHeap, m_Device, GpuHeapCreation
         {
             .m_DebugName = "ConstBufferHeap",
             .m_Type = GpuHeapType::GpuUpload,
-            .m_SizeInBytes = bufferSizeInBytesPerFrame * BENZIN_FRAME_COUNT,
+            .m_SizeInBytes = sizeInBytesPerFrame * BENZIN_FRAME_COUNT,
         });
 
         for (uint32_t i = 0; i < BENZIN_FRAME_COUNT; ++i)
         {
-            const uint64_t gpuHeapOffsetInBytes = bufferSizeInBytesPerFrame * i;
+            const uint64_t gpuHeapOffsetInBytes = sizeInBytesPerFrame * i;
             MakeUniquePtr(m_FrameBuffers[i], *m_GpuHeap, gpuHeapOffsetInBytes, BufferCreation
             {
                 .m_DebugName = std::format("FrameConstBuffer_{}", i),
                 .m_Type = BufferType::Byte,
                 .m_ElementSizeInBytes = sizeof(std::byte),
-                .m_ElementCount = bufferSizeInBytesPerFrame,
+                .m_ElementCount = sizeInBytesPerFrame,
             });
         }
     }

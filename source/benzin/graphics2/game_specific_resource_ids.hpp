@@ -26,12 +26,7 @@ namespace benzin
         Shadow = Sigma_BlurredShadowTemp2 + 2,
         ShadowHistoryLength = Shadow + 2,
 
-        // Deferred Lighting
         HdrColor,
-
-        // Tone Mapping
-        ToneMapping_AvgLuminance,
-        ToneMapping_DebugLuminanceHistogram,
         Final,
 
         // Engine Textures

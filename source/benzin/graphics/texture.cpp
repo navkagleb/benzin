@@ -1,10 +1,12 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics/texture.hpp>
 
+#include <benzin/core/math.hpp>
 #include <benzin/graphics/common.hpp>
 #include <benzin/graphics/d3d12_assert.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 
 namespace benzin
 {
@@ -46,36 +48,42 @@ namespace benzin
         return d3d12ResourceDesc;
     }
 
-    static D3D12_CLEAR_VALUE ToD3D12ClearValue(const TextureCreation& creation)
+    static bool FillD3D12ClearValue(const TextureCreation& creation, D3D12_CLEAR_VALUE& d3d12ClearValue)
     {
-        D3D12_CLEAR_VALUE d3d12ClearValue = {};
+        const bool isRenderTarget = creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget);
+        const bool isDepthStencil = creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil);
+
+        if (!isRenderTarget && !isDepthStencil)
+            return false;
+
+        d3d12ClearValue = {};
         d3d12ClearValue.Format = creation.m_DxgiFormat;
 
         if (std::holds_alternative<std::monostate>(creation.m_ClearValueVariant))
         {
-            if (creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget))
+            if (isRenderTarget)
             {
                 const_cast<ClearValueVariant&>(creation.m_ClearValueVariant) = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 0.0f };
             }
-            else if (creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil))
+            else if (isDepthStencil)
             {
                 const_cast<ClearValueVariant&>(creation.m_ClearValueVariant) = DepthStencilValue{};
             }
         }
 
-        creation.m_ClearValueVariant | MakeVisitorMatch(
-            [&creation, &d3d12ClearValue](const DirectX::XMFLOAT4& clearColor)
+        const auto visitor = MakeVisitorMatch(
+            [&](const DirectX::XMFLOAT4& clearColor)
             {
-                BenzinAssert(creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget));
+                BenzinAssert(isRenderTarget);
 
                 d3d12ClearValue.Color[0] = clearColor.x;
                 d3d12ClearValue.Color[1] = clearColor.y;
                 d3d12ClearValue.Color[2] = clearColor.z;
                 d3d12ClearValue.Color[3] = clearColor.w;
             },
-            [&creation, &d3d12ClearValue](const DepthStencilValue& depthStencil)
+            [&](const DepthStencilValue& depthStencil)
             {
-                BenzinAssert(creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil));
+                BenzinAssert(isDepthStencil);
 
                 d3d12ClearValue.DepthStencil.Depth = depthStencil.m_Depth;
                 d3d12ClearValue.DepthStencil.Stencil = depthStencil.m_Stencil;
@@ -85,42 +93,55 @@ namespace benzin
                 BenzinEnsure(false);
             });
 
-        return d3d12ClearValue;
+        std::visit(visitor, creation.m_ClearValueVariant);
+
+        return true;
     }
 
     static ID3D12Resource* CreateD3D12CommittedResource(const Device& device, const TextureCreation& creation, D3D12_RESOURCE_STATES d3d12InitialState)
+    {
+        const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
+        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(creation);
+
+        D3D12_CLEAR_VALUE d3d12ClearValue = {};
+        const bool isClearValueNeeded = FillD3D12ClearValue(creation, d3d12ClearValue);
+
+        ID3D12Resource* d3d12Resource = nullptr;
+        BenzinD3D12Call(device.GetD3D12Device()->CreateCommittedResource(
+            &d3d12HeapProperties,
+            D3D12_HEAP_FLAG_NONE,
+            &d3d12ResourceDesc,
+            d3d12InitialState,
+            isClearValueNeeded ? &d3d12ClearValue : nullptr,
+            IID_PPV_ARGS(&d3d12Resource)));
+
+        return d3d12Resource;
+    }
+
+    static ID3D12Resource* CreateD3D12PlacedResource(
+        const Device& device,
+        const GpuHeap& gpuHeap,
+        uint64_t gpuHeapOffsetInBytes,
+        const TextureCreation& creation,
+        D3D12_RESOURCE_STATES d3d12InitialState)
     {
         BenzinAssert(creation.m_DxgiFormat != DXGI_FORMAT_UNKNOWN);
 
         const D3D12_HEAP_PROPERTIES d3d12HeapProperties = GetD3D12HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(creation);
 
+        D3D12_CLEAR_VALUE d3d12ClearValue = {};
+        const bool isClearValueNeeded = FillD3D12ClearValue(creation, d3d12ClearValue);
+
         ID3D12Resource* d3d12Resource = nullptr;
+        BenzinD3D12Call(device.GetD3D12Device()->CreatePlacedResource(
+            gpuHeap.GetD3D12Heap(),
+            gpuHeapOffsetInBytes,
+            &d3d12ResourceDesc,
+            d3d12InitialState,
+            isClearValueNeeded ? &d3d12ClearValue : nullptr,
+            IID_PPV_ARGS(&d3d12Resource)));
 
-        if (creation.m_AccessFlags.IsAnySet(TextureAccessFlag::AllowRenderTarget | TextureAccessFlag::AllowDepthStencil))
-        {
-            const D3D12_CLEAR_VALUE d3d12ClearValue = ToD3D12ClearValue(creation);
-
-            BenzinD3D12Call(device.GetD3D12Device()->CreateCommittedResource(
-                &d3d12HeapProperties,
-                D3D12_HEAP_FLAG_NONE,
-                &d3d12ResourceDesc,
-                d3d12InitialState,
-                &d3d12ClearValue,
-                IID_PPV_ARGS(&d3d12Resource)));
-        }
-        else
-        {
-            BenzinD3D12Call(device.GetD3D12Device()->CreateCommittedResource(
-                &d3d12HeapProperties,
-                D3D12_HEAP_FLAG_NONE,
-                &d3d12ResourceDesc,
-                d3d12InitialState,
-                nullptr,
-                IID_PPV_ARGS(&d3d12Resource)));
-        }
-
-        BenzinEnsure(d3d12Resource != nullptr);
         return d3d12Resource;
     }
 
@@ -218,6 +239,15 @@ namespace benzin
         SetupCreation(&creation);
     }
 
+    Texture::Texture(GpuHeap& gpuHeap, uint64_t gpuHeapOffsetInBytes, const TextureCreation& creation)
+        : Resource{ gpuHeap.m_Device }
+    {
+        m_D3D12CurrentState = D3D12_RESOURCE_STATE_COMMON;
+        m_D3D12Resource = CreateD3D12PlacedResource(m_Device, gpuHeap, gpuHeapOffsetInBytes, creation, m_D3D12CurrentState);
+    
+        SetupCreation(&creation);
+    }
+
     Texture::Texture(Device& device, ID3D12Resource* d3d12Resource)
         : Resource{ device }
     {
@@ -243,22 +273,21 @@ namespace benzin
 
     uint64_t Texture::GetSizeInBytes() const
     {
-        BenzinAssert(m_D3D12Resource != nullptr);
-
         const D3D12_RESOURCE_DESC d3d12ResourceDesc = m_D3D12Resource->GetDesc();
         const uint32_t subResourceCount = GetSubResourceCount();
 
         uint64_t sizeInBytes = 0;
         m_Device.GetD3D12Device()->GetCopyableFootprints(
             &d3d12ResourceDesc,
-            0, // first sub-resource
+            0,
             subResourceCount,
             0,
             nullptr,
             nullptr,
             nullptr,
-            &sizeInBytes
-        );
+            &sizeInBytes);
+
+        BenzinAssert(sizeInBytes == CalcTextureSizeInBytes(m_Width, m_Height, m_Depth, m_DxgiFormat));
 
         return sizeInBytes;
     }
@@ -437,6 +466,16 @@ namespace benzin
                 m_AccessFlags.Set(TextureAccessFlag::AllowUnorderedAccess);
             }
         }
+    }
+
+    uint64_t CalcTextureSizeInBytes(uint32_t width, uint32_t height, uint32_t depth, DXGI_FORMAT dxgiFormat)
+    {
+        const uint32_t rowSizeInBytes = width * GetDxgiFormatSizeInBytes(dxgiFormat);
+        const uint32_t rowPitchInBytes = AlignUp(rowSizeInBytes, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+        const uint32_t slicePitchInBytes = rowPitchInBytes * height;
+        const uint64_t sizeInBytes = slicePitchInBytes * (depth - 1) + rowPitchInBytes * (height - 1) + rowSizeInBytes;
+
+        return sizeInBytes;
     }
 
 }

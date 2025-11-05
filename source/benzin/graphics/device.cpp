@@ -210,7 +210,7 @@ namespace benzin
         MakeUniquePtr(m_PersistentGpuUploadAllocator, *m_PersistentGpuUploadHeap);
         MakeUniquePtr(m_PersistentReadbackAllocator, *m_PersistentReadbackHeap);
 
-        MakeUniquePtr(m_ConstBufferAllocator, *this);
+        MakeUniquePtr(m_ConstBufferAllocator, *this, (uint32_t)2_mb);
     }
 
     Device::~Device()

@@ -34,6 +34,8 @@ namespace sandbox
         joint::ToneMappingConsts m_Consts = {};
 
         std::unique_ptr<benzin::Buffer> m_LuminanceHistogram;
+        std::unique_ptr<benzin::Texture> m_AvgLuminance;
+        std::unique_ptr<benzin::Texture> m_DebugLuminanceHistogram;
     };
 
 }

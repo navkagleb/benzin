@@ -103,7 +103,6 @@ namespace benzin
             nullptr,
             IID_PPV_ARGS(&d3d12Resource)));
 
-        BenzinEnsure(d3d12Resource != nullptr);
         return d3d12Resource;
     }
 
@@ -127,7 +126,6 @@ namespace benzin
             nullptr,
             IID_PPV_ARGS(&d3d12Resource)));
 
-        BenzinEnsure(d3d12Resource != nullptr);
         return d3d12Resource;
     }
 

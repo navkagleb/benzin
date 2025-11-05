@@ -203,7 +203,7 @@ namespace benzin
             cmd.m_D3D12Cmd.ThreadGroupCountZ = 1;
         }
 
-        GpuHeapLinearBufferAllocator& allocator = m_Device.GetPersistentDefaultAllocator();
+        GpuHeapLinearAllocator& allocator = m_Device.GetPersistentDefaultAllocator();
         m_VertexBuffer = allocator.AllocateBuffer("Scene::VertexBuffer", ToSpan(m_Vertices));
         m_IndexBuffer = allocator.AllocateBuffer("Scene::IndexBuffer", ToSpan(m_Indices), DXGI_FORMAT_R32_UINT);
         m_MeshletBuffer = allocator.AllocateBuffer("Scene::MeshletsBuffer", ToSpan(m_Meshlets));

@@ -48,24 +48,24 @@ namespace sandbox
             creation.m_IsUnorderedAccessAllowed = true;
         });
 
-        ms_Resources->Create(TextureId::ToneMapping_AvgLuminance, benzin::TextureCreation
+        m_AvgLuminance = ms_Device->GetPersistentDefaultAllocator().AllocateTexture([](benzin::TextureCreation& creation)
         {
-            .m_DebugName = "ToneMapping_AvgLuminance",
-            .m_DxgiFormat = DXGI_FORMAT_R16_FLOAT,
-            .m_Width = 1,
-            .m_Height = 1,
-            .m_MipCount = 1,
-            .m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
+            creation.m_DebugName = "ToneMapping::AvgLuminance";
+            creation.m_DxgiFormat = DXGI_FORMAT_R16_FLOAT;
+            creation.m_Width = 1;
+            creation.m_Height = 1;
+            creation.m_MipCount = 1;
+            creation.m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess;
         });
 
-        ms_Resources->Create(TextureId::ToneMapping_DebugLuminanceHistogram, benzin::TextureCreation
+        m_DebugLuminanceHistogram = ms_Device->GetPersistentDefaultAllocator().AllocateTexture([](benzin::TextureCreation& creation)
         {
-            .m_DebugName = "ToneMapping_DebugLuminanceHistogram",
-            .m_DxgiFormat = DXGI_FORMAT_R8_UNORM,
-            .m_Width = luminanceHistogramWidth,
-            .m_Height = luminanceHistogramHeight,
-            .m_MipCount = 1,
-            .m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
+            creation.m_DebugName = "ToneMapping::DebugLuminanceHistogram";
+            creation.m_DxgiFormat = DXGI_FORMAT_R8_UNORM;
+            creation.m_Width = luminanceHistogramWidth;
+            creation.m_Height = luminanceHistogramHeight;
+            creation.m_MipCount = 1;
+            creation.m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess;
         });
     }
 
@@ -75,8 +75,6 @@ namespace sandbox
         ms_PsoManager->Destroy(PsoId::ToneMapping_CalcAvgLuminance);
         ms_PsoManager->Destroy(PsoId::ToneMapping_ApplyToneMapOperator);
 
-        ms_Resources->Destroy(TextureId::ToneMapping_AvgLuminance);
-        ms_Resources->Destroy(TextureId::ToneMapping_DebugLuminanceHistogram);
         ms_Resources->Destroy(TextureId::Final);
     }
 
@@ -133,17 +131,15 @@ namespace sandbox
 
         BenzinGpuEvent("ClearPass");
 
-        const auto& avgLuminance = ms_Resources->Get(TextureId::ToneMapping_AvgLuminance);
-
         cmdList.AddTransition(*m_LuminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList.AddTransition(avgLuminance, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransition(*m_AvgLuminance, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.FlushBarriers();
 
         cmdList.ClearUnorderedAccess(*m_LuminanceHistogram, m_LuminanceHistogram->GetUav());
-        cmdList.ClearUnorderedAccess(avgLuminance, avgLuminance.GetUav());
+        cmdList.ClearUnorderedAccess(*m_AvgLuminance, m_AvgLuminance->GetUav());
 
         cmdList.AddUnorderedAccess(*m_LuminanceHistogram);
-        cmdList.AddUnorderedAccess(avgLuminance);
+        cmdList.AddUnorderedAccess(*m_AvgLuminance);
 
         isFirstTime = false;
     }
@@ -155,18 +151,16 @@ namespace sandbox
         BenzinProfile();
         BenzinGpuProfile("CalcLuminanceHistogram");
 
-        const auto& debugLuminanceHistogram = ms_Resources->Get(TextureId::ToneMapping_DebugLuminanceHistogram);
-
         cmdList.SetComputeRootSrv(*Resources::HdrColor, ms_Resources->Get(TextureId::HdrColor));
         cmdList.SetComputeRootUav(*Resources::OutLuminanceHistogram, *m_LuminanceHistogram);
-        cmdList.SetComputeRootUav(*Resources::OutDebugLuminanceHistogram, debugLuminanceHistogram);
+        cmdList.SetComputeRootUav(*Resources::OutDebugLuminanceHistogram, *m_DebugLuminanceHistogram);
         cmdList.FlushBarriers();
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcLuminanceHistogram));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
 
         cmdList.AddUnorderedAccess(*m_LuminanceHistogram);
-        cmdList.AddUnorderedAccess(debugLuminanceHistogram);
+        cmdList.AddUnorderedAccess(*m_DebugLuminanceHistogram);
     }
 
     void ToneMappingPass::RunCalcAvgLuminancePass(benzin::ComputeCmdList& cmdList) const
@@ -176,17 +170,15 @@ namespace sandbox
         BenzinProfile();
         BenzinGpuProfile("CalcAvgLuminance");
 
-        const auto& avgLuminance = ms_Resources->Get(TextureId::ToneMapping_AvgLuminance);
-
         cmdList.SetComputeRootUav(*Resources::OutLuminanceHistogram, *m_LuminanceHistogram);
-        cmdList.SetComputeRootUav(*Resources::OutAvgLuminance, avgLuminance);
+        cmdList.SetComputeRootUav(*Resources::OutAvgLuminance, *m_AvgLuminance);
         cmdList.FlushBarriers();
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcAvgLuminance));
         cmdList.Dispatch({ 1, 1, 1 }, { 1, 1, 1 });
 
         cmdList.AddUnorderedAccess(*m_LuminanceHistogram);
-        cmdList.AddUnorderedAccess(avgLuminance);
+        cmdList.AddUnorderedAccess(*m_AvgLuminance);
     }
 
     void ToneMappingPass::RunApplyToneMapOperatorPass(benzin::ComputeCmdList& cmdList) const
@@ -199,7 +191,7 @@ namespace sandbox
         const auto& finalTexture = ms_Resources->Get(TextureId::Final);
 
         cmdList.SetComputeRootSrv(*Resources::HdrColor, ms_Resources->Get(TextureId::HdrColor));
-        cmdList.SetComputeRootSrv(*Resources::AvgLuminance, ms_Resources->Get(TextureId::ToneMapping_AvgLuminance));
+        cmdList.SetComputeRootSrv(*Resources::AvgLuminance, *m_AvgLuminance);
         cmdList.SetComputeRootUav(*Resources::OutFinal, finalTexture);
         cmdList.FlushBarriers();
 
