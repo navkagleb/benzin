@@ -9,12 +9,11 @@ namespace joint
     {
         MeshDrawIndex,
 
-        PartMeshletOffset, // Mesh pipeline
-        PartMeshletCount, // Mesh pipeline
-
         MeshDraws,
         Materials,
 
+        MeshDispatchCount, // Mesh pipeline
+        MeshDispathes, // Mesh pipeline
         Vertices, // Mesh pipeline
         Meshlets, // Mesh pipeline
         MeshletCullVolumes, // Mesh pipeline

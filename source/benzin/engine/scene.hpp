@@ -110,9 +110,8 @@ namespace benzin
         std::vector<std::unique_ptr<Texture>> m_Textures;
 
         std::unique_ptr<Buffer> m_MeshDrawBuffer;
-
+        std::unique_ptr<Buffer> m_MeshDispatchBuffer;
         std::unique_ptr<Buffer> m_DrawIndirectCmdBuffer;
-        std::unique_ptr<Buffer> m_DispatchMeshIndirectCmdBuffer;
 
         std::vector<joint::GrassPatch> m_GrassPatches;
         SunLight m_SunLight;

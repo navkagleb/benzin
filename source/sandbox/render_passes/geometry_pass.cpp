@@ -24,7 +24,6 @@
 #include <shaders/joint/mesh_types.hpp>
 
 BenzinAllowDereferenceOperatorForEnum(joint::GeometryResources);
-BenzinAllowDereferenceOperatorForEnum(joint::MeshletConsts);
 
 namespace sandbox
 {
@@ -168,38 +167,17 @@ namespace sandbox
         {
             cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Mesh));
 
+            cmdList.SetGraphicsRootSrv(*Resources::MeshDispathes, *ms_Scene->m_MeshDispatchBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             cmdList.SetGraphicsRootSrv(*Resources::Vertices, *ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             cmdList.SetGraphicsRootSrv(*Resources::Meshlets, *ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             cmdList.SetGraphicsRootSrv(*Resources::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             cmdList.SetGraphicsRootSrv(*Resources::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             cmdList.SetGraphicsRootSrv(*Resources::MeshletIndices, *ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.AddTransition(*ms_Scene->m_DispatchMeshIndirectCmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
             cmdList.FlushBarriers();
 
-            if (settings.m_IsIndirectDrawEnabled)
-            {
-                cmdList.GetD3D12GraphicsCommandList()->ExecuteIndirect(
-                    m_D3D12DispatchMeshIndirectCmdSignature,
-                    (uint32_t)ms_Scene->m_DispatchMeshIndirectCmdBuffer->GetElementCount(),
-                    ms_Scene->m_DispatchMeshIndirectCmdBuffer->GetD3D12Resource(),
-                    0,
-                    nullptr,
-                    0);
-            }
-            else
-            {
-                for (uint32_t i = 0; i < ms_Scene->m_JointMeshDraws.size(); ++i)
-                {
-                    cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, i);
-
-                    const joint::MeshDraw& jointDraw = ms_Scene->m_JointMeshDraws[i];
-                    const benzin::MeshPart& part = ms_Scene->m_MeshParts[jointDraw.m_PartIndex];
-
-                    cmdList.SetGraphicsRootConstant(*Resources::PartMeshletOffset, part.m_MeshletOffset);
-                    cmdList.SetGraphicsRootConstant(*Resources::PartMeshletCount, part.m_MeshletCount);
-                    cmdList.DispatchMesh({ part.m_MeshletCount, 1, 1, }, { *joint::MeshletConsts::AsGroupSize, 1, 1 });
-                }
-            }
+            const auto dispatchCount = (uint32_t)ms_Scene->m_MeshDispatchBuffer->GetElementCount();
+            cmdList.SetGraphicsRootConstant(*Resources::MeshDispatchCount, dispatchCount);
+            cmdList.DispatchMesh({ dispatchCount, 1, 1 }, { 32, 1, 1 });
         }
         else
         {
@@ -271,9 +249,9 @@ namespace sandbox
         {
             ms_PsoManager->Create(id, [&configureGraphicsPsoProxy](benzin::VertexPsoProxy& proxy)
             {
-                proxy.m_InputLayout.emplace_back("Position", DXGI_FORMAT_R32G32B32_FLOAT);
-                proxy.m_InputLayout.emplace_back("Normal", DXGI_FORMAT_R32G32B32_FLOAT);
-                proxy.m_InputLayout.emplace_back("Uv", DXGI_FORMAT_R32G32_FLOAT);
+                proxy.m_InputLayout.emplace_back("sem_Position", DXGI_FORMAT_R32G32B32_FLOAT);
+                proxy.m_InputLayout.emplace_back("sem_Normal", DXGI_FORMAT_R32G32B32_FLOAT);
+                proxy.m_InputLayout.emplace_back("sem_Uv", DXGI_FORMAT_R32G32_FLOAT);
 
                 BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[0].m_DxgiFormat) == sizeof(joint::MeshVertex::m_Position));
                 BenzinAssert(benzin::GetDxgiFormatSizeInBytes(proxy.m_InputLayout[1].m_DxgiFormat) == sizeof(joint::MeshVertex::m_Normal));

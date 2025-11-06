@@ -25,9 +25,9 @@ float3 CalcSunLight(PbrMaterial material, float3 worldToEyeDir, float3 worldNorm
 GBuffer FetchGBuffer(uint2 pixelIndex)
 {
     PackedGBuffer packedGBuffer = (PackedGBuffer)0;
-    packedGBuffer.Color0 = g_AlbedoAndRoughness[pixelIndex];
-    packedGBuffer.Color1 = g_EmissiveAndMetallic[pixelIndex];
-    packedGBuffer.Color2 = g_WorldNormal[pixelIndex];
+    packedGBuffer.m_Color0 = g_AlbedoAndRoughness[pixelIndex];
+    packedGBuffer.m_Color1 = g_EmissiveAndMetallic[pixelIndex];
+    packedGBuffer.m_Color2 = g_WorldNormal[pixelIndex];
 
     return UnpackGBuffer(packedGBuffer);
 }
@@ -50,26 +50,32 @@ VsOutput VsMain(uint vertexIndex : SV_VertexID)
 float4 PsMain(VsOutput input) : SV_Target
 {
     const uint2 pixelIndex = input.m_SvPosition.xy;
-    const GBuffer gbuffer = FetchGBuffer(pixelIndex);
+
+    PackedGBuffer packedGBuffer = (PackedGBuffer)0;
+    packedGBuffer.m_Color0 = g_AlbedoAndRoughness[pixelIndex];
+    packedGBuffer.m_Color1 = g_EmissiveAndMetallic[pixelIndex];
+    packedGBuffer.m_Color2 = g_WorldNormal[pixelIndex];
+
+    const GBuffer gbuffer = UnpackGBuffer(packedGBuffer);
 
     const float depth = g_Depth[pixelIndex];
     const float3 worldPosition = ReconstructWorldPosition(input.m_Uv, depth, GetCameraConsts().ClipToView, GetCameraConsts().ViewToWorld);
     const float3 worldToEyeDir = normalize(GetCameraConsts().WorldPosition - worldPosition);
 
     PbrMaterial material;
-    material.Albedo = gbuffer.Albedo;
-    material.Roughness = gbuffer.Roughness;
-    material.Metallic = gbuffer.Metallic;
-    material.F0 = GetF0(gbuffer.Albedo.rgb, gbuffer.Metallic);
+    material.Albedo = gbuffer.m_Albedo;
+    material.Roughness = gbuffer.m_Roughness;
+    material.Metallic = gbuffer.m_Metallic;
+    material.F0 = GetF0(gbuffer.m_Albedo.rgb, gbuffer.m_Metallic);
 
     float sunShadowFactor = g_Shadow[pixelIndex];
     sunShadowFactor = g_FrameConsts.IsDenoiserEnabled ? sigma::UnpackShadow(sunShadowFactor) : sigma::IsLit(sunShadowFactor);
 
-    float3 sunLight = CalcSunLight(material, worldToEyeDir, gbuffer.WorldNormal);
+    float3 sunLight = CalcSunLight(material, worldToEyeDir, gbuffer.m_WorldNormal);
     sunLight *= sunShadowFactor;
 
-    const float3 ambientColor = 0.2 * gbuffer.Albedo.rgb;
-    const float3 finalColor = ambientColor + sunLight + gbuffer.Emissive;
+    const float3 ambientColor = 0.2 * gbuffer.m_Albedo.rgb;
+    const float3 finalColor = ambientColor + sunLight + gbuffer.m_Emissive;
 
     return float4(finalColor, 1.0);
 }

@@ -103,6 +103,10 @@ namespace benzin
 
     void CopyCmdList::CopyResource(const Resource& destResource, const Resource& sourceResource)
     {
+        AddTransition(destResource, D3D12_RESOURCE_STATE_COPY_DEST);
+        AddTransition(sourceResource, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        FlushBarriers();
+
         m_D3D12GraphicsCommandList1->CopyResource(destResource.GetD3D12Resource(), sourceResource.GetD3D12Resource());
     }
 

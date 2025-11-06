@@ -10,8 +10,11 @@ namespace sandbox
     template <>
     void DrawSettings(GBufferSettings& settings)
     {
-        ImGui::Checkbox("Indirect draw", &settings.m_IsIndirectDrawEnabled);
         ImGui::Checkbox("Mesh pipeline", &settings.m_IsMeshPipelineUsed);
+
+        ImGui::BeginDisabled(settings.m_IsMeshPipelineUsed);
+        ImGui::Checkbox("Indirect draw", &settings.m_IsIndirectDrawEnabled);
+        ImGui::EndDisabled();
     }
 
     template <>

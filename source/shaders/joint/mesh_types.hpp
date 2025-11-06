@@ -31,6 +31,12 @@ namespace joint
         uint m_TriangleCount;
     };
 
+    struct MeshDispatch
+    {
+        uint m_MeshletIndex;
+        uint m_MeshDrawIndex;
+    };
+
     struct MeshletCullVolume
     {
         float3 m_Center;
@@ -44,8 +50,6 @@ namespace joint
     {
         MaxVertexCount = 64,
         MaxTriangleCount = 124, // Must be multiple of 4 (for meshoptimizer library)
-
-        AsGroupSize = 32,
     };
 
     struct Material

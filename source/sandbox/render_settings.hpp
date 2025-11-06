@@ -15,8 +15,8 @@ namespace sandbox
         static const DXGI_FORMAT ms_Color4DxgiFormat = DXGI_FORMAT_R32_FLOAT; // ViewDepth
         static const DXGI_FORMAT ms_DepthStencilDxgiFormat = DXGI_FORMAT_D32_FLOAT;
 
-        bool m_IsIndirectDrawEnabled = true;
         bool m_IsMeshPipelineUsed = true;
+        bool m_IsIndirectDrawEnabled = true;
     };
 
     struct ProceduralGrassSettings

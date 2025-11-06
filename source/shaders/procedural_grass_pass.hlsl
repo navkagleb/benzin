@@ -344,19 +344,19 @@ PackedGBuffer PsMain(const Vertex input, bool isFrontFace : SV_IsFrontFace)
     const float perlinNoiseFactor = g_PerlinNoise.SampleLevel(g_PointWrapSampler, perlinNoiseUv, 0.0);
 
     GBuffer gbuffer;
-    gbuffer.Roughness = lerp(0.3, 0.8, perlinNoiseFactor);
-    gbuffer.Metallic = 0.0;
-    gbuffer.ViewDepth = input.ViewDepth;
+    gbuffer.m_Roughness = lerp(0.3, 0.8, perlinNoiseFactor);
+    gbuffer.m_Metallic = 0.0;
+    gbuffer.m_ViewDepth = input.ViewDepth;
 
     const float selfshadowFactor = saturate(pow((input.WorldPos.y - input.BladeRootHeight) / input.PatchHeight, 1.5)) + 0.1;
     const float brightnessFactor = lerp(0.85, 1.5, perlinNoiseFactor);
-    gbuffer.Albedo = g_PassConsts.BaseColor;
-    gbuffer.Albedo *= selfshadowFactor;
-    gbuffer.Albedo *= brightnessFactor;
-    gbuffer.Albedo = SrgbToLinearAccurate(gbuffer.Albedo);
+    gbuffer.m_Albedo = g_PassConsts.BaseColor;
+    gbuffer.m_Albedo *= selfshadowFactor;
+    gbuffer.m_Albedo *= brightnessFactor;
+    gbuffer.m_Albedo = SrgbToLinearAccurate(gbuffer.m_Albedo);
 
-    gbuffer.WorldNormal = normalize(input.WorldNormal) * (isFrontFace ? 1.0 : -1.0);
-    gbuffer.WorldNormal = normalize(lerp(g_UpDir, gbuffer.WorldNormal, 0.5)); // Interpolating the blade normal with the up vector gave the blades a softer look
+    gbuffer.m_WorldNormal = normalize(input.WorldNormal) * (isFrontFace ? 1.0 : -1.0);
+    gbuffer.m_WorldNormal = normalize(lerp(g_UpDir, gbuffer.m_WorldNormal, 0.5)); // Interpolating the blade normal with the up vector gave the blades a softer look
 
     CalcGBufferMv(input.ClipPos.xy, input.ViewDepth, input.PrevViewPos, gbuffer);
 
