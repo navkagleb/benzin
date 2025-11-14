@@ -100,18 +100,18 @@ float GetStdDeviation(float m1, float m2)
 
 void CalcPrevPositions(uint2 pixelPos, float2 pixelUv, float viewDepth, out float2 outPrevPixelUv, out float3 outPrevViewPos)
 {
-    const float3 viewPos = ReconstructViewPosition(pixelUv, viewDepth, GetCameraConsts().UvToViewScale, GetCameraConsts().UvToViewBias);
-    const float3 worldPos = mul(float4(viewPos, 1.0), GetCameraConsts().ViewToWorld).xyz;
+    const float3 viewPos = ReconstructViewPosition(pixelUv, viewDepth, GetCameraConsts().m_UvToViewScale, GetCameraConsts().m_UvToViewBias);
+    const float3 worldPos = mul(float4(viewPos, 1.0), GetCameraConsts().m_ViewToWorld).xyz;
 
     float3 mv = g_Mv[pixelPos].xyz;
-    mv.xy *= g_FrameConsts.InvRenderResolution; // TODO: Pack/Unpack Mv
+    mv.xy *= g_FrameConsts.m_InvRenderResolution; // TODO: Pack/Unpack Mv
 
     const float2 prevPixelUv = pixelUv - mv.xy;
 
     const float prevViewDepth = viewDepth - mv.z;
-    const float3 tempPrevViewPos = ReconstructViewPosition(prevPixelUv, prevViewDepth, GetPrevCameraConsts().UvToViewScale, GetPrevCameraConsts().UvToViewBias); // TODO: Does there is any difference between 'prevViewPos'?
-    const float3 prevWorldPos = mul(float4(tempPrevViewPos, 1.0), GetPrevCameraConsts().ViewToWorld).xyz;
-    const float3 prevViewPos = mul(float4(prevWorldPos, 1.0), GetPrevCameraConsts().WorldToView).xyz;
+    const float3 tempPrevViewPos = ReconstructViewPosition(prevPixelUv, prevViewDepth, GetPrevCameraConsts().m_UvToViewScale, GetPrevCameraConsts().m_UvToViewBias); // TODO: Does there is any difference between 'prevViewPos'?
+    const float3 prevWorldPos = mul(float4(tempPrevViewPos, 1.0), GetPrevCameraConsts().m_ViewToWorld).xyz;
+    const float3 prevViewPos = mul(float4(prevWorldPos, 1.0), GetPrevCameraConsts().m_WorldToView).xyz;
 
     outPrevPixelUv = prevPixelUv;
     outPrevViewPos = prevViewPos;
@@ -121,7 +121,7 @@ float GetDisocclusionThreshold(float viewDepth)
 {
     // Only for viewDepth comparisons for close to each other pixels (not sparse filters!)
 
-    const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConsts.MinRenderDimension, GetCameraConsts().PixelToWorldScale, viewDepth);
+    const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConsts.m_MinRenderDimension, GetCameraConsts().m_PixelToWorldScale, viewDepth);
 
     return worldFrustumSize * g_PassConsts.DisocclusionThreshold;
 }
@@ -129,9 +129,9 @@ float GetDisocclusionThreshold(float viewDepth)
 void SampleHistoryData(float2 prevPixelUv, float viewDepth, float prevViewDepth, out float outHistoryLength, out float outShadowHistory)
 {
     // History length
-    const BilinearFilter prevFilter = CreateBilinearFilter(prevPixelUv, g_FrameConsts.RenderResolution);
+    const BilinearFilter prevFilter = CreateBilinearFilter(prevPixelUv, g_FrameConsts.m_RenderResolution);
 
-    const float2 gatherUv = (prevFilter.TopLeftTexelPos + 1.0) * g_FrameConsts.InvRenderResolution;
+    const float2 gatherUv = (prevFilter.TopLeftTexelPos + 1.0) * g_FrameConsts.m_InvRenderResolution;
     const uint4 prevHistoryData = g_HistoryLength.GatherRed(g_PointClampSampler, gatherUv).wzxy;
 
     float4 prevViewDepths;
@@ -156,8 +156,8 @@ void SampleHistoryData(float2 prevPixelUv, float viewDepth, float prevViewDepth,
 
     float shadowHistory;
     BicubicFilterNoCornersWithFallbackToBilinearFilterWithCustomWeights(
-        saturate(prevPixelUv) * g_FrameConsts.RenderResolution,
-        g_FrameConsts.InvRenderResolution,
+        saturate(prevPixelUv) * g_FrameConsts.m_RenderResolution,
+        g_FrameConsts.m_InvRenderResolution,
         customWeights,
         isCatRomAllowed,
         g_ShadowHistory,
@@ -185,7 +185,7 @@ float CalcAntilagFactor(float history, float clampedHistory)
 float SampleShadowHistory(float2 prevPixelUv, bool isBicubicSamplingUsed)
 {
     float history = isBicubicSamplingUsed && g_PassConsts.IsBicubicSamplingUsedForHistory
-        ? BicubicFilterNoCorners(g_ShadowHistory, saturate(prevPixelUv) * g_FrameConsts.RenderResolution, g_FrameConsts.InvRenderResolution).x
+        ? BicubicFilterNoCorners(g_ShadowHistory, saturate(prevPixelUv) * g_FrameConsts.RenderResolution, g_FrameConsts.m_InvRenderResolution).x
         : g_ShadowHistory.SampleLevel(g_LinearClampSampler, prevPixelUv, 0.0).x;
 
     history = saturate(history);
@@ -204,7 +204,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     if (!isSky)
     {
         // TODO: Will it still work even if it is false?
-        SigmaPreloadToGroupSharedMem(input, g_FrameConsts.RenderResolution, Preload);
+        SigmaPreloadToGroupSharedMem(input, g_FrameConsts.m_RenderResolution, Preload);
     }
 
     GroupMemoryBarrierWithGroupSync();
@@ -212,14 +212,14 @@ void CsMain(sigma::GroupSharedCsInput input)
     const uint2 sharedPos = input.ThreadPos + SIGMA_BORDER;
     const PixelData centerPixel = g_Pixels[sharedPos.y][sharedPos.x];
 
-    const bool isOutOfBounds = any(input.PixelPos >= g_FrameConsts.RenderResolution);
+    const bool isOutOfBounds = any(input.PixelPos >= g_FrameConsts.m_RenderResolution);
     const bool isOutOfDenoisingRange = centerPixel.ViewDepth > SIGMA_DENOISING_RANGE;
     if (isSky || isOutOfBounds || isOutOfDenoisingRange)
     {
         return;
     }
 
-    const float2 pixelUv = (input.PixelPos + 0.5) * g_FrameConsts.InvRenderResolution;
+    const float2 pixelUv = (input.PixelPos + 0.5) * g_FrameConsts.m_InvRenderResolution;
     const float tileValue = sigma::TextureCubicX(g_SmoothTiles, pixelUv);
 
     bool isHardShadow = SIGMA_TS_USE_EARLY_OUT;

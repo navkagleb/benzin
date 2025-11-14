@@ -73,17 +73,17 @@ struct SparseBlurKernel
 
 BlurParams GetBlurParams(float2 baseUv, PixelData centerPixel)
 {
-    const float pixelToWorldScale = GetCameraConsts().PixelToWorldScale;
+    const float pixelToWorldScale = GetCameraConsts().m_PixelToWorldScale;
     const float3 worldNormal = g_WorldNormal.SampleLevel(g_PointClampSampler, baseUv, 0.0).xyz;
-    const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConsts.MinRenderDimension, pixelToWorldScale, centerPixel.ViewDepth);
+    const float worldFrustumSize = sigma::PixelsToWorldSize(g_FrameConsts.m_MinRenderDimension, pixelToWorldScale, centerPixel.ViewDepth);
 
     BlurParams params;
-    params.UvToViewScale = GetCameraConsts().UvToViewScale;
-    params.UvToViewBias = GetCameraConsts().UvToViewBias;
+    params.UvToViewScale = GetCameraConsts().m_UvToViewScale;
+    params.UvToViewBias = GetCameraConsts().m_UvToViewBias;
     params.CenterPixel = centerPixel;
     params.BaseUv = baseUv;
     params.BaseViewPosition = ReconstructViewPosition(baseUv, centerPixel.ViewDepth, params.UvToViewScale, params.UvToViewBias);
-    params.BaseViewNormal = mul(worldNormal, (float3x3)GetCameraConsts().WorldToView);
+    params.BaseViewNormal = mul(worldNormal, (float3x3)GetCameraConsts().m_WorldToView);
     params.WorldPixelSize = sigma::GetWorldPixelSize(pixelToWorldScale, centerPixel.ViewDepth);
     params.GeometryWeightParams = sigma::GetGeometryWeightParams(g_PassConsts.PlaneDistanceSensitivity, params.BaseViewPosition, params.BaseViewNormal, worldFrustumSize);
 
@@ -123,7 +123,7 @@ SparseBlurKernel CalcSparseBlurKernel(BlurParams params, float blurredPenumbra, 
     kernel.Rotator = g_PassConsts.PostBlurRotator;
 #endif
 
-    const float3 viewToLightDirection = mul(g_PassConsts.ToSunDirection, (float3x3)GetCameraConsts().WorldToView);
+    const float3 viewToLightDirection = mul(g_PassConsts.ToSunDirection, (float3x3)GetCameraConsts().m_WorldToView);
     const float3 tangentDirection = cross(viewToLightDirection, params.BaseViewNormal); // NRD TODO: add support for other light types to bring proper anisotropic filtering
     if (length(tangentDirection) > 0.001)
     {
@@ -153,8 +153,7 @@ float2 CalcSparseBlurKernelUv(SparseBlurKernel kernel, float2 offset, float3 vie
 
     viewPosition += offset.x * kernel.Tangent + offset.y * kernel.Bitangent;
 
-    const float4 clipPos = mul(float4(viewPosition, 1.0), GetCameraConsts().ViewToClip); // TODO: Why this don't work?
-    // const float4 clipPos = mul(GetCameraConsts().ViewToClip, float4(viewPosition, 1.0));
+    const float4 clipPos = mul(float4(viewPosition, 1.0), GetCameraConsts().m_ViewToClip);
     const float2 uv = ClipToUv(clipPos);
 
     return uv;
@@ -180,7 +179,7 @@ void RunIsotropicBlur(sigma::GroupSharedCsInput input, BlurParams params, out fl
             if (!isCenterSample)
             {
                 const float2 pixelOffset = float2(i, j);
-                const float2 uv = params.BaseUv + pixelOffset * g_FrameConsts.InvRenderResolution;
+                const float2 uv = params.BaseUv + pixelOffset * g_FrameConsts.m_InvRenderResolution;
 
                 SampleParams sampleParams;
                 sampleParams.ViewPosition = ReconstructViewPosition(uv, pixel.ViewDepth, params.UvToViewScale, params.UvToViewBias);
@@ -216,9 +215,9 @@ void RunAnisotropicBlur(BlurParams params, float tileValue, inout float2 outShad
         const float3 offset = SIGMA_BLUR_POISSON_SAMPLES[sampleIndex]; // TODO: Name this variable with prefix
 
         float2 uv = CalcSparseBlurKernelUv(sparseKernel, offset.xy, params.BaseViewPosition);
-        uv = (floor(uv * g_FrameConsts.RenderResolution) + 0.5) * g_FrameConsts.InvRenderResolution; // Snap to the pixel center
+        uv = (floor(uv * g_FrameConsts.m_RenderResolution) + 0.5) * g_FrameConsts.m_InvRenderResolution; // Snap to the pixel center
 
-        const uint2 pixelPosition = uv * g_FrameConsts.RenderResolution;
+        const uint2 pixelPosition = uv * g_FrameConsts.m_RenderResolution;
 
         PixelData samplePixel;
         samplePixel.ViewDepth = g_ViewDepth.SampleLevel(g_PointClampSampler, uv, 0.0);
@@ -259,12 +258,12 @@ void CsMain(sigma::GroupSharedCsInput input)
 
     if (!isSky)
     {
-        SigmaPreloadToGroupSharedMem(input, g_FrameConsts.RenderResolution, Preload);
+        SigmaPreloadToGroupSharedMem(input, g_FrameConsts.m_RenderResolution, Preload);
     }
 
     GroupMemoryBarrierWithGroupSync();
 
-    if (isSky || any(input.PixelPos >= g_FrameConsts.RenderResolution))
+    if (isSky || any(input.PixelPos >= g_FrameConsts.m_RenderResolution))
     {
         return;
     }
@@ -278,7 +277,7 @@ void CsMain(sigma::GroupSharedCsInput input)
     }
 
     // Tile-based early out (potentially)
-    const float2 pixelUv = (input.PixelPos + 0.5) * g_FrameConsts.InvRenderResolution;
+    const float2 pixelUv = (input.PixelPos + 0.5) * g_FrameConsts.m_InvRenderResolution;
     const float tileValue = sigma::TextureCubicX(g_SmoothTiles, pixelUv);
 
     const bool isHardShadow = (SIGMA_USE_TILE_CHECK && tileValue == 0.0) || centerPixel.Penumbra == 0.0;

@@ -7,7 +7,7 @@
 
 float AdaptLuminance(float luminance, float prevLuminance)
 {
-    return prevLuminance + (luminance - prevLuminance) * (1.0 - exp(-g_FrameConsts.DeltaTimeInSec * g_PassConsts.m_LuminanceHistogram.m_TimeFactor));
+    return prevLuminance + (luminance - prevLuminance) * (1.0 - exp(-g_FrameConsts.m_DeltaTimeInSec * g_PassConsts.m_LuminanceHistogram.m_TimeFactor));
 }
 
 BenzinDeclareRootResource(RWBuffer<uint>, g_OutLuminanceHistogram, joint::CalcAvgLuminanceResources::OutLuminanceHistogram);
@@ -46,7 +46,7 @@ void CsMain(uint2 pixelPosition : SV_DispatchThreadID, uint binIndex : SV_GroupI
         // Here we take our weighted sum and divide it by the number of pixels
         // that had luminance greater than zero (since the binIndex == 0, we can
         // use countForThisBin to find the number of black pixels)
-        const uint pixelCount = g_FrameConsts.RenderResolution.x * g_FrameConsts.RenderResolution.y;
+        const uint pixelCount = g_FrameConsts.m_RenderResolution.x * g_FrameConsts.m_RenderResolution.y;
         const uint nonBlackPixelCount = max(pixelCount - binPixelCount, 1.0);
 
         const float medianBinIndex = g_LuminanceHistogram[0] / nonBlackPixelCount;

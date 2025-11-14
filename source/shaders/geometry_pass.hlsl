@@ -5,10 +5,13 @@
 #include "gbuffer.hlsli"
 #include "joint/mesh_types.hpp"
 
-BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::GeometryResources::Materials);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_MeshDraws, joint::GeometryResources::MeshDraws);
+#define ALPHA_TEST_ENABLED defined(ALPHA_TEST)
+#define MESH_PIPELINE_ENABLED defined(MESH_PIPELINE)
 
-#if defined(MESH_PIPELINE)
+BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::GeometryResources::Materials);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_Draws, joint::GeometryResources::MeshDraws);
+
+#if MESH_PIPELINE_ENABLED
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshDispatch>, g_Dispatches, joint::GeometryResources::MeshDispathes);
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
 BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
@@ -30,16 +33,16 @@ struct VsOutput
 
 VsOutput ProcessVertex(joint::MeshVertex vertex, uint drawIndex)
 {
-    const joint::MeshDraw draw = g_MeshDraws[drawIndex];
+    const joint::MeshDraw draw = g_Draws[drawIndex];
 
     const float4 worldPosition = mul(float4(vertex.m_Position, 1.0), draw.m_LocalToWorld);
     const float4 prevWorldPosition = mul(float4(vertex.m_Position, 1.0), draw.m_PrevLocalToWorld);
 
     VsOutput output = (VsOutput)0;
-    output.m_ClipPosition = mul(worldPosition, GetCameraConsts().WorldToClip);
+    output.m_ClipPosition = mul(worldPosition, GetCameraConsts().m_WorldToClip);
     output.m_WorldPosition = worldPosition.xyz;
-    output.m_ViewDepth = mul(worldPosition, GetCameraConsts().WorldToView).z;
-    output.m_PrevViewPosition = mul(prevWorldPosition, GetPrevCameraConsts().WorldToView).xyz;
+    output.m_ViewDepth = mul(worldPosition, GetCameraConsts().m_WorldToView).z;
+    output.m_PrevViewPosition = mul(prevWorldPosition, GetPrevCameraConsts().m_WorldToView).xyz;
     output.m_WorldNormal = normalize(mul(vertex.m_Normal, (float3x3)draw.m_LocalToWorld)); // NOTE: Assumes uniform scale
     output.m_Uv = vertex.m_Uv;
     output.m_MaterialIndex = draw.m_MaterialIndex;
@@ -47,7 +50,19 @@ VsOutput ProcessVertex(joint::MeshVertex vertex, uint drawIndex)
     return output;
 }
 
-#if defined(MESH_PIPELINE)
+#if MESH_PIPELINE_ENABLED
+
+// Sources:
+// - Two-Pass Hierarchical Z-Buffer Occlusion Culling: https://medium.com/@Lucmomber/two-pass-hierarchical-z-buffer-occlusion-culling-93171c5a9808
+// - Depth Precision Visualized (Reversed-Z): https://developer.nvidia.com/content/depth-precision-visualized
+// - GDC 2024 - Mesh Shaders in AMD RDNA™ 3 Architecture: https://www.youtube.com/watch?v=MQv76-q2cm8
+// - milkru/vulkanizer: https://github.com/milkru/vulkanizer/blob/main/src/shaders/generate_draws.comp
+// - TODO - Using Mesh Shaders for Professional Graphics: https://developer.nvidia.com/blog/using-mesh-shaders-for-professional-graphics/
+// - TODO - NVIDIA Sharing New Details about Mesh Shading at SIGGRAPH 2019: https://developer.nvidia.com/blog/siggraph-2019-mesh-shading-talk/
+// - TODO - Direct3D 12: Long Way to Access Data: https://asawicki.info/news_1754_direct3d_12_long_way_to_access_data
+// - TODO - Efficient Use of GPU Memory in Modern Games - Digital Dragons 2021: https://gpuopen.com/videos/efficient-use-of-gpu-memory-digital-dragons/
+// - TODO - D3D12 Memory Allocator: https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
+
 #define MESH_STATS_ENABLED 1
 #define g_AmplificationGroupSize 32
 
@@ -73,11 +88,11 @@ void AsMain(uint dispatchIndex : SV_DispatchThreadID)
 
     if (g_FrameConsts.m_IsFrustumCullingEnabled && isVisible)
     {
-        const joint::MeshDraw draw = g_MeshDraws[dispatch.m_MeshDrawIndex];
+        const joint::MeshDraw draw = g_Draws[dispatch.m_MeshDrawIndex];
         const joint::MeshletCullVolume cullVolume = g_MeshletCullVolumes[dispatch.m_MeshletIndex];
     
         float4 viewCenter = mul(float4(cullVolume.m_Center, 1.0), draw.m_LocalToWorld);
-        viewCenter = mul(viewCenter, GetCameraConsts().WorldToView);
+        viewCenter = mul(viewCenter, GetCameraConsts().m_WorldToView);
 
         const float worldRadius = cullVolume.m_Radius * draw.m_LocalToWorldScale;
 
@@ -113,8 +128,7 @@ void MsMain(
     uint gid : SV_GroupID,
     in payload MeshPayload payload,
     out vertices VsOutput vertices[(uint)joint::MeshletConsts::MaxVertexCount],
-    out indices uint3 triangles[(uint)joint::MeshletConsts::MaxTriangleCount]
-)
+    out indices uint3 triangles[(uint)joint::MeshletConsts::MaxTriangleCount])
 {
     const uint dispatchIndex = payload.m_MeshDispatchIndices[gid];
     const joint::MeshDispatch dispatch = g_Dispatches[dispatchIndex];
@@ -138,7 +152,7 @@ void MsMain(
         triangles[gtid] = indices;
     }
 }
-#endif // defined(MESH_PIPELINE)
+#endif // MESH_PIPELINE_ENABLED
 
 // Must match with joint::MeshVertex
 struct VsInput
@@ -185,7 +199,7 @@ PackedGBuffer PsMain(VsOutput input)
         Texture2D<float4> albedoTexture = ResourceDescriptorHeap[NonUniformResourceIndex(material.m_AlbedoTextureHeapIndex)];
         const float4 albedoSample = albedoTexture.Sample(g_LinearWrapSampler, input.m_Uv);
 
-#if defined(ALPHA_TEST)
+#if ALPHA_TEST_ENABLED
         if (albedoSample.a < material.m_AlphaCutoff)
             discard;
 #endif
@@ -210,7 +224,7 @@ PackedGBuffer PsMain(VsOutput input)
         tangentSpaceNormal.xy *= material.m_NormalScale;
         tangentSpaceNormal = normalize(tangentSpaceNormal);
 
-        const float3 worldViewVector = normalize(GetCameraConsts().WorldPosition - input.m_WorldPosition);
+        const float3 worldViewVector = normalize(GetCameraConsts().m_WorldPosition - input.m_WorldPosition);
         const float3x3 tbn = CotangentFrame(gbuffer.m_WorldNormal, -worldViewVector, input.m_Uv);
 
         gbuffer.m_WorldNormal = normalize(mul(tangentSpaceNormal, tbn));

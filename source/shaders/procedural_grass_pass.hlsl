@@ -3,7 +3,6 @@
 
 #include "color_convertions.hlsli"
 #include "common.hlsli"
-#include "culling.hlsli"
 #include "gbuffer.hlsli"
 #include "space_convertions.hlsli"
 
@@ -247,7 +246,7 @@ void MsMain(
 
     const joint::GrassPatch patch = g_GrassPatches[patchIndex];
 
-    const float distanceToCamera = length(patch.Pos - GetCameraConsts().WorldPosition);
+    const float distanceToCamera = length(patch.Pos - GetCameraConsts().m_WorldPosition);
 
     const float floatBladeCount = lerp(float(g_MaxBladeCount), 2.0, pow(saturate(distanceToCamera / (g_PassConsts.GrassEndDistance * 1.05)), 0.75)); // TODO: Some magic math
     const uint bladeCount = ceil(floatBladeCount);
@@ -294,8 +293,8 @@ void MsMain(
         bladeWidth *= g_MaxBladeCount / floatBladeCount;
         bladeWidth *= (bladeIndex == bladeCount - 1) ? frac(floatBladeCount) : 1.0;
 
-        ApplyBladeWindOffset(g_FrameConsts.AnimationElapsedTimeInSec, bladePoints);
-        ApplyBladeWindOffset(g_FrameConsts.PrevAnimationElapsedTimeInSec, prevBladePoints);
+        ApplyBladeWindOffset(g_FrameConsts.m_AnimationElapsedTimeInSec, bladePoints);
+        ApplyBladeWindOffset(g_FrameConsts.m_PrevAnimationElapsedTimeInSec, prevBladePoints);
 
         ApplyBladeWidthOffset(bladeArgs, localVertexIndex, bladeWidth, bladePoints);
         ApplyBladeWidthOffset(bladeArgs, localVertexIndex, bladeWidth, prevBladePoints);
@@ -309,12 +308,12 @@ void MsMain(
         vertex.WorldPos = CalcQuadraticBezierPoint(bladePoints.P0, bladePoints.P1, bladePoints.P2, bladeT);
         vertex.WorldNormal = cross(bladeArgs.RightDir, normalize(CalcQuadraticBezierDerivative(bladePoints.P0, bladePoints.P1, bladePoints.P2, bladeT)));
         
-        const float4 viewPos = mul(float4(vertex.WorldPos, 1.0), GetCameraConsts().WorldToView);
-        vertex.ClipPos = mul(viewPos, GetCameraConsts().ViewToClip);
+        const float4 viewPos = mul(float4(vertex.WorldPos, 1.0), GetCameraConsts().m_WorldToView);
+        vertex.ClipPos = mul(viewPos, GetCameraConsts().m_ViewToClip);
         vertex.ViewDepth = viewPos.z;
 
         const float3 prevWorldPos = CalcQuadraticBezierPoint(prevBladePoints.P0, prevBladePoints.P1, prevBladePoints.P2, bladeT);
-        vertex.PrevViewPos = mul(float4(prevWorldPos, 1.0), GetPrevCameraConsts().WorldToView).xyz;
+        vertex.PrevViewPos = mul(float4(prevWorldPos, 1.0), GetPrevCameraConsts().m_WorldToView).xyz;
 
         outVertices[vertexIndex] = vertex;
     }

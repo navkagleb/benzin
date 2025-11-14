@@ -119,8 +119,9 @@ float3 Brdf(PbrLight light, PbrMaterial material, float3 viewDirection, float3 n
 
 float3 GetPbrLitColor(PbrLight light, PbrMaterial material, float3 viewDirection, float3 normal)
 {
+    const float3 incomingLight = light.Color * light.Intensity;
+    const float3 geometryTerm = max(dot(light.Direction, normal), 0.0);
     const float3 brdf = Brdf(light, material, viewDirection, normal);
-    const float3 lDotN = max(0.0f, dot(light.Direction, normal));
 
-    return brdf * light.Color * light.Intensity * lDotN;
+    return incomingLight * geometryTerm * brdf;
 }

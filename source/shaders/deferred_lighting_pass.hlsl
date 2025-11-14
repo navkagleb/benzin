@@ -59,8 +59,8 @@ float4 PsMain(VsOutput input) : SV_Target
     const GBuffer gbuffer = UnpackGBuffer(packedGBuffer);
 
     const float depth = g_Depth[pixelIndex];
-    const float3 worldPosition = ReconstructWorldPosition(input.m_Uv, depth, GetCameraConsts().ClipToView, GetCameraConsts().ViewToWorld);
-    const float3 worldToEyeDir = normalize(GetCameraConsts().WorldPosition - worldPosition);
+    const float3 worldPosition = ReconstructWorldPosition(input.m_Uv, depth, GetCameraConsts().m_ClipToView, GetCameraConsts().m_ViewToWorld);
+    const float3 worldToEyeDir = normalize(GetCameraConsts().m_WorldPosition - worldPosition);
 
     PbrMaterial material;
     material.Albedo = gbuffer.m_Albedo;
@@ -69,7 +69,7 @@ float4 PsMain(VsOutput input) : SV_Target
     material.F0 = GetF0(gbuffer.m_Albedo.rgb, gbuffer.m_Metallic);
 
     float sunShadowFactor = g_Shadow[pixelIndex];
-    sunShadowFactor = g_FrameConsts.IsDenoiserEnabled ? sigma::UnpackShadow(sunShadowFactor) : sigma::IsLit(sunShadowFactor);
+    sunShadowFactor = g_FrameConsts.m_IsDenoiserEnabled ? sigma::UnpackShadow(sunShadowFactor) : sigma::IsLit(sunShadowFactor);
 
     float3 sunLight = CalcSunLight(material, worldToEyeDir, gbuffer.m_WorldNormal);
     sunLight *= sunShadowFactor;

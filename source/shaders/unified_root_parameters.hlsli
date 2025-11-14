@@ -18,11 +18,11 @@ struct DummyRenderPassConsts {};
 
 struct RootConstants
 {
-    uint4 Constants[8];
+    uint4 m_Constants[8];
 
     uint GetConstant(uint index)
     {
-        return Constants[index >> 2][index & 3];
+        return m_Constants[index >> 2][index & 3];
     }
 };
 

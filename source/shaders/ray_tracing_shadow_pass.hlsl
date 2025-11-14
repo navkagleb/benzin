@@ -50,7 +50,7 @@ float2 Hash23(float3 p3)
 
 float2 GetWhiteNoise()
 {
-    const uint frameIndex = g_PassConsts.m_IsNoiseAnimated * g_FrameConsts.CpuFrameIndex;
+    const uint frameIndex = g_PassConsts.m_IsNoiseAnimated * g_FrameConsts.m_CpuFrameIndex;
     return Hash23(float3(DispatchRaysIndex().xy, frameIndex));
 }
 
@@ -71,7 +71,7 @@ float2 GetBlueNoise()
         const float goldenRatioConjugate = 0.61803398875; // frac(GoldenRatio)
         const float maxFrameCount = 4;
 
-        const uint frameIndex = g_FrameConsts.CpuFrameIndex % maxFrameCount;
+        const uint frameIndex = g_FrameConsts.m_CpuFrameIndex % maxFrameCount;
         blueNoise = frac(blueNoise + goldenRatioConjugate * frameIndex);
     }
 
@@ -127,7 +127,7 @@ float TraceShadowRay(float depth)
     const float3 worldNormal = g_WorldNormal[pixelPosition].xyz;
 
     const float2 pixelUv = (pixelPosition + 0.5) / DispatchRaysDimensions().xy;
-    const float3 worldPosition = ReconstructWorldPosition(pixelUv, depth, GetCameraConsts().ClipToView, GetCameraConsts().ViewToWorld);
+    const float3 worldPosition = ReconstructWorldPosition(pixelUv, depth, GetCameraConsts().m_ClipToView, GetCameraConsts().m_ViewToWorld);
 
     const float3 toLightDirection = g_SunLightConsts.WorldPosition;
     const float distanceToLight = sigma::g_Fp16Max;

@@ -24,7 +24,7 @@ VsOutput VsMain(uint vertexIndex : SV_VertexID)
 
 float4 PsMain(VsOutput input) : SV_Target
 {
-    const float4 worldPosition = mul(input.m_ClipPosition, GetCameraConsts().ClipToWorldNoTranslation);
+    const float4 worldPosition = mul(input.m_ClipPosition, GetCameraConsts().m_ClipToWorldNoTranslation);
     const float3 direction = normalize(worldPosition.xyz);
 
     const float3 linearRgb = SrgbToLinear(g_CubeMap.Sample(g_LinearWrapSampler, direction).rgb);

@@ -26,8 +26,8 @@ namespace sandbox
         BenzinAssert(m_ReadbackStatsCallback);
 
         constexpr DXGI_FORMAT statFormat = DXGI_FORMAT_R32_UINT;
+        constexpr uint64_t statElementCount = magic_enum::enum_count<joint::ReadbackStat>();
         const uint32_t statElementSizeInBytes = benzin::GetDxgiFormatSizeInBytes(statFormat);
-        const uint64_t statElementCount = magic_enum::enum_count<joint::ReadbackStat>();
 
         // Usage as ByteAddressBuffer
         m_StatBuffer = ms_Device->GetPersistentDefaultAllocator().AllocateBuffer([&](benzin::BufferCreation& creation)
@@ -60,17 +60,17 @@ namespace sandbox
             const benzin::PerspectiveCamera& camera = ms_Scene->m_Camera;
 
             joint::CameraConsts cameraConsts = {};
-            cameraConsts.WorldToView = camera.GetWorldToView();
-            cameraConsts.ViewToWorld = camera.GetViewToWorld();
-            cameraConsts.ViewToClip = camera.GetViewToClip();
-            cameraConsts.ClipToView = camera.GetClipToView();
-            cameraConsts.WorldToClip = camera.GetWorldToClip();
-            cameraConsts.ClipToWorld = camera.GetClipToWorld();
-            cameraConsts.ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation();
-            cameraConsts.WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition());
-            cameraConsts.UvToViewScale = camera.GetUvToViewScale();
-            cameraConsts.UvToViewBias = camera.GetUvToViewBias();
-            cameraConsts.PixelToWorldScale = camera.GetPixelToWorldScale(ms_RenderViewportHeight);
+            cameraConsts.m_WorldToView = camera.GetWorldToView();
+            cameraConsts.m_ViewToWorld = camera.GetViewToWorld();
+            cameraConsts.m_ViewToClip = camera.GetViewToClip();
+            cameraConsts.m_ClipToView = camera.GetClipToView();
+            cameraConsts.m_WorldToClip = camera.GetWorldToClip();
+            cameraConsts.m_ClipToWorld = camera.GetClipToWorld();
+            cameraConsts.m_ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation();
+            cameraConsts.m_WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition());
+            cameraConsts.m_UvToViewScale = camera.GetUvToViewScale();
+            cameraConsts.m_UvToViewBias = camera.GetUvToViewBias();
+            cameraConsts.m_PixelToWorldScale = camera.GetPixelToWorldScale(ms_RenderViewportHeight);
             cameraConsts.m_ViewFrustumPlanes[*joint::FrustumPlane::Left] = camera.GetViewFrustumLeft();
             cameraConsts.m_ViewFrustumPlanes[*joint::FrustumPlane::Right] = camera.GetViewFrustumRight();
             cameraConsts.m_ViewFrustumPlanes[*joint::FrustumPlane::Bottom] = camera.GetViewFrustumBottom();
@@ -85,19 +85,19 @@ namespace sandbox
             const DirectX::XMUINT2 renderResolution{ ms_RenderViewportWidth, ms_RenderViewportHeight };
             const float animationTimeInSec = ms_AnimationTimer->GetElapsedTimeInSec();
 
-            m_FrameConsts.RenderResolution = { (float)renderResolution.x, (float)renderResolution.y };
-            m_FrameConsts.InvRenderResolution = { 1.0f / (float)renderResolution.x, 1.0f / (float)renderResolution.y };
-            m_FrameConsts.MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y);
+            m_FrameConsts.m_RenderResolution = { (float)renderResolution.x, (float)renderResolution.y };
+            m_FrameConsts.m_InvRenderResolution = { 1.0f / (float)renderResolution.x, 1.0f / (float)renderResolution.y };
+            m_FrameConsts.m_MinRenderDimension = (float)std::min(renderResolution.x, renderResolution.y);
 
-            m_FrameConsts.CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex();
+            m_FrameConsts.m_CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex();
 
-            m_FrameConsts.IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
+            m_FrameConsts.m_IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
             m_FrameConsts.m_IsFrustumCullingEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsFrustumCullingEnabled;
-            m_FrameConsts.IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().m_IsEnabled;
+            m_FrameConsts.m_IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().m_IsEnabled;
 
-            m_FrameConsts.DeltaTimeInSec = ms_FrameTimer->GetDeltaTimeInSec();
-            m_FrameConsts.AnimationElapsedTimeInSec = animationTimeInSec;
-            m_FrameConsts.PrevAnimationElapsedTimeInSec = m_PrevAnimationElapsedTimeInSec;
+            m_FrameConsts.m_DeltaTimeInSec = ms_FrameTimer->GetDeltaTimeInSec();
+            m_FrameConsts.m_AnimationElapsedTimeInSec = animationTimeInSec;
+            m_FrameConsts.m_PrevAnimationElapsedTimeInSec = m_PrevAnimationElapsedTimeInSec;
 
             m_PrevRenderResolution = renderResolution;
             m_PrevAnimationElapsedTimeInSec = animationTimeInSec;

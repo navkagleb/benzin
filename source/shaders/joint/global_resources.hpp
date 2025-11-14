@@ -30,39 +30,39 @@ namespace joint
 
     struct CameraConsts
     {
-        float4x4 WorldToView;
-        float4x4 ViewToWorld;
+        float4x4 m_WorldToView;
+        float4x4 m_ViewToWorld;
 
-        float4x4 ViewToClip;
-        float4x4 ClipToView;
+        float4x4 m_ViewToClip;
+        float4x4 m_ClipToView;
 
-        float4x4 WorldToClip;
-        float4x4 ClipToWorld;
-        float4x4 ClipToWorldNoTranslation;
+        float4x4 m_WorldToClip;
+        float4x4 m_ClipToWorld;
+        float4x4 m_ClipToWorldNoTranslation;
 
-        float3 WorldPosition;
-        float PixelToWorldScale;
+        float3 m_WorldPosition;
+        float m_PixelToWorldScale;
 
-        float2 UvToViewScale;
-        float2 UvToViewBias;
+        float2 m_UvToViewScale;
+        float2 m_UvToViewBias;
 
         float4 m_ViewFrustumPlanes[6];
     };
 
     struct FrameConsts
     {
-        float2 RenderResolution;
-        float2 InvRenderResolution;
-        float MinRenderDimension;
+        float2 m_RenderResolution;
+        float2 m_InvRenderResolution;
+        float m_MinRenderDimension;
 
-        uint CpuFrameIndex;
-        uint IsRenderResolutionChanged : 1;
+        uint m_CpuFrameIndex;
+        uint m_IsRenderResolutionChanged : 1;
         uint m_IsFrustumCullingEnabled : 1; // TODO: actually used only by geometry pass
-        uint IsDenoiserEnabled : 1;
+        uint m_IsDenoiserEnabled : 1;
 
-        float DeltaTimeInSec;
-        float AnimationElapsedTimeInSec;
-        float PrevAnimationElapsedTimeInSec;
+        float m_DeltaTimeInSec;
+        float m_AnimationElapsedTimeInSec;
+        float m_PrevAnimationElapsedTimeInSec;
         float2 m_Padding0;
 
         CameraConsts m_Camera;
