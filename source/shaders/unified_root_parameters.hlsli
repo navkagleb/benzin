@@ -45,12 +45,12 @@ SamplerState g_MinLinearClampSampler : register(s0, space4);
 
 const joint::CameraConsts GetCameraConsts()
 {
-    return g_FrameConsts.Camera;
+    return g_FrameConsts.m_Camera;
 }
 
 const joint::CameraConsts GetPrevCameraConsts()
 {
-    return g_FrameConsts.PrevCamera;
+    return g_FrameConsts.m_PrevCamera;
 }
 
 void InterlockedAddToStat(joint::ReadbackStat stat, uint value)

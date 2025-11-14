@@ -18,16 +18,16 @@ namespace benzin
 
     DirectX::XMMATRIX PerspectiveCamera::GetClipToWorldNoTranslation() const
     {
-        DirectX::XMMATRIX worldToViewMatrix = m_WorldToViewMatrix;
-        worldToViewMatrix.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
+        DirectX::XMMATRIX worldToView = m_WorldToView;
+        worldToView.r[3] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Removes translation
 
-        const DirectX::XMMATRIX worldToClipMatrix = worldToViewMatrix * m_ViewToClipMatrix;
+        const DirectX::XMMATRIX worldToClipMatrix = worldToView * m_ViewToClip;
         return DirectX::XMMatrixInverse(nullptr, worldToClipMatrix);
     }
 
     float PerspectiveCamera::GetPixelToWorldScale(uint32_t height) const
     {
-        const float scaleY = DirectX::XMVectorGetByIndex(m_ViewToClipMatrix.r[1], 1);
+        const float scaleY = DirectX::XMVectorGetByIndex(m_ViewToClip.r[1], 1);
         const float pixelToWorldScale = 1.0f / (0.5f * (float)height * scaleY);
 
         return pixelToWorldScale;
@@ -74,20 +74,20 @@ namespace benzin
 
     void PerspectiveCamera::UpdateWorldToViewMatrix()
     {
-        m_WorldToViewMatrix = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
-        m_ViewToWorldMatrix = DirectX::XMMatrixInverse(nullptr, m_WorldToViewMatrix);
+        m_WorldToView = DirectX::XMMatrixLookToLH(m_Position, m_FrontDirection, m_UpDirection);
+        m_ViewToWorld = DirectX::XMMatrixInverse(nullptr, m_WorldToView);
     }
 
     void PerspectiveCamera::UpdateViewToClipMatrix()
     {
-        m_TanHalfFovY = std::tan(m_VerticalFovInRadians * 0.5f);
-        m_TanHalfFovX = m_TanHalfFovY * m_AspectRatio;
+        const float tanHalfFovY = std::tan(m_VerticalFovInRadians * 0.5f);
+        const float tanHalfFovX = tanHalfFovY * m_AspectRatio;
 
-        const float scaleY = 1.0f / m_TanHalfFovY;
-        const float scaleX = 1.0f / m_TanHalfFovX;
+        const float scaleY = 1.0f / tanHalfFovY;
+        const float scaleX = 1.0f / tanHalfFovX;
 
         // Use reversed-Z projection
-        m_ViewToClipMatrix = DirectX::XMMATRIX
+        m_ViewToClip = DirectX::XMMATRIX
         {
             scaleX, 0.0f,   0.0f,        0.0f,
             0.0f,   scaleY, 0.0f,        0.0f,
@@ -95,20 +95,37 @@ namespace benzin
             0.0f,   0.0f,   m_NearPlane, 0.0f
         };
 
-        m_ClipToViewMatrix = DirectX::XMMatrixInverse(nullptr, m_ViewToClipMatrix);
+        m_ClipToView = DirectX::XMMatrixInverse(nullptr, m_ViewToClip);
+
+        const DirectX::XMMATRIX viewToClipNoReverseDepth = DirectX::XMMatrixPerspectiveFovLH(
+            m_VerticalFovInRadians,
+            m_AspectRatio,
+            m_NearPlane,
+            m_FarPlane);
+
+        DirectX::BoundingFrustum viewFrustum;
+        DirectX::BoundingFrustum::CreateFromMatrix(viewFrustum, viewToClipNoReverseDepth);
+
+        DirectX::XMVECTOR nearPlane;
+        DirectX::XMVECTOR farPlane;
+        DirectX::XMVECTOR rightPlane;
+        DirectX::XMVECTOR leftPlane;
+        DirectX::XMVECTOR topPlane;
+        DirectX::XMVECTOR bottomPlane;
+        viewFrustum.GetPlanes(&nearPlane, &farPlane, &rightPlane, &leftPlane, &topPlane, &bottomPlane);
+
+        DirectX::XMStoreFloat4(&m_ViewFrustumLeft, leftPlane);
+        DirectX::XMStoreFloat4(&m_ViewFrustumRight, rightPlane);
+        DirectX::XMStoreFloat4(&m_ViewFrustumBottom, bottomPlane);
+        DirectX::XMStoreFloat4(&m_ViewFrustumTop, topPlane);
+        DirectX::XMStoreFloat4(&m_ViewFrustumNear, nearPlane);
+        DirectX::XMStoreFloat4(&m_ViewFrustumFar, farPlane);
 
         {
             // Ref: NRD Sample - https://github.com/NVIDIA-RTX/NRD-Sample
 
-            // TODO: Retrieve slopes from m_ViewToClipMatrix
-            const DirectX::XMMATRIX viewToClipMatrixForFrustum = DirectX::XMMatrixPerspectiveFovLH(m_VerticalFovInRadians, m_AspectRatio, m_NearPlane, m_FarPlane);
-
-            DirectX::BoundingFrustum viewFrustum;
-            DirectX::BoundingFrustum::CreateFromMatrix(viewFrustum, viewToClipMatrixForFrustum);
-
             m_UvToViewScale.x = viewFrustum.RightSlope - viewFrustum.LeftSlope;
             m_UvToViewScale.y = viewFrustum.BottomSlope - viewFrustum.TopSlope;
-
             m_UvToViewBias.x = viewFrustum.LeftSlope;
             m_UvToViewBias.y = viewFrustum.TopSlope;
         }
@@ -142,7 +159,7 @@ namespace benzin
         float translationSpeedFactor = 1.0f;
         if (Input::IsKeyPressed(KeyCode::Shift))
         {
-            translationSpeedFactor = 2.0f;
+            translationSpeedFactor = 10.0f;
         }
         else if (Input::IsKeyPressed(KeyCode::Control))
         {

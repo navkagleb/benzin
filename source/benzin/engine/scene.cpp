@@ -186,7 +186,6 @@ namespace benzin
             cmd.m_D3D12Cmd.StartInstanceLocation = 0;
         }
 
-
         uint32_t meshDispatchCount = 0;
         for (const joint::MeshDraw& draw : m_JointMeshDraws)
         {
@@ -266,10 +265,7 @@ namespace benzin
             }
 
             m_JointMeshDraws.resize(drawCount);
-
-            m_MeshDrawBuffer = m_Device.GetPersistentGpuUploadAllocator().AllocateBuffer(
-                "Scene::MeshDraws",
-                ToSpan(m_JointMeshDraws));
+            m_MeshDrawBuffer = m_Device.GetPersistentGpuUploadAllocator().AllocateBuffer("Scene::MeshDraws", ToSpan(m_JointMeshDraws));
         }
 
         uint32_t jointDrawIndex = 0;
@@ -290,6 +286,14 @@ namespace benzin
                 jointDraw.m_LocalToWorld = drawPart.m_ObjectToLocal * (scaling * rotation * translation);
                 jointDraw.m_MaterialIndex = drawPart.m_MaterialIndex;
                 jointDraw.m_PartIndex = drawPart.m_PartIndex;
+
+                DirectX::XMFLOAT3 scales = {};
+                scales.x = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[0]));
+                scales.y = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[1]));
+                scales.z = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[2]));
+
+                BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-5f && std::fabs(scales.x - scales.z) <= 1e-5f, "Scale is not uniform");
+                jointDraw.m_LocalToWorldScale = scales.x;
             }
         }
 

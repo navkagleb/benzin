@@ -12,9 +12,51 @@ namespace sandbox
     {
         ImGui::Checkbox("Mesh pipeline", &settings.m_IsMeshPipelineUsed);
 
+        ImGui::BeginDisabled(!settings.m_IsMeshPipelineUsed);
+        ImGui::Indent();
+        ImGui::Checkbox("Frustum culling", &settings.m_IsFrustumCullingEnabled);
+        ImGui::Unindent();
+        ImGui::EndDisabled();
+
         ImGui::BeginDisabled(settings.m_IsMeshPipelineUsed);
         ImGui::Checkbox("Indirect draw", &settings.m_IsIndirectDrawEnabled);
         ImGui::EndDisabled();
+    }
+
+    template <>
+    void DrawSettings(GBufferStats& stats)
+    {
+        std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
+        BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
+
+        ImGui::BeginTable("GBufferStatsTable", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders);
+        ImGui::TableSetupColumn("Name");
+        ImGui::TableSetupColumn("Rendered");
+        ImGui::TableSetupColumn("Total");
+        ImGui::TableSetupColumn("%%");
+        ImGui::TableHeadersRow();
+
+        const auto drawRow = [](const char* name, uint32_t renderedCount, uint32_t totalCount)
+        {
+            ImGui::TableNextRow();
+
+            ImGui::TableNextColumn();
+            ImGui::Text(name);
+
+            ImGui::TableNextColumn();
+            ImGui::FmtText("{:L}", renderedCount);
+
+            ImGui::TableNextColumn();
+            ImGui::FmtText("{:L}", totalCount);
+
+            ImGui::TableNextColumn();
+            ImGui::FmtText("{:.2f}", (float)renderedCount / totalCount);
+        };
+
+        drawRow("Meshlets", stats.m_RenderedMeshletCount, stats.m_TotalMeshletCount);
+        drawRow("Triangles", stats.m_RenderedTriangleCount, stats.m_TotalTriangleCount);
+
+        ImGui::EndTable();
     }
 
     template <>

@@ -7,10 +7,25 @@ namespace joint
 
     enum class ReadbackStat
     {
+        Geometry_TotalMeshletCount,
+        Geometry_TotalTriangleCount,
+        Geometry_RenderedMeshletCount,
+        Geometry_RenderedTriangleCount,
+
         ProceduralGrass_PatchCount,
         ProceduralGrass_BladeCount,
         ProceduralGrass_VertexCount,
         ProceduralGrass_TriangleCount,
+    };
+
+    enum class FrustumPlane
+    {
+        Left,
+        Right,
+        Bottom,
+        Top,
+        Near,
+        Far,
     };
 
     struct CameraConsts
@@ -28,13 +43,10 @@ namespace joint
         float3 WorldPosition;
         float PixelToWorldScale;
 
-        float TanHalfFovX;
-        float TanHalfFovY;
-        float NearPlane;
-        float FarPlane;
-
         float2 UvToViewScale;
         float2 UvToViewBias;
+
+        float4 m_ViewFrustumPlanes[6];
     };
 
     struct FrameConsts
@@ -45,6 +57,7 @@ namespace joint
 
         uint CpuFrameIndex;
         uint IsRenderResolutionChanged : 1;
+        uint m_IsFrustumCullingEnabled : 1; // TODO: actually used only by geometry pass
         uint IsDenoiserEnabled : 1;
 
         float DeltaTimeInSec;
@@ -52,8 +65,8 @@ namespace joint
         float PrevAnimationElapsedTimeInSec;
         float2 m_Padding0;
 
-        CameraConsts Camera;
-        CameraConsts PrevCamera;
+        CameraConsts m_Camera;
+        CameraConsts m_PrevCamera;
     };
 
 }

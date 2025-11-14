@@ -10,13 +10,17 @@ namespace benzin
 
         PerspectiveCamera();
 
-        const auto& GetWorldToViewMatrix() const { return m_WorldToViewMatrix; }
-        const auto& GetViewToWorldMatrix() const { return m_ViewToWorldMatrix; }
-        const auto& GetViewToClipMatrix() const { return m_ViewToClipMatrix; }
-        const auto& GetClipToViewMatrix() const { return m_ClipToViewMatrix; }
+        const auto& GetWorldToView() const { return m_WorldToView; }
+        const auto& GetViewToWorld() const { return m_ViewToWorld; }
+        const auto& GetViewToClip() const { return m_ViewToClip; }
+        const auto& GetClipToView() const { return m_ClipToView; }
 
-        auto GetTanHalfFovX() const { return m_TanHalfFovX; }
-        auto GetTanHalfFovY() const { return m_TanHalfFovY; }
+        const auto& GetViewFrustumLeft() const { return m_ViewFrustumLeft; }
+        const auto& GetViewFrustumRight() const { return m_ViewFrustumRight; }
+        const auto& GetViewFrustumBottom() const { return m_ViewFrustumBottom; }
+        const auto& GetViewFrustumTop() const { return m_ViewFrustumTop; }
+        const auto& GetViewFrustumNear() const { return m_ViewFrustumNear; }
+        const auto& GetViewFrustumFar() const { return m_ViewFrustumFar; }
 
         auto GetUvToViewScale() const { return m_UvToViewScale; }
         auto GetUvToViewBias() const { return m_UvToViewBias; }
@@ -31,8 +35,8 @@ namespace benzin
         auto GetNearPlane() const { return m_NearPlane; }
         auto GetFarPlane() const { return m_FarPlane; }
 
-        DirectX::XMMATRIX GetWorldToClipMatrix() const { return m_WorldToViewMatrix * GetViewToClipMatrix(); }
-        DirectX::XMMATRIX GetClipToWorldMatrix() const { return DirectX::XMMatrixInverse(nullptr, GetWorldToClipMatrix()); }
+        DirectX::XMMATRIX GetWorldToClip() const { return m_WorldToView * m_ViewToClip; }
+        DirectX::XMMATRIX GetClipToWorld() const { return DirectX::XMMatrixInverse(nullptr, GetWorldToClip()); }
 
         DirectX::XMMATRIX GetClipToWorldNoTranslation() const;
 
@@ -48,22 +52,25 @@ namespace benzin
         void UpdateWorldToViewMatrix();
         void UpdateViewToClipMatrix();
 
-        DirectX::XMMATRIX m_WorldToViewMatrix = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_ViewToWorldMatrix = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_ViewToClipMatrix = DirectX::XMMatrixIdentity();
-        DirectX::XMMATRIX m_ClipToViewMatrix = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_WorldToView = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_ViewToWorld = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_ViewToClip = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX m_ClipToView = DirectX::XMMatrixIdentity();
 
-        float m_TanHalfFovX = 0.0f;
-        float m_TanHalfFovY = 0.0f;
-        DirectX::XMFLOAT2 m_Padding0; // TODO
+        DirectX::XMFLOAT4 m_ViewFrustumLeft = {};
+        DirectX::XMFLOAT4 m_ViewFrustumRight = {};
+        DirectX::XMFLOAT4 m_ViewFrustumBottom = {};
+        DirectX::XMFLOAT4 m_ViewFrustumTop = {};
+        DirectX::XMFLOAT4 m_ViewFrustumNear = {};
+        DirectX::XMFLOAT4 m_ViewFrustumFar = {};
 
         DirectX::XMFLOAT2 m_UvToViewScale = {};
         DirectX::XMFLOAT2 m_UvToViewBias = {};
 
-        DirectX::XMVECTOR m_Position{ 0.0f, 0.0f, 0.0f, 1.0f };
-        DirectX::XMVECTOR m_FrontDirection{ 0.0f, 0.0f, -1.0f, 1.0f };
-        DirectX::XMVECTOR m_UpDirection{ 0.0f, 1.0f, 0.0f, 1.0f };
-        DirectX::XMVECTOR m_RightDirection{ 0.0f, 0.0f, 0.0f, 1.0f };
+        DirectX::XMVECTOR m_Position = { 0.0f, 0.0f, 0.0f, 1.0f };
+        DirectX::XMVECTOR m_FrontDirection = { 0.0f, 0.0f, -1.0f, 1.0f };
+        DirectX::XMVECTOR m_UpDirection = { 0.0f, 1.0f, 0.0f, 1.0f };
+        DirectX::XMVECTOR m_RightDirection = { 0.0f, 0.0f, 0.0f, 1.0f };
 
         float m_VerticalFovInRadians = DirectX::XMConvertToRadians(90.0f);
         float m_AspectRatio = 16.0f / 9.0f;

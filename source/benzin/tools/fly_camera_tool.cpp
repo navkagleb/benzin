@@ -35,52 +35,6 @@ namespace benzin
         }
     }
 
-    static void DrawFrustumPlaneTable(const char* tableName, const DirectX::BoundingFrustum& frustum)
-    {
-        const auto planeNames = std::to_array(
-        {
-            "Near",
-            "Far",
-            "Right",
-            "Left",
-            "Top",
-            "Bottom",
-        });
-
-        std::array<DirectX::XMVECTOR, 6> planes{};
-        frustum.GetPlanes(&planes[0], &planes[1], &planes[2], &planes[3], &planes[4], &planes[5]);
-
-        ImGui::Spacing();
-        ImGui::Text(tableName);
-
-        ImGui::WarningBox("NOTE: The frustum planes are directed outside the frustum", tableName);
-
-        const auto flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
-        if (ImGui::BeginTable("FrustumTable", 5, flags))
-        {
-            for (uint32_t rowIndex = 0; rowIndex < 6; ++rowIndex)
-            {
-                ImGui::TableNextRow();
-
-                const DirectX::XMVECTOR& plane = planes[rowIndex];
-
-                for (uint32_t columnIndex = 0; columnIndex < 5; ++columnIndex)
-                {
-                    ImGui::TableSetColumnIndex(columnIndex);
-
-                    if (columnIndex == 0)
-                    {
-                        ImGui::Text(planeNames[rowIndex]);
-                        continue;
-                    }
-
-                    ImGui::FmtText("{:.4f}", DirectX::XMVectorGetByIndex(plane, columnIndex - 1));
-                }
-            }
-            ImGui::EndTable();
-        }
-    }
-
     //
 
     FlyCameraTool::FlyCameraTool(FlyCameraController& controller)
@@ -134,7 +88,7 @@ namespace benzin
         ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&camera->m_UpDirection));
         ImGui::EndDisabled();
 
-        DrawMatrix4x4("World To View", camera->GetWorldToViewMatrix());
+        DrawMatrix4x4("World To View", camera->GetWorldToView());
     }
 
     void FlyCameraTool::DrawProjectionProperties()
@@ -162,12 +116,22 @@ namespace benzin
 
             ImGui::BeginDisabled();
             ImGui::DragFloat("Aspect ratio", &camera->m_AspectRatio);
-            ImGui::DragFloat("Tan half horizontal FOV", &camera->m_TanHalfFovX);
-            ImGui::DragFloat("Tan half vertical FOV", &camera->m_TanHalfFovY);
             ImGui::EndDisabled();
         }
 
-        DrawMatrix4x4("View To Clip", camera->GetViewToClipMatrix());
+        DrawMatrix4x4("View To Clip", camera->GetViewToClip());
+
+        ImGui::Text("View frustum planes:");
+        ImGui::Indent();
+        ImGui::BeginDisabled();
+        ImGui::DragFloat4("Left", (float*)&camera->GetViewFrustumLeft());
+        ImGui::DragFloat4("Right", (float*)&camera->GetViewFrustumRight());
+        ImGui::DragFloat4("Bottom", (float*)&camera->GetViewFrustumBottom());
+        ImGui::DragFloat4("Top", (float*)&camera->GetViewFrustumTop());
+        ImGui::DragFloat4("Near", (float*)&camera->GetViewFrustumNear());
+        ImGui::DragFloat4("Far", (float*)&camera->GetViewFrustumFar());
+        ImGui::EndDisabled();
+        ImGui::Unindent();
     }
 
 }

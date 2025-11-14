@@ -48,6 +48,7 @@ VsOutput ProcessVertex(joint::MeshVertex vertex, uint drawIndex)
 }
 
 #if defined(MESH_PIPELINE)
+#define MESH_STATS_ENABLED 1
 #define g_AmplificationGroupSize 32
 
 struct MeshPayload
@@ -61,6 +62,39 @@ groupshared MeshPayload g_MeshPayload;
 void AsMain(uint dispatchIndex : SV_DispatchThreadID)
 {
     bool isVisible = dispatchIndex < BenzinGetRootConstant(joint::GeometryResources::MeshDispatchCount);
+
+    const joint::MeshDispatch dispatch = g_Dispatches[dispatchIndex];
+
+#if MESH_STATS_ENABLED
+    const joint::Meshlet meshlet = g_Meshlets[dispatch.m_MeshletIndex];
+    InterlockedAddToStat(joint::ReadbackStat::Geometry_TotalMeshletCount, isVisible);
+    InterlockedAddToStat(joint::ReadbackStat::Geometry_TotalTriangleCount, isVisible * meshlet.m_TriangleCount);
+#endif
+
+    if (g_FrameConsts.m_IsFrustumCullingEnabled && isVisible)
+    {
+        const joint::MeshDraw draw = g_MeshDraws[dispatch.m_MeshDrawIndex];
+        const joint::MeshletCullVolume cullVolume = g_MeshletCullVolumes[dispatch.m_MeshletIndex];
+    
+        float4 viewCenter = mul(float4(cullVolume.m_Center, 1.0), draw.m_LocalToWorld);
+        viewCenter = mul(viewCenter, GetCameraConsts().WorldToView);
+
+        const float worldRadius = cullVolume.m_Radius * draw.m_LocalToWorldScale;
+
+        [unroll]
+        for (uint i = 0; i < 6; ++i)
+        {
+            const float4 viewPlane = GetCameraConsts().m_ViewFrustumPlanes[i];
+            const float distanceToPlane = dot(viewPlane.xyz, viewCenter.xyz) + viewPlane.w;
+
+            isVisible &= distanceToPlane < worldRadius;
+        }
+    }
+
+#if MESH_STATS_ENABLED
+    InterlockedAddToStat(joint::ReadbackStat::Geometry_RenderedMeshletCount, isVisible);
+    InterlockedAddToStat(joint::ReadbackStat::Geometry_RenderedTriangleCount, isVisible * meshlet.m_TriangleCount);
+#endif
 
     if (isVisible)
     {

@@ -15,6 +15,8 @@
 
 #include <shaders/joint/light.hpp>
 
+BenzinAllowDereferenceOperatorForEnum(joint::FrustumPlane);
+
 namespace sandbox
 {
 
@@ -58,31 +60,25 @@ namespace sandbox
             const benzin::PerspectiveCamera& camera = ms_Scene->m_Camera;
 
             joint::CameraConsts cameraConsts = {};
-            cameraConsts.WorldToView = camera.GetWorldToViewMatrix();
-            cameraConsts.ViewToWorld = camera.GetViewToWorldMatrix();
-            cameraConsts.ViewToClip = camera.GetViewToClipMatrix();
-            cameraConsts.ClipToView = camera.GetClipToViewMatrix();
-            cameraConsts.WorldToClip = camera.GetWorldToClipMatrix();
-            cameraConsts.ClipToWorld = camera.GetClipToWorldMatrix();
+            cameraConsts.WorldToView = camera.GetWorldToView();
+            cameraConsts.ViewToWorld = camera.GetViewToWorld();
+            cameraConsts.ViewToClip = camera.GetViewToClip();
+            cameraConsts.ClipToView = camera.GetClipToView();
+            cameraConsts.WorldToClip = camera.GetWorldToClip();
+            cameraConsts.ClipToWorld = camera.GetClipToWorld();
             cameraConsts.ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation();
             cameraConsts.WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition());
-            cameraConsts.TanHalfFovX = camera.GetTanHalfFovX();
-            cameraConsts.TanHalfFovY = camera.GetTanHalfFovY();
-            cameraConsts.NearPlane = camera.GetNearPlane();
-            cameraConsts.FarPlane = camera.GetFarPlane();
             cameraConsts.UvToViewScale = camera.GetUvToViewScale();
             cameraConsts.UvToViewBias = camera.GetUvToViewBias();
             cameraConsts.PixelToWorldScale = camera.GetPixelToWorldScale(ms_RenderViewportHeight);
+            cameraConsts.m_ViewFrustumPlanes[*joint::FrustumPlane::Left] = camera.GetViewFrustumLeft();
+            cameraConsts.m_ViewFrustumPlanes[*joint::FrustumPlane::Right] = camera.GetViewFrustumRight();
+            cameraConsts.m_ViewFrustumPlanes[*joint::FrustumPlane::Bottom] = camera.GetViewFrustumBottom();
+            cameraConsts.m_ViewFrustumPlanes[*joint::FrustumPlane::Top] = camera.GetViewFrustumTop();
+            cameraConsts.m_ViewFrustumPlanes[*joint::FrustumPlane::Near] = camera.GetViewFrustumNear();
+            cameraConsts.m_ViewFrustumPlanes[*joint::FrustumPlane::Far] = camera.GetViewFrustumFar();
 
-            if (ms_Device->GetCpuFrameIndex() != 0) // TODO: Remove if
-            {
-                m_FrameConsts.PrevCamera = std::exchange(m_FrameConsts.Camera, cameraConsts);
-            }
-            else
-            {
-                m_FrameConsts.Camera = cameraConsts;
-                m_FrameConsts.PrevCamera = cameraConsts;
-            }
+            m_FrameConsts.m_PrevCamera = std::exchange(m_FrameConsts.m_Camera, cameraConsts);
         }
 
         {
@@ -96,6 +92,7 @@ namespace sandbox
             m_FrameConsts.CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex();
 
             m_FrameConsts.IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
+            m_FrameConsts.m_IsFrustumCullingEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsFrustumCullingEnabled;
             m_FrameConsts.IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().m_IsEnabled;
 
             m_FrameConsts.DeltaTimeInSec = ms_FrameTimer->GetDeltaTimeInSec();

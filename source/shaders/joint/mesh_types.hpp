@@ -20,7 +20,8 @@ namespace joint
         float4x4 m_PrevLocalToWorld;
         uint32_t m_MaterialIndex;
         uint32_t m_PartIndex; // Only for CPU part
-        float2 m_Padding0;
+        float m_LocalToWorldScale;
+        float m_Padding0;
     };
 
     struct Meshlet
