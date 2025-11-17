@@ -33,20 +33,6 @@ namespace benzin
         uint32_t m_MeshRangeIndex = g_MaxU32;
     };
 
-    struct DrawIndirectCmd
-    {
-        uint32_t m_DrawIndex = 0;
-        D3D12_DRAW_INDEXED_ARGUMENTS m_D3D12Cmd = {};
-    };
-
-    struct DispatchMeshIndirectCmd
-    {
-        uint32_t m_DrawIndex = 0;
-        uint32_t m_MeshletOffset = 0;
-        uint32_t m_MeshletCount = 0;
-        D3D12_DISPATCH_MESH_ARGUMENTS m_D3D12Cmd = {};
-    };
-
     struct SunLight
     {
         DirectX::XMFLOAT3 m_Color = { 1.0f, 1.0f, 1.0f };
@@ -100,6 +86,7 @@ namespace benzin
 
         std::unique_ptr<Buffer> m_VertexBuffer;
         std::unique_ptr<Buffer> m_IndexBuffer;
+        std::unique_ptr<Buffer> m_MeshPartBuffer;
 
         std::unique_ptr<Buffer> m_MeshletBuffer;
         std::unique_ptr<Buffer> m_MeshletCullVolumeBuffer;
@@ -111,7 +98,6 @@ namespace benzin
 
         std::unique_ptr<Buffer> m_MeshDrawBuffer;
         std::unique_ptr<Buffer> m_MeshDispatchBuffer;
-        std::unique_ptr<Buffer> m_DrawIndirectCmdBuffer;
 
         std::vector<joint::GrassPatch> m_GrassPatches;
         SunLight m_SunLight;

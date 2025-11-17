@@ -5,6 +5,17 @@
 namespace joint
 {
 
+    enum class ComputeCullingResources : uint
+    {
+        MeshDrawCount,
+        MeshDraws,
+        MeshParts,
+
+        IndirectCmds,
+        IndirectCmdCounter,
+        VisibilityBuffer,
+    };
+
     enum class GeometryResources : uint
     {
         MeshDrawIndex,

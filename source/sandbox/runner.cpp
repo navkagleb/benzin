@@ -141,14 +141,14 @@ namespace sandbox
 
         BeginFrame();
         {
+            m_Scene->UploadMeshDrawsToGpu();
+            m_Scene->UploadToGpu();
+            m_RayTracingScene->BuildBlases();
+
             for (auto& renderPass : m_RenderPasses)
             {
                 renderPass->OnZeroFrameInit();
             }
-
-            m_Scene->UploadMeshDrawsToGpu();
-            m_Scene->UploadToGpu();
-            m_RayTracingScene->BuildBlases();
 
             RunImGuiFrame(); // Force call ImGui frame to call RenderPass::OnRenderViewportResize on EndFrame
         }

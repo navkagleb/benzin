@@ -7,18 +7,32 @@
 
 #define ALPHA_TEST_ENABLED defined(ALPHA_TEST)
 #define MESH_PIPELINE_ENABLED defined(MESH_PIPELINE)
+#define COMPUTE_CULLING_ENABLED defined(COMPUTE_CULLING)
+#define LATE_CULLING_ENABLED defined(LATE_CULLING)
 
 BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::GeometryResources::Materials);
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_Draws, joint::GeometryResources::MeshDraws);
 
-#if MESH_PIPELINE_ENABLED
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshDispatch>, g_Dispatches, joint::GeometryResources::MeshDispathes);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
-BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshletCullVolume>, g_MeshletCullVolumes, joint::GeometryResources::MeshletCullVolumes);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletVertexIndices, joint::GeometryResources::MeshletVertexIndices);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
-#endif
+bool IsFrustumCulled(joint::MeshDraw draw, float3 center, float radius)
+{
+    bool isVisible = true;
+
+    float4 viewCenter = mul(float4(center, 1.0), draw.m_LocalToWorld);
+    viewCenter = mul(viewCenter, GetCameraConsts().m_WorldToView);
+
+    const float worldRadius = radius * draw.m_LocalToWorldScale;
+
+    [unroll]
+    for (uint i = 0; i < 6; ++i)
+    {
+        const float4 viewPlane = GetCameraConsts().m_ViewFrustumPlanes[i];
+        const float distanceToPlane = dot(viewPlane.xyz, viewCenter.xyz) + viewPlane.w;
+
+        isVisible &= distanceToPlane < worldRadius;
+    }
+
+    return !isVisible;
+}
 
 struct VsOutput
 {
@@ -63,6 +77,13 @@ VsOutput ProcessVertex(joint::MeshVertex vertex, uint drawIndex)
 // - TODO - Efficient Use of GPU Memory in Modern Games - Digital Dragons 2021: https://gpuopen.com/videos/efficient-use-of-gpu-memory-digital-dragons/
 // - TODO - D3D12 Memory Allocator: https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
 
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshDispatch>, g_Dispatches, joint::GeometryResources::MeshDispathes);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
+BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshletCullVolume>, g_MeshletCullVolumes, joint::GeometryResources::MeshletCullVolumes);
+BenzinDeclareRootResource(Buffer<uint>, g_MeshletVertexIndices, joint::GeometryResources::MeshletVertexIndices);
+BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
+
 #define MESH_STATS_ENABLED 1
 #define g_AmplificationGroupSize 32
 
@@ -91,19 +112,7 @@ void AsMain(uint dispatchIndex : SV_DispatchThreadID)
         const joint::MeshDraw draw = g_Draws[dispatch.m_MeshDrawIndex];
         const joint::MeshletCullVolume cullVolume = g_MeshletCullVolumes[dispatch.m_MeshletIndex];
     
-        float4 viewCenter = mul(float4(cullVolume.m_Center, 1.0), draw.m_LocalToWorld);
-        viewCenter = mul(viewCenter, GetCameraConsts().m_WorldToView);
-
-        const float worldRadius = cullVolume.m_Radius * draw.m_LocalToWorldScale;
-
-        [unroll]
-        for (uint i = 0; i < 6; ++i)
-        {
-            const float4 viewPlane = GetCameraConsts().m_ViewFrustumPlanes[i];
-            const float distanceToPlane = dot(viewPlane.xyz, viewCenter.xyz) + viewPlane.w;
-
-            isVisible &= distanceToPlane < worldRadius;
-        }
+        isVisible = !IsFrustumCulled(draw, cullVolume.m_Center, cullVolume.m_Radius);
     }
 
 #if MESH_STATS_ENABLED
@@ -252,3 +261,64 @@ PackedGBuffer PsMain(VsOutput input)
 
     return PackGBuffer(gbuffer);
 }
+
+#if COMPUTE_CULLING_ENABLED
+
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshPart>, g_MeshParts, joint::ComputeCullingResources::MeshParts);
+BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_MeshDraws, joint::ComputeCullingResources::MeshDraws);
+#if LATE_CULLING_ENABLED
+BenzinDeclareRootResource(RWBuffer<uint>, g_VisibilityBuffer, joint::ComputeCullingResources::VisibilityBuffer);
+#else
+BenzinDeclareRootResource(Buffer<uint>, g_VisibilityBuffer, joint::ComputeCullingResources::VisibilityBuffer);
+#endif
+BenzinDeclareRootResource(RWStructuredBuffer<joint::DrawIndirectCmd>, g_IndirectDrawCmds, joint::ComputeCullingResources::IndirectCmds);
+BenzinDeclareRootResource(RWBuffer<uint>, g_CmdCounter, joint::ComputeCullingResources::IndirectCmdCounter);
+
+[numthreads(64, 1, 1)]
+void CsMain(uint dtid : SV_DispatchThreadID)
+{
+    if (dtid >= BenzinGetRootConstant(joint::ComputeCullingResources::MeshDrawCount))
+        return;
+
+    const joint::MeshDraw draw = g_MeshDraws[dtid];
+    const joint::MeshPart part = g_MeshParts[draw.m_PartIndex];
+
+#if LATE_CULLING_ENABLED
+    bool isVisible = true;
+#else
+    bool isVisible = g_VisibilityBuffer[dtid];
+#endif
+
+    if (isVisible)
+    {
+        isVisible &= !IsFrustumCulled(draw, part.m_Center, part.m_Radius);
+    }
+
+#if LATE_CULLING_ENABLED
+    const bool isDrawNeeded = isVisible && !g_VisibilityBuffer[dtid];
+#else
+    const bool isDrawNeeded = isVisible;
+#endif
+
+    if (isDrawNeeded)
+    {
+        joint::DrawIndirectCmd cmd = (joint::DrawIndirectCmd)0;
+        cmd.m_DrawIndex = dtid;
+        cmd.m_IndexCountPerInstance = part.m_IndexCount;
+        cmd.m_InstanceCount = 1;
+        cmd.m_StartIndexLocation = part.m_IndexOffset;
+        cmd.m_BaseVertexLocation = part.m_VertexOffset;
+        cmd.m_StartInstanceLocation = 0;
+
+        uint cmdIndex;
+        InterlockedAdd(g_CmdCounter[0], 1, cmdIndex);
+
+        g_IndirectDrawCmds[cmdIndex] = cmd;
+    }
+
+#if LATE_CULLING_ENABLED
+    g_VisibilityBuffer[dtid] = isVisible;
+#endif
+}
+
+#endif // COMPUTE_CULLING_ENABLED

@@ -19,14 +19,21 @@ namespace sandbox
 
         bool IsDependentOnViewport() const override { return true; }
 
+        void OnZeroFrameInit() override;
         void OnRenderViewportResize() override;
         void OnRender() const override;
 
     private:
         static void CreateGeometryPso(benzin::PsoId id, bool isMeshPipeline);
 
+        void RunCullingPass(const char* gpuName, bool isLate) const;
+        void RunDrawPass(const char* gpuName, bool isLate) const;
+
+        std::unique_ptr<benzin::Buffer> m_VisibilityBuffer;
+        std::unique_ptr<benzin::Buffer> m_DrawIndirectCmdBuffer;
+        std::unique_ptr<benzin::Buffer> m_DrawIndirectCountBuffer;
+
         ID3D12CommandSignature* m_D3D12DrawIndirectCmdSignature = nullptr;
-        ID3D12CommandSignature* m_D3D12DispatchMeshIndirectCmdSignature = nullptr;
     };
 
     struct GBuffer

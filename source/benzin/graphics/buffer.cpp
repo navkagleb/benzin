@@ -11,7 +11,6 @@ namespace benzin
 {
 
     struct BufferSrv {};
-    struct BufferUav {};
 
     static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& creation)
     {
@@ -200,62 +199,52 @@ namespace benzin
         return d3d12SrvDesc;
     }
 
-    static D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(const Buffer& buffer)
+    static D3D12_UNORDERED_ACCESS_VIEW_DESC ToD3D12UnorderedAccessViewDesc(const Buffer& buffer, const BufferUav& uav)
     {
         D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = {};
         d3d12UavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 
-        switch (buffer.GetType())
+        if (buffer.GetType() == BufferType::Byte || uav.m_IsForcedRawView)
         {
-            case BufferType::Byte:
-            {
-                // Note: ByteAddressBuffers supports only 'DXGI_FORMAT_R32_TYPELESS' format 
-                // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
+            // Note: ByteAddressBuffers supports only 'DXGI_FORMAT_R32_TYPELESS' format 
+            // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-intro#raw-views-of-buffers
 
-                BenzinAssert(buffer.GetSizeInBytes() % sizeof(uint32_t) == 0);
+            BenzinAssert(buffer.GetSizeInBytes() % sizeof(uint32_t) == 0);
 
-                d3d12UavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-                d3d12UavDesc.Buffer.FirstElement = 0;
-                d3d12UavDesc.Buffer.NumElements = (uint32_t)(buffer.GetSizeInBytes() / sizeof(uint32_t));
-                d3d12UavDesc.Buffer.StructureByteStride = 0;
-                d3d12UavDesc.Buffer.CounterOffsetInBytes = 0;
-                d3d12UavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+            d3d12UavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+            d3d12UavDesc.Buffer.FirstElement = 0;
+            d3d12UavDesc.Buffer.NumElements = (uint32_t)(buffer.GetSizeInBytes() / sizeof(uint32_t));
+            d3d12UavDesc.Buffer.StructureByteStride = 0;
+            d3d12UavDesc.Buffer.CounterOffsetInBytes = 0;
+            d3d12UavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+        }
+        else if (buffer.GetType() == BufferType::Format)
+        {
+            BenzinAssert(buffer.GetDxgiFormat() != DXGI_FORMAT_UNKNOWN);
 
-                break;
-            }
-            case BufferType::Format:
-            {
-                BenzinAssert(buffer.GetDxgiFormat() != DXGI_FORMAT_UNKNOWN);
-
-                d3d12UavDesc.Format = buffer.GetDxgiFormat();
-                d3d12UavDesc.Buffer.FirstElement = 0;
-                d3d12UavDesc.Buffer.NumElements = (uint32_t)buffer.GetElementCount();
-                d3d12UavDesc.Buffer.StructureByteStride = 0;
-                d3d12UavDesc.Buffer.CounterOffsetInBytes = 0;
-                d3d12UavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-
-                break;
-            }
-            case BufferType::Structured:
-            {
-                d3d12UavDesc.Format = DXGI_FORMAT_UNKNOWN;
-                d3d12UavDesc.Buffer.FirstElement = 0;
-                d3d12UavDesc.Buffer.NumElements = (uint32_t)buffer.GetElementCount();
-                d3d12UavDesc.Buffer.StructureByteStride = buffer.GetElementSizeInBytes();
-                d3d12UavDesc.Buffer.CounterOffsetInBytes = 0;
-                d3d12UavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-
-                break;
-            }
-            default:
-            {
-                BenzinEnsure(
-                    false,
-                    "Unknown BufferType for UAV: {} ({})",
-                    magic_enum::enum_name(buffer.GetType()),
-                    magic_enum::enum_integer(buffer.GetType()));
-                break;
-            }
+            d3d12UavDesc.Format = buffer.GetDxgiFormat();
+            d3d12UavDesc.Buffer.FirstElement = 0;
+            d3d12UavDesc.Buffer.NumElements = (uint32_t)buffer.GetElementCount();
+            d3d12UavDesc.Buffer.StructureByteStride = 0;
+            d3d12UavDesc.Buffer.CounterOffsetInBytes = 0;
+            d3d12UavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+        }
+        else if (buffer.GetType() == BufferType::Structured)
+        {
+            d3d12UavDesc.Format = DXGI_FORMAT_UNKNOWN;
+            d3d12UavDesc.Buffer.FirstElement = 0;
+            d3d12UavDesc.Buffer.NumElements = (uint32_t)buffer.GetElementCount();
+            d3d12UavDesc.Buffer.StructureByteStride = buffer.GetElementSizeInBytes();
+            d3d12UavDesc.Buffer.CounterOffsetInBytes = 0;
+            d3d12UavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+        }
+        else
+        {
+            BenzinEnsure(
+                false,
+                "Unknown BufferType for UAV: {} ({})",
+                magic_enum::enum_name(buffer.GetType()),
+                magic_enum::enum_integer(buffer.GetType()));
         }
 
         return d3d12UavDesc;
@@ -309,11 +298,11 @@ namespace benzin
             [&] { return CreateDetachedSrv(); });
     }
 
-    const Descriptor& Buffer::GetUav() const
+    const Descriptor& Buffer::GetUav(const BufferUav& uav) const
     {
         return TryGetViewDescriptor(
-            GetStdHash(BufferUav{}),
-            [&] { return CreateDetachedUav(); });
+            GetStdHash(uav),
+            [&] { return CreateDetachedUav(uav); });
     }
 
     Descriptor Buffer::CreateDetachedSrv() const
@@ -336,13 +325,13 @@ namespace benzin
         });
     }
 
-    Descriptor Buffer::CreateDetachedUav() const
+    Descriptor Buffer::CreateDetachedUav(const BufferUav& uav) const
     {
         BenzinAssert(m_IsUnorderedAccessAllowed);
 
         return m_Device.GetDescriptorManager().AllocateDescriptor(DescriptorType::Uav, [&](uint64_t cpuHandle)
         {
-            const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = ToD3D12UnorderedAccessViewDesc(*this);
+            const D3D12_UNORDERED_ACCESS_VIEW_DESC d3d12UavDesc = ToD3D12UnorderedAccessViewDesc(*this, uav);
 
             m_Device.GetD3D12Device()->CreateUnorderedAccessView(
                 m_D3D12Resource,
@@ -352,7 +341,7 @@ namespace benzin
         });
     }
 
-    void Buffer::MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, const MapReadbackCallback& callback) const
+    void Buffer::MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, MapReadbackCallback callback) const
     {
         BenzinAssert(m_HeapType == GpuHeapType::Readback);
         BenzinAssert(offsetInBytes + dataSizeInBytes <= GetSizeInBytes());
@@ -400,5 +389,8 @@ BenzinDefineStdHashForType(benzin::BufferSrv, bufferSrv,
 
 BenzinDefineStdHashForType(benzin::BufferUav, bufferUav,
 {
-    return typeid(benzin::BufferUav).hash_code();
+    size_t hash = typeid(benzin::BufferUav).hash_code();
+    hash = benzin::HashCombine(hash, bufferUav.m_IsForcedRawView);
+
+    return hash;
 });

@@ -151,6 +151,26 @@ namespace benzin
             }
         }
 
+        std::vector<joint::MeshPart> jointMeshParts;
+        jointMeshParts.reserve(m_MeshParts.size());
+
+        for (const MeshPart& part : m_MeshParts)
+        {
+            DirectX::BoundingSphere boundingSphere;
+            DirectX::BoundingSphere::CreateFromPoints(
+                boundingSphere,
+                part.m_VertexCount,
+                &m_Vertices[part.m_VertexOffset].m_Position,
+                sizeof(joint::MeshVertex));
+
+            joint::MeshPart& jointPart = jointMeshParts.emplace_back();
+            jointPart.m_VertexOffset = part.m_VertexOffset;
+            jointPart.m_IndexOffset = part.m_IndexOffset;
+            jointPart.m_IndexCount = part.m_IndexCount;
+            jointPart.m_Center = boundingSphere.Center;
+            jointPart.m_Radius = boundingSphere.Radius;
+        }
+
         std::vector<joint::Material> jointMaterials;
         jointMaterials.reserve(m_Materials.size());
 
@@ -167,23 +187,6 @@ namespace benzin
             jointMaterial.m_MetalnessFactor = material.m_MetalnessFactor;
             jointMaterial.m_RoughnessFactor = material.m_RoughnessFactor;
             jointMaterial.m_EmissiveFactor = material.m_EmissiveFactor;
-        }
-
-        std::vector<DrawIndirectCmd> drawIndirectCmds;
-        drawIndirectCmds.reserve(m_MeshDrawParts.size());
-        
-        for (uint32_t drawIndex = 0; drawIndex < m_JointMeshDraws.size(); ++drawIndex)
-        {
-            const joint::MeshDraw& draw = m_JointMeshDraws[drawIndex];
-            const MeshPart& part = m_MeshParts[draw.m_PartIndex];
-
-            DrawIndirectCmd& cmd = drawIndirectCmds.emplace_back();
-            cmd.m_DrawIndex = drawIndex;
-            cmd.m_D3D12Cmd.IndexCountPerInstance = part.m_IndexCount;
-            cmd.m_D3D12Cmd.InstanceCount = 1;
-            cmd.m_D3D12Cmd.StartIndexLocation = part.m_IndexOffset;
-            cmd.m_D3D12Cmd.BaseVertexLocation = part.m_VertexOffset;
-            cmd.m_D3D12Cmd.StartInstanceLocation = 0;
         }
 
         uint32_t meshDispatchCount = 0;
@@ -211,34 +214,34 @@ namespace benzin
         GpuHeapLinearAllocator& allocator = m_Device.GetPersistentDefaultAllocator();
         m_VertexBuffer = allocator.AllocateBuffer("Scene::VertexBuffer", ToSpan(m_Vertices));
         m_IndexBuffer = allocator.AllocateBuffer("Scene::IndexBuffer", ToSpan(m_Indices), DXGI_FORMAT_R32_UINT);
+        m_MeshPartBuffer = allocator.AllocateBuffer("Scene::MeshPartBuffer", ToSpan(jointMeshParts));
         m_MeshletBuffer = allocator.AllocateBuffer("Scene::MeshletsBuffer", ToSpan(m_Meshlets));
         m_MeshletCullVolumeBuffer = allocator.AllocateBuffer("Scene::MeshletCullVolumeBuffer", ToSpan(m_MeshletCullVolumes));
         m_MeshletVertexIndexBuffer = allocator.AllocateBuffer("Scene::MeshletVertexIndexBuffer", ToSpan(m_MeshletVertexIndices), DXGI_FORMAT_R32_UINT);
         m_MeshletIndexBuffer = allocator.AllocateBuffer("Scene::MeshletIndexBuffer", ToSpan(m_MeshletIndices), DXGI_FORMAT_R8_UINT);
         m_MaterialBuffer = allocator.AllocateBuffer("Scene::MaterialBuffer", ToSpan(jointMaterials));
-        m_DrawIndirectCmdBuffer = allocator.AllocateBuffer("Scene::DrawIndirectCmdBuffer", ToSpan(drawIndirectCmds));
         m_MeshDispatchBuffer = allocator.AllocateBuffer("Scene::MeshDispatchBuffer", ToSpan(meshDispatches));
 
         const uint64_t uploadSizeInBytes =
             m_VertexBuffer->GetSizeInBytes() +
             m_IndexBuffer->GetSizeInBytes() +
+            m_MeshPartBuffer->GetSizeInBytes() +
             m_MeshletBuffer->GetSizeInBytes() +
             m_MeshletCullVolumeBuffer->GetSizeInBytes() +
             m_MeshletVertexIndexBuffer->GetSizeInBytes() +
             m_MeshletIndexBuffer->GetSizeInBytes() +
             m_MaterialBuffer->GetSizeInBytes() +
-            m_DrawIndirectCmdBuffer->GetSizeInBytes() +
             m_MeshDispatchBuffer->GetSizeInBytes();
 
         CopyCmdList& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
         cmdList.UploadToBuffer(*m_VertexBuffer, ToSpan(m_Vertices));
         cmdList.UploadToBuffer(*m_IndexBuffer, ToSpan(m_Indices));
+        cmdList.UploadToBuffer(*m_MeshPartBuffer, ToSpan(jointMeshParts));
         cmdList.UploadToBuffer(*m_MeshletBuffer, ToSpan(m_Meshlets));
         cmdList.UploadToBuffer(*m_MeshletCullVolumeBuffer, ToSpan(m_MeshletCullVolumes));
         cmdList.UploadToBuffer(*m_MeshletVertexIndexBuffer, ToSpan(m_MeshletVertexIndices));
         cmdList.UploadToBuffer(*m_MeshletIndexBuffer, ToSpan(m_MeshletIndices));
         cmdList.UploadToBuffer(*m_MaterialBuffer, ToSpan(jointMaterials));
-        cmdList.UploadToBuffer(*m_DrawIndirectCmdBuffer, ToSpan(drawIndirectCmds));
         cmdList.UploadToBuffer(*m_MeshDispatchBuffer, ToSpan(meshDispatches));
     }
 

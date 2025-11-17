@@ -35,6 +35,8 @@ namespace benzin
 
     enum class PsoId : uint32_t
     {
+        GeometryPass_EarlyComputeCulling,
+        GeometryPass_LateComputeCulling,
         GeometryPass_Vertex,
         GeometryPass_Mesh,
 

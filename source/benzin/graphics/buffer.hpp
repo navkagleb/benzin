@@ -32,10 +32,15 @@ namespace benzin
         bool m_IsUnorderedAccessAllowed = false;
     };
 
+    struct BufferUav
+    {
+        bool m_IsForcedRawView = false;
+    };
+
     class Buffer : public Resource
     {
     public:
-        using MapReadbackCallback = std::function<void(const std::byte* mappedData)>;
+        using MapReadbackCallback = std::move_only_function<void(const std::byte* mappedData)>;
 
         Buffer(Device& device, const BufferCreation& creation);
         Buffer(GpuHeap& gpuHeap, uint64_t gpuHeapOffsetInBytes, const BufferCreation& creation);
@@ -54,15 +59,15 @@ namespace benzin
         uint64_t GetGpuVirtualAddress(uint32_t elementIndex = 0) const;
 
         const Descriptor& GetSrv() const;
-        const Descriptor& GetUav() const;
+        const Descriptor& GetUav(const BufferUav& uav = {}) const;
 
-        Descriptor CreateDetachedSrv() const;
-        Descriptor CreateDetachedUav() const;
-
-        void MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, const MapReadbackCallback& callback) const;
+        void MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, MapReadbackCallback callback) const;
 
     private:
         void SetupCreation(const BufferCreation& creation, const GpuHeap* gpuHeap = nullptr);
+
+        Descriptor CreateDetachedSrv() const;
+        Descriptor CreateDetachedUav(const BufferUav& uav) const;
 
     private:
         GpuHeapType m_HeapType = g_MaxEnum<GpuHeapType>;

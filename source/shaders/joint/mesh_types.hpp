@@ -14,6 +14,17 @@ namespace joint
         float2 m_Uv;
     };
 
+    struct MeshPart
+    {
+        uint32_t m_VertexOffset;
+        uint32_t m_IndexOffset;
+        uint32_t m_IndexCount;
+        uint32_t m_Padding0;
+
+        float3 m_Center;
+        float m_Radius;
+    };
+
     struct MeshDraw
     {
         float4x4 m_LocalToWorld;
@@ -22,6 +33,18 @@ namespace joint
         uint32_t m_PartIndex; // Only for CPU part
         float m_LocalToWorldScale;
         float m_Padding0;
+    };
+
+    struct DrawIndirectCmd
+    {
+        uint m_DrawIndex;
+
+        // D3D12_DRAW_INDEXED_ARGUMENTS
+        uint m_IndexCountPerInstance;
+        uint m_InstanceCount;
+        uint m_StartIndexLocation;
+        uint m_BaseVertexLocation;
+        uint m_StartInstanceLocation;
     };
 
     struct Meshlet
