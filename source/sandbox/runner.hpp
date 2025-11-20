@@ -71,6 +71,9 @@ namespace sandbox
         benzin::RenderViewport m_Viewport;
         benzin::FlyCameraController m_CameraController;
 
+        using UpdateCallback = std::function<void()>;
+        std::vector<UpdateCallback> m_UpdateCallbacks;
+
         bool m_IsRunning = true;
         bool m_IsVsyncEnabled = false;
         bool m_IsPendingResize = false;

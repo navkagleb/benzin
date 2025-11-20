@@ -51,7 +51,7 @@ namespace sandbox
         benzin::MakeUniquePtr(m_GpuProfiler, *m_Device);
         benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager);
 
-        benzin::MakeUniquePtr(m_Scene, *m_Device);
+        benzin::MakeUniquePtr(m_Scene);
         benzin::MakeUniquePtr(m_RayTracingScene, *m_Device, *m_Scene);
 
         benzin::MakeUniquePtr(m_RenderResources, *m_Device);
@@ -141,8 +141,8 @@ namespace sandbox
 
         BeginFrame();
         {
-            m_Scene->UploadMeshDrawsToGpu();
-            m_Scene->UploadToGpu();
+            m_Scene->UploadMeshDrawsToGpu(*m_Device);
+            m_Scene->UploadMeshGeometryToGpu(*m_Device);
             m_RayTracingScene->BuildBlases();
 
             for (auto& renderPass : m_RenderPasses)
@@ -300,16 +300,15 @@ namespace sandbox
 
         m_CameraController.MoveCamera(m_FrameTimer.GetDeltaTimeInMs());
 
+        if (!m_AnimationTimer.IsPaused())
         {
-            BenzinScopeProfile("Runner::<update scene>");
-
-            if (!m_AnimationTimer.IsPaused())
+            for (const UpdateCallback& callback : m_UpdateCallbacks)
             {
-                m_Scene->ExecuteUpdateCallbacks();
+                callback();
             }
-
-            m_Scene->UploadMeshDrawsToGpu();
         }
+
+        m_Scene->UploadMeshDrawsToGpu(*m_Device);
 
         RunImGuiFrame();
 

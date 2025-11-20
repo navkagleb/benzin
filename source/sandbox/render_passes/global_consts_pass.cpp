@@ -2,8 +2,8 @@
 #include <sandbox/render_passes/global_consts_pass.hpp>
 
 #include <sandbox/render_settings.hpp>
-#include <sandbox/resources.hpp>
 
+#include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
@@ -12,13 +12,27 @@
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
-
 #include <shaders/joint/light.hpp>
 
 BenzinAllowDereferenceOperatorForEnum(joint::FrustumPlane);
 
 namespace sandbox
 {
+
+    DirectX::XMFLOAT3 CalcToSunDirection(const benzin::SunLight& sun)
+    {
+        const float pitch = sun.m_ElevationInRadians;
+        const float yaw = sun.m_AzimuthInRadians;
+
+        DirectX::XMVECTOR sunDirection = benzin::GetDirectionFromPitchYaw(pitch, yaw); // sunDirection vector directed towards the sun
+
+        DirectX::XMFLOAT3 sunDirection3 = {};
+        DirectX::XMStoreFloat3(&sunDirection3, sunDirection);
+
+        return sunDirection3;
+    }
+
+    //
 
     GlobalConstsPass::GlobalConstsPass(ReadbackStatsCallback&& callback)
         : m_ReadbackStatsCallback{ std::move(callback) }
@@ -139,7 +153,7 @@ namespace sandbox
             joint::Light sunLight = {};
             sunLight.Color = ms_Scene->m_SunLight.m_Color;
             sunLight.Intensity = ms_Scene->m_SunLight.m_Intensity;
-            sunLight.WorldPosition = ms_Scene->m_SunLight.CalcToSunDirection();
+            sunLight.WorldPosition = CalcToSunDirection(ms_Scene->m_SunLight);
             sunLight.WorldRadius = std::tan(ms_Scene->m_SunLight.m_AngularDiameterInRadians * 0.5f);
             sunLight.Attenuation = {};
             sunLight.Type = joint::LightType::Sun;

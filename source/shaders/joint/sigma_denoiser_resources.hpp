@@ -16,8 +16,6 @@ namespace joint
         float PlaneDistanceSensitivity;
         float DisocclusionThreshold;
         uint IsTileSmoothingEnabled;
-        float2 m_Padding0;
-        float3 ToSunDirection;
     };
 
     enum class SigmaClassifyTilesResources : uint

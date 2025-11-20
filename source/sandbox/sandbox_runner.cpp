@@ -87,27 +87,6 @@ namespace sandbox
     {
         BenzinTraceScopeTime("SandboxRunner::InitScene");
 
-        constexpr auto meshFileNames = std::to_array<std::string_view>(
-        {
-            "Sponza/glTF/Sponza.gltf",
-            "BoomBox/glTF-Binary/BoomBox.glb",
-            "DamagedHelmet/glTF/DamagedHelmet.gltf",
-            "OrientationTest/OrientationTest.gltf",
-            "CesiumMilkTruck/glTF/CesiumMilkTruck.gltf",
-        });
-
-        for (const std::string_view fileName : meshFileNames)
-        {
-            benzin::MeshGeometry geometry;
-            std::vector<benzin::MeshDraw> draws;
-            std::vector<benzin::Material> materials;
-            std::vector<benzin::TextureImage> textures;
-            BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, geometry, draws, materials, textures));
-
-            const std::string debugName = benzin::CutExtension(fileName);
-            m_Scene->AddMesh(debugName, std::move(geometry), std::move(draws), std::move(materials), std::move(textures));
-        }
-
         benzin::PerspectiveCamera& camera = m_Scene->m_Camera;
         camera.SetPosition({ -1.649f, 1.007f, -1.555f });
         camera.SetFrontDirection({ 0.769f, 0.129f, 0.627f });
@@ -117,7 +96,7 @@ namespace sandbox
         sunLight.m_Color = { 1.0f, 1.0f, 0.7f };
         sunLight.m_Intensity = 10.0f;
 
-        m_Scene->m_UpdateCallbacks.push_back([this]
+        m_UpdateCallbacks.push_back([this]
         {
             const auto animateSunAngle = [this](float minAngle, float maxAngle, float& angle, float& direction)
             {
@@ -139,69 +118,72 @@ namespace sandbox
             animateSunAngle(DirectX::XMConvertToRadians(-2.0f), DirectX::XMConvertToRadians(3.0f), azimuth, azimithDirection);
         });
 
-        if (m_Scene->m_MeshRangeMap.contains("Sponza"))
+        constexpr auto meshFileNames = std::to_array<std::string_view>(
         {
-            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
-            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("Sponza");
-            draw.m_Translation.x = 5.0f;
-            draw.m_Rotation.y = DirectX::XM_PI;
+            "Sponza/glTF/Sponza.gltf",
+            "BoomBox/glTF-Binary/BoomBox.glb",
+            "DamagedHelmet/glTF/DamagedHelmet.gltf",
+            "OrientationTest/OrientationTest.gltf",
+            "CesiumMilkTruck/glTF/CesiumMilkTruck.gltf",
+        });
+
+        std::unordered_map<std::string, benzin::Scene::MeshGeometryRange> geometries;
+
+        for (const std::string_view fileName : meshFileNames)
+        {
+            benzin::MeshGeometry geometry;
+            std::vector<benzin::MeshDraw> draws;
+            std::vector<benzin::Material> materials;
+            std::vector<benzin::TextureImage> textures;
+            BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, geometry, draws, materials, textures));
+
+            const std::string debugName = benzin::CutExtension(fileName);
+            geometries[debugName] = m_Scene->AddMeshGeometry(
+                debugName,
+                std::move(geometry),
+                std::move(draws),
+                std::move(materials),
+                std::move(textures));
         }
 
-        if (m_Scene->m_MeshRangeMap.contains("OrientationTest"))
+        const auto addGeometryDraw = [this, &geometries](const std::string& name, const DirectX::XMFLOAT3& translation, float scale, const DirectX::XMFLOAT3& rotation = {})
         {
-            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
-            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("OrientationTest");
-            draw.m_Translation = { 2.5f, 0.2f, -0.25f };
-            draw.m_Scale = 0.05f;
-        }
+            if (!geometries.contains(name))
+                return benzin::g_MaxU32;
 
-        if (m_Scene->m_MeshRangeMap.contains("MilkTruck"))
+            benzin::MeshGeometryDraw& draw = m_Scene->m_MeshGeometryDraws.emplace_back();
+            draw.m_MeshDrawOffset = geometries.at(name).m_MeshDrawOffset;
+            draw.m_MeshDrawCount = geometries.at(name).m_MeshDrawCount;
+            draw.m_Translation = translation;
+            draw.m_Scale = scale;
+            draw.m_Rotation = rotation;
+
+            return (uint32_t)m_Scene->m_MeshGeometryDraws.size() - 1;
+        };
+
+        addGeometryDraw("Sponza", { 5.0f, 0.0f, 0.0f }, 1.0f, { 0.0f, DirectX::XM_PI, 0.0f });
+        addGeometryDraw("OrientationTest", { 2.5f, 0.2f, -0.25f }, 0.05f);
+        addGeometryDraw("CesiumMilkTruck", { -1.5f, 0.2f, 0.5f }, 0.1f);
+        addGeometryDraw("Cylinder", { -1.5f, 0.4f, -0.25f }, 0.1f); // actually { 0.1f, 1.5f, 0.1f }
+
+        const uint32_t boomBooxDrawIndex = addGeometryDraw("BoomBox", { 0.0f, 0.6f, 0.0f }, 30.0f, { 0.0f, DirectX::XMConvertToRadians(45.0f), 0.0f });
+        const uint32_t damagedHelmetDrawIndex = addGeometryDraw("DamagedHelmet", { 1.0f, 0.5f, -0.5f }, 0.4f, { 0.0f, DirectX::XMConvertToRadians(45.0f), 0.0f });
+
+        if (boomBooxDrawIndex != benzin::g_MaxU32)
         {
-            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
-            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("MilkTruck");
-            draw.m_Translation = { -1.5f, 0.2f, 0.5f };
-            draw.m_Scale = 0.1f;
-        }
-
-        if (m_Scene->m_MeshRangeMap.contains("Cylinder"))
-        {
-            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
-            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("Cylinder");
-            draw.m_Translation = { -1.5f, 0.4f, -0.25f };
-            draw.m_Scale = 0.1f; // actually { 0.1f, 1.5f, 0.1f }
-        }
-
-        if (m_Scene->m_MeshRangeMap.contains("BoomBox"))
-        {
-            const size_t drawIndex = m_Scene->m_MeshRangeDraws.size();
-
-            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
-            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("BoomBox");
-            draw.m_Translation.y = 0.6f;
-            draw.m_Rotation.y = DirectX::XMConvertToRadians(45.0f);
-            draw.m_Scale = 30.0f;
-
-            m_Scene->m_UpdateCallbacks.emplace_back([this, drawIndex]
+            m_UpdateCallbacks.emplace_back([this, boomBooxDrawIndex]
             {
-                benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws[drawIndex];
+                benzin::MeshGeometryDraw& draw = m_Scene->m_MeshGeometryDraws[boomBooxDrawIndex];
                 draw.m_Rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
                 draw.m_Rotation.z += 0.0002f * m_AnimationTimer.GetDeltaTimeInMs();
             });
         }
 
-        if (m_Scene->m_MeshRangeMap.contains("DamagedHelmet"))
+        if (damagedHelmetDrawIndex != benzin::g_MaxU32)
         {
-            const size_t drawIndex = m_Scene->m_MeshRangeDraws.size();
-
-            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
-            draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("DamagedHelmet");
-            draw.m_Translation = { 1.0f, 0.5f, -0.5f };
-            draw.m_Rotation.y = DirectX::XMConvertToRadians(45.0f);
-            draw.m_Scale = 0.4f;
-
-            m_Scene->m_UpdateCallbacks.emplace_back([this, drawIndex]
+            m_UpdateCallbacks.emplace_back([this, damagedHelmetDrawIndex]
             {
-                benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws[drawIndex];
+                benzin::MeshGeometryDraw& draw = m_Scene->m_MeshGeometryDraws[damagedHelmetDrawIndex];
                 draw.m_Rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
                 draw.m_Rotation.y -= 0.00015f * m_AnimationTimer.GetDeltaTimeInMs();
             });
@@ -255,7 +237,12 @@ namespace sandbox
         std::vector<benzin::TextureImage> textures;
         BenzinAssertExpr(benzin::LoadMeshFromGltfFile("StanfordDragon/StanfordDragon.glb", dragon, draws, materials, textures));
 
-        m_Scene->AddMesh("StanfordDragon", std::move(dragon), std::move(draws), std::move(materials), std::move(textures));
+        const auto [drawOffset, drawCount] = m_Scene->AddMeshGeometry(
+            "StanfordDragon",
+            std::move(dragon),
+            std::move(draws),
+            std::move(materials),
+            std::move(textures));
 
         const int32_t radius = 3;
 
@@ -265,8 +252,9 @@ namespace sandbox
             {
                 for (auto z = -radius; z <= radius; ++z)
                 {
-                    benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
-                    draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("StanfordDragon");
+                    benzin::MeshGeometryDraw& draw = m_Scene->m_MeshGeometryDraws.emplace_back();
+                    draw.m_MeshDrawOffset = drawOffset;
+                    draw.m_MeshDrawCount = drawCount;
                     draw.m_Translation.x = (float)x * 2.5f;
                     draw.m_Translation.y = (float)y * 2.5f;
                     draw.m_Translation.z = (float)z * 2.5f;

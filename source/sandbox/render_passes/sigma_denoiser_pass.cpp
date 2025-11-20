@@ -152,7 +152,6 @@ namespace sandbox
         m_Consts.PlaneDistanceSensitivity = settings.m_PlaneDistanceSensitivity;
         m_Consts.DisocclusionThreshold = settings.m_DisocclusionThreshold;
         m_Consts.IsTileSmoothingEnabled = settings.m_IsTileSmoothingEnabled;
-        m_Consts.ToSunDirection = ms_Scene->m_SunLight.CalcToSunDirection();
     }
 
     void SigmaDenoiserPass::OnRender() const
