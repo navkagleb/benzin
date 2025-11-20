@@ -128,23 +128,31 @@ namespace sandbox
         });
 
         std::unordered_map<std::string, benzin::Scene::MeshGeometryRange> geometries;
+        std::mutex geometryMutex;
 
-        for (const std::string_view fileName : meshFileNames)
-        {
-            benzin::MeshGeometry geometry;
-            std::vector<benzin::MeshDraw> draws;
-            std::vector<benzin::Material> materials;
-            std::vector<benzin::TextureImage> textures;
-            BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, geometry, draws, materials, textures));
+        std::for_each(
+            std::execution::par,
+            meshFileNames.begin(),
+            meshFileNames.end(),
+            [&geometries, &geometryMutex, this](const std::string_view fileName)
+            {
+                benzin::MeshGeometry geometry;
+                std::vector<benzin::MeshDraw> draws;
+                std::vector<benzin::Material> materials;
+                std::vector<benzin::TextureImage> textures;
+                BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, geometry, draws, materials, textures));
 
-            const std::string debugName = benzin::CutExtension(fileName);
-            geometries[debugName] = m_Scene->AddMeshGeometry(
-                debugName,
-                std::move(geometry),
-                std::move(draws),
-                std::move(materials),
-                std::move(textures));
-        }
+                const std::string debugName = benzin::CutExtension(fileName);
+
+                std::scoped_lock lock{ geometryMutex };
+
+                geometries[debugName] = m_Scene->AddMeshGeometry(
+                    debugName,
+                    std::move(geometry),
+                    std::move(draws),
+                    std::move(materials),
+                    std::move(textures));
+            });
 
         const auto addGeometryDraw = [this, &geometries](const std::string& name, const DirectX::XMFLOAT3& translation, float scale, const DirectX::XMFLOAT3& rotation = {})
         {
