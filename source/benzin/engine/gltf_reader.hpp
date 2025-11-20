@@ -13,8 +13,8 @@ namespace benzin
 {
 
     struct Material;
-    struct Mesh;
-    struct MeshDrawPart;
+    struct MeshGeometry;
+    struct MeshDraw;
     struct TextureImage;
 
     class GltfReader
@@ -25,8 +25,8 @@ namespace benzin
 
         bool ReadFromFile(
             std::string_view fileName,
-            Mesh& mesh,
-            std::vector<MeshDrawPart>& meshDrawParts,
+            MeshGeometry& geometry,
+            std::vector<MeshDraw>& meshDraws,
             std::vector<Material>& materials,
             std::vector<TextureImage>& textures);
 
@@ -35,10 +35,10 @@ namespace benzin
         std::span<const T> ParseGltfAccessor(int gltfAccessorIndex);
 
         template <std::integral IndexType>
-        void ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive, Mesh& mesh);
-        void ParseGltfMeshes(Mesh& mesh);
-        void ParseGltfNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentObjectToLocal, std::vector<MeshDrawPart>& meshDrawParts);
-        void ParseGltfNodes(std::vector<MeshDrawPart>& meshDrawParts);
+        void ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive, MeshGeometry& geometry);
+        void ParseGltfMeshes(MeshGeometry& geometry);
+        void ParseGltfNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentObjectToLocal, std::vector<MeshDraw>& meshDraws);
+        void ParseGltfNodes(std::vector<MeshDraw>& meshDraws);
         void ParseGltfMaterials(std::vector<Material>& materials);
         void ParseGltfTextures(std::vector<TextureImage>& textures);
 

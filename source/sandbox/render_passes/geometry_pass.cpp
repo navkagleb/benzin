@@ -60,7 +60,7 @@ namespace sandbox
         d3d12ArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
 
         D3D12_COMMAND_SIGNATURE_DESC d3d12CmdSignatureDesc = {};
-        d3d12CmdSignatureDesc.ByteStride = sizeof(joint::DrawIndirectCmd);
+        d3d12CmdSignatureDesc.ByteStride = sizeof(joint::MeshDrawCmd);
         d3d12CmdSignatureDesc.NumArgumentDescs = (uint32_t)d3d12ArgumentDescs.size();
         d3d12CmdSignatureDesc.pArgumentDescs = d3d12ArgumentDescs.data();
         d3d12CmdSignatureDesc.NodeMask = 0;
@@ -106,19 +106,18 @@ namespace sandbox
             creation.m_IsUnorderedAccessAllowed = true;
         });
 
-        m_DrawIndirectCmdBuffer = allocator.AllocateBuffer([drawCount](benzin::BufferCreation& creation)
+        m_DrawCmdBuffer = allocator.AllocateBuffer([drawCount](benzin::BufferCreation& creation)
         {
-
-            creation.m_DebugName = "GeometryPass::DrawIndirectCmdBuffer";
+            creation.m_DebugName = "GeometryPass::DrawCmdBuffer";
             creation.m_Type = benzin::BufferType::Structured;
-            creation.m_ElementSizeInBytes = sizeof(joint::DrawIndirectCmd);
+            creation.m_ElementSizeInBytes = sizeof(joint::MeshDrawCmd);
             creation.m_ElementCount = drawCount;
             creation.m_IsUnorderedAccessAllowed = true;
         });
 
-        m_DrawIndirectCountBuffer = allocator.AllocateBuffer([](benzin::BufferCreation& creation)
+        m_DrawCmdCountBuffer = allocator.AllocateBuffer([](benzin::BufferCreation& creation)
         {
-            creation.m_DebugName = "GeometryPass::DrawIndirectCountBuffer";
+            creation.m_DebugName = "GeometryPass::DrawCmdCountBuffer";
             creation.m_Type = benzin::BufferType::Format;
             creation.m_DxgiFormat = DXGI_FORMAT_R32_UINT;
             creation.m_ElementSizeInBytes = sizeof(uint32_t);
@@ -324,9 +323,9 @@ namespace sandbox
 
         cmdList.SetComputeRootConstant(*Resources::MeshDrawCount, drawCount);
         cmdList.SetComputeRootSrv(*Resources::MeshDraws, *ms_Scene->m_MeshDrawBuffer);
-        cmdList.SetComputeRootSrv(*Resources::MeshParts, *ms_Scene->m_MeshPartBuffer);
-        cmdList.SetComputeRootUav(*Resources::IndirectCmds, *m_DrawIndirectCmdBuffer);
-        cmdList.SetComputeRootUav(*Resources::IndirectCmdCounter, *m_DrawIndirectCountBuffer);
+        cmdList.SetComputeRootSrv(*Resources::Meshes, *ms_Scene->m_MeshBuffer);
+        cmdList.SetComputeRootUav(*Resources::MeshDrawCmds, *m_DrawCmdBuffer);
+        cmdList.SetComputeRootUav(*Resources::MeshDrawCmdCounter, *m_DrawCmdCountBuffer);
 
         if (isLate)
         {
@@ -339,14 +338,14 @@ namespace sandbox
 
         cmdList.FlushBarriers();
 
-        cmdList.ClearUnorderedAccess(*m_DrawIndirectCmdBuffer, m_DrawIndirectCmdBuffer->GetUav({ .m_IsForcedRawView = true }));
-        cmdList.ClearUnorderedAccess(*m_DrawIndirectCountBuffer, m_DrawIndirectCountBuffer->GetUav());
+        cmdList.ClearUnorderedAccess(*m_DrawCmdBuffer, m_DrawCmdBuffer->GetUav({ .m_IsForcedRawView = true }));
+        cmdList.ClearUnorderedAccess(*m_DrawCmdCountBuffer, m_DrawCmdCountBuffer->GetUav());
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(isLate ? PsoId::GeometryPass_LateComputeCulling : PsoId::GeometryPass_EarlyComputeCulling));
         cmdList.Dispatch({ drawCount, 1, 1 }, { 64, 1, 1 });
 
-        cmdList.AddUnorderedAccess(*m_DrawIndirectCmdBuffer);
-        cmdList.AddUnorderedAccess(*m_DrawIndirectCountBuffer);
+        cmdList.AddUnorderedAccess(*m_DrawCmdBuffer);
+        cmdList.AddUnorderedAccess(*m_DrawCmdCountBuffer);
     }
 
     void GeometryPass::RunDrawPass(const char* gpuName, bool isLate) const
@@ -384,8 +383,8 @@ namespace sandbox
         cmdList.SetGraphicsRootSrv(*joint::GeometryResources::MeshDraws, *ms_Scene->m_MeshDrawBuffer);
         cmdList.SetGraphicsRootSrv(*joint::GeometryResources::Materials, *ms_Scene->m_MaterialBuffer);
 
-        cmdList.AddTransition(*m_DrawIndirectCmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-        cmdList.AddTransition(*m_DrawIndirectCountBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        cmdList.AddTransition(*m_DrawCmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        cmdList.AddTransition(*m_DrawCmdCountBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
         cmdList.FlushBarriers();
 
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
@@ -394,10 +393,10 @@ namespace sandbox
 
         cmdList.GetD3D12GraphicsCommandList()->ExecuteIndirect(
             m_D3D12DrawIndirectCmdSignature,
-            (uint32_t)m_DrawIndirectCmdBuffer->GetElementCount(),
-            m_DrawIndirectCmdBuffer->GetD3D12Resource(),
+            (uint32_t)m_DrawCmdBuffer->GetElementCount(),
+            m_DrawCmdBuffer->GetD3D12Resource(),
             0,
-            m_DrawIndirectCountBuffer->GetD3D12Resource(),
+            m_DrawCmdCountBuffer->GetD3D12Resource(),
             0);
     }
 

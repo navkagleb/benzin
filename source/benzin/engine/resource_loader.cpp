@@ -71,14 +71,14 @@ namespace benzin
 
     bool LoadMeshFromGltfFile(
         std::string_view fileName,
-        Mesh& mesh,
-        std::vector<MeshDrawPart>& meshDrawParts,
+        MeshGeometry& geometry,
+        std::vector<MeshDraw>& meshDraws,
         std::vector<Material>& materials,
         std::vector<TextureImage>& textures)
     {
         static thread_local GltfReader s_GltfReader;
 
-        return s_GltfReader.ReadFromFile(fileName, mesh, meshDrawParts, materials, textures);
+        return s_GltfReader.ReadFromFile(fileName, geometry, meshDraws, materials, textures);
     }
 
 }

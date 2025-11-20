@@ -31,16 +31,16 @@ namespace benzin
 
     void Scene::AddMesh(
         const std::string& debugName,
-        Mesh&& mesh,
-        std::vector<MeshDrawPart>&& meshDrawParts,
+        MeshGeometry&& geometry,
+        std::vector<MeshDraw>&& meshDraws,
         std::vector<Material>&& materials,
         std::vector<TextureImage>&& textures)
     {
         {
             BenzinTraceScopeTime("{} mesh optimization + meshlet generation", debugName);
 
-            OptimizeMesh(mesh);
-            GenerateMeshlets(mesh);
+            OptimizeMeshGeometry(geometry);
+            GenerateMeshlets(geometry);
         }
 
         const auto textureOffset = (uint32_t)m_Textures.size();
@@ -77,59 +77,59 @@ namespace benzin
             updateTextureIndex(material.m_EmissiveTextureIndex);
         }
 
-        for (MeshPart& part : mesh.m_Parts)
+        for (Mesh& mesh : geometry.m_Meshes)
         {
-            part.m_VertexOffset += (uint32_t)m_Vertices.size();
-            part.m_IndexOffset += (uint32_t)m_Indices.size();
+            mesh.m_VertexOffset += (uint32_t)m_Vertices.size();
+            mesh.m_IndexOffset += (uint32_t)m_Indices.size();
 
-            for (uint32_t i = part.m_MeshletVertexIndexOffset; i < part.m_MeshletVertexIndexOffset + part.m_MeshletVertexIndexCount; ++i)
+            const auto meshletVertexIndices = ToMutSpan(geometry.m_MeshletVertexIndices.data() + mesh.m_MeshletVertexIndexOffset, mesh.m_MeshletVertexIndexCount);
+            for (uint32_t& vertexIndex : meshletVertexIndices)
             {
-                uint32_t& vertexIndex = mesh.m_MeshletVertexIndices[i];
-                vertexIndex += part.m_VertexOffset;
+                vertexIndex += mesh.m_VertexOffset;
             }
 
-            part.m_MeshletVertexIndexOffset += (uint32_t)m_MeshletVertexIndices.size();
-            part.m_MeshletIndexOffset += (uint32_t)m_MeshletIndices.size();
+            mesh.m_MeshletVertexIndexOffset += (uint32_t)m_MeshletVertexIndices.size();
+            mesh.m_MeshletIndexOffset += (uint32_t)m_MeshletIndices.size();
 
-            for (uint32_t i = part.m_MeshletOffset; i < part.m_MeshletOffset + part.m_MeshletCount; ++i)
+            const auto meshlets = ToMutSpan(geometry.m_Meshlets.data() + mesh.m_MeshletOffset, mesh.m_MeshletCount);
+            for (joint::Meshlet& meshlet : meshlets)
             {
-                joint::Meshlet& meshlet = mesh.m_Meshlets[i];
-                meshlet.m_VertexOffset += part.m_MeshletVertexIndexOffset;
-                meshlet.m_IndexOffset += part.m_MeshletIndexOffset;
+                meshlet.m_VertexOffset += mesh.m_MeshletVertexIndexOffset;
+                meshlet.m_IndexOffset += mesh.m_MeshletIndexOffset;
             }
 
-            part.m_MeshletOffset += (uint32_t)m_Meshlets.size();
+            mesh.m_MeshletOffset += (uint32_t)m_Meshlets.size();
         }
 
-        for (MeshDrawPart& meshDrawPart : meshDrawParts)
+        for (MeshDraw& draw : meshDraws)
         {
-            meshDrawPart.m_PartIndex += (uint32_t)m_MeshParts.size();
-            
-            if (IsMaxUint(meshDrawPart.m_MaterialIndex))
+            draw.m_MeshIndex += (uint32_t)m_Meshes.size();
+
+            if (IsMaxUint(draw.m_MaterialIndex))
             {
-                meshDrawPart.m_MaterialIndex = 0; // Fallback material index
+                draw.m_MaterialIndex = 0; // Fallback material index
             }
             else
             {
-                meshDrawPart.m_MaterialIndex += (uint32_t)m_Materials.size();
+                draw.m_MaterialIndex += (uint32_t)m_Materials.size();
             }
         }
 
         MeshRange meshRange;
-        meshRange.m_DrawPartOffset = (uint32_t)m_MeshDrawParts.size();
-        meshRange.m_DrawPartCount = (uint32_t)meshDrawParts.size();
+        meshRange.m_MeshDrawOffset = (uint32_t)m_MeshDraws.size();
+        meshRange.m_MeshDrawCount = (uint32_t)meshDraws.size();
 
         m_MeshRangeMap[debugName] = (uint32_t)m_MeshRanges.size();
         m_MeshRanges.push_back(meshRange);
 
-        m_Vertices.append_range(std::move(mesh.m_Vertices));
-        m_Indices.append_range(std::move(mesh.m_Indices));
-        m_MeshParts.append_range(std::move(mesh.m_Parts));
-        m_MeshDrawParts.append_range(std::move(meshDrawParts));
-        m_Meshlets.append_range(std::move(mesh.m_Meshlets));
-        m_MeshletCullVolumes.append_range(std::move(mesh.m_MeshletCullVolumes));
-        m_MeshletVertexIndices.append_range(std::move(mesh.m_MeshletVertexIndices));
-        m_MeshletIndices.append_range(std::move(mesh.m_MeshletIndices));
+        m_Vertices.append_range(std::move(geometry.m_Vertices));
+        m_Indices.append_range(std::move(geometry.m_Indices));
+        m_Meshes.append_range(std::move(geometry.m_Meshes));
+        m_MeshDraws.append_range(std::move(meshDraws));
+        m_Meshlets.append_range(std::move(geometry.m_Meshlets));
+        m_MeshletCullVolumes.append_range(std::move(geometry.m_MeshletCullVolumes));
+        m_MeshletVertexIndices.append_range(std::move(geometry.m_MeshletVertexIndices));
+        m_MeshletIndices.append_range(std::move(geometry.m_MeshletIndices));
         m_Materials.append_range(std::move(materials));
     }
 
@@ -151,24 +151,24 @@ namespace benzin
             }
         }
 
-        std::vector<joint::MeshPart> jointMeshParts;
-        jointMeshParts.reserve(m_MeshParts.size());
+        std::vector<joint::Mesh> jointMeshes;
+        jointMeshes.reserve(m_Meshes.size());
 
-        for (const MeshPart& part : m_MeshParts)
+        for (const Mesh& mesh : m_Meshes)
         {
             DirectX::BoundingSphere boundingSphere;
             DirectX::BoundingSphere::CreateFromPoints(
                 boundingSphere,
-                part.m_VertexCount,
-                &m_Vertices[part.m_VertexOffset].m_Position,
+                mesh.m_VertexCount,
+                &m_Vertices[mesh.m_VertexOffset].m_Position,
                 sizeof(joint::MeshVertex));
 
-            joint::MeshPart& jointPart = jointMeshParts.emplace_back();
-            jointPart.m_VertexOffset = part.m_VertexOffset;
-            jointPart.m_IndexOffset = part.m_IndexOffset;
-            jointPart.m_IndexCount = part.m_IndexCount;
-            jointPart.m_Center = boundingSphere.Center;
-            jointPart.m_Radius = boundingSphere.Radius;
+            joint::Mesh& jointMesh = jointMeshes.emplace_back();
+            jointMesh.m_VertexOffset = mesh.m_VertexOffset;
+            jointMesh.m_IndexOffset = mesh.m_IndexOffset;
+            jointMesh.m_IndexCount = mesh.m_IndexCount;
+            jointMesh.m_Center = boundingSphere.Center;
+            jointMesh.m_Radius = boundingSphere.Radius;
         }
 
         std::vector<joint::Material> jointMaterials;
@@ -192,7 +192,7 @@ namespace benzin
         uint32_t meshDispatchCount = 0;
         for (const joint::MeshDraw& draw : m_JointMeshDraws)
         {
-            meshDispatchCount += m_MeshParts[draw.m_PartIndex].m_MeshletCount;
+            meshDispatchCount += m_Meshes[draw.m_MeshIndex].m_MeshletCount;
         }
 
         std::vector<joint::MeshDispatch> meshDispatches;
@@ -201,9 +201,9 @@ namespace benzin
         for (uint32_t drawIndex = 0; drawIndex < m_JointMeshDraws.size(); ++drawIndex)
         {
             const joint::MeshDraw& draw = m_JointMeshDraws[drawIndex];
-            const MeshPart& part = m_MeshParts[draw.m_PartIndex];
+            const Mesh& mesh = m_Meshes[draw.m_MeshIndex];
 
-            for (uint32_t meshletIndex = part.m_MeshletOffset; meshletIndex < part.m_MeshletOffset + part.m_MeshletCount; ++meshletIndex)
+            for (uint32_t meshletIndex = mesh.m_MeshletOffset; meshletIndex < mesh.m_MeshletOffset + mesh.m_MeshletCount; ++meshletIndex)
             {
                 joint::MeshDispatch& dispatch = meshDispatches.emplace_back();
                 dispatch.m_MeshDrawIndex = drawIndex;
@@ -214,7 +214,7 @@ namespace benzin
         GpuHeapLinearAllocator& allocator = m_Device.GetPersistentDefaultAllocator();
         m_VertexBuffer = allocator.AllocateBuffer("Scene::VertexBuffer", ToSpan(m_Vertices));
         m_IndexBuffer = allocator.AllocateBuffer("Scene::IndexBuffer", ToSpan(m_Indices), DXGI_FORMAT_R32_UINT);
-        m_MeshPartBuffer = allocator.AllocateBuffer("Scene::MeshPartBuffer", ToSpan(jointMeshParts));
+        m_MeshBuffer = allocator.AllocateBuffer("Scene::MeshBuffer", ToSpan(jointMeshes));
         m_MeshletBuffer = allocator.AllocateBuffer("Scene::MeshletsBuffer", ToSpan(m_Meshlets));
         m_MeshletCullVolumeBuffer = allocator.AllocateBuffer("Scene::MeshletCullVolumeBuffer", ToSpan(m_MeshletCullVolumes));
         m_MeshletVertexIndexBuffer = allocator.AllocateBuffer("Scene::MeshletVertexIndexBuffer", ToSpan(m_MeshletVertexIndices), DXGI_FORMAT_R32_UINT);
@@ -225,7 +225,7 @@ namespace benzin
         const uint64_t uploadSizeInBytes =
             m_VertexBuffer->GetSizeInBytes() +
             m_IndexBuffer->GetSizeInBytes() +
-            m_MeshPartBuffer->GetSizeInBytes() +
+            m_MeshBuffer->GetSizeInBytes() +
             m_MeshletBuffer->GetSizeInBytes() +
             m_MeshletCullVolumeBuffer->GetSizeInBytes() +
             m_MeshletVertexIndexBuffer->GetSizeInBytes() +
@@ -236,7 +236,7 @@ namespace benzin
         CopyCmdList& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
         cmdList.UploadToBuffer(*m_VertexBuffer, ToSpan(m_Vertices));
         cmdList.UploadToBuffer(*m_IndexBuffer, ToSpan(m_Indices));
-        cmdList.UploadToBuffer(*m_MeshPartBuffer, ToSpan(jointMeshParts));
+        cmdList.UploadToBuffer(*m_MeshBuffer, ToSpan(jointMeshes));
         cmdList.UploadToBuffer(*m_MeshletBuffer, ToSpan(m_Meshlets));
         cmdList.UploadToBuffer(*m_MeshletCullVolumeBuffer, ToSpan(m_MeshletCullVolumes));
         cmdList.UploadToBuffer(*m_MeshletVertexIndexBuffer, ToSpan(m_MeshletVertexIndices));
@@ -262,9 +262,9 @@ namespace benzin
         if (m_JointMeshDraws.empty())
         {
             uint32_t drawCount = 0;
-            for (const MeshDraw& draw : m_MeshDraws)
+            for (const MeshRangeDraw& rangeDraw : m_MeshRangeDraws)
             {
-                drawCount += m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartCount;
+                drawCount += m_MeshRanges[rangeDraw.m_MeshRangeIndex].m_MeshDrawCount;
             }
 
             m_JointMeshDraws.resize(drawCount);
@@ -272,23 +272,23 @@ namespace benzin
         }
 
         uint32_t jointDrawIndex = 0;
-        for (const MeshDraw& draw : m_MeshDraws)
+        for (const MeshRangeDraw& rangeDraw : m_MeshRangeDraws)
         {
-            const uint32_t drawPartOffset = m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartOffset;
-            const uint32_t drawPartCount = m_MeshRanges[draw.m_MeshRangeIndex].m_DrawPartCount;
+            const uint32_t drawOffset = m_MeshRanges[rangeDraw.m_MeshRangeIndex].m_MeshDrawOffset;
+            const uint32_t drawCount = m_MeshRanges[rangeDraw.m_MeshRangeIndex].m_MeshDrawCount;
 
-            const auto drawParts = ToSpan(m_MeshDrawParts.data() + drawPartOffset, drawPartCount);
-            for (const MeshDrawPart& drawPart : drawParts)
+            const auto draws = ToSpan(m_MeshDraws.data() + drawOffset, drawCount);
+            for (const MeshDraw& draw : draws)
             {
-                const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(draw.m_Scale, draw.m_Scale, draw.m_Scale);
-                const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(draw.m_Rotation.x) * DirectX::XMMatrixRotationY(draw.m_Rotation.y) * DirectX::XMMatrixRotationZ(draw.m_Rotation.z);
-                const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(draw.m_Translation.x, draw.m_Translation.y, draw.m_Translation.z);
+                const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(rangeDraw.m_Scale, rangeDraw.m_Scale, rangeDraw.m_Scale);
+                const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(rangeDraw.m_Rotation.x) * DirectX::XMMatrixRotationY(rangeDraw.m_Rotation.y) * DirectX::XMMatrixRotationZ(rangeDraw.m_Rotation.z);
+                const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(rangeDraw.m_Translation.x, rangeDraw.m_Translation.y, rangeDraw.m_Translation.z);
 
                 joint::MeshDraw& jointDraw = m_JointMeshDraws[jointDrawIndex++];
                 jointDraw.m_PrevLocalToWorld = jointDraw.m_LocalToWorld;
-                jointDraw.m_LocalToWorld = drawPart.m_ObjectToLocal * (scaling * rotation * translation);
-                jointDraw.m_MaterialIndex = drawPart.m_MaterialIndex;
-                jointDraw.m_PartIndex = drawPart.m_PartIndex;
+                jointDraw.m_LocalToWorld = draw.m_ObjectToLocal * (scaling * rotation * translation);
+                jointDraw.m_MeshIndex = draw.m_MeshIndex;
+                jointDraw.m_MaterialIndex = draw.m_MaterialIndex;
 
                 DirectX::XMFLOAT3 scales = {};
                 scales.x = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[0]));

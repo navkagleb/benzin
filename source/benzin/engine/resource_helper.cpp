@@ -9,24 +9,22 @@
 #include <DirectXTex.h>
 #include <meshoptimizer.h>
 
-#define BENZIN_MESH_OPTIMIZATION_ENABLED 1
-
 BenzinAllowDereferenceOperatorForEnum(joint::MeshletConsts);
 
 namespace benzin
 {
 
-    void OptimizeMesh(Mesh& mesh)
+    void OptimizeMeshGeometry(MeshGeometry& geometry)
     {
-        // Optimize each mesh part separately
+        // Optimize each mesh separately
 
         std::vector<joint::MeshVertex> newVertices;
         std::vector<uint32_t> newIndices;
 
-        for (MeshPart& part : mesh.m_Parts)
+        for (Mesh& mesh : geometry.m_Meshes)
         {
-            const auto vertices = ToSpan(mesh.m_Vertices.data() + part.m_VertexOffset, part.m_VertexCount);
-            const auto indices = ToSpan(mesh.m_Indices.data() + part.m_IndexOffset, part.m_IndexCount);
+            const auto vertices = ToSpan(geometry.m_Vertices.data() + mesh.m_VertexOffset, mesh.m_VertexCount);
+            const auto indices = ToSpan(geometry.m_Indices.data() + mesh.m_IndexOffset, mesh.m_IndexCount);
 
             std::vector<uint32_t> remapIndices;
             remapIndices.resize(indices.size());
@@ -53,35 +51,35 @@ namespace benzin
             meshopt_optimizeOverdraw(optIndices.data(), optIndices.data(), optIndices.size(), &optVertices.front().m_Position.x, optVertices.size(), vertexSizeInBytes, 1.05f);
             meshopt_optimizeVertexFetch(optVertices.data(), optIndices.data(), optIndices.size(), optVertices.data(), optVertices.size(), vertexSizeInBytes);
 
-            part.m_VertexOffset = (uint32_t)newVertices.size();
-            part.m_VertexCount = (uint32_t)optVertices.size();
-            part.m_IndexOffset = (uint32_t)newIndices.size();
-            part.m_IndexCount = (uint32_t)optIndices.size();
+            mesh.m_VertexOffset = (uint32_t)newVertices.size();
+            mesh.m_VertexCount = (uint32_t)optVertices.size();
+            mesh.m_IndexOffset = (uint32_t)newIndices.size();
+            mesh.m_IndexCount = (uint32_t)optIndices.size();
 
             newVertices.append_range(optVertices);
             newIndices.append_range(optIndices);
         }
 
-        mesh.m_Vertices = std::move(newVertices);
-        mesh.m_Indices = std::move(newIndices);
+        geometry.m_Vertices = std::move(newVertices);
+        geometry.m_Indices = std::move(newIndices);
     }
 
-    void GenerateMeshlets(Mesh& mesh)
+    void GenerateMeshlets(MeshGeometry& geometry)
     {
         // NOTE: meshlet.triangle_offset is actually 'index offset' (not triangle) !!!
 
-        BenzinAssert(mesh.m_Meshlets.empty());
-        BenzinAssert(mesh.m_MeshletVertexIndices.empty());
-        BenzinAssert(mesh.m_MeshletIndices.empty());
+        BenzinAssert(geometry.m_Meshlets.empty());
+        BenzinAssert(geometry.m_MeshletVertexIndices.empty());
+        BenzinAssert(geometry.m_MeshletIndices.empty());
 
         constexpr size_t maxMeshletVertexCount = *joint::MeshletConsts::MaxVertexCount;
         constexpr size_t maxMeshletTriangleCount = *joint::MeshletConsts::MaxTriangleCount;
         constexpr float meshletConeWeight = 0.0f;
 
-        for (MeshPart& part : mesh.m_Parts)
+        for (Mesh& mesh : geometry.m_Meshes)
         {
-            const auto vertices = ToSpan(mesh.m_Vertices.data() + part.m_VertexOffset, part.m_VertexCount);
-            const auto indices = ToSpan(mesh.m_Indices.data() + part.m_IndexOffset, part.m_IndexCount);
+            const auto vertices = ToSpan(geometry.m_Vertices.data() + mesh.m_VertexOffset, mesh.m_VertexCount);
+            const auto indices = ToSpan(geometry.m_Indices.data() + mesh.m_IndexOffset, mesh.m_IndexCount);
 
             const size_t maxMeshletCount = meshopt_buildMeshletsBound(indices.size(), maxMeshletVertexCount, maxMeshletTriangleCount);
 
@@ -151,17 +149,17 @@ namespace benzin
                 meshletCullVolumes.push_back(cullVolume);
             }
 
-            part.m_MeshletOffset = (uint32_t)mesh.m_Meshlets.size();
-            part.m_MeshletCount = (uint32_t)meshlets.size();
-            part.m_MeshletVertexIndexOffset = (uint32_t)mesh.m_MeshletVertexIndices.size();
-            part.m_MeshletVertexIndexCount = (uint32_t)meshletVertexIndices.size();
-            part.m_MeshletIndexOffset = (uint32_t)mesh.m_MeshletIndices.size();
-            part.m_MeshletIndexCount = (uint32_t)meshletIndices.size();
+            mesh.m_MeshletOffset = (uint32_t)geometry.m_Meshlets.size();
+            mesh.m_MeshletCount = (uint32_t)meshlets.size();
+            mesh.m_MeshletVertexIndexOffset = (uint32_t)geometry.m_MeshletVertexIndices.size();
+            mesh.m_MeshletVertexIndexCount = (uint32_t)meshletVertexIndices.size();
+            mesh.m_MeshletIndexOffset = (uint32_t)geometry.m_MeshletIndices.size();
+            mesh.m_MeshletIndexCount = (uint32_t)meshletIndices.size();
 
-            mesh.m_Meshlets.append_range(std::move(meshlets));
-            mesh.m_MeshletCullVolumes.append_range(std::move(meshletCullVolumes));
-            mesh.m_MeshletVertexIndices.append_range(std::move(meshletVertexIndices));
-            mesh.m_MeshletIndices.append_range(std::move(meshletIndices));
+            geometry.m_Meshlets.append_range(std::move(meshlets));
+            geometry.m_MeshletCullVolumes.append_range(std::move(meshletCullVolumes));
+            geometry.m_MeshletVertexIndices.append_range(std::move(meshletVertexIndices));
+            geometry.m_MeshletIndices.append_range(std::move(meshletIndices));
         }
     }
 

@@ -264,15 +264,15 @@ PackedGBuffer PsMain(VsOutput input)
 
 #if COMPUTE_CULLING_ENABLED
 
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshPart>, g_MeshParts, joint::ComputeCullingResources::MeshParts);
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_MeshDraws, joint::ComputeCullingResources::MeshDraws);
+BenzinDeclareRootResource(StructuredBuffer<joint::Mesh>, g_Meshes, joint::ComputeCullingResources::Meshes);
 #if LATE_CULLING_ENABLED
 BenzinDeclareRootResource(RWBuffer<uint>, g_VisibilityBuffer, joint::ComputeCullingResources::VisibilityBuffer);
 #else
 BenzinDeclareRootResource(Buffer<uint>, g_VisibilityBuffer, joint::ComputeCullingResources::VisibilityBuffer);
 #endif
-BenzinDeclareRootResource(RWStructuredBuffer<joint::DrawIndirectCmd>, g_IndirectDrawCmds, joint::ComputeCullingResources::IndirectCmds);
-BenzinDeclareRootResource(RWBuffer<uint>, g_CmdCounter, joint::ComputeCullingResources::IndirectCmdCounter);
+BenzinDeclareRootResource(RWStructuredBuffer<joint::MeshDrawCmd>, g_DrawCmds, joint::ComputeCullingResources::MeshDrawCmds);
+BenzinDeclareRootResource(RWBuffer<uint>, g_CmdCounter, joint::ComputeCullingResources::MeshDrawCmdCounter);
 
 [numthreads(64, 1, 1)]
 void CsMain(uint dtid : SV_DispatchThreadID)
@@ -281,7 +281,7 @@ void CsMain(uint dtid : SV_DispatchThreadID)
         return;
 
     const joint::MeshDraw draw = g_MeshDraws[dtid];
-    const joint::MeshPart part = g_MeshParts[draw.m_PartIndex];
+    const joint::Mesh mesh = g_Meshes[draw.m_MeshIndex];
 
 #if LATE_CULLING_ENABLED
     bool isVisible = true;
@@ -291,7 +291,7 @@ void CsMain(uint dtid : SV_DispatchThreadID)
 
     if (isVisible)
     {
-        isVisible &= !IsFrustumCulled(draw, part.m_Center, part.m_Radius);
+        isVisible &= !IsFrustumCulled(draw, mesh.m_Center, mesh.m_Radius);
     }
 
 #if LATE_CULLING_ENABLED
@@ -302,18 +302,18 @@ void CsMain(uint dtid : SV_DispatchThreadID)
 
     if (isDrawNeeded)
     {
-        joint::DrawIndirectCmd cmd = (joint::DrawIndirectCmd)0;
+        joint::MeshDrawCmd cmd = (joint::MeshDrawCmd)0;
         cmd.m_DrawIndex = dtid;
-        cmd.m_IndexCountPerInstance = part.m_IndexCount;
+        cmd.m_IndexCountPerInstance = mesh.m_IndexCount;
         cmd.m_InstanceCount = 1;
-        cmd.m_StartIndexLocation = part.m_IndexOffset;
-        cmd.m_BaseVertexLocation = part.m_VertexOffset;
+        cmd.m_StartIndexLocation = mesh.m_IndexOffset;
+        cmd.m_BaseVertexLocation = mesh.m_VertexOffset;
         cmd.m_StartInstanceLocation = 0;
 
         uint cmdIndex;
         InterlockedAdd(g_CmdCounter[0], 1, cmdIndex);
 
-        g_IndirectDrawCmds[cmdIndex] = cmd;
+        g_DrawCmds[cmdIndex] = cmd;
     }
 
 #if LATE_CULLING_ENABLED

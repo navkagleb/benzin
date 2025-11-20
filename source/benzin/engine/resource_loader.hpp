@@ -4,8 +4,8 @@ namespace benzin
 {
 
     struct Material;
-    struct Mesh;
-    struct MeshDrawPart;
+    struct MeshDraw;
+    struct MeshGeometry;
     struct TextureImage;
 
     bool LoadTextureImageFromHdrFile(std::string_view fileName, TextureImage& textureImage);
@@ -13,8 +13,8 @@ namespace benzin
 
     bool LoadMeshFromGltfFile(
         std::string_view fileName,
-        Mesh& mesh,
-        std::vector<MeshDrawPart>& meshDrawParts,
+        MeshGeometry& geometry,
+        std::vector<MeshDraw>& meshDraws,
         std::vector<Material>& materials,
         std::vector<TextureImage>& textures);
 

@@ -30,8 +30,8 @@ namespace sandbox
         void RunDrawPass(const char* gpuName, bool isLate) const;
 
         std::unique_ptr<benzin::Buffer> m_VisibilityBuffer;
-        std::unique_ptr<benzin::Buffer> m_DrawIndirectCmdBuffer;
-        std::unique_ptr<benzin::Buffer> m_DrawIndirectCountBuffer;
+        std::unique_ptr<benzin::Buffer> m_DrawCmdBuffer;
+        std::unique_ptr<benzin::Buffer> m_DrawCmdCountBuffer;
 
         ID3D12CommandSignature* m_D3D12DrawIndirectCmdSignature = nullptr;
     };

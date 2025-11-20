@@ -95,8 +95,8 @@ namespace benzin
 
     bool GltfReader::ReadFromFile(
         std::string_view fileName,
-        Mesh& mesh,
-        std::vector<MeshDrawPart>& meshDrawParts,
+        MeshGeometry& geometry,
+        std::vector<MeshDraw>& meshDraws,
         std::vector<Material>& materials,
         std::vector<TextureImage>& textures)
     {
@@ -142,8 +142,8 @@ namespace benzin
             return false;
         }
 
-        ParseGltfMeshes(mesh);
-        ParseGltfNodes(meshDrawParts);
+        ParseGltfMeshes(geometry);
+        ParseGltfNodes(meshDraws);
         ParseGltfMaterials(materials);
         ParseGltfTextures(textures);
 
@@ -170,7 +170,7 @@ namespace benzin
     }
 
     template <std::integral IndexType>
-    void GltfReader::ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive, Mesh& mesh)
+    void GltfReader::ParseGltfPrimitive(const tinygltf::Primitive& gltfPrimitive, MeshGeometry& geometry)
     {
         BenzinEnsure(gltfPrimitive.mode == TINYGLTF_MODE_TRIANGLES);
 
@@ -189,19 +189,19 @@ namespace benzin
         BenzinEnsure(normals.empty() || normals.size() == positions.size());
         BenzinEnsure(uvs.empty() || uvs.size() == uvs.size());
 
-        MeshPart part;
-        part.m_VertexOffset = (uint32_t)mesh.m_Vertices.size();
-        part.m_VertexCount = (uint32_t)positions.size();
-        part.m_IndexOffset = (uint32_t)mesh.m_Indices.size();
-        part.m_IndexCount = (uint32_t)indices.size();
+        Mesh mesh;
+        mesh.m_VertexOffset = (uint32_t)geometry.m_Vertices.size();
+        mesh.m_VertexCount = (uint32_t)positions.size();
+        mesh.m_IndexOffset = (uint32_t)geometry.m_Indices.size();
+        mesh.m_IndexCount = (uint32_t)indices.size();
 
-        mesh.m_Parts.push_back(part);
-        mesh.m_Vertices.reserve(mesh.m_Vertices.size() + positions.size());
-        mesh.m_Indices.reserve(mesh.m_Indices.size() + indices.size());
+        geometry.m_Meshes.push_back(mesh);
+        geometry.m_Vertices.reserve(geometry.m_Vertices.size() + positions.size());
+        geometry.m_Indices.reserve(geometry.m_Indices.size() + indices.size());
 
         for (uint32_t i = 0; i < positions.size(); ++i)
         {
-            joint::MeshVertex& vertex = mesh.m_Vertices.emplace_back();
+            joint::MeshVertex& vertex = geometry.m_Vertices.emplace_back();
 
             vertex.m_Position = positions[i];
             vertex.m_Position.z = -vertex.m_Position.z;
@@ -221,22 +221,22 @@ namespace benzin
         BenzinAssert(indices.size() % 3 == 0);
         for (uint32_t i = 0; i < indices.size(); i += 3)
         {
-            mesh.m_Indices.push_back(indices[i]);
-            mesh.m_Indices.push_back(indices[i + 2]);
-            mesh.m_Indices.push_back(indices[i + 1]);
+            geometry.m_Indices.push_back(indices[i]);
+            geometry.m_Indices.push_back(indices[i + 2]);
+            geometry.m_Indices.push_back(indices[i + 1]);
         }
     }
 
-    void GltfReader::ParseGltfMeshes(Mesh& mesh)
+    void GltfReader::ParseGltfMeshes(MeshGeometry& geometry)
     {
-        size_t partCount = 0;
+        size_t meshCount = 0;
         for (const tinygltf::Mesh& gltfMesh : m_GltfModel->meshes)
         {
-            partCount += gltfMesh.primitives.size();
+            meshCount += gltfMesh.primitives.size();
         }
 
-        BenzinAssert(mesh.m_Parts.empty());
-        mesh.m_Parts.reserve(partCount);
+        BenzinAssert(geometry.m_Meshes.empty());
+        geometry.m_Meshes.reserve(meshCount);
 
         for (const tinygltf::Mesh& gltfMesh : m_GltfModel->meshes)
         {
@@ -248,13 +248,13 @@ namespace benzin
                 switch (indexBufferAccessor.componentType)
                 {
                     case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-                        ParseGltfPrimitive<uint8_t>(gltfPrimitive, mesh);
+                        ParseGltfPrimitive<uint8_t>(gltfPrimitive, geometry);
                         break;
                     case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-                        ParseGltfPrimitive<uint16_t>(gltfPrimitive, mesh);
+                        ParseGltfPrimitive<uint16_t>(gltfPrimitive, geometry);
                         break;
                     case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-                        ParseGltfPrimitive<uint32_t>(gltfPrimitive, mesh);
+                        ParseGltfPrimitive<uint32_t>(gltfPrimitive, geometry);
                         break;
                     default:
                         BenzinAssert(false, "Unsupported index buffer component type: {}", indexBufferAccessor.componentType);
@@ -263,7 +263,7 @@ namespace benzin
         }
     }
 
-    void GltfReader::ParseGltfNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentObjectToLocal, std::vector<MeshDrawPart>& meshDrawParts)
+    void GltfReader::ParseGltfNode(int gltfNodeIndex, const DirectX::XMMATRIX& parentObjectToLocal, std::vector<MeshDraw>& meshDraws)
     {
         const tinygltf::Node& gltfNode = m_GltfModel->nodes[gltfNodeIndex];
         const DirectX::XMMATRIX objectToLocal = CalcObjectToLocalMatrix(gltfNode, parentObjectToLocal);
@@ -273,27 +273,25 @@ namespace benzin
         {
             for (uint32_t primitiveIndex = 0; primitiveIndex < m_GltfModel->meshes[gltfMeshIndex].primitives.size(); ++primitiveIndex)
             {
-                MeshDrawPart drawPart;
-                drawPart.m_ObjectToLocal = objectToLocal;
-                drawPart.m_PartIndex = (uint32_t)(gltfMeshIndex + primitiveIndex);
+                MeshDraw& draw = meshDraws.emplace_back();
+                draw.m_ObjectToLocal = objectToLocal;
+                draw.m_MeshIndex = (uint32_t)(gltfMeshIndex + primitiveIndex);
 
                 const int gltfMatrialIndex = m_GltfModel->meshes[gltfMeshIndex].primitives[primitiveIndex].material;
                 if (gltfMatrialIndex != -1)
                 {
-                    drawPart.m_MaterialIndex = (uint32_t)gltfMatrialIndex;
+                    draw.m_MaterialIndex = (uint32_t)gltfMatrialIndex;
                 }
-
-                meshDrawParts.push_back(drawPart);
             }
         }
 
         for (const int gltfChildNodeIndex : gltfNode.children)
         {
-            ParseGltfNode(gltfChildNodeIndex, objectToLocal, meshDrawParts);
+            ParseGltfNode(gltfChildNodeIndex, objectToLocal, meshDraws);
         }
     }
 
-    void GltfReader::ParseGltfNodes(std::vector<MeshDrawPart>& meshDrawParts)
+    void GltfReader::ParseGltfNodes(std::vector<MeshDraw>& meshDraws)
     {
         // NOTE: GLTF meshes use right-handed (RH) system.
         // So during parsing there are key steps which are mandatory to use GLTF meshes with LH matrices:
@@ -307,7 +305,7 @@ namespace benzin
         {
             for (const int gltfNodeIndex : gltfScene.nodes)
             {
-                ParseGltfNode(gltfNodeIndex, parentObjectToLocal, meshDrawParts);
+                ParseGltfNode(gltfNodeIndex, parentObjectToLocal, meshDraws);
             }
         }
     }

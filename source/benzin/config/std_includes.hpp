@@ -73,6 +73,12 @@ namespace benzin
     }
 
     template <typename T>
+    __forceinline auto ToMutSpan(T* data, size_t count = 1)
+    {
+        return std::span{ data, count };
+	}
+
+    template <typename T>
     __forceinline auto ToSpan(const std::vector<T>& vector)
     {
         return std::span<const T>{ vector };

@@ -9,10 +9,10 @@ namespace joint
     {
         MeshDrawCount,
         MeshDraws,
-        MeshParts,
+        Meshes,
 
-        IndirectCmds,
-        IndirectCmdCounter,
+        MeshDrawCmds,
+        MeshDrawCmdCounter,
         VisibilityBuffer,
     };
 

@@ -17,14 +17,9 @@ namespace benzin
     class Buffer;
     class Device;
     class Texture;
+    struct MeshDraw;
 
-    struct MeshRange
-    {
-        uint32_t m_DrawPartOffset = 0;
-        uint32_t m_DrawPartCount = 0;
-    };
-
-    struct MeshDraw
+    struct MeshRangeDraw
     {
         DirectX::XMFLOAT3 m_Translation = {};
         DirectX::XMFLOAT3 m_Rotation = {};
@@ -59,6 +54,12 @@ namespace benzin
 
     struct Scene
     {
+        struct MeshRange
+        {
+            uint32_t m_MeshDrawOffset = 0;
+            uint32_t m_MeshDrawCount = 0;
+        };
+
         using UpdateCallback = std::function<void()>;
 
         Device& m_Device;
@@ -67,8 +68,8 @@ namespace benzin
 
         std::vector<joint::MeshVertex> m_Vertices;
         std::vector<uint32_t> m_Indices;
-        std::vector<MeshPart> m_MeshParts;
-        std::vector<MeshDrawPart> m_MeshDrawParts;
+        std::vector<Mesh> m_Meshes;
+        std::vector<MeshDraw> m_MeshDraws;
 
         std::vector<joint::Meshlet> m_Meshlets;
         std::vector<joint::MeshletCullVolume> m_MeshletCullVolumes;
@@ -81,12 +82,12 @@ namespace benzin
         std::unordered_map<std::string, uint32_t> m_MeshRangeMap;
         std::vector<MeshRange> m_MeshRanges;
 
-        std::vector<MeshDraw> m_MeshDraws;
+        std::vector<MeshRangeDraw> m_MeshRangeDraws;
         std::vector<joint::MeshDraw> m_JointMeshDraws;
 
         std::unique_ptr<Buffer> m_VertexBuffer;
         std::unique_ptr<Buffer> m_IndexBuffer;
-        std::unique_ptr<Buffer> m_MeshPartBuffer;
+        std::unique_ptr<Buffer> m_MeshBuffer;
 
         std::unique_ptr<Buffer> m_MeshletBuffer;
         std::unique_ptr<Buffer> m_MeshletCullVolumeBuffer;
@@ -109,8 +110,8 @@ namespace benzin
 
         void AddMesh(
             const std::string& debugName,
-            Mesh&& mesh,
-            std::vector<MeshDrawPart>&& meshDrawParts,
+            MeshGeometry&& geometry,
+            std::vector<MeshDraw>&& meshDraws,
             std::vector<Material>&& materials = {},
             std::vector<TextureImage>&& textures = {});
 

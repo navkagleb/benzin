@@ -3,10 +3,10 @@
 namespace benzin
 {
 
-    struct Mesh;
+    struct MeshGeometry;
 
-    void OptimizeMesh(Mesh& mesh);
-    void GenerateMeshlets(Mesh& mesh);
+    void OptimizeMeshGeometry(MeshGeometry& geometry);
+    void GenerateMeshlets(MeshGeometry& geometry);
 
     bool SaveTextureArrayToDds(std::span<const std::string_view> fileNames, std::string_view outputFileName);
 

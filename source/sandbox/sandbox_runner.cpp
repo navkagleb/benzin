@@ -98,14 +98,14 @@ namespace sandbox
 
         for (const std::string_view fileName : meshFileNames)
         {
-            benzin::Mesh mesh;
-            std::vector<benzin::MeshDrawPart> meshDrawParts;
+            benzin::MeshGeometry geometry;
+            std::vector<benzin::MeshDraw> draws;
             std::vector<benzin::Material> materials;
             std::vector<benzin::TextureImage> textures;
-            BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, mesh, meshDrawParts, materials, textures));
+            BenzinAssertExpr(benzin::LoadMeshFromGltfFile(fileName, geometry, draws, materials, textures));
 
             const std::string debugName = benzin::CutExtension(fileName);
-            m_Scene->AddMesh(debugName, std::move(mesh), std::move(meshDrawParts), std::move(materials), std::move(textures));
+            m_Scene->AddMesh(debugName, std::move(geometry), std::move(draws), std::move(materials), std::move(textures));
         }
 
         benzin::PerspectiveCamera& camera = m_Scene->m_Camera;
@@ -141,7 +141,7 @@ namespace sandbox
 
         if (m_Scene->m_MeshRangeMap.contains("Sponza"))
         {
-            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
             draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("Sponza");
             draw.m_Translation.x = 5.0f;
             draw.m_Rotation.y = DirectX::XM_PI;
@@ -149,7 +149,7 @@ namespace sandbox
 
         if (m_Scene->m_MeshRangeMap.contains("OrientationTest"))
         {
-            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
             draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("OrientationTest");
             draw.m_Translation = { 2.5f, 0.2f, -0.25f };
             draw.m_Scale = 0.05f;
@@ -157,7 +157,7 @@ namespace sandbox
 
         if (m_Scene->m_MeshRangeMap.contains("MilkTruck"))
         {
-            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
             draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("MilkTruck");
             draw.m_Translation = { -1.5f, 0.2f, 0.5f };
             draw.m_Scale = 0.1f;
@@ -165,7 +165,7 @@ namespace sandbox
 
         if (m_Scene->m_MeshRangeMap.contains("Cylinder"))
         {
-            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
             draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("Cylinder");
             draw.m_Translation = { -1.5f, 0.4f, -0.25f };
             draw.m_Scale = 0.1f; // actually { 0.1f, 1.5f, 0.1f }
@@ -173,9 +173,9 @@ namespace sandbox
 
         if (m_Scene->m_MeshRangeMap.contains("BoomBox"))
         {
-            const size_t drawIndex = m_Scene->m_MeshDraws.size();
+            const size_t drawIndex = m_Scene->m_MeshRangeDraws.size();
 
-            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
             draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("BoomBox");
             draw.m_Translation.y = 0.6f;
             draw.m_Rotation.y = DirectX::XMConvertToRadians(45.0f);
@@ -183,7 +183,7 @@ namespace sandbox
 
             m_Scene->m_UpdateCallbacks.emplace_back([this, drawIndex]
             {
-                benzin::MeshDraw& draw = m_Scene->m_MeshDraws[drawIndex];
+                benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws[drawIndex];
                 draw.m_Rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
                 draw.m_Rotation.z += 0.0002f * m_AnimationTimer.GetDeltaTimeInMs();
             });
@@ -191,9 +191,9 @@ namespace sandbox
 
         if (m_Scene->m_MeshRangeMap.contains("DamagedHelmet"))
         {
-            const size_t drawIndex = m_Scene->m_MeshDraws.size();
+            const size_t drawIndex = m_Scene->m_MeshRangeDraws.size();
 
-            benzin::MeshDraw& draw = m_Scene->m_MeshDraws.emplace_back();
+            benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
             draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("DamagedHelmet");
             draw.m_Translation = { 1.0f, 0.5f, -0.5f };
             draw.m_Rotation.y = DirectX::XMConvertToRadians(45.0f);
@@ -201,7 +201,7 @@ namespace sandbox
 
             m_Scene->m_UpdateCallbacks.emplace_back([this, drawIndex]
             {
-                benzin::MeshDraw& draw = m_Scene->m_MeshDraws[drawIndex];
+                benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws[drawIndex];
                 draw.m_Rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
                 draw.m_Rotation.y -= 0.00015f * m_AnimationTimer.GetDeltaTimeInMs();
             });
@@ -249,23 +249,13 @@ namespace sandbox
         camera.SetFrontDirection({ 0.149f, -0.185f, 0.972f });
         camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
 
-        benzin::Mesh dragon;
-        std::vector<benzin::MeshDrawPart> dragonDrawParts;
-        std::vector<benzin::Material> dragonMaterials;
-        std::vector<benzin::TextureImage> dragonTextures;
-        BenzinAssertExpr(benzin::LoadMeshFromGltfFile(
-            "StanfordDragon/StanfordDragon.glb",
-            dragon,
-            dragonDrawParts,
-            dragonMaterials,
-            dragonTextures));
+        benzin::MeshGeometry dragon;
+        std::vector<benzin::MeshDraw> draws;
+        std::vector<benzin::Material> materials;
+        std::vector<benzin::TextureImage> textures;
+        BenzinAssertExpr(benzin::LoadMeshFromGltfFile("StanfordDragon/StanfordDragon.glb", dragon, draws, materials, textures));
 
-        m_Scene->AddMesh(
-            "StanfordDragon",
-            std::move(dragon),
-            std::move(dragonDrawParts),
-            std::move(dragonMaterials),
-            std::move(dragonTextures));
+        m_Scene->AddMesh("StanfordDragon", std::move(dragon), std::move(draws), std::move(materials), std::move(textures));
 
         const int32_t radius = 3;
 
@@ -275,15 +265,15 @@ namespace sandbox
             {
                 for (auto z = -radius; z <= radius; ++z)
                 {
-                    benzin::MeshDraw& meshDraw = m_Scene->m_MeshDraws.emplace_back();
-                    meshDraw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("StanfordDragon");
-                    meshDraw.m_Translation.x = (float)x * 2.5f;
-                    meshDraw.m_Translation.y = (float)y * 2.5f;
-                    meshDraw.m_Translation.z = (float)z * 2.5f;
-                    meshDraw.m_Rotation.x = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
-                    meshDraw.m_Rotation.y = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
-                    meshDraw.m_Rotation.z = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
-                    meshDraw.m_Scale = benzin::Random::Get<float>(0.03f, 0.15f);
+                    benzin::MeshRangeDraw& draw = m_Scene->m_MeshRangeDraws.emplace_back();
+                    draw.m_MeshRangeIndex = m_Scene->m_MeshRangeMap.at("StanfordDragon");
+                    draw.m_Translation.x = (float)x * 2.5f;
+                    draw.m_Translation.y = (float)y * 2.5f;
+                    draw.m_Translation.z = (float)z * 2.5f;
+                    draw.m_Rotation.x = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
+                    draw.m_Rotation.y = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
+                    draw.m_Rotation.z = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
+                    draw.m_Scale = benzin::Random::Get<float>(0.03f, 0.15f);
                 }
             }
         }

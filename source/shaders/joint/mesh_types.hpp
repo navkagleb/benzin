@@ -14,7 +14,7 @@ namespace joint
         float2 m_Uv;
     };
 
-    struct MeshPart
+    struct Mesh
     {
         uint32_t m_VertexOffset;
         uint32_t m_IndexOffset;
@@ -29,13 +29,13 @@ namespace joint
     {
         float4x4 m_LocalToWorld;
         float4x4 m_PrevLocalToWorld;
+        uint32_t m_MeshIndex;
         uint32_t m_MaterialIndex;
-        uint32_t m_PartIndex; // Only for CPU part
         float m_LocalToWorldScale;
         float m_Padding0;
     };
 
-    struct DrawIndirectCmd
+    struct MeshDrawCmd
     {
         uint m_DrawIndex;
 
