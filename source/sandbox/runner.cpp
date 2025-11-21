@@ -3,8 +3,6 @@
 
 #include <benzin/core/cmd_line_args.hpp>
 #include <benzin/core/profiler.hpp>
-#include <benzin/engine/ray_tracing_scene.hpp>
-#include <benzin/engine/scene.hpp>
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
@@ -51,9 +49,6 @@ namespace sandbox
         benzin::MakeUniquePtr(m_GpuProfiler, *m_Device);
         benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager);
 
-        benzin::MakeUniquePtr(m_Scene);
-        benzin::MakeUniquePtr(m_RayTracingScene, *m_Device, *m_Scene);
-
         benzin::MakeUniquePtr(m_RenderResources, *m_Device);
         benzin::MakeUniquePtr(m_RenderSettings);
 
@@ -75,13 +70,13 @@ namespace sandbox
             *m_RenderSettings,
             m_FrameTimer,
             m_AnimationTimer,
-            *m_Scene,
-            *m_RayTracingScene);
+            m_Scene,
+            m_RayTracingScene);
 
         benzin::ScopedGpuEvent::SetContext(*m_Device);
         benzin::ScopedGpuProfileEvent::SetContext(*m_Device, *m_GpuProfiler);
 
-        m_CameraController.SetCamera(m_Scene->m_Camera);
+        m_CameraController.SetCamera(m_Scene.m_Camera);
     }
 
     Runner::~Runner()
@@ -141,9 +136,9 @@ namespace sandbox
 
         BeginFrame();
         {
-            m_Scene->UploadMeshDrawsToGpu(*m_Device);
-            m_Scene->UploadMeshGeometryToGpu(*m_Device);
-            m_RayTracingScene->BuildBlases();
+            m_Scene.UploadMeshDrawsToGpu(*m_Device);
+            m_Scene.UploadMeshGeometryToGpu(*m_Device);
+            m_RayTracingScene.BuildBlases(*m_Device);
 
             for (auto& renderPass : m_RenderPasses)
             {
@@ -308,7 +303,7 @@ namespace sandbox
             }
         }
 
-        m_Scene->UploadMeshDrawsToGpu(*m_Device);
+        m_Scene.UploadMeshDrawsToGpu(*m_Device);
 
         RunImGuiFrame();
 

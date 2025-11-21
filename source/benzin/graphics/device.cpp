@@ -140,6 +140,7 @@ namespace benzin
 
     Device::Device(const DeviceCreation& creation)
     {
+#if BENZIN_IS_DEBUG_BUILD
         {
             ComPtr<ID3D12Debug5> d3d12Debug;
             BenzinD3D12Call(D3D12GetDebugInterface(IID_PPV_ARGS(&d3d12Debug)));
@@ -153,6 +154,7 @@ namespace benzin
             BenzinTrace("GPUBasedValidation enabled: {}", CmdLineArgs::IsGpuValidationEnabled());
             BenzinTrace("SynchronizedCommandQueueValidation enabled: {}", CmdLineArgs::IsSynchronizedCommandQueueValidationEnabled());
         }
+#endif
 
         ComPtr<ID3D12Device> d3d12Device;
         BenzinD3D12Call(::D3D12CreateDevice(
@@ -163,6 +165,7 @@ namespace benzin
         BenzinD3D12Call(d3d12Device->QueryInterface(&m_D3D12Device));
         SetD3DObjectDebugName(m_D3D12Device, creation.m_DebugName);
 
+#if BENZIN_IS_DEBUG_BUILD
         {
             ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
             BenzinD3D12Call(m_D3D12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
@@ -179,6 +182,7 @@ namespace benzin
             d3d12DredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
             d3d12DredSettings->SetBreadcrumbContextEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
         }
+#endif
 
         D3D12Asserter::SetDeviceRemovedCallback([this]
         {
@@ -236,6 +240,7 @@ namespace benzin
         m_DescriptorManager.reset();
         m_UnifiedRootSignature.reset();
 
+#if BENZIN_IS_DEBUG_BUILD
         {
             ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
             BenzinD3D12Call(m_D3D12Device->QueryInterface(IID_PPV_ARGS(&d3d12InfoQueue)));
@@ -247,6 +252,7 @@ namespace benzin
             BenzinD3D12Call(m_D3D12Device->QueryInterface(IID_PPV_ARGS(&d3d12DebugDevice)));
             BenzinD3D12Call(d3d12DebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL));
         }
+#endif
 
         SafeReleaseD3DObject(m_D3D12Device);
     }

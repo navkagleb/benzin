@@ -87,12 +87,12 @@ namespace sandbox
     {
         BenzinTraceScopeTime("SandboxRunner::InitScene");
 
-        benzin::PerspectiveCamera& camera = m_Scene->m_Camera;
+        benzin::PerspectiveCamera& camera = m_Scene.m_Camera;
         camera.SetPosition({ -1.649f, 1.007f, -1.555f });
         camera.SetFrontDirection({ 0.769f, 0.129f, 0.627f });
         camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
 
-        benzin::SunLight& sunLight = m_Scene->m_SunLight;
+        benzin::SunLight& sunLight = m_Scene.m_SunLight;
         sunLight.m_Color = { 1.0f, 1.0f, 0.7f };
         sunLight.m_Intensity = 10.0f;
 
@@ -111,8 +111,8 @@ namespace sandbox
             static float elevationDirection = 1.0f;
             static float azimithDirection = 1.0f;
 
-            float& elevation = m_Scene->m_SunLight.m_ElevationInRadians;
-            float& azimuth = m_Scene->m_SunLight.m_AzimuthInRadians;
+            float& elevation = m_Scene.m_SunLight.m_ElevationInRadians;
+            float& azimuth = m_Scene.m_SunLight.m_AzimuthInRadians;
 
             animateSunAngle(DirectX::XMConvertToRadians(41.0f), DirectX::XMConvertToRadians(52.0f), elevation, elevationDirection);
             animateSunAngle(DirectX::XMConvertToRadians(-2.0f), DirectX::XMConvertToRadians(3.0f), azimuth, azimithDirection);
@@ -146,7 +146,7 @@ namespace sandbox
 
                 std::scoped_lock lock{ geometryMutex };
 
-                geometries[debugName] = m_Scene->AddMeshGeometry(
+                geometries[debugName] = m_Scene.AddMeshGeometry(
                     debugName,
                     std::move(geometry),
                     std::move(draws),
@@ -154,19 +154,23 @@ namespace sandbox
                     std::move(textures));
             });
 
-        const auto addGeometryDraw = [this, &geometries](const std::string& name, const DirectX::XMFLOAT3& translation, float scale, const DirectX::XMFLOAT3& rotation = {})
+        const auto addGeometryDraw = [this, &geometries](
+            const std::string& name,
+            const DirectX::XMFLOAT3& translation,
+            float scale,
+            const DirectX::XMFLOAT3& rotation = {})
         {
             if (!geometries.contains(name))
                 return benzin::g_MaxU32;
 
-            benzin::MeshGeometryDraw& draw = m_Scene->m_MeshGeometryDraws.emplace_back();
+            benzin::MeshGeometryDraw& draw = m_Scene.m_MeshGeometryDraws.emplace_back();
             draw.m_MeshDrawOffset = geometries.at(name).m_MeshDrawOffset;
             draw.m_MeshDrawCount = geometries.at(name).m_MeshDrawCount;
             draw.m_Translation = translation;
             draw.m_Scale = scale;
             draw.m_Rotation = rotation;
 
-            return (uint32_t)m_Scene->m_MeshGeometryDraws.size() - 1;
+            return (uint32_t)m_Scene.m_MeshGeometryDraws.size() - 1;
         };
 
         addGeometryDraw("Sponza", { 5.0f, 0.0f, 0.0f }, 1.0f, { 0.0f, DirectX::XM_PI, 0.0f });
@@ -181,7 +185,7 @@ namespace sandbox
         {
             m_UpdateCallbacks.emplace_back([this, boomBooxDrawIndex]
             {
-                benzin::MeshGeometryDraw& draw = m_Scene->m_MeshGeometryDraws[boomBooxDrawIndex];
+                benzin::MeshGeometryDraw& draw = m_Scene.m_MeshGeometryDraws[boomBooxDrawIndex];
                 draw.m_Rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
                 draw.m_Rotation.z += 0.0002f * m_AnimationTimer.GetDeltaTimeInMs();
             });
@@ -191,7 +195,7 @@ namespace sandbox
         {
             m_UpdateCallbacks.emplace_back([this, damagedHelmetDrawIndex]
             {
-                benzin::MeshGeometryDraw& draw = m_Scene->m_MeshGeometryDraws[damagedHelmetDrawIndex];
+                benzin::MeshGeometryDraw& draw = m_Scene.m_MeshGeometryDraws[damagedHelmetDrawIndex];
                 draw.m_Rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
                 draw.m_Rotation.y -= 0.00015f * m_AnimationTimer.GetDeltaTimeInMs();
             });
@@ -203,7 +207,7 @@ namespace sandbox
             const int32_t zRadius = 70;
             const int32_t totalCount = (xRadius * 2 + 1) * (zRadius * 2 + 1);
 
-            m_Scene->m_GrassPatches.reserve(totalCount);
+            m_Scene.m_GrassPatches.reserve(totalCount);
 
             for (auto x = -xRadius; x <= xRadius; ++x)
             {
@@ -217,7 +221,7 @@ namespace sandbox
                         0.0f,
                     });
 
-                    joint::GrassPatch& grassPatch = m_Scene->m_GrassPatches.emplace_back();
+                    joint::GrassPatch& grassPatch = m_Scene.m_GrassPatches.emplace_back();
                     grassPatch.Pos.x = (float)x * 0.07f + 6.0f;
                     grassPatch.Pos.z = (float)z * 0.07f - 0.3f;
                     grassPatch.Height = benzin::Random::Get<float>(0.07f, 0.13f);
@@ -234,7 +238,7 @@ namespace sandbox
         m_RenderSettings->GetSection<RayTracing_ShadowSettings>().m_IsEnabled = false;
         m_RenderSettings->GetSection<SigmaDenoiserSettings>().m_IsEnabled = false;
 
-        benzin::PerspectiveCamera& camera = m_Scene->m_Camera;
+        benzin::PerspectiveCamera& camera = m_Scene.m_Camera;
         camera.SetPosition({ -2.286f, 3.911f, -18.385f });
         camera.SetFrontDirection({ 0.149f, -0.185f, 0.972f });
         camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
@@ -245,7 +249,7 @@ namespace sandbox
         std::vector<benzin::TextureImage> textures;
         BenzinAssertExpr(benzin::LoadMeshFromGltfFile("StanfordDragon/StanfordDragon.glb", dragon, draws, materials, textures));
 
-        const auto [drawOffset, drawCount] = m_Scene->AddMeshGeometry(
+        const auto [drawOffset, drawCount] = m_Scene.AddMeshGeometry(
             "StanfordDragon",
             std::move(dragon),
             std::move(draws),
@@ -260,7 +264,7 @@ namespace sandbox
             {
                 for (auto z = -radius; z <= radius; ++z)
                 {
-                    benzin::MeshGeometryDraw& draw = m_Scene->m_MeshGeometryDraws.emplace_back();
+                    benzin::MeshGeometryDraw& draw = m_Scene.m_MeshGeometryDraws.emplace_back();
                     draw.m_MeshDrawOffset = drawOffset;
                     draw.m_MeshDrawCount = drawCount;
                     draw.m_Translation.x = (float)x * 2.5f;

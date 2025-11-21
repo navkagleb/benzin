@@ -247,8 +247,7 @@ namespace benzin
         const TickTimer& frameTimer,
         const TickTimer& animationTimer,
         const Scene& scene,
-        RayTracing_Scene& rayTracingScene
-    )
+        RayTracingScene& rayTracingScene)
     {
         ms_Device = &device;
         ms_SwapChain = &swapChain;

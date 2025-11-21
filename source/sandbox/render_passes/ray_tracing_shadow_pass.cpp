@@ -97,7 +97,7 @@ namespace sandbox
         if (settings.m_IsEnabled)
         {
             BenzinScopeProfile("UpdateTlasInstances");
-            ms_RayTracingScene->UpdateTlasInstances();
+            ms_RayTracingScene->UpdateTlasInstances(*ms_Device);
         }
     }
 

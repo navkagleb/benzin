@@ -33,6 +33,8 @@ namespace benzin
         std::vector<Material>&& materials,
         std::vector<TextureImage>&& textures)
     {
+        BenzinTraceScopeTime("Scene::AddMeshGeometry - {}", debugName);
+
         {
             BenzinTraceScopeTime("{} mesh optimization + meshlet generation", debugName);
 
@@ -114,7 +116,7 @@ namespace benzin
 
     void Scene::UploadMeshGeometryToGpu(Device& device)
     {
-        BenzinTraceScopeTime("Scene::UploadToGpu");
+        BenzinTraceScopeTime("Scene::UploadMeshGeometryToGpu");
 
         {
             m_Textures.reserve(m_TextureImages.size());

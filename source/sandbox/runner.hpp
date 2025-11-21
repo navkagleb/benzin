@@ -1,6 +1,8 @@
 #pragma once
 
 #include <benzin/engine/camera.hpp>
+#include <benzin/engine/ray_tracing_scene.hpp>
+#include <benzin/engine/scene.hpp>
 #include <benzin/graphics2/gpu_print_pass.hpp>
 #include <benzin/graphics2/render_pass.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
@@ -57,8 +59,8 @@ namespace sandbox
         benzin::TickTimer m_FrameTimer;
         benzin::TickTimer m_AnimationTimer;
 
-        std::unique_ptr<benzin::Scene> m_Scene;
-        std::unique_ptr<benzin::RayTracing_Scene> m_RayTracingScene;
+        benzin::Scene m_Scene;
+        benzin::RayTracingScene m_RayTracingScene{ m_Scene };
 
         std::unique_ptr<benzin::RenderResources> m_RenderResources;
         std::unique_ptr<benzin::RenderSettings> m_RenderSettings;

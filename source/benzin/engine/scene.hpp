@@ -7,7 +7,6 @@ namespace joint
 {
     struct GrassPatch;
     struct MeshDraw;
-    struct MeshletCullVolume;
 }
 
 namespace benzin
@@ -16,7 +15,6 @@ namespace benzin
     class Buffer;
     class Device;
     class Texture;
-    struct MeshDraw;
 
     struct MeshGeometryDraw
     {

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <benzin/graphics/common.hpp>
 #include <benzin/graphics2/game_specific_resource_ids.hpp>
 
 namespace benzin
@@ -9,7 +8,7 @@ namespace benzin
     class Buffer;
     class Device;
     class PsoManager;
-    class RayTracing_Scene;
+    class RayTracingScene;
     class SwapChain;
     class Texture;
     class TickTimer;
@@ -163,8 +162,7 @@ namespace benzin
             const TickTimer& frameTimer,
             const TickTimer& animationTimer,
             const Scene& scene,
-            RayTracing_Scene& rayTracingScene
-        );
+            RayTracingScene& rayTracingScene);
 
         static void SetWindowSize(uint32_t width, uint32_t height);
         static void SetRenderViewport(uint32_t width, uint32_t height);
@@ -191,7 +189,7 @@ namespace benzin
         static inline const TickTimer* ms_AnimationTimer = nullptr;
 
         static inline const Scene* ms_Scene = nullptr;
-        static inline RayTracing_Scene* ms_RayTracingScene = nullptr;
+        static inline RayTracingScene* ms_RayTracingScene = nullptr;
 
         static inline uint32_t ms_WindowWidth = 0;
         static inline uint32_t ms_WindowHeight = 0;

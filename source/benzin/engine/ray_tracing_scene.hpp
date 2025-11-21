@@ -5,24 +5,22 @@
 namespace benzin
 {
 
-    class Buffer;
     class Device;
     struct Scene;
 
-    class RayTracing_Scene
+    class RayTracingScene
     {
     public:
-        RayTracing_Scene(Device& device, Scene& scene);
-        ~RayTracing_Scene();
+        explicit RayTracingScene(const Scene& scene);
+        ~RayTracingScene();
 
         const auto& GetTlas() const { return m_Tlas; }
 
-        void BuildBlases();
-        void UpdateTlasInstances();
+        void BuildBlases(Device& device);
+        void UpdateTlasInstances(Device& device);
 
     private:
-        Device& m_Device;
-        Scene& m_Scene;
+        const Scene& m_Scene;
 
         RayTracing_Tlas m_Tlas;
         std::vector<RayTracing_Blas> m_Blases;

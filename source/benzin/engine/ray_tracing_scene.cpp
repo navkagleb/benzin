@@ -13,19 +13,18 @@
 namespace benzin
 {
 
-    RayTracing_Scene::RayTracing_Scene(Device& device, Scene& scene)
-        : m_Device{ device }
-        , m_Scene{ scene }
+    RayTracingScene::RayTracingScene(const Scene& scene)
+        : m_Scene{ scene }
     {}
 
-    RayTracing_Scene::~RayTracing_Scene()
+    RayTracingScene::~RayTracingScene()
     {
         m_Blases.clear();
     }
 
-    void RayTracing_Scene::BuildBlases()
+    void RayTracingScene::BuildBlases(Device& device)
     {
-        BenzinTraceScopeTime("RayTracing_Scene::BuildBlases");
+        BenzinTraceScopeTime("RayTracingScene::BuildBlases");
 
         uint32_t drawCount = 0;
         for (const MeshGeometryDraw& geometryDraw : m_Scene.m_MeshGeometryDraws)
@@ -36,9 +35,9 @@ namespace benzin
         std::vector<DirectX::XMFLOAT3X4> localTransforms;
         localTransforms.reserve(drawCount);
 
-        auto localTransformBuffer = std::make_unique<Buffer>(m_Device, BufferCreation
+        auto localTransformBuffer = std::make_unique<Buffer>(device, BufferCreation
         {
-            .m_DebugName = "RayTracing_Scene::LocalTransforms",
+            .m_DebugName = "RayTracingScene::LocalTransforms",
             .m_HeapType = GpuHeapType::GpuUpload,
             .m_Type = BufferType::Structured,
             .m_ElementSizeInBytes = sizeof(DirectX::XMFLOAT3X4),
@@ -71,11 +70,11 @@ namespace benzin
         BufferWriter writer = MakeBufferWriter(*localTransformBuffer);
         writer.WriteArray(ToSpan(localTransforms));
 
-        ComputeCmdList& cmdList = m_Device.GetGraphicsCmdQueue().GetCmdList();
+        ComputeCmdList& cmdList = device.GetGraphicsCmdQueue().GetCmdList();
 
         for (RayTracing_Blas& blas : m_Blases)
         {
-            blas.AllocateBuffers(m_Device, "TODO");
+            blas.AllocateBuffers(device, "TODO");
             cmdList.AddTransition(*blas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
@@ -90,7 +89,7 @@ namespace benzin
         cmdList.FlushBarriers();
     }
 
-    void RayTracing_Scene::UpdateTlasInstances()
+    void RayTracingScene::UpdateTlasInstances(Device& device)
     {
         BenzinProfile();
 
@@ -98,7 +97,7 @@ namespace benzin
 
         for (uint32_t i = 0; i < m_Scene.m_MeshGeometryDraws.size(); ++i)
         {
-			const MeshGeometryDraw& geometryDraw = m_Scene.m_MeshGeometryDraws[i];
+            const MeshGeometryDraw& geometryDraw = m_Scene.m_MeshGeometryDraws[i];
 
             const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(geometryDraw.m_Scale, geometryDraw.m_Scale, geometryDraw.m_Scale);
             const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(geometryDraw.m_Rotation.x) * DirectX::XMMatrixRotationY(geometryDraw.m_Rotation.y) * DirectX::XMMatrixRotationZ(geometryDraw.m_Rotation.z);
@@ -111,11 +110,11 @@ namespace benzin
             m_Tlas.AddInstance(instance);
         }
 
-        m_Tlas.AllocateInstanceBuffer(m_Device, "RayTracing_Scene::Tlas");
+        m_Tlas.AllocateInstanceBuffer(device, "RayTracing_Scene::Tlas");
 
         if (m_Tlas.GetBuffer() == nullptr || m_Tlas.GetScratchResource() == nullptr)
         {
-            m_Tlas.AllocateBuffers(m_Device, "RayTracing_Scene::Tlas");
+            m_Tlas.AllocateBuffers(device, "RayTracing_Scene::Tlas");
         }
     }
 
