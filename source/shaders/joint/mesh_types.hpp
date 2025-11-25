@@ -14,15 +14,21 @@ namespace joint
         float2 m_Uv;
     };
 
-    struct Mesh
+    struct MeshLod
     {
-        uint32_t m_VertexOffset;
         uint32_t m_IndexOffset;
         uint32_t m_IndexCount;
-        uint32_t m_Padding0;
+    };
 
+    struct Mesh
+    {
         float3 m_Center;
         float m_Radius;
+
+        uint32_t m_VertexOffset;
+
+        uint32_t m_LodCount;
+        MeshLod m_Lods[8];
     };
 
     struct MeshDraw
@@ -72,6 +78,7 @@ namespace joint
 
     enum class MeshletConsts
     {
+        LodCount = 8,
         MaxVertexCount = 64,
         MaxTriangleCount = 124, // Must be multiple of 4 (for meshoptimizer library)
     };

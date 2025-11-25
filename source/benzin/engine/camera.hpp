@@ -96,7 +96,7 @@ namespace benzin
 
         PerspectiveCamera* m_Camera = nullptr;
 
-        float m_CameraTranslationSpeed = 0.002f;
+        float m_CameraTranslationSpeed = 0.2f;
         float m_MouseSensitivity = 0.003f;
         float m_MouseWheelSensitivity = 0.04f;
 

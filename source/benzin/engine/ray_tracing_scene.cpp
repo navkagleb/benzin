@@ -56,8 +56,8 @@ namespace benzin
                 RayTracing_Blas::Geometry geometry{ .m_VertexBuffer = *m_Scene.m_VertexBuffer, .m_IndexBuffer = *m_Scene.m_IndexBuffer };
                 geometry.m_VertexOffset = mesh.m_VertexOffset;
                 geometry.m_VertexCount = mesh.m_VertexCount;
-                geometry.m_IndexOffset = mesh.m_IndexOffset;
-                geometry.m_IndexCount = mesh.m_IndexCount;
+                geometry.m_IndexOffset = mesh.m_Lods[0].m_IndexOffset;
+                geometry.m_IndexCount = mesh.m_Lods[0].m_IndexCount;
                 geometry.m_TransformGpuAddress = localTransformBuffer->GetGpuVirtualAddress((uint32_t)localTransforms.size());
 
                 blas.AddGeometry(geometry);

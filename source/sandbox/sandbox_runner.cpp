@@ -44,9 +44,8 @@ namespace sandbox
         {
             {
                 auto& stats = m_RenderSettings->GetSection<GBufferStats>();
-                stats.m_TotalMeshletCount = readbackStats[*joint::ReadbackStat::Geometry_TotalMeshletCount];
-                stats.m_TotalTriangleCount = readbackStats[*joint::ReadbackStat::Geometry_TotalTriangleCount];
-                stats.m_RenderedMeshletCount = readbackStats[*joint::ReadbackStat::Geometry_RenderedMeshletCount];
+                stats.m_TotalMeshCount = readbackStats[*joint::ReadbackStat::Geometry_TotalMeshCount];
+                stats.m_RenderedMeshCount = readbackStats[*joint::ReadbackStat::Geometry_RenderedMeshCount];
                 stats.m_RenderedTriangleCount = readbackStats[*joint::ReadbackStat::Geometry_RenderedTriangleCount];
             }
 

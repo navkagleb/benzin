@@ -84,7 +84,6 @@ BenzinDeclareRootResource(StructuredBuffer<joint::MeshletCullVolume>, g_MeshletC
 BenzinDeclareRootResource(Buffer<uint>, g_MeshletVertexIndices, joint::GeometryResources::MeshletVertexIndices);
 BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
 
-#define MESH_STATS_ENABLED 1
 #define g_AmplificationGroupSize 32
 
 struct MeshPayload
@@ -101,12 +100,6 @@ void AsMain(uint dispatchIndex : SV_DispatchThreadID)
 
     const joint::MeshDispatch dispatch = g_Dispatches[dispatchIndex];
 
-#if MESH_STATS_ENABLED
-    const joint::Meshlet meshlet = g_Meshlets[dispatch.m_MeshletIndex];
-    InterlockedAddToStat(joint::ReadbackStat::Geometry_TotalMeshletCount, isVisible);
-    InterlockedAddToStat(joint::ReadbackStat::Geometry_TotalTriangleCount, isVisible * meshlet.m_TriangleCount);
-#endif
-
     if (g_FrameConsts.m_IsFrustumCullingEnabled && isVisible)
     {
         const joint::MeshDraw draw = g_Draws[dispatch.m_MeshDrawIndex];
@@ -114,11 +107,6 @@ void AsMain(uint dispatchIndex : SV_DispatchThreadID)
     
         isVisible = !IsFrustumCulled(draw, cullVolume.m_Center, cullVolume.m_Radius);
     }
-
-#if MESH_STATS_ENABLED
-    InterlockedAddToStat(joint::ReadbackStat::Geometry_RenderedMeshletCount, isVisible);
-    InterlockedAddToStat(joint::ReadbackStat::Geometry_RenderedTriangleCount, isVisible * meshlet.m_TriangleCount);
-#endif
 
     if (isVisible)
     {
@@ -289,7 +277,7 @@ void CsMain(uint dtid : SV_DispatchThreadID)
     bool isVisible = g_VisibilityBuffer[dtid];
 #endif
 
-    if (isVisible)
+    if (g_FrameConsts.m_IsFrustumCullingEnabled && isVisible)
     {
         isVisible &= !IsFrustumCulled(draw, mesh.m_Center, mesh.m_Radius);
     }
@@ -300,13 +288,17 @@ void CsMain(uint dtid : SV_DispatchThreadID)
     const bool isDrawNeeded = isVisible;
 #endif
 
+    InterlockedAddToStat(joint::ReadbackStat::Geometry_TotalMeshCount, 1);
+
     if (isDrawNeeded)
     {
+        const joint::MeshLod lod = mesh.m_Lods[0];
+
         joint::MeshDrawCmd cmd = (joint::MeshDrawCmd)0;
         cmd.m_DrawIndex = dtid;
-        cmd.m_IndexCountPerInstance = mesh.m_IndexCount;
+        cmd.m_IndexCountPerInstance = lod.m_IndexCount;
         cmd.m_InstanceCount = 1;
-        cmd.m_StartIndexLocation = mesh.m_IndexOffset;
+        cmd.m_StartIndexLocation = lod.m_IndexOffset;
         cmd.m_BaseVertexLocation = mesh.m_VertexOffset;
         cmd.m_StartInstanceLocation = 0;
 
@@ -314,6 +306,9 @@ void CsMain(uint dtid : SV_DispatchThreadID)
         InterlockedAdd(g_CmdCounter[0], 1, cmdIndex);
 
         g_DrawCmds[cmdIndex] = cmd;
+
+        InterlockedAddToStat(joint::ReadbackStat::Geometry_RenderedMeshCount, 1);
+        InterlockedAddToStat(joint::ReadbackStat::Geometry_RenderedTriangleCount, lod.m_IndexCount / 3);
     }
 
 #if LATE_CULLING_ENABLED

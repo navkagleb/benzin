@@ -62,7 +62,6 @@ namespace benzin
         std::vector<std::unique_ptr<Texture>> m_Textures;
 
         std::unique_ptr<Buffer> m_MeshDrawBuffer;
-        std::unique_ptr<Buffer> m_MeshDispatchBuffer;
 
         Scene();
         ~Scene();

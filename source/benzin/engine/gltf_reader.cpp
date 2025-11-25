@@ -192,8 +192,9 @@ namespace benzin
         Mesh mesh;
         mesh.m_VertexOffset = (uint32_t)geometry.m_Vertices.size();
         mesh.m_VertexCount = (uint32_t)positions.size();
-        mesh.m_IndexOffset = (uint32_t)geometry.m_Indices.size();
-        mesh.m_IndexCount = (uint32_t)indices.size();
+        mesh.m_Lods[0].m_IndexOffset = (uint32_t)geometry.m_Indices.size();
+        mesh.m_Lods[0].m_IndexCount = (uint32_t)indices.size();
+        mesh.m_LodCount = 1;
 
         geometry.m_Meshes.push_back(mesh);
         geometry.m_Vertices.reserve(geometry.m_Vertices.size() + positions.size());

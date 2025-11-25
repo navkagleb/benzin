@@ -15,17 +15,14 @@ namespace sandbox
         static const DXGI_FORMAT ms_Color4DxgiFormat = DXGI_FORMAT_R32_FLOAT; // ViewDepth
         static const DXGI_FORMAT ms_DepthStencilDxgiFormat = DXGI_FORMAT_D32_FLOAT;
 
-        bool m_IsMeshPipelineUsed = true;
+        bool m_IsLodSelectionEnabled = true;
         bool m_IsFrustumCullingEnabled = true;
-        bool m_IsIndirectDrawEnabled = true;
     };
 
     struct GBufferStats
     {
-        uint32_t m_TotalMeshletCount = 0;
-        uint32_t m_TotalTriangleCount = 0;
-
-        uint32_t m_RenderedMeshletCount = 0;
+        uint32_t m_TotalMeshCount = 0;
+        uint32_t m_RenderedMeshCount = 0;
         uint32_t m_RenderedTriangleCount = 0;
     };
 

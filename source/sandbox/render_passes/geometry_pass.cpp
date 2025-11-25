@@ -166,98 +166,13 @@ namespace sandbox
 
     void GeometryPass::OnRender() const
     {
-#if 0
-        using Resources = joint::GeometryResources;
-
-        BenzinProfile();
-        BenzinGpuProfile("Geometry");
-
-        benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-
-        const GBuffer gbuffer{ *ms_Resources };
-
-        cmdList.AddRenderTarget(gbuffer.m_AlbedoAndRoughness);
-        cmdList.AddRenderTarget(gbuffer.m_EmissiveAndMetallic);
-        cmdList.AddRenderTarget(gbuffer.m_WorldNormal);
-        cmdList.AddRenderTarget(gbuffer.m_Mv);
-        cmdList.AddRenderTarget(gbuffer.m_ViewDepth);
-        cmdList.AddDepthStencil(gbuffer.m_DepthStencil);
-        cmdList.SetRenderTargets();
-        cmdList.FlushBarriers();
-
-        cmdList.ClearRenderTarget(gbuffer.m_AlbedoAndRoughness);
-        cmdList.ClearRenderTarget(gbuffer.m_EmissiveAndMetallic);
-        cmdList.ClearRenderTarget(gbuffer.m_WorldNormal);
-        cmdList.ClearRenderTarget(gbuffer.m_Mv);
-        cmdList.ClearRenderTarget(gbuffer.m_ViewDepth);
-        cmdList.ClearDepthStencil(gbuffer.m_DepthStencil);
-
-        cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
-        cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
-
-        cmdList.SetGraphicsRootSrv(*Resources::MeshDraws, *ms_Scene->m_MeshDrawBuffer);
-        cmdList.SetGraphicsRootSrv(*Resources::Materials, *ms_Scene->m_MaterialBuffer);
-
-        const auto& settings = ms_Settings->GetSection<GBufferSettings>();
-
-        if (settings.m_IsMeshPipelineUsed)
-        {
-            cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Mesh));
-
-            cmdList.SetGraphicsRootSrv(*Resources::MeshDispathes, *ms_Scene->m_MeshDispatchBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*Resources::Vertices, *ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*Resources::Meshlets, *ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*Resources::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*Resources::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*Resources::MeshletIndices, *ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.FlushBarriers();
-
-            const auto dispatchCount = (uint32_t)ms_Scene->m_MeshDispatchBuffer->GetElementCount();
-            cmdList.SetGraphicsRootConstant(*Resources::MeshDispatchCount, dispatchCount);
-            cmdList.DispatchMesh({ dispatchCount, 1, 1 }, { 32, 1, 1 });
-        }
-        else
-        {
-            cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Vertex));
-
-            cmdList.SetVertexBuffer(*ms_Scene->m_VertexBuffer);
-            cmdList.SetIndexBuffer(*ms_Scene->m_IndexBuffer);
-            cmdList.FlushBarriers();
-
-            cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-            if (settings.m_IsIndirectDrawEnabled)
-            {
-                cmdList.GetD3D12GraphicsCommandList()->ExecuteIndirect(
-                    m_D3D12DrawIndirectCmdSignature,
-                    (uint32_t)m_DrawIndirectCmdBuffer->GetElementCount(),
-                    m_DrawIndirectCmdBuffer->GetD3D12Resource(),
-                    0,
-                    m_DrawIndirectCountBuffer->GetD3D12Resource(),
-                    0);
-            }
-            else
-            {
-                for (uint32_t i = 0; i < ms_Scene->m_JointMeshDraws.size(); ++i)
-                {
-                    cmdList.SetGraphicsRootConstant(*Resources::MeshDrawIndex, i);
-
-                    const joint::MeshDraw& jointDraw = ms_Scene->m_JointMeshDraws[i];
-                    const benzin::MeshPart& part = ms_Scene->m_MeshParts[jointDraw.m_PartIndex];
-
-                    cmdList.DrawIndexed(part.m_IndexCount, part.m_IndexOffset, part.m_VertexOffset);
-                }
-            }
-        }
-#else
         BenzinProfile();
         BenzinGpuProfile("Geometry");
 
         RunCullingPass("EarlyCulling", false);
-        RunDrawPass("EarlyDrawIndirect", false);
+        RunDrawPass("EarlyDraw", false);
         RunCullingPass("LateCulling", true);
-        RunDrawPass("LateDrawIndirect", true);
-#endif
+        RunDrawPass("LateDraw", true);
     }
 
     void GeometryPass::CreateGeometryPso(PsoId id, bool isMeshPipeline)

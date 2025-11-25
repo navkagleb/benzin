@@ -10,10 +10,8 @@ namespace joint
 namespace benzin
 {
 
-    struct Mesh
+    struct MeshLod
     {
-        uint32_t m_VertexOffset = 0;
-        uint32_t m_VertexCount = 0;
         uint32_t m_IndexOffset = 0;
         uint32_t m_IndexCount = 0;
 
@@ -23,6 +21,15 @@ namespace benzin
         uint32_t m_MeshletVertexIndexCount = 0;
         uint32_t m_MeshletIndexOffset = 0;
         uint32_t m_MeshletIndexCount = 0;
+    };
+
+    struct Mesh
+    {
+        uint32_t m_VertexOffset = 0;
+        uint32_t m_VertexCount = 0;
+
+        uint32_t m_LodCount = 0;
+        std::array<MeshLod, 8> m_Lods = {};
     };
 
     struct MeshDraw

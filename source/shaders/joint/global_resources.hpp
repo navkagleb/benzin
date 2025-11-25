@@ -7,9 +7,8 @@ namespace joint
 
     enum class ReadbackStat
     {
-        Geometry_TotalMeshletCount,
-        Geometry_TotalTriangleCount,
-        Geometry_RenderedMeshletCount,
+        Geometry_TotalMeshCount,
+        Geometry_RenderedMeshCount,
         Geometry_RenderedTriangleCount,
 
         ProceduralGrass_PatchCount,
@@ -58,6 +57,7 @@ namespace joint
         uint m_CpuFrameIndex;
         uint m_IsRenderResolutionChanged : 1;
         uint m_IsFrustumCullingEnabled : 1; // TODO: actually used only by geometry pass
+        uint m_IsLodSelectionEnabled : 1;
         uint m_IsDenoiserEnabled : 1;
 
         float m_DeltaTimeInSec;

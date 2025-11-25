@@ -206,7 +206,7 @@ namespace benzin
         MakeUniquePtr(m_GraphicsCmdQueue, *this);
         MakeUniquePtr(m_FrameFence, *this, FenceCreation{ "FrameFence", m_CompletedGpuFrameIndex });
 
-        MakeUniquePtr(m_PersistentDefaultHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentDefaultHeap", .m_Type = GpuHeapType::Default, .m_SizeInBytes = 500_mb });
+        MakeUniquePtr(m_PersistentDefaultHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentDefaultHeap", .m_Type = GpuHeapType::Default, .m_SizeInBytes = 600_mb });
         MakeUniquePtr(m_PersistentGpuUploadHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentUploadHeap", .m_Type = GpuHeapType::GpuUpload, .m_SizeInBytes = 4_mb });
         MakeUniquePtr(m_PersistentReadbackHeap, *this, GpuHeapCreation{ .m_DebugName = "PersistentReadbackHeap", .m_Type = GpuHeapType::Readback, .m_SizeInBytes = 4_mb });
 
