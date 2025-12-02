@@ -48,9 +48,10 @@ namespace benzin
 
         const auto& GetCaps() const { return m_Caps; }
 
-        auto& GetPersistentDefaultAllocator() { return *m_PersistentDefaultAllocator; }
-        auto& GetPersistentGpuUploadAllocator() { return *m_PersistentGpuUploadAllocator; }
-        auto& GetPersistentReadbackAllocator() { return *m_PersistentReadbackAllocator; }
+        decltype(auto) GetPersistentDefaultAllocator(this auto&& self) { return *self.m_PersistentDefaultAllocator; }
+        decltype(auto) GetPersistentGpuUploadAllocator(this auto&& self) { return *self.m_PersistentGpuUploadAllocator; }
+        decltype(auto) GetPersistentReadbackAllocator(this auto&& self) { return *self.m_PersistentReadbackAllocator; }
+        decltype(auto) GetResDependentAllocator(this auto&& self) { return *self.m_ResDependentAllocator; }
 
         auto& GetConstBufferAllocator() { return *m_ConstBufferAllocator; }
 
@@ -80,10 +81,12 @@ namespace benzin
         std::unique_ptr<GpuHeap> m_PersistentDefaultHeap;
         std::unique_ptr<GpuHeap> m_PersistentGpuUploadHeap;
         std::unique_ptr<GpuHeap> m_PersistentReadbackHeap;
+        std::unique_ptr<GpuHeap> m_ResDependentHeap;
 
         std::unique_ptr<GpuHeapLinearAllocator> m_PersistentDefaultAllocator;
         std::unique_ptr<GpuHeapLinearAllocator> m_PersistentGpuUploadAllocator;
         std::unique_ptr<GpuHeapLinearAllocator> m_PersistentReadbackAllocator;
+        std::unique_ptr<GpuHeapLinearAllocator> m_ResDependentAllocator;
 
         std::unique_ptr<ConstBufferLinearAllocator> m_ConstBufferAllocator;
 

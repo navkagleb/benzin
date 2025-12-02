@@ -27,9 +27,7 @@ namespace benzin
         auto GetD3D12State() const { return m_D3D12CurrentState; }
         void SetD3D12State(D3D12_RESOURCE_STATES d3d12State) const { m_D3D12CurrentState = d3d12State; }
 
-        uint64_t GetAllocationSizeInBytes() const;
-
-        virtual uint64_t GetSizeInBytes() const = 0;
+        virtual uint64_t GetSizeInBytes() const = 0; // TODO: Rename to GetCopyableSizeInBytes
 
     protected:
         template <typename T>

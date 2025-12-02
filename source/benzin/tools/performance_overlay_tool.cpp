@@ -4,6 +4,7 @@
 #include <benzin/core/cmd_line_args.hpp>
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp> 
 #include <benzin/graphics2/shader_manager.hpp>
 #include <benzin/system/window.hpp>
@@ -92,17 +93,22 @@ namespace benzin
         m_SmoothedGpuWaitTimeInMs = std::lerp(m_SmoothedGpuWaitTimeInMs, gpuWaitTimeInMs, smoothingFactor);
         m_SmoothedGpuTimeInMs = std::lerp(m_SmoothedGpuTimeInMs, gpuTimeInMs, smoothingFactor);
 
+        m_Device.GetPersistentDefaultAllocator().GetGpuHeap();
+
         ImGui::FmtText("FPS:      {:.1f}", m_AvgFps);
         ImGui::FmtText("CPU:      {:.3f} ms", m_SmoothedCpuTimeInMs);
         ImGui::FmtText("GPU:      {:.3f} ms", m_SmoothedGpuTimeInMs);
         ImGui::FmtText("CPU full: {:.3f} ms", m_SmoothedFullCpuTimeInMs);
         ImGui::FmtText("GPU wait: {:.3f} ms", m_SmoothedGpuWaitTimeInMs);
         ImGui::NewLine();
+        ImGui::FmtText("Persistent allocator:    {:3.0f} / {:.0f} mb", ToMb(m_Device.GetPersistentDefaultAllocator().GetOffsetInBytes()), ToMb(m_Device.GetPersistentDefaultAllocator().GetGpuHeap().GetSizeInBytes()));
+        ImGui::FmtText("Res dependent allocator: {:3.0f} / {:.0f} mb", ToMb(m_Device.GetResDependentAllocator().GetOffsetInBytes()), ToMb(m_Device.GetResDependentAllocator().GetGpuHeap().GetSizeInBytes()));
+        ImGui::NewLine();
         ImGui::FmtText("{}", m_Backend.GetMainAdapterInfo().m_Name);
         ImGui::FmtText("Local VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.m_UsedLocalVramInBytes), ToMb(adapterMemoryInfo.m_LocalVramBudgetInBytes));
-        ImGui::FmtText("Host VRAM: {:.0f} mb", ToMb(adapterMemoryInfo.m_UsedHostVramInBytes));
+        ImGui::FmtText("Host VRAM:  {:.0f} mb", ToMb(adapterMemoryInfo.m_UsedHostVramInBytes));
         ImGui::NewLine();
-        ImGui::FmtText("Window: {} x {}", ms_Window->GetWidth(), ms_Window->GetHeight());
+        ImGui::FmtText("Window:   {} x {}", ms_Window->GetWidth(), ms_Window->GetHeight());
         ImGui::FmtText("Viewport: {} x {}", m_Viewport.GetWidth(), m_Viewport.GetHeight());
 
         if (CmdLineArgs::IsGpuValidationEnabled())

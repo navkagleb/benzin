@@ -133,35 +133,12 @@ namespace sandbox
 
     void GeometryPass::OnRenderViewportResize()
     {
-        const auto createGBufferTexture = [](TextureId id, DXGI_FORMAT dxgiFormat, benzin::TextureAccessFlag accessFlag)
-        {
-            ms_Resources->Create(id, benzin::TextureCreation
-            {
-                .m_DebugName = magic_enum::enum_name(id),
-                .m_DxgiFormat = dxgiFormat,
-                .m_Width = ms_RenderViewportWidth,
-                .m_Height = ms_RenderViewportHeight,
-                .m_MipCount = 1,
-                .m_AccessFlags = accessFlag,
-            });
-        };
-
-        createGBufferTexture(TextureId::AlbedoAndRoughness, GBufferSettings::ms_Color0DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::EmissiveAndMetallic, GBufferSettings::ms_Color1DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::WorldNormal, GBufferSettings::ms_Color2DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::Mv, GBufferSettings::ms_Color3DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
-        createGBufferTexture(TextureId::DepthStencil, GBufferSettings::ms_DepthStencilDxgiFormat, benzin::TextureAccessFlag::AllowDepthStencil);
-
-        ms_Resources->Create(TextureId::ViewDepth, benzin::TextureCreation
-        {
-            .m_DebugName = magic_enum::enum_name(TextureId::ViewDepth),
-            .m_DxgiFormat = GBufferSettings::ms_Color4DxgiFormat,
-            .m_Width = ms_RenderViewportWidth,
-            .m_Height = ms_RenderViewportHeight,
-            .m_MipCount = 1,
-            .m_AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget | benzin::TextureAccessFlag::AllowUnorderedAccess,
-            .m_ClearValueVariant = DirectX::XMFLOAT4{ std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f }, // R32 max value
-        });
+        ms_Resources->Create(TextureId::AlbedoAndRoughness, GBufferSettings::ms_Color0DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
+        ms_Resources->Create(TextureId::EmissiveAndMetallic, GBufferSettings::ms_Color1DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
+        ms_Resources->Create(TextureId::WorldNormal, GBufferSettings::ms_Color2DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
+        ms_Resources->Create(TextureId::Mv, GBufferSettings::ms_Color3DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
+        ms_Resources->Create(TextureId::ViewDepth, GBufferSettings::ms_Color4DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
+        ms_Resources->Create(TextureId::DepthStencil, GBufferSettings::ms_DepthStencilDxgiFormat, benzin::TextureAccessFlag::AllowDepthStencil);
     }
 
     void GeometryPass::OnRender() const

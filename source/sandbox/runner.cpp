@@ -49,7 +49,7 @@ namespace sandbox
         benzin::MakeUniquePtr(m_GpuProfiler, *m_Device);
         benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager);
 
-        benzin::MakeUniquePtr(m_RenderResources, *m_Device);
+        benzin::MakeUniquePtr(m_RenderResources, m_Device->GetResDependentAllocator());
         benzin::MakeUniquePtr(m_RenderSettings);
 
         benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, m_FrameTimer);
@@ -127,12 +127,8 @@ namespace sandbox
         InitTools();
         InitScene();
 
-        // Force call window resize on render passes
+        // Force set window size for render passes
         benzin::RenderPass::SetWindowSize(m_MainWindow->GetWidth(), m_MainWindow->GetHeight());
-        for (auto& renderPass : m_RenderPasses)
-        {
-            renderPass->OnWindowResize();
-        }
 
         BeginFrame();
         {
@@ -284,6 +280,8 @@ namespace sandbox
         HandleViewportResizeIfNeeded();
 
         m_Device->ProcessDeferredReleaseQueues();
+
+        m_RenderResources->FlipIndex();
     }
 
     void Runner::OnUpdate()
@@ -309,7 +307,6 @@ namespace sandbox
 
         m_GpuPrintData.m_CursorPosition = m_Viewport.GetCursorPosition(); // Update it after ImGui frame is done
 
-        m_RenderResources->FlipResources(); // TODO: Better place in EndFrame method
         for (auto& renderPass : m_RenderPasses)
         {
             renderPass->OnUpdate();
@@ -353,13 +350,10 @@ namespace sandbox
         const uint32_t height = m_MainWindow->GetHeight();
 
         m_Device->GetGraphicsCmdQueue().Flush();
+        m_Device->GetResDependentAllocator().ResetOffset();
         m_SwapChain->Resize(width, height);
 
         benzin::RenderPass::SetWindowSize(width, height);
-        for (auto& renderPass : m_RenderPasses)
-        {
-            renderPass->OnWindowResize();
-        }
 
         BenzinTrace("Swap chain resized. CpuFrame: {}", m_Device->GetCpuFrameIndex());
     }
@@ -368,6 +362,9 @@ namespace sandbox
     {
         if (!m_Viewport.IsPendingResize())
             return;
+
+        m_Device->GetGraphicsCmdQueue().Flush();
+        m_Device->GetResDependentAllocator().ResetOffset();
 
         m_Viewport.Resize();
 

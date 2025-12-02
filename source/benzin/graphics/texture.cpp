@@ -14,21 +14,21 @@ namespace benzin
     struct TextureRtv {};
     struct TextureDsv {};
 
-    static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const TextureCreation& textureCreation)
+    D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const TextureCreation& creation)
     {
         D3D12_RESOURCE_FLAGS d3d12ResourceFlags = D3D12_RESOURCE_FLAG_NONE;
 
-        if (textureCreation.m_AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget))
+        if (creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowRenderTarget))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         }
 
-        if (textureCreation.m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil))
+        if (creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowDepthStencil))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
         }
 
-        if (textureCreation.m_AccessFlags.IsSet(TextureAccessFlag::AllowUnorderedAccess))
+        if (creation.m_AccessFlags.IsSet(TextureAccessFlag::AllowUnorderedAccess))
         {
             d3d12ResourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
@@ -36,11 +36,11 @@ namespace benzin
         D3D12_RESOURCE_DESC d3d12ResourceDesc = {};
         d3d12ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D; // For now only 2D textures supported
         d3d12ResourceDesc.Alignment = 0;
-        d3d12ResourceDesc.Width = (uint64_t)textureCreation.m_Width;
-        d3d12ResourceDesc.Height = textureCreation.m_Height;
-        d3d12ResourceDesc.DepthOrArraySize = textureCreation.m_Depth;
-        d3d12ResourceDesc.MipLevels = textureCreation.m_MipCount;
-        d3d12ResourceDesc.Format = textureCreation.m_DxgiFormat;
+        d3d12ResourceDesc.Width = (uint64_t)creation.m_Width;
+        d3d12ResourceDesc.Height = creation.m_Height;
+        d3d12ResourceDesc.DepthOrArraySize = creation.m_Depth;
+        d3d12ResourceDesc.MipLevels = creation.m_MipCount;
+        d3d12ResourceDesc.Format = creation.m_DxgiFormat;
         d3d12ResourceDesc.SampleDesc = { 1, 0 };
         d3d12ResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         d3d12ResourceDesc.Flags = d3d12ResourceFlags;

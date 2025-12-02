@@ -6,8 +6,6 @@
 
 #include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
-#include <benzin/engine/scene.hpp>
-#include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
@@ -91,8 +89,8 @@ namespace sandbox
         ms_Resources->Destroy(TextureId::Sigma_SmoothTiles);
         ms_Resources->Destroy(TextureId::Sigma_BlurredPenumbra1);
         ms_Resources->Destroy(TextureId::Sigma_BlurredPenumbra2);
-        ms_Resources->Destroy(TextureId::Sigma_BlurredShadowTemp1);
-        ms_Resources->Destroy(TextureId::Sigma_BlurredShadowTemp2);
+        ms_Resources->Destroy(TextureId::Sigma_BlurredTempShadow1);
+        ms_Resources->Destroy(TextureId::Sigma_BlurredTempShadow2);
         ms_Resources->Destroy(TextureId::Shadow);
         ms_Resources->Destroy(TextureId::ShadowHistoryLength);
     }
@@ -102,31 +100,17 @@ namespace sandbox
         m_Consts.TileCount.x = benzin::DivideUp(ms_RenderViewportWidth, joint::g_SigmaTileSize);
         m_Consts.TileCount.y = benzin::DivideUp(ms_RenderViewportHeight, joint::g_SigmaTileSize);
 
-        const auto createTexture = [](TextureId id, DXGI_FORMAT dxgiFormat, DirectX::XMUINT2 resolution)
-        {
-            ms_Resources->Create(id, benzin::TextureCreation
-            {
-                .m_DebugName = magic_enum::enum_name(id),
-                .m_DxgiFormat = dxgiFormat,
-                .m_Width = resolution.x,
-                .m_Height = resolution.y,
-                .m_MipCount = 1,
-                .m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
-            });
-        };
+        constexpr DXGI_FORMAT shadowFormat = DXGI_FORMAT_R8_UNORM;
+        constexpr benzin::TextureAccessFlag uavFlag = benzin::TextureAccessFlag::AllowUnorderedAccess;
 
-        const DirectX::XMUINT2 renderResolution{ ms_RenderViewportWidth, ms_RenderViewportHeight };
-        const DXGI_FORMAT shadowFormat = DXGI_FORMAT_R8_UNORM;
-        const DXGI_FORMAT penumbraFormat = SigmaDenoiserSettings::ms_PenumbraDxgiFormat;
-
-        createTexture(TextureId::Sigma_Tiles, DXGI_FORMAT_R8G8B8A8_UNORM, m_Consts.TileCount);
-        createTexture(TextureId::Sigma_SmoothTiles, DXGI_FORMAT_R8G8_UNORM, m_Consts.TileCount);
-        createTexture(TextureId::Sigma_BlurredPenumbra1, penumbraFormat, renderResolution);
-        createTexture(TextureId::Sigma_BlurredPenumbra2, penumbraFormat, renderResolution);
-        createTexture(TextureId::Sigma_BlurredShadowTemp1, shadowFormat, renderResolution);
-        createTexture(TextureId::Sigma_BlurredShadowTemp2, shadowFormat, renderResolution);
-        createTexture(TextureId::Shadow, shadowFormat, renderResolution);
-        createTexture(TextureId::ShadowHistoryLength, DXGI_FORMAT_R32_UINT, renderResolution);
+        ms_Resources->Create(TextureId::Sigma_Tiles, DXGI_FORMAT_R8G8B8A8_UNORM, m_Consts.TileCount.x, m_Consts.TileCount.y, uavFlag);
+        ms_Resources->Create(TextureId::Sigma_SmoothTiles, DXGI_FORMAT_R8G8_UNORM, m_Consts.TileCount.x, m_Consts.TileCount.y, uavFlag);
+        ms_Resources->Create(TextureId::Sigma_BlurredPenumbra1, SigmaDenoiserSettings::ms_PenumbraDxgiFormat, uavFlag);
+        ms_Resources->Create(TextureId::Sigma_BlurredPenumbra2, SigmaDenoiserSettings::ms_PenumbraDxgiFormat, uavFlag);
+        ms_Resources->Create(TextureId::Sigma_BlurredTempShadow1, shadowFormat, uavFlag);
+        ms_Resources->Create(TextureId::Sigma_BlurredTempShadow2, shadowFormat, uavFlag);
+        ms_Resources->Create(TextureId::Shadow, shadowFormat, uavFlag);
+        ms_Resources->Create(TextureId::ShadowHistoryLength, DXGI_FORMAT_R32_UINT, uavFlag);
     }
 
     void SigmaDenoiserPass::OnUpdate()
@@ -186,8 +170,8 @@ namespace sandbox
         const auto& smoothTiles = ms_Resources->Get(TextureId::Sigma_SmoothTiles);
         const auto& penumbra1 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1);
         const auto& penumbra2 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2);
-        const auto& shadow1 = ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1);
-        const auto& shadow2 = ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2);
+        const auto& shadow1 = ms_Resources->Get(TextureId::Sigma_BlurredTempShadow1);
+        const auto& shadow2 = ms_Resources->Get(TextureId::Sigma_BlurredTempShadow2);
 
         cmdList.AddTransition(tiles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.AddTransition(smoothTiles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -262,7 +246,7 @@ namespace sandbox
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         const auto& penumbra1 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1);
-        const auto& shadowTemp1 = ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1);
+        const auto& shadowTemp1 = ms_Resources->Get(TextureId::Sigma_BlurredTempShadow1);
 
         cmdList.SetComputeRootSrv(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal));
         cmdList.SetComputeRootSrv(*Resources::ViewDepth, ms_Resources->Get(TextureId::ViewDepth));
@@ -288,9 +272,9 @@ namespace sandbox
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         const auto& penumbra1 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra1);
-        const auto& shadowTemp1 = ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp1);
+        const auto& shadowTemp1 = ms_Resources->Get(TextureId::Sigma_BlurredTempShadow1);
         const auto& penumbra2 = ms_Resources->Get(TextureId::Sigma_BlurredPenumbra2);
-        const auto& shadowTemp2 = ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2);
+        const auto& shadowTemp2 = ms_Resources->Get(TextureId::Sigma_BlurredTempShadow2);
 
         if (!isEnabled)
         {
@@ -323,7 +307,7 @@ namespace sandbox
         BenzinGpuProfile("TemporalStabilization");
 
         auto& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        const auto& shadowTemp2 = ms_Resources->Get(TextureId::Sigma_BlurredShadowTemp2);
+        const auto& shadowTemp2 = ms_Resources->Get(TextureId::Sigma_BlurredTempShadow2);
         const auto& shadow = ms_Resources->Get(TextureId::Shadow);
         const auto& historyLength = ms_Resources->Get(TextureId::ShadowHistoryLength);
 

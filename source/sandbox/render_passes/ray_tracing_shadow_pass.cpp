@@ -67,15 +67,10 @@ namespace sandbox
 
     void RayTracing_ShadowPass::OnRenderViewportResize()
     {
-        ms_Resources->Create(TextureId::NoisyPenumbra, benzin::TextureCreation
-        {
-            .m_DebugName = magic_enum::enum_name(TextureId::NoisyPenumbra),
-            .m_DxgiFormat = SigmaDenoiserSettings::ms_PenumbraDxgiFormat,
-            .m_Width = ms_RenderViewportWidth,
-            .m_Height = ms_RenderViewportHeight,
-            .m_MipCount = 1,
-            .m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess,
-        });
+        ms_Resources->Create(
+            TextureId::NoisyPenumbra,
+            SigmaDenoiserSettings::ms_PenumbraDxgiFormat,
+            benzin::TextureAccessFlag::AllowUnorderedAccess);
     }
 
     void RayTracing_ShadowPass::OnUpdate()

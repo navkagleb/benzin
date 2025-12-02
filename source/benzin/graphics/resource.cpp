@@ -22,16 +22,6 @@ namespace benzin
         m_D3D12Resource = nullptr;
     }
 
-    uint64_t Resource::GetAllocationSizeInBytes() const
-    {
-        BenzinAssert(m_D3D12Resource != nullptr);
-
-        const D3D12_RESOURCE_DESC d3d12ResourceDesc = m_D3D12Resource->GetDesc();
-        const D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo = m_Device.GetD3D12Device()->GetResourceAllocationInfo(0, 1, &d3d12ResourceDesc);
-
-        return d3d12ResourceAllocationInfo.SizeInBytes;
-    }
-
     const Descriptor& Resource::TryGetViewDescriptor(size_t hash, std::function<Descriptor()>&& createDescriptorCallback) const
     {
         const auto [it, _] = m_ViewDescriptors.try_emplace(

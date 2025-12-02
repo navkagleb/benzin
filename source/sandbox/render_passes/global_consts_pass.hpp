@@ -4,6 +4,11 @@
 
 #include <shaders/joint/global_resources.hpp>
 
+namespace benzin
+{
+    class Buffer;
+}
+
 namespace sandbox
 {
 
@@ -15,7 +20,6 @@ namespace sandbox
         GlobalConstsPass(ReadbackStatsCallback&& callback);
         ~GlobalConstsPass() override;
 
-    private:
         bool IsDependentOnViewport() const override { return false; }
 
         void OnUpdate() override;

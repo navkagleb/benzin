@@ -31,6 +31,7 @@ namespace benzin
     {
     public:
         friend class Buffer;
+        friend class GpuHeapLinearAllocator;
         friend class Texture;
 
         GpuHeap(Device& device, const GpuHeapCreation& creation);
@@ -60,6 +61,11 @@ namespace benzin
         using TextureConfigurator = std::move_only_function<void(TextureCreation& creation)>;
 
         GpuHeapLinearAllocator(GpuHeap& gpuHeap);
+
+        const auto& GetGpuHeap() const { return m_GpuHeap; }
+        auto GetOffsetInBytes() const { return m_OffsetInBytes; }
+
+        void ResetOffset();
 
         template <typename T>
         std::unique_ptr<Buffer> AllocateBuffer(std::string_view debugName, std::span<const T> elements, DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN)
@@ -93,7 +99,8 @@ namespace benzin
         std::unique_ptr<Texture> AllocateTexture(TextureConfigurator configurator);
 
     private:
-        std::unique_ptr<Buffer> AllocateBuffer(const BufferCreation& bufferCreation);
+        template <typename ResourceT, typename CreationT>
+        std::unique_ptr<ResourceT> Allocate(CreationT& creation);
 
         GpuHeap& m_GpuHeap;
         uint64_t m_OffsetInBytes = 0;

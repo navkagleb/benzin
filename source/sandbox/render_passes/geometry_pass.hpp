@@ -1,10 +1,12 @@
 #pragma once
 
 #include <benzin/graphics2/render_pass.hpp>
-#include <shaders/joint/geometry_resources.hpp>
 
 namespace benzin
 {
+    class Buffer;
+    class Texture;
+
     enum class PsoId : uint32_t;
 }
 

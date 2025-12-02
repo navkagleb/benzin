@@ -1,17 +1,14 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/tools/texture_viewer_tool.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/tools/texture_viewer_tool.hpp>
 
-#include "benzin/graphics/texture.hpp"
-#include "benzin/graphics2/game_specific_resource_ids.hpp"
-#include "benzin/system/event.hpp"
-#include "benzin/system/input.hpp"
-#include "benzin/system/key_event.hpp"
-#include "benzin/system/mouse_event.hpp"
+#include <benzin/graphics/texture.hpp>
+#include <benzin/graphics2/game_specific_resource_ids.hpp>
+#include <benzin/system/event.hpp>
+#include <benzin/system/input.hpp>
+#include <benzin/system/mouse_event.hpp>
 
 namespace benzin
 {
-
-    static constexpr auto g_ToggleVisibilityKeyCode = KeyCode::F3;
 
     static TextureId DrawTextureSelector()
     {
@@ -31,8 +28,7 @@ namespace benzin
             &textureNameIndex,
             ImGui::SelectComboName<decltype(textureNames)>,
             (void*)&textureNames,
-            (int)textureNames.size() - 1
-        );
+            (int)textureNames.size() - 1);
 
         return textureNameIndex != -1 ? textureIndices[textureNameIndex] : g_MaxEnum<TextureId>;
     }
@@ -95,7 +91,7 @@ namespace benzin
 
         m_ViewerData.m_IsReferenceTextureValid =
             m_ViewerData.m_ReferenceTextureId != g_MaxEnum<TextureId> &&
-            m_Resources.IsCreated(m_ViewerData.m_ReferenceTextureId);
+            m_Resources.GetPtr(m_ViewerData.m_ReferenceTextureId) != nullptr;
 
         if (!m_ViewerData.m_IsReferenceTextureValid)
             return;
@@ -213,16 +209,15 @@ namespace benzin
 
     void TextureViewerTool::DrawDebugTexture() const
     {
-        if (!m_Resources.IsCreated(TextureId::DebugTexture))
+        const Texture* debugTexture = m_Resources.GetPtr(TextureId::DebugTexture);
+        if (debugTexture == nullptr)
             return;
 
-        const Texture& debugTexture = m_Resources.Get(TextureId::DebugTexture);
-
-        ImGui::FmtText("Debug texture size: [{}, {}]", debugTexture.GetWidth(), debugTexture.GetHeight());
+        ImGui::FmtText("Debug texture size: [{}, {}]", debugTexture->GetWidth(), debugTexture->GetHeight());
 
         const ImVec2 widgetSize = ImGui::GetContentRegionAvail();
         const float widgetAspectRatio = widgetSize.x / widgetSize.y;
-        const float textureAspectRatio = (float)debugTexture.GetWidth() / debugTexture.GetHeight();
+        const float textureAspectRatio = (float)debugTexture->GetWidth() / debugTexture->GetHeight();
 
         ImVec2 widgetTextureSize{ 0.0f, 0.0f };
         if (widgetAspectRatio > textureAspectRatio)
@@ -239,7 +234,7 @@ namespace benzin
         const ImVec2 imagePos = ImGui::GetCursorScreenPos();
 
         ImGui::Image(
-            ImGuiPass::PackImTextureId(debugTexture.GetSrv(), joint::ImGuiSamplerIndex::Point),
+            ImGuiPass::PackImTextureId(debugTexture->GetSrv(), joint::ImGuiSamplerIndex::Point),
             widgetTextureSize,
             m_UvMin,
             m_UvMax);

@@ -5,7 +5,6 @@ namespace benzin
 
     enum class TextureId : uint32_t
     {
-        // GBuffer
         AlbedoAndRoughness,
         EmissiveAndMetallic,
         WorldNormal,
@@ -13,24 +12,22 @@ namespace benzin
         ViewDepth,
         DepthStencil,
 
-        // RayTraced Shadows
         NoisyPenumbra,
 
-        // SigmaDenoiser
         Sigma_Tiles,
         Sigma_SmoothTiles,
         Sigma_BlurredPenumbra1,
         Sigma_BlurredPenumbra2,
-        Sigma_BlurredShadowTemp1,
-        Sigma_BlurredShadowTemp2,
-        Shadow = Sigma_BlurredShadowTemp2 + 2,
+        Sigma_BlurredTempShadow1,
+        Sigma_BlurredTempShadow2,
+
+        Shadow = Sigma_BlurredTempShadow2 + 2,
         ShadowHistoryLength = Shadow + 2,
 
         HdrColor,
         Final,
 
-        // Engine Textures
-        DebugTexture,
+        DebugTexture, // TOOD: Should be convered by another allocator (not resolution dependent)
     };
 
     enum class PsoId : uint32_t

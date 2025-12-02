@@ -1,7 +1,6 @@
 #pragma once
 
 #include <benzin/graphics2/render_pass.hpp>
-
 #include <shaders/joint/sigma_denoiser_resources.hpp>
 
 namespace sandbox

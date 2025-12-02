@@ -10,6 +10,9 @@
 namespace benzin
 {
 
+    extern D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& creation);
+    extern D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const TextureCreation& creation);
+
     // GpuHeap
 
     GpuHeap::GpuHeap(Device& device, const GpuHeapCreation& creation)
@@ -47,26 +50,29 @@ namespace benzin
         BenzinAssert(gpuHeap.GetD3D12Heap() != nullptr);
     }
 
+    void GpuHeapLinearAllocator::ResetOffset()
+    {
+        m_OffsetInBytes = 0;
+    }
+
     std::unique_ptr<Buffer> GpuHeapLinearAllocator::AllocateBuffer(BufferConfigurator configurator)
     {
-        BenzinAssert(configurator);
-
         BufferCreation creation;
         configurator(creation);
 
         BenzinAssert(IsMaxEnum(creation.m_HeapType));
 
-        return AllocateBuffer(creation);
+        return Allocate<Buffer>(creation);
     }
 
     std::unique_ptr<Buffer> GpuHeapLinearAllocator::AllocateStructuredBuffer(std::string_view debugName, uint32_t elementCount, uint32_t elementSizeInBytes)
     {
-        return AllocateBuffer(BufferCreation
+        return AllocateBuffer([&](BufferCreation& creation)
         {
-            .m_DebugName = debugName,
-            .m_Type = BufferType::Structured,
-            .m_ElementSizeInBytes = elementSizeInBytes,
-            .m_ElementCount = elementCount,
+            creation.m_DebugName = debugName;
+            creation.m_Type = BufferType::Structured;
+            creation.m_ElementSizeInBytes = elementSizeInBytes;
+            creation.m_ElementCount = elementCount;
         });
     }
 
@@ -74,13 +80,13 @@ namespace benzin
     {
         BenzinAssert(dxgiFormat != DXGI_FORMAT_UNKNOWN);
 
-        return AllocateBuffer(BufferCreation
+        return AllocateBuffer([&](BufferCreation& creation)
         {
-            .m_DebugName = debugName,
-            .m_Type = BufferType::Format,
-            .m_DxgiFormat = dxgiFormat,
-            .m_ElementSizeInBytes = GetDxgiFormatSizeInBytes(dxgiFormat),
-            .m_ElementCount = elementCount,
+            creation.m_DebugName = debugName;
+            creation.m_Type = BufferType::Format;
+            creation.m_DxgiFormat = dxgiFormat;
+            creation.m_ElementSizeInBytes = GetDxgiFormatSizeInBytes(dxgiFormat);
+            creation.m_ElementCount = elementCount;
         });
     }
 
@@ -91,8 +97,18 @@ namespace benzin
         TextureCreation creation;
         configurator(creation);
 
-        const uint64_t alignedOffsetInBytes = AlignUp(m_OffsetInBytes, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
-        const uint64_t sizeInBytes = CalcTextureSizeInBytes(creation.m_Width, creation.m_Height, creation.m_Depth, creation.m_DxgiFormat);
+        return Allocate<Texture>(creation);
+    }
+
+    template <typename ResourceT, typename CreationT>
+    std::unique_ptr<ResourceT> GpuHeapLinearAllocator::Allocate(CreationT& creation)
+    {
+        const D3D12_RESOURCE_DESC d3d12ResourceDesc = ToD3D12ResourceDesc(creation);
+        const D3D12_RESOURCE_ALLOCATION_INFO d3d12AllocationInfo = m_GpuHeap.m_Device.GetD3D12Device()->GetResourceAllocationInfo(0, 1, &d3d12ResourceDesc);
+        BenzinAssert(d3d12AllocationInfo.Alignment == D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+
+        const uint64_t alignedOffsetInBytes = AlignUp(m_OffsetInBytes, d3d12AllocationInfo.Alignment);
+        const uint64_t sizeInBytes = d3d12AllocationInfo.SizeInBytes;
 
         const uint64_t neededSizeInBytes = alignedOffsetInBytes + sizeInBytes;
         BenzinEnsure(
@@ -105,32 +121,10 @@ namespace benzin
 
         if (creation.m_DebugName.empty())
         {
-            creation.m_DebugName = "GpuHeapLinearAllocator::Texture";
+            creation.m_DebugName = "GpuHeapLinearAllocator::Resource";
         }
 
-        return std::make_unique<Texture>(m_GpuHeap, alignedOffsetInBytes, creation);
-    }
-
-    std::unique_ptr<Buffer> GpuHeapLinearAllocator::AllocateBuffer(const BufferCreation& creation)
-    {
-        const uint64_t alignedOffsetInBytes = AlignUp(m_OffsetInBytes, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
-        const uint64_t sizeInBytes = (uint64_t)creation.m_ElementCount * creation.m_ElementSizeInBytes;
-
-        const uint64_t neededSizeInBytes = alignedOffsetInBytes + sizeInBytes;
-        BenzinEnsure(
-            neededSizeInBytes <= m_GpuHeap.GetSizeInBytes(),
-            "GpuHeap is full. Needed size: {:.2f}, Actual size: {:.2f}",
-            ToMb(neededSizeInBytes),
-            ToMb(m_GpuHeap.GetSizeInBytes()));
-
-        m_OffsetInBytes = alignedOffsetInBytes + sizeInBytes;
-
-        if (creation.m_DebugName.empty())
-        {
-            const_cast<BufferCreation&>(creation).m_DebugName = "GpuHeapLinearAllocator::Buffer";
-        }
-
-        return std::make_unique<Buffer>(m_GpuHeap, alignedOffsetInBytes, creation);
+        return std::make_unique<ResourceT>(m_GpuHeap, alignedOffsetInBytes, creation);
     }
 
     // ConstBufferLinearAllocator

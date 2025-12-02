@@ -12,7 +12,7 @@ namespace benzin
 
     struct BufferSrv {};
 
-    static D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& creation)
+    D3D12_RESOURCE_DESC ToD3D12ResourceDesc(const BufferCreation& creation)
     {
         BenzinAssert(creation.m_ElementSizeInBytes != 0);
         BenzinAssert(creation.m_ElementCount != 0);

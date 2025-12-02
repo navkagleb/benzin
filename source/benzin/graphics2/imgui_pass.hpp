@@ -9,6 +9,7 @@
 namespace benzin
 {
 
+    class Buffer;
     class Descriptor;
     class Event;
     class GraphicsCmdList;

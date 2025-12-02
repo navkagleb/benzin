@@ -62,16 +62,12 @@ namespace benzin
                 dxgiDebugFormat = DXGI_FORMAT_R32_FLOAT;
             }
 
-            ms_Resources->Create(TextureId::DebugTexture, TextureCreation
-            {
-                .m_DebugName = magic_enum::enum_name(TextureId::DebugTexture),
-                .m_DxgiFormat = dxgiDebugFormat,
-                .m_Width = debugWidth,
-                .m_Height = debugHeight,
-                .m_Depth = 1,
-                .m_MipCount = 1,
-                .m_AccessFlags = TextureAccessFlag::AllowUnorderedAccess,
-            });
+            ms_Resources->Create(
+                TextureId::DebugTexture,
+                dxgiDebugFormat,
+                debugWidth,
+                debugHeight,
+                TextureAccessFlag::AllowUnorderedAccess);
         }
 
         m_Consts.ChannelMask.x = m_ViewerData.m_IsChannelActive[0];

@@ -24,9 +24,7 @@ namespace benzin
         for (const auto& directoryEntry : std::filesystem::directory_iterator{ pixInstallationPath })
         {
             if (!directoryEntry.is_directory())
-            {
                 continue;
-            }
 
             if (pixNewestVersion.empty() || pixNewestVersion < directoryEntry.path().filename().c_str())
             {
@@ -43,9 +41,7 @@ namespace benzin
     void PixCapturer::Initialize()
     {
         if (!CmdLineArgs::IsPixCapturerEnabled())
-        {
             return;
-        }
 
         if (::GetModuleHandleW(g_PixCapturerDllName.data()) == nullptr)
         {
@@ -61,9 +57,7 @@ namespace benzin
     void PixCapturer::Shutdown()
     {
         if (!CmdLineArgs::IsPixCapturerEnabled())
-        {
             return;
-        }
 
         const HMODULE pixHandle = ::GetModuleHandleW(g_PixCapturerDllName.data());
         if (pixHandle != nullptr)

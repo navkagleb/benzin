@@ -25,16 +25,15 @@ namespace benzin
         if (!UpdateViewportSize())
             return;
 
-        if (!m_Resources.IsCreated(m_Viewport.m_DisplayTextureId))
+        const Texture* viewportTexture = m_Resources.GetPtr(m_Viewport.m_DisplayTextureId);
+        if (viewportTexture == nullptr)
             return;
-
-        const Texture& viewportTexture = m_Resources.Get(m_Viewport.m_DisplayTextureId);
 
         ImVec2 imageSize;
         imageSize.x = (float)m_Viewport.GetWidth();
         imageSize.y = (float)m_Viewport.GetHeight();
 
-        if (viewportTexture.GetWidth() != m_Viewport.GetWidth() || viewportTexture.GetHeight() != m_Viewport.GetHeight())
+        if (viewportTexture->GetWidth() != m_Viewport.GetWidth() || viewportTexture->GetHeight() != m_Viewport.GetHeight())
         {
             const ImVec2 cursorPosition = ImGui::GetCursorScreenPos();
             ImGui::GetWindowDrawList()->AddRectFilled(
@@ -43,7 +42,7 @@ namespace benzin
                 IM_COL32(50, 50, 50, 255));
 
             const float viewportAspectRatio = imageSize.x / imageSize.y;
-            const float textureAspectRatio = (float)viewportTexture.GetWidth() / viewportTexture.GetHeight();
+            const float textureAspectRatio = (float)viewportTexture->GetWidth() / viewportTexture->GetHeight();
 
             if (viewportAspectRatio > textureAspectRatio)
             {
@@ -56,7 +55,7 @@ namespace benzin
         }
 
         ImGui::Image(
-            ImGuiPass::PackImTextureId(viewportTexture.GetSrv(), joint::ImGuiSamplerIndex::Point),
+            ImGuiPass::PackImTextureId(viewportTexture->GetSrv(), joint::ImGuiSamplerIndex::Point),
             imageSize);
 
         m_Viewport.m_IsHovered = ImGui::IsItemHovered();

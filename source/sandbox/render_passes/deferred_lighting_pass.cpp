@@ -44,15 +44,10 @@ namespace sandbox
 
     void DeferredLightingPass::OnRenderViewportResize()
     {
-        ms_Resources->Create(TextureId::HdrColor, benzin::TextureCreation
-        {
-            .m_DebugName = "DeferredLighting::HdrColor",
-            .m_DxgiFormat = DeferredLightingSettings::ms_HdrColorDxgiFormat,
-            .m_Width = ms_RenderViewportWidth,
-            .m_Height = ms_RenderViewportHeight,
-            .m_MipCount = 1,
-            .m_AccessFlags = benzin::TextureAccessFlag::AllowRenderTarget,
-        });
+        ms_Resources->Create(
+            TextureId::HdrColor,
+            DeferredLightingSettings::ms_HdrColorDxgiFormat,
+            benzin::TextureAccessFlag::AllowRenderTarget);
     }
 
     void DeferredLightingPass::OnRender() const

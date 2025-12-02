@@ -20,7 +20,7 @@ namespace benzin
 
     struct BufferCreation
     {
-        std::string_view m_DebugName;
+        std::string m_DebugName;
 
         GpuHeapType m_HeapType = g_MaxEnum<GpuHeapType>; // For committed resource
         BufferType m_Type = BufferType::Byte;

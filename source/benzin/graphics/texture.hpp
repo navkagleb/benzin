@@ -27,7 +27,7 @@ namespace benzin
     {
         // For now only 2D textures supported
 
-        std::string_view m_DebugName;
+        std::string m_DebugName;
 
         bool m_IsCubeMap = false;
         DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;

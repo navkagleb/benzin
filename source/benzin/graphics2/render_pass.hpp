@@ -1,18 +1,17 @@
 #pragma once
 
+#include <benzin/graphics/texture.hpp>
 #include <benzin/graphics2/game_specific_resource_ids.hpp>
 
 namespace benzin
 {
 
-    class Buffer;
     class Device;
+    class GpuHeapLinearAllocator;
     class PsoManager;
     class RayTracingScene;
     class SwapChain;
-    class Texture;
     class TickTimer;
-    struct BufferCreation;
     struct Scene;
     struct TextureCreation;
 
@@ -54,67 +53,26 @@ namespace benzin
         std::unordered_map<const void*, VoidUniquePtr> m_Sections;
     };
 
-    template <typename ResourceT>
-    class RenderResourceStorage
-    {
-    public:
-        using IsResourceFlippableCallback = std::function<bool(uint32_t id)>;
-        using IsResourceIdValidCallback = std::function<bool(uint32_t id)>;
-
-        template <typename CreationT>
-        using ResourceConfigurator = std::function<void(CreationT& outCreation)>; // TODO
-
-        RenderResourceStorage(
-            uint32_t maxResourceCount,
-            IsResourceFlippableCallback&& isRsourceFlippableCallback,
-            IsResourceIdValidCallback&& isResourceIdValidCallback
-        );
-        ~RenderResourceStorage();
-
-        bool IsCreated(uint32_t id) const;
-
-        template <typename CreationT>
-        void Create(uint32_t id, Device& device, const CreationT& creation);
-
-        void Destroy(uint32_t id);
-
-        const ResourceT& Get(uint32_t id, uint8_t flipOffset) const;
-        const ResourceT& GetPrev(uint32_t id, uint8_t flipOffset) const;
-
-#if BENZIN_IS_ASSERTS_ENABLED
-        uint32_t GetAliveResourceCount() const;
-#endif
-
-    private:
-        const IsResourceFlippableCallback m_IsResourceFlippableCallback;
-        const IsResourceIdValidCallback m_IsResourceIdValidCallback;
-
-        std::vector<std::unique_ptr<ResourceT>> m_Resources;
-    };
-
-    extern template class RenderResourceStorage<Texture>;
-
     class RenderResources
     {
     public:
-        explicit RenderResources(Device& device);
+        explicit RenderResources(GpuHeapLinearAllocator& allocator);
         ~RenderResources();
 
-        bool IsCreated(TextureId id) const;
-        void Create(TextureId id, const TextureCreation& creation);
+        void Create(TextureId id, DXGI_FORMAT dxgiFormat, EnumFlags<TextureAccessFlag> flags = {});
+        void Create(TextureId id, DXGI_FORMAT dxgiFormat, uint32_t width, uint32_t height, EnumFlags<TextureAccessFlag> flags = {});
         void Destroy(TextureId id);
 
+        const Texture* GetPtr(TextureId id) const;
         const Texture& Get(TextureId id) const;
         const Texture& GetPrev(TextureId id) const;
 
-        void FlipResources();
+        void FlipIndex();
 
     private:
-        static uint8_t GetNextFlipIndex(uint8_t index);
+        GpuHeapLinearAllocator& m_Allocator;
 
-        Device& m_Device;
-
-        RenderResourceStorage<Texture> m_Textures;
+        std::vector<std::unique_ptr<Texture>> m_Textures;
         uint8_t m_FlipIndex = 0;
     };
 
@@ -150,6 +108,8 @@ namespace benzin
     class RenderPass
     {
     public:
+        friend class RenderResources;
+
         RenderPass() = default;
         virtual ~RenderPass() = default;
 
@@ -172,7 +132,6 @@ namespace benzin
         virtual bool IsDependentOnViewport() const = 0;
 
         virtual void OnZeroFrameInit() {}
-        virtual void OnWindowResize() {}
         virtual void OnRenderViewportResize() {}
 
         virtual void OnUpdate() {};

@@ -3,6 +3,11 @@
 #include <benzin/graphics2/render_pass.hpp>
 #include <shaders/joint/procedural_grass_resources.hpp>
 
+namespace benzin
+{
+    class Buffer;
+}
+
 namespace sandbox
 {
 

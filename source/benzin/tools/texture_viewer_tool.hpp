@@ -50,8 +50,8 @@ namespace benzin
 
         bool m_IsFullViewportPreview = false;
 
-        ImVec2 m_UvMin{ 0.0f, 0.0f };
-        ImVec2 m_UvMax{ 1.0f, 1.0f };
+        ImVec2 m_UvMin = { 0.0f, 0.0f };
+        ImVec2 m_UvMax = { 1.0f, 1.0f };
     };
 
 }

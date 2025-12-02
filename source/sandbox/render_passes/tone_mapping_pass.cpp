@@ -80,15 +80,7 @@ namespace sandbox
 
     void ToneMappingPass::OnRenderViewportResize()
     {
-        ms_Resources->Create(TextureId::Final, benzin::TextureCreation
-        {
-            .m_DebugName = "Final",
-            .m_DxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM,
-            .m_Width = ms_RenderViewportWidth,
-            .m_Height = ms_RenderViewportHeight,
-            .m_MipCount = 1,
-            .m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess | benzin::TextureAccessFlag::AllowRenderTarget,
-        });
+        ms_Resources->Create(TextureId::Final, DXGI_FORMAT_R8G8B8A8_UNORM, benzin::TextureAccessFlag::AllowUnorderedAccess);
     }
 
     void ToneMappingPass::OnUpdate()

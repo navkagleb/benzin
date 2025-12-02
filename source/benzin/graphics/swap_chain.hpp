@@ -26,7 +26,6 @@ namespace benzin
         BenzinDefineNonCopyable(SwapChain);
         BenzinDefineNonMoveable(SwapChain);
 
-    public:
         uint32_t GetCurrentBackBufferIndex() const { return m_DxgiSwapChain->GetCurrentBackBufferIndex(); }
         const auto& GetCurrentBackBuffer() const { return *m_BackBuffers[GetCurrentBackBufferIndex()]; }
 

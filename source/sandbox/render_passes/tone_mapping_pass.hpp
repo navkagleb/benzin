@@ -6,6 +6,7 @@
 
 namespace benzin
 {
+    class Buffer;
     class ComputeCmdList;
 }
 
