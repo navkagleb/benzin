@@ -5,26 +5,27 @@
 namespace joint
 {
 
-    enum class ComputeCullingResources : uint
+    enum class GeometryCullingResources : uint
     {
         MeshDrawCount,
         MeshDraws,
         Meshes,
 
+        MeshCmdCounter,
         MeshDrawCmds,
-        MeshDrawCmdCounter,
+        MeshDispatchCmds,
         VisibilityBuffer,
     };
 
     enum class GeometryResources : uint
     {
         MeshDrawIndex,
+        MeshletOffset, // Mesh pipeline
+        MeshletCount, // Mesh pipeline
 
         MeshDraws,
         Materials,
 
-        MeshDispatchCount, // Mesh pipeline
-        MeshDispathes, // Mesh pipeline
         Vertices, // Mesh pipeline
         Meshlets, // Mesh pipeline
         MeshletCullVolumes, // Mesh pipeline

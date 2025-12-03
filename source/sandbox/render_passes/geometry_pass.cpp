@@ -23,7 +23,7 @@
 #include <shaders/joint/mesh_types.hpp>
 
 BenzinAllowDereferenceOperatorForEnum(joint::GeometryResources);
-BenzinAllowDereferenceOperatorForEnum(joint::ComputeCullingResources);
+BenzinAllowDereferenceOperatorForEnum(joint::GeometryCullingResources);
 
 namespace sandbox
 {
@@ -36,8 +36,7 @@ namespace sandbox
         {
             ms_PsoManager->Create(id, [id](benzin::ComputePsoProxy& proxy)
             {
-                proxy.m_Cs.m_FileName = "geometry_pass.hlsl";
-                proxy.m_Cs.m_Defines.push_back("COMPUTE_CULLING");
+                proxy.m_Cs.m_FileName = "geometry_culling.hlsl";
 
                 if (id == PsoId::GeometryPass_LateComputeCulling)
                 {
@@ -52,29 +51,68 @@ namespace sandbox
         CreateGeometryPso(PsoId::GeometryPass_Vertex, false);
         CreateGeometryPso(PsoId::GeometryPass_Mesh, true);
 
-        std::array<D3D12_INDIRECT_ARGUMENT_DESC, 2> d3d12ArgumentDescs = {};
-        d3d12ArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-        d3d12ArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
-        d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
-        d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 1;
-        d3d12ArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+        {
+            std::array<D3D12_INDIRECT_ARGUMENT_DESC, 2> d3d12ArgumentDescs = {};
 
-        D3D12_COMMAND_SIGNATURE_DESC d3d12CmdSignatureDesc = {};
-        d3d12CmdSignatureDesc.ByteStride = sizeof(joint::MeshDrawCmd);
-        d3d12CmdSignatureDesc.NumArgumentDescs = (uint32_t)d3d12ArgumentDescs.size();
-        d3d12CmdSignatureDesc.pArgumentDescs = d3d12ArgumentDescs.data();
-        d3d12CmdSignatureDesc.NodeMask = 0;
+            d3d12ArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+            d3d12ArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
+            d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
+            d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 1;
 
-        BenzinD3D12Call(ms_Device->GetD3D12Device()->CreateCommandSignature(
-            &d3d12CmdSignatureDesc,
-            ms_Device->GetUnifiedRootSignature().GetD3D12RootSignature(),
-            IID_PPV_ARGS(&m_D3D12DrawIndirectCmdSignature)));
+            d3d12ArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+
+            D3D12_COMMAND_SIGNATURE_DESC d3d12CmdSignatureDesc = {};
+            d3d12CmdSignatureDesc.ByteStride = sizeof(joint::MeshDrawCmd);
+            d3d12CmdSignatureDesc.NumArgumentDescs = (uint32_t)d3d12ArgumentDescs.size();
+            d3d12CmdSignatureDesc.pArgumentDescs = d3d12ArgumentDescs.data();
+            d3d12CmdSignatureDesc.NodeMask = 0;
+
+            BenzinD3D12Call(ms_Device->GetD3D12Device()->CreateCommandSignature(
+                &d3d12CmdSignatureDesc,
+                ms_Device->GetUnifiedRootSignature().GetD3D12RootSignature(),
+                IID_PPV_ARGS(&m_D3D12DrawCmdSignature)));
+        }
+
+        {
+            std::array<D3D12_INDIRECT_ARGUMENT_DESC, 4> d3d12ArgumentDescs = {};
+
+            d3d12ArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+            d3d12ArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
+            d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
+            d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 1;
+
+            d3d12ArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+            d3d12ArgumentDescs[1].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
+            d3d12ArgumentDescs[1].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshletOffset;
+            d3d12ArgumentDescs[1].Constant.Num32BitValuesToSet = 1;
+
+            d3d12ArgumentDescs[2].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+            d3d12ArgumentDescs[2].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
+            d3d12ArgumentDescs[2].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshletCount;
+            d3d12ArgumentDescs[2].Constant.Num32BitValuesToSet = 1;
+
+            d3d12ArgumentDescs[3].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
+
+            D3D12_COMMAND_SIGNATURE_DESC d3d12CmdSignatureDesc = {};
+            d3d12CmdSignatureDesc.ByteStride = sizeof(joint::MeshDrawCmd);
+            d3d12CmdSignatureDesc.NumArgumentDescs = (uint32_t)d3d12ArgumentDescs.size();
+            d3d12CmdSignatureDesc.pArgumentDescs = d3d12ArgumentDescs.data();
+            d3d12CmdSignatureDesc.NodeMask = 0;
+
+            BenzinD3D12Call(ms_Device->GetD3D12Device()->CreateCommandSignature(
+                &d3d12CmdSignatureDesc,
+                ms_Device->GetUnifiedRootSignature().GetD3D12RootSignature(),
+                IID_PPV_ARGS(&m_D3D12MeshDispatchCmdSignature)));
+        }
     }
 
     GeometryPass::~GeometryPass()
     {
-        ms_Device->DeferredRelease(m_D3D12DrawIndirectCmdSignature);
-        m_D3D12DrawIndirectCmdSignature = nullptr;
+        ms_Device->DeferredRelease(m_D3D12DrawCmdSignature);
+        m_D3D12DrawCmdSignature = nullptr;
+
+        ms_Device->DeferredRelease(m_D3D12MeshDispatchCmdSignature);
+        m_D3D12MeshDispatchCmdSignature = nullptr;
 
         ms_PsoManager->Destroy(PsoId::GeometryPass_EarlyComputeCulling);
         ms_PsoManager->Destroy(PsoId::GeometryPass_LateComputeCulling);
@@ -106,6 +144,16 @@ namespace sandbox
             creation.m_IsUnorderedAccessAllowed = true;
         });
 
+        m_CmdCountBuffer = allocator.AllocateBuffer([](benzin::BufferCreation& creation)
+        {
+            creation.m_DebugName = "GeometryPass::CmdCountBuffer";
+            creation.m_Type = benzin::BufferType::Format;
+            creation.m_DxgiFormat = DXGI_FORMAT_R32_UINT;
+            creation.m_ElementSizeInBytes = sizeof(uint32_t);
+            creation.m_ElementCount = 1;
+            creation.m_IsUnorderedAccessAllowed = true;
+        });
+
         m_DrawCmdBuffer = allocator.AllocateBuffer([drawCount](benzin::BufferCreation& creation)
         {
             creation.m_DebugName = "GeometryPass::DrawCmdBuffer";
@@ -115,13 +163,12 @@ namespace sandbox
             creation.m_IsUnorderedAccessAllowed = true;
         });
 
-        m_DrawCmdCountBuffer = allocator.AllocateBuffer([](benzin::BufferCreation& creation)
+        m_DispatchCmdBuffer = allocator.AllocateBuffer([drawCount](benzin::BufferCreation& creation)
         {
-            creation.m_DebugName = "GeometryPass::DrawCmdCountBuffer";
-            creation.m_Type = benzin::BufferType::Format;
-            creation.m_DxgiFormat = DXGI_FORMAT_R32_UINT;
-            creation.m_ElementSizeInBytes = sizeof(uint32_t);
-            creation.m_ElementCount = 1;
+            creation.m_DebugName = "GeometryPass::DispatchCmdBuffer";
+            creation.m_Type = benzin::BufferType::Structured;
+            creation.m_ElementSizeInBytes = sizeof(joint::MeshDispatchCmd);
+            creation.m_ElementCount = drawCount;
             creation.m_IsUnorderedAccessAllowed = true;
         });
 
@@ -154,7 +201,7 @@ namespace sandbox
 
     void GeometryPass::CreateGeometryPso(PsoId id, bool isMeshPipeline)
     {
-        const auto configureGraphicsPsoProxy = [](auto& proxy)
+        const auto configure = [](auto& proxy)
         {
             proxy.m_Ps.m_FileName = "geometry_pass.hlsl";
             proxy.m_DepthStencilDxgiFormat = GBufferSettings::ms_DepthStencilDxgiFormat;
@@ -172,20 +219,20 @@ namespace sandbox
 
         if (isMeshPipeline)
         {
-            ms_PsoManager->Create(id, [&configureGraphicsPsoProxy](benzin::MeshPsoProxy& proxy)
+            ms_PsoManager->Create(id, [&configure](benzin::MeshPsoProxy& proxy)
             {
-                proxy.m_As.m_FileName = "geometry_pass.hlsl";
-                proxy.m_Ms.m_FileName = "geometry_pass.hlsl";
+                // proxy.m_As.m_FileName = "geometry_pass.hlsl";
+                // proxy.m_As.m_Defines.push_back("MESH_PIPELINE");
 
-                proxy.m_As.m_Defines.push_back("MESH_PIPELINE");
+                proxy.m_Ms.m_FileName = "geometry_pass.hlsl";
                 proxy.m_Ms.m_Defines.push_back("MESH_PIPELINE");
 
-                configureGraphicsPsoProxy(proxy);
+                configure(proxy);
             });
         }
         else
         {
-            ms_PsoManager->Create(id, [&configureGraphicsPsoProxy](benzin::VertexPsoProxy& proxy)
+            ms_PsoManager->Create(id, [&configure](benzin::VertexPsoProxy& proxy)
             {
                 proxy.m_InputLayout.emplace_back("sem_Position", DXGI_FORMAT_R32G32B32_FLOAT);
                 proxy.m_InputLayout.emplace_back("sem_Normal", DXGI_FORMAT_R32G32B32_FLOAT);
@@ -197,14 +244,14 @@ namespace sandbox
 
                 proxy.m_Vs.m_FileName = "geometry_pass.hlsl";
 
-                configureGraphicsPsoProxy(proxy);
+                configure(proxy);
             });
         }
     }
 
     void GeometryPass::RunCullingPass(const char* gpuName, bool isLate) const
     {
-        using Resources = joint::ComputeCullingResources;
+        using Resources = joint::GeometryCullingResources;
 
         BenzinProfile();
         BenzinGpuProfile(gpuName);
@@ -216,8 +263,9 @@ namespace sandbox
         cmdList.SetComputeRootConstant(*Resources::MeshDrawCount, drawCount);
         cmdList.SetComputeRootSrv(*Resources::MeshDraws, *ms_Scene->m_MeshDrawBuffer);
         cmdList.SetComputeRootSrv(*Resources::Meshes, *ms_Scene->m_MeshBuffer);
+        cmdList.SetComputeRootUav(*Resources::MeshCmdCounter, *m_CmdCountBuffer);
         cmdList.SetComputeRootUav(*Resources::MeshDrawCmds, *m_DrawCmdBuffer);
-        cmdList.SetComputeRootUav(*Resources::MeshDrawCmdCounter, *m_DrawCmdCountBuffer);
+        cmdList.SetComputeRootUav(*Resources::MeshDispatchCmds, *m_DispatchCmdBuffer);
 
         if (isLate)
         {
@@ -230,14 +278,14 @@ namespace sandbox
 
         cmdList.FlushBarriers();
 
-        cmdList.ClearUnorderedAccess(*m_DrawCmdBuffer, m_DrawCmdBuffer->GetUav({ .m_IsForcedRawView = true }));
-        cmdList.ClearUnorderedAccess(*m_DrawCmdCountBuffer, m_DrawCmdCountBuffer->GetUav());
+        cmdList.ClearUnorderedAccess(*m_CmdCountBuffer, m_CmdCountBuffer->GetUav());
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(isLate ? PsoId::GeometryPass_LateComputeCulling : PsoId::GeometryPass_EarlyComputeCulling));
         cmdList.Dispatch({ drawCount, 1, 1 }, { 64, 1, 1 });
 
+        cmdList.AddUnorderedAccess(*m_CmdCountBuffer);
         cmdList.AddUnorderedAccess(*m_DrawCmdBuffer);
-        cmdList.AddUnorderedAccess(*m_DrawCmdCountBuffer);
+        cmdList.AddUnorderedAccess(*m_DispatchCmdBuffer);
     }
 
     void GeometryPass::RunDrawPass(const char* gpuName, bool isLate) const
@@ -246,6 +294,36 @@ namespace sandbox
         BenzinGpuProfile(gpuName);
 
         benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+
+        const bool isMeshPipeline = ms_Settings->GetSection<GBufferSettings>().m_IsMeshPipelineEnabled;
+
+        if (isMeshPipeline)
+        {
+            cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Mesh));
+
+            cmdList.SetGraphicsRootSrv(*joint::GeometryResources::Vertices, *ms_Scene->m_VertexBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            cmdList.SetGraphicsRootSrv(*joint::GeometryResources::Meshlets, *ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*joint::GeometryResources::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*joint::GeometryResources::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*joint::GeometryResources::MeshletIndices, *ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
+        else
+        {
+            cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Vertex));
+
+            cmdList.SetVertexBuffer(*ms_Scene->m_VertexBuffer);
+            cmdList.SetIndexBuffer(*ms_Scene->m_IndexBuffer);
+
+            cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        }
+
+        cmdList.SetGraphicsRootSrv(*joint::GeometryResources::MeshDraws, *ms_Scene->m_MeshDrawBuffer);
+        cmdList.SetGraphicsRootSrv(*joint::GeometryResources::Materials, *ms_Scene->m_MaterialBuffer);
+
+        const auto& cmdBuffer = isMeshPipeline ? m_DispatchCmdBuffer : m_DrawCmdBuffer;
+
+        cmdList.AddTransition(*m_CmdCountBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        cmdList.AddTransition(*cmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 
         const GBuffer gbuffer{ *ms_Resources };
 
@@ -268,27 +346,15 @@ namespace sandbox
             cmdList.ClearDepthStencil(gbuffer.m_DepthStencil);
         }
 
-        cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Vertex));
-        cmdList.SetVertexBuffer(*ms_Scene->m_VertexBuffer);
-        cmdList.SetIndexBuffer(*ms_Scene->m_IndexBuffer);
-
-        cmdList.SetGraphicsRootSrv(*joint::GeometryResources::MeshDraws, *ms_Scene->m_MeshDrawBuffer);
-        cmdList.SetGraphicsRootSrv(*joint::GeometryResources::Materials, *ms_Scene->m_MaterialBuffer);
-
-        cmdList.AddTransition(*m_DrawCmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-        cmdList.AddTransition(*m_DrawCmdCountBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-        cmdList.FlushBarriers();
-
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
         cmdList.GetD3D12GraphicsCommandList()->RSSetScissorRects(1, &ms_D3D12RenderScissorRect);
-        cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         cmdList.GetD3D12GraphicsCommandList()->ExecuteIndirect(
-            m_D3D12DrawIndirectCmdSignature,
-            (uint32_t)m_DrawCmdBuffer->GetElementCount(),
-            m_DrawCmdBuffer->GetD3D12Resource(),
+            isMeshPipeline ? m_D3D12MeshDispatchCmdSignature : m_D3D12DrawCmdSignature,
+            (uint32_t)cmdBuffer->GetElementCount(),
+            cmdBuffer->GetD3D12Resource(),
             0,
-            m_DrawCmdCountBuffer->GetD3D12Resource(),
+            m_CmdCountBuffer->GetD3D12Resource(),
             0);
     }
 

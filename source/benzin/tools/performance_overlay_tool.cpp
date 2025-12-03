@@ -113,12 +113,13 @@ namespace benzin
 
         if (CmdLineArgs::IsGpuValidationEnabled())
         {
-            ImGui::Text("!!! GPU Validation ENABLED");
+            ImGui::NewLine();
+            ImGui::Text("GPU Validation: ON");
         }
 
         if (CmdLineArgs::IsSynchronizedCommandQueueValidationEnabled())
         {
-            ImGui::Text("!!! Debug Sync Queue ENABLED");
+            ImGui::Text("Debug Sync Queue: ON");
         }
 
         ImGui::PopStyleVar();

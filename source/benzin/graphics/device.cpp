@@ -209,7 +209,7 @@ namespace benzin
         MakeUniquePtr(m_PersistentDefaultHeap, *this, GpuHeapCreation{ .m_DebugName = "Device::PersistentDefaultHeap", .m_Type = GpuHeapType::Default, .m_SizeInBytes = 600_mb });
         MakeUniquePtr(m_PersistentGpuUploadHeap, *this, GpuHeapCreation{ .m_DebugName = "Device::PersistentUploadHeap", .m_Type = GpuHeapType::GpuUpload, .m_SizeInBytes = 4_mb });
         MakeUniquePtr(m_PersistentReadbackHeap, *this, GpuHeapCreation{ .m_DebugName = "Device::PersistentReadbackHeap", .m_Type = GpuHeapType::Readback, .m_SizeInBytes = 4_mb });
-        MakeUniquePtr(m_ResDependentHeap, *this, GpuHeapCreation{ .m_DebugName = "Device::ResDependentHeap", .m_Type = GpuHeapType::Default, .m_SizeInBytes = 150_mb });
+        MakeUniquePtr(m_ResDependentHeap, *this, GpuHeapCreation{ .m_DebugName = "Device::ResDependentHeap", .m_Type = GpuHeapType::Default, .m_SizeInBytes = 250_mb });
 
         MakeUniquePtr(m_PersistentDefaultAllocator, *m_PersistentDefaultHeap);
         MakeUniquePtr(m_PersistentGpuUploadAllocator, *m_PersistentGpuUploadHeap);

@@ -7,32 +7,9 @@
 
 #define ALPHA_TEST_ENABLED defined(ALPHA_TEST)
 #define MESH_PIPELINE_ENABLED defined(MESH_PIPELINE)
-#define COMPUTE_CULLING_ENABLED defined(COMPUTE_CULLING)
-#define LATE_CULLING_ENABLED defined(LATE_CULLING)
 
 BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::GeometryResources::Materials);
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_Draws, joint::GeometryResources::MeshDraws);
-
-bool IsFrustumCulled(joint::MeshDraw draw, float3 center, float radius)
-{
-    bool isVisible = true;
-
-    float4 viewCenter = mul(float4(center, 1.0), draw.m_LocalToWorld);
-    viewCenter = mul(viewCenter, GetCameraConsts().m_WorldToView);
-
-    const float worldRadius = radius * draw.m_LocalToWorldScale;
-
-    [unroll]
-    for (uint i = 0; i < 6; ++i)
-    {
-        const float4 viewPlane = GetCameraConsts().m_ViewFrustumPlanes[i];
-        const float distanceToPlane = dot(viewPlane.xyz, viewCenter.xyz) + viewPlane.w;
-
-        isVisible &= distanceToPlane < worldRadius;
-    }
-
-    return !isVisible;
-}
 
 struct VsOutput
 {
@@ -45,8 +22,9 @@ struct VsOutput
     nointerpolation uint m_MaterialIndex : sem_MaterialIndex;
 };
 
-VsOutput ProcessVertex(joint::MeshVertex vertex, uint drawIndex)
+VsOutput ProcessVertex(joint::MeshVertex vertex)
 {
+    const uint drawIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawIndex);
     const joint::MeshDraw draw = g_Draws[drawIndex];
 
     const float4 worldPosition = mul(float4(vertex.m_Position, 1.0), draw.m_LocalToWorld);
@@ -64,6 +42,8 @@ VsOutput ProcessVertex(joint::MeshVertex vertex, uint drawIndex)
     return output;
 }
 
+#define g_AmplificationGroupSize 32
+
 #if MESH_PIPELINE_ENABLED
 
 // Sources:
@@ -77,41 +57,31 @@ VsOutput ProcessVertex(joint::MeshVertex vertex, uint drawIndex)
 // - TODO - Efficient Use of GPU Memory in Modern Games - Digital Dragons 2021: https://gpuopen.com/videos/efficient-use-of-gpu-memory-digital-dragons/
 // - TODO - D3D12 Memory Allocator: https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
 
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshDispatch>, g_Dispatches, joint::GeometryResources::MeshDispathes);
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
 BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshletCullVolume>, g_MeshletCullVolumes, joint::GeometryResources::MeshletCullVolumes);
 BenzinDeclareRootResource(Buffer<uint>, g_MeshletVertexIndices, joint::GeometryResources::MeshletVertexIndices);
 BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
 
-#define g_AmplificationGroupSize 32
-
 struct MeshPayload
 {
-    uint m_MeshDispatchIndices[g_AmplificationGroupSize];
+    uint m_MeshletIndices[g_AmplificationGroupSize];
 };
 
 groupshared MeshPayload g_MeshPayload;
 
 [NumThreads(g_AmplificationGroupSize, 1, 1)]
-void AsMain(uint dispatchIndex : SV_DispatchThreadID)
+void AsMain(uint dtid : SV_DispatchThreadID)
 {
-    bool isVisible = dispatchIndex < BenzinGetRootConstant(joint::GeometryResources::MeshDispatchCount);
+    const uint meshletOffset = BenzinGetRootConstant(joint::GeometryResources::MeshletOffset);
+    const uint meshletCount = BenzinGetRootConstant(joint::GeometryResources::MeshletCount);
 
-    const joint::MeshDispatch dispatch = g_Dispatches[dispatchIndex];
-
-    if (g_FrameConsts.m_IsFrustumCullingEnabled && isVisible)
-    {
-        const joint::MeshDraw draw = g_Draws[dispatch.m_MeshDrawIndex];
-        const joint::MeshletCullVolume cullVolume = g_MeshletCullVolumes[dispatch.m_MeshletIndex];
-    
-        isVisible = !IsFrustumCulled(draw, cullVolume.m_Center, cullVolume.m_Radius);
-    }
+    bool isVisible = dtid < meshletCount;
 
     if (isVisible)
     {
         const uint index = WavePrefixCountBits(isVisible);
-        g_MeshPayload.m_MeshDispatchIndices[index] = dispatchIndex;
+        g_MeshPayload.m_MeshletIndices[index] = dtid + meshletOffset;
     }
 
     const uint visibleCount = WaveActiveCountBits(isVisible);
@@ -127,9 +97,18 @@ void MsMain(
     out vertices VsOutput vertices[(uint)joint::MeshletConsts::MaxVertexCount],
     out indices uint3 triangles[(uint)joint::MeshletConsts::MaxTriangleCount])
 {
-    const uint dispatchIndex = payload.m_MeshDispatchIndices[gid];
-    const joint::MeshDispatch dispatch = g_Dispatches[dispatchIndex];
-    const joint::Meshlet meshlet = g_Meshlets[dispatch.m_MeshletIndex];
+#if 0
+    const uint meshletIndex = payload.m_MeshletIndices[gid];
+    const joint::Meshlet meshlet = g_Meshlets[meshletIndex];
+#else
+    const uint meshletOffset = BenzinGetRootConstant(joint::GeometryResources::MeshletOffset);
+    const uint meshletCount = BenzinGetRootConstant(joint::GeometryResources::MeshletCount);
+
+    if (gid >= meshletCount)
+        return;
+
+    const joint::Meshlet meshlet = g_Meshlets[gid + meshletOffset];
+#endif
 
     SetMeshOutputCounts(meshlet.m_VertexCount, meshlet.m_TriangleCount);
 
@@ -138,7 +117,7 @@ void MsMain(
         const uint vertexIndex = g_MeshletVertexIndices[meshlet.m_VertexOffset + gtid];
         const joint::MeshVertex vertex = g_Vertices[vertexIndex];
 
-        vertices[gtid] = ProcessVertex(vertex, dispatch.m_MeshDrawIndex);
+        vertices[gtid] = ProcessVertex(vertex);
     }
 
     if (gtid < meshlet.m_TriangleCount)
@@ -159,10 +138,9 @@ struct VsInput
     float2 m_Uv : sem_Uv;
 };
 
-VsOutput VsMain(VsInput vertex, uint vertexIndex : SV_VertexID)
+VsOutput VsMain(VsInput vertex)
 {
-    const uint drawIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawIndex);
-    return ProcessVertex((joint::MeshVertex)vertex, drawIndex);
+    return ProcessVertex((joint::MeshVertex)vertex);
 }
 
 float3x3 CotangentFrame(float3 worldNormal, float3 p, float2 uv)
@@ -249,71 +227,3 @@ PackedGBuffer PsMain(VsOutput input)
 
     return PackGBuffer(gbuffer);
 }
-
-#if COMPUTE_CULLING_ENABLED
-
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_MeshDraws, joint::ComputeCullingResources::MeshDraws);
-BenzinDeclareRootResource(StructuredBuffer<joint::Mesh>, g_Meshes, joint::ComputeCullingResources::Meshes);
-#if LATE_CULLING_ENABLED
-BenzinDeclareRootResource(RWBuffer<uint>, g_VisibilityBuffer, joint::ComputeCullingResources::VisibilityBuffer);
-#else
-BenzinDeclareRootResource(Buffer<uint>, g_VisibilityBuffer, joint::ComputeCullingResources::VisibilityBuffer);
-#endif
-BenzinDeclareRootResource(RWStructuredBuffer<joint::MeshDrawCmd>, g_DrawCmds, joint::ComputeCullingResources::MeshDrawCmds);
-BenzinDeclareRootResource(RWBuffer<uint>, g_CmdCounter, joint::ComputeCullingResources::MeshDrawCmdCounter);
-
-[numthreads(64, 1, 1)]
-void CsMain(uint dtid : SV_DispatchThreadID)
-{
-    if (dtid >= BenzinGetRootConstant(joint::ComputeCullingResources::MeshDrawCount))
-        return;
-
-    const joint::MeshDraw draw = g_MeshDraws[dtid];
-    const joint::Mesh mesh = g_Meshes[draw.m_MeshIndex];
-
-#if LATE_CULLING_ENABLED
-    bool isVisible = true;
-#else
-    bool isVisible = g_VisibilityBuffer[dtid];
-#endif
-
-    if (g_FrameConsts.m_IsFrustumCullingEnabled && isVisible)
-    {
-        isVisible &= !IsFrustumCulled(draw, mesh.m_Center, mesh.m_Radius);
-    }
-
-#if LATE_CULLING_ENABLED
-    const bool isDrawNeeded = isVisible && !g_VisibilityBuffer[dtid];
-#else
-    const bool isDrawNeeded = isVisible;
-#endif
-
-    InterlockedAddToStat(joint::ReadbackStat::Geometry_TotalMeshCount, 1);
-
-    if (isDrawNeeded)
-    {
-        const joint::MeshLod lod = mesh.m_Lods[0];
-
-        joint::MeshDrawCmd cmd = (joint::MeshDrawCmd)0;
-        cmd.m_DrawIndex = dtid;
-        cmd.m_IndexCountPerInstance = lod.m_IndexCount;
-        cmd.m_InstanceCount = 1;
-        cmd.m_StartIndexLocation = lod.m_IndexOffset;
-        cmd.m_BaseVertexLocation = mesh.m_VertexOffset;
-        cmd.m_StartInstanceLocation = 0;
-
-        uint cmdIndex;
-        InterlockedAdd(g_CmdCounter[0], 1, cmdIndex);
-
-        g_DrawCmds[cmdIndex] = cmd;
-
-        InterlockedAddToStat(joint::ReadbackStat::Geometry_RenderedMeshCount, 1);
-        InterlockedAddToStat(joint::ReadbackStat::Geometry_RenderedTriangleCount, lod.m_IndexCount / 3);
-    }
-
-#if LATE_CULLING_ENABLED
-    g_VisibilityBuffer[dtid] = isVisible;
-#endif
-}
-
-#endif // COMPUTE_CULLING_ENABLED

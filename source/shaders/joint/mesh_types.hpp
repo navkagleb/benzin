@@ -16,8 +16,11 @@ namespace joint
 
     struct MeshLod
     {
-        uint32_t m_IndexOffset;
-        uint32_t m_IndexCount;
+        uint m_IndexOffset;
+        uint m_IndexCount;
+
+        uint m_MeshletOffset;
+        uint m_MeshletCount;
     };
 
     struct Mesh
@@ -25,9 +28,9 @@ namespace joint
         float3 m_Center;
         float m_Radius;
 
-        uint32_t m_VertexOffset;
+        uint m_VertexOffset;
 
-        uint32_t m_LodCount;
+        uint m_LodCount;
         MeshLod m_Lods[8];
     };
 
@@ -35,8 +38,8 @@ namespace joint
     {
         float4x4 m_LocalToWorld;
         float4x4 m_PrevLocalToWorld;
-        uint32_t m_MeshIndex;
-        uint32_t m_MaterialIndex;
+        uint m_MeshIndex;
+        uint m_MaterialIndex;
         float m_LocalToWorldScale;
         float m_Padding0;
     };
@@ -53,18 +56,24 @@ namespace joint
         uint m_StartInstanceLocation;
     };
 
+    struct MeshDispatchCmd
+    {
+        uint m_DrawIndex;
+        uint m_MeshletOffset;
+        uint m_MeshletCount;
+
+        // D3D12_DISPATCH_MESH_ARGUMENTS
+        uint m_ThreadGroupCountX;
+        uint m_ThreadGroupCountY;
+        uint m_ThreadGroupCountZ;
+    };
+
     struct Meshlet
     {
         uint m_VertexOffset;
         uint m_VertexCount;
         uint m_IndexOffset;
         uint m_TriangleCount;
-    };
-
-    struct MeshDispatch
-    {
-        uint m_MeshletIndex;
-        uint m_MeshDrawIndex;
     };
 
     struct MeshletCullVolume
@@ -78,9 +87,10 @@ namespace joint
 
     enum class MeshletConsts
     {
-        LodCount = 8,
         MaxVertexCount = 64,
         MaxTriangleCount = 124, // Must be multiple of 4 (for meshoptimizer library)
+
+        AmplificationGroupSize = 32,
     };
 
     struct Material

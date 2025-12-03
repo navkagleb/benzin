@@ -15,6 +15,7 @@ namespace sandbox
         static const DXGI_FORMAT ms_Color4DxgiFormat = DXGI_FORMAT_R32_FLOAT; // ViewDepth
         static const DXGI_FORMAT ms_DepthStencilDxgiFormat = DXGI_FORMAT_D32_FLOAT;
 
+        bool m_IsMeshPipelineEnabled = true;
         bool m_IsLodSelectionEnabled = true;
         bool m_IsFrustumCullingEnabled = true;
     };

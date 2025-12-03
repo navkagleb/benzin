@@ -178,6 +178,8 @@ namespace benzin
                 joint::MeshLod& jointLod = jointMesh.m_Lods[lodIndex];
                 jointLod.m_IndexOffset = lod.m_IndexOffset;
                 jointLod.m_IndexCount = lod.m_IndexCount;
+                jointLod.m_MeshletOffset = lod.m_MeshletOffset;
+                jointLod.m_MeshletCount = lod.m_MeshletCount;
             }
         }
 
@@ -273,6 +275,7 @@ namespace benzin
                 scales.z = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[2]));
 
                 BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-5f && std::fabs(scales.x - scales.z) <= 1e-5f, "Scale is not uniform");
+                // BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-3f && std::fabs(scales.x - scales.z) <= 1e-3f, "Scale is not uniform");
                 jointDraw.m_LocalToWorldScale = scales.x;
             }
         }
