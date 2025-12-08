@@ -136,9 +136,9 @@ namespace sandbox
 
             cmdList.CopyBufferRegion(*m_ReadbackStatBuffer, destOffsetInBytes, *m_StatBuffer, 0, dataSizeInBytes);
 
-            m_ReadbackStatBuffer->MapReadbackData(readbackOffsetInBytes, dataSizeInBytes, [this](const std::byte* mappedData)
+            m_ReadbackStatBuffer->MapReadbackData(readbackOffsetInBytes, dataSizeInBytes, [this](std::span<const std::byte> data)
             {
-                const auto readbackStats = benzin::ToSpan((const uint32_t*)mappedData, magic_enum::enum_count<joint::ReadbackStat>());
+                const auto readbackStats = benzin::ToSpan((const uint32_t*)data.data(), magic_enum::enum_count<joint::ReadbackStat>());
                 m_ReadbackStatsCallback(readbackStats);
             });
         }

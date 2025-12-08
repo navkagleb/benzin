@@ -1,7 +1,6 @@
 #include <benzin/config/bootstrap.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 
-#include <benzin/core/cmd_line_args.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 
@@ -10,14 +9,14 @@ namespace benzin
 
     D3D12_HEAP_PROPERTIES GetD3D12HeapProperties(D3D12_HEAP_TYPE d3d12HeapType)
     {
-        return D3D12_HEAP_PROPERTIES
-        {
-            .Type = d3d12HeapType,
-            .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-            .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-            .CreationNodeMask = 1,
-            .VisibleNodeMask = 1,
-        };
+        D3D12_HEAP_PROPERTIES d3d12HeapProperties = {};
+        d3d12HeapProperties.Type = d3d12HeapType;
+        d3d12HeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        d3d12HeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        d3d12HeapProperties.CreationNodeMask = 1;
+        d3d12HeapProperties.VisibleNodeMask = 1;
+
+        return d3d12HeapProperties;
     }
 
     D3D12_HEAP_TYPE ToD3D12HeapType(const Device& device, GpuHeapType gpuHeapType)

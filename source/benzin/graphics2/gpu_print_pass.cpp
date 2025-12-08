@@ -155,9 +155,9 @@ namespace benzin
 
         cmdList.CopyBufferRegion(*m_ReadbackBuffer, destOffsetInBytes, *m_UavBuffer, 0, bufferSizeInBytes);
 
-        m_ReadbackBuffer->MapReadbackData(readbackOffsetInBytes, bufferSizeInBytes, [&](const std::byte* mappedData)
+        m_ReadbackBuffer->MapReadbackData(readbackOffsetInBytes, bufferSizeInBytes, [&](std::span<const std::byte> data)
         {
-            BufferReader reader{ mappedData, bufferSizeInBytes };
+            BufferReader reader{ data.data(), data.size_bytes() };
             m_PrintData.m_PrintRecords = ParseGpuPrintRecords(reader);
         });
     }

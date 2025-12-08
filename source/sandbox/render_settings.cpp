@@ -24,6 +24,21 @@ namespace sandbox
         ImGui::FmtText("Total mesh count: {:L}", stats.m_TotalMeshCount);
         ImGui::FmtText("Rendered mesh count: {:L}", stats.m_RenderedMeshCount);
         ImGui::FmtText("Rendered triangle count: {:L}", stats.m_RenderedTriangleCount);
+        ImGui::NewLine();
+        ImGui::FmtText("D3D12 IAVertices:    {:L}", stats.m_D3D12PipelineStats.IAVertices);
+        ImGui::FmtText("D3D12 IAPrimitives:  {:L}", stats.m_D3D12PipelineStats.IAPrimitives);
+        ImGui::FmtText("D3D12 VSInvocations: {:L}", stats.m_D3D12PipelineStats.VSInvocations);
+        ImGui::FmtText("D3D12 GSInvocations: {:L}", stats.m_D3D12PipelineStats.GSInvocations);
+        ImGui::FmtText("D3D12 GSPrimitives:  {:L}", stats.m_D3D12PipelineStats.GSPrimitives);
+        ImGui::FmtText("D3D12 CInvocations:  {:L}", stats.m_D3D12PipelineStats.CInvocations);
+        ImGui::FmtText("D3D12 CPrimitives:   {:L}", stats.m_D3D12PipelineStats.CPrimitives);
+        ImGui::FmtText("D3D12 PSInvocations: {:L}", stats.m_D3D12PipelineStats.PSInvocations);
+        ImGui::FmtText("D3D12 HSInvocations: {:L}", stats.m_D3D12PipelineStats.HSInvocations);
+        ImGui::FmtText("D3D12 DSInvocations: {:L}", stats.m_D3D12PipelineStats.DSInvocations);
+        ImGui::FmtText("D3D12 CSInvocations: {:L}", stats.m_D3D12PipelineStats.CSInvocations);
+        ImGui::FmtText("D3D12 ASInvocations: {:L}", stats.m_D3D12PipelineStats.ASInvocations);
+        ImGui::FmtText("D3D12 MSInvocations: {:L}", stats.m_D3D12PipelineStats.MSInvocations);
+        ImGui::FmtText("D3D12 MSPrimitives:  {:L}", stats.m_D3D12PipelineStats.MSPrimitives);
     }
 
     template <>

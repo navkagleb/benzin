@@ -25,6 +25,8 @@ namespace sandbox
         uint32_t m_TotalMeshCount = 0;
         uint32_t m_RenderedMeshCount = 0;
         uint32_t m_RenderedTriangleCount = 0;
+
+        D3D12_QUERY_DATA_PIPELINE_STATISTICS1 m_D3D12PipelineStats = 0;
     };
 
     struct ProceduralGrassSettings

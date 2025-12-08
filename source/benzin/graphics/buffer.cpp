@@ -353,7 +353,8 @@ namespace benzin
         std::byte* mappedData = nullptr;
         BenzinD3D12Call(m_D3D12Resource->Map(0, &d3d12ReadbackRange, reinterpret_cast<void**>(&mappedData)));
 
-        callback(mappedData);
+        const auto data = ToSpan(mappedData + offsetInBytes, dataSizeInBytes);
+        callback(data);
 
         m_D3D12Resource->Unmap(0, nullptr);
     }

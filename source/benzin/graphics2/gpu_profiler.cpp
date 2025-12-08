@@ -69,9 +69,9 @@ namespace benzin
         m_ReadbackBuffer->MapReadbackData(
             m_ReadbackBuffer->GetElementSizeInBytes() * m_ReadIndex,
             m_ReadbackBuffer->GetElementSizeInBytes(),
-            [this](const std::byte* mappedData)
+            [this](std::span<const std::byte> data)
             {
-                const std::span<const uint64_t> timestamps = ToSpan((const uint64_t*)mappedData, ms_MaxTimestampCount);
+                const auto timestamps = ToSpan((const uint64_t*)data.data(), ms_MaxTimestampCount);
                 CopyNodeDurationRecursive(m_FakeRoot, timestamps);
 
                 if (GetRootNode() != nullptr)

@@ -14,6 +14,7 @@
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/pso.hpp>
+#include <benzin/graphics/query_heap.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
@@ -172,6 +173,17 @@ namespace sandbox
             creation.m_IsUnorderedAccessAllowed = true;
         });
 
+        benzin::QueryHeapCreation queryHeapCreation;
+        queryHeapCreation.m_DebugName = "GeometryPass::StatsQueryHeap";
+        queryHeapCreation.m_D3D12Type = D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS1;
+        queryHeapCreation.m_Count = 1;
+        MakeUniquePtr(m_StatsQueryHeap, *ms_Device, queryHeapCreation);
+
+        m_StatsBuffer = ms_Device->GetPersistentReadbackAllocator().AllocateStructuredBuffer(
+            "GeometryPass::StatsBuffer",
+            BENZIN_READBACK_LATENCY,
+            sizeof(m_D3D12PipelineStats));
+
         benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         cmdList.AddTransition(*m_VisibilityBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.FlushBarriers();
@@ -193,10 +205,41 @@ namespace sandbox
         BenzinProfile();
         BenzinGpuProfile("Geometry");
 
+        benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+        ID3D12GraphicsCommandList* d3d12CmdList = cmdList.GetD3D12GraphicsCommandList();
+
+        d3d12CmdList->BeginQuery(m_StatsQueryHeap->GetD3D12QueryHeap(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS1, 0);
+
         RunCullingPass("EarlyCulling", false);
         RunDrawPass("EarlyDraw", false);
         RunCullingPass("LateCulling", true);
         RunDrawPass("LateDraw", true);
+
+        d3d12CmdList->EndQuery(m_StatsQueryHeap->GetD3D12QueryHeap(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS1, 0);
+
+        const auto writeIndex = (uint32_t)(ms_Device->GetCpuFrameIndex() % BENZIN_READBACK_LATENCY);
+        const auto readIndex = (uint32_t)((ms_Device->GetCpuFrameIndex() + 1) % BENZIN_READBACK_LATENCY);
+
+        cmdList.AddTransition(*m_StatsBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmdList.FlushBarriers();
+
+        d3d12CmdList->ResolveQueryData(
+            m_StatsQueryHeap->GetD3D12QueryHeap(),
+            D3D12_QUERY_TYPE_PIPELINE_STATISTICS1,
+            0,
+            1,
+            m_StatsBuffer->GetD3D12Resource(),
+            writeIndex * sizeof(m_D3D12PipelineStats));
+
+        cmdList.AddTransition(*m_StatsBuffer, D3D12_RESOURCE_STATE_COMMON);
+        cmdList.FlushBarriers();
+
+        m_StatsBuffer->MapReadbackData(readIndex * sizeof(m_D3D12PipelineStats), sizeof(m_D3D12PipelineStats), [this](std::span<const std::byte> data)
+        {
+            std::memcpy((void*)&m_D3D12PipelineStats, data.data(), data.size_bytes());
+        });
+
+        ms_Settings->GetSection<GBufferStats>().m_D3D12PipelineStats = m_D3D12PipelineStats;
     }
 
     void GeometryPass::CreateGeometryPso(PsoId id, bool isMeshPipeline)

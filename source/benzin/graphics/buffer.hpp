@@ -40,13 +40,12 @@ namespace benzin
     class Buffer : public Resource
     {
     public:
-        using MapReadbackCallback = std::move_only_function<void(const std::byte* mappedData)>;
+        using MapReadbackCallback = std::move_only_function<void(std::span<const std::byte> mappedData)>;
 
         Buffer(Device& device, const BufferCreation& creation);
         Buffer(GpuHeap& gpuHeap, uint64_t gpuHeapOffsetInBytes, const BufferCreation& creation);
         ~Buffer() override;
 
-    public:
         auto GetHeapType() const { return m_HeapType; }
         auto GetType() const { return m_Type; }
         auto GetDxgiFormat() const { return m_DxgiFormat; }
@@ -69,7 +68,6 @@ namespace benzin
         Descriptor CreateDetachedSrv() const;
         Descriptor CreateDetachedUav(const BufferUav& uav) const;
 
-    private:
         GpuHeapType m_HeapType = g_MaxEnum<GpuHeapType>;
         BufferType m_Type = BufferType::Byte;
         DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;

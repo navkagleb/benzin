@@ -24,6 +24,7 @@ namespace benzin
 
         SetD3DObjectDebugName(m_D3D12QueryHeap, creation.m_DebugName);
 
+        m_D3D12Type = creation.m_D3D12Type;
         m_Count = creation.m_Count;
     }
 

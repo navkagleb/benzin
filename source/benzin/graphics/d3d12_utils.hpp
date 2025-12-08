@@ -25,9 +25,7 @@ namespace benzin
             auto alignedSize = (uint32_t)size;
 
             if (SUCCEEDED(d3dObject->GetPrivateData(WKPDID_D3DDebugObjectName, &alignedSize, data)))
-            {
                 return alignedSize;
-            }
 
             BenzinWarning("The debug name isn't set! Set debug name before get it!");
             return 0;
