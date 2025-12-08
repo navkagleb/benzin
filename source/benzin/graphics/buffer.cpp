@@ -341,7 +341,7 @@ namespace benzin
         });
     }
 
-    void Buffer::MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, MapReadbackCallback callback) const
+    void Buffer::MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, MapReadbackCallback<std::byte> callback) const
     {
         BenzinAssert(m_HeapType == GpuHeapType::Readback);
         BenzinAssert(offsetInBytes + dataSizeInBytes <= GetSizeInBytes());

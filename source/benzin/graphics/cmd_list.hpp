@@ -82,11 +82,6 @@ namespace benzin
         explicit ComputeCmdList(Device& device);
         ~ComputeCmdList() override;
 
-        // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d12/timing
-        // D3D12_COMMAND_LIST_TYPE_DIRECT and D3D12_COMMAND_LIST_TYPE_COMPUTE always support timestamps
-        void SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index);
-        void ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackOffsetInBytes);
-
         void SetComputeCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
         void SetComputeSrv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
         void SetComputeUav(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);

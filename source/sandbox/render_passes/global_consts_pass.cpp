@@ -131,16 +131,23 @@ namespace sandbox
             BenzinGpuProfile("CopyStats");
 
             const uint64_t dataSizeInBytes = m_StatBuffer->GetSizeInBytes();
-            const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % BENZIN_READBACK_LATENCY) * dataSizeInBytes;
-            const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % BENZIN_READBACK_LATENCY) * dataSizeInBytes;
+            const uint32_t writeIndex = ms_Device->GetCpuFrameIndex() % BENZIN_READBACK_LATENCY;
+            const uint32_t readIndex = (ms_Device->GetCpuFrameIndex() + 1) % BENZIN_READBACK_LATENCY;
 
-            cmdList.CopyBufferRegion(*m_ReadbackStatBuffer, destOffsetInBytes, *m_StatBuffer, 0, dataSizeInBytes);
+            cmdList.CopyBufferRegion(
+                *m_ReadbackStatBuffer,
+                dataSizeInBytes * writeIndex,
+                *m_StatBuffer,
+                0,
+                dataSizeInBytes);
 
-            m_ReadbackStatBuffer->MapReadbackData(readbackOffsetInBytes, dataSizeInBytes, [this](std::span<const std::byte> data)
-            {
-                const auto readbackStats = benzin::ToSpan((const uint32_t*)data.data(), magic_enum::enum_count<joint::ReadbackStat>());
-                m_ReadbackStatsCallback(readbackStats);
-            });
+            m_ReadbackStatBuffer->MapReadbackData<uint32_t>(
+                (uint32_t)m_StatBuffer->GetElementCount() * readIndex,
+                (uint32_t)m_StatBuffer->GetElementCount(),
+                [this](std::span<const uint32_t> readbackStats)
+                {
+                    m_ReadbackStatsCallback(readbackStats);
+                });
         }
 
         {

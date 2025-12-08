@@ -234,9 +234,9 @@ namespace sandbox
         cmdList.AddTransition(*m_StatsBuffer, D3D12_RESOURCE_STATE_COMMON);
         cmdList.FlushBarriers();
 
-        m_StatsBuffer->MapReadbackData(readIndex * sizeof(m_D3D12PipelineStats), sizeof(m_D3D12PipelineStats), [this](std::span<const std::byte> data)
+        m_StatsBuffer->MapReadbackData<D3D12_QUERY_DATA_PIPELINE_STATISTICS1>(readIndex, 1, [this](std::span<const D3D12_QUERY_DATA_PIPELINE_STATISTICS1> stats)
         {
-            std::memcpy((void*)&m_D3D12PipelineStats, data.data(), data.size_bytes());
+            std::memcpy((void*)&m_D3D12PipelineStats, stats.data(), stats.size_bytes());
         });
 
         ms_Settings->GetSection<GBufferStats>().m_D3D12PipelineStats = m_D3D12PipelineStats;

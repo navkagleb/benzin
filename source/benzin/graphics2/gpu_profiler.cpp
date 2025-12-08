@@ -20,6 +20,14 @@ namespace benzin
         }
     }
 
+    static void SetTimestamp(ComputeCmdList& cmdList, QueryHeap& timestampQueryHeap, uint32_t timestampIndex)
+    {
+        cmdList.GetD3D12GraphicsCommandList()->EndQuery(
+            timestampQueryHeap.GetD3D12QueryHeap(),
+            D3D12_QUERY_TYPE_TIMESTAMP,
+            timestampIndex);
+    }
+
     // GpuProfiler
 
     GpuProfiler::GpuProfiler(Device& device)
@@ -35,8 +43,8 @@ namespace benzin
         m_ReadbackBuffer = device.GetPersistentReadbackAllocator().AllocateBuffer([](BufferCreation& creation)
         {
             creation.m_DebugName = "GpuProfiler::ReadbackBuffer";
-            creation.m_ElementSizeInBytes = sizeof(uint64_t) * ms_MaxTimestampCount;
-            creation.m_ElementCount = BENZIN_READBACK_LATENCY;
+            creation.m_ElementSizeInBytes = sizeof(uint64_t);
+            creation.m_ElementCount = BENZIN_READBACK_LATENCY * ms_MaxTimestampCount;
         });
 
         m_FakeRoot.m_Name = "FakeRoot";
@@ -66,12 +74,11 @@ namespace benzin
 
         BenzinAssert(m_NodeStack.top() == &m_FakeRoot);
 
-        m_ReadbackBuffer->MapReadbackData(
-            m_ReadbackBuffer->GetElementSizeInBytes() * m_ReadIndex,
-            m_ReadbackBuffer->GetElementSizeInBytes(),
-            [this](std::span<const std::byte> data)
+        m_ReadbackBuffer->MapReadbackData<uint64_t>(
+            ms_MaxTimestampCount * m_ReadIndex,
+            ms_MaxTimestampCount,
+            [this](std::span<const uint64_t> timestamps)
             {
-                const auto timestamps = ToSpan((const uint64_t*)data.data(), ms_MaxTimestampCount);
                 CopyNodeDurationRecursive(m_FakeRoot, timestamps);
 
                 if (GetRootNode() != nullptr)
@@ -102,11 +109,19 @@ namespace benzin
         {
             if (!m_ProfiledTimestamps.test(i))
             {
-                cmdList.SetTimestamp(*m_TimestampQueryHeap, i);
+                SetTimestamp(cmdList, *m_TimestampQueryHeap, i);
             }
         }
 
-        cmdList.ResolveTimestamps(*m_TimestampQueryHeap, *m_ReadbackBuffer, m_ReadbackBuffer->GetElementSizeInBytes() * m_WriteIndex);
+        ID3D12GraphicsCommandList* d3d12CmdList = cmdList.GetD3D12GraphicsCommandList();
+
+        d3d12CmdList->ResolveQueryData(
+            m_TimestampQueryHeap->GetD3D12QueryHeap(),
+            D3D12_QUERY_TYPE_TIMESTAMP,
+            0,
+            ms_MaxTimestampCount,
+            m_ReadbackBuffer->GetD3D12Resource(),
+            ms_MaxTimestampCount * sizeof(uint64_t) * m_WriteIndex);
     }
 
     void GpuProfiler::ResetAccumulatedData(uint32_t frameCount)
@@ -170,7 +185,7 @@ namespace benzin
 
         const uint32_t timestampIndex = m_Node->m_ReadbackIndices[ms_GpuProfiler->m_WriteIndex] * 2;
 
-        ms_Device->GetGraphicsCmdQueue().GetCmdList().SetTimestamp(*ms_GpuProfiler->m_TimestampQueryHeap, timestampIndex);
+        SetTimestamp(ms_Device->GetGraphicsCmdQueue().GetCmdList(), *ms_GpuProfiler->m_TimestampQueryHeap, timestampIndex);
         ms_GpuProfiler->m_ProfiledTimestamps.set(timestampIndex);
     }
 
@@ -181,7 +196,7 @@ namespace benzin
 
         const uint32_t timestampIndex = m_Node->m_ReadbackIndices[ms_GpuProfiler->m_WriteIndex] * 2 + 1;
 
-        ms_Device->GetGraphicsCmdQueue().GetCmdList().SetTimestamp(*ms_GpuProfiler->m_TimestampQueryHeap, timestampIndex);
+        SetTimestamp(ms_Device->GetGraphicsCmdQueue().GetCmdList(), *ms_GpuProfiler->m_TimestampQueryHeap, timestampIndex);
         ms_GpuProfiler->m_ProfiledTimestamps.set(timestampIndex);
 
         BenzinAssert(ms_GpuProfiler->m_NodeStack.top() == m_Node);

@@ -40,7 +40,8 @@ namespace benzin
     class Buffer : public Resource
     {
     public:
-        using MapReadbackCallback = std::move_only_function<void(std::span<const std::byte> mappedData)>;
+        template <typename T>
+        using MapReadbackCallback = std::move_only_function<void(std::span<const T> mappedData)>;
 
         Buffer(Device& device, const BufferCreation& creation);
         Buffer(GpuHeap& gpuHeap, uint64_t gpuHeapOffsetInBytes, const BufferCreation& creation);
@@ -60,7 +61,22 @@ namespace benzin
         const Descriptor& GetSrv() const;
         const Descriptor& GetUav(const BufferUav& uav = {}) const;
 
-        void MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, MapReadbackCallback callback) const;
+        void MapReadbackData(uint64_t offsetInBytes, uint64_t dataSizeInBytes, MapReadbackCallback<std::byte> callback) const;
+
+        template <typename T>
+        void MapReadbackData(uint32_t offsetElement, uint32_t elementCount, MapReadbackCallback<T> callback) const
+        {
+            MapReadbackData(
+                offsetElement * sizeof(T),
+                elementCount * sizeof(T),
+                [elementCount, callback = std::move(callback)](std::span<const std::byte> data) mutable
+                {
+                    BenzinAssert(data.size_bytes() / sizeof(T) == elementCount);
+
+                    const auto elements = ToSpan((const T*)data.data(), elementCount);
+                    callback(elements);
+                });
+        }
 
     private:
         void SetupCreation(const BufferCreation& creation, const GpuHeap* gpuHeap = nullptr);

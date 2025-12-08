@@ -332,29 +332,6 @@ namespace benzin
         SafeReleaseD3DObject(m_D3D12GraphicsCommandList4, false);
     }
 
-    void ComputeCmdList::SetTimestamp(const QueryHeap& timestampQueryHeap, uint32_t index)
-    {
-        BenzinAssert(timestampQueryHeap.GetD3D12Type() == D3D12_QUERY_HEAP_TYPE_TIMESTAMP);
-        BenzinAssert(index < timestampQueryHeap.GetCount());
-
-        m_D3D12GraphicsCommandList1->EndQuery(timestampQueryHeap.GetD3D12QueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP, index);
-    }
-
-    void ComputeCmdList::ResolveTimestamps(const QueryHeap& timestampQueryHeap, const Buffer& readbackBuffer, uint64_t readbackOffsetInBytes)
-    {
-        BenzinAssert(timestampQueryHeap.GetD3D12Type() == D3D12_QUERY_HEAP_TYPE_TIMESTAMP);
-        BenzinAssert(readbackBuffer.GetHeapType() == GpuHeapType::Readback);
-        BenzinAssert(readbackOffsetInBytes % 8 == 0);
-
-        m_D3D12GraphicsCommandList1->ResolveQueryData(
-            timestampQueryHeap.GetD3D12QueryHeap(),
-            D3D12_QUERY_TYPE_TIMESTAMP,
-            0,
-            timestampQueryHeap.GetCount(),
-            readbackBuffer.GetD3D12Resource(),
-            readbackOffsetInBytes);
-    }
-
     void ComputeCmdList::SetComputeCbv(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress)
     {
         m_D3D12GraphicsCommandList1->SetComputeRootConstantBufferView(*rootParameter, gpuVirtualAddress);
