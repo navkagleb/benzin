@@ -1,75 +1,65 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/system/window.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/system/window.hpp>
 
-#include "benzin/core/profiler.hpp"
-#include "benzin/graphics/common.hpp"
-#include "benzin/system/input.hpp"
-#include "benzin/system/key_event.hpp"
-#include "benzin/system/mouse_event.hpp"
-#include "benzin/system/window_event.hpp"
+#include <benzin/core/profiler.hpp>
+#include <benzin/system/input.hpp>
+#include <benzin/system/key_event.hpp>
+#include <benzin/system/mouse_event.hpp>
+#include <benzin/system/window_event.hpp>
 
 namespace benzin
 {
 
-    struct Win64_RegisterManager
+    struct WindowRegisterManager
     {
-        static constexpr std::string_view s_Name = "BenzinWindowRegisterManager";
+        static constexpr std::string_view ms_Name = "benzin::WindowRegisterManager";
 
-        Win64_RegisterManager()
+        WindowRegisterManager()
         {
-            const WNDCLASSEX registerClass
-            {
-                .cbSize = sizeof(WNDCLASSEX),
-                .style = CS_VREDRAW | CS_HREDRAW | CS_OWNDC,
-                .lpfnWndProc = Window::MessageHandler,
-                .cbClsExtra = 0,
-                .cbWndExtra = 0,
-                .hInstance = ::GetModuleHandle(nullptr),
-                .hIcon = ::LoadIcon(nullptr, IDI_APPLICATION),
-                .hCursor = ::LoadCursor(nullptr, IDC_ARROW),
-                .hbrBackground = nullptr,
-                .lpszMenuName = nullptr,
-                .lpszClassName = s_Name.data(),
-                .hIconSm = ::LoadIcon(nullptr, IDI_APPLICATION),
-            };
+            WNDCLASSEX registerClass = {};
+            registerClass.cbSize = sizeof(WNDCLASSEX);
+            registerClass.style = CS_VREDRAW | CS_HREDRAW | CS_OWNDC;
+            registerClass.lpfnWndProc = Window::MessageHandler;
+            registerClass.cbClsExtra = 0;
+            registerClass.cbWndExtra = 0;
+            registerClass.hInstance = ::GetModuleHandle(nullptr);
+            registerClass.hIcon = ::LoadIcon(nullptr, IDI_APPLICATION);
+            registerClass.hCursor = ::LoadCursor(nullptr, IDC_ARROW);
+            registerClass.hbrBackground = nullptr;
+            registerClass.lpszMenuName = nullptr;
+            registerClass.lpszClassName = ms_Name.data();
+            registerClass.hIconSm = ::LoadIcon(nullptr, IDI_APPLICATION);
 
             BenzinEnsure(::RegisterClassEx(&registerClass) != 0);
         }
 
-        ~Win64_RegisterManager()
+        ~WindowRegisterManager()
         {
-            ::UnregisterClass(s_Name.data(), ::GetModuleHandle(nullptr));
+            ::UnregisterClass(ms_Name.data(), ::GetModuleHandle(nullptr));
         }
     };
 
-    static Win64_RegisterManager g_RegisterManager;
+    static WindowRegisterManager g_RegisterManager;
 
     //
 
     Window::Window(const WindowCreation& creation)
-        : m_Width{ creation.Width }
-        , m_Height{ creation.Height }
+        : m_Width{ creation.m_Width }
+        , m_Height{ creation.m_Height }
     {
-        auto style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
-        if (creation.IsResizable)
-        {
-            style |= WS_THICKFRAME;
-            style |= WS_MAXIMIZEBOX;
-        }
+        const uint32_t style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME | WS_MAXIMIZEBOX;
 
-        RECT windowBounds
-        {
-            .left = 0,
-            .top = 0,
-            .right = (LONG)m_Width,
-            .bottom = (LONG)m_Height,
-        };
+        RECT windowBounds = {};
+        windowBounds.left = 0;
+        windowBounds.top = 0;
+        windowBounds.right = (LONG)m_Width;
+        windowBounds.bottom = (LONG)m_Height;
 
         BenzinEnsure(::AdjustWindowRect(&windowBounds, style, false) != 0);
 
         m_Win64Window = ::CreateWindow(
-            Win64_RegisterManager::s_Name.data(),
-            creation.Title.data(),
+            WindowRegisterManager::ms_Name.data(),
+            creation.m_Title.data(),
             style,
             (::GetSystemMetrics(SM_CXSCREEN) - windowBounds.right) / 2,
             (::GetSystemMetrics(SM_CYSCREEN) - windowBounds.bottom) / 2,
@@ -78,8 +68,7 @@ namespace benzin
             nullptr,
             nullptr,
             ::GetModuleHandle(nullptr),
-            (void*)this
-        );
+            (void*)this);
 
         BenzinEnsure(m_Win64Window != nullptr);
 
@@ -93,16 +82,15 @@ namespace benzin
         m_EventCallback = nullptr;
 
         BenzinEnsure(m_Win64Window != nullptr);
-
         ::DestroyWindow(m_Win64Window);
+        m_Win64Window = nullptr;
     }
 
     void Window::ProcessEvents()
     {
         BenzinProfile();
 
-        MSG message{ nullptr };
-
+        MSG message = {};
         while (::PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
         {
             ::TranslateMessage(&message);
@@ -140,9 +128,7 @@ namespace benzin
         if (window != nullptr && window->m_PreMessageHandlerCallback)
         {
             if (window->m_PreMessageHandlerCallback(windowHandle, messageCode, wparam, lparam))
-            {
                 return true;
-            }
         }
 
         if (window != nullptr && window->m_EventCallback)
@@ -153,9 +139,7 @@ namespace benzin
             isEventHandled |= HandleKeyEvents(*window, messageCode, wparam, lparam);
 
             if (isEventHandled)
-            {
                 return 0;
-            }
         }
 
         return ::DefWindowProc(windowHandle, messageCode, wparam, lparam);

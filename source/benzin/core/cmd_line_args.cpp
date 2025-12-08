@@ -38,7 +38,6 @@ namespace benzin
 
     static uint32_t g_WindowWidth = 1280;
     static uint32_t g_WindowHeight = 720;
-    static bool g_IsWindowResizable = true;
 
     static bool g_IsPixCapturerEnabled = false;
     static bool g_IsAdlWrapperEnabled = true;
@@ -84,7 +83,6 @@ namespace benzin
         {
             { "-window_width:", &g_WindowWidth, ParseU32 },
             { "-window_height:", &g_WindowHeight, ParseU32 },
-            { "-disable_window_resizing", &g_IsWindowResizable, SetFalseIfExists },
 
             { "-pix", &g_IsPixCapturerEnabled, SetTrueIfExists },
             { "-no_adl_wrapper", &g_IsAdlWrapperEnabled, SetFalseIfExists },
@@ -121,7 +119,6 @@ namespace benzin
 
     BenzinImplCmdLineArg(GetWindowWidth, g_WindowWidth)
     BenzinImplCmdLineArg(GetWindowHeight, g_WindowHeight)
-    BenzinImplCmdLineArg(IsWindowResizable, g_IsWindowResizable)
     BenzinImplCmdLineArg(IsPixCapturerEnabled, g_IsPixCapturerEnabled)
     BenzinImplCmdLineArg(IsAdlWrapperEnabled, g_IsAdlWrapperEnabled)
     BenzinImplCmdLineArg(IsNvApiWrapperEnabled, g_IsNvApiWrapperEnabled)

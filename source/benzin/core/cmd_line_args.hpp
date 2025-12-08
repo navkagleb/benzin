@@ -9,7 +9,6 @@ namespace benzin
 
         auto GetWindowWidth() -> uint32_t;
         auto GetWindowHeight() -> uint32_t;
-        auto IsWindowResizable() -> bool;
 
         auto IsPixCapturerEnabled() -> bool;
         auto IsAdlWrapperEnabled() -> bool;

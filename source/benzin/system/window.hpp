@@ -7,16 +7,15 @@ namespace benzin
 
     struct WindowCreation
     {
-        std::string_view Title;
-        uint32_t Width = 0;
-        uint32_t Height = 0;
-        bool IsResizable = true;
+        std::string_view m_Title;
+        uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
     };
 
     class Window
     {
     public:
-        friend struct Win64_RegisterManager;
+        friend struct WindowRegisterManager;
 
         using PreMessageHandlerCallback = std::function<LRESULT(HWND windowHandle, UINT messageCode, WPARAM wparam, LPARAM lparam)>;
         using EventCallback = std::function<void(Event& event)>;
@@ -24,7 +23,6 @@ namespace benzin
         Window(const WindowCreation& creation);
         ~Window();
 
-    public:
         auto GetWin64Window() const { return m_Win64Window; }
 
         auto GetWidth() const { return m_Width; }
@@ -38,7 +36,6 @@ namespace benzin
         void SetPreMessageHandlerCallback(PreMessageHandlerCallback&& callback) { m_PreMessageHandlerCallback = std::move(callback); }
         void SetEventCallback(EventCallback&& callback) { m_EventCallback = std::move(callback); }
 
-    public:
         void ProcessEvents();
 
         void SetTitle(std::string_view title);
@@ -57,7 +54,6 @@ namespace benzin
             m_EventCallback(event);
         }
 
-    private:
         HWND m_Win64Window = nullptr;
 
         uint32_t m_Width = 0;

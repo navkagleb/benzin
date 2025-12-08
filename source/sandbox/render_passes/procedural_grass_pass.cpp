@@ -72,20 +72,8 @@ namespace sandbox
             cmdList.UploadToTexture(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.m_PixelData));
         }
         
-        {
-            if (ms_Scene->m_GrassPatches.empty())
-                return;
-
-            m_GrassPatchBuffer = ms_Device->GetPersistentDefaultAllocator().AllocateBuffer(
-                "ProceduralGrass::GrassPatches",
-                benzin::ToSpan(ms_Scene->m_GrassPatches));
-
-            benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_GrassPatchBuffer->GetSizeInBytes());
-            cmdList.UploadToBuffer(*m_GrassPatchBuffer, benzin::ToSpan(ms_Scene->m_GrassPatches));
-        }
-
         auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
-        stats.MaxPatchCount = (uint32_t)ms_Scene->m_GrassPatches.size();
+        stats.MaxPatchCount = (uint32_t)ms_Scene->m_GrassPatchBuffer->GetElementCount();
     }
 
     void ProceduralGrassPass::OnUpdate()
@@ -132,7 +120,7 @@ namespace sandbox
         cmdList.AddDepthStencil(gbuffer.m_DepthStencil);
         cmdList.SetRenderTargets();
 
-        cmdList.SetGraphicsRootSrv(*Resources::GrassPatches, *m_GrassPatchBuffer);
+        cmdList.SetGraphicsRootSrv(*Resources::GrassPatches, *ms_Scene->m_GrassPatchBuffer);
         cmdList.SetGraphicsRootSrv(*Resources::PerlinNoise, *m_PerlinNoiseTexture);
         cmdList.FlushBarriers();
 

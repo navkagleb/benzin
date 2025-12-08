@@ -101,7 +101,6 @@ namespace benzin
         std::vector<TextureImage>& textures)
     {
         MakeUniquePtr(m_GltfModel);
-        m_TextureMappings.clear();
 
         const std::filesystem::path filePath = GetModelDir() / fileName;
         BenzinAssert(std::filesystem::exists(filePath));
@@ -146,6 +145,9 @@ namespace benzin
         ParseGltfNodes(meshDraws);
         ParseGltfMaterials(materials);
         ParseGltfTextures(textures);
+
+        m_GltfModel.reset();
+        m_TextureMappings.clear();
 
         return true;
     }

@@ -113,7 +113,7 @@ namespace benzin
 
     void RayTracing_Tlas::ResetInstances(uint32_t reservedInstanceCount)
     {
-        m_D3D12InstanceDescs.clear();
+        BenzinAssert(m_D3D12InstanceDescs.empty());
         m_D3D12InstanceDescs.reserve(reservedInstanceCount);
     }
 
@@ -128,16 +128,18 @@ namespace benzin
 
         BufferWriter writer = MakeBufferWriter(*m_InstanceBuffer);
         writer.WriteArray(ToSpan(m_D3D12InstanceDescs));
+
+        m_D3D12InstanceDescs.clear();
     }
 
     void RayTracing_Tlas::AllocateBuffers(Device& device, std::string_view debugName)
     {
-        BenzinAssert(!m_D3D12InstanceDescs.empty());
+        BenzinAssert(m_InstanceBuffer.get() != nullptr);
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS d3d12BuildInputs = {};
         d3d12BuildInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
         d3d12BuildInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
-        d3d12BuildInputs.NumDescs = (uint32_t)m_D3D12InstanceDescs.size();
+        d3d12BuildInputs.NumDescs = (uint32_t)m_InstanceBuffer->GetElementCount();
         d3d12BuildInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
         d3d12BuildInputs.InstanceDescs = m_InstanceBuffer->GetGpuVirtualAddress();
 

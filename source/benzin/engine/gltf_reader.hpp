@@ -2,11 +2,9 @@
 
 namespace tinygltf
 {
-    struct Mesh;
-    struct Primitive;
-
     class Model;
     class TinyGLTF;
+    struct Primitive;
 }
 
 namespace benzin

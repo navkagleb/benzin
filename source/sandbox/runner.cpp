@@ -32,13 +32,12 @@ namespace sandbox
     {
         BenzinTraceScopeTime("Runner::Runner");
 
-        benzin::MakeUniquePtr(m_MainWindow, benzin::WindowCreation
-        {
-            .Title = "Benzin Renderer",
-            .Width = benzin::CmdLineArgs::GetWindowWidth(),
-            .Height = benzin::CmdLineArgs::GetWindowHeight(),
-            .IsResizable = benzin::CmdLineArgs::IsWindowResizable(),
-        });
+        benzin::WindowCreation windowCreation;
+        windowCreation.m_Title = "Benzin Demo";
+        windowCreation.m_Width = benzin::CmdLineArgs::GetWindowWidth();
+        windowCreation.m_Height = benzin::CmdLineArgs::GetWindowHeight();
+
+        benzin::MakeUniquePtr(m_MainWindow, windowCreation);
         m_MainWindow->SetEventCallback([this](benzin::Event& event) { WindowEventCallback(event); });
 
         benzin::MakeUniquePtr(m_Backend);

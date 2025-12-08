@@ -40,9 +40,6 @@ namespace benzin
     {
         PerspectiveCamera m_Camera;
 
-        std::vector<joint::GrassPatch> m_GrassPatches;
-        SunLight m_SunLight;
-
         MeshGeometry m_Geometry;
         std::vector<MeshDraw> m_MeshDraws;
         std::vector<Material> m_Materials;
@@ -51,6 +48,9 @@ namespace benzin
         std::vector<MeshGeometryDraw> m_MeshGeometryDraws;
         std::vector<joint::MeshDraw> m_JointMeshDraws;
 
+        std::vector<joint::GrassPatch> m_GrassPatches;
+        SunLight m_SunLight;
+
         std::unique_ptr<Buffer> m_VertexBuffer;
         std::unique_ptr<Buffer> m_IndexBuffer;
         std::unique_ptr<Buffer> m_MeshBuffer;
@@ -58,10 +58,12 @@ namespace benzin
         std::unique_ptr<Buffer> m_MeshletCullVolumeBuffer;
         std::unique_ptr<Buffer> m_MeshletVertexIndexBuffer;
         std::unique_ptr<Buffer> m_MeshletIndexBuffer;
+
+        std::unique_ptr<Buffer> m_MeshDrawBuffer;
         std::unique_ptr<Buffer> m_MaterialBuffer;
         std::vector<std::unique_ptr<Texture>> m_Textures;
 
-        std::unique_ptr<Buffer> m_MeshDrawBuffer;
+        std::unique_ptr<Buffer> m_GrassPatchBuffer;
 
         Scene();
         ~Scene();

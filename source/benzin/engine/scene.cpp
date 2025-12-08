@@ -207,14 +207,15 @@ namespace benzin
         }
 
         GpuHeapLinearAllocator& allocator = device.GetPersistentDefaultAllocator();
-        m_VertexBuffer = allocator.AllocateBuffer("Scene::VertexBuffer", ToSpan(m_Geometry.m_Vertices));
-        m_IndexBuffer = allocator.AllocateBuffer("Scene::IndexBuffer", ToSpan(m_Geometry.m_Indices), DXGI_FORMAT_R32_UINT);
-        m_MeshBuffer = allocator.AllocateBuffer("Scene::MeshBuffer", ToSpan(jointMeshes));
-        m_MeshletBuffer = allocator.AllocateBuffer("Scene::MeshletsBuffer", ToSpan(m_Geometry.m_Meshlets));
-        m_MeshletCullVolumeBuffer = allocator.AllocateBuffer("Scene::MeshletCullVolumeBuffer", ToSpan(m_Geometry.m_MeshletCullVolumes));
-        m_MeshletVertexIndexBuffer = allocator.AllocateBuffer("Scene::MeshletVertexIndexBuffer", ToSpan(m_Geometry.m_MeshletVertexIndices), DXGI_FORMAT_R32_UINT);
-        m_MeshletIndexBuffer = allocator.AllocateBuffer("Scene::MeshletIndexBuffer", ToSpan(m_Geometry.m_MeshletIndices), DXGI_FORMAT_R8_UINT);
-        m_MaterialBuffer = allocator.AllocateBuffer("Scene::MaterialBuffer", ToSpan(jointMaterials));
+        m_VertexBuffer = allocator.AllocateBuffer("Scene::Vertices", ToSpan(m_Geometry.m_Vertices));
+        m_IndexBuffer = allocator.AllocateBuffer("Scene::Indices", ToSpan(m_Geometry.m_Indices), DXGI_FORMAT_R32_UINT);
+        m_MeshBuffer = allocator.AllocateBuffer("Scene::Meshes", ToSpan(jointMeshes));
+        m_MeshletBuffer = allocator.AllocateBuffer("Scene::Meshlets", ToSpan(m_Geometry.m_Meshlets));
+        m_MeshletCullVolumeBuffer = allocator.AllocateBuffer("Scene::MeshletCullVolumes", ToSpan(m_Geometry.m_MeshletCullVolumes));
+        m_MeshletVertexIndexBuffer = allocator.AllocateBuffer("Scene::MeshletVertexIndices", ToSpan(m_Geometry.m_MeshletVertexIndices), DXGI_FORMAT_R32_UINT);
+        m_MeshletIndexBuffer = allocator.AllocateBuffer("Scene::MeshletIndices", ToSpan(m_Geometry.m_MeshletIndices), DXGI_FORMAT_R8_UINT);
+        m_MaterialBuffer = allocator.AllocateBuffer("Scene::Materials", ToSpan(jointMaterials));
+        m_GrassPatchBuffer = allocator.AllocateBuffer("Scene::GrassPatches", ToSpan(m_GrassPatches));
 
         const uint64_t uploadSizeInBytes =
             m_VertexBuffer->GetSizeInBytes() +
@@ -224,7 +225,8 @@ namespace benzin
             m_MeshletCullVolumeBuffer->GetSizeInBytes() +
             m_MeshletVertexIndexBuffer->GetSizeInBytes() +
             m_MeshletIndexBuffer->GetSizeInBytes() +
-            m_MaterialBuffer->GetSizeInBytes();
+            m_MaterialBuffer->GetSizeInBytes() +
+            m_GrassPatchBuffer->GetSizeInBytes();
 
         CopyCmdList& cmdList = device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
         cmdList.UploadToBuffer(*m_VertexBuffer, ToSpan(m_Geometry.m_Vertices));
@@ -235,6 +237,18 @@ namespace benzin
         cmdList.UploadToBuffer(*m_MeshletVertexIndexBuffer, ToSpan(m_Geometry.m_MeshletVertexIndices));
         cmdList.UploadToBuffer(*m_MeshletIndexBuffer, ToSpan(m_Geometry.m_MeshletIndices));
         cmdList.UploadToBuffer(*m_MaterialBuffer, ToSpan(jointMaterials));
+        cmdList.UploadToBuffer(*m_GrassPatchBuffer, ToSpan(m_GrassPatches));
+
+        // m_Geometry.m_Vertices.clear();
+        // m_Geometry.m_Indices.clear();
+        // m_Geometry.m_Meshes.clear();
+        // m_Geometry.m_Meshlets.clear();
+        // m_Geometry.m_MeshletCullVolumes.clear();
+        // m_Geometry.m_MeshletVertexIndices.clear();
+        // m_Geometry.m_MeshletIndices.clear();
+        // m_Materials.clear();
+        // m_TextureImages.clear();
+        // m_GrassPatches.clear();
     }
 
     void Scene::UploadMeshDrawsToGpu(Device& device)
@@ -275,7 +289,6 @@ namespace benzin
                 scales.z = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[2]));
 
                 BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-5f && std::fabs(scales.x - scales.z) <= 1e-5f, "Scale is not uniform");
-                // BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-3f && std::fabs(scales.x - scales.z) <= 1e-3f, "Scale is not uniform");
                 jointDraw.m_LocalToWorldScale = scales.x;
             }
         }

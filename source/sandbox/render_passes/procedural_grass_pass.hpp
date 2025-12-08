@@ -26,7 +26,6 @@ namespace sandbox
     private:
         joint::ProceduralGrassPassConsts m_Consts = {};
         std::unique_ptr<benzin::Texture> m_PerlinNoiseTexture;
-        std::unique_ptr<benzin::Buffer> m_GrassPatchBuffer;
     };
 
 }
