@@ -63,8 +63,6 @@ void CsMain(uint dtid : SV_DispatchThreadID)
     const bool isDrawNeeded = isVisible;
 #endif
 
-    InterlockedAddToStat(joint::ReadbackStat::Geometry_TotalMeshCount, 1);
-
     if (isDrawNeeded)
     {
         const joint::MeshLod lod = mesh.m_Lods[0];
@@ -90,9 +88,6 @@ void CsMain(uint dtid : SV_DispatchThreadID)
 
         g_DrawCmds[cmdIndex] = cmd;
         g_DispatchCmds[cmdIndex] = dispatchCmd;
-
-        InterlockedAddToStat(joint::ReadbackStat::Geometry_RenderedMeshCount, 1);
-        InterlockedAddToStat(joint::ReadbackStat::Geometry_RenderedTriangleCount, lod.m_IndexCount / 3);
     }
 
 #if LATE_CULLING_ENABLED

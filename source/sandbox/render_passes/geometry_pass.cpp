@@ -217,9 +217,6 @@ namespace sandbox
 
         d3d12CmdList->EndQuery(m_StatsQueryHeap->GetD3D12QueryHeap(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS1, 0);
 
-        const auto writeIndex = (uint32_t)(ms_Device->GetCpuFrameIndex() % BENZIN_READBACK_LATENCY);
-        const auto readIndex = (uint32_t)((ms_Device->GetCpuFrameIndex() + 1) % BENZIN_READBACK_LATENCY);
-
         cmdList.AddTransition(*m_StatsBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
         cmdList.FlushBarriers();
 
@@ -229,15 +226,18 @@ namespace sandbox
             0,
             1,
             m_StatsBuffer->GetD3D12Resource(),
-            writeIndex * sizeof(m_D3D12PipelineStats));
+            ms_Device->GetReadbackWriteIndex() * sizeof(m_D3D12PipelineStats));
 
         cmdList.AddTransition(*m_StatsBuffer, D3D12_RESOURCE_STATE_COMMON);
         cmdList.FlushBarriers();
 
-        m_StatsBuffer->MapReadbackData<D3D12_QUERY_DATA_PIPELINE_STATISTICS1>(readIndex, 1, [this](std::span<const D3D12_QUERY_DATA_PIPELINE_STATISTICS1> stats)
-        {
-            std::memcpy((void*)&m_D3D12PipelineStats, stats.data(), stats.size_bytes());
-        });
+        m_StatsBuffer->MapReadbackData<D3D12_QUERY_DATA_PIPELINE_STATISTICS1>(
+            ms_Device->GetReadbackReadIndex(),
+            1,
+            [this](std::span<const D3D12_QUERY_DATA_PIPELINE_STATISTICS1> stats)
+            {
+                m_D3D12PipelineStats = stats.front();
+            });
 
         ms_Settings->GetSection<GBufferStats>().m_D3D12PipelineStats = m_D3D12PipelineStats;
     }

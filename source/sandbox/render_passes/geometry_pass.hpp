@@ -39,7 +39,7 @@ namespace sandbox
 
         std::unique_ptr<benzin::QueryHeap> m_StatsQueryHeap;
         std::unique_ptr<benzin::Buffer> m_StatsBuffer;
-        D3D12_QUERY_DATA_PIPELINE_STATISTICS1 m_D3D12PipelineStats = {};
+        mutable D3D12_QUERY_DATA_PIPELINE_STATISTICS1 m_D3D12PipelineStats = {};
 
         ID3D12CommandSignature* m_D3D12DrawCmdSignature = nullptr;
         ID3D12CommandSignature* m_D3D12MeshDispatchCmdSignature = nullptr;

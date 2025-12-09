@@ -42,20 +42,11 @@ namespace sandbox
 
         auto readbackStatsCallback = [this](std::span<const uint32_t> readbackStats)
         {
-            {
-                auto& stats = m_RenderSettings->GetSection<GBufferStats>();
-                stats.m_TotalMeshCount = readbackStats[*joint::ReadbackStat::Geometry_TotalMeshCount];
-                stats.m_RenderedMeshCount = readbackStats[*joint::ReadbackStat::Geometry_RenderedMeshCount];
-                stats.m_RenderedTriangleCount = readbackStats[*joint::ReadbackStat::Geometry_RenderedTriangleCount];
-            }
-
-            {
-                auto& stats = m_RenderSettings->GetSection<ProceduralGrassStats>();
-                stats.PatchCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_PatchCount];
-                stats.BladeCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_BladeCount];
-                stats.VertexCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_VertexCount];
-                stats.TriangleCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_TriangleCount];
-            }
+            auto& stats = m_RenderSettings->GetSection<ProceduralGrassStats>();
+            stats.PatchCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_PatchCount];
+            stats.BladeCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_BladeCount];
+            stats.VertexCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_VertexCount];
+            stats.TriangleCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_TriangleCount];
         };
 
         // The order in which render passes are added is important

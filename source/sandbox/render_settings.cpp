@@ -21,10 +21,6 @@ namespace sandbox
         std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
         BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
-        ImGui::FmtText("Total mesh count: {:L}", stats.m_TotalMeshCount);
-        ImGui::FmtText("Rendered mesh count: {:L}", stats.m_RenderedMeshCount);
-        ImGui::FmtText("Rendered triangle count: {:L}", stats.m_RenderedTriangleCount);
-        ImGui::NewLine();
         ImGui::FmtText("D3D12 IAVertices:    {:L}", stats.m_D3D12PipelineStats.IAVertices);
         ImGui::FmtText("D3D12 IAPrimitives:  {:L}", stats.m_D3D12PipelineStats.IAPrimitives);
         ImGui::FmtText("D3D12 VSInvocations: {:L}", stats.m_D3D12PipelineStats.VSInvocations);

@@ -150,16 +150,22 @@ namespace benzin
     void GpuPrintPass::ReadbackFromGpu(CopyCmdList& cmdList) const
     {
         const uint32_t bufferSizeInBytes = m_Consts.m_PrintBufferSizeInBytes;
-        const uint64_t destOffsetInBytes = (ms_Device->GetCpuFrameIndex() % BENZIN_READBACK_LATENCY) * bufferSizeInBytes;
-        const uint64_t readbackOffsetInBytes = ((ms_Device->GetCpuFrameIndex() + 1) % BENZIN_READBACK_LATENCY) * bufferSizeInBytes;
 
-        cmdList.CopyBufferRegion(*m_ReadbackBuffer, destOffsetInBytes, *m_UavBuffer, 0, bufferSizeInBytes);
+        cmdList.CopyBufferRegion(
+            *m_ReadbackBuffer,
+            ms_Device->GetReadbackWriteIndex() * bufferSizeInBytes,
+            *m_UavBuffer,
+            0,
+            bufferSizeInBytes);
 
-        m_ReadbackBuffer->MapReadbackData(readbackOffsetInBytes, bufferSizeInBytes, [&](std::span<const std::byte> data)
-        {
-            BufferReader reader{ data.data(), data.size_bytes() };
-            m_PrintData.m_PrintRecords = ParseGpuPrintRecords(reader);
-        });
+        m_ReadbackBuffer->MapReadbackData(
+            ms_Device->GetReadbackReadIndex() * bufferSizeInBytes,
+            bufferSizeInBytes,
+            [&](std::span<const std::byte> data)
+            {
+                BufferReader reader{ data.data(), data.size_bytes() };
+                m_PrintData.m_PrintRecords = ParseGpuPrintRecords(reader);
+            });
     }
 
     // GpuPrintTool

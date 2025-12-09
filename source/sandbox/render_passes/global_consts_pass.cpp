@@ -131,18 +131,15 @@ namespace sandbox
             BenzinGpuProfile("CopyStats");
 
             const uint64_t dataSizeInBytes = m_StatBuffer->GetSizeInBytes();
-            const uint32_t writeIndex = ms_Device->GetCpuFrameIndex() % BENZIN_READBACK_LATENCY;
-            const uint32_t readIndex = (ms_Device->GetCpuFrameIndex() + 1) % BENZIN_READBACK_LATENCY;
-
             cmdList.CopyBufferRegion(
                 *m_ReadbackStatBuffer,
-                dataSizeInBytes * writeIndex,
+                dataSizeInBytes * ms_Device->GetReadbackWriteIndex(),
                 *m_StatBuffer,
                 0,
                 dataSizeInBytes);
 
             m_ReadbackStatBuffer->MapReadbackData<uint32_t>(
-                (uint32_t)m_StatBuffer->GetElementCount() * readIndex,
+                (uint32_t)m_StatBuffer->GetElementCount() * ms_Device->GetReadbackReadIndex(),
                 (uint32_t)m_StatBuffer->GetElementCount(),
                 [this](std::span<const uint32_t> readbackStats)
                 {

@@ -55,6 +55,9 @@ namespace benzin
 
         auto& GetConstBufferAllocator() { return *m_ConstBufferAllocator; }
 
+        uint32_t GetReadbackWriteIndex() const { return m_CpuFrameIndex % BENZIN_READBACK_LATENCY; }
+        uint32_t GetReadbackReadIndex() const { return (m_CpuFrameIndex + 1) % BENZIN_READBACK_LATENCY; }
+
         uint8_t GetPlaneCountFromFormat(DXGI_FORMAT dxgiFormat) const;
 
         void DeferredRelease(ID3D12Object* d3d12Object);
