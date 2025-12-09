@@ -133,7 +133,6 @@ namespace sandbox
         {
             m_Scene.UploadMeshDrawsToGpu(*m_Device);
             m_Scene.UploadMeshGeometryToGpu(*m_Device);
-            m_RayTracingScene.BuildBlases(*m_Device);
 
             for (auto& renderPass : m_RenderPasses)
             {

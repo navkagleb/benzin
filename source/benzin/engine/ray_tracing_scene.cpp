@@ -35,14 +35,14 @@ namespace benzin
         std::vector<DirectX::XMFLOAT3X4> localTransforms;
         localTransforms.reserve(drawCount);
 
-        auto localTransformBuffer = std::make_unique<Buffer>(device, BufferCreation
-        {
-            .m_DebugName = "RayTracingScene::LocalTransforms",
-            .m_HeapType = GpuHeapType::GpuUpload,
-            .m_Type = BufferType::Structured,
-            .m_ElementSizeInBytes = sizeof(DirectX::XMFLOAT3X4),
-            .m_ElementCount = drawCount,
-        });
+        BufferCreation localTransformBufferCreation;
+        localTransformBufferCreation.m_DebugName = "RayTracingScene::LocalTransforms";
+        localTransformBufferCreation.m_HeapType = GpuHeapType::GpuUpload;
+        localTransformBufferCreation.m_Type = BufferType::Structured;
+        localTransformBufferCreation.m_ElementSizeInBytes = sizeof(DirectX::XMFLOAT3X4);
+        localTransformBufferCreation.m_ElementCount = drawCount;
+
+        auto localTransformBuffer = std::make_unique<Buffer>(device, localTransformBufferCreation);
 
         for (const MeshGeometryDraw& geometryDraw : m_Scene.m_MeshGeometryDraws)
         {

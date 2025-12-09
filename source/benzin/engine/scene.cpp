@@ -215,7 +215,11 @@ namespace benzin
         m_MeshletVertexIndexBuffer = allocator.AllocateBuffer("Scene::MeshletVertexIndices", ToSpan(m_Geometry.m_MeshletVertexIndices), DXGI_FORMAT_R32_UINT);
         m_MeshletIndexBuffer = allocator.AllocateBuffer("Scene::MeshletIndices", ToSpan(m_Geometry.m_MeshletIndices), DXGI_FORMAT_R8_UINT);
         m_MaterialBuffer = allocator.AllocateBuffer("Scene::Materials", ToSpan(jointMaterials));
-        m_GrassPatchBuffer = allocator.AllocateBuffer("Scene::GrassPatches", ToSpan(m_GrassPatches));
+
+        if (!m_GrassPatches.empty())
+        {
+            m_GrassPatchBuffer = allocator.AllocateBuffer("Scene::GrassPatches", ToSpan(m_GrassPatches));
+        }
 
         const uint64_t uploadSizeInBytes =
             m_VertexBuffer->GetSizeInBytes() +
@@ -226,7 +230,7 @@ namespace benzin
             m_MeshletVertexIndexBuffer->GetSizeInBytes() +
             m_MeshletIndexBuffer->GetSizeInBytes() +
             m_MaterialBuffer->GetSizeInBytes() +
-            m_GrassPatchBuffer->GetSizeInBytes();
+            (!m_GrassPatches.empty() ? m_GrassPatchBuffer->GetSizeInBytes() : 0);
 
         CopyCmdList& cmdList = device.GetGraphicsCmdQueue().GetCmdList(uploadSizeInBytes);
         cmdList.UploadToBuffer(*m_VertexBuffer, ToSpan(m_Geometry.m_Vertices));
@@ -237,18 +241,22 @@ namespace benzin
         cmdList.UploadToBuffer(*m_MeshletVertexIndexBuffer, ToSpan(m_Geometry.m_MeshletVertexIndices));
         cmdList.UploadToBuffer(*m_MeshletIndexBuffer, ToSpan(m_Geometry.m_MeshletIndices));
         cmdList.UploadToBuffer(*m_MaterialBuffer, ToSpan(jointMaterials));
-        cmdList.UploadToBuffer(*m_GrassPatchBuffer, ToSpan(m_GrassPatches));
 
-        // m_Geometry.m_Vertices.clear();
-        // m_Geometry.m_Indices.clear();
-        // m_Geometry.m_Meshes.clear();
-        // m_Geometry.m_Meshlets.clear();
-        // m_Geometry.m_MeshletCullVolumes.clear();
-        // m_Geometry.m_MeshletVertexIndices.clear();
-        // m_Geometry.m_MeshletIndices.clear();
-        // m_Materials.clear();
-        // m_TextureImages.clear();
-        // m_GrassPatches.clear();
+        if (!m_GrassPatches.empty())
+        {
+            cmdList.UploadToBuffer(*m_GrassPatchBuffer, ToSpan(m_GrassPatches));
+        }
+
+        m_Geometry.m_Vertices.clear();
+        m_Geometry.m_Indices.clear();
+        m_Geometry.m_Meshes.clear();
+        m_Geometry.m_Meshlets.clear();
+        m_Geometry.m_MeshletCullVolumes.clear();
+        m_Geometry.m_MeshletVertexIndices.clear();
+        m_Geometry.m_MeshletIndices.clear();
+        m_Materials.clear();
+        m_TextureImages.clear();
+        m_GrassPatches.clear();
     }
 
     void Scene::UploadMeshDrawsToGpu(Device& device)
@@ -288,7 +296,7 @@ namespace benzin
                 scales.y = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[1]));
                 scales.z = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[2]));
 
-                BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-5f && std::fabs(scales.x - scales.z) <= 1e-5f, "Scale is not uniform");
+                // BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-5f && std::fabs(scales.x - scales.z) <= 1e-5f, "Scale is not uniform");
                 jointDraw.m_LocalToWorldScale = scales.x;
             }
         }

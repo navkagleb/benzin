@@ -31,7 +31,7 @@ namespace sandbox
         m_ImGuiManager->UnregisterTool<SettingsTool<GBufferStats>>();
         m_ImGuiManager->UnregisterTool<SettingsTool<ProceduralGrassSettings>>();
         m_ImGuiManager->UnregisterTool<SettingsTool<ProceduralGrassStats>>();
-        m_ImGuiManager->UnregisterTool<SettingsTool<RayTracing_ShadowSettings>>();
+        m_ImGuiManager->UnregisterTool<SettingsTool<RayTracingShadowSettings>>();
         m_ImGuiManager->UnregisterTool<SettingsTool<SigmaDenoiserSettings>>();
         m_ImGuiManager->UnregisterTool<SettingsTool<ToneMappingSettings>>();
     }
@@ -53,7 +53,7 @@ namespace sandbox
         m_RenderPasses.push_back(std::make_unique<GlobalConstsPass>(std::move(readbackStatsCallback)));
         m_RenderPasses.push_back(std::make_unique<GeometryPass>());
         m_RenderPasses.push_back(std::make_unique<ProceduralGrassPass>());
-        m_RenderPasses.push_back(std::make_unique<RayTracing_ShadowPass>());
+        m_RenderPasses.push_back(std::make_unique<RayTracingShadowPass>());
         m_RenderPasses.push_back(std::make_unique<SigmaDenoiserPass>());
         m_RenderPasses.push_back(std::make_unique<DeferredLightingPass>());
         m_RenderPasses.push_back(std::make_unique<EnvironmentPass>());
@@ -66,7 +66,7 @@ namespace sandbox
         m_ImGuiManager->RegisterTool<SettingsTool<GBufferStats>>("Settings/GBufferStats", m_RenderSettings->GetSection<GBufferStats>());
         m_ImGuiManager->RegisterTool<SettingsTool<ProceduralGrassSettings>>("Settings/ProceduralGrass", m_RenderSettings->GetSection<ProceduralGrassSettings>());
         m_ImGuiManager->RegisterTool<SettingsTool<ProceduralGrassStats>>("Settings/ProceduralGrassStats", m_RenderSettings->GetSection<ProceduralGrassStats>());
-        m_ImGuiManager->RegisterTool<SettingsTool<RayTracing_ShadowSettings>>("Settings/RayTracing_Shadow", m_RenderSettings->GetSection<RayTracing_ShadowSettings>());
+        m_ImGuiManager->RegisterTool<SettingsTool<RayTracingShadowSettings>>("Settings/RayTracingShadows", m_RenderSettings->GetSection<RayTracingShadowSettings>());
         m_ImGuiManager->RegisterTool<SettingsTool<SigmaDenoiserSettings>>("Settings/SigmaDenoiser", m_RenderSettings->GetSection<SigmaDenoiserSettings>());
         m_ImGuiManager->RegisterTool<SettingsTool<ToneMappingSettings>>("Settings/ToneMapping", m_RenderSettings->GetSection<ToneMappingSettings>());
     }
@@ -225,7 +225,7 @@ namespace sandbox
 
     void StanfordDragonRunner::InitScene()
     {
-        m_RenderSettings->GetSection<RayTracing_ShadowSettings>().m_IsEnabled = false;
+        m_RenderSettings->GetSection<RayTracingShadowSettings>().m_IsAllowed = false;
         m_RenderSettings->GetSection<SigmaDenoiserSettings>().m_IsEnabled = false;
 
         benzin::PerspectiveCamera& camera = m_Scene.m_Camera;

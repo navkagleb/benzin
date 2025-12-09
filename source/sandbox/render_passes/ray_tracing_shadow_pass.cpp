@@ -18,12 +18,12 @@
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
 
-BenzinAllowDereferenceOperatorForEnum(joint::RayTracing_ShadowResources);
+BenzinAllowDereferenceOperatorForEnum(joint::RayTracingShadowResources);
 
 namespace sandbox
 {
 
-    RayTracing_ShadowPass::RayTracing_ShadowPass()
+    RayTracingShadowPass::RayTracingShadowPass()
     {
         ms_PsoManager->Create(PsoId::ShadowPass, [](benzin::RayTracing_PsoProxy& proxy)
         {
@@ -32,19 +32,25 @@ namespace sandbox
             proxy.m_MissEntryPoint = "Miss";
             proxy.m_HitGroup.m_Name = "HitGroup";
             proxy.m_HitGroup.m_ClosestHitEntryPoint = "ClosestHit";
-            proxy.m_ShaderConfig.m_PayloadSizeInBytes = sizeof(joint::RayTracing_ShadowPayload);
+            proxy.m_ShaderConfig.m_PayloadSizeInBytes = sizeof(joint::RayTracingShadowPayload);
             proxy.m_ShaderConfig.m_AttributeSizeInBytes = sizeof(DirectX::XMFLOAT2); // Barycentrics
         });
     }
 
-    RayTracing_ShadowPass::~RayTracing_ShadowPass()
+    RayTracingShadowPass::~RayTracingShadowPass()
     {
         ms_PsoManager->Destroy(PsoId::ShadowPass);
         ms_Resources->Destroy(TextureId::NoisyPenumbra);
     }
 
-    void RayTracing_ShadowPass::OnZeroFrameInit()
+    void RayTracingShadowPass::OnZeroFrameInit()
     {
+        auto& settings = ms_Settings->GetSection<RayTracingShadowSettings>();
+        if (!settings.m_IsAllowed)
+            return;
+
+        ms_RayTracingScene->BuildBlases(*ms_Device);
+
         benzin::TextureImage blueNoiseImage;
         benzin::LoadTextureImageFromDdsFile("blue_noise_128_rgba_array.dds", blueNoiseImage);
 
@@ -61,11 +67,10 @@ namespace sandbox
         benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoiseTexture->GetSizeInBytes());
         cmdList.UploadToTexture(*m_BlueNoiseTexture, benzin::ToSpan(blueNoiseImage.m_PixelData));
 
-        auto& settings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
         settings.m_BlueNoiseDepth = m_BlueNoiseTexture->GetDepth();
     }
 
-    void RayTracing_ShadowPass::OnRenderViewportResize()
+    void RayTracingShadowPass::OnRenderViewportResize()
     {
         ms_Resources->Create(
             TextureId::NoisyPenumbra,
@@ -73,11 +78,15 @@ namespace sandbox
             benzin::TextureAccessFlag::AllowUnorderedAccess);
     }
 
-    void RayTracing_ShadowPass::OnUpdate()
+    void RayTracingShadowPass::OnUpdate()
     {
         BenzinProfile();
 
-        auto& settings = ms_Settings->GetSection<RayTracing_ShadowSettings>();
+        auto& settings = ms_Settings->GetSection<RayTracingShadowSettings>();
+
+        m_IsRenderingEnabled = settings.m_IsAllowed;
+        if (!m_IsRenderingEnabled)
+            return;
 
         m_Consts.m_IsShadowsEnabled = settings.m_IsEnabled;
         m_Consts.m_IsBlueNoiseUsed = settings.m_IsBlueNoiseUsed;
@@ -95,14 +104,16 @@ namespace sandbox
         }
     }
 
-    void RayTracing_ShadowPass::OnRender() const
+    void RayTracingShadowPass::OnRender() const
     {
         BenzinProfile();
         BenzinGpuProfile("Shadows");
 
+        const auto& settings = ms_Settings->GetSection<RayTracingShadowSettings>();
+
         benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-        if (m_Consts.m_IsShadowsEnabled)
+        if (settings.m_IsEnabled)
         {
             BenzinScopeProfile("TlasBuilding");
             BenzinGpuProfile("TlasBuilding");
@@ -120,7 +131,7 @@ namespace sandbox
         }
 
         {
-            using Resources = joint::RayTracing_ShadowResources;
+            using Resources = joint::RayTracingShadowResources;
 
             BenzinScopeProfile("RayTracing");
             BenzinGpuProfile("RayTracing");
@@ -131,11 +142,9 @@ namespace sandbox
             cmdList.SetRayTracingPso(pso);
             cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
-            const uint32_t blueNoiseDepthIndex = ms_Settings->GetSection<RayTracing_ShadowSettings>().m_BlueNoiseDepthIndex;
-
             cmdList.SetComputeRootSrv(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal));
             cmdList.SetComputeRootSrv(*Resources::Depth, ms_Resources->Get(TextureId::Depth));
-            cmdList.SetComputeRootSrv(*Resources::BlueNoise, *m_BlueNoiseTexture, { .m_DepthOffset = blueNoiseDepthIndex, .m_DepthCount = 1 });
+            cmdList.SetComputeRootSrv(*Resources::BlueNoise, *m_BlueNoiseTexture, { .m_DepthOffset = settings.m_BlueNoiseDepthIndex, .m_DepthCount = 1 });
             cmdList.SetComputeRootUav(*Resources::NoisyPenumbra, noisyPenumbra);
             cmdList.FlushBarriers();
 

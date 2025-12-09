@@ -55,6 +55,9 @@ namespace sandbox
 
     void ProceduralGrassPass::OnZeroFrameInit()
     {
+        if (ms_Scene->m_GrassPatchBuffer.get() == nullptr)
+            return;
+
         benzin::TextureImage perlinNoiseImage;
         BenzinEnsure(benzin::LoadTextureImageFromDdsFile("perlin_noise_256.dds", perlinNoiseImage));
 

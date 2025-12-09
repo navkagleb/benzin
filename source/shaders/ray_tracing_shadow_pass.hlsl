@@ -11,10 +11,10 @@
 #include "sigma_denoiser/sigma_public.hlsli"
 #include "space_convertions.hlsli"
 
-BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::RayTracing_ShadowResources::WorldNormal);
-BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::RayTracing_ShadowResources::Depth);
-BenzinDeclareRootResource(Texture2D<float2>, g_BlueNoise, joint::RayTracing_ShadowResources::BlueNoise);
-BenzinDeclareRootResource(RWTexture2D<float>, g_NoisyPenumbra, joint::RayTracing_ShadowResources::NoisyPenumbra);
+BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::RayTracingShadowResources::WorldNormal);
+BenzinDeclareRootResource(Texture2D<float>, g_Depth, joint::RayTracingShadowResources::Depth);
+BenzinDeclareRootResource(Texture2D<float2>, g_BlueNoise, joint::RayTracingShadowResources::BlueNoise);
+BenzinDeclareRootResource(RWTexture2D<float>, g_NoisyPenumbra, joint::RayTracingShadowResources::NoisyPenumbra);
 
 float3 OffsetRayPosition(float3 position, float3 normal)
 {
@@ -144,7 +144,7 @@ float TraceShadowRay(float depth)
     rayFlags |= RAY_FLAG_FORCE_OPAQUE; // Skip any hit shaders
     rayFlags |= RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES;
 
-    joint::RayTracing_ShadowPayload payload;
+    joint::RayTracingShadowPayload payload;
     payload.m_DistanceToOccluder = 0.0;
 
     const uint g_InstanceMask = ~0;
@@ -178,13 +178,13 @@ void RayGeneration()
 }
 
 [shader("closesthit")]
-void ClosestHit(inout joint::RayTracing_ShadowPayload payload, in BuiltInTriangleIntersectionAttributes attr)
+void ClosestHit(inout joint::RayTracingShadowPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
     payload.m_DistanceToOccluder = RayTCurrent();
 }
 
 [shader("miss")]
-void Miss(inout joint::RayTracing_ShadowPayload payload)
+void Miss(inout joint::RayTracingShadowPayload payload)
 {
     payload.m_DistanceToOccluder = sigma::g_Fp16Max;
 }

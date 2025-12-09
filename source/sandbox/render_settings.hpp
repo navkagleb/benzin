@@ -35,7 +35,7 @@ namespace sandbox
         float SpacingInGrassPatch = 0.04f;
         float WindDirection = DirectX::XM_PI;
         float BladeWidth = 0.01f;
-        DirectX::XMFLOAT3 BaseColor{ 189.0f / 256.0f, 236.0f / 256.0f, 76.0f / 256.0f };
+        DirectX::XMFLOAT3 BaseColor = { 189.0f / 256.0f, 236.0f / 256.0f, 76.0f / 256.0f };
     };
 
     struct ProceduralGrassStats
@@ -48,8 +48,9 @@ namespace sandbox
         uint32_t TriangleCount = 0;
     };
 
-    struct RayTracing_ShadowSettings
+    struct RayTracingShadowSettings
     {
+        bool m_IsAllowed = true;
         bool m_IsEnabled = true;
 
         bool m_IsBlueNoiseUsed = true;

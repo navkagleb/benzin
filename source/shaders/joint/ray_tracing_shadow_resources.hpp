@@ -5,19 +5,19 @@
 namespace joint
 {
 
-    struct RayTracing_ShadowConsts
+    struct RayTracingShadowConsts
     {
         uint m_IsShadowsEnabled : 1;
         uint m_IsBlueNoiseUsed : 1;
         uint m_IsNoiseAnimated : 1;
     };
 
-    struct RayTracing_ShadowPayload
+    struct RayTracingShadowPayload
     {
         float m_DistanceToOccluder;
     };
 
-    enum class RayTracing_ShadowResources : uint
+    enum class RayTracingShadowResources : uint
     {
         WorldNormal,
         Depth,
@@ -28,5 +28,5 @@ namespace joint
 }
 
 #if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType)
-    #define BenzinRenderPassConstsType joint::RayTracing_ShadowConsts
+    #define BenzinRenderPassConstsType joint::RayTracingShadowConsts
 #endif

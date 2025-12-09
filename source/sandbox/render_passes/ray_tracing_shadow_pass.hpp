@@ -6,11 +6,11 @@
 namespace sandbox
 {
 
-    class RayTracing_ShadowPass : public benzin::RenderPass
+    class RayTracingShadowPass : public benzin::RenderPass
     {
     public:
-        RayTracing_ShadowPass();
-        ~RayTracing_ShadowPass() override;
+        RayTracingShadowPass();
+        ~RayTracingShadowPass() override;
 
         bool IsDependentOnViewport() const override { return true; }
 
@@ -20,8 +20,7 @@ namespace sandbox
         void OnRender() const override;
 
     private:
-        joint::RayTracing_ShadowConsts m_Consts = {};
-
+        joint::RayTracingShadowConsts m_Consts = {};
         std::unique_ptr<benzin::Texture> m_BlueNoiseTexture;
     };
 

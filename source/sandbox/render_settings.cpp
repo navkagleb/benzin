@@ -89,10 +89,14 @@ namespace sandbox
     }
 
     template <>
-    void DrawSettings(RayTracing_ShadowSettings& settings)
+    void DrawSettings(RayTracingShadowSettings& settings)
     {
         ImGui::PushItemWidth(150.0f);
         BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
+
+        ImGui::BeginDisabled();
+        ImGui::Checkbox("Allow###RayTracingShadows", &settings.m_IsAllowed);
+        ImGui::EndDisabled();
 
         ImGui::Checkbox("Enable###RayTracingShadows", &settings.m_IsEnabled);
 
