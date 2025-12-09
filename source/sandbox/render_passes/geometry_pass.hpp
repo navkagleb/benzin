@@ -31,6 +31,7 @@ namespace sandbox
 
         void RunCullingPass(const char* gpuName, bool isLate) const;
         void RunDrawPass(const char* gpuName, bool isLate) const;
+        void RunHzbGeneration() const;
 
         std::unique_ptr<benzin::Buffer> m_VisibilityBuffer;
         std::unique_ptr<benzin::Buffer> m_CmdCountBuffer;
@@ -39,7 +40,6 @@ namespace sandbox
 
         std::unique_ptr<benzin::QueryHeap> m_StatsQueryHeap;
         std::unique_ptr<benzin::Buffer> m_StatsBuffer;
-        mutable D3D12_QUERY_DATA_PIPELINE_STATISTICS1 m_D3D12PipelineStats = {};
 
         ID3D12CommandSignature* m_D3D12DrawCmdSignature = nullptr;
         ID3D12CommandSignature* m_D3D12MeshDispatchCmdSignature = nullptr;
@@ -52,7 +52,7 @@ namespace sandbox
         const benzin::Texture& m_WorldNormal;
         const benzin::Texture& m_Mv;
         const benzin::Texture& m_ViewDepth;
-        const benzin::Texture& m_DepthStencil;
+        const benzin::Texture& m_Depth;
 
         explicit GBuffer(const benzin::RenderResources& resources);
     };

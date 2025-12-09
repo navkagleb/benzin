@@ -65,7 +65,7 @@ namespace sandbox
 
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::DeferredLighting));
 
-        const auto& depth = ms_Resources->Get(TextureId::DepthStencil);
+        const auto& depth = ms_Resources->Get(TextureId::Depth);
         const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
 
         cmdList.AddRenderTarget(hdrColor);

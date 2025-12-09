@@ -4,9 +4,7 @@
 #include <sandbox/render_settings.hpp>
 #include <sandbox/resources.hpp>
 
-#include <benzin/core/math.hpp>
 #include <benzin/core/profiler.hpp>
-#include <benzin/engine/mesh.hpp>
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
@@ -25,6 +23,7 @@
 
 BenzinAllowDereferenceOperatorForEnum(joint::GeometryResources);
 BenzinAllowDereferenceOperatorForEnum(joint::GeometryCullingResources);
+BenzinAllowDereferenceOperatorForEnum(joint::GeometryHzbGenerationResources);
 
 namespace sandbox
 {
@@ -39,18 +38,24 @@ namespace sandbox
             {
                 proxy.m_Cs.m_FileName = "geometry_culling.hlsl";
 
-                if (id == PsoId::GeometryPass_LateComputeCulling)
+                if (id == PsoId::Geometry_LateComputeCulling)
                 {
                     proxy.m_Cs.m_Defines.push_back("LATE_CULLING");
                 }
             });
         };
 
-        createComputePso(PsoId::GeometryPass_EarlyComputeCulling);
-        createComputePso(PsoId::GeometryPass_LateComputeCulling);
+        createComputePso(PsoId::Geometry_EarlyComputeCulling);
+        createComputePso(PsoId::Geometry_LateComputeCulling);
 
-        CreateGeometryPso(PsoId::GeometryPass_Vertex, false);
-        CreateGeometryPso(PsoId::GeometryPass_Mesh, true);
+        CreateGeometryPso(PsoId::Geometry_Vertex, false);
+        CreateGeometryPso(PsoId::Geometry_Mesh, true);
+
+        ms_PsoManager->Create(PsoId::Geometry_HzbGeneration, [](benzin::ComputePsoProxy& proxy)
+        {
+            proxy.m_Cs.m_FileName = "geometry_hzb_generation.hlsl";
+            proxy.m_Cs.m_Defines.push_back("HZB_GENERATION");
+        });
 
         {
             std::array<D3D12_INDIRECT_ARGUMENT_DESC, 2> d3d12ArgumentDescs = {};
@@ -115,17 +120,19 @@ namespace sandbox
         ms_Device->DeferredRelease(m_D3D12MeshDispatchCmdSignature);
         m_D3D12MeshDispatchCmdSignature = nullptr;
 
-        ms_PsoManager->Destroy(PsoId::GeometryPass_EarlyComputeCulling);
-        ms_PsoManager->Destroy(PsoId::GeometryPass_LateComputeCulling);
-        ms_PsoManager->Destroy(PsoId::GeometryPass_Vertex);
-        ms_PsoManager->Destroy(PsoId::GeometryPass_Mesh);
+        ms_PsoManager->Destroy(PsoId::Geometry_EarlyComputeCulling);
+        ms_PsoManager->Destroy(PsoId::Geometry_LateComputeCulling);
+        ms_PsoManager->Destroy(PsoId::Geometry_Vertex);
+        ms_PsoManager->Destroy(PsoId::Geometry_Mesh);
+        ms_PsoManager->Destroy(PsoId::Geometry_HzbGeneration);
 
         ms_Resources->Destroy(TextureId::AlbedoAndRoughness);
         ms_Resources->Destroy(TextureId::EmissiveAndMetallic);
         ms_Resources->Destroy(TextureId::WorldNormal);
         ms_Resources->Destroy(TextureId::Mv);
         ms_Resources->Destroy(TextureId::ViewDepth);
-        ms_Resources->Destroy(TextureId::DepthStencil);
+        ms_Resources->Destroy(TextureId::Depth);
+        ms_Resources->Destroy(TextureId::Hzb);
     }
 
     void GeometryPass::OnZeroFrameInit()
@@ -182,7 +189,7 @@ namespace sandbox
         m_StatsBuffer = ms_Device->GetPersistentReadbackAllocator().AllocateStructuredBuffer(
             "GeometryPass::StatsBuffer",
             BENZIN_READBACK_LATENCY,
-            sizeof(m_D3D12PipelineStats));
+            sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS1));
 
         benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         cmdList.AddTransition(*m_VisibilityBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -197,7 +204,16 @@ namespace sandbox
         ms_Resources->Create(TextureId::WorldNormal, GBufferSettings::ms_Color2DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
         ms_Resources->Create(TextureId::Mv, GBufferSettings::ms_Color3DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
         ms_Resources->Create(TextureId::ViewDepth, GBufferSettings::ms_Color4DxgiFormat, benzin::TextureAccessFlag::AllowRenderTarget);
-        ms_Resources->Create(TextureId::DepthStencil, GBufferSettings::ms_DepthStencilDxgiFormat, benzin::TextureAccessFlag::AllowDepthStencil);
+        ms_Resources->Create(TextureId::Depth, GBufferSettings::ms_DepthStencilDxgiFormat, benzin::TextureAccessFlag::AllowDepthStencil);
+
+        BenzinAssert(GBufferSettings::ms_DepthStencilDxgiFormat == DXGI_FORMAT_D32_FLOAT);
+        ms_Resources->Create(
+            TextureId::Hzb,
+            DXGI_FORMAT_R32_FLOAT,
+            ms_RenderViewportWidth,
+            ms_RenderViewportHeight,
+            benzin::CalcTextureMipCount(ms_RenderViewportWidth, ms_RenderViewportHeight),
+            benzin::TextureAccessFlag::AllowUnorderedAccess);
     }
 
     void GeometryPass::OnRender() const
@@ -210,10 +226,11 @@ namespace sandbox
 
         d3d12CmdList->BeginQuery(m_StatsQueryHeap->GetD3D12QueryHeap(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS1, 0);
 
-        RunCullingPass("EarlyCulling", false);
-        RunDrawPass("EarlyDraw", false);
-        RunCullingPass("LateCulling", true);
-        RunDrawPass("LateDraw", true);
+        RunCullingPass("Early Culling", false);
+        RunDrawPass("Early Draw", false);
+        RunHzbGeneration();
+        RunCullingPass("Late Culling", true);
+        RunDrawPass("Late Draw", true);
 
         d3d12CmdList->EndQuery(m_StatsQueryHeap->GetD3D12QueryHeap(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS1, 0);
 
@@ -226,7 +243,7 @@ namespace sandbox
             0,
             1,
             m_StatsBuffer->GetD3D12Resource(),
-            ms_Device->GetReadbackWriteIndex() * sizeof(m_D3D12PipelineStats));
+            ms_Device->GetReadbackWriteIndex() * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS1));
 
         cmdList.AddTransition(*m_StatsBuffer, D3D12_RESOURCE_STATE_COMMON);
         cmdList.FlushBarriers();
@@ -236,10 +253,8 @@ namespace sandbox
             1,
             [this](std::span<const D3D12_QUERY_DATA_PIPELINE_STATISTICS1> stats)
             {
-                m_D3D12PipelineStats = stats.front();
+                ms_Settings->GetSection<GBufferStats>().m_D3D12PipelineStats = stats.front();
             });
-
-        ms_Settings->GetSection<GBufferStats>().m_D3D12PipelineStats = m_D3D12PipelineStats;
     }
 
     void GeometryPass::CreateGeometryPso(PsoId id, bool isMeshPipeline)
@@ -323,7 +338,7 @@ namespace sandbox
 
         cmdList.ClearUnorderedAccess(*m_CmdCountBuffer, m_CmdCountBuffer->GetUav());
 
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(isLate ? PsoId::GeometryPass_LateComputeCulling : PsoId::GeometryPass_EarlyComputeCulling));
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(isLate ? PsoId::Geometry_LateComputeCulling : PsoId::Geometry_EarlyComputeCulling));
         cmdList.Dispatch({ drawCount, 1, 1 }, { 64, 1, 1 });
 
         cmdList.AddUnorderedAccess(*m_CmdCountBuffer);
@@ -342,7 +357,7 @@ namespace sandbox
 
         if (isMeshPipeline)
         {
-            cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::GeometryPass_Mesh));
+            cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::Geometry_Mesh));
 
             cmdList.SetGraphicsRootSrv(*joint::GeometryResources::Vertices, *ms_Scene->m_VertexBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
             cmdList.SetGraphicsRootSrv(*joint::GeometryResources::Meshlets, *ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -352,7 +367,7 @@ namespace sandbox
         }
         else
         {
-            cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::GeometryPass_Vertex));
+            cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::Geometry_Vertex));
 
             cmdList.SetVertexBuffer(*ms_Scene->m_VertexBuffer);
             cmdList.SetIndexBuffer(*ms_Scene->m_IndexBuffer);
@@ -375,7 +390,7 @@ namespace sandbox
         cmdList.AddRenderTarget(gbuffer.m_WorldNormal);
         cmdList.AddRenderTarget(gbuffer.m_Mv);
         cmdList.AddRenderTarget(gbuffer.m_ViewDepth);
-        cmdList.AddDepthStencil(gbuffer.m_DepthStencil);
+        cmdList.AddDepthStencil(gbuffer.m_Depth);
         cmdList.SetRenderTargets();
         cmdList.FlushBarriers();
 
@@ -386,7 +401,7 @@ namespace sandbox
             cmdList.ClearRenderTarget(gbuffer.m_WorldNormal);
             cmdList.ClearRenderTarget(gbuffer.m_Mv);
             cmdList.ClearRenderTarget(gbuffer.m_ViewDepth);
-            cmdList.ClearDepthStencil(gbuffer.m_DepthStencil);
+            cmdList.ClearDepthStencil(gbuffer.m_Depth);
         }
 
         cmdList.GetD3D12GraphicsCommandList()->RSSetViewports(1, &ms_D3D12RenderViewport);
@@ -401,6 +416,44 @@ namespace sandbox
             0);
     }
 
+    void GeometryPass::RunHzbGeneration() const
+    {
+        BenzinProfile();
+        BenzinGpuProfile("HZB Generation");
+
+        benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
+
+        const benzin::Texture& depth = ms_Resources->Get(TextureId::Depth);
+        const benzin::Texture& hzb = ms_Resources->Get(TextureId::Hzb);
+
+        cmdList.CopyTextureRegion(hzb, hzb.CalcSubResourceIndex(0, 0), depth, depth.CalcSubResourceIndex(0, 0));
+
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Geometry_HzbGeneration));
+
+        for (uint32_t sourceMipIndex = 0; sourceMipIndex < hzb.GetMipCount() - 1; ++sourceMipIndex)
+        {
+            const uint32_t destMipIndex = sourceMipIndex + 1;
+            const uint32_t destMipWidth = hzb.GetMipWidth(destMipIndex);
+            const uint32_t destMipHeight = hzb.GetMipHeight(destMipIndex);
+
+            joint::GeometryHzbGenerationConsts consts = {};
+            consts.m_DestMipTexelSize = { 1.0f / destMipWidth, 1.0f / destMipHeight };
+            consts.m_IsSourceWidthOdd = (hzb.GetMipWidth(sourceMipIndex) & 1) == 1;
+            consts.m_IsSourceHeightOdd = (hzb.GetMipHeight(sourceMipIndex) & 1) == 1;
+
+            cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(consts));
+
+            using Resources = joint::GeometryHzbGenerationResources;
+            cmdList.SetComputeRootSrv(*Resources::SourceMip, hzb, { .m_MipOffset = sourceMipIndex, .m_MipCount = 1 }, benzin::g_MaxEnum<D3D12_RESOURCE_STATES>);
+            cmdList.SetComputeRootUav(*Resources::DestMip, hzb, { .m_MipIndex = destMipIndex });
+            cmdList.FlushBarriers();
+
+            cmdList.Dispatch({ destMipWidth, destMipHeight, 1 }, { 8, 8, 1 });
+
+            cmdList.AddUnorderedAccess(hzb);
+        }
+    }
+
     // GBuffer
 
     GBuffer::GBuffer(const benzin::RenderResources& resources)
@@ -409,7 +462,7 @@ namespace sandbox
         , m_WorldNormal{ resources.Get(TextureId::WorldNormal) }
         , m_Mv{ resources.Get(TextureId::Mv) }
         , m_ViewDepth{ resources.Get(TextureId::ViewDepth) }
-        , m_DepthStencil{ resources.Get(TextureId::DepthStencil) }
+        , m_Depth{ resources.Get(TextureId::Depth) }
     {}
 
 }

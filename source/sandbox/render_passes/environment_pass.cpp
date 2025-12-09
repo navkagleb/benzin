@@ -9,6 +9,7 @@
 #include <benzin/engine/resource_loader.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
 #include <benzin/graphics/device.hpp>
+#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/texture.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
@@ -64,23 +65,21 @@ namespace sandbox
                 proxy.m_Cs.m_FileName = "equirectangular_to_cube_pass.hlsl";
             });
 
-            BenzinExecuteOnScopeExit([]
-            {
-                ms_PsoManager->Destroy(PsoId::Environment_EquirectangularToCube);
-            });
+            BenzinExecuteOnScopeExit([] { ms_PsoManager->Destroy(PsoId::Environment_EquirectangularToCube); });
 
             constexpr uint32_t cubeMapSize = 1024;
 
-            benzin::TextureCreation textureCreation;
-            textureCreation.m_DebugName = "EnvironmentPass::CubeMap";
-            textureCreation.m_IsCubeMap = true;
-            textureCreation.m_DxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-            textureCreation.m_Width = cubeMapSize;
-            textureCreation.m_Height = cubeMapSize;
-            textureCreation.m_Depth = 6;
-            textureCreation.m_MipCount = 1;
-            textureCreation.m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess;
-            benzin::MakeUniquePtr(m_CubeTexture, *ms_Device, textureCreation);
+            m_CubeTexture = ms_Device->GetPersistentDefaultAllocator().AllocateTexture([](benzin::TextureCreation& creation)
+            {
+                creation.m_DebugName = "EnvironmentPass::CubeMap";
+                creation.m_IsCubeMap = true;
+                creation.m_DxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+                creation.m_Width = cubeMapSize;
+                creation.m_Height = cubeMapSize;
+                creation.m_Depth = 6;
+                creation.m_MipCount = 1;
+                creation.m_AccessFlags = benzin::TextureAccessFlag::AllowUnorderedAccess;
+            });
 
             benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
@@ -111,7 +110,7 @@ namespace sandbox
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::Environment));
 
         cmdList.AddRenderTarget(ms_Resources->Get(TextureId::HdrColor));
-        cmdList.AddDepthStencil(ms_Resources->Get(TextureId::DepthStencil), D3D12_RESOURCE_STATE_DEPTH_READ);
+        cmdList.AddDepthStencil(ms_Resources->Get(TextureId::Depth), D3D12_RESOURCE_STATE_DEPTH_READ);
         cmdList.SetRenderTargets();
 
         cmdList.SetGraphicsRootSrv(*joint::EnvironmentResources::CubeMap, *m_CubeTexture);

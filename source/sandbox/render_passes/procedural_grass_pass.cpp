@@ -55,23 +55,21 @@ namespace sandbox
 
     void ProceduralGrassPass::OnZeroFrameInit()
     {
+        benzin::TextureImage perlinNoiseImage;
+        BenzinEnsure(benzin::LoadTextureImageFromDdsFile("perlin_noise_256.dds", perlinNoiseImage));
+
+        m_PerlinNoiseTexture = ms_Device->GetPersistentDefaultAllocator().AllocateTexture([&perlinNoiseImage](benzin::TextureCreation& creation)
         {
-            benzin::TextureImage perlinNoiseImage;
-            benzin::LoadTextureImageFromDdsFile("perlin_noise_256.dds", perlinNoiseImage);
+            creation.m_DebugName = "ProceduralGrass::PerlinNoise256";
+            creation.m_DxgiFormat = perlinNoiseImage.m_DxgiFormat;
+            creation.m_Width = perlinNoiseImage.m_Width;
+            creation.m_Height = perlinNoiseImage.m_Height;
+            creation.m_MipCount = 1;
+        });
 
-            benzin::MakeUniquePtr(m_PerlinNoiseTexture, *ms_Device, benzin::TextureCreation
-            {
-                .m_DebugName = "PerlinNoise256",
-                .m_DxgiFormat = perlinNoiseImage.m_DxgiFormat,
-                .m_Width = perlinNoiseImage.m_Width,
-                .m_Height = perlinNoiseImage.m_Height,
-                .m_MipCount = 1,
-            });
+        benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_PerlinNoiseTexture->GetSizeInBytes());
+        cmdList.UploadToTexture(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.m_PixelData));
 
-            benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_PerlinNoiseTexture->GetSizeInBytes());
-            cmdList.UploadToTexture(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.m_PixelData));
-        }
-        
         auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
         stats.MaxPatchCount = (uint32_t)ms_Scene->m_GrassPatchBuffer->GetElementCount();
     }
@@ -117,7 +115,7 @@ namespace sandbox
         cmdList.AddRenderTarget(gbuffer.m_WorldNormal);
         cmdList.AddRenderTarget(gbuffer.m_Mv);
         cmdList.AddRenderTarget(gbuffer.m_ViewDepth);
-        cmdList.AddDepthStencil(gbuffer.m_DepthStencil);
+        cmdList.AddDepthStencil(gbuffer.m_Depth);
         cmdList.SetRenderTargets();
 
         cmdList.SetGraphicsRootSrv(*Resources::GrassPatches, *ms_Scene->m_GrassPatchBuffer);

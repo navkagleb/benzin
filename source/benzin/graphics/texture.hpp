@@ -33,8 +33,8 @@ namespace benzin
         DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
-        uint16_t m_Depth = 1; // ArraySize
-        uint16_t m_MipCount = 0; // By default select all mip levels
+        uint32_t m_Depth = 1; // ArraySize
+        uint32_t m_MipCount = 0; // By default select all mip levels
 
         EnumFlags<TextureAccessFlag> m_AccessFlags;
         ClearValueVariant m_ClearValueVariant;
@@ -76,9 +76,9 @@ namespace benzin
         uint64_t GetSizeInBytes() const override;
         uint32_t GetSubResourceCount() const;
 
-        uint32_t GetMipWidth(uint16_t mipIndex) const;
-        uint32_t GetMipHeight(uint16_t mipIndex) const;
-        uint32_t CalcSubResourceIndex(uint16_t mipIndex, uint16_t depthIndex) const;
+        uint32_t GetMipWidth(uint32_t mipIndex) const;
+        uint32_t GetMipHeight(uint32_t mipIndex) const;
+        uint32_t CalcSubResourceIndex(uint32_t mipIndex, uint32_t depthIndex) const;
 
         const Descriptor& GetSrv(const TextureSrv& textureSrv = {}) const;
         const Descriptor& GetUav(const TextureUav& textureUav = {}) const;
@@ -97,13 +97,14 @@ namespace benzin
         DXGI_FORMAT m_DxgiFormat = DXGI_FORMAT_UNKNOWN;
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
-        uint16_t m_Depth = 0;
-        uint16_t m_MipCount = 0;
+        uint32_t m_Depth = 0;
+        uint32_t m_MipCount = 0;
 
         EnumFlags<TextureAccessFlag> m_AccessFlags;
         ClearValueVariant m_ClearValueVariant;
     };
 
     uint64_t CalcTextureSizeInBytes(uint32_t width, uint32_t height, uint32_t depth, DXGI_FORMAT dxgiFormat);
+    uint32_t CalcTextureMipCount(uint32_t width, uint32_t height);
 
 }

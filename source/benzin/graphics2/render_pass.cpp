@@ -64,17 +64,29 @@ namespace benzin
             dxgiFormat,
             RenderPass::ms_RenderViewportWidth,
             RenderPass::ms_RenderViewportHeight,
+            1,
             flags);
     }
 
     void RenderResources::Create(TextureId id, DXGI_FORMAT dxgiFormat, uint32_t width, uint32_t height, EnumFlags<TextureAccessFlag> flags)
     {
-        const auto init = [dxgiFormat, width, height, flags](TextureCreation& creation)
+        Create(
+            id,
+            dxgiFormat,
+            width,
+            height,
+            1,
+            flags);
+    }
+
+    void RenderResources::Create(TextureId id, DXGI_FORMAT dxgiFormat, uint32_t width, uint32_t height, uint32_t mipCount, EnumFlags<TextureAccessFlag> flags)
+    {
+        const auto init = [dxgiFormat, width, height, mipCount, flags](TextureCreation& creation)
         {
             creation.m_DxgiFormat = dxgiFormat;
             creation.m_Width = width;
             creation.m_Height = height;
-            creation.m_MipCount = 1;
+            creation.m_MipCount = mipCount;
             creation.m_AccessFlags = flags;
         };
 

@@ -10,7 +10,8 @@ namespace benzin
         WorldNormal,
         Mv,
         ViewDepth,
-        DepthStencil,
+        Depth,
+        Hzb,
 
         NoisyPenumbra,
 
@@ -32,19 +33,20 @@ namespace benzin
 
     enum class PsoId : uint32_t
     {
-        GeometryPass_EarlyComputeCulling,
-        GeometryPass_LateComputeCulling,
-        GeometryPass_Vertex,
-        GeometryPass_Mesh,
+        Geometry_EarlyComputeCulling,
+        Geometry_LateComputeCulling,
+        Geometry_Vertex,
+        Geometry_Mesh,
+        Geometry_HzbGeneration,
 
         ProceduralGrass,
 
         ShadowPass,
-        SigmaClassifyTiles,
-        SigmaSmoothTiles,
-        SigmaBlur,
-        SigmaPostBlur,
-        SigmaTemporalStabilization,
+        Sigma_ClassifyTiles,
+        Sigma_SmoothTiles,
+        Sigma_Blur,
+        Sigma_PostBlur,
+        Sigma_TemporalStabilization,
         DeferredLighting,
         Environment,
         Environment_EquirectangularToCube,

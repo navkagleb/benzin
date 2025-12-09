@@ -33,4 +33,21 @@ namespace joint
         MeshletIndices, // Mesh pipeline
     };
 
+    enum class GeometryHzbGenerationResources : uint
+    {
+        SourceMip,
+        DestMip,
+    };
+
+    struct GeometryHzbGenerationConsts
+    {
+        float2 m_DestMipTexelSize;
+        uint m_IsSourceWidthOdd : 1;
+        uint m_IsSourceHeightOdd : 1;
+    };
+
 }
+
+#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType) && defined(HZB_GENERATION)
+    #define BenzinRenderPassConstsType joint::GeometryHzbGenerationConsts
+#endif

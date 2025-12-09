@@ -38,8 +38,8 @@ namespace benzin
         d3d12ResourceDesc.Alignment = 0;
         d3d12ResourceDesc.Width = (uint64_t)creation.m_Width;
         d3d12ResourceDesc.Height = creation.m_Height;
-        d3d12ResourceDesc.DepthOrArraySize = creation.m_Depth;
-        d3d12ResourceDesc.MipLevels = creation.m_MipCount;
+        d3d12ResourceDesc.DepthOrArraySize = (uint16_t)creation.m_Depth;
+        d3d12ResourceDesc.MipLevels = (uint16_t)creation.m_MipCount;
         d3d12ResourceDesc.Format = creation.m_DxgiFormat;
         d3d12ResourceDesc.SampleDesc = { 1, 0 };
         d3d12ResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -218,7 +218,7 @@ namespace benzin
         return d3d12RtvDesc;
     }
 
-    static DirectX::XMUINT3 GetMipDimensions(const DirectX::XMUINT3& sourceDimensions, uint16_t mipIndex)
+    static DirectX::XMUINT3 GetMipDimensions(const DirectX::XMUINT3& sourceDimensions, uint32_t mipIndex)
     {
         return DirectX::XMUINT3
         {
@@ -297,20 +297,23 @@ namespace benzin
         return m_MipCount * m_Depth * m_Device.GetPlaneCountFromFormat(m_DxgiFormat);
     }
 
-    uint32_t Texture::GetMipWidth(uint16_t mipIndex) const
+    uint32_t Texture::GetMipWidth(uint32_t mipIndex) const
     {
         return GetMipDimensions({ m_Width, m_Height, m_Depth }, mipIndex).x;
     }
 
-    uint32_t Texture::GetMipHeight(uint16_t mipIndex) const
+    uint32_t Texture::GetMipHeight(uint32_t mipIndex) const
     {
         return GetMipDimensions({ m_Width, m_Height, m_Depth }, mipIndex).y;
     }
 
-    uint32_t Texture::CalcSubResourceIndex(uint16_t mipIndex, uint16_t depthIndex) const
+    uint32_t Texture::CalcSubResourceIndex(uint32_t mipIndex, uint32_t depthIndex) const
     {
         // Ref: https://github.com/microsoft/DirectX-Graphics-Samples/blob/096d935f7f4a420cf96ecd6a010dce82f794e448/Libraries/D3D12RaytracingFallback/Include/d3dx12.h#L1684C13-L1684C33
         // TODO: Add plande slice index support
+
+        BenzinAssert(mipIndex < m_MipCount);
+        BenzinAssert(depthIndex < m_Depth);
 
         return mipIndex + (depthIndex * m_MipCount);
     }
@@ -476,6 +479,20 @@ namespace benzin
         const uint64_t sizeInBytes = slicePitchInBytes * (depth - 1) + rowPitchInBytes * (height - 1) + rowSizeInBytes;
 
         return sizeInBytes;
+    }
+
+    uint32_t CalcTextureMipCount(uint32_t width, uint32_t height)
+    {
+        uint32_t size = std::max(width, height);
+        uint32_t mipCount = 0;
+
+        while (size > 0)
+        {
+            ++mipCount;
+            size >>= 1;
+        }
+
+        return mipCount;
     }
 
 }

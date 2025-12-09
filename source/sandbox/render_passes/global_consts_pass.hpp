@@ -28,7 +28,7 @@ namespace sandbox
     private:
         joint::FrameConsts m_FrameConsts = {};
 
-        DirectX::XMUINT2 m_PrevRenderResolution{ 0, 0 };
+        DirectX::XMUINT2 m_PrevRenderResolution = { 0, 0 };
         float m_PrevAnimationElapsedTimeInSec = 0.0f;
 
         std::unique_ptr<benzin::Buffer> m_StatBuffer;

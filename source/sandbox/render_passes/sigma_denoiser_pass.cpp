@@ -70,20 +70,20 @@ namespace sandbox
             });
         };
 
-        createPso(PsoId::SigmaClassifyTiles, "sigma_denoiser/classify_tiles.hlsl");
-        createPso(PsoId::SigmaSmoothTiles, "sigma_denoiser/smooth_tiles.hlsl");
-        createPso(PsoId::SigmaBlur, "sigma_denoiser/blur.hlsl");
-        createPso(PsoId::SigmaPostBlur, "sigma_denoiser/blur.hlsl", "POST_BLUR_PASS");
-        createPso(PsoId::SigmaTemporalStabilization, "sigma_denoiser/temporal_stabilization.hlsl");
+        createPso(PsoId::Sigma_ClassifyTiles, "sigma_denoiser/classify_tiles.hlsl");
+        createPso(PsoId::Sigma_SmoothTiles, "sigma_denoiser/smooth_tiles.hlsl");
+        createPso(PsoId::Sigma_Blur, "sigma_denoiser/blur.hlsl");
+        createPso(PsoId::Sigma_PostBlur, "sigma_denoiser/blur.hlsl", "POST_BLUR_PASS");
+        createPso(PsoId::Sigma_TemporalStabilization, "sigma_denoiser/temporal_stabilization.hlsl");
     }
 
     SigmaDenoiserPass::~SigmaDenoiserPass()
     {
-        ms_PsoManager->Destroy(PsoId::SigmaClassifyTiles);
-        ms_PsoManager->Destroy(PsoId::SigmaSmoothTiles);
-        ms_PsoManager->Destroy(PsoId::SigmaBlur);
-        ms_PsoManager->Destroy(PsoId::SigmaPostBlur);
-        ms_PsoManager->Destroy(PsoId::SigmaTemporalStabilization);
+        ms_PsoManager->Destroy(PsoId::Sigma_ClassifyTiles);
+        ms_PsoManager->Destroy(PsoId::Sigma_SmoothTiles);
+        ms_PsoManager->Destroy(PsoId::Sigma_Blur);
+        ms_PsoManager->Destroy(PsoId::Sigma_PostBlur);
+        ms_PsoManager->Destroy(PsoId::Sigma_TemporalStabilization);
 
         ms_Resources->Destroy(TextureId::Sigma_Tiles);
         ms_Resources->Destroy(TextureId::Sigma_SmoothTiles);
@@ -211,7 +211,7 @@ namespace sandbox
         cmdList.SetComputeRootUav(*Resources::OutTiles, tiles);
         cmdList.FlushBarriers();
 
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaClassifyTiles));
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Sigma_ClassifyTiles));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
 
         cmdList.AddUnorderedAccess(tiles);
@@ -231,7 +231,7 @@ namespace sandbox
         cmdList.SetComputeRootUav(*Resources::OutSmoothTiles, smoothTiles);
         cmdList.FlushBarriers();
 
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaSmoothTiles));
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Sigma_SmoothTiles));
         cmdList.Dispatch({ m_Consts.TileCount.x, m_Consts.TileCount.y, 1 }, { 16, 16, 1 });
 
         cmdList.AddUnorderedAccess(smoothTiles);
@@ -256,7 +256,7 @@ namespace sandbox
         cmdList.SetComputeRootUav(*Resources::OutShadow, shadowTemp1);
         cmdList.FlushBarriers();
 
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaBlur));
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Sigma_Blur));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
 
         cmdList.AddUnorderedAccess(penumbra1);
@@ -292,7 +292,7 @@ namespace sandbox
         cmdList.SetComputeRootUav(*Resources::OutShadow, shadowTemp2);
         cmdList.FlushBarriers();
 
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaPostBlur));
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Sigma_PostBlur));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
 
         cmdList.AddUnorderedAccess(penumbra2);
@@ -328,7 +328,7 @@ namespace sandbox
         cmdList.SetComputeRootUav(*Resources::OutHistoryLength, historyLength);
         cmdList.FlushBarriers();
 
-        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::SigmaTemporalStabilization));
+        cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Sigma_TemporalStabilization));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
 
         cmdList.AddUnorderedAccess(shadow);

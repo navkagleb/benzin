@@ -61,6 +61,7 @@ namespace benzin
 
         void Create(TextureId id, DXGI_FORMAT dxgiFormat, EnumFlags<TextureAccessFlag> flags = {});
         void Create(TextureId id, DXGI_FORMAT dxgiFormat, uint32_t width, uint32_t height, EnumFlags<TextureAccessFlag> flags = {});
+        void Create(TextureId id, DXGI_FORMAT dxigFormat, uint32_t width, uint32_t height, uint32_t mipCount, EnumFlags<TextureAccessFlag> flags = {});
         void Destroy(TextureId id);
 
         const Texture* GetPtr(TextureId id) const;

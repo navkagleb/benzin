@@ -1,6 +1,5 @@
 #pragma once
 
-#include <benzin/graphics/common.hpp>
 #include <benzin/graphics/resource.hpp>
 #include <benzin/graphics/texture.hpp>
 
@@ -11,7 +10,6 @@ namespace benzin
     class ComputePso;
     class Descriptor;
     class MeshPso;
-    class QueryHeap;
     class RayTracing_AcclerationStructure;
     class RayTracing_Pso;
     class RayTracing_ShaderTable;
@@ -88,9 +86,9 @@ namespace benzin
 
         void SetComputeRootConstant(uint32_t rootIndex, uint32_t value);
         void SetComputeRootSrv(uint32_t rootIndex, const Buffer& buffer);
-        void SetComputeRootSrv(uint32_t rootIndex, const Texture& texture, const TextureSrv& srv = {});
+        void SetComputeRootSrv(uint32_t rootIndex, const Texture& texture, const TextureSrv& srv = {}, D3D12_RESOURCE_STATES d3d12ResourceState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         void SetComputeRootUav(uint32_t rootIndex, const Buffer& buffer);
-        void SetComputeRootUav(uint32_t rootIndex, const Texture& texture);
+        void SetComputeRootUav(uint32_t rootIndex, const Texture& texture, const TextureUav& uav = {});
 
         void SetComputePso(const ComputePso& pso);
 

@@ -56,8 +56,8 @@ namespace sandbox
         bool m_IsNoiseAnimated = true;
         bool m_IsBlueNoiseDepthFreezed = false;
 
-        uint16_t m_BlueNoiseDepth = 0;
-        uint16_t m_BlueNoiseDepthIndex = 0;
+        uint32_t m_BlueNoiseDepth = 0;
+        uint32_t m_BlueNoiseDepthIndex = 0;
     };
 
     struct SigmaDenoiserSettings

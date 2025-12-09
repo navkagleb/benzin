@@ -48,14 +48,14 @@ namespace sandbox
         benzin::TextureImage blueNoiseImage;
         benzin::LoadTextureImageFromDdsFile("blue_noise_128_rgba_array.dds", blueNoiseImage);
 
-        benzin::MakeUniquePtr(m_BlueNoiseTexture, *ms_Device, benzin::TextureCreation
+        m_BlueNoiseTexture = ms_Device->GetPersistentDefaultAllocator().AllocateTexture([&blueNoiseImage](benzin::TextureCreation& creation)
         {
-            .m_DebugName = "BlueNoise",
-            .m_DxgiFormat = blueNoiseImage.m_DxgiFormat,
-            .m_Width = blueNoiseImage.m_Width,
-            .m_Height = blueNoiseImage.m_Height,
-            .m_Depth = blueNoiseImage.m_Depth,
-            .m_MipCount = 1,
+            creation.m_DebugName = "BlueNoise";
+            creation.m_DxgiFormat = blueNoiseImage.m_DxgiFormat;
+            creation.m_Width = blueNoiseImage.m_Width;
+            creation.m_Height = blueNoiseImage.m_Height;
+            creation.m_Depth = blueNoiseImage.m_Depth;
+            creation.m_MipCount = 1;
         });
 
         benzin::CopyCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList(m_BlueNoiseTexture->GetSizeInBytes());
@@ -86,7 +86,6 @@ namespace sandbox
         if (!settings.m_IsBlueNoiseDepthFreezed)
         {
             settings.m_BlueNoiseDepthIndex = (settings.m_BlueNoiseDepthIndex + 1) % settings.m_BlueNoiseDepth;
-            m_BlueNoiseDepthIndex = settings.m_BlueNoiseDepthIndex;
         }
 
         if (settings.m_IsEnabled)
@@ -132,9 +131,11 @@ namespace sandbox
             cmdList.SetRayTracingPso(pso);
             cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(m_Consts));
 
+            const uint32_t blueNoiseDepthIndex = ms_Settings->GetSection<RayTracing_ShadowSettings>().m_BlueNoiseDepthIndex;
+
             cmdList.SetComputeRootSrv(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal));
-            cmdList.SetComputeRootSrv(*Resources::Depth, ms_Resources->Get(TextureId::DepthStencil));
-            cmdList.SetComputeRootSrv(*Resources::BlueNoise, *m_BlueNoiseTexture, { .m_DepthOffset = m_BlueNoiseDepthIndex, .m_DepthCount = 1 });
+            cmdList.SetComputeRootSrv(*Resources::Depth, ms_Resources->Get(TextureId::Depth));
+            cmdList.SetComputeRootSrv(*Resources::BlueNoise, *m_BlueNoiseTexture, { .m_DepthOffset = blueNoiseDepthIndex, .m_DepthCount = 1 });
             cmdList.SetComputeRootUav(*Resources::NoisyPenumbra, noisyPenumbra);
             cmdList.FlushBarriers();
 

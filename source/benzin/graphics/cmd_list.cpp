@@ -5,16 +5,14 @@
 #include <benzin/core/math.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
+#include <benzin/graphics/common.hpp>
 #include <benzin/graphics/d3d12_assert.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/descriptor_manager.hpp>
 #include <benzin/graphics/device.hpp>
-#include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/pso.hpp>
-#include <benzin/graphics/query_heap.hpp>
 #include <benzin/graphics/ray_tracing_acceleration_structures.hpp>
 #include <benzin/graphics/ray_tracing_pso.hpp>
-#include <benzin/graphics/texture.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>
 
 // Ref: https://devblogs.microsoft.com/pix/winpixeventruntime/
@@ -33,7 +31,6 @@ namespace benzin
             D3D12_COMMAND_LIST_TYPE_DIRECT,
             D3D12_COMMAND_LIST_FLAG_NONE,
             IID_PPV_ARGS(&m_D3D12GraphicsCommandList1)));
-        BenzinEnsure(m_D3D12GraphicsCommandList1 != nullptr);
 
         SetD3DObjectDebugName(m_D3D12GraphicsCommandList1, "GraphicsCmdList");
     }
@@ -45,6 +42,9 @@ namespace benzin
 
     void CmdList::AddTransition(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter)
     {
+        if (IsMaxEnum(d3d12StateAfter))
+            return;
+
         m_DeferredTransitionBarriers.emplace_back(&resource, d3d12StateAfter);
     }
 
@@ -131,8 +131,6 @@ namespace benzin
 
     void CopyCmdList::CopyTextureRegion(const Texture& destTexture, uint32_t destSubResourceIndex, const Texture& sourceTexture, uint32_t sourceSubresourceIndex)
     {
-        BenzinAssert(destTexture.GetDxgiFormat() == sourceTexture.GetDxgiFormat());
-
         D3D12_TEXTURE_COPY_LOCATION d3d12DestLocatiton = {};
         d3d12DestLocatiton.pResource = destTexture.GetD3D12Resource();
         d3d12DestLocatiton.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
@@ -168,15 +166,15 @@ namespace benzin
     {
         struct CopyableFootprints
         {
-            std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> D3D12Layouts; // RowPitch aligned by D3D12_TEXTURE_DATA_PITCH_ALIGNMENT
-            std::vector<uint32_t> RowCounts;
-            std::vector<uint64_t> RowSizesInBytes;
+            std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> m_D3D12Layouts; // RowPitch aligned by D3D12_TEXTURE_DATA_PITCH_ALIGNMENT
+            std::vector<uint32_t> m_RowCounts;
+            std::vector<uint64_t> m_RowSizesInBytes;
 
             CopyableFootprints(size_t size)
             {
-                D3D12Layouts.resize(size);
-                RowCounts.resize(size);
-                RowSizesInBytes.resize(size);
+                m_D3D12Layouts.resize(size);
+                m_RowCounts.resize(size);
+                m_RowSizesInBytes.resize(size);
             }
         };
 
@@ -200,11 +198,10 @@ namespace benzin
                 0, // first sub resource index
                 (uint32_t)subResources.size(),
                 offsetInBytes,
-                copyableFootprits.D3D12Layouts.data(),
-                copyableFootprits.RowCounts.data(),
-                copyableFootprits.RowSizesInBytes.data(),
-                &resourceSizeInBytes
-            );
+                copyableFootprits.m_D3D12Layouts.data(),
+                copyableFootprits.m_RowCounts.data(),
+                copyableFootprits.m_RowSizesInBytes.data(),
+                &resourceSizeInBytes);
 
             AllocateInUploadBuffer(resourceSizeInBytes, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
         }
@@ -217,7 +214,7 @@ namespace benzin
             for (uint32_t subResourceIndex = 0; subResourceIndex < (uint32_t)subResources.size(); ++subResourceIndex)
             {
                 const SubResourceData& subResource = subResources[subResourceIndex];
-                const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& d3d12Layout = copyableFootprits.D3D12Layouts[subResourceIndex];
+                const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& d3d12Layout = copyableFootprits.m_D3D12Layouts[subResourceIndex];
 
                 // SubResource data
                 const uint64_t destOffsetInBytes = d3d12Layout.Offset;
@@ -225,7 +222,7 @@ namespace benzin
 
                 for (uint32_t sliceIndex = 0; sliceIndex < d3d12Layout.Footprint.Depth; ++sliceIndex)
                 {
-                    const uint64_t rowCount = copyableFootprits.RowCounts[subResourceIndex];
+                    const uint64_t rowCount = copyableFootprits.m_RowCounts[subResourceIndex];
                     const uint64_t destSlicePitchInBytes = d3d12Layout.Footprint.RowPitch * rowCount;
 
                     // Slice data
@@ -240,7 +237,7 @@ namespace benzin
                         const uint64_t destRowOffsetInBytes = destSliceOffsetInBytes + destRowPitchInBytes * rowIndex;
                         const std::byte* sourceRowData = sourceSliceData + subResource.m_RowPitchInBytes * rowIndex;
 
-                        const uint64_t rowSizeInBytes = copyableFootprits.RowSizesInBytes[subResourceIndex];
+                        const uint64_t rowSizeInBytes = copyableFootprits.m_RowSizesInBytes[subResourceIndex];
 
                         writer.SetPositionInBytes(destRowOffsetInBytes);
                         writer.WriteData(ToSpan(sourceRowData, rowSizeInBytes));
@@ -264,7 +261,7 @@ namespace benzin
             D3D12_TEXTURE_COPY_LOCATION d3d12SourceLocation = {};
             d3d12SourceLocation.pResource = m_UploadBuffer->GetD3D12Resource();
             d3d12SourceLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-            d3d12SourceLocation.PlacedFootprint = copyableFootprits.D3D12Layouts[i];
+            d3d12SourceLocation.PlacedFootprint = copyableFootprits.m_D3D12Layouts[i];
 
             m_D3D12GraphicsCommandList1->CopyTextureRegion(&d3d12DestLocation, 0, 0, 0, &d3d12SourceLocation, nullptr);
         }
@@ -283,7 +280,7 @@ namespace benzin
         std::vector<SubResourceData> subResources;
         subResources.reserve(texture.GetDepth());
 
-        for (uint16_t depthIndex = 0; depthIndex < texture.GetDepth(); ++depthIndex)
+        for (uint32_t depthIndex = 0; depthIndex < texture.GetDepth(); ++depthIndex)
         {
             SubResourceData subResourceData;
             subResourceData.m_Data = data.data() + slicePitchInBytes * depthIndex;
@@ -358,9 +355,9 @@ namespace benzin
         SetComputeRootConstant(rootIndex, buffer.GetSrv().GetGpuHeapIndex());
     }
 
-    void ComputeCmdList::SetComputeRootSrv(uint32_t rootIndex, const Texture& texture, const TextureSrv& srv)
+    void ComputeCmdList::SetComputeRootSrv(uint32_t rootIndex, const Texture& texture, const TextureSrv& srv, D3D12_RESOURCE_STATES d3d12ResourceState)
     {
-        AddTransition(texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        AddTransition(texture, d3d12ResourceState);
         SetComputeRootConstant(rootIndex, texture.GetSrv(srv).GetGpuHeapIndex());
     }
 
@@ -370,10 +367,10 @@ namespace benzin
         SetComputeRootConstant(rootIndex, buffer.GetUav().GetGpuHeapIndex());
     }
 
-    void ComputeCmdList::SetComputeRootUav(uint32_t rootIndex, const Texture& texture)
+    void ComputeCmdList::SetComputeRootUav(uint32_t rootIndex, const Texture& texture, const TextureUav& uav)
     {
         AddTransition(texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        SetComputeRootConstant(rootIndex, texture.GetUav().GetGpuHeapIndex());
+        SetComputeRootConstant(rootIndex, texture.GetUav(uav).GetGpuHeapIndex());
     }
 
     void ComputeCmdList::SetComputePso(const ComputePso& pso)
