@@ -16,13 +16,13 @@ namespace sandbox
 
     class SponzaRunner : public SandboxRunner
     {
-    private:
+    public:
         void InitScene() override;
     };
 
-    class StanfordDragonRunner : public SandboxRunner
+    class OccusionCullingRunner : public SandboxRunner
     {
-    private:
+    public:
         void InitScene() override;
     };
 

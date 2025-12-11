@@ -118,10 +118,9 @@ namespace benzin
 
         auto* GetD3D12PipelineState() const { return m_D3D12PipelineState; }
 
-    public:
         void Compile(std::string_view debugName) override;
         void Release() override;
-        std::span<const ShaderInfo> GetShaders() const override { return m_Shaders; }
+        std::span<const ShaderInfo> GetShaders() const override { return ToSpan(m_Shaders.data(), m_ShaderCount); }
 
     protected:
         void AddShader(ShaderInfo&& shader, ShaderType shaderType);
@@ -130,6 +129,7 @@ namespace benzin
 
     private:
         ID3D12PipelineState* m_D3D12PipelineState = nullptr;
+
         std::array<ShaderInfo, _MaxShaderCount> m_Shaders;
         uint32_t m_ShaderCount = 0;
     };

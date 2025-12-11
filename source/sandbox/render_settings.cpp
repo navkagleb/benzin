@@ -43,7 +43,7 @@ namespace sandbox
         ImGui::PushItemWidth(150.0f);
         BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
 
-        ImGui::Checkbox("Enable ### ProceduralGrass", &settings.IsEnabled);
+        ImGui::Checkbox("Enable###ProceduralGrassSettings::m_IsEnabled", &settings.IsEnabled);
 
         ImGui::BeginDisabled(!settings.IsEnabled);
         BenzinExecuteOnScopeExit([] { ImGui::EndDisabled(); });
@@ -95,26 +95,30 @@ namespace sandbox
         BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
 
         ImGui::BeginDisabled();
-        ImGui::Checkbox("Allow###RayTracingShadows", &settings.m_IsAllowed);
+        ImGui::Checkbox("Allow###RayTracingShadowSettings::m_IsAllowed", &settings.m_IsAllowed);
         ImGui::EndDisabled();
 
-        ImGui::Checkbox("Enable###RayTracingShadows", &settings.m_IsEnabled);
+        ImGui::BeginDisabled(!settings.m_IsAllowed);
+        {
+            ImGui::Checkbox("Enable###RayTracingShadowSettings::m_IsEnabled", &settings.m_IsEnabled);
 
-        ImGui::Checkbox("Use blue noise", &settings.m_IsBlueNoiseUsed);
-        ImGui::Checkbox("Animate noise", &settings.m_IsNoiseAnimated);
+            ImGui::Checkbox("Use blue noise", &settings.m_IsBlueNoiseUsed);
+            ImGui::Checkbox("Animate noise", &settings.m_IsNoiseAnimated);
 
-        ImGui::Checkbox("Freeze blue noise depth", &settings.m_IsBlueNoiseDepthFreezed);
+            ImGui::Checkbox("Freeze blue noise depth", &settings.m_IsBlueNoiseDepthFreezed);
 
-        ImGui::BeginDisabled();
-        auto tempBlueNoiseDepthIndex = (int)settings.m_BlueNoiseDepthIndex;
-        ImGui::SliderInt("Blue noise depth index", &tempBlueNoiseDepthIndex, 0, settings.m_BlueNoiseDepth - 1);
+            ImGui::BeginDisabled();
+            auto tempBlueNoiseDepthIndex = (int)settings.m_BlueNoiseDepthIndex;
+            ImGui::SliderInt("Blue noise depth index", &tempBlueNoiseDepthIndex, 0, settings.m_BlueNoiseDepth - 1);
+            ImGui::EndDisabled();
+        }
         ImGui::EndDisabled();
     }
 
     template <>
     void DrawSettings(SigmaDenoiserSettings& settings)
     {
-        ImGui::Checkbox("Enable ### SigmaDenoiser", &settings.m_IsEnabled);
+        ImGui::Checkbox("Enable###SigmaDenoiserSettings::m_IsEnabled", &settings.m_IsEnabled);
 
         ImGui::BeginDisabled(!settings.m_IsEnabled);
         BenzinExecuteOnScopeExit([] { ImGui::EndDisabled(); });
@@ -153,7 +157,7 @@ namespace sandbox
         ImGui::PushItemWidth(120.0f);
         BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
 
-        ImGui::Checkbox("Enable ### ToneMapping", &settings.m_IsToneMappingEnabled);
+        ImGui::Checkbox("Enable###ToneMappingSettings::m_IsToneMappingEnabled", &settings.m_IsToneMappingEnabled);
 
         ImGui::CollapsingHeaderWithIndent("Luminance Histogram", [&settings]
         {

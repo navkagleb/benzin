@@ -221,51 +221,43 @@ namespace sandbox
         }
     }
 
-    // StanfordDragonRunner
+    // OccusionCullingRunner
 
-    void StanfordDragonRunner::InitScene()
+    void OccusionCullingRunner::InitScene()
     {
         m_RenderSettings->GetSection<RayTracingShadowSettings>().m_IsAllowed = false;
         m_RenderSettings->GetSection<SigmaDenoiserSettings>().m_IsEnabled = false;
 
-        benzin::PerspectiveCamera& camera = m_Scene.m_Camera;
-        camera.SetPosition({ -2.286f, 3.911f, -18.385f });
-        camera.SetFrontDirection({ 0.149f, -0.185f, 0.972f });
-        camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
+        m_Scene.m_Camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
+        m_CameraController.SetCameraTranslationSpeed(0.02f);
 
-        benzin::MeshGeometry dragon;
+        benzin::MeshGeometry geometry;
         std::vector<benzin::MeshDraw> draws;
         std::vector<benzin::Material> materials;
         std::vector<benzin::TextureImage> textures;
-        BenzinAssertExpr(benzin::LoadMeshFromGltfFile("StanfordDragon/StanfordDragon.glb", dragon, draws, materials, textures));
+        BenzinAssertExpr(benzin::LoadMeshFromGltfFile("Dinosaur.glb", geometry, draws, materials, textures));
 
-        const auto [drawOffset, drawCount] = m_Scene.AddMeshGeometry(
-            "StanfordDragon",
-            std::move(dragon),
+        const benzin::Scene::MeshGeometryRange geometryRange = m_Scene.AddMeshGeometry(
+            "Geometry",
+            std::move(geometry),
             std::move(draws),
             std::move(materials),
             std::move(textures));
 
-        const int32_t radius = 3;
+        constexpr float sceneRadius = 400.0f;
 
-        for (auto x = -radius; x <= radius; ++x)
+        m_Scene.m_MeshGeometryDraws.resize(30'000);
+        for (benzin::MeshGeometryDraw& draw : m_Scene.m_MeshGeometryDraws)
         {
-            for (auto y = -radius; y <= radius; ++y)
-            {
-                for (auto z = -radius; z <= radius; ++z)
-                {
-                    benzin::MeshGeometryDraw& draw = m_Scene.m_MeshGeometryDraws.emplace_back();
-                    draw.m_MeshDrawOffset = drawOffset;
-                    draw.m_MeshDrawCount = drawCount;
-                    draw.m_Translation.x = (float)x * 2.5f;
-                    draw.m_Translation.y = (float)y * 2.5f;
-                    draw.m_Translation.z = (float)z * 2.5f;
-                    draw.m_Rotation.x = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
-                    draw.m_Rotation.y = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
-                    draw.m_Rotation.z = benzin::Random::Get<float>(0.0f, DirectX::XM_2PI);
-                    draw.m_Scale = benzin::Random::Get<float>(0.03f, 0.15f);
-                }
-            }
+            draw.m_MeshDrawOffset = geometryRange.m_MeshDrawOffset;
+            draw.m_MeshDrawCount = geometryRange.m_MeshDrawCount;
+            draw.m_Translation.x = benzin::Random::Get(-sceneRadius, sceneRadius);
+            draw.m_Translation.y = benzin::Random::Get(-sceneRadius, sceneRadius);
+            draw.m_Translation.z = benzin::Random::Get(-sceneRadius, sceneRadius);
+            draw.m_Rotation.x = benzin::Random::Get(0.0f, DirectX::XM_2PI);
+            draw.m_Rotation.y = benzin::Random::Get(0.0f, DirectX::XM_2PI);
+            draw.m_Rotation.z = benzin::Random::Get(0.0f, DirectX::XM_2PI);
+            draw.m_Scale = benzin::Random::Get(0.05f, 0.1f);
         }
     }
 

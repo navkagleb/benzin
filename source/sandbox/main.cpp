@@ -6,8 +6,8 @@
 
 int benzin::ClientMain()
 {
-    sandbox::SponzaRunner runner;
-    // sandbox::StanfordDragonRunner runner;
+    // sandbox::SponzaRunner runner;
+    sandbox::OccusionCullingRunner runner;
     runner.RunMainLoop();
 
     return 0;

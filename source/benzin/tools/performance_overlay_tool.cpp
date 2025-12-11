@@ -101,8 +101,9 @@ namespace benzin
         ImGui::FmtText("CPU full: {:.3f} ms", m_SmoothedFullCpuTimeInMs);
         ImGui::FmtText("GPU wait: {:.3f} ms", m_SmoothedGpuWaitTimeInMs);
         ImGui::NewLine();
-        ImGui::FmtText("Persistent allocator:    {:3.0f} / {:.0f} mb", ToMb(m_Device.GetPersistentDefaultAllocator().GetOffsetInBytes()), ToMb(m_Device.GetPersistentDefaultAllocator().GetGpuHeap().GetSizeInBytes()));
-        ImGui::FmtText("Res dependent allocator: {:3.0f} / {:.0f} mb", ToMb(m_Device.GetResDependentAllocator().GetOffsetInBytes()), ToMb(m_Device.GetResDependentAllocator().GetGpuHeap().GetSizeInBytes()));
+        ImGui::FmtText("Persistent allocator:    {:3.2f} / {:.0f} mb", ToMb(m_Device.GetPersistentDefaultAllocator().GetOffsetInBytes()), ToMb(m_Device.GetPersistentDefaultAllocator().GetGpuHeap().GetSizeInBytes()));
+        ImGui::FmtText("Res dependent allocator: {:3.2f} / {:.0f} mb", ToMb(m_Device.GetResDependentAllocator().GetOffsetInBytes()), ToMb(m_Device.GetResDependentAllocator().GetGpuHeap().GetSizeInBytes()));
+        ImGui::FmtText("GPU upload allocator:    {:3.2f} / {:.0f} mb", ToMb(m_Device.GetPersistentGpuUploadAllocator().GetOffsetInBytes()), ToMb(m_Device.GetPersistentGpuUploadAllocator().GetGpuHeap().GetSizeInBytes()));
         ImGui::NewLine();
         ImGui::FmtText("{}", m_Backend.GetMainAdapterInfo().m_Name);
         ImGui::FmtText("Local VRAM: {:.0f} / {:.0f} mb", ToMb(adapterMemoryInfo.m_UsedLocalVramInBytes), ToMb(adapterMemoryInfo.m_LocalVramBudgetInBytes));
