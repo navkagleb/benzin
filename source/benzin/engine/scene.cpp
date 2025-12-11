@@ -10,11 +10,23 @@
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/texture.hpp>
 
-#include <shaders/joint/mesh_types.hpp>
 #include <shaders/joint/procedural_grass_resources.hpp>
 
 namespace benzin
 {
+
+    static bool IsMatrixZero(const DirectX::XMMATRIX& matrix)
+    {
+        const DirectX::XMVECTOR zero = DirectX::XMVectorZero();
+
+        return
+            DirectX::XMVector4Equal(matrix.r[0], zero) &&
+            DirectX::XMVector4Equal(matrix.r[1], zero) &&
+            DirectX::XMVector4Equal(matrix.r[2], zero) &&
+            DirectX::XMVector4Equal(matrix.r[3], zero);
+    }
+
+    //
 
     Scene::Scene()
     {
@@ -128,16 +140,14 @@ namespace benzin
 
             for (TextureImage& textureImage : m_TextureImages)
             {
-                std::unique_ptr texture = device.GetPersistentDefaultAllocator().AllocateTexture([&textureImage](TextureCreation& creation)
+                m_Textures.push_back(device.GetPersistentDefaultAllocator().AllocateTexture([&textureImage](TextureCreation& creation)
                 {
                     creation.m_DebugName = textureImage.m_DebugName;
                     creation.m_DxgiFormat = textureImage.m_DxgiFormat;
                     creation.m_Width = textureImage.m_Width;
                     creation.m_Height = textureImage.m_Height;
                     creation.m_MipCount = 1; // TODO: Mip generation
-                });
-
-                m_Textures.push_back(std::move(texture));
+                }));
             }
 
             uint64_t uploadSizeInBytes = 0;
@@ -259,35 +269,56 @@ namespace benzin
         m_GrassPatches.clear();
     }
 
+    void Scene::AllocateMeshDrawBuffers(Device& device)
+    {
+        for (const MeshGeometryDraw& geometryDraw : m_MeshGeometryDraws)
+        {
+            m_TotalMeshDrawCount += geometryDraw.m_MeshDrawCount;
+        }
+
+        for (uint32_t frameIndex = 0; frameIndex < BENZIN_FRAME_COUNT; ++frameIndex)
+        {
+            PerFrameResources& perFrameResources = m_PerFrameResources[frameIndex];
+            perFrameResources.m_MeshDrawBuffer = device.GetPersistentGpuUploadAllocator().AllocateStructuredBuffer(
+                std::format("Scene::MeshDrawBuffer{}", frameIndex),
+                m_TotalMeshDrawCount,
+                sizeof(joint::MeshDraw));
+            perFrameResources.m_JointMeshDraws = ToMutSpan(
+                (joint::MeshDraw*)perFrameResources.m_MeshDrawBuffer->GetCpuMappedData(),
+                m_TotalMeshDrawCount);
+        }
+    }
+
     void Scene::UploadMeshDrawsToGpu(Device& device)
     {
         BenzinProfile();
 
-        if (m_JointMeshDraws.empty())
-        {
-            uint32_t drawCount = 0;
-            for (const MeshGeometryDraw& geometryDraw : m_MeshGeometryDraws)
-            {
-                drawCount += geometryDraw.m_MeshDrawCount;
-            }
-
-            m_JointMeshDraws.resize(drawCount);
-            m_MeshDrawBuffer = device.GetPersistentGpuUploadAllocator().AllocateBuffer("Scene::MeshDraws", ToSpan(m_JointMeshDraws));
-        }
+        PerFrameResources& perFrameResources = m_PerFrameResources[device.GetActiveFrameIndex()];
 
         uint32_t jointDrawIndex = 0;
-        for (const MeshGeometryDraw& geometryDraw : m_MeshGeometryDraws)
+        for (MeshGeometryDraw& geometryDraw : m_MeshGeometryDraws)
         {
+            if (!perFrameResources.m_IsDirty && !geometryDraw.m_IsDirty)
+            {
+                jointDrawIndex += geometryDraw.m_MeshDrawCount;
+                continue;
+            }
+
+            geometryDraw.m_IsDirty = false;
+
+            const DirectX::XMMATRIX geometryLocalToWorld =
+                DirectX::XMMatrixScaling(geometryDraw.m_Scale, geometryDraw.m_Scale, geometryDraw.m_Scale) *
+                DirectX::XMMatrixRotationX(geometryDraw.m_Rotation.x) *
+                DirectX::XMMatrixRotationY(geometryDraw.m_Rotation.y) *
+                DirectX::XMMatrixRotationZ(geometryDraw.m_Rotation.z) *
+                DirectX::XMMatrixTranslation(geometryDraw.m_Translation.x, geometryDraw.m_Translation.y, geometryDraw.m_Translation.z);
+
             const auto draws = ToSpan(m_MeshDraws.data() + geometryDraw.m_MeshDrawOffset, geometryDraw.m_MeshDrawCount);
             for (const MeshDraw& draw : draws)
             {
-                const DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(geometryDraw.m_Scale, geometryDraw.m_Scale, geometryDraw.m_Scale);
-                const DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationX(geometryDraw.m_Rotation.x) * DirectX::XMMatrixRotationY(geometryDraw.m_Rotation.y) * DirectX::XMMatrixRotationZ(geometryDraw.m_Rotation.z);
-                const DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(geometryDraw.m_Translation.x, geometryDraw.m_Translation.y, geometryDraw.m_Translation.z);
-
-                joint::MeshDraw& jointDraw = m_JointMeshDraws[jointDrawIndex++];
-                jointDraw.m_PrevLocalToWorld = jointDraw.m_LocalToWorld;
-                jointDraw.m_LocalToWorld = draw.m_ObjectToLocal * (scaling * rotation * translation);
+                joint::MeshDraw& jointDraw = perFrameResources.m_JointMeshDraws[jointDrawIndex++];
+                jointDraw.m_PrevLocalToWorld = IsMatrixZero(jointDraw.m_PrevLocalToWorld) ? draw.m_ObjectToLocal * geometryLocalToWorld : jointDraw.m_LocalToWorld;
+                jointDraw.m_LocalToWorld = draw.m_ObjectToLocal * geometryLocalToWorld;
                 jointDraw.m_MeshIndex = draw.m_MeshIndex;
                 jointDraw.m_MaterialIndex = draw.m_MaterialIndex;
 
@@ -296,13 +327,13 @@ namespace benzin
                 scales.y = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[1]));
                 scales.z = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[2]));
 
-                // BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-5f && std::fabs(scales.x - scales.z) <= 1e-5f, "Scale is not uniform");
+                BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-5f && std::fabs(scales.x - scales.z) <= 1e-5f, "Scale is not uniform");
                 jointDraw.m_LocalToWorldScale = scales.x;
             }
         }
 
-        BufferWriter writer = MakeBufferWriter(*m_MeshDrawBuffer);
-        writer.WriteArray(ToSpan(m_JointMeshDraws));
+        BenzinAssert(jointDrawIndex == m_TotalMeshDrawCount);
+        perFrameResources.m_IsDirty = false;
     }
 
 }

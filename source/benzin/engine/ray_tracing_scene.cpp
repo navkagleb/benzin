@@ -26,21 +26,15 @@ namespace benzin
     {
         BenzinTraceScopeTime("RayTracingScene::BuildBlases");
 
-        uint32_t drawCount = 0;
-        for (const MeshGeometryDraw& geometryDraw : m_Scene.m_MeshGeometryDraws)
-        {
-            drawCount += geometryDraw.m_MeshDrawCount;
-        }
-
         std::vector<DirectX::XMFLOAT3X4> localTransforms;
-        localTransforms.reserve(drawCount);
+        localTransforms.reserve(m_Scene.m_TotalMeshDrawCount);
 
         BufferCreation localTransformBufferCreation;
         localTransformBufferCreation.m_DebugName = "RayTracingScene::LocalTransforms";
         localTransformBufferCreation.m_HeapType = GpuHeapType::GpuUpload;
         localTransformBufferCreation.m_Type = BufferType::Structured;
         localTransformBufferCreation.m_ElementSizeInBytes = sizeof(DirectX::XMFLOAT3X4);
-        localTransformBufferCreation.m_ElementCount = drawCount;
+        localTransformBufferCreation.m_ElementCount = m_Scene.m_TotalMeshDrawCount;
 
         auto localTransformBuffer = std::make_unique<Buffer>(device, localTransformBufferCreation);
 

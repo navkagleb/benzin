@@ -137,7 +137,7 @@ namespace sandbox
 
     void GeometryPass::OnZeroFrameInit()
     {
-        const uint32_t drawCount = (uint32_t)ms_Scene->m_JointMeshDraws.size();
+        const uint32_t drawCount = ms_Scene->m_TotalMeshDrawCount;
         BenzinAssert(drawCount != 0);
 
         benzin::GpuHeapLinearAllocator& allocator = ms_Device->GetPersistentDefaultAllocator();
@@ -219,18 +219,18 @@ namespace sandbox
     void GeometryPass::OnRender() const
     {
         BenzinProfile();
-        BenzinGpuProfile("Geometry");
+        BenzinGpuProfile("GeometryPass");
 
         benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
         ID3D12GraphicsCommandList* d3d12CmdList = cmdList.GetD3D12GraphicsCommandList();
 
         d3d12CmdList->BeginQuery(m_StatsQueryHeap->GetD3D12QueryHeap(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS1, 0);
 
-        RunCullingPass("Early Culling", false);
-        RunDrawPass("Early Draw", false);
+        RunCullingPass(false);
+        RunDrawPass(false);
         RunHzbGeneration();
-        RunCullingPass("Late Culling", true);
-        RunDrawPass("Late Draw", true);
+        RunCullingPass(true);
+        RunDrawPass(true);
 
         d3d12CmdList->EndQuery(m_StatsQueryHeap->GetD3D12QueryHeap(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS1, 0);
 
@@ -307,19 +307,19 @@ namespace sandbox
         }
     }
 
-    void GeometryPass::RunCullingPass(const char* gpuName, bool isLate) const
+    void GeometryPass::RunCullingPass(bool isLate) const
     {
         using Resources = joint::GeometryCullingResources;
 
-        BenzinProfile();
-        BenzinGpuProfile(gpuName);
+        BenzinScopeProfile(isLate ? "GeometryPass::RunCulling_Late" : "GeometryPass::RunCulling_Early");
+        BenzinGpuProfile(isLate ? "CullingLate" : "CullingEarly");
 
         benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-        const uint32_t drawCount = (uint32_t)ms_Scene->m_JointMeshDraws.size();
+        const uint32_t drawCount = ms_Scene->m_TotalMeshDrawCount;
 
         cmdList.SetComputeRootConstant(*Resources::MeshDrawCount, drawCount);
-        cmdList.SetComputeRootSrv(*Resources::MeshDraws, *ms_Scene->m_MeshDrawBuffer);
+        cmdList.SetComputeRootSrv(*Resources::MeshDraws, *ms_Scene->m_PerFrameResources[ms_Device->GetActiveFrameIndex()].m_MeshDrawBuffer);
         cmdList.SetComputeRootSrv(*Resources::Meshes, *ms_Scene->m_MeshBuffer);
         cmdList.SetComputeRootUav(*Resources::MeshCmdCounter, *m_CmdCountBuffer);
         cmdList.SetComputeRootUav(*Resources::MeshDrawCmds, *m_DrawCmdBuffer);
@@ -346,10 +346,12 @@ namespace sandbox
         cmdList.AddUnorderedAccess(*m_DispatchCmdBuffer);
     }
 
-    void GeometryPass::RunDrawPass(const char* gpuName, bool isLate) const
+    void GeometryPass::RunDrawPass(bool isLate) const
     {
-        BenzinProfile();
-        BenzinGpuProfile(gpuName);
+        using Resources = joint::GeometryResources;
+
+        BenzinScopeProfile(isLate ? "GeometryPass::RunDrawPass_Late" : "GeometryPass::RunDrawPass_Early");
+        BenzinGpuProfile(isLate ? "DrawLate" : "DrawEarly");
 
         benzin::GraphicsCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
@@ -359,11 +361,11 @@ namespace sandbox
         {
             cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::Geometry_Mesh));
 
-            cmdList.SetGraphicsRootSrv(*joint::GeometryResources::Vertices, *ms_Scene->m_VertexBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-            cmdList.SetGraphicsRootSrv(*joint::GeometryResources::Meshlets, *ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*joint::GeometryResources::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*joint::GeometryResources::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*joint::GeometryResources::MeshletIndices, *ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*Resources::Vertices, *ms_Scene->m_VertexBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            cmdList.SetGraphicsRootSrv(*Resources::Meshlets, *ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*Resources::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*Resources::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*Resources::MeshletIndices, *ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         }
         else
         {
@@ -375,8 +377,8 @@ namespace sandbox
             cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
 
-        cmdList.SetGraphicsRootSrv(*joint::GeometryResources::MeshDraws, *ms_Scene->m_MeshDrawBuffer);
-        cmdList.SetGraphicsRootSrv(*joint::GeometryResources::Materials, *ms_Scene->m_MaterialBuffer);
+        cmdList.SetGraphicsRootSrv(*Resources::MeshDraws, *ms_Scene->m_PerFrameResources[ms_Device->GetActiveFrameIndex()].m_MeshDrawBuffer);
+        cmdList.SetGraphicsRootSrv(*Resources::Materials, *ms_Scene->m_MaterialBuffer);
 
         const auto& cmdBuffer = isMeshPipeline ? m_DispatchCmdBuffer : m_DrawCmdBuffer;
 

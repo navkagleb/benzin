@@ -29,8 +29,8 @@ namespace sandbox
     private:
         static void CreateGeometryPso(benzin::PsoId id, bool isMeshPipeline);
 
-        void RunCullingPass(const char* gpuName, bool isLate) const;
-        void RunDrawPass(const char* gpuName, bool isLate) const;
+        void RunCullingPass(bool isLate) const;
+        void RunDrawPass(bool isLate) const;
         void RunHzbGeneration() const;
 
         std::unique_ptr<benzin::Buffer> m_VisibilityBuffer;

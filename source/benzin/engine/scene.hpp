@@ -3,10 +3,11 @@
 #include <benzin/engine/camera.hpp>
 #include <benzin/engine/mesh.hpp>
 
+#include <shaders/joint/mesh_types.hpp>
+
 namespace joint
 {
     struct GrassPatch;
-    struct MeshDraw;
 }
 
 namespace benzin
@@ -24,6 +25,8 @@ namespace benzin
 
         uint32_t m_MeshDrawOffset = 0;
         uint32_t m_MeshDrawCount = 0;
+
+        bool m_IsDirty = true;
     };
 
     struct SunLight
@@ -46,10 +49,11 @@ namespace benzin
         std::vector<TextureImage> m_TextureImages;
 
         std::vector<MeshGeometryDraw> m_MeshGeometryDraws;
-        std::vector<joint::MeshDraw> m_JointMeshDraws;
 
         std::vector<joint::GrassPatch> m_GrassPatches;
         SunLight m_SunLight;
+
+        uint32_t m_TotalMeshDrawCount = 0;
 
         std::unique_ptr<Buffer> m_VertexBuffer;
         std::unique_ptr<Buffer> m_IndexBuffer;
@@ -59,11 +63,19 @@ namespace benzin
         std::unique_ptr<Buffer> m_MeshletVertexIndexBuffer;
         std::unique_ptr<Buffer> m_MeshletIndexBuffer;
 
-        std::unique_ptr<Buffer> m_MeshDrawBuffer;
         std::unique_ptr<Buffer> m_MaterialBuffer;
         std::vector<std::unique_ptr<Texture>> m_Textures;
 
         std::unique_ptr<Buffer> m_GrassPatchBuffer;
+
+        struct PerFrameResources
+        {
+            std::unique_ptr<Buffer> m_MeshDrawBuffer;
+            std::span<joint::MeshDraw> m_JointMeshDraws;
+            bool m_IsDirty = true;
+        };
+
+        PerFrameResources m_PerFrameResources[BENZIN_FRAME_COUNT] = {};
 
         Scene();
         ~Scene();
@@ -82,6 +94,8 @@ namespace benzin
             std::vector<TextureImage>&& textures = {});
 
         void UploadMeshGeometryToGpu(Device& device);
+
+        void AllocateMeshDrawBuffers(Device& device);
         void UploadMeshDrawsToGpu(Device& device);
     };
 

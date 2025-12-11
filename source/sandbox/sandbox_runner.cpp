@@ -16,8 +16,6 @@
 #include <benzin/engine/scene.hpp>
 #include <benzin/utility/random.hpp>
 
-#include <shaders/joint/mesh_types.hpp>
-
 BenzinAllowDereferenceOperatorForEnum(joint::ReadbackStat);
 
 namespace sandbox
@@ -178,6 +176,7 @@ namespace sandbox
                 benzin::MeshGeometryDraw& draw = m_Scene.m_MeshGeometryDraws[boomBooxDrawIndex];
                 draw.m_Rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
                 draw.m_Rotation.z += 0.0002f * m_AnimationTimer.GetDeltaTimeInMs();
+                draw.m_IsDirty = true;
             });
         }
 
@@ -188,6 +187,7 @@ namespace sandbox
                 benzin::MeshGeometryDraw& draw = m_Scene.m_MeshGeometryDraws[damagedHelmetDrawIndex];
                 draw.m_Rotation.x += 0.0001f * m_AnimationTimer.GetDeltaTimeInMs();
                 draw.m_Rotation.y -= 0.00015f * m_AnimationTimer.GetDeltaTimeInMs();
+                draw.m_IsDirty = true;
             });
         }
 
