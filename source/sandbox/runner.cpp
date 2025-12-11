@@ -12,7 +12,6 @@
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/imgui_pass.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
-#include <benzin/graphics2/shader_manager.hpp>
 #include <benzin/graphics2/texture_viewer_pass.hpp>
 #include <benzin/system/input.hpp>
 #include <benzin/system/key_event.hpp>
@@ -44,18 +43,16 @@ namespace sandbox
         benzin::MakeUniquePtr(m_Device, benzin::DeviceCreation{ "MainDevice", *m_Backend });
         benzin::MakeUniquePtr(m_SwapChain, benzin::SwapChainCreation{ "MainSwapChain", *m_MainWindow, *m_Backend, *m_Device });
 
-        benzin::MakeUniquePtr(m_ShaderManager);
         benzin::MakeUniquePtr(m_GpuProfiler, *m_Device);
-        benzin::MakeUniquePtr(m_PsoManager, *m_Device, *m_ShaderManager);
+        benzin::MakeUniquePtr(m_PsoManager, *m_Device, m_ShaderManager);
 
         benzin::MakeUniquePtr(m_RenderResources, m_Device->GetResDependentAllocator());
-        benzin::MakeUniquePtr(m_RenderSettings);
 
         benzin::MakeUniquePtr(m_ImGuiManager, *m_MainWindow, m_FrameTimer);
         m_ImGuiManager->RegisterTool<benzin::FlyCameraTool>(m_CameraController);
         m_ImGuiManager->RegisterTool<benzin::GpuInfoTool>(*m_Backend);
         m_ImGuiManager->RegisterTool<benzin::GpuProfilerTool>(*m_GpuProfiler);
-        m_ImGuiManager->RegisterTool<benzin::PerformanceOverlayTool>(*m_Backend, *m_Device, *m_ShaderManager, *m_GpuProfiler, m_Viewport, m_FrameTimer);
+        m_ImGuiManager->RegisterTool<benzin::PerformanceOverlayTool>(*m_Backend, *m_Device, m_ShaderManager, *m_GpuProfiler, m_Viewport, m_FrameTimer);
         m_ImGuiManager->RegisterTool<benzin::ProfilerTool>();
         m_ImGuiManager->RegisterTool<benzin::GpuPrintTool>(m_GpuPrintData);
         m_ImGuiManager->RegisterTool<benzin::TextureViewerTool>(m_TextureViewerData, m_Viewport, *m_RenderResources);
@@ -66,7 +63,7 @@ namespace sandbox
             *m_SwapChain,
             *m_PsoManager,
             *m_RenderResources,
-            *m_RenderSettings,
+            m_RenderSettings,
             m_FrameTimer,
             m_AnimationTimer,
             m_Scene,
@@ -260,7 +257,7 @@ namespace sandbox
         m_ImGuiManager->BeginFrame();
 
         m_GpuProfiler->BeginFrame(m_Device->GetCpuFrameIndex());
-        m_ShaderManager->CheckForNewShader();
+        m_ShaderManager.CheckForNewShader();
     }
 
     void Runner::EndFrame()

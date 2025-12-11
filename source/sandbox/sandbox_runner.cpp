@@ -40,11 +40,11 @@ namespace sandbox
 
         auto readbackStatsCallback = [this](std::span<const uint32_t> readbackStats)
         {
-            auto& stats = m_RenderSettings->GetSection<ProceduralGrassStats>();
-            stats.PatchCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_PatchCount];
-            stats.BladeCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_BladeCount];
-            stats.VertexCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_VertexCount];
-            stats.TriangleCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_TriangleCount];
+            auto& stats = m_RenderSettings.GetSection<ProceduralGrassStats>();
+            stats.m_PatchCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_PatchCount];
+            stats.m_BladeCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_BladeCount];
+            stats.m_VertexCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_VertexCount];
+            stats.m_TriangleCount = readbackStats[*joint::ReadbackStat::ProceduralGrass_TriangleCount];
         };
 
         // The order in which render passes are added is important
@@ -60,13 +60,13 @@ namespace sandbox
 
     void SandboxRunner::InitTools()
     {
-        m_ImGuiManager->RegisterTool<SettingsTool<GBufferSettings>>("Settings/GBuffer", m_RenderSettings->GetSection<GBufferSettings>());
-        m_ImGuiManager->RegisterTool<SettingsTool<GBufferStats>>("Settings/GBufferStats", m_RenderSettings->GetSection<GBufferStats>());
-        m_ImGuiManager->RegisterTool<SettingsTool<ProceduralGrassSettings>>("Settings/ProceduralGrass", m_RenderSettings->GetSection<ProceduralGrassSettings>());
-        m_ImGuiManager->RegisterTool<SettingsTool<ProceduralGrassStats>>("Settings/ProceduralGrassStats", m_RenderSettings->GetSection<ProceduralGrassStats>());
-        m_ImGuiManager->RegisterTool<SettingsTool<RayTracingShadowSettings>>("Settings/RayTracingShadows", m_RenderSettings->GetSection<RayTracingShadowSettings>());
-        m_ImGuiManager->RegisterTool<SettingsTool<SigmaDenoiserSettings>>("Settings/SigmaDenoiser", m_RenderSettings->GetSection<SigmaDenoiserSettings>());
-        m_ImGuiManager->RegisterTool<SettingsTool<ToneMappingSettings>>("Settings/ToneMapping", m_RenderSettings->GetSection<ToneMappingSettings>());
+        m_ImGuiManager->RegisterTool<SettingsTool<GBufferSettings>>("Settings/GBuffer", m_RenderSettings.GetSection<GBufferSettings>());
+        m_ImGuiManager->RegisterTool<SettingsTool<GBufferStats>>("Settings/GBufferStats", m_RenderSettings.GetSection<GBufferStats>());
+        m_ImGuiManager->RegisterTool<SettingsTool<ProceduralGrassSettings>>("Settings/ProceduralGrass", m_RenderSettings.GetSection<ProceduralGrassSettings>());
+        m_ImGuiManager->RegisterTool<SettingsTool<ProceduralGrassStats>>("Settings/ProceduralGrassStats", m_RenderSettings.GetSection<ProceduralGrassStats>());
+        m_ImGuiManager->RegisterTool<SettingsTool<RayTracingShadowSettings>>("Settings/RayTracingShadows", m_RenderSettings.GetSection<RayTracingShadowSettings>());
+        m_ImGuiManager->RegisterTool<SettingsTool<SigmaDenoiserSettings>>("Settings/SigmaDenoiser", m_RenderSettings.GetSection<SigmaDenoiserSettings>());
+        m_ImGuiManager->RegisterTool<SettingsTool<ToneMappingSettings>>("Settings/ToneMapping", m_RenderSettings.GetSection<ToneMappingSettings>());
     }
 
     // SponzaRunner
@@ -203,19 +203,15 @@ namespace sandbox
             {
                 for (auto z = -zRadius; z <= zRadius; ++z)
                 {
-                    const DirectX::XMVECTOR normal = DirectX::XMVector3Normalize(DirectX::XMVECTOR
-                    {
-                        benzin::Random::Get<float>(-0.1f, 0.1f),
-                        1.0f,
-                        benzin::Random::Get<float>(-0.1f, 0.1f),
-                        0.0f,
-                    });
+                    using benzin::Random;
 
                     joint::GrassPatch& grassPatch = m_Scene.m_GrassPatches.emplace_back();
-                    grassPatch.Pos.x = (float)x * 0.07f + 6.0f;
-                    grassPatch.Pos.z = (float)z * 0.07f - 0.3f;
-                    grassPatch.Height = benzin::Random::Get<float>(0.07f, 0.13f);
-                    DirectX::XMStoreFloat3(&grassPatch.Normal, normal);
+                    grassPatch.m_Position.x = (float)x * 0.07f + 6.0f;
+                    grassPatch.m_Position.z = (float)z * 0.07f - 0.3f;
+                    grassPatch.m_Height = Random::Get(0.07f, 0.13f);
+
+                    const DirectX::XMVECTOR normal = DirectX::XMVector3Normalize({ Random::Get(-0.1f, 0.1f), 1.0f, Random::Get(-0.1f, 0.1f), 0.0f });
+                    DirectX::XMStoreFloat3(&grassPatch.m_Normal, normal);
                 }
             }
         }
@@ -225,8 +221,8 @@ namespace sandbox
 
     void OccusionCullingRunner::InitScene()
     {
-        m_RenderSettings->GetSection<RayTracingShadowSettings>().m_IsAllowed = false;
-        m_RenderSettings->GetSection<SigmaDenoiserSettings>().m_IsEnabled = false;
+        m_RenderSettings.GetSection<RayTracingShadowSettings>().m_IsAllowed = false;
+        m_RenderSettings.GetSection<SigmaDenoiserSettings>().m_IsEnabled = false;
 
         m_Scene.m_Camera.SetLens(DirectX::XMConvertToRadians(90.0f), 16.0f / 9.0f, 0.05f);
         m_CameraController.SetCameraTranslationSpeed(0.02f);

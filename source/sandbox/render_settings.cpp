@@ -43,36 +43,36 @@ namespace sandbox
         ImGui::PushItemWidth(150.0f);
         BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
 
-        ImGui::Checkbox("Enable###ProceduralGrassSettings::m_IsEnabled", &settings.IsEnabled);
+        ImGui::Checkbox("Enable###ProceduralGrassSettings::m_IsEnabled", &settings.m_IsEnabled);
 
-        ImGui::BeginDisabled(!settings.IsEnabled);
+        ImGui::BeginDisabled(!settings.m_IsEnabled);
         BenzinExecuteOnScopeExit([] { ImGui::EndDisabled(); });
 
         ImGui::NewLine();
         ImGui::SeparatorText("AMPLIFICATION");
         {
-            ImGui::Checkbox("GPU frustum culling", &settings.IsFrustumCullingEnabled);
-            ImGui::DragFloat("Patch cull radius", &settings.GrassPatchCullRadius, 0.0001f);
+            ImGui::Checkbox("GPU frustum culling", &settings.m_IsFrustumCullingEnabled);
+            ImGui::DragFloat("Patch cull radius", &settings.m_GrassPatchCullRadius, 0.0001f);
         }
 
         ImGui::NewLine();
         ImGui::SeparatorText("MESH");
         {
-            ImGui::DragFloat("Grass end distance", &settings.GrassEndDistance, 0.01f);
+            ImGui::DragFloat("Grass end distance", &settings.m_GrassEndDistance, 0.01f);
 
-            if (ImGui::DragFloat("Spacing in patch (between blades)", &settings.SpacingInGrassPatch, 0.0001f))
+            if (ImGui::DragFloat("Spacing in patch (between blades)", &settings.m_SpacingInGrassPatch, 0.0001f))
             {
-                settings.SpacingInGrassPatch = std::max(settings.SpacingInGrassPatch, 0.001f);
+                settings.m_SpacingInGrassPatch = std::max(settings.m_SpacingInGrassPatch, 0.001f);
             }
 
-            ImGui::DragFloat("Wind direction", &settings.WindDirection, 0.01f, 0.0f, DirectX::XM_2PI);
-            ImGui::DragFloat("Blade width", &settings.BladeWidth, 0.0001f, std::numeric_limits<float>::min());
+            ImGui::DragFloat("Wind direction", &settings.m_WindDirection, 0.01f, 0.0f, DirectX::XM_2PI);
+            ImGui::DragFloat("Blade width", &settings.m_BladeWidth, 0.0001f, std::numeric_limits<float>::min());
         }
 
         ImGui::NewLine();
         ImGui::SeparatorText("PIXEL");
         {
-            ImGui::ColorEdit3("Base color", (float*)&settings.BaseColor);
+            ImGui::ColorEdit3("Base color", (float*)&settings.m_BaseColor);
         }
     }
 
@@ -82,10 +82,10 @@ namespace sandbox
         std::locale::global(benzin::Logger::GetThoudandSeperatorApostrophe3());
         BenzinExecuteOnScopeExit([] { std::locale::global(std::locale::classic()); });
 
-        ImGui::FmtText("Patch count: {:L} (Max: {:L})", stats.PatchCount, stats.MaxPatchCount);
-        ImGui::FmtText("Blade count: {:L} (Max: {:L})", stats.BladeCount, stats.MaxPatchCount * std::to_underlying(joint::ProceduralGrassConsts::MaxBladeCountPerPatch));
-        ImGui::FmtText("Vertex count: {:L}", stats.VertexCount);
-        ImGui::FmtText("Triangle count: {:L}", stats.TriangleCount);
+        ImGui::FmtText("Patch count: {:L} (Max: {:L})", stats.m_PatchCount, stats.m_MaxPatchCount);
+        ImGui::FmtText("Blade count: {:L} (Max: {:L})", stats.m_BladeCount, stats.m_MaxPatchCount * std::to_underlying(joint::ProceduralGrassConsts::MaxBladeCountPerPatch));
+        ImGui::FmtText("Vertex count: {:L}", stats.m_VertexCount);
+        ImGui::FmtText("Triangle count: {:L}", stats.m_TriangleCount);
     }
 
     template <>

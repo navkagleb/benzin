@@ -74,7 +74,7 @@ namespace sandbox
         cmdList.UploadToTexture(*m_PerlinNoiseTexture, benzin::ToSpan(perlinNoiseImage.m_PixelData));
 
         auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
-        stats.MaxPatchCount = (uint32_t)ms_Scene->m_GrassPatchBuffer->GetElementCount();
+        stats.m_MaxPatchCount = (uint32_t)ms_Scene->m_GrassPatchBuffer->GetElementCount();
     }
 
     void ProceduralGrassPass::OnUpdate()
@@ -82,18 +82,18 @@ namespace sandbox
         const auto& settings = ms_Settings->GetSection<ProceduralGrassSettings>();
         const auto& stats = ms_Settings->GetSection<ProceduralGrassStats>();
 
-        m_IsRenderingEnabled = settings.IsEnabled;
+        m_IsRenderingEnabled = settings.m_IsEnabled;
         if (!m_IsRenderingEnabled)
             return;
 
-        m_Consts.GrassPatchCount = stats.MaxPatchCount;
-        m_Consts.IsFrustumCullingEnabled = settings.IsFrustumCullingEnabled;
-        m_Consts.GrassPatchCullRadius = settings.GrassPatchCullRadius;
-        m_Consts.GrassEndDistance = settings.GrassEndDistance;
-        m_Consts.SpacingInGrassPatch = settings.SpacingInGrassPatch;
-        m_Consts.WindDirection = settings.WindDirection;
-        m_Consts.BladeWidth = settings.BladeWidth;
-        m_Consts.BaseColor = settings.BaseColor;
+        m_Consts.m_GrassPatchCount = stats.m_MaxPatchCount;
+        m_Consts.m_IsFrustumCullingEnabled = settings.m_IsFrustumCullingEnabled;
+        m_Consts.m_GrassPatchCullRadius = settings.m_GrassPatchCullRadius;
+        m_Consts.m_GrassEndDistance = settings.m_GrassEndDistance;
+        m_Consts.m_SpacingInGrassPatch = settings.m_SpacingInGrassPatch;
+        m_Consts.m_WindDirection = settings.m_WindDirection;
+        m_Consts.m_BladeWidth = settings.m_BladeWidth;
+        m_Consts.m_BaseColor = settings.m_BaseColor;
     }
 
     void ProceduralGrassPass::OnRender() const
@@ -125,7 +125,7 @@ namespace sandbox
         cmdList.SetGraphicsRootSrv(*Resources::PerlinNoise, *m_PerlinNoiseTexture);
         cmdList.FlushBarriers();
 
-        cmdList.DispatchMesh({ m_Consts.GrassPatchCount, 1, 1 }, { *joint::ProceduralGrassConsts::AsGroupSize, 1, 1 });
+        cmdList.DispatchMesh({ m_Consts.m_GrassPatchCount, 1, 1 }, { *joint::ProceduralGrassConsts::AsGroupSize, 1, 1 });
     }
 
 }

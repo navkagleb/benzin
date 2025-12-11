@@ -19,23 +19,23 @@ namespace joint
 
     struct GrassPatch
     {
-        float3 Pos;
-        float3 Normal;
-        float Height;
+        float3 m_Position;
+        float3 m_Normal;
+        float m_Height;
     };
 
     struct ProceduralGrassPassConsts
     {
-        uint GrassPatchCount;
-        uint IsFrustumCullingEnabled;
+        uint m_GrassPatchCount;
+        uint m_IsFrustumCullingEnabled;
 
-        float GrassPatchCullRadius;
-        float GrassEndDistance;
-        float SpacingInGrassPatch;
-        float WindDirection;
-        float BladeWidth;
-        float _Padding;
-        float3 BaseColor;
+        float m_GrassPatchCullRadius;
+        float m_GrassEndDistance;
+        float m_SpacingInGrassPatch;
+        float m_WindDirection;
+        float m_BladeWidth;
+        float m_Padding0;
+        float3 m_BaseColor;
     };
 
     enum class ProceduralGrassResources : uint

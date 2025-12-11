@@ -5,13 +5,13 @@
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics2/gpu_print_pass.hpp>
 #include <benzin/graphics2/render_pass.hpp>
+#include <benzin/graphics2/shader_manager.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
 
 namespace benzin
 {
     class Backend;
     class GpuProfiler;
-    class ShaderManager;
 }
 
 namespace sandbox
@@ -52,7 +52,7 @@ namespace sandbox
         std::unique_ptr<benzin::Device> m_Device;
         std::unique_ptr<benzin::SwapChain> m_SwapChain;
 
-        std::unique_ptr<benzin::ShaderManager> m_ShaderManager;
+        benzin::ShaderManager m_ShaderManager;
         std::unique_ptr<benzin::GpuProfiler> m_GpuProfiler;
         std::unique_ptr<benzin::PsoManager> m_PsoManager;
 
@@ -62,8 +62,8 @@ namespace sandbox
         benzin::Scene m_Scene;
         benzin::RayTracingScene m_RayTracingScene{ m_Scene };
 
+        benzin::RenderSettings m_RenderSettings;
         std::unique_ptr<benzin::RenderResources> m_RenderResources;
-        std::unique_ptr<benzin::RenderSettings> m_RenderSettings;
         std::vector<std::unique_ptr<benzin::RenderPass>> m_RenderPasses;
 
         std::unique_ptr<benzin::ImGuiManager> m_ImGuiManager;

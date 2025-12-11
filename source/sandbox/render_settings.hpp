@@ -27,25 +27,25 @@ namespace sandbox
 
     struct ProceduralGrassSettings
     {
-        bool IsEnabled = false;
-        bool IsFrustumCullingEnabled = true;
+        bool m_IsEnabled = false;
+        bool m_IsFrustumCullingEnabled = true;
 
-        float GrassPatchCullRadius = 0.1f;
-        float GrassEndDistance = 20.0f;
-        float SpacingInGrassPatch = 0.04f;
-        float WindDirection = DirectX::XM_PI;
-        float BladeWidth = 0.01f;
-        DirectX::XMFLOAT3 BaseColor = { 189.0f / 256.0f, 236.0f / 256.0f, 76.0f / 256.0f };
+        float m_GrassPatchCullRadius = 0.1f;
+        float m_GrassEndDistance = 20.0f;
+        float m_SpacingInGrassPatch = 0.04f;
+        float m_WindDirection = DirectX::XM_PI;
+        float m_BladeWidth = 0.01f;
+        DirectX::XMFLOAT3 m_BaseColor = { 189.0f / 256.0f, 236.0f / 256.0f, 76.0f / 256.0f };
     };
 
     struct ProceduralGrassStats
     {
-        uint32_t MaxPatchCount = 0;
+        uint32_t m_MaxPatchCount = 0;
 
-        uint32_t PatchCount = 0;
-        uint32_t BladeCount = 0;
-        uint32_t VertexCount = 0;
-        uint32_t TriangleCount = 0;
+        uint32_t m_PatchCount = 0;
+        uint32_t m_BladeCount = 0;
+        uint32_t m_VertexCount = 0;
+        uint32_t m_TriangleCount = 0;
     };
 
     struct RayTracingShadowSettings

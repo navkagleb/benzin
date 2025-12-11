@@ -71,27 +71,27 @@ static const uint g_MsGroupSize = g_MaxVertexCount / g_VertexPerThreadCount;
 
 struct BladeArgs
 {
-    float2 Dir2D;
-    float3 Offset;
-    float3 RightDir;
+    float2 m_Dir2D;
+    float3 m_Offset;
+    float3 m_RightDir;
 };
 
 struct BezierControlPoints
 {
-    float3 P0;
-    float3 P1;
-    float3 P2;
+    float3 m_P0;
+    float3 m_P1;
+    float3 m_P2;
 };
 
 struct Vertex
 {
-    float4 ClipPos : SV_Position;
-    float3 WorldPos : WorldPos;
-    float ViewDepth : ViewDepth;
-    float3 PrevViewPos : PrevViewPos;
-    float BladeRootHeight : BladeRootHeight;
-    float3 WorldNormal : WorldNormal;
-    float PatchHeight : PatchHeight;
+    float4 m_ClipPos : SV_Position;
+    float3 m_WorldPos : sem_WorldPos;
+    float m_ViewDepth : sem_ViewDepth;
+    float3 m_PrevViewPos : sem_PrevViewPos;
+    float m_BladeRootHeight : sem_BladeRootHeight;
+    float3 m_WorldNormal : sem_WorldNormal;
+    float m_PatchHeight : sem_PatchHeight;
 };
 
 BladeArgs GenBladeArgs(float3 patchNormal)
@@ -101,15 +101,15 @@ BladeArgs GenBladeArgs(float3 patchNormal)
     const float dirAngle = 2.0 * g_Pi * g_Rand.Next(53);
 
     const float offsetAngle = 2.0 * g_Pi * g_Rand.Next(71);
-    const float offsetRadius = g_PassConsts.SpacingInGrassPatch * sqrt(g_Rand.Next(48));
+    const float offsetRadius = g_PassConsts.m_SpacingInGrassPatch * sqrt(g_Rand.Next(48));
 
     const float3 tangent = normalize(cross(g_UpDir, patchNormal));
     const float3 bitangent = normalize(cross(patchNormal, tangent));
 
     BladeArgs info = (BladeArgs)0;
-    info.Dir2D = float2(cos(dirAngle), sin(dirAngle));
-    info.Offset = offsetRadius * (cos(offsetAngle) * tangent + sin(offsetAngle) * bitangent);
-    info.RightDir = normalize(float3(info.Dir2D.y, 0.0, -info.Dir2D.x));
+    info.m_Dir2D = float2(cos(dirAngle), sin(dirAngle));
+    info.m_Offset = offsetRadius * (cos(offsetAngle) * tangent + sin(offsetAngle) * bitangent);
+    info.m_RightDir = normalize(float3(info.m_Dir2D.y, 0.0, -info.m_Dir2D.x));
 
     return info;
 }
@@ -118,7 +118,7 @@ float2 CalcWindOffset(float2 pos, float elapsedTimeInSec)
 {
     // Ref: https://www.youtube.com/watch?v=wavnKZNSYqU&t=1063s&ab_channel=GameDevelopersConference
 
-    float posOnSineWave = cos(g_PassConsts.WindDirection) * pos.x - sin(g_PassConsts.WindDirection) * pos.y;
+    float posOnSineWave = cos(g_PassConsts.m_WindDirection) * pos.x - sin(g_PassConsts.m_WindDirection) * pos.y;
 
     const float noise = g_PerlinNoise.SampleLevel(g_PointWrapSampler, 0.25 * pos, 0.0);
     const float t = elapsedTimeInSec * 2.0 + posOnSineWave + 4.0 * noise;
@@ -152,33 +152,33 @@ void MakePersistentLength(float3 v0, inout float3 v1, inout float3 v2, float hei
 BezierControlPoints CalcBladeBezierPoints(joint::GrassPatch patch, BladeArgs bladeArgs)
 {
     BezierControlPoints points;
-    points.P0 = patch.Pos + bladeArgs.Offset;
+    points.m_P0 = patch.m_Position + bladeArgs.m_Offset;
 
-    const float bladeHeight = patch.Height + g_Rand.Next(123) * 0.01;
-    points.P1 = points.P0 + float3(0.0, bladeHeight, 0.0);
+    const float bladeHeight = patch.m_Height + g_Rand.Next(123) * 0.01;
+    points.m_P1 = points.m_P0 + float3(0.0, bladeHeight, 0.0);
 
-    points.P2 = points.P1;
-    points.P2.xz += bladeArgs.Dir2D * bladeHeight * g_GrassLeaningFactor;
+    points.m_P2 = points.m_P1;
+    points.m_P2.xz += bladeArgs.m_Dir2D * bladeHeight * g_GrassLeaningFactor;
 
     return points;
 }
 
 void ApplyBladeWindOffset(float elapsedTimeInSec, inout BezierControlPoints outBladePoints)
 {
-    outBladePoints.P2.xz += CalcWindOffset(outBladePoints.P0.xz, elapsedTimeInSec);
+    outBladePoints.m_P2.xz += CalcWindOffset(outBladePoints.m_P0.xz, elapsedTimeInSec);
 }
 
 void ApplyBladeWidthOffset(BladeArgs bladeArgs, uint localVertexIndex, float bladeWidth, inout BezierControlPoints outBladePoints)
 {
-    const float bladeHeight = outBladePoints.P1.y;
-    MakePersistentLength(outBladePoints.P0, outBladePoints.P1, outBladePoints.P2, bladeHeight);
+    const float bladeHeight = outBladePoints.m_P1.y;
+    MakePersistentLength(outBladePoints.m_P0, outBladePoints.m_P1, outBladePoints.m_P2, bladeHeight);
 
     float3 sideOffset = (localVertexIndex & 1) ? 1.0 : -1.0;
-    sideOffset *= bladeWidth * bladeArgs.RightDir;
+    sideOffset *= bladeWidth * bladeArgs.m_RightDir;
 
-    outBladePoints.P0 += sideOffset * 1.0;
-    outBladePoints.P1 += sideOffset * 0.7;
-    outBladePoints.P2 += sideOffset * 0.3;
+    outBladePoints.m_P0 += sideOffset * 1.0;
+    outBladePoints.m_P1 += sideOffset * 0.7;
+    outBladePoints.m_P2 += sideOffset * 0.3;
 }
 
 float3 CalcQuadraticBezierPoint(float3 p0, float3 p1, float3 p2, float t)
@@ -200,7 +200,7 @@ float3 CalcQuadraticBezierDerivative(float3 p0, float3 p1, float3 p2, float t)
 
 struct Payload
 {
-    uint GrassPatchIndices[g_AsGroupSize];
+    uint m_GrassPatchIndices[g_AsGroupSize];
 };
 
 groupshared Payload g_Payload;
@@ -208,9 +208,9 @@ groupshared Payload g_Payload;
 [NumThreads(g_AsGroupSize, 1, 1)]
 void AsMain(uint dtid : SV_DispatchThreadID)
 {
-    bool isVisible = dtid < g_PassConsts.GrassPatchCount;
+    bool isVisible = dtid < g_PassConsts.m_GrassPatchCount;
 
-    if (isVisible && g_PassConsts.IsFrustumCullingEnabled)
+    if (isVisible && g_PassConsts.m_IsFrustumCullingEnabled)
     {
         // TODO: Redo frustum culling
     }
@@ -218,7 +218,7 @@ void AsMain(uint dtid : SV_DispatchThreadID)
     if (isVisible)
     {
         const uint index = WavePrefixCountBits(isVisible); // TODO: Need to understand the WavePrefixCountBits
-        g_Payload.GrassPatchIndices[index] = dtid;
+        g_Payload.m_GrassPatchIndices[index] = dtid;
     }
 
     const uint visibleCount = WaveActiveCountBits(isVisible);
@@ -232,23 +232,20 @@ void MsMain(
     uint gid : SV_GroupID,
     in payload Payload payload,
     out vertices Vertex outVertices[g_MaxVertexCount],
-    out indices uint3 outTriangles[g_MaxTriangleCount]
-)
+    out indices uint3 outTriangles[g_MaxTriangleCount])
 {
     // Ref: https://gpuopen.com/learn/mesh_shaders/mesh_shaders-procedural_grass_rendering/
 
-    const uint patchIndex = payload.GrassPatchIndices[gid];
+    const uint patchIndex = payload.m_GrassPatchIndices[gid];
 
-    if (patchIndex >= g_PassConsts.GrassPatchCount)
-    {
+    if (patchIndex >= g_PassConsts.m_GrassPatchCount)
         return;
-    }
 
     const joint::GrassPatch patch = g_GrassPatches[patchIndex];
 
-    const float distanceToCamera = length(patch.Pos - GetCameraConsts().m_WorldPosition);
+    const float distanceToCamera = length(patch.m_Position - GetCameraConsts().m_WorldPosition);
 
-    const float floatBladeCount = lerp(float(g_MaxBladeCount), 2.0, pow(saturate(distanceToCamera / (g_PassConsts.GrassEndDistance * 1.05)), 0.75)); // TODO: Some magic math
+    const float floatBladeCount = lerp(float(g_MaxBladeCount), 2.0, pow(saturate(distanceToCamera / (g_PassConsts.m_GrassEndDistance * 1.05)), 0.75)); // TODO: Some magic math
     const uint bladeCount = ceil(floatBladeCount);
 
     const uint vertexCount = bladeCount * g_VertexCountPerBlade;
@@ -267,29 +264,27 @@ void MsMain(
     // NOTE: In Nvidia GPU you must provide exact quantity of vertex and primitives (g_MaxVertexCount and g_MaxTriangleCount won't work)
     SetMeshOutputCounts(vertexCount, triangleCount);
 
-    g_Rand.CombineSeed((uint)(patch.Pos.x / g_PassConsts.SpacingInGrassPatch));
-    g_Rand.CombineSeed((uint)(patch.Pos.y / g_PassConsts.SpacingInGrassPatch));
+    g_Rand.CombineSeed((uint)(patch.m_Position.x / g_PassConsts.m_SpacingInGrassPatch));
+    g_Rand.CombineSeed((uint)(patch.m_Position.y / g_PassConsts.m_SpacingInGrassPatch));
 
     for (uint i = 0; i < g_VertexPerThreadCount; ++i)
     {
         const uint vertexIndex = gtid + g_MsGroupSize * i;
 
         if (vertexIndex >= vertexCount)
-        {
             break;
-        }
 
         const uint bladeIndex = vertexIndex / g_VertexCountPerBlade;
         const uint localVertexIndex = vertexIndex % g_VertexCountPerBlade;
 
         g_Rand.CombineSeed(bladeIndex);
 
-        const BladeArgs bladeArgs = GenBladeArgs(patch.Normal);
+        const BladeArgs bladeArgs = GenBladeArgs(patch.m_Normal);
 
         BezierControlPoints bladePoints = CalcBladeBezierPoints(patch, bladeArgs);
         BezierControlPoints prevBladePoints = bladePoints;
 
-        float bladeWidth = g_PassConsts.BladeWidth;
+        float bladeWidth = g_PassConsts.m_BladeWidth;
         bladeWidth *= g_MaxBladeCount / floatBladeCount;
         bladeWidth *= (bladeIndex == bladeCount - 1) ? frac(floatBladeCount) : 1.0;
 
@@ -300,20 +295,20 @@ void MsMain(
         ApplyBladeWidthOffset(bladeArgs, localVertexIndex, bladeWidth, prevBladePoints);
 
         Vertex vertex;
-        vertex.BladeRootHeight = bladePoints.P0.y;
-        vertex.PatchHeight = patch.Height;
+        vertex.m_BladeRootHeight = bladePoints.m_P0.y;
+        vertex.m_PatchHeight = patch.m_Height;
 
         const float bladeT = (float)(localVertexIndex / 2) / (g_VertexCountPerBladeEdge - 1);
 
-        vertex.WorldPos = CalcQuadraticBezierPoint(bladePoints.P0, bladePoints.P1, bladePoints.P2, bladeT);
-        vertex.WorldNormal = cross(bladeArgs.RightDir, normalize(CalcQuadraticBezierDerivative(bladePoints.P0, bladePoints.P1, bladePoints.P2, bladeT)));
+        vertex.m_WorldPos = CalcQuadraticBezierPoint(bladePoints.m_P0, bladePoints.m_P1, bladePoints.m_P2, bladeT);
+        vertex.m_WorldNormal = cross(bladeArgs.m_RightDir, normalize(CalcQuadraticBezierDerivative(bladePoints.m_P0, bladePoints.m_P1, bladePoints.m_P2, bladeT)));
         
-        const float4 viewPos = mul(float4(vertex.WorldPos, 1.0), GetCameraConsts().m_WorldToView);
-        vertex.ClipPos = mul(viewPos, GetCameraConsts().m_ViewToClip);
-        vertex.ViewDepth = viewPos.z;
+        const float4 viewPos = mul(float4(vertex.m_WorldPos, 1.0), GetCameraConsts().m_WorldToView);
+        vertex.m_ClipPos = mul(viewPos, GetCameraConsts().m_ViewToClip);
+        vertex.m_ViewDepth = viewPos.z;
 
-        const float3 prevWorldPos = CalcQuadraticBezierPoint(prevBladePoints.P0, prevBladePoints.P1, prevBladePoints.P2, bladeT);
-        vertex.PrevViewPos = mul(float4(prevWorldPos, 1.0), GetPrevCameraConsts().m_WorldToView).xyz;
+        const float3 prevWorldPos = CalcQuadraticBezierPoint(prevBladePoints.m_P0, prevBladePoints.m_P1, prevBladePoints.m_P2, bladeT);
+        vertex.m_PrevViewPos = mul(float4(prevWorldPos, 1.0), GetPrevCameraConsts().m_WorldToView).xyz;
 
         outVertices[vertexIndex] = vertex;
     }
@@ -323,9 +318,7 @@ void MsMain(
         const int triangleIndex = gtid + g_MsGroupSize * i;
 
         if (triangleIndex >= triangleCount)
-        {
             break;
-        }
 
         const int bladeIndex = triangleIndex / g_TriangleCountPerBlade;
         const int localTriangleIndex = triangleIndex % g_TriangleCountPerBlade;
@@ -339,25 +332,25 @@ void MsMain(
 
 PackedGBuffer PsMain(const Vertex input, bool isFrontFace : SV_IsFrontFace)
 {
-    const float2 perlinNoiseUv = input.WorldPos.xz * 0.2;
+    const float2 perlinNoiseUv = input.m_WorldPos.xz * 0.2;
     const float perlinNoiseFactor = g_PerlinNoise.SampleLevel(g_PointWrapSampler, perlinNoiseUv, 0.0);
 
     GBuffer gbuffer;
     gbuffer.m_Roughness = lerp(0.3, 0.8, perlinNoiseFactor);
     gbuffer.m_Metallic = 0.0;
-    gbuffer.m_ViewDepth = input.ViewDepth;
+    gbuffer.m_ViewDepth = input.m_ViewDepth;
 
-    const float selfshadowFactor = saturate(pow((input.WorldPos.y - input.BladeRootHeight) / input.PatchHeight, 1.5)) + 0.1;
+    const float selfshadowFactor = saturate(pow((input.m_WorldPos.y - input.m_BladeRootHeight) / input.m_PatchHeight, 1.5)) + 0.1;
     const float brightnessFactor = lerp(0.85, 1.5, perlinNoiseFactor);
-    gbuffer.m_Albedo = g_PassConsts.BaseColor;
+    gbuffer.m_Albedo = g_PassConsts.m_BaseColor;
     gbuffer.m_Albedo *= selfshadowFactor;
     gbuffer.m_Albedo *= brightnessFactor;
     gbuffer.m_Albedo = SrgbToLinearAccurate(gbuffer.m_Albedo);
 
-    gbuffer.m_WorldNormal = normalize(input.WorldNormal) * (isFrontFace ? 1.0 : -1.0);
+    gbuffer.m_WorldNormal = normalize(input.m_WorldNormal) * (isFrontFace ? 1.0 : -1.0);
     gbuffer.m_WorldNormal = normalize(lerp(g_UpDir, gbuffer.m_WorldNormal, 0.5)); // Interpolating the blade normal with the up vector gave the blades a softer look
 
-    CalcGBufferMv(input.ClipPos.xy, input.ViewDepth, input.PrevViewPos, gbuffer);
+    CalcGBufferMv(input.m_ClipPos.xy, input.m_ViewDepth, input.m_PrevViewPos, gbuffer);
 
     return PackGBuffer(gbuffer);
 }
