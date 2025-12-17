@@ -138,7 +138,7 @@ namespace benzin
 
     //
 
-    Device::Device(const DeviceCreation& creation)
+    Device::Device(std::string_view debugName, Backend& backend)
     {
 #if BENZIN_IS_DEBUG_BUILD
         {
@@ -158,12 +158,12 @@ namespace benzin
 
         ComPtr<ID3D12Device> d3d12Device;
         BenzinD3D12Call(::D3D12CreateDevice(
-            creation.m_Backend.GetDxgiMainAdapter(),
+            backend.GetDxgiMainAdapter(),
             D3D_FEATURE_LEVEL_12_0,
             IID_PPV_ARGS(&d3d12Device)));
 
         BenzinD3D12Call(d3d12Device->QueryInterface(&m_D3D12Device));
-        SetD3DObjectDebugName(m_D3D12Device, creation.m_DebugName);
+        SetD3DObjectDebugName(m_D3D12Device, debugName);
 
 #if BENZIN_IS_DEBUG_BUILD
         {

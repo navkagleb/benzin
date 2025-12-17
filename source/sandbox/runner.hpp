@@ -3,16 +3,17 @@
 #include <benzin/engine/camera.hpp>
 #include <benzin/engine/ray_tracing_scene.hpp>
 #include <benzin/engine/scene.hpp>
+#include <benzin/graphics/backend.hpp>
+#include <benzin/graphics/device.hpp>
+#include <benzin/graphics/swap_chain.hpp>
 #include <benzin/graphics2/gpu_print_pass.hpp>
+#include <benzin/graphics2/gpu_profiler.hpp>
+#include <benzin/graphics2/imgui_pass.hpp>
+#include <benzin/graphics2/pso_manager.hpp>
 #include <benzin/graphics2/render_pass.hpp>
 #include <benzin/graphics2/shader_manager.hpp>
+#include <benzin/system/window.hpp>
 #include <benzin/tools/texture_viewer_tool.hpp>
-
-namespace benzin
-{
-    class Backend;
-    class GpuProfiler;
-}
 
 namespace sandbox
 {
@@ -47,26 +48,25 @@ namespace sandbox
         void HandleViewportResizeIfNeeded();
 
     protected:
-        std::unique_ptr<benzin::Window> m_MainWindow;
-        std::unique_ptr<benzin::Backend> m_Backend;
-        std::unique_ptr<benzin::Device> m_Device;
-        std::unique_ptr<benzin::SwapChain> m_SwapChain;
+        benzin::Window m_MainWindow;
+        benzin::Backend m_Backend;
+        benzin::Device m_Device;
+        benzin::SwapChain m_SwapChain;
 
         benzin::ShaderManager m_ShaderManager;
-        std::unique_ptr<benzin::GpuProfiler> m_GpuProfiler;
-        std::unique_ptr<benzin::PsoManager> m_PsoManager;
+        benzin::GpuProfiler m_GpuProfiler;
+        benzin::PsoManager m_PsoManager;
+
+        benzin::ImGuiManager m_ImGuiManager;
+        benzin::RenderSettings m_RenderSettings;
+        benzin::RenderResources m_RenderResources;
+        std::vector<std::unique_ptr<benzin::RenderPass>> m_RenderPasses;
 
         benzin::TickTimer m_FrameTimer;
         benzin::TickTimer m_AnimationTimer;
 
         benzin::Scene m_Scene;
-        benzin::RayTracingScene m_RayTracingScene{ m_Scene };
-
-        benzin::RenderSettings m_RenderSettings;
-        std::unique_ptr<benzin::RenderResources> m_RenderResources;
-        std::vector<std::unique_ptr<benzin::RenderPass>> m_RenderPasses;
-
-        std::unique_ptr<benzin::ImGuiManager> m_ImGuiManager;
+        benzin::RayTracingScene m_RayTracingScene;
 
         benzin::GpuPrintData m_GpuPrintData;
         benzin::TextureViewerData m_TextureViewerData;

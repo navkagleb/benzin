@@ -13,12 +13,6 @@ namespace benzin
     class GraphicsCmdQueue;
     class UnifiedRootSignature;
 
-    struct DeviceCreation
-    {
-        std::string m_DebugName;
-        Backend& m_Backend;
-    };
-
     struct DeviceCaps
     {
         bool m_IsGpuUploadHeapsSupported = false;
@@ -29,7 +23,7 @@ namespace benzin
     public:
         friend class SwapChain;
 
-        explicit Device(const DeviceCreation& creation);
+        explicit Device(std::string_view debugName, Backend& backend);
         ~Device();
 
         BenzinDefineNonCopyable(Device);

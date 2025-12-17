@@ -25,13 +25,13 @@ namespace sandbox
 
     SandboxRunner::~SandboxRunner()
     {
-        m_ImGuiManager->UnregisterTool<SettingsTool<GBufferSettings>>();
-        m_ImGuiManager->UnregisterTool<SettingsTool<GBufferStats>>();
-        m_ImGuiManager->UnregisterTool<SettingsTool<ProceduralGrassSettings>>();
-        m_ImGuiManager->UnregisterTool<SettingsTool<ProceduralGrassStats>>();
-        m_ImGuiManager->UnregisterTool<SettingsTool<RayTracingShadowSettings>>();
-        m_ImGuiManager->UnregisterTool<SettingsTool<SigmaDenoiserSettings>>();
-        m_ImGuiManager->UnregisterTool<SettingsTool<ToneMappingSettings>>();
+        m_ImGuiManager.UnregisterTool<SettingsTool<GBufferSettings>>();
+        m_ImGuiManager.UnregisterTool<SettingsTool<GBufferStats>>();
+        m_ImGuiManager.UnregisterTool<SettingsTool<ProceduralGrassSettings>>();
+        m_ImGuiManager.UnregisterTool<SettingsTool<ProceduralGrassStats>>();
+        m_ImGuiManager.UnregisterTool<SettingsTool<RayTracingShadowSettings>>();
+        m_ImGuiManager.UnregisterTool<SettingsTool<SigmaDenoiserSettings>>();
+        m_ImGuiManager.UnregisterTool<SettingsTool<ToneMappingSettings>>();
     }
 
     void SandboxRunner::InitRenderPasses()
@@ -60,13 +60,13 @@ namespace sandbox
 
     void SandboxRunner::InitTools()
     {
-        m_ImGuiManager->RegisterTool<SettingsTool<GBufferSettings>>("Settings/GBuffer", m_RenderSettings.GetSection<GBufferSettings>());
-        m_ImGuiManager->RegisterTool<SettingsTool<GBufferStats>>("Settings/GBufferStats", m_RenderSettings.GetSection<GBufferStats>());
-        m_ImGuiManager->RegisterTool<SettingsTool<ProceduralGrassSettings>>("Settings/ProceduralGrass", m_RenderSettings.GetSection<ProceduralGrassSettings>());
-        m_ImGuiManager->RegisterTool<SettingsTool<ProceduralGrassStats>>("Settings/ProceduralGrassStats", m_RenderSettings.GetSection<ProceduralGrassStats>());
-        m_ImGuiManager->RegisterTool<SettingsTool<RayTracingShadowSettings>>("Settings/RayTracingShadows", m_RenderSettings.GetSection<RayTracingShadowSettings>());
-        m_ImGuiManager->RegisterTool<SettingsTool<SigmaDenoiserSettings>>("Settings/SigmaDenoiser", m_RenderSettings.GetSection<SigmaDenoiserSettings>());
-        m_ImGuiManager->RegisterTool<SettingsTool<ToneMappingSettings>>("Settings/ToneMapping", m_RenderSettings.GetSection<ToneMappingSettings>());
+        m_ImGuiManager.RegisterTool<SettingsTool<GBufferSettings>>("Settings/GBuffer", m_RenderSettings.GetSection<GBufferSettings>());
+        m_ImGuiManager.RegisterTool<SettingsTool<GBufferStats>>("Settings/GBufferStats", m_RenderSettings.GetSection<GBufferStats>());
+        m_ImGuiManager.RegisterTool<SettingsTool<ProceduralGrassSettings>>("Settings/ProceduralGrass", m_RenderSettings.GetSection<ProceduralGrassSettings>());
+        m_ImGuiManager.RegisterTool<SettingsTool<ProceduralGrassStats>>("Settings/ProceduralGrassStats", m_RenderSettings.GetSection<ProceduralGrassStats>());
+        m_ImGuiManager.RegisterTool<SettingsTool<RayTracingShadowSettings>>("Settings/RayTracingShadows", m_RenderSettings.GetSection<RayTracingShadowSettings>());
+        m_ImGuiManager.RegisterTool<SettingsTool<SigmaDenoiserSettings>>("Settings/SigmaDenoiser", m_RenderSettings.GetSection<SigmaDenoiserSettings>());
+        m_ImGuiManager.RegisterTool<SettingsTool<ToneMappingSettings>>("Settings/ToneMapping", m_RenderSettings.GetSection<ToneMappingSettings>());
     }
 
     // SponzaRunner

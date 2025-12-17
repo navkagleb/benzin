@@ -63,14 +63,12 @@ namespace benzin
         if (!ImGui::MainCollapsingHeader("View Props", ImGuiTreeNodeFlags_DefaultOpen))
             return;
 
-        PerspectiveCamera* camera = m_Controller.m_Camera;
-        if (camera == nullptr)
-            return;
+        PerspectiveCamera& camera = m_Controller.m_Camera;
 
-        if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&camera->m_Position)))
+        if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&camera.m_Position)))
         {
-            camera->UpdateRightDirection();
-            camera->UpdateWorldToViewMatrix();
+            camera.UpdateRightDirection();
+            camera.UpdateWorldToViewMatrix();
         }
 
         bool isFrontDirectionUpdateRequired = false;
@@ -80,15 +78,15 @@ namespace benzin
         if (isFrontDirectionUpdateRequired)
         {
             const DirectX::XMVECTOR frontDirection = GetDirectionFromPitchYaw(m_Controller.m_Pitch, m_Controller.m_Yaw);
-            camera->SetFrontDirection(frontDirection);
+            camera.SetFrontDirection(frontDirection);
         }
 
         ImGui::BeginDisabled();
-        ImGui::DragFloat3("Front Direction", reinterpret_cast<float*>(&camera->m_FrontDirection));
-        ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&camera->m_UpDirection));
+        ImGui::DragFloat3("Front Direction", reinterpret_cast<float*>(&camera.m_FrontDirection));
+        ImGui::DragFloat3("Up Direction", reinterpret_cast<float*>(&camera.m_UpDirection));
         ImGui::EndDisabled();
 
-        DrawMatrix4x4("World To View", camera->GetWorldToView());
+        DrawMatrix4x4("World To View", camera.GetWorldToView());
     }
 
     void FlyCameraTool::DrawProjectionProperties()
@@ -96,40 +94,38 @@ namespace benzin
         if (!ImGui::MainCollapsingHeader("Projection Props", ImGuiTreeNodeFlags_DefaultOpen))
             return;
 
-        PerspectiveCamera* camera = m_Controller.m_Camera;
-        if (camera == nullptr)
-            return;
+        PerspectiveCamera& camera = m_Controller.m_Camera;
 
         {
             ImGui::PushItemWidth(200.0f);
             BenzinExecuteOnScopeExit([] { ImGui::PopItemWidth(); });
 
             bool isMatrixUpdateNeeded = false;
-            isMatrixUpdateNeeded |= ImGui::SliderAngle("Vertical FOV", &camera->m_VerticalFovInRadians, 45.0f, 120.0f);
-            isMatrixUpdateNeeded |= ImGui::DragFloat("Near plane", &camera->m_NearPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
-            isMatrixUpdateNeeded |= ImGui::DragFloat("Far plane", &camera->m_FarPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
+            isMatrixUpdateNeeded |= ImGui::SliderAngle("Vertical FOV", &camera.m_VerticalFovInRadians, 45.0f, 120.0f);
+            isMatrixUpdateNeeded |= ImGui::DragFloat("Near plane", &camera.m_NearPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
+            isMatrixUpdateNeeded |= ImGui::DragFloat("Far plane", &camera.m_FarPlane, 0.001f, 0.001f, std::numeric_limits<float>::max());
 
             if (isMatrixUpdateNeeded)
             {
-                camera->UpdateViewToClipMatrix();
+                camera.UpdateViewToClipMatrix();
             }
 
             ImGui::BeginDisabled();
-            ImGui::DragFloat("Aspect ratio", &camera->m_AspectRatio);
+            ImGui::DragFloat("Aspect ratio", &camera.m_AspectRatio);
             ImGui::EndDisabled();
         }
 
-        DrawMatrix4x4("View To Clip", camera->GetViewToClip());
+        DrawMatrix4x4("View To Clip", camera.GetViewToClip());
 
         ImGui::Text("View frustum planes:");
         ImGui::Indent();
         ImGui::BeginDisabled();
-        ImGui::DragFloat4("Left", (float*)&camera->GetViewFrustumLeft());
-        ImGui::DragFloat4("Right", (float*)&camera->GetViewFrustumRight());
-        ImGui::DragFloat4("Bottom", (float*)&camera->GetViewFrustumBottom());
-        ImGui::DragFloat4("Top", (float*)&camera->GetViewFrustumTop());
-        ImGui::DragFloat4("Near", (float*)&camera->GetViewFrustumNear());
-        ImGui::DragFloat4("Far", (float*)&camera->GetViewFrustumFar());
+        ImGui::DragFloat4("Left", (float*)&camera.GetViewFrustumLeft());
+        ImGui::DragFloat4("Right", (float*)&camera.GetViewFrustumRight());
+        ImGui::DragFloat4("Bottom", (float*)&camera.GetViewFrustumBottom());
+        ImGui::DragFloat4("Top", (float*)&camera.GetViewFrustumTop());
+        ImGui::DragFloat4("Near", (float*)&camera.GetViewFrustumNear());
+        ImGui::DragFloat4("Far", (float*)&camera.GetViewFrustumFar());
         ImGui::EndDisabled();
         ImGui::Unindent();
     }

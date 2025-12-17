@@ -83,7 +83,8 @@ namespace benzin
     public:
         friend class FlyCameraTool;
 
-        void SetCamera(PerspectiveCamera& camera);
+        explicit FlyCameraController(PerspectiveCamera& camera);
+
         void SetCameraTranslationSpeed(float speed) { m_CameraTranslationSpeed = speed; }
 
         void MoveCamera(float dtInMs);
@@ -95,7 +96,7 @@ namespace benzin
     private:
         void UpdatePitchAndYawIfNeeded();
 
-        PerspectiveCamera* m_Camera = nullptr;
+        PerspectiveCamera& m_Camera;
 
         float m_CameraTranslationSpeed = 0.002f;
         float m_MouseSensitivity = 0.003f;
