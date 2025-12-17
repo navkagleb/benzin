@@ -103,17 +103,17 @@ void BuildOrthonormalBasis(float3 normal, out float3 outTangent, out float3 outB
     outBitangent = cross(normal, outTangent);
 }
 
-float3 CalcShadowRayDirection(float3 toLightDirection, float tanLightAngularRadius)
+float3 CalcShadowRayDirection()
 {
     float2 blueNoise = GetBlueNoise();
     blueNoise = CreateRandomUnitRay(blueNoise).xy;
-    blueNoise *= tanLightAngularRadius;
+    blueNoise *= g_FrameConsts.m_SunLight.m_TanOfAngularRadius;
 
     float3 toLightTangent;
     float3 toLightBitangent;
-    BuildOrthonormalBasis(toLightDirection, toLightTangent, toLightBitangent);
+    BuildOrthonormalBasis(g_FrameConsts.m_SunLight.m_Direction, toLightTangent, toLightBitangent);
 
-    float3 rayDirection = toLightDirection;
+    float3 rayDirection = g_FrameConsts.m_SunLight.m_Direction;
     rayDirection += toLightTangent * blueNoise.x;
     rayDirection += toLightBitangent * blueNoise.y;
     rayDirection = normalize(rayDirection);
@@ -129,15 +129,11 @@ float TraceShadowRay(float depth)
     const float2 pixelUv = (pixelPosition + 0.5) / DispatchRaysDimensions().xy;
     const float3 worldPosition = ReconstructWorldPosition(pixelUv, depth, GetCameraConsts().m_ClipToView, GetCameraConsts().m_ViewToWorld);
 
-    const float3 toLightDirection = g_SunLightConsts.WorldPosition;
-    const float distanceToLight = sigma::g_Fp16Max;
-    const float tanLightAngularRadius = g_SunLightConsts.WorldRadius;
-
     RayDesc rayDesc;
     rayDesc.Origin = OffsetRayPosition(worldPosition, worldNormal);
-    rayDesc.Direction = CalcShadowRayDirection(toLightDirection, tanLightAngularRadius);
+    rayDesc.Direction = CalcShadowRayDirection();
     rayDesc.TMin = 0.01;
-    rayDesc.TMax = distanceToLight;
+    rayDesc.TMax = sigma::g_Fp16Max;
 
     // Ref: https://github.com/microsoft/DirectX-Specs/blob/master/d3d/Raytracing.md#ray-flags
     uint rayFlags = RAY_FLAG_NONE;
@@ -161,7 +157,7 @@ float TraceShadowRay(float depth)
         rayDesc,
         payload);
 
-    const float penumbra = sigma::PackPenumbra(payload.m_DistanceToOccluder, tanLightAngularRadius);
+    const float penumbra = sigma::PackPenumbra(payload.m_DistanceToOccluder, g_FrameConsts.m_SunLight.m_TanOfAngularRadius);
     return penumbra;
 }
 

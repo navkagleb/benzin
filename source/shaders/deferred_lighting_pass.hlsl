@@ -1,10 +1,9 @@
-#include "joint/deferred_lighting_resources.hpp"
-#include "unified_root_parameters.hlsli"
-
 #include "common.hlsli"
 #include "gbuffer.hlsli"
+#include "joint/deferred_lighting_resources.hpp"
 #include "pbr.hlsli"
 #include "sigma_denoiser/sigma_public.hlsli"
+#include "unified_root_parameters.hlsli"
 
 BenzinDeclareRootResource(Texture2D<float4>, g_AlbedoAndRoughness, joint::DeferredLightingResources::AlbedoAndRoughness);
 BenzinDeclareRootResource(Texture2D<float4>, g_EmissiveAndMetallic, joint::DeferredLightingResources::EmissiveAndMetallic);
@@ -15,9 +14,9 @@ BenzinDeclareRootResource(Texture2D<float>, g_Shadow, joint::DeferredLightingRes
 float3 CalcSunLight(PbrMaterial material, float3 worldToEyeDir, float3 worldNormal)
 {
     PbrLight light;
-    light.Color = g_SunLightConsts.Color;
-    light.Intensity = g_SunLightConsts.Intensity;
-    light.Direction = g_SunLightConsts.WorldPosition;
+    light.Color = g_FrameConsts.m_SunLight.m_Color;
+    light.Intensity = g_FrameConsts.m_SunLight.m_Intensity;
+    light.Direction = g_FrameConsts.m_SunLight.m_Direction;
 
     return GetPbrLitColor(light, material, worldToEyeDir, worldNormal);
 }

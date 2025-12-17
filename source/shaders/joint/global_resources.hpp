@@ -44,6 +44,14 @@ namespace joint
         float4 m_ViewFrustumPlanes[6];
     };
 
+    struct SunLight
+    {
+        float3 m_Color;
+        float m_Intensity;
+        float3 m_Direction;
+        float m_TanOfAngularRadius;
+    };
+
     struct FrameConsts
     {
         float2 m_RenderResolution;
@@ -63,6 +71,8 @@ namespace joint
 
         CameraConsts m_Camera;
         CameraConsts m_PrevCamera;
+
+        SunLight m_SunLight;
     };
 
 }

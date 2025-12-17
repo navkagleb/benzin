@@ -2,7 +2,6 @@
 
 #include "joint/global_resources.hpp"
 #include "joint/gpu_print_resources.hpp"
-#include "joint/light.hpp"
 
 // To prevent matrix transposition in CPU side
 #pragma pack_matrix(row_major)
@@ -23,7 +22,6 @@ struct RootConstants
 ConstantBuffer<RootConstants> g_RootConstants : register(b0, space0);
 ConstantBuffer<joint::FrameConsts> g_FrameConsts : register(b0, space1);
 ConstantBuffer<joint::GpuPrintConsts> g_GpuPrintConsts : register(b0, space3);
-ConstantBuffer<joint::Light> g_SunLightConsts : register(b0, space4);
 
 RaytracingAccelerationStructure g_SceneTlas : register(t0, space0);
 

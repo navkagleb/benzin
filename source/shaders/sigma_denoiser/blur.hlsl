@@ -123,7 +123,7 @@ SparseBlurKernel CalcSparseBlurKernel(BlurParams params, float blurredPenumbra, 
     kernel.Rotator = g_PassConsts.PostBlurRotator;
 #endif
 
-    const float3 viewToLightDirection = mul(g_SunLightConsts.WorldPosition, (float3x3)GetCameraConsts().m_WorldToView); // WorldPosition = WorldToSunDirection
+    const float3 viewToLightDirection = mul(g_FrameConsts.m_SunLight.m_Direction, (float3x3)GetCameraConsts().m_WorldToView); // WorldPosition = WorldToSunDirection
     const float3 tangentDirection = cross(viewToLightDirection, params.BaseViewNormal); // NRD TODO: add support for other light types to bring proper anisotropic filtering
     if (length(tangentDirection) > 0.001)
     {

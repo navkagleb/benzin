@@ -11,7 +11,6 @@ namespace benzin
         FrameConsts,
         RenderPassConsts,
         GpuPrintConsts,
-        SunLightConsts,
         SceneTlas,
         ReadbackStatsBuffer,
     };

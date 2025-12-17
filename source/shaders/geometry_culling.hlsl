@@ -1,7 +1,6 @@
 #include "joint/geometry_resources.hpp"
-#include "unified_root_parameters.hlsli"
-
 #include "joint/mesh_types.hpp"
+#include "unified_root_parameters.hlsli"
 
 #define LATE_CULLING_ENABLED defined(LATE_CULLING)
 

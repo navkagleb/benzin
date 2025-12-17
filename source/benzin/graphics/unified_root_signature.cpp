@@ -37,12 +37,6 @@ namespace benzin
         d3d12GpuPrintConstBuffer.Descriptor.RegisterSpace = 3;
         d3d12GpuPrintConstBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-        D3D12_ROOT_PARAMETER1& d3d12LightBuffer = d3d12RootParameters[*UnifiedRootParameter::SunLightConsts];
-        d3d12LightBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        d3d12LightBuffer.Descriptor.ShaderRegister = 0;
-        d3d12LightBuffer.Descriptor.RegisterSpace = 4;
-        d3d12LightBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
         D3D12_ROOT_PARAMETER1& d3d12Tlas = d3d12RootParameters[*UnifiedRootParameter::SceneTlas];
         d3d12Tlas.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
         d3d12Tlas.Descriptor.ShaderRegister = 0;
