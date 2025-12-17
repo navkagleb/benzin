@@ -47,7 +47,7 @@ namespace sandbox
         void HandleSwapChainResizeIfNeeded();
         void HandleViewportResizeIfNeeded();
 
-    protected:
+    private:
         benzin::Window m_MainWindow;
         benzin::Backend m_Backend;
         benzin::Device m_Device;
@@ -56,10 +56,21 @@ namespace sandbox
         benzin::ShaderManager m_ShaderManager;
         benzin::GpuProfiler m_GpuProfiler;
         benzin::PsoManager m_PsoManager;
-
-        benzin::ImGuiManager m_ImGuiManager;
-        benzin::RenderSettings m_RenderSettings;
         benzin::RenderResources m_RenderResources;
+
+        benzin::GpuPrintData m_GpuPrintData;
+        benzin::TextureViewerData m_TextureViewerData;
+        benzin::RenderViewport m_Viewport;
+
+        bool m_IsRunning = true;
+        bool m_IsVsyncEnabled = false;
+        bool m_IsPendingResize = false;
+        bool m_IsAnimationEnabled = false;
+
+    protected:
+        benzin::ImGuiManager m_ImGuiManager;
+
+        benzin::RenderSettings m_RenderSettings;
         std::vector<std::unique_ptr<benzin::RenderPass>> m_RenderPasses;
 
         benzin::TickTimer m_FrameTimer;
@@ -67,19 +78,10 @@ namespace sandbox
 
         benzin::Scene m_Scene;
         benzin::RayTracingScene m_RayTracingScene;
-
-        benzin::GpuPrintData m_GpuPrintData;
-        benzin::TextureViewerData m_TextureViewerData;
-        benzin::RenderViewport m_Viewport;
         benzin::FlyCameraController m_CameraController;
 
         using UpdateCallback = std::function<void()>;
         std::vector<UpdateCallback> m_UpdateCallbacks;
-
-        bool m_IsRunning = true;
-        bool m_IsVsyncEnabled = false;
-        bool m_IsPendingResize = false;
-        bool m_IsAnimationEnabled = false;
     };
 
 }
