@@ -4,10 +4,10 @@
 #define SIGMA_USE_BORDER_2
 
 #include "joint/sigma_denoiser_resources.hpp"
+#include "sigma_denoiser/group_shared_preloader.hlsli"
 #include "unified_root_parameters.hlsli"
 
-#include "sigma_denoiser/group_shared_preloader.hlsli"
-
+BenzinDeclareRenderPassConsts(joint::SigmaConsts, g_PassConsts);
 BenzinDeclareRootResource(Texture2D<float4>, g_WorldNormal, joint::SigmaBlurResources::WorldNormal);
 BenzinDeclareRootResource(Texture2D<float>, g_ViewDepth, joint::SigmaBlurResources::ViewDepth);
 BenzinDeclareRootResource(Texture2D<float>, g_Penumbra, joint::SigmaBlurResources::Penumbra);

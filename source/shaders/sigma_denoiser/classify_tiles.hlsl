@@ -1,5 +1,3 @@
-#include "unified_root_parameters.hlsli"
-
 #include "joint/sigma_denoiser_resources.hpp"
 #include "sigma_denoiser/sigma_common.hlsli"
 

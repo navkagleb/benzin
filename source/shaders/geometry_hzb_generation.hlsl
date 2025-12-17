@@ -1,6 +1,7 @@
 #include "joint/geometry_resources.hpp"
 #include "unified_root_parameters.hlsli"
 
+BenzinDeclareRenderPassConsts(joint::GeometryHzbGenerationConsts, g_PassConsts);
 BenzinDeclareRootResource(Texture2D<float>, g_SourceMip, joint::GeometryHzbGenerationResources::SourceMip);
 BenzinDeclareRootResource(RWTexture2D<float>, g_DestMip, joint::GeometryHzbGenerationResources::DestMip);
 

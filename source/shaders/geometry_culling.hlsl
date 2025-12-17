@@ -7,6 +7,7 @@
 
 BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_MeshDraws, joint::GeometryCullingResources::MeshDraws);
 BenzinDeclareRootResource(StructuredBuffer<joint::Mesh>, g_Meshes, joint::GeometryCullingResources::Meshes);
+BenzinDeclareRootResource(Texture2D<float>, g_Hzb, joint::GeometryCullingResources::Hzb);
 #if LATE_CULLING_ENABLED
 BenzinDeclareRootResource(RWBuffer<uint>, g_VisibilityBuffer, joint::GeometryCullingResources::VisibilityBuffer);
 #else
@@ -40,7 +41,8 @@ bool IsFrustumCulled(joint::MeshDraw draw, float3 center, float radius)
 [numthreads(64, 1, 1)]
 void CsMain(uint dtid : SV_DispatchThreadID)
 {
-    if (dtid >= BenzinGetRootConstant(joint::GeometryCullingResources::MeshDrawCount))
+    const uint drawCount = BenzinGetRootConstant(joint::GeometryCullingResources::MeshDrawCount);
+    if (dtid >= drawCount)
         return;
 
     const joint::MeshDraw draw = g_MeshDraws[dtid];
@@ -57,10 +59,10 @@ void CsMain(uint dtid : SV_DispatchThreadID)
         isVisible &= !IsFrustumCulled(draw, mesh.m_Center, mesh.m_Radius);
     }
 
-#if LATE_CULLING_ENABLED
-    const bool isDrawNeeded = isVisible && !g_VisibilityBuffer[dtid];
-#else
+#if !LATE_CULLING_ENABLED
     const bool isDrawNeeded = isVisible;
+#else
+    const bool isDrawNeeded = isVisible && !g_VisibilityBuffer[dtid];
 #endif
 
     if (isDrawNeeded)

@@ -3,13 +3,11 @@
 
 #define SIGMA_USE_BORDER_2
 
-#include "joint/sigma_denoiser_resources.hpp"
-#include "unified_root_parameters.hlsli"
-
 #include "bilinear_filter.hlsli"
+#include "joint/sigma_denoiser_resources.hpp"
 #include "sigma_denoiser/group_shared_preloader.hlsli"
-#include "space_convertions.hlsli"
 
+BenzinDeclareRenderPassConsts(joint::SigmaConsts, g_PassConsts);
 BenzinDeclareRootResource(Texture2D<float4>, g_Mv, joint::SigmaTemporalStabilizationResources::Mv);
 BenzinDeclareRootResource(Texture2D<float>, g_ViewDepth, joint::SigmaTemporalStabilizationResources::ViewDepth);
 BenzinDeclareRootResource(Texture2D<float2>, g_SmoothTiles, joint::SigmaTemporalStabilizationResources::SmoothTiles);
@@ -17,7 +15,6 @@ BenzinDeclareRootResource(Texture2D<float>, g_Penumbra, joint::SigmaTemporalStab
 BenzinDeclareRootResource(Texture2D<float>, g_Shadow, joint::SigmaTemporalStabilizationResources::Shadow);
 BenzinDeclareRootResource(Texture2D<float>, g_ShadowHistory, joint::SigmaTemporalStabilizationResources::ShadowHistory);
 BenzinDeclareRootResource(Texture2D<uint>, g_HistoryLength, joint::SigmaTemporalStabilizationResources::HistoryLength);
-
 BenzinDeclareRootResource(RWTexture2D<float>, g_OutShadow, joint::SigmaTemporalStabilizationResources::OutShadow);
 BenzinDeclareRootResource(RWTexture2D<uint>, g_OutHistoryLength, joint::SigmaTemporalStabilizationResources::OutHistoryLength);
 

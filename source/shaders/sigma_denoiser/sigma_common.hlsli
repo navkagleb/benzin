@@ -2,6 +2,7 @@
 #include "sigma_denoiser/sigma_constants.hlsli"
 #include "sigma_denoiser/sigma_public.hlsli"
 #include "space_convertions.hlsli"
+#include "unified_root_parameters.hlsli"
 
 namespace sigma
 {

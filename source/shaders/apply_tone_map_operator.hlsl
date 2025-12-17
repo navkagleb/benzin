@@ -10,10 +10,8 @@
 // - Ref: Uncharted 2: HDR Lighting - John Hable - https://www.gdcvault.com/play/1012351/Uncharted-2-HDR
 // - Ref: Implementing a Physically Based Camera: Understanding Exposure - https://placeholderart.wordpress.com/2014/11/16/implementing-a-physically-based-camera-understanding-exposure/
 
-#include "joint/tone_mapping_resources.hpp"
-#include "unified_root_parameters.hlsli"
-
 #include "color_convertions.hlsli"
+#include "luminance_histogram.hlsli"
 
 BenzinDeclareRootResource(Texture2D<float>, g_AvgLuminance, joint::ApplyToneMapOperatorResources::AvgLuminance);
 BenzinDeclareRootResource(Texture2D<float4>, g_HdrColor, joint::ApplyToneMapOperatorResources::HdrColor);

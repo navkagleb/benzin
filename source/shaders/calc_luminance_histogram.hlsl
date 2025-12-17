@@ -1,6 +1,3 @@
-#include "joint/tone_mapping_resources.hpp"
-#include "unified_root_parameters.hlsli"
-
 #include "color_convertions.hlsli"
 #include "luminance_histogram.hlsli"
 

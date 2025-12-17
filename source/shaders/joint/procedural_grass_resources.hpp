@@ -45,7 +45,3 @@ namespace joint
     };
 
 }
-
-#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType)
-    #define BenzinRenderPassConstsType joint::ProceduralGrassPassConsts
-#endif

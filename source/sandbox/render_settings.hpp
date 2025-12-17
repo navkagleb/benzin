@@ -27,7 +27,7 @@ namespace sandbox
 
     struct ProceduralGrassSettings
     {
-        bool m_IsEnabled = false;
+        bool m_IsEnabled = true;
         bool m_IsFrustumCullingEnabled = true;
 
         float m_GrassPatchCullRadius = 0.1f;

@@ -1,5 +1,10 @@
 #pragma once
 
+#include "joint/tone_mapping_resources.hpp"
+#include "unified_root_parameters.hlsli"
+
+BenzinDeclareRenderPassConsts(joint::ToneMappingConsts, g_PassConsts);
+
 float LinearToLogLuminance(float linearLuminance)
 {
     const float logLuminance = (log2(linearLuminance) - g_PassConsts.m_LuminanceHistogram.m_MinLogLuminance) * g_PassConsts.m_LuminanceHistogram.m_InvLogLuminanceRange;

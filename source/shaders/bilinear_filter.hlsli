@@ -1,5 +1,7 @@
 #pragma once
 
+#include "unified_root_parameters.hlsli"
+
 // Ref: https://wojtsterna.blogspot.com/2018/02/directx-11-hlsl-gatherred.html
 
 struct BilinearFilter

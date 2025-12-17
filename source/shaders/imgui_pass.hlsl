@@ -1,6 +1,7 @@
 #include "joint/imgui_resources.hpp"
 #include "unified_root_parameters.hlsli"
 
+BenzinDeclareRenderPassConsts(joint::ImGuiConsts, g_PassConsts);
 BenzinDeclareRootResource(Texture2D<float4>, g_Texture, joint::ImGuiResources::Texture);
 
 struct VsInput

@@ -2,10 +2,9 @@
 #define g_ThreadCountY 16
 
 #include "joint/sigma_denoiser_resources.hpp"
-#include "unified_root_parameters.hlsli"
-
 #include "sigma_denoiser/group_shared_preloader.hlsli"
 
+BenzinDeclareRenderPassConsts(joint::SigmaConsts, g_PassConsts);
 BenzinDeclareRootResource(Texture2D<float4>, g_Tiles, joint::SigmaSmoothTilesResources::Tiles);
 BenzinDeclareRootResource(RWTexture2D<float2>, g_OutSmoothTiles, joint::SigmaSmoothTilesResources::OutSmoothTiles);
 

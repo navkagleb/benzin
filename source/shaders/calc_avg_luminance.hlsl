@@ -1,17 +1,15 @@
 // Ref: https://www.alextardif.com/HistogramLuminance.html - Adaptive Exposure from Luminance Histograms
 
-#include "joint/tone_mapping_resources.hpp"
-#include "unified_root_parameters.hlsli"
-
 #include "luminance_histogram.hlsli"
+
+
+BenzinDeclareRootResource(RWBuffer<uint>, g_OutLuminanceHistogram, joint::CalcAvgLuminanceResources::OutLuminanceHistogram);
+BenzinDeclareRootResource(RWTexture2D<float>, g_OutAvgLuminance, joint::CalcAvgLuminanceResources::OutAvgLuminance);
 
 float AdaptLuminance(float luminance, float prevLuminance)
 {
     return prevLuminance + (luminance - prevLuminance) * (1.0 - exp(-g_FrameConsts.m_DeltaTimeInSec * g_PassConsts.m_LuminanceHistogram.m_TimeFactor));
 }
-
-BenzinDeclareRootResource(RWBuffer<uint>, g_OutLuminanceHistogram, joint::CalcAvgLuminanceResources::OutLuminanceHistogram);
-BenzinDeclareRootResource(RWTexture2D<float>, g_OutAvgLuminance, joint::CalcAvgLuminanceResources::OutAvgLuminance);
 
 #define g_ThreadCountX 16
 #define g_ThreadCountY 16

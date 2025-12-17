@@ -1,11 +1,10 @@
-#include "joint/procedural_grass_resources.hpp"
-#include "unified_root_parameters.hlsli"
-
 #include "color_convertions.hlsli"
 #include "common.hlsli"
 #include "gbuffer.hlsli"
-#include "space_convertions.hlsli"
+#include "joint/procedural_grass_resources.hpp"
+#include "unified_root_parameters.hlsli"
 
+BenzinDeclareRenderPassConsts(joint::ProceduralGrassPassConsts, g_PassConsts);
 BenzinDeclareRootResource(StructuredBuffer<joint::GrassPatch>, g_GrassPatches, joint::ProceduralGrassResources::GrassPatches);
 BenzinDeclareRootResource(Texture2D<float>, g_PerlinNoise, joint::ProceduralGrassResources::PerlinNoise);
 

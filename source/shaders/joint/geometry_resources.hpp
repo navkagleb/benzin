@@ -47,7 +47,3 @@ namespace joint
     };
 
 }
-
-#if !defined(__cplusplus) && !defined(BenzinRenderPassConstsType) && defined(HZB_GENERATION)
-    #define BenzinRenderPassConstsType joint::GeometryHzbGenerationConsts
-#endif

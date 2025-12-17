@@ -10,12 +10,6 @@
 // NOTE: Always use mul() instead of operator * for matrix-matrix and matrix-vector multiplication in HLSL
 // It's the only way to ensure correct layout-aware behavior, especially when using #pragma pack_matrix
 
-struct DummyRenderPassConsts {};
-
-#if !defined(BenzinRenderPassConstsType)
-    #define BenzinRenderPassConstsType DummyRenderPassConsts
-#endif
-
 struct RootConstants
 {
     uint4 m_Constants[8];
@@ -28,7 +22,6 @@ struct RootConstants
 
 ConstantBuffer<RootConstants> g_RootConstants : register(b0, space0);
 ConstantBuffer<joint::FrameConsts> g_FrameConsts : register(b0, space1);
-ConstantBuffer<BenzinRenderPassConstsType> g_PassConsts : register(b0, space2);
 ConstantBuffer<joint::GpuPrintConsts> g_GpuPrintConsts : register(b0, space3);
 ConstantBuffer<joint::Light> g_SunLightConsts : register(b0, space4);
 
@@ -57,6 +50,8 @@ void InterlockedAddToStat(joint::ReadbackStat stat, uint value)
 {
     g_Stats.InterlockedAdd((uint)stat * 4, value);
 }
+
+#define BenzinDeclareRenderPassConsts(Type, name) ConstantBuffer<Type> name : register(b0, space2);
 
 #define BenzinGetRootConstant(rootIndex) g_RootConstants.GetConstant((uint)rootIndex)
 #define BenzinDeclareRootResource(Type, name, rootIndex) static Type name = ResourceDescriptorHeap[BenzinGetRootConstant(rootIndex)]

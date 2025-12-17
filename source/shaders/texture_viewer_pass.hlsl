@@ -1,10 +1,7 @@
 #include "joint/texture_viewer_resources.hpp"
 #include "unified_root_parameters.hlsli"
 
-#include "common.hlsli"
-#include "gbuffer.hlsli"
-#include "space_convertions.hlsli"
-
+BenzinDeclareRenderPassConsts(joint::TextureViewerConsts, g_PassConsts);
 BenzinDeclareRootResource(Texture2D<float4>, g_ReferenceTexture, joint::TextureViewerResources::ReferenceTexture);
 BenzinDeclareRootResource(RWTexture2D<float4>, g_OutDebugTexture, joint::TextureViewerResources::OutDebugTexture);
 
