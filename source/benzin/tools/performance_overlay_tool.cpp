@@ -87,7 +87,7 @@ namespace benzin
         const float gpuWaitTimeInMs = m_Device.GetGpuWaitTime().count() / 1000.0f / 1000.0f;
         const float gpuTimeInMs = m_GpuProfiler.GetGpuFrameTime().count() / 1000.0f / 1000.0f;
 
-        constexpr float smoothingFactor = 1.0f / 50.0f;
+        const float smoothingFactor = m_Device.GetCpuFrameIndex() > 1 ? 1.0f / 50.0f : 1.0f;
         m_SmoothedCpuTimeInMs = std::lerp(m_SmoothedCpuTimeInMs, fullCpuTimeInMs - gpuWaitTimeInMs, smoothingFactor);
         m_SmoothedFullCpuTimeInMs = std::lerp(m_SmoothedFullCpuTimeInMs, fullCpuTimeInMs, smoothingFactor);
         m_SmoothedGpuWaitTimeInMs = std::lerp(m_SmoothedGpuWaitTimeInMs, gpuWaitTimeInMs, smoothingFactor);
