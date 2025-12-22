@@ -65,20 +65,20 @@ namespace sandbox
 
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::DeferredLighting));
 
-        const auto& depth = ms_Resources->Get(TextureId::Depth);
-        const auto& hdrColor = ms_Resources->Get(TextureId::HdrColor);
+        const benzin::Texture& depth = ms_Resources->Get(TextureId::Depth);
+        const benzin::Texture& hdrColor = ms_Resources->Get(TextureId::HdrColor);
 
-        cmdList.AddRenderTarget(hdrColor);
+        cmdList.AddRenderTarget(hdrColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmdList.AddDepthStencil(depth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         cmdList.SetRenderTargets();
 
-        cmdList.SetGraphicsRootSrv(*Resources::AlbedoAndRoughness, ms_Resources->Get(TextureId::AlbedoAndRoughness));
-        cmdList.SetGraphicsRootSrv(*Resources::EmissiveAndMetallic, ms_Resources->Get(TextureId::EmissiveAndMetallic));
-        cmdList.SetGraphicsRootSrv(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal));
-        cmdList.SetGraphicsRootSrv(*Resources::DepthStencil, depth);
+        cmdList.SetGraphicsRootSrv(*Resources::AlbedoAndRoughness, ms_Resources->Get(TextureId::AlbedoAndRoughness), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        cmdList.SetGraphicsRootSrv(*Resources::EmissiveAndMetallic, ms_Resources->Get(TextureId::EmissiveAndMetallic), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        cmdList.SetGraphicsRootSrv(*Resources::WorldNormal, ms_Resources->Get(TextureId::WorldNormal), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        cmdList.SetGraphicsRootSrv(*Resources::DepthStencil, depth, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         const TextureId shadowId = ms_Settings->GetSection<SigmaDenoiserSettings>().m_IsEnabled ? TextureId::Shadow : TextureId::NoisyPenumbra;
-        cmdList.SetGraphicsRootSrv(*Resources::Shadow, ms_Resources->Get(shadowId));
+        cmdList.SetGraphicsRootSrv(*Resources::Shadow, ms_Resources->Get(shadowId), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         cmdList.FlushBarriers();
         cmdList.ClearRenderTarget(hdrColor);

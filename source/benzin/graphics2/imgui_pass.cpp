@@ -462,7 +462,7 @@ namespace benzin
         const Texture& backBuffer = ms_SwapChain->GetCurrentBackBuffer();
         auto& [vertexBuffer, indexBuffer] = m_FrameContexts[ms_Device->GetActiveFrameIndex()];
 
-        cmdList.AddRenderTarget(backBuffer);
+        cmdList.AddRenderTarget(backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmdList.SetRenderTargets();
         cmdList.SetVertexBuffer(*vertexBuffer);
         cmdList.SetIndexBuffer(*indexBuffer);

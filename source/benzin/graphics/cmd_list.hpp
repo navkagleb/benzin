@@ -117,16 +117,16 @@ namespace benzin
         void SetGraphicsUav(UnifiedRootParameter rootParameter, uint64_t gpuVirtualAddress);
 
         void SetGraphicsRootConstant(uint32_t rootIndex, uint32_t value);
-        void SetGraphicsRootSrv(uint32_t rootIndex, const Buffer& buffer, D3D12_RESOURCE_STATES d3d12State = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        void SetGraphicsRootSrv(uint32_t rootIndex, const Texture& texture, D3D12_RESOURCE_STATES d3d12State = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        void SetGraphicsRootSrv(uint32_t rootIndex, const Buffer& buffer, D3D12_RESOURCE_STATES d3d12State);
+        void SetGraphicsRootSrv(uint32_t rootIndex, const Texture& texture, D3D12_RESOURCE_STATES d3d12State);
 
         void SetVertexPso(const VertexPso& pso);
 
         void SetVertexBuffer(const Buffer& vertexBuffer);
         void SetIndexBuffer(const Buffer& indexBuffer);
 
-        void AddRenderTarget(const Texture& texture);
-        void AddDepthStencil(const Texture& texture, D3D12_RESOURCE_STATES d3d12State = D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        void AddRenderTarget(const Texture& texture, D3D12_RESOURCE_STATES d3d12State);
+        void AddDepthStencil(const Texture& texture, D3D12_RESOURCE_STATES d3d12State);
         void SetRenderTargets();
 
         void ClearRenderTarget(const Texture& texture, std::optional<DirectX::XMFLOAT4> clearColor = std::nullopt);

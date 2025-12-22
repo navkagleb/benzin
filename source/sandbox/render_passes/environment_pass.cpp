@@ -109,11 +109,11 @@ namespace sandbox
 
         cmdList.SetVertexPso(ms_PsoManager->GetVertex(PsoId::Environment));
 
-        cmdList.AddRenderTarget(ms_Resources->Get(TextureId::HdrColor));
+        cmdList.AddRenderTarget(ms_Resources->Get(TextureId::HdrColor), D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmdList.AddDepthStencil(ms_Resources->Get(TextureId::Depth), D3D12_RESOURCE_STATE_DEPTH_READ);
         cmdList.SetRenderTargets();
 
-        cmdList.SetGraphicsRootSrv(*joint::EnvironmentResources::CubeMap, *m_CubeTexture);
+        cmdList.SetGraphicsRootSrv(*joint::EnvironmentResources::CubeMap, *m_CubeTexture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         cmdList.FlushBarriers();
 
         cmdList.DrawVertexed(3);

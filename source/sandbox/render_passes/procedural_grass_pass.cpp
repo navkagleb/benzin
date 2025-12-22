@@ -56,7 +56,11 @@ namespace sandbox
     void ProceduralGrassPass::OnZeroFrameInit()
     {
         if (ms_Scene->m_GrassPatchBuffer.get() == nullptr)
+        {
+            ms_Settings->GetSection<ProceduralGrassSettings>().m_IsEnabled = false;
+            m_IsRenderingEnabled = false;
             return;
+        }
 
         benzin::TextureImage perlinNoiseImage;
         BenzinEnsure(benzin::LoadTextureImageFromDdsFile("perlin_noise_256.dds", perlinNoiseImage));
@@ -113,16 +117,16 @@ namespace sandbox
 
         const GBuffer gbuffer{ *ms_Resources };
 
-        cmdList.AddRenderTarget(gbuffer.m_AlbedoAndRoughness);
-        cmdList.AddRenderTarget(gbuffer.m_EmissiveAndMetallic);
-        cmdList.AddRenderTarget(gbuffer.m_WorldNormal);
-        cmdList.AddRenderTarget(gbuffer.m_Mv);
-        cmdList.AddRenderTarget(gbuffer.m_ViewDepth);
-        cmdList.AddDepthStencil(gbuffer.m_Depth);
+        cmdList.AddRenderTarget(gbuffer.m_AlbedoAndRoughness, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddRenderTarget(gbuffer.m_EmissiveAndMetallic, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddRenderTarget(gbuffer.m_WorldNormal, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddRenderTarget(gbuffer.m_Mv, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddRenderTarget(gbuffer.m_ViewDepth, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddDepthStencil(gbuffer.m_Depth, D3D12_RESOURCE_STATE_DEPTH_WRITE);
         cmdList.SetRenderTargets();
 
-        cmdList.SetGraphicsRootSrv(*Resources::GrassPatches, *ms_Scene->m_GrassPatchBuffer);
-        cmdList.SetGraphicsRootSrv(*Resources::PerlinNoise, *m_PerlinNoiseTexture);
+        cmdList.SetGraphicsRootSrv(*Resources::GrassPatches, *ms_Scene->m_GrassPatchBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        cmdList.SetGraphicsRootSrv(*Resources::PerlinNoise, *m_PerlinNoiseTexture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         cmdList.FlushBarriers();
 
         cmdList.DispatchMesh({ m_Consts.m_GrassPatchCount, 1, 1 }, { *joint::ProceduralGrassConsts::AsGroupSize, 1, 1 });

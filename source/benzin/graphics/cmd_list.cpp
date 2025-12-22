@@ -531,11 +531,11 @@ namespace benzin
         m_D3D12GraphicsCommandList1->IASetIndexBuffer(&d3d12View);
     }
 
-    void GraphicsCmdList::AddRenderTarget(const Texture& texture)
+    void GraphicsCmdList::AddRenderTarget(const Texture& texture, D3D12_RESOURCE_STATES d3d12State)
     {
         BenzinAssert(m_DeferredD3D12Rtvs.size() < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
 
-        AddTransition(texture, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        AddTransition(texture, d3d12State);
         m_DeferredD3D12Rtvs.emplace_back(texture.GetRtv().GetCpuHandle());
     }
 

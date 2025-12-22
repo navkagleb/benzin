@@ -306,6 +306,7 @@ namespace benzin
                     case ShaderType::Amplification:
                     {
                         psoWrapper.GetAs<MeshPso>().ChangeAs(bytecode);
+                        break;
                     }
                     case ShaderType::Mesh:
                     {

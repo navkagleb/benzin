@@ -361,7 +361,7 @@ namespace sandbox
         {
             cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::Geometry_Mesh));
 
-            cmdList.SetGraphicsRootSrv(*Resources::Vertices, *ms_Scene->m_VertexBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            cmdList.SetGraphicsRootSrv(*Resources::Vertices, *ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             cmdList.SetGraphicsRootSrv(*Resources::Meshlets, *ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             cmdList.SetGraphicsRootSrv(*Resources::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             cmdList.SetGraphicsRootSrv(*Resources::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -377,8 +377,8 @@ namespace sandbox
             cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
 
-        cmdList.SetGraphicsRootSrv(*Resources::MeshDraws, *ms_Scene->m_PerFrameResources[ms_Device->GetActiveFrameIndex()].m_MeshDrawBuffer);
-        cmdList.SetGraphicsRootSrv(*Resources::Materials, *ms_Scene->m_MaterialBuffer);
+        cmdList.SetGraphicsRootSrv(*Resources::MeshDraws, *ms_Scene->m_PerFrameResources[ms_Device->GetActiveFrameIndex()].m_MeshDrawBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        cmdList.SetGraphicsRootSrv(*Resources::Materials, *ms_Scene->m_MaterialBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         const auto& cmdBuffer = isMeshPipeline ? m_DispatchCmdBuffer : m_DrawCmdBuffer;
 
@@ -387,12 +387,12 @@ namespace sandbox
 
         const GBuffer gbuffer{ *ms_Resources };
 
-        cmdList.AddRenderTarget(gbuffer.m_AlbedoAndRoughness);
-        cmdList.AddRenderTarget(gbuffer.m_EmissiveAndMetallic);
-        cmdList.AddRenderTarget(gbuffer.m_WorldNormal);
-        cmdList.AddRenderTarget(gbuffer.m_Mv);
-        cmdList.AddRenderTarget(gbuffer.m_ViewDepth);
-        cmdList.AddDepthStencil(gbuffer.m_Depth);
+        cmdList.AddRenderTarget(gbuffer.m_AlbedoAndRoughness, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddRenderTarget(gbuffer.m_EmissiveAndMetallic, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddRenderTarget(gbuffer.m_WorldNormal, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddRenderTarget(gbuffer.m_Mv, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddRenderTarget(gbuffer.m_ViewDepth, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList.AddDepthStencil(gbuffer.m_Depth, D3D12_RESOURCE_STATE_DEPTH_WRITE);
         cmdList.SetRenderTargets();
         cmdList.FlushBarriers();
 
