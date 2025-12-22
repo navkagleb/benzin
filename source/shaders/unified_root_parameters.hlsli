@@ -52,4 +52,7 @@ void InterlockedAddToStat(joint::ReadbackStat stat, uint value)
 #define BenzinDeclareRenderPassConsts(Type, name) ConstantBuffer<Type> name : register(b0, space2);
 
 #define BenzinGetRootConstant(rootIndex) g_RootConstants.GetConstant((uint)rootIndex)
-#define BenzinDeclareRootResource(Type, name, rootIndex) static Type name = ResourceDescriptorHeap[BenzinGetRootConstant(rootIndex)]
+#define BenzinGetRootResource(rootIndex) ResourceDescriptorHeap[BenzinGetRootConstant(rootIndex)]
+
+// TODO: Remove
+#define BenzinDeclareRootResource(Type, name, rootIndex) static Type name = BenzinGetRootResource(rootIndex)

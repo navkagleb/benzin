@@ -34,9 +34,9 @@ namespace sandbox
         void RunHzbGeneration() const;
 
         std::unique_ptr<benzin::Buffer> m_VisibilityBuffer;
-        std::unique_ptr<benzin::Buffer> m_CmdCountBuffer;
-        std::unique_ptr<benzin::Buffer> m_DrawCmdBuffer;
-        std::unique_ptr<benzin::Buffer> m_DispatchCmdBuffer;
+        std::unique_ptr<benzin::Buffer> m_CmdCountBuffers[BENZIN_FRAME_COUNT];
+        std::unique_ptr<benzin::Buffer> m_DrawCmdBuffers[BENZIN_FRAME_COUNT];
+        std::unique_ptr<benzin::Buffer> m_DispatchCmdBuffers[BENZIN_FRAME_COUNT];
 
         std::unique_ptr<benzin::QueryHeap> m_StatsQueryHeap;
         std::unique_ptr<benzin::Buffer> m_StatsBuffer;

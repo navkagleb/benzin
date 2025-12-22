@@ -17,13 +17,12 @@
 #include <benzin/graphics/unified_root_signature.hpp>
 #include <benzin/graphics2/gpu_profiler.hpp>
 #include <benzin/graphics2/pso_manager.hpp>
-
 #include <shaders/joint/geometry_resources.hpp>
 #include <shaders/joint/mesh_types.hpp>
 
-BenzinAllowDereferenceOperatorForEnum(joint::GeometryResources);
-BenzinAllowDereferenceOperatorForEnum(joint::GeometryCullingResources);
-BenzinAllowDereferenceOperatorForEnum(joint::GeometryHzbGenerationResources);
+BenzinAllowDereferenceOperatorForEnum(joint::GeometryCullingRootParam);
+BenzinAllowDereferenceOperatorForEnum(joint::GeometryRootParam);
+BenzinAllowDereferenceOperatorForEnum(joint::GeometryHzbRootParam);
 
 namespace sandbox
 {
@@ -53,8 +52,7 @@ namespace sandbox
 
         ms_PsoManager->Create(PsoId::Geometry_HzbGeneration, [](benzin::ComputePsoProxy& proxy)
         {
-            proxy.m_Cs.m_FileName = "geometry_hzb_generation.hlsl";
-            proxy.m_Cs.m_Defines.push_back("HZB_GENERATION");
+            proxy.m_Cs.m_FileName = "geometry_hzb.hlsl";
         });
 
         {
@@ -62,7 +60,7 @@ namespace sandbox
 
             d3d12ArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
             d3d12ArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
-            d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
+            d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryRootParam::MeshDrawIndex;
             d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 1;
 
             d3d12ArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
@@ -84,17 +82,17 @@ namespace sandbox
 
             d3d12ArgumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
             d3d12ArgumentDescs[0].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
-            d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshDrawIndex;
+            d3d12ArgumentDescs[0].Constant.DestOffsetIn32BitValues = *joint::GeometryRootParam::MeshDrawIndex;
             d3d12ArgumentDescs[0].Constant.Num32BitValuesToSet = 1;
 
             d3d12ArgumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
             d3d12ArgumentDescs[1].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
-            d3d12ArgumentDescs[1].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshletOffset;
+            d3d12ArgumentDescs[1].Constant.DestOffsetIn32BitValues = *joint::GeometryRootParam::MeshletOffset;
             d3d12ArgumentDescs[1].Constant.Num32BitValuesToSet = 1;
 
             d3d12ArgumentDescs[2].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
             d3d12ArgumentDescs[2].Constant.RootParameterIndex = *benzin::UnifiedRootParameter::Root32Consts;
-            d3d12ArgumentDescs[2].Constant.DestOffsetIn32BitValues = *joint::GeometryResources::MeshletCount;
+            d3d12ArgumentDescs[2].Constant.DestOffsetIn32BitValues = *joint::GeometryRootParam::MeshletCount;
             d3d12ArgumentDescs[2].Constant.Num32BitValuesToSet = 1;
 
             d3d12ArgumentDescs[3].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
@@ -152,33 +150,36 @@ namespace sandbox
             creation.m_IsUnorderedAccessAllowed = true;
         });
 
-        m_CmdCountBuffer = allocator.AllocateBuffer([](benzin::BufferCreation& creation)
+        for (uint32_t frameIndex = 0; frameIndex < BENZIN_FRAME_COUNT; ++frameIndex)
         {
-            creation.m_DebugName = "GeometryPass::CmdCountBuffer";
-            creation.m_Type = benzin::BufferType::Format;
-            creation.m_DxgiFormat = DXGI_FORMAT_R32_UINT;
-            creation.m_ElementSizeInBytes = sizeof(uint32_t);
-            creation.m_ElementCount = 1;
-            creation.m_IsUnorderedAccessAllowed = true;
-        });
+            m_CmdCountBuffers[frameIndex] = allocator.AllocateBuffer([frameIndex](benzin::BufferCreation& creation)
+            {
+                creation.m_DebugName = std::format("GeometryPass::CmdCountBuffer_{}", frameIndex);
+                creation.m_Type = benzin::BufferType::Format;
+                creation.m_DxgiFormat = DXGI_FORMAT_R32_UINT;
+                creation.m_ElementSizeInBytes = sizeof(uint32_t);
+                creation.m_ElementCount = 1;
+                creation.m_IsUnorderedAccessAllowed = true;
+            });
 
-        m_DrawCmdBuffer = allocator.AllocateBuffer([drawCount](benzin::BufferCreation& creation)
-        {
-            creation.m_DebugName = "GeometryPass::DrawCmdBuffer";
-            creation.m_Type = benzin::BufferType::Structured;
-            creation.m_ElementSizeInBytes = sizeof(joint::MeshDrawCmd);
-            creation.m_ElementCount = drawCount;
-            creation.m_IsUnorderedAccessAllowed = true;
-        });
+            m_DrawCmdBuffers[frameIndex] = allocator.AllocateBuffer([drawCount, frameIndex](benzin::BufferCreation& creation)
+            {
+                creation.m_DebugName = std::format("GeometryPass::DrawCmdBuffer_{}", frameIndex);
+                creation.m_Type = benzin::BufferType::Structured;
+                creation.m_ElementSizeInBytes = sizeof(joint::MeshDrawCmd);
+                creation.m_ElementCount = drawCount;
+                creation.m_IsUnorderedAccessAllowed = true;
+            });
 
-        m_DispatchCmdBuffer = allocator.AllocateBuffer([drawCount](benzin::BufferCreation& creation)
-        {
-            creation.m_DebugName = "GeometryPass::DispatchCmdBuffer";
-            creation.m_Type = benzin::BufferType::Structured;
-            creation.m_ElementSizeInBytes = sizeof(joint::MeshDispatchCmd);
-            creation.m_ElementCount = drawCount;
-            creation.m_IsUnorderedAccessAllowed = true;
-        });
+            m_DispatchCmdBuffers[frameIndex] = allocator.AllocateBuffer([drawCount, frameIndex](benzin::BufferCreation& creation)
+            {
+                creation.m_DebugName = std::format("GeometryPass::DispatchCmdBuffer_{}", frameIndex);
+                creation.m_Type = benzin::BufferType::Structured;
+                creation.m_ElementSizeInBytes = sizeof(joint::MeshDispatchCmd);
+                creation.m_ElementCount = drawCount;
+                creation.m_IsUnorderedAccessAllowed = true;
+            });
+        }
 
         benzin::QueryHeapCreation queryHeapCreation;
         queryHeapCreation.m_DebugName = "GeometryPass::StatsQueryHeap";
@@ -309,7 +310,7 @@ namespace sandbox
 
     void GeometryPass::RunCullingPass(bool isLate) const
     {
-        using Resources = joint::GeometryCullingResources;
+        using RootParam = joint::GeometryCullingRootParam;
 
         BenzinScopeProfile(isLate ? "GeometryPass::RunCulling_Late" : "GeometryPass::RunCulling_Early");
         BenzinGpuProfile(isLate ? "CullingLate" : "CullingEarly");
@@ -317,38 +318,39 @@ namespace sandbox
         benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
         const uint32_t drawCount = ms_Scene->m_TotalMeshDrawCount;
+        const uint32_t activeIndex = ms_Device->GetActiveFrameIndex();
 
-        cmdList.SetComputeRootConstant(*Resources::MeshDrawCount, drawCount);
-        cmdList.SetComputeRootSrv(*Resources::MeshDraws, *ms_Scene->m_PerFrameResources[ms_Device->GetActiveFrameIndex()].m_MeshDrawBuffer);
-        cmdList.SetComputeRootSrv(*Resources::Meshes, *ms_Scene->m_MeshBuffer);
-        cmdList.SetComputeRootUav(*Resources::MeshCmdCounter, *m_CmdCountBuffer);
-        cmdList.SetComputeRootUav(*Resources::MeshDrawCmds, *m_DrawCmdBuffer);
-        cmdList.SetComputeRootUav(*Resources::MeshDispatchCmds, *m_DispatchCmdBuffer);
+        cmdList.SetComputeRootConstant(*RootParam::MeshDrawCount, drawCount);
+        cmdList.SetComputeRootSrv(*RootParam::MeshDraws, *ms_Scene->m_PerFrameResources[activeIndex].m_MeshDrawBuffer);
+        cmdList.SetComputeRootSrv(*RootParam::Meshes, *ms_Scene->m_MeshBuffer);
+        cmdList.SetComputeRootUav(*RootParam::MeshCmdCounter, *m_CmdCountBuffers[activeIndex]);
+        cmdList.SetComputeRootUav(*RootParam::MeshDrawCmds, *m_DrawCmdBuffers[activeIndex]);
+        cmdList.SetComputeRootUav(*RootParam::MeshDispatchCmds, *m_DispatchCmdBuffers[activeIndex]);
 
         if (isLate)
         {
-            cmdList.SetComputeRootUav(*Resources::VisibilityBuffer, *m_VisibilityBuffer);
+            cmdList.SetComputeRootUav(*RootParam::VisibilityBuffer, *m_VisibilityBuffer);
         }
         else
         {
-            cmdList.SetComputeRootSrv(*Resources::VisibilityBuffer, *m_VisibilityBuffer);
+            cmdList.SetComputeRootSrv(*RootParam::VisibilityBuffer, *m_VisibilityBuffer);
         }
 
         cmdList.FlushBarriers();
 
-        cmdList.ClearUnorderedAccess(*m_CmdCountBuffer, m_CmdCountBuffer->GetUav());
+        cmdList.ClearUnorderedAccess(*m_CmdCountBuffers[activeIndex], m_CmdCountBuffers[activeIndex]->GetUav());
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(isLate ? PsoId::Geometry_LateComputeCulling : PsoId::Geometry_EarlyComputeCulling));
         cmdList.Dispatch({ drawCount, 1, 1 }, { 64, 1, 1 });
 
-        cmdList.AddUnorderedAccess(*m_CmdCountBuffer);
-        cmdList.AddUnorderedAccess(*m_DrawCmdBuffer);
-        cmdList.AddUnorderedAccess(*m_DispatchCmdBuffer);
+        cmdList.AddUnorderedAccess(*m_CmdCountBuffers[activeIndex]);
+        cmdList.AddUnorderedAccess(*m_DrawCmdBuffers[activeIndex]);
+        cmdList.AddUnorderedAccess(*m_DispatchCmdBuffers[activeIndex]);
     }
 
     void GeometryPass::RunDrawPass(bool isLate) const
     {
-        using Resources = joint::GeometryResources;
+        using RootParam = joint::GeometryRootParam;
 
         BenzinScopeProfile(isLate ? "GeometryPass::RunDrawPass_Late" : "GeometryPass::RunDrawPass_Early");
         BenzinGpuProfile(isLate ? "DrawLate" : "DrawEarly");
@@ -361,11 +363,11 @@ namespace sandbox
         {
             cmdList.SetMeshPso(ms_PsoManager->GetMesh(PsoId::Geometry_Mesh));
 
-            cmdList.SetGraphicsRootSrv(*Resources::Vertices, *ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*Resources::Meshlets, *ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*Resources::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*Resources::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmdList.SetGraphicsRootSrv(*Resources::MeshletIndices, *ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*RootParam::Vertices, *ms_Scene->m_VertexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*RootParam::Meshlets, *ms_Scene->m_MeshletBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*RootParam::MeshletCullVolumes, *ms_Scene->m_MeshletCullVolumeBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*RootParam::MeshletVertexIndices, *ms_Scene->m_MeshletVertexIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmdList.SetGraphicsRootSrv(*RootParam::MeshletIndices, *ms_Scene->m_MeshletIndexBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         }
         else
         {
@@ -377,12 +379,13 @@ namespace sandbox
             cmdList.GetD3D12GraphicsCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
 
-        cmdList.SetGraphicsRootSrv(*Resources::MeshDraws, *ms_Scene->m_PerFrameResources[ms_Device->GetActiveFrameIndex()].m_MeshDrawBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        cmdList.SetGraphicsRootSrv(*Resources::Materials, *ms_Scene->m_MaterialBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        cmdList.SetGraphicsRootSrv(*RootParam::MeshDraws, *ms_Scene->m_PerFrameResources[ms_Device->GetActiveFrameIndex()].m_MeshDrawBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        cmdList.SetGraphicsRootSrv(*RootParam::Materials, *ms_Scene->m_MaterialBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        const auto& cmdBuffer = isMeshPipeline ? m_DispatchCmdBuffer : m_DrawCmdBuffer;
+        const uint32_t activeIndex = ms_Device->GetActiveFrameIndex();
+        const auto& cmdBuffer = isMeshPipeline ? m_DispatchCmdBuffers[activeIndex] : m_DrawCmdBuffers[activeIndex];
 
-        cmdList.AddTransition(*m_CmdCountBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        cmdList.AddTransition(*m_CmdCountBuffers[activeIndex], D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
         cmdList.AddTransition(*cmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 
         const GBuffer gbuffer{ *ms_Resources };
@@ -414,7 +417,7 @@ namespace sandbox
             (uint32_t)cmdBuffer->GetElementCount(),
             cmdBuffer->GetD3D12Resource(),
             0,
-            m_CmdCountBuffer->GetD3D12Resource(),
+            m_CmdCountBuffers[activeIndex]->GetD3D12Resource(),
             0);
     }
 
@@ -438,16 +441,16 @@ namespace sandbox
             const uint32_t destMipWidth = hzb.GetMipWidth(destMipIndex);
             const uint32_t destMipHeight = hzb.GetMipHeight(destMipIndex);
 
-            joint::GeometryHzbGenerationConsts consts = {};
+            joint::GeometryHzbConsts consts = {};
             consts.m_DestMipTexelSize = { 1.0f / destMipWidth, 1.0f / destMipHeight };
             consts.m_IsSourceWidthOdd = (hzb.GetMipWidth(sourceMipIndex) & 1) == 1;
             consts.m_IsSourceHeightOdd = (hzb.GetMipHeight(sourceMipIndex) & 1) == 1;
 
             cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(consts));
 
-            using Resources = joint::GeometryHzbGenerationResources;
-            cmdList.SetComputeRootSrv(*Resources::SourceMip, hzb, { .m_MipOffset = sourceMipIndex, .m_MipCount = 1 }, benzin::g_MaxEnum<D3D12_RESOURCE_STATES>);
-            cmdList.SetComputeRootUav(*Resources::DestMip, hzb, { .m_MipIndex = destMipIndex });
+            using RootParam = joint::GeometryHzbRootParam;
+            cmdList.SetComputeRootSrv(*RootParam::SourceMip, hzb, { .m_MipOffset = sourceMipIndex, .m_MipCount = 1 }, benzin::g_MaxEnum<D3D12_RESOURCE_STATES>);
+            cmdList.SetComputeRootUav(*RootParam::DestMip, hzb, { .m_MipIndex = destMipIndex });
             cmdList.FlushBarriers();
 
             cmdList.Dispatch({ destMipWidth, destMipHeight, 1 }, { 8, 8, 1 });

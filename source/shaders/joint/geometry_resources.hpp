@@ -5,7 +5,7 @@
 namespace joint
 {
 
-    enum class GeometryCullingResources : uint
+    enum class GeometryCullingRootParam : uint
     {
         MeshDrawCount,
         MeshDraws,
@@ -17,7 +17,7 @@ namespace joint
         VisibilityBuffer,
     };
 
-    enum class GeometryResources : uint
+    enum class GeometryRootParam : uint
     {
         MeshDrawIndex,
         MeshletOffset, // Mesh pipeline
@@ -33,13 +33,13 @@ namespace joint
         MeshletIndices, // Mesh pipeline
     };
 
-    enum class GeometryHzbGenerationResources : uint
+    enum class GeometryHzbRootParam : uint
     {
         SourceMip,
         DestMip,
     };
 
-    struct GeometryHzbGenerationConsts
+    struct GeometryHzbConsts
     {
         float2 m_DestMipTexelSize;
         uint m_IsSourceWidthOdd : 1;

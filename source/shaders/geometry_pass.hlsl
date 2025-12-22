@@ -8,8 +8,6 @@
 #define ALPHA_TEST_ENABLED defined(ALPHA_TEST)
 #define MESH_PIPELINE_ENABLED defined(MESH_PIPELINE)
 
-BenzinDeclareRootResource(StructuredBuffer<joint::Material>, g_Materials, joint::GeometryResources::Materials);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshDraw>, g_Draws, joint::GeometryResources::MeshDraws);
 
 struct VsOutput
 {
@@ -24,8 +22,9 @@ struct VsOutput
 
 VsOutput ProcessVertex(joint::MeshVertex vertex)
 {
-    const uint drawIndex = BenzinGetRootConstant(joint::GeometryResources::MeshDrawIndex);
-    const joint::MeshDraw draw = g_Draws[drawIndex];
+    StructuredBuffer<joint::MeshDraw> draws = BenzinGetRootResource(joint::GeometryRootParam::MeshDraws);
+    const uint drawIndex = BenzinGetRootConstant(joint::GeometryRootParam::MeshDrawIndex);
+    const joint::MeshDraw draw = draws[drawIndex];
 
     const float4 worldPosition = mul(float4(vertex.m_Position, 1.0), draw.m_LocalToWorld);
     const float4 prevWorldPosition = mul(float4(vertex.m_Position, 1.0), draw.m_PrevLocalToWorld);
@@ -57,11 +56,7 @@ VsOutput ProcessVertex(joint::MeshVertex vertex)
 // - TODO - Efficient Use of GPU Memory in Modern Games - Digital Dragons 2021: https://gpuopen.com/videos/efficient-use-of-gpu-memory-digital-dragons/
 // - TODO - D3D12 Memory Allocator: https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
 
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshVertex>, g_Vertices, joint::GeometryResources::Vertices);
-BenzinDeclareRootResource(StructuredBuffer<joint::Meshlet>, g_Meshlets, joint::GeometryResources::Meshlets);
-BenzinDeclareRootResource(StructuredBuffer<joint::MeshletCullVolume>, g_MeshletCullVolumes, joint::GeometryResources::MeshletCullVolumes);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletVertexIndices, joint::GeometryResources::MeshletVertexIndices);
-BenzinDeclareRootResource(Buffer<uint>, g_MeshletIndices, joint::GeometryResources::MeshletIndices); // uint8_t
+
 
 struct MeshPayload
 {
@@ -73,8 +68,8 @@ groupshared MeshPayload g_MeshPayload;
 [NumThreads(g_AmplificationGroupSize, 1, 1)]
 void AsMain(uint dtid : SV_DispatchThreadID)
 {
-    const uint meshletOffset = BenzinGetRootConstant(joint::GeometryResources::MeshletOffset);
-    const uint meshletCount = BenzinGetRootConstant(joint::GeometryResources::MeshletCount);
+    const uint meshletOffset = BenzinGetRootConstant(joint::GeometryRootParam::MeshletOffset);
+    const uint meshletCount = BenzinGetRootConstant(joint::GeometryRootParam::MeshletCount);
 
     bool isVisible = dtid < meshletCount;
 
@@ -97,25 +92,31 @@ void MsMain(
     out vertices VsOutput vertices[(uint)joint::MeshletConsts::MaxVertexCount],
     out indices uint3 triangles[(uint)joint::MeshletConsts::MaxTriangleCount])
 {
+    StructuredBuffer<joint::Meshlet> meshlets = BenzinGetRootResource(joint::GeometryRootParam::Meshlets);
+
 #if 0
     const uint meshletIndex = payload.m_MeshletIndices[gid];
-    const joint::Meshlet meshlet = g_Meshlets[meshletIndex];
+    const joint::Meshlet meshlet = meshlets[meshletIndex];
 #else
-    const uint meshletOffset = BenzinGetRootConstant(joint::GeometryResources::MeshletOffset);
-    const uint meshletCount = BenzinGetRootConstant(joint::GeometryResources::MeshletCount);
+    const uint meshletOffset = BenzinGetRootConstant(joint::GeometryRootParam::MeshletOffset);
+    const uint meshletCount = BenzinGetRootConstant(joint::GeometryRootParam::MeshletCount);
 
     if (gid >= meshletCount)
         return;
 
-    const joint::Meshlet meshlet = g_Meshlets[gid + meshletOffset];
+    const joint::Meshlet meshlet = meshlets[gid + meshletOffset];
 #endif
 
     SetMeshOutputCounts(meshlet.m_VertexCount, meshlet.m_TriangleCount);
 
+    StructuredBuffer<joint::MeshVertex> meshVertices = BenzinGetRootResource(joint::GeometryRootParam::Vertices);
+    Buffer<uint> meshletVertexIndices = BenzinGetRootResource(joint::GeometryRootParam::MeshletVertexIndices);
+    Buffer<uint> meshletIndices = BenzinGetRootResource(joint::GeometryRootParam::MeshletIndices); // uint8_t
+
     if (gtid < meshlet.m_VertexCount)
     {
-        const uint vertexIndex = g_MeshletVertexIndices[meshlet.m_VertexOffset + gtid];
-        const joint::MeshVertex vertex = g_Vertices[vertexIndex];
+        const uint vertexIndex = meshletVertexIndices[meshlet.m_VertexOffset + gtid];
+        const joint::MeshVertex vertex = meshVertices[vertexIndex];
 
         vertices[gtid] = ProcessVertex(vertex);
     }
@@ -123,7 +124,7 @@ void MsMain(
     if (gtid < meshlet.m_TriangleCount)
     {
         const uint triangleIndex = meshlet.m_IndexOffset + gtid * 3;
-        const uint3 indices = uint3(g_MeshletIndices[triangleIndex + 0], g_MeshletIndices[triangleIndex + 1], g_MeshletIndices[triangleIndex + 2]);
+        const uint3 indices = uint3(meshletIndices[triangleIndex + 0], meshletIndices[triangleIndex + 1], meshletIndices[triangleIndex + 2]);
 
         triangles[gtid] = indices;
     }
@@ -166,7 +167,8 @@ float3x3 CotangentFrame(float3 worldNormal, float3 p, float2 uv)
 
 PackedGBuffer PsMain(VsOutput input)
 {
-    const joint::Material material = g_Materials[input.m_MaterialIndex];
+    StructuredBuffer<joint::Material> materials = BenzinGetRootResource(joint::GeometryRootParam::Materials);
+    const joint::Material material = materials[input.m_MaterialIndex];
 
     float3 albedo = material.m_AlbedoFactor.rgb;
     if (material.m_AlbedoTextureHeapIndex != g_MaxU32)
@@ -189,6 +191,8 @@ PackedGBuffer PsMain(VsOutput input)
     gbuffer.m_Roughness = material.m_RoughnessFactor;
     gbuffer.m_Emissive = material.m_EmissiveFactor;
     gbuffer.m_Metallic = material.m_MetalnessFactor;
+
+    gbuffer.m_Albedo = gbuffer.m_WorldNormal * 0.5 + 0.5;
 
     if (material.m_NormalTextureHeapIndex != g_MaxU32)
     {
