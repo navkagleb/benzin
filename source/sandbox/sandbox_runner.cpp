@@ -75,6 +75,8 @@ namespace sandbox
     {
         BenzinTraceScopeTime("SandboxRunner::InitScene");
 
+        m_RenderSettings.GetSection<ProceduralGrassSettings>().m_IsEnabled = false;
+
         benzin::PerspectiveCamera& camera = m_Scene.m_Camera;
         camera.SetPosition({ -1.649f, 1.007f, -1.555f });
         camera.SetFrontDirection({ 0.769f, 0.129f, 0.627f });
@@ -108,11 +110,11 @@ namespace sandbox
 
         constexpr auto meshFileNames = std::to_array<std::string_view>(
         {
-            "Sponza/glTF/Sponza.gltf",
-            "BoomBox/glTF-Binary/BoomBox.glb",
-            "DamagedHelmet/glTF/DamagedHelmet.gltf",
-            "OrientationTest/OrientationTest.gltf",
-            "CesiumMilkTruck/glTF/CesiumMilkTruck.gltf",
+            "Sponza/Sponza.gltf",
+            "BoomBox.glb",
+            "DamagedHelmet.glb",
+            "OrientationTest.gltf",
+            "CesiumMilkTruck.glb",
         });
 
         std::unordered_map<std::string, benzin::Scene::MeshGeometryRange> geometries;
