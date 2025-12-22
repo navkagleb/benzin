@@ -181,7 +181,7 @@ namespace sandbox
 
             dispatcher.Dispatch<benzin::WindowResizedEvent>([&]
             {
-                m_IsPendingResize = true;
+                m_IsSwapChainPendingResize = true;
                 return true;
             });
 
@@ -251,13 +251,17 @@ namespace sandbox
 
         m_MainWindow.ProcessEvents();
 
+        m_Device.AdvanceFrame(m_SwapChain.GetCurrentBackBufferIndex());
         m_Device.GetConstBufferAllocator().ResetFrameBuffer();
         m_Device.GetGraphicsCmdQueue().ResetCmdList();
 
-        m_ImGuiManager.BeginFrame();
-
         m_GpuProfiler.BeginFrame(m_Device.GetCpuFrameIndex());
         m_ShaderManager.CheckForNewShader();
+
+        m_RenderResources.FlipIndex();
+        m_ImGuiManager.BeginFrame();
+
+        m_Device.ProcessDeferredReleaseQueues();
     }
 
     void Runner::EndFrame()
@@ -271,14 +275,8 @@ namespace sandbox
 
         m_SwapChain.Flip(m_IsVsyncEnabled);
         m_Device.WaitForGpuIfNeeded();
-        m_Device.AdvanceFrame(m_SwapChain.GetCurrentBackBufferIndex());
 
-        HandleSwapChainResizeIfNeeded();
-        HandleViewportResizeIfNeeded();
-
-        m_Device.ProcessDeferredReleaseQueues();
-
-        m_RenderResources.FlipIndex();
+        ProcessResize();
     }
 
     void Runner::OnUpdate()
@@ -336,47 +334,54 @@ namespace sandbox
         m_ImGuiManager.EndUiFrame();
     }
 
-    void Runner::HandleSwapChainResizeIfNeeded()
+    void Runner::ProcessResize()
     {
-        if (!m_IsPendingResize)
-            return;
-
-        m_IsPendingResize = false;
-
-        const uint32_t width = m_MainWindow.GetWidth();
-        const uint32_t height = m_MainWindow.GetHeight();
-
-        m_Device.GetGraphicsCmdQueue().Flush();
-        m_Device.GetResDependentAllocator().ResetOffset();
-        m_SwapChain.Resize(width, height);
-
-        benzin::RenderPass::SetWindowSize(width, height);
-
-        BenzinTrace("Swap chain resized. CpuFrame: {}", m_Device.GetCpuFrameIndex());
-    }
-
-    void Runner::HandleViewportResizeIfNeeded()
-    {
-        if (!m_Viewport.IsPendingResize())
+        if (!m_IsSwapChainPendingResize && !m_Viewport.IsPendingResize())
             return;
 
         m_Device.GetGraphicsCmdQueue().Flush();
         m_Device.GetResDependentAllocator().ResetOffset();
 
-        m_Viewport.Resize();
-
-        const uint32_t width = m_Viewport.GetWidth();
-        const uint32_t height = m_Viewport.GetHeight();
-
-        m_CameraController.OnRenderViewportResized(width, height);
-
-        benzin::RenderPass::SetRenderViewport(width, height);
-        for (auto& renderPass : m_RenderPasses)
+        if (m_IsSwapChainPendingResize)
         {
-            renderPass->OnRenderViewportResize();
+            m_SwapChain.ReleaseBackBuffers();
         }
 
-        BenzinTrace("Render viewport resized. CpuFrame: {}", m_Device.GetCpuFrameIndex());
+        m_Device.ProcessDeferredReleaseQueues(true);
+
+        if (m_IsSwapChainPendingResize)
+        {
+            m_IsSwapChainPendingResize = false;
+
+            const uint32_t width = m_MainWindow.GetWidth();
+            const uint32_t height = m_MainWindow.GetHeight();
+
+            m_SwapChain.Resize(width, height);
+
+            benzin::RenderPass::SetWindowSize(width, height);
+
+            BenzinTrace("Swap chain resized. CpuFrame: {}", m_Device.GetCpuFrameIndex());
+        }
+
+        if (m_Viewport.IsPendingResize())
+        {
+            m_Viewport.Resize();
+
+            const uint32_t width = m_Viewport.GetWidth();
+            const uint32_t height = m_Viewport.GetHeight();
+
+            m_CameraController.OnRenderViewportResized(width, height);
+
+            benzin::RenderPass::SetRenderViewport(width, height);
+            for (auto& renderPass : m_RenderPasses)
+            {
+                renderPass->OnRenderViewportResize();
+            }
+
+            BenzinTrace("Render viewport resized. CpuFrame: {}", m_Device.GetCpuFrameIndex());
+        }
+
+        return;
     }
 
 }

@@ -30,11 +30,12 @@ namespace benzin
         const auto& GetCurrentBackBuffer() const { return *m_BackBuffers[GetCurrentBackBufferIndex()]; }
 
         void Flip(bool isVsyncEnabled);
+
+        void ReleaseBackBuffers();
         void Resize(uint32_t width, uint32_t height);
 
     private:
         void RegisterBackBuffers();
-        void ReleaseBackBuffers(bool isForceRelease);
 
         Device& m_Device;
 

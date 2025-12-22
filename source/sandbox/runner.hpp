@@ -43,9 +43,7 @@ namespace sandbox
         void OnRender();
 
         void RunImGuiFrame();
-
-        void HandleSwapChainResizeIfNeeded();
-        void HandleViewportResizeIfNeeded();
+        void ProcessResize();
 
     private:
         benzin::Window m_MainWindow;
@@ -64,7 +62,7 @@ namespace sandbox
 
         bool m_IsRunning = true;
         bool m_IsVsyncEnabled = false;
-        bool m_IsPendingResize = false;
+        bool m_IsSwapChainPendingResize = false;
         bool m_IsAnimationEnabled = false;
 
     protected:

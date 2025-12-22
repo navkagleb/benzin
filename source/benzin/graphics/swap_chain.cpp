@@ -66,7 +66,7 @@ namespace benzin
 
     SwapChain::~SwapChain()
     {
-        ReleaseBackBuffers(false);
+        ReleaseBackBuffers();
         SafeReleaseD3DObject(m_DxgiSwapChain);
     }
 
@@ -81,8 +81,6 @@ namespace benzin
     {
         DXGI_SWAP_CHAIN_DESC1 dxgiSwapChainDesc = {};
         BenzinD3D12Call(m_DxgiSwapChain->GetDesc1(&dxgiSwapChainDesc));
-
-        ReleaseBackBuffers(true);
 
         BenzinD3D12Call(m_DxgiSwapChain->ResizeBuffers(
             dxgiSwapChainDesc.BufferCount,
@@ -106,16 +104,11 @@ namespace benzin
         }
     }
 
-    void SwapChain::ReleaseBackBuffers(bool isForceRelease)
+    void SwapChain::ReleaseBackBuffers()
     {
         for (auto& backBuffer : m_BackBuffers)
         {
             backBuffer.reset();
-        }
-
-        if (isForceRelease)
-        {
-            m_Device.ProcessDeferredReleaseQueues(true);
         }
     }
 
