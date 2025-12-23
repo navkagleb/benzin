@@ -298,10 +298,14 @@ namespace benzin
 
         PerFrameResources& perFrameResources = m_PerFrameResources[device.GetActiveFrameIndex()];
 
+        uint32_t jointDrawIndex = 0;
         for (MeshGeometryDraw& geometryDraw : m_MeshGeometryDraws)
         {
             if (!perFrameResources.m_IsDirty && !geometryDraw.m_IsDirty)
+            {
+                jointDrawIndex += geometryDraw.m_MeshDrawCount;
                 continue;
+            }
 
             const DirectX::XMMATRIX geometryLocalToWorld =
                 DirectX::XMMatrixScaling(geometryDraw.m_Scale, geometryDraw.m_Scale, geometryDraw.m_Scale) *
@@ -310,13 +314,10 @@ namespace benzin
                 DirectX::XMMatrixRotationZ(geometryDraw.m_Rotation.z) *
                 DirectX::XMMatrixTranslation(geometryDraw.m_Translation.x, geometryDraw.m_Translation.y, geometryDraw.m_Translation.z);
 
-            const uint32_t drawBeginIndex = geometryDraw.m_MeshDrawOffset;
-            const uint32_t drawEndIndex = geometryDraw.m_MeshDrawOffset + geometryDraw.m_MeshDrawCount;
-
-            for (uint32_t drawIndex = drawBeginIndex; drawIndex < drawEndIndex; ++drawIndex)
+            const auto draws = ToSpan(m_MeshDraws.data() + geometryDraw.m_MeshDrawOffset, geometryDraw.m_MeshDrawCount);
+            for (const MeshDraw& draw : draws)
             {
-                const MeshDraw& draw = m_MeshDraws[drawIndex];
-                joint::MeshDraw& jointDraw = perFrameResources.m_JointMeshDraws[drawIndex];
+                joint::MeshDraw& jointDraw = perFrameResources.m_JointMeshDraws[jointDrawIndex++];
 
                 jointDraw.m_MeshIndex = draw.m_MeshIndex;
                 jointDraw.m_MaterialIndex = draw.m_MaterialIndex;
