@@ -102,8 +102,6 @@ namespace sandbox
         m_FrameConsts.m_CpuFrameIndex = (uint32_t)ms_Device->GetCpuFrameIndex();
 
         m_FrameConsts.m_IsRenderResolutionChanged = renderResolution.x != m_PrevRenderResolution.x || renderResolution.y != m_PrevRenderResolution.y;
-        m_FrameConsts.m_IsFrustumCullingEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsFrustumCullingEnabled;
-        m_FrameConsts.m_IsLodSelectionEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsLodSelectionEnabled;
         m_FrameConsts.m_IsDenoiserEnabled = ms_Settings->GetSection<SigmaDenoiserSettings>().m_IsEnabled;
 
         m_FrameConsts.m_DeltaTimeInSec = ms_FrameTimer->GetDeltaTimeInSec();

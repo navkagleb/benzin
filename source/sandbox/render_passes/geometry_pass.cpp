@@ -317,10 +317,18 @@ namespace sandbox
 
         benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
 
-        const uint32_t drawCount = ms_Scene->m_TotalMeshDrawCount;
-        const uint32_t activeIndex = ms_Device->GetActiveFrameIndex();
+        joint::GeometryCullConsts consts = {};
+        consts.m_IsMeshPipelineEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsMeshPipelineEnabled;
+        consts.m_IsFrustumCullingEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsFrustumCullingEnabled;
+        consts.m_IsOcclusionCullingEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsOcclusionCullingEnabled;
+		consts.m_MeshDrawCount = ms_Scene->m_TotalMeshDrawCount;
+        consts.m_P00 = DirectX::XMVectorGetByIndex(ms_Scene->m_Camera.GetViewToClip().r[0], 0);
+        consts.m_P11 = DirectX::XMVectorGetByIndex(ms_Scene->m_Camera.GetViewToClip().r[1], 1);
+        consts.m_NearZ = ms_Scene->m_Camera.GetNearPlane();
 
-        cmdList.SetComputeRootConstant(*RootParam::MeshDrawCount, drawCount);
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(consts));
+
+        const uint32_t activeIndex = ms_Device->GetActiveFrameIndex();
         cmdList.SetComputeRootSrv(*RootParam::MeshDraws, *ms_Scene->m_PerFrameResources[activeIndex].m_MeshDrawBuffer);
         cmdList.SetComputeRootSrv(*RootParam::Meshes, *ms_Scene->m_MeshBuffer);
         cmdList.SetComputeRootUav(*RootParam::MeshCmdCounter, *m_CmdCountBuffers[activeIndex]);
@@ -330,6 +338,7 @@ namespace sandbox
         if (isLate)
         {
             cmdList.SetComputeRootUav(*RootParam::VisibilityBuffer, *m_VisibilityBuffer);
+            cmdList.SetComputeRootSrv(*RootParam::Hzb, ms_Resources->Get(TextureId::Hzb));
         }
         else
         {
@@ -341,7 +350,7 @@ namespace sandbox
         cmdList.ClearUnorderedAccess(*m_CmdCountBuffers[activeIndex], m_CmdCountBuffers[activeIndex]->GetUav());
 
         cmdList.SetComputePso(ms_PsoManager->GetCompute(isLate ? PsoId::Geometry_LateComputeCulling : PsoId::Geometry_EarlyComputeCulling));
-        cmdList.Dispatch({ drawCount, 1, 1 }, { 64, 1, 1 });
+        cmdList.Dispatch({ consts.m_MeshDrawCount, 1, 1 }, { 64, 1, 1 });
 
         cmdList.AddUnorderedAccess(*m_CmdCountBuffers[activeIndex]);
         cmdList.AddUnorderedAccess(*m_DrawCmdBuffers[activeIndex]);

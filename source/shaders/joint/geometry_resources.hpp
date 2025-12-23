@@ -7,14 +7,26 @@ namespace joint
 
     enum class GeometryCullingRootParam : uint
     {
-        MeshDrawCount,
         MeshDraws,
         Meshes,
+        Hzb,
 
         MeshCmdCounter,
         MeshDrawCmds,
         MeshDispatchCmds,
         VisibilityBuffer,
+    };
+
+    struct GeometryCullConsts
+    {
+        uint m_IsMeshPipelineEnabled : 1;
+        uint m_IsFrustumCullingEnabled : 1;
+        uint m_IsOcclusionCullingEnabled : 1;
+
+        uint m_MeshDrawCount;
+        float m_P00;
+        float m_P11;
+        float m_NearZ;
     };
 
     enum class GeometryRootParam : uint

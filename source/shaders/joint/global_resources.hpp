@@ -60,8 +60,6 @@ namespace joint
 
         uint m_CpuFrameIndex;
         uint m_IsRenderResolutionChanged : 1;
-        uint m_IsFrustumCullingEnabled : 1; // TODO: actually used only by geometry pass
-        uint m_IsLodSelectionEnabled : 1;
         uint m_IsDenoiserEnabled : 1;
 
         float m_DeltaTimeInSec;
