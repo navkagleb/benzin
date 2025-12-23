@@ -4,7 +4,6 @@
 #include <benzin/core/cmd_line_args.hpp>
 #include <benzin/graphics/adl_wrapper.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
-#include <benzin/graphics/device.hpp>
 #include <benzin/graphics/d3d12_assert.hpp>
 #include <benzin/graphics/nvapi_wrapper.hpp>
 #include <benzin/graphics/pix_capturer.hpp>
@@ -109,10 +108,10 @@ namespace benzin
         const AdapterInfo& adapterInfo = m_AdaptersInfo[adapterIndex];
         IDXGIAdapter3* dxgiAdapter = m_DxgiAdapters[adapterIndex];
 
-        DXGI_QUERY_VIDEO_MEMORY_INFO d3d12LocalVideoMemoryInfo;
+        DXGI_QUERY_VIDEO_MEMORY_INFO d3d12LocalVideoMemoryInfo = {};
         BenzinD3D12Call(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &d3d12LocalVideoMemoryInfo));
 
-        DXGI_QUERY_VIDEO_MEMORY_INFO d3d12NonLocalVideoMemoryInfo;
+        DXGI_QUERY_VIDEO_MEMORY_INFO d3d12NonLocalVideoMemoryInfo = {};
         BenzinD3D12Call(dxgiAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &d3d12NonLocalVideoMemoryInfo));
 
         uint64_t vendorTotalUsedVramInBytes = g_MaxU64;
@@ -172,20 +171,18 @@ namespace benzin
             if (FAILED(m_DxgiFactory->EnumAdapterByGpuPreference(adapterIndex, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&dxgiAdapter))))
                 break;
 
-            DXGI_ADAPTER_DESC1 dxgiAdapterDesc{};
+            DXGI_ADAPTER_DESC1 dxgiAdapterDesc = {};
             BenzinD3D12Call(dxgiAdapter->GetDesc1(&dxgiAdapterDesc));
 
             if ((dxgiAdapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0 || dxgiAdapterDesc.DedicatedVideoMemory == 0)
                 continue;
 
-            AdapterInfo adapterInfo
-            {
-                .m_Name = ToNarrowString(dxgiAdapterDesc.Description),
-                .m_VendorId = dxgiAdapterDesc.VendorId,
-                .m_DeviceId = dxgiAdapterDesc.DeviceId,
-                .m_TotalLocalVramInBytes = dxgiAdapterDesc.DedicatedVideoMemory,
-                .m_TotalHostVramInBytes = dxgiAdapterDesc.SharedSystemMemory,
-            };
+            AdapterInfo adapterInfo;
+            adapterInfo.m_Name = ToNarrowString(dxgiAdapterDesc.Description);
+            adapterInfo.m_VendorId = dxgiAdapterDesc.VendorId;
+            adapterInfo.m_DeviceId = dxgiAdapterDesc.DeviceId;
+            adapterInfo.m_TotalLocalVramInBytes = dxgiAdapterDesc.DedicatedVideoMemory;
+            adapterInfo.m_TotalHostVramInBytes = dxgiAdapterDesc.SharedSystemMemory;
 
             if (AdlWrapper::IsAvailable() && adapterInfo.IsAmd())
             {
@@ -203,8 +200,7 @@ namespace benzin
                 dxgiAdapterDesc.VendorId,
                 dxgiAdapterDesc.DeviceId,
                 dxgiAdapterDesc.SubSysId,
-                dxgiAdapterDesc.Revision
-            );
+                dxgiAdapterDesc.Revision);
 
             if (IsStringContainsCaseInsensitive(adapterInfo.m_Name, CmdLineArgs::GetAdapterName()))
             {

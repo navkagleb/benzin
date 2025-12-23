@@ -48,7 +48,9 @@ namespace benzin
         Backend();
         ~Backend();
 
-    public:
+        BenzinDefineNonCopyable(Backend);
+        BenzinDefineNonMoveable(Backend);
+
         auto* GetDxgiFactory() const { return m_DxgiFactory; }
         auto* GetDxgiMainAdapter() const { return m_DxgiAdapters[m_MainAdapterIndex]; }
 
@@ -65,7 +67,6 @@ namespace benzin
         void CreateDxgiFactory();
         void GatherDxgiAdapters();
 
-    private:
         IDXGIFactory7* m_DxgiFactory = nullptr;
 
         std::vector<IDXGIAdapter3*> m_DxgiAdapters;
