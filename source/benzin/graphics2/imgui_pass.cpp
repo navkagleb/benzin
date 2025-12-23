@@ -506,7 +506,9 @@ namespace benzin
         const float nearZ = 1.0f;
         const float farZ = -1.0f;
 
-        m_Consts.m_ViewToClipOrtho = DirectX::XMMatrixOrthographicOffCenterRH(left, right, bottom, top, nearZ, farZ);
+        DirectX::XMStoreFloat4x4(
+            &m_Consts.m_ViewToClipOrtho,
+            DirectX::XMMatrixOrthographicOffCenterRH(left, right, bottom, top, nearZ, farZ));
     }
 
     void ImGuiPass::UpdateVertexAndIndexBuffers(const ImDrawData& imDrawData)

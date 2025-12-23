@@ -17,7 +17,7 @@ namespace joint
     using float2 = DirectX::XMFLOAT2;
     using float3 = DirectX::XMFLOAT3;
     using float4 = DirectX::XMFLOAT4;
-    using float4x4 = DirectX::XMMATRIX;
+    using float4x4 = DirectX::XMFLOAT4X4;
 
     static_assert(sizeof(uint2) == sizeof(uint) * 2);
     static_assert(sizeof(uint3) == sizeof(uint) * 3);

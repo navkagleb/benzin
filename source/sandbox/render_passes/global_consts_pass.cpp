@@ -72,13 +72,13 @@ namespace sandbox
         const benzin::PerspectiveCamera& camera = ms_Scene->m_Camera;
 
         joint::CameraConsts cameraConsts = {};
-        cameraConsts.m_WorldToView = camera.GetWorldToView();
-        cameraConsts.m_ViewToWorld = camera.GetViewToWorld();
-        cameraConsts.m_ViewToClip = camera.GetViewToClip();
-        cameraConsts.m_ClipToView = camera.GetClipToView();
-        cameraConsts.m_WorldToClip = camera.GetWorldToClip();
-        cameraConsts.m_ClipToWorld = camera.GetClipToWorld();
-        cameraConsts.m_ClipToWorldNoTranslation = camera.GetClipToWorldNoTranslation();
+        DirectX::XMStoreFloat4x4(&cameraConsts.m_WorldToView, camera.GetWorldToView());
+        DirectX::XMStoreFloat4x4(&cameraConsts.m_ViewToWorld, camera.GetViewToWorld());
+        DirectX::XMStoreFloat4x4(&cameraConsts.m_ViewToClip, camera.GetViewToClip());
+        DirectX::XMStoreFloat4x4(&cameraConsts.m_ClipToView, camera.GetClipToView());
+        DirectX::XMStoreFloat4x4(&cameraConsts.m_WorldToClip, camera.GetWorldToClip());
+        DirectX::XMStoreFloat4x4(&cameraConsts.m_ClipToWorld, camera.GetClipToWorld());
+        DirectX::XMStoreFloat4x4(&cameraConsts.m_ClipToWorldNoTranslation, camera.GetClipToWorldNoTranslation());
         cameraConsts.m_WorldPosition = *reinterpret_cast<const DirectX::XMFLOAT3*>(&camera.GetPosition());
         cameraConsts.m_UvToViewScale = camera.GetUvToViewScale();
         cameraConsts.m_UvToViewBias = camera.GetUvToViewBias();

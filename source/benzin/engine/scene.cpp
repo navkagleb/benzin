@@ -15,15 +15,18 @@
 namespace benzin
 {
 
-    static bool IsMatrixZero(const DirectX::XMMATRIX& matrix)
+    static bool IsMatrixZero(const DirectX::XMFLOAT4X4& matrix)
     {
-        const DirectX::XMVECTOR zero = DirectX::XMVectorZero();
+        for (uint32_t i = 0; i < 4; ++i)
+        {
+            for (uint32_t j = 0; j < 4; ++j)
+            {
+                if (matrix.m[i][j] != 0.0f)
+                    return false;
+            }
+        }
 
-        return
-            DirectX::XMVector4Equal(matrix.r[0], zero) &&
-            DirectX::XMVector4Equal(matrix.r[1], zero) &&
-            DirectX::XMVector4Equal(matrix.r[2], zero) &&
-            DirectX::XMVector4Equal(matrix.r[3], zero);
+        return true;
     }
 
     //
@@ -295,16 +298,10 @@ namespace benzin
 
         PerFrameResources& perFrameResources = m_PerFrameResources[device.GetActiveFrameIndex()];
 
-        uint32_t jointDrawIndex = 0;
         for (MeshGeometryDraw& geometryDraw : m_MeshGeometryDraws)
         {
             if (!perFrameResources.m_IsDirty && !geometryDraw.m_IsDirty)
-            {
-                jointDrawIndex += geometryDraw.m_MeshDrawCount;
                 continue;
-            }
-
-            geometryDraw.m_IsDirty = false;
 
             const DirectX::XMMATRIX geometryLocalToWorld =
                 DirectX::XMMatrixScaling(geometryDraw.m_Scale, geometryDraw.m_Scale, geometryDraw.m_Scale) *
@@ -313,26 +310,42 @@ namespace benzin
                 DirectX::XMMatrixRotationZ(geometryDraw.m_Rotation.z) *
                 DirectX::XMMatrixTranslation(geometryDraw.m_Translation.x, geometryDraw.m_Translation.y, geometryDraw.m_Translation.z);
 
-            const auto draws = ToSpan(m_MeshDraws.data() + geometryDraw.m_MeshDrawOffset, geometryDraw.m_MeshDrawCount);
-            for (const MeshDraw& draw : draws)
+            const uint32_t drawBeginIndex = geometryDraw.m_MeshDrawOffset;
+            const uint32_t drawEndIndex = geometryDraw.m_MeshDrawOffset + geometryDraw.m_MeshDrawCount;
+
+            for (uint32_t drawIndex = drawBeginIndex; drawIndex < drawEndIndex; ++drawIndex)
             {
-                joint::MeshDraw& jointDraw = perFrameResources.m_JointMeshDraws[jointDrawIndex++];
-                jointDraw.m_PrevLocalToWorld = IsMatrixZero(jointDraw.m_PrevLocalToWorld) ? draw.m_ObjectToLocal * geometryLocalToWorld : jointDraw.m_LocalToWorld;
-                jointDraw.m_LocalToWorld = draw.m_ObjectToLocal * geometryLocalToWorld;
+                const MeshDraw& draw = m_MeshDraws[drawIndex];
+                joint::MeshDraw& jointDraw = perFrameResources.m_JointMeshDraws[drawIndex];
+
                 jointDraw.m_MeshIndex = draw.m_MeshIndex;
                 jointDraw.m_MaterialIndex = draw.m_MaterialIndex;
 
+                const DirectX::XMMATRIX localToWorld = draw.m_ObjectToLocal * geometryLocalToWorld;
+
+                if (IsMatrixZero(jointDraw.m_PrevLocalToWorld))
+                {
+                    DirectX::XMStoreFloat4x4(&jointDraw.m_PrevLocalToWorld, localToWorld);
+                }
+                else
+                {
+                    jointDraw.m_PrevLocalToWorld = jointDraw.m_LocalToWorld;
+                }
+
+                DirectX::XMStoreFloat4x4(&jointDraw.m_LocalToWorld, localToWorld);
+
                 DirectX::XMFLOAT3 scales = {};
-                scales.x = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[0]));
-                scales.y = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[1]));
-                scales.z = DirectX::XMVectorGetX(DirectX::XMVector3Length(jointDraw.m_LocalToWorld.r[2]));
+                scales.x = DirectX::XMVectorGetX(DirectX::XMVector3Length(localToWorld.r[0]));
+                scales.y = DirectX::XMVectorGetX(DirectX::XMVector3Length(localToWorld.r[1]));
+                scales.z = DirectX::XMVectorGetX(DirectX::XMVector3Length(localToWorld.r[2]));
 
                 BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-5f && std::fabs(scales.x - scales.z) <= 1e-5f, "Scale is not uniform");
                 jointDraw.m_LocalToWorldScale = scales.x;
             }
+
+            geometryDraw.m_IsDirty = false;
         }
 
-        BenzinAssert(jointDrawIndex == m_TotalMeshDrawCount);
         perFrameResources.m_IsDirty = false;
     }
 
