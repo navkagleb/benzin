@@ -1,46 +1,8 @@
-#include "benzin/config/bootstrap.hpp"
-#include "benzin/core/logger.hpp"
+#include <benzin/config/bootstrap.hpp>
+#include <benzin/core/logger.hpp>
 
 namespace benzin
 {
-
-    static const auto g_StartTimePoint = std::chrono::system_clock::now().time_since_epoch();
-
-    static std::string GetTimePointFormat()
-    {
-        using namespace std::chrono;
-
-        const auto logTimePoint = system_clock::now().time_since_epoch();
-        const auto passTime = duration_cast<milliseconds>(logTimePoint - g_StartTimePoint);
-
-        const uint64_t h = duration_cast<hours>(passTime).count();
-        const uint64_t m = duration_cast<minutes>(passTime).count() - h * 60;
-        const uint64_t s = duration_cast<seconds>(passTime).count() - h * 60 * 60 - m * 60;
-        const uint64_t ms = duration_cast<milliseconds>(passTime).count() - h * 60 * 60 * 1000 - m * 60 * 1000 - s * 1000;
-
-        return std::format("{}:{}:{:0>2}.{:0>3}", h, m, s, ms);
-    }
-
-    static std::string GetFileNameFormat(const std::source_location& sourceLocation)
-    {
-        const std::string_view filePath = sourceLocation.file_name();
-
-        return std::format("{}:{}", filePath.substr(filePath.find_last_of("\\") + 1), sourceLocation.line());
-    }
-
-    static std::string GetOutput(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
-    {
-        std::string logInfo;
-        logInfo.reserve(256);
-
-        std::format_to(std::back_inserter(logInfo), "[{}]", GetTimePointFormat());
-        std::format_to(std::back_inserter(logInfo), "[{:5}]", std::this_thread::get_id());
-        std::format_to(std::back_inserter(logInfo), "[{}]", (GetFileNameFormat(sourceLocation)));
-
-        return std::format("{}[{:^7}]: {}\n", logInfo, magic_enum::enum_name(severity), message);
-    }
-
-    //
 
     const std::locale& Logger::GetThoudandSeperatorApostrophe3()
     {
@@ -51,17 +13,58 @@ namespace benzin
             std::string do_grouping() const override { return "\3"; }
         };
 
-        static const std::locale locale{ std::locale::classic(), new ThoudandSeperatorApostrophe3 };
+        static const std::locale locale{std::locale::classic(), new ThoudandSeperatorApostrophe3};
 
         return locale;
     }
 
     void Log(LogSeverity severity, const std::source_location& sourceLocation, std::string_view message)
     {
-        const auto output = GetOutput(severity, sourceLocation, message);
+        BenzinUnused(sourceLocation);
 
-        std::print("{}", output);
-        OutputDebugStringA(output.c_str());
+        using Clock = std::chrono::steady_clock;
+
+        static const Clock::time_point s_StartTimePoint = Clock::now();
+        static thread_local std::thread::id g_Tid = std::this_thread::get_id();
+
+        const auto now = Clock::now();
+        const auto passMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - s_StartTimePoint);
+
+        const uint64_t m = passMs.count() / 60000;
+        const uint64_t s = (passMs.count() / 1000) % 60;
+        const uint64_t ms = passMs.count() % 1000;
+
+        const auto logSeverityToChar = [](LogSeverity severity)
+        {
+            switch (severity)
+            {
+                case LogSeverity::Trace: return 'T';
+                case LogSeverity::Warning: return 'W';
+                case LogSeverity::Error: return 'E';
+            }
+
+            BenzinEnsure(false);
+            return '?';
+        };
+
+        std::array<char, 1_kb> buffer;
+        const auto outBuffer = std::format_to_n(
+            buffer.data(),
+            buffer.size() - 1,
+            "[{}:{:0>2}.{:0>3}][{:5}][{}]: {}",
+            m,
+            s,
+            ms,
+            g_Tid,
+            logSeverityToChar(severity),
+            message);
+
+        buffer[outBuffer.size] = '\0';
+
+        std::fwrite(buffer.data(), 1, outBuffer.size, stdout);
+        std::fputc('\n', stdout);
+
+        OutputDebugStringA(buffer.data());
     }
 
 }
