@@ -3,11 +3,9 @@
 #include <benzin/config/win64_includes.hpp> // Include win64 first of all because other dependencies uses #include <Windows.h>
 
 #if defined(BENZIN_DEBUG_BUILD)
-    #define BENZIN_IS_DEBUG_BUILD 1
-    #define BENZIN_IS_RELEASE_BUILD 0
+    #define BENZIN_DEBUG_BUILD_ENABLED 1
 #elif defined(BENZIN_RELEASE_BUILD)
-    #define BENZIN_IS_DEBUG_BUILD 0
-    #define BENZIN_IS_RELEASE_BUILD 1
+    #define BENZIN_DEBUG_BUILD_ENABLED 0
 #else
     #error Unknown build type
 #endif
@@ -20,11 +18,11 @@
 #include <benzin/utility/file_utils.hpp>
 #include <benzin/utility/string_utils.hpp>
 
-#include <benzin/core/assert.hpp>
+#include <benzin/core/debug.hpp>
+
 #include <benzin/core/bytes.hpp>
 #include <benzin/core/common.hpp>
 #include <benzin/core/enum_flags.hpp>
-#include <benzin/core/log.hpp>
 #include <benzin/core/timers.hpp>
 
 #if !defined(BENZIN_FRAME_COUNT)
@@ -32,7 +30,7 @@
     #define BENZIN_READBACK_LATENCY (BENZIN_FRAME_COUNT + 1)
 #endif
 
-#if BENZIN_IS_DEBUG_BUILD
+#if BENZIN_DEBUG_BUILD_ENABLED
     #define BENZIN_SHADER_SYMBOLS_ENABLED 1
 #else
     #define BENZIN_SHADER_SYMBOLS_ENABLED 0

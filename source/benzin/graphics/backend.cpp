@@ -3,8 +3,8 @@
 
 #include <benzin/core/cmd_line_args.hpp>
 #include <benzin/graphics/adl_wrapper.hpp>
+#include <benzin/graphics/d3d12_debug.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
-#include <benzin/graphics/d3d12_assert.hpp>
 #include <benzin/graphics/nvapi_wrapper.hpp>
 #include <benzin/graphics/pix_capturer.hpp>
 
@@ -153,7 +153,7 @@ namespace benzin
 
     void Backend::CreateDxgiFactory()
     {
-        const uint32_t dxgiFactoryFlags = BENZIN_IS_DEBUG_BUILD ? DXGI_CREATE_FACTORY_DEBUG : 0;
+        const uint32_t dxgiFactoryFlags = BENZIN_DEBUG_BUILD_ENABLED ? DXGI_CREATE_FACTORY_DEBUG : 0;
 
         ComPtr<IDXGIFactory2> dxgiFactory2;
         BenzinD3D12Call(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&dxgiFactory2)));

@@ -3,7 +3,7 @@
 
 #include <benzin/graphics/backend.hpp>
 #include <benzin/graphics/common.hpp>
-#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_debug.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/unified_root_signature.hpp>

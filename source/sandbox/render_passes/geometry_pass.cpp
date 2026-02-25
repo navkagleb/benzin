@@ -8,7 +8,7 @@
 #include <benzin/engine/scene.hpp>
 #include <benzin/graphics/buffer.hpp>
 #include <benzin/graphics/cmd_queue.hpp>
-#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_debug.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/gpu_heap.hpp>
 #include <benzin/graphics/pso.hpp>

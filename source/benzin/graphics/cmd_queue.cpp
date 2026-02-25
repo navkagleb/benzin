@@ -3,7 +3,7 @@
 
 #include <benzin/core/profiler.hpp>
 #include <benzin/graphics/buffer.hpp>
-#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_debug.hpp>
 #include <benzin/graphics/d3d12_utils.hpp>
 #include <benzin/graphics/device.hpp>
 #include <benzin/graphics/fence.hpp>

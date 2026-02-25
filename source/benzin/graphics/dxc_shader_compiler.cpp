@@ -2,7 +2,7 @@
 #include <benzin/graphics/dxc_shader_compiler.hpp>
 
 #include <benzin/graphics/shader.hpp>
-#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_debug.hpp>
 
 BenzinAllowDereferenceOperatorForEnum(benzin::ShaderType);
 

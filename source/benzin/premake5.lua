@@ -8,10 +8,9 @@ local function apply_benzin_config()
     }
 
     filter "configurations:Debug"
-        defines { "BENZIN_DEBUG_BUILD" }
-
-    filter "configurations:Release"
-        defines { "BENZIN_RELEASE_BUILD" }
+        defines {
+            "BENZIN_DEBUG_BUILD"
+        }
 
     filter "platforms:Win64"
         systemversion "10.0.20348.0:latest" -- From Windows SDK 10.0.20348.0 shader model 6.6 support started

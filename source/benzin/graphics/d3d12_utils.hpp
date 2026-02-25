@@ -1,6 +1,6 @@
 #pragma once
 
-#include <benzin/graphics/d3d12_assert.hpp>
+#include <benzin/graphics/d3d12_debug.hpp>
 
 namespace benzin
 {

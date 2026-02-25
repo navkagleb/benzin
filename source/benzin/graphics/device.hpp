@@ -23,7 +23,7 @@ namespace benzin
     public:
         friend class SwapChain;
 
-        explicit Device(std::string_view debugName, Backend& backend);
+        explicit Device(std::string_view debugName, const Backend& backend);
         ~Device();
 
         BenzinDefineNonCopyable(Device);
