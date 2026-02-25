@@ -51,15 +51,6 @@ namespace sandbox
 
         m_MainWindow.SetEventCallback([this](benzin::Event& event) { WindowEventCallback(event); });
 
-        m_ImGuiManager.RegisterTool<benzin::FlyCameraTool>(m_CameraController);
-        m_ImGuiManager.RegisterTool<benzin::GpuInfoTool>(m_Backend);
-        m_ImGuiManager.RegisterTool<benzin::GpuProfilerTool>(m_GpuProfiler);
-        m_ImGuiManager.RegisterTool<benzin::PerformanceOverlayTool>(m_Backend, m_Device, m_ShaderManager, m_GpuProfiler, m_Viewport, m_FrameTimer);
-        m_ImGuiManager.RegisterTool<benzin::ProfilerTool>();
-        m_ImGuiManager.RegisterTool<benzin::GpuPrintTool>(m_GpuPrintData);
-        m_ImGuiManager.RegisterTool<benzin::TextureViewerTool>(m_TextureViewerData, m_Viewport, m_RenderResources);
-        m_ImGuiManager.RegisterTool<benzin::RenderViewportTool>(m_Viewport, m_RenderResources);
-
         benzin::RenderPass::SetContext(
             m_Device,
             m_SwapChain,
@@ -73,6 +64,15 @@ namespace sandbox
 
         benzin::ScopedGpuEvent::SetContext(m_Device);
         benzin::ScopedGpuProfileEvent::SetContext(m_Device, m_GpuProfiler);
+
+        m_ImGuiManager.RegisterTool<benzin::FlyCameraTool>(m_CameraController);
+        m_ImGuiManager.RegisterTool<benzin::GpuInfoTool>(m_Backend);
+        m_ImGuiManager.RegisterTool<benzin::GpuProfilerTool>(m_GpuProfiler);
+        m_ImGuiManager.RegisterTool<benzin::PerformanceOverlayTool>(m_Backend, m_Device, m_ShaderManager, m_GpuProfiler, m_Viewport, m_FrameTimer);
+        m_ImGuiManager.RegisterTool<benzin::ProfilerTool>();
+        m_ImGuiManager.RegisterTool<benzin::GpuPrintTool>(m_GpuPrintData);
+        m_ImGuiManager.RegisterTool<benzin::TextureViewerTool>(m_TextureViewerData, m_Viewport, m_RenderResources);
+        m_ImGuiManager.RegisterTool<benzin::RenderViewportTool>(m_Viewport, m_RenderResources);
     }
 
     Runner::~Runner()

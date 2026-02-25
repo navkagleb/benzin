@@ -111,7 +111,7 @@ namespace benzin
     {
         BenzinProfile();
 
-        m_CmdList.AddTransition(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
+        m_CmdList.AddTransitionBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
         m_CmdList.FlushBarriers();
 
         ID3D12GraphicsCommandList* d3d12GraphicsCommandList = m_CmdList.GetD3D12GraphicsCommandList();

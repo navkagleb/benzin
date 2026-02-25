@@ -92,7 +92,7 @@ namespace sandbox
 
             cmdList.Dispatch({ cubeMapSize, cubeMapSize, m_CubeTexture->GetDepth() }, { 8, 8, 1 });
 
-            cmdList.AddUnorderedAccess(*m_CubeTexture);
+            cmdList.AddUavBarrier(*m_CubeTexture);
         }
     }
 

@@ -138,7 +138,7 @@ namespace benzin
 
         ReadbackFromGpu(cmdList);
 
-        cmdList.AddTransition(*m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransitionBarrier(*m_UavBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.FlushBarriers();
         cmdList.ClearUnorderedAccess(*m_UavBuffer, m_UavBuffer->GetUav());
 

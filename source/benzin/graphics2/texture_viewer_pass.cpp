@@ -107,7 +107,7 @@ namespace benzin
 
         cmdList.Dispatch({ debugTexture.GetWidth(), debugTexture.GetHeight(), 1 }, { 16, 16, 1 });
 
-        cmdList.AddUnorderedAccess(debugTexture);
+        cmdList.AddUavBarrier(debugTexture);
     }
 
 }

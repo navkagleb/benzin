@@ -26,8 +26,8 @@ namespace benzin
 
         auto* GetD3D12GraphicsCommandList() const { return m_D3D12GraphicsCommandList1; }
 
-        void AddTransition(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter);
-        void AddUnorderedAccess(const Resource& resource);
+        void AddTransitionBarrier(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter);
+        void AddUavBarrier(const Resource& resource);
         void FlushBarriers();
 
     protected:

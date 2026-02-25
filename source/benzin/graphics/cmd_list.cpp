@@ -40,7 +40,7 @@ namespace benzin
         SafeReleaseD3DObject(m_D3D12GraphicsCommandList1);
     }
 
-    void CmdList::AddTransition(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter)
+    void CmdList::AddTransitionBarrier(const Resource& resource, D3D12_RESOURCE_STATES d3d12StateAfter)
     {
         if (IsMaxEnum(d3d12StateAfter))
             return;
@@ -48,7 +48,7 @@ namespace benzin
         m_DeferredTransitionBarriers.emplace_back(&resource, d3d12StateAfter);
     }
 
-    void CmdList::AddUnorderedAccess(const Resource& resource)
+    void CmdList::AddUavBarrier(const Resource& resource)
     {
         BenzinAssert(resource.GetD3D12State() == D3D12_RESOURCE_STATE_UNORDERED_ACCESS || resource.GetD3D12State() == D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
 
@@ -103,8 +103,8 @@ namespace benzin
 
     void CopyCmdList::CopyResource(const Resource& destResource, const Resource& sourceResource)
     {
-        AddTransition(destResource, D3D12_RESOURCE_STATE_COPY_DEST);
-        AddTransition(sourceResource, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        AddTransitionBarrier(destResource, D3D12_RESOURCE_STATE_COPY_DEST);
+        AddTransitionBarrier(sourceResource, D3D12_RESOURCE_STATE_COPY_SOURCE);
         FlushBarriers();
 
         m_D3D12GraphicsCommandList1->CopyResource(destResource.GetD3D12Resource(), sourceResource.GetD3D12Resource());
@@ -117,8 +117,8 @@ namespace benzin
         BenzinAssert(destOffsetInBytes + dataSizeInBytes <= destBuffer.GetSizeInBytes());
         BenzinAssert(sourceOffsetInBytes + dataSizeInBytes <= sourceBuffer.GetSizeInBytes());
 
-        AddTransition(destBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
-        AddTransition(sourceBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        AddTransitionBarrier(destBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
+        AddTransitionBarrier(sourceBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
         FlushBarriers();
 
         m_D3D12GraphicsCommandList1->CopyBufferRegion(
@@ -141,8 +141,8 @@ namespace benzin
         d3d12SourceLocatiton.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         d3d12SourceLocatiton.SubresourceIndex = sourceSubresourceIndex;
 
-        AddTransition(destTexture, D3D12_RESOURCE_STATE_COPY_DEST);
-        AddTransition(sourceTexture, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        AddTransitionBarrier(destTexture, D3D12_RESOURCE_STATE_COPY_DEST);
+        AddTransitionBarrier(sourceTexture, D3D12_RESOURCE_STATE_COPY_SOURCE);
         FlushBarriers();
 
         m_D3D12GraphicsCommandList1->CopyTextureRegion(&d3d12DestLocatiton, 0, 0, 0, &d3d12SourceLocatiton, nullptr);
@@ -246,8 +246,8 @@ namespace benzin
             }
         }
 
-        AddTransition(texture, D3D12_RESOURCE_STATE_COPY_DEST);
-        AddTransition(*m_UploadBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        AddTransitionBarrier(texture, D3D12_RESOURCE_STATE_COPY_DEST);
+        AddTransitionBarrier(*m_UploadBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
         FlushBarriers();
 
         // Copy to texture
@@ -351,25 +351,25 @@ namespace benzin
 
     void ComputeCmdList::SetComputeRootSrv(uint32_t rootIndex, const Buffer& buffer)
     {
-        AddTransition(buffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        AddTransitionBarrier(buffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         SetComputeRootConstant(rootIndex, buffer.GetSrv().GetGpuHeapIndex());
     }
 
     void ComputeCmdList::SetComputeRootSrv(uint32_t rootIndex, const Texture& texture, const TextureSrv& srv, D3D12_RESOURCE_STATES d3d12ResourceState)
     {
-        AddTransition(texture, d3d12ResourceState);
+        AddTransitionBarrier(texture, d3d12ResourceState);
         SetComputeRootConstant(rootIndex, texture.GetSrv(srv).GetGpuHeapIndex());
     }
 
     void ComputeCmdList::SetComputeRootUav(uint32_t rootIndex, const Buffer& buffer)
     {
-        AddTransition(buffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        AddTransitionBarrier(buffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         SetComputeRootConstant(rootIndex, buffer.GetUav().GetGpuHeapIndex());
     }
 
     void ComputeCmdList::SetComputeRootUav(uint32_t rootIndex, const Texture& texture, const TextureUav& uav)
     {
-        AddTransition(texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        AddTransitionBarrier(texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         SetComputeRootConstant(rootIndex, texture.GetUav(uav).GetGpuHeapIndex());
     }
 
@@ -487,13 +487,13 @@ namespace benzin
 
     void GraphicsCmdList::SetGraphicsRootSrv(uint32_t rootIndex, const Buffer& buffer, D3D12_RESOURCE_STATES d3d12State)
     {
-        AddTransition(buffer, d3d12State);
+        AddTransitionBarrier(buffer, d3d12State);
         SetGraphicsRootConstant(rootIndex, buffer.GetSrv().GetGpuHeapIndex());
     }
 
     void GraphicsCmdList::SetGraphicsRootSrv(uint32_t rootIndex, const Texture& texture, D3D12_RESOURCE_STATES d3d12State)
     {
-        AddTransition(texture, d3d12State);
+        AddTransitionBarrier(texture, d3d12State);
         SetGraphicsRootConstant(rootIndex, texture.GetSrv().GetGpuHeapIndex());
     }
 
@@ -506,7 +506,7 @@ namespace benzin
     {
         BenzinAssert(vertexBuffer.GetType() == BufferType::Structured);
 
-        AddTransition(vertexBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+        AddTransitionBarrier(vertexBuffer, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
         D3D12_VERTEX_BUFFER_VIEW d3d12View = {};
         d3d12View.BufferLocation = vertexBuffer.GetGpuVirtualAddress();
@@ -521,7 +521,7 @@ namespace benzin
         BenzinAssert(indexBuffer.GetType() == BufferType::Format);
         BenzinAssert(indexBuffer.GetDxgiFormat() == DXGI_FORMAT_R16_UINT || indexBuffer.GetDxgiFormat() == DXGI_FORMAT_R32_UINT);
 
-        AddTransition(indexBuffer, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+        AddTransitionBarrier(indexBuffer, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
         D3D12_INDEX_BUFFER_VIEW d3d12View = {};
         d3d12View.BufferLocation = indexBuffer.GetGpuVirtualAddress();
@@ -535,13 +535,13 @@ namespace benzin
     {
         BenzinAssert(m_DeferredD3D12Rtvs.size() < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
 
-        AddTransition(texture, d3d12State);
+        AddTransitionBarrier(texture, d3d12State);
         m_DeferredD3D12Rtvs.emplace_back(texture.GetRtv().GetCpuHandle());
     }
 
     void GraphicsCmdList::AddDepthStencil(const Texture& texture, D3D12_RESOURCE_STATES d3d12State)
     {
-        AddTransition(texture, d3d12State);
+        AddTransitionBarrier(texture, d3d12State);
         m_DeferredD3D12Dsv.ptr = texture.GetDsv().GetCpuHandle();
     }
 

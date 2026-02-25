@@ -120,11 +120,11 @@ namespace sandbox
 
             const benzin::RayTracing_Tlas& tlas = ms_RayTracingScene->GetTlas();
 
-            cmdList.AddTransition(*tlas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            cmdList.AddTransitionBarrier(*tlas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             cmdList.FlushBarriers();
             cmdList.BuildRayTracingAccelerationStructure(tlas);
 
-            cmdList.AddUnorderedAccess(*tlas.GetBuffer());
+            cmdList.AddUavBarrier(*tlas.GetBuffer());
             cmdList.FlushBarriers();
 
             cmdList.SetComputeSrv(benzin::UnifiedRootParameter::SceneTlas, tlas.GetGpuVirtualAddress());
@@ -150,7 +150,7 @@ namespace sandbox
 
             cmdList.DispatchRays(pso.GetShaderTable(), { ms_RenderViewportWidth, ms_RenderViewportHeight, 1 });
 
-            cmdList.AddUnorderedAccess(noisyPenumbra);
+            cmdList.AddUavBarrier(noisyPenumbra);
         }
     }
 

@@ -69,7 +69,7 @@ namespace benzin
         for (RayTracing_Blas& blas : m_Blases)
         {
             blas.AllocateBuffers(device, "TODO");
-            cmdList.AddTransition(*blas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            cmdList.AddTransitionBarrier(*blas.GetScratchResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
         cmdList.FlushBarriers();
@@ -77,7 +77,7 @@ namespace benzin
         for (RayTracing_Blas& blas : m_Blases)
         {
             cmdList.BuildRayTracingAccelerationStructure(blas);
-            cmdList.AddUnorderedAccess(*blas.GetBuffer());
+            cmdList.AddUavBarrier(*blas.GetBuffer());
         }
 
         cmdList.FlushBarriers();

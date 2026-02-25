@@ -123,15 +123,15 @@ namespace sandbox
 
         BenzinGpuEvent("ClearPass");
 
-        cmdList.AddTransition(*m_LuminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList.AddTransition(*m_AvgLuminance, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransitionBarrier(*m_LuminanceHistogram, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransitionBarrier(*m_AvgLuminance, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.FlushBarriers();
 
         cmdList.ClearUnorderedAccess(*m_LuminanceHistogram, m_LuminanceHistogram->GetUav());
         cmdList.ClearUnorderedAccess(*m_AvgLuminance, m_AvgLuminance->GetUav());
 
-        cmdList.AddUnorderedAccess(*m_LuminanceHistogram);
-        cmdList.AddUnorderedAccess(*m_AvgLuminance);
+        cmdList.AddUavBarrier(*m_LuminanceHistogram);
+        cmdList.AddUavBarrier(*m_AvgLuminance);
 
         isFirstTime = false;
     }
@@ -151,8 +151,8 @@ namespace sandbox
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcLuminanceHistogram));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
 
-        cmdList.AddUnorderedAccess(*m_LuminanceHistogram);
-        cmdList.AddUnorderedAccess(*m_DebugLuminanceHistogram);
+        cmdList.AddUavBarrier(*m_LuminanceHistogram);
+        cmdList.AddUavBarrier(*m_DebugLuminanceHistogram);
     }
 
     void ToneMappingPass::RunCalcAvgLuminancePass(benzin::ComputeCmdList& cmdList) const
@@ -169,8 +169,8 @@ namespace sandbox
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_CalcAvgLuminance));
         cmdList.Dispatch({ 1, 1, 1 }, { 1, 1, 1 });
 
-        cmdList.AddUnorderedAccess(*m_LuminanceHistogram);
-        cmdList.AddUnorderedAccess(*m_AvgLuminance);
+        cmdList.AddUavBarrier(*m_LuminanceHistogram);
+        cmdList.AddUavBarrier(*m_AvgLuminance);
     }
 
     void ToneMappingPass::RunApplyToneMapOperatorPass(benzin::ComputeCmdList& cmdList) const
@@ -190,7 +190,7 @@ namespace sandbox
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::ToneMapping_ApplyToneMapOperator));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
 
-        cmdList.AddUnorderedAccess(finalTexture);
+        cmdList.AddUavBarrier(finalTexture);
     }
 
 }

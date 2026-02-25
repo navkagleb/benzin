@@ -193,7 +193,7 @@ namespace sandbox
             sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS1));
 
         benzin::ComputeCmdList& cmdList = ms_Device->GetGraphicsCmdQueue().GetCmdList();
-        cmdList.AddTransition(*m_VisibilityBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransitionBarrier(*m_VisibilityBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.FlushBarriers();
         cmdList.ClearUnorderedAccess(*m_VisibilityBuffer, m_VisibilityBuffer->GetUav());
     }
@@ -235,7 +235,7 @@ namespace sandbox
 
         d3d12CmdList->EndQuery(m_StatsQueryHeap->GetD3D12QueryHeap(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS1, 0);
 
-        cmdList.AddTransition(*m_StatsBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmdList.AddTransitionBarrier(*m_StatsBuffer, D3D12_RESOURCE_STATE_COPY_DEST);
         cmdList.FlushBarriers();
 
         d3d12CmdList->ResolveQueryData(
@@ -246,7 +246,7 @@ namespace sandbox
             m_StatsBuffer->GetD3D12Resource(),
             ms_Device->GetReadbackWriteIndex() * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS1));
 
-        cmdList.AddTransition(*m_StatsBuffer, D3D12_RESOURCE_STATE_COMMON);
+        cmdList.AddTransitionBarrier(*m_StatsBuffer, D3D12_RESOURCE_STATE_COMMON);
         cmdList.FlushBarriers();
 
         m_StatsBuffer->MapReadbackData<D3D12_QUERY_DATA_PIPELINE_STATISTICS1>(
@@ -352,9 +352,9 @@ namespace sandbox
         cmdList.SetComputePso(ms_PsoManager->GetCompute(isLate ? PsoId::Geometry_LateComputeCulling : PsoId::Geometry_EarlyComputeCulling));
         cmdList.Dispatch({ consts.m_MeshDrawCount, 1, 1 }, { 64, 1, 1 });
 
-        cmdList.AddUnorderedAccess(*m_CmdCountBuffers[activeIndex]);
-        cmdList.AddUnorderedAccess(*m_DrawCmdBuffers[activeIndex]);
-        cmdList.AddUnorderedAccess(*m_DispatchCmdBuffers[activeIndex]);
+        cmdList.AddUavBarrier(*m_CmdCountBuffers[activeIndex]);
+        cmdList.AddUavBarrier(*m_DrawCmdBuffers[activeIndex]);
+        cmdList.AddUavBarrier(*m_DispatchCmdBuffers[activeIndex]);
     }
 
     void GeometryPass::RunDrawPass(bool isLate) const
@@ -394,8 +394,8 @@ namespace sandbox
         const uint32_t activeIndex = ms_Device->GetActiveFrameIndex();
         const auto& cmdBuffer = isMeshPipeline ? m_DispatchCmdBuffers[activeIndex] : m_DrawCmdBuffers[activeIndex];
 
-        cmdList.AddTransition(*m_CmdCountBuffers[activeIndex], D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-        cmdList.AddTransition(*cmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        cmdList.AddTransitionBarrier(*m_CmdCountBuffers[activeIndex], D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        cmdList.AddTransitionBarrier(*cmdBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 
         const GBuffer gbuffer{ *ms_Resources };
 
@@ -464,7 +464,7 @@ namespace sandbox
 
             cmdList.Dispatch({ destMipWidth, destMipHeight, 1 }, { 8, 8, 1 });
 
-            cmdList.AddUnorderedAccess(hzb);
+            cmdList.AddUavBarrier(hzb);
         }
     }
 

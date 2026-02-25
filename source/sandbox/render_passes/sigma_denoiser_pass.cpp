@@ -173,12 +173,12 @@ namespace sandbox
         const auto& shadow1 = ms_Resources->Get(TextureId::Sigma_BlurredTempShadow1);
         const auto& shadow2 = ms_Resources->Get(TextureId::Sigma_BlurredTempShadow2);
 
-        cmdList.AddTransition(tiles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList.AddTransition(smoothTiles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList.AddTransition(penumbra1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList.AddTransition(penumbra2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList.AddTransition(shadow1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList.AddTransition(shadow2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransitionBarrier(tiles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransitionBarrier(smoothTiles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransitionBarrier(penumbra1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransitionBarrier(penumbra2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransitionBarrier(shadow1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmdList.AddTransitionBarrier(shadow2, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList.FlushBarriers();
 
         cmdList.ClearUnorderedAccess(tiles, tiles.GetUav());
@@ -188,12 +188,12 @@ namespace sandbox
         cmdList.ClearUnorderedAccess(shadow1, shadow1.GetUav());
         cmdList.ClearUnorderedAccess(shadow2, shadow2.GetUav());
 
-        cmdList.AddUnorderedAccess(tiles);
-        cmdList.AddUnorderedAccess(smoothTiles);
-        cmdList.AddUnorderedAccess(penumbra1);
-        cmdList.AddUnorderedAccess(penumbra2);
-        cmdList.AddUnorderedAccess(shadow1);
-        cmdList.AddUnorderedAccess(shadow2);
+        cmdList.AddUavBarrier(tiles);
+        cmdList.AddUavBarrier(smoothTiles);
+        cmdList.AddUavBarrier(penumbra1);
+        cmdList.AddUavBarrier(penumbra2);
+        cmdList.AddUavBarrier(shadow1);
+        cmdList.AddUavBarrier(shadow2);
     }
 
     void SigmaDenoiserPass::RunClassifyTilesPass() const
@@ -214,7 +214,7 @@ namespace sandbox
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Sigma_ClassifyTiles));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 16, 16, 1 });
 
-        cmdList.AddUnorderedAccess(tiles);
+        cmdList.AddUavBarrier(tiles);
     }
 
     void SigmaDenoiserPass::RunSmoothTilesPass() const
@@ -234,7 +234,7 @@ namespace sandbox
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Sigma_SmoothTiles));
         cmdList.Dispatch({ m_Consts.TileCount.x, m_Consts.TileCount.y, 1 }, { 16, 16, 1 });
 
-        cmdList.AddUnorderedAccess(smoothTiles);
+        cmdList.AddUavBarrier(smoothTiles);
     }
 
     void SigmaDenoiserPass::RunBlurPass() const
@@ -259,8 +259,8 @@ namespace sandbox
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Sigma_Blur));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
 
-        cmdList.AddUnorderedAccess(penumbra1);
-        cmdList.AddUnorderedAccess(shadowTemp1);
+        cmdList.AddUavBarrier(penumbra1);
+        cmdList.AddUavBarrier(shadowTemp1);
     }
 
     void SigmaDenoiserPass::RunPostBlurPass(bool isEnabled) const
@@ -295,8 +295,8 @@ namespace sandbox
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Sigma_PostBlur));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
 
-        cmdList.AddUnorderedAccess(penumbra2);
-        cmdList.AddUnorderedAccess(shadowTemp2);
+        cmdList.AddUavBarrier(penumbra2);
+        cmdList.AddUavBarrier(shadowTemp2);
     }
 
     void SigmaDenoiserPass::RunTemporalStabilizationPass(bool isEnabled) const
@@ -331,8 +331,8 @@ namespace sandbox
         cmdList.SetComputePso(ms_PsoManager->GetCompute(PsoId::Sigma_TemporalStabilization));
         cmdList.Dispatch({ ms_RenderViewportWidth, ms_RenderViewportHeight, 1 }, { 8, 16, 1 });
 
-        cmdList.AddUnorderedAccess(shadow);
-        cmdList.AddUnorderedAccess(historyLength);
+        cmdList.AddUavBarrier(shadow);
+        cmdList.AddUavBarrier(historyLength);
     }
 
 }
