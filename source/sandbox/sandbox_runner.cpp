@@ -75,6 +75,9 @@ namespace sandbox
     {
         BenzinTraceScopeTime("SandboxRunner::InitScene");
 
+        m_RenderSettings.GetSection<RayTracingShadowSettings>().m_IsAllowed = false;
+        m_RenderSettings.GetSection<SigmaDenoiserSettings>().m_IsEnabled = false;
+
         m_RenderSettings.GetSection<ProceduralGrassSettings>().m_IsEnabled = false;
 
         benzin::PerspectiveCamera& camera = m_Scene.m_Camera;
@@ -233,7 +236,7 @@ namespace sandbox
         std::vector<benzin::MeshDraw> draws;
         std::vector<benzin::Material> materials;
         std::vector<benzin::TextureImage> textures;
-        BenzinAssertExpr(benzin::LoadMeshFromGltfFile("Dinosaur.glb", geometry, draws, materials, textures));
+        BenzinAssertExpr(benzin::LoadMeshFromGltfFile("BoomBox.glb", geometry, draws, materials, textures));
 
         const benzin::Scene::MeshGeometryRange geometryRange = m_Scene.AddMeshGeometry(
             "Geometry",
@@ -244,7 +247,7 @@ namespace sandbox
 
         constexpr float sceneRadius = 400.0f;
 
-        m_Scene.m_MeshGeometryDraws.resize(30'000);
+        m_Scene.m_MeshGeometryDraws.resize(100'000);
         for (benzin::MeshGeometryDraw& draw : m_Scene.m_MeshGeometryDraws)
         {
             draw.m_MeshDrawOffset = geometryRange.m_MeshDrawOffset;
@@ -255,7 +258,7 @@ namespace sandbox
             draw.m_Rotation.x = benzin::Random::Get(0.0f, DirectX::XM_2PI);
             draw.m_Rotation.y = benzin::Random::Get(0.0f, DirectX::XM_2PI);
             draw.m_Rotation.z = benzin::Random::Get(0.0f, DirectX::XM_2PI);
-            draw.m_Scale = benzin::Random::Get(0.05f, 0.1f);
+            draw.m_Scale = benzin::Random::Get(300.0f, 500.0f);
         }
     }
 

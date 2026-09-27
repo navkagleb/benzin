@@ -5,6 +5,7 @@ namespace benzin
 
     class Device;
 
+    // TODO: Rename to UnifiedRootParam
     enum class UnifiedRootParameter
     {
         Root32Consts,

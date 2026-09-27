@@ -217,6 +217,21 @@ namespace sandbox
             benzin::TextureAccessFlag::AllowUnorderedAccess);
     }
 
+    void GeometryPass::OnUpdate()
+    {
+        joint::GeometryCullConsts consts = {};
+        consts.m_IsMeshPipelineEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsMeshPipelineEnabled;
+        consts.m_IsFrustumCullingEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsFrustumCullingEnabled;
+        consts.m_IsOcclusionCullingEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsOcclusionCullingEnabled;
+        consts.m_IsLodSelectionEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsLodSelectionEnabled;
+        consts.m_MeshDrawCount = ms_Scene->m_TotalMeshDrawCount;
+        consts.m_P00 = DirectX::XMVectorGetByIndex(ms_Scene->m_Camera.GetViewToClip().r[0], 0);
+        consts.m_P11 = DirectX::XMVectorGetByIndex(ms_Scene->m_Camera.GetViewToClip().r[1], 1);
+        consts.m_NearZ = ms_Scene->m_Camera.GetNearPlane();
+
+        m_CullConstsGpuAddress = ms_Device->GetConstBufferAllocator().Allocate(consts);
+    }
+
     void GeometryPass::OnRender() const
     {
         BenzinProfile();
@@ -321,12 +336,13 @@ namespace sandbox
         consts.m_IsMeshPipelineEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsMeshPipelineEnabled;
         consts.m_IsFrustumCullingEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsFrustumCullingEnabled;
         consts.m_IsOcclusionCullingEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsOcclusionCullingEnabled;
-		consts.m_MeshDrawCount = ms_Scene->m_TotalMeshDrawCount;
+        consts.m_IsLodSelectionEnabled = ms_Settings->GetSection<GBufferSettings>().m_IsLodSelectionEnabled;
+        consts.m_MeshDrawCount = ms_Scene->m_TotalMeshDrawCount;
         consts.m_P00 = DirectX::XMVectorGetByIndex(ms_Scene->m_Camera.GetViewToClip().r[0], 0);
         consts.m_P11 = DirectX::XMVectorGetByIndex(ms_Scene->m_Camera.GetViewToClip().r[1], 1);
         consts.m_NearZ = ms_Scene->m_Camera.GetNearPlane();
 
-        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, ms_Device->GetConstBufferAllocator().Allocate(consts));
+        cmdList.SetComputeCbv(benzin::UnifiedRootParameter::RenderPassConsts, m_CullConstsGpuAddress);
 
         const uint32_t activeIndex = ms_Device->GetActiveFrameIndex();
         cmdList.SetComputeRootSrv(*RootParam::MeshDraws, *ms_Scene->m_PerFrameResources[activeIndex].m_MeshDrawBuffer);

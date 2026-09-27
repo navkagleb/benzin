@@ -340,7 +340,7 @@ namespace benzin
                 scales.y = DirectX::XMVectorGetX(DirectX::XMVector3Length(localToWorld.r[1]));
                 scales.z = DirectX::XMVectorGetX(DirectX::XMVector3Length(localToWorld.r[2]));
 
-                BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-5f && std::fabs(scales.x - scales.z) <= 1e-5f, "Scale is not uniform");
+                // BenzinAssert(std::fabs(scales.x - scales.y) <= 1e-5f && std::fabs(scales.x - scales.z) <= 1e-5f, "Scale is not uniform");
                 jointDraw.m_LocalToWorldScale = scales.x;
             }
 

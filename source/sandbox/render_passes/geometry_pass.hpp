@@ -24,6 +24,7 @@ namespace sandbox
 
         void OnZeroFrameInit() override;
         void OnRenderViewportResize() override;
+        void OnUpdate() override;
         void OnRender() const override;
 
     private:
@@ -40,6 +41,8 @@ namespace sandbox
 
         std::unique_ptr<benzin::QueryHeap> m_StatsQueryHeap;
         std::unique_ptr<benzin::Buffer> m_StatsBuffer;
+
+        uint64_t m_CullConstsGpuAddress = 0;
 
         ID3D12CommandSignature* m_D3D12DrawCmdSignature = nullptr;
         ID3D12CommandSignature* m_D3D12MeshDispatchCmdSignature = nullptr;

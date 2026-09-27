@@ -18,6 +18,7 @@ namespace sandbox
         bool m_IsMeshPipelineEnabled = true;
         bool m_IsFrustumCullingEnabled = true;
         bool m_IsOcclusionCullingEnabled = true;
+        bool m_IsLodSelectionEnabled = true;
     };
 
     struct GBufferStats

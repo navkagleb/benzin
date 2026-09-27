@@ -13,6 +13,7 @@ namespace sandbox
         ImGui::Checkbox("Mesh pipeline", &settings.m_IsMeshPipelineEnabled);
         ImGui::Checkbox("Frustum culling", &settings.m_IsFrustumCullingEnabled);
         ImGui::Checkbox("Occlustion culling", &settings.m_IsOcclusionCullingEnabled);
+        ImGui::Checkbox("LOD selection", &settings.m_IsLodSelectionEnabled);
     }
 
     template <>

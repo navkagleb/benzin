@@ -28,7 +28,10 @@ bool ProjectSphere(float3 viewCenter, float radius, out float4 uvAabb)
     // Ref: https://zeux.io/2023/01/12/approximate-projected-bounds/
 
     if (viewCenter.z < radius + g_CullConsts.m_NearZ)
+    {
+        uvAabb = 0.0;
         return false;
+    }
 
     const float3 cr = viewCenter * radius;
     const float czr2 = viewCenter.z * viewCenter.z - radius * radius;
@@ -80,16 +83,16 @@ void CsMain(uint dtid : SV_DispatchThreadID)
 #if LATE_CULLING_ENABLED
     if (g_CullConsts.m_IsOcclusionCullingEnabled && isVisible)
     {
-        float4 uvAabb;
-        if (ProjectSphere(viewCenter.xyz, worldRadius, uvAabb))
+        float4 uvBox;
+        if (ProjectSphere(viewCenter.xyz, worldRadius, uvBox))
         {
-            const float width = (uvAabb.z - uvAabb.x) * g_FrameConsts.m_RenderResolution.x;
-            const float height = (uvAabb.w - uvAabb.y) * g_FrameConsts.m_RenderResolution.y;
-            const float mip = ceil(log2(max(width, height)));
-
             Texture2D<float> hzb = BenzinGetRootResource(joint::GeometryCullingRootParam::Hzb);
 
-            const float hzbDepth =  hzb.SampleLevel(g_MinLinearClampSampler, (uvAabb.xy + uvAabb.zw) * 0.5, mip);
+            const float width = (uvBox.z - uvBox.x) * g_FrameConsts.m_RenderResolution.x;
+            const float height = (uvBox.w - uvBox.y) * g_FrameConsts.m_RenderResolution.y;
+            const float mip = ceil(log2(max(width, height)));
+
+            const float hzbDepth = hzb.SampleLevel(g_MinLinearClampSampler, (uvBox.xy + uvBox.zw) * 0.5, mip);
             const float sphereDepth = g_CullConsts.m_NearZ / (viewCenter.z - worldRadius);
 
             isVisible = isVisible && sphereDepth > hzbDepth;
@@ -103,12 +106,26 @@ void CsMain(uint dtid : SV_DispatchThreadID)
 
     if (isDrawNeeded)
     {
+    #if 0
+        float distance = length(viewCenter.xyz - GetCameraConsts().m_WorldPosition);
+        distance = max(distance, 1e-3);
+
+        const float scale = g_CullConsts.m_LodDistanceScale; // e.g. 1.0
+        const float bias = g_CullConsts.m_LodBias;          // e.g. 0.0
+
+        float nd = (distance / worldRadius) * scale;
+        float lod = log2(max(nd, 1.0)) + bias;
+
+        uint lodIndex = (uint)clamp(floor(lod), 0.0, mesh.m_LodCount - 1);
+        lodIndex = g_CullConsts.m_IsLodSelectionEnabled ? lodIndex : 0.0;
+    #endif
+
+        const joint::MeshLod lod = mesh.m_Lods[0];
+
         RWBuffer<uint> cmdCounter = BenzinGetRootResource(joint::GeometryCullingRootParam::MeshCmdCounter);
 
         uint cmdIndex;
         InterlockedAdd(cmdCounter[0], 1, cmdIndex);
-
-        const joint::MeshLod lod = mesh.m_Lods[0];
 
         if (g_CullConsts.m_IsMeshPipelineEnabled)
         {

@@ -42,6 +42,9 @@ workspace "Benzin"
     filter "files:**.hlsl or **.hlsli"
         buildaction "None"
 
+    filter "action:vs*"
+        buildoptions { "/Wv:18" }
+
     filter {}
 
 

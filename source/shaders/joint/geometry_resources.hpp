@@ -22,6 +22,7 @@ namespace joint
         uint m_IsMeshPipelineEnabled : 1;
         uint m_IsFrustumCullingEnabled : 1;
         uint m_IsOcclusionCullingEnabled : 1;
+        uint m_IsLodSelectionEnabled : 1;
 
         uint m_MeshDrawCount;
         float m_P00;
