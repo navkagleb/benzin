@@ -1,0 +1,35 @@
+#pragma once
+
+#include "benzin/system/mouse_button.hpp"
+#include "benzin/system/key_code.hpp"
+
+namespace benzin
+{
+
+    class Window;
+
+    class Input
+    {
+    public:
+        BenzinDefineNonConstructable(Input);
+
+        static void SetAllKeyEventsBlocked(bool isBlocked);
+
+        template <typename T = int32_t>
+        static T GetMouseX(const Window& window) { return (T)GetMousePosition(window).x; }
+
+        template <typename T = int32_t>
+        static T GetMouseY(const Window& window) { return (T)GetMousePosition(window).y; }
+
+        static bool IsMouseButtonPressed(MouseButton mouseButton);
+        static bool IsKeyPressed(KeyCode keyCode);
+
+        [[nodiscard]] static DirectX::XMINT2 LockCursor(const Window& window);
+        static void UnlockCursor();
+        static void SetCursorPositionIfNeeded();
+
+    private:
+        static DirectX::XMINT2 GetMousePosition(const Window& window);
+    };
+
+}

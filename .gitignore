@@ -1,2 +1,13 @@
-.vs
-bin
+.vs/
+*.vcxproj*
+*packages.config
+*.sln
+
+bin/
+build/
+packages/
+
+*imgui.ini
+
+# For CommandLineArguments VS plugin
+*.args.json
